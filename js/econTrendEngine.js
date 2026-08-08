@@ -26,7 +26,15 @@ export const ECON_UNIVERSE = {
   AUD: { lagDays: ECON_LAG_FOREIGN, rate: 'IR3TIB01AUM156N', y10: 'IRLTLT01AUM156N', unemp: 'LRHUTTTTAUM156S' },
   CAD: { lagDays: ECON_LAG_FOREIGN, rate: 'IRSTCI01CAM156N', y10: 'IRLTLT01CAM156N', unemp: 'LRHUTTTTCAM156S' },
   CHF: { lagDays: ECON_LAG_FOREIGN, rate: 'IRSTCI01CHM156N', y10: 'IRLTLT01CHM156N', unemp: 'LRHUTTTTCHM156S' },
-  NZD: { lagDays: ECON_LAG_FOREIGN, rate: 'IR3TIB01NZM156N', y10: 'IRLTLT01NZM156N', unemp: 'LRHUTTTTNZM156S' },
+  // unemp corrected 2026-08-08: LRHUTTTTNZM156S (the nominally-monthly "M"
+  // variant) could not be confirmed to exist via web search across repeated
+  // targeted queries — New Zealand's Household Labour Force Survey is
+  // genuinely quarterly at the source (Stats NZ), and the series that DOES
+  // exist and was confirmed live is LRHUTTTTNZQ156S (Q4 2025 = 5.4%,
+  // matching Stats NZ's own published release for that quarter exactly).
+  // buildFundamentals() below has no cadence assumption (just fetches +
+  // lag-shifts by a fixed day count), so this is a safe drop-in fix.
+  NZD: { lagDays: ECON_LAG_FOREIGN, rate: 'IR3TIB01NZM156N', y10: 'IRLTLT01NZM156N', unemp: 'LRHUTTTTNZQ156S' },
 };
 
 const FACTORS = ['rate', 'y10', 'unemp'];

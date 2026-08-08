@@ -14,33 +14,88 @@
 //
 // Reuses js/econTrendEngine.js's ECON_UNIVERSE for unemployment series IDs
 // (already live in production there) rather than re-declaring them — see
-// LABOR_UNIVERSE below. USD is the only currency with payrolls/wages/
-// participation/hours series wired up; verifying good current FRED IDs for
-// the other 7 currencies' wage-growth and participation data was not
-// possible from this environment (see fetchLaborData's header note) — they
-// get unemployment-trend-only coverage until each is verified and added.
+// LABOR_UNIVERSE below.
+//
+// EXTENDED 2026-08-08: wage growth + participation-rate coverage added for
+// EUR/GBP/JPY/AUD/CAD/NZD (CHF stays unemployment-only by design — no
+// confirmed headline wage series exists for it; see the CHF note further
+// down). Every LABOR_UNIVERSE factor is now `{ series, isIndex?, quarterly? }`
+// rather than a bare series-ID string, because the newly-added series
+// surfaced TWO real per-currency ambiguities that a bare string can't
+// encode, both verified via web search (this sandbox can't reach FRED
+// directly, same constraint as every fetch module in this codebase):
+//   - UNIT: most of the new wage series (EUR/GBP/AUD/CAD/NZD) are OECD
+//     series ALREADY published as YoY% change — same "don't re-derive YoY
+//     on an already-YoY series" trap js/cpiEngine.js hit. JPY's wage series
+//     is a raw index level needing YoY computed, like USD's always has.
+//     `isIndex` marks which is which.
+//   - CADENCE: EUR and GBP's participation-rate series are QUARTERLY even
+//     though their unemployment series are monthly (a genuine per-factor
+//     mismatch, not a search gap — confirmed no monthly variant exists for
+//     either). New Zealand's labor data is quarterly across the board —
+//     unemployment, participation, AND wages — consistent with NZ's CPI/GDP
+//     data also being quarterly-only at the source (Stats NZ). `quarterly`
+//     marks which series need the shorter lookback / no monthly-smoothing
+//     treatment (see unemploymentTrendScore/participationTrendScore below).
+//
+// Wage coverage caveat, worth surfacing in any UI built on this: every
+// non-USD wage series here is OECD's `LCEAMN01` family — MANUFACTURING-
+// SECTOR hourly earnings specifically, not the whole-economy headline
+// number FX desks usually quote (USD's CES0500000003 is total private, all
+// sectors). No live whole-economy equivalent could be confirmed for any of
+// the 6 currencies (UK ONS AWE, Australia's ABS WPI, Germany's Destatis/
+// Bundesbank wage index, Canada's StatCan average hourly wages, and NZ's
+// Stats NZ LCI/QES were all searched for specifically and NOT found as a
+// live FRED series — several broader OECD families exist but stopped
+// updating around 2023, so they're excluded rather than shipped stale).
 import { fetchFredObservations, fetchFredInitialRelease } from './zscoreSpreadEngine.js';
 import { ECON_UNIVERSE } from './econTrendEngine.js';
 
 export const LABOR_UNIVERSE = Object.fromEntries(
-  Object.entries(ECON_UNIVERSE).map(([ccy, cfg]) => [ccy, { unemployment: cfg.unemp }])
+  Object.entries(ECON_UNIVERSE).map(([ccy, cfg]) => [ccy, { unemployment: { series: cfg.unemp } }])
 );
 // USD gets the full depth — these are among the most standard, stable FRED
 // series IDs that exist (unchanged for decades): PAYEMS is THE nonfarm
 // payrolls series, CES0500000003 is THE average-hourly-earnings series BLS/
-// FRED headlines use for wage growth.
-LABOR_UNIVERSE.USD = { ...LABOR_UNIVERSE.USD, payrolls: 'PAYEMS', participation: 'CIVPART', wages: 'CES0500000003', hours: 'AWHAETP' };
-// JOLTS — the quits rate is the standard worker-confidence proxy (people only
-// quit voluntarily when they're confident of finding something else); job
-// openings rate is the standard labor-DEMAND read (open positions per 100
-// jobs). Both verified against live FRED series pages. Hires/layoffs levels
-// exist too (JTSHIL/JTSLDL) but aren't scored as their own dimensions here —
-// layoffs in particular is low-signal outside of recessions (near-zero
-// variance most of the cycle, only spikes sharply in a downturn), and adding
-// them would dilute the composite without a clear independent read the rate
-// series don't already cover.
-LABOR_UNIVERSE.USD.quitsRate = 'JTSQUR';
-LABOR_UNIVERSE.USD.jobOpenings = 'JTSJOR';
+// FRED headlines use for wage growth (an index level — isIndex:true, same
+// as every other currency's index-level series).
+LABOR_UNIVERSE.USD = {
+  ...LABOR_UNIVERSE.USD,
+  payrolls: { series: 'PAYEMS' },
+  participation: { series: 'CIVPART' },
+  wages: { series: 'CES0500000003', isIndex: true },
+  hours: { series: 'AWHAETP' },
+};
+LABOR_UNIVERSE.USD.quitsRate = { series: 'JTSQUR' };
+LABOR_UNIVERSE.USD.jobOpenings = { series: 'JTSJOR' };
+
+// EUR (Germany) — participation is QUARTERLY despite unemployment being
+// monthly (no monthly variant exists — confirmed via repeated search).
+// Wages already YoY% (isIndex explicitly false — see wageScore's opts
+// default note above; every wages entry sets this explicitly rather than
+// relying on a default, since USD/JPY need isIndex:true and the other 5
+// need isIndex:false, and there's no single safe implicit default when
+// callers span both).
+LABOR_UNIVERSE.EUR.participation = { series: 'LRAC64TTDEQ156S', quarterly: true };
+LABOR_UNIVERSE.EUR.wages = { series: 'LCEAMN01DEQ659S', isIndex: false, quarterly: true };
+
+// GBP — same "participation is quarterly, unemployment isn't" pattern as
+// EUR. Wages are monthly, already YoY%.
+LABOR_UNIVERSE.GBP.participation = { series: 'LRACTTTTGBQ156S', quarterly: true };
+LABOR_UNIVERSE.GBP.wages = { series: 'LCEAMN01GBM659S', isIndex: false };
+
+// JPY — both monthly. Wages are a raw index level (isIndex:true), unlike
+// every other non-USD currency's already-YoY wage series.
+LABOR_UNIVERSE.JPY.participation = { series: 'LRACTTTTJPM156S' };
+LABOR_UNIVERSE.JPY.wages = { series: 'LCEAMN01JPM661S', isIndex: true };
+
+// AUD — participation monthly, wages quarterly (already YoY%).
+LABOR_UNIVERSE.AUD.participation = { series: 'LRACTTTTAUM156S' };
+LABOR_UNIVERSE.AUD.wages = { series: 'LCEAMN01AUQ659S', isIndex: false, quarterly: true };
+
+// CAD — both monthly, wages already YoY%.
+LABOR_UNIVERSE.CAD.participation = { series: 'LRACTTTTCAM156S' };
+LABOR_UNIVERSE.CAD.wages = { series: 'LCEAMN01CAM659S', isIndex: false };
 
 // CHF: swap the OECD-harmonized rate (ECON_UNIVERSE's default, LRHUTTTTCHM156S)
 // for SECO's own registered-unemployment series (LMUNRLTTCHM647S) — that's
@@ -49,13 +104,26 @@ LABOR_UNIVERSE.USD.jobOpenings = 'JTSJOR';
 // Verified against a live FRED series page. Ceiling: Switzerland's employment
 // survey (SAKE) and Wage Index are quarterly/annual at SOURCE — there is no
 // monthly payrolls- or wage-equivalent to add regardless of which FRED
-// series is used, so CHF stays unemployment-only, just the better series.
+// series is used, and no confirmed headline wage series was found either
+// (2026-08-08 search), so CHF stays unemployment-only, just the better
+// series.
 // NOTE units: this is a REGISTERED-UNEMPLOYMENT LEVEL (persons), not a %
 // rate like every other currency's series — the scoring math doesn't care
 // (unemploymentTrendScore works relative to a series' own history either
 // way), but the UI needs UNEMPLOYMENT_UNIT_LABEL below to label it correctly
 // rather than assume "%" like everywhere else.
-LABOR_UNIVERSE.CHF = { unemployment: 'LMUNRLTTCHM647S' };
+LABOR_UNIVERSE.CHF = { unemployment: { series: 'LMUNRLTTCHM647S' } };
+
+// NZD — quarterly across the board (unemployment, participation, wages),
+// consistent with NZ's CPI/GDP data also being quarterly-only at the
+// source. Unemployment series also CORRECTED here from the default
+// ECON_UNIVERSE value — see econTrendEngine.js's own NZD comment for the
+// full story (the nominally-monthly ID couldn't be confirmed to exist;
+// this quarterly one was confirmed live and matches Stats NZ's own
+// published figure for the same quarter).
+LABOR_UNIVERSE.NZD.unemployment = { series: 'LRHUTTTTNZQ156S', quarterly: true };
+LABOR_UNIVERSE.NZD.participation = { series: 'LRAC64TTNZQ156S', quarterly: true };
+LABOR_UNIVERSE.NZD.wages = { series: 'LCEAMN01NZQ659S', isIndex: false, quarterly: true };
 
 export const UNEMPLOYMENT_UNIT_LABEL = Object.fromEntries(Object.keys(LABOR_UNIVERSE).map(ccy => [ccy, '%']));
 UNEMPLOYMENT_UNIT_LABEL.CHF = 'registered (thousands)';
@@ -160,10 +228,17 @@ export function payrollScore(payrollObsMap) {
 
 // Wage growth: latest YoY%, z-scored vs its own trailing history. Reported
 // standalone — NOT folded into the strength composite (see file header).
-export function wageScore(wageObsMap) {
-  const series = yoyPct(toSeries(wageObsMap));
+// `opts.isIndex` (default true, matching USD's always-been-an-index-level
+// series): when false, the raw obs ARE already a YoY% print (most non-USD
+// series) and must NOT be re-derived, same trap js/cpiEngine.js's
+// toYoySeries helper guards against. `opts.quarterly` shortens the z-score
+// lookback for quarterly-cadence series (EUR/AUD/NZD's wage series).
+export function wageScore(wageObsMap, opts = {}) {
+  const { isIndex = true, quarterly = false } = opts;
+  const raw = toSeries(wageObsMap);
+  const series = isIndex ? yoyPct(raw) : raw.map(pt => ({ ...pt, yoy: pt.value }));
   const yoys = series.map(p => p.yoy);
-  const z = latestZScore(yoys);
+  const z = latestZScore(yoys, quarterly ? 8 : 24);
   const latest = series.at(-1);
   return {
     latestYoyPct: latest?.yoy ?? null,
@@ -173,7 +248,11 @@ export function wageScore(wageObsMap) {
 }
 
 // Smoothed trailing-3-month average at every point (reduces one noisy print
-// dominating), used by both trend scores below.
+// dominating), used by both trend scores below. Only meaningful for MONTHLY
+// series — a quarterly print IS already the smoothed unit BLS/OECD-style
+// monthly data needs 3 of to approximate, so quarterly callers skip this
+// entirely (see the `quarterly` opt on both trend scores) rather than
+// further averaging 3 quarters into a 9-month-lagged number.
 function trailing3moAvg(series) {
   const out = [];
   for (let i = 2; i < series.length; i++) {
@@ -188,22 +267,31 @@ function trailing3moAvg(series) {
 // scores positive THROUGHOUT the decline (every new print is a fresh low
 // relative to what came before it), not just when the pace itself
 // accelerates. Sign is flipped vs a raw z (low unemployment = strong).
-export function unemploymentTrendScore(unempObsMap) {
+// `opts.quarterly`: skip the monthly-only trailing3moAvg smoothing and use
+// a shorter 8-point (~2yr) lookback instead of 24 (~6yr for quarterly data,
+// diluting "recent" past a useful comparison base) — same treatment GDP's
+// quarterly currencies get.
+export function unemploymentTrendScore(unempObsMap, opts = {}) {
+  const { quarterly = false } = opts;
   const series = toSeries(unempObsMap);
   const latest = series.at(-1);
   if (series.length < 8) return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
-  const z = latestZScore(trailing3moAvg(series));
+  const smoothed = quarterly ? series.map(p => p.value) : trailing3moAvg(series);
+  const z = latestZScore(smoothed, quarterly ? 8 : 24);
   return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z == null ? null : -z) };
 }
 
 // Participation trend: same "relative cycle high/low" framing — rising
 // participation reads positive directly (no sign flip: more people working
-// or looking for work IS the strong read).
-export function participationTrendScore(partObsMap) {
+// or looking for work IS the strong read). Same `opts.quarterly` treatment
+// as unemploymentTrendScore above.
+export function participationTrendScore(partObsMap, opts = {}) {
+  const { quarterly = false } = opts;
   const series = toSeries(partObsMap);
   const latest = series.at(-1);
   if (series.length < 8) return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z: null, score: null };
-  const z = latestZScore(trailing3moAvg(series));
+  const smoothed = quarterly ? series.map(p => p.value) : trailing3moAvg(series);
+  const z = latestZScore(smoothed, quarterly ? 8 : 24);
   return { latestLevel: latest?.value ?? null, latestDate: latest?.date ?? null, z, score: zToScore(z) };
 }
 
@@ -279,18 +367,20 @@ export function revisionScore(currentObsMap, initialObsMap) {
 
 // Composite read for one currency. `data` = { payrolls?, wages?, unemployment?,
 // participation?, quitsRate?, jobOpenings?, sectors?, payrollsInitialRelease? }
-// each a raw FRED Map (or undefined if that series isn't in LABOR_UNIVERSE for
-// this currency). Strength composite averages the dimensions that read as "is
-// the labor market tightening or loosening" (payrolls, unemployment,
-// participation, breadth, quits confidence, job openings) — wages and
-// revisionSurprise are reported alongside but deliberately excluded (see file
-// header + revisionScore's own note).
-export function laborMarketScore(data = {}) {
+// each a raw FRED Map (or undefined if that factor isn't in LABOR_UNIVERSE for
+// this currency). `universe` = LABOR_UNIVERSE[ccy] — carries the per-factor
+// isIndex/quarterly metadata each score function needs. Strength composite
+// averages the dimensions that read as "is the labor market tightening or
+// loosening" (payrolls, unemployment, participation, breadth, quits
+// confidence, job openings) — wages and revisionSurprise are reported
+// alongside but deliberately excluded (see file header + revisionScore's
+// own note).
+export function laborMarketScore(data = {}, universe = {}) {
   const dims = {};
   if (data.payrolls) dims.payrollGrowth = payrollScore(data.payrolls);
-  if (data.wages) dims.wageGrowth = wageScore(data.wages);
-  if (data.unemployment) dims.unemploymentTrend = unemploymentTrendScore(data.unemployment);
-  if (data.participation) dims.participationTrend = participationTrendScore(data.participation);
+  if (data.wages) dims.wageGrowth = wageScore(data.wages, universe.wages);
+  if (data.unemployment) dims.unemploymentTrend = unemploymentTrendScore(data.unemployment, universe.unemployment);
+  if (data.participation) dims.participationTrend = participationTrendScore(data.participation, universe.participation);
   if (data.quitsRate) dims.quitsConfidence = quitsScore(data.quitsRate);
   if (data.jobOpenings) dims.jobOpenings = jobOpeningsScore(data.jobOpenings);
   if (data.sectors) dims.breadth = breadthScore(data.sectors);
@@ -318,17 +408,17 @@ export function laborMarketScore(data = {}) {
 // `unemployment` configured is expected, not an error; a sector series
 // failing just narrows breadth coverage) — availability is reported
 // alongside the data so a caller can tell partial coverage from a dead feed.
-export async function fetchLaborData(ccy, fredKey, fromDate = '2015-01-01') {
+export async function fetchLaborData(ccy, fredKey, fromDate = '2000-01-01') {
   const cfg = LABOR_UNIVERSE[ccy];
   if (!cfg) throw new Error(`No labor-market series configured for ${ccy}`);
   const data = {}, availability = [];
-  await Promise.all(Object.entries(cfg).map(async ([factor, seriesId]) => {
+  await Promise.all(Object.entries(cfg).map(async ([factor, meta]) => {
     try {
-      const obs = await fetchFredObservations(seriesId, fromDate, fredKey);
+      const obs = await fetchFredObservations(meta.series, fromDate, fredKey);
       data[factor] = obs;
-      availability.push({ factor, series: seriesId, n: obs.size });
+      availability.push({ factor, series: meta.series, n: obs.size });
     } catch (e) {
-      availability.push({ factor, series: seriesId, n: 0, error: e.message });
+      availability.push({ factor, series: meta.series, n: 0, error: e.message });
     }
   }));
 

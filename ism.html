@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Labor Market Strength</title>
+<title>Business Activity</title>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
@@ -43,7 +43,7 @@
   .gauge .fill{position:absolute;top:0;bottom:0;border-radius:4px}
   .gauge .fill.pos{left:50%;background:var(--bull)} .gauge .fill.neg{right:50%;background:var(--bear)}
 
-  .dim-row{display:grid;grid-template-columns:100px 1fr 46px;align-items:center;gap:7px;margin-bottom:5px;font-size:11px}
+  .dim-row{display:grid;grid-template-columns:130px 1fr 46px;align-items:center;gap:7px;margin-bottom:5px;font-size:11px}
   .dim-lbl{color:var(--text3)}
   .dim-track{height:6px;background:var(--bg);border-radius:3px;position:relative;overflow:hidden}
   .dim-fill{position:absolute;top:0;bottom:0;border-radius:3px}
@@ -51,7 +51,6 @@
   .dim-val{font-size:10px;color:var(--text3);text-align:right;font-variant-numeric:tabular-nums}
   .dim-detail{font-size:10px;color:var(--text3);margin:-2px 0 6px}
 
-  .trapflag{font-size:11px;color:var(--amber);background:var(--amber-bg);border-radius:6px;padding:6px 9px;margin-top:6px;line-height:1.4}
   .coverage-note{font-size:10px;color:var(--text3);margin-top:6px}
 
   .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--text3);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
@@ -61,7 +60,7 @@
 <body>
 
 <div class="hdr">
-  <h1>💼 Labor Market Strength</h1>
+  <h1>🏭 Business Activity</h1>
   <div class="spacer"></div>
   <span class="stamp" id="lastCheck"></span>
   <button class="hbtn primary" id="refreshBtn" onclick="refreshNow()">⟳ Refresh</button>
@@ -72,16 +71,16 @@
   <a class="hbtn" href="beige-book.html">Beige Book</a>
   <a class="hbtn" href="cpi.html">CPI / Inflation</a>
   <a class="hbtn" href="gdp.html">GDP / Growth</a>
-  <a class="hbtn" href="ism.html">Business Activity</a>
+  <a class="hbtn" href="labor-market.html">Labor Market</a>
   <a class="hbtn" href="today.html">Daily Brief</a>
   <a class="hbtn" href="index.html">Dashboard</a>
 </div>
 
 <div class="wrap">
   <div class="card">
-    <h2>Per-currency labor market read</h2>
+    <h2>Per-currency business activity read</h2>
     <div id="body" class="empty">Loading…</div>
-    <div class="note">Numeric composition, not an AI text read: each dimension is scored independently (-1 weak to +1 strong) against its own trailing history, then combined into a strength composite from payrolls + hiring breadth + job openings + quits rate + unemployment + participation — wage growth and revision surprise are shown separately, not blended in, since fast wage growth is a strong-labor signal AND an inflation-risk signal at once, and a revision is a verdict on the PRIOR month's print, not this one. "Hiring breadth" is BLS's own diffusion-index framing (% of the 10 major industry sectors adding jobs, this month's) plus which single sector carried the most of the net change. "Revision surprise" compares the current, most-revised payrolls figure against what was FIRST reported for that same month (FRED's vintage/ALFRED data), so a print that looked weak on release day but got revised up shows up here. "Quits rate" (JOLTS) is the standard worker-confidence proxy — people quit voluntarily when they're confident of finding something else; "Job openings" (JOLTS) is the standard labor-demand read. USD has full coverage; EUR/GBP/JPY/AUD/CAD/NZD get unemployment + participation + wage-growth depth (wages there are manufacturing-sector earnings, not the whole-economy headline number — see the note on each card); CHF stays unemployment-only (no confirmed wage series exists for it). New Zealand's data (unemployment, participation, wages) is quarterly across the board, consistent with its CPI/GDP data — each dimension's lookback window adjusts for that automatically. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+    <div class="note"><b>Not ISM/PMI data</b> — the actual ISM Manufacturing/Services PMI was pulled from FRED by ISM itself in 2016 and isn't available through any free API. USD instead uses three real, confirmed proxies: Industrial Production (YoY% trend), and the Philadelphia Fed / Empire State regional manufacturing surveys (diffusion-style indices, already centered near zero — positive means expansion). The other 7 currencies show a "Business Confidence" dimension from the OECD's Business Tendency Survey instead — a real, free, updating series, but explicitly NOT a PMI equivalent (different survey design, different scale, unsynchronized release calendar) — don't read it as "the UK's ISM," it isn't one. All dimensions are z-scored against their own trailing history. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
   </div>
 </div>
 
@@ -90,17 +89,13 @@ const $ = id => document.getElementById(id);
 const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
 
-const DIM_LABELS = { payrollGrowth: 'Payroll growth', wageGrowth: 'Wage growth', unemploymentTrend: 'Unemployment', participationTrend: 'Participation', breadth: 'Hiring breadth', revisionSurprise: 'Revision surprise', quitsConfidence: 'Quits rate (confidence)', jobOpenings: 'Job openings' };
-const USD_ORDER = ['payrollGrowth', 'breadth', 'jobOpenings', 'quitsConfidence', 'wageGrowth', 'unemploymentTrend', 'participationTrend', 'revisionSurprise'];
-const NON_USD_ORDER = ['unemploymentTrend', 'participationTrend', 'wageGrowth'];
-// EUR/GBP/JPY/AUD/CAD/NZD — wages/participation added 2026-08-08. CHF stays
-// unemployment-only (no confirmed wage series exists for it).
-const WAGE_PARTICIPATION_CCY = new Set(['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'NZD']);
+const DIM_LABELS = { industrialProduction: 'Industrial production', philFed: 'Philly Fed survey', empireState: 'Empire State survey', businessConfidence: 'Business confidence' };
+const USD_ORDER = ['industrialProduction', 'philFed', 'empireState'];
 
-function strengthChip(score) {
+function activityChip(score) {
   if (score == null) return '<span class="chip na">no data</span>';
-  if (score > 0.25) return '<span class="chip strong">STRONG</span>';
-  if (score < -0.25) return '<span class="chip weak">WEAK</span>';
+  if (score > 0.25) return '<span class="chip strong">EXPANDING</span>';
+  if (score < -0.25) return '<span class="chip weak">CONTRACTING</span>';
   return '<span class="chip neu">NEUTRAL</span>';
 }
 function gauge(score) {
@@ -108,65 +103,50 @@ function gauge(score) {
   const pct = Math.min(50, Math.abs(score) * 50);
   return `<div class="gauge"><div class="mid"></div><div class="fill ${score >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>`;
 }
-function dimDetail(key, d, unemploymentUnit) {
+function dimDetail(key, d) {
   if (!d) return '';
-  if (key === 'payrollGrowth') return d.latestChange != null ? `${d.latestChange > 0 ? '+' : ''}${d.latestChange}k · ${esc(d.latestDate || '')}` : '';
-  if (key === 'wageGrowth') return d.latestYoyPct != null ? `${d.latestYoyPct}% y/y · ${esc(d.latestDate || '')}` : '';
-  // Unit varies by currency — most report a % rate, but CHF's series (SECO
-  // registered unemployment) is a level in thousands, not a rate; the server
-  // sends the right label per currency so this never mislabels it.
-  if (key === 'unemploymentTrend') return d.latestLevel != null ? `${d.latestLevel} ${esc(unemploymentUnit || '%')} · ${esc(d.latestDate || '')}` : '';
-  if (key === 'participationTrend') return d.latestLevel != null ? `${d.latestLevel}% · ${esc(d.latestDate || '')}` : '';
-  if (key === 'breadth') return d.diffusion != null ? `${d.diffusion}% of sectors adding jobs · top: ${esc(d.topContributor?.name || '')} (${d.topContributor?.chg > 0 ? '+' : ''}${d.topContributor?.chg}k, ${d.concentration}% of net change)` : '';
-  if (key === 'revisionSurprise') return d.latestRevision != null ? `prior month revised ${d.latestRevision > 0 ? '+' : ''}${d.latestRevision}k vs first reported · ${esc(d.latestDate || '')}` : '';
-  if (key === 'quitsConfidence') return d.latestRate != null ? `${d.latestRate}% quits rate · ${esc(d.latestDate || '')}` : '';
-  if (key === 'jobOpenings') return d.latestRate != null ? `${d.latestRate}% openings rate · ${esc(d.latestDate || '')}` : '';
+  if (key === 'industrialProduction') return d.latestYoy != null ? `${d.latestYoy > 0 ? '+' : ''}${d.latestYoy}% y/y · ${esc(d.latestDate || '')}` : '';
+  if (key === 'philFed' || key === 'empireState' || key === 'businessConfidence') return d.latestValue != null ? `${d.latestValue > 0 ? '+' : ''}${d.latestValue} (${d.expanding ? 'expansion' : 'contraction'} territory) · ${esc(d.latestDate || '')}` : '';
   return '';
 }
-function dimRow(key, d, unemploymentUnit) {
+function dimRow(key, d) {
   if (!d) return '';
   const s = d.score;
   const pct = s == null ? 0 : Math.min(50, Math.abs(s) * 50);
   const cls = s == null ? '' : (s >= 0 ? 'pos' : 'neg');
   return `<div class="dim-row"><span class="dim-lbl">${DIM_LABELS[key]}</span><div class="dim-track">${s != null ? `<div class="dim-fill ${cls}" style="width:${pct}%"></div>` : ''}</div><span class="dim-val">${s != null ? s.toFixed(2) : '—'}</span></div>
-    <div class="dim-detail">${dimDetail(key, d, unemploymentUnit)}</div>`;
+    <div class="dim-detail">${dimDetail(key, d)}</div>`;
 }
 
-function renderCcy(ccy, r, isUsd, unemploymentUnit) {
+function renderCcy(ccy, r, isUsd) {
   const dims = r?.dims || {};
-  const hasWageDepth = WAGE_PARTICIPATION_CCY.has(ccy);
-  const order = isUsd ? USD_ORDER : NON_USD_ORDER;
-  let coverageNote;
-  if (isUsd) coverageNote = '';
-  else if (hasWageDepth) coverageNote = 'Wage growth is manufacturing-sector earnings (OECD), not the whole-economy headline number — no free whole-economy wage series was confirmed for this currency.';
-  else coverageNote = `Unemployment-trend-only coverage${ccy === 'CHF' ? ' — SECO registered unemployment, the print FX desks actually watch, not the OECD-harmonized rate; no confirmed wage series exists for CHF' : ''}`;
+  const order = isUsd ? USD_ORDER : ['businessConfidence'];
   return `<div class="ccard ${isUsd ? 'usd' : ''}">
-    <div class="ctitle"><span class="ccy">${ccy}</span>${strengthChip(r?.strength)}</div>
-    ${gauge(r?.strength)}
-    ${order.map(k => dimRow(k, dims[k], unemploymentUnit)).join('')}
-    ${r?.flag ? `<div class="trapflag">⚠ ${esc(r.flag)}</div>` : ''}
-    ${coverageNote ? `<div class="coverage-note">${coverageNote}</div>` : ''}
+    <div class="ctitle"><span class="ccy">${ccy}</span>${activityChip(r?.activity)}</div>
+    ${gauge(r?.activity)}
+    ${order.map(k => dimRow(k, dims[k])).join('')}
+    ${!isUsd ? '<div class="coverage-note">Business confidence, not PMI — see note below</div>' : ''}
   </div>`;
 }
 
 async function load() {
-  const r = await jget('/api/labor-market');
+  const r = await jget('/api/ism');
   if (!r.ok) {
     $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')} — click Refresh (needs FRED_KEY configured on the server).</div>`;
     return;
   }
   $('lastCheck').textContent = `Generated ${new Date(r.generatedAt).toLocaleString()}`;
   const order = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
-  $('body').innerHTML = `<div class="grid">${order.filter(c => r.byCcy?.[c]).map(c => renderCcy(c, r.byCcy[c], c === 'USD', r.unemploymentUnits?.[c])).join('')}</div>`;
+  $('body').innerHTML = `<div class="grid">${order.filter(c => r.byCcy?.[c]).map(c => renderCcy(c, r.byCcy[c], c === 'USD')).join('')}</div>`;
 }
 
 async function refreshNow() {
   const btn = $('refreshBtn');
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Refreshing…';
   try {
-    await jget('/api/labor-market/refresh', { method: 'POST' });
+    await jget('/api/ism/refresh', { method: 'POST' });
     for (let i = 0; i < 40; i++) {
-      const st = await jget('/api/labor-market/refresh-status');
+      const st = await jget('/api/ism/refresh-status');
       if (!st.running) break;
       await new Promise(res => setTimeout(res, 2000));
     }
