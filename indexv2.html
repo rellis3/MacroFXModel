@@ -386,6 +386,17 @@ tr.pv-mid td.pv-px{color:var(--accent-text)}
 .fwd-item .fwd-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
 .fwd-item .fwd-val{font-family:var(--mono);font-size:14px;font-weight:500;margin-top:2px}
 
+.disc-strip{display:flex;align-items:center;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;text-decoration:none;color:inherit;flex-wrap:wrap}
+.disc-strip:hover{border-color:var(--border-strong);text-decoration:none}
+.disc-item{flex:1;min-width:150px;padding:0 16px;border-left:1px solid var(--border-soft)}
+.disc-item:first-child{border-left:none;padding-left:0}
+.disc-q{display:block;font-size:11px;font-weight:600;color:var(--text)}
+.disc-count{display:block;font-size:10px;color:var(--text3);margin-top:2px}
+.disc-count b.r{color:var(--bull);font-weight:600}
+.disc-count b.t{color:var(--warn);font-weight:600}
+.disc-count b.a{color:var(--text3);font-weight:600}
+.disc-cta{flex-shrink:0;font-size:11px;color:var(--info);font-weight:600;padding-left:16px;white-space:nowrap}
+
 /* ── Context footer ───────────────────────────────────────────────── */
 #context{margin-top:14px;border:1px solid var(--border);border-radius:6px;background:var(--surface)}
 #context-hd{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer}
@@ -678,6 +689,7 @@ footer{margin-top:40px;padding:18px 0;border-top:1px solid var(--border-soft);fo
     <button class="chub-btn" style="color:#64748b;border-color:rgba(100,116,139,.35)" onclick="chubToggleDD(event,'chubDDwip')">WIP ▾</button>
     <div class="chub-menu">
       <a class="chub-item" href="indexv2.html" target="_blank" data-href="indexv2.html" style="opacity:.7"><span class="ci-txt">📊 Market State v2</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('indexv2.html')" data-href="indexv2.html">☆</button></a>
+      <a class="chub-item" href="discipline-map.html" target="_blank" data-href="discipline-map.html" style="opacity:.7"><span class="ci-txt">🗺 Discipline Map</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('discipline-map.html')" data-href="discipline-map.html">☆</button></a>
       <a class="chub-item" href="level-chart-demo.html" target="_blank" data-href="level-chart-demo.html" style="opacity:.7"><span class="ci-txt">🧱 Level Chart Demo</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-chart-demo.html')" data-href="level-chart-demo.html">☆</button></a>
     </div>
   </div>
@@ -842,6 +854,18 @@ footer{margin-top:40px;padding:18px 0;border-top:1px solid var(--border-soft);fo
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════ DISCIPLINE MAP ═══════════════════ -->
+  <div class="sec">
+    <div class="sec-hd"><h2>Discipline Map</h2><span class="sec-note">what's real, thin, or honestly absent — across Fundamentals, Technicals, Behavioral, Quantitative</span></div>
+  </div>
+  <a class="disc-strip" href="discipline-map.html" target="_blank">
+    <div class="disc-item"><span class="disc-q">Fundamentals</span><span class="disc-count"><b class="r">2</b> real · <b class="t">1</b> thin · <b class="a">2</b> absent</span></div>
+    <div class="disc-item"><span class="disc-q">Technicals</span><span class="disc-count"><b class="r">5</b> real</span></div>
+    <div class="disc-item"><span class="disc-q">Behavioral</span><span class="disc-count"><b class="r">3</b> real · <b class="a">2</b> absent</span></div>
+    <div class="disc-item"><span class="disc-q">Quantitative</span><span class="disc-count"><b class="r">5</b> real</span></div>
+    <span class="disc-cta">Full audit + live Reflexivity board →</span>
+  </a>
 
   <footer>MacroFX — The Board · live from server.js (daily-brief, hmm5m-v2, range-line-bot, oi-store, vumanchu, cross-pair-research, forward-track, regime-history, fredhistory) · index.html and every sub-page stay exactly as they are</footer>
 </div>
