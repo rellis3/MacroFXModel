@@ -5730,8 +5730,10 @@ async function _attachHarIvSigma(days, bars, byDate, pair) {
     if (slice.length < 60) continue;
     try {
       const ivPct = forwardFillAlign(slice.map(b => b.date), gvz);
-      const sig = _harIvForecastNext(_realizedVarSeries(slice, 'gk'), _ivVarSeries(ivPct));
-      if (sig > 0) days[d].hariv_annual = +(sig * Math.sqrt(252) * 100).toFixed(2);
+      // harIvForecastNext returns a daily VARIANCE (it regresses on realized variance),
+      // so annualize as σ = √(var × 252), NOT var × √252 (which under-scales ~60×).
+      const varDaily = _harIvForecastNext(_realizedVarSeries(slice, 'gk'), _ivVarSeries(ivPct));
+      if (varDaily > 0) days[d].hariv_annual = +(Math.sqrt(varDaily * 252) * 100).toFixed(2);
     } catch { /* per-day HAR-IV is optional enrichment — leave unset */ }
   }
 }
