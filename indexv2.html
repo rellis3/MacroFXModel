@@ -894,6 +894,7 @@ import { createLevelChart } from './js/levelChart.js';
 import { PAIRS } from './js/config.js';
 import { S } from './js/state.js';
 import { calculateTierScores, computeMacroRegime, computeUSDStrength, computeDollarRegime } from './js/macro.js';
+import { pairComposite, cotPairBias } from './js/pairCompositeEngine.js';
 
 /* The set daily-brief actually covers (server.js HR_INSTRUMENTS) — the
    platform's 14 range-line-strong FX pairs + gold + 6 indices. The other ~11
@@ -1121,6 +1122,19 @@ function macroEdgeFor(sym){
   return { base, quote, baseScore:b.composite, quoteScore:q.composite, baseCov:b.coverage.length, quoteCov:q.coverage.length, edge:+(b.composite-q.composite).toFixed(2) };
 }
 
+// COT positioning per pair (js/pairCompositeEngine.js's cotPairBias, shared
+// with today.html) — base long-crowded + quote short-crowded reinforce
+// toward +1 (the crowd already owns "long this pair"). Only defined for
+// 6-letter FX symbols, same gate as macroEdgeFor above.
+function cotEdgeFor(sym){
+  if (!S.cotByCcy || sym.length!==6) return null;
+  const base = sym.slice(0,3), quote = sym.slice(3,6);
+  const r = cotPairBias(base, quote, S.cotByCcy);
+  // r.base/r.quote are the {z,pctile} read objects — renamed to baseRead/
+  // quoteRead so they don't collide with the currency-code strings above.
+  return { base, quote, score: r.score, extreme: r.extreme, baseRead: r.base, quoteRead: r.quote };
+}
+
 /* ── Phase 3: macro backdrop (Goldilocks + USD composite) — computed once,
    client-side, by importing the SAME js/macro.js brick index.html uses.
    Needs S.fredData populated from /api/fred (point-in-time, not history). ── */
@@ -1131,6 +1145,13 @@ async function loadMacroBackdrop(){
     S.ecbData = await jget('/api/ecbsdw');
     S.ifoData = await jget('/ifo.json');
     S.macroScorecard = await jget('/api/macro-scorecard');
+    // Currency-keyed COT snapshot (js/pairCompositeEngine.js's cotPairBias
+    // input shape) — same /api/cot-extremes endpoint cot-extremes.html and
+    // today.html already use, just not previously fetched on this page.
+    const cotResp = await jget('/api/cot-extremes');
+    if (cotResp?.ok && cotResp.instruments?.length) {
+      S.cotByCcy = Object.fromEntries(cotResp.instruments.map(i => [i.sym, i]));
+    }
     if (S.fredData) MACRO_REGIME = computeMacroRegime();
     // USD composite needs OHLC for the 4 USD pairs — fetch them (cheap, 4 calls).
     const usdPairs = ['EUR/USD','GBP/USD','AUD/USD','USD/JPY'];
@@ -1400,6 +1421,18 @@ async function renderDrill(){
   const rr = (lbl,val,color)=>`<div class="rr"><span class="rr-lbl">${lbl}</span><div class="rr-bar"><span style="width:${val??0}%;background:${color}"></span></div><span class="rr-val">${val??'—'}%</span></div>`;
   const rd = rateDiffFor(d.sym);
   const me = macroEdgeFor(d.sym);
+  const ce = cotEdgeFor(d.sym);
+  // Composite: macro fundamentals + COT positioning combined via the shared
+  // pairCompositeEngine brick (js/pairCompositeEngine.js, also used by
+  // today.html's cards). Deliberately does NOT fold in Rate Differential or
+  // Regime above — both already have their own dedicated card on this page,
+  // and Rate Differential's sign convention varies per pair (whichever
+  // currency RATE_BASIS lists first), so folding it in here without
+  // per-pair verification would risk a silently wrong-signed composite.
+  const comp = me && ce ? pairComposite({
+    macro: { score: Math.max(-1, Math.min(1, me.edge / 2)), label: 'Fundamentals' },
+    cot: { score: ce.score, label: 'Positioning (COT)' },
+  }) : null;
 
   let html = `
   <div id="drill-hd">
@@ -1459,6 +1492,34 @@ async function renderDrill(){
           </div>
         </div>
         <div class="forward-line"><span>${me.base} ${me.baseScore>0?'+':''}${me.baseScore} (${me.baseCov}/11) &nbsp;vs&nbsp; ${me.quote} ${me.quoteScore>0?'+':''}${me.quoteScore} (${me.quoteCov}/11)</span><a href="macro-scorecard.html" target="_blank" style="font-size:10.5px;font-weight:600">Full breakdown ›</a></div>`}
+      </div>
+    </div>
+
+    <div class="dcard">
+      <div class="dcard-hd"><span class="eyebrow">Positioning${ce?` — ${ce.base} vs ${ce.quote}`:''}</span><span class="trust context">🧪 context</span></div>
+      <div class="dcard-body">
+        ${!ce || ce.score==null ? `<div class="pending">${d.ac!=='fx' ? 'Not a currency pair.' : 'COT data not available yet.'}</div>` : `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
+          <div>
+            <div class="mono" style="font-size:20px;font-weight:600;color:${ce.score>0?'var(--bull)':ce.score<0?'var(--bear)':'var(--text2)'}">${ce.score>0?'+':''}${ce.score}</div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:2px">${ce.extreme ? `Reinforcing double-extreme — both legs stretched the same way` : Math.abs(ce.score)<0.15 ? 'No clear positioning lean either way' : (ce.score>0 ? `Specs lean crowded toward ${ce.base}` : `Specs lean crowded toward ${ce.quote}`)}</div>
+          </div>
+        </div>
+        <div class="forward-line"><span>${ce.base} Z ${ce.baseRead?.z ?? '—'}${ce.baseRead?.pctile!=null?` (${ce.baseRead.pctile}th pctile)`:''} &nbsp;vs&nbsp; ${ce.quote} Z ${ce.quoteRead?.z ?? '—'}${ce.quoteRead?.pctile!=null?` (${ce.quoteRead.pctile}th pctile)`:''}</span><a href="cot-extremes.html" target="_blank" style="font-size:10.5px;font-weight:600">Full breakdown ›</a></div>`}
+      </div>
+    </div>
+
+    <div class="dcard">
+      <div class="dcard-hd"><span class="eyebrow">Composite Signal${comp?.score!=null?` — ${comp.direction}`:''}</span><span class="trust context">🧪 context</span></div>
+      <div class="dcard-body">
+        ${!comp || comp.score==null ? `<div class="pending">Needs both Macro Fundamentals and Positioning above to be available.</div>` : `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
+          <div>
+            <div class="mono" style="font-size:20px;font-weight:600;color:${comp.score>0?'var(--bull)':comp.score<0?'var(--bear)':'var(--text2)'}">${comp.direction} · ${comp.agree}/${comp.total} agree</div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:2px">Averages Fundamentals + Positioning above. Arithmetic agreement across signals this board already builds — not a backtested rule, and not a substitute for reading each card.</div>
+          </div>
+        </div>
+        <div class="forward-line"><span>${comp.legs.map(l=>`${l.label} ${l.score>0?'+':''}${l.score}`).join(' · ')}</span></div>`}
       </div>
     </div>
 

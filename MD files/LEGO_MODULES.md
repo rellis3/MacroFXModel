@@ -1151,6 +1151,31 @@ board just consumes whatever `coneBlend` produces; the calibration-table gap
 noted above (add it here, or keep `forecast-blend.html` as the
 calibration-specific view — an open call, not yet decided).
 
+### 1am. Pair-composite signal brick (2026-08-08) — technical+COT+macro+carry, one read
+
+Built from an owner request: several signals this project already builds per
+pair or per currency (technical regime/session bias, CFTC positioning, the
+11-dimension Macro Scorecard, carry) each lived in their own separate
+card/section with no combined read, and crosses (anything not a direct
+CFTC-tracked USD pair, e.g. GBPJPY) had no COT read at all — §1aj's
+reinforcing-pair selector only *flagged* a cross when both legs happened to
+clear the strict 90th/10th percentile band, with no continuous score for
+everything short of that.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Pair composite engine** | `js/pairCompositeEngine.js` | Two pure functions. `cotPairBias(base, quote, cotByCcy)` generalizes §1aj's `crowdState`/`FX_PAIRS` reinforcing-pair logic (base long-crowded + quote short-crowded ⇒ reads long the pair) from a binary 90/10-percentile flag into a continuous `[-1,+1]` score (Z-score spread between the two legs, clipped) usable for every tracked cross, not just the ones that happen to clear the strict band — `extreme` still reproduces §1aj's original binary flag exactly, same threshold. `pairComposite(legs)` averages whichever named legs a caller supplies (each pre-normalized to base-favored-positive `[-1,+1]`) into one score/direction/agreement-count, missing legs left out (never zeroed), same convention as `macroScorecardEngine.js`. Pure, no DOM/network/globals. Unit-tested `js/pairCompositeEngine.test.mjs` (14 cases, including the real GBP/JPY crowding-alert numbers from the reviewed screenshot). | `today.html` (module → `window.pairCompositeBrick`, same pattern as `window.creditBrick`) ✅; `indexv2.html` (direct ES-module import) ✅ | 🟡 built + unit-tested — **not backtested, a context combiner not a validated rule**, same posture as §1aj |
+| **today.html: cross-pair COT + composite chip** | `today.html` (`cotFor`, `pairSignalComposite`, `compositeChip`) | `cotFor(name)` now falls back to `cotPairBias` for any tracked pair NOT in the hand-maintained `COT_MAP` (the 7 direct-vs-USD majors) — so all 26 tracked crosses get a COT read, marked `derived:true` and worded accordingly in the card's tooltip. `pairSignalComposite(r)` feeds `pairSignal` (technical), the (now-universal) COT read, a Macro-Scorecard base-minus-quote diff (`/2`, clipped), and a 10Y-yield-diff carry read (`/3`, clipped) into `pairComposite`; rendered as a compact `⚖ LONG 3/4` chip on each card (only shown with ≥2 covered legs) and as a new "Composite (all of the above, combined)" section at the top of the currency drawer, synthesizing the drawer's own existing Technical/COT/Carry/Fundamentals sections into one read. | `cardHtml`, `openCcyDrawer` | 🟡 built, same untested-context caveat |
+| **indexv2.html: Positioning + Composite Signal dcards** | `indexv2.html` (`cotEdgeFor`, new `.dcard`s in `renderDrill`) | Fetches `/api/cot-extremes` once per backdrop load into `S.cotByCcy` (currency-keyed, not previously fetched on this page). New "Positioning" dcard mirrors the existing "Macro Fundamentals" dcard's visual shape. New "Composite Signal" dcard combines Fundamentals (`macroEdgeFor`, rescaled `/2`) + Positioning only — **deliberately does NOT fold in Rate Differential or Regime**, both already have their own dedicated dcard, and `RATE_BASIS`'s `a`/`b` sign convention is inconsistent per pair (whichever currency happens to be listed first), so folding it into a base-favored-positive composite without per-pair sign verification was judged too easy to get silently backwards — left as a documented gap, not guessed at. | `renderDrill` | 🟡 built, same untested-context caveat |
+
+This is a *selector* (Lego Principle 4), same shape and same evidentiary
+status as §1aj: composes already-built Tier-2 readings into one number, has
+not been run through the honest IS/OOS harness, and ships with an in-UI
+disclaimer rather than a performance claim. If ever promoted to a real
+backtest, pre-register the benchmark (does the composite direction beat any
+single leg alone, and does either beat a naive baseline) before running it —
+same discipline §1aj's own note already asks for.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

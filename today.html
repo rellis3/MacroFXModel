@@ -1619,7 +1619,43 @@ function openCcyDrawer(ccy) {
     carryHtml += `<div class="ccy-explain" style="margin-top:8px">Near-term (policy-adjacent) rate: <b>${sr.yield.toFixed(2)}%</b>${sr.dir ? `, currently <b>${sr.dir}</b>` : ''} — ranked <b>#${sr.rank} of ${sr.of}</b>. The 10Y above is the market's long-run view; this is what's happening at the short end right now, which matters most when the two diverge (e.g. a central bank cutting while long yields stay anchored).</div>`;
   }
 
+  // Composite: the same four sections below (technical/COT/carry/fundamentals),
+  // combined via the shared pairCompositeEngine brick into one read — this is
+  // what "everything already built here, together" looks like for one
+  // currency. Context, not a backtested rule, same as every leg it draws from.
+  let compositeHtml = '';
+  if (window.pairCompositeBrick) {
+    const cotScore = det.cot
+      ? (det.cot.z != null
+          ? Math.max(-1, Math.min(1, det.cot.z / 4))
+          : Math.max(-1, Math.min(1, ((det.cot.specNet ?? 0) >= 0 ? 1 : -1) * (det.cot.pct ?? 0) / 30))
+        )
+      : null;
+    const mrow = macroScorecard?.ranked?.find(x => x.ccy === ccy);
+    const macroScoreCcy = mrow?.composite ?? null;
+    const carryScoreCcy = (det.carry && det.carry.of > 1)
+      ? +(1 - 2 * (det.carry.rank - 1) / (det.carry.of - 1)).toFixed(2)
+      : null;
+    const comp = window.pairCompositeBrick.pairComposite({
+      technical: { score: det.score, label: "Today's flow" },
+      cot: { score: cotScore, label: 'Positioning (COT)' },
+      macro: { score: macroScoreCcy, label: 'Fundamentals' },
+      carry: { score: carryScoreCcy, label: 'Carry (10Y rank)' },
+    });
+    if (comp.score != null && comp.total >= 2) {
+      const cls = comp.direction === 'LONG' ? 'bull' : comp.direction === 'SHORT' ? 'bear' : 'neu';
+      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${l.score}</span></div>`).join('');
+      compositeHtml = `
+    <div class="dr-sec">
+      <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Arithmetic agreement across signals this dashboard already builds — not a backtested rule, and not a substitute for reading the sections themselves.">Composite (all of the above, combined)</h3>
+      <div style="margin-bottom:8px"><span class="chip ${cls}">${comp.direction} ${ccy} · ${comp.agree}/${comp.total} agree</span></div>
+      <div class="ccy-legs">${legRows}</div>
+    </div>`;
+    }
+  }
+
   $('ccyBody').innerHTML = `
+    ${compositeHtml}
     <div class="dr-sec">
       <h3 class="help" title="Blend of each pair's structural HMM trend regime and today's live session bias, averaged across every pair ${ccy} appears in. This is what's moving TODAY, not a fundamental view.">Today's flow (technical)</h3>
       <div style="margin-bottom:8px"><span class="chip ${scoreRead.cls}">${scoreRead.arrow} ${scoreRead.word}${scoreRead.mag !== 'no edge' ? ` · ${scoreRead.mag}` : ''}</span></div>
@@ -1978,16 +2014,76 @@ const COT_MAP = {
 };
 function cotFor(name) {
   const m = COT_MAP[name];
-  if (!m || !cot?.[m.sym]) return null;
-  const c = cot[m.sym];
-  const specNet = c.specNet ?? 0;
-  const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
-  const oi = c.openInterest ?? 0;
-  const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
-  const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
-  return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
-    pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
-    pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null };
+  if (m && cot?.[m.sym]) {
+    const c = cot[m.sym];
+    const specNet = c.specNet ?? 0;
+    const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
+    const oi = c.openInterest ?? 0;
+    const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
+    const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
+    const zClip = Math.max(-1, Math.min(1, (c.specZ ?? 0) / 4));
+    return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
+      pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
+      pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null,
+      bias: m.flip ? -zClip : zClip, derived: false };
+  }
+  // Crosses (no direct CFTC contract, e.g. GBPJPY) get no entry in COT_MAP —
+  // derive a read from BOTH legs' own positioning instead, via the shared
+  // pairCompositeEngine brick (js/pairCompositeEngine.js, loaded as a module
+  // below and exposed on window — same "shared brick, imported not copied"
+  // pattern as window.creditBrick). Same reinforcing-extreme logic
+  // cot-extremes.html's crowding combos already use, just generalized to
+  // every tracked cross, not only the ones that happen to clear 90/10 both
+  // ways.
+  const cc = PAIR_CCY[name];
+  if (!cc || !window.pairCompositeBrick || !cot) return null;
+  const [base, quote] = cc;
+  const r = window.pairCompositeBrick.cotPairBias(base, quote, cot);
+  if (r.score == null) return null;
+  const level = r.extreme ? 'EXTREME' : (Math.abs(r.score) >= 0.5 ? 'ELEVATED' : null);
+  const crowd = Math.abs(r.score) * 100;
+  return { dir: r.score > 0 ? 'long' : r.score < 0 ? 'short' : 'flat', crowd, level,
+    pct: crowd, z: null, pctile: null, wkChg: null, reportDate: null,
+    bias: r.score, derived: true, baseRead: r.base, quoteRead: r.quote };
+}
+
+// ── Composite signal: technical + positioning + fundamentals + carry, one ──
+// call per pair — the stuff this dashboard already builds separately (each
+// still shown in its own card/section), just combined via the shared
+// pairCompositeEngine brick so "what do the things I've already built say,
+// together" is answerable at a glance instead of requiring four separate
+// looks. Context, not a backtested rule — same posture as every leg it
+// draws from.
+function pairSignalComposite(r) {
+  if (!window.pairCompositeBrick) return null;
+  const cc = PAIR_CCY[r.name];
+  if (!cc) return null;
+  const [base, quote] = cc;
+  const macroScore = (() => {
+    if (!macroScorecard?.ranked) return null;
+    const b = macroScorecard.ranked.find(x => x.ccy === base);
+    const q = macroScorecard.ranked.find(x => x.ccy === quote);
+    if (!b || !q) return null;
+    return Math.max(-1, Math.min(1, (b.composite - q.composite) / 2));
+  })();
+  const carryScore = (() => {
+    const bfk = CCY_FRED10Y[base], qfk = CCY_FRED10Y[quote];
+    if (!bfk || !qfk || fred?.[bfk]?.value == null || fred?.[qfk]?.value == null) return null;
+    return Math.max(-1, Math.min(1, (fred[bfk].value - fred[qfk].value) / 3));
+  })();
+  return window.pairCompositeBrick.pairComposite({
+    technical: { score: pairSignal(r), label: "Today's flow (technical)" },
+    cot: { score: r.ct?.bias ?? null, label: 'Positioning (COT)' },
+    macro: { score: macroScore, label: 'Fundamentals (Macro Scorecard)' },
+    carry: { score: carryScore, label: 'Carry (10Y yield)' },
+  });
+}
+function compositeChip(r) {
+  const c = pairSignalComposite(r);
+  if (!c || c.score == null || c.total < 2) return '';
+  const cls = c.direction === 'LONG' ? 'bull' : c.direction === 'SHORT' ? 'bear' : 'neu';
+  const legTxt = c.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ');
+  return `<span class="chip ${cls}" title="Averages whatever's covered of technical/positioning/fundamentals/carry — ${c.agree}/${c.total} agree in direction. ${legTxt}. This is arithmetic agreement across signals this dashboard already builds, not a backtested rule.">⚖ ${c.direction} ${c.agree}/${c.total}</span>`;
 }
 
 // ── OI (manual CME paste, KV oi_store) — walls, max pain, PIN/BREAKOUT ────────
@@ -2255,7 +2351,7 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market. Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}</div>
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
@@ -3498,6 +3594,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as CreditCore from './js/creditCore.js';
   window.creditBrick = CreditCore;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the pair-composite brick (js/pairCompositeEngine.js) —
+     combines technical/COT/macro/carry legs this page already computes into
+     one per-pair read, shared with indexv2.html's drill view. -->
+<script type="module">
+  import * as PairComposite from './js/pairCompositeEngine.js';
+  window.pairCompositeBrick = PairComposite;
   try { window.render?.(); } catch (e) {}
 </script>
 </body>
