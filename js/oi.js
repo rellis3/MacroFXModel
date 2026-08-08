@@ -2064,8 +2064,20 @@ export async function buildOIEntry({
     _warnings.push(`no DTE resolved — wall strength and gamma are expiry-dependent (course pitfall 2); paste the QuikStrike title line or fill the DTE field`);
   const dataWarning = _warnings.length ? _warnings.join(' · ') : null;
 
+  // Day-anchor spot: the spot when THIS trading day's levels were first set. It is the
+  // reference the intraday drift readout measures against ("price has walked +18p from
+  // where today's levels were anchored"). Preserved across intraday re-projections (the
+  // 15-min basis control) AND across same-day re-analyses, so the anchor only resets when
+  // the first analyse of a NEW UTC day lands — otherwise "drift from start of day" would
+  // silently reset every time the basis refreshed or you re-derived the chain.
+  let daySpot = spot, daySpotAt = Date.now();
+  if (priorEntry && Number.isFinite(priorEntry.daySpot) && priorEntry.daySpotAt
+      && new Date(priorEntry.daySpotAt).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10)) {
+    daySpot = priorEntry.daySpot; daySpotAt = priorEntry.daySpotAt;
+  }
+
   const inst = {
-    pair, spot, futures: futuresUsed, basis: basis || null,
+    pair, spot, daySpot, daySpotAt, futures: futuresUsed, basis: basis || null,
     cpSwapped,       // inverted pairs only: were call/put labels flipped into pair terms?
     futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
     futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from
