@@ -76,6 +76,8 @@ import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LAB
 import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
+import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
+import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -4207,6 +4209,110 @@ setInterval(() => {
   _ismLastRun = today;
   _ismRunning = true;
   _buildIsmScores().catch(() => {}).finally(() => { _ismRunning = false; });
+}, 20 * 60_000);
+
+// ── Retail Sales Numeric-Composition Engine (see js/retailSalesEngine.js) ──
+// Same shape again: pure numeric score from FRED series, not a text-reading
+// engine. USD is monthly ($-level headline + ex-autos); the other 7
+// currencies deliberately go uniform quarterly (OECD SLRTTO01, pre-computed
+// YoY%) for genuine cross-currency comparability — see that file's header
+// for why the monthly-but-ex-autos-only alternative was rejected. Same
+// daily-gate refresh pattern as CPI/GDP/ISM.
+const _RETAIL_SALES_KV = 'retail_sales_v1';
+async function _buildRetailSalesScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(RETAIL_SALES_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchRetailSalesData(ccy, fredKey);
+      byCcy[ccy] = retailSalesCompositeScore(data, RETAIL_SALES_UNIVERSE[ccy]);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_RETAIL_SALES_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/retail-sales', async (_req, res) => {
+  try {
+    const raw = await kv.get(_RETAIL_SALES_KV);
+    if (!raw) return res.json({ ok: false, error: 'No retail sales data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _retailSalesRunning = false;
+app.post('/api/retail-sales/refresh', (_req, res) => {
+  if (_retailSalesRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _retailSalesRunning = true;
+  _buildRetailSalesScores().catch(() => {}).finally(() => { _retailSalesRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/retail-sales/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_RETAIL_SALES_KV).catch(() => null);
+  res.json({ ok: true, running: _retailSalesRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _retailSalesLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _retailSalesRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_retailSalesLastRun === today) return;
+  _retailSalesLastRun = today;
+  _retailSalesRunning = true;
+  _buildRetailSalesScores().catch(() => {}).finally(() => { _retailSalesRunning = false; });
+}, 20 * 60_000);
+
+// ── Trade Balance Numeric-Composition Engine (see js/tradeBalanceEngine.js) ─
+// Same shape again: pure numeric score from FRED series. Z-scores the raw
+// $ level vs its own trailing history rather than %-change (a trade
+// balance can cross zero, which breaks naive %-change math) — see that
+// file's header. Same daily-gate refresh pattern as every other engine here.
+const _TRADE_BALANCE_KV = 'trade_balance_v1';
+async function _buildTradeBalanceScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(TRADE_BALANCE_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchTradeBalanceData(ccy, fredKey);
+      byCcy[ccy] = tradeBalanceScore(data);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_TRADE_BALANCE_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/trade-balance', async (_req, res) => {
+  try {
+    const raw = await kv.get(_TRADE_BALANCE_KV);
+    if (!raw) return res.json({ ok: false, error: 'No trade balance data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _tradeBalanceRunning = false;
+app.post('/api/trade-balance/refresh', (_req, res) => {
+  if (_tradeBalanceRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _tradeBalanceRunning = true;
+  _buildTradeBalanceScores().catch(() => {}).finally(() => { _tradeBalanceRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/trade-balance/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_TRADE_BALANCE_KV).catch(() => null);
+  res.json({ ok: true, running: _tradeBalanceRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _tradeBalanceLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _tradeBalanceRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_tradeBalanceLastRun === today) return;
+  _tradeBalanceLastRun = today;
+  _tradeBalanceRunning = true;
+  _buildTradeBalanceScores().catch(() => {}).finally(() => { _tradeBalanceRunning = false; });
 }, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
