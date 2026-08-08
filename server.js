@@ -39,7 +39,7 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _comp
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries }   from './js/volForecastBench.js';
+import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries, IV_INDEX_BY_INSTRUMENT as _IV_INDEX, ivVarSeries as _ivVarSeries }   from './js/volForecastBench.js';
 import { coverageFromBars }                                          from './js/forecastCoverage.js';
 import { deskSnapshot }                                              from './js/analyticsDesk.js';
 import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } from './js/hurstBench.js';
@@ -14903,6 +14903,22 @@ function _purgeStaleVfbJobs() {
   for (const [id, job] of vfbJobs) if (job.startedAt < cutoff) vfbJobs.delete(id);
 }
 
+// Per-instrument listed IV index (GVZ/VXN/OVX/EVZ…) → per-bar daily variance,
+// aligned to the D1 bar dates (forward-filled over gaps), for the HAR-IV estimator.
+// Returns null when the instrument has no index / no FRED_KEY / fetch fails, so the
+// bench simply runs without HAR-IV for that instrument (graceful, no throw).
+async function _ivVarForBars(instName, bars) {
+  const code = _IV_INDEX[String(instName).toUpperCase()];
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!code || !fredKey || !bars?.length) return { ivVar: null, code: code || null };
+  try {
+    const map = await fetchFredSeries(code, bars[0].date, fredKey);
+    if (!map || map.size < 60) return { ivVar: null, code };
+    const ivPct = forwardFillAlign(bars.map(b => b.date), map);   // annualised IV %, per bar
+    return { ivVar: _ivVarSeries(ivPct), code };
+  } catch { return { ivVar: null, code }; }
+}
+
 app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) {
     return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
@@ -14929,13 +14945,20 @@ app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, 
         try {
           const bars = await _btFetchD1(inst.oanda);
           if (!bars || bars.length < 200) { log.push(`${inst.name}: too few bars (${bars?.length ?? 0})`); continue; }
-          const bench = runVolBench(bars, inst.assetClass, { oosFrac, proxy });
-          results.push({ name: inst.name, assetClass: inst.assetClass, ...bench });
+          const { ivVar, code: ivCode } = await _ivVarForBars(inst.name, bars);
+          const bench = runVolBench(bars, inst.assetClass, { oosFrac, proxy, ivVar });
+          results.push({ name: inst.name, assetClass: inst.assetClass, ivIndex: ivCode, ...bench });
           log.push(`${inst.name}: best=${bench.best} (${bench.nBars} bars)`);
+          if (bench.matched) {
+            const m = bench.matched;
+            log.push(`  ${inst.name} HAR-IV[${ivCode}] matched OOS QLIKE: harIV ${m.harIV.oos.qlike?.toFixed(4)} vs harRV ${m.harRV.oos.qlike?.toFixed(4)} → ${m.ivBeatsRvOos ? `IV WINS (${m.oosQlikeImprovementPct}%)` : 'no gain'} (n=${m.nCommon})`);
+          } else if (ivCode) {
+            log.push(`  ${inst.name}: IV index ${ivCode} unavailable/short — HAR-IV skipped`);
+          }
           // Export the OOS-winning estimator's forecast through the forecaster's own
           // band math, so the text drops into the same Pine indicator (forecastExport.js).
           if (bench.best) {
-            const ctx = benchCtx(bars, inst.assetClass, { proxy });
+            const ctx = benchCtx(bars, inst.assetClass, { proxy, ivVar });
             const { series, sigmaFwd } = sigmaSeriesForExport(bars, bench.best, ctx);
             if (Number.isFinite(sigmaFwd) && series.length >= 60) {
               exportInstruments[inst.name] = forecastFields(series, sigmaFwd, bars, inst.assetClass);

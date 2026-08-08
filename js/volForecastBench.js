@@ -164,6 +164,98 @@ function solve4(A4, b4) {
   return [M[0][4] / M[0][0], M[1][4] / M[1][1], M[2][4] / M[2][2], M[3][4] / M[3][3]];
 }
 
+// General Gauss-Jordan (partial pivot, tiny ridge) for an n×n normal-equations
+// system — the HAR-IV design matrix is 5-wide (HAR terms + the IV regressor).
+function solveN(A, b, n) {
+  const M = Array.from({ length: n }, (_, r) => {
+    const row = new Float64Array(n + 1);
+    for (let c = 0; c < n; c++) row[c] = A[r][c];
+    row[r] += 1e-12; row[n] = b[r];
+    return row;
+  });
+  for (let c = 0; c < n; c++) {
+    let piv = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+    if (Math.abs(M[piv][c]) < 1e-18) return null;
+    [M[c], M[piv]] = [M[piv], M[c]];
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = M[r][c] / M[c][c];
+      for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  return Array.from({ length: n }, (_, r) => M[r][n] / M[r][r]);
+}
+
+// ── HAR-IV (Corsi HAR-RV + a forward-looking implied-variance regressor) ─────
+// predict RV_i from [1, RV_d, RV_w, RV_m, IV_var_{i-dailyLag}]. `ivVar` is the
+// LISTED vol index (GVZ / VXN / OVX / EVZ …) converted to a DAILY VARIANCE
+// (ivVarSeries below), aligned per-bar to rvSeries; a NaN/missing IV drops that
+// observation, so partial IV history (e.g. GVZ only back to 2021) is fine — only
+// the IV-covered span trains & forecasts. Same expanding-window, no-lookahead
+// walk-forward as harRvPred. IV embeds a variance risk premium (implied > realized
+// on average); the regression coefficient absorbs that level bias, so IV enters as
+// an INPUT, never used as a raw forecast. Evidence: implied vol has real predictive
+// content for future RV and often subsumes HAR terms (Busch-Christensen-Nielsen
+// 2011), strongest on equity indices, thinner on FX. Returns all-NaN if no ivVar,
+// so the estimator simply drops out of the bench where an instrument has no index.
+function harIvPred(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
+  const n = rvSeries.length;
+  const out = new Float64Array(n).fill(NaN);
+  if (!ivVar || ivVar.length !== n) return out;
+  const feat = (i) => {
+    if (i - monthLag < 0) return null;
+    const iv = ivVar[i - dailyLag];
+    if (!(iv > 0) || !Number.isFinite(iv)) return null;   // need a usable IV regressor
+    let wk = 0, mo = 0;
+    for (let k = 1; k <= weekLag; k++)  wk += rvSeries[i - k];
+    for (let k = 1; k <= monthLag; k++) mo += rvSeries[i - k];
+    return [1, rvSeries[i - dailyLag], wk / weekLag, mo / monthLag, iv];
+  };
+  const XtX = Array.from({ length: 5 }, () => new Float64Array(5));
+  const Xty = new Float64Array(5);
+  let added = 0, nextAdd = monthLag;
+  const addObs = (t) => {
+    const x = feat(t); if (!x) return;
+    const y = rvSeries[t];
+    for (let a = 0; a < 5; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 5; b++) XtX[a][b] += x[a] * x[b]; }
+    added++;
+  };
+  for (let i = monthLag; i < n; i++) {
+    while (nextAdd < i) { addObs(nextAdd); nextAdd++; }
+    const x = feat(i);
+    if (x && added >= warmup) {
+      const beta = solveN(XtX, Xty, 5);
+      if (beta) { let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * x[a]; out[i] = Math.max(p, 1e-12); }
+    }
+  }
+  return out;
+}
+
+// Annualised implied-vol % (per bar, NaN where absent) → daily VARIANCE, matching
+// the rv proxy units: σ_daily = (iv/100)/√252 ; var = σ_daily². The single IV
+// conversion (server + bench share it, no drift).
+function ivVarSeries(ivAnnualPct) {
+  const out = new Float64Array(ivAnnualPct.length).fill(NaN);
+  for (let i = 0; i < ivAnnualPct.length; i++) {
+    const v = ivAnnualPct[i];
+    if (Number.isFinite(v) && v > 0) { const s = (v / 100) / Math.sqrt(252); out[i] = s * s; }
+  }
+  return out;
+}
+
+// Per-instrument listed IV index (FRED code). Coverage is the whole point of the
+// class ranking: equity indices (deep) → gold/oil → EUR/USD (only live FX index).
+const IV_INDEX_BY_INSTRUMENT = {
+  GOLD: 'GVZCLS', XAUUSD: 'GVZCLS',
+  EURUSD: 'EVZCLS',
+  NQ: 'VXNCLS', NAS100: 'VXNCLS', NASDAQ: 'VXNCLS',
+  SPX: 'VIXCLS', SPX500: 'VIXCLS', SP500: 'VIXCLS', ES: 'VIXCLS',
+  US2000: 'RVXCLS', RUSSELL: 'RVXCLS', RTY: 'RVXCLS',
+  US30: 'VXDCLS', DOW: 'VXDCLS', DJIA: 'VXDCLS',
+  WTI: 'OVXCLS', OIL: 'OVXCLS', USOIL: 'OVXCLS', CL: 'OVXCLS',
+};
+
 // Registry: key → { label, predVar(bars, ctx) → Float64Array }. `ctx.rv` is the
 // realised-variance proxy series (so HAR forecasts the scored quantity).
 const ESTIMATORS = {
@@ -174,6 +266,7 @@ const ESTIMATORS = {
   yz30:    { label: 'Yang-Zhang(30)', predVar: (bars) => yzPred(bars, 30) },
   garch:   { label: 'GARCH(1,1)', predVar: (bars, ctx) => garchPred(bars, ctx.omega) },
   harRV:   { label: 'HAR-RV', predVar: (bars, ctx) => harRvPred(ctx.rv, ctx.harOpts) },
+  harIV:   { label: 'HAR-IV', predVar: (bars, ctx) => harIvPred(ctx.rv, ctx.ivVar, ctx.harOpts) },
 };
 
 // ── Next-session σ forecast (for exporting the winning estimator) ─────────────
@@ -205,6 +298,37 @@ function harRvForecastNext(rvSeries, { warmup = 60, dailyLag = 1, weekLag = 5, m
   return Math.max(p, 1e-12);
 }
 
+// Next-session σ for HAR-IV (fit on all known targets, forecast bar n using the
+// latest IV). Returns null if no IV coverage / insufficient history.
+function harIvForecastNext(rvSeries, ivVar, { warmup = 60, dailyLag = 1, weekLag = 5, monthLag = 22 } = {}) {
+  const n = rvSeries.length;
+  if (!ivVar || ivVar.length !== n || n < monthLag + warmup) return null;
+  const feat = (i) => {
+    if (i - monthLag < 0) return null;
+    const iv = ivVar[i - dailyLag];
+    if (!(iv > 0) || !Number.isFinite(iv)) return null;
+    let wk = 0, mo = 0;
+    for (let k = 1; k <= weekLag; k++)  wk += rvSeries[i - k];
+    for (let k = 1; k <= monthLag; k++) mo += rvSeries[i - k];
+    return [1, rvSeries[i - dailyLag], wk / weekLag, mo / monthLag, iv];
+  };
+  const XtX = Array.from({ length: 5 }, () => new Float64Array(5));
+  const Xty = new Float64Array(5);
+  let added = 0;
+  for (let t = monthLag; t < n; t++) {
+    const x = feat(t); if (!x) continue;
+    const y = rvSeries[t];
+    for (let a = 0; a < 5; a++) { Xty[a] += x[a] * y; for (let b = 0; b < 5; b++) XtX[a][b] += x[a] * x[b]; }
+    added++;
+  }
+  if (added < warmup) return null;
+  const beta = solveN(XtX, Xty, 5);
+  const xNext = feat(n);
+  if (!beta || !xNext) return null;
+  let p = 0; for (let a = 0; a < 5; a++) p += beta[a] * xNext[a];
+  return Math.max(p, 1e-12);
+}
+
 function latestSigmaForecast(bars, key, ctx) {
   const lr = logReturns(bars);
   const last = (s) => (s.length ? s[s.length - 1] : NaN);
@@ -225,6 +349,10 @@ function latestSigmaForecast(bars, key, ctx) {
       const v = harRvForecastNext(ctx.rv, ctx.harOpts);
       return v == null ? NaN : Math.sqrt(Math.max(v, 1e-12));
     }
+    case 'harIV': {
+      const v = harIvForecastNext(ctx.rv, ctx.ivVar, ctx.harOpts);
+      return v == null ? NaN : Math.sqrt(Math.max(v, 1e-12));
+    }
     default: return NaN;
   }
 }
@@ -242,9 +370,9 @@ function sigmaSeriesForExport(bars, key, ctx) {
 }
 
 // Build the ctx (rv proxy + GARCH ω + HAR opts) the estimators need, from an asset class.
-function benchCtx(bars, assetClass = 'fx', { proxy = 'gk', harOpts } = {}) {
+function benchCtx(bars, assetClass = 'fx', { proxy = 'gk', harOpts, ivVar = null } = {}) {
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
-  return { rv: realizedVarSeries(bars, proxy), omega: p.garch_omega ?? 4.76e-6, harOpts };
+  return { rv: realizedVarSeries(bars, proxy), omega: p.garch_omega ?? 4.76e-6, harOpts, ivVar };
 }
 
 // ── Scoring ───────────────────────────────────────────────────────────────────
@@ -266,13 +394,29 @@ function scoreSeries(predVar, realVar, oosFrac = 0.4) {
   return { full: agg(idx), is: agg(idx.slice(0, cut)), oos: agg(idx.slice(cut)) };
 }
 
+// Score a predVar restricted to a GIVEN index list (for a matched head-to-head on a
+// common covered span — HAR-IV must be judged vs HAR-RV over the SAME IV-covered
+// dates, or the shorter IV history flatters/penalises it unfairly).
+function scoreOnIndices(predVar, realVar, idx, oosFrac = 0.4) {
+  const cut = Math.floor(idx.length * (1 - oosFrac));
+  const agg = (slice) => {
+    let q = 0, m = 0; const n = slice.length;
+    for (const i of slice) { q += qlikeTerm(realVar[i], predVar[i]); m += (realVar[i] - predVar[i]) ** 2; }
+    return n ? { n, qlike: q / n, mse: m / n } : { n: 0, qlike: NaN, mse: NaN };
+  };
+  return { full: agg(idx), is: agg(idx.slice(0, cut)), oos: agg(idx.slice(cut)) };
+}
+
 // ── Top-level benchmark ─────────────────────────────────────────────────────────
 // runBench(bars, assetClass, opts) → ranked estimator scorecards on one IS/OOS split.
 function runBench(bars, assetClass = 'fx', opts = {}) {
-  const { oosFrac = 0.4, proxy = 'gk', keys = Object.keys(ESTIMATORS), harOpts } = opts;
+  const { oosFrac = 0.4, proxy = 'gk', harOpts, ivVar = null } = opts;
+  // HAR-IV is only scorable when an IV series is supplied — otherwise it's all-NaN,
+  // so it's excluded from the DEFAULT keys unless ivVar is present (or keys is explicit).
+  const keys = opts.keys ?? Object.keys(ESTIMATORS).filter((k) => k !== 'harIV' || ivVar);
   const p = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const rv = realizedVarSeries(bars, proxy);
-  const ctx = { rv, omega: p.garch_omega ?? 4.76e-6, harOpts };
+  const ctx = { rv, omega: p.garch_omega ?? 4.76e-6, harOpts, ivVar };
 
   const rows = keys
     .filter((k) => ESTIMATORS[k])
@@ -286,15 +430,43 @@ function runBench(bars, assetClass = 'fx', opts = {}) {
   rows.sort((a, b) => (a.oos.qlike ?? Infinity) - (b.oos.qlike ?? Infinity));
   rows.forEach((r, i) => { r.rankOos = i + 1; });
 
+  // Matched HAR-IV vs HAR-RV: score both on their COMMON finite index set (the
+  // IV-covered span) so the shorter IV history can't skew the comparison. This is
+  // the honest "does IV beat HAR-RV" verdict, separate from the full-sample ranks.
+  let matched = null;
+  if (ivVar) {
+    const predIV = harIvPred(rv, ivVar, harOpts);
+    const predRV = harRvPred(rv, harOpts);
+    const common = [];
+    for (let i = 0; i < rv.length; i++) {
+      if (Number.isFinite(predIV[i]) && predIV[i] > 0 && Number.isFinite(predRV[i]) && predRV[i] > 0 &&
+          Number.isFinite(rv[i]) && rv[i] > 0) common.push(i);
+    }
+    if (common.length >= 60) {
+      matched = {
+        nCommon: common.length,
+        firstIdx: common[0], lastIdx: common[common.length - 1],
+        harIV: scoreOnIndices(predIV, rv, common, oosFrac),
+        harRV: scoreOnIndices(predRV, rv, common, oosFrac),
+      };
+      const io = matched.harIV.oos.qlike, ro = matched.harRV.oos.qlike;
+      matched.ivBeatsRvOos = Number.isFinite(io) && Number.isFinite(ro) ? io < ro : null;
+      matched.oosQlikeImprovementPct = Number.isFinite(io) && Number.isFinite(ro) && ro !== 0
+        ? +(((ro - io) / Math.abs(ro)) * 100).toFixed(2) : null;
+    }
+  }
+
   return {
     assetClass, proxy, oosFrac,
     nBars: bars.length,
     best: rows[0]?.key ?? null,
     estimators: rows,
+    matched,
   };
 }
 
 export {
   realizedVarSeries, logReturns, harRvPred, harRvForecastNext, scoreSeries, runBench, ESTIMATORS, solve4,
   latestSigmaForecast, sigmaSeriesForExport, benchCtx,
+  harIvPred, harIvForecastNext, ivVarSeries, IV_INDEX_BY_INSTRUMENT, scoreOnIndices, solveN,
 };

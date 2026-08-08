@@ -136,7 +136,19 @@ function renderInstrument(r){
       <td class="mut">${fmt(e.full.qlike)}</td>
     </tr>`;
   }
-  html += `</tbody></table></div>`;
+  html += `</tbody></table>`;
+  // HAR-IV vs HAR-RV on the COMMON IV-covered span (the full-sample ranking above
+  // mixes periods, since IV history is shorter — this is the fair head-to-head).
+  if(r.matched){
+    const m = r.matched, iv = m.harIV.oos.qlike, rv = m.harRV.oos.qlike;
+    const wins = m.ivBeatsRvOos;
+    html += `<div class="badge ${wins?'b-good':'b-meh'}" style="margin-top:8px">
+      HAR-IV vs HAR-RV (matched ${m.nCommon} IV-covered bars${r.ivIndex?` · ${r.ivIndex}`:''}):
+      OOS QLIKE ${fmt(iv)} vs ${fmt(rv)} → ${wins?`IV beats RV by ${m.oosQlikeImprovementPct}%`:'IV adds nothing'}</div>`;
+  } else if(r.ivIndex){
+    html += `<div class="mut" style="margin-top:8px">IV index ${r.ivIndex} unavailable/short — HAR-IV skipped</div>`;
+  }
+  html += `</div>`;
   return html;
 }
 

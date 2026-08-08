@@ -108,7 +108,10 @@ ok('QLIKE is >= 0 (proper loss, min at perfect)', biased.full.qlike >= 0);
 
 console.log('[runBench end-to-end]');
 const res = runBench(bars, 'fx', { oosFrac: 0.4, proxy: 'gk' });
-ok('runBench returns all estimators', res.estimators.length === Object.keys(ESTIMATORS).length);
+// HAR-IV is IV-gated: excluded from the default (no-ivVar) run, so it does not
+// appear here and does not pollute the ranking/sample checks below.
+ok('runBench returns all non-IV estimators', res.estimators.length === Object.keys(ESTIMATORS).filter(k => k !== 'harIV').length);
+ok('runBench excludes harIV without ivVar', !res.estimators.some(r => r.key === 'harIV'));
 ok('runBench picks a best key', typeof res.best === 'string' && ESTIMATORS[res.best]);
 ok('runBench ranked by OOS QLIKE ascending', res.estimators.every((r, i, a) => i === 0 || (a[i - 1].oos.qlike ?? Infinity) <= (r.oos.qlike ?? Infinity)));
 ok('every estimator scored a non-trivial OOS sample', res.estimators.every(r => r.oos.n >= 30));
