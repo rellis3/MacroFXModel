@@ -3953,6 +3953,24 @@ app.get('/api/beigebook/debug-fetch', async (req, res) => {
     out.looksLikeAngularShell = /\bng-app=/.test(raw);
     out.hasNationalSummaryMarker = /National Summary/i.test(raw);
     out.hasDistrictMarker = /Federal Reserve Bank of (Boston|New York|Philadelphia|Cleveland|Richmond|Atlanta|Chicago|St\.? Louis|Minneapolis|Kansas City|Dallas|San Francisco)/i.test(raw);
+    // htmlToText (js/fomcFetch.js) unconditionally strips ALL <script>
+    // tags before extracting text — fine for a normal page, but if this
+    // Angular app hydrates its content from a JSON data-island INSIDE a
+    // <script> tag (a common SPA pattern), that strip would destroy the
+    // real Beige Book text before it's ever seen as prose, even though the
+    // raw HTML "contains" it. Check directly: is the marker text inside a
+    // <script> block specifically?
+    const scriptBlocks = [...raw.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+    out.scriptBlockCount = scriptBlocks.length;
+    const summaryInScript = scriptBlocks.find(m => /National Summary/i.test(m[2]));
+    out.nationalSummaryFoundInsideScriptTag = !!summaryInScript;
+    if (summaryInScript) {
+      out.matchingScriptTagAttrs = summaryInScript[1].trim();
+      out.matchingScriptContentLength = summaryInScript[2].length;
+      out.matchingScriptSnippet = summaryInScript[2].slice(
+        Math.max(0, summaryInScript[2].search(/National Summary/i) - 100), 400
+      ).replace(/\s+/g, ' ');
+    }
   } catch (e) {
     out.raw = { error: e.message };
   }
