@@ -2224,9 +2224,13 @@ function buildCogV2ExportText(data) {
     } else {                                          // fx & indices: COG, unchanged
       const va = _cogVol(name, f); if (!(va > 0)) continue;
       const d = _cogBands(va, 1); vol = va; hlMed = d.hl_median; hl75 = d.hl_75; ocMed = d.oc_median; oc75 = d.oc_75;
-      // Make the fallback VISIBLE: gold with no HAR-IV shadow == plain COG (not a bug —
-      // usually a stale forecast; hit ↻ Refresh to recompute with the HAR-IV wiring).
-      if (name === 'GOLD') tag = '  (HAR-IV unavailable → COG fallback — hit ↻ Refresh)';
+      // Make the fallback VISIBLE, with the server-side reason if we have it
+      // (meta.hariv_diag: no_fred_key / fetch_failed / shadow_null / ok-but-stale).
+      if (name === 'GOLD') {
+        const why = data.meta?.hariv_diag?.GOLD;
+        tag = why ? `  (HAR-IV → COG fallback — ${why})`
+                  : '  (HAR-IV unavailable → COG fallback — hit ↻ Refresh)';
+      }
     }
     lines.push(div(name));
     lines.push(`Volatility (annualized) : ${vol.toFixed(2)}%${tag}`);
