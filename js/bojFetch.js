@@ -4,12 +4,9 @@
 // (RSS discovery needed for an unpredictable hashed URL) — BoJ's English-site
 // URLs are directly constructible from the meeting's decision date:
 //   statement: /en/mopo/mpmdeci/mpr_{YYYY}/k{YYMMDD}a.pdf
-//   outlook:   /en/mopo/outlook/highlight/ten{YYYYMM}.htm  (short HTML
-//              "Highlights" summary — the full Outlook Report is PDF-only
-//              AND its filename suffix (gor{YYMM}a.pdf vs gor{YYMM}b.pdf)
-//              was NOT consistently derivable from the date in the verified
-//              examples, so this uses the Highlights page instead, which has
-//              a clean, unambiguous, date-only naming pattern)
+//   outlook:   /en/mopo/outlook/gor{YY}{MM}a.pdf, falling back to
+//              gor{YY}{MM}b.pdf — see the 2026-08-08 correction below for
+//              why both are tried
 //   opinions:  /en/mopo/mpmsche_minu/opinion_{YYYY}/opi{YYMMDD}.pdf
 //   minutes:   /en/mopo/mpmsche_minu/minu_{YYYY}/g{YYMMDD}.pdf
 // In every pattern, the directory YEAR is the MEETING year (not the
@@ -23,11 +20,24 @@
 // (confirmed by their actual site, not a JS-rendering issue like the ECB's).
 // A follow-up search confirmed the ACTUAL live 2026 documents are PDFs at
 // mpr_{YYYY}/k{YYMMDD}a.pdf (statement) and opinion_{YYYY}/opi{YYMMDD}.pdf
-// (opinions) — e.g. https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260731a.pdf
-// and https://www.boj.or.jp/en/mopo/mpmsche_minu/opinion_2026/opi260123.pdf,
-// both indexed and real. `outlook` and `minutes` were separately confirmed
-// correct at the same time (ten202601.htm/ten202604.htm; g260428.pdf) — no
-// change needed there.
+// (opinions).
+//
+// CORRECTION (2026-08-08, live diagnostic again): `outlook` was originally
+// left pointed at the "Highlights" HTML page (outlook/highlight/ten{YYYYMM}
+// .htm), confirmed real for Jan/Apr 2026 — but a live debug-fetch check
+// showed the July 2026 edition of that page 404s. A follow-up search found
+// why: BoJ actually publishes the Outlook Report as TWO PDFs per edition,
+// gor{YY}{MM}a.pdf ("The Bank's View" — a short summary, released same-day)
+// and gor{YY}{MM}b.pdf (the full report, released the next business day) —
+// this resolves the "suffix a vs b isn't derivable from the date" puzzle
+// noted in the original research: it was never arbitrary, both documents
+// exist every time, just under different suffixes. Confirmed real for July
+// 2026 specifically: https://www.boj.or.jp/en/mopo/outlook/gor2607a.pdf
+// ("The Bank's View") and https://www.boj.or.jp/en/mopo/outlook/gor2607b.pdf
+// (full text, published 2026-08-03 — 3 days after the 2026-07-31 meeting).
+// fetchOutlook now tries `a` first (same-day, matches the "Highlights"-style
+// short summary this was always meant to capture) and falls back to `b` if
+// `a` 404s, rather than depending on the no-longer-reliable Highlights page.
 //
 // No press-conference fetcher: research found no confirmed official English
 // transcript — BoJ's press-conference PDF lives at a Japanese-only
@@ -37,26 +47,27 @@
 // CAVEAT (same as every other bank's fetch module): this sandbox's egress
 // policy blocks boj.or.jp, so none of this was verified against a live
 // fetch from THIS environment — only via web-search result snippets
-// referencing real URLs/dates, cross-checked against a live diagnostic run
+// referencing real URLs/dates, cross-checked against live diagnostic runs
 // from the actual deployed server. Re-check again if anything else here
-// turns out wrong, same discipline that caught the two bugs above.
-import { htmlToText, stripBoilerplate } from './fomcFetch.js';
-
+// turns out wrong, same discipline that caught the bugs above.
 const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
 const FETCH_TIMEOUT_MS = 20_000;
 const ORIGIN = 'https://www.boj.or.jp';
 
 // YYMMDD (2-digit year) — matches k260123a, opi260123, g250919 etc.
 function yymmdd(dateStr) { return dateStr.replaceAll('-', '').slice(2); }
-// YYYYMM (4-digit year, no day) — matches ten202507.
-function yyyymm(dateStr) { const [y, m] = dateStr.split('-'); return `${y}${m}`; }
+// YYMM (2-digit year, no day) — matches gor2607a/gor2607b.
+function yymm(dateStr) { const [y, m] = dateStr.split('-'); return `${y.slice(2)}${m}`; }
 function meetingYear(dateStr) { return dateStr.slice(0, 4); }
 
 export function statementUrl(dateStr) {
   return `${ORIGIN}/en/mopo/mpmdeci/mpr_${meetingYear(dateStr)}/k${yymmdd(dateStr)}a.pdf`;
 }
-export function outlookHighlightUrl(dateStr) {
-  return `${ORIGIN}/en/mopo/outlook/highlight/ten${yyyymm(dateStr)}.htm`;
+export function outlookViewUrl(dateStr) {
+  return `${ORIGIN}/en/mopo/outlook/gor${yymm(dateStr)}a.pdf`;
+}
+export function outlookFullUrl(dateStr) {
+  return `${ORIGIN}/en/mopo/outlook/gor${yymm(dateStr)}b.pdf`;
 }
 export function opinionsUrl(dateStr) {
   return `${ORIGIN}/en/mopo/mpmsche_minu/opinion_${meetingYear(dateStr)}/opi${yymmdd(dateStr)}.pdf`;
@@ -65,12 +76,6 @@ export function minutesPdfUrl(dateStr) {
   return `${ORIGIN}/en/mopo/mpmsche_minu/minu_${meetingYear(dateStr)}/g${yymmdd(dateStr)}.pdf`;
 }
 
-async function fetchText(url) {
-  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-  if (r.status === 404) return { ok: false, notYetPublished: true, status: 404 };
-  if (!r.ok) return { ok: false, notYetPublished: false, status: r.status, error: `HTTP ${r.status}` };
-  return { ok: true, raw: await r.text() };
-}
 async function fetchBuffer(url) {
   const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (r.status === 404) return { ok: false, notYetPublished: true, status: 404 };
@@ -98,11 +103,14 @@ async function fetchPdfText(url) {
 export async function fetchStatement(dateStr) {
   return fetchPdfText(statementUrl(dateStr));
 }
+// Tries "The Bank's View" (short, same-day) first, falls back to the full
+// report (next business day) if the short one 404s — see the header
+// comment's 2026-08-08 correction for why both need trying.
 export async function fetchOutlook(dateStr) {
-  const url = outlookHighlightUrl(dateStr);
-  const r = await fetchText(url);
-  if (!r.ok) return { ...r, url, text: null };
-  return { ok: true, url, text: stripBoilerplate(htmlToText(r.raw)) };
+  const view = await fetchPdfText(outlookViewUrl(dateStr));
+  if (view.ok) return view;
+  const full = await fetchPdfText(outlookFullUrl(dateStr));
+  return full.ok ? full : view;
 }
 // PDF, not HTML — see the header comment's 2026-08-07 correction.
 export async function fetchOpinions(dateStr) {
