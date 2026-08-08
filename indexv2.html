@@ -852,6 +852,15 @@ footer{margin-top:40px;padding:18px 0;border-top:1px solid var(--border-soft);fo
         </div>
         <div class="usd-panel-note">4/4 USD pairs agree · cross-checked against FRED DXY (99.75, −0.31% wk/wk) — no divergence. Each pair's 5-day return, z-scored against its own 20-period distribution, sign-adjusted so positive = USD stronger. Composite arithmetic, not a model.</div>
       </div>
+
+      <div class="usd-panel" id="scorecardPanel">
+        <div class="usd-panel-hd">
+          <span class="eyebrow">Macro Scorecard</span>
+          <span class="usd-panel-label" id="scorecardPairLabel">loading…</span>
+        </div>
+        <div class="usd-contrib" id="scorecardRows"></div>
+        <div class="usd-panel-note">Cross-engine fundamental composite per currency — CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, PPI (USD) and central-bank tone, averaged over whatever's covered. Different data entirely from the FRED Z-scores above (real economic releases, not market-priced Z-scores). <a href="macro-scorecard.html" target="_blank" style="color:inherit;text-decoration:underline">Full breakdown ›</a></div>
+      </div>
     </div>
   </div>
 
@@ -1094,6 +1103,23 @@ function rateDiffFor(sym){
   return { label:meta.label, pct:!!meta.pct, hist, cur, sideNote:meta.side(cur), trendDir };
 }
 
+// Macro Scorecard per-pair edge (js/macroScorecardEngine.js) — a richer sibling
+// to rateDiffFor above: that's ONE factor (the nominal rate spread); this is
+// up to 9 real economic dimensions (CPI/GDP/labor/business-activity/retail-
+// sales/trade-balance/real-yield/PPI/central-bank-tone) per currency, diffed
+// base-minus-quote. Only defined for 6-letter FX symbols (EURUSD etc, base =
+// first 3 chars, quote = last 3) — indices/gold aren't currency pairs.
+function macroScorecardCcy(ccy){
+  return S.macroScorecard?.ranked?.find(r=>r.ccy===ccy) ?? null;
+}
+function macroEdgeFor(sym){
+  if (!S.macroScorecard?.ranked || sym.length!==6) return null;
+  const base = sym.slice(0,3), quote = sym.slice(3,6);
+  const b = macroScorecardCcy(base), q = macroScorecardCcy(quote);
+  if (!b || !q) return null;
+  return { base, quote, baseScore:b.composite, quoteScore:q.composite, baseCov:b.coverage.length, quoteCov:q.coverage.length, edge:+(b.composite-q.composite).toFixed(2) };
+}
+
 /* ── Phase 3: macro backdrop (Goldilocks + USD composite) — computed once,
    client-side, by importing the SAME js/macro.js brick index.html uses.
    Needs S.fredData populated from /api/fred (point-in-time, not history). ── */
@@ -1103,6 +1129,7 @@ async function loadMacroBackdrop(){
     S.fredData = await jget('/api/fred');
     S.ecbData = await jget('/api/ecbsdw');
     S.ifoData = await jget('/ifo.json');
+    S.macroScorecard = await jget('/api/macro-scorecard');
     if (S.fredData) MACRO_REGIME = computeMacroRegime();
     // USD composite needs OHLC for the 4 USD pairs — fetch them (cheap, 4 calls).
     const usdPairs = ['EUR/USD','GBP/USD','AUD/USD','USD/JPY'];
@@ -1115,6 +1142,30 @@ async function loadMacroBackdrop(){
     S.usdStrength = USD_COMPOSITE;
     DOLLAR_REGIME = computeDollarRegime();
   } catch(e){ console.warn('[macro backdrop]', e.message||e); }
+  renderScorecardPanel();
+}
+
+// Compact all-8-currency leaderboard for the Context panel's overview — the
+// "what does fundamentals say right now, at a glance" read, one level up
+// from the per-pair Macro Fundamentals card in the drilldown (macroEdgeFor).
+function renderScorecardPanel(){
+  const rowsEl = document.getElementById('scorecardRows');
+  const lblEl = document.getElementById('scorecardPairLabel');
+  if (!rowsEl || !lblEl) return;
+  if (!S.macroScorecard?.ok) {
+    lblEl.textContent = 'not available';
+    rowsEl.innerHTML = `<div class="pending" style="padding:8px 0">Macro Scorecard data not available (needs FRED_KEY + a Refresh on the source engine pages).</div>`;
+    return;
+  }
+  const ranked = S.macroScorecard.ranked || [];
+  lblEl.textContent = S.macroScorecard.pair
+    ? `${S.macroScorecard.pair.long} strongest · ${S.macroScorecard.pair.short} weakest · gap ${S.macroScorecard.pair.gap}`
+    : 'no standout — scores bunched together';
+  rowsEl.innerHTML = ranked.map(r=>{
+    const cls = r.composite>=0?'pos':'neg';
+    const pct = Math.min(50, Math.abs(r.composite)*50);
+    return `<div class="uc-row"><span class="uc-sym">${r.ccy}</span><div class="uc-bar-wrap"><div class="uc-bar ${cls}" style="width:${pct}%"></div></div><span class="uc-z mono">${r.composite>0?'+':''}${r.composite} (${r.coverage.length}/9)</span></div>`;
+  }).join('') || `<div class="pending" style="padding:8px 0">No currencies have any coverage yet.</div>`;
 }
 
 /* ── Phase 4 (on-demand, per selected pair): macro tier score, regime
@@ -1347,6 +1398,7 @@ async function renderDrill(){
 
   const rr = (lbl,val,color)=>`<div class="rr"><span class="rr-lbl">${lbl}</span><div class="rr-bar"><span style="width:${val??0}%;background:${color}"></span></div><span class="rr-val">${val??'—'}%</span></div>`;
   const rd = rateDiffFor(d.sym);
+  const me = macroEdgeFor(d.sym);
 
   let html = `
   <div id="drill-hd">
@@ -1392,6 +1444,20 @@ async function renderDrill(){
           ${drawSparkline(rd.hist,110,34, rd.trendDir==='widening'?'var(--warn)':rd.trendDir==='narrowing'?'var(--info)':'var(--text3)')}
         </div>
         <div class="forward-line"><span>Trend over the trailing window (90d, FRED)</span><b style="font-weight:600;color:${rd.trendDir==='widening'?'var(--warn)':rd.trendDir==='narrowing'?'var(--info)':'var(--text2)'}">${rd.trendDir[0].toUpperCase()+rd.trendDir.slice(1)}</b></div>`}
+      </div>
+    </div>
+
+    <div class="dcard">
+      <div class="dcard-hd"><span class="eyebrow">Macro Fundamentals${me?` — ${me.base} vs ${me.quote}`:''}</span><span class="trust context">🧪 context</span></div>
+      <div class="dcard-body">
+        ${!me ? `<div class="pending">${d.ac!=='fx' ? 'Not a currency pair.' : 'Macro Scorecard data not available yet (needs FRED_KEY + a Refresh on the source engine pages).'}</div>` : `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
+          <div>
+            <div class="mono" style="font-size:20px;font-weight:600;color:${me.edge>0?'var(--bull)':me.edge<0?'var(--bear)':'var(--text2)'}">${me.edge>0?'+':''}${me.edge}</div>
+            <div style="font-size:10.5px;color:var(--text3);margin-top:2px">${Math.abs(me.edge)<0.15 ? 'No clear fundamental edge either way' : (me.edge>0 ? `Fundamentals favour ${me.base}` : `Fundamentals favour ${me.quote}`)}</div>
+          </div>
+        </div>
+        <div class="forward-line"><span>${me.base} ${me.baseScore>0?'+':''}${me.baseScore} (${me.baseCov}/9) &nbsp;vs&nbsp; ${me.quote} ${me.quoteScore>0?'+':''}${me.quoteScore} (${me.quoteCov}/9)</span><a href="macro-scorecard.html" target="_blank" style="font-size:10.5px;font-weight:600">Full breakdown ›</a></div>`}
       </div>
     </div>
 

@@ -683,6 +683,7 @@ let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dol
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
+let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -715,7 +716,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc, msc] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -727,6 +728,7 @@ async function loadGate() {
     jget('/api/cvol').catch(() => null),
     jget('/api/oi-history').catch(() => null),
     jget('/api/macro-changes').catch(() => null),
+    jget('/api/macro-scorecard').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -739,6 +741,7 @@ async function loadGate() {
   if (rf?.ok) riskFlags = rf;
   if (cv?.ok) cvol = cv;
   if (mc?.ok && mc.rows) macroMoved = mc.rows;
+  if (msc?.ok) macroScorecard = msc;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
@@ -1505,6 +1508,38 @@ function closeCcyDrawer() {
   openDrawerCcy = null;
 }
 
+// Fundamentals section for the currency drawer — the real per-dimension
+// Macro Scorecard read for this specific currency (js/macroScorecardEngine.js),
+// distinct from the "Today's flow" section above which is pure price/technical.
+const CCY_DIM_LABEL = {
+  cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
+  ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', ppi: 'PPI',
+};
+const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
+function ccyDimHref(dim, ccy) {
+  if (dim === 'cbSentiment') return CCY_DIM_PAGE[ccy] || 'macro-scorecard.html';
+  return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',
+    retailSales: 'retail-sales.html', tradeBalance: 'trade-balance.html', realYield: 'real-yield.html', ppi: 'ppi.html' }[dim] || 'macro-scorecard.html';
+}
+function fundamentalsHtml(ccy) {
+  const row = macroScorecard?.ranked?.find(r => r.ccy === ccy) ?? (macroScorecard?.uncovered?.includes(ccy) ? { ccy, composite: null, coverage: [], dims: {} } : null);
+  if (!row) return `<div class="muted">No Macro Scorecard data yet — visit the <a href="macro-scorecard.html">Macro Scorecard</a> and click Refresh.</div>`;
+  const dims = row.dims ?? {};
+  const dimRows = Object.keys(CCY_DIM_LABEL).map(dim => {
+    const v = dims[dim];
+    if (v === undefined) return ''; // this currency has no such dimension at all (e.g. AUD has no cbSentiment)
+    const cls = v == null ? 'neu' : (v >= 0 ? 'bull' : 'bear');
+    const valTxt = v == null ? '<span class="muted">no data</span>' : (v > 0 ? `+${v}` : `${v}`);
+    return `<div class="ccy-legrow"><a class="lp" href="${ccyDimHref(dim, ccy)}" style="color:inherit">${CCY_DIM_LABEL[dim]}</a><span class="lv ${cls}">${valTxt}</span></div>`;
+  }).join('');
+  const chipCls = row.composite == null ? 'neu' : row.composite > 0.25 ? 'bull' : row.composite < -0.25 ? 'bear' : 'neu';
+  const chipWord = row.composite == null ? 'No coverage yet' : row.composite > 0.25 ? 'Fundamentally strong' : row.composite < -0.25 ? 'Fundamentally weak' : 'Fundamentally neutral';
+  return `
+    <div style="margin-bottom:8px"><span class="chip ${chipCls}">${chipWord}${row.composite != null ? ` · ${row.composite > 0 ? '+' : ''}${row.composite}` : ''}</span></div>
+    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 9 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
+    <div class="ccy-legs" style="margin-top:8px">${dimRows || '<div class="muted">No dimensions covered yet.</div>'}</div>`;
+}
 function openCcyDrawer(ccy) {
   openDrawerCcy = ccy;
   const det = currencyDetail(ccy);
@@ -1597,6 +1632,10 @@ function openCcyDrawer(ccy) {
     <div class="dr-sec">
       <h3 class="help" title="10-year government bond yield — the classic carry-trade input. Not the policy rate itself, and not a timing signal on its own.">Rate & carry</h3>
       ${carryHtml}
+    </div>
+    <div class="dr-sec">
+      <h3 class="help" title="This currency's composite across up to 9 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, PPI and central-bank tone. Refreshed on each source engine's own daily schedule, not live.">Fundamentals (Macro Scorecard)</h3>
+      ${fundamentalsHtml(ccy)}
     </div>
     <div class="dr-sec">
       <h3>Risk-sentiment bucket</h3>
@@ -1794,6 +1833,25 @@ function buildMacro() {
         threads.push({ ic: '📊', t: 'Stocks (risk mood)', body, so });
       }
     }
+  }
+
+  // 8) The Macro Scorecard — everything above is rates/risk-mood proxies (VIX,
+  // yield gaps, TIPS). This is the real thing: each currency's ACTUAL scored
+  // inflation/growth/labor-market/business-activity/retail-sales/trade-balance/
+  // real-yield/PPI/central-bank-tone data, averaged into one composite and
+  // ranked (js/macroScorecardEngine.js, same read as macro-scorecard.html).
+  // Kept as its own thread rather than rewritten into the hand-tuned "what this
+  // means for you" bullets below, which cover AUD+NZD combined and don't carry
+  // real fundamental evidence — this is additive, not a replacement.
+  if (macroScorecard?.ranked?.length) {
+    const rows = macroScorecard.ranked
+      .map(r => `<b>${r.ccy}</b> ${r.composite > 0 ? '+' : ''}${r.composite} <span class="muted">(${r.coverage.length}/9)</span>`)
+      .join(' &nbsp;·&nbsp; ');
+    const body = `Beyond rates and risk mood, this project scores each currency across up to 9 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, PPI (USD) and central-bank tone — and ranks them strongest to weakest:<br><div style="margin-top:6px;font-size:12px;line-height:1.8">${rows}</div>`;
+    const so = macroScorecard.pair
+      ? `The clearest fundamental read today: this favours <b>${macroScorecard.pair.long}</b> over <b>${macroScorecard.pair.short}</b> (composite gap ${macroScorecard.pair.gap}).`
+      : `No standout pairing today — composite scores are bunched too close together to lean hard either way on fundamentals alone.`;
+    threads.push({ ic: '🏆', t: 'The Macro Scorecard — full fundamental ranking', body, so: so + ` <a href="macro-scorecard.html" style="font-size:11px">See the full per-currency breakdown →</a>` });
   }
 
   // Per-currency "what this means for you"
