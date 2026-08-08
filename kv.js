@@ -190,6 +190,19 @@ const _CF_EXACT = new Set([
   'cog_shadow_log',
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
+  // Numeric-composition engines (CPI/GDP/ISM/labor market/retail sales/
+  // trade balance/real yield/PPI) — same "Confluence bot config forgotten
+  // on every deployment" bug class documented above: these were missing
+  // from this allowlist, so every FRED refresh silently landed in the
+  // ephemeral file store and was wiped on the next Railway redeploy —
+  // surfaced live as "cpi/gdp/etc all show no data, they had data last
+  // night" (2026-08-08, right after a redeploy). Each is a daily-gated,
+  // FRED-quota-costing fetch across up to 8 currencies, not a cheap
+  // recompute — worth persisting. The Macro Scorecard has no KV of its
+  // own (pure live aggregation over these) so nothing to add for it
+  // directly, but it's silently empty too until these actually persist.
+  'cpi_v1', 'gdp_v1', 'ism_v1', 'labor_market_v1', 'retail_sales_v1',
+  'trade_balance_v1', 'real_yield_v1', 'ppi_v1',
 ]);
 function isCfKey(key) {
   // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the
