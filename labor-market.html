@@ -81,7 +81,7 @@
   <div class="card">
     <h2>Per-currency labor market read</h2>
     <div id="body" class="empty">Loading…</div>
-    <div class="note">Numeric composition, not an AI text read: each dimension is scored independently (-1 weak to +1 strong) against its own trailing history, then combined into a strength composite from payrolls + hiring breadth + job openings + quits rate + unemployment + participation — wage growth and revision surprise are shown separately, not blended in, since fast wage growth is a strong-labor signal AND an inflation-risk signal at once, and a revision is a verdict on the PRIOR month's print, not this one. "Hiring breadth" is BLS's own diffusion-index framing (% of the 10 major industry sectors adding jobs, this month's) plus which single sector carried the most of the net change. "Revision surprise" compares the current, most-revised payrolls figure against what was FIRST reported for that same month (FRED's vintage/ALFRED data), so a print that looked weak on release day but got revised up shows up here. "Quits rate" (JOLTS) is the standard worker-confidence proxy — people quit voluntarily when they're confident of finding something else; "Job openings" (JOLTS) is the standard labor-demand read. USD has full coverage; the other 7 currencies are unemployment-trend-only for now — see the note on each card. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+    <div class="note">Numeric composition, not an AI text read: each dimension is scored independently (-1 weak to +1 strong) against its own trailing history, then combined into a strength composite from payrolls + hiring breadth + job openings + quits rate + unemployment + participation — wage growth and revision surprise are shown separately, not blended in, since fast wage growth is a strong-labor signal AND an inflation-risk signal at once, and a revision is a verdict on the PRIOR month's print, not this one. "Hiring breadth" is BLS's own diffusion-index framing (% of the 10 major industry sectors adding jobs, this month's) plus which single sector carried the most of the net change. "Revision surprise" compares the current, most-revised payrolls figure against what was FIRST reported for that same month (FRED's vintage/ALFRED data), so a print that looked weak on release day but got revised up shows up here. "Quits rate" (JOLTS) is the standard worker-confidence proxy — people quit voluntarily when they're confident of finding something else; "Job openings" (JOLTS) is the standard labor-demand read. USD has full coverage; EUR/GBP/JPY/AUD/CAD/NZD get unemployment + participation + wage-growth depth (wages there are manufacturing-sector earnings, not the whole-economy headline number — see the note on each card); CHF stays unemployment-only (no confirmed wage series exists for it). New Zealand's data (unemployment, participation, wages) is quarterly across the board, consistent with its CPI/GDP data — each dimension's lookback window adjusts for that automatically. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
   </div>
 </div>
 
@@ -92,6 +92,10 @@ async function jget(url, opts) { const r = await fetch(url, opts); return r.json
 
 const DIM_LABELS = { payrollGrowth: 'Payroll growth', wageGrowth: 'Wage growth', unemploymentTrend: 'Unemployment', participationTrend: 'Participation', breadth: 'Hiring breadth', revisionSurprise: 'Revision surprise', quitsConfidence: 'Quits rate (confidence)', jobOpenings: 'Job openings' };
 const USD_ORDER = ['payrollGrowth', 'breadth', 'jobOpenings', 'quitsConfidence', 'wageGrowth', 'unemploymentTrend', 'participationTrend', 'revisionSurprise'];
+const NON_USD_ORDER = ['unemploymentTrend', 'participationTrend', 'wageGrowth'];
+// EUR/GBP/JPY/AUD/CAD/NZD — wages/participation added 2026-08-08. CHF stays
+// unemployment-only (no confirmed wage series exists for it).
+const WAGE_PARTICIPATION_CCY = new Set(['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'NZD']);
 
 function strengthChip(score) {
   if (score == null) return '<span class="chip na">no data</span>';
@@ -130,13 +134,18 @@ function dimRow(key, d, unemploymentUnit) {
 
 function renderCcy(ccy, r, isUsd, unemploymentUnit) {
   const dims = r?.dims || {};
-  const order = isUsd ? USD_ORDER : ['unemploymentTrend'];
+  const hasWageDepth = WAGE_PARTICIPATION_CCY.has(ccy);
+  const order = isUsd ? USD_ORDER : NON_USD_ORDER;
+  let coverageNote;
+  if (isUsd) coverageNote = '';
+  else if (hasWageDepth) coverageNote = 'Wage growth is manufacturing-sector earnings (OECD), not the whole-economy headline number — no free whole-economy wage series was confirmed for this currency.';
+  else coverageNote = `Unemployment-trend-only coverage${ccy === 'CHF' ? ' — SECO registered unemployment, the print FX desks actually watch, not the OECD-harmonized rate; no confirmed wage series exists for CHF' : ''}`;
   return `<div class="ccard ${isUsd ? 'usd' : ''}">
     <div class="ctitle"><span class="ccy">${ccy}</span>${strengthChip(r?.strength)}</div>
     ${gauge(r?.strength)}
     ${order.map(k => dimRow(k, dims[k], unemploymentUnit)).join('')}
     ${r?.flag ? `<div class="trapflag">⚠ ${esc(r.flag)}</div>` : ''}
-    ${!isUsd ? `<div class="coverage-note">Unemployment-trend-only coverage${ccy === 'CHF' ? ' — SECO registered unemployment, the print FX desks actually watch, not the OECD-harmonized rate' : ''}</div>` : ''}
+    ${coverageNote ? `<div class="coverage-note">${coverageNote}</div>` : ''}
   </div>`;
 }
 

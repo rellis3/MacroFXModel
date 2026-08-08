@@ -23,6 +23,18 @@ function monthlySeries(startYM, values) {
   return m;
 }
 
+// Same idea, one point every 3 months — for the quarterly-cadence series
+// (EUR/GBP participation, NZD's everything).
+function quarterlySeries(startYM, values) {
+  const m = new Map();
+  let [y, mo] = startYM.split('-').map(Number);
+  for (const v of values) {
+    m.set(`${y}-${String(mo).padStart(2, '0')}-01`, v);
+    mo += 3; if (mo > 12) { mo -= 12; y++; }
+  }
+  return m;
+}
+
 console.log('[toSeries / monthOverMonth]');
 {
   const m = monthlySeries('2024-01', [100, 105, 103]);
@@ -67,12 +79,30 @@ console.log('[payrollScore]');
   ok('reads as strong (positive score)', r.score > 0.3, r.score);
 }
 
-console.log('[wageScore]');
+console.log('[wageScore — default isIndex:true (USD/JPY-style index level)]');
 {
   const vals = Array.from({ length: 20 }, (_, i) => 30 + i * 0.05); // slow steady wage growth
   const m = monthlySeries('2023-01', vals);
   const r = wageScore(m);
   ok('reports a yoy% and a score', r.latestYoyPct != null && typeof r.score !== 'undefined');
+}
+
+console.log('[wageScore — isIndex:false (EUR/GBP/AUD/CAD/NZD-style pre-computed YoY%)]');
+{
+  // The raw values ARE the YoY% print already — must NOT be re-derived via
+  // yoyPct, which would silently produce a nonsense number (same trap
+  // js/cpiEngine.js's toYoySeries guards against for CPI).
+  const m = monthlySeries('2023-01', [3.1, 2.9, 2.8]);
+  const r = wageScore(m, { isIndex: false });
+  ok('latestYoyPct is the raw value (2.8), not re-derived from an index', r.latestYoyPct === 2.8, r.latestYoyPct);
+}
+{
+  // Quarterly opt shortens the z-score lookback (8 instead of 24) — just
+  // confirm it still produces a score with fewer points than the monthly
+  // default would need.
+  const m = quarterlySeries('2020-01', Array.from({ length: 12 }, (_, i) => 2.0 + i * 0.1));
+  const r = wageScore(m, { isIndex: false, quarterly: true });
+  ok('quarterly wage series with only 12 points still produces a score', r.score != null, r.score);
 }
 
 console.log('[unemploymentTrendScore — falling unemployment reads strong]');
@@ -94,12 +124,31 @@ console.log('[unemploymentTrendScore — falling unemployment reads strong]');
   ok('too little history -> null score, not a crash', r.score === null);
 }
 
+console.log('[unemploymentTrendScore — quarterly opt skips monthly smoothing]');
+{
+  // Steadily falling unemployment, one point per quarter (NZD-style).
+  const vals = Array.from({ length: 12 }, (_, i) => 5.0 - i * 0.15);
+  const m = quarterlySeries('2021-01', vals);
+  const r = unemploymentTrendScore(m, { quarterly: true });
+  ok('falling quarterly unemployment -> positive score, same direction as monthly', r.score > 0, r.score);
+  ok('latestLevel is the final quarter\'s value', Math.abs(r.latestLevel - vals.at(-1)) < 0.001);
+}
+
 console.log('[participationTrendScore — rising participation reads strong]');
 {
   const vals = Array.from({ length: 20 }, (_, i) => 62.0 + i * 0.02);
   const m = monthlySeries('2023-01', vals);
   const r = participationTrendScore(m);
   ok('rising participation -> positive score', r.score > 0, r.score);
+}
+{
+  // EUR/GBP-style: participation is quarterly even though unemployment for
+  // that same currency is monthly — the two trend functions are called with
+  // DIFFERENT opts for the same currency, not a uniform per-currency setting.
+  const vals = Array.from({ length: 12 }, (_, i) => 63.0 + i * 0.1);
+  const m = quarterlySeries('2021-01', vals);
+  const r = participationTrendScore(m, { quarterly: true });
+  ok('rising quarterly participation -> positive score', r.score > 0, r.score);
 }
 
 console.log('[quitsScore — rising quits rate reads as worker confidence/strong]');
@@ -213,18 +262,43 @@ console.log('[laborMarketScore — composite + participation trap flag]');
   ok('revisionSurprise dim present (reported standalone)', 'revisionSurprise' in r.dims);
 }
 
+console.log('[laborMarketScore — universe opts threading (isIndex/quarterly reach the right dimension)]');
+{
+  // EUR-style: pre-computed-YoY quarterly wages + quarterly participation,
+  // alongside monthly unemployment for the SAME currency — confirms
+  // laborMarketScore correctly forwards each factor's own opts rather than
+  // applying one setting universe-wide.
+  const universe = LABOR_UNIVERSE.EUR;
+  const unemployment = monthlySeries('2022-01', Array.from({ length: 20 }, (_, i) => 6.0 - i * 0.03));
+  const participation = quarterlySeries('2020-01', Array.from({ length: 12 }, (_, i) => 60.0 + i * 0.1));
+  const wages = quarterlySeries('2020-01', [2.5, 2.6, 2.4]); // pre-computed YoY%, NOT an index
+  const r = laborMarketScore({ unemployment, participation, wages }, universe);
+  ok('wage YoY is the raw pre-computed value (2.4), not re-derived', r.dims.wageGrowth.latestYoyPct === 2.4, r.dims.wageGrowth.latestYoyPct);
+  ok('participation trend scores using the quarterly opt (positive score, no crash from monthly smoothing on 12 points)', r.dims.participationTrend.score > 0, r.dims.participationTrend.score);
+  ok('unemployment trend still uses its own (monthly, default) opt independently', r.dims.unemploymentTrend.score != null);
+}
+
 console.log('[LABOR_UNIVERSE / SECTOR_UNIVERSE]');
 {
   ok('USD has all seven factors', ['payrolls', 'unemployment', 'participation', 'wages', 'hours', 'quitsRate', 'jobOpenings'].every(k => k in LABOR_UNIVERSE.USD));
-  ok('other currencies have unemployment only', Object.entries(LABOR_UNIVERSE).filter(([k]) => k !== 'USD')
-    .every(([, cfg]) => Object.keys(cfg).length === 1 && cfg.unemployment));
+  ok('USD wages is isIndex:true', LABOR_UNIVERSE.USD.wages.isIndex === true);
   ok('covers all 8 currencies from ECON_UNIVERSE', Object.keys(LABOR_UNIVERSE).length === 8, Object.keys(LABOR_UNIVERSE).join(','));
   ok('SECTOR_UNIVERSE has 10 supersectors, all unique series IDs', Object.keys(SECTOR_UNIVERSE).length === 10
     && new Set(Object.values(SECTOR_UNIVERSE)).size === 10, Object.values(SECTOR_UNIVERSE).join(','));
-  ok('CHF uses SECO registered unemployment, not the OECD-harmonized rate', LABOR_UNIVERSE.CHF.unemployment === 'LMUNRLTTCHM647S', LABOR_UNIVERSE.CHF.unemployment);
-  ok('CHF still unemployment-only (one factor)', Object.keys(LABOR_UNIVERSE.CHF).length === 1);
+  ok('CHF uses SECO registered unemployment, not the OECD-harmonized rate', LABOR_UNIVERSE.CHF.unemployment.series === 'LMUNRLTTCHM647S', LABOR_UNIVERSE.CHF.unemployment.series);
+  ok('CHF still unemployment-only (one factor) — no confirmed wage series exists', Object.keys(LABOR_UNIVERSE.CHF).length === 1);
   ok('CHF is labeled as a level, not a % rate', UNEMPLOYMENT_UNIT_LABEL.CHF !== '%', UNEMPLOYMENT_UNIT_LABEL.CHF);
   ok('every other currency defaults to %', Object.entries(UNEMPLOYMENT_UNIT_LABEL).filter(([c]) => c !== 'CHF').every(([, u]) => u === '%'));
+
+  const upgraded = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'NZD'];
+  ok('the 6 newly-upgraded currencies each now have unemployment + participation + wages', upgraded.every(c =>
+    ['unemployment', 'participation', 'wages'].every(f => f in LABOR_UNIVERSE[c])));
+  ok('EUR and GBP participation is flagged quarterly despite monthly unemployment', LABOR_UNIVERSE.EUR.participation.quarterly === true && !LABOR_UNIVERSE.EUR.unemployment.quarterly
+    && LABOR_UNIVERSE.GBP.participation.quarterly === true && !LABOR_UNIVERSE.GBP.unemployment.quarterly);
+  ok('NZD is quarterly across unemployment, participation, AND wages', ['unemployment', 'participation', 'wages'].every(f => LABOR_UNIVERSE.NZD[f].quarterly === true));
+  ok('JPY wages is isIndex:true (a raw index level), unlike the other 5 upgraded currencies', LABOR_UNIVERSE.JPY.wages.isIndex === true);
+  ok('EUR/GBP/AUD/CAD/NZD wages are NOT flagged isIndex (already pre-computed YoY%)', ['EUR', 'GBP', 'AUD', 'CAD', 'NZD'].every(c => !LABOR_UNIVERSE[c].wages.isIndex));
+  ok('NZD unemployment uses the corrected quarterly series (…NZQ156S, not the unconfirmed …NZM156S)', LABOR_UNIVERSE.NZD.unemployment.series === 'LRHUTTTTNZQ156S');
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

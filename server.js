@@ -4008,7 +4008,7 @@ async function _buildLaborMarketScores() {
   await Promise.all(Object.keys(LABOR_UNIVERSE).map(async ccy => {
     try {
       const { data, availability: avail } = await fetchLaborData(ccy, fredKey);
-      byCcy[ccy] = laborMarketScore(data);
+      byCcy[ccy] = laborMarketScore(data, LABOR_UNIVERSE[ccy]);
       availability[ccy] = avail;
     } catch (e) {
       availability[ccy] = [{ error: e.message }];
