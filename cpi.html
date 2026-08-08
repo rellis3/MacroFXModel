@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CPI / Inflation</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700}
+  .hdr .spacer{flex:1}
+  .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)} .hbtn:disabled{opacity:.5;cursor:default}
+  .hbtn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+  .note{color:var(--text3);font-size:11px;line-height:1.5;margin-top:10px}
+  .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+  .ccard{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:13px 14px}
+  .ccard.usd{grid-column:1 / -1;background:var(--card)}
+  .ccard .ctitle{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .ccard .ccy{font-size:14px;font-weight:700}
+  .ccard.usd .ccy{font-size:16px}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700}
+  .chip.hot{background:var(--bear-bg);color:var(--bear)} .chip.cool{background:var(--bull-bg);color:var(--bull)}
+  .chip.neu{background:rgba(110,118,129,.15);color:var(--text2)} .chip.na{background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+
+  .gauge{position:relative;height:8px;background:var(--bg);border-radius:4px;margin:6px 0 10px}
+  .gauge .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
+  .gauge .fill{position:absolute;top:0;bottom:0;border-radius:4px}
+  .gauge .fill.pos{left:50%;background:var(--bear)} .gauge .fill.neg{right:50%;background:var(--bull)}
+
+  .dim-row{display:grid;grid-template-columns:100px 1fr 46px;align-items:center;gap:7px;margin-bottom:5px;font-size:11px}
+  .dim-lbl{color:var(--text3)}
+  .dim-track{height:6px;background:var(--bg);border-radius:3px;position:relative;overflow:hidden}
+  .dim-fill{position:absolute;top:0;bottom:0;border-radius:3px}
+  .dim-fill.pos{left:50%;background:var(--bear)} .dim-fill.neg{right:50%;background:var(--bull)}
+  .dim-val{font-size:10px;color:var(--text3);text-align:right;font-variant-numeric:tabular-nums}
+  .dim-detail{font-size:10px;color:var(--text3);margin:-2px 0 6px}
+
+  .coverage-note{font-size:10px;color:var(--text3);margin-top:6px}
+
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--text3);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>📈 CPI / Inflation</h1>
+  <div class="spacer"></div>
+  <span class="stamp" id="lastCheck"></span>
+  <button class="hbtn primary" id="refreshBtn" onclick="refreshNow()">⟳ Refresh</button>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
+  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
+  <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
+  <a class="hbtn" href="beige-book.html">Beige Book</a>
+  <a class="hbtn" href="labor-market.html">Labor Market</a>
+  <a class="hbtn" href="today.html">Daily Brief</a>
+  <a class="hbtn" href="index.html">Dashboard</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Per-currency inflation read</h2>
+    <div id="body" class="empty">Loading…</div>
+    <div class="note">Numeric composition, not an AI text read: "Level vs. target" is the current headline YoY% print against the ~2% target every central bank in this universe (Fed/ECB/BoE/RBA/BoC/SNB/RBNZ) targets — positive = running hot (hawkish pressure), negative = running cold (dovish pressure). "Trend" z-scores the current YoY print against its own trailing history, which catches disinflation-from-a-high-base as an improving signal even while the level itself still reads hot (e.g. 9%→6% YoY is still well above target but clearly decelerating). "Core" (ex food & energy) is reported standalone, not blended into the pressure composite — it answers a related but distinct question (is the underlying/persistent pressure hot) rather than adding to the headline read. Core is confirmed for USD/EUR/CHF/CAD/AUD only; GBP/NZD get headline-only coverage until a verified core series ID exists — see the note on each card. AUD/NZD are quarterly at the source (ABS/Stats NZ), not a data gap. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
+
+const DIM_LABELS = { headlineLevel: 'Level vs. target', headlineTrend: 'Trend', coreLevel: 'Core vs. target' };
+const DIM_ORDER = ['headlineLevel', 'headlineTrend', 'coreLevel'];
+const QUARTERLY = new Set(['AUD', 'NZD']);
+const NO_CORE = new Set(['GBP', 'NZD']);
+
+function pressureChip(score) {
+  if (score == null) return '<span class="chip na">no data</span>';
+  if (score > 0.25) return '<span class="chip hot">HOT</span>';
+  if (score < -0.25) return '<span class="chip cool">COOL</span>';
+  return '<span class="chip neu">AT TARGET</span>';
+}
+function gauge(score) {
+  if (score == null) return '';
+  const pct = Math.min(50, Math.abs(score) * 50);
+  return `<div class="gauge"><div class="mid"></div><div class="fill ${score >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>`;
+}
+function dimDetail(key, d) {
+  if (!d) return '';
+  if (key === 'headlineLevel' || key === 'coreLevel') return d.latestYoy != null ? `${d.latestYoy > 0 ? '+' : ''}${d.latestYoy}% y/y vs ${d.target}% target · ${esc(d.latestDate || '')}` : '';
+  if (key === 'headlineTrend') return d.latestYoy != null ? `${d.latestYoy > 0 ? '+' : ''}${d.latestYoy}% y/y (z=${d.z ?? '—'} vs own history) · ${esc(d.latestDate || '')}` : '';
+  return '';
+}
+function dimRow(key, d) {
+  if (!d) return '';
+  const s = d.score;
+  const pct = s == null ? 0 : Math.min(50, Math.abs(s) * 50);
+  const cls = s == null ? '' : (s >= 0 ? 'pos' : 'neg');
+  return `<div class="dim-row"><span class="dim-lbl">${DIM_LABELS[key]}</span><div class="dim-track">${s != null ? `<div class="dim-fill ${cls}" style="width:${pct}%"></div>` : ''}</div><span class="dim-val">${s != null ? s.toFixed(2) : '—'}</span></div>
+    <div class="dim-detail">${dimDetail(key, d)}</div>`;
+}
+
+function renderCcy(ccy, r, isUsd) {
+  const dims = r?.dims || {};
+  return `<div class="ccard ${isUsd ? 'usd' : ''}">
+    <div class="ctitle"><span class="ccy">${ccy}</span>${pressureChip(r?.pressure)}</div>
+    ${gauge(r?.pressure)}
+    ${DIM_ORDER.map(k => dimRow(k, dims[k])).join('')}
+    <div class="coverage-note">${QUARTERLY.has(ccy) ? 'Quarterly cadence (source data, not a gap)' : ''}${QUARTERLY.has(ccy) && NO_CORE.has(ccy) ? ' · ' : ''}${NO_CORE.has(ccy) ? 'Headline-only — no verified core CPI series yet' : ''}</div>
+  </div>`;
+}
+
+async function load() {
+  const r = await jget('/api/cpi');
+  if (!r.ok) {
+    $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')} — click Refresh (needs FRED_KEY configured on the server).</div>`;
+    return;
+  }
+  $('lastCheck').textContent = `Generated ${new Date(r.generatedAt).toLocaleString()}`;
+  const order = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'];
+  $('body').innerHTML = `<div class="grid">${order.filter(c => r.byCcy?.[c]).map(c => renderCcy(c, r.byCcy[c], c === 'USD')).join('')}</div>`;
+}
+
+async function refreshNow() {
+  const btn = $('refreshBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Refreshing…';
+  try {
+    await jget('/api/cpi/refresh', { method: 'POST' });
+    for (let i = 0; i < 40; i++) {
+      const st = await jget('/api/cpi/refresh-status');
+      if (!st.running) break;
+      await new Promise(res => setTimeout(res, 2000));
+    }
+    await load();
+  } catch (e) {
+    $('lastCheck').textContent = 'Could not reach the server: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⟳ Refresh';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

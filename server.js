@@ -73,6 +73,7 @@ import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness,
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
 import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LABEL } from './js/laborMarketEngine.js';
+import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -4045,6 +4046,59 @@ setInterval(() => {
   _laborMarketLastRun = today;
   _laborMarketRunning = true;
   _buildLaborMarketScores().catch(() => {}).finally(() => { _laborMarketRunning = false; });
+}, 20 * 60_000);
+
+// ── CPI / Inflation Numeric-Composition Engine ──────────────────────────────
+// Same shape as the Labor Market engine above: pure numeric score built from
+// FRED series (js/cpiEngine.js), not a text-reading engine. All 8 currencies
+// get headline coverage; 6 of 8 also get core (GBP/NZD deliberately excluded
+// — see that file's header for why). Monthly-cadence data (quarterly for
+// AUD/NZD) — daily refresh is more than enough, same day-gate pattern as
+// labor market rather than a 30-min poll.
+const _CPI_KV = 'cpi_v1';
+async function _buildCpiScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(CPI_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchCpiData(ccy, fredKey);
+      byCcy[ccy] = cpiScore(data, CPI_UNIVERSE[ccy]);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_CPI_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/cpi', async (_req, res) => {
+  try {
+    const raw = await kv.get(_CPI_KV);
+    if (!raw) return res.json({ ok: false, error: 'No CPI data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _cpiRunning = false;
+app.post('/api/cpi/refresh', (_req, res) => {
+  if (_cpiRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _cpiRunning = true;
+  _buildCpiScores().catch(() => {}).finally(() => { _cpiRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/cpi/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_CPI_KV).catch(() => null);
+  res.json({ ok: true, running: _cpiRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _cpiLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _cpiRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_cpiLastRun === today) return;
+  _cpiLastRun = today;
+  _cpiRunning = true;
+  _buildCpiScores().catch(() => {}).finally(() => { _cpiRunning = false; });
 }, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
