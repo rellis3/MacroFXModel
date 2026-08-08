@@ -131,7 +131,7 @@
     <div class="seg" id="calc">
       <button data-c="original" class="on">Original</button>
       <button data-c="cog">COG</button>
-      <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Backtest source only.">Bot</button>
+      <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
     <span class="seg" id="calcCompare">
@@ -314,9 +314,10 @@ function bandsFor(f, mode) {
   // COG geometry for both COG and BOT — they differ only in the σ SOURCE:
   //   COG = the vol-forecast σ (f.vol_annual, with correction constants)
   //   BOT = the bot's σ (f.bot_vol_annual = volSigmaSeries, no corrections)
-  // Both swap NQ to cc-HV (matching the live bot / COG export). BOT needs the
-  // Backtest source (bot_vol_annual is only computed there); falls back to the COG
-  // σ if it's missing so the calc still draws.
+  // Both swap NQ to cc-HV (matching the live bot / COG export). bot_vol_annual is
+  // computed server-side on BOTH Backtest and Archive source (archive/range walks
+  // the same OANDA D1 history forward with nextSigma()); falls back to the COG σ
+  // only if that lookup itself fails for a given day, so the calc still draws.
   if (mode === 'cog' || mode === 'bot') {
     const name = ($('pair').value || '').toLowerCase();
     let va = (mode === 'bot') ? (f.bot_vol_annual ?? f.vol_annual) : f.vol_annual;

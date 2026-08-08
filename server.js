@@ -6937,6 +6937,38 @@ app.get('/api/vol-forecast/archive/range', async (req, res) => {
         vol_annual: inst.vol_annual,
       };
     }
+    // Enrich with the bot's own σ (bot_vol_annual) — the SAME walk-forward
+    // nextSigma() math /backtest-range uses — so forecast-reversion's "Bot" calc
+    // draws its real lines on Archive source too, not just Backtest (previously
+    // bot_vol_annual was Backtest-only, so Bot silently fell back to COG's σ for
+    // every Archive-source day). Best-effort: a resolve/fetch failure just leaves
+    // bot_vol_annual unset for these dates — Original/COG still render fine, and
+    // bandsFor() on the client already falls back to COG's σ when it's missing.
+    if (Object.keys(days).length && process.env.OANDA_KEY) {
+      try {
+        const inst = instrument(pair);
+        const cls = inst.assetClass || 'fx';
+        const cacheKey = `archBotD1_${inst.oanda}`;
+        let dailyD1 = _m5SrvCache.get(cacheKey);
+        if (!dailyD1 || Date.now() - dailyD1.ts > 10 * 60_000) {
+          const bars = (await _btFetchD1(inst.oanda, 2600)).sort((a, b) => (a.date < b.date ? -1 : 1));
+          dailyD1 = { bars, ts: Date.now() };
+          _m5SrvCache.set(cacheKey, dailyD1);
+          capMap(_m5SrvCache, CACHE_MAX_SERIES);
+        }
+        const byDate = new Map(dailyD1.bars.map((b, i) => [b.date, i]));
+        for (const d of Object.keys(days)) {
+          const idx = byDate.get(d);
+          if (idx == null || idx < 60) continue;
+          const slice = dailyD1.bars.slice(Math.max(0, idx - 800), idx);
+          if (slice.length < 60) continue;
+          try {
+            const bs = _nextSigma(slice, cls);
+            if (bs > 0) days[d].bot_vol_annual = +(bs * Math.sqrt(252) * 100).toFixed(2);
+          } catch { /* bot σ is optional enrichment — leave unset for this date */ }
+        }
+      } catch (_) { /* unknown pair / OANDA unreachable — Original/COG still work */ }
+    }
     res.json({ ok: true, pair, from, to, days });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
