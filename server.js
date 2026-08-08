@@ -83,6 +83,8 @@ import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js
 import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
 import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookHighlightUrl as bojOutlookHighlightUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
+import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
+import { fetchBeigeBook } from './js/beigeBookFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
 import { volSigmaSeries as _volSigmaSeries, nextSigma as _nextSigma } from './js/forecastCore.js';
 import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } from './js/creditLeadLagEngine.js';
@@ -3785,6 +3787,145 @@ app.get('/api/boj/debug-fetch', async (req, res) => {
   }
   res.json({ ok: true, dateChecked: date, results });
 });
+
+// ── Beige Book Engine ───────────────────────────────────────────────────────
+// The simplest release-tracking engine yet: ONE document, no delayed
+// minutes/opinions/accounts equivalent, no press conference, no vote to
+// extract — see js/beigeBookCalendar.js for how its whole calendar derives
+// from FOMC_MEETINGS rather than needing its own hardcoded dates. Not a
+// central-bank POLICY document (the Fed's regional banks compile it from
+// anecdotal business/economist contacts, not the FOMC deciding anything),
+// but traders read it the same hawkish/dovish way — as the leading
+// qualitative input to the FOMC meeting ~2 weeks later.
+function _beigeBookPrevDate(meetingDate) {
+  const idx = BEIGE_BOOK_RELEASES.findIndex(r => r.date === meetingDate);
+  return idx > 0 ? BEIGE_BOOK_RELEASES[idx - 1].date : null;
+}
+async function _beigeBookGetRaw(date) {
+  const raw = await kv.get(`beigebook_raw_${date}`);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function _buildBeigeBookAnalysis(meetingDate) {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const rawRec = await _beigeBookGetRaw(meetingDate);
+  if (!rawRec) throw new Error(`no raw beigebook text captured for ${meetingDate} yet`);
+  const { text, url, fomcMeetingDate } = rawRec;
+  const clipped = text.length > _FOMC_MAX_CHARS ? text.slice(0, _FOMC_MAX_CHARS) + '\n[...truncated...]' : text;
+
+  let diffBlock = '', diffSegments = null;
+  const prevDate = _beigeBookPrevDate(meetingDate);
+  if (prevDate) {
+    const prevRec = await _beigeBookGetRaw(prevDate);
+    if (prevRec) {
+      const d = fomcWordDiff(prevRec.text, text);
+      diffSegments = d.segments;
+      const lines = fomcDiffToPromptLines(d, 2);
+      diffBlock = `=== WORDING CHANGES vs the ${prevDate} Beige Book ===\n` +
+        (lines.length ? lines.slice(0, 40).join('\n') : '(no material wording changes — near-identical to the prior release)');
+    }
+  }
+
+  const prompt = `You are analysing the ${meetingDate} FEDERAL RESERVE BEIGE BOOK (Summary of Commentary on Current Economic Conditions) for an FX/macro trading desk. This is NOT a policy decision — it's anecdotal commentary compiled by the 12 regional Federal Reserve Banks from business contacts, economists, and other sources, covering labor markets, prices, and general business activity across all 12 Districts. It publishes ~2 weeks ahead of the FOMC meeting on ${fomcMeetingDate}, and is read as the leading qualitative signal ahead of that decision. Read it for HAWKISH vs DOVISH signal (i.e. does this make the Fed MORE or LESS likely to lean hawkish at the upcoming meeting) and likely market impact on the broad USD — be specific and plain-spoken.
+
+NEVER name a specific individual anywhere in your output — refer to them only by role. Ground every claim in the text below — do NOT invent numbers, names, or events not present in it.
+
+${diffBlock}
+
+=== FULL TEXT ===
+${clipped}
+
+Also score five separate dimensions, each 0.0 (no signal of this in the text) to 1.0 (dominant theme) — magnitude, not direction, independent of each other and of hawkishScore:
+- inflationConcern, laborConcern, growthConcern, financialStabilityConcern: how much the text dwells on each, across the National Summary and District reports combined
+- regionalBreadth: how UNIFORM the picture is across the 12 Districts (0=highly mixed/divergent — some Districts describe strength, others weakness or contraction; 1=broadly consistent conditions described across most/all Districts) — this is Beige-Book-specific and matters a lot for how much weight traders put on the signal; a broadly uniform read across Districts is a much stronger signal than one where the National Summary is smoothing over a genuinely divided picture
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read, plain-English so-what first","hawkishScore":-1.0 to 1.0 (negative=dovish, positive=hawkish, 0=neutral),"regime":"HAWKISH|DOVISH|NEUTRAL|MIXED","confidence":"LOW|MEDIUM|HIGH (how confident YOU are in this read)","dimensions":{"inflationConcern":0.0-1.0,"laborConcern":0.0-1.0,"growthConcern":0.0-1.0,"financialStabilityConcern":0.0-1.0,"regionalBreadth":0.0-1.0},"summary":"2-3 plain-spoken sentences","whatChanged":"1-2 sentences on what's different from the prior Beige Book, grounded ONLY in the wording changes above — say plainly if there was no material change","keyQuotes":[{"quote":"short verbatim excerpt from the text above, under 30 words","why":"why this line matters","asset":"USD|Rates|Equities","lean":"BULLISH|BEARISH|NEUTRAL"}] (max 5, ranked most market-moving first, prefer quotes that name a specific District when possible),"byAsset":[{"asset":"USD|Rates|Equities|FX majors","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}]}`;
+
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim (especially keyQuotes) in the provided text; never invent a quote or fact.', messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+
+  const payload = { meetingDate, fomcMeetingDate, analysis, diffSegments, prevDate, sourceUrl: url, generatedAt: new Date().toISOString() };
+  await kv.put(`beigebook_analysis_${meetingDate}`, JSON.stringify(payload)).catch(() => {});
+  await kv.put('beigebook_latest', JSON.stringify({ meetingDate })).catch(() => {});
+  return payload;
+}
+
+async function _beigeBookAutoCheck(reason = 'schedule') {
+  const pending = beigeBookPendingAsOf(Date.now(), 120);
+  const log = [];
+  for (const rel of pending) {
+    const already = await _beigeBookGetRaw(rel.meetingDate);
+    if (already) continue;
+    try {
+      const r = await fetchBeigeBook(rel.urlSuffix);
+      if (!r.ok) { if (!r.notYetPublished) log.push(`${rel.meetingDate} ✗ ${r.error || r.status}`); continue; }
+      await kv.put(`beigebook_raw_${rel.meetingDate}`, JSON.stringify({ text: r.text, url: r.url, fomcMeetingDate: rel.fomcMeetingDate, fetchedAt: new Date().toISOString() }));
+      log.push(`${rel.meetingDate} ✓ fetched`);
+      if (process.env.ANT_KEY) {
+        try { await _buildBeigeBookAnalysis(rel.meetingDate); log.push(`${rel.meetingDate} ✓ analysed`); }
+        catch (e) { log.push(`${rel.meetingDate} analysis ✗ ${e.message}`); }
+      }
+    } catch (e) { log.push(`${rel.meetingDate} ✗ ${e.message}`); }
+  }
+  await kv.put('beigebook_fetch_log', JSON.stringify({ at: new Date().toISOString(), reason, log })).catch(() => {});
+  if (log.length) console.log(`[beigebook] (${reason}) ${log.join(' · ')}`);
+  return log;
+}
+
+app.get('/api/beigebook/calendar', (_req, res) => {
+  res.json({ ok: true, releases: BEIGE_BOOK_RELEASES, pending: beigeBookPendingAsOf(Date.now(), 120) });
+});
+app.get('/api/beigebook/latest', async (_req, res) => {
+  try {
+    const ptr = await kv.get('beigebook_latest');
+    if (!ptr) return res.json({ ok: false, error: 'No Beige Book analysis yet — click Fetch now.' });
+    const { meetingDate } = JSON.parse(ptr);
+    const raw = await kv.get(`beigebook_analysis_${meetingDate}`);
+    if (!raw) return res.json({ ok: false, error: 'Pointer set but analysis missing — click Fetch now.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/beigebook/release/:date', async (req, res) => {
+  const date = req.params.date;
+  const raw = await kv.get(`beigebook_analysis_${date}`).catch(() => null);
+  res.json({ ok: true, meetingDate: date, release: raw ? JSON.parse(raw) : null });
+});
+app.get('/api/beigebook/history', async (req, res) => {
+  const n = Math.min(24, Math.max(1, parseInt(req.query.n) || 8));
+  const past = BEIGE_BOOK_RELEASES.filter(r => Date.parse(r.date) <= Date.now()).slice(-n);
+  const out = [];
+  for (const r of past) {
+    const raw = await kv.get(`beigebook_analysis_${r.date}`).catch(() => null);
+    if (raw) { const p = JSON.parse(raw); out.push({ meetingDate: r.date, headline: p.analysis?.headline, hawkishScore: p.analysis?.hawkishScore, regime: p.analysis?.regime }); }
+    else out.push({ meetingDate: r.date, headline: null, hawkishScore: null, regime: null });
+  }
+  res.json({ ok: true, history: out });
+});
+let _beigeBookCheckRunning = false;
+function _beigeBookRunCheck(reason) {
+  if (_beigeBookCheckRunning) return false;
+  _beigeBookCheckRunning = true;
+  _beigeBookAutoCheck(reason).catch(() => {}).finally(() => { _beigeBookCheckRunning = false; });
+  return true;
+}
+app.post('/api/beigebook/fetch-now', (_req, res) => {
+  const started = _beigeBookRunCheck('manual');
+  res.json({ ok: true, started, alreadyRunning: !started });
+});
+app.get('/api/beigebook/fetch-status', async (_req, res) => {
+  const raw = await kv.get('beigebook_fetch_log').catch(() => null);
+  res.json({ ok: true, running: _beigeBookCheckRunning, last: raw ? JSON.parse(raw) : null });
+});
+setInterval(() => { _beigeBookRunCheck('poll'); }, 30 * 60_000);
 
 // ── Labor Market Strength Engine ──────────────────────────────────────────────
 // Numeric-composition score (payrolls, wages, unemployment, participation) —
