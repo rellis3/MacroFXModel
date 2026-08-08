@@ -5716,6 +5716,14 @@ function forwardFillAlign(dateIndex, sparseMap) {
 // lines historically. Best-effort: no IV index / no FRED_KEY / fetch fail → left unset
 // (client falls back to COG), so Original/COG/Bot always render. `bars` = the same
 // sorted D1 history the bot_vol_annual enrichment already fetched; `byDate` its index.
+//
+// LEVEL CALIBRATION: implied vol (GVZ) carries a variance-risk-premium, so raw HAR-IV σ
+// is biased HIGH vs realized — over-widening the bands (the GOLD_C constants are fit to
+// the forecaster's realized-scale σ). We rescale so HAR-IV's MEAN matches the forecaster
+// σ over this window, keeping HAR-IV's day-to-day VARIATION (its real edge) but removing
+// the level bias. Only `hariv_annual` (read solely by the reversion COG-v2 branch) is
+// affected — COG / Original / Bot are untouched. VOL_FORECAST_HARIV_RAW=1 disables the
+// rescale to inspect the raw (pre-calibration) lines.
 async function _attachHarIvSigma(days, bars, byDate, pair) {
   const code = _IV_INDEX[String(pair).toUpperCase()];
   const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
@@ -5723,6 +5731,10 @@ async function _attachHarIvSigma(days, bars, byDate, pair) {
   let gvz;
   try { gvz = await fetchFredSeries(code, bars[0].date, fredKey); } catch { return; }
   if (!gvz || gvz.size < 60) return;
+
+  // Pass 1: raw annualized HAR-IV σ per day (√(var × 252) — harIvForecastNext returns a
+  // daily VARIANCE; var × √252 would under-scale ~60×).
+  const raw = {};
   for (const d of Object.keys(days)) {
     const idx = byDate.get(d);
     if (idx == null || idx < 60) continue;
@@ -5730,12 +5742,23 @@ async function _attachHarIvSigma(days, bars, byDate, pair) {
     if (slice.length < 60) continue;
     try {
       const ivPct = forwardFillAlign(slice.map(b => b.date), gvz);
-      // harIvForecastNext returns a daily VARIANCE (it regresses on realized variance),
-      // so annualize as σ = √(var × 252), NOT var × √252 (which under-scales ~60×).
       const varDaily = _harIvForecastNext(_realizedVarSeries(slice, 'gk'), _ivVarSeries(ivPct));
-      if (varDaily > 0) days[d].hariv_annual = +(Math.sqrt(varDaily * 252) * 100).toFixed(2);
+      if (varDaily > 0) raw[d] = Math.sqrt(varDaily * 252) * 100;
     } catch { /* per-day HAR-IV is optional enrichment — leave unset */ }
   }
+
+  // Level-calibration factor = mean(forecaster σ) / mean(raw HAR-IV σ) over days with both.
+  let sHar = 0, sFc = 0, n = 0;
+  for (const d of Object.keys(raw)) {
+    const fc = days[d]?.vol_annual;
+    if (fc > 0) { sHar += raw[d]; sFc += fc; n++; }
+  }
+  const useRaw = process.env.VOL_FORECAST_HARIV_RAW === '1';
+  const scale  = (!useRaw && n >= 20 && sHar > 0) ? (sFc / sHar) : 1;
+  if (scale !== 1) console.log(`[REVERSION] ${pair} HAR-IV level-cal ×${scale.toFixed(3)} (n=${n}, mean raw ${(sHar / n).toFixed(1)}% → fc ${(sFc / n).toFixed(1)}%)`);
+
+  // Pass 2: write the (level-calibrated) σ — the only field the COG-v2 branch reads.
+  for (const d of Object.keys(raw)) days[d].hariv_annual = +(raw[d] * scale).toFixed(2);
 }
 
 // Daily Treasury General Account balance from Treasury's Daily Treasury

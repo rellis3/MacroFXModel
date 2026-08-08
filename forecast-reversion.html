@@ -132,7 +132,7 @@
       <button data-c="original" class="on">Original</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
-      <button data-c="cogv2" title="COG for fx/indices, but GOLD uses HAR-IV σ (GVZ) + the forecaster's per-asset (non-COG-widened) bands — the bench's OOS gold winner. Needs the per-day hariv_annual enrichment (FRED GVZ); falls back to COG for gold if unavailable.">COG v2</button>
+      <button data-c="cogv2" title="COG for fx/indices, but GOLD uses HAR-IV σ (GVZ) + the forecaster's per-asset bands. HAR-IV σ is level-calibrated to the forecaster mean (strips the implied-vol risk premium that over-widened the raw bands), keeping HAR-IV's day-to-day variation. Needs the per-day hariv_annual enrichment (FRED GVZ); falls back to COG for gold if unavailable.">COG v2</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
     <span class="seg" id="calcCompare">
