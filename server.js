@@ -11366,8 +11366,30 @@ function _oiHistorySummary(inst) {
     savedAtMs: inst.savedAtMs ?? null,
   };
 }
+// The FULL per-strike ladder for one pair, side-by-side with the summary but in its own key
+// (`oi_history_raw`). The summary keeps only the top-8 walls, so a strike quietly BUILDING from
+// deep in the book is invisible until it cracks the top 8 — the raw ladder over time is the
+// "strike-over-time map" + early wall-building signal. CME serves NO OI history, so this can
+// ONLY be captured forward, never back-filled (course research idea #3, "start capturing early").
+// rawOI/rawChg/rawVol are already the compact strings stored on the inst; we add just the
+// context needed to interpret a past day's ladder (spot/basis/futures/dte).
+function _oiHistoryRaw(inst) {
+  if (!inst || typeof inst !== 'object') return null;
+  const rawOI = inst.rawOI && String(inst.rawOI).trim() ? inst.rawOI : null;
+  if (!rawOI) return null;   // single-value pastes with no chain — nothing per-strike to archive
+  return {
+    rawOI,
+    rawChg: inst.rawChg && String(inst.rawChg).trim() ? inst.rawChg : null,
+    rawVol: inst.rawVol && String(inst.rawVol).trim() ? inst.rawVol : null,
+    spot: inst.spot ?? null, futures: inst.futures ?? null, basis: inst.basis ?? null,
+    dte: inst.dte ?? null, savedAtMs: inst.savedAtMs ?? null,
+  };
+}
+const _OI_RAW_KEEP_DAYS = 90;   // the raw ladder is the irreplaceable capture — keep a longer window than the summary
+
 // Returns { n, wrote, day }. `force` makes the manual endpoint write even when nothing
-// changed, so a user-triggered archive is never a no-op that reports zero.
+// changed, so a user-triggered archive is never a no-op that reports zero. Writes BOTH the
+// lean summary (`oi_history`) and the full raw ladder (`oi_history_raw`) in one pass.
 async function _snapshotOIHistory(force = false) {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
@@ -11377,30 +11399,47 @@ async function _snapshotOIHistory(force = false) {
     const day = _rlSessionDate(null);
     const histRaw = await kv.get('oi_history').catch(() => null);
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
-    let n = 0, changed = 0;
+    const rawHistRaw = await kv.get('oi_history_raw').catch(() => null);
+    const rawHist = rawHistRaw ? (JSON.parse(rawHistRaw).data ?? JSON.parse(rawHistRaw)) : {};
+    let n = 0, changed = 0, rawChanged = 0;
     for (const [pair, inst] of Object.entries(store)) {
       const summary = _oiHistorySummary(inst);
-      if (!summary) continue;
-      hist[pair] = hist[pair] || {};
-      // This runs on a 30-min timer but the underlying paste changes ~once a day, so
-      // compare before overwriting. `oi_history` is now a CF KV key (durable), and CF
-      // KV's free plan allows 1,000 writes/day — blindly re-putting an identical blob 48
-      // times a day would spend 5% of that quota to store nothing new.
-      const before = JSON.stringify(hist[pair][day] ?? null);
-      hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
-      if (JSON.stringify(summary) !== before) changed++;
-      const dates = Object.keys(hist[pair]).sort();
-      const trim = dates.slice(0, Math.max(0, dates.length - 60));            // keep ~60 days
-      for (const d of trim) delete hist[pair][d];
-      if (trim.length) changed++;                                // a trim is a real change too
-      n++;
+      if (summary) {
+        hist[pair] = hist[pair] || {};
+        // This runs on a 30-min timer but the underlying paste changes ~once a day, so
+        // compare before overwriting. `oi_history` is now a CF KV key (durable), and CF
+        // KV's free plan allows 1,000 writes/day — blindly re-putting an identical blob 48
+        // times a day would spend 5% of that quota to store nothing new.
+        const before = JSON.stringify(hist[pair][day] ?? null);
+        hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
+        if (JSON.stringify(summary) !== before) changed++;
+        const dates = Object.keys(hist[pair]).sort();
+        const trim = dates.slice(0, Math.max(0, dates.length - 60));            // keep ~60 days
+        for (const d of trim) delete hist[pair][d];
+        if (trim.length) changed++;                                // a trim is a real change too
+        n++;
+      }
+      // Raw ladder, its own key, same dedup + date-keyed archive (yesterday's slot untouched).
+      const rawEntry = _oiHistoryRaw(inst);
+      if (rawEntry) {
+        rawHist[pair] = rawHist[pair] || {};
+        const rBefore = JSON.stringify(rawHist[pair][day] ?? null);
+        rawHist[pair][day] = rawEntry;
+        if (JSON.stringify(rawEntry) !== rBefore) rawChanged++;
+        const rDates = Object.keys(rawHist[pair]).sort();
+        const rTrim = rDates.slice(0, Math.max(0, rDates.length - _OI_RAW_KEEP_DAYS));
+        for (const d of rTrim) delete rawHist[pair][d];
+        if (rTrim.length) rawChanged++;
+      }
     }
     if (!n) return { n: 0, wrote: false, day };
-    // Nothing new — don't spend a KV write (unless the user explicitly forced one).
-    if (!changed && !force) return { n, wrote: false, day };
-    await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
-    console.log(`[oi-history] archived ${n} pair(s), ${changed} changed → ${day}`);
-    return { n, wrote: true, day };
+    let wrote = false;
+    // Nothing new — don't spend a KV write (unless the user explicitly forced one). The two
+    // keys write independently so a summary-only change doesn't rewrite the bigger raw blob.
+    if (changed || force) { await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() })); wrote = true; }
+    if (rawChanged || force) { await kv.put('oi_history_raw', JSON.stringify({ data: rawHist, timestamp: Date.now() })); wrote = true; }
+    if (wrote) console.log(`[oi-history] archived ${n} pair(s), ${changed} summary / ${rawChanged} raw changed → ${day}`);
+    return { n, wrote, day, changed, rawChanged };
   } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }
 }
 setInterval(_snapshotOIHistory, 30 * 60_000);                    // archive the day's paste periodically
@@ -11449,8 +11488,37 @@ app.get('/api/oi-history', async (req, res) => {
 });
 app.post('/api/oi-history/snapshot', async (_req, res) => {
   // force:true — a manual archive must actually write, so it can never look like a no-op.
-  try { const r = await _snapshotOIHistory(true); res.json({ ok: !r.error, pairsArchived: r.n, wrote: r.wrote, date: r.day ?? _rlSessionDate(null), ...(r.error ? { error: r.error } : {}) }); }
+  try { const r = await _snapshotOIHistory(true); res.json({ ok: !r.error, pairsArchived: r.n, wrote: r.wrote, date: r.day ?? _rlSessionDate(null), summaryChanged: r.changed, rawChanged: r.rawChanged, ...(r.error ? { error: r.error } : {}) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// The raw per-strike ladder archive (strike-over-time). Without ?pair= → a lightweight index
+// (per pair: how many days captured + the date range), so you can verify it's accumulating.
+// With ?pair= → that pair's day-keyed raw ladders (?date= for one day; default the latest,
+// ?limit= to cap). The strike-over-time viz will consume this later; for now it's verification
+// + the future consumer's data source.
+app.get('/api/oi-history-raw', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_history_raw').catch(() => null);
+    const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const norm = s => String(s).toLowerCase().replace(/[/_]/g, '');
+    const key = String(req.query.pair || '').trim();
+    if (!key) {
+      const index = {};
+      for (const [k, perPair] of Object.entries(hist)) {
+        const dates = Object.keys(perPair).sort();
+        index[k] = { days: dates.length, first: dates[0] ?? null, last: dates[dates.length - 1] ?? null };
+      }
+      return res.json({ ok: true, keepDays: _OI_RAW_KEEP_DAYS, pairs: index });
+    }
+    const pk = Object.keys(hist).find(k => k === key || norm(k) === norm(key));
+    const perPair = pk ? hist[pk] : {};
+    const dates = Object.keys(perPair).sort();
+    const date = String(req.query.date || '').trim();
+    if (date) return res.json({ ok: true, pair: pk || key, date, entry: perPair[date] ?? null });
+    const limit = Math.min(_OI_RAW_KEEP_DAYS, parseInt(req.query.limit) || 5);
+    const recent = dates.slice(-limit).map(d => ({ date: d, ...perPair[d] }));
+    res.json({ ok: true, pair: pk || key, dates, history: recent });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── OI bot PLAN producer (gamma-regime strategy → tradeable zones) ────────────
