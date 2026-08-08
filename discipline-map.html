@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discipline Map — MacroFXModel</title>
+<style>
+:root{
+  --bg:#0b0e13; --bg-grad:#0d1119;
+  --surface:#12161f; --surface2:#171d29; --surface3:#1c2432;
+  --border:#232a3a; --border-soft:#1a2030;
+  --text:#e8ecf3; --text2:#93a0b5; --text3:#57637a;
+  --accent:#c99a4e; --accent-soft:rgba(201,154,78,.14); --accent-text:#e3bb70; --accent-line:rgba(201,154,78,.35);
+  --bull:#3ecf8e; --bull-soft:rgba(62,207,142,.13); --bull-line:rgba(62,207,142,.35);
+  --bear:#f2704a; --bear-soft:rgba(242,112,74,.13); --bear-line:rgba(242,112,74,.35);
+  --warn:#e8b94e; --warn-soft:rgba(232,185,78,.13); --warn-line:rgba(232,185,78,.35);
+  --info:#5b8dfb; --info-soft:rgba(91,141,251,.13); --info-line:rgba(91,141,251,.35);
+  --radius:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+a{color:var(--info);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.hdr{position:sticky;top:0;z-index:50;background:rgba(11,14,19,.94);backdrop-filter:blur(8px);
+     border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hdr h1{font-size:17px;font-weight:700}
+.hdr .stamp{font-size:11px;color:var(--text3);max-width:520px}
+.hdr .spacer{flex:1}
+.hbtn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 13px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap}
+.hbtn:hover{color:var(--text);border-color:var(--text3);text-decoration:none}
+
+.wrap{max-width:1180px;margin:0 auto;padding:20px}
+.intro{color:var(--text2);font-size:12.5px;line-height:1.7;max-width:820px;margin-bottom:22px}
+.intro b{color:var(--text)}
+
+.sec{margin-bottom:26px}
+.sec-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.sec-hd h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
+.sec-note{font-size:11px;color:var(--text3)}
+
+/* trust icon badges — same convention as The Board / BACKTEST_INDEX.md */
+.trust{font-size:9.5px;font-weight:600;padding:2px 6px;border-radius:3px;white-space:nowrap}
+.trust.validated{color:var(--bull);background:var(--bull-soft)}
+.trust.forward{color:var(--info);background:var(--info-soft)}
+.trust.context{color:var(--text3);background:var(--surface3)}
+.trust.defect{color:var(--warn);background:var(--warn-soft)}
+.trust.null{color:var(--bear);background:var(--bear-soft)}
+.trust.infra{color:var(--text2);background:var(--surface3)}
+
+/* quadrant grid */
+.quad-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:820px){.quad-grid{grid-template-columns:1fr}}
+.quad{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.quad-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.quad-title{font-size:14.5px;font-weight:700}
+.quad-stats{font-size:10.5px;color:var(--text3);white-space:nowrap}
+.quad-stats b.r{color:var(--bull)} .quad-stats b.t{color:var(--warn)} .quad-stats b.a{color:var(--text3)}
+
+.cell{border-top:1px solid var(--border-soft);padding:10px 0}
+.cell:first-child{border-top:none}
+.cell-hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cell-name{font-weight:600;font-size:12.5px}
+.cell-badges{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.cell-status{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:2px 6px;border-radius:3px}
+.cell-status.real{color:var(--bull);background:var(--bull-soft)}
+.cell-status.thin{color:var(--warn);background:var(--warn-soft)}
+.cell-status.absent{color:var(--text3);background:var(--surface3)}
+.cell-note{font-size:11.5px;color:var(--text2);margin-top:4px;line-height:1.55}
+.cell-links{margin-top:5px;font-size:10.5px}
+.cell-links a{margin-right:10px}
+
+.gaps p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;max-width:900px}
+.gaps p b{color:var(--text)}
+
+/* reflexivity board */
+.reflex-wrap{overflow-x:auto}
+table.reflex{width:100%;border-collapse:collapse;font-size:12px}
+table.reflex th{text-align:left;font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:0 10px 8px;font-weight:600;white-space:nowrap}
+table.reflex td{padding:7px 10px;border-top:1px solid var(--border-soft);white-space:nowrap}
+table.reflex tr.hi td{background:rgba(232,185,78,.05)}
+.rx-sym{font-weight:600}
+.rx-bar-wrap{display:inline-flex;align-items:center;gap:6px;width:110px}
+.rx-bar{flex:1;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.rx-bar-fill{height:100%;border-radius:3px}
+.rx-label{font-size:10px;color:var(--text3)}
+.pending{color:var(--text3);font-size:12px;padding:14px 0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🗺 Discipline Map</h1>
+  <span class="stamp">What's real, what's thin, what's honestly absent — across the four disciplines every trading book teaches.</span>
+  <div class="spacer"></div>
+  <a class="hbtn" href="indexv2.html">← The Board</a>
+  <a class="hbtn" href="index.html">Dashboard</a>
+</div>
+
+<div class="wrap">
+  <p class="intro">Most trading books split the craft into four boxes: <b>Fundamentals, Technicals, Behavioral, Quantitative</b>. This page is an honest audit of where MacroFXModel actually stands in each — using the same trust icons as <a href="https://github.com/rellis3/MacroFXModel/blob/main/BACKTEST_INDEX.md" target="_blank">BACKTEST_INDEX.md</a> (✅ proven edge · 🔁 contaminated evidence · 🔧 open defect · 🧪 context/unvalidated · 📚 infra/legacy). The point isn't to make every box look full — several are genuinely thin or absent, and that's stated plainly rather than papered over.</p>
+
+  <div class="sec">
+    <div class="sec-hd"><h2>Reflexivity — live composite</h2><span class="sec-note">new metric, built for this page — see method below the table</span></div>
+    <div class="reflex-wrap">
+      <table class="reflex" id="reflex-table">
+        <thead><tr><th>Pair</th><th>Reflexivity</th><th>Read</th><th>Inputs used</th></tr></thead>
+        <tbody id="reflex-body"><tr><td colspan="4" class="pending">Loading live data…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="cell-note" style="margin-top:10px;max-width:820px">
+      <b>Method:</b> averages up to three 0–100 inputs already computed elsewhere on the platform — vol-percentile stretch (how extended vs. its own 252-day history), HMM trend persistence (how likely the current regime is trending vs. ranging), and COT positioning crowding (how far speculative positioning sits from neutral, for whichever currency leg has CFTC coverage — indices have no clean futures-market equivalent, so positioning is left out for them rather than faked).
+      Needs at least two inputs to show a score — anything with only one is marked "not enough inputs" rather than guessed. This is a fresh, unvalidated synthesis (🧪) — it has not been backtested, and a high score means "several reinforcing signals are stacked right now," not "trade this."
+    </p>
+  </div>
+
+  <div class="quad-grid">
+
+    <div class="quad" id="q-fund">
+      <div class="quad-hd"><span class="quad-title">Fundamentals</span><span class="quad-stats"><b class="r">2</b> real · <b class="t">1</b> thin · <b class="a">2</b> absent</span></div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Global Macro</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">Rate differentials, USD composite, net-liquidity regime — real and substantial as data. Strategies built on top of it are still unproven or under repair.</div>
+        <div class="cell-links"><a href="global-liquidity.html" target="_blank">Global Liquidity</a><a href="rate-matrix.html" target="_blank">Rate Matrix</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Economics</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">Econ calendar + data-surprise feed powers the daily brief. A standalone econ-momentum strategy was tested and failed (banked null) — kept as a read-only ranking viewer.</div>
+        <div class="cell-links"><a href="today.html" target="_blank">Daily Brief</a><a href="econ-trend.html" target="_blank">Econ Trend</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Valuation &amp; Cash Flow Models</span><span class="cell-badges"><span class="cell-status thin">Thin</span><span class="trust null">⛔</span></span></div>
+        <div class="cell-note">A macro "fair value" model for currencies was built and tested — didn't hold up. Kept as a read-only viewer, never shown as a live signal.</div>
+        <div class="cell-links"><a href="mve.html" target="_blank">Macro Fair Value</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Earnings Forecasting</span><span class="cell-badges"><span class="cell-status absent">Absent</span></span></div>
+        <div class="cell-note">No earnings/EPS data anywhere in the platform. Structural, not a bug — see the note below.</div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Industry Analysis</span><span class="cell-badges"><span class="cell-status absent">Absent</span></span></div>
+        <div class="cell-note">No sector or peer-comparison analysis. Same structural reason as Earnings Forecasting.</div>
+      </div>
+    </div>
+
+    <div class="quad" id="q-tech">
+      <div class="quad-hd"><span class="quad-title">Technicals</span><span class="quad-stats"><b class="r">5</b> real · <b class="t">0</b> thin · <b class="a">0</b> absent</span></div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Trend</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust validated">✅</span><span class="trust context">🧪</span></span></div>
+        <div class="cell-note">Range-Line is the platform's one proven edge (Sharpe 4.7–6 OOS, realistic cost). Trend Basket is a newer, still-untested diversifier sleeve.</div>
+        <div class="cell-links"><a href="range-line-strategy.html" target="_blank">Range-Line</a><a href="trend-basket.html" target="_blank">Trend Basket</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Chart Patterns</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">Real classic pattern detection (head &amp; shoulders, flags, wedges) plus a 5-year analog scanner. No costed backtest gate yet — research tier.</div>
+        <div class="cell-links"><a href="pattern-lab.html" target="_blank">Pattern Lab</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Momentum</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust validated">✅</span><span class="trust null">⛔</span></span></div>
+        <div class="cell-note">Momentum math is reused across the platform. Standalone retail momentum strategies (EMA/RSI crosses) were tested and banked null.</div>
+        <div class="cell-links"><a href="strategy-lab.html" target="_blank">Strategy Lab</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Volume</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">Real volume-derived math (money-flow, VWAP, volume profile) — mostly feeds other confluence scores rather than standing on its own.</div>
+        <div class="cell-links"><a href="vwap-reversion.html" target="_blank">VWAP Reversion</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Volatility</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust validated">✅</span><span class="trust context">🧪</span><span class="trust defect">🔧</span></span></div>
+        <div class="cell-note">The deepest-built cell on the platform. Core vol math is trusted; individual strategies on top range from solid to open defects — check the tier before trusting any one.</div>
+        <div class="cell-links"><a href="vol-forecast-v2.html" target="_blank">Vol Forecast v2</a></div>
+      </div>
+    </div>
+
+    <div class="quad" id="q-behav">
+      <div class="quad-hd"><span class="quad-title">Behavioral</span><span class="quad-stats"><b class="r">3</b> real · <b class="t">0</b> thin · <b class="a">2</b> absent</span></div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Sentiment</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span></span></div>
+        <div class="cell-note">Genuine AI reading of Fed statements/speeches for hawkish/dovish tone. Context, not a proven signal.</div>
+        <div class="cell-links"><a href="fomc-sentiment.html" target="_blank">FOMC Sentiment</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Positioning</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span></span></div>
+        <div class="cell-note">Real CFTC weekly positioning data (net %, crowding percentile). Feeds the Reflexivity score above. No backtest proves it as a timing tool on its own.</div>
+        <div class="cell-links"><a href="cot-extremes.html" target="_blank">COT Extremes</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Reflexivity</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span></span></div>
+        <div class="cell-note">New composite built for this page — stretch + trend persistence + positioning crowding. See the live board above.</div>
+        <div class="cell-links"><a href="#reflex-table">Jump to table ↑</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Cognitive Bias</span><span class="cell-badges"><span class="cell-status absent">Absent</span></span></div>
+        <div class="cell-note">Only exists as a lesson page teaching the concept (survivorship bias, in the data-quality sense). Nothing analyzes your own trading — that needs a trade journal, which doesn't exist yet.</div>
+        <div class="cell-links"><a href="theory-lab/lessons/point-in-time-data-survivorship-bias.html" target="_blank">Survivorship Bias lesson</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Bubbles &amp; Crashes</span><span class="cell-badges"><span class="cell-status absent">Absent</span></span></div>
+        <div class="cell-note">No live mania/panic detector. Genuinely hard to validate — rare events, small samples — so it's held off rather than shipped looking smarter than it is.</div>
+        <div class="cell-links"><a href="theory-lab/lessons/emh.html" target="_blank">Efficient Market Hypothesis lesson</a></div>
+      </div>
+    </div>
+
+    <div class="quad" id="q-quant">
+      <div class="quad-hd"><span class="quad-title">Quantitative</span><span class="quad-stats"><b class="r">5</b> real · <b class="t">0</b> thin · <b class="a">0</b> absent</span></div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Systematic Strategies</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust validated">✅</span><span class="trust null">⛔</span><span class="trust context">🧪</span></span></div>
+        <div class="cell-note">The best-populated cell — full spectrum from proven to banked-null, honestly labeled throughout.</div>
+        <div class="cell-links"><a href="range-line-strategy.html" target="_blank">Range-Line</a><a href="strategy-lab.html" target="_blank">Strategy Lab</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Backtesting &amp; Modeling</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">The platform's methodological backbone — real cost modeling, in/out-of-sample discipline. Infrastructure, not itself an edge.</div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Derivatives</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">Real options-derived analytics — gamma exposure, call/put walls, max pain. A live overlay, not backtested as a standalone edge.</div>
+        <div class="cell-links"><a href="oi-dashboard.html" target="_blank">OI Analytics</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Algorithmic Trading</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">The bot fleet is real and running live. Each bot's trust tier inherits from whichever backtest underlies it — from ✅ Range-Line down to unproven others.</div>
+        <div class="cell-links"><a href="bot-config.html" target="_blank">Bot Config</a></div>
+      </div>
+      <div class="cell">
+        <div class="cell-hd"><span class="cell-name">Machine Learning &amp; AI</span><span class="cell-badges"><span class="cell-status real">Real</span><span class="trust context">🧪</span><span class="trust infra">📚</span></span></div>
+        <div class="cell-note">Narrower than it sounds: one statistical HMM regime model (not deep learning) and one deployed logistic-regression classifier for the Gold bot. Everything else billed as "AI" is Claude writing prose, not predicting price.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec gaps">
+    <div class="sec-hd"><h2>Genuine gaps, in plain terms</h2></div>
+    <p><b>Fundamentals is structurally thin, not broken.</b> This platform trades FX, gold, and index CFDs — not individual stocks — so there's no earnings data, no company financials, no valuation models to build. That's a description of what this platform is, not a missing feature.</p>
+    <p><b>Behavioral is the weakest quadrant.</b> Sentiment and Positioning are real, live data — but neither has been proven to predict price; they're always context, never a signal to act on alone. Cognitive Bias and Bubbles &amp; Crashes exist only as teaching material today — no tool watches your own trading for bias, and no detector flags mania/panic conditions live.</p>
+    <p><b>Technicals and Quantitative carry the platform.</b> That's not an accident — this is where the real, tested edge lives (Range-Line above all), and where the infrastructure to prove or kill an idea (backtesting, cost modeling, OOS discipline) is genuinely rigorous.</p>
+  </div>
+
+</div>
+
+<script>
+async function jget(url){ try{ const r=await fetch(url); if(!r.ok) return null; return await r.json(); }catch(e){ return null; } }
+
+const BOARD_INSTR = [
+  { name:'GOLD',   full:'Gold / USD',        ac:'metal' },
+  { name:'NQ',     full:'Nasdaq 100',        ac:'index' },
+  { name:'SPX500', full:'S&P 500',           ac:'index' },
+  { name:'DE30',   full:'DAX 40',            ac:'index' },
+  { name:'UK100',  full:'FTSE 100',          ac:'index' },
+  { name:'US30',   full:'Dow Jones',         ac:'index' },
+  { name:'US2000', full:'Russell 2000',      ac:'index' },
+  { name:'EURUSD', full:'Euro / Dollar',     ac:'fx' },
+  { name:'GBPUSD', full:'Sterling / Dollar', ac:'fx' },
+  { name:'USDJPY', full:'Dollar / Yen',      ac:'fx' },
+  { name:'AUDUSD', full:'Aussie / Dollar',   ac:'fx' },
+  { name:'NZDUSD', full:'Kiwi / Dollar',     ac:'fx' },
+  { name:'USDCAD', full:'Dollar / CAD',      ac:'fx' },
+  { name:'USDCHF', full:'Dollar / Franc',    ac:'fx' },
+  { name:'GBPJPY', full:'Sterling / Yen',    ac:'fx' },
+  { name:'EURGBP', full:'Euro / Sterling',   ac:'fx' },
+  { name:'EURJPY', full:'Euro / Yen',        ac:'fx' },
+  { name:'EURCHF', full:'Euro / Franc',      ac:'fx' },
+  { name:'GBPCHF', full:'Sterling / Franc',  ac:'fx' },
+  { name:'AUDJPY', full:'Aussie / Yen',      ac:'fx' },
+  { name:'CADJPY', full:'CAD / Yen',         ac:'fx' },
+];
+// board name → daily-brief's HMM/regime key isn't needed here — daily-brief is keyed
+// by the same board names for its top-level instrument list.
+
+function legExtreme(ccy, cotBySym){
+  if (!ccy || ccy==='USD') return null; // no direct USD line in CFTC TFF/DISAGG reports
+  const c = cotBySym[ccy];
+  if (!c || c.specSharePct==null) return null;
+  return Math.abs(c.specSharePct - 50) * 2; // 0 = neutral, 100 = maximally crowded either side
+}
+function cotPositioningFor(name, ac, cotBySym){
+  if (ac==='metal') return legExtreme('GOLD', cotBySym);
+  if (ac==='index') return null; // no clean CME-equivalent mapping to these CFD indices
+  const base = name.slice(0,3), quote = name.slice(3,6);
+  const a = legExtreme(base, cotBySym), b = legExtreme(quote, cotBySym);
+  if (a==null) return b; if (b==null) return a;
+  return Math.max(a,b);
+}
+function reflexivity(conePct, trendProb, posExtreme){
+  const parts = [conePct, trendProb, posExtreme].filter(v=>v!=null);
+  if (parts.length < 2) return { score:null, n:parts.length };
+  const score = parts.reduce((a,b)=>a+b,0) / parts.length;
+  const label = score>=66 ? 'Self-reinforcing' : score>=33 ? 'Partial' : 'Not reflexive';
+  return { score, n:parts.length, label };
+}
+
+async function loadReflexivity(){
+  const [brief, cot] = await Promise.all([
+    jget('/api/daily-brief'),
+    jget('/api/cot-extremes'),
+  ]);
+  const tbody = document.getElementById('reflex-body');
+  if (!brief) { tbody.innerHTML = '<tr><td colspan="4" class="pending">Daily brief unavailable right now.</td></tr>'; return; }
+
+  const cotBySym = {};
+  (cot?.instruments||[]).forEach(c=>{ cotBySym[c.sym] = c; });
+  const cotOk = !!(cot?.instruments||[]).length;
+
+  const rows = BOARD_INSTR.map(instr=>{
+    const b = brief?.instruments?.[instr.name] || null;
+    const conePct = b?.vol_pct ?? null;
+    const trendProb = b?.regime?.trend_prob ?? null;
+    const posExtreme = cotOk ? cotPositioningFor(instr.name, instr.ac, cotBySym) : null;
+    const r = reflexivity(conePct, trendProb, posExtreme);
+    const inputs = [
+      conePct!=null ? 'stretch' : null,
+      trendProb!=null ? 'trend' : null,
+      posExtreme!=null ? 'positioning' : null,
+    ].filter(Boolean);
+    return { instr, r, inputs };
+  }).filter(row => row.r.score != null);
+
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="4" class="pending">Not enough live inputs to compute Reflexivity right now.</td></tr>'; return; }
+
+  rows.sort((a,b)=>b.r.score - a.r.score);
+  const color = s => s>=66 ? 'var(--warn)' : s>=33 ? 'var(--info)' : 'var(--text3)';
+  tbody.innerHTML = rows.map(row=>{
+    const s = Math.round(row.r.score);
+    return `<tr class="${s>=66?'hi':''}">
+      <td class="rx-sym">${row.instr.name}</td>
+      <td><span class="rx-bar-wrap"><span class="rx-bar"><span class="rx-bar-fill" style="width:${s}%;background:${color(s)}"></span></span><span class="rx-label">${s}</span></span></td>
+      <td>${row.r.label}</td>
+      <td class="rx-label">${row.inputs.join(', ')} (${row.r.n}/3)</td>
+    </tr>`;
+  }).join('');
+}
+loadReflexivity();
+</script>
+
+</body>
+</html>
