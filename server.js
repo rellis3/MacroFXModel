@@ -79,6 +79,8 @@ import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
+import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
+import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair } from './js/macroScorecardEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -2722,6 +2724,18 @@ async function _buildMorningBrief() {
   // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
   // inventing events, so a tier-1 event that isn't fed here is silently omitted.
   const macroChanges = await _loadMacroChanges().catch(() => null);
+  // Cross-engine composite ranking (js/macroScorecardEngine.js) — without
+  // this the brief only ever saw generic cross-asset dashboard series
+  // (VIX/DXY/yields) and a scheduled-events calendar that can say "CPI is
+  // due today" but never what any of this project's own CPI/GDP/labor/
+  // sentiment engines actually concluded about it. Feeds a compact ranked
+  // line per currency so the brief can ground its FX/dollar read in this
+  // project's own composite scores instead of flying blind on them.
+  const scorecard = await _buildMacroScorecard().catch(() => null);
+  const scorecardLines = scorecard?.ranked?.length
+    ? scorecard.ranked.map((r, i) => `${i + 1}. ${r.ccy} ${r.composite > 0 ? '+' : ''}${r.composite} (${r.coverage.length}/9 dims covered: ${r.coverage.join(', ')})`).join('\n')
+      + (scorecard.pair ? `\nStrongest-vs-weakest pairing: ${scorecard.pair.long} vs ${scorecard.pair.short} (composite gap ${scorecard.pair.gap})` : '\nNo confident strongest-vs-weakest pairing — composite spreads are too tight today.')
+    : null;
   const events = await _fetchTodayEvents().catch(() => []);
   const bigEvents = events
     .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
@@ -2742,6 +2756,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
+${scorecardLines ? `\n=== MACRO SCORECARD — this project's own cross-engine composite ranking, strongest to weakest (each currency's score averages whatever of central-bank sentiment/CPI/GDP/business-activity/labor-market/retail-sales/trade-balance/real-yield/PPI is currently covered for it, each already on a -1..+1 scale) ===\n${scorecardLines}\nUse this to ground the dollar/FX-complex section in this project's OWN scoring, not just generic yield/DXY levels — e.g. if USD ranks near the top with wide coverage, that's a real evidenced reason to lean dollar-supportive, not just a vibe. Don't overstate a thin-coverage score (few dims covered) with the same confidence as a well-covered one — say so if leaning on a partial read.` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
@@ -4368,6 +4383,134 @@ setInterval(() => {
   _realYieldRunning = true;
   _buildRealYieldScores().catch(() => {}).finally(() => { _realYieldRunning = false; });
 }, 20 * 60_000);
+
+// ── PPI / Pipeline Inflation Engine (see js/ppiEngine.js) ──────────────────
+// USD-only, deliberately — the non-US OECD PPI family on FRED was
+// confirmed frozen since ~Dec 2022 during research; see that file's header
+// for the full verify-before-build reasoning. Same daily-gate refresh
+// pattern as every other engine here, just over a 1-currency universe.
+const _PPI_KV = 'ppi_v1';
+async function _buildPpiScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(PPI_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchPpiData(ccy, fredKey);
+      byCcy[ccy] = ppiCompositeScore(data, PPI_UNIVERSE[ccy]);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_PPI_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/ppi', async (_req, res) => {
+  try {
+    const raw = await kv.get(_PPI_KV);
+    if (!raw) return res.json({ ok: false, error: 'No PPI data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _ppiRunning = false;
+app.post('/api/ppi/refresh', (_req, res) => {
+  if (_ppiRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _ppiRunning = true;
+  _buildPpiScores().catch(() => {}).finally(() => { _ppiRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/ppi/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_PPI_KV).catch(() => null);
+  res.json({ ok: true, running: _ppiRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _ppiLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _ppiRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_ppiLastRun === today) return;
+  _ppiLastRun = today;
+  _ppiRunning = true;
+  _buildPpiScores().catch(() => {}).finally(() => { _ppiRunning = false; });
+}, 20 * 60_000);
+
+// ── Macro Scorecard (see js/macroScorecardEngine.js) ────────────────────────
+// The one place that reads across EVERY other engine's already-cached KV
+// and combines them into a single ranked per-currency view — no new
+// fetching, no new refresh loop, just an aggregation read computed fresh
+// on each request from data every other engine is already keeping warm on
+// its own daily-gated schedule. `cbSentiment` (central-bank text
+// sentiment) only covers USD/EUR/GBP/JPY (the 4 currencies with a built
+// sentiment engine) — AUD/CAD/CHF/NZD score on their remaining numeric
+// dimensions, same partial-coverage handling every per-engine composite
+// here already does.
+const _CB_SENTIMENT = [
+  { ccy: 'USD', meetings: FOMC_MEETINGS, prefix: 'fomc_analysis_statement_' },
+  { ccy: 'EUR', meetings: ECB_MEETINGS, prefix: 'ecb_analysis_statement_' },
+  { ccy: 'GBP', meetings: BOE_MEETINGS, prefix: 'boe_analysis_summary_' },
+  { ccy: 'JPY', meetings: BOJ_MEETINGS, prefix: 'boj_analysis_statement_' },
+];
+async function _loadCbSentiment() {
+  const out = {};
+  await Promise.all(_CB_SENTIMENT.map(async ({ ccy, meetings, prefix }) => {
+    const past = meetings.filter(m => Date.parse(m.date) <= Date.now());
+    const latest = past.at(-1);
+    if (!latest) return;
+    try {
+      const raw = await kv.get(`${prefix}${latest.date}`);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      if (p.analysis?.hawkishScore != null) out[ccy] = { score: p.analysis.hawkishScore, meetingDate: latest.date, regime: p.analysis.regime };
+    } catch { /* omitted — currency scores on its remaining dims */ }
+  }));
+  return out;
+}
+async function _buildMacroScorecard() {
+  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, cbSentiment] = await Promise.all([
+    kv.get(_CPI_KV).catch(() => null),
+    kv.get(_GDP_KV).catch(() => null),
+    kv.get(_ISM_KV).catch(() => null),
+    kv.get(_LABOR_MARKET_KV).catch(() => null),
+    kv.get(_RETAIL_SALES_KV).catch(() => null),
+    kv.get(_TRADE_BALANCE_KV).catch(() => null),
+    kv.get(_REAL_YIELD_KV).catch(() => null),
+    kv.get(_PPI_KV).catch(() => null),
+    _loadCbSentiment(),
+  ]);
+  const cpi = cpiRaw ? JSON.parse(cpiRaw).byCcy : {};
+  const gdp = gdpRaw ? JSON.parse(gdpRaw).byCcy : {};
+  const ism = ismRaw ? JSON.parse(ismRaw).byCcy : {};
+  const labor = laborRaw ? JSON.parse(laborRaw).byCcy : {};
+  const retail = retailRaw ? JSON.parse(retailRaw).byCcy : {};
+  const trade = tradeRaw ? JSON.parse(tradeRaw).byCcy : {};
+  const realYield = realYieldRaw ? JSON.parse(realYieldRaw).byCcy : {};
+  const ppi = ppiRaw ? JSON.parse(ppiRaw).byCcy : {};
+
+  const byCcyDims = {};
+  for (const ccy of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']) {
+    byCcyDims[ccy] = {
+      cbSentiment: cbSentiment[ccy]?.score ?? null,
+      cpi: cpi[ccy]?.pressure ?? null,
+      gdp: gdp[ccy]?.score ?? null,
+      ism: ism[ccy]?.activity ?? null,
+      laborMarket: labor[ccy]?.strength ?? null,
+      retailSales: retail[ccy]?.spending ?? null,
+      tradeBalance: trade[ccy]?.score ?? null,
+      realYield: realYield[ccy]?.score ?? null,
+      ...(ccy === 'USD' ? { ppi: ppi[ccy]?.pressure ?? null } : {}),
+    };
+  }
+  const { ranked, uncovered } = buildMacroScorecard(byCcyDims);
+  const pair = macroTopBottomPair(ranked);
+  return { ranked, uncovered, pair, cbSentiment, generatedAt: new Date().toISOString() };
+}
+app.get('/api/macro-scorecard', async (_req, res) => {
+  try {
+    const data = await _buildMacroScorecard();
+    res.json({ ok: true, ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
 app.post('/api/ai-backtest', async (req, res) => {
