@@ -21,7 +21,7 @@ import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { buildOILevelText } from './oiLevelExport.js';
-import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect } from './oi.js';
+import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect, oiReprojectBasis } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
@@ -908,6 +908,30 @@ console.log('\n[oi day-expiry]');
     const noBand = buildOILevelText({ 'EUR/USD': m.inst }, { generated: 'x' }).split('\n').filter(l => l.startsWith('OI '));
     const withBand = buildOILevelText({ 'EUR/USD': m.inst }, { generated: 'x', bandByPair: { 'EUR/USD': band } }).split('\n').filter(l => l.startsWith('OI '));
     ok('band export adds the in-band mid-expiry (5dte) walls', withBand.some(l => /5dte/.test(l)) && !noBand.some(l => /5dte/.test(l)), `${noBand.length}→${withBand.length}`);
+  }
+
+  // Live basis re-projection: EVERY spot-equivalent level moves by −Δbasis (the light intraday
+  // "basis control"); distances and OI-derived structure stay put; spot/futures/basis freshen.
+  {
+    const inst = {
+      pair: 'EUR/USD', spot: 1.1500, futures: 1.1503, basis: 0.0003,
+      maxPain: 1.1450, callWall: 1.1600, putWall: 1.1400, gammaFlip: 1.1480, gexFlip: 1.1470,
+      callWalls: [{ strike: 1.1600, oi: 9000 }], putWalls: [{ strike: 1.1400, oi: 8000 }],
+      gexFlips: [{ price: 1.1470 }], volumeMagnets: [{ strike: 1.1550 }], clusters: [{ center: 1.1590 }],
+      perExpiry: [{ dte: 2, maxPain: 1.1455, callWall: 1.1605, putWall: 1.1405 }],
+      expectedMove: { upper: 1.1650, lower: 1.1350, move: 0.0300 },
+      dayExpiry: { dte: 1, maxPain: 1.1452, callWall: 1.1590, putWall: 1.1410, callWalls: [{ strike: 1.1590, oi: 3000 }] },
+    };
+    const rp = oiReprojectBasis(inst, { newBasis: 0.0008, newSpot: 1.1502, newFutures: 1.1510 });   // Δ=+0.0005 → −0.0005 shift
+    const d = 0.0005, close = (a, b) => Math.abs(a - b) < 1e-9;
+    ok('reproject shifts headline levels by −Δbasis', close(rp.maxPain, 1.1450 - d) && close(rp.callWall, 1.1600 - d) && close(rp.gammaFlip, 1.1480 - d));
+    ok('reproject shifts nested wall/flip/cluster/perExpiry/dayExpiry levels', close(rp.callWalls[0].strike, 1.1600 - d)
+      && close(rp.gexFlips[0].price, 1.1470 - d) && close(rp.clusters[0].center, 1.1590 - d)
+      && close(rp.perExpiry[0].callWall, 1.1605 - d) && close(rp.dayExpiry.putWall, 1.1410 - d) && close(rp.dayExpiry.callWalls[0].strike, 1.1590 - d));
+    ok('reproject leaves DISTANCE fields (expectedMove.move) untouched', close(rp.expectedMove.move, 0.0300) && close(rp.expectedMove.upper, 1.1650 - d));
+    ok('reproject freshens spot/futures/basis', close(rp.spot, 1.1502) && close(rp.futures, 1.1510) && close(rp.basis, 0.0008));
+    const same = oiReprojectBasis(inst, { newBasis: 0.0003, newSpot: 1.1501, newFutures: 1.1504 });   // Δ=0 → no level move
+    ok('reproject with zero Δbasis moves no levels', close(same.maxPain, 1.1450) && close(same.spot, 1.1501));
   }
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
