@@ -74,6 +74,16 @@ console.log('[retailSalesScore — rounds long floating-point tails on pre-compu
   ok('latestYoy rounds to 2dp', r.latestYoy === 2.94, r.latestYoy);
 }
 
+console.log('[retailSalesScore — score field itself is rounded, not just latestYoy]');
+{
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`d${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('d19', 1.03);
+  const meta = { series: 'x', isIndex: false };
+  const r = retailSalesScore(m, meta);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[RETAIL_SALES_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => RETAIL_SALES_UNIVERSE[c]));

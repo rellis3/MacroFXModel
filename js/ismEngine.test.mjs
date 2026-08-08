@@ -81,6 +81,15 @@ console.log('[diffusionIndexScore — rounds long floating-point tails]');
   ok('latestValue rounds to 2dp', r.latestValue === -12.85, r.latestValue);
 }
 
+console.log('[diffusionIndexScore — score field itself is rounded, not just latestValue]');
+{
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`d${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('d19', 1.03);
+  const r = diffusionIndexScore(m);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[ISM_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => ISM_UNIVERSE[c]));

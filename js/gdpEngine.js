@@ -60,7 +60,7 @@ export function latestZScore(values, lookback = 12, minBaseline = 6) {
 }
 
 const clip = (v, lo = -1, hi = 1) => Math.max(lo, Math.min(hi, v));
-const zToScore = z => (z == null ? null : clip(z / 2.5));
+const zToScore = z => (z == null ? null : round2(clip(z / 2.5)));
 
 // ── Composite ────────────────────────────────────────────────────────────
 

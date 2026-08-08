@@ -57,6 +57,16 @@ console.log('[ppiCompositeScore — composite IS the headline score directly, co
   ok('empty input -> no dims, pressure null, not a crash', r.coverage.length === 0 && r.pressure === null);
 }
 
+console.log('[ppiScore — score field itself is rounded, not just latestYoy]');
+{
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`d${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('d19', 1.03);
+  const meta = { series: 'x', isIndex: false };
+  const r = ppiScore(m, meta);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[PPI_UNIVERSE sanity — USD-only by design]');
 {
   ok('covers USD only', Object.keys(PPI_UNIVERSE).length === 1 && PPI_UNIVERSE.USD);
