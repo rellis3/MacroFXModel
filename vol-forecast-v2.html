@@ -731,6 +731,7 @@
         <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
         <button class="vf-exp-item" id="vfCogSessBtn"       onclick="closeExpDropdown();exportCogSession()"        disabled>⬇ COG + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <button class="vf-exp-item" id="vfCogWkBtn"         onclick="closeExpDropdown();exportCogWeekly()"         disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 / √20</span></button>
+        <button class="vf-exp-item" id="vfCogV2Btn"         onclick="closeExpDropdown();exportCogV2()"             disabled>⬇ COG v2 <span style="font-size:9px;opacity:.55">gold=HAR-IV</span></button>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1435,7 +1436,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfCogV2Btn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -2207,10 +2208,40 @@ function buildCogExportText(data, { weekly = false } = {}) {
   }
   return lines.join('\n');
 }
+// COG v2 — COG for fx & indices, but gold uses the HAR-IV σ + forecaster (non-COG-
+// widened) bands (f.harIv, attached server-side). Falls back to COG for gold if the
+// HAR-IV shadow is unavailable (no FRED_KEY / insufficient IV history).
+function buildCogV2ExportText(data) {
+  const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
+  const lines = ['**VOL & RANGE FORECAST — COG v2 (gold=HAR-IV)**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    if (!(f?.vol_annual > 0)) continue;
+    let vol, hlMed, hl75, ocMed, oc75, tag = '';
+    if (name === 'GOLD' && f.harIv) {                 // gold leg: HAR-IV σ, forecaster bands
+      const h = f.harIv; vol = h.vol_annual; hlMed = h.hl_median; hl75 = h.hl_75; ocMed = h.oc_median; oc75 = h.oc_75;
+      tag = `  (σ=HAR-IV${h.iv_index ? ' ' + h.iv_index : ''})`;
+    } else {                                          // fx & indices: COG, unchanged
+      const va = _cogVol(name, f); if (!(va > 0)) continue;
+      const d = _cogBands(va, 1); vol = va; hlMed = d.hl_median; hl75 = d.hl_75; ocMed = d.oc_median; oc75 = d.oc_75;
+    }
+    lines.push(div(name));
+    lines.push(`Volatility (annualized) : ${vol.toFixed(2)}%${tag}`);
+    lines.push(row('High to Low range', hlMed, hl75));
+    lines.push(row('Open to Close move', ocMed, oc75));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
 async function exportCog() {
   if (!currentForecast) return;
   await loadCogHv();
   _emitCalibrated('vfCogBtn', buildCogExportText(currentForecast, { weekly: false }), `vol-forecast-cog-${currentForecast.session_date}.txt`);
+}
+async function exportCogV2() {
+  if (!currentForecast) return;
+  await loadCogHv();
+  _emitCalibrated('vfCogV2Btn', buildCogV2ExportText(currentForecast), `vol-forecast-cogv2-${currentForecast.session_date}.txt`);
 }
 async function exportCogWeekly() {
   if (!currentForecast) return;
