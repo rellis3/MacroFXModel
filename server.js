@@ -82,7 +82,7 @@ import { parseRssItems as ecbParseRssItems } from './js/cbIndexFetch.js';
 import { BOE_MEETINGS, pendingAsOf as boePendingAsOf } from './js/boeCalendar.js';
 import { FETCHERS as BOE_FETCHERS, extractVote as boeExtractVote } from './js/boeFetch.js';
 import { BOJ_MEETINGS, pendingAsOf as bojPendingAsOf } from './js/bojCalendar.js';
-import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookHighlightUrl as bojOutlookHighlightUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
+import { FETCHERS as BOJ_FETCHERS, extractVote as bojExtractVote, statementUrl as bojStatementUrl, outlookViewUrl as bojOutlookViewUrl, outlookFullUrl as bojOutlookFullUrl, opinionsUrl as bojOpinionsUrl, minutesPdfUrl as bojMinutesPdfUrl } from './js/bojFetch.js';
 import { BEIGE_BOOK_RELEASES, pendingAsOf as beigeBookPendingAsOf } from './js/beigeBookCalendar.js';
 import { fetchBeigeBook } from './js/beigeBookFetch.js';
 import { runTrendAB as _runTrendAB } from './js/trendFollowV2Engine.js';
@@ -3766,7 +3766,8 @@ app.get('/api/boj/debug-fetch', async (req, res) => {
   const UA = 'Mozilla/5.0 (compatible; MacroFX/1.0; +https://github.com/)';
   const targets = [
     { kind: 'statement', url: bojStatementUrl(date) },
-    { kind: 'outlook', url: bojOutlookHighlightUrl(date) },
+    { kind: 'outlook (a: "Bank\'s View")', url: bojOutlookViewUrl(date) },
+    { kind: 'outlook (b: full report)', url: bojOutlookFullUrl(date) },
     { kind: 'opinions', url: bojOpinionsUrl(date) },
     { kind: 'minutes', url: bojMinutesPdfUrl(date) },
   ];

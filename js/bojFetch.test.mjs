@@ -1,7 +1,7 @@
 // Synthetic test for bojFetch.js's pure helpers. No network — the fetch*()
 // I/O functions aren't exercised here (this sandbox can't reach boj.or.jp).
 //   node js/bojFetch.test.mjs
-import { statementUrl, outlookHighlightUrl, opinionsUrl, minutesPdfUrl, extractVote } from './bojFetch.js';
+import { statementUrl, outlookViewUrl, outlookFullUrl, opinionsUrl, minutesPdfUrl, extractVote } from './bojFetch.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -14,8 +14,12 @@ console.log('[URL builders — matched against real confirmed examples]');
   // paths (e.g. the exact July 2026 statement was found indexed at this URL).
   ok('statementUrl matches the real Jan 2026 PDF', statementUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260123a.pdf', statementUrl('2026-01-23'));
   ok('statementUrl matches the real Jul 2026 PDF', statementUrl('2026-07-31') === 'https://www.boj.or.jp/en/mopo/mpmdeci/mpr_2026/k260731a.pdf');
-  ok('outlookHighlightUrl matches the real Jan 2026 example', outlookHighlightUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/outlook/highlight/ten202601.htm', outlookHighlightUrl('2026-01-23'));
-  ok('outlookHighlightUrl matches the real Apr 2026 example', outlookHighlightUrl('2026-04-28') === 'https://www.boj.or.jp/en/mopo/outlook/highlight/ten202604.htm');
+  // Corrected 2026-08-08: the "Highlights" HTML page 404'd for the July 2026
+  // edition specifically; both the "a" (Bank's View) and "b" (full report)
+  // PDFs are confirmed real for that same edition — see bojFetch.js's header.
+  ok('outlookViewUrl matches the real Jul 2026 "Bank\'s View" PDF', outlookViewUrl('2026-07-31') === 'https://www.boj.or.jp/en/mopo/outlook/gor2607a.pdf', outlookViewUrl('2026-07-31'));
+  ok('outlookFullUrl matches the real Jul 2026 full-report PDF', outlookFullUrl('2026-07-31') === 'https://www.boj.or.jp/en/mopo/outlook/gor2607b.pdf', outlookFullUrl('2026-07-31'));
+  ok('outlookViewUrl matches the real Apr 2026 "Bank\'s View" PDF', outlookViewUrl('2026-04-28') === 'https://www.boj.or.jp/en/mopo/outlook/gor2604a.pdf');
   ok('opinionsUrl matches the real Jan 2026 PDF', opinionsUrl('2026-01-23') === 'https://www.boj.or.jp/en/mopo/mpmsche_minu/opinion_2026/opi260123.pdf', opinionsUrl('2026-01-23'));
   ok('minutesPdfUrl matches the real Apr 2026 example (dir year = meeting year)', minutesPdfUrl('2026-04-28') === 'https://www.boj.or.jp/en/mopo/mpmsche_minu/minu_2026/g260428.pdf', minutesPdfUrl('2026-04-28'));
 }
