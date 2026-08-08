@@ -78,6 +78,7 @@ import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
+import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
@@ -4313,6 +4314,59 @@ setInterval(() => {
   _tradeBalanceLastRun = today;
   _tradeBalanceRunning = true;
   _buildTradeBalanceScores().catch(() => {}).finally(() => { _tradeBalanceRunning = false; });
+}, 20 * 60_000);
+
+// ── Real Yield Differential Engine (see js/realYieldEngine.js) ─────────────
+// Entirely derived — no new data source, combines the 10Y yield (already
+// used in production via econTrendEngine's ECON_UNIVERSE) with CPI headline
+// YoY (imported directly from cpiEngine.js's CPI_UNIVERSE). The one metric
+// in this engine family where the raw level itself is genuinely
+// cross-currency comparable — see that file's header. Same daily-gate
+// refresh pattern as every other engine here.
+const _REAL_YIELD_KV = 'real_yield_v1';
+async function _buildRealYieldScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(REAL_YIELD_UNIVERSE).map(async ccy => {
+    try {
+      const { data, cpiMeta, availability: avail } = await fetchRealYieldData(ccy, fredKey);
+      byCcy[ccy] = realYieldScore(data.y10, data.cpi, cpiMeta);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_REAL_YIELD_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/real-yield', async (_req, res) => {
+  try {
+    const raw = await kv.get(_REAL_YIELD_KV);
+    if (!raw) return res.json({ ok: false, error: 'No real yield data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _realYieldRunning = false;
+app.post('/api/real-yield/refresh', (_req, res) => {
+  if (_realYieldRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _realYieldRunning = true;
+  _buildRealYieldScores().catch(() => {}).finally(() => { _realYieldRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/real-yield/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_REAL_YIELD_KV).catch(() => null);
+  res.json({ ok: true, running: _realYieldRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _realYieldLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _realYieldRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_realYieldLastRun === today) return;
+  _realYieldLastRun = today;
+  _realYieldRunning = true;
+  _buildRealYieldScores().catch(() => {}).finally(() => { _realYieldRunning = false; });
 }, 20 * 60_000);
 
 // ── Backtest AI analysis — sends config + results to Claude, returns structured feedback ──
