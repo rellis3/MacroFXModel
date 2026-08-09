@@ -7137,12 +7137,22 @@ app.get('/api/vumanchu/log', async (req, res) => {
 // ── the cron: log a read per instrument, then resolve what is due ────────────
 const VM_LOG_MIN = Math.max(5, +(process.env.VM_LOG_MIN || 15));   // cadence, minutes
 let _vmLogBusy = false;
+let _vmLogBusySince = 0;
+// A wedged network call (no timeout) could otherwise leave _vmLogBusy stuck
+// true forever, silently skipping every future tick with nothing logged —
+// treat a lock held longer than 3 cadences as abandoned and reclaim it.
+const VM_LOG_STALE_MS = VM_LOG_MIN * 3 * 60_000;
 
 async function _vmLogCycle() {
-  if (_vmLogBusy || !process.env.OANDA_KEY) return;
+  if (_vmLogBusy) {
+    if (Date.now() - _vmLogBusySince < VM_LOG_STALE_MS) return;
+    console.error('[vmlog] stale lock reclaimed (previous cycle never completed)');
+  }
+  if (!process.env.OANDA_KEY) return;
   const known = _vmTableInstruments();
   if (!known.length) return;
   _vmLogBusy = true;
+  _vmLogBusySince = Date.now();
   try {
     const rows = [];
     const BATCH = 6;

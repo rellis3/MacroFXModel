@@ -303,7 +303,7 @@ async function cfFetch(method, key, body, opts) {
   if (method === 'PUT') init.body = body;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    const r = await fetch(url, init);
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
     if (r.status === 429) {
       const delay = Math.min(1_000 * 2 ** attempt, 8_000);
       console.warn(`[KV] CF rate limited (${method} ${key}), retry in ${delay} ms`);
