@@ -7149,6 +7149,11 @@ const VM_LOG_STALE_MS = VM_LOG_MIN * 3 * 60_000;
 // visible without depending on Railway log search finding the right lines.
 let _vmLogTicks = 0;
 let _vmLogLastTickAt = 0;
+// The outcome of the last completed cycle — what it attempted vs actually
+// got/wrote, and any error — so /health can answer "why did it write
+// nothing" without depending on Railway's log viewer (which has repeatedly
+// shown gaps/gone stale during this investigation).
+let _vmLogLastResult = null;
 
 async function _vmLogCycle() {
   _vmLogTicks++;
@@ -7162,6 +7167,7 @@ async function _vmLogCycle() {
   if (!known.length) { console.warn('[vmlog] skipped: state table empty/unloaded'); return; }
   _vmLogBusy = true;
   _vmLogBusySince = Date.now();
+  const result = { at: 0, attempted: known.length, gotRows: 0, appended: 0, resolved: 0, error: null };
   try {
     const rows = [];
     const BATCH = 6;
@@ -7179,7 +7185,9 @@ async function _vmLogCycle() {
       }
       }));
     }
+    result.gotRows = rows.length;
     const w = await vmAppendRows(kv, rows);
+    result.appended = w.added;
 
     // Resolve anything whose horizon has elapsed. The longest horizon is 1440m,
     // so a row needs a full day plus weekend slack before it can finish — look
@@ -7222,12 +7230,16 @@ async function _vmLogCycle() {
       const after = group.filter(r => r.resolved).length;
       if (after > before) { await kv.put(key, JSON.stringify(group)); resolved += after - before; }
     }
+    result.resolved = resolved;
     if (w.added || resolved) {
       console.log(`[vmlog] logged ${w.added} read(s), resolved ${resolved}`);
     }
   } catch (e) {
     console.error('[vmlog]', e.message);
+    result.error = e.message;
   } finally {
+    result.at = Date.now();
+    _vmLogLastResult = result;
     _vmLogBusy = false;
   }
 }
@@ -7286,6 +7298,7 @@ app.get('/api/vumanchu/health', async (req, res) => {
         lastTickUtc: _vmLogLastTickAt ? new Date(_vmLogLastTickAt).toISOString() : null,
         minutesSinceLastTick: _vmLogLastTickAt ? Math.round((Date.now() - _vmLogLastTickAt) / 60_000) : null,
         busy: _vmLogBusy,
+        lastResult: _vmLogLastResult,
       },
       last24h: {
         logged: today.length,
