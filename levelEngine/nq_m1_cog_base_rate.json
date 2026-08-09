@@ -1,5 +1,5 @@
 {
-  "path": "../portfolioBacktest/cache/nq_m1.parquet",
+  "path": "/home/user/MacroFXModel/levelEngine/../portfolioBacktest/cache/nq_m1.parquet",
   "asset_class": "index",
   "calc": "cog",
   "theta": 0.25,

@@ -1,5 +1,5 @@
 {
-  "path": "../portfolioBacktest/cache/eurusd_m1.parquet",
+  "path": "/home/user/MacroFXModel/levelEngine/../VolRangeForecaster/data/m1/eurusd_m1.parquet",
   "asset_class": "fx",
   "calc": "original",
   "theta": 0.25,

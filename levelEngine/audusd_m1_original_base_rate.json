@@ -1,0 +1,256 @@
+{
+  "path": "/home/user/MacroFXModel/levelEngine/../VolRangeForecaster/data/m1/audusd_m1.parquet",
+  "asset_class": "fx",
+  "calc": "original",
+  "theta": 0.25,
+  "horizon_min": 60,
+  "full": {
+    "proj_H_75": {
+      "n_touches": 640,
+      "pct_continuation": 33.1,
+      "pct_reversion": 36.6,
+      "pct_no_react": 28.4,
+      "pct_ambiguous": 1.9,
+      "fade_win_rate": 52.5,
+      "follow_win_rate": 47.5
+    },
+    "proj_H_med": {
+      "n_touches": 1143,
+      "pct_continuation": 33.9,
+      "pct_reversion": 32.3,
+      "pct_no_react": 32.6,
+      "pct_ambiguous": 1.1,
+      "fade_win_rate": 48.7,
+      "follow_win_rate": 51.3
+    },
+    "close_up_75": {
+      "n_touches": 694,
+      "pct_continuation": 32.9,
+      "pct_reversion": 32.9,
+      "pct_no_react": 33.1,
+      "pct_ambiguous": 1.2,
+      "fade_win_rate": 50.0,
+      "follow_win_rate": 50.0
+    },
+    "close_up_med": {
+      "n_touches": 1353,
+      "pct_continuation": 32.0,
+      "pct_reversion": 27.3,
+      "pct_no_react": 40.0,
+      "pct_ambiguous": 0.7,
+      "fade_win_rate": 46.1,
+      "follow_win_rate": 53.9
+    },
+    "open": {
+      "n_touches": 3238,
+      "pct_continuation": 20.4,
+      "pct_reversion": 18.3,
+      "pct_no_react": 61.1,
+      "pct_ambiguous": 0.2,
+      "fade_win_rate": 47.3,
+      "follow_win_rate": 52.7
+    },
+    "close_dn_med": {
+      "n_touches": 1303,
+      "pct_continuation": 33.2,
+      "pct_reversion": 29.7,
+      "pct_no_react": 36.4,
+      "pct_ambiguous": 0.7,
+      "fade_win_rate": 47.2,
+      "follow_win_rate": 52.8
+    },
+    "close_dn_75": {
+      "n_touches": 708,
+      "pct_continuation": 38.8,
+      "pct_reversion": 33.1,
+      "pct_no_react": 26.8,
+      "pct_ambiguous": 1.3,
+      "fade_win_rate": 46.0,
+      "follow_win_rate": 54.0
+    },
+    "proj_L_med": {
+      "n_touches": 1144,
+      "pct_continuation": 35.5,
+      "pct_reversion": 32.3,
+      "pct_no_react": 31.4,
+      "pct_ambiguous": 0.8,
+      "fade_win_rate": 47.7,
+      "follow_win_rate": 52.3
+    },
+    "proj_L_75": {
+      "n_touches": 645,
+      "pct_continuation": 38.3,
+      "pct_reversion": 35.3,
+      "pct_no_react": 25.1,
+      "pct_ambiguous": 1.2,
+      "fade_win_rate": 48.0,
+      "follow_win_rate": 52.0
+    }
+  },
+  "in_sample": {
+    "proj_H_75": {
+      "n_touches": 337,
+      "pct_continuation": 33.2,
+      "pct_reversion": 36.8,
+      "pct_no_react": 27.3,
+      "pct_ambiguous": 2.7,
+      "fade_win_rate": 52.5,
+      "follow_win_rate": 47.5
+    },
+    "proj_H_med": {
+      "n_touches": 568,
+      "pct_continuation": 35.4,
+      "pct_reversion": 32.2,
+      "pct_no_react": 30.3,
+      "pct_ambiguous": 2.1,
+      "fade_win_rate": 47.7,
+      "follow_win_rate": 52.3
+    },
+    "close_up_75": {
+      "n_touches": 361,
+      "pct_continuation": 32.7,
+      "pct_reversion": 36.3,
+      "pct_no_react": 28.8,
+      "pct_ambiguous": 2.2,
+      "fade_win_rate": 52.6,
+      "follow_win_rate": 47.4
+    },
+    "close_up_med": {
+      "n_touches": 689,
+      "pct_continuation": 35.3,
+      "pct_reversion": 29.0,
+      "pct_no_react": 34.4,
+      "pct_ambiguous": 1.3,
+      "fade_win_rate": 45.1,
+      "follow_win_rate": 54.9
+    },
+    "open": {
+      "n_touches": 1618,
+      "pct_continuation": 25.0,
+      "pct_reversion": 22.2,
+      "pct_no_react": 52.2,
+      "pct_ambiguous": 0.5,
+      "fade_win_rate": 47.1,
+      "follow_win_rate": 52.9
+    },
+    "close_dn_med": {
+      "n_touches": 652,
+      "pct_continuation": 31.6,
+      "pct_reversion": 30.2,
+      "pct_no_react": 36.8,
+      "pct_ambiguous": 1.4,
+      "fade_win_rate": 48.9,
+      "follow_win_rate": 51.1
+    },
+    "close_dn_75": {
+      "n_touches": 348,
+      "pct_continuation": 39.7,
+      "pct_reversion": 33.3,
+      "pct_no_react": 24.4,
+      "pct_ambiguous": 2.6,
+      "fade_win_rate": 45.7,
+      "follow_win_rate": 54.3
+    },
+    "proj_L_med": {
+      "n_touches": 561,
+      "pct_continuation": 31.9,
+      "pct_reversion": 34.6,
+      "pct_no_react": 31.9,
+      "pct_ambiguous": 1.6,
+      "fade_win_rate": 52.0,
+      "follow_win_rate": 48.0
+    },
+    "proj_L_75": {
+      "n_touches": 322,
+      "pct_continuation": 37.0,
+      "pct_reversion": 35.1,
+      "pct_no_react": 25.5,
+      "pct_ambiguous": 2.5,
+      "fade_win_rate": 48.7,
+      "follow_win_rate": 51.3
+    }
+  },
+  "out_of_sample": {
+    "proj_H_75": {
+      "n_touches": 303,
+      "pct_continuation": 33.0,
+      "pct_reversion": 36.3,
+      "pct_no_react": 29.7,
+      "pct_ambiguous": 1.0,
+      "fade_win_rate": 52.4,
+      "follow_win_rate": 47.6
+    },
+    "proj_H_med": {
+      "n_touches": 575,
+      "pct_continuation": 32.5,
+      "pct_reversion": 32.3,
+      "pct_no_react": 35.0,
+      "pct_ambiguous": 0.2,
+      "fade_win_rate": 49.9,
+      "follow_win_rate": 50.1
+    },
+    "close_up_75": {
+      "n_touches": 333,
+      "pct_continuation": 33.0,
+      "pct_reversion": 29.1,
+      "pct_no_react": 37.8,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 46.9,
+      "follow_win_rate": 53.1
+    },
+    "close_up_med": {
+      "n_touches": 664,
+      "pct_continuation": 28.6,
+      "pct_reversion": 25.6,
+      "pct_no_react": 45.8,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 47.2,
+      "follow_win_rate": 52.8
+    },
+    "open": {
+      "n_touches": 1620,
+      "pct_continuation": 15.7,
+      "pct_reversion": 14.3,
+      "pct_no_react": 70.0,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 47.7,
+      "follow_win_rate": 52.3
+    },
+    "close_dn_med": {
+      "n_touches": 651,
+      "pct_continuation": 34.9,
+      "pct_reversion": 29.2,
+      "pct_no_react": 35.9,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 45.6,
+      "follow_win_rate": 54.4
+    },
+    "close_dn_75": {
+      "n_touches": 360,
+      "pct_continuation": 38.1,
+      "pct_reversion": 32.8,
+      "pct_no_react": 29.2,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 46.3,
+      "follow_win_rate": 53.7
+    },
+    "proj_L_med": {
+      "n_touches": 583,
+      "pct_continuation": 38.9,
+      "pct_reversion": 30.2,
+      "pct_no_react": 30.9,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 43.7,
+      "follow_win_rate": 56.3
+    },
+    "proj_L_75": {
+      "n_touches": 323,
+      "pct_continuation": 39.6,
+      "pct_reversion": 35.6,
+      "pct_no_react": 24.8,
+      "pct_ambiguous": 0.0,
+      "fade_win_rate": 47.3,
+      "follow_win_rate": 52.7
+    }
+  }
+}
