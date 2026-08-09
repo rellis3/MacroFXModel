@@ -474,6 +474,31 @@ continuation-loser tail; target variants) on the MTF-gated median entry only, to
 now-real 62%-win gate can be monetized over cost. Run `python3 median_wt_gated_fade.py`
 (75th) or `... median`, `... EURUSD` (one pair).
 
+### Phase 11b — can the exit monetize the gate? (`median_wt_exit_grid.py`) → NULL
+
+Pre-registered exit grid on the SAME MTF-gated median entry (only the exit changes):
+stop tightness slMult ∈ {0.5, 0.75, 1.0, 1.5} at the OC-median target, plus {open, half}
+targets at the best stop. **NULL — no cell clears cost OOS with ≥4/6 majors + positive IS.**
+The revealing part: tightening the stop barely moves the pooled OOS number (sl0.5 −0.0117%,
+sl1.5 −0.0128%) — cutting the continuation-loser tail also converts marginal winners to
+losers, net ~flat. Only USDCHF is positive across cells (1/6 = noise). **The symmetric-payoff
+wall (Phase 2) is fundamental: even a real 62%-win directional gate can't be monetized as a
+*standalone* level trade — the reversion and the continuation are the same size, and spread
+eats the rest.**
+
+**What Phase 11/11b actually establish (the honest landing).** The MTF WaveTrend-stretch is a
+**real, OOS directional discriminator at the level**: default at a median tag is CONTINUATION
+(Phase 7), and MTF-WT-stretch flags the exception that REVERTS (fade win 50%→62%). That is
+genuine *"which direction"* confidence at a level — the owner's original goal. But like every
+level signal here it is **sub-cost as a fresh standalone trade** (spread + symmetric payoff).
+Its correct home is therefore a **confidence/direction overlay**, not a trade: (1) promote it
+as a validated feature in `trade-decision-engine.html` (`Trade_Decision_Engine/`) — its
+`stretch_fade` / MTF-zone read is exactly this signal, currently hand-weighted and unfitted;
+(2) as position management where no fresh spread is paid (at a median tag, MTF-stretched →
+reversion risk real, consider trimming; not-stretched → continuation likely, hold). This is
+the same verdict the whole study converges on — real signal, real direction, but the edge is
+in *sizing/confidence/context on an existing position*, never a standalone level entry.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -499,5 +524,6 @@ alongside.
 - `median_follow_gated.py` — Phase-10 gates the median DECISION by the Phase-3 causal expansion rule (EXPANSION→follow / CONTAINED→fade), reusing the Phase-7 costed primitives, IS/OOS, 6 majors — NULL (magnitude doesn't buy direction). Run `python3 median_follow_gated.py`.
 - `jump_gated_fade.py` — Phase-10b the last cheap FX lever: bucket the costed median FADE by pre-tag bipower jump fraction (Phase-8's "high-jump reverts" pointer), IS/OOS, 6 majors — NULL (didn't replicate past EURUSD). Run `python3 jump_gated_fade.py`.
 - `median_wt_gated_fade.py` — Phase-11 WaveTrend-stretch-gated fade at the median/75th (live-page WT 9/12/3, OB/OS ±53 on wt1, M15+H1 MTF zone), costed, IS/OOS, 6 majors — NULL by cost but the gate is a REAL directional signal (MTF lifts median fade win 50%→62% OOS, monotonic anti<blind<WT<MTF; limiting factor is now the exit, not direction). Run `python3 median_wt_gated_fade.py` (`median` / `EURUSD`).
+- `median_wt_exit_grid.py` — Phase-11b pre-registered exit grid (stop tightness + target) on the MTF-gated median entry — NULL (no cell clears cost OOS ≥4/6; tighter stops net ~flat). Confirms the symmetric-payoff wall: the real 62%-win gate can't be a standalone trade, only a confidence/direction overlay. Run `python3 median_wt_exit_grid.py`.
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
