@@ -155,7 +155,7 @@
       <button data-y="fade_all" class="on">Fade all</button>
       <button data-y="follow_med_fade_75">Cont med · fade 75th</button>
       <button data-y="momentum" title="WaveTrend decides per touch: overbought &amp; rolling over at an up-line (oversold &amp; turning up at a down-line) → fade; otherwise momentum-aligned → follow.">Momentum</button>
-      <button data-y="wt_stretch" title="WT-stretch (Phase-11 validated gate): fade a touch whenever WaveTrend is OB/OS-STRETCHED in the touch direction — no roll-over required (the stretch, not the turn, is what predicts reversal). Fades MORE touches than Momentum; historically lifts the median fade win-rate ~50%→62% with MTF-zone agreement. Direction-confidence read, sub-cost as a standalone.">WT-stretch</button>
+      <button data-y="wt_stretch" title="WT-stretch MTF (Phase-11 validated gate): fade a touch when WaveTrend is OB/OS-STRETCHED in the touch direction on BOTH the chart TF and the higher TF (×4, e.g. M15→H1) — the stretch, not the roll-over turn, is what predicts reversal. WT computed on the continuous series (proper warmup), wt1 vs ±53, matching the live vumanchu pages. Historically lifts the median fade win-rate ~50%→62% OOS. Direction-confidence read, sub-cost as a standalone.">WT-stretch MTF</button>
       <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
       <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
       <button data-y="timing" title="Session timing: how far through the London day the touch is (0 = open, 1 = close). EARLY touches → fade (revert); LATE → follow (continue) — the separator the Fade/Follow panel flagged as cleanest. Tcut is the early/late boundary.">Timing</button>
@@ -261,7 +261,7 @@ import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
-const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', wt_stretch: 'WT-stretch', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', wt_stretch: 'WT-stretch MTF', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
 // Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
 // the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
 // (regular divergences only; hidden are ungated).
@@ -628,7 +628,44 @@ function prepIndicators() {
       d.divs = findDivergences(d.hi, d.lo, d.wt, { reach: 2, obLevel: DIV_OB, osLevel: DIV_OS });
     } else { d.wt1 = []; d.wt = []; d.hi = []; d.lo = []; d.divs = []; }
   }
+  prepMtfStretch();
   prepAtr();
+}
+// MTF WaveTrend-stretch zones (the Phase-11 validated gate, MTF version). Computed on
+// the CONTINUOUS series (spans days) so wt1 has proper warmup — matching the live
+// vumanchu-state pages / Telegram alert (wt1 vs ±53, 9/12/3), NOT the per-day d.wt above.
+// Base = chart TF; higher TF = chart TF × MTF_FACTOR (e.g. M15 → H1). Each bar carries the
+// last COMPLETED higher-TF bar's zone (causal, no lookahead). Sliced back to per-day arrays.
+const MTF_FACTOR = 4;
+function zoneOfWt(w) { return !Number.isFinite(w) ? 'mid' : w >= WT_OB ? 'OB' : w <= WT_OS ? 'OS' : 'mid'; }
+function prepMtfStretch() {
+  const all = days.flatMap(d => d.bars);
+  const N = all.length;
+  if (!N) { for (const d of days) { d.wtBaseZ = []; d.wtHtfZ = []; } return; }
+  const baseZoneAt = computeWaveTrend(all, WT_OPTS).wt1.map(zoneOfWt);
+  // Resample the continuous series to the higher TF (chunks of MTF_FACTOR bars).
+  const htfBars = [], chunkEnd = [];
+  for (let i = 0; i < N; i += MTF_FACTOR) {
+    const e = Math.min(i + MTF_FACTOR, N);
+    let hi = -Infinity, lo = Infinity;
+    for (let k = i; k < e; k++) { if (all[k].high > hi) hi = all[k].high; if (all[k].low < lo) lo = all[k].low; }
+    htfBars.push({ open: all[i].open, high: hi, low: lo, close: all[e - 1].close });
+    chunkEnd.push(e - 1);
+  }
+  const htfW1 = computeWaveTrend(htfBars, WT_OPTS).wt1;
+  const htfZoneAt = new Array(N).fill('mid');
+  let cj = -1;
+  for (let gi = 0; gi < N; gi++) {                       // last higher-TF bar COMPLETED by gi
+    while (cj + 1 < chunkEnd.length && chunkEnd[cj + 1] <= gi) cj++;
+    htfZoneAt[gi] = cj >= 0 ? zoneOfWt(htfW1[cj]) : 'mid';
+  }
+  let off = 0;
+  for (const d of days) {
+    const n = d.bars.length;
+    d.wtBaseZ = baseZoneAt.slice(off, off + n);
+    d.wtHtfZ  = htfZoneAt.slice(off, off + n);
+    off += n;
+  }
 }
 // Wilder ATR over the CONTINUOUS loaded series (spans days), seeded by the SMA of
 // the first `period` true ranges. Each day's `d.atr` = the ATR entering that
@@ -666,13 +703,14 @@ function makeDecider(d) {
     };
   }
   if (state.style === 'wt_stretch') {
-    // Phase-11 validated gate: fade when WaveTrend is STRETCHED (OB at an up-line /
-    // OS at a down-line) at the touch — the stretch LEVEL, not the roll-over turn
-    // (Momentum requires the turn; dropping it fades more touches). Otherwise follow.
+    // Phase-11 validated gate (MTF version): fade when WaveTrend is STRETCHED in the
+    // touch direction on BOTH the chart TF and the higher TF (×4) — the stretch LEVEL,
+    // not the roll-over turn (Momentum requires the turn). MTF zone agreement is the
+    // strong version (~62% median fade win OOS vs 50% base). Otherwise follow.
     return (L, ti) => {
-      const w = d.wt[ti];
-      if (!Number.isFinite(w)) return 'follow';
-      return (L.side > 0 ? w >= WT_OB : w <= WT_OS) ? 'fade' : 'follow';
+      const want = L.side > 0 ? 'OB' : 'OS';
+      const bz = d.wtBaseZ?.[ti], hz = d.wtHtfZ?.[ti];
+      return (bz === want && hz === want) ? 'fade' : 'follow';
     };
   }
   if (state.style === 'divergence') {
