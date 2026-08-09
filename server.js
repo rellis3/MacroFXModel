@@ -11423,9 +11423,17 @@ async function _snapshotOIHistory(force = false) {
       const rawEntry = _oiHistoryRaw(inst);
       if (rawEntry) {
         rawHist[pair] = rawHist[pair] || {};
-        const rBefore = JSON.stringify(rawHist[pair][day] ?? null);
-        rawHist[pair][day] = rawEntry;
-        if (JSON.stringify(rawEntry) !== rBefore) rawChanged++;
+        // Dedup on the LADDER ONLY (rawOI/rawChg/rawVol). The ~15-min basis control drifts
+        // spot/basis all day, but the per-strike ladder changes just once — the daily paste.
+        // Comparing the whole entry would rewrite the archive ~48×/day to freshen spot context
+        // we don't need live, AND overwrite the paste-time spot/basis with intraday-drifted
+        // values. So only (re)write when the ladder itself changed, keeping the FIRST-captured
+        // spot/basis for the day (≈ paste time — what the historical ladder should be read against).
+        const _ladderKey = e => e ? `${e.rawOI} ${e.rawChg ?? ''} ${e.rawVol ?? ''}` : '';
+        if (_ladderKey(rawHist[pair][day]) !== _ladderKey(rawEntry)) {
+          rawHist[pair][day] = rawEntry;   // new ladder (new paste) → archive with its capture-time context
+          rawChanged++;
+        }
         const rDates = Object.keys(rawHist[pair]).sort();
         const rTrim = rDates.slice(0, Math.max(0, rDates.length - _OI_RAW_KEEP_DAYS));
         for (const d of rTrim) delete rawHist[pair][d];
