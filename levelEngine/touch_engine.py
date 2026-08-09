@@ -13,7 +13,7 @@ before it retraces theta*sigma back through the level (reversion). Whichever
 barrier is hit first, within `horizon_min` minutes, wins; neither hit -> no_react.
 """
 import numpy as np
-from cog_levels import day_levels
+from level_frame import day_levels
 
 LEVELS = ['proj_H_75', 'proj_H_med', 'close_up_75', 'close_up_med',
           'open', 'close_dn_med', 'close_dn_75', 'proj_L_med', 'proj_L_75']
@@ -110,7 +110,8 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
             continue
         outcome, _ = _race(level, series, touch_idx, high, low, barrier_price, horizon_min)
         out.append(dict(level=level, outcome=outcome, day_i=int(day_i),
-                         touch_min=int(touch_idx), level_px=float(series[touch_idx])))
+                         touch_min=int(touch_idx), level_px=float(series[touch_idx]),
+                         barrier_price=float(barrier_price)))
     return out
 
 

@@ -1,0 +1,11 @@
+instrument,calc,level,side,is_wr,oos_wr,is_net_r,oos_net_r,is_n,oos_n
+nq,cog,close_up_75,follow,57.7,59.4,0.107,0.153,295,309
+nq,original,close_up_75,follow,57.1,56.1,0.117,0.095,175,227
+nq,original,close_dn_med,follow,55.8,56.1,0.088,0.094,462,565
+usdjpy,cog,close_up_75,follow,56.8,58.6,0.048,0.09,298,275
+nq,cog,close_dn_75,follow,55.4,55.2,0.066,0.07,297,326
+nq,cog,close_up_med,follow,54.8,54.4,0.052,0.053,607,611
+nq,original,close_up_med,follow,54.3,54.0,0.058,0.053,499,560
+nq,cog,close_dn_med,follow,55.3,53.4,0.064,0.035,530,598
+nq,cog,proj_H_med,follow,53.4,53.0,0.023,0.026,380,417
+nzdusd,original,proj_H_75,follow,57.4,55.1,0.037,0.008,337,304

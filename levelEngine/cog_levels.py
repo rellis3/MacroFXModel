@@ -24,7 +24,6 @@ Two families of level, per the pine script:
 """
 import sys
 import os
-import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'volatilityExhaustion'))
 from vol_exhaustion_lib import load_m1, build_london_daily, causal_sigma, hv_sigma  # noqa: E402
@@ -45,26 +44,9 @@ def daily_sigma_fraction(daily, asset_class):
 def build_level_frame(path, asset_class='fx'):
     """Load M1, build London daily bars + causal sigma, return everything a touch
     scan needs: per-day open + the 4 COG %'s, and per-minute bar arrays with a
-    day_idx to slice by day."""
+    day_idx to slice by day. Shape matches level_frame.day_levels (calc-agnostic)."""
     m1 = load_m1(path)
     daily = build_london_daily(m1)
     sigma = daily_sigma_fraction(daily, asset_class)   # sigma[i] used for day i (NaN until warmed up)
     pct = {k: sigma * c for k, c in COG_CONST.items()}  # fraction, e.g. 0.0215 for 2.15%
     return dict(m1=m1, daily=daily, sigma=sigma, pct=pct)
-
-
-def day_levels(frame, day_i):
-    """Return the fixed-for-the-day pieces needed to build the 9 level series for one
-    London day: bar slice [start:end), day open, and the 4 level fractions. None if
-    sigma isn't warmed up yet for this day."""
-    daily = frame['daily']
-    s = np.isnan(frame['sigma'][day_i])
-    if s:
-        return None
-    start, end = daily['start'][day_i], daily['end'][day_i]
-    o = daily['open'][day_i]
-    return dict(
-        start=start, end=end, open=o,
-        hl50=frame['pct']['hl50'][day_i], hl75=frame['pct']['hl75'][day_i],
-        oc50=frame['pct']['oc50'][day_i], oc75=frame['pct']['oc75'][day_i],
-    )
