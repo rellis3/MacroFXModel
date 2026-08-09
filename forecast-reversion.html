@@ -155,6 +155,7 @@
       <button data-y="fade_all" class="on">Fade all</button>
       <button data-y="follow_med_fade_75">Cont med · fade 75th</button>
       <button data-y="momentum" title="WaveTrend decides per touch: overbought &amp; rolling over at an up-line (oversold &amp; turning up at a down-line) → fade; otherwise momentum-aligned → follow.">Momentum</button>
+      <button data-y="wt_stretch" title="WT-stretch (Phase-11 validated gate): fade a touch whenever WaveTrend is OB/OS-STRETCHED in the touch direction — no roll-over required (the stretch, not the turn, is what predicts reversal). Fades MORE touches than Momentum; historically lifts the median fade win-rate ~50%→62% with MTF-zone agreement. Direction-confidence read, sub-cost as a standalone.">WT-stretch</button>
       <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
       <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
       <button data-y="timing" title="Session timing: how far through the London day the touch is (0 = open, 1 = close). EARLY touches → fade (revert); LATE → follow (continue) — the separator the Fade/Follow panel flagged as cleanest. Tcut is the early/late boundary.">Timing</button>
@@ -260,7 +261,7 @@ import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
-const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', wt_stretch: 'WT-stretch', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
 // Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
 // the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
 // (regular divergences only; hidden are ungated).
@@ -662,6 +663,16 @@ function makeDecider(d) {
       // down-line) = exhaustion → fade; otherwise momentum aligned → follow.
       if (L.side > 0) return (w >= WT_OB && w < wp) ? 'fade' : 'follow';
       return (w <= WT_OS && w > wp) ? 'fade' : 'follow';
+    };
+  }
+  if (state.style === 'wt_stretch') {
+    // Phase-11 validated gate: fade when WaveTrend is STRETCHED (OB at an up-line /
+    // OS at a down-line) at the touch — the stretch LEVEL, not the roll-over turn
+    // (Momentum requires the turn; dropping it fades more touches). Otherwise follow.
+    return (L, ti) => {
+      const w = d.wt[ti];
+      if (!Number.isFinite(w)) return 'follow';
+      return (L.side > 0 ? w >= WT_OB : w <= WT_OS) ? 'fade' : 'follow';
     };
   }
   if (state.style === 'divergence') {
