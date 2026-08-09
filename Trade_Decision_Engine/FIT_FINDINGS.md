@@ -40,6 +40,20 @@ asia/monday ladders, session hi/lo) with a σ triple-barrier. The WT-stretch edg
 **forecast-line-specific — it is not a universal "fade any stretched level" signal.** Useful
 boundary: its home stays the level alert / reversion chart (forecast lines), where it's wired.
 
+## Result 4 — `htf_align` did NOT replicate (also null here)
+`decisionCore`'s header calls `htf_align` "the one feature that survived OOS+cost testing."
+In this pooled after-cost backfill it does **not**: agree-win **55.6%** vs oppose-win **55.7%**
+(= base 55.7%), fitted weight **≈0.003**, zero OOS Brier change. So it too is dropped from
+`modelV1`. (The prior claim may have been on a different metric/universe — per-trade R with a
+directional filter rather than pooled Brier — worth reconciling, but not promotable as-is.)
+
+## `modelV1.js` — what was produced
+A re-fit of the **v0 feature set only** (no new feature earned in). Notable correction: the
+fit flips `stretch_fade` from the hand-set **+0.45 → −0.14** — fading a distance-stretched
+level is mildly *anti*-predictive after cost, the opposite of the prior's belief. Fitted
+magnitudes are small across the board (max |w|≈0.14), reflecting the shallow discrimination.
+`calibrated: true`, FX-majors only — re-fit before applying to gold/indices.
+
 ## Takeaways
 1. **Promote a fitted `modelV1`** for the calibration win (Brier 0.272→0.247) — a human
    decision on this OOS evidence, per Lego Principle 5. It improves honesty of the probability,
