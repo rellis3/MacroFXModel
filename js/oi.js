@@ -1332,6 +1332,46 @@ export async function oiRefreshBasis(inst, { baseUrl = '', minPipFrac = 1e-6 } =
   return { inst: oiReprojectBasis(inst, { newBasis, newSpot, newFutures }), changed: true, dPips: d };
 }
 
+// Where along PRICE the dealer-gamma regime is PIN (long gamma → ranges hold, fade extremes)
+// vs BREAKOUT (short gamma → moves run, don't fade). The net-GEX SIGN everything currently
+// keys off is a WHOLE-BOOK average — but the regime is actually LOCAL: it flips at each
+// zero-gamma crossing (`inst.gexFlips`, already stored + basis-shifted). A book can be net
+// +GEX (looks like PIN) while spot sits in a short-gamma pocket where fading is exactly wrong.
+// This turns the crossings into contiguous shaded bands over [lo,hi] so the flip/follow call
+// can key off WHERE price is, not one scalar. Each band's regime comes from the crossing's OWN
+// `dir` ('long->short' = long gamma below it), so it's robust to the scan's ordering. Pure.
+// Consumed by the analysis-page GEX chart now; the export/indicator + the bot's local-regime
+// switch are the intended later consumers — one definition, no copy.
+export function oiRegimeBands(inst, { lo, hi } = {}) {
+  if (!inst || typeof inst !== 'object') return [];
+  const spot = Number.isFinite(inst.spot) ? inst.spot : null;
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) {          // default window = the chart's ± range
+    const rm = inst.refMove?.move;
+    const span = (Number.isFinite(rm) && rm > 0) ? 4 * rm : (spot ? 0.04 * spot : null);
+    if (!spot || !span) return [];
+    lo = spot - span; hi = spot + span;
+  }
+  if (!(hi > lo)) return [];
+  const flips = (Array.isArray(inst.gexFlips) ? inst.gexFlips : [])
+    .filter(f => Number.isFinite(f?.price) && f.price > lo && f.price < hi)
+    .sort((a, b) => a.price - b.price);
+  const netGex = inst.exposures?.gex ?? inst.gex ?? 0;
+  // Regime of the FIRST segment (below the lowest in-range flip). With no in-range flip the
+  // whole window is one regime = the net-GEX sign (the only read available).
+  let regime = flips.length
+    ? (flips[0].dir === 'long->short' ? 'pin' : 'breakout')
+    : (netGex > 0 ? 'pin' : netGex < 0 ? 'breakout' : 'neutral');
+  const bands = [];
+  let cur = lo;
+  for (const f of flips) {
+    bands.push({ lo: cur, hi: f.price, regime });
+    regime = f.dir === 'long->short' ? 'breakout' : 'pin';    // regime ABOVE this crossing, from its own dir
+    cur = f.price;
+  }
+  bands.push({ lo: cur, hi, regime });
+  return bands;
+}
+
 export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };

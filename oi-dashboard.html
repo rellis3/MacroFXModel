@@ -277,6 +277,22 @@ const h = k => HELP[k] ? `<i class="h" data-k="${k}">?</i>` : '';
 const pips = (v,sp,k) => (Number.isFinite(v)&&Number.isFinite(sp)) ? ((v-sp)/pip(k)) : NaN;
 // Short clock stamp, e.g. "07:07" — for the "updated" / "since" readouts on the card.
 const hhmm = ms => Number.isFinite(ms) ? new Date(ms).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+// Browser mirror of oiRegimeBands (js/oi.js): PIN/BREAKOUT bands from the stored gex crossings
+// (already basis-shifted). Kept tiny + input-identical to the canonical brick — the export/
+// indicator will consume the brick directly later. Each band's regime = the crossing's own dir.
+function regimeBands(e, lo, hi){
+  const flips=(e.gexFlips||[]).filter(f=>Number.isFinite(f?.price)&&f.price>lo&&f.price<hi).sort((a,b)=>a.price-b.price);
+  const net=e.exposures?.gex ?? e.gex ?? 0;
+  let reg = flips.length ? (flips[0].dir==='long->short'?'pin':'breakout') : (net>0?'pin':net<0?'breakout':'neutral');
+  const bands=[]; let cur=lo;
+  for(const f of flips){ bands.push({lo:cur,hi:f.price,regime:reg}); reg=f.dir==='long->short'?'breakout':'pin'; cur=f.price; }
+  bands.push({lo:cur,hi,regime:reg});
+  return bands;
+}
+// The regime band that contains a price (for the "spot is in a PIN zone" read). null if none.
+function regimeAt(e, px, lo, hi){
+  const b=regimeBands(e,lo,hi).find(b=>px>=b.lo&&px<=b.hi); return b?b.regime:null;
+}
 // How far live spot has walked from where TODAY's levels were anchored (inst.daySpot @ daySpotAt).
 // The 15-min basis control keeps inst.spot live; daySpot is fixed at the day's first analyse, so
 // this reads "price is +18p / 0.12% from the levels' reference" — how in-play today's walls are.
@@ -773,6 +789,13 @@ function chartGEX(e,big){
   const mg=Math.max(...rows.map(r=>Math.abs(r.netGex)),1);
   const X=v=>P+(v-mn)/(mx-mn||1)*(W-2*P), Y=v=>H/2-(v/mg)*(H/2-16);
   let s=`<svg viewBox="0 0 ${W} ${H+24}">`;
+  // Regime bands FIRST (behind the bars): where along price the book is PIN (long gamma, fade
+  // extremes) vs BREAKOUT (short gamma, don't fade) — the local read the net-GEX scalar hides.
+  const bands=regimeBands(e,mn,mx);
+  bands.forEach(b=>{ const x1=X(Math.max(b.lo,mn)), x2=X(Math.min(b.hi,mx));
+    const col=b.regime==='pin'?'var(--call)':b.regime==='breakout'?'var(--put)':'var(--tx3)';
+    if(x2>x1) s+=`<rect x="${x1}" y="4" width="${x2-x1}" height="${H-8}" fill="${col}" opacity=".08"/>`;
+    if(b.regime!=='neutral'&&x2-x1>34) s+=`<text class="lbl" x="${(x1+x2)/2}" y="${H-6}" text-anchor="middle" style="fill:${col};opacity:.7;font-size:10px;letter-spacing:.08em">${b.regime==='pin'?'PIN':'BREAKOUT'}</text>`;});
   s+=`<line class="axis" x1="${P}" y1="${H/2}" x2="${W-P}" y2="${H/2}"/>`;
   const bw=Math.max(2,(W-2*P)/rows.length-1.5);
   rows.forEach(r=>{const yv=Y(r.netGex);
@@ -784,7 +807,10 @@ function chartGEX(e,big){
   s+=`<text class="lbl" x="${P}" y="${H+18}">${fx(show(mn,e),SYM)}</text>`
    + `<text class="lbl" x="${W/2}" y="${H+18}" text-anchor="middle" style="fill:var(--tx3)">strike &rarr;</text>`
    + `<text class="lbl" x="${W-P}" y="${H+18}" text-anchor="end">${fx(show(mx,e),SYM)}</text></svg>`;
-  return s+`<div class="note">Bars above the line are call-dominated gamma, below are put-dominated. Where the total crosses zero is the regime boundary.</div>`;
+  const spotReg=regimeAt(e,spot,mn,mx);
+  const spotNote=spotReg==='pin'?' Spot sits in a <b style="color:var(--call)">PIN</b> zone — long dealer gamma, fade extremes toward max pain.'
+    :spotReg==='breakout'?' Spot sits in a <b style="color:var(--put)">BREAKOUT</b> zone — short dealer gamma, breaks run, don\'t fade.':'';
+  return s+`<div class="note">Bars above the line are call-dominated gamma, below are put-dominated. Shaded <b style="color:var(--call)">green = PIN</b> (long gamma, ranges hold), <b style="color:var(--put)">red = BREAKOUT</b> (short gamma, moves run) — the regime is <b>local</b>, flipping at each zero-gamma crossing, not one net-GEX number for the whole book.${spotNote}</div>`;
 }
 
 function chartSmile(e,big){

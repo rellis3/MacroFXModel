@@ -21,7 +21,7 @@ import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 import { buildOILevelText } from './oiLevelExport.js';
-import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect, oiReprojectBasis } from './oi.js';
+import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect, oiReprojectBasis, oiRegimeBands } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
 
 let failures = 0;
@@ -946,6 +946,27 @@ console.log('\n[oi day-expiry]');
     const again = await buildOIEntry({ pair: 'EUR/USD', rawOI: oi, spotRaw: 1.1560, futuresRaw: 1.1560, manualFutures: true, skipLiveQuote: true, priorEntry: first.inst });
     ok('same-day re-analyse keeps the original day-anchor', Math.abs(again.inst.daySpot - 1.1545) < 1e-9 && again.inst.daySpotAt === first.inst.daySpotAt && Math.abs(again.inst.spot - 1.1560) < 1e-9);
   }
+  // GEX regime bands: the LOCAL PIN/BREAKOUT map from the zero-gamma crossings, so fade/follow
+  // can key off where price sits, not the net-GEX scalar. Each band's regime = the crossing's own dir.
+  {
+    // Two crossings: long->short at 1.1500 (so below it = long/pin), short->long at 1.1600
+    // (so between = short/breakout, above = long/pin again).
+    const inst = { spot: 1.1550, exposures: { gex: 500 }, refMove: { move: 0.0100 },
+      gexFlips: [{ price: 1.1500, dir: 'long->short' }, { price: 1.1600, dir: 'short->long' }] };
+    const bands = oiRegimeBands(inst, { lo: 1.1400, hi: 1.1700 });
+    ok('regime bands split the range at every crossing', bands.length === 3
+      && Math.abs(bands[0].hi - 1.1500) < 1e-9 && Math.abs(bands[1].hi - 1.1600) < 1e-9);
+    ok('regime bands read PIN below / BREAKOUT between / PIN above from each crossing dir',
+      bands[0].regime === 'pin' && bands[1].regime === 'breakout' && bands[2].regime === 'pin');
+    // No crossings in range → one band from the net-GEX sign.
+    const flat = oiRegimeBands({ spot: 1.1550, exposures: { gex: -10 }, refMove: { move: 0.0100 }, gexFlips: [] }, { lo: 1.15, hi: 1.16 });
+    ok('regime bands fall back to the net-GEX sign with no crossings', flat.length === 1 && flat[0].regime === 'breakout');
+    // Crossing outside the window is ignored; window defaults from spot ± 4×refMove when absent.
+    const dflt = oiRegimeBands(inst);
+    ok('regime bands default their window from spot ± 4×refMove', dflt.length >= 1
+      && dflt[0].lo < 1.1550 && dflt[dflt.length - 1].hi > 1.1550);
+  }
+
   const cmpTxt = buildOILevelText({ 'EUR/USD': cmp.inst }, { generated: 'x' });
   ok('export renders the per-expiry breakdown block', /per-expiry \(mp = max pain/.test(cmpTxt) && /30DTE  mp /.test(cmpTxt));
 

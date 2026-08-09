@@ -85,6 +85,12 @@ const _CF_EXACT = new Set([
                             // built on it (brief oiChange / oiStability / flip-drift, /api/oi-history).
                             // `_snapshotOIHistory` now writes only when the summary actually CHANGED
                             // (~1-2/day on paste, not 48/day on its 30-min timer) to stay quota-cheap.
+  'oi_history_raw',         // ~90-day archive of the FULL per-strike ladder (rawOI/rawChg/rawVol +
+                            // spot/basis context) per pair per day — side-by-side with the lean
+                            // oi_history summary. The strike-over-time map + early wall-building
+                            // signal the top-8 summary can't hold. Same "cannot back-fill, capture
+                            // forward" property as oi_history, so it MUST be durable. Written by the
+                            // same `_snapshotOIHistory` pass, deduped independently of the summary.
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
   'cot_series_v1',          // 200-week COT series per market — a CACHE, but written at most weekly and
                             // rebuilding costs a full CFTC refetch, so it is worth surviving a redeploy
