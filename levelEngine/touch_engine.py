@@ -13,7 +13,7 @@ before it retraces theta*sigma back through the level (reversion). Whichever
 barrier is hit first, within `horizon_min` minutes, wins; neither hit -> no_react.
 """
 import numpy as np
-from cog_levels import day_levels
+from level_frame import day_levels
 
 LEVELS = ['proj_H_75', 'proj_H_med', 'close_up_75', 'close_up_med',
           'open', 'close_dn_med', 'close_dn_75', 'proj_L_med', 'proj_L_75']

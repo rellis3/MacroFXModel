@@ -4,15 +4,18 @@ actually yield, per level, per instrument, with NO conditioning yet? This is the
 benchmark every confluence filter (Phase 2+) has to beat, split IS/OOS so a filter
 that only "wins" by curve-fitting the full sample gets caught.
 
-Usage: python3 base_rate.py <parquet_path> <fx|index> [theta] [horizon_min]
+Usage: python3 base_rate.py <parquet_path> <fx|index|commodity> [calc] [theta] [horizon_min]
+       calc: 'cog' (default) or 'original' -- which level calc to run the scan against.
 """
 import sys
 import json
 from collections import defaultdict
-import numpy as np
 
-from cog_levels import build_level_frame
+import cog_levels
+import original_levels
 from touch_engine import scan_all, LEVELS
+
+CALCS = {'cog': cog_levels, 'original': original_levels}
 
 
 def summarize(records, label=''):
@@ -53,10 +56,11 @@ def summarize(records, label=''):
 def main():
     path = sys.argv[1]
     asset_class = sys.argv[2] if len(sys.argv) > 2 else 'fx'
-    theta = float(sys.argv[3]) if len(sys.argv) > 3 else 0.25
-    horizon = int(sys.argv[4]) if len(sys.argv) > 4 else 60
+    calc = sys.argv[3] if len(sys.argv) > 3 else 'cog'
+    theta = float(sys.argv[4]) if len(sys.argv) > 4 else 0.25
+    horizon = int(sys.argv[5]) if len(sys.argv) > 5 else 60
 
-    frame = build_level_frame(path, asset_class)
+    frame = CALCS[calc].build_level_frame(path, asset_class)
     records = scan_all(frame, theta=theta, horizon_min=horizon)
 
     n_days = frame['daily']['day_idx'].size
@@ -64,13 +68,13 @@ def main():
     is_records = [r for r in records if r['day_i'] < split]
     oos_records = [r for r in records if r['day_i'] >= split]
 
-    full = summarize(records, f'{path} FULL SAMPLE (theta={theta}sigma, horizon={horizon}min)')
-    is_t = summarize(is_records, f'{path} IN-SAMPLE (first half)')
-    oos_t = summarize(oos_records, f'{path} OUT-OF-SAMPLE (second half)')
+    full = summarize(records, f'{path} [{calc}] FULL SAMPLE (theta={theta}sigma, horizon={horizon}min)')
+    is_t = summarize(is_records, f'{path} [{calc}] IN-SAMPLE (first half)')
+    oos_t = summarize(oos_records, f'{path} [{calc}] OUT-OF-SAMPLE (second half)')
 
-    out = dict(path=path, asset_class=asset_class, theta=theta, horizon_min=horizon,
+    out = dict(path=path, asset_class=asset_class, calc=calc, theta=theta, horizon_min=horizon,
                full=full, in_sample=is_t, out_of_sample=oos_t)
-    out_path = path.rsplit('/', 1)[-1].replace('.parquet', '') + '_base_rate.json'
+    out_path = path.rsplit('/', 1)[-1].replace('.parquet', '') + f'_{calc}_base_rate.json'
     with open(out_path, 'w') as f:
         json.dump(out, f, indent=2)
     print(f'\nwrote {out_path}')

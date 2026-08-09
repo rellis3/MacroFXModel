@@ -1,6 +1,7 @@
 {
   "path": "../portfolioBacktest/cache/nq_m1.parquet",
   "asset_class": "index",
+  "calc": "cog",
   "theta": 0.25,
   "horizon_min": 60,
   "full": {

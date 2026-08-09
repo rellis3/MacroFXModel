@@ -1,6 +1,7 @@
 {
   "path": "../portfolioBacktest/cache/eurusd_m1.parquet",
   "asset_class": "fx",
+  "calc": "cog",
   "theta": 0.25,
   "horizon_min": 60,
   "full": {
