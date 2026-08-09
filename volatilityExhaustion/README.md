@@ -439,6 +439,41 @@ levers are data-gated builds, not bolt-ons: **options/gamma/VRP** (index/gold, f
 not FX-backtestable per the repo audit) and **day-level macro-state** (yields/DXY/credit/COT,
 release-cadence-respecting). Run `python3 median_follow_gated.py` / `python3 jump_gated_fade.py`.
 
+## Phase 11 — WaveTrend-STRETCH-gated fade at the levels: the first REAL directional gate (`median_wt_gated_fade.py`)
+
+The one directional signal in the repo that is OOS-sign-stable is the VuManChu WaveTrend
+STRETCH → ~1h reversion (`vumanchuLab`: sign 22/23 instrument-years, p≈5e-6). It had never
+been tested as the gate on a forecast-level FADE. Match the LIVE pages' definition
+(`js/vumanchuState.js`): WaveTrend **9/12/3**, OB/OS **±53 on wt1**. Gate: fade a level
+touch only when WT is stretched in the touch direction (upper→overbought, lower→oversold);
+**MTF** also requires the same zone on H1 (M15+H1), the documented ~2× amplifier. WT at the
+intraday touch uses the last COMPLETED M15/H1 bar (causal). Reuses the vetted fade geometry
++ costs (`costed_median_follow`) and WT port (`mtf_divergence`, bit-for-bit vs `vumanchuCore`).
+
+**Result — NULL by the strict bar, but for a NEW reason: the gate is a REAL directional signal.**
+
+Pooled FX OOS, monotonic **anti-gate < blind < WT < MTF**, both bands, IS *and* OOS:
+
+| median-line fade | win% | mean% |    | 75th-line fade | win% | mean% |
+|---|---|---|---|---|---|---|
+| anti-gate | 46.5% | −0.0554% |    | anti-gate | 49.0% | −0.0456% |
+| blind     | 50.4% | −0.0420% |    | blind     | 50.0% | −0.0314% |
+| WT-gated  | 53.1% | −0.0323% |    | WT-gated  | 50.5% | −0.0238% |
+| **MTF-gated** | **61.7%** | **−0.0128%** |    | **MTF-gated** | 52.1% | −0.0061% |
+
+The MTF WT-stretch gate lifts the median fade win rate **50% → 62% OOS** (n=1320), and the
+**anti-gate (fade when NOT stretched) is the worst leg** — the negative control that proves
+it's signal, not noise-slicing. This **replicates the vumanchuLab MTF-zone effect at the
+forecast level** (new). For the first time an *entry* carries a genuine directional edge —
+every prior attempt failed at direction; this one fails at **payoff geometry**: gross P&L is
+~flat (≈−0.001% before the 0.012% cost) because the fade's modest-target/wide-stop/
+mark-to-close structure lets the wrong 38% (fading a real continuation) give back what the
+62% winners make. **The limiting factor has shifted from "no direction" to "the exit"** — a
+more tractable problem. Next: a small pre-registered exit grid (tighter stops to cut the
+continuation-loser tail; target variants) on the MTF-gated median entry only, to see if the
+now-real 62%-win gate can be monetized over cost. Run `python3 median_wt_gated_fade.py`
+(75th) or `... median`, `... EURUSD` (one pair).
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -463,5 +498,6 @@ alongside.
 - `mtf_divergence.py` — Phase-9 multi-timeframe VuManChu regular-divergence agreement (WaveTrend cross-checked bit-for-bit vs `js/vumanchuCore`), costed fade, IS/OOS — NULL. Run `python3 mtf_divergence.py` (`crosscheck` for the JS parity guard).
 - `median_follow_gated.py` — Phase-10 gates the median DECISION by the Phase-3 causal expansion rule (EXPANSION→follow / CONTAINED→fade), reusing the Phase-7 costed primitives, IS/OOS, 6 majors — NULL (magnitude doesn't buy direction). Run `python3 median_follow_gated.py`.
 - `jump_gated_fade.py` — Phase-10b the last cheap FX lever: bucket the costed median FADE by pre-tag bipower jump fraction (Phase-8's "high-jump reverts" pointer), IS/OOS, 6 majors — NULL (didn't replicate past EURUSD). Run `python3 jump_gated_fade.py`.
+- `median_wt_gated_fade.py` — Phase-11 WaveTrend-stretch-gated fade at the median/75th (live-page WT 9/12/3, OB/OS ±53 on wt1, M15+H1 MTF zone), costed, IS/OOS, 6 majors — NULL by cost but the gate is a REAL directional signal (MTF lifts median fade win 50%→62% OOS, monotonic anti<blind<WT<MTF; limiting factor is now the exit, not direction). Run `python3 median_wt_gated_fade.py` (`median` / `EURUSD`).
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
