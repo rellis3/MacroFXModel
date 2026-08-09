@@ -21602,10 +21602,14 @@ app.get('/api/pattern-lab/candles/:pair', async (req, res) => {
 
 // Live candles straight from OANDA (not the static M1 parquet) — this is what
 // the live pattern scanner (PatternBot/pattern_live_bot.mjs) polls. Only the
-// granularities OANDA actually serves at intraday resolution are supported;
-// 1m is deliberately not exposed here (too noisy to alert on live, per the
-// historical study) even though the M1 parquet route above supports it.
-const PL_LIVE_GRAN = { '5m': 'M5', '15m': 'M15', '30m': 'M30', '1h': 'H1', '4h': 'H4', '1d': 'D' };
+// granularities OANDA actually serves at intraday resolution are supported.
+// 1m was originally left out here for Pattern Lab's own alerting (too noisy
+// for chart-pattern confirmation) even though the M1 parquet route above
+// supports it -- re-added for levelEngine/live_watch.py, which needs genuine
+// M1 resolution: its touch/barrier detection was backtested bar-by-bar on M1
+// parquet, and anything coarser would systematically miss or mistime touches
+// relative to what the historical stats it alerts against were measured on.
+const PL_LIVE_GRAN = { '1m': 'M1', '5m': 'M5', '15m': 'M15', '30m': 'M30', '1h': 'H1', '4h': 'H4', '1d': 'D' };
 
 app.get('/api/pattern-lab/live-candles/:pair', async (req, res) => {
   const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');

@@ -66,15 +66,23 @@ def daily_sigma_fraction(daily, asset_class):
     return causal_sigma(daily, window=YZ_WINDOW)
 
 
+def pct_from_sigma(sigma, asset_class):
+    """Same BM/HN x ASSET_PARAMS x sigma multiplication build_level_frame does
+    per-day, exposed standalone so a live caller (one sigma value, not a whole
+    series -- e.g. levelEngine/live_watch.py) gets identical %'s without
+    re-deriving the formula."""
+    p = ASSET_PARAMS.get(asset_class, ASSET_PARAMS['fx'])
+    return dict(
+        hl50=BM_P50 * p['hl50'] * sigma, hl75=BM_P75 * p['hl75'] * sigma,
+        oc50=HN_P50 * p['oc50'] * sigma, oc75=HN_P75 * p['oc75'] * sigma,
+    )
+
+
 def build_level_frame(path, asset_class='fx'):
     """Same output shape as cog_levels.build_level_frame (level_frame.day_levels
     consumes both identically) — only the sigma source and constants differ."""
     m1 = load_m1(path)
     daily = build_london_daily(m1)
     sigma = daily_sigma_fraction(daily, asset_class)
-    p = ASSET_PARAMS.get(asset_class, ASSET_PARAMS['fx'])
-    pct = dict(
-        hl50=BM_P50 * p['hl50'] * sigma, hl75=BM_P75 * p['hl75'] * sigma,
-        oc50=HN_P50 * p['oc50'] * sigma, oc75=HN_P75 * p['oc75'] * sigma,
-    )
+    pct = pct_from_sigma(sigma, asset_class)
     return dict(m1=m1, daily=daily, sigma=sigma, pct=pct)

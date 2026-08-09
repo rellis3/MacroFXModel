@@ -41,6 +41,14 @@ def daily_sigma_fraction(daily, asset_class):
     return causal_sigma(daily, window=YZ_WINDOW)
 
 
+def pct_from_sigma(sigma):
+    """Same COG_CONST x sigma multiplication build_level_frame does per-day,
+    exposed standalone so a live caller (one sigma value, not a whole series --
+    e.g. levelEngine/live_watch.py) gets identical %'s without re-deriving the
+    formula."""
+    return {k: sigma * c for k, c in COG_CONST.items()}
+
+
 def build_level_frame(path, asset_class='fx'):
     """Load M1, build London daily bars + causal sigma, return everything a touch
     scan needs: per-day open + the 4 COG %'s, and per-minute bar arrays with a
@@ -48,5 +56,5 @@ def build_level_frame(path, asset_class='fx'):
     m1 = load_m1(path)
     daily = build_london_daily(m1)
     sigma = daily_sigma_fraction(daily, asset_class)   # sigma[i] used for day i (NaN until warmed up)
-    pct = {k: sigma * c for k, c in COG_CONST.items()}  # fraction, e.g. 0.0215 for 2.15%
+    pct = pct_from_sigma(sigma)                        # fraction, e.g. 0.0215 for 2.15%
     return dict(m1=m1, daily=daily, sigma=sigma, pct=pct)
