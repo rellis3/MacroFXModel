@@ -128,7 +128,7 @@ import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flatt
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
-import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext } from './js/volLevelAlertCore.js';
+import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext, wtZone as volWtZone } from './js/volLevelAlertCore.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
@@ -19713,8 +19713,21 @@ async function checkVolLevelAlertsNow() {
       });
     } catch { dispersion = null; }
 
+    // WaveTrend-stretch DIRECTION context (Phase-11 validated gate): MTF zone from
+    // M15 + H1 (matches the live vumanchu-state pages: wt1 ±53, 9/12/3). Best-effort —
+    // any fetch/compute failure just omits the direction block.
+    let direction = null;
+    try {
+      const [m15, h1] = await Promise.all([
+        _fetchVolLevelCandles(sym, 'M15', 200),
+        _fetchVolLevelCandles(sym, 'H1', 200),
+      ]);
+      const z15 = volWtZone(m15), z1h = volWtZone(h1);
+      if (z15 && z1h) direction = { m15: z15, h1: z1h };
+    } catch { direction = null; }
+
     const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
-      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion });
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction });
 
     for (const ev of events) {
       const ck = `${canonical}|${ev.key}`;

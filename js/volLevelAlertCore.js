@@ -128,6 +128,19 @@ export function momentumZ(bars, { zWindow = 100, ...wtOpts } = {}) {
   return { wt: +wt[idx].toFixed(2), z: +z.toFixed(2) };
 }
 
+// ── WaveTrend stretch zone (the Phase-11 validated direction gate) ─────────────
+// Last-bar WT1 vs the OB/OS bands (±53, matching the live vumanchu-state pages).
+// 'OB' = overbought-stretched (up-extension exhaustion), 'OS' = oversold, else 'mid'.
+// Returns null on too-few bars. Params default to the operator's 9/12/3.
+export function wtZone(bars, { obLevel = 53, osLevel = -53, n1 = 9, n2 = 12, sp = 3 } = {}) {
+  if (!Array.isArray(bars) || bars.length < 30) return null;
+  const wt = waveTrendSeries(bars, { n1, n2, sp });
+  if (!wt.length) return null;
+  const w = wt[wt.length - 1];
+  if (!Number.isFinite(w)) return null;
+  return w >= obLevel ? 'OB' : w <= osLevel ? 'OS' : 'mid';
+}
+
 // ── Divergence ────────────────────────────────────────────────────────────────
 // Regular / hidden divergence between price and the WaveTrend oscillator, via the
 // shared `detectDivergence` brick. Returns 'DIVERGENCE_BULL'|'DIVERGENCE_BEAR'|
@@ -260,10 +273,35 @@ export function formatDispersionLines(ctx) {
   return lines;
 }
 
+// Render the WaveTrend-stretch DIRECTION block (the Phase-11 validated gate) as
+// Telegram lines. `direction` = { m15, h1 } zones ('OB'|'OS'|'mid'). The read
+// combines the stretch with the touch side: an up-touch (level above price) that is
+// OVERBOUGHT-stretched → reversion favored; a down-touch that is OVERSOLD → reversion
+// favored; otherwise continuation. MTF (M15+H1 agree) is the strong version (~62% median
+// fade win-rate OOS vs 50% base); single-TF is a mild lean. Direction CONTEXT — the edge
+// is sub-cost as a standalone trade, its use is confidence/sizing on an existing setup.
+export function formatDirectionLines(near, direction) {
+  if (!direction || !near) return [];
+  const want = near.side === 'above' ? 'OB' : 'OS';     // stretch that favours reverting the touch
+  const m15Match = direction.m15 === want;
+  const h1Match  = direction.h1 === want;
+  const lines = ['', '<b>🧭 Direction (WaveTrend stretch)</b>'];
+  if (m15Match && h1Match) {
+    lines.push('🔄 <b>Reversion favoured</b> — WT stretched on M15 <b>and</b> H1 (MTF-zone). '
+             + 'Validated gate: lifts the median-line fade win-rate ~50%→62% OOS.');
+  } else if (m15Match) {
+    lines.push('🔄 <i>Mild reversion lean</i> — WT stretched on M15 only (H1 not confirming).');
+  } else {
+    lines.push('➡️ <b>Continuation favoured</b> — WT not stretched here; median-line tags tend to be walked through.');
+  }
+  lines.push('<i>Direction context, not a standalone signal (sub-cost alone) — a confidence input.</i>');
+  return lines;
+}
+
 // ── Message formatting ────────────────────────────────────────────────────────
 // Build the informational Telegram text for one near-level event. All fields are
 // optional; missing enrichment is simply omitted (e.g. no candles → no speed).
-export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence, dispersion }) {
+export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence, dispersion, direction }) {
   const px      = v => (v == null ? '—' : Number(v).toFixed(dp));
   const icon    = pairIcon(pair);
   const dirArrow = near.side === 'above' ? '⬆️' : '⬇️';         // which way price must go to reach it
@@ -302,6 +340,8 @@ export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence,
 
   // Daily dispersion block (range-used % + validated expansion regime).
   for (const bl of formatDispersionLines(dispersion)) lines.push(bl);
+  // WaveTrend-stretch direction block (the Phase-11 validated fade/continue lean).
+  for (const bl of formatDirectionLines(near, direction)) lines.push(bl);
 
   lines.push('');
   lines.push('<i>ℹ️ Informational — no trade signal. Regime = range magnitude (break vs hold), not direction.</i>');
@@ -311,7 +351,7 @@ export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence,
 // Compose the full per-pair evaluation. Returns an array of {near, text, key}
 // ready to send (already filtered by threshold). `bars` may be null (no
 // enrichment). Cooldown is applied by the caller.
-export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, thresholdPips, enabled, bars, speedOpts, momOpts, divOpts, dispersion = null }) {
+export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, thresholdPips, enabled, bars, speedOpts, momOpts, divOpts, dispersion = null, direction = null }) {
   const nears = scanNearLevels({ levels, price, pipSize, sessionOpen, thresholdPips, enabled });
   if (!nears.length) return [];
   const speed = bars ? approachSpeed(bars, { pipSize, ...speedOpts }) : null;
@@ -320,6 +360,6 @@ export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, th
   return nears.map(near => ({
     key:  near.key,
     near,
-    text: formatAlert({ pair, price, dp, near, speed, mom, divergence: div, dispersion }),
+    text: formatAlert({ pair, price, dp, near, speed, mom, divergence: div, dispersion, direction }),
   }));
 }
