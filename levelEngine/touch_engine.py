@@ -88,6 +88,9 @@ def _race(level, series, touch_idx, high, low, barrier_price, horizon_min):
     return 'ambiguous', int(c)   # same-bar tie, both barriers hit in one candle
 
 
+VELOCITY_WINDOW = 15   # minutes of lookback for the "approach speed into the level" feature
+
+
 def scan_day(frame, day_i, theta=0.25, horizon_min=60):
     """Return a list of {level, outcome, day_i} records, one per level touched
     (skipped if the level is never touched that day, or sigma isn't warmed up)."""
@@ -96,7 +99,7 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
         return []
     m1 = frame['m1']
     s, e = dl['start'], dl['end']
-    high, low = m1['high'][s:e], m1['low'][s:e]
+    high, low, close = m1['high'][s:e], m1['low'][s:e], m1['close'][s:e]
     if high.size < 2:
         return []
 
@@ -118,9 +121,22 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
         # instruments/vol regimes by construction (no separate rescaling needed).
         range_so_far = prior_high[touch_idx] - prior_low[touch_idx]
         budget_used = float(range_so_far / day_range_px) if day_range_px > 0 else None
+
+        # "Approach velocity" -- the K-min return leading INTO the touch, normalized
+        # by that day's own sigma (same normalization convention as budget_used, so
+        # comparable across instruments/regimes), signed so POSITIVE always means
+        # "moving fast toward this level" regardless of whether it's an upside or
+        # downside level (spike) vs near-zero/negative (grind or drifting away).
+        velocity = None
+        if touch_idx >= VELOCITY_WINDOW and sigma_i > 0:
+            raw_ret = (close[touch_idx] - close[touch_idx - VELOCITY_WINDOW]) / close[touch_idx - VELOCITY_WINDOW]
+            signed = raw_ret / sigma_i
+            velocity = float(signed if level in UPSIDE else -signed)
+
         out.append(dict(level=level, outcome=outcome, day_i=int(day_i),
                          touch_min=int(touch_idx), level_px=float(series[touch_idx]),
-                         barrier_price=float(barrier_price), budget_used=budget_used))
+                         barrier_price=float(barrier_price), budget_used=budget_used,
+                         velocity=velocity))
     return out
 
 
