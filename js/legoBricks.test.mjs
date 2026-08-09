@@ -683,6 +683,18 @@ console.log('\n[oiLevelExport]');
   ok('OI export stamps the per-pair staleness line', text.includes('saved 7/21/2026, 08:15:00') && text.includes('spot 1.0955') && text.includes('DTE 4'));
   ok('OI export tags PIN regime from +GEX', text.includes('regime PIN'));
   ok('OI export tags BREAKOUT regime from -GEX', text.includes('regime BREAKOUT'));
+  // GEX regime bands line (the format the Pine indicator parses into price-zoned shading):
+  // "· gex-bands base=<r> <price>=<r> …" — base = regime below the lowest crossing, each
+  // price = the regime ABOVE that crossing.
+  {
+    const bandStore = { 'EUR/USD': { pair: 'EUR/USD', spot: 1.0955, basis: 0, dte: 4,
+      exposures: { gex: 500 }, refMove: { move: 0.006 }, gexFlips: [{ price: 1.0930, dir: 'long->short' }],
+      callWalls: [{ strike: 1.1000, oi: 9000, tier: 'strong' }], putWalls: [{ strike: 1.0900, oi: 8000, tier: 'strong' }],
+      maxPain: 1.0948, callWall: 1.1000, putWall: 1.0900 } };
+    const bt = buildOILevelText(bandStore, { generated: 'x' });
+    ok('OI export emits the gex-bands line (PIN below / BREAKOUT above the crossing)',
+      bt.includes('· gex-bands base=pin 1.09300=breakout'));
+  }
   ok('OI export emits volume magnet as oi_volume', text.includes('OI 1.10250 : oi_volume'));
   // Gamma heat (levelHeat): appended as a SECOND ' . ' segment, AFTER the expectation,
   // so the indicator's index-1 note read is undisturbed. Only when a gexProfile exists.

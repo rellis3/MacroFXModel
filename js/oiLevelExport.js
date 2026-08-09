@@ -36,7 +36,7 @@ import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
-import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect } from './oi.js';
+import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands } from './oi.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -175,6 +175,17 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
     if (dist) lines.push(`· flip ${px(flip).toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
+    // GEX regime BANDS (spot terms unless futures): the LOCAL PIN/BREAKOUT map so the indicator
+    // can shade WHERE the book pins vs breaks — the net-GEX sign the regime word uses is a
+    // whole-book average that hides short-gamma pockets. Emits the base regime (below the lowest
+    // zero-gamma crossing) then each crossing price with the regime ABOVE it; the indicator
+    // extends the outer bands to the chart edges. Machine-parsed by the Pine indicator.
+    const bands = oiRegimeBands(inst);
+    if (bands.length && bands[0].regime !== 'neutral') {
+      const toks = [`base=${bands[0].regime}`];
+      for (let i = 0; i < bands.length - 1; i++) toks.push(`${px(bands[i].hi).toFixed(dp)}=${bands[i + 1].regime}`);
+      lines.push(`· gex-bands ${toks.join(' ')}`);
+    }
     // Per-expiry breakdown (spot terms) — the same raw-OI max pain / call & put wall for
     // EVERY expiry, so you can line ANY single expiry up against another desk's OI panel and
     // confirm the calc (max pain is deterministic: same expiry + same chain ⇒ same number).

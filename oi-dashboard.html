@@ -142,6 +142,10 @@ tr.dim td{opacity:.42}
   display:flex;align-items:center;gap:8px;font-weight:600}
 #pxChartWrap{position:relative;height:430px;width:100%}
 #pxChart{height:430px;width:100%}
+/* GEX regime-band overlay: translucent horizontal price zones (PIN green / BREAKOUT red)
+   above the candle canvas but non-interactive, so candles show through the tint. */
+#pxBands{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.pxBand{position:absolute;left:0;right:0;pointer-events:none}
 /* Overlay for status/errors. Deliberately a SIBLING of #pxChart, never inside it - text
    written into the chart host destroys the canvas and leaves a dead chart. */
 #pxMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
@@ -197,7 +201,7 @@ tr.dim td{opacity:.42}
   </div>
 
   <div class="rail" id="rail"></div>
-  <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChartWrap"><div id="pxChart"></div><div id="pxMsg"></div></div></div>
+  <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChartWrap"><div id="pxChart"></div><div id="pxBands"></div><div id="pxMsg"></div></div></div>
   <div id="main"></div>
 </div>
 
@@ -354,7 +358,7 @@ let _chart=null, _series=null, _priceLines=[], _candleCache={}, _tf='H1';
 // live feed to adopt, only a missing timer.
 const _TF_POLL={M5:30_000,M15:60_000,M30:60_000,H1:180_000,H4:300_000,D:600_000};
 let _pollTimer=null, _lastCandleAt=0, _chartToken=0, _pollFails=0;
-let _coneSeries=[], CONE_ON=true;
+let _coneSeries=[], CONE_ON=true, BANDS_ON=true, _bandsSubbed=false;
 
 // Every level the chart can draw, from the stored record. Walls come from the same
 // near-money selection the export uses, so the chart never shows a level the indicator
@@ -430,6 +434,39 @@ function drawCone(){
   }
 }
 
+// GEX regime bands as translucent horizontal price zones over the candles. Positions each
+// band via priceToCoordinate (clamped to the pane when a boundary is off-screen). Same local
+// PIN/BREAKOUT read as the GEX-by-strike panel, now against live price. Repositioned on every
+// render/poll + on pan/zoom (visible-range change).
+function drawBands(){
+  const host=document.getElementById('pxBands'); const e=STORE[SYM];
+  if(!host) return;
+  host.innerHTML='';
+  if(!BANDS_ON || !_series || !e) return;
+  const rm=e.refMove?.move;
+  if(!(e.spot>0)) return;
+  // Band boundaries are stored in SPOT terms; the chart candles are spot, so use spot values
+  // (the page's futures/spot toggle only relabels the level readouts, the candles stay spot).
+  const lo=rm>0?e.spot-4*rm:e.spot*0.96, hi=rm>0?e.spot+4*rm:e.spot*1.04;
+  const bands=regimeBands(e,lo,hi);
+  const H=host.clientHeight||0; if(!H) return;
+  for(const b of bands){
+    if(b.regime==='neutral') continue;
+    let yT=_series.priceToCoordinate(b.hi), yB=_series.priceToCoordinate(b.lo);
+    if(yT==null) yT=(b.hi>e.spot)?0:H;          // off the top of the pane → clamp to top, else bottom
+    if(yB==null) yB=(b.lo>e.spot)?0:H;
+    const top=Math.max(0,Math.min(yT,yB)), bot=Math.min(H,Math.max(yT,yB));
+    if(bot-top<1) continue;
+    const rgb=b.regime==='pin'?'70,184,122':'232,97,95';
+    const d=document.createElement('div');
+    d.className='pxBand'; d.style.top=top+'px'; d.style.height=(bot-top)+'px';
+    d.style.background=`rgba(${rgb},0.07)`;
+    host.appendChild(d);
+  }
+  // Subscribe once so pan/zoom reflows the bands (vertical autoscale is covered by the poll).
+  if(!_bandsSubbed && _chart){ try{ _chart.timeScale().subscribeVisibleTimeRangeChange(()=>drawBands()); _bandsSubbed=true; }catch(_){} }
+}
+
 async function loadCandles(force){
   const os=OANDA_SYM[SYM]; if(!os) return null;
   const key=os+'|'+_tf;
@@ -495,6 +532,7 @@ async function mountChart(force){
     if(force!=='poll') _chart.timeScale().fitContent();
     drawLines();
     drawCone();
+    drawBands();
     _pollFails=0;
     paintAge();
   }catch(err){
@@ -544,7 +582,8 @@ function chartToolbar(){
   const toggles=LINE_TYPES.map(t=>`<label class="ltog ${LINES_ON[t.k]?'on':''}" data-lk="${t.k}">
     <span class="sw" style="background:${LINES_ON[t.k]?t.col:'transparent'};border-color:${t.col}"></span>${t.label}</label>`).join('');
   const cone=`<label class="ltog ${CONE_ON?'on':''}" id="coneTog"><span class="sw" style="background:${CONE_ON?'#54a8de':'transparent'};border-color:#54a8de"></span>Vol cone</label>`;
-  return `<div class="ctl"><div class="tfs">${tf}<span id="pxAge" class="pxage"></span></div><div class="ltogs">${toggles}${cone}</div></div>`;
+  const bnds=`<label class="ltog ${BANDS_ON?'on':''}" id="bandTog" title="Shade the chart by LOCAL gamma regime — PIN (green, ranges hold) vs BREAKOUT (red, breaks run) — resolved by price zone from the zero-gamma crossings, not one net-GEX tint."><span class="sw" style="background:${BANDS_ON?'#46b87a':'transparent'};border-color:#46b87a"></span>Regime bands</label>`;
+  return `<div class="ctl"><div class="tfs">${tf}<span id="pxAge" class="pxage"></span></div><div class="ltogs">${toggles}${cone}${bnds}</div></div>`;
 }
 
 function wireChartToolbar(){
@@ -556,6 +595,9 @@ function wireChartToolbar(){
   if(ct) ct.onclick=()=>{ CONE_ON=!CONE_ON; ct.classList.toggle('on',CONE_ON);
     ct.querySelector('.sw').style.background=CONE_ON?'#54a8de':'transparent';
     if(CONE_ON && !REACH?.ok) loadReach(); else drawCone(); };
+  const bt=document.getElementById('bandTog');
+  if(bt) bt.onclick=()=>{ BANDS_ON=!BANDS_ON; bt.classList.toggle('on',BANDS_ON);
+    bt.querySelector('.sw').style.background=BANDS_ON?'#46b87a':'transparent'; drawBands(); };
   document.querySelectorAll('.ltog').forEach(l=>l.onclick=()=>{
     LINES_ON[l.dataset.lk]=!LINES_ON[l.dataset.lk];
     const t=LINE_TYPES.find(x=>x.k===l.dataset.lk);
