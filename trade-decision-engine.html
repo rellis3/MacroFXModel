@@ -49,7 +49,7 @@
 <body>
 
 <h1>🎯 Trade Decision Engine <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
-<div class="sub">Per-event go/skip scorer: a bot sees price entering a zone, fires one <code>POST /api/trade-decision/decide</code>, and gets probability + direction + size in milliseconds. Slow loop maintains per-pair feature snapshots; fast loop is a pure dot-product. Design: <code>Trade_Decision_Engine/ARCHITECTURE.md</code></div>
+<div class="sub">Per-event go/skip scorer: a bot sees price entering a zone, fires one <code>POST /api/trade-decision/decide</code>, and gets probability + direction + size in milliseconds. Slow loop maintains per-pair feature snapshots; fast loop is a pure dot-product. Design: <code>Trade_Decision_Engine/ARCHITECTURE.md</code> · Live ticking version: <a href="continuation-fade-ticker.html">continuation-fade-ticker.html</a></div>
 
 <div class="card">
   <h2>How to use</h2>
