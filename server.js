@@ -7148,9 +7148,9 @@ async function _vmLogCycle() {
     if (Date.now() - _vmLogBusySince < VM_LOG_STALE_MS) return;
     console.error('[vmlog] stale lock reclaimed (previous cycle never completed)');
   }
-  if (!process.env.OANDA_KEY) return;
+  if (!process.env.OANDA_KEY) { console.warn('[vmlog] skipped: OANDA_KEY not set'); return; }
   const known = _vmTableInstruments();
-  if (!known.length) return;
+  if (!known.length) { console.warn('[vmlog] skipped: state table empty/unloaded'); return; }
   _vmLogBusy = true;
   _vmLogBusySince = Date.now();
   try {
