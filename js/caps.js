@@ -207,6 +207,8 @@ function populateCfgForm(caps) {
   if (zEl) zEl.value = String(caps.enableZscoreConviction ?? false);
   const vrEl = document.getElementById('vol_rebuildNightly');
   if (vrEl) vrEl.value = String(caps.volBookRebuild ?? false);
+  const leEl = document.getElementById('conf_levelEngineBotEnabled');
+  if (leEl) leEl.checked = caps.levelEngineBotEnabled === true;
 }
 
 function readCfgForm() {
@@ -222,6 +224,7 @@ function readCfgForm() {
     // Top-level boolean (NOT in a per-asset object, so it's excluded from the
     // positive-number validation in saveCaps / the worker).
     volBookRebuild:         str('vol_rebuildNightly') === 'true',
+    levelEngineBotEnabled:  document.getElementById('conf_levelEngineBotEnabled')?.checked === true,
     fx: {
       confluencePips: num('fx_confluencePips'),
       mergeFactor:    num('fx_mergeFactor'),

@@ -29,9 +29,13 @@ project produced; this log is what would eventually confirm or kill them):
   2. close_up_75,  velocity >= 0.45 (fast spike into the level), side=follow
   each checked under BOTH calc engines (cog, original) independently.
 
-Config gate: KV key `level_engine_bot_config` = {enabled: bool}. Defaults OFF,
-matching this repo's existing alert-bot convention (PatternBot) -- a fresh
-deploy never starts alerting until someone opts in.
+Config gate: the "NQ level-touch alerts" checkbox in index.html's Caps modal
+(⚙ button -> Confluence Mode section), stored as `levelEngineBotEnabled` in
+the same 'caps' KV blob everything else in that modal already saves to --
+NOT a separate KV key, so it's one settings screen instead of a second one.
+Defaults OFF, matching this repo's existing alert-bot convention (PatternBot)
+-- a fresh deploy never starts alerting until someone ticks the box and hits
+Save.
 
 Run via `python3 levelEngine/live_watch.py` -- wired into start.sh as a
 restart-on-crash background loop alongside the other bots.
@@ -74,8 +78,8 @@ SIGNALS = [
          condition=lambda t: t['velocity'] is not None and t['velocity'] >= 0.45),
 ]
 
-KV_CONFIG, KV_STATE, KV_STATUS, KV_LOG = (
-    'level_engine_bot_config', 'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
+KV_STATE, KV_STATUS, KV_LOG = (
+    'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log',
 )
 
 
@@ -95,8 +99,24 @@ def api_post(path, body):
 
 
 def kv_get(key, default=None):
+    # NOTE: the generic /api/kv/get route deliberately refuses to serve 'caps'
+    # (_worker.js's isAllowedKVKey — "cannot be used to read arbitrary KV
+    # entries, e.g. the caps config") and wraps everything else in {data,
+    # timestamp}. This helper is only for the bot's OWN keys (state/status/log),
+    # which ARE stored that way. The enable flag lives in 'caps' and is read
+    # separately via caps_enabled(), through the dedicated /api/config/caps
+    # route, which returns the object unwrapped.
     res = api_get(f'/api/kv/get?key={key}')
     return default if res.get('miss') else res.get('data', default)
+
+
+def caps_enabled():
+    """Whether the 'NQ level-touch alerts' checkbox in index.html's Caps modal
+    is on. Goes through /api/config/caps (GET), NOT /api/kv/get -- that route
+    is the only one that actually reads/writes the 'caps' KV key; the generic
+    KV routes are explicitly barred from it."""
+    caps = api_get('/api/config/caps')
+    return caps.get('levelEngineBotEnabled') is True
 
 
 def kv_put(key, data):
@@ -284,10 +304,9 @@ def resolve(log, results_sent):
 
 # ── main cycle ────────────────────────────────────────────────────────────
 def run_once():
-    config = kv_get(KV_CONFIG, {}) or {}
-    if config.get('enabled') is not True:
+    if not caps_enabled():
         kv_put(KV_STATUS, dict(lastRunAt=datetime.now(timezone.utc).isoformat(), enabled=False))
-        print('[level-bot] disabled (set level_engine_bot_config.enabled=true to turn on) -- skipping cycle')
+        print('[level-bot] disabled (tick "NQ level-touch alerts" in the Caps modal to turn on) -- skipping cycle')
         return
 
     state = kv_get(KV_STATE, {}) or {}
