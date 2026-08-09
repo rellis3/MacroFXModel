@@ -210,6 +210,13 @@ const _CF_EXACT = new Set([
   'cpi_v1', 'gdp_v1', 'ism_v1', 'labor_market_v1', 'retail_sales_v1',
   'trade_balance_v1', 'real_yield_v1', 'ppi_v1', 'yield_curve_v1',
   'consumer_confidence_v1',
+  'level_engine_bot_config',  // levelEngine/live_watch.py enable toggle — user-set, same class as ai_alert_cfg/surprise_alert_config
+  'level_engine_fwd_log',     // levelEngine/live_watch.py forward-track log: NQ level-touch alerts + their
+                              // resolved continuation/reversion/no_react outcomes — same "cannot be
+                              // rebuilt" class as fwd_fade_log/cone_fwd_log. This IS the live validation
+                              // record for the two candidates robustness_check.py/confluence_velocity.py
+                              // found but couldn't fully confirm retrospectively; losing it on a redeploy
+                              // would silently reset that forward test to zero.
 ]);
 function isCfKey(key) {
   // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the

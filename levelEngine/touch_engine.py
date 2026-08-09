@@ -88,6 +88,32 @@ def _race(level, series, touch_idx, high, low, barrier_price, horizon_min):
     return 'ambiguous', int(c)   # same-bar tie, both barriers hit in one candle
 
 
+VELOCITY_WINDOW = 15   # minutes of lookback for the "approach speed into the level" feature
+
+
+def budget_used_at(touch_idx, prior_low, prior_high, hl50, open_px):
+    """"Range budget" already spent BEFORE this touch, as a fraction of the day's
+    own expected full range -- normalized per-day so it's comparable across
+    instruments/vol regimes by construction (no separate rescaling needed)."""
+    day_range_px = 2 * hl50 * open_px
+    if not (day_range_px > 0):
+        return None
+    range_so_far = prior_high[touch_idx] - prior_low[touch_idx]
+    return float(range_so_far / day_range_px)
+
+
+def velocity_at(level, touch_idx, close, sigma_i):
+    """The K-min return leading INTO the touch, normalized by that day's own
+    sigma (same normalization convention as budget_used_at), signed so POSITIVE
+    always means "moving fast toward this level" regardless of whether it's an
+    upside or downside level (spike) vs near-zero/negative (grind/drifting away)."""
+    if touch_idx < VELOCITY_WINDOW or not (sigma_i > 0):
+        return None
+    raw_ret = (close[touch_idx] - close[touch_idx - VELOCITY_WINDOW]) / close[touch_idx - VELOCITY_WINDOW]
+    signed = raw_ret / sigma_i
+    return float(signed if level in UPSIDE else -signed)
+
+
 def scan_day(frame, day_i, theta=0.25, horizon_min=60):
     """Return a list of {level, outcome, day_i} records, one per level touched
     (skipped if the level is never touched that day, or sigma isn't warmed up)."""
@@ -96,14 +122,13 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
         return []
     m1 = frame['m1']
     s, e = dl['start'], dl['end']
-    high, low = m1['high'][s:e], m1['low'][s:e]
+    high, low, close = m1['high'][s:e], m1['low'][s:e], m1['close'][s:e]
     if high.size < 2:
         return []
 
     series_by_level = _level_series(dl, high, low)
     sigma_i = frame['sigma'][day_i]
     barrier_price = theta * sigma_i * dl['open']
-    day_range_px = 2 * dl['hl50'] * dl['open']       # expected FULL H-L range (median), price units
     prior_low, prior_high = series_by_level['_prior_low'], series_by_level['_prior_high']
 
     out = []
@@ -113,14 +138,13 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
         if touch_idx is None:
             continue
         outcome, _ = _race(level, series, touch_idx, high, low, barrier_price, horizon_min)
-        # "range budget" already spent BEFORE this touch, as a fraction of the day's
-        # own expected full range -- normalized per-day so it's comparable across
-        # instruments/vol regimes by construction (no separate rescaling needed).
-        range_so_far = prior_high[touch_idx] - prior_low[touch_idx]
-        budget_used = float(range_so_far / day_range_px) if day_range_px > 0 else None
+        budget_used = budget_used_at(touch_idx, prior_low, prior_high, dl['hl50'], dl['open'])
+        velocity = velocity_at(level, touch_idx, close, sigma_i)
+
         out.append(dict(level=level, outcome=outcome, day_i=int(day_i),
                          touch_min=int(touch_idx), level_px=float(series[touch_idx]),
-                         barrier_price=float(barrier_price), budget_used=budget_used))
+                         barrier_price=float(barrier_price), budget_used=budget_used,
+                         velocity=velocity))
     return out
 
 

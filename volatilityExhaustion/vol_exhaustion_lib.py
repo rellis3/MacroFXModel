@@ -19,13 +19,16 @@ Reproduced from source of truth:
   * causal sigma for day i = yz[i-1]  (predicts day i using data < i)
 """
 import numpy as np
-import pyarrow.parquet as pq
 
 MIN_PER_DAY = 1440
 EPOCH_DAY_MIN = MIN_PER_DAY  # minutes in a day
 
 # ── Load M1 parquet -> sorted numpy arrays ────────────────────────────────────
 def load_m1(path):
+    import pyarrow.parquet as pq   # lazy: only load_m1() needs it, and the live-service
+    # callers of this module (levelEngine/live_watch.py) only want the pure day-boundary/
+    # sigma math below, not a pyarrow dependency they'd otherwise have to add just to
+    # import this file.
     t = pq.read_table(path, columns=['open', 'high', 'low', 'close', 'volume', 'datetime'])
     o = t.column('open').to_numpy(zero_copy_only=False).astype(np.float64)
     h = t.column('high').to_numpy(zero_copy_only=False).astype(np.float64)
