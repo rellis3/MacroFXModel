@@ -142,6 +142,7 @@
       <a class="chub-item" href="liquidity-pulse.html" target="_blank" data-href="liquidity-pulse.html"><span class="ci-txt">💧 Liq Pulse</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('liquidity-pulse.html')" data-href="liquidity-pulse.html">☆</button></a>
       <a class="chub-item" href="global-liquidity.html" target="_blank" data-href="global-liquidity.html"><span class="ci-txt">🌊 Global Liq</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('global-liquidity.html')" data-href="global-liquidity.html">☆</button></a>
       <a class="chub-item" href="trade-decision-engine.html" target="_blank" data-href="trade-decision-engine.html"><span class="ci-txt">🎯 Trade Decision</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('trade-decision-engine.html')" data-href="trade-decision-engine.html">☆</button></a>
+      <a class="chub-item" href="continuation-fade-ticker.html" target="_blank" data-href="continuation-fade-ticker.html"><span class="ci-txt">📡 Continuation/Fade</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('continuation-fade-ticker.html')" data-href="continuation-fade-ticker.html">☆</button></a>
     </div>
   </div>
 
@@ -2840,6 +2841,7 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
         <a class="sm-item" href="liquidity-pulse.html" target="_blank"><span class="sm-item-name">💧 Liquidity Pulse</span><span class="sm-item-desc">Intraday liquidity monitor: DXY, bonds, risk-on/off pulse; gates intraday entries</span></a>
         <a class="sm-item" href="global-liquidity.html" target="_blank"><span class="sm-item-name">🌊 Global Liquidity</span><span class="sm-item-desc">GLI nowcast, macro regime classification, FX book target levels — mobile-friendly view</span></a>
         <a class="sm-item" href="trade-decision-engine.html" target="_blank"><span class="sm-item-name">🎯 Trade Decision Engine</span><span class="sm-item-desc">Per-event go/skip API test harness — zone touch → probability, direction and size in ms (meta-labeling v0)</span></a>
+        <a class="sm-item" href="continuation-fade-ticker.html" target="_blank"><span class="sm-item-name">📡 Continuation vs Fade Ticker</span><span class="sm-item-desc">Live decision-zone card: zone quality, continuation %, fade %, confidence — all re-scored as price ticks</span></a>
       </div>
 
       <div class="sm-group" data-group="volresearch">
@@ -3459,6 +3461,7 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/macro-verdict</span><span class="am-desc">Last computed macro-verdict result</span><span class="am-consumers">trade-decision-engine.html</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/config</span><span class="am-desc">TDE runtime config (backfill schedule, gap-fill flag)</span><span class="am-consumers">trade-decision-engine.html</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/trade-decision/config</span><span class="am-desc">Updates TDE runtime config in KV</span><span class="am-consumers">trade-decision-engine.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/trade-decision/zone-duel</span><span class="am-desc">One call per tick: continuation vs fade probabilities, zone quality, confidence and WATCHING/APPROACHING/TESTING/CONFIRMED state at the live price</span><span class="am-consumers">continuation-fade-ticker.html</span></div>
         </div>
       </div>
       <div class="am-cat" data-cat="forecast analysis (js/analyserroutes.js)">

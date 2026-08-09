@@ -705,6 +705,41 @@ function fetchPrice(sym) {
   return state.prices[sym]?.price ?? null;
 }
 
+// Live tick for a single instrument, independent of monitorTick (which only
+// calls fetchAllPrices when the Telegram alert loop is configured+enabled —
+// no bot config, no price cache). Throttled off the SAME state.prices cache
+// so a fast poller (the zone-duel ticker) and the alert loop never fight:
+// whichever asked most recently wins, everyone else reads it for free.
+const ZONE_DUEL_TICK_MS = 2500;
+async function tickPrice(displaySym, oandaSym) {
+  const cached = state.prices[displaySym];
+  if (cached && Date.now() - cached.at < ZONE_DUEL_TICK_MS) return cached.price;
+  if (!process.env.OANDA_KEY) return cached?.price ?? null;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const auth = { Authorization: `Bearer ${process.env.OANDA_KEY}` };
+  try {
+    if (process.env.OANDA_ACCOUNT_ID) {
+      const r = await fetch(
+        `${base}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(oandaSym)}`,
+        { headers: auth, signal: AbortSignal.timeout(6_000) });
+      if (r.ok) {
+        const d = await r.json();
+        const p = d.prices?.[0];
+        if (p?.bids?.[0] && p?.asks?.[0]) {
+          const price = (+p.bids[0].price + +p.asks[0].price) / 2;
+          state.prices[displaySym] = { price, at: Date.now() };
+          return price;
+        }
+      }
+    }
+    await fetchPriceFallback(displaySym, base, auth, Date.now());  // M1-candle fallback (existing helper)
+    return state.prices[displaySym]?.price ?? (cached?.price ?? null);
+  } catch {
+    return cached?.price ?? null;
+  }
+}
+
 async function fetchDailyCandles(sym, count = 60) {
   const instrument = sym.replace('/', '_');
   const base = (process.env.OANDA_ENV || 'live') === 'practice'
@@ -22449,6 +22484,100 @@ app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
     result.total_ms = Date.now() - t0;
     tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
+// ── Zone Duel — the live continuation-vs-fade ticker's one call per tick ────
+// /decide judges ONE proposed action; a level by itself doesn't say whether
+// price is going to accept it or reject it. This asks decisionCore for BOTH
+// hypotheses at the SAME live price — action:'follow' (continuation) and
+// action:'fade' — off one shared (warm-once) snapshot, and adds what a single
+// decide() call doesn't: a zone-quality score, a confidence read distinct from
+// either probability, and a WATCHING/APPROACHING/TESTING/CONFIRMED state so a
+// dashboard can re-poll this every few seconds and watch the two bars move as
+// price ticks and the zone read changes underneath them.
+//
+// price resolution: ?price= override (mirrors /decide, for simulating a touch)
+// else a live OANDA tick via tickPrice() — NOT monitorTick's cache, which only
+// populates when the Telegram alert loop is configured. mode=synthetic uses
+// the deterministic demo snapshot's own price, same as everywhere else in TDE.
+//
+// confidence is a heuristic, NOT a fitted number (same honesty as v0's
+// "UNCALIBRATED PRIOR" badge): how far apart the two hypotheses have pulled
+// (a coin-flip 51/49 read is not confident even if one side "wins"), blended
+// with how fresh the underlying slow-loop snapshot is.
+function _zdClamp01(x) { return Math.max(0, Math.min(1, x)); }
+app.get('/api/trade-decision/zone-duel', async (req, res) => {
+  const t0 = Date.now();
+  try {
+    const rawPair = req.query.pair;
+    if (!rawPair) return res.status(400).json({ ok: false, error: 'pair required' });
+    const key = resolveKey(rawPair) || String(rawPair).toLowerCase();
+    let rec; try { rec = instrument(key); } catch { rec = null; }
+    const display = rec?.display ?? rawPair;
+    const mode = req.query.mode === 'synthetic' ? 'synthetic' : 'live';
+
+    let snap, warm = null;
+    if (mode === 'synthetic') snap = tdeSnapshotFor(key, 'synthetic');
+    else { warm = await tdeWarmSnapshot(key); snap = warm.snap; }
+    if (!snap) return res.json({ ok: false, error: 'no snapshot yet — GET /api/trade-decision/state/' + key + ' first, or use mode=synthetic' });
+
+    let price = req.query.price != null ? Number(req.query.price) : NaN;
+    if (!Number.isFinite(price)) {
+      price = mode === 'synthetic' ? snap.price : ((rec ? await tickPrice(display, rec.oanda) : null) ?? snap.price);
+    }
+
+    const continuation = tdeDecide(snap, { pair: key, price, action: 'follow' });
+    const fade         = tdeDecide(snap, { pair: key, price, action: 'fade' });
+
+    const hit = continuation.zone ? continuation : (fade.zone ? fade : null);
+    const zoneQuality = hit ? Math.round(100 * _zdClamp01(
+      0.4 * (continuation.features?.confluence ?? fade.features?.confluence ?? 0) +
+      0.6 * (continuation.features?.zone_score ?? fade.features?.zone_score ?? 0)
+    )) : null;
+
+    const cp = continuation.probability, fp = fade.probability;
+    const haveBoth = cp != null && fp != null && (cp + fp) > 0;
+    const continuationPct = haveBoth ? +((cp / (cp + fp)) * 100).toFixed(1) : null;
+    const fadePct         = haveBoth ? +((fp / (cp + fp)) * 100).toFixed(1) : null;
+
+    let confidence = null;
+    if (haveBoth) {
+      const separation = Math.abs(cp - fp);
+      const freshness = _zdClamp01(1 - (hit?.feature_staleness_ms ?? 0) / (15 * 60_000));
+      confidence = Math.round(100 * _zdClamp01(0.7 * separation + 0.3 * freshness));
+    }
+
+    let status = 'WATCHING';
+    let winner = null;
+    if (hit) {
+      status = hit.zone.distance_sigma <= 0.15 ? 'TESTING' : 'APPROACHING';
+      const contGo = continuation.decision === 'go', fadeGo = fade.decision === 'go';
+      if (contGo || fadeGo) {
+        status = 'CONFIRMED';
+        winner = contGo && (!fadeGo || cp >= fp) ? 'continuation' : 'fade';
+      } else if (haveBoth) {
+        winner = cp >= fp ? 'continuation' : 'fade';
+      }
+    }
+
+    res.json({
+      ok: true, pair: key, display, mode, price,
+      zone: hit?.zone ?? null, zone_quality: zoneQuality,
+      continuation: { probability: cp, pct: continuationPct, decision: continuation.decision, direction: continuation.direction, size_multiplier: continuation.size_multiplier ?? 0, top_factors: continuation.top_factors ?? [], reasons: continuation.reasons ?? [] },
+      fade: { probability: fp, pct: fadePct, decision: fade.decision, direction: fade.direction, size_multiplier: fade.size_multiplier ?? 0, top_factors: fade.top_factors ?? [], reasons: fade.reasons ?? [] },
+      confidence, status, winner,
+      watching_reasons: hit ? null : [...new Set([...(continuation.reasons ?? []), ...(fade.reasons ?? [])])],
+      macro: hit?.macro ?? null, credit: hit?.credit ?? null, htf_trend: hit?.htf_trend ?? null,
+      session_phase: hit?.session_phase ?? null, regime: hit?.regime ?? null,
+      T: hit?.T ?? null, vol_percentile: hit?.vol_percentile ?? null,
+      feature_staleness_ms: hit?.feature_staleness_ms ?? null,
+      calibrated: continuation.calibrated === true,
+      snapshot_refreshed: warm?.refreshed ?? false,
+      total_ms: Date.now() - t0,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message ?? String(e) });
   }
