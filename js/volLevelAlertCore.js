@@ -321,6 +321,51 @@ export function formatUsdTrendLines(pair, near, usdTrend) {
   return lines;
 }
 
+// ── The consolidated decision at a level (one call) ──────────────────────────
+// Everything the study earned, collapsed into a single fade-or-skip call:
+//   • DIRECTION comes from the USD trend (the only validated directional edge).
+//   • Only a fade in the USD-favoured direction is tradeable (+0.71bp OOS);
+//     an opposed fade (−3.6bp) or a follow (loses either way) → SKIP.
+//   • CONFIDENCE = WaveTrend MTF-stretch (exhaustion confirms the fade) +
+//     regime (contained → level caps → fade better; expansion → caution).
+// Returns { mode:'decision'|'context', lines:[...] }. mode 'context' (no USD call —
+// non-USD pair / flat trend) tells formatAlert to fall back to the raw blocks.
+export function decideAtLevel({ pair, near, usdTrend, direction, dispersion }) {
+  const base = USD_BASE_SIGN[pair];
+  if (!base || !usdTrend || !Number.isFinite(usdTrend.dir) || usdTrend.dir === 0) {
+    return { mode: 'context', lines: [] };
+  }
+  const fadeDir   = near.side === 'above' ? 'short' : 'long';      // fade an up-level = short
+  const fadeSign  = near.side === 'above' ? -1 : 1;
+  const aligned   = Math.sign(fadeSign * base) === Math.sign(usdTrend.dir);
+  const usdWord   = usdTrend.dir > 0 ? 'strengthening' : 'weakening';
+
+  if (!aligned) {
+    return { mode: 'decision', lines: [
+      '⏸️ <b>SKIP</b> — a fade here is <b>against</b> the USD trend '
+        + `(USD ${usdWord}); the aligned side is where the edge is. Following loses too.`,
+      '<i>Wait for price to reach a level on the other side.</i>',
+    ] };
+  }
+  // aligned fade — grade confidence from WT-stretch (MTF) + regime
+  const want = near.side === 'above' ? 'OB' : 'OS';
+  const wtConfirms = direction && direction.m15 === want && direction.h1 === want;
+  const lean = dispersion?.lean ?? null;
+  let score = 0;
+  if (wtConfirms) score++;
+  if (lean === 'contained') score++;
+  if (lean === 'expansion') score--;
+  const tier = score >= 2 ? 'HIGH' : score <= -1 ? 'LOW' : 'MEDIUM';
+  const why = [`USD ${usdWord}`];
+  if (wtConfirms) why.push(`WaveTrend ${want === 'OB' ? 'overbought' : 'oversold'} (M15+H1)`);
+  if (lean === 'contained') why.push('contained regime (level likely to cap)');
+  if (lean === 'expansion')  why.push('⚠ expansion regime (level may break — lower conviction)');
+  return { mode: 'decision', lines: [
+    `🎯 <b>FADE ${fadeDir.toUpperCase()}</b> — USD-aligned ✓ · confidence <b>${tier}</b>`,
+    `<i>${why.join(' + ')}.</i>`,
+  ] };
+}
+
 // ── Message formatting ────────────────────────────────────────────────────────
 // Build the informational Telegram text for one near-level event. All fields are
 // optional; missing enrichment is simply omitted (e.g. no candles → no speed).
@@ -347,29 +392,32 @@ export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence,
   lines.push(`📏 <b>${near.distPips} pips</b> ${sideTxt} the level`);
   lines.push('');
 
-  if (speed) {
-    const toward = speed.direction !== 0 &&
-      ((near.side === 'above' && speed.direction > 0) || (near.side === 'below' && speed.direction < 0));
-    const emoji = { blasting: '🚀', moving: '🏃', drifting: '🐌', flat: '😴' }[speed.label] ?? '⚡';
-    const verb  = { blasting: 'Blasting', moving: 'Moving', drifting: 'Drifting', flat: 'Flat' }[speed.label] ?? speed.label;
-    lines.push(`${emoji} ${verb} ${toward ? 'toward' : 'away from'} level · ${speed.pipsPerMin} pips/min · ${speed.atrMult}× a typical bar`);
-  }
-  if (mom) {
-    const tag = mom.z >= 1.5 ? 'stretched up 🔥' : mom.z <= -1.5 ? 'stretched down 🧊' : 'neutral';
-    lines.push(`📊 Momentum WT ${mom.wt} · z ${mom.z >= 0 ? '+' : ''}${mom.z} (${tag})`);
-  }
-  const dt = DIV_TEXT[divergence];
-  if (dt) lines.push(dt);
+  // ── THE DECISION (one call, not a pile of signals) ──────────────────────────
+  const decision = decideAtLevel({ pair, near, usdTrend, direction, dispersion });
+  for (const bl of decision.lines) lines.push(bl);
 
-  // Daily dispersion block (range-used % + validated expansion regime).
-  for (const bl of formatDispersionLines(dispersion)) lines.push(bl);
-  // WaveTrend-stretch direction block (the Phase-11 validated fade/continue lean).
-  for (const bl of formatDirectionLines(near, direction)) lines.push(bl);
-  // USD-trend direction filter (the crossAssetFit finding — the after-cost-positive side).
-  for (const bl of formatUsdTrendLines(pair, near, usdTrend)) lines.push(bl);
+  // Only when there's NO USD-direction call (non-USD pair / flat trend) do we fall
+  // back to the raw context blocks — otherwise the decision above IS the summary.
+  if (decision.mode === 'context') {
+    if (speed) {
+      const toward = speed.direction !== 0 &&
+        ((near.side === 'above' && speed.direction > 0) || (near.side === 'below' && speed.direction < 0));
+      const emoji = { blasting: '🚀', moving: '🏃', drifting: '🐌', flat: '😴' }[speed.label] ?? '⚡';
+      const verb  = { blasting: 'Blasting', moving: 'Moving', drifting: 'Drifting', flat: 'Flat' }[speed.label] ?? speed.label;
+      lines.push(`${emoji} ${verb} ${toward ? 'toward' : 'away from'} level · ${speed.pipsPerMin} pips/min · ${speed.atrMult}× a typical bar`);
+    }
+    if (mom) {
+      const tag = mom.z >= 1.5 ? 'stretched up 🔥' : mom.z <= -1.5 ? 'stretched down 🧊' : 'neutral';
+      lines.push(`📊 Momentum WT ${mom.wt} · z ${mom.z >= 0 ? '+' : ''}${mom.z} (${tag})`);
+    }
+    const dt = DIV_TEXT[divergence];
+    if (dt) lines.push(dt);
+    for (const bl of formatDispersionLines(dispersion)) lines.push(bl);
+    for (const bl of formatDirectionLines(near, direction)) lines.push(bl);
+  }
 
   lines.push('');
-  lines.push('<i>ℹ️ Informational — no trade signal. Regime = range magnitude (break vs hold), not direction.</i>');
+  lines.push('<i>ℹ️ Informational, not advice. Edge is thin (a filter): USD-aligned fades ≈ breakeven-to-+ after cost; opposed −3.6bp. Following loses either way.</i>');
   return lines.join('\n');
 }
 

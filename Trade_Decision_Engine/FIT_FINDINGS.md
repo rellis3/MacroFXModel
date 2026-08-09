@@ -96,6 +96,27 @@ opposed half. Caveat: +0.71bp is after the 1.2bp spread but NOT the 0.6bp `DEFAU
 positive, cost-sensitive. Use it as a **filter / direction-confidence read**, not a standalone
 money-maker. Reproduce with `crossAssetFit.mjs` (add the expectancy block, or see git history).
 
+### Follow (continuation) does NOT work — even USD-aligned
+Testing the same USD alignment on FOLLOW events (not just fades), OOS after-cost:
+
+| action | aligned | opposed |
+|---|---|---|
+| FADE | +0.71 bp | −3.61 bp |
+| **FOLLOW** | **−2.37 bp** | −7.57 bp |
+
+Following loses even when aligned (−2.37bp, negative on 6/6 pairs). So the decision is NOT
+"fade vs follow vs skip" — it's **"fade in the USD-favoured direction, or skip."** One axis.
+(Consistent with the arc: median continuation is real but sub-cost; the engine's broad-zone
+follow selection loses outright.) This *simplifies* the live decision rather than complicating it.
+
+### Shipped: ONE consolidated decision on the level alert
+`volLevelAlertCore.decideAtLevel` collapses the signal pile into a single call: DIRECTION from
+the USD trend → **FADE {dir}** (USD-aligned, the +0.71bp side) or **SKIP** (opposed fade −3.6bp
+/ follow loses either way); CONFIDENCE tier (HIGH/MED/LOW) from WaveTrend MTF-stretch
+(exhaustion confirms) + regime (contained → caps → better; expansion → caution). Non-USD pairs
+/ flat trend fall back to the raw context blocks. Replaces the separate USD/WT/dispersion
+sections with one headline + one "why" line.
+
 ### Shipped: the USD-trend filter on the live level alert
 `volLevelAlertCore.formatUsdTrendLines` + `server._computeUsdTrends` add a "💵 USD-trend
 filter" block to the level-proximity Telegram alert: 🟢 Aligned (fade with the USD trend —
