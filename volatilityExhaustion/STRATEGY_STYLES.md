@@ -15,8 +15,20 @@ accelerating (>1.10× the prior-5 mean).
 
 | style | when | entry | OOS edge | verdict |
 |---|---|---|---|---|
-| **Fade (USD-aligned)** | contained-ish | limit at median/75th, fade WITH the USD trend | **+0.71 bp** aligned vs −3.61 opposed (6/6) | real filter, thin after slip |
+| **Fade (USD-aligned), BROAD zones** | any | fade decision-engine zones (pivots/S&R/ladders) WITH the USD trend | **+0.71 bp** aligned vs −3.61 opposed (6/6) | real filter, thin after slip — **zone-specific** |
+| **Fade (USD-aligned), MEDIAN line** | contained | fade the forecast median WITH the USD trend | aligned **−0.046%** vs opposed −0.038% — **backwards, both lose** | edge does NOT transfer to the forecast line |
 | **Breakout** | EXPANSION days | stop through the 75th, ride it | **≈ breakeven** (−0.00 to −0.003%) vs blind −0.018%, contained −0.030% | switch real, edge thin |
+
+> **Universe caveat (learned the hard way, `combined_book.py`).** The USD-aligned fade edge lives
+> on the decision-engine's **broad zones**, NOT the forecast median/75th line — on the median
+> line it's if anything reversed. The two validated pieces (broad-zone USD-fade, forecast-line
+> breakout) were measured in **different universes and don't compose**: routing them on the
+> forecast lines (breakout-on-expansion + median-fade-on-contained) gives **−0.0245% OOS —
+> worse than breakout-always (−0.0185%)**, because the median-fade component is a net loser
+> regardless of USD alignment. A real combined book would have to route breakout (forecast
+> lines) + USD-fade (broad zones) — a cross-system build, and both are thin. Verification note:
+> the first combined_book run had a fill-selection bug (compared fill-index to a bool); caught
+> by reconciling against the vetted `_day_trade` (−0.0323% match) before trusting any numbers.
 
 **The switch works.** Breakouts are cleanly better on expansion days than contained days
 (monotonic OOS: expansion > blind > contained, all 3 exit configs, win 46%→48%); fades are the
