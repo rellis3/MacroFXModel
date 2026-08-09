@@ -298,10 +298,33 @@ export function formatDirectionLines(near, direction) {
   return lines;
 }
 
+// USD is BASE (+1: pair up = USD up) or QUOTE (−1: pair up = USD down) per major.
+const USD_BASE_SIGN = { 'EUR/USD': -1, 'GBP/USD': -1, 'AUD/USD': -1, 'NZD/USD': -1,
+                        'USD/CAD': 1, 'USD/CHF': 1, 'USD/JPY': 1 };
+
+// Render the USD-TREND direction filter (crossAssetFit finding): fading a level WITH the
+// prevailing USD trend was after-cost-positive OOS (+0.71bp) and beat AGAINST it (−3.61bp)
+// on 6/6 majors. `usdTrend` = { dir: +1 USD strengthening / −1 weakening / 0 flat }. Empty
+// for non-USD pairs / indices / no data. The strong, honest use is as a FILTER: skip the
+// opposed side.
+export function formatUsdTrendLines(pair, near, usdTrend) {
+  if (!usdTrend || !Number.isFinite(usdTrend.dir) || usdTrend.dir === 0) return [];
+  const base = USD_BASE_SIGN[pair];
+  if (!base) return [];
+  const fadeDirSign = near.side === 'above' ? -1 : 1;   // fade an up-level = short; down-level = long
+  const tradeUsd = Math.sign(fadeDirSign * base);        // +1 = this fade is effectively USD-long
+  const aligned = tradeUsd === Math.sign(usdTrend.dir);
+  const word = usdTrend.dir > 0 ? 'strengthening' : 'weakening';
+  const lines = ['', '<b>💵 USD-trend filter</b>'];
+  if (aligned) lines.push(`🟢 <b>Aligned</b> — fading here is WITH the USD trend (${word}). The tradeable side (aligned fades ≈ breakeven-to-positive after cost, OOS 6/6).`);
+  else         lines.push(`🔴 <b>Opposed</b> — this fade is AGAINST the USD trend (${word}); historically −3.6bp OOS. Skip or wait.`);
+  return lines;
+}
+
 // ── Message formatting ────────────────────────────────────────────────────────
 // Build the informational Telegram text for one near-level event. All fields are
 // optional; missing enrichment is simply omitted (e.g. no candles → no speed).
-export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence, dispersion, direction }) {
+export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence, dispersion, direction, usdTrend }) {
   const px      = v => (v == null ? '—' : Number(v).toFixed(dp));
   const icon    = pairIcon(pair);
   const dirArrow = near.side === 'above' ? '⬆️' : '⬇️';         // which way price must go to reach it
@@ -342,6 +365,8 @@ export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence,
   for (const bl of formatDispersionLines(dispersion)) lines.push(bl);
   // WaveTrend-stretch direction block (the Phase-11 validated fade/continue lean).
   for (const bl of formatDirectionLines(near, direction)) lines.push(bl);
+  // USD-trend direction filter (the crossAssetFit finding — the after-cost-positive side).
+  for (const bl of formatUsdTrendLines(pair, near, usdTrend)) lines.push(bl);
 
   lines.push('');
   lines.push('<i>ℹ️ Informational — no trade signal. Regime = range magnitude (break vs hold), not direction.</i>');
@@ -351,7 +376,7 @@ export function formatAlert({ pair, price, dp = 5, near, speed, mom, divergence,
 // Compose the full per-pair evaluation. Returns an array of {near, text, key}
 // ready to send (already filtered by threshold). `bars` may be null (no
 // enrichment). Cooldown is applied by the caller.
-export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, thresholdPips, enabled, bars, speedOpts, momOpts, divOpts, dispersion = null, direction = null }) {
+export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, thresholdPips, enabled, bars, speedOpts, momOpts, divOpts, dispersion = null, direction = null, usdTrend = null }) {
   const nears = scanNearLevels({ levels, price, pipSize, sessionOpen, thresholdPips, enabled });
   if (!nears.length) return [];
   const speed = bars ? approachSpeed(bars, { pipSize, ...speedOpts }) : null;
@@ -360,6 +385,6 @@ export function evaluatePair({ pair, price, dp, pipSize, sessionOpen, levels, th
   return nears.map(near => ({
     key:  near.key,
     near,
-    text: formatAlert({ pair, price, dp, near, speed, mom, divergence: div, dispersion, direction }),
+    text: formatAlert({ pair, price, dp, near, speed, mom, divergence: div, dispersion, direction, usdTrend }),
   }));
 }

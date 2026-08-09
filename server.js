@@ -19674,6 +19674,29 @@ async function _volLevelDailyRegime(sym, ac, sessionDate) {
 
 // One scan cycle: for each forecast instrument, if live price is within the
 // per-pair pip threshold of any enabled level, enrich (once, lazily) and send.
+// Leave-one-out USD trend per major (crossAssetFit): 10-day USD log-return from the OTHER
+// majors → { dir: +1 strengthening / −1 weakening / 0 }. The direction filter on the alert.
+// Best-effort; empty on any fetch failure (block simply omitted).
+const _USD_MAJORS = { 'EUR/USD': -1, 'GBP/USD': -1, 'AUD/USD': -1, 'NZD/USD': -1, 'USD/CAD': 1, 'USD/CHF': 1 };
+async function _computeUsdTrends() {
+  const usdRet = {};
+  for (const [canon, sign] of Object.entries(_USD_MAJORS)) {
+    try {
+      const d1 = await _fetchVolLevelCandles(canon.replace('/', '_'), 'D', 12);
+      if (!d1 || d1.length < 11) continue;
+      const c0 = d1[d1.length - 11].close, c1 = d1[d1.length - 1].close;
+      if (c0 > 0 && c1 > 0) usdRet[canon] = Math.log(c1 / c0) * sign;   // → USD return
+    } catch { /* skip this leg */ }
+  }
+  const out = {};
+  for (const p of Object.keys(_USD_MAJORS)) {
+    let s = 0, n = 0;
+    for (const q of Object.keys(_USD_MAJORS)) if (q !== p && usdRet[q] != null) { s += usdRet[q]; n++; }
+    out[p] = { dir: n ? Math.sign(s) : 0, mag: n ? s : 0 };
+  }
+  return out;
+}
+
 async function checkVolLevelAlertsNow() {
   const cfg = await loadVolLevelCfg();
   if (!cfg.enabled) return;
@@ -19682,6 +19705,9 @@ async function checkVolLevelAlertsNow() {
 
   const brief = await computeDailyBrief();
   if (!brief?.ok || !brief.instruments) return;
+
+  let usdTrendByPair = {};
+  try { usdTrendByPair = await _computeUsdTrends(); } catch { usdTrendByPair = {}; }
 
   const now  = Date.now();
   const cdMs = Math.max(1, cfg.cooldownMin) * 60_000;
@@ -19742,7 +19768,8 @@ async function checkVolLevelAlertsNow() {
     } catch { direction = null; }
 
     const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
-      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction });
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction,
+      usdTrend: usdTrendByPair[canonical] ?? null });
 
     for (const ev of events) {
       const ck = `${canonical}|${ev.key}`;
