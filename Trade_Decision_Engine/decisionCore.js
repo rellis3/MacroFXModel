@@ -56,6 +56,14 @@ export const INTRADAY_FEATURES = [
 // (and that fit is where the reversion→continuation lesson finally pays off).
 export const HTF_FEATURES = ['htf_align'];
 
+// WaveTrend MTF-STRETCH — the Phase-11 validated directional gate: at a level touch,
+// is WaveTrend OB/OS-stretched (M15+H1 zone agreement, wt1 ±53) in the fade direction?
+// Standalone it lifts the median fade win-rate 50%→62% OOS but is sub-cost as a trade;
+// here it enters the fit as a candidate SELECTION feature. Zero-weighted in v0 like every
+// other candidate — the fit decides any live weight. Fed via intraday.wtStretchDir
+// (+1 = overbought, −1 = oversold, 0 = mid), computed causally at the touch.
+export const WT_FEATURES = ['wt_stretch_fade'];
+
 // CREDIT — corporate-spread (HY OAS) risk-appetite candidate features. The thesis
 // (credit widening leads equity vol / risk-off) is being falsified separately in
 // credit-leadlag.html; here the features are LOGGED-BUT-INERT (no v0 weight, like
@@ -231,6 +239,9 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     intraday_range_exhausted_fade:    isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
     intraday_fade_too_early:          isFade && rangeUsed != null ? clamp01((0.4 - rangeUsed) / 0.4) : 0,
     intraday_vwap_stretch_fade:       isFade && intra ? clamp01((Math.abs(intra.vwapDistSigma ?? 0) - 0.5) / 1.0) : 0,
+    // WaveTrend MTF-stretch aligned with the fade (Phase-11 validated gate): 1 when
+    // fading an up-line that is overbought-stretched, or a down-line oversold-stretched.
+    wt_stretch_fade:  isFade && ((zoneAbove && (intra?.wtStretchDir ?? 0) > 0) || (!zoneAbove && (intra?.wtStretchDir ?? 0) < 0)) ? 1 : 0,
     // CREDIT (zero-weighted in v0 — see CREDIT_FEATURES): all 0 when no credit
     // context, so pre-credit rows are unchanged. Fit decides any live weight.
     credit_widening:        snapshot.credit && snapshot.credit.widening > 0 ? clamp01((snapshot.credit.wideningBps ?? 0) / 40) : 0,
