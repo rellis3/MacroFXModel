@@ -46,6 +46,8 @@ def _level_series(dl, high, low):
         'close_dn_75':  np.full(n, o * (1 - dl['oc75'])),
         'proj_L_med':   prior_high * (1 - dl['hl50']),
         'proj_L_75':    prior_high * (1 - dl['hl75']),
+        '_prior_low':   prior_low,
+        '_prior_high':  prior_high,
     }
 
 
@@ -101,6 +103,8 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
     series_by_level = _level_series(dl, high, low)
     sigma_i = frame['sigma'][day_i]
     barrier_price = theta * sigma_i * dl['open']
+    day_range_px = 2 * dl['hl50'] * dl['open']       # expected FULL H-L range (median), price units
+    prior_low, prior_high = series_by_level['_prior_low'], series_by_level['_prior_high']
 
     out = []
     for level in LEVELS:
@@ -109,9 +113,14 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
         if touch_idx is None:
             continue
         outcome, _ = _race(level, series, touch_idx, high, low, barrier_price, horizon_min)
+        # "range budget" already spent BEFORE this touch, as a fraction of the day's
+        # own expected full range -- normalized per-day so it's comparable across
+        # instruments/vol regimes by construction (no separate rescaling needed).
+        range_so_far = prior_high[touch_idx] - prior_low[touch_idx]
+        budget_used = float(range_so_far / day_range_px) if day_range_px > 0 else None
         out.append(dict(level=level, outcome=outcome, day_i=int(day_i),
                          touch_min=int(touch_idx), level_px=float(series[touch_idx]),
-                         barrier_price=float(barrier_price)))
+                         barrier_price=float(barrier_price), budget_used=budget_used))
     return out
 
 
