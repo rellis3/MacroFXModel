@@ -7143,7 +7143,16 @@ let _vmLogBusySince = 0;
 // treat a lock held longer than 3 cadences as abandoned and reclaim it.
 const VM_LOG_STALE_MS = VM_LOG_MIN * 3 * 60_000;
 
+// Ticks unconditionally, before any bail-out — proof the timer itself is
+// firing, independent of whether a cycle goes on to log anything else. The
+// /health route surfaces this directly so a wedged or unscheduled timer is
+// visible without depending on Railway log search finding the right lines.
+let _vmLogTicks = 0;
+let _vmLogLastTickAt = 0;
+
 async function _vmLogCycle() {
+  _vmLogTicks++;
+  _vmLogLastTickAt = Date.now();
   if (_vmLogBusy) {
     if (Date.now() - _vmLogBusySince < VM_LOG_STALE_MS) return;
     console.error('[vmlog] stale lock reclaimed (previous cycle never completed)');
@@ -7272,6 +7281,12 @@ app.get('/api/vumanchu/health', async (req, res) => {
       enabled: process.env.VM_LOG_ENABLED !== '0',
       lastWriteUtc: lastWrite ? new Date(lastWrite * 1000).toISOString() : null,
       minutesSinceLastWrite: minsSince,
+      cycleDiag: {
+        ticks: _vmLogTicks,
+        lastTickUtc: _vmLogLastTickAt ? new Date(_vmLogLastTickAt).toISOString() : null,
+        minutesSinceLastTick: _vmLogLastTickAt ? Math.round((Date.now() - _vmLogLastTickAt) / 60_000) : null,
+        busy: _vmLogBusy,
+      },
       last24h: {
         logged: today.length,
         resolved: today.filter(r => r.resolved).length,
