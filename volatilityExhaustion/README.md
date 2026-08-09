@@ -400,6 +400,45 @@ isn't the edge; money-flow — a VuManChu leg — is unreliable on FX with no re
 **Untested variant left:** HIDDEN divergence (continuation/follow) MTF agreement — a
 different signal, but the sample would be similarly thin. Run `python3 mtf_divergence.py`.
 
+## Phase 10 — can our two REAL signals, combined, make the level a tradeable entry? (`median_follow_gated.py`, `jump_gated_fade.py`)
+
+The owner's core goal restated: *"confidence around a level — should I enter, and which
+direction?"* Two of our own signals are real and OOS-validated but each is sub-tradeable
+alone, so this phase GATES one with the other (Phase-3's verdict said a classification win
+must be *sized/gated onto* an existing edge, not traded raw):
+
+- **Environment-gated median decision (`median_follow_gated.py`).** Use the Phase-3
+  transparent expansion rule (prior day blew its 75th **OR** σ accelerating >1.10 — causal,
+  pre-session) to pick the direction at the median tag: EXPANSION-lean day → **FOLLOW**
+  (continuation likely), CONTAINED day → **FADE** (range-bound). Pure gate overlay on the
+  vetted `costed_median_follow` primitives.
+
+  **Result — NULL (6 majors, ~11k trades).** Follow-on-expansion OOS **−0.0117%** (WORSE
+  than ungated **−0.0090%**); fade-on-contained OOS **−0.0412%** (≈ ungated, still deeply
+  negative); combined rule **−0.0304%** OOS; only **1/6** majors pass, 0/6 fade, 0/6 combo.
+  The tell: follow-on-expansion has a *higher* win rate (65.4% vs 63.5%) but a *worse* mean —
+  the classifier predicts **magnitude**, and a big-range day delivers bigger losses
+  (whipsaws) as readily as bigger wins. Magnitude does not buy direction. Confirms the
+  running theme: *magnitude/state → environment → execution*, never direction-at-the-level.
+
+- **Jump-gated fade (`jump_gated_fade.py`).** The last cheap FX lever Phase-8 flagged
+  ("high-jump tags revert"). Bucket the costed median FADE by pre-tag bipower jump fraction.
+
+  **Result — NULL (6 majors).** EURUSD alone showed the right sign (HI-jump fade 54% win vs
+  48%, less negative) — but it did NOT replicate: pooled OOS HI-jump **−0.0466%** ≈ LO
+  **−0.0467%** (flat), **0/6** majors. Single-pair noise, not a cross-sectional effect.
+
+**What Phase 10 settles.** Every *cheap, in-sandbox* conditioner is now exhausted —
+distance, velocity, VWAP-stretch, time-normalization, OU half-life, jumps, MTF divergence,
+and environment-gating — all NULL after costs. **The level is a magnitude/context tool, not
+a standalone directional entry.** The honest "confidence at a level" the data supports:
+*break-vs-hold context* (real, ship it) and a weak *continue-not-fade* directional lean at
+the median (a filter, applied where you're not paying fresh entry cost — an existing
+position / the trend book — never a standalone trigger). The genuinely different untried
+levers are data-gated builds, not bolt-ons: **options/gamma/VRP** (index/gold, forward/live —
+not FX-backtestable per the repo audit) and **day-level macro-state** (yields/DXY/credit/COT,
+release-cadence-respecting). Run `python3 median_follow_gated.py` / `python3 jump_gated_fade.py`.
+
 ## Analysis book
 `analysis-book.html` — a dark-theme page with every key chart and a plain-English *what it shows /
 what it means* under each, ending in the scoreboard and honest conclusion. Open it with `charts/`
@@ -421,5 +460,8 @@ alongside.
 - `median_tag_decision.py` — Phase-6 fade-vs-follow DECISION at the median line: race to the 75th (follow) vs back to open (fade) with σ-expectancy, budget-at-tag buckets, IS/OOS, 6 majors, vs the 77% gambler's-ruin null. Run `python3 median_tag_decision.py`.
 - `costed_median_follow.py` — Phase-7 the COSTED follow-vs-fade on dynamic lines (real fills + spread + slippage, exit grid, IS/OOS) + a shuffled-returns placebo proving the continuation is momentum not fat-tail. Run `python3 costed_median_follow.py` (add `placebo`).
 - `median_follow_conditioned.py` — Phase-8 conditions the costed follow on OU half-life & jump fraction (bipower), pre-tag & causal, IS/OOS pooled FX — both NULL (no cost-clearing subset). Run `python3 median_follow_conditioned.py`.
+- `mtf_divergence.py` — Phase-9 multi-timeframe VuManChu regular-divergence agreement (WaveTrend cross-checked bit-for-bit vs `js/vumanchuCore`), costed fade, IS/OOS — NULL. Run `python3 mtf_divergence.py` (`crosscheck` for the JS parity guard).
+- `median_follow_gated.py` — Phase-10 gates the median DECISION by the Phase-3 causal expansion rule (EXPANSION→follow / CONTAINED→fade), reusing the Phase-7 costed primitives, IS/OOS, 6 majors — NULL (magnitude doesn't buy direction). Run `python3 median_follow_gated.py`.
+- `jump_gated_fade.py` — Phase-10b the last cheap FX lever: bucket the costed median FADE by pre-tag bipower jump fraction (Phase-8's "high-jump reverts" pointer), IS/OOS, 6 majors — NULL (didn't replicate past EURUSD). Run `python3 jump_gated_fade.py`.
 - `analysis-book.html` — human-readable write-up of every phase with charts + explanations.
 - `summary.json` / `forecast_vs_fade_summary.json` — headline stats.
