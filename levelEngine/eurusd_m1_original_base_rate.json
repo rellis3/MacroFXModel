@@ -1,5 +1,6 @@
 {
   "path": "/home/user/MacroFXModel/levelEngine/../VolRangeForecaster/data/m1/eurusd_m1.parquet",
+  "instrument": "eurusd",
   "asset_class": "fx",
   "calc": "original",
   "theta": 0.25,
@@ -251,6 +252,228 @@
       "pct_ambiguous": 0.3,
       "fade_win_rate": 53.0,
       "follow_win_rate": 47.0
+    }
+  },
+  "costed_full": {
+    "proj_H_75": {
+      "n": 478,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 52.5,
+      "follow_mean_net_r": -0.036,
+      "fade_net_win_rate": 47.5,
+      "fade_mean_net_r": -0.137
+    },
+    "proj_H_med": {
+      "n": 850,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 51.2,
+      "follow_mean_net_r": -0.062,
+      "fade_net_win_rate": 48.8,
+      "fade_mean_net_r": -0.109
+    },
+    "close_up_75": {
+      "n": 502,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 51.4,
+      "follow_mean_net_r": -0.057,
+      "fade_net_win_rate": 48.6,
+      "fade_mean_net_r": -0.113
+    },
+    "close_up_med": {
+      "n": 812,
+      "avg_cost_r": 0.084,
+      "follow_net_win_rate": 55.3,
+      "follow_mean_net_r": 0.021,
+      "fade_net_win_rate": 44.7,
+      "fade_mean_net_r": -0.19
+    },
+    "open": {
+      "n": 549,
+      "avg_cost_r": 0.084,
+      "follow_net_win_rate": 46.8,
+      "follow_mean_net_r": -0.148,
+      "fade_net_win_rate": 53.2,
+      "fade_mean_net_r": -0.02
+    },
+    "close_dn_med": {
+      "n": 878,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 49.2,
+      "follow_mean_net_r": -0.101,
+      "fade_net_win_rate": 50.8,
+      "fade_mean_net_r": -0.069
+    },
+    "close_dn_75": {
+      "n": 523,
+      "avg_cost_r": 0.087,
+      "follow_net_win_rate": 52.2,
+      "follow_mean_net_r": -0.043,
+      "fade_net_win_rate": 47.8,
+      "fade_mean_net_r": -0.131
+    },
+    "proj_L_med": {
+      "n": 841,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 51.2,
+      "follow_mean_net_r": -0.061,
+      "fade_net_win_rate": 48.8,
+      "fade_mean_net_r": -0.111
+    },
+    "proj_L_75": {
+      "n": 471,
+      "avg_cost_r": 0.088,
+      "follow_net_win_rate": 49.5,
+      "follow_mean_net_r": -0.098,
+      "fade_net_win_rate": 50.5,
+      "fade_mean_net_r": -0.077
+    }
+  },
+  "costed_in_sample": {
+    "proj_H_75": {
+      "n": 231,
+      "avg_cost_r": 0.088,
+      "follow_net_win_rate": 53.7,
+      "follow_mean_net_r": -0.015,
+      "fade_net_win_rate": 46.3,
+      "fade_mean_net_r": -0.162
+    },
+    "proj_H_med": {
+      "n": 419,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 49.2,
+      "follow_mean_net_r": -0.102,
+      "fade_net_win_rate": 50.8,
+      "fade_mean_net_r": -0.069
+    },
+    "close_up_75": {
+      "n": 259,
+      "avg_cost_r": 0.087,
+      "follow_net_win_rate": 52.9,
+      "follow_mean_net_r": -0.029,
+      "fade_net_win_rate": 47.1,
+      "fade_mean_net_r": -0.145
+    },
+    "close_up_med": {
+      "n": 411,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 53.0,
+      "follow_mean_net_r": -0.025,
+      "fade_net_win_rate": 47.0,
+      "fade_mean_net_r": -0.146
+    },
+    "open": {
+      "n": 313,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 46.3,
+      "follow_mean_net_r": -0.158,
+      "fade_net_win_rate": 53.7,
+      "fade_mean_net_r": -0.011
+    },
+    "close_dn_med": {
+      "n": 422,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 50.0,
+      "follow_mean_net_r": -0.086,
+      "fade_net_win_rate": 50.0,
+      "fade_mean_net_r": -0.086
+    },
+    "close_dn_75": {
+      "n": 246,
+      "avg_cost_r": 0.088,
+      "follow_net_win_rate": 52.0,
+      "follow_mean_net_r": -0.048,
+      "fade_net_win_rate": 48.0,
+      "fade_mean_net_r": -0.129
+    },
+    "proj_L_med": {
+      "n": 399,
+      "avg_cost_r": 0.087,
+      "follow_net_win_rate": 46.9,
+      "follow_mean_net_r": -0.15,
+      "fade_net_win_rate": 53.1,
+      "fade_mean_net_r": -0.024
+    },
+    "proj_L_75": {
+      "n": 224,
+      "avg_cost_r": 0.089,
+      "follow_net_win_rate": 52.2,
+      "follow_mean_net_r": -0.044,
+      "fade_net_win_rate": 47.8,
+      "fade_mean_net_r": -0.134
+    }
+  },
+  "costed_out_of_sample": {
+    "proj_H_75": {
+      "n": 247,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 51.4,
+      "follow_mean_net_r": -0.056,
+      "fade_net_win_rate": 48.6,
+      "fade_mean_net_r": -0.113
+    },
+    "proj_H_med": {
+      "n": 431,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 53.1,
+      "follow_mean_net_r": -0.023,
+      "fade_net_win_rate": 46.9,
+      "fade_mean_net_r": -0.149
+    },
+    "close_up_75": {
+      "n": 243,
+      "avg_cost_r": 0.083,
+      "follow_net_win_rate": 49.8,
+      "follow_mean_net_r": -0.087,
+      "fade_net_win_rate": 50.2,
+      "fade_mean_net_r": -0.079
+    },
+    "close_up_med": {
+      "n": 401,
+      "avg_cost_r": 0.084,
+      "follow_net_win_rate": 57.6,
+      "follow_mean_net_r": 0.069,
+      "fade_net_win_rate": 42.4,
+      "fade_mean_net_r": -0.236
+    },
+    "open": {
+      "n": 236,
+      "avg_cost_r": 0.083,
+      "follow_net_win_rate": 47.5,
+      "follow_mean_net_r": -0.133,
+      "fade_net_win_rate": 52.5,
+      "fade_mean_net_r": -0.032
+    },
+    "close_dn_med": {
+      "n": 456,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 48.5,
+      "follow_mean_net_r": -0.116,
+      "fade_net_win_rate": 51.5,
+      "fade_mean_net_r": -0.054
+    },
+    "close_dn_75": {
+      "n": 277,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 52.3,
+      "follow_mean_net_r": -0.039,
+      "fade_net_win_rate": 47.7,
+      "fade_mean_net_r": -0.133
+    },
+    "proj_L_med": {
+      "n": 442,
+      "avg_cost_r": 0.085,
+      "follow_net_win_rate": 55.2,
+      "follow_mean_net_r": 0.019,
+      "fade_net_win_rate": 44.8,
+      "fade_mean_net_r": -0.189
+    },
+    "proj_L_75": {
+      "n": 247,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 47.0,
+      "follow_mean_net_r": -0.147,
+      "fade_net_win_rate": 53.0,
+      "fade_mean_net_r": -0.026
     }
   }
 }

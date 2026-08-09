@@ -1,5 +1,6 @@
 {
   "path": "/home/user/MacroFXModel/levelEngine/../VolRangeForecaster/data/m1/euraud_m1.parquet",
+  "instrument": "euraud",
   "asset_class": "fx",
   "calc": "original",
   "theta": 0.25,
@@ -251,6 +252,228 @@
       "pct_ambiguous": 0.0,
       "fade_win_rate": 52.5,
       "follow_win_rate": 47.5
+    }
+  },
+  "costed_full": {
+    "proj_H_75": {
+      "n": 442,
+      "avg_cost_r": 0.174,
+      "follow_net_win_rate": 50.5,
+      "follow_mean_net_r": -0.165,
+      "fade_net_win_rate": 49.5,
+      "fade_mean_net_r": -0.183
+    },
+    "proj_H_med": {
+      "n": 768,
+      "avg_cost_r": 0.174,
+      "follow_net_win_rate": 52.3,
+      "follow_mean_net_r": -0.127,
+      "fade_net_win_rate": 47.7,
+      "fade_mean_net_r": -0.221
+    },
+    "close_up_75": {
+      "n": 473,
+      "avg_cost_r": 0.173,
+      "follow_net_win_rate": 52.2,
+      "follow_mean_net_r": -0.128,
+      "fade_net_win_rate": 47.8,
+      "fade_mean_net_r": -0.217
+    },
+    "close_up_med": {
+      "n": 864,
+      "avg_cost_r": 0.176,
+      "follow_net_win_rate": 53.9,
+      "follow_mean_net_r": -0.097,
+      "fade_net_win_rate": 46.1,
+      "fade_mean_net_r": -0.255
+    },
+    "open": {
+      "n": 1195,
+      "avg_cost_r": 0.173,
+      "follow_net_win_rate": 46.6,
+      "follow_mean_net_r": -0.241,
+      "fade_net_win_rate": 53.4,
+      "fade_mean_net_r": -0.105
+    },
+    "close_dn_med": {
+      "n": 757,
+      "avg_cost_r": 0.172,
+      "follow_net_win_rate": 50.1,
+      "follow_mean_net_r": -0.17,
+      "fade_net_win_rate": 49.9,
+      "fade_mean_net_r": -0.173
+    },
+    "close_dn_75": {
+      "n": 405,
+      "avg_cost_r": 0.172,
+      "follow_net_win_rate": 52.1,
+      "follow_mean_net_r": -0.13,
+      "fade_net_win_rate": 47.9,
+      "fade_mean_net_r": -0.214
+    },
+    "proj_L_med": {
+      "n": 689,
+      "avg_cost_r": 0.173,
+      "follow_net_win_rate": 49.2,
+      "follow_mean_net_r": -0.189,
+      "fade_net_win_rate": 50.8,
+      "fade_mean_net_r": -0.158
+    },
+    "proj_L_75": {
+      "n": 382,
+      "avg_cost_r": 0.175,
+      "follow_net_win_rate": 48.4,
+      "follow_mean_net_r": -0.206,
+      "fade_net_win_rate": 51.6,
+      "fade_mean_net_r": -0.143
+    }
+  },
+  "costed_in_sample": {
+    "proj_H_75": {
+      "n": 215,
+      "avg_cost_r": 0.172,
+      "follow_net_win_rate": 50.2,
+      "follow_mean_net_r": -0.167,
+      "fade_net_win_rate": 49.8,
+      "fade_mean_net_r": -0.176
+    },
+    "proj_H_med": {
+      "n": 332,
+      "avg_cost_r": 0.171,
+      "follow_net_win_rate": 51.2,
+      "follow_mean_net_r": -0.147,
+      "fade_net_win_rate": 48.8,
+      "fade_mean_net_r": -0.195
+    },
+    "close_up_75": {
+      "n": 220,
+      "avg_cost_r": 0.171,
+      "follow_net_win_rate": 52.3,
+      "follow_mean_net_r": -0.125,
+      "fade_net_win_rate": 47.7,
+      "fade_mean_net_r": -0.216
+    },
+    "close_up_med": {
+      "n": 412,
+      "avg_cost_r": 0.173,
+      "follow_net_win_rate": 54.4,
+      "follow_mean_net_r": -0.086,
+      "fade_net_win_rate": 45.6,
+      "fade_mean_net_r": -0.261
+    },
+    "open": {
+      "n": 645,
+      "avg_cost_r": 0.168,
+      "follow_net_win_rate": 46.7,
+      "follow_mean_net_r": -0.235,
+      "fade_net_win_rate": 53.3,
+      "fade_mean_net_r": -0.102
+    },
+    "close_dn_med": {
+      "n": 379,
+      "avg_cost_r": 0.167,
+      "follow_net_win_rate": 51.2,
+      "follow_mean_net_r": -0.143,
+      "fade_net_win_rate": 48.8,
+      "fade_mean_net_r": -0.191
+    },
+    "close_dn_75": {
+      "n": 195,
+      "avg_cost_r": 0.168,
+      "follow_net_win_rate": 56.9,
+      "follow_mean_net_r": -0.029,
+      "fade_net_win_rate": 43.1,
+      "fade_mean_net_r": -0.306
+    },
+    "proj_L_med": {
+      "n": 330,
+      "avg_cost_r": 0.17,
+      "follow_net_win_rate": 49.7,
+      "follow_mean_net_r": -0.177,
+      "fade_net_win_rate": 50.3,
+      "fade_mean_net_r": -0.164
+    },
+    "proj_L_75": {
+      "n": 180,
+      "avg_cost_r": 0.172,
+      "follow_net_win_rate": 49.4,
+      "follow_mean_net_r": -0.183,
+      "fade_net_win_rate": 50.6,
+      "fade_mean_net_r": -0.161
+    }
+  },
+  "costed_out_of_sample": {
+    "proj_H_75": {
+      "n": 227,
+      "avg_cost_r": 0.176,
+      "follow_net_win_rate": 50.7,
+      "follow_mean_net_r": -0.163,
+      "fade_net_win_rate": 49.3,
+      "fade_mean_net_r": -0.19
+    },
+    "proj_H_med": {
+      "n": 436,
+      "avg_cost_r": 0.176,
+      "follow_net_win_rate": 53.2,
+      "follow_mean_net_r": -0.112,
+      "fade_net_win_rate": 46.8,
+      "fade_mean_net_r": -0.241
+    },
+    "close_up_75": {
+      "n": 253,
+      "avg_cost_r": 0.174,
+      "follow_net_win_rate": 52.2,
+      "follow_mean_net_r": -0.131,
+      "fade_net_win_rate": 47.8,
+      "fade_mean_net_r": -0.218
+    },
+    "close_up_med": {
+      "n": 452,
+      "avg_cost_r": 0.178,
+      "follow_net_win_rate": 53.5,
+      "follow_mean_net_r": -0.107,
+      "fade_net_win_rate": 46.5,
+      "fade_mean_net_r": -0.249
+    },
+    "open": {
+      "n": 550,
+      "avg_cost_r": 0.178,
+      "follow_net_win_rate": 46.5,
+      "follow_mean_net_r": -0.248,
+      "fade_net_win_rate": 53.5,
+      "fade_mean_net_r": -0.109
+    },
+    "close_dn_med": {
+      "n": 378,
+      "avg_cost_r": 0.176,
+      "follow_net_win_rate": 48.9,
+      "follow_mean_net_r": -0.198,
+      "fade_net_win_rate": 51.1,
+      "fade_mean_net_r": -0.155
+    },
+    "close_dn_75": {
+      "n": 210,
+      "avg_cost_r": 0.176,
+      "follow_net_win_rate": 47.6,
+      "follow_mean_net_r": -0.224,
+      "fade_net_win_rate": 52.4,
+      "fade_mean_net_r": -0.129
+    },
+    "proj_L_med": {
+      "n": 359,
+      "avg_cost_r": 0.176,
+      "follow_net_win_rate": 48.7,
+      "follow_mean_net_r": -0.201,
+      "fade_net_win_rate": 51.3,
+      "fade_mean_net_r": -0.151
+    },
+    "proj_L_75": {
+      "n": 202,
+      "avg_cost_r": 0.177,
+      "follow_net_win_rate": 47.5,
+      "follow_mean_net_r": -0.226,
+      "fade_net_win_rate": 52.5,
+      "fade_mean_net_r": -0.127
     }
   }
 }

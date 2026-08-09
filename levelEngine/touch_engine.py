@@ -110,7 +110,8 @@ def scan_day(frame, day_i, theta=0.25, horizon_min=60):
             continue
         outcome, _ = _race(level, series, touch_idx, high, low, barrier_price, horizon_min)
         out.append(dict(level=level, outcome=outcome, day_i=int(day_i),
-                         touch_min=int(touch_idx), level_px=float(series[touch_idx])))
+                         touch_min=int(touch_idx), level_px=float(series[touch_idx]),
+                         barrier_price=float(barrier_price)))
     return out
 
 

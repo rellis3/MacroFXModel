@@ -1,5 +1,6 @@
 {
   "path": "/home/user/MacroFXModel/levelEngine/../VolRangeForecaster/data/m1/usdjpy_m1.parquet",
+  "instrument": "usdjpy",
   "asset_class": "fx",
   "calc": "cog",
   "theta": 0.25,
@@ -251,6 +252,228 @@
       "pct_ambiguous": 2.4,
       "fade_win_rate": 52.1,
       "follow_win_rate": 47.9
+    }
+  },
+  "costed_full": {
+    "proj_H_75": {
+      "n": 269,
+      "avg_cost_r": 0.089,
+      "follow_net_win_rate": 53.9,
+      "follow_mean_net_r": -0.011,
+      "fade_net_win_rate": 46.1,
+      "fade_mean_net_r": -0.168
+    },
+    "proj_H_med": {
+      "n": 470,
+      "avg_cost_r": 0.088,
+      "follow_net_win_rate": 50.4,
+      "follow_mean_net_r": -0.08,
+      "fade_net_win_rate": 49.6,
+      "fade_mean_net_r": -0.097
+    },
+    "close_up_75": {
+      "n": 344,
+      "avg_cost_r": 0.089,
+      "follow_net_win_rate": 57.8,
+      "follow_mean_net_r": 0.068,
+      "fade_net_win_rate": 42.2,
+      "fade_mean_net_r": -0.246
+    },
+    "close_up_med": {
+      "n": 610,
+      "avg_cost_r": 0.087,
+      "follow_net_win_rate": 53.1,
+      "follow_mean_net_r": -0.025,
+      "fade_net_win_rate": 46.9,
+      "fade_mean_net_r": -0.149
+    },
+    "open": {
+      "n": 1325,
+      "avg_cost_r": 0.086,
+      "follow_net_win_rate": 49.7,
+      "follow_mean_net_r": -0.092,
+      "fade_net_win_rate": 50.3,
+      "fade_mean_net_r": -0.081
+    },
+    "close_dn_med": {
+      "n": 811,
+      "avg_cost_r": 0.087,
+      "follow_net_win_rate": 53.0,
+      "follow_mean_net_r": -0.026,
+      "fade_net_win_rate": 47.0,
+      "fade_mean_net_r": -0.147
+    },
+    "close_dn_75": {
+      "n": 476,
+      "avg_cost_r": 0.087,
+      "follow_net_win_rate": 55.5,
+      "follow_mean_net_r": 0.022,
+      "fade_net_win_rate": 44.5,
+      "fade_mean_net_r": -0.197
+    },
+    "proj_L_med": {
+      "n": 546,
+      "avg_cost_r": 0.09,
+      "follow_net_win_rate": 52.9,
+      "follow_mean_net_r": -0.031,
+      "fade_net_win_rate": 47.1,
+      "fade_mean_net_r": -0.148
+    },
+    "proj_L_75": {
+      "n": 341,
+      "avg_cost_r": 0.09,
+      "follow_net_win_rate": 48.1,
+      "follow_mean_net_r": -0.128,
+      "fade_net_win_rate": 51.9,
+      "fade_mean_net_r": -0.052
+    }
+  },
+  "costed_in_sample": {
+    "proj_H_75": {
+      "n": 126,
+      "avg_cost_r": 0.096,
+      "follow_net_win_rate": 50.0,
+      "follow_mean_net_r": -0.096,
+      "fade_net_win_rate": 50.0,
+      "fade_mean_net_r": -0.096
+    },
+    "proj_H_med": {
+      "n": 229,
+      "avg_cost_r": 0.095,
+      "follow_net_win_rate": 50.2,
+      "follow_mean_net_r": -0.09,
+      "fade_net_win_rate": 49.8,
+      "fade_mean_net_r": -0.099
+    },
+    "close_up_75": {
+      "n": 175,
+      "avg_cost_r": 0.095,
+      "follow_net_win_rate": 57.1,
+      "follow_mean_net_r": 0.048,
+      "fade_net_win_rate": 42.9,
+      "fade_mean_net_r": -0.238
+    },
+    "close_up_med": {
+      "n": 312,
+      "avg_cost_r": 0.093,
+      "follow_net_win_rate": 51.3,
+      "follow_mean_net_r": -0.068,
+      "fade_net_win_rate": 48.7,
+      "fade_mean_net_r": -0.119
+    },
+    "open": {
+      "n": 714,
+      "avg_cost_r": 0.094,
+      "follow_net_win_rate": 48.7,
+      "follow_mean_net_r": -0.119,
+      "fade_net_win_rate": 51.3,
+      "fade_mean_net_r": -0.069
+    },
+    "close_dn_med": {
+      "n": 387,
+      "avg_cost_r": 0.095,
+      "follow_net_win_rate": 51.7,
+      "follow_mean_net_r": -0.061,
+      "fade_net_win_rate": 48.3,
+      "fade_mean_net_r": -0.128
+    },
+    "close_dn_75": {
+      "n": 226,
+      "avg_cost_r": 0.096,
+      "follow_net_win_rate": 58.0,
+      "follow_mean_net_r": 0.063,
+      "fade_net_win_rate": 42.0,
+      "fade_mean_net_r": -0.255
+    },
+    "proj_L_med": {
+      "n": 258,
+      "avg_cost_r": 0.099,
+      "follow_net_win_rate": 54.3,
+      "follow_mean_net_r": -0.014,
+      "fade_net_win_rate": 45.7,
+      "fade_mean_net_r": -0.184
+    },
+    "proj_L_75": {
+      "n": 174,
+      "avg_cost_r": 0.098,
+      "follow_net_win_rate": 48.3,
+      "follow_mean_net_r": -0.132,
+      "fade_net_win_rate": 51.7,
+      "fade_mean_net_r": -0.063
+    }
+  },
+  "costed_out_of_sample": {
+    "proj_H_75": {
+      "n": 143,
+      "avg_cost_r": 0.083,
+      "follow_net_win_rate": 57.3,
+      "follow_mean_net_r": 0.063,
+      "fade_net_win_rate": 42.7,
+      "fade_mean_net_r": -0.23
+    },
+    "proj_H_med": {
+      "n": 241,
+      "avg_cost_r": 0.082,
+      "follow_net_win_rate": 50.6,
+      "follow_mean_net_r": -0.07,
+      "fade_net_win_rate": 49.4,
+      "fade_mean_net_r": -0.095
+    },
+    "close_up_75": {
+      "n": 169,
+      "avg_cost_r": 0.082,
+      "follow_net_win_rate": 58.6,
+      "follow_mean_net_r": 0.09,
+      "fade_net_win_rate": 41.4,
+      "fade_mean_net_r": -0.254
+    },
+    "close_up_med": {
+      "n": 298,
+      "avg_cost_r": 0.081,
+      "follow_net_win_rate": 55.0,
+      "follow_mean_net_r": 0.02,
+      "fade_net_win_rate": 45.0,
+      "fade_mean_net_r": -0.182
+    },
+    "open": {
+      "n": 611,
+      "avg_cost_r": 0.078,
+      "follow_net_win_rate": 50.9,
+      "follow_mean_net_r": -0.06,
+      "fade_net_win_rate": 49.1,
+      "fade_mean_net_r": -0.096
+    },
+    "close_dn_med": {
+      "n": 424,
+      "avg_cost_r": 0.079,
+      "follow_net_win_rate": 54.2,
+      "follow_mean_net_r": 0.006,
+      "fade_net_win_rate": 45.8,
+      "fade_mean_net_r": -0.164
+    },
+    "close_dn_75": {
+      "n": 250,
+      "avg_cost_r": 0.08,
+      "follow_net_win_rate": 53.2,
+      "follow_mean_net_r": -0.016,
+      "fade_net_win_rate": 46.8,
+      "fade_mean_net_r": -0.144
+    },
+    "proj_L_med": {
+      "n": 288,
+      "avg_cost_r": 0.081,
+      "follow_net_win_rate": 51.7,
+      "follow_mean_net_r": -0.046,
+      "fade_net_win_rate": 48.3,
+      "fade_mean_net_r": -0.116
+    },
+    "proj_L_75": {
+      "n": 167,
+      "avg_cost_r": 0.082,
+      "follow_net_win_rate": 47.9,
+      "follow_mean_net_r": -0.124,
+      "fade_net_win_rate": 52.1,
+      "fade_mean_net_r": -0.04
     }
   }
 }

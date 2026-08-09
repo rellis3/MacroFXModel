@@ -1,5 +1,6 @@
 {
   "path": "/home/user/MacroFXModel/levelEngine/../VolRangeForecaster/data/m1/eurnzd_m1.parquet",
+  "instrument": "eurnzd",
   "asset_class": "fx",
   "calc": "cog",
   "theta": 0.25,
@@ -251,6 +252,228 @@
       "pct_ambiguous": 0.0,
       "fade_win_rate": 53.6,
       "follow_win_rate": 46.4
+    }
+  },
+  "costed_full": {
+    "proj_H_75": {
+      "n": 304,
+      "avg_cost_r": 0.356,
+      "follow_net_win_rate": 47.0,
+      "follow_mean_net_r": -0.415,
+      "fade_net_win_rate": 53.0,
+      "fade_mean_net_r": -0.296
+    },
+    "proj_H_med": {
+      "n": 512,
+      "avg_cost_r": 0.358,
+      "follow_net_win_rate": 51.0,
+      "follow_mean_net_r": -0.339,
+      "fade_net_win_rate": 49.0,
+      "fade_mean_net_r": -0.378
+    },
+    "close_up_75": {
+      "n": 414,
+      "avg_cost_r": 0.358,
+      "follow_net_win_rate": 48.3,
+      "follow_mean_net_r": -0.392,
+      "fade_net_win_rate": 51.7,
+      "fade_mean_net_r": -0.324
+    },
+    "close_up_med": {
+      "n": 805,
+      "avg_cost_r": 0.357,
+      "follow_net_win_rate": 49.2,
+      "follow_mean_net_r": -0.373,
+      "fade_net_win_rate": 50.8,
+      "fade_mean_net_r": -0.34
+    },
+    "open": {
+      "n": 1301,
+      "avg_cost_r": 0.354,
+      "follow_net_win_rate": 48.0,
+      "follow_mean_net_r": -0.395,
+      "fade_net_win_rate": 52.0,
+      "fade_mean_net_r": -0.313
+    },
+    "close_dn_med": {
+      "n": 712,
+      "avg_cost_r": 0.344,
+      "follow_net_win_rate": 48.9,
+      "follow_mean_net_r": -0.367,
+      "fade_net_win_rate": 51.1,
+      "fade_mean_net_r": -0.322
+    },
+    "close_dn_75": {
+      "n": 404,
+      "avg_cost_r": 0.349,
+      "follow_net_win_rate": 51.2,
+      "follow_mean_net_r": -0.324,
+      "fade_net_win_rate": 48.8,
+      "fade_mean_net_r": -0.373
+    },
+    "proj_L_med": {
+      "n": 509,
+      "avg_cost_r": 0.354,
+      "follow_net_win_rate": 49.9,
+      "follow_mean_net_r": -0.356,
+      "fade_net_win_rate": 50.1,
+      "fade_mean_net_r": -0.352
+    },
+    "proj_L_75": {
+      "n": 273,
+      "avg_cost_r": 0.356,
+      "follow_net_win_rate": 46.5,
+      "follow_mean_net_r": -0.425,
+      "fade_net_win_rate": 53.5,
+      "fade_mean_net_r": -0.286
+    }
+  },
+  "costed_in_sample": {
+    "proj_H_75": {
+      "n": 149,
+      "avg_cost_r": 0.337,
+      "follow_net_win_rate": 45.0,
+      "follow_mean_net_r": -0.438,
+      "fade_net_win_rate": 55.0,
+      "fade_mean_net_r": -0.236
+    },
+    "proj_H_med": {
+      "n": 234,
+      "avg_cost_r": 0.342,
+      "follow_net_win_rate": 52.1,
+      "follow_mean_net_r": -0.299,
+      "fade_net_win_rate": 47.9,
+      "fade_mean_net_r": -0.385
+    },
+    "close_up_75": {
+      "n": 199,
+      "avg_cost_r": 0.34,
+      "follow_net_win_rate": 47.2,
+      "follow_mean_net_r": -0.395,
+      "fade_net_win_rate": 52.8,
+      "fade_mean_net_r": -0.285
+    },
+    "close_up_med": {
+      "n": 371,
+      "avg_cost_r": 0.345,
+      "follow_net_win_rate": 51.5,
+      "follow_mean_net_r": -0.315,
+      "fade_net_win_rate": 48.5,
+      "fade_mean_net_r": -0.374
+    },
+    "open": {
+      "n": 652,
+      "avg_cost_r": 0.335,
+      "follow_net_win_rate": 49.7,
+      "follow_mean_net_r": -0.341,
+      "fade_net_win_rate": 50.3,
+      "fade_mean_net_r": -0.329
+    },
+    "close_dn_med": {
+      "n": 338,
+      "avg_cost_r": 0.328,
+      "follow_net_win_rate": 48.5,
+      "follow_mean_net_r": -0.358,
+      "fade_net_win_rate": 51.5,
+      "fade_mean_net_r": -0.299
+    },
+    "close_dn_75": {
+      "n": 202,
+      "avg_cost_r": 0.33,
+      "follow_net_win_rate": 49.0,
+      "follow_mean_net_r": -0.35,
+      "fade_net_win_rate": 51.0,
+      "fade_mean_net_r": -0.311
+    },
+    "proj_L_med": {
+      "n": 241,
+      "avg_cost_r": 0.336,
+      "follow_net_win_rate": 53.9,
+      "follow_mean_net_r": -0.257,
+      "fade_net_win_rate": 46.1,
+      "fade_mean_net_r": -0.415
+    },
+    "proj_L_75": {
+      "n": 133,
+      "avg_cost_r": 0.334,
+      "follow_net_win_rate": 46.6,
+      "follow_mean_net_r": -0.402,
+      "fade_net_win_rate": 53.4,
+      "fade_mean_net_r": -0.267
+    }
+  },
+  "costed_out_of_sample": {
+    "proj_H_75": {
+      "n": 155,
+      "avg_cost_r": 0.374,
+      "follow_net_win_rate": 49.0,
+      "follow_mean_net_r": -0.393,
+      "fade_net_win_rate": 51.0,
+      "fade_mean_net_r": -0.354
+    },
+    "proj_H_med": {
+      "n": 278,
+      "avg_cost_r": 0.372,
+      "follow_net_win_rate": 50.0,
+      "follow_mean_net_r": -0.372,
+      "fade_net_win_rate": 50.0,
+      "fade_mean_net_r": -0.372
+    },
+    "close_up_75": {
+      "n": 215,
+      "avg_cost_r": 0.375,
+      "follow_net_win_rate": 49.3,
+      "follow_mean_net_r": -0.388,
+      "fade_net_win_rate": 50.7,
+      "fade_mean_net_r": -0.361
+    },
+    "close_up_med": {
+      "n": 434,
+      "avg_cost_r": 0.367,
+      "follow_net_win_rate": 47.2,
+      "follow_mean_net_r": -0.422,
+      "fade_net_win_rate": 52.8,
+      "fade_mean_net_r": -0.311
+    },
+    "open": {
+      "n": 649,
+      "avg_cost_r": 0.373,
+      "follow_net_win_rate": 46.2,
+      "follow_mean_net_r": -0.448,
+      "fade_net_win_rate": 53.8,
+      "fade_mean_net_r": -0.297
+    },
+    "close_dn_med": {
+      "n": 374,
+      "avg_cost_r": 0.358,
+      "follow_net_win_rate": 49.2,
+      "follow_mean_net_r": -0.374,
+      "fade_net_win_rate": 50.8,
+      "fade_mean_net_r": -0.342
+    },
+    "close_dn_75": {
+      "n": 202,
+      "avg_cost_r": 0.367,
+      "follow_net_win_rate": 53.5,
+      "follow_mean_net_r": -0.297,
+      "fade_net_win_rate": 46.5,
+      "fade_mean_net_r": -0.436
+    },
+    "proj_L_med": {
+      "n": 268,
+      "avg_cost_r": 0.37,
+      "follow_net_win_rate": 46.3,
+      "follow_mean_net_r": -0.445,
+      "fade_net_win_rate": 53.7,
+      "fade_mean_net_r": -0.296
+    },
+    "proj_L_75": {
+      "n": 140,
+      "avg_cost_r": 0.376,
+      "follow_net_win_rate": 46.4,
+      "follow_mean_net_r": -0.447,
+      "fade_net_win_rate": 53.6,
+      "fade_mean_net_r": -0.304
     }
   }
 }

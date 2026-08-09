@@ -9,10 +9,12 @@ Data sources (only ones with local M1 -- no download here):
   * 25 FX majors/crosses    -> VolRangeForecaster/data/m1/{pair}_m1.parquet (fx)
 
 Writes one {instrument}_{calc}_base_rate.json per run (same as base_rate.py),
-plus a single leaderboard.json/csv ranking every (instrument, calc, level) row
-by OOS edge, restricted to rows where the edge's SIGN agrees IS vs OOS (the
-same "must hold on both halves" discipline as the rest of this project) and
-n_touches clears a minimum so single-instrument noise doesn't dominate.
+plus a single leaderboard.json/csv. A row survives onto the leaderboard only if
+ALL of: (1) gross fade-vs-follow edge SIGN agrees IS->OOS, (2) n_touches clears
+a minimum both halves, (3) the COST-ADJUSTED mean-R (cost_model.py, real
+per-pair round-trip cost) is POSITIVE on both IS and OOS for that side -- a raw
+win-rate edge that dies once a realistic spread is subtracted does not count.
+Ranked by OOS net-R (the actual after-cost economic size), not raw win-rate.
 
 Usage: python3 run_all.py [theta] [horizon_min] [min_touches]
 """
@@ -50,13 +52,22 @@ def leaderboard_rows(name, calc, out, min_touches):
         is_edge = is_row['follow_win_rate'] - is_row['fade_win_rate']
         oos_edge = oos_row['follow_win_rate'] - oos_row['fade_win_rate']
         if is_edge == 0 or oos_edge == 0 or (is_edge > 0) != (oos_edge > 0):
-            continue   # sign must agree IS -> OOS, same discipline as the rest of the project
+            continue   # gross edge sign must agree IS -> OOS
         side = 'follow' if oos_edge > 0 else 'fade'
+
+        is_c, oos_c = out['costed_in_sample'].get(level), out['costed_out_of_sample'].get(level)
+        if not is_c or not oos_c:
+            continue
+        is_net_r = is_c[f'{side}_mean_net_r']
+        oos_net_r = oos_c[f'{side}_mean_net_r']
+        if is_net_r <= 0 or oos_net_r <= 0:
+            continue   # dies after a realistic round-trip cost -- not a real edge
+
         rows.append(dict(
             instrument=name, calc=calc, level=level, side=side,
-            is_edge=round(is_edge, 1), oos_edge=round(oos_edge, 1),
             is_wr=is_row['follow_win_rate'] if side == 'follow' else is_row['fade_win_rate'],
             oos_wr=oos_row['follow_win_rate'] if side == 'follow' else oos_row['fade_win_rate'],
+            is_net_r=round(is_net_r, 3), oos_net_r=round(oos_net_r, 3),
             is_n=is_row['n_touches'], oos_n=oos_row['n_touches'],
         ))
     return rows
@@ -74,10 +85,10 @@ def main():
             continue
         for calc in CALCS:
             print(f'scanning {name} [{calc}] ...')
-            out = run(path, asset_class, calc, theta, horizon, verbose=False, write=True)
+            out = run(path, asset_class, calc, theta, horizon, verbose=False, write=True, instrument=name)
             all_rows.extend(leaderboard_rows(name, calc, out, min_touches))
 
-    all_rows.sort(key=lambda r: abs(r['oos_edge']), reverse=True)
+    all_rows.sort(key=lambda r: r['oos_net_r'], reverse=True)
 
     with open('leaderboard.json', 'w') as f:
         json.dump(all_rows, f, indent=2)
@@ -86,12 +97,13 @@ def main():
         w.writeheader()
         w.writerows(all_rows)
 
-    print(f'\n{len(all_rows)} stable (IS/OOS sign-agreeing, n>={min_touches}) edges across '
-          f'{len(INSTRUMENTS)} instruments x {len(CALCS)} calcs\n')
-    print(f"{'instrument':<10}{'calc':<10}{'level':<14}{'side':<8}{'IS WR':>7}{'OOS WR':>8}{'OOS n':>7}")
+    print(f'\n{len(all_rows)} edges survive (gross sign IS->OOS agrees, cost-adjusted net-R > 0 '
+          f'both halves, n>={min_touches}) across {len(INSTRUMENTS)} instruments x {len(CALCS)} calcs\n')
+    print(f"{'instrument':<10}{'calc':<10}{'level':<14}{'side':<8}{'IS WR':>7}{'OOS WR':>8}"
+          f"{'IS netR':>9}{'OOS netR':>10}{'OOS n':>7}")
     for r in all_rows[:40]:
         print(f"{r['instrument']:<10}{r['calc']:<10}{r['level']:<14}{r['side']:<8}"
-              f"{r['is_wr']:>7}{r['oos_wr']:>8}{r['oos_n']:>7}")
+              f"{r['is_wr']:>7}{r['oos_wr']:>8}{r['is_net_r']:>9}{r['oos_net_r']:>10}{r['oos_n']:>7}")
     print('\nwrote leaderboard.json / leaderboard.csv')
 
 

@@ -14,6 +14,7 @@ from collections import defaultdict
 import cog_levels
 import original_levels
 from touch_engine import scan_all, LEVELS
+from cost_model import cost_adjust, summarize_costed
 
 CALCS = {'cog': cog_levels, 'original': original_levels}
 
@@ -54,10 +55,12 @@ def summarize(records, label='', verbose=True):
     return table
 
 
-def run(path, asset_class, calc, theta=0.25, horizon=60, verbose=True, write=True):
-    """One instrument x one calc: scan, split IS/OOS, summarize, optionally write
-    the JSON + print. Returns the same dict that gets written, always (write=False
-    just skips the file so run_all.py can batch many without 50+ small writes)."""
+def run(path, asset_class, calc, theta=0.25, horizon=60, verbose=True, write=True, instrument=None):
+    """One instrument x one calc: scan, split IS/OOS, summarize gross AND
+    cost-adjusted (cost_model.py), optionally write the JSON + print. Returns
+    the same dict that gets written, always (write=False just skips the file
+    so run_all.py can batch many without 50+ small writes)."""
+    instrument = instrument or path.rsplit('/', 1)[-1].replace('_m1.parquet', '').replace('.parquet', '')
     frame = CALCS[calc].build_level_frame(path, asset_class)
     records = scan_all(frame, theta=theta, horizon_min=horizon)
 
@@ -70,8 +73,14 @@ def run(path, asset_class, calc, theta=0.25, horizon=60, verbose=True, write=Tru
     is_t = summarize(is_records, f'{path} [{calc}] IN-SAMPLE (first half)', verbose)
     oos_t = summarize(oos_records, f'{path} [{calc}] OUT-OF-SAMPLE (second half)', verbose)
 
-    out = dict(path=path, asset_class=asset_class, calc=calc, theta=theta, horizon_min=horizon,
-               full=full, in_sample=is_t, out_of_sample=oos_t)
+    costed_full = summarize_costed(cost_adjust(records, instrument, asset_class), LEVELS)
+    costed_is = summarize_costed(cost_adjust(is_records, instrument, asset_class), LEVELS)
+    costed_oos = summarize_costed(cost_adjust(oos_records, instrument, asset_class), LEVELS)
+
+    out = dict(path=path, instrument=instrument, asset_class=asset_class, calc=calc,
+               theta=theta, horizon_min=horizon,
+               full=full, in_sample=is_t, out_of_sample=oos_t,
+               costed_full=costed_full, costed_in_sample=costed_is, costed_out_of_sample=costed_oos)
     if write:
         out_path = path.rsplit('/', 1)[-1].replace('.parquet', '') + f'_{calc}_base_rate.json'
         with open(out_path, 'w') as f:
@@ -87,7 +96,15 @@ def main():
     calc = sys.argv[3] if len(sys.argv) > 3 else 'cog'
     theta = float(sys.argv[4]) if len(sys.argv) > 4 else 0.25
     horizon = int(sys.argv[5]) if len(sys.argv) > 5 else 60
-    run(path, asset_class, calc, theta, horizon)
+    out = run(path, asset_class, calc, theta, horizon)
+    print(f"\n=== costed OOS (instrument={out['instrument']}) ===")
+    print(f"{'level':<14}{'n':>5}{'avg cost(R)':>12}{'fade netWR':>12}{'fade netR':>11}{'follow netWR':>14}{'follow netR':>13}")
+    for level in LEVELS:
+        c = out['costed_out_of_sample'].get(level)
+        if not c:
+            continue
+        print(f"{level:<14}{c['n']:>5}{c['avg_cost_r']:>12}{c['fade_net_win_rate']:>12}{c['fade_mean_net_r']:>11}"
+              f"{c['follow_net_win_rate']:>14}{c['follow_mean_net_r']:>13}")
 
 
 if __name__ == '__main__':
