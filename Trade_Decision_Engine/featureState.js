@@ -25,6 +25,7 @@ import { bodyRange } from '../js/barUtils.js';
 import { buildRangeLadder } from '../js/rangeLineAnalyser.js';
 import { detectConfluencesCore } from '../js/confluence-core.js';
 import { CAP_DEFAULTS } from '../js/config.js';
+import { distanceToFlip } from '../js/gammaFlow.js';
 
 // Per-instrument confluence thresholds — the live caps model's numbers, zero-copy
 // (fx 2 pips; gold 200 gold-pips of $0.10 = $20; indices per-point ≈0.5% of px).
@@ -72,6 +73,36 @@ export function computeIntradayState(bars, { sigmaAbs, hl50Abs, approachBars = 3
     approachSigma: +(Math.abs(price - back) / sigmaAbs).toFixed(3),
     bars: bars.length, asOf: bars[bars.length - 1].time,
   };
+}
+
+// ── Liquidity sweep (pure) — did TODAY'S price pierce this zone and fail? ────
+// Bar-close only (OANDA gives no tick/volume data), so this is "wick beyond the
+// level, close back on the origin side within the lookback" — not a true
+// tick-level stop-hunt detector, just the closest honest read available from
+// M1 OHLC. A compact derived summary, same discipline as computeIntradayState:
+// scan the raw bars HERE (slow loop), keep only the result on the snapshot,
+// never the bars themselves.
+// bars: chronological M1 (oldest→newest), already restricted to "up to now" by
+// the caller — no lookahead. Returns the LARGEST-extension pierce of `zonePrice`
+// within the lookback, or null if price never traded beyond it.
+export function computeZoneSweep(bars, zonePrice, { sigmaAbs, lookbackBars = 60, tolAbs = 0 } = {}) {
+  if (!Array.isArray(bars) || !bars.length || !(sigmaAbs > 0) || !Number.isFinite(zonePrice)) return null;
+  const recent = bars.slice(-lookbackBars);
+  let best = null;
+  for (let i = 0; i < recent.length; i++) {
+    const b = recent[i];
+    if (b.high > zonePrice + tolAbs) {
+      const extensionSigma = +((b.high - zonePrice) / sigmaAbs).toFixed(3);
+      const rejected = recent.slice(i).some(b2 => b2.close < zonePrice);
+      if (!best || extensionSigma > best.extensionSigma) best = { direction: 'up', extensionSigma, rejected, barsAgo: recent.length - 1 - i };
+    }
+    if (b.low < zonePrice - tolAbs) {
+      const extensionSigma = +((zonePrice - b.low) / sigmaAbs).toFixed(3);
+      const rejected = recent.slice(i).some(b2 => b2.close > zonePrice);
+      if (!best || extensionSigma > best.extensionSigma) best = { direction: 'down', extensionSigma, rejected, barsAgo: recent.length - 1 - i };
+    }
+  }
+  return best;
 }
 
 // ── Session range ladders (pure) — the RANGE-LINE BOT's lines, time-valid ────
@@ -173,7 +204,7 @@ export function computeSessionLadders({ intradayBars = null, mondayBars = null, 
 // dayOpen to the TRUE session open (first bar). sessionOpen (optional number)
 // sets the open without bars — the backfill uses it (per-touch intraday state
 // travels on the decide REQUEST there, to stay lookahead-free within the day).
-export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, credit = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, prevMondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
+export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, credit = null, oi = null, intradayBars = null, mondayBars = null, prevAsiaBars = null, prevMondayBars = null, sessionOpen = null, nowMs = Date.now(), mode = 'live', price = null }) {
   const key = safeKey(pair);
   if (!Array.isArray(dailyBars) || dailyBars.length < 80) {
     throw new Error(`buildSnapshot(${key}): need ≥80 completed D1 bars, got ${dailyBars?.length ?? 0}`);
@@ -247,11 +278,34 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, cr
         accel: credit.accel ?? 0, asOf: credit.asOf ?? null, stale: credit.stale === true }
     : null;
 
+  // gamma/OI positioning context (dealer flip + nearest walls) — same discipline
+  // as macro/credit: stamped only when well-formed, else null. LOGGED-BUT-INERT
+  // (no v0 weight) — the flip's fade/follow read is documented in gammaFlow.js's
+  // own header but was never connected to a live feature until now.
+  const oiCtx = oi && Number.isFinite(oi.spot) && Number.isFinite(oi.flip)
+    ? { flip: oi.flip, side: oi.side, near: oi.near === true, pctToFlip: oi.pctToFlip ?? null,
+        walls: Array.isArray(oi.walls) ? oi.walls.filter(w => Number.isFinite(w?.price) && (w.type === 'call' || w.type === 'put')) : [],
+        pcRatio: Number.isFinite(oi.pcRatio) ? oi.pcRatio : null, asOf: oi.asOf ?? null }
+    : null;
+
   // expected MEDIAN daily range (price units) — the rangeUsed denominator,
   // from the same bands as the vol_band zone lines (one source of truth)
   const hl50Abs = bands.hl50 * dayOpen;
   const sigmaAbs = sigmaDaily * dayOpen;
   const intraday = intradayBars ? computeIntradayState(intradayBars, { sigmaAbs, hl50Abs }) : null;
+
+  // liquidity-sweep read per zone, bounded to zones actually in reach (2σ of
+  // today's open) — the same cost discipline as the range-line ladders' own
+  // reachSigma bound, so this doesn't scan every M1 bar against every D1-derived
+  // level on the page. Attached directly on the zone object (decide()'s zone-merge
+  // spreads it through automatically), not a separate lookup structure.
+  if (Array.isArray(intradayBars) && intradayBars.length && sigmaAbs > 0) {
+    for (const z of zones) {
+      if (Math.abs(z.price - dayOpen) > 2 * sigmaAbs) continue;
+      const sweep = computeZoneSweep(intradayBars, z.price, { sigmaAbs, tolAbs: tolPips * pip });
+      if (sweep) z.sweep = sweep;
+    }
+  }
 
   // range-line bot ladders (time-valid dynamic levels — merged at decide() time)
   // with the per-instrument confluence thresholds from the live caps model
@@ -263,7 +317,7 @@ export function buildSnapshot({ pair, dailyBars, calendar = [], macro = null, cr
     pair: key, mode, builtAt: nowMs,
     price: refPrice, dayOpen,
     sigmaDaily, volPct, regime, T,
-    zones, calendar, macro: macroCtx, credit: creditCtx, intraday, ladders, htfTrend,
+    zones, calendar, macro: macroCtx, credit: creditCtx, oi: oiCtx, intraday, ladders, htfTrend,
     meta: { bars: dailyBars.length, lastBarTime: dailyBars[dailyBars.length - 1].time, tolPips: +tolPips.toFixed(1), tolAbs: +(tolPips * pip).toFixed(8), hl50Abs: +hl50Abs.toFixed(6), levelSources: TDE_LEVEL_SOURCES },
   };
 }
@@ -321,7 +375,7 @@ export function stateSummary() {
 // and records the error — the fast loop then fails closed on staleness.
 // `macro` is passed through to buildSnapshot — the caller (server slow loop)
 // resolves it from the KV `fred` mirror via macroCore; absent ⇒ macro-neutral.
-export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, macro = null, credit = null } = {}) {
+export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, macro = null, credit = null, oi = null } = {}) {
   const key = safeKey(pair);
   try {
     const raw = await fetchD1(oandaSymbol(key), 400);
@@ -341,7 +395,7 @@ export async function refreshPair(pair, { nowMs = Date.now(), calendar = null, m
     // previous week's Monday: same fetcher shifted one week back (cached weekly)
     const prevMondayBars = await fetchMondayBars(key, dayStartSec - 7 * 86400)
       .catch(() => null);
-    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, credit, intradayBars, mondayBars, prevAsiaBars, prevMondayBars, nowMs, mode: 'live' });
+    const snap = buildSnapshot({ pair: key, dailyBars: bars, calendar: cal, macro, credit, oi, intradayBars, mondayBars, prevAsiaBars, prevMondayBars, nowMs, mode: 'live' });
     state.set(key, snap);
     errors.delete(key);
     return snap;

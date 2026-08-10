@@ -15,12 +15,22 @@
 
 import { selectStrategy } from '../js/forecastCore.js';
 import { MODEL_V0 } from './modelV0.js';
+import { MODEL_V1 } from './modelV1.js';
 import { newsGate, pairCurrencies, DEFAULT_NEWS_CFG } from './newsGate.js';
 
 export const DECIDE_DEFAULTS = {
   maxStalenessMs: 15 * 60_000,  // live snapshots older than this fail closed
   maxDistSigma: 0.35,           // a zone farther than this from price ≠ a touch
 };
+
+// modelV1 is a re-fit of v0's own feature set (Brier 0.2724→0.2469, OOS,
+// FIT_FINDINGS.md) — a calibration win, not a selectivity win. It is fit ONLY
+// on the 6 FX majors below; gold/indices/JPY crosses stay on the hand-set v0
+// prior until they get their own fit (modelV1.js's own header warning).
+// opts.model still overrides this for callers that want a specific model
+// (ablation tooling, tests).
+const MODEL_V1_PAIRS = new Set(MODEL_V1.fit.pairs);
+const defaultModelFor = pair => MODEL_V1_PAIRS.has(pair) ? MODEL_V1 : MODEL_V0;
 
 // ── Macro alignment (the TDE-side half of the macro contract) ────────────────
 // The snapshot carries a direction-agnostic macro context (regime + the pair's
@@ -71,6 +81,24 @@ export const WT_FEATURES = ['wt_stretch_fade'];
 // All 0 when the snapshot has no credit context, so pre-credit rows are unchanged.
 // They only become live via a promoted fit — never a hand-set weight (§7c #3).
 export const CREDIT_FEATURES = ['credit_widening', 'credit_stress', 'credit_fade_in_stress'];
+
+// GAMMA/OI — dealer positioning candidates, off the existing gamma-flow bricks
+// (js/gammaFlow.js: gammaFlip + distanceToFlip) that already document the
+// fade/follow read but were never wired to a live feature. Above the flip =
+// dealers net long gamma = hedging DAMPENS moves (pin risk, favors fade);
+// below = net short gamma = hedging AMPLIFIES moves (favors follow/continuation).
+// wall_* additionally requires the zone sit near a call/put wall (the magnet a
+// pin needs, or the level a short-gamma break accelerates through). LOGGED-BUT-
+// INERT like every candidate above — 0 with no OI context, no v0 weight.
+export const OI_FEATURES = ['gamma_pin_fade', 'gamma_accel_follow', 'wall_pin_fade', 'wall_break_follow'];
+
+// LIQUIDITY SWEEP — did today's price already pierce THIS zone and fail (or
+// hold)? Bar-close read off featureState.computeZoneSweep (OANDA gives no tick/
+// volume data, so "wick beyond the level, close back inside" is the honest
+// substitute for a true stop-hunt detector). Zero when the snapshot carries no
+// sweep read for the hit zone (most touches — this only fires when today's
+// price has already tested the level once). LOGGED-BUT-INERT, same as above.
+export const SWEEP_FEATURES = ['sweep_reject_fade', 'sweep_continue_follow'];
 
 // → +1 aligned / 0 neutral / −1 opposed
 export function macroState(riskSens, regime, direction) {
@@ -206,6 +234,31 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
   const trendy = regime === 'BULL' || regime === 'BEAR';
   const isFade = action === 'fade';
 
+  // Gamma/OI positioning at this zone (see OI_FEATURES above for the mechanism).
+  // gammaLong (dealers net long gamma, above the flip) → dampening/pinning, a
+  // fade tailwind. gammaShort (below the flip) → amplifying, a follow tailwind.
+  const oi = snapshot.oi;
+  const gammaLong = oi?.side === 'positive';
+  const gammaShort = oi?.side === 'negative';
+  // nearest OI wall to the ZONE (not to spot) — a pin needs a magnet, a break
+  // needs a level to clear. Doesn't distinguish call vs put wall mechanics
+  // (both treated as "a wall"); a real refinement, not attempted in this pass.
+  const nearestWallDistSigma = (() => {
+    if (!oi?.walls?.length || !(sigmaAbs > 0)) return null;
+    let best = Infinity;
+    for (const w of oi.walls) { const d = Math.abs(w.price - zone.price) / sigmaAbs; if (d < best) best = d; }
+    return best;
+  })();
+
+  // Liquidity sweep at this zone (see SWEEP_FEATURES above). A fade wants the
+  // sweep on the side being faded AND rejected; a follow wants the sweep in
+  // the breakout direction AND still holding (not rejected).
+  const sweep = zone.sweep;
+  const sweepFadeMatch = sweep && sweep.rejected &&
+    ((direction === 'short' && sweep.direction === 'up') || (direction === 'long' && sweep.direction === 'down'));
+  const sweepFollowMatch = sweep && !sweep.rejected &&
+    ((direction === 'long' && sweep.direction === 'up') || (direction === 'short' && sweep.direction === 'down'));
+
   const features = {
     fade_range_regime:     isFade && regime === 'RANGE' ? 1 : 0,
     follow_trend_regime:  !isFade && trendy && T >= 0.55 ? 1 : 0,
@@ -247,6 +300,19 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     credit_widening:        snapshot.credit && snapshot.credit.widening > 0 ? clamp01((snapshot.credit.wideningBps ?? 0) / 40) : 0,
     credit_stress:          snapshot.credit && Number.isFinite(snapshot.credit.stressProb) ? clamp01(snapshot.credit.stressProb) : 0,
     credit_fade_in_stress:  isFade && snapshot.credit && Number.isFinite(snapshot.credit.stressProb) ? clamp01(snapshot.credit.stressProb) : 0,
+    // GAMMA/OI (zero-weighted in v0 — see OI_FEATURES): all 0 with no OI context
+    // for this instrument, so pre-OI rows are unchanged. `near` (one push from
+    // flipping) discounts the read rather than zeroing it — still the current
+    // regime, just a shakier one.
+    gamma_pin_fade:     isFade && gammaLong ? (oi.near ? 0.6 : 1) : 0,
+    gamma_accel_follow: !isFade && gammaShort ? (oi.near ? 0.6 : 1) : 0,
+    wall_pin_fade:       isFade && gammaLong && nearestWallDistSigma != null ? clamp01((0.35 - nearestWallDistSigma) / 0.35) : 0,
+    wall_break_follow:  !isFade && gammaShort && nearestWallDistSigma != null ? clamp01((0.35 - nearestWallDistSigma) / 0.35) : 0,
+    // LIQUIDITY SWEEP (zero-weighted in v0 — see SWEEP_FEATURES): 0 unless
+    // today's price already tested this exact zone once (most touches are the
+    // first test — that's expected, not a data gap).
+    sweep_reject_fade:     isFade && sweepFadeMatch ? clamp01(sweep.extensionSigma / 0.5) : 0,
+    sweep_continue_follow: !isFade && sweepFollowMatch ? clamp01(sweep.extensionSigma / 0.5) : 0,
   };
 
   return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove, intraday: intra ? { rangeUsed, posInRange: intra.posInRange ?? null, vwapDistSigma: intra.vwapDistSigma ?? null, source: request.intraday ? 'request' : 'snapshot' } : null } };
@@ -270,12 +336,13 @@ export function scoreLogistic(features, model) {
 // ── The decision (the whole fast loop) ───────────────────────────────────────
 export function decide(snapshot, request = {}, opts = {}) {
   const t0 = Date.now();
-  const model = opts.model ?? MODEL_V0;
+  const pair = request.pair ?? snapshot?.pair ?? null;
+  const model = opts.model ?? defaultModelFor(pair);
   const cfg = { ...DECIDE_DEFAULTS, ...opts };
   const nowMs = opts.nowMs ?? Date.now();
 
   const base = {
-    ok: true, pair: request.pair ?? snapshot?.pair ?? null,
+    ok: true, pair,
     model_version: model.version, calibrated: model.calibrated === true,
     mode: snapshot?.mode ?? null,
   };
