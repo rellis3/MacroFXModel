@@ -53,10 +53,11 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from pylego.analog_signal import neighbor_consensus  # noqa: E402
 from pylego.barrier_race import Entry, race_grid, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
-from pylego.shape_match import find_analogs, normalize_window, rolling_shapes  # noqa: E402
+from pylego.shape_match import rolling_shapes  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
 M1_DIR = REPO_ROOT / "VolRangeForecaster" / "data" / "m1"
@@ -84,14 +85,19 @@ def pick_queries(n_bars: int, window: int, stride: int, eval_start_idx: int,
     return list(range(first_possible, last_possible, stride))
 
 
-def run(args: argparse.Namespace) -> None:
+def scan(args: argparse.Namespace, verbose: bool = True) -> dict:
+    """Runs the shape-matching evaluation and returns a results dict (used
+    directly by the CLI and reused programmatically by pattern_scan_sweep.py
+    so a parameter sweep doesn't reimplement this loop)."""
     bars = load_bars(args.pair, args.timeframe)
     n = len(bars)
-    print(f"[data] {args.pair} {args.timeframe}: {n} bars, {bars.index[0]} -> {bars.index[-1]}")
+    if verbose:
+        print(f"[data] {args.pair} {args.timeframe}: {n} bars, {bars.index[0]} -> {bars.index[-1]}")
 
     closes = bars["close"].to_numpy()
     end_idx, shapes = rolling_shapes(closes, args.window)
-    print(f"[shapes] {len(end_idx)} normalized {args.window}-bar windows")
+    if verbose:
+        print(f"[shapes] {len(end_idx)} normalized {args.window}-bar windows")
 
     eval_start_ts = bars.index[-1] - pd.Timedelta(days=args.eval_years * 365.25)
     eval_start_idx = int(bars.index.searchsorted(eval_start_ts))
@@ -99,8 +105,9 @@ def run(args: argparse.Namespace) -> None:
                            args.max_bars_ahead, args.min_candidates)
     if not queries:
         raise SystemExit("no eligible query bars -- widen --eval-years or shrink --min-candidates")
-    print(f"[eval] {len(queries)} query bars from {bars.index[queries[0]]} to {bars.index[queries[-1]]} "
-          f"(stride={args.stride})")
+    if verbose:
+        print(f"[eval] {len(queries)} query bars from {bars.index[queries[0]]} to {bars.index[queries[-1]]} "
+              f"(stride={args.stride})")
 
     pip = pip_size(args.pair)
     sl_price = args.sl_pips * pip
@@ -123,64 +130,60 @@ def run(args: argparse.Namespace) -> None:
         if pos is None:
             skipped_flat += 1
             continue
-        query_shape = shapes[pos]
 
-        neighbours, _dist = find_analogs(
-            query_shape, end_idx, shapes, k=args.k,
-            min_gap_bars=args.min_gap_bars, exclude_after=q,
+        consensus = neighbor_consensus(
+            bars, end_idx, shapes, shapes[pos], query_end=q,
+            k=args.k, min_gap_bars=args.min_gap_bars,
+            sl_price=sl_price, tp_r=args.consensus_tp_r, cost_price=cost_price,
+            max_bars_ahead=args.max_bars_ahead, min_bars_ahead=args.min_bars_ahead,
         )
-        if len(neighbours) < max(3, args.k // 3):
+        if consensus.margin is None:
             skipped_no_analogs += 1
             continue
-
-        neighbour_entries = []
-        for nb in neighbours:
-            neighbour_entries.append(Entry(idx=int(nb) + 1, direction=1))
-            neighbour_entries.append(Entry(idx=int(nb) + 1, direction=-1))
-        trades = race_trades(bars, neighbour_entries, sl=sl_price, tp_r=args.consensus_tp_r,
-                             max_bars_ahead=args.max_bars_ahead, cost_price=cost_price,
-                             min_bars_ahead=args.min_bars_ahead)
-        long_r = [t["r"] for t in trades if t["direction"] == 1]
-        short_r = [t["r"] for t in trades if t["direction"] == -1]
-        if not long_r or not short_r:
-            skipped_no_analogs += 1
-            continue
-        avg_long, avg_short = float(np.mean(long_r)), float(np.mean(short_r))
-        margin = avg_long - avg_short
-        consensus_margins.append(margin)
-
-        if avg_long <= 0 and avg_short <= 0:
+        consensus_margins.append(consensus.margin)
+        if consensus.direction == 0:
             skipped_flat += 1
             signal_directions.append(0)
             continue
-        direction = 1 if avg_long > avg_short else -1
-        signal_directions.append(direction)
-        signal_entries.append(Entry(idx=q + 1, direction=direction))
+        signal_directions.append(consensus.direction)
+        signal_entries.append(Entry(idx=q + 1, direction=consensus.direction))
         scored += 1
 
-    print(f"[signal] {scored} directional calls, {skipped_flat} flat (both sides non-positive), "
-          f"{skipped_no_analogs} skipped (too few/degenerate analogs)")
+    if verbose:
+        print(f"[signal] {scored} directional calls, {skipped_flat} flat (both sides non-positive), "
+              f"{skipped_no_analogs} skipped (too few/degenerate analogs)")
 
-    def _report(label: str, entries: list[Entry]) -> None:
-        print(f"\n== {label} (sl={args.sl_pips}p, cost={'on' if args.cost else 'off'}) ==")
+    def _summarize(entries: list[Entry]) -> list[dict]:
         if not entries:
-            print("  (no entries)")
-            return
-        results = race_grid(bars, entries, sl_grid=[sl_price], tp_r_grid=tp_r_grid,
-                            max_bars_ahead=args.max_bars_ahead, cost_price=cost_price,
-                            min_bars_ahead=args.min_bars_ahead)
-        print(f"  {'tp_r':>6}  {'n':>6}  {'total_R':>9}  {'WR':>7}  {'PF':>6}  {'avg_R':>7}")
-        for r in results:
+            return []
+        grid = race_grid(bars, entries, sl_grid=[sl_price], tp_r_grid=tp_r_grid,
+                         max_bars_ahead=args.max_bars_ahead, cost_price=cost_price,
+                         min_bars_ahead=args.min_bars_ahead)
+        rows = []
+        for r in grid:
             trades = race_trades(bars, entries, sl=sl_price, tp_r=r.tp_r,
                                  max_bars_ahead=args.max_bars_ahead, cost_price=cost_price,
                                  min_bars_ahead=args.min_bars_ahead)
-            s = summarize_r(t["r"] for t in trades)
-            print(f"  {r.tp_r:>6.2f}  {s['n']:>6d}  {s['total_r']:>9.2f}  {s['win_rate']:>6.1%}  "
+            rows.append({"tp_r": r.tp_r, **summarize_r(t["r"] for t in trades)})
+        return rows
+
+    def _print(label: str, rows: list[dict]) -> None:
+        print(f"\n== {label} (sl={args.sl_pips}p, cost={'on' if args.cost else 'off'}) ==")
+        if not rows:
+            print("  (no entries)")
+            return
+        print(f"  {'tp_r':>6}  {'n':>6}  {'total_R':>9}  {'WR':>7}  {'PF':>6}  {'avg_R':>7}")
+        for s in rows:
+            print(f"  {s['tp_r']:>6.2f}  {s['n']:>6d}  {s['total_r']:>9.2f}  {s['win_rate']:>6.1%}  "
                   f"{s['profit_factor']:>6.2f}  {s['avg_r']:>7.3f}")
 
-    _report("BASELINE — mechanical, both directions, no shape signal", baseline_entries)
-    _report("SIGNAL — analog-consensus direction", signal_entries)
+    baseline_rows = _summarize(baseline_entries)
+    signal_rows = _summarize(signal_entries)
+    if verbose:
+        _print("BASELINE — mechanical, both directions, no shape signal", baseline_rows)
+        _print("SIGNAL — analog-consensus direction", signal_rows)
 
+    auc = None
     if len(consensus_margins) >= 10:
         try:
             from sklearn.metrics import roc_auc_score
@@ -194,17 +197,26 @@ def run(args: argparse.Namespace) -> None:
                 [abs(m) for m, d in zip(consensus_margins, signal_directions) if d != 0]
             )
             if len(won) == len(margins_for_signal) and len(set(won.tolist())) > 1:
-                auc = roc_auc_score(won, margins_for_signal)
-                print(f"\n[diagnostic] AUC of |neighbour long/short R margin| vs win/loss "
-                      f"@ tp_r={args.consensus_tp_r}: {auc:.3f}  (0.5 = no discrimination)")
+                auc = float(roc_auc_score(won, margins_for_signal))
+                if verbose:
+                    print(f"\n[diagnostic] AUC of |neighbour long/short R margin| vs win/loss "
+                          f"@ tp_r={args.consensus_tp_r}: {auc:.3f}  (0.5 = no discrimination)")
         except Exception as e:  # pragma: no cover - diagnostic only
-            print(f"[diagnostic] AUC calc skipped: {e}")
+            if verbose:
+                print(f"[diagnostic] AUC calc skipped: {e}")
 
-    print("\n[caveat] one instrument, one window length, one k, unoptimised — a first honest "
-          "read of the idea, not a validated edge (CLAUDE.md: built != works != has edge).")
+    if verbose:
+        print("\n[caveat] one instrument, one window length, one k, unoptimised — a first honest "
+              "read of the idea, not a validated edge (CLAUDE.md: built != works != has edge).")
+
+    return {"baseline": baseline_rows, "signal": signal_rows, "auc": auc,
+            "n_queries": len(queries), "scored": scored}
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """Shared with pattern_scan_sweep.py: `build_parser().parse_args([...])`
+    gets a fully-defaulted Namespace for programmatic use without a second
+    copy of every default value."""
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--pair", required=True)
     p.add_argument("--timeframe", default="1h", help="pandas resample rule, e.g. 1h, 4h, D")
@@ -224,10 +236,14 @@ def main() -> None:
     p.add_argument("--min-bars-ahead", type=int, default=10)
     p.add_argument("--cost", action="store_true", default=True)
     p.add_argument("--no-cost", dest="cost", action="store_false")
-    args = p.parse_args()
+    return p
+
+
+def main() -> None:
+    args = build_parser().parse_args()
     if args.min_gap_bars <= 0:
         args.min_gap_bars = args.window
-    run(args)
+    scan(args)
 
 
 if __name__ == "__main__":
