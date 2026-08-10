@@ -15,12 +15,22 @@
 
 import { selectStrategy } from '../js/forecastCore.js';
 import { MODEL_V0 } from './modelV0.js';
+import { MODEL_V1 } from './modelV1.js';
 import { newsGate, pairCurrencies, DEFAULT_NEWS_CFG } from './newsGate.js';
 
 export const DECIDE_DEFAULTS = {
   maxStalenessMs: 15 * 60_000,  // live snapshots older than this fail closed
   maxDistSigma: 0.35,           // a zone farther than this from price ≠ a touch
 };
+
+// modelV1 is a re-fit of v0's own feature set (Brier 0.2724→0.2469, OOS,
+// FIT_FINDINGS.md) — a calibration win, not a selectivity win. It is fit ONLY
+// on the 6 FX majors below; gold/indices/JPY crosses stay on the hand-set v0
+// prior until they get their own fit (modelV1.js's own header warning).
+// opts.model still overrides this for callers that want a specific model
+// (ablation tooling, tests).
+const MODEL_V1_PAIRS = new Set(MODEL_V1.fit.pairs);
+const defaultModelFor = pair => MODEL_V1_PAIRS.has(pair) ? MODEL_V1 : MODEL_V0;
 
 // ── Macro alignment (the TDE-side half of the macro contract) ────────────────
 // The snapshot carries a direction-agnostic macro context (regime + the pair's
@@ -326,12 +336,13 @@ export function scoreLogistic(features, model) {
 // ── The decision (the whole fast loop) ───────────────────────────────────────
 export function decide(snapshot, request = {}, opts = {}) {
   const t0 = Date.now();
-  const model = opts.model ?? MODEL_V0;
+  const pair = request.pair ?? snapshot?.pair ?? null;
+  const model = opts.model ?? defaultModelFor(pair);
   const cfg = { ...DECIDE_DEFAULTS, ...opts };
   const nowMs = opts.nowMs ?? Date.now();
 
   const base = {
-    ok: true, pair: request.pair ?? snapshot?.pair ?? null,
+    ok: true, pair,
     model_version: model.version, calibrated: model.calibrated === true,
     mode: snapshot?.mode ?? null,
   };

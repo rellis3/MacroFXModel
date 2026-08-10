@@ -6,6 +6,7 @@ import { computeIntradayState, computeSessionLadders, confluenceCapsFor } from '
 import { newsGate, pairCurrencies } from './newsGate.js';
 import { buildSnapshot, syntheticBars, syntheticSnapshot } from './featureState.js';
 import { MODEL_V0 } from './modelV0.js';
+import { MODEL_V1 } from './modelV1.js';
 
 let passed = 0;
 const ok = (cond, msg) => { assert.ok(cond, msg); passed++; };
@@ -75,10 +76,11 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(r4.decision === 'skip' && r4.reasons.includes('no_level_nearby'), 'open space → no_level_nearby');
 }
 
-// ── decide: full path at a zone ──────────────────────────────────────────────
+// ── decide: full path at a zone (explicit v0 — this block specs v0's own
+// behavior; the live default for FX majors is now v1, tested separately below) ─
 {
   const z = snap.zones[0];
-  const r = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW });
+  const r = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW, model: MODEL_V0 });
   ok(r.ok && ['go', 'skip'].includes(r.decision), 'decision resolves');
   ok(r.probability > 0 && r.probability < 1, `probability in (0,1) — got ${r.probability}`);
   ok(['long', 'short'].includes(r.direction) && ['fade', 'follow'].includes(r.action), 'direction+action set');
@@ -90,35 +92,55 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(r.decision === 'go' ? r.size_multiplier > 0 : r.size_multiplier === 0, 'sizing consistent with decision');
 
   // determinism: same inputs → same output (minus latency)
-  const r2 = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW });
+  const r2 = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW, model: MODEL_V0 });
   assert.equal(r2.probability, r.probability); passed++;
 }
 
-// ── model monotonicity (the priors point the right way) ──────────────────────
+// ── model registry: v1 is the live default for the FX majors it was fit on ───
+{
+  const z = snap.zones[0];
+  const rMajor = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW });
+  ok(rMajor.model_version === MODEL_V1.version && rMajor.calibrated === true,
+    'eurusd (a v1-fit major) defaults to the fitted, calibrated model');
+
+  const jpySnap = syntheticSnapshot('usdjpy', { seed: 7, nowMs: NOW, newsInMin: null });
+  const rMinor = decide(jpySnap, { pair: 'usdjpy', price: jpySnap.zones[0].price }, { nowMs: NOW });
+  ok(rMinor.model_version === MODEL_V0.version && rMinor.calibrated === false,
+    'usdjpy (not in the v1 fit set) still defaults to the hand-set v0 prior');
+
+  // opts.model always overrides the pair-conditional default
+  const rForced = decide(snap, { pair: 'eurusd', price: z.price }, { nowMs: NOW, model: MODEL_V0 });
+  ok(rForced.model_version === MODEL_V0.version, 'opts.model overrides the default for any pair');
+}
+
+// ── model monotonicity (the priors point the right way — v0's own spec;
+// explicit model:MODEL_V0 since eurusd now defaults live to the fitted v1,
+// whose weights don't share these hand-set signs) ────────────────────────────
 {
   const mkSnap = over => ({ ...snap, ...over });
   const zonePrice = snap.zones[0].price;
+  const v0 = { nowMs: NOW, model: MODEL_V0 };
 
   // more confluence → higher probability, all else equal
   const lo = { ...snap.zones[0], count: 1, score: 1, price: zonePrice };
   const hi = { ...snap.zones[0], count: 4, score: 5, price: zonePrice };
-  const pLo = decide(mkSnap({ zones: [lo] }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
-  const pHi = decide(mkSnap({ zones: [hi] }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  const pLo = decide(mkSnap({ zones: [lo] }), { price: zonePrice, action: 'fade' }, v0).probability;
+  const pHi = decide(mkSnap({ zones: [hi] }), { price: zonePrice, action: 'fade' }, v0).probability;
   ok(pHi > pLo, `confluence raises p (${pLo} → ${pHi})`);
 
   // fading a trend day → lower probability than fading a quiet day
-  const pQuiet = decide(mkSnap({ T: 0.15, regime: 'RANGE' }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
-  const pTrend = decide(mkSnap({ T: 0.95, regime: 'BULL' }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  const pQuiet = decide(mkSnap({ T: 0.15, regime: 'RANGE' }), { price: zonePrice, action: 'fade' }, v0).probability;
+  const pTrend = decide(mkSnap({ T: 0.95, regime: 'BULL' }), { price: zonePrice, action: 'fade' }, v0).probability;
   ok(pTrend < pQuiet, `fade-on-trend-day penalised (${pQuiet} → ${pTrend})`);
 
   // extreme vol → lower probability
-  const pNorm = decide(mkSnap({ volPct: 0.5 }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
-  const pExtreme = decide(mkSnap({ volPct: 0.99 }), { price: zonePrice, action: 'fade' }, { nowMs: NOW }).probability;
+  const pNorm = decide(mkSnap({ volPct: 0.5 }), { price: zonePrice, action: 'fade' }, v0).probability;
+  const pExtreme = decide(mkSnap({ volPct: 0.99 }), { price: zonePrice, action: 'fade' }, v0).probability;
   ok(pExtreme < pNorm, `vol extreme penalised (${pNorm} → ${pExtreme})`);
 
   // soft news lowers probability but does not gate
   const softSnap = mkSnap({ calendar: [{ timeMs: NOW + 120 * 60_000, impact: 'high', currency: 'USD', title: 'CPI' }] });
-  const rSoft = decide(softSnap, { price: zonePrice, action: 'fade' }, { nowMs: NOW });
+  const rSoft = decide(softSnap, { price: zonePrice, action: 'fade' }, v0);
   ok(rSoft.probability !== null && rSoft.probability < pNorm && rSoft.news_soon === true,
     `news_soon is a feature, not a veto (${pNorm} → ${rSoft.probability})`);
 }

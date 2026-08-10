@@ -302,8 +302,16 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
       // the SAME fast loop the live API serves. One snapshot per day here, so
       // the live 15-min staleness gate is widened to the session length —
       // that gate is about a dead slow loop, not about intraday drift.
+      // model: MODEL_V0 pinned explicitly — this harness's whole job is
+      // "candidate fit vs the v0 prior" (fitLogistic's prior_v0/fitted_beats_
+      // prior fields), which must stay anchored to v0 regardless of what
+      // decisionCore's live default becomes as new models get promoted for
+      // some pairs (decisionCore.js's defaultModelFor). Feature vectors and
+      // outcomes are model-independent (buildEventFeatures doesn't consult
+      // weights, direction defaulting doesn't either), so this only fixes
+      // which probability gets stamped/compared — not what gets fitted.
       const dec = decide(snap, { pair, price: cand.price, approachSigma, intraday },
-        { nowMs: touchMs, maxStalenessMs: 26 * 3600_000 });
+        { nowMs: touchMs, maxStalenessMs: 26 * 3600_000, model: MODEL_V0 });
       if (dec.probability == null) continue;   // gated (shouldn't happen without calendar)
 
       const dirSign = dec.direction === 'long' ? 1 : -1;

@@ -6,10 +6,9 @@
 // `calibrated: false` so nothing downstream can mistake this for evidence.
 //
 // Weights are in logit units and apply to the bounded 0..1 features built by
-// decisionCore.buildEventFeatures. Replacing this model = publishing a new
-// object (modelV1.js, calibrated: true, with walk-forward evidence) and
-// switching one import — the feature builder is shared, so training and live
-// scoring cannot drift apart.
+// decisionCore.buildEventFeatures. Still the live default for every instrument
+// modelV1 hasn't been re-fit on (see decisionCore.js's defaultModelFor) — v1 is
+// FX-majors-only so far.
 
 export const MODEL_V0 = {
   version: 'v0-prior-2026-07',

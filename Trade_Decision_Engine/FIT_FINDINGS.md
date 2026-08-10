@@ -124,13 +124,55 @@ the tradeable side) / 🔴 Opposed (against it, −3.6bp — skip). USD trend = 
 return of the other majors, matching the backtest. Still TODO: reversion-chart read + promote
 `usd_trend_align` into `modelV1` (needs the cross-pair USD trend in `featureState`'s slow loop).
 
+## Result 6 — liquidity sweep (`sweepFit.mjs`): reject_fade null, continue_follow real-but-thin
+
+Same 6-major pool, same methodology (110,883 events — the sweep features are computed inside
+`decide()`'s `buildEventFeatures` automatically, so no context injection needed, unlike
+macro/USD-trend). Tests `sweep_reject_fade` / `sweep_continue_follow` (SWEEP_FEATURES in
+decisionCore.js — did today's price already test this exact zone once and reject/continue?).
+
+| feature | active n (% of pool) | win rate | vs base | fitted weight | ΔOOS Brier |
+|---|---|---|---|---|---|
+| `sweep_reject_fade` | 619 (0.56%) | 61.4% | all-fades 55.7% | **0.0063 (≈0)** | 0.2469→0.2469 (none) |
+| `sweep_continue_follow` | 1,626 (1.47%) | 63.5% | all-follows 55.3% | **0.0891** | 0.2469→0.2468 |
+
+`sweep_reject_fade` is **null** — same pattern as `wt_stretch_fade`/`htf_align`: a raw win-rate
+bump on too thin a sample (0.56% of events) for the fit to trust; L2 shrinks it to ≈0 and OOS
+Brier doesn't move at all.
+
+`sweep_continue_follow` is **real but marginal** — correctly-signed fitted weight, comparable
+magnitude to `usd_trend_align`'s +0.094 (Result 5), and the raw win-rate gap is larger (+8.2pts
+vs usd_trend's +5.6pts). But it only activates on 1.47% of the pool, so pooled OOS Brier moves
+just **0.0001** — an order of magnitude smaller than `usd_trend_align`'s already-modest 0.0011.
+Economically it's closer to `macro_align`'s tier (Result 5 table: real, correctly signed, too
+thin to matter pooled) than to `usd_trend_align`'s (the one that actually shifted the number).
+Not promoted to `modelV1` weights on this evidence — logged-but-inert, same standing as
+`macro_align`/`credit_*`/`wt_stretch_fade`. Caveat: the win-rate/mean-pnl comparison above is
+pooled IS+OOS, not an OOS-only expectancy check (unlike Result 5's `usd_trend_align` expectancy
+table) — worth doing properly before revisiting, but the pooled Brier number alone already caps
+how much this could matter.
+
+Reproduce: `R2_ACCESS_KEY= R2_SECRET_KEY= node Trade_Decision_Engine/sweepFit.mjs`.
+
+## Shipped: `modelV1` is the live default for the FX majors it was fit on
+`decisionCore.decide()` now resolves its default model per pair: the 6 majors in
+`MODEL_V1.fit.pairs` (eurusd, gbpusd, audusd, nzdusd, usdcad, usdchf) get the fitted, calibrated
+`modelV1`; every other instrument (gold, indices, JPY crosses, exotics — none re-fit yet) stays
+on the hand-set `modelV0` prior. `opts.model` still overrides this for callers that need a
+specific model (the backfill/fit harness pins `MODEL_V0` explicitly for exactly this reason —
+see `backfillPair`'s comment: its job is "candidate fit vs the v0 prior," which must stay
+anchored to v0 regardless of what the live default becomes as more pairs get their own fit).
+
 ## Takeaways
-1. **Promote a fitted `modelV1`** for the calibration win (Brier 0.272→0.247) — a human
-   decision on this OOS evidence, per Lego Principle 5. It improves honesty of the probability,
-   not selectivity.
+1. **`modelV1` is promoted live** for the calibration win (Brier 0.272→0.247), FX majors only —
+   a human decision on this OOS evidence, per Lego Principle 5. It improves honesty of the
+   probability, not selectivity: OOS calibration still collapses to one ~55%-realized bucket.
 2. **Do not add `wt_stretch_fade` to `modelV1` weights** — it's null on the engine's zone set.
    Keep it logged as an inert candidate (like `macro_align`/`credit_*`) for future subset work
    (e.g. gate it to forecast-line zones only, where Phase 11 validated it).
+3. **Do not add the sweep features either** — `sweep_reject_fade` is null, `sweep_continue_follow`
+   is real but too thin (1.47% of the pool) to move pooled Brier meaningfully. Same "logged,
+   inert, revisit if the sample grows or gets gated to a subset" treatment.
 
 Reproduce: pool `backfillPair` events across the majors and run
 `fitLogistic(events, { features: [...Object.keys(MODEL_V0.weights), 'wt_stretch_fade'] })`.
