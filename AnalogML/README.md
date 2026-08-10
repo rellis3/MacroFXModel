@@ -53,9 +53,29 @@ tested, ~1,200–1,300 trades per pair. The diagnostic AUC of
 `|neighbour long/short R margin|` vs win/loss sits ≈0.50–0.57 — weak to no
 discrimination. Read that combination plainly: the win looks like it's in
 **which direction gets picked**, not in **how confident the model should be**
-— a real distinction, and one more reason this is a first read, not a
-result. One window length, one k, one sl/tp cell, unoptimised, no
-robustness/overlap-autocorrelation check yet.
+— a real distinction.
+
+### Robustness sweep (`pattern_scan_sweep.py`) — does it hold up?
+
+A single parameter setting on 3 pairs is a first read, not a result — this
+sweeps `--window` (32/64/96) x `--k` (10/20) across 4 pairs (gbpjpy, eurusd,
+audjpy, usdjpy), and separately checks stride == window (fully
+non-overlapping query windows, i.e. independent trials, not the ~80%-overlap
+default) so the trade count isn't inflated by autocorrelated near-duplicates:
+
+```
+python AnalogML/pattern_scan_sweep.py
+```
+
+**Result: 23/24 overlapping-window cells (96%) and 10/12 independent
+non-overlapping-window cells (83%) had signal profit factor > 1.0**, while
+the mechanical baseline hovered at ≈0.83–1.07 throughout (flat, as expected)
+— across every pair and every window/k combination tried, not just the
+original setting. This meaningfully strengthens the original read: it isn't
+one lucky (pair, window, k) triple. It's still: unoptimised parameters, one
+sl/tp cell, one timeframe, no realistic portfolio/sizing simulation, and a
+small-ish per-cell trade count on the independent check (n≈100–330) — a
+robust FIRST read, still not a validated edge.
 
 ## `ml_walkforward.py` — XGBoost / LightGBM / regression stack
 
@@ -106,6 +126,47 @@ whether more price-derived features or hyperparameter tuning would — squeezing
 more out of the same feature family that already tested weak is lower
 priority than testing a genuinely different one.
 
+### `--with-analog` — does the shape-matching signal help the classifier?
+
+Adds ONE more feature, `analog_margin` (the shape-matching neighbour-consensus
+margin from `pylego.analog_signal` — the same brick `pattern_scan.py` uses),
+and runs the SAME walk-forward twice — with and without it — so the AUC
+delta is a real ablation, not two runs a reader has to diff by hand:
+
+```
+python AnalogML/ml_walkforward.py --pair gbpjpy --with-analog --analog-sample-every 4
+```
+
+The feature is computed causally but only every `--analog-sample-every` bars
+and forward-filled between (a real cost/accuracy tradeoff — computing it for
+every one of ~64k bars would take ~25min per pair). **Cadence matters a lot:**
+a coarse smoke test at `--analog-sample-every 24` (yearly folds, a full day
+of staleness between samples) moved AUC by ~0.001–0.002 — noise. The real
+run at the default `--analog-sample-every 4` (4-hour staleness) moved it
+for real:
+
+| scheme | model | AUC/IC without | AUC/IC with `analog_margin` | delta |
+|---|---|---:|---:|---:|
+| expanding | xgboost | 0.510 | 0.532 | +0.022 |
+| expanding | lightgbm | 0.510 | 0.531 | +0.021 |
+| expanding | stack (IC) | 0.023 | 0.069 | +0.046 |
+| rolling (1yr) | xgboost | 0.512 | 0.521 | +0.009 |
+| rolling (1yr) | lightgbm | 0.510 | 0.520 | +0.010 |
+| rolling (1yr) | stack (IC) | 0.013 | 0.044 | +0.031 |
+
+Every model, every scheme, moved in the same direction — profit factor also
+rose in every cell (e.g. expanding xgboost PF 1.09→1.19, stack PF 1.06→1.14)
+and the classifiers took MORE trades at >0.5 confidence (expanding xgboost
+n=2,520→4,275), not fewer, so this isn't just "the model got pickier." Read
+this as the single most encouraging result in this whole first pass — AUC
+0.51→0.53 is still a modest number, nowhere near a validated edge, but a
+*consistent, cadence-sensitive, same-direction-everywhere* move is a real
+signal that the shape-matching idea is contributing information the
+price/vol-only features didn't already have — worth a proper follow-up
+(finer sample-every, more pairs, hyperparameter tuning now that there's a
+feature worth tuning around) rather than the price-only feature family,
+which tested flat on its own.
+
 **Not included yet: real macro features.** `RegimeV2/regime_score.py`
 (HMM/BOCPD/session/DXY/vol/credit), `MacroEquityBot/fred_signal.py`
 (net liquidity, yield curve, credit spread, real yield, ISM), and
@@ -113,16 +174,14 @@ priority than testing a genuinely different one.
 of macro features this model should eventually train on — they're not wired
 in here because they need live `FRED_KEY`/broker API access this sandbox
 doesn't have, and faking that data would violate the "don't run a lookalike
-and call it the thing" rule in `CLAUDE.md`. Merging their historical output
-into `build_features()` is the real next step for the "regression side of
-macro data" idea, not a synthesized stand-in.
+and call it the thing" rule in `CLAUDE.md`. `--macro-csv <path>` is the
+plumbing for it: pass a CSV with a `date` column plus any numeric feature
+columns (exported from the modules above), and it's merged in by date,
+forward-filled to bar cadence, and run through the same ablation machinery.
+Not a synthesized stand-in — real next step, waiting on real data.
 
 ## Honesty notes (read before trusting a number here)
 
-- Every result above is ONE parameter setting on a SMALL number of pairs —
-  exactly the kind of single-slice result `CLAUDE.md`'s "how we talk about
-  results" section warns against over-reading. Treat it as a first pass,
-  not a verdict.
 - Costs are on by default (`pylego.costs.default_spread`) in both scripts —
   pass `--no-cost` only to see the pre-cost number, never report that as a
   result.
@@ -130,7 +189,19 @@ macro data" idea, not a synthesized stand-in.
   distance, not matrix profile or DTW — a reasonable next upgrade once this
   baseline's numbers are trusted enough to be worth improving, not before
   (CLAUDE.md: "start with the minimal-DOF version").
-- Trades sampled by `--stride` overlap in time (a 64-bar window every 12
-  bars shares ~80% of its bars with its neighbour) — the reported n is NOT
-  n independent trials; no autocorrelation-adjusted significance test has
-  been run yet.
+- The main sweep's trades (default `--stride`) overlap in time (a 64-bar
+  window every 12 bars shares ~80% of its bars with its neighbour) — that
+  n is NOT n independent trials. The non-overlapping (`stride == window`)
+  check exists specifically to address this — read the overlapping numbers
+  as "more samples, more autocorrelated" and the non-overlapping numbers as
+  "fewer samples, closer to independent," and note that BOTH show PF > 1 in
+  most cells rather than picking whichever one looks better.
+- ONE instrument (`ml_walkforward.py`'s ablation) / four instruments
+  (`pattern_scan_sweep.py`) is still a small slice of the 29 pairs this repo
+  has data for — real next step is widening both before trusting the size
+  of any number here, not just its sign.
+- Hyperparameters (XGBoost/LightGBM depth, learning rate, n_estimators; the
+  shape-matching window/k/stride grid) are unoptimised defaults throughout —
+  tuning them is reasonable ONLY after a feature/idea has shown it's worth
+  tuning around (`analog_margin` now qualifies; the price-only feature set
+  on its own did not).
