@@ -397,6 +397,14 @@ def main():
     model_lgb.booster_.save_model(str(lgb_path))
     print(f"[Save] LightGBM model → {lgb_path}")
 
+    # Feature name order — both models were fit on the positional numpy array
+    # (X, not X_df), so inference must rebuild the row in this exact column
+    # order. Saved so bot/modules/ml_confidence.py doesn't have to guess it.
+    feature_names_path = output_dir / "feature_names.json"
+    with open(feature_names_path, "w") as f:
+        json.dump(feature_names, f, indent=2)
+    print(f"[Save] Feature name order → {feature_names_path}")
+
     # Feature importance CSV
     imp_path = output_dir / "feature_importance.csv"
     df_importance.to_csv(imp_path, index=False)
@@ -437,6 +445,7 @@ def main():
         "OUTPUT FILES",
         f"  {xgb_path}",
         f"  {lgb_path}",
+        f"  {feature_names_path}",
         f"  {imp_path}",
         f"  {win_rates_path}",
         "",
