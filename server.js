@@ -210,6 +210,7 @@ import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MIN
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
+import { distanceToFlip as _tdeDistanceToFlip } from './js/gammaFlow.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
@@ -22454,7 +22455,7 @@ function tdeWarmSnapshot(pair) {
   let inflight = _tdeWarmInflight.get(pair);
   if (!inflight) {
     inflight = (async () => {
-      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair), credit: await _tdeCreditContext() }), refreshed: true }; }
+      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair), credit: await _tdeCreditContext(), oi: await _tdeOiContext(pair) }), refreshed: true }; }
       catch (e) { return { snap: tdeGetState(pair), refreshed: false, error: e.message ?? String(e) }; }
       finally { _tdeWarmInflight.delete(pair); }
     })();
@@ -22547,13 +22548,6 @@ app.get('/api/trade-decision/zone-duel', async (req, res) => {
     const continuationPct = haveBoth ? +((cp / (cp + fp)) * 100).toFixed(1) : null;
     const fadePct         = haveBoth ? +((fp / (cp + fp)) * 100).toFixed(1) : null;
 
-    let confidence = null;
-    if (haveBoth) {
-      const separation = Math.abs(cp - fp);
-      const freshness = _zdClamp01(1 - (hit?.feature_staleness_ms ?? 0) / (15 * 60_000));
-      confidence = Math.round(100 * _zdClamp01(0.7 * separation + 0.3 * freshness));
-    }
-
     let status = 'WATCHING';
     let winner = null;
     if (hit) {
@@ -22567,14 +22561,50 @@ app.get('/api/trade-decision/zone-duel', async (req, res) => {
       }
     }
 
+    // Corroboration: the gamma/OI + liquidity-sweep candidates (OI_FEATURES /
+    // SWEEP_FEATURES in decisionCore.js) carry NO v0 weight — they don't move
+    // cp/fp — but they're real, computed, direction-matched reads, so they're
+    // an honest input to CONFIDENCE (explicitly a separate, uncalibrated
+    // "how much agrees" number, never the probability itself). Each firing
+    // signal nudges confidence a little; a clean touch with none of them lit
+    // still shows the base separation×freshness read, unpenalized.
+    const CORROBORATION = {
+      continuation: [
+        ['gamma_accel_follow', 'short-gamma regime — dealer hedging amplifies moves'],
+        ['wall_break_follow', 'zone sits at an OI wall in a short-gamma regime — a break here tends to accelerate'],
+        ['sweep_continue_follow', "today's sweep of this zone held — no rejection back through it"],
+      ],
+      fade: [
+        ['gamma_pin_fade', 'long-gamma regime — dealer hedging dampens/pins moves'],
+        ['wall_pin_fade', 'zone sits at an OI wall in a long-gamma regime — a pin candidate'],
+        ['sweep_reject_fade', "today's sweep of this zone was rejected"],
+      ],
+    };
+    let confirmingSignals = [];
+    if (winner) {
+      const side = winner === 'continuation' ? continuation : fade;
+      confirmingSignals = CORROBORATION[winner]
+        .filter(([k]) => (side.features?.[k] ?? 0) > 0)
+        .map(([, label]) => label);
+    }
+
+    let confidence = null;
+    if (haveBoth) {
+      const separation = Math.abs(cp - fp);
+      const freshness = _zdClamp01(1 - (hit?.feature_staleness_ms ?? 0) / (15 * 60_000));
+      const corroborationNudge = 0.035 * confirmingSignals.length;   // up to +10.5pp, 3 signals max
+      confidence = Math.round(100 * _zdClamp01(0.7 * separation + 0.3 * freshness + corroborationNudge));
+    }
+
     res.json({
       ok: true, pair: key, display, mode, price,
       zone: hit?.zone ?? null, zone_quality: zoneQuality,
       continuation: { probability: cp, pct: continuationPct, decision: continuation.decision, direction: continuation.direction, size_multiplier: continuation.size_multiplier ?? 0, top_factors: continuation.top_factors ?? [], reasons: continuation.reasons ?? [] },
       fade: { probability: fp, pct: fadePct, decision: fade.decision, direction: fade.direction, size_multiplier: fade.size_multiplier ?? 0, top_factors: fade.top_factors ?? [], reasons: fade.reasons ?? [] },
-      confidence, status, winner,
+      confidence, status, winner, confirming_signals: confirmingSignals,
       watching_reasons: hit ? null : [...new Set([...(continuation.reasons ?? []), ...(fade.reasons ?? [])])],
       macro: hit?.macro ?? null, credit: hit?.credit ?? null, htf_trend: hit?.htf_trend ?? null,
+      oi: snap.oi ? { side: snap.oi.side, near: snap.oi.near } : null,
       session_phase: hit?.session_phase ?? null, regime: hit?.regime ?? null,
       T: hit?.T ?? null, vol_percentile: hit?.vol_percentile ?? null,
       feature_staleness_ms: hit?.feature_staleness_ms ?? null,
@@ -22827,6 +22857,49 @@ async function _tdeCreditContext() {
     _tdeCreditCtx = null;
   }
   return _tdeCreditCtx;
+}
+
+// Gamma/OI positioning context for the TDE (decisionCore.OI_FEATURES): resolves
+// the SAME `oi_store` KV blob the OI Analytics dashboard reads, cached whole
+// (it's one key covering every instrument) so N pairs cost one KV read, not N.
+// Per-pair extraction is cheap and re-run every call. Fail-neutral: no store,
+// no entry, or a malformed entry (missing spot/gammaFlip) all yield null —
+// buildSnapshot then stamps oi:null and every OI_FEATURES value resolves 0.
+let _tdeOiStore = null, _tdeOiStoreAt = 0;
+async function _tdeOiStoreCached() {
+  if (_tdeOiStore && Date.now() - _tdeOiStoreAt < 10 * 60_000) return _tdeOiStore;
+  try {
+    const raw = await kv.get('oi_store');
+    const parsed = raw ? JSON.parse(raw) : null;
+    _tdeOiStore = parsed ? (parsed.data ?? parsed) : {};
+  } catch (e) {
+    console.warn('[trade-decision] OI store read failed (fail-neutral):', e.message ?? e);
+    _tdeOiStore = {};
+  }
+  _tdeOiStoreAt = Date.now();
+  return _tdeOiStore;
+}
+async function _tdeOiContext(pair) {
+  try {
+    const store = await _tdeOiStoreCached();
+    let rec; try { rec = instrument(pair); } catch { return null; }
+    const inst = store?.[rec.display];
+    if (!inst || !Number.isFinite(inst.spot) || !Number.isFinite(inst.gammaFlip)) return null;
+    const dist = _tdeDistanceToFlip(inst.spot, inst.gammaFlip);
+    if (!dist) return null;
+    const walls = [
+      ...(Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'call' })),
+      ...(Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'put' })),
+    ];
+    return {
+      spot: inst.spot, flip: inst.gammaFlip, side: dist.side, near: dist.near, pctToFlip: dist.pct,
+      walls, pcRatio: Number.isFinite(inst.pcRatio) ? inst.pcRatio : null,
+      asOf: inst.asOf ?? inst.updatedAt ?? null,
+    };
+  } catch (e) {
+    console.warn('[trade-decision] OI context failed (fail-neutral):', e.message ?? e);
+    return null;
+  }
 }
 
 // ── Telegram alert when the credit gate flips regime ─────────────────────────

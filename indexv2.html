@@ -1444,9 +1444,14 @@ function renderContFade(sym, r) {
   }
 
   const winnerSide = (r.winner === 'fade' ? r.fade : r.continuation) || {};
-  const evidence = [...(winnerSide.top_factors || []).slice(0, 3),
+  // confirming_signals (gamma/OI positioning + today's liquidity-sweep read) are
+  // unweighted candidates — they nudge the confidence pill, not the probabilities
+  // above — so they're prefixed distinctly rather than blended into top_factors.
+  const evidence = [...(r.confirming_signals || []).map(f => `<b style="color:var(--gold)">confirms</b> ${f}`),
+    ...(winnerSide.top_factors || []).slice(0, 3),
     r.regime ? `regime ${r.regime} · trend-day T ${r.T}` : null,
-    r.htf_trend ? `HTF trend ${r.htf_trend}` : null].filter(Boolean);
+    r.htf_trend ? `HTF trend ${r.htf_trend}` : null,
+    r.oi ? `gamma regime ${r.oi.side === 'positive' ? 'long (pinning)' : r.oi.side === 'negative' ? 'short (amplifying)' : r.oi.side}${r.oi.near ? ' — near flip' : ''}` : null].filter(Boolean);
 
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">

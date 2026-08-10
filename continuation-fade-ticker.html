@@ -155,7 +155,7 @@
     <b>APPROACHING</b> — a zone is in reach but price hasn't tested it closely yet (&gt;0.15σ away).<br>
     <b>TESTING</b> — price is inside the zone right now; watch the bar move as new candles close.<br>
     <b>CONFIRMED</b> — one hypothesis crossed the model's go-threshold; the bar shows which and how hard.<br><br>
-    Continuation/Fade % are decisionCore's two independent <code>action:'follow'</code> / <code>action:'fade'</code> probabilities, renormalized to sum to 100% for the bar — the raw (non-renormalized) numbers are shown underneath. <b>Confidence</b> is a separate, uncalibrated heuristic: how far apart the two hypotheses have pulled, blended with snapshot freshness — a 51/49 read is never "confident" even when one side is technically ahead.
+    Continuation/Fade % are decisionCore's two independent <code>action:'follow'</code> / <code>action:'fade'</code> probabilities, renormalized to sum to 100% for the bar — the raw (non-renormalized) numbers are shown underneath. <b>Confidence</b> is a separate, uncalibrated heuristic: how far apart the two hypotheses have pulled, blended with snapshot freshness — a 51/49 read is never "confident" even when one side is technically ahead. Lines marked <span style="color:var(--gold)">◆ confirms</span> are gamma/OI positioning (dealer long-gamma = pinning/fade, short-gamma = amplifying/follow) and today's liquidity-sweep read at this zone (swept-and-rejected = fade, swept-and-held = follow) — real, computed reads, but carry <b>no weight in the probabilities above</b>, only a small nudge to the confidence pill. They stay unweighted in the model itself until a fit earns them a real weight OOS, same as every other candidate feature in this engine.
   </div>
   <div class="muted" style="margin-top:10px"><code>GET /api/trade-decision/zone-duel?pair=gold&amp;mode=live</code></div>
 </div>
@@ -251,14 +251,19 @@ function render(d, pair) {
   $('confPill').textContent = cb.label;
   $('confNote').textContent = d.confidence != null ? 'separation × freshness heuristic, not a fitted number' : 'no zone in reach';
 
-  // Evidence: top_factors from the winning (or higher-probability) side + context
+  // Evidence: top_factors from the winning (or higher-probability) side + context.
+  // confirming_signals (gamma/OI + liquidity-sweep) are unweighted candidates —
+  // they don't move the probabilities above, only the confidence pill — shown
+  // first and marked as such so that distinction stays visible, not implied.
   const side = d.winner === 'fade' ? d.fade : d.continuation;
   const items = [];
+  (d.confirming_signals || []).forEach(f => items.push(`<span style="color:var(--gold)">◆ confirms</span> ${f}`));
   (side.top_factors || []).forEach(f => items.push(f));
   if (d.regime) items.push(`regime <b>${d.regime}</b> · trend-day T ${d.T}`);
   if (d.vol_percentile != null) items.push(`vol percentile <b>${(100 * d.vol_percentile).toFixed(0)}%</b>`);
   if (d.htf_trend) items.push(`HTF trend <b>${d.htf_trend}</b>`);
   if (d.macro) items.push(`macro <b>${d.macro.regime}</b> (align ${d.macro.align >= 0 ? '+' : ''}${d.macro.align})`);
+  if (d.oi) items.push(`gamma regime <b>${d.oi.side === 'positive' ? 'long (pinning)' : d.oi.side === 'negative' ? 'short (amplifying)' : d.oi.side}</b>${d.oi.near ? ' — near flip' : ''}`);
   if (d.session_phase) items.push(`session <b>${d.session_phase}</b>`);
   $('evidenceList').innerHTML = items.length ? items.map(i => `<li>${i}</li>`).join('') : '<li class="muted" style="padding-left:0">no evidence — zone not in reach</li>';
 
