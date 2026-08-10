@@ -52,6 +52,20 @@ the **system**, not any one style: one forecast → route to the regime-appropri
                    both sized by σ (vol targeting)
 ```
 
+## Chop days & the efficiency gate (tested — NULL)
+The switch predicts *size*, not *character* — a big-range day can be a clean trend OR a big
+CHOP, and character isn't forecastable pre-open (Phase-3 direction/efficiency label AUC 0.505).
+Small chop = a contained day (fade mode handles it); big chop = an expansion day that whipsaws
+the breakout — the weak spot, and why expansion-breakout is only ~breakeven.
+
+Tested whether an **intraday efficiency gate** (Kaufman ER open→break; take the break only when
+the session is directional) dodges the chop-day entries: `breakout_efficiency.py`. **NULL** —
+pooled OOS looks mildly positive (HI-ER +1.12bp vs ungated ~0, monotonic) but it's **1/6 majors
+and EURUSD flips OOS** — cross-sectionally inconsistent = noise. M1-path efficiency is
+noise-dominated (ER ~0.05–0.08). So chop can't be reliably gated out even intraday. The honest
+defenses stay **management, not prediction**: σ-size down on expansion days, cut failed breaks
+fast, don't double-chase the opposite break, let the clean-trend winners run to close.
+
 ## Roadmap (more styles / overlays off the same forecast)
 - **σ-sizing / vol targeting** — size every trade inversely to forecast σ (universal, highest
   value, not yet wired into the book).
