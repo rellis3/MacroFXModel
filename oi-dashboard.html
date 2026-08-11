@@ -964,21 +964,25 @@ function diagBar(e){
 }
 
 function levelStrip(e){
+  // 5th field = HELP glossary key → renders the same "?" explainer chip the panels use,
+  // right on the cards you actually look at (positive/negative GEX, the flips, charm/vanna).
   const rows=[
-    ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI'],
-    ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI'],
-    ['max pain',  e.maxPain,  'var(--pain)', 'expiry magnet'],
-    ['gamma flip',e.gammaFlip,'var(--vol)',  'profile crossing'],
-    ['GEX flip',  e.gexFlip,  'var(--gam)',  'total GEX = 0'],
-    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)','∂Δ/∂time'],
-    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)','∂Δ/∂vol'],
-    ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':''],
-    ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):''],
+    ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI', 'callwall'],
+    ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI', 'putwall'],
+    ['max pain',  e.maxPain,  'var(--pain)', 'expiry magnet', 'maxpain'],
+    ['gamma flip',e.gammaFlip,'var(--vol)',  'profile crossing', 'gflip'],
+    ['GEX flip',  e.gexFlip,  'var(--gam)',  'total GEX = 0', 'gexflip'],
+    // charm/vanna are blank without a per-strike IV smile — say WHY on the card
+    // instead of a bare "—" next to a greek symbol (the #1 "is it broken?" question).
+    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)', e.greeksFlow?'∂Δ/∂time':'needs IV smile', 'charm'],
+    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)',  e.greeksFlow?'∂Δ/∂vol':'needs IV smile', 'vanna'],
+    ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':'', 'expmove'],
+    ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):'', 'expmove'],
   ];
-  return `<div class="levels">${rows.map(([k,v,c,n])=>{
+  return `<div class="levels">${rows.map(([k,v,c,n,hk])=>{
     const sv=show(v,e), d=Number.isFinite(v)&&Number.isFinite(e.spot)?((v-e.spot)/pip(SYM)):NaN;
     return `<div class="lv" style="border-top-color:${Number.isFinite(sv)?c:'transparent'}">
-      <div class="k">${k}</div>
+      <div class="k">${k}${hk?h(hk):''}</div>
       <div class="v" style="color:${Number.isFinite(sv)?c:'var(--tx3)'}">${Number.isFinite(sv)?fx(sv,SYM):'—'}</div>
       <div class="f">${Number.isFinite(v)?(SPOTADJ?'fut '+fx(v+(e.basis||0),SYM):'spot '+fx(v,SYM)):''}</div>
       <div class="d">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p · ':''}${n||''}</div></div>`;
