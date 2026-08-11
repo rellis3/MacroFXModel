@@ -16,22 +16,23 @@ touch the frozen parameters based on what comes in.
 This sandbox's outbound network is proxied and OANDA is explicitly denied
 (confirmed: `curl` to api-fxpractice.oanda.com gets a 403 policy denial from
 the proxy, matching CLAUDE.md's "OANDA is reachable in Railway, not in the
-sandbox"). So `load_bars()` here reads the SAME static local M1 parquet
-snapshot (through 2026-05-21) as every other AnalogML script -- there is no
-live feed wired in. Two consequences:
-  1. Run today, `--scan` finds nothing new beyond what's already in the
-     snapshot (it's the same data `backtest_export.py` already covered).
-  2. `--as-of YYYY-MM-DD` exists so the mechanism can be exercised and
-     verified NOW, honestly, without pretending to have live data: it
-     truncates the loaded bars as if that date were "today", so you can run
-     a scan at an early cutoff, then a later one, and watch it correctly
-     resolve the open trade against the bars that were "in the future" at
-     the first run. That's a correctness test, not a forward result.
-To get REAL forward numbers, this needs to run somewhere with an actual feed
--- e.g. ported to run on Railway (which the rest of this repo confirms CAN
-reach OANDA), or pointed at a periodically-refreshed local parquet export.
-Whoever runs it for real should drop `--as-of` entirely (defaults to "use
-everything in the data source", i.e. genuinely "now").
+sandbox"). So without `--refresh-data`, `load_bars()` here reads the SAME
+static local M1 parquet snapshot (through 2026-05-21) as every other
+AnalogML script -- no live feed. `--as-of YYYY-MM-DD` exists so the
+mechanism can be exercised and verified honestly without pretending to have
+live data: it truncates the loaded bars as if that date were "today," so a
+scan at an early cutoff followed by a later one proves the resolve step uses
+genuinely-later bars, not a forward result on its own.
+
+`--refresh-data` (real forward use, run where OANDA IS reachable -- Railway,
+per CLAUDE.md) calls `refresh_m1.py` first to top up each pair's local
+parquet with new OANDA bars before scanning, then persists the growing trade
+log to Cloudflare R2 (same bucket/credentials as the M1 data, `R2_ACCESS_KEY`
+/`R2_SECRET_KEY` env vars) instead of local disk -- Railway's local
+filesystem is wiped on redeploy (the same trap `CLAUDE.md` documents for KV
+configs), so a log that only lived on local disk wouldn't survive one. Falls
+back to local disk when R2 credentials aren't set (this sandbox, or local
+dev), so nothing here silently loses data either way.
 
 Mechanics per pair, per run:
   - resolve_open_trades(): every 'open' logged trade is re-raced
@@ -50,14 +51,15 @@ Log: AnalogML/data/paper_trades.json, append-only, never rewritten except to
 flip status open -> tp/sl/timeout.
 
 Usage:
-  python AnalogML/paper_track.py --scan                 # real use (once wired to live data)
-  python AnalogML/paper_track.py --scan --as-of 2026-03-01   # mechanism test, step 1
-  python AnalogML/paper_track.py --scan                        # mechanism test, step 2 (resolves + scans again)
+  python AnalogML/paper_track.py                 # real use (once wired to live data)
+  python AnalogML/paper_track.py --as-of 2026-03-01   # mechanism test, step 1
+  python AnalogML/paper_track.py                        # mechanism test, step 2 (resolves + scans again)
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -88,16 +90,57 @@ FROZEN = dict(window=64, k=20, sl_pips=20.0, tp_r=1.5, max_bars_ahead=200,
 
 LOG_PATH = Path(__file__).resolve().parent / "data" / "paper_trades.json"
 
+R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com")
+R2_BUCKET = os.environ.get("R2_BUCKET", "r2-storage")
+R2_LOG_KEY = "analogml/paper_trades.json"
+
+
+def _r2_client():
+    """None if R2 credentials aren't configured (local dev / this sandbox) --
+    callers fall back to local disk in that case. Only R2_ACCESS_KEY/
+    R2_SECRET_KEY are secrets; endpoint/bucket are non-sensitive config, same
+    convention as portfolio_backtest.py / r2_download.py."""
+    access_key = os.environ.get("R2_ACCESS_KEY")
+    secret_key = os.environ.get("R2_SECRET_KEY")
+    if not access_key or not secret_key:
+        return None
+    import boto3
+    return boto3.client("s3", endpoint_url=R2_ENDPOINT, aws_access_key_id=access_key,
+                        aws_secret_access_key=secret_key, region_name="auto")
+
 
 def load_log() -> dict:
+    """R2 first (survives a Railway redeploy), local disk as fallback/dev
+    path. R2 read failures (key doesn't exist yet, network hiccup) fall
+    through to local disk rather than crashing -- a fresh account starts
+    with an empty log either way."""
+    s3 = _r2_client()
+    if s3 is not None:
+        try:
+            obj = s3.get_object(Bucket=R2_BUCKET, Key=R2_LOG_KEY)
+            return json.loads(obj["Body"].read())
+        except Exception:
+            pass
     if LOG_PATH.exists():
         return json.loads(LOG_PATH.read_text())
     return {"trades": []}
 
 
 def save_log(log: dict) -> None:
+    """Writes to R2 when configured (the durable path); ALSO always writes
+    the local copy so a run without R2 configured (this sandbox, local dev,
+    --as-of testing) still persists between invocations."""
+    body = json.dumps(log, indent=2, default=str)
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    LOG_PATH.write_text(json.dumps(log, indent=2, default=str))
+    LOG_PATH.write_text(body)
+    s3 = _r2_client()
+    if s3 is not None:
+        try:
+            s3.put_object(Bucket=R2_BUCKET, Key=R2_LOG_KEY, Body=body.encode("utf-8"),
+                          ContentType="application/json")
+        except Exception as e:
+            print(f"[warn] R2 write failed ({e}) -- local copy at {LOG_PATH} is current, "
+                  f"R2 copy may be stale until the next successful run")
 
 
 def scan_pair(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> dict | None:
@@ -186,8 +229,25 @@ def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) 
 
 
 def run(args: argparse.Namespace) -> None:
-    log = load_log()
     pairs = args.pairs.split(",") if args.pairs else ALL_PAIRS
+
+    if args.refresh_data:
+        if args.as_of:
+            raise SystemExit("--refresh-data and --as-of are mutually exclusive "
+                             "(--as-of is a historical replay test; --refresh-data pulls live prices)")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from refresh_m1 import refresh_pair  # noqa: E402  -- reuse, don't re-implement OANDA fetch
+        print("[refresh_m1] topping up local M1 parquet from OANDA before scanning...")
+        for pair in pairs:
+            try:
+                n = refresh_pair(pair)
+                if n:
+                    print(f"  {pair:<8} +{n} bars")
+            except Exception as e:
+                print(f"  {pair:<8} refresh failed ({e}) -- scanning against whatever data "
+                      f"is already local for this pair")
+
+    log = load_log()
     new_signals, resolved_total = 0, 0
 
     for pair in pairs:
@@ -228,6 +288,11 @@ def main() -> None:
     p.add_argument("--as-of", default=None,
                    help="ISO date -- truncate data as if this were 'now'. TESTING/REPLAY ONLY; "
                         "omit for real forward use once a live data source is wired in.")
+    p.add_argument("--refresh-data", action="store_true",
+                   help="pull fresh OANDA bars (refresh_m1.py) before scanning -- needs OANDA_KEY "
+                        "and a network path to OANDA (Railway, not this sandbox). The trade log "
+                        "uses R2 automatically whenever R2_ACCESS_KEY/R2_SECRET_KEY are set, "
+                        "independent of this flag.")
     args = p.parse_args()
     run(args)
 
