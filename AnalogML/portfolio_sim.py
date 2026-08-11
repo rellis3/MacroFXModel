@@ -119,7 +119,13 @@ def simulate_portfolio(trades: list[dict], risk_pct: float, max_concurrent_risk_
     ENTRY (standard sequencing); P&L crystallizes at exit. A new entry is
     REFUSED (not partially sized) if it would push total open risk above
     `max_concurrent_risk_pct` -- a hard capital constraint, reported, never
-    silently absorbed."""
+    silently absorbed. Also tracks TIME-WEIGHTED average concurrent-risk
+    utilization (sum of open risk / equity, integrated over the actual
+    calendar duration each level held) -- the metric that makes a portfolio
+    vs single-pair Sharpe/DD comparison apples-to-apples: a portfolio that's
+    near its cap most of the time has more capital at work than a single
+    pair that rarely is, and that alone will show up as higher return AND
+    higher drawdown regardless of diversification quality."""
     events = []
     for i, t in enumerate(trades):
         events.append((t["entry_date"], 0, i, "entry"))  # entries sort before exits on a tie
@@ -130,6 +136,7 @@ def simulate_portfolio(trades: list[dict], risk_pct: float, max_concurrent_risk_
     open_risk: dict[int, float] = {}
     equity_curve = [(events[0][0] if events else pd.Timestamp.now(), equity)]
     taken, skipped = 0, 0
+    util_samples: list[tuple] = []  # (date, utilization_fraction) after each event
 
     for date, _order, i, kind in events:
         t = trades[i]
@@ -138,6 +145,7 @@ def simulate_portfolio(trades: list[dict], risk_pct: float, max_concurrent_risk_
             this_risk = equity * risk_pct
             if current_open + this_risk > equity * max_concurrent_risk_pct:
                 skipped += 1
+                util_samples.append((date, current_open / equity))
                 continue
             open_risk[i] = this_risk
             taken += 1
@@ -147,8 +155,46 @@ def simulate_portfolio(trades: list[dict], risk_pct: float, max_concurrent_risk_
                 continue  # was skipped at entry
             equity += risk_dollars * t["r"]
             equity_curve.append((date, equity))
+        util_samples.append((date, sum(open_risk.values()) / equity))
 
-    return {"equity_curve": equity_curve, "taken": taken, "skipped": skipped, "final_equity": equity}
+    avg_utilization = _time_weighted_avg(util_samples)
+    return {"equity_curve": equity_curve, "taken": taken, "skipped": skipped,
+            "final_equity": equity, "avg_utilization": avg_utilization}
+
+
+def _time_weighted_avg(samples: list[tuple]) -> float:
+    """samples: [(date, value), ...] sorted by date. Integrates `value` over
+    the actual calendar duration it held (not a plain mean of samples, which
+    would over-weight quiet stretches with few events the same as busy
+    ones)."""
+    if len(samples) < 2:
+        return samples[0][1] if samples else 0.0
+    total_weight = 0.0
+    weighted_sum = 0.0
+    for (d0, v0), (d1, _v1) in zip(samples[:-1], samples[1:]):
+        w = (d1 - d0).total_seconds()
+        if w > 0:
+            weighted_sum += v0 * w
+            total_weight += w
+    return weighted_sum / total_weight if total_weight > 0 else float(np.mean([v for _, v in samples]))
+
+
+def matched_utilization_benchmark(trades: list[dict], base_risk_pct: float,
+                                  target_utilization: float) -> dict:
+    """Find the risk_pct a SINGLE pair (or any trade set) would need, run
+    uncapped (max_concurrent_risk_pct=1.0, effectively never binding for a
+    single pair), so its own average utilization matches the portfolio's --
+    then report Sharpe/DD at THAT risk level. Utilization scales linearly
+    with risk_pct when nothing caps it, so one calibration pass is exact."""
+    probe = simulate_portfolio(trades, base_risk_pct, max_concurrent_risk_pct=1.0)
+    natural_util = probe["avg_utilization"]
+    if natural_util <= 0:
+        return {"matched_risk_pct": None, "natural_utilization": natural_util, "result": None}
+    matched_risk_pct = base_risk_pct * (target_utilization / natural_util)
+    matched = simulate_portfolio(trades, matched_risk_pct, max_concurrent_risk_pct=1.0)
+    stats = sharpe_and_dd(matched["equity_curve"])
+    return {"matched_risk_pct": matched_risk_pct, "natural_utilization": natural_util,
+            "achieved_utilization": matched["avg_utilization"], "result": {**matched, **stats}}
 
 
 def sharpe_and_dd(equity_curve: list[tuple]) -> dict:
@@ -225,14 +271,16 @@ def main() -> None:
     stats = sharpe_and_dd(port["equity_curve"])
     print(f"  taken={port['taken']}  skipped(risk cap)={port['skipped']}  "
           f"final_equity={port['final_equity']:.3f}x  total_return={stats['total_return']:.1%}  "
-          f"max_dd={stats['max_dd']:.1%}  Sharpe={stats['sharpe']:.2f}")
+          f"max_dd={stats['max_dd']:.1%}  Sharpe={stats['sharpe']:.2f}  "
+          f"avg_utilization={port['avg_utilization']:.1%}")
 
     corr = pairwise_correlation_summary(all_trades)
     if corr is not None:
         print(f"  avg pairwise weekly-return correlation across pairs: {corr:+.3f} "
               f"(0 = independent, 1 = same bet)")
 
-    print("\n== benchmark: same sizing, ONE pair alone (no concurrency cap ever binds meaningfully) ==")
+    print(f"\n== benchmark A: same sizing ({args.risk_pct:.2%}/trade), ONE pair alone "
+          f"(cap rarely binds -> LOWER utilization than the portfolio, not a fair comparison) ==")
     for bench_pair in pairs[:3]:
         bt = per_pair_trades.get(bench_pair, [])
         if not bt:
@@ -240,7 +288,30 @@ def main() -> None:
         bp = simulate_portfolio(bt, args.risk_pct, args.max_concurrent_risk_pct)
         bs = sharpe_and_dd(bp["equity_curve"])
         print(f"  {bench_pair:<8} n={len(bt):>4}  total_return={bs['total_return']:>7.1%}  "
-              f"max_dd={bs['max_dd']:>7.1%}  Sharpe={bs['sharpe']:>5.2f}")
+              f"max_dd={bs['max_dd']:>7.1%}  Sharpe={bs['sharpe']:>5.2f}  "
+              f"avg_utilization={bp['avg_utilization']:>5.1%}")
+
+    print(f"\n== benchmark B: SAME AVERAGE UTILIZATION as the portfolio ({port['avg_utilization']:.1%}) -- "
+          f"risk_pct scaled up per pair so capital deployed is genuinely comparable ==")
+    for bench_pair in pairs[:3]:
+        bt = per_pair_trades.get(bench_pair, [])
+        if not bt:
+            continue
+        m = matched_utilization_benchmark(bt, args.risk_pct, port["avg_utilization"])
+        if m["result"] is None:
+            print(f"  {bench_pair:<8} (no trades / zero utilization, can't match)")
+            continue
+        r = m["result"]
+        print(f"  {bench_pair:<8} n={len(bt):>4}  matched_risk={m['matched_risk_pct']:>6.2%}/trade  "
+              f"total_return={r['total_return']:>7.1%}  max_dd={r['max_dd']:>7.1%}  Sharpe={r['sharpe']:>5.2f}  "
+              f"achieved_utilization={m['achieved_utilization']:>5.1%}")
+
+    print("\n[read this] Benchmark A is the one that made the portfolio look like it wins on both "
+          "return AND drawdown -- but it wasn't running at the same capital utilization, so that "
+          "comparison was confounded. Benchmark B fixes that: it's what a single pair looks like "
+          "risking enough per trade to deploy the SAME average fraction of the account as the "
+          "portfolio actually does. Whatever gap remains between the portfolio and benchmark B is "
+          "the real diversification effect (or lack of it) -- not a capital-deployed illusion.")
 
     print("\n[caveat] mark-to-close only (no intra-trade floating equity), fixed risk-% sizing "
           "(not vol-scaled per pair), no live spread variation, unoptimised parameters throughout. "
