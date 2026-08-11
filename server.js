@@ -22588,6 +22588,26 @@ app.get('/api/trade-decision/zone-duel', async (req, res) => {
         .map(([, label]) => label);
     }
 
+    // USD-trend GATE (FIT_FINDINGS.md Result 5): the one candidate that actually
+    // discriminated direction OOS (110,883 events, 6/6 majors) — a fade WITH the
+    // prevailing USD trend was after-cost-positive, AGAINST it was -3.6bp. It's a
+    // FILTER, not a smooth probability nudge (that's why it's not in CORROBORATION
+    // above, and not folded into `confidence`) — surfaced as its own direct field so
+    // the card can show it as an unmissable gate rather than one more evidence line.
+    // Only meaningful for a FADE winner on a USD major (follow has no validated edge
+    // either way — Result 5 — so it's omitted there rather than shown as neutral).
+    let usdTrend = null;
+    if (winner === 'fade' && _USD_MAJORS[display] != null) {
+      try {
+        const trends = await _computeUsdTrends();
+        const t = trends[display];
+        if (t && t.dir !== 0) {
+          const tradeUsd = (fade.direction === 'long' ? 1 : -1) * _USD_MAJORS[display];
+          usdTrend = { dir: t.dir, aligned: tradeUsd === Math.sign(t.dir) };
+        }
+      } catch {}
+    }
+
     let confidence = null;
     if (haveBoth) {
       const separation = Math.abs(cp - fp);
@@ -22601,7 +22621,7 @@ app.get('/api/trade-decision/zone-duel', async (req, res) => {
       zone: hit?.zone ?? null, zone_quality: zoneQuality,
       continuation: { probability: cp, pct: continuationPct, decision: continuation.decision, direction: continuation.direction, size_multiplier: continuation.size_multiplier ?? 0, top_factors: continuation.top_factors ?? [], reasons: continuation.reasons ?? [] },
       fade: { probability: fp, pct: fadePct, decision: fade.decision, direction: fade.direction, size_multiplier: fade.size_multiplier ?? 0, top_factors: fade.top_factors ?? [], reasons: fade.reasons ?? [] },
-      confidence, status, winner, confirming_signals: confirmingSignals,
+      confidence, status, winner, confirming_signals: confirmingSignals, usd_trend: usdTrend,
       watching_reasons: hit ? null : [...new Set([...(continuation.reasons ?? []), ...(fade.reasons ?? [])])],
       macro: hit?.macro ?? null, credit: hit?.credit ?? null, htf_trend: hit?.htf_trend ?? null,
       oi: snap.oi ? { side: snap.oi.side, near: snap.oi.near } : null,
