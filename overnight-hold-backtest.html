@@ -155,6 +155,50 @@ function svgEquityChart(equityCurve, buyHoldCurve, label) {
   </div>`;
 }
 
+// Cost-sensitivity sweep: net total return (%) vs a cost-scale multiplier
+// (0x = free fills, 1x = the engine's assumed defaults, up to the scanned
+// max). Marks the assumed-default line (x=1) and the interpolated breakeven,
+// if one exists inside the scanned range.
+function svgCostSweepChart(sweep, label) {
+  if (!sweep || !sweep.points?.length) return '';
+  const W = 1080, H = 220, PAD = 34;
+  const pts = sweep.points;
+  const maxScale = pts[pts.length - 1].costScale;
+  const ys = pts.map(p => p.totalReturnPct);
+  const minY = Math.min(...ys, 0) * 1.05, maxY = Math.max(...ys, 0) * 1.05;
+  const x = s => PAD + (s / maxScale) * (W - 2 * PAD);
+  const y = v => (H - 20) - ((v - minY) / (maxY - minY || 1)) * (H - 40);
+  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.costScale).toFixed(1)} ${y(p.totalReturnPct).toFixed(1)}`).join(' ');
+  const breakevenX = sweep.breakevenScale !== null ? x(sweep.breakevenScale) : null;
+  return `
+  <div class="chart-wrap">
+    <div class="chart-label">${label} — net total return vs cost-scale multiplier (0x = free fills, ${maxScale}x = ${maxScale * 100}% of assumed costs)</div>
+    <svg viewBox="0 0 ${W} ${H + 20}" role="img" aria-label="${label} cost-sensitivity sweep" style="width:100%;height:auto;background:#0d1117;border:1px solid var(--line);border-radius:8px">
+      <line x1="${PAD}" y1="${y(0).toFixed(1)}" x2="${W-PAD}" y2="${y(0).toFixed(1)}" stroke="#2b3340" stroke-dasharray="4 3"/>
+      <line x1="${x(1).toFixed(1)}" y1="20" x2="${x(1).toFixed(1)}" y2="${H-20}" stroke="#d29922" stroke-dasharray="3 3"/>
+      <text x="${x(1)+4}" y="30" fill="#d29922" font-size="11">assumed cost (1.0x)</text>
+      ${breakevenX !== null ? `<line x1="${breakevenX.toFixed(1)}" y1="20" x2="${breakevenX.toFixed(1)}" y2="${H-20}" stroke="#3fb950" stroke-width="1.5"/>
+      <circle cx="${breakevenX.toFixed(1)}" cy="${y(0).toFixed(1)}" r="4" fill="#3fb950"/>
+      <text x="${breakevenX+4}" y="${H-26}" fill="#3fb950" font-size="11">breakeven ${sweep.breakevenScale}x</text>` : ''}
+      <path d="${path}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+    </svg>
+  </div>`;
+}
+
+function costSweepSection(sweep, label) {
+  if (!sweep) return '';
+  const be = sweep.breakevenScale;
+  const summary = be !== null
+    ? `Net return crosses zero at <b>${(be * 100).toFixed(1)}%</b> of the assumed cost level — costs would need to ${be < 1 ? `fall by ${((1 - be) * 100).toFixed(1)} percentage points` : `rise by ${((be - 1) * 100).toFixed(1)} percentage points`} from the current assumption for this to flip ${be < 1 ? 'net-positive' : 'net-negative'}.`
+    : (sweep.note || 'No breakeven found in the scanned range.');
+  return `
+  <details class="subpanel" open>
+    <summary>Cost sensitivity <span class="cnt">— how far would costs need to move to flip the sign?</span></summary>
+    <p class="note" style="margin-top:8px">${summary}</p>
+    ${svgCostSweepChart(sweep, label)}
+  </details>`;
+}
+
 function metricsTable(m, benchmark) {
   const rows = [
     ['Total return %', spanN(m.totalReturnPct), spanN(m.grossTotalReturnPct), spanN(benchmark?.totalPct)],
@@ -268,6 +312,7 @@ function instrumentPanel(key, inst) {
     ${m ? `<p class="note">Exposure: avg hold <b>${fmtN(m.exposure.avgHoldHours,1)}h</b>, time-in-market <b>${fmtN(m.exposure.exposureFraction*100,1)}%</b>,
        return per unit exposure <b>${spanN(m.exposure.returnPerUnitExposurePct)}%</b> (naive linear scale-up, not re-compounded).
        Correlation to buy&amp;hold: <b>${m.correlationToBuyHold.r === null ? 'n/a' : m.correlationToBuyHold.r}</b> (n=${m.correlationToBuyHold.n}).</p>` : ''}
+    ${costSweepSection(inst.costSweep, INSTRUMENT_LABEL[key] || key)}
     ${m ? svgEquityChart(m.equityCurve, m.buyHoldEquityCurve, INSTRUMENT_LABEL[key] || key) : ''}
     ${inst.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check</h3>${ruleCheckCard(inst.ruleCheck)}` : ''}
     ${inst.csv ? `
@@ -408,10 +453,28 @@ async function renderModal() {
 
 let LAST_RESULT = null;
 
+function crossInstrumentSweepSummary(instruments) {
+  const withSweep = Object.entries(instruments).filter(([, inst]) => inst.costSweep?.breakevenScale != null);
+  if (withSweep.length < 2) return '';
+  const rows = withSweep.map(([key, inst]) => ({ key, be: inst.costSweep.breakevenScale }));
+  rows.sort((a, b) => b.be - a.be); // closer to (or above) 1.0 first = needs the smallest cost change to flip
+  const closer = rows[0], further = rows[rows.length - 1];
+  return `
+  <div class="panel">
+    <h2>Cost sensitivity — which leg is actually closer to working?</h2>
+    <p class="note" style="font-size:13px">
+      ${rows.map(r => `<b>${INSTRUMENT_LABEL[r.key] || r.key}</b>: breakeven at ${(r.be * 100).toFixed(1)}% of assumed cost`).join(' · ')}.
+      Under the current cost assumptions, <b>${INSTRUMENT_LABEL[closer.key] || closer.key}</b> needs the smaller change (${Math.abs((1 - closer.be) * 100).toFixed(1)}pp) to flip sign — it's the leg closer to the edge, not necessarily the one the task expected to be "reasonably strong."
+      Both breakevens sitting this close to 1.0x means the net-negative verdict at the assumed defaults is a knife-edge result, not a deep, robust negative — a small, plausible change in the cost assumption (which is illustrative, not fetched from a real broker) would flip the conclusion for either instrument.
+    </p>
+  </div>`;
+}
+
 function render(data) {
   LAST_RESULT = data;
   disposeCharts();
   const parts = [];
+  parts.push(crossInstrumentSweepSummary(data.instruments));
   for (const key of Object.keys(data.instruments)) parts.push(instrumentPanel(key, data.instruments[key]));
   parts.push(combinedPanel(data.combined));
   $('results').innerHTML = parts.join('');

@@ -293,11 +293,14 @@ export function mirrorTest(trades, mirrors) {
 
 export function applyCosts(trades, assetKey, opts = {}) {
   const cls = lookupAssetClass(assetKey);
-  const costPct = opts.costPct?.[cls] ?? DEFAULT_COST_PCT[cls] ?? DEFAULT_COST_PCT.fx;
-  const slipPct = opts.slipPct?.[cls] ?? DEFAULT_SLIP_PCT[cls] ?? DEFAULT_SLIP_PCT.fx;
+  // costScale uniformly scales spread+slip+financing together (default 1 =
+  // no change) — the single knob the cost-sensitivity sweep below turns.
+  const costScale = opts.costScale ?? 1;
+  const costPct = (opts.costPct?.[cls] ?? DEFAULT_COST_PCT[cls] ?? DEFAULT_COST_PCT.fx) * costScale;
+  const slipPct = (opts.slipPct?.[cls] ?? DEFAULT_SLIP_PCT[cls] ?? DEFAULT_SLIP_PCT.fx) * costScale;
   const legMult = { ...DEFAULT_LEG_MULTIPLIERS, ...(opts.legMultipliers || {}) };
-  const financingBpsPerNight = opts.financingBpsPerNight?.[assetKey]
-    ?? DEFAULT_FINANCING_BPS_PER_NIGHT[assetKey] ?? 2.0;
+  const financingBpsPerNight = (opts.financingBpsPerNight?.[assetKey]
+    ?? DEFAULT_FINANCING_BPS_PER_NIGHT[assetKey] ?? 2.0) * costScale;
   const tripleSwapDow = opts.tripleSwapDow ?? DEFAULT_TRIPLE_SWAP_DOW;
 
   return trades.map(t => {
@@ -318,6 +321,53 @@ export function applyCosts(trades, assetKey, opts = {}) {
       netPct: +netPct.toFixed(4),
     };
   });
+}
+
+// Default cost-scale grid for the sensitivity sweep: 0% (pure gross) through
+// 200% of the assumed defaults, finer-grained near 100% where the breakeven
+// is expected to sit for a strategy whose gross is strongly positive but
+// whose net (at costScale=1) has already been shown to be roughly breakeven.
+export const DEFAULT_COST_SCALES = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0];
+
+// ── Stage 04b — cost-sensitivity sweep ───────────────────────────────────────
+//
+// Re-applies costs at a grid of cost-scale multipliers (0x = free fills, 1x =
+// the assumed defaults, 2x = double them) to the SAME already-built gross
+// trades — no M1 rescanning, so this is cheap even at 2000+ trades. Answers
+// "how far would spread/slip/financing have to fall (or rise) before net
+// return crosses zero" — the natural follow-up once costs turn a strongly
+// positive gross result negative net at the assumed defaults. Costs only ever
+// subtract here, so totalReturnPct is non-increasing in costScale by
+// construction; the breakeven is found by linear interpolation between the
+// two grid points that bracket the sign change (none found = it doesn't
+// cross anywhere in the scanned range, reported explicitly rather than
+// guessed at).
+export function costSensitivitySweep(grossTrades, assetKey, opts = {}) {
+  if (!grossTrades.length) return null;
+  const scales = opts.costScales || DEFAULT_COST_SCALES;
+  const points = scales.map(costScale => {
+    const netTrades = applyCosts(grossTrades, assetKey, { ...opts, costScale });
+    const totalMult = netTrades.reduce((m, t) => m * (1 + t.netPct / 100), 1);
+    const totalReturnPct = (totalMult - 1) * 100;
+    const summ = summarizeTrades(netTrades.map(t => t.netPct), netTrades.map(t => t.date));
+    return { costScale, totalReturnPct: +totalReturnPct.toFixed(3), sharpe: summ.sharpe, winRatePct: summ.winRate, profitFactor: summ.profitFactor };
+  });
+
+  let breakevenScale = null;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i];
+    if ((a.totalReturnPct >= 0) !== (b.totalReturnPct >= 0)) {
+      const frac = a.totalReturnPct / (a.totalReturnPct - b.totalReturnPct); // linear interpolation
+      breakevenScale = +(a.costScale + frac * (b.costScale - a.costScale)).toFixed(3);
+      break;
+    }
+  }
+  const note = breakevenScale !== null ? null
+    : (points[0].totalReturnPct < 0
+        ? 'net return is already negative at costScale=0 (zero cost) — the gross effect itself is negative, not just cost-eroded'
+        : `net return stays positive across the whole scanned range (0x–${scales[scales.length - 1]}x) — no breakeven found in this window`);
+
+  return { points, breakevenScale, assumedScaleNote: 'costScale=1.0 is the engine\'s assumed default spread/slip/financing — see DEFAULT_COST_PCT/DEFAULT_SLIP_PCT/DEFAULT_FINANCING_BPS_PER_NIGHT', note };
 }
 
 // ── Buy & hold benchmark ─────────────────────────────────────────────────────
@@ -710,6 +760,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
   const benchmark = buildBuyHoldBenchmark(packed, grossTrades, opts.maxGapSec);
   const metrics = computeMetricsTable(netTrades, benchmark);
   const ruleCheck = metrics ? runPropFirmRuleCheck(netTrades, opts.ruleset) : null;
+  const costSweep = opts.includeCostSweep === false ? null : costSensitivitySweep(grossTrades, assetKey, opts);
 
   return {
     assetKey,
@@ -722,6 +773,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
     trades: netTrades,
     metrics,
     ruleCheck,
+    costSweep,
     dailyBars: opts.includeDailyBars === false ? null : resampleDailyFromPacked(packed),
     csv: metrics ? { returns: toCsvReturns(netTrades), rMultiples: toCsvRMultiples(netTrades), currency: toCsvCurrency(netTrades, opts.accountSize, opts.notionalPerTrade) } : null,
   };

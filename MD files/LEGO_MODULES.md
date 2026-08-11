@@ -1225,11 +1225,40 @@ gate asks for, not a data-quality problem.
 
 This is a real result on real data, not a null from missing infrastructure —
 but it used one set of illustrative cost/financing/ruleset assumptions.
-Before treating "net negative" as final, the next honest step is a
-cost-sensitivity sweep (how far do spread/slip/financing have to fall before
-net turns positive, if at all) and calibrating the ruleset to an actual named
-firm — exactly the kind of follow-up this brick's dashboard inputs exist to
-make cheap to run.
+
+**Update (2026-08-11, same day): the cost-sensitivity sweep asked for above is
+now built and run.** `costSensitivitySweep(grossTrades, assetKey, opts)`
+re-applies costs at a grid of scale multipliers (0x = free fills through 2x =
+double the assumed defaults) against the SAME already-built gross trades — no
+M1 rescanning, cheap even at 2000+ trades — and finds the breakeven scale by
+linear interpolation between the grid points that bracket the sign change.
+`applyCosts` gained a `costScale` param (default 1, no behavior change for
+existing callers) that the sweep turns as its one knob. 5 new unit tests (24
+total): costScale=0 reproduces pure gross exactly, return is monotonically
+non-increasing in cost scale (costs only ever subtract, by construction), the
+interpolated breakeven self-consistently nets ~0%, and an already-negative-
+at-zero-cost series is reported as "no breakeven" rather than a fabricated
+one. Wired into every `/run` response as `costSweep` (no new endpoint needed
+— reuses the trades already built that call) and surfaced in the dashboard as
+a per-instrument sweep chart plus a cross-instrument "which leg is actually
+closer to working" summary panel.
+
+**The real answer, run against the same R2 data:** gold's breakeven sits at
+**98.2%** of the assumed cost level, NQ's at **96.2%** — both within a few
+percentage points of the current assumption. This reframes the earlier
+"both net negative" result: it isn't costs dwarfing a real edge, it's a
+knife-edge case where the specific illustrative cost assumption happens to
+sit almost exactly at the crossover for both instruments. Gold needs a
+smaller relative cost cut (1.8pp) to flip positive than NQ does (3.8pp) —
+consistent with gold's own net number already being less negative (−2.3%
+vs −3.9%) — so under these specific assumptions gold is marginally the leg
+closer to working, again the opposite of the task's own a-priori framing.
+The more decision-relevant takeaway: because both sit this close to the
+edge, the verdict is NOT robust to the (documented, not-fetched-from-a-real-
+broker) cost assumption — a plausible, small change to the real spread/slip/
+financing numbers would flip the conclusion for either instrument. Before
+trusting the current "fails net" verdict for a real decision, plug in the
+actual broker's numbers rather than the illustrative defaults.
 
 ---
 
