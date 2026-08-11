@@ -437,7 +437,12 @@ function pairLab(big){
 function leaderboard(big){
   const rows = (DATA.instruments||[]).filter(x=>pctOf(x)!=null).sort((a,b)=>pctOf(b)-pctOf(a));
   if(!rows.length) return '<div class="empty">No instruments.</div>';
-  const W=1000, rh=big?24:17, H=rows.length*rh+8, MID=W*0.42, SPAN=W*0.48;
+  // LM/RM reserve room for the symbol name and the value label so both stay inside the
+  // viewBox — MID=42%/SPAN=48% of the FULL width put names at a negative x-coordinate,
+  // which is legal SVG (overflow:visible on the <svg>) but got clipped by the panel's own
+  // overflow:hidden, silently dropping every label.
+  const W=1000, rh=big?24:17, H=rows.length*rh+8, LM=95, RM=45;
+  const MID=LM+(W-LM-RM)/2, SPAN=(W-LM-RM)/2-18;
   let s='<svg viewBox="0 0 '+W+' '+(H+20)+'">';
   s+='<line class="axis" x1="'+MID+'" y1="0" x2="'+MID+'" y2="'+H+'"/>';
   [10,30,70,90].forEach(p=>{ const x=MID+((p-50)/50)*SPAN;
