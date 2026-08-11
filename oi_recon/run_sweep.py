@@ -160,6 +160,7 @@ def _report(results: dict, products: list, views: list, d: Path,
     print()
     print('  product      ' + '  '.join(f'{b:<10}' for b in boxes))
     ok_total = 0
+    per_box = {b: 0 for b in boxes}   # per-view hit count → names WHICH view fell short
     for prod in products:
         r = results.get(prod) or {}
         cells = []
@@ -167,11 +168,19 @@ def _report(results: dict, products: list, views: list, d: Path,
             hit = any(k.endswith(f'_{b}.tsv') for k in r)
             cells.append('ok' if hit else '--')
             ok_total += 1 if hit else 0
+            if hit:
+                per_box[b] += 1
         err = '  ERROR' if r.get('_error') else ('' if r.get('_validated', True) else '  (validation failed)')
         print(f'  {prod:<12} ' + '  '.join(f'{c:<10}' for c in cells) + err)
 
     want = len(products) * len(boxes)
-    print(f'\n  {ok_total}/{want} tables captured')
+    # Per-view breakdown rides the SAME "tables captured" line the heartbeat grabs
+    # (run_daily.bat greps this line into oi_sweep_last.detail), so a partial night
+    # says WHICH view failed remotely — "33/44" alone can't tell rawIVTerm 0/11
+    # (no expected-move / IV term) from a scatter, and that ambiguity cost a manual
+    # dig to diagnose. No .bat pattern change needed.
+    by_view = ' · '.join(f'{b} {per_box[b]}/{len(products)}' for b in boxes)
+    print(f'\n  {ok_total}/{want} tables captured  (by view: {by_view})')
     manifest = d / f'sweep_{stamp}.json'
     manifest.write_text(json.dumps(
         dict(when=stamp, seconds=round(secs), products=products, views=views,
