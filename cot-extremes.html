@@ -149,6 +149,7 @@ const pctOf = x => BASIS==='share' ? (x.specSharePct ?? x.specPct) : x.specPct;
 const zOf   = x => BASIS==='share' ? (x.specShareZ  ?? x.specZ)   : x.specZ;
 const colFor = p => p==null ? 'var(--tx3)' : p>=90 ? 'var(--long)' : p<=10 ? 'var(--short)'
               : p>=70 ? 'rgba(232,97,95,.65)' : p<=30 ? 'rgba(70,184,122,.65)' : 'var(--tx3)';
+const stat = (lbl, val, clr) => '<div class="pa-stat"><div class="pa-lbl">'+lbl+'</div><div class="pa-val" style="color:'+clr+'">'+val+'</div></div>';
 
 const HELP = {
   what:['What COT is','A weekly CFTC report of who holds what in the futures market, split by trader type. It shows <b>positioning</b> — who is already committed — not price.','Read it as crowding: when one side is historically stretched, the fuel for further moves that way is thin and an unwind can be violent. It is not a timing tool.'],
@@ -163,8 +164,8 @@ const HELP = {
   group:['By asset class','Median crowding percentile per group. This is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch.'],
   scatter:['Specs vs commercials','Each dot is one market: speculative crowding across, commercial crowding up.','They should sit near a downward diagonal, because commercials take the other side. A market well <b>off</b> that line means the usual mirror has broken — worth a look, not a signal.'],
   hist:['200-week history','Net positioning over time, with the current reading marked.','A percentile means little without the shape behind it: the 90th after a steady climb is a different situation from the 90th after a spike.'],
-  extreme:['Crowded trades','Markets at or beyond the 90th / 10th percentile of their own 200-week range.','These are where an unwind has the most fuel. Which way it breaks is not something this data tells you.'],
   paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
+  pairlab:['Pair lab','Pick any two currencies (or USD) and this scores how crowded the implied FX pair is, combining both legs\' positioning into one read — the same "reinforcing cross" logic behind the alerts above, but for any pair you choose, not just the ones already at an extreme.','It also cross-checks the commercial side (do commercials mirror the spec read, as they normally should?) and flags thin open interest. Still a crowding read, not a backtested trade signal.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -211,7 +212,7 @@ const FX_PAIRS = [
 ];
 
 // 'long'/'short' at the existing 90th/10th percentile extreme threshold (same
-// cutoff as extremes()/colFor() elsewhere on this page); null = not stretched.
+// cutoff as colFor() elsewhere on this page); null = not stretched.
 const crowdState = x => { const p = pctOf(x); return p==null ? null : p>=90?'long':p<=10?'short':null; };
 
 // ── derived USD crowding read ──────────────────────────────────────────────
@@ -299,7 +300,6 @@ function crowdingCards(big){
   if (!list.length) return '<div class="empty">No currency is currently at a 90th/10th-percentile crowding extreme — nothing stretched enough to flag right now.</div>';
   list.sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)));
 
-  const stat = (lbl, val, clr) => `<div class="pa-stat"><div class="pa-lbl">${lbl}</div><div class="pa-val" style="color:${clr}">${val}</div></div>`;
   const cardsHtml = list.map(x => {
     const st = crowdState(x), clr = st === 'long' ? 'var(--long)' : 'var(--short)';
     const label = st === 'long' ? '&#9888; OVERCROWDED LONG' : '&#9661; HEAVILY SHORT';
@@ -343,6 +343,96 @@ function crowdingCards(big){
     + `<div class="note">${comboLine} This is a crowding read, not a trade signal — it says the fuel for more of the same is thin, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.${usdNote}</div>`;
 }
 
+// ── pair lab: cross-compare any two currencies for a crowding-based lean ────
+// Generalises the "reinforcing cross" logic in crowdingCards() above (which only fires
+// once both legs are already at a 90/10 extreme) into a continuous score for ANY two
+// currencies the user picks, so this works before either leg gets that stretched.
+const PAIR_CCYS = ['EUR','GBP','JPY','AUD','CAD','CHF','NZD','MXN','USD'];
+let PAIR_A = 'EUR', PAIR_B = 'USD';
+
+function fxReading(ccy){
+  if (ccy === 'USD') { if (usdDerived === null) loadUsdMirror(); return usdDerivedReading(); }
+  return (DATA.instruments||[]).find(x => x.sym === ccy && x.group === 'fx') || null;
+}
+
+// Canonical base/quote order taken from FX_PAIRS (real market convention — USD is quote
+// for EUR/GBP/AUD/NZD but base for USD/CAD, USD/CHF, USD/JPY). Falls back to the
+// selection order for combos not in that list (e.g. MXN crosses, which have no fixed
+// convention in this feed).
+function pairOrder(x, y){
+  if (FX_PAIRS.some(([b,q]) => b===x && q===y)) return [x, y];
+  if (FX_PAIRS.some(([b,q]) => b===y && q===x)) return [y, x];
+  return [x, y];
+}
+
+function pairLab(big){
+  const opts = sel => PAIR_CCYS.map(c => '<option value="'+c+'"'+(c===sel?' selected':'')+'>'+c+'</option>').join('');
+  const picker = '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:16px">'
+    + '<select class="btn" onchange="PAIR_A=this.value;render()">'+opts(PAIR_A)+'</select>'
+    + '<span style="color:var(--tx3)">vs</span>'
+    + '<select class="btn" onchange="PAIR_B=this.value;render()">'+opts(PAIR_B)+'</select></div>';
+
+  if (PAIR_A === PAIR_B) return picker + '<div class="empty">Pick two different currencies to cross-compare.</div>';
+
+  const [base, quote] = pairOrder(PAIR_A, PAIR_B);
+  const A = fxReading(base), B = fxReading(quote);
+  if (!A || !B) {
+    const waiting = usdDerived === 'loading';
+    const missing = !A ? base : quote;
+    return picker + '<div class="empty">' + (waiting ? 'Loading USD\'s derived mirror…' : (esc(missing)+' positioning isn\'t available.')) + '</div>';
+  }
+
+  const pA = pctOf(A), pB = pctOf(B);
+  const cA = BASIS==='share' ? (A.commSharePct ?? A.commPct) : A.commPct;
+  const cB = BASIS==='share' ? (B.commSharePct ?? B.commPct) : B.commPct;
+  const pairName = base + '/' + quote;
+
+  // Combined pair-crowding score: average of the base's long-crowding percentile and the
+  // quote's SHORT-crowding percentile (100 - its pct). High = both legs already lean
+  // toward BASE/QUOTE long being the crowded trade; low = crowded short; ~50 = no edge.
+  const score = (pA!=null && pB!=null) ? Math.round((pA + (100 - pB)) / 2) : null;
+
+  let verdict = 'Not enough data to score ' + esc(pairName) + ' yet.';
+  if (score != null) {
+    if (score >= 80) verdict = 'Positioning leans toward <b>'+esc(pairName)+' long</b> being the crowded trade — '+esc(base)+' specs are stretched long, '+esc(quote)+' specs are stretched short, both reinforcing the same side. Fuel for more of the same is thin from here; the bigger risk on top of this read is a reversal, not a continuation.';
+    else if (score <= 20) verdict = 'Positioning leans toward <b>'+esc(pairName)+' short</b> being the crowded trade — '+esc(base)+' specs are stretched short, '+esc(quote)+' specs are stretched long, both reinforcing the same side. Fuel for more downside is thin; the bigger risk on top of this read is a squeeze higher, not a continuation.';
+    else if (score >= 65) verdict = 'A mild lean toward the long side being more crowded on '+esc(pairName)+', but neither leg is at a real extreme — a soft tilt, not a stretched read.';
+    else if (score <= 35) verdict = 'A mild lean toward the short side being more crowded on '+esc(pairName)+', but neither leg is at a real extreme — a soft tilt, not a stretched read.';
+    else verdict = 'No meaningful cross-currency crowding edge between '+esc(base)+' and '+esc(quote)+' right now — neither leg, alone or together, is stretched enough to lean on.';
+  }
+
+  // Commercials should sit roughly opposite specs (see the scatter panel below) — a
+  // commercial score near (100 - score) confirms the spec read; far from it flags a
+  // broken mirror on this specific pair.
+  const commScore = (cA!=null && cB!=null) ? Math.round((cA + (100 - cB)) / 2) : null;
+  const commNote = commScore == null ? ''
+    : Math.abs(commScore - (100 - (score??50))) <= 20
+      ? ' Commercials sit roughly opposite the specs here, the expected mirror — no red flag.'
+      : ' Commercials are <b>not</b> mirroring the specs the way they usually do on this cross — worth a second look before leaning on the spec read alone.';
+
+  const card = x => {
+    const p = pctOf(x), z = zOf(x), sh = x.specShare, wk = x.weeklyChg, oi = x.oiPct;
+    const clr = colFor(p);
+    const thin = (oi!=null && oi<=20) ? ' <span style="color:var(--warn)">— thin market, OI '+oi+'th pct</span>' : '';
+    return '<div class="pa-card'+(x._derived?' derived':'')+'" style="border-color:'+clr+'55">'
+      + '<div class="pa-head"><span class="pa-pair">'+esc(x.sym)+(x._derived?' <span class="pa-derived-tag" title="Derived: mirror of the other 7 majors, not a real CFTC-tracked USD future.">DERIVED</span>':'')+'</span>'
+      + '<span class="pa-badge" style="color:'+clr+'">'+(p==null?'—':p>=90?'CROWDED LONG':p<=10?'CROWDED SHORT':p+'TH PCT')+'</span></div>'
+      + '<div class="pa-stats-row">'
+      +   stat('PCTILE', p??'—', clr)
+      +   stat('Z-SCORE', z!=null?sgn(z)+z:'—', clr)
+      +   stat('NET % OI', sh!=null?sgn(sh)+sh+'%':'—', clr)
+      +   stat('WK CHG', wk!=null?sgn(wk)+fN(wk):'—', wk>0?'var(--long)':wk<0?'var(--short)':'var(--tx3)')
+      + '</div><div class="note" style="margin-top:10px;font-size:12.5px">'
+      +   (x._derived ? 'No 200-week drill-down for the derived USD mirror.' : '<span style="color:var(--acc);cursor:pointer" onclick="pick(\''+esc(x.sym)+'\')">Load 200-week history &rarr;</span>')
+      +   thin + '</div></div>';
+  };
+
+  return picker
+    + '<div class="pa-grid">' + card(A) + card(B) + '</div>'
+    + '<div class="note" style="margin-top:16px">' + verdict + commNote
+    + ' This is a crowding read built from the same positioning data as the rest of this page — not a backtested signal. Cross-check it against price and, for '+esc(pairName)+' specifically, against dealer options positioning on the <a href="oi-dashboard.html">OI Analytics</a> page — that\'s a separate dataset (options open interest / gamma, not futures specs) and can confirm or contradict what this page alone is saying.</div>';
+}
+
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
 function leaderboard(big){
   const rows = (DATA.instruments||[]).filter(x=>pctOf(x)!=null).sort((a,b)=>pctOf(b)-pctOf(a));
@@ -378,20 +468,6 @@ function groups(big){
       +'<td style="color:'+colFor(x.med)+'"><b>'+(x.med??'—')+'</b></td>'
       +'<td style="width:120px"><span class="bar" style="width:'+(x.med||0)+'px;background:'+colFor(x.med)+';opacity:.7"></span></td></tr>').join('')
     + '</tbody></table>';
-}
-
-function extremes(big){
-  const list=(DATA.instruments||[]).filter(x=>pctOf(x)!=null && (pctOf(x)>=90||pctOf(x)<=10))
-    .sort((a,b)=>Math.abs(50-pctOf(b))-Math.abs(50-pctOf(a)));
-  if(!list.length) return '<div class="empty">Nothing at the 90th / 10th percentile — no crowded trades on the board right now.</div>';
-  return '<table><thead><tr><th>Market</th><th>Pct</th><th>Z</th><th>Net</th><th>% of OI</th><th>Wk chg</th></tr></thead><tbody>'
-    + list.map(x=>'<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(x.sym)
-      +'<span class="pill" style="color:'+colFor(pctOf(x))+'">'+(pctOf(x)>=90?'long':'short')+'</span></td>'
-      +'<td style="color:'+colFor(pctOf(x))+'"><b>'+pctOf(x)+'</b></td>'
-      +'<td class="muted">'+(zOf(x)??'—')+'</td><td>'+fN(x.specNet)+'</td>'
-      +'<td class="muted">'+(x.specShare!=null?x.specShare+'%':'—')+'</td>'
-      +'<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td></tr>').join('')
-    + '</tbody></table><div class="note">Click any row to load its 200-week history.</div>';
 }
 
 function scatter(big){
@@ -509,13 +585,13 @@ function render(){
     +'. Positioning changes inside that gap and you cannot see it, so treat every number here as a '
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
+    + panel('c12','pair','Pair lab — cross-compare two currencies','pairlab',pairLab,true)
     + panel('c12','alerts','Extreme crowding alerts','paira',crowdingCards,true)
     + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
-    + panel('c5','ext','Crowded trades','extreme',extremes,true)
-    + panel('c7','scat','Specs vs commercials','scatter',scatter)
     + panel('c5','grp','By asset class','group',groups,true)
-    + panel('c7','hist','200-week history'+(SEL?' — '+esc(SEL):''),'hist',history)
+    + panel('c7','scat','Specs vs commercials','scatter',scatter)
     + panel('c5','dis','Where the two rankings disagree','basis',disagree,true)
+    + panel('c12','hist','200-week history'+(SEL?' — '+esc(SEL):''),'hist',history)
     + panel('c12','all','All markets','spec',allTable,true)
     + '</div>';
 }
