@@ -24,6 +24,8 @@ import logging
 import os
 import sys
 import time
+from collections import deque
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -72,6 +74,36 @@ DEFAULT_CFG = {
     # the deferred zone can still fire once the conflicting position is gone.
     "stack_guard": True,
     "stack_guard_pips": 10,
+    # ── 2026-08 quant-review additions ─────────────────────────────────────────
+    # Portfolio risk budget: per-trade risk is risk_pct × the zone's sizeFactor
+    # (up to ~2×), and max_open alone allowed a worst-case book risking >10%
+    # against a 3% daily DD limit. This caps the SUM of open risk-to-SL (% of
+    # balance) across this bot's book BEFORE entry — defer (don't burn) when full.
+    "max_open_risk_pct": 2.0,      # 0 = off
+    # Correlated-group cap: the four indices are ONE macro bet in stress — cap
+    # same-direction positions per asset class (registry classes: index/commodity/fx).
+    "max_group_positions": {"index": 2},
+    # Plan-age gate: the plan IS the strategy and OI is a daily artifact — refuse
+    # NEW entries on a plan older than this (fail-CLOSED, unlike the event gate
+    # which suppresses and correctly fails open). Brackets always keep running.
+    "plan_max_age_hours": 24,      # 0 = off
+    # Break dwell: a break zone must hold its trigger for N consecutive ticks —
+    # a single wick through wall+breakPips on a 3s poll is not a decisive break.
+    "break_hold_ticks": 2,         # 0 = fire on first touch (old behaviour)
+    # Approach velocity: a fast impulse INTO a wall (move > frac × the plan's
+    # refMove within the window) tends to consume the level — trim fades entered
+    # on a fast approach. Breaks are untouched (momentum favours the break).
+    "approach_window_secs": 120,
+    "approach_fast_frac": 0.5,
+    "approach_trim": 0.7,          # 1 = no trim
+    # Scale-out: the plan publishes TP1 (first structure) AND TP2 (runner) but the
+    # bracket only ever used TP1 — TP2 was dead weight. On, a zone with both targets
+    # splits into two tickets: half banks at TP1, the runner rides to TP2, and (with
+    # be_at_tp1) the runner's stop moves to entry once the TP1 leg closes — the
+    # actual wall-to-wall playbook the rationale describes. Default OFF (behaviour
+    # change worth an explicit opt-in on the config page).
+    "scale_out": False,
+    "be_at_tp1": True,
     "paper_spread_pips": {},      # paper-fill spread OVERRIDES, {pair: pips in the pair's own units}
     # Telegram entry alerts (optional). tg_token/tg_chat_id fall back to the shared
     # tg_config (Level bot) if left blank — one alert per fill with the full trade.
@@ -260,6 +292,33 @@ def _plan_instruments(plan: dict) -> dict:
     return ((plan or {}).get("instruments")) or {}
 
 
+def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
+    """Hours since the plan's generatedAt (None when unparseable — treated as
+    fresh so a malformed stamp doesn't halt trading; the producer stamps ISO)."""
+    ga = (plan or {}).get("generatedAt")
+    if not ga:
+        return None
+    try:
+        t = datetime.fromisoformat(str(ga).replace("Z", "+00:00"))
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return max(0.0, (now_epoch - t.timestamp()) / 3600.0)
+    except Exception:
+        return None
+
+
+def _position_risk_pct(pair: str, lots: float, entry: float, sl: float, balance: float) -> float:
+    """A position's risk-to-SL as % of balance (the sizing formula, inverted)."""
+    if not balance or sl is None or entry is None:
+        return 0.0
+    try:
+        pip = I.pip_size(pair); pv = PV.point_value(pair)
+    except Exception:
+        pip, pv = 0.0001, 10.0
+    sl_pips = abs(float(entry) - float(sl)) / pip
+    return (sl_pips * pv * float(lots)) / balance * 100.0
+
+
 def _instr_lines(plan, sessions):
     """Per-instrument snapshot for the config/zones page: the plan's regime, spot,
     max pain, the planned zones + which have already fired."""
@@ -335,8 +394,43 @@ def run(base_url: str, force_live: bool) -> None:
     sessions: dict[str, OISession] = {}
     reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
     stack_skips: dict[str, int] = {}             # zone_id → conflicting ticket (once-per-change logging)
+    budget_skips: dict[str, bool] = {}           # zone_id → deferred-by-risk-budget (once-per-change logging)
+    group_skips: dict[str, bool] = {}            # zone_id → deferred-by-group-cap (once-per-change logging)
+    warned_missing: dict[str, bool] = {}         # enabled_pairs entries absent from the plan (warn once)
+    runners: dict[int, dict] = {}                # scale-out runner ticket → {pair, be, partner} (BE-at-TP1 watch)
     plan = None
     last_plan = last_status = 0.0
+    plan_age_blocked = False                     # plan-age gate state (log transitions once)
+    # One-shot state that must survive a bot RESTART: without this, maxpain re-fires
+    # immediately (it is exempt from priming by design) and a stopped-out zone re-arms
+    # if price is still beyond its entry — an innocuous redeploy could double today's
+    # trades. Persisted to KV per plan generatedAt; restored when the plan matches.
+    features: dict[str, dict] = {}               # zone_id → entry-time feature stamp (hold-calibration inputs)
+    risk_ledger: dict[int, float] = {}           # ticket → risk-to-SL % of balance at entry (portfolio budget)
+    px_hist: dict[str, deque] = {}               # instrument → (epoch, px) samples (approach-velocity window)
+    sym_class: dict[str, str] = {}               # broker-symbol spelling → asset class (correlated-group cap)
+    try:
+        saved_state = kv.get_json("oi_bot_state") or {}
+    except Exception:
+        saved_state = {}
+    if isinstance(saved_state.get("features"), dict):
+        features.update(saved_state["features"])
+    for k, v in (saved_state.get("risk_ledger") or {}).items():
+        try:
+            risk_ledger[int(k)] = float(v)
+        except (TypeError, ValueError):
+            pass
+
+    def _save_state() -> None:
+        try:
+            kv.put_json("oi_bot_state", {
+                "generatedAt": (plan or {}).get("generatedAt"),
+                "entered": {i: sorted(s.entered) for i, s in sessions.items()},
+                "features": features,
+                "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
+            })
+        except Exception as e:
+            log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
     event_windows = None                    # KV event_windows_v1 payload (or None)
     event_ccys: dict[str, list[str]] = {}   # instrument → event currencies (cached)
     ev_blocks: dict[str, str | None] = {}   # once-per-state-change blackout logging
@@ -346,8 +440,13 @@ def run(base_url: str, force_live: bool) -> None:
         """Adopt a plan: build a session per instrument (preserving one-shot state
         for instruments already present), drop instruments the plan no longer has,
         and PRIME any zone price has already passed (dry_run) so we never
-        retro-enter an overnight crossing."""
+        retro-enter an overnight crossing. Restores KV-persisted `entered` state
+        when the plan's generatedAt matches (restart double-entry protection), and
+        rebuilds the broker-symbol → asset-class map for the correlated-group cap."""
         instrs = _plan_instruments(new_plan)
+        restore = (saved_state.get("entered") or {}) \
+            if saved_state.get("generatedAt") == (new_plan or {}).get("generatedAt") else {}
+        sym_class.clear()
         for instr, slice_ in instrs.items():
             zones = slice_.get("zones", [])
             spot = slice_.get("spot")
@@ -355,6 +454,17 @@ def run(base_url: str, force_live: bool) -> None:
                 sessions[instr].set_zones(spot, zones)
             else:
                 sessions[instr] = OISession(instr, spot, zones)
+                for zid in restore.get(instr, []):
+                    sessions[instr].mark_entered(zid)
+                if restore.get(instr):
+                    log.info(f"restored {len(restore[instr])} entered zone(s) for {instr} "
+                             f"from persisted state (restart protection)")
+            try:
+                cls = I.asset_class(instr)
+                for s in {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}:
+                    sym_class[s] = cls
+            except Exception:
+                pass
             # Prime: mark zones already triggered at the current price (best-effort).
             # Log each NEWLY primed zone with the price + how far past the entry price
             # already was — so a later "hit but no trade" is legible (priming was silent
@@ -418,9 +528,18 @@ def run(base_url: str, force_live: bool) -> None:
                 log.info("event gate active again — blackout windows fresh")
                 warned_events = False
             try:
-                kv.put_status("oi_bot_status", build_status(cfg, broker, plan, paper, sessions))
+                status = build_status(cfg, broker, plan, paper, sessions)
+                # Feature stamps ride the status so the server's trade-log rollup can
+                # join them onto resolved trades (hold-calibration inputs). Bounded.
+                if len(features) > 300:
+                    for zid in sorted(features, key=lambda z: features[z].get("ts", 0))[:len(features) - 300]:
+                        features.pop(zid, None)
+                status["zone_features"] = features
+                kv.put_status("oi_bot_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
+            # NOTE: oi_bot_state is deliberately NOT saved here — it is durable CF KV
+            # (quota ~1000 writes/day) and only changes on a fill, where it IS saved.
             last_status = nowt
 
         # (c) Tight loop: feed quotes, run barriers, take entries.
@@ -433,24 +552,71 @@ def run(base_url: str, force_live: bool) -> None:
                         broker.set_price(instr, q)
             if hasattr(broker, "check_barriers"):
                 broker.check_barriers()             # paper: execute the bracketed SL/TP
+            # Scale-out runner watch: once the TP1 leg has closed, move the runner's
+            # stop to break-even (its entry). Both legs share the SL, so a stop-out
+            # closes both and there is nothing to move — this only acts on a TP1 bank.
+            if runners:
+                _open_tk = {p.get("ticket") for p in broker.serialize_open_positions()}
+                for _tb in list(runners):
+                    r = runners[_tb]
+                    if _tb not in _open_tk:
+                        runners.pop(_tb, None)          # runner itself is gone
+                        continue
+                    if r["partner"] not in _open_tk:
+                        try:
+                            if hasattr(broker, "modify") and broker.modify(_tb, r["pair"], sl=r["be"], paper_mode=paper):
+                                log.info(f"SCALE-OUT [{r['pair']}]: TP1 leg closed → runner {_tb} "
+                                         f"stop moved to break-even {r['be']}")
+                        except Exception as e:
+                            log.warning(f"SCALE-OUT [{r['pair']}]: BE move failed for {_tb}: {e}")
+                        runners.pop(_tb, None)
             bal = broker.account_balance() or 0.0
             if bal:
                 guard.update_balance(bal)
             guard_bal = bal if bal else 1_000_000.0
             # Usable blackout payload this tick (None when missing/stale → fail open).
             ev_payload = None if EV.stale_reason(event_windows, nowt * 1000) else event_windows
+            # Plan-age gate (fail-CLOSED): the plan IS the strategy and OI is a daily
+            # artifact — a server outage must not leave the bot trading Friday's walls
+            # into Tuesday. New entries only; the broker-enforced SL/TP keep running.
+            age = _plan_age_hours(plan, nowt)
+            max_age = float(cfg.get("plan_max_age_hours", 24) or 0)
+            age_block = bool(max_age > 0 and age is not None and age > max_age)
+            if age_block != plan_age_blocked:
+                plan_age_blocked = age_block
+                if age_block:
+                    log.warning(f"PLAN-AGE GATE: plan is {age:.1f}h old (> {max_age}h) — NEW entries "
+                                f"blocked until a fresh plan lands (fail-closed). Brackets keep running.")
+                else:
+                    log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
             for instr in instruments:
                 sess = sessions.get(instr)
                 if sess is None:
+                    # A typo'd enabled_pairs entry previously skipped SILENTLY, forever.
+                    if instr not in _plan_instruments(plan) and not warned_missing.get(instr):
+                        warned_missing[instr] = True
+                        log.warning(f"enabled pair {instr!r} is not in the plan — it will never trade "
+                                    f"(typo in enabled_pairs, or outside the plan universe?)")
                     continue
                 px = quotes.price(instr) if quotes is not None else broker.price(instr)
                 if px is None:
                     continue
+                # Approach-velocity sample window (used to trim fades hit by a fast impulse).
+                hist = px_hist.setdefault(instr, deque(maxlen=600))
+                hist.append((nowt, px))
+                if plan_age_blocked:
+                    continue
                 if not broker.tradable(instr):
                     continue
-                if len(broker.serialize_open_positions()) >= cfg.get("max_open", 12):
+                open_book = broker.serialize_open_positions()
+                if len(open_book) >= cfg.get("max_open", 12):
                     continue
+                # Portfolio risk ledger: drop tickets whose positions have closed —
+                # their risk is realized (or banked), not open.
+                open_tickets = {p.get("ticket") for p in open_book}
+                for t in [t for t in risk_ledger if t not in open_tickets]:
+                    risk_ledger.pop(t, None)
                 guard_why = guard.block_reason(guard_bal, instr)
                 log_block_transition(log, guard_blocks, instr, guard_why)
                 if guard_why:
@@ -477,15 +643,44 @@ def run(base_url: str, force_live: bool) -> None:
                 # so match on both spellings. New fills below are appended in-loop so
                 # two zones firing on the SAME tick can't both slip through.
                 stack_on = bool(cfg.get("stack_guard", True))
-                open_book = broker.serialize_open_positions() if stack_on else []
                 sym_set = {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}
                 stack_d = _stack_dist(cfg, instr)
-                for spec in sess.decide(px, tol=_tol(cfg, instr)):
+                # Approach velocity: how far price travelled within the window vs the
+                # plan's refMove for this instrument. A fast impulse INTO a level tends
+                # to consume it — fades get trimmed below; breaks are left alone.
+                fast_approach = False
+                ref_move = (_plan_instruments(plan).get(instr) or {}).get("refMove")
+                a_win = float(cfg.get("approach_window_secs", 120) or 0)
+                if ref_move and a_win > 0:
+                    then_px = None
+                    for t0, p0 in hist:
+                        if nowt - t0 <= a_win:
+                            then_px = p0               # oldest sample inside the window
+                            break
+                    if then_px is not None and abs(px - then_px) > float(cfg.get("approach_fast_frac", 0.5) or 0.5) * float(ref_move):
+                        fast_approach = True
+                for spec in sess.decide(px, tol=_tol(cfg, instr),
+                                        break_confirm=int(cfg.get("break_hold_ticks", 2) or 0)):
                     if spec["sl"] is None:
                         continue
                     zid = spec["zone_id"]
                     if reject_until.get(zid, 0) > nowt:
                         continue                       # in reject cooldown — don't hammer the broker
+                    # Correlated-group cap: the four indices are one macro bet — cap
+                    # same-direction positions per asset class. Defer, don't burn.
+                    cls = sym_class.get(instr)
+                    gcap = (cfg.get("max_group_positions") or {}).get(cls)
+                    if cls and gcap is not None:
+                        want = "BUY" if spec["dir_up"] else "SELL"
+                        n_same = sum(1 for p in open_book
+                                     if sym_class.get(p.get("symbol")) == cls and p.get("direction") == want)
+                        if n_same >= int(gcap):
+                            if not group_skips.get(zid):
+                                group_skips[zid] = True
+                                log.info(f"GROUP CAP [{instr}] {zid} deferred — already {n_same} "
+                                         f"same-direction {cls} position(s) (cap {gcap}); correlated = one bet")
+                            continue
+                    group_skips.pop(zid, None)
                     # Refuse a redundant same-direction stack near an open position
                     # (one bet, not two). Defer, don't burn: the zone re-fires once
                     # the conflicting position is gone. Log once per (zone → ticket).
@@ -502,32 +697,106 @@ def run(base_url: str, force_live: bool) -> None:
                                          f"{cfg.get('stack_guard_pips', 10)}p; would be one bet")
                             continue
                     exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
+                    # Fast approach into a fade/react level → trim (the impulse tends to
+                    # consume the level). Breaks keep full size — momentum favours them.
+                    size_mult = spec["size_factor"]
+                    if fast_approach and spec["mode"] in ("fade", "react"):
+                        size_mult = round(size_mult * float(cfg.get("approach_trim", 0.7) or 1.0), 2)
+                        log.info(f"APPROACH [{instr}] {zid}: fast approach into the level — "
+                                 f"size {spec['size_factor']}× → {size_mult}×")
                     lots = size_for(instr, bal, cfg.get("risk_pct", 0.5), exp_px - spec["sl"],
-                                    cfg.get("max_lot", 2.0), spec["size_factor"])
+                                    cfg.get("max_lot", 2.0), size_mult)
+                    # Portfolio risk budget: sum of open risk-to-SL must stay under the
+                    # cap AFTER this entry. Defer, don't burn — the zone re-fires when
+                    # risk is freed (a position closes). max_open stays as the coarse
+                    # backstop; this is the actual budget.
+                    risk_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
+                    cand_risk = _position_risk_pct(instr, lots, exp_px, spec["sl"], bal) if bal else 0.0
+                    if risk_cap > 0 and bal:
+                        open_risk = sum(risk_ledger.get(t, 0.0) for t in
+                                        ({p.get("ticket") for p in open_book} & set(risk_ledger)))
+                        if open_risk + cand_risk > risk_cap:
+                            if not budget_skips.get(zid):
+                                budget_skips[zid] = True
+                                log.info(f"RISK BUDGET [{instr}] {zid} deferred — open risk "
+                                         f"{open_risk:.2f}% + candidate {cand_risk:.2f}% > cap {risk_cap}%")
+                            continue
+                    budget_skips.pop(zid, None)
                     direction = "LONG" if spec["dir_up"] else "SHORT"
                     # Short ASCII comment carrying the dedup tag ([zone_id]); the full
                     # rationale rides the Telegram alert + positions tab, not the MT5
                     # comment (which is capped at 31 ASCII chars).
-                    tid = broker.enter(instr, direction, spec["sl"], spec["tp"], lots,
-                                       max_spread(instr, cfg), paper,
-                                       comment=f"OI [{zid}]",
-                                       dedupe_tag=zid)
+                    # Scale-out (opt-in): with both TP1 and TP2 planned and enough size
+                    # to split, bank half at TP1 and let a runner ride to TP2 (BE move
+                    # handled by the runner watch above). Falls back to the classic
+                    # single bracket when either half would round below 0.01 lots.
+                    scale = (bool(cfg.get("scale_out", False)) and spec.get("tp2")
+                             and spec["tp"] and lots >= 0.02)
+                    tid = tid2 = None
+                    if scale:
+                        half = max(0.01, round(lots / 2, 2))
+                        rest = round(lots - half, 2)
+                        if rest >= 0.01:
+                            tid = broker.enter(instr, direction, spec["sl"], spec["tp"], half,
+                                               max_spread(instr, cfg), paper,
+                                               comment=f"OI [{zid}]", dedupe_tag=zid)
+                            if tid is not None and tid != -1:
+                                tid2 = broker.enter(instr, direction, spec["sl"], spec["tp2"], rest,
+                                                    max_spread(instr, cfg), paper,
+                                                    comment=f"OI [{zid}~r]", dedupe_tag=f"{zid}~r")
+                                if tid2 is not None and tid2 != -1:
+                                    if cfg.get("be_at_tp1", True):
+                                        runners[tid2] = {"pair": instr, "be": exp_px, "partner": tid}
+                                    log.info(f"SCALE-OUT [{instr}] {zid}: {half} lots → TP1 {spec['tp']}, "
+                                             f"{rest} lots runner → TP2 {spec['tp2']}")
+                                else:
+                                    log.warning(f"SCALE-OUT [{instr}] {zid}: runner leg rejected — "
+                                                f"continuing with the TP1 leg only")
+                        else:
+                            scale = False
+                    if not scale:
+                        tid = broker.enter(instr, direction, spec["sl"], spec["tp"], lots,
+                                           max_spread(instr, cfg), paper,
+                                           comment=f"OI [{zid}]",
+                                           dedupe_tag=zid)
                     filled = tid is not None and tid != -1
                     if filled:
                         guard.record_trade(instr)
                         sess.mark_entered(zid)
                         reject_until.pop(zid, None)
                         stack_skips.pop(zid, None)
-                        # Reflect this fill so a second same-tick zone sees it and
-                        # the stack guard blocks it (paper's book updates immediately;
-                        # MT5's positions_get may lag a tick).
-                        if stack_on:
+                        # Reflect this fill so a second same-tick zone sees it — the
+                        # stack guard, group cap and risk budget all read open_book
+                        # (paper's book updates immediately; MT5's may lag a tick).
+                        open_book.append({"symbol": _broker_sym(instr), "direction":
+                                          ("BUY" if spec["dir_up"] else "SELL"),
+                                          "open_price": exp_px, "ticket": tid})
+                        if tid2 is not None and tid2 != -1:
                             open_book.append({"symbol": _broker_sym(instr), "direction":
                                               ("BUY" if spec["dir_up"] else "SELL"),
-                                              "open_price": exp_px, "ticket": tid})
+                                              "open_price": exp_px, "ticket": tid2})
+                            risk_ledger[tid] = risk_ledger[tid2] = round(cand_risk / 2, 4)
+                        else:
+                            risk_ledger[tid] = cand_risk
+                        # Entry-time feature stamp: what the plan/tape knew when this
+                        # trade was taken. Joined onto the resolved trade by the server
+                        # rollup → the hold-score calibration's training rows.
+                        features[zid] = {
+                            "ticket": tid, "instrument": instr, "mode": spec["mode"],
+                            "side": spec["side"], "regime": spec.get("regime"),
+                            "hold": spec.get("hold"), "holdParts": spec.get("hold_parts"),
+                            "conviction": spec.get("conviction"),
+                            "size_factor": spec["size_factor"], "sized_at": size_mult,
+                            "approach_fast": bool(fast_approach),
+                            "touches": sess.touches.get(zid, 0),
+                            "entry": spec["entry"], "sl": spec["sl"], "tp": spec["tp"],
+                            "risk_pct": round(cand_risk, 3), "ts": int(nowt),
+                        }
+                        _save_state()                  # restart protection: persist the one-shot
+                        hold_note = f", hold {spec['hold']}" if spec.get("hold") is not None else ""
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['mode'].upper()} "
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
-                                 f"→ ticket {tid} lots {lots} ({spec['size_factor']}×)")
+                                 f"→ ticket {tid} lots {lots} ({size_mult}×{hold_note})")
                         # Telegram entry alert — what/direction/SL/TP/why, on fill.
                         if cfg.get("tg_enabled"):
                             send_telegram(tg_creds[0], tg_creds[1],

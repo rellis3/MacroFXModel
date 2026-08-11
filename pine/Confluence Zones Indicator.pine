@@ -59,6 +59,10 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //   gex_flip             — total-net-GEX zero (the rigorous regime boundary)
 //   oi_volume            — heaviest TODAY's option volume (transient)
 //   exp_move_hi/lo       — option-implied expected-move band edges (± range to expiry, EOD)
+// WALL SUFFIX TOKENS (ordered ' . ' segments after the type): (1) expectation note,
+//   (2) gamma heat hot/warm/cold, (3) P(touch) e.g. 82%~2h, (4) hNN = HOLD score 0-100
+//   (react-vs-blow-through: per-strike dealer GEX · persistence · wall multiple — the
+//   same read the OI bot sizes its fades by; '-' in any slot = absent).
 
 // =====================================================
 // INPUTS — TICKER MAPPING (match your chart symbols)
@@ -248,6 +252,7 @@ var string[] oiTypes  = array.new_string()
 var string[] oiNotes  = array.new_string()   // expectation, e.g. "Reject (turns away)" / "Break (goes through)"
 var string[] oiHeats  = array.new_string()   // gamma heat at the level: "hot" / "warm" / "cold" (blank on older pastes)
 var string[] oiTouch  = array.new_string()   // calibrated P(touch) label, e.g. "82%~2h" (blank on older pastes)
+var string[] oiHold   = array.new_string()   // wall HOLD score token, e.g. "h72" (react-vs-blow-through; blank on older pastes)
 var int[]    oiTiers  = array.new_int()
 var int[]    oiDte    = array.new_int()       // expiry DTE of the level (0 = untagged / single-expiry paste)
 var int      oiMinDte = 0                      // nearest DTE among this symbol's tagged levels = the "day" set; larger = far context
@@ -374,11 +379,15 @@ if barstate.isfirst
                         string note = ""
                         string heat = ""
                         string touch = ""
+                        string holdTok = ""
                         noteParts = str.split(rhs, " . ")
+                        // '-' in ANY segment is a placeholder holding the slot so later
+                        // indexes stay stable — treat it as blank everywhere.
                         if array.size(noteParts) >= 2
                             note := str.trim(array.get(noteParts, 1))
-                        // Heat is the SECOND ' . ' segment (index 2); '-' is a placeholder
-                        // that just holds the slot when only P(touch) is present.
+                            if note == "-"
+                                note := ""
+                        // Heat is the SECOND ' . ' segment (index 2).
                         if array.size(noteParts) >= 3
                             heat := str.trim(array.get(noteParts, 2))
                             if heat == "-"
@@ -386,6 +395,14 @@ if barstate.isfirst
                         // P(touch) is the THIRD ' . ' segment (index 3). Blank on older pastes.
                         if array.size(noteParts) >= 4
                             touch := str.trim(array.get(noteParts, 3))
+                            if touch == "-"
+                                touch := ""
+                        // HOLD score is the FOURTH ' . ' segment (index 4), e.g. "h72" —
+                        // the react-vs-blow-through read the bot sizes fades by.
+                        if array.size(noteParts) >= 5
+                            holdTok := str.trim(array.get(noteParts, 4))
+                            if holdTok == "-"
+                                holdTok := ""
                         if not na(price) and price > 0
                             array.push(oiPrices, price)
                             array.push(oiTypes,  typ)
@@ -393,6 +410,7 @@ if barstate.isfirst
                             array.push(oiNotes,  note)
                             array.push(oiHeats,  heat)
                             array.push(oiTouch,  touch)
+                            array.push(oiHold,   holdTok)
                             array.push(oiDte,    na(dte) ? 0 : dte)
                             // Track the nearest tagged DTE for THIS symbol = the "day" set;
                             // anything longer-dated is drawn as far context.
@@ -614,6 +632,7 @@ if barstate.islast
                  color=zColH, width=zW, style=zStyle,
                  xloc=xloc.bar_time, extend=zExt)
             array.push(oiLines, ln)
+            zHold  = i < array.size(oiHold) ? array.get(oiHold, i) : ""
             if show_oi_lbl
                 string lText = zType
                 if zTier > 0
@@ -624,6 +643,8 @@ if barstate.islast
                     lText := lText + " " + zHeat
                 if zTouch != ""
                     lText := lText + "  " + zTouch
+                if zHold != ""
+                    lText := lText + "  " + zHold
                 lb = label.new(bar_index + 2, zPrice, lText,
                      style=label.style_label_left,
                      color=lblBg, textcolor=zColH,
@@ -791,7 +812,8 @@ if show_table and barstate.islast
                 zNote  = i < array.size(oiNotes) ? array.get(oiNotes, i) : ""
                 zHeatT = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
                 zTouchT = i < array.size(oiTouch) ? array.get(oiTouch, i) : ""
-                noteStr = (zNote != "" ? "  " + zNote : "") + (zHeatT != "" ? "  [" + zHeatT + "]" : "") + (zTouchT != "" ? "  " + zTouchT : "")
+                zHoldT = i < array.size(oiHold) ? array.get(oiHold, i) : ""
+                noteStr = (zNote != "" ? "  " + zNote : "") + (zHeatT != "" ? "  [" + zHeatT + "]" : "") + (zTouchT != "" ? "  " + zTouchT : "") + (zHoldT != "" ? "  " + zHoldT : "")
                 table.cell(czTable, 1, row, zType + tierStr + dteStr + noteStr, text_color=zCol, text_size=size.tiny, bgcolor=bg)
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
 

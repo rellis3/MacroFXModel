@@ -747,12 +747,15 @@ console.log('\n[oiLevelExport]');
     ok('OI export self-heals heat from rawOI when gexProfile was quota-trimmed',
       / \. (hot|warm|cold)\s*$/.test(mp || ''), mp);
     const cw = th.split('\n').find(l => l.startsWith('OI 1.10000 : call_wall'));
-    ok('OI export self-heal marks the far call_wall cold', /\. cold\s*$/.test(cw || ''), cw);
+    // Walls now also carry the trailing hold token (`hNN`, segment 4, '-' placeholders
+    // keeping earlier slots stable) — the heat read itself is unchanged.
+    ok('OI export self-heal marks the far call_wall cold', /\. cold( \. [^.]*)*$/.test(cw || '') && / \. cold/.test(cw || ''), cw);
+    ok('OI export walls carry the hold token (hNN, segment 4)', / \. h\d+\s*$/.test(cw || ''), cw);
     // Rebuild + reach compose: the heat placeholder never eats the touch slot.
     const thr = buildOILevelText(trimmed, { generated: 'x', reachByPair: { 'EUR/USD': { '1.094800': '82%~2h' } } });
     const mpr = thr.split('\n').find(l => l.startsWith('OI 1.09480 : max_pain'));
     ok('OI export self-heal composes with P(touch)',
-      / \. (hot|warm|cold|-) \. 82%~2h\s*$/.test(mpr || ''), mpr);
+      / \. (hot|warm|cold|-) \. 82%~2h( \. h\d+)?\s*$/.test(mpr || ''), mpr);
   }
   ok('OI export parser lines all start with "OI "',
      text.split('\n').filter(l => /^\d|^-?\d/.test(l.trim())).every(l => l.startsWith('OI ')));

@@ -200,6 +200,10 @@ tr.dim td{opacity:.42}
     </div>
   </div>
 
+  <!-- OI-bot hold-score calibration state (collecting → what happens & why · active
+       → fitted weights auto-applied). The "don't forget the calibration" strip. -->
+  <div id="calibBanner" style="display:none;margin:8px 0;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.5"></div>
+
   <div class="rail" id="rail"></div>
   <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChartWrap"><div id="pxChart"></div><div id="pxBands"></div><div id="pxMsg"></div></div></div>
   <div id="main"></div>
@@ -1159,6 +1163,30 @@ async function boot(){
   }catch(err){ document.getElementById('sub').textContent='load failed: '+err.message; }
 }
 boot();
+
+// ── OI-bot hold-score calibration banner ─────────────────────────────────────
+// The hold-score's component weights (per-strike GEX · OI flow · persistence ·
+// wall multiple) start as theory priors and can ONLY be calibrated by the forward
+// test (no historical OI exists). This strip keeps that impossible to forget:
+// collecting → progress + what happens at the threshold and why; active → the
+// fitted weights are already auto-applied to the bot's plan producer.
+(async function(){
+  const el = document.getElementById('calibBanner'); if(!el) return;
+  try{
+    const r = await fetch('/api/oi-bot/hold-calibration');
+    const j = await r.json();
+    if(!j || !j.status) return;
+    const active = j.status === 'active';
+    el.style.display = 'block';
+    el.style.background = active ? 'rgba(38,166,154,.10)' : 'rgba(244,196,48,.08)';
+    el.style.border = `1px solid ${active ? 'rgba(38,166,154,.35)' : 'rgba(244,196,48,.30)'}`;
+    const n = j.n || 0, need = j.needed || 30, pct = Math.min(100, Math.round(n / need * 100));
+    const bar = `<span style="display:inline-block;vertical-align:middle;width:110px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin:0 8px;overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:${active?'#26a69a':'#f4c430'}"></span></span>`;
+    el.innerHTML = active
+      ? `<b style="color:#26a69a">🧪 OI-bot hold-score calibration ACTIVE (${n} trades)</b><br>${j.explain || ''}`
+      : `<b style="color:#f4c430">🧪 OI-bot hold-score calibration: collecting ${n}/${need}</b>${bar}<br>${j.explain || ''}`;
+  }catch(e){ /* banner is best-effort */ }
+})();
 
 </script>
 </body>

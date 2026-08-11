@@ -11523,11 +11523,23 @@ async function _oiAccumulateTradeLog() {
     const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    // Zone features the bot stamped at entry (hold score + components, mode, regime,
+    // approach read…) keyed by zone_id, each carrying its ticket. Joined onto the log
+    // row so the hold-score CALIBRATION can learn from resolved outcomes.
+    const feats = status?.zone_features || {};
+    const featByTicket = new Map(Object.entries(feats)
+      .filter(([, f]) => f && f.ticket != null).map(([zid, f]) => [f.ticket, { zone_id: zid, ...f }]));
     let added = 0;
     for (const c of closed) {
       const id = c.position_id ?? c.ticket;
       if (id == null || seen.has(id)) continue;
       seen.add(id);
+      // Match by ticket first; fall back to the "[zone_id]" dedup tag in the comment.
+      let f = featByTicket.get(id) ?? featByTicket.get(c.ticket) ?? null;
+      if (!f && c.comment) {
+        const m = String(c.comment).match(/\[([^\]]+)\]/);
+        if (m && feats[m[1]]) f = { zone_id: m[1], ...feats[m[1]] };
+      }
       log.push({
         position_id: id, symbol: c.symbol, direction: c.direction,
         key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
@@ -11535,6 +11547,7 @@ async function _oiAccumulateTradeLog() {
         reason: c.reason, time_open: c.time_open, time_close: c.time_close,
         mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
         date: _rlSessionDate(c.time_open),
+        zone_id: f?.zone_id ?? null, features: f ?? null,
       });
       added++;
     }
@@ -11862,6 +11875,19 @@ const OI_BOT_CFG_DEFAULTS = {
                                      // partial-OI wall) a measured-move TP at this R-multiple of the
                                      // stop, so FX OI trades are never SL-only. 0 = leave SL-only.
   fallbackTpR: 0,                    // same for gold+indices (default off — they usually have a wall ahead)
+  // ── 2026-08 quant-review additions (MD files/OI_BOT_QUANT_REVIEW_2026-08.md) ──
+  slBufferRefFrac: 0.10,             // structural distances = max(pips × pip, frac × refMove) — pip
+  breakRefFrac: 0.15,                //   counts don't scale across a universe where pip=1.0 means
+  extendedRefFrac: 0.25,             //   0.03% of spot on Dow but 0.63% on Russell
+  minRR: 0.8,                        // minimum TP1 reward:risk (ladder promotes TP2, else zone dropped; 0 = off)
+  gexNeutralBand: 0.25,              // |gex| < band × trailing median |gex| → NEUTRAL (regime sign not trusted)
+  convictionSizing: true,            // scale zone size with |gex|/median (clamped 0.5–1.2)
+  subTierTrade: false,               // walls below minTier trade SMALL with confluence (magnet/flip/persistence)
+  subTierSize: 0.4,
+  minZoneSpacing: 0.05,              // same-side zones within this × refMove collapse to one
+  reactNodes: null,                  // per-type react-entry weights {walls,gammaFlip,gexFlip,vannaFlip,volMagnets}
+  volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
+  holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
 };
 function _oiBotStabilityChange(hist, key) {
   const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
@@ -11875,15 +11901,36 @@ function _oiBotStabilityChange(hist, key) {
     ? oiWallStability(dates.slice(-20).map(dt => perPair[dt]), spot * 0.002) : null;
   return { stability, change: dl ? classifyOIChange(dl) : null };
 }
+// Trailing median |netGEX| for a pair from the oi_history archive (last ~20 dated
+// summaries). Anchors the planner's GEX neutral band + conviction sizing — the raw
+// sign of net GEX flips on noise around zero; the median gives "is today's |GEX|
+// big FOR THIS BOOK". null when history is too thin (< 5 days) — band stays off.
+function _oiGexMedianAbs(hist, key) {
+  const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+  if (!pk) return null;
+  const vals = Object.keys(hist[pk]).sort().slice(-20)
+    .map(d => hist[pk][d]?.gex).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
+  if (vals.length < 5) return null;
+  const mid = Math.floor(vals.length / 2);
+  return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+}
 async function _refreshOIBotZones() {
   try {
-    const [oiRaw, cfgRaw, histRaw] = await Promise.all([
+    const [oiRaw, cfgRaw, histRaw, calibRaw] = await Promise.all([
       kv.get('oi_store').catch(() => null), kv.get('oi_bot_config').catch(() => null), kv.get('oi_history').catch(() => null),
+      kv.get('oi_hold_calibration').catch(() => null),
     ]);
     if (!oiRaw) return 0;
     const store = JSON.parse(oiRaw).data ?? JSON.parse(oiRaw);
     const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    // Hold-score calibration: once the forward-test has resolved enough wall touches,
+    // the fitted component weights auto-apply here — no config change needed
+    // (the "seamless" half of the calibration story; the analytics-page banner is
+    // the "don't forget" half). Until then holdWeights stays null → theory priors.
+    const _calib = calibRaw ? (JSON.parse(calibRaw).data ?? JSON.parse(calibRaw)) : null;
+    const holdWeights = (_calib && _calib.status === 'active' && _calib.weights) ? _calib.weights : null;
     const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.fx_pairs || []) : [])]);
     const instruments = {};
     const skipped = {};                                          // pasted into the analyser but NOT traded — with the reason why
@@ -11944,7 +11991,10 @@ async function _refreshOIBotZones() {
       const gammaFlow = { flip: flip ?? null, dist, drift, rolloff };
 
       const _vn = inst.greeksFlow?.vanna;
+      const gexMedianAbs = _oiGexMedianAbs(hist, key);
+      const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
       const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
+        gexMedianAbs, holdWeights, collectDrops: droppedZones,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         refMove: inst.refMove?.move ?? null,
@@ -11963,7 +12013,7 @@ async function _refreshOIBotZones() {
       // strong walls / walls out of range) — so a blank plan is legibly intentional.
       let diag = null;
       if (!stale && zones.length === 0) {
-        try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
+        try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip, gexMedianAbs }); } catch { diag = null; }
       }
       // Far/primary expiry kept as context on the plan (the user still wants to SEE the
       // 14-day book) — it just isn't what the bot trades.
@@ -11971,8 +12021,16 @@ async function _refreshOIBotZones() {
       const farExpiry = dayEx ? { dte: inst.dte ?? null, maxPain: inst.maxPain ?? null,
         regime: farGex > 0 ? 'PIN' : farGex < 0 ? 'BREAKOUT' : 'NEUTRAL',
         callWall: inst.callWall ?? null, putWall: inst.putWall ?? null } : null;
+      // Regime here must MATCH the planner's (neutral band included) — a slice that
+      // says PIN while the planner sat out on low conviction would read as broken.
+      const _conv = gexMedianAbs ? +(Math.abs(gex) / gexMedianAbs).toFixed(2) : null;
+      const _banded = _conv != null && (cfg.gexNeutralBand ?? 0) > 0 && _conv < cfg.gexNeutralBand;
       instruments[key] = { spot: inst.spot ?? null, maxPain: tradeInst.maxPain ?? null, dte: tradeInst.dte ?? null,
-        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale, diag,
+        regime: _banded ? 'NEUTRAL' : gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL',
+        zones, zoneCount: zones.length, stale, diag,
+        droppedZones: droppedZones.length ? droppedZones : null,   // minRR/spacing drops — legible blanks
+        conviction: _conv,                                         // |gex| vs the trailing median (null = no history)
+        refMove: inst.refMove?.move ?? null,                       // shipped for the executor's approach-velocity read
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
@@ -11987,6 +12045,88 @@ async function _refreshOIBotZones() {
 }
 setInterval(_refreshOIBotZones, 10 * 60_000);
 setTimeout(_refreshOIBotZones, 60_000);
+
+// ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
+// The hold-score component weights (per-strike GEX, OI flow, persistence, wall
+// multiple) start as theory priors — they CANNOT be calibrated from theory alone
+// because we hold no historical OI. The forward test is the calibrator: every
+// filled zone carries its feature stamp into oi_bot_trade_log (see
+// _oiAccumulateTradeLog), and once ≥ OI_HOLD_CALIB_MIN resolved wall trades have
+// accumulated, this job fits component weights from realized outcomes and writes
+// them to `oi_hold_calibration` — which the plan producer reads automatically on
+// its next refresh. Nothing to remember, nothing to configure: while collecting,
+// the status (with n/needed + what will happen and why) drives the banner on the
+// zones/dashboard pages; when active, the fitted weights just apply.
+const OI_HOLD_CALIB_MIN = 30;      // resolved wall-zone trades needed before fitting
+async function _refreshOIHoldCalibration() {
+  try {
+    const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    // Wall-zone trades with a stamped hold score and a resolved P&L. Breaks are
+    // excluded: hold sizes FADES (a break trades the wall failing — mixing the two
+    // outcomes would teach the fitter backwards).
+    const rows = log.filter(t => t?.features && Number.isFinite(t.features.hold)
+      && Number.isFinite(t.profit) && (t.features.mode === 'fade' || t.features.mode === 'react'));
+    const n = rows.length;
+    const base = { n, needed: OI_HOLD_CALIB_MIN, updatedAt: new Date().toISOString() };
+    if (n < OI_HOLD_CALIB_MIN) {
+      await kv.put('oi_hold_calibration', JSON.stringify({ data: { ...base, status: 'collecting',
+        explain: `Collecting the forward-test: ${n}/${OI_HOLD_CALIB_MIN} resolved wall-fade trades with hold-score `
+          + `features. At ${OI_HOLD_CALIB_MIN}, component weights (per-strike GEX · OI flow · persistence · wall `
+          + `multiple) are fitted from realized win/loss outcomes and auto-applied to the plan producer — sizing `
+          + `then leans on what actually predicted react-vs-blow-through, not the theory priors. Nothing to do: `
+          + `keep the paper bot running and keep pasting daily OI.` }, timestamp: Date.now() }));
+      return { status: 'collecting', n };
+    }
+    // Per-component separation: win rate above vs below that component's median.
+    // A component that separates winners from losers earns weight; one that doesn't
+    // drops toward zero. Deliberately simple + inspectable (n is small; a logistic
+    // fit on 30 rows would be noise dressed as precision).
+    const comps = ['gex', 'flow', 'persistence', 'mult'];
+    const componentStats = {}, rawW = {};
+    for (const c of comps) {
+      const have = rows.filter(r => Number.isFinite(r.features.holdParts?.[c]));
+      if (have.length < 10) { componentStats[c] = { n: have.length, note: 'too few rows — prior kept' }; continue; }
+      const vals = have.map(r => r.features.holdParts[c]).sort((a, b) => a - b);
+      const med = vals[Math.floor(vals.length / 2)];
+      const hi = have.filter(r => r.features.holdParts[c] >= med), lo = have.filter(r => r.features.holdParts[c] < med);
+      const wr = a => a.length ? a.filter(r => r.profit > 0).length / a.length : 0;
+      const sep = wr(hi) - wr(lo);
+      componentStats[c] = { n: have.length, winHi: +wr(hi).toFixed(2), winLo: +wr(lo).toFixed(2), separation: +sep.toFixed(2) };
+      rawW[c] = Math.max(0, sep);
+    }
+    const sum = Object.values(rawW).reduce((a, b) => a + b, 0);
+    const weights = sum > 0
+      ? Object.fromEntries(Object.entries(rawW).map(([k, v]) => [k, +(v / sum).toFixed(2)]))
+      : null;   // nothing separates yet → producer keeps the theory priors
+    // Overall sanity read: win rate by hold tercile — the banner's one-line proof
+    // (or refutation) that the score means something.
+    const byHold = rows.slice().sort((a, b) => a.features.hold - b.features.hold);
+    const terc = i => byHold.slice(Math.floor(i * n / 3), Math.floor((i + 1) * n / 3));
+    const terciles = [0, 1, 2].map(i => { const t = terc(i); return { n: t.length,
+      winRate: +(t.filter(r => r.profit > 0).length / Math.max(1, t.length)).toFixed(2) }; });
+    await kv.put('oi_hold_calibration', JSON.stringify({ data: { ...base, status: 'active', weights,
+      componentStats, terciles,
+      explain: weights
+        ? `Calibration ACTIVE on ${n} resolved wall trades: hold-score weights fitted from realized outcomes `
+          + `(${Object.entries(weights).map(([k, v]) => `${k} ${v}`).join(' · ')}) and auto-applied to the plan `
+          + `producer. Win rate by hold tercile: ${terciles.map(t => `${Math.round(t.winRate * 100)}%`).join(' / ')} `
+          + `(low→high) — rising terciles mean the score is predictive; flat means keep collecting.`
+        : `${n} trades resolved but no component separates winners from losers yet — theory priors kept. `
+          + `This updates automatically as more trades resolve.` }, timestamp: Date.now() }));
+    return { status: 'active', n };
+  } catch (e) { console.error('[oi-hold-calib] refresh failed:', e.message); return { status: 'error', error: e.message }; }
+}
+setInterval(_refreshOIHoldCalibration, 6 * 60 * 60_000);   // the log grows a few rows a day — 6h is plenty
+setTimeout(_refreshOIHoldCalibration, 70_000);
+
+app.get('/api/oi-bot/hold-calibration', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_hold_calibration').catch(() => null);
+    if (!raw) { const r = await _refreshOIHoldCalibration(); return res.json({ ok: true, ...(r || {}), status: r?.status ?? 'collecting' }); }
+    res.json({ ok: true, ...(JSON.parse(raw).data ?? JSON.parse(raw)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // LIVE BASIS CONTROL (COG, 2026-08): the futures→spot basis is usually ~2 pips stable, but
 // on some days (rate surprises, futures roll/expiry — and amplified on the inverted 6J/6C/6S

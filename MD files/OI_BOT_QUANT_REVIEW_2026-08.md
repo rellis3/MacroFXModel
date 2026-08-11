@@ -324,3 +324,41 @@ they belong:
 
 Everything above is forward-test-first: land 1–6 before enabling 7–8 in
 anger, and judge each on the paper run before sizing anything live.
+
+---
+
+## 6. Implementation status (2026-08-11) — BUILT
+
+Everything in §5 is implemented, plus the wall **hold-score** follow-up
+discussed after this review was written. Where each piece landed:
+
+| Change | Where | Default |
+|---|---|---|
+| refMove-scaled distances (`slBufferRefFrac`/`breakRefFrac`/`extendedRefFrac`, pips = floor) | `js/oiZones.js` + producer | ON (0.10/0.15/0.25) |
+| `minRR` gate (ladder-promote past a too-near TP1, else drop + record) | `js/oiZones.js` | ON (0.8) |
+| GEX neutral band + conviction sizing vs trailing median \|GEX\| (`oi_history`) | `js/oiZones.js` + `server.js` `_oiGexMedianAbs` | ON (band 0.25) — inert until ≥5 days of history |
+| Wall hold-score (per-strike net GEX · OI flow · persistence · multiple) — sizes fades, annotates breaks | `js/oiZones.js` `wallHoldScore` | ON |
+| Hold-score **auto-calibration** from the forward test | `server.js` `_refreshOIHoldCalibration` → `oi_hold_calibration` KV → auto-injected as `holdWeights` | seamless — activates at 30 resolved wall trades |
+| Calibration banner (collecting n/needed + what/why, or active + fitted weights) | `oi-dashboard.html` + `oi-zones.html`, `/api/oi-bot/hold-calibration` | always visible |
+| Sub-tier walls WITH confluence (`subTierTrade`/`subTierSize`) | `js/oiZones.js` | OFF (opt-in) |
+| Zone spacing dedupe (`minZoneSpacing` × refMove) + dropped-zone diagnostics | `js/oiZones.js` (`collectDrops`) → plan `droppedZones` | ON (0.05) |
+| React-node type weights + volume-magnet quality floor (`reactNodes`, `volMagnetMinShare`, top-N floor) | `js/oiZones.js` | walls 1.0 · flips 0.8 · vanna 0.6 · magnets 0.6; share 0.25 |
+| Portfolio risk budget (`max_open_risk_pct`) + index group cap (`max_group_positions`) | `oi_bot/oi_bot.py` | ON (2.0% / index 2) |
+| Plan-age gate, fail-closed (`plan_max_age_hours`) | `oi_bot/oi_bot.py` | ON (24h) |
+| Persisted one-shot state (restart double-entry protection) | `oi_bot/oi_bot.py` → `oi_bot_state` KV | ON |
+| Maxpain fire-time re-validation (`minDist` on the zone) | `oi_bot/engine.py` `should_fire` | ON (plans stamp it) |
+| Break dwell (`break_hold_ticks`) + touch counting + approach-velocity fade trim | `oi_bot/engine.py` + `oi_bot.py` | ON (2 ticks / trim 0.7) |
+| TP1/TP2 scale-out + break-even at TP1 (`scale_out`/`be_at_tp1`) | `oi_bot/oi_bot.py` | **OFF** (opt-in behaviour change) |
+| Feature stamping → trade log (`zone_features` in status, joined by the rollup) | `oi_bot.py` + `server.js` `_oiAccumulateTradeLog` | ON |
+| Config UI for all of the above | bot-config OI tab | — |
+| Export + indicator: `hNN` hold token on wall lines, legend, Pine parse/labels | `js/oiLevelExport.js` + `pine/Confluence Zones Indicator.pine` | additive (old indicators ignore it) |
+
+Not implemented (deliberately): per-mode time-based exit (§3-P2 max-hold) — it
+needs a position-close pathway the executor doesn't have yet and interacts with
+scale-out; do it as its own change once the scale-out behaviour has paper data.
+
+**What still needs YOU:** nothing but the routine — keep pasting daily OI (the
+neutral band and hold-flow components sharpen as `oi_history` accumulates) and
+keep the paper bot running. The calibration banner on the OI Analytics / zones
+pages tracks progress toward the 30-trade fit and explains exactly what flips
+on when it activates.
