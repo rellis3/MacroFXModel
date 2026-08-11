@@ -108,6 +108,53 @@ nothing about what happens when 26 correlated FX pairs' trades stack up in
 one account (concurrent risk, drawdown, correlation). That's the next gate,
 not this one.
 
+### `portfolio_sim.py` — does the per-trade edge survive being a portfolio?
+
+Combines every pair's dated trades (same causal analog-consensus signal,
+non-overlapping/independent trades) into ONE event-driven account: risk
+`--risk-pct` of equity per trade (sized at entry, crystallized at exit), a
+hard cap `--max-concurrent-risk-pct` on total simultaneously-open risk
+(new entries are REFUSED, not partially sized, once the cap is hit — and
+refusals are counted, never silently dropped).
+
+```
+python AnalogML/portfolio_sim.py --all-pairs --risk-pct 0.01 --max-concurrent-risk-pct 0.05
+```
+
+**Result (26 pairs, 3yr, risk=1%/trade, 5% max concurrent risk): Sharpe
+1.39, max drawdown −26.2%, final equity 15.5x starting capital.** Read the
+15.5x number with real suspicion, not excitement — it is what happens when
+~1,953 taken trades compound at a small per-trade edge, and it is a
+mechanical artifact of the sizing assumption (fixed 1% of CURRENT equity,
+every trade, for 3 years straight, no re-basing, no risk-of-ruin
+consideration, no execution slippage beyond the spread already in each
+trade's R), not a return forecast. **Two things worth taking seriously
+instead of the equity multiple:**
+
+1. **The concurrency cap bound hard: 3,975 of 5,928 raw signals (67%) were
+   skipped**, only 1,953 taken. That means the reported numbers are for
+   whichever ~1/3 of signals happened to fit under the cap — a real
+   methodological wrinkle, not a clean test of "all 26 pairs' full signal."
+2. **The portfolio's −26.2% drawdown is DEEPER than any individual pair's
+   benchmark drawdown** (single pairs shown: −7% to −12%), even though the
+   average pairwise weekly-return correlation is ≈0 (+0.006, genuinely
+   independent-looking bets). That is NOT diversification failing — it's
+   that the portfolio routinely uses most of its 5% concurrent-risk budget
+   (many pairs signal at once), while a single pair on its own almost never
+   gets close to that same budget, so the portfolio is running at far
+   higher average capital utilization than the single-pair benchmark it's
+   being compared to. Higher return AND higher drawdown together is the
+   expected result of "more capital deployed," not evidence the 26 pairs
+   behave like fewer effective bets — the near-zero correlation number says
+   the opposite. A fair apples-to-apples comparison (same average
+   utilization on both sides) hasn't been run yet.
+
+Bottom line: the signal didn't fall apart when combined into a portfolio —
+Sharpe stayed comparable to or better than the best single pair — but this
+simulation's headline return number is not a claim about what real trading
+would produce, and the cap/utilization confound above needs resolving
+before the risk-adjusted numbers are trusted either.
+
 ## `ml_walkforward.py` — XGBoost / LightGBM / regression stack
 
 Builds price/vol-derived features (returns, realized vol, RSI, ATR%,
