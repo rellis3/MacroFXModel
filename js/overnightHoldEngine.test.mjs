@@ -6,7 +6,7 @@ import {
   correlationToBuyHold, computeMetricsTable, maxDrawdownWithDuration,
   toCsvReturns, toCsvRMultiples, toCsvCurrency, combineInstruments,
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
-  resampleDailyFromPacked,
+  resampleDailyFromPacked, costSensitivitySweep,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -253,6 +253,59 @@ test('runPropFirmRuleCheck: drawdown breach episodes group contiguous breach day
   assert.ok(Math.abs(ep1.troughEquity - 84.15) < 0.01);
   assert.equal(ep2.days, 1, 'episode 2 is the single later breach day');
   assert.equal(rc.activeDrawdownEpisodes, rc.trailingDrawdownEpisodes, 'activeDrawdownEpisodes follows ddMode');
+});
+
+test('applyCosts: costScale=0 means net == gross exactly, per trade (zero-cost baseline)', () => {
+  const trades = [{ date: '2025-01-06', exitDate: '2025-01-07', grossPct: 1.234 }];
+  const net = applyCosts(trades, 'nq', { costScale: 0 });
+  assert.equal(net[0].netPct, 1.234);
+  assert.equal(net[0].spreadCostPct, 0);
+  assert.equal(net[0].slipCostPct, 0);
+  assert.equal(net[0].financingCostPct, 0);
+});
+
+test('costSensitivitySweep: costScale=0 point reproduces the pure compounded gross return', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-03-01');
+  const { trades: gross } = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const sweep = costSensitivitySweep(gross, 'gold');
+  const zeroPoint = sweep.points.find(p => p.costScale === 0);
+  const grossTotalMult = gross.reduce((m, t) => m * (1 + t.grossPct / 100), 1);
+  const grossTotalPct = (grossTotalMult - 1) * 100;
+  assert.ok(Math.abs(zeroPoint.totalReturnPct - grossTotalPct) < 0.001,
+    `costScale=0 total ${zeroPoint.totalReturnPct} should match pure gross ${grossTotalPct}`);
+});
+
+test('costSensitivitySweep: totalReturnPct is monotonically non-increasing as cost scale rises', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-03-01');
+  const { trades: gross } = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const sweep = costSensitivitySweep(gross, 'nq');
+  for (let i = 1; i < sweep.points.length; i++) {
+    assert.ok(sweep.points[i].totalReturnPct <= sweep.points[i - 1].totalReturnPct + 1e-9,
+      `costs only ever subtract — return should not rise from scale ${sweep.points[i - 1].costScale} to ${sweep.points[i].costScale}`);
+  }
+});
+
+test('costSensitivitySweep: the interpolated breakeven scale self-consistently nets ~0%', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-06-01', { driftPerMin: 0.01 }); // strongly positive gross drift
+  const { trades: gross } = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  // Exaggerated financing so a breakeven definitely falls inside the scanned [0,2] range.
+  const opts = { financingBpsPerNight: { gold: 40 } };
+  const sweep = costSensitivitySweep(gross, 'gold', opts);
+  assert.ok(sweep.breakevenScale !== null, 'expected a breakeven within the scanned range');
+  const netAtBreakeven = applyCosts(gross, 'gold', { ...opts, costScale: sweep.breakevenScale });
+  const totalMult = netAtBreakeven.reduce((m, t) => m * (1 + t.netPct / 100), 1);
+  const totalPct = (totalMult - 1) * 100;
+  assert.ok(Math.abs(totalPct) < 1, `expected ~0% net return at the interpolated breakeven scale, got ${totalPct}`);
+});
+
+test('costSensitivitySweep: reports no breakeven honestly when gross is already negative at zero cost', () => {
+  const losingTrades = [
+    { date: '2025-01-06', exitDate: '2025-01-07', grossPct: -5, maePct: -5 },
+    { date: '2025-01-07', exitDate: '2025-01-08', grossPct: -3, maePct: -3 },
+  ];
+  const sweep = costSensitivitySweep(losingTrades, 'gold');
+  assert.equal(sweep.breakevenScale, null);
+  assert.match(sweep.note, /already negative at costScale=0/);
 });
 
 test('resampleDailyFromPacked: aggregates M1 bars into correct UTC-day OHLC buckets', () => {
