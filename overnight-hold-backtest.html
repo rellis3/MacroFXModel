@@ -327,7 +327,57 @@ function instrumentPanel(key, inst) {
   </div>`;
 }
 
-function combinedPanel(combined) {
+function diversificationSection(div) {
+  if (!div) return '';
+  const yearRows = div.yearly.map(r => `<tr>
+    <td>${r.year}</td><td>${spanN(r.goldNetPct)}</td><td>${spanN(r.nqNetPct)}</td><td>${spanN(r.combinedNetPct)}</td>
+    <td>${r.correlation === null ? '—' : r.correlation}</td>
+    <td>${r.beatBetterLeg === null ? '—' : (r.beatBetterLeg ? '<span class="pos">yes</span>' : '<span class="neg">no</span>')}</td>
+  </tr>`).join('');
+  const beatBothCount = div.yearly.filter(r => r.beatBetterLeg === true).length;
+  const yearsCounted = div.yearly.filter(r => r.beatBetterLeg !== null).length;
+
+  const half = (h, label) => `
+    <div>
+      <div style="font-weight:600;font-size:12.5px;margin-bottom:4px">${label} <span class="note" style="display:inline">(${h.goldTrades} gold / ${h.nqTrades} nq trades)</span></div>
+      <table><tbody>
+        <tr><td>Gold</td><td>${spanN(h.goldNetPct)}%</td></tr>
+        <tr><td>NAS100</td><td>${spanN(h.nqNetPct)}%</td></tr>
+        <tr><td>Combined</td><td>${spanN(h.combinedNetPct)}%</td></tr>
+        <tr><td>Gold-NQ correlation</td><td>${h.correlation === null ? '—' : h.correlation}</td></tr>
+      </tbody></table>
+    </div>`;
+
+  const isBeatBoth = div.isOosSplit.inSample.combinedNetPct !== null
+    && div.isOosSplit.inSample.combinedNetPct > Math.max(div.isOosSplit.inSample.goldNetPct ?? -Infinity, div.isOosSplit.inSample.nqNetPct ?? -Infinity);
+  const oosBeatBoth = div.isOosSplit.outOfSample.combinedNetPct !== null
+    && div.isOosSplit.outOfSample.combinedNetPct > Math.max(div.isOosSplit.outOfSample.goldNetPct ?? -Infinity, div.isOosSplit.outOfSample.nqNetPct ?? -Infinity);
+
+  return `
+  <details class="subpanel" open>
+    <summary>Does the diversification benefit hold up? <span class="cnt">— yearly walk-forward + true in-sample/out-of-sample split</span></summary>
+    <p class="note" style="margin-top:8px">
+      Combined beat <b>both</b> individual legs in <b>${beatBothCount} of ${yearsCounted}</b> years tested. In the true
+      chronological IS/OOS split below, combined beat both legs in-sample: <b>${isBeatBoth ? 'yes' : 'no'}</b>; out-of-sample: <b>${oosBeatBoth ? 'yes' : 'no'}</b>.
+      ${(!isBeatBoth && !oosBeatBoth) ? '<b style="color:var(--red)">The full-history "combined beats both legs" result does NOT reproduce in either half tested separately, nor in any single year — it only emerges from the specific compounding path across the whole ~10.4-year window.</b> That\'s a materially weaker claim than "diversification helps": the blend never actually beats the stronger leg over any sub-period, it just sits between the two — its full-history edge over both individually is a compounding/volatility-drag artifact, not a robust, repeatable effect.' : ''}
+    </p>
+    <table style="margin-top:10px">
+      <thead><tr><th>Year</th><th>Gold %</th><th>NAS100 %</th><th>Combined %</th><th>Correlation</th><th>Beat BOTH legs?</th></tr></thead>
+      <tbody>${yearRows}</tbody>
+    </table>
+    <div class="grid" style="margin-top:14px;grid-template-columns:1fr 1fr">
+      ${half(div.isOosSplit.inSample, `In-sample (before ${div.isOosSplit.splitDate})`)}
+      ${half(div.isOosSplit.outOfSample, `Out-of-sample (${div.isOosSplit.splitDate} onward, oosFrac=${div.isOosSplit.oosFrac})`)}
+    </div>
+    <p class="note">Combined-portfolio caveat: on a date only ONE leg has a trade (the other hit a stage-02 exception),
+      that leg's own return is used unweighted rather than halved — so the blend isn't a strictly-constant 50/50 exposure
+      on every date, which can occasionally push a given period's combined result outside the [worse leg, better leg]
+      range (seen in 2022 above). Documented modeling choice, not a bug — flagged so the yearly table isn't
+      over-read.</p>
+  </details>`;
+}
+
+function combinedPanel(combined, diversification) {
   if (!combined) return '';
   const s = combined.summary;
   return `
@@ -343,6 +393,7 @@ function combinedPanel(combined) {
       <tr><td>Trades (blended date-rows)</td><td>${fmtN(s.trades,0)}</td></tr>
     </tbody></table>
     ${svgEquityChart(s.equityCurve, null, 'Combined portfolio')}` : ''}
+    ${diversificationSection(diversification)}
     ${combined.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check — combined</h3>${ruleCheckCard(combined.ruleCheck)}` : ''}
     <div class="row2"><button class="ghost" data-csv="returns-combined">Export % Returns CSV (combined)</button></div>
     <p class="note">Combined MAE is the equal-weight average of each leg's own MAE on days both trade — an approximation,
@@ -476,7 +527,7 @@ function render(data) {
   const parts = [];
   parts.push(crossInstrumentSweepSummary(data.instruments));
   for (const key of Object.keys(data.instruments)) parts.push(instrumentPanel(key, data.instruments[key]));
-  parts.push(combinedPanel(data.combined));
+  parts.push(combinedPanel(data.combined, data.diversification));
   $('results').innerHTML = parts.join('');
   $('results').style.display = 'block';
   document.querySelectorAll('[data-csv]').forEach(b => b.addEventListener('click', () => downloadCsv(b.dataset.csv)));

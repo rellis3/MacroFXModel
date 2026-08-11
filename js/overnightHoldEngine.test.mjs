@@ -7,6 +7,7 @@ import {
   toCsvReturns, toCsvRMultiples, toCsvCurrency, combineInstruments,
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
   resampleDailyFromPacked, costSensitivitySweep,
+  yearlyDiversificationBreakdown, diversificationIsOosSplit,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -306,6 +307,53 @@ test('costSensitivitySweep: reports no breakeven honestly when gross is already 
   const sweep = costSensitivitySweep(losingTrades, 'gold');
   assert.equal(sweep.breakevenScale, null);
   assert.match(sweep.note, /already negative at costScale=0/);
+});
+
+test('yearlyDiversificationBreakdown: correct per-year compounding, correlation and beat-the-leg flags', () => {
+  const mk = (date, netPct) => ({ date, netPct, maePct: -0.1 });
+  // 2025: gold +10%/-5% and nq -10%/+5% on the SAME two dates — perfectly
+  // anti-correlated, so the equal-weight blend nets exactly 0% both days.
+  const gold2025 = [mk('2025-01-06', 10), mk('2025-01-07', -5)];
+  const nq2025 = [mk('2025-01-06', -10), mk('2025-01-07', 5)];
+  const gold2026 = [mk('2026-01-05', 2)];
+  const nq2026 = [mk('2026-01-05', 2)];
+
+  const rows = yearlyDiversificationBreakdown([...gold2025, ...gold2026], [...nq2025, ...nq2026]);
+  const y2025 = rows.find(r => r.year === '2025');
+  const y2026 = rows.find(r => r.year === '2026');
+
+  assert.ok(Math.abs(y2025.goldNetPct - 4.5) < 0.01, `gold 2025: ${y2025.goldNetPct}`);   // (1.10*0.95-1)*100
+  assert.ok(Math.abs(y2025.nqNetPct - (-5.5)) < 0.01, `nq 2025: ${y2025.nqNetPct}`);       // (0.90*1.05-1)*100
+  assert.ok(Math.abs(y2025.combinedNetPct - 0) < 0.01, `combined 2025: ${y2025.combinedNetPct}`);
+  assert.equal(y2025.correlation, -1, 'perfectly anti-correlated per-day returns');
+  assert.equal(y2025.beatBetterLeg, false, "combined 0% didn't beat gold's +4.5%");
+  assert.equal(y2025.beatWorseLeg, true, "combined 0% did beat nq's -5.5%");
+
+  assert.equal(y2026.goldTrades, 1);
+  assert.equal(y2026.correlation, null, 'a single paired date has no defined correlation (n<2)');
+});
+
+test('diversificationIsOosSplit: one shared calendar split date, every trade conserved across IS+OOS', () => {
+  const mk = (date, netPct) => ({ date, netPct, maePct: -0.1 });
+  // 2021 and 2022 are both non-leap years (365 days each) so a 50/50 split
+  // of a Jan-2021 -> Jan-2023 window lands on an exact calendar date, not a
+  // fractional day — avoids leap-year rounding ambiguity in the assertion.
+  const overlapWindow = { start: Date.parse('2021-01-01T00:00:00Z') / 1000, end: Date.parse('2023-01-01T00:00:00Z') / 1000 };
+  const goldTrades = [mk('2021-06-01', 1), mk('2021-12-31', 1), mk('2022-01-01', 1), mk('2022-06-01', 1)];
+  const nqTrades = [mk('2021-06-01', 2), mk('2022-01-01', 2)];
+
+  const result = diversificationIsOosSplit(goldTrades, nqTrades, overlapWindow, 0.5);
+  assert.equal(result.splitDate, '2022-01-01');
+  assert.equal(result.inSample.goldTrades + result.outOfSample.goldTrades, goldTrades.length);
+  assert.equal(result.inSample.nqTrades + result.outOfSample.nqTrades, nqTrades.length);
+  assert.equal(result.inSample.goldTrades, 2, '2021-06-01 and 2021-12-31 are before the split');
+  assert.equal(result.outOfSample.goldTrades, 2, '2022-01-01 and 2022-06-01 are on/after the split');
+  assert.equal(result.inSample.nqTrades, 1);
+  assert.equal(result.outOfSample.nqTrades, 1);
+  // Only 1 nq trade per half -> summarizeTrades needs >=2, so Sharpe is
+  // honestly null rather than a meaningless single-point statistic.
+  assert.equal(result.inSample.nqSharpe, null);
+  assert.equal(result.outOfSample.nqSharpe, null);
 });
 
 test('resampleDailyFromPacked: aggregates M1 bars into correct UTC-day OHLC buckets', () => {
