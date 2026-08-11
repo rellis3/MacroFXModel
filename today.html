@@ -184,6 +184,7 @@
   .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
   .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
   .pc-bias b{color:var(--text)}
+  .pc-shape{display:flex;align-items:center;gap:7px;margin-bottom:8px}
 
   /* proximity flash (zoom 3) */
   @keyframes proxpulse{0%,100%{border-color:rgba(210,153,34,.9)}50%{border-color:rgba(210,153,34,.35)}}
@@ -670,6 +671,7 @@ function pairImpactLine(e, name) {
 let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
+let analogml = null;     // /api/analogml/shape-state — current shape + historical-analog lean per pair (research, not a validated signal — see AnalogML/README.md)
 let events = null;       // /api/events — today's economic calendar (zoom 0)
 let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
 let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
@@ -698,12 +700,14 @@ async function jget(url) {
 
 async function loadAll(manual) {
   try {
-    const [b, s, f] = await Promise.all([
+    const [b, s, f, a] = await Promise.all([
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
+      jget('/api/analogml/shape-state').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
+    analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
     if (!b?.ok) {
       $('grid').innerHTML = `<div class="err">Daily brief unavailable: ${b?.error ?? 'no data'} — the forecast may still be computing, or OANDA/R2 keys are missing in this environment.</div>`;
       return;
@@ -2333,6 +2337,39 @@ function ladderHtml(r) {
   }).join('') + `</div>`;
 }
 
+// ── Shape-match diagnostic (AnalogML/paper_track.py — research, not a
+// validated signal; see AnalogML/README.md for the honest read on it) ──
+// Inline SVG so it lives directly in the cardHtml() template string, same
+// as every other chip here — no post-render canvas pass needed.
+function shapeSparklineSvg(shape) {
+  if (!shape || shape.length < 2) return '';
+  const w = 90, h = 22;
+  const mn = Math.min(...shape), mx = Math.max(...shape);
+  const range = (mx - mn) || 1;
+  const pts = shape.map((v, i) => {
+    const x = (i / (shape.length - 1)) * (w - 4) + 2;
+    const y = h - 2 - ((v - mn) / range) * (h - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const color = shape[shape.length - 1] >= shape[0] ? '#26a69a' : '#ef5350';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex:none">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.3"/></svg>`;
+}
+function analogShapeHtml(name) {
+  const a = analogml?.[name.toLowerCase()];
+  if (!a) return '';
+  const leanCls = a.lean === 'LONG' ? 'bull' : a.lean === 'SHORT' ? 'bear' : 'neu';
+  const leanIcon = a.lean === 'LONG' ? '↗' : a.lean === 'SHORT' ? '↘' : '→';
+  const title = `Shape-match diagnostic (research, NOT a validated signal — see AnalogML/README.md): `
+    + `this pair's current ${a.window}-bar price shape, normalized for level/vol. `
+    + `Its ${a.n_neighbours} nearest historical analogs averaged ${a.avg_long_r != null ? a.avg_long_r.toFixed(3) : '–'}R `
+    + `if long vs ${a.avg_short_r != null ? a.avg_short_r.toFixed(3) : '–'}R if short from here.`;
+  return `<div class="pc-shape help" title="${title}">
+    ${shapeSparklineSvg(a.shape)}
+    <span class="chip ${leanCls}" style="font-size:10px">${leanIcon} shape-match: ${a.lean}</span>
+  </div>`;
+}
+
 function cardHtml(r) {
   const d = r.d;
   const volPct = d.vol_pct;
@@ -2352,6 +2389,7 @@ function cardHtml(r) {
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
     <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}</div>
+    ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
