@@ -1429,12 +1429,23 @@ function renderContFade(sym, r) {
   if (!body || selectedSym !== sym) return;
   if (!r || !r.ok) { body.innerHTML = `<div class="pending">${(r && r.error) || 'Decision engine unavailable.'}</div>`; return; }
 
-  const statusColor = r.status === 'CONFIRMED' ? (r.winner === 'continuation' ? 'var(--bull)' : 'var(--bear)')
+  // continuation/fade are two INDEPENDENT go/skip reads, not a mutually exclusive
+  // pick — both can clear threshold at once. `tied` (server-computed, ~4pp gap)
+  // flags that so a near-tie doesn't render as a confident directional call.
+  const statusColor = r.status === 'CONFIRMED' && !r.tied ? (r.winner === 'continuation' ? 'var(--bull)' : 'var(--bear)')
+    : r.status === 'CONFIRMED' && r.tied ? 'var(--warn)'
     : r.status === 'TESTING' ? 'var(--warn)' : r.status === 'APPROACHING' ? 'var(--info)' : 'var(--text3)';
-  const statusText = r.status === 'CONFIRMED'
+  const statusText = r.status === 'CONFIRMED' && r.tied
+    ? `CONFIRMED — TIED (${r.continuation.pct}%/${r.fade.pct}%) — no directional edge`
+    : r.status === 'CONFIRMED'
     ? `CONFIRMED ${r.winner.toUpperCase()} — ${((r[r.winner] || {}).direction || '').toUpperCase()}`
     : r.status;
   const cb = cfConfBand(r.confidence);
+  const chipEl = document.getElementById('cf-model-chip');
+  if (chipEl && r.model_version) {
+    chipEl.className = 'trust ' + (r.calibrated ? 'validated' : 'context');
+    chipEl.textContent = (r.calibrated ? '✅ ' : '🧪 ') + r.model_version + (r.calibrated ? '' : ' (uncalibrated)');
+  }
 
   if (!r.zone) {
     body.innerHTML = `
@@ -1471,7 +1482,7 @@ function renderContFade(sym, r) {
       <div style="width:${r.continuation.pct ?? 50}%;background:var(--bull-soft);color:var(--bull);display:flex;align-items:center;justify-content:center;white-space:nowrap">${r.continuation.pct != null ? r.continuation.pct + '%' : '—'}</div>
       <div style="width:${r.fade.pct ?? 50}%;background:var(--bear-soft);color:var(--bear);display:flex;align-items:center;justify-content:center;white-space:nowrap">${r.fade.pct != null ? r.fade.pct + '%' : '—'}</div>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:3px"><span>Continuation</span><span>Fade</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:3px"><span>Continuation${r.continuation.direction ? ' · ' + r.continuation.direction.toUpperCase() : ''}</span><span>Fade${r.fade.direction ? ' · ' + r.fade.direction.toUpperCase() : ''}</span></div>
     <div class="forward-line"><span>Confidence <span style="color:var(--text3)">(separation × freshness, not fitted)</span></span><b style="color:${cb.color}">${cb.label}</b></div>
     ${evidence.length ? `<div style="margin-top:6px">${evidence.map(e => `<div style="font-size:10.5px;color:var(--text2);padding:2px 0">▸ ${e}</div>`).join('')}</div>` : ''}
     <div style="font-size:9.5px;color:var(--text3);margin-top:8px">zone ${fmtPx(r.zone.price)} · ${r.zone.confluence} source(s) · ${r.zone.distance_sigma}σ away · ${(r.zone.sources || []).join(', ')}</div>
@@ -1626,7 +1637,7 @@ async function renderDrill(){
     </div>
 
     <div class="dcard">
-      <div class="dcard-hd"><span class="eyebrow">Continuation vs Fade — live</span><span class="trust context">🧪 uncalibrated, live</span></div>
+      <div class="dcard-hd"><span class="eyebrow">Continuation vs Fade — live</span><span class="trust context" id="cf-model-chip">🧪 uncalibrated, live</span></div>
       <div class="dcard-body" id="cf-body"><div class="pending">Loading…</div></div>
     </div>
 

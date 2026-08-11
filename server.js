@@ -22687,6 +22687,14 @@ app.get('/api/trade-decision/zone-duel', async (req, res) => {
     const haveBoth = cp != null && fp != null && (cp + fp) > 0;
     const continuationPct = haveBoth ? +((cp / (cp + fp)) * 100).toFixed(1) : null;
     const fadePct         = haveBoth ? +((fp / (cp + fp)) * 100).toFixed(1) : null;
+    // continuation/fade are scored as two INDEPENDENT go/skip questions, not one
+    // mutually-exclusive pick — both can clear the go-threshold at once (they did
+    // here on a real card: raw p 55.9%/55.9%, threshold 0.55). When that happens
+    // `winner` below still resolves via cp>=fp, which silently hands ties to
+    // continuation — real information (a "go" read), not a confident directional
+    // edge. `tied` flags that case so a UI can say so instead of implying
+    // conviction it doesn't have. 4pp is a display threshold, not a fitted one.
+    const tied = haveBoth && Math.abs(continuationPct - fadePct) < 4;
 
     let status = 'WATCHING';
     let winner = null;
@@ -22761,14 +22769,14 @@ app.get('/api/trade-decision/zone-duel', async (req, res) => {
       zone: hit?.zone ?? null, zone_quality: zoneQuality,
       continuation: { probability: cp, pct: continuationPct, decision: continuation.decision, direction: continuation.direction, size_multiplier: continuation.size_multiplier ?? 0, top_factors: continuation.top_factors ?? [], reasons: continuation.reasons ?? [] },
       fade: { probability: fp, pct: fadePct, decision: fade.decision, direction: fade.direction, size_multiplier: fade.size_multiplier ?? 0, top_factors: fade.top_factors ?? [], reasons: fade.reasons ?? [] },
-      confidence, status, winner, confirming_signals: confirmingSignals, usd_trend: usdTrend,
+      confidence, status, winner, tied, confirming_signals: confirmingSignals, usd_trend: usdTrend,
+      model_version: continuation.model_version, calibrated: continuation.calibrated === true,
       watching_reasons: hit ? null : [...new Set([...(continuation.reasons ?? []), ...(fade.reasons ?? [])])],
       macro: hit?.macro ?? null, credit: hit?.credit ?? null, htf_trend: hit?.htf_trend ?? null,
       oi: snap.oi ? { side: snap.oi.side, near: snap.oi.near } : null,
       session_phase: hit?.session_phase ?? null, regime: hit?.regime ?? null,
       T: hit?.T ?? null, vol_percentile: hit?.vol_percentile ?? null,
       feature_staleness_ms: hit?.feature_staleness_ms ?? null,
-      calibrated: continuation.calibrated === true,
       snapshot_refreshed: warm?.refreshed ?? false,
       total_ms: Date.now() - t0,
     });

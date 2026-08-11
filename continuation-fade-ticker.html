@@ -44,6 +44,7 @@
   .usd-gate.show{display:flex}
   .usd-gate.aligned{color:var(--green);background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.45)}
   .usd-gate.opposed{color:var(--red);background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.45)}
+  .status-banner.tied{color:var(--amber);background:rgba(210,153,34,.1);border-color:rgba(210,153,34,.4)}
 
   .quality-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
   .quality-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
@@ -134,7 +135,7 @@
   </div>
 
   <div class="duel">
-    <div class="duel-labels"><span class="c">CONTINUATION</span><span class="f">FADE</span></div>
+    <div class="duel-labels"><span class="c" id="contLabel">CONTINUATION</span><span class="f" id="fadeLabel">FADE</span></div>
     <div class="duel-bar">
       <div class="cseg" id="contSeg" style="width:50%">—</div>
       <div class="fseg" id="fadeSeg" style="width:50%">—</div>
@@ -161,7 +162,7 @@
     <b>WATCHING</b> — price is nowhere near a mapped decision zone; nothing to score.<br>
     <b>APPROACHING</b> — a zone is in reach but price hasn't tested it closely yet (&gt;0.15σ away).<br>
     <b>TESTING</b> — price is inside the zone right now; watch the bar move as new candles close.<br>
-    <b>CONFIRMED</b> — one hypothesis crossed the model's go-threshold; the bar shows which and how hard.<br><br>
+    <b>CONFIRMED</b> — one hypothesis crossed the model's go-threshold; the bar shows which and how hard. Continuation and fade are scored as two <i>independent</i> go/skip questions, not a single either/or pick — both can clear the threshold at once. When they land within ~4 points of each other, the banner reads <b>CONFIRMED — TIED</b> instead of crowning a side: that's a real "go" on both, not a directional edge. The duel labels always show the resolved direction (<code>CONTINUATION · LONG</code>, etc.) as soon as a zone is hit, so you don't need to wait for CONFIRMED to know what each side means as a trade — continuation's direction comes from the day's trend regime (BULL/BEAR) when there is one, or the zone's breakout side when the day is RANGE-y; fade's direction is always the zone's position relative to today's open (fade an up-level = short back toward open, and vice versa).<br><br>
     Continuation/Fade % are decisionCore's two independent <code>action:'follow'</code> / <code>action:'fade'</code> probabilities, renormalized to sum to 100% for the bar — the raw (non-renormalized) numbers are shown underneath. <b>Confidence</b> is a separate, uncalibrated heuristic: how far apart the two hypotheses have pulled, blended with snapshot freshness — a 51/49 read is never "confident" even when one side is technically ahead. Lines marked <span style="color:var(--gold)">◆ confirms</span> are gamma/OI positioning (dealer long-gamma = pinning/fade, short-gamma = amplifying/follow) and today's liquidity-sweep read at this zone (swept-and-rejected = fade, swept-and-held = follow) — real, computed reads, but carry <b>no weight in the probabilities above</b>, only a small nudge to the confidence pill. They stay unweighted in the model itself until a fit earns them a real weight OOS, same as every other candidate feature in this engine.<br><br>
     The green/red <b>USD trend</b> banner above the duel bar is different from all of that — it's the one candidate that actually earned a directional call from the fit (110,883 events, OOS, 6/6 majors): fading WITH the prevailing cross-pair USD trend was after-cost-positive, fading AGAINST it lost −3.6bp. It's a <b>filter</b>, not a probability input, so it only appears for a fade winner on a USD major (EUR/GBP/AUD/NZD/USD, USD/CAD, USD/CHF) and says so directly — aligned or skip — rather than nudging a number.
   </div>
@@ -205,6 +206,23 @@ function render(d, pair) {
   $('zdErr').textContent = '';
   $('zPair').textContent = (d.display || pair).toUpperCase();
 
+  // Model badge — PER PAIR, from this tick's own response, not the static
+  // pair-agnostic /health check. Different pairs can be on different live
+  // models (modelV1 for the fitted FX majors, v0 elsewhere — decisionCore.js's
+  // defaultModelFor), so a badge set once at page load was stale/wrong as soon
+  // as you switched pairs or a pair got promoted.
+  if (d.model_version) {
+    $('modelBadge').textContent = 'model ' + d.model_version;
+    $('calBadge').style.display = d.calibrated ? 'none' : 'inline-block';
+  }
+
+  // Duel labels carry the resolved direction — always, not just once CONFIRMED —
+  // so "which way is continuation/fade actually asking to trade" never requires
+  // reading the banner text. Direction is resolved as soon as a zone is hit,
+  // independent of go/skip (decisionCore.buildEventFeatures).
+  $('contLabel').textContent = 'CONTINUATION' + (d.continuation?.direction ? ' · ' + d.continuation.direction.toUpperCase() : '');
+  $('fadeLabel').textContent = 'FADE' + (d.fade?.direction ? ' · ' + d.fade.direction.toUpperCase() : '');
+
   const px = fmtPrice(d.price, pair);
   const dir = lastPrice != null ? (d.price > lastPrice ? 'up' : d.price < lastPrice ? 'down' : '') : '';
   lastPrice = d.price;
@@ -231,6 +249,13 @@ function render(d, pair) {
   } else if (d.status === 'TESTING') {
     banner.classList.add('testing');
     banner.textContent = 'TESTING — price is inside the decision zone now';
+  } else if (d.status === 'CONFIRMED' && d.tied) {
+    // Both continuation AND fade independently cleared the go-threshold and
+    // landed within ~4pp of each other — a real "go" read on both sides, but
+    // NOT a directional edge. cp>=fp still has to pick something for `winner`
+    // internally, but crowning that a confident call here would be dishonest.
+    banner.classList.add('tied');
+    banner.textContent = `CONFIRMED — TIED (${d.continuation.pct}% / ${d.fade.pct}%) · both clear threshold, no real directional edge yet`;
   } else if (d.status === 'CONFIRMED') {
     banner.classList.add(d.winner === 'continuation' ? 'confirmed-continuation' : 'confirmed-fade');
     const side = d.winner === 'continuation' ? d.continuation : d.fade;
