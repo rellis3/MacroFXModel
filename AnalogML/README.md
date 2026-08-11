@@ -186,7 +186,7 @@ everywhere else) to mark it `tp`/`sl`/genuine-`timeout` — never touching the
 frozen parameters based on what comes back.
 
 ```
-python AnalogML/paper_track.py --scan          # real forward use, once wired to live data (see below)
+python AnalogML/paper_track.py          # real forward use, once wired to live data (see below)
 ```
 
 **This sandbox cannot reach live data — confirmed, not assumed.** A direct
@@ -210,11 +210,47 @@ close a trade before its outcome is actually knowable.
 
 `AnalogML/data/paper_trades.json` is seeded with 25/26 pairs' genuinely-open
 signals as of the snapshot's end (2026-05-21) — the starting point for
-whoever picks this up with live data. **Next step, not done here:** wire
-`load_bars()` (or a parallel data path) to something that can actually reach
-fresh prices — e.g. run this on Railway (which the rest of this repo
-confirms CAN reach OANDA), or periodically re-export the local parquet and
-rerun `--scan` (omit `--as-of`) against the refreshed file.
+whoever picks this up with live data.
+
+### Wired for Railway — `--refresh-data`, `refresh_m1.py`, R2 persistence
+
+```
+python AnalogML/paper_track.py --refresh-data   # real forward use, wherever OANDA is reachable
+```
+
+`--refresh-data` calls `refresh_m1.py` first: for each pair, fetches only
+the bars newer than the local parquet's current last timestamp from OANDA
+and appends them, reusing `scripts/fetch_m1_oanda.py`'s `fetch_chunk()` for
+the actual API call (one fetcher, not a second copy) and
+`pylego.instruments.oanda_symbol` for the pair → OANDA-instrument mapping
+(the canonical registry — `fetch_m1_oanda.py`'s own `INSTRUMENTS` dict only
+covers gold/indices/commodities, not the 25 FX crosses AnalogML trades).
+Writes back in the exact schema every other AnalogML script already reads
+(`DatetimeIndex` named `datetime`, tz-aware UTC, `open/high/low/close/volume`
+columns) — deliberately not `fetch_m1_oanda.py`'s own parquet schema (a
+`time` *column*, built for a different JS-side consumer).
+
+The trade log also stops living only on local disk: `load_log()`/`save_log()`
+read/write Cloudflare R2 (`R2_ACCESS_KEY`/`R2_SECRET_KEY` env vars, same
+bucket the M1 data lives in) whenever those credentials are present, falling
+back to local disk otherwise (this sandbox, local dev, `--as-of` testing).
+This matters because Railway's local filesystem is wiped on every redeploy —
+the exact trap `CLAUDE.md` documents for KV bot configs — so a log that only
+lived on local disk would lose its whole track record on the next deploy.
+
+`start.sh` now runs this on a loop (`AnalogML/paper_track_loop.sh`, default
+hourly via `PAPER_TRACK_INTERVAL_SECONDS`) as one more supervised process
+alongside the existing bots — restart_bot wraps the LOOP script, not
+`paper_track.py` directly, so a normal one-shot exit doesn't trigger an
+immediate 30s restart-and-hammer-OANDA cycle.
+
+**Still needed before this produces a real track record:** the R2 and OANDA
+credentials that were found hardcoded in this repo (`scripts/fetch_m1_oanda.py`,
+`scripts/r2_download.py`, `portfolioBacktest/portfolio_backtest.py`,
+`VolRangeForecaster/session_stats.py` — since removed, see the security fix
+commit) need to be rotated, and Railway's `OANDA_KEY`/`R2_ACCESS_KEY`/
+`R2_SECRET_KEY` env vars need to reflect the rotated values, before this
+loop is trusted with real credentials in production.
 
 ## `ml_walkforward.py` — XGBoost / LightGBM / regression stack
 

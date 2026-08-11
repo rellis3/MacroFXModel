@@ -35,10 +35,7 @@ OANDA_BASE = (
     "https://api-fxpractice.oanda.com" if OANDA_ENV == "practice"
     else "https://api-fxtrade.oanda.com"
 )
-OANDA_KEY = os.environ.get(
-    "OANDA_KEY",
-    "12ede1dbab4361aa039831ec942603d2-b1691eab23c45cd97d0c1e7e63e9d5cc",
-)
+OANDA_KEY = os.environ.get("OANDA_KEY")
 
 BARS_PER_REQUEST = 5000
 OUTFILE = Path(__file__).parent / "data" / "session_stats.json"
