@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overnight Hold vs Buy &amp; Hold — Prop-Firm Rule Check</title>
+<style>
+  :root { --bg:#0e1117; --panel:#161b22; --line:#2b3340; --tx:#c9d1d9; --mut:#8b949e;
+          --grn:#3fb950; --red:#f85149; --acc:#58a6ff; --amber:#d29922; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx); font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 18px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:0 0 10px; }
+  h3 { font-size:14px; margin:0 0 8px; color:var(--mut); }
+  .sub { color:var(--mut); margin:0 0 20px; font-size:13px; max-width:900px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:12px; color:var(--mut); margin-bottom:4px; }
+  input,select { width:100%; background:#0d1117; border:1px solid var(--line); color:var(--tx);
+                 border-radius:6px; padding:7px 9px; font-size:13px; }
+  .chk { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--tx); }
+  .chk input { width:auto; }
+  button { background:var(--acc); color:#04121f; border:0; border-radius:6px; padding:10px 18px;
+           font-weight:600; cursor:pointer; font-size:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--tx); font-weight:500; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:right; padding:6px 9px; border-bottom:1px solid var(--line); }
+  th:first-child,td:first-child { text-align:left; }
+  thead th { color:var(--mut); font-weight:600; font-size:12px; }
+  .pos { color:var(--grn); } .neg { color:var(--red); }
+  .note { color:var(--mut); font-size:12px; margin-top:10px; }
+  .status { color:var(--amber); font-size:13px; margin-left:12px; }
+  .row2 { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:14px; }
+  code { background:#0d1117; padding:1px 5px; border-radius:4px; color:var(--acc); }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
+  .badge.pass { background:#0d2a17; color:var(--grn); border:1px solid #1c4a2a; }
+  .badge.fail { background:#2a1315; color:var(--red); border:1px solid #4a1c1f; }
+  .instrument-panel { margin-top:8px; }
+  .gate-row { display:flex; gap:18px; flex-wrap:wrap; font-size:12px; color:var(--mut); margin:6px 0 14px; }
+  .gate-row b { color:var(--tx); }
+  .chart-wrap { margin:14px 0; }
+  .chart-label { font-size:12px; color:var(--mut); margin-bottom:4px; }
+  .rule-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:10px; }
+  .rule-card { background:#0d1117; border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:12.5px; }
+  .rule-card .h { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-weight:600; color:var(--tx); }
+  .verdict-line { margin-top:12px; padding:10px 14px; border-radius:6px; font-size:13px; border-left:3px solid var(--amber); background:#1c2128; }
+  .verdict-line.pass { border-left-color:var(--grn); }
+  .verdict-line.fail { border-left-color:var(--red); }
+  .tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .tabs button { background:transparent; border:1px solid var(--line); color:var(--mut); font-weight:500; padding:7px 14px; }
+  .tabs button.active { background:var(--panel); color:var(--tx); border-color:var(--acc); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Overnight Hold vs Buy &amp; Hold <span style="color:var(--mut);font-weight:400">· NAS100 &amp; XAUUSD, then the prop-firm rule check</span></h1>
+  <p class="sub">Enter long 20:00 UK, exit 14:30 UK the following session, M1 data, both instruments trimmed to their
+    overlapping date range. Reports gross <i>and</i> net (spread+slip+overnight financing) against continuous buy &amp; hold
+    over the same window, then runs the net trade series through a configurable prop-firm-style rule check.
+    Source task: <code>education/buy-and-hold-notes.md</code> · engine: <code>js/overnightHoldEngine.js</code>.</p>
+  <p class="sub" style="color:var(--amber)">Costs, financing and the rule limits below are documented, editable
+    <b>assumptions</b> — not fetched from any live broker/firm feed. Calibrate them to your actual broker's spread/swap and
+    the actual firm's published rulebook before drawing a pass/fail conclusion about either. See the engine file's header
+    for the exact defaults and why each one was chosen.</p>
+
+  <div class="panel">
+    <h2>Run</h2>
+    <div class="grid">
+      <div><label>Instruments</label>
+        <div class="chk"><input type="checkbox" id="incGold" checked> <label for="incGold" style="margin:0">Gold (XAUUSD)</label></div>
+        <div class="chk"><input type="checkbox" id="incNq" checked> <label for="incNq" style="margin:0">NAS100 (nq)</label></div>
+      </div>
+      <div><label>Account size ($)</label><input id="accountSize" value="100000" type="number" min="1000" step="1000"></div>
+      <div><label>Notional per trade ($)</label><input id="notionalPerTrade" value="100000" type="number" min="1000" step="1000"></div>
+      <div><label>Triple-swap day</label><select id="tripleSwapDow">
+        <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+        <option value="3" selected>Wednesday</option><option value="4">Thursday</option></select></div>
+      <div><label>Daily loss limit (%)</label><input id="dailyLossLimitPct" value="5" type="number" step="0.5"></div>
+      <div><label>Drawdown rule</label><select id="ddMode"><option value="trailing" selected>Trailing</option><option value="static">Static</option></select></div>
+      <div><label>Max drawdown, static (%)</label><input id="maxDrawdownStaticPct" value="10" type="number" step="0.5"></div>
+      <div><label>Max drawdown, trailing (%)</label><input id="maxDrawdownTrailingPct" value="10" type="number" step="0.5"></div>
+      <div><label>Profit target (%)</label><input id="profitTargetPct" value="8" type="number" step="0.5"></div>
+      <div><label>Profit target days (0 = none)</label><input id="profitTargetDays" value="30" type="number" step="1"></div>
+      <div><label>Consistency cap (%)</label><input id="consistencyCapPct" value="30" type="number" step="5"></div>
+    </div>
+    <div class="row2">
+      <button id="run">Run backtest</button>
+      <span class="status" id="status"></span>
+    </div>
+    <p class="note">Illustrative ruleset defaults — generic prop-firm-style limits, not any single named firm's published
+      rulebook. M1 data loads from R2/disk/Drive on the server (same source as every other backtest here); a run over the
+      full available history (~10 years) typically takes under a minute.</p>
+  </div>
+
+  <div id="results" style="display:none"></div>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const fmtN = (v, d=2) => (v === null || v === undefined || Number.isNaN(v)) ? '—' : Number(v).toFixed(d);
+const cls = v => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
+const spanN = (v, d=2) => `<span class="${cls(v)}">${fmtN(v, d)}</span>`;
+const badge = ok => `<span class="badge ${ok ? 'pass' : 'fail'}">${ok ? 'PASS' : 'BREACH'}</span>`;
+const INSTRUMENT_LABEL = { gold: 'Gold (XAUUSD)', nq: 'NAS100 (nq)' };
+
+function svgEquityChart(equityCurve, buyHoldCurve, label) {
+  if (!equityCurve || !equityCurve.length) return '<div class="note">No equity curve.</div>';
+  const W = 1080, H = 220, DH = 70, PAD = 30;
+  const allEq = [...equityCurve.map(p => p.equity), ...(buyHoldCurve || []).map(p => p.equity)];
+  const minY = Math.min(...allEq) * 0.98, maxY = Math.max(...allEq) * 1.02;
+  const n = equityCurve.length;
+  const x = i => PAD + (i / Math.max(n - 1, 1)) * (W - 2 * PAD);
+  const y = v => (H - 20) - ((v - minY) / (maxY - minY || 1)) * (H - 40);
+  const pathFor = curve => curve.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(Math.min(i, n - 1)).toFixed(1)} ${y(p.equity).toFixed(1)}`).join(' ');
+  // Drawdown series (running peak) of the strategy curve, for the panel underneath.
+  let peak = -Infinity;
+  const dd = equityCurve.map(p => { peak = Math.max(peak, p.equity); return (p.equity - peak) / peak * 100; });
+  const minDD = Math.min(...dd, 0);
+  const yDD = v => 10 + ((v - minDD) / (0 - minDD || 1)) * (DH - 20);
+  const ddPath = dd.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${(H + 20 + (DH - yDD(v))).toFixed(1)}`).join(' ');
+  const ddArea = `${ddPath} L ${x(n - 1).toFixed(1)} ${(H + 20 + DH - 10).toFixed(1)} L ${x(0).toFixed(1)} ${(H + 20 + DH - 10).toFixed(1)} Z`;
+  return `
+  <div class="chart-wrap">
+    <div class="chart-label">${label} — equity (net, start=100) vs buy &amp; hold, drawdown underneath</div>
+    <svg viewBox="0 0 ${W} ${H + DH + 30}" role="img" aria-label="${label} equity curve and drawdown" style="width:100%;height:auto;background:#0d1117;border:1px solid var(--line);border-radius:8px">
+      <line x1="${PAD}" y1="${y(100).toFixed(1)}" x2="${W-PAD}" y2="${y(100).toFixed(1)}" stroke="#2b3340" stroke-dasharray="4 3"/>
+      ${buyHoldCurve && buyHoldCurve.length ? `<path d="${pathFor(buyHoldCurve)}" fill="none" stroke="#8b949e" stroke-width="1.5"/>` : ''}
+      <path d="${pathFor(equityCurve)}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+      <path d="${ddArea}" fill="#f85149" opacity="0.25"/>
+      <line x1="${PAD}" y1="${H+20}" x2="${W-PAD}" y2="${H+20}" stroke="#2b3340"/>
+      <text x="${PAD}" y="14" fill="#58a6ff" font-size="11">— strategy (net)</text>
+      <text x="${PAD+140}" y="14" fill="#8b949e" font-size="11">— buy &amp; hold</text>
+      <text x="${PAD}" y="${H+34}" fill="#f85149" font-size="11">drawdown %</text>
+    </svg>
+  </div>`;
+}
+
+function metricsTable(m, benchmark) {
+  const rows = [
+    ['Total return %', spanN(m.totalReturnPct), spanN(m.grossTotalReturnPct), spanN(benchmark?.totalPct)],
+    ['CAGR %', spanN(m.cagrPct), '—', spanN(benchmark?.cagrPct)],
+    ['Max drawdown %', spanN(m.maxDrawdown.maxDDPct), '—', '—'],
+    ['Max DD duration (days)', fmtN(m.maxDrawdown.durationDays, 0) + (m.maxDrawdown.stillInDrawdown ? ' (ongoing)' : ''), '—', '—'],
+    ['Sharpe (ann.)', fmtN(m.sharpe, 3), '—', '—'],
+    ['Sortino (ann.)', fmtN(m.sortino, 3), '—', '—'],
+    ['Calmar', fmtN(m.calmar, 3), '—', '—'],
+    ['Win rate %', fmtN(m.winRatePct, 1), '—', '—'],
+    ['Profit factor', fmtN(m.profitFactor, 3), '—', '—'],
+    ['Avg win / avg loss %', `${spanN(m.avgWinPct)} / ${spanN(m.avgLossPct)}`, '—', '—'],
+    ['Largest win / loss %', `${spanN(m.largestWinPct)} / ${spanN(m.largestLossPct)}`, '—', '—'],
+    ['Longest losing streak', fmtN(m.longestLosingStreak, 0), '—', '—'],
+    ['Std dev of returns %', fmtN(m.stdDevPct, 3), '—', '—'],
+    ['Total trades', fmtN(m.trades, 0), '—', '—'],
+  ];
+  return `<table><thead><tr><th>Metric</th><th>Overnight — Net</th><th>Overnight — Gross</th><th>Buy &amp; Hold</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function ruleCheckCard(rc) {
+  if (!rc) return '';
+  const v = rc.verdict;
+  const cards = [
+    ['Daily loss limit', v.dailyLoss, rc.dailyLossBreach ? `Breached ${rc.dailyLossBreach.day} (${fmtN(rc.dailyLossBreach.dayLossPct)}%)` : 'No single day breached the cap'],
+    [`Max drawdown (${rc.activeDrawdownRule})`, v.drawdown, rc.activeDrawdownBreach ? `Breached ${rc.activeDrawdownBreach.day} — equity ${fmtN(rc.activeDrawdownBreach.equity)}` : 'Never breached'],
+    ['Profit target & time', v.profitTargetReachedInTime, rc.profitTargetHitDate ? `Reached in ${rc.profitTargetTradingDays} trading days (limit ${rc.ruleset.profitTargetDays || 'none'})` : 'Target never reached'],
+    ['Consistency cap', v.consistency, rc.consistency.ratioPct !== null ? `Best day = ${fmtN(rc.consistency.ratioPct,1)}% of profit-to-target (cap ${rc.ruleset.consistencyCapPct}%)` : 'n/a'],
+  ];
+  return `
+    <div class="rule-grid">
+      ${cards.map(([label, ok, detail]) => `<div class="rule-card"><div class="h"><span>${label}</span>${badge(ok)}</div><div class="note" style="margin:0">${detail}</div></div>`).join('')}
+    </div>
+    <div class="verdict-line ${v.wouldPassOnHistoricalData ? 'pass' : 'fail'}">
+      <b>${v.wouldPassOnHistoricalData ? '✅ Would have passed this ruleset on historical data.' : '❌ Would NOT have passed this ruleset on historical data.'}</b>
+      If it breaches on historical data, assume it breaches live — the response is to change the strategy or sizing, not soften the ruleset until it passes.
+    </div>`;
+}
+
+function instrumentPanel(key, inst) {
+  if (inst.error) return `<div class="panel"><h2>${INSTRUMENT_LABEL[key] || key}</h2><p class="note" style="color:var(--red)">${inst.error}</p></div>`;
+  const m = inst.metrics;
+  const mt = inst.mirrorTest;
+  const reconGap = (inst.trades.length && m?.benchmark) ? (m.benchmark.totalPct - mt.reconstructedGrossPct).toFixed(2) : null;
+  return `
+  <div class="panel instrument-panel">
+    <h2>${INSTRUMENT_LABEL[key] || key} <span style="color:var(--mut);font-weight:400;font-size:13px">· ${inst.overlapWindow.startDate} → ${inst.overlapWindow.endDate}</span></h2>
+    <div class="gate-row">
+      <span>Stage 01 (timezone) — NFP peak hour: <b>${inst.timezoneGate.peakVolatilityUtcHour ?? '—'}:00 UTC</b> (expected ${inst.timezoneGate.expectedUtcWindow}) — ${inst.timezoneGate.withinExpectedWindow ? '✅ within window' : '⚠️ outside expected window'}</span>
+      <span>Stage 02 (coverage) — expected trading days <b>${inst.expectedTradingDays}</b>, actual trades <b>${inst.actualTrades}</b>, exceptions <b>${inst.exceptions.length}</b></span>
+      <span>Stage 03 (mirror test) — reconstructed gross <b>${fmtN(mt.reconstructedGrossPct)}%</b> vs buy&amp;hold <b>${fmtN(m?.benchmark?.totalPct)}%</b> (gap ${reconGap ?? '—'}pp from ${inst.expectedTradingDays - inst.actualTrades} uncovered days)</span>
+    </div>
+    ${m ? metricsTable(m, m.benchmark) : '<p class="note">No trades produced — see exceptions.</p>'}
+    ${m ? `<p class="note">Exposure: avg hold <b>${fmtN(m.exposure.avgHoldHours,1)}h</b>, time-in-market <b>${fmtN(m.exposure.exposureFraction*100,1)}%</b>,
+       return per unit exposure <b>${spanN(m.exposure.returnPerUnitExposurePct)}%</b> (naive linear scale-up, not re-compounded).
+       Correlation to buy&amp;hold: <b>${m.correlationToBuyHold.r === null ? 'n/a' : m.correlationToBuyHold.r}</b> (n=${m.correlationToBuyHold.n}).</p>` : ''}
+    ${m ? svgEquityChart(m.equityCurve, m.buyHoldEquityCurve, INSTRUMENT_LABEL[key] || key) : ''}
+    ${inst.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check</h3>${ruleCheckCard(inst.ruleCheck)}` : ''}
+    ${inst.csv ? `
+    <div class="row2">
+      <button class="ghost" data-csv="returns-${key}">Export % Returns CSV</button>
+      <button class="ghost" data-csv="r-${key}">Export R-Multiples CSV</button>
+      <button class="ghost" data-csv="currency-${key}">Export Currency P&amp;L CSV</button>
+    </div>
+    <p class="note">Account = <b>$${Number($('accountSize').value).toLocaleString()}</b>, notional/trade = <b>$${Number($('notionalPerTrade').value).toLocaleString()}</b>.
+      R-unit is a <b>fixed 1% of notional per trade</b> (no native stop exists in this strategy) — R and % Return are therefore
+      numerically redundant here, stated plainly rather than hidden. MAE is read from the real M1 path between entry and exit.</p>` : ''}
+  </div>`;
+}
+
+function combinedPanel(combined) {
+  if (!combined) return '';
+  const s = combined.summary;
+  return `
+  <div class="panel">
+    <h2>Combined pass <span style="color:var(--mut);font-weight:400;font-size:13px">· equal-weight blend of both legs, one synthetic portfolio</span></h2>
+    ${s ? `<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>
+      <tr><td>Total return %</td><td>${spanN(s.totalReturnPct)}</td></tr>
+      <tr><td>Max drawdown %</td><td>${spanN(s.maxDrawdown.maxDDPct)}</td></tr>
+      <tr><td>Max DD duration (days)</td><td>${fmtN(s.maxDrawdown.durationDays,0)}${s.maxDrawdown.stillInDrawdown ? ' (ongoing)' : ''}</td></tr>
+      <tr><td>Sharpe (ann.)</td><td>${fmtN(s.sharpe,3)}</td></tr>
+      <tr><td>Win rate %</td><td>${fmtN(s.winRatePct,1)}</td></tr>
+      <tr><td>Profit factor</td><td>${fmtN(s.profitFactor,3)}</td></tr>
+      <tr><td>Trades (blended date-rows)</td><td>${fmtN(s.trades,0)}</td></tr>
+    </tbody></table>
+    ${svgEquityChart(s.equityCurve, null, 'Combined portfolio')}` : ''}
+    ${combined.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check — combined</h3>${ruleCheckCard(combined.ruleCheck)}` : ''}
+    <div class="row2"><button class="ghost" data-csv="returns-combined">Export % Returns CSV (combined)</button></div>
+    <p class="note">Combined MAE is the equal-weight average of each leg's own MAE on days both trade — an approximation,
+      not a joint intrabar walk of both instruments' M1 paths together.</p>
+  </div>`;
+}
+
+let LAST_RESULT = null;
+
+function render(data) {
+  LAST_RESULT = data;
+  const parts = [];
+  for (const key of Object.keys(data.instruments)) parts.push(instrumentPanel(key, data.instruments[key]));
+  parts.push(combinedPanel(data.combined));
+  $('results').innerHTML = parts.join('');
+  $('results').style.display = 'block';
+  document.querySelectorAll('[data-csv]').forEach(b => b.addEventListener('click', () => downloadCsv(b.dataset.csv)));
+}
+
+function downloadCsv(kind) {
+  if (!LAST_RESULT) return;
+  const [type, key] = kind.split('-');
+  let content, filename;
+  if (key === 'combined') {
+    content = LAST_RESULT.combined.csv; filename = 'overnight_hold_combined_returns.csv';
+  } else {
+    const inst = LAST_RESULT.instruments[key];
+    if (type === 'returns') content = inst.csv.returns;
+    else if (type === 'r') content = inst.csv.rMultiples;
+    else content = inst.csv.currency;
+    filename = `overnight_hold_${key}_${type}.csv`;
+  }
+  const blob = new Blob([content + '\n'], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+}
+
+async function run() {
+  $('run').disabled = true; $('status').textContent = 'starting…'; $('results').style.display = 'none';
+  const instruments = [];
+  if ($('incGold').checked) instruments.push('gold');
+  if ($('incNq').checked) instruments.push('nq');
+  if (!instruments.length) { $('status').textContent = 'select at least one instrument'; $('run').disabled = false; return; }
+
+  const body = {
+    instruments,
+    accountSize: $('accountSize').value,
+    notionalPerTrade: $('notionalPerTrade').value,
+    tripleSwapDow: $('tripleSwapDow').value,
+    dailyLossLimitPct: $('dailyLossLimitPct').value,
+    ddMode: $('ddMode').value,
+    maxDrawdownStaticPct: $('maxDrawdownStaticPct').value,
+    maxDrawdownTrailingPct: $('maxDrawdownTrailingPct').value,
+    profitTargetPct: $('profitTargetPct').value,
+    profitTargetDays: $('profitTargetDays').value,
+    consistencyCapPct: $('consistencyCapPct').value,
+  };
+  const r = await fetch('/api/overnight-hold-v1/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
+  if (!r.ok) { $('status').textContent = 'error: ' + r.error; $('run').disabled = false; return; }
+  const jobId = r.jobId;
+  const poll = async () => {
+    const s = await fetch('/api/overnight-hold-v1/status/' + jobId).then(r => r.json());
+    if (s.status === 'running') {
+      $('status').textContent = `${s.phase || 'running'} · ${s.elapsed}s`;
+      setTimeout(poll, 1500);
+    } else if (s.status === 'done') {
+      $('status').textContent = 'done'; render(s.data); $('run').disabled = false;
+    } else { $('status').textContent = 'error: ' + s.error; $('run').disabled = false; }
+  };
+  poll();
+}
+$('run').addEventListener('click', run);
+</script>
+</body>
+</html>

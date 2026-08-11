@@ -1183,6 +1183,56 @@ same discipline §1aj's own note already asks for.
 
 ---
 
+### 1an. Overnight-hold vs buy & hold engine (2026-08-11) — the education/buy-and-hold-notes.md task, run for real
+
+Built from the education-notes task itself (`education/buy-and-hold-notes.md`):
+enter long 20:00 UK, exit 14:30 UK the following session, NAS100 + XAUUSD, M1
+data, compared against continuous buy & hold, then run through a prop-firm
+rule check. Reuses the existing session-window / M1 / metrics baseplate
+(`barUtils`, `nasdaqSessions`'s exact IANA-based UK-time conversion —
+preferred over `sessionRanges.londonOffsetHours`'s ±1h DST approximation for
+this one, since the task's own gate is specifically about catching timezone
+error — `metricsCore`, `instrumentRegistry`); the only new logic is the
+session-window trade construction, the cost/financing model, the mirror-test
+integrity check, exposure/correlation and the prop-firm rule check.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Overnight-hold engine** | `js/overnightHoldEngine.js` | Pure core (no network — data passed in): `buildOvernightTrades`/`mirrorTest` (stage-01/02/03 gates — timezone sanity, Sun-Thu trading calendar, last-tick-before fill, session-edge exceptions logged not fabricated), `applyCosts` (stage 04 — spread/slip/overnight-financing/triple-swap-day, restated `DEFAULT_COST_PCT`/`DEFAULT_SLIP_PCT` from `honestForecastEngine.js`'s honest-harness convention), `computeMetricsTable`/`correlationToBuyHold`/`maxDrawdownWithDuration` (stage 05), `toCsvReturns`/`toCsvRMultiples`/`toCsvCurrency`/`combineInstruments` (stage 06, exact 3-schema house convention), `runPropFirmRuleCheck` (stage 07 — daily loss / static+trailing drawdown / profit target+time / consistency, illustrative generic ruleset, not any named firm's real numbers). `runOvernightHoldBacktestForPairs` is the thin IO wrapper (`loadM1ForPair`) for server/CLI use. Unit-tested on synthetic M1 data `js/overnightHoldEngine.test.mjs` (16 cases: mirror-test reconstruction, MAE sign, DST-transition trading-calendar, triple-swap multiplier, CSV schema, rule-check breach/pass paths). | `server.js` (`/api/overnight-hold-v1/run` + `/status/:jobId`, same async-job Map pattern as `/api/macro-equity-backtest`); `overnight-hold-backtest.html` (dashboard) | 🟢 built, unit-tested, **and actually run on real M1 data** (R2, both instruments, 2016-01-04 → 2026-06-05) — see result below. Not walk-forward / IS-OOS split; costs, financing bps/night and the rule-check limits are documented illustrative assumptions, not fetched from a live broker/firm feed. |
+| **Dashboard** | `overnight-hold-backtest.html` | Self-contained dark-theme page (house convention): per-instrument gate summary, gross/net vs buy&hold comparison table, hand-built SVG equity-curve+drawdown chart, exposure/correlation line, prop-firm rule-check card, 3 CSV export buttons, plus an equal-weight combined-portfolio pass. Ruleset/cost inputs are editable in the UI, not hidden constants. | Standalone page, linked from `index.html` | 🟢 built; verified end-to-end against the live route (confirmed the JSON shape the JS renders matches the actual `/run`+`/status` response field-for-field; a headless-browser click-through was flaky in this sandbox's browser-automation setup specifically, not in the server/page code) |
+
+**The honest result, since this one was actually run (not just built):** on
+the full available R2 history for both instruments (~10.4 years, 2016-01-04 to
+2026-06-05), the raw overnight effect exists **gross** on both legs (NQ
++172% compounded, gold +260% compounded) but is **erased by costs** on both —
+net total return is slightly **negative** on both (NQ −3.9%, gold −2.3%) over
+the full window, against continuous buy & hold's +572% (NQ) and +309% (gold)
+over the same span. Sharpe on both net series is ≈0.03 (indistinguishable
+from zero) and correlation to buy & hold is ≈0 on both (−0.09 NQ, −0.01 gold)
+— so whatever's left isn't a lower-beta copy of buy & hold, it's just not
+there net of cost. Under the illustrative generic rule check, **neither
+instrument, nor the combined blend, would have passed historically** — both
+breach the daily loss limit on at least one historical overnight gap and
+breach the trailing drawdown over the multi-year window; the profit target is
+technically reached eventually but far outside any reasonable time limit.
+This is the opposite of the task's own a-priori framing (which expected the
+NQ leg to look "reasonably strong" gross and questioned only whether it
+survived costs) — **both legs, not just gold, turn out flat-to-negative net**.
+Exceptions logged during stage 02 (638 gold / 651 NQ, out of ~2,719 expected
+trading days) are overwhelmingly (543/each) Sunday-20:00 attempts where the
+market hadn't reopened yet — the session-edge handling the task's own stage-02
+gate asks for, not a data-quality problem.
+
+This is a real result on real data, not a null from missing infrastructure —
+but it used one set of illustrative cost/financing/ruleset assumptions.
+Before treating "net negative" as final, the next honest step is a
+cost-sensitivity sweep (how far do spread/slip/financing have to fall before
+net turns positive, if at all) and calibrating the ruleset to an actual named
+firm — exactly the kind of follow-up this brick's dashboard inputs exist to
+make cheap to run.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
