@@ -3996,6 +3996,10 @@ const OI_DEFAULTS = {
   reactAtLevels: false, reactMinTier: 'moderate', reactBreakoutTrim: 0.6,
   requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
   secondaryTrim: 0.6, reachMult: 1.0, reachTrim: 0.7, maxReachPips: 0,   // PIN nearest-primary + reachability gate
+  persistenceWeight: 0.1, persistentDTE: 5,                              // across-expiry durability rank/size
+  pathBlockCheck: true, blockMinTier: 'moderate', blockTrim: 0.9,        // nearer-wall-in-the-path flag/trim
+  fallbackTpR: 0, fxFallbackTpR: 2.0,                                    // measured-move TP for wall-less trades
+  vannaBoost: 1.15, vannaTrim: 0.85, charmBoost: 1.2,                    // greek conditioners
   fx_enabled: false, fx_pairs: [],
   // strategy — 2026-08 quant-review additions (see MD files/OI_BOT_QUANT_REVIEW_2026-08.md)
   slBufferRefFrac: 0.10, breakRefFrac: 0.15, extendedRefFrac: 0.25,   // distances = max(pips, frac × refMove)
@@ -4010,6 +4014,7 @@ const OI_DEFAULTS = {
   // execution — 2026-08 additions
   max_open_risk_pct: 2.0, max_group_positions: { index: 2 }, plan_max_age_hours: 24,
   break_hold_ticks: 2, approach_trim: 0.7, scale_out: false, be_at_tp1: true,
+  max_hold_hours: { fade: 48, break: 24, maxpain: 24, react: 24},   // per-mode time exits (0 = off)
   // telegram entry alerts (blank token/chat → shared tg_config)
   tg_enabled: false, tg_token: '', tg_chat_id: '',
 };
@@ -4050,6 +4055,22 @@ function renderOiForm() {
   const rw = { ...OI_DEFAULTS.reactNodes, ...(_oiCfg.reactNodes || {}) };
   set('oi_rw_walls', rw.walls); set('oi_rw_gamma', rw.gammaFlip); set('oi_rw_gex', rw.gexFlip);
   set('oi_rw_vanna', rw.vannaFlip); set('oi_rw_vol', rw.volMagnets);
+  set('oi_secondary_trim', _oiCfg.secondaryTrim ?? OI_DEFAULTS.secondaryTrim);
+  set('oi_reach_mult', _oiCfg.reachMult ?? OI_DEFAULTS.reachMult);
+  set('oi_reach_trim', _oiCfg.reachTrim ?? OI_DEFAULTS.reachTrim);
+  set('oi_max_reach_pips', _oiCfg.maxReachPips ?? OI_DEFAULTS.maxReachPips);
+  set('oi_persistence_weight', _oiCfg.persistenceWeight ?? OI_DEFAULTS.persistenceWeight);
+  set('oi_persistent_dte', _oiCfg.persistentDTE ?? OI_DEFAULTS.persistentDTE);
+  chk('oi_path_block_check', _oiCfg.pathBlockCheck ?? true);
+  set('oi_block_min_tier', _oiCfg.blockMinTier ?? OI_DEFAULTS.blockMinTier);
+  set('oi_block_trim', _oiCfg.blockTrim ?? OI_DEFAULTS.blockTrim);
+  set('oi_fallback_tp_r', _oiCfg.fallbackTpR ?? OI_DEFAULTS.fallbackTpR);
+  set('oi_fx_fallback_tp_r', _oiCfg.fxFallbackTpR ?? OI_DEFAULTS.fxFallbackTpR);
+  set('oi_vanna_boost', _oiCfg.vannaBoost ?? OI_DEFAULTS.vannaBoost);
+  set('oi_vanna_trim', _oiCfg.vannaTrim ?? OI_DEFAULTS.vannaTrim);
+  set('oi_charm_boost', _oiCfg.charmBoost ?? OI_DEFAULTS.charmBoost);
+  const mh = { ...OI_DEFAULTS.max_hold_hours, ...(_oiCfg.max_hold_hours || {}) };
+  set('oi_mh_fade', mh.fade); set('oi_mh_break', mh.break); set('oi_mh_maxpain', mh.maxpain); set('oi_mh_react', mh.react);
   set('oi_max_open_risk_pct', _oiCfg.max_open_risk_pct ?? OI_DEFAULTS.max_open_risk_pct);
   set('oi_group_index_cap', (_oiCfg.max_group_positions || {}).index ?? 0);
   set('oi_plan_max_age_hours', _oiCfg.plan_max_age_hours ?? OI_DEFAULTS.plan_max_age_hours);
@@ -4113,6 +4134,26 @@ function readOiForm() {
     gexFlip: num('oi_rw_gex', OI_DEFAULTS.reactNodes.gexFlip),
     vannaFlip: num('oi_rw_vanna', OI_DEFAULTS.reactNodes.vannaFlip),
     volMagnets: num('oi_rw_vol', OI_DEFAULTS.reactNodes.volMagnets),
+  };
+  _oiCfg.secondaryTrim = num('oi_secondary_trim', OI_DEFAULTS.secondaryTrim);
+  _oiCfg.reachMult = num('oi_reach_mult', OI_DEFAULTS.reachMult);
+  _oiCfg.reachTrim = num('oi_reach_trim', OI_DEFAULTS.reachTrim);
+  _oiCfg.maxReachPips = num('oi_max_reach_pips', OI_DEFAULTS.maxReachPips);
+  _oiCfg.persistenceWeight = num('oi_persistence_weight', OI_DEFAULTS.persistenceWeight);
+  _oiCfg.persistentDTE = Math.round(num('oi_persistent_dte', OI_DEFAULTS.persistentDTE));
+  _oiCfg.pathBlockCheck = !!document.getElementById('oi_path_block_check')?.checked;
+  _oiCfg.blockMinTier = document.getElementById('oi_block_min_tier')?.value || OI_DEFAULTS.blockMinTier;
+  _oiCfg.blockTrim = num('oi_block_trim', OI_DEFAULTS.blockTrim);
+  _oiCfg.fallbackTpR = num('oi_fallback_tp_r', OI_DEFAULTS.fallbackTpR);
+  _oiCfg.fxFallbackTpR = num('oi_fx_fallback_tp_r', OI_DEFAULTS.fxFallbackTpR);
+  _oiCfg.vannaBoost = num('oi_vanna_boost', OI_DEFAULTS.vannaBoost);
+  _oiCfg.vannaTrim = num('oi_vanna_trim', OI_DEFAULTS.vannaTrim);
+  _oiCfg.charmBoost = num('oi_charm_boost', OI_DEFAULTS.charmBoost);
+  _oiCfg.max_hold_hours = {
+    fade: num('oi_mh_fade', OI_DEFAULTS.max_hold_hours.fade),
+    break: num('oi_mh_break', OI_DEFAULTS.max_hold_hours.break),
+    maxpain: num('oi_mh_maxpain', OI_DEFAULTS.max_hold_hours.maxpain),
+    react: num('oi_mh_react', OI_DEFAULTS.max_hold_hours.react),
   };
   _oiCfg.max_open_risk_pct = num('oi_max_open_risk_pct', OI_DEFAULTS.max_open_risk_pct);
   const _gidx = Math.round(num('oi_group_index_cap', 0));

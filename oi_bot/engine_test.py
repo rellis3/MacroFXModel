@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp, stack_conflict  # noqa: E402
+from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp, stack_conflict, position_mode  # noqa: E402
 
 fails = 0
 def ok(name, cond, extra=""):
@@ -64,6 +64,13 @@ sm.decide(4260, dry_run=True)                      # priming must NOT swallow ma
 specs = sm.decide(4258)
 ok("maxpain fires on the next live tick", any(x["zone_id"] == "maxpain_sell_4200" for x in specs))
 ok("maxpain spec carries SL + TP toward pin", specs and specs[0]["sl"] == 4310 and specs[0]["tp"] == 4200)
+
+print("[position_mode — a live position's mode from its own comment tag]")
+ok("fade parsed from the dedup tag", position_mode("OI [fade_sell_4300]") == "fade")
+ok("runner suffix stripped", position_mode("OI [break_buy_4300~r]") == "break")
+ok("maxpain + react recognised", position_mode("[maxpain_sell_4200]") == "maxpain" and position_mode("[react_buy_4210]") == "react")
+ok("unknown tag → None (never guess a mode)", position_mode("OI [garbage]") is None)
+ok("no tag / empty / None → None", position_mode("Vol L1 fade") is None and position_mode("") is None and position_mode(None) is None)
 
 print("[maxpain fire-time revalidation — minDist re-checks the extension live]")
 MP2 = {**MAXPAIN, "minDist": 30}

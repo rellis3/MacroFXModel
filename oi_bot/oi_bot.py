@@ -41,7 +41,7 @@ from pylego.broker.paper import PaperBroker                  # noqa: E402
 from pylego.quotes import QuoteFeed                          # noqa: E402
 from pylego.costs import expected_fill, max_spread           # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
-from oi_bot.engine import OISession, stack_conflict          # noqa: E402
+from oi_bot.engine import OISession, stack_conflict, position_mode  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("oi_bot")
@@ -104,6 +104,14 @@ DEFAULT_CFG = {
     # change worth an explicit opt-in on the config page).
     "scale_out": False,
     "be_at_tp1": True,
+    # Time-based exits: every exit was price-based (SL/TP), but the MECHANISM each
+    # mode trades expires — the pin/charm force behind a max-pain reversion is a
+    # ≤2-DTE effect, and a wall fade leans on a book that rolls off at expiry. A
+    # position that hits neither barrier used to sit as an orphan indefinitely.
+    # Per-mode max hold in HOURS (0 = never time-close that mode); the mode is
+    # parsed from the position's own comment tag, so it survives plan rolls and
+    # bot restarts. Closes at market with reason "time".
+    "max_hold_hours": {"fade": 48, "break": 24, "maxpain": 24, "react": 24},
     "paper_spread_pips": {},      # paper-fill spread OVERRIDES, {pair: pips in the pair's own units}
     # Telegram entry alerts (optional). tg_token/tg_chat_id fall back to the shared
     # tg_config (Level bot) if left blank — one alert per fill with the full trade.
@@ -409,6 +417,7 @@ def run(base_url: str, force_live: bool) -> None:
     risk_ledger: dict[int, float] = {}           # ticket → risk-to-SL % of balance at entry (portfolio budget)
     px_hist: dict[str, deque] = {}               # instrument → (epoch, px) samples (approach-velocity window)
     sym_class: dict[str, str] = {}               # broker-symbol spelling → asset class (correlated-group cap)
+    sym_key: dict[str, str] = {}                 # broker-symbol spelling → canonical key (time exits / closes)
     try:
         saved_state = kv.get_json("oi_bot_state") or {}
     except Exception:
@@ -420,6 +429,16 @@ def run(base_url: str, force_live: bool) -> None:
             risk_ledger[int(k)] = float(v)
         except (TypeError, ValueError):
             pass
+    # Scale-out runners survive a restart too: without this, a bot bounce while a
+    # TP1/TP2 pair was open silently dropped the break-even upgrade (positions and
+    # brackets were safe; only the BE-at-TP1 move was lost). Stale tickets are
+    # pruned by the runner watch the moment they're not in the open book.
+    for k, v in (saved_state.get("runners") or {}).items():
+        try:
+            if isinstance(v, dict) and v.get("pair"):
+                runners[int(k)] = v
+        except (TypeError, ValueError):
+            pass
 
     def _save_state() -> None:
         try:
@@ -428,6 +447,7 @@ def run(base_url: str, force_live: bool) -> None:
                 "entered": {i: sorted(s.entered) for i, s in sessions.items()},
                 "features": features,
                 "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
+                "runners": {str(k): v for k, v in runners.items()},
             })
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
@@ -463,6 +483,7 @@ def run(base_url: str, force_live: bool) -> None:
                 cls = I.asset_class(instr)
                 for s in {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}:
                     sym_class[s] = cls
+                    sym_key[s] = instr
             except Exception:
                 pass
             # Prime: mark zones already triggered at the current price (best-effort).
@@ -552,15 +573,22 @@ def run(base_url: str, force_live: bool) -> None:
                         broker.set_price(instr, q)
             if hasattr(broker, "check_barriers"):
                 broker.check_barriers()             # paper: execute the bracketed SL/TP
-            # Scale-out runner watch: once the TP1 leg has closed, move the runner's
-            # stop to break-even (its entry). Both legs share the SL, so a stop-out
-            # closes both and there is nothing to move — this only acts on a TP1 bank.
-            if runners:
-                _open_tk = {p.get("ticket") for p in broker.serialize_open_positions()}
+            # ── Open-book maintenance: runner BE watch + time-based exits ─────────
+            _mh = cfg.get("max_hold_hours") or {}
+            _mh_on = any(float(v or 0) > 0 for v in _mh.values()) if isinstance(_mh, dict) else False
+            if runners or _mh_on:
+                _book = broker.serialize_open_positions()
+                _open_tk = {p.get("ticket") for p in _book}
+                # Scale-out runner watch: once the TP1 leg has closed, move the
+                # runner's stop to break-even (its entry). Both legs share the SL, so
+                # a stop-out closes both and there is nothing to move — this only
+                # acts on a TP1 bank. Runner changes are persisted (restart-safe).
+                _runners_dirty = False
                 for _tb in list(runners):
                     r = runners[_tb]
                     if _tb not in _open_tk:
                         runners.pop(_tb, None)          # runner itself is gone
+                        _runners_dirty = True
                         continue
                     if r["partner"] not in _open_tk:
                         try:
@@ -570,6 +598,34 @@ def run(base_url: str, force_live: bool) -> None:
                         except Exception as e:
                             log.warning(f"SCALE-OUT [{r['pair']}]: BE move failed for {_tb}: {e}")
                         runners.pop(_tb, None)
+                        _runners_dirty = True
+                # Time-based exits: the mechanism each mode trades EXPIRES (pin/charm
+                # is a ≤2-DTE effect; a faded wall's book rolls off), so a position
+                # that hits neither barrier must not sit as an orphan. Mode is parsed
+                # from the position's own comment tag — survives plan rolls/restarts.
+                # MT5 stamps time_open on the broker clock; tz_offset_sec restores UTC.
+                if _mh_on:
+                    for p in _book:
+                        mode = position_mode(p.get("comment"))
+                        cap_h = float((_mh.get(mode) if mode else 0) or 0)
+                        t0 = p.get("time_open")
+                        if not mode or cap_h <= 0 or not t0:
+                            continue
+                        held_h = (nowt - (float(t0) - float(p.get("tz_offset_sec") or 0))) / 3600.0
+                        if held_h <= cap_h:
+                            continue
+                        key = sym_key.get(p.get("symbol")) or str(p.get("symbol", "")).lower()
+                        try:
+                            if broker.stop(p["ticket"], key, paper, reason="time"):
+                                log.info(f"TIME EXIT [{key}] ticket {p['ticket']} ({mode}) held "
+                                         f"{held_h:.1f}h > {cap_h:g}h cap — closed at market "
+                                         f"(the {mode} mechanism has expired)")
+                                if runners.pop(p["ticket"], None) is not None:
+                                    _runners_dirty = True
+                        except Exception as e:
+                            log.warning(f"TIME EXIT [{key}] close failed for {p.get('ticket')}: {e}")
+                if _runners_dirty:
+                    _save_state()
             bal = broker.account_balance() or 0.0
             if bal:
                 guard.update_balance(bal)

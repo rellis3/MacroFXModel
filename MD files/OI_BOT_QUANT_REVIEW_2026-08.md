@@ -353,9 +353,21 @@ discussed after this review was written. Where each piece landed:
 | Config UI for all of the above | bot-config OI tab | — |
 | Export + indicator: `hNN` hold token on wall lines, legend, Pine parse/labels | `js/oiLevelExport.js` + `pine/Confluence Zones Indicator.pine` | additive (old indicators ignore it) |
 
-Not implemented (deliberately): per-mode time-based exit (§3-P2 max-hold) — it
-needs a position-close pathway the executor doesn't have yet and interacts with
-scale-out; do it as its own change once the scale-out behaviour has paper data.
+**Follow-up (2026-08-11, second PR):** the three remaining items are now built:
+- **Per-mode time-based exits** (§3-P2): `max_hold_hours` `{fade: 48, break: 24,
+  maxpain: 24, react: 24}` (0 = off per mode). The mode is parsed from the
+  position's own comment tag (`engine.position_mode`) so it survives plan rolls
+  and restarts; positions past their cap close at market with reason `time`
+  (MT5 broker-clock offset corrected via `tz_offset_sec`). Defaults ON — the
+  whole point is that orphans stop existing.
+- **Restart-safe break-even watch**: scale-out `runners` now persist in
+  `oi_bot_state` and are restored on start, so a bot bounce mid-TP1/TP2 pair no
+  longer drops the BE-at-TP1 upgrade.
+- **Previously KV-only knobs surfaced** on the OI tab ("Advanced" section):
+  `secondaryTrim`, `reachMult`/`reachTrim`/`maxReachPips`, `persistenceWeight`/
+  `persistentDTE`, `pathBlockCheck`/`blockMinTier`/`blockTrim`, `fallbackTpR`/
+  `fxFallbackTpR`, `vannaBoost`/`vannaTrim`/`charmBoost` — plus the time-exit
+  hours.
 
 **What still needs YOU:** nothing but the routine — keep pasting daily OI (the
 neutral band and hold-flow components sharpen as `oi_history` accumulates) and
