@@ -26,7 +26,13 @@
       "usdcad",
       "usdchf",
       "usdjpy",
-      "gold"
+      "gold",
+      "nq",
+      "us30",
+      "spx500",
+      "de30",
+      "uk100",
+      "us2000"
     ],
     "from_date": "2018-01-01",
     "to_date": "2026-05-01",
@@ -13799,6 +13805,5622 @@
           "sl_dist": 62.250182,
           "bias_confidence": 0.9,
           "r": -0.398
+        }
+      ]
+    },
+    {
+      "pair": "nq",
+      "n_signals": 141,
+      "n_trades": 141,
+      "win_rate": 41.843971631205676,
+      "total_r": 6.101999999999997,
+      "avg_r": 0.043276595744680825,
+      "median_r": -0.268,
+      "profit_factor": 1.0961111373623778,
+      "trades": [
+        {
+          "time": "2018-03-07T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6929.4,
+          "stop": 6881.164205,
+          "sl_dist": 48.235795,
+          "bias_confidence": 0.9,
+          "r": 4.32
+        },
+        {
+          "time": "2018-03-08T21:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6972.2,
+          "stop": 6932.99847,
+          "sl_dist": 39.20153,
+          "bias_confidence": 0.9,
+          "r": 3.495
+        },
+        {
+          "time": "2018-03-28T04:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6514.2,
+          "stop": 6568.495384,
+          "sl_dist": 54.295384,
+          "bias_confidence": 0.55,
+          "r": -0.387
+        },
+        {
+          "time": "2018-04-25T01:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6495.8,
+          "stop": 6525.653186,
+          "sl_dist": 29.853186,
+          "bias_confidence": 0.9,
+          "r": -0.461
+        },
+        {
+          "time": "2018-05-14T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6975.0,
+          "stop": 6952.197097,
+          "sl_dist": 22.802903,
+          "bias_confidence": 0.9,
+          "r": -0.053
+        },
+        {
+          "time": "2018-05-25T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6978.4,
+          "stop": 6960.828983,
+          "sl_dist": 17.571017,
+          "bias_confidence": 0.9,
+          "r": -1.114
+        },
+        {
+          "time": "2018-05-31T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7009.2,
+          "stop": 6952.627695,
+          "sl_dist": 56.572305,
+          "bias_confidence": 0.9,
+          "r": 2.373
+        },
+        {
+          "time": "2018-06-01T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7004.8,
+          "stop": 6991.720171,
+          "sl_dist": 13.079829,
+          "bias_confidence": 0.9,
+          "r": 1.309
+        },
+        {
+          "time": "2018-06-06T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7192.6,
+          "stop": 7179.534441,
+          "sl_dist": 13.065559,
+          "bias_confidence": 0.9,
+          "r": -1.153
+        },
+        {
+          "time": "2018-07-10T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7300.1,
+          "stop": 7281.764727,
+          "sl_dist": 18.335273,
+          "bias_confidence": 0.9,
+          "r": -1.109
+        },
+        {
+          "time": "2018-07-15T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7389.3,
+          "stop": 7362.284194,
+          "sl_dist": 27.015806,
+          "bias_confidence": 0.9,
+          "r": -1.074
+        },
+        {
+          "time": "2018-07-19T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7393.7,
+          "stop": 7379.362349,
+          "sl_dist": 14.337651,
+          "bias_confidence": 0.9,
+          "r": -1.139
+        },
+        {
+          "time": "2018-08-06T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7394.8,
+          "stop": 7371.023072,
+          "sl_dist": 23.776928,
+          "bias_confidence": 0.9,
+          "r": -1.084
+        },
+        {
+          "time": "2018-08-07T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7461.0,
+          "stop": 7429.04298,
+          "sl_dist": 31.95702,
+          "bias_confidence": 0.9,
+          "r": -1.063
+        },
+        {
+          "time": "2018-08-28T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7577.7,
+          "stop": 7564.766761,
+          "sl_dist": 12.933239,
+          "bias_confidence": 0.9,
+          "r": -0.25
+        },
+        {
+          "time": "2018-08-29T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7606.0,
+          "stop": 7575.835419,
+          "sl_dist": 30.164581,
+          "bias_confidence": 0.9,
+          "r": 1.128
+        },
+        {
+          "time": "2018-08-30T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7670.2,
+          "stop": 7637.831859,
+          "sl_dist": 32.368141,
+          "bias_confidence": 0.9,
+          "r": -0.302
+        },
+        {
+          "time": "2018-09-03T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7671.1,
+          "stop": 7653.41391,
+          "sl_dist": 17.68609,
+          "bias_confidence": 0.55,
+          "r": -0.35
+        },
+        {
+          "time": "2018-12-18T03:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6480.4,
+          "stop": 6513.58852,
+          "sl_dist": 33.18852,
+          "bias_confidence": 0.9,
+          "r": -0.548
+        },
+        {
+          "time": "2018-12-20T02:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6347.4,
+          "stop": 6381.232671,
+          "sl_dist": 33.832671,
+          "bias_confidence": 0.9,
+          "r": 1.323
+        },
+        {
+          "time": "2018-12-20T13:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6310.9,
+          "stop": 6380.349437,
+          "sl_dist": 69.449437,
+          "bias_confidence": 0.9,
+          "r": -1.029
+        },
+        {
+          "time": "2019-01-02T13:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6174.0,
+          "stop": 6213.638602,
+          "sl_dist": 39.638602,
+          "bias_confidence": 0.55,
+          "r": -1.05
+        },
+        {
+          "time": "2019-04-17T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7680.6,
+          "stop": 7670.215297,
+          "sl_dist": 10.384703,
+          "bias_confidence": 0.9,
+          "r": 1.041
+        },
+        {
+          "time": "2019-04-23T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7720.1,
+          "stop": 7703.967102,
+          "sl_dist": 16.132898,
+          "bias_confidence": 0.9,
+          "r": -0.535
+        },
+        {
+          "time": "2019-04-25T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7852.3,
+          "stop": 7831.8331,
+          "sl_dist": 20.4669,
+          "bias_confidence": 0.9,
+          "r": -1.098
+        },
+        {
+          "time": "2019-07-11T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7924.6,
+          "stop": 7875.409465,
+          "sl_dist": 49.190535,
+          "bias_confidence": 0.9,
+          "r": -1.041
+        },
+        {
+          "time": "2019-07-15T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7960.3,
+          "stop": 7943.034088,
+          "sl_dist": 17.265912,
+          "bias_confidence": 0.9,
+          "r": -1.116
+        },
+        {
+          "time": "2019-07-24T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7945.1,
+          "stop": 7921.538462,
+          "sl_dist": 23.561538,
+          "bias_confidence": 0.55,
+          "r": -1.085
+        },
+        {
+          "time": "2019-07-25T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7995.2,
+          "stop": 7980.898803,
+          "sl_dist": 14.301197,
+          "bias_confidence": 0.9,
+          "r": -0.532
+        },
+        {
+          "time": "2019-10-31T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8101.4,
+          "stop": 8088.347771,
+          "sl_dist": 13.052229,
+          "bias_confidence": 0.9,
+          "r": 0.333
+        },
+        {
+          "time": "2019-11-01T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8147.2,
+          "stop": 8117.311023,
+          "sl_dist": 29.888977,
+          "bias_confidence": 0.9,
+          "r": 1.222
+        },
+        {
+          "time": "2019-11-05T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8227.2,
+          "stop": 8208.637478,
+          "sl_dist": 18.562522,
+          "bias_confidence": 0.9,
+          "r": -1.108
+        },
+        {
+          "time": "2019-11-07T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8237.8,
+          "stop": 8213.746739,
+          "sl_dist": 24.053261,
+          "bias_confidence": 0.9,
+          "r": 0.073
+        },
+        {
+          "time": "2019-11-12T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8260.4,
+          "stop": 8235.724432,
+          "sl_dist": 24.675568,
+          "bias_confidence": 0.9,
+          "r": 0.046
+        },
+        {
+          "time": "2019-11-15T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8290.9,
+          "stop": 8273.629131,
+          "sl_dist": 17.270869,
+          "bias_confidence": 0.9,
+          "r": -0.323
+        },
+        {
+          "time": "2019-11-18T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8338.0,
+          "stop": 8302.459297,
+          "sl_dist": 35.540703,
+          "bias_confidence": 0.9,
+          "r": -0.446
+        },
+        {
+          "time": "2019-11-18T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8337.4,
+          "stop": 8322.105251,
+          "sl_dist": 15.294749,
+          "bias_confidence": 0.9,
+          "r": -1.131
+        },
+        {
+          "time": "2019-11-27T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8422.8,
+          "stop": 8395.192653,
+          "sl_dist": 27.607347,
+          "bias_confidence": 0.9,
+          "r": 0.04
+        },
+        {
+          "time": "2019-12-20T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8652.2,
+          "stop": 8643.724099,
+          "sl_dist": 8.475901,
+          "bias_confidence": 0.9,
+          "r": 0.18
+        },
+        {
+          "time": "2019-12-22T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8703.4,
+          "stop": 8671.196235,
+          "sl_dist": 32.203765,
+          "bias_confidence": 0.9,
+          "r": -0.416
+        },
+        {
+          "time": "2019-12-23T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8700.0,
+          "stop": 8691.747449,
+          "sl_dist": 8.252551,
+          "bias_confidence": 0.9,
+          "r": 1.52
+        },
+        {
+          "time": "2020-01-16T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9063.7,
+          "stop": 9049.004681,
+          "sl_dist": 14.695319,
+          "bias_confidence": 0.55,
+          "r": 1.239
+        },
+        {
+          "time": "2020-01-16T18:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9094.5,
+          "stop": 9061.768366,
+          "sl_dist": 32.731634,
+          "bias_confidence": 0.9,
+          "r": 1.264
+        },
+        {
+          "time": "2020-01-17T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9135.9,
+          "stop": 9120.595504,
+          "sl_dist": 15.304496,
+          "bias_confidence": 0.9,
+          "r": 1.137
+        },
+        {
+          "time": "2020-02-04T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9148.8,
+          "stop": 9061.979619,
+          "sl_dist": 86.820381,
+          "bias_confidence": 0.55,
+          "r": 2.558
+        },
+        {
+          "time": "2020-02-06T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9429.2,
+          "stop": 9389.411436,
+          "sl_dist": 39.788564,
+          "bias_confidence": 0.9,
+          "r": -1.05
+        },
+        {
+          "time": "2020-02-12T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9577.4,
+          "stop": 9551.530526,
+          "sl_dist": 25.869474,
+          "bias_confidence": 0.9,
+          "r": -0.235
+        },
+        {
+          "time": "2020-02-16T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9660.2,
+          "stop": 9578.26383,
+          "sl_dist": 81.93617,
+          "bias_confidence": 0.9,
+          "r": -1.024
+        },
+        {
+          "time": "2020-06-03T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9699.6,
+          "stop": 9645.48687,
+          "sl_dist": 54.11313,
+          "bias_confidence": 0.9,
+          "r": -1.037
+        },
+        {
+          "time": "2020-06-05T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9758.2,
+          "stop": 9594.411487,
+          "sl_dist": 163.788513,
+          "bias_confidence": 0.9,
+          "r": 1.428
+        },
+        {
+          "time": "2020-06-08T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9834.6,
+          "stop": 9791.497078,
+          "sl_dist": 43.102922,
+          "bias_confidence": 0.55,
+          "r": -1.046
+        },
+        {
+          "time": "2020-06-09T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9888.0,
+          "stop": 9854.27424,
+          "sl_dist": 33.72576,
+          "bias_confidence": 0.9,
+          "r": -0.431
+        },
+        {
+          "time": "2020-06-10T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10031.6,
+          "stop": 9953.827539,
+          "sl_dist": 77.772461,
+          "bias_confidence": 0.9,
+          "r": 0.463
+        },
+        {
+          "time": "2020-06-17T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10044.4,
+          "stop": 9939.662074,
+          "sl_dist": 104.737926,
+          "bias_confidence": 0.9,
+          "r": -1.019
+        },
+        {
+          "time": "2020-06-24T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10229.2,
+          "stop": 10172.687026,
+          "sl_dist": 56.512974,
+          "bias_confidence": 0.9,
+          "r": -1.035
+        },
+        {
+          "time": "2020-07-02T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10306.0,
+          "stop": 10256.224552,
+          "sl_dist": 49.775448,
+          "bias_confidence": 0.9,
+          "r": 1.479
+        },
+        {
+          "time": "2020-07-05T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10400.3,
+          "stop": 10314.347985,
+          "sl_dist": 85.952015,
+          "bias_confidence": 0.9,
+          "r": 1.614
+        },
+        {
+          "time": "2020-07-08T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10640.2,
+          "stop": 10551.049784,
+          "sl_dist": 89.150216,
+          "bias_confidence": 0.9,
+          "r": -1.022
+        },
+        {
+          "time": "2020-07-17T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10625.7,
+          "stop": 10569.56695,
+          "sl_dist": 56.13305,
+          "bias_confidence": 0.55,
+          "r": -0.225
+        },
+        {
+          "time": "2020-07-30T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10687.4,
+          "stop": 10658.581414,
+          "sl_dist": 28.818586,
+          "bias_confidence": 0.55,
+          "r": -1.069
+        },
+        {
+          "time": "2020-08-04T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 11057.4,
+          "stop": 11030.695892,
+          "sl_dist": 26.704108,
+          "bias_confidence": 0.9,
+          "r": -0.079
+        },
+        {
+          "time": "2020-08-05T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 11101.0,
+          "stop": 11060.94008,
+          "sl_dist": 40.05992,
+          "bias_confidence": 0.9,
+          "r": 0.348
+        },
+        {
+          "time": "2020-08-07T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 11219.2,
+          "stop": 11185.191382,
+          "sl_dist": 34.008618,
+          "bias_confidence": 0.9,
+          "r": -0.2
+        },
+        {
+          "time": "2020-08-21T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 11498.5,
+          "stop": 11402.295155,
+          "sl_dist": 96.204845,
+          "bias_confidence": 0.9,
+          "r": 1.344
+        },
+        {
+          "time": "2020-08-27T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 11966.8,
+          "stop": 11928.406584,
+          "sl_dist": 38.393416,
+          "bias_confidence": 0.9,
+          "r": -1.052
+        },
+        {
+          "time": "2020-08-31T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12088.0,
+          "stop": 11983.035844,
+          "sl_dist": 104.964156,
+          "bias_confidence": 0.9,
+          "r": 0.53
+        },
+        {
+          "time": "2020-09-01T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12224.2,
+          "stop": 12117.478662,
+          "sl_dist": 106.721338,
+          "bias_confidence": 0.9,
+          "r": 1.253
+        },
+        {
+          "time": "2020-12-07T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12531.4,
+          "stop": 12506.087659,
+          "sl_dist": 25.312341,
+          "bias_confidence": 0.9,
+          "r": -1.079
+        },
+        {
+          "time": "2020-12-16T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12645.4,
+          "stop": 12559.007056,
+          "sl_dist": 86.392944,
+          "bias_confidence": 0.9,
+          "r": 0.595
+        },
+        {
+          "time": "2020-12-21T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12748.2,
+          "stop": 12729.623492,
+          "sl_dist": 18.576508,
+          "bias_confidence": 0.9,
+          "r": 0.281
+        },
+        {
+          "time": "2020-12-30T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12905.6,
+          "stop": 12884.876387,
+          "sl_dist": 20.723613,
+          "bias_confidence": 0.9,
+          "r": -0.344
+        },
+        {
+          "time": "2021-01-04T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12905.2,
+          "stop": 12866.570588,
+          "sl_dist": 38.629412,
+          "bias_confidence": 0.9,
+          "r": 0.724
+        },
+        {
+          "time": "2021-01-19T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12970.4,
+          "stop": 12855.599285,
+          "sl_dist": 114.800715,
+          "bias_confidence": 0.9,
+          "r": 3.059
+        },
+        {
+          "time": "2021-01-24T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13413.0,
+          "stop": 13349.780568,
+          "sl_dist": 63.219432,
+          "bias_confidence": 0.9,
+          "r": 1.442
+        },
+        {
+          "time": "2021-01-26T21:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13567.2,
+          "stop": 13472.667523,
+          "sl_dist": 94.532477,
+          "bias_confidence": 0.9,
+          "r": -0.509
+        },
+        {
+          "time": "2021-02-09T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13714.8,
+          "stop": 13638.837753,
+          "sl_dist": 75.962247,
+          "bias_confidence": 0.9,
+          "r": -0.173
+        },
+        {
+          "time": "2021-04-16T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14002.8,
+          "stop": 13959.778133,
+          "sl_dist": 43.021867,
+          "bias_confidence": 0.9,
+          "r": 0.604
+        },
+        {
+          "time": "2021-06-16T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14053.0,
+          "stop": 14023.605213,
+          "sl_dist": 29.394787,
+          "bias_confidence": 0.9,
+          "r": 0.408
+        },
+        {
+          "time": "2021-06-22T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14155.8,
+          "stop": 14076.008194,
+          "sl_dist": 79.791806,
+          "bias_confidence": 0.9,
+          "r": 1.203
+        },
+        {
+          "time": "2021-06-23T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14323.6,
+          "stop": 14250.680728,
+          "sl_dist": 72.919272,
+          "bias_confidence": 0.9,
+          "r": -1.027
+        },
+        {
+          "time": "2021-06-25T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14401.6,
+          "stop": 14368.883872,
+          "sl_dist": 32.716128,
+          "bias_confidence": 0.9,
+          "r": -1.061
+        },
+        {
+          "time": "2021-06-30T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14598.4,
+          "stop": 14578.156268,
+          "sl_dist": 20.243732,
+          "bias_confidence": 0.9,
+          "r": -1.099
+        },
+        {
+          "time": "2021-07-05T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14713.0,
+          "stop": 14685.610121,
+          "sl_dist": 27.389879,
+          "bias_confidence": 0.55,
+          "r": -0.168
+        },
+        {
+          "time": "2021-07-12T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14835.2,
+          "stop": 14802.158647,
+          "sl_dist": 33.041353,
+          "bias_confidence": 0.55,
+          "r": -1.061
+        },
+        {
+          "time": "2021-07-13T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14915.4,
+          "stop": 14860.194981,
+          "sl_dist": 55.205019,
+          "bias_confidence": 0.9,
+          "r": -1.036
+        },
+        {
+          "time": "2021-07-26T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15117.2,
+          "stop": 15082.54967,
+          "sl_dist": 34.65033,
+          "bias_confidence": 0.9,
+          "r": -1.058
+        },
+        {
+          "time": "2021-08-10T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15137.4,
+          "stop": 15120.506803,
+          "sl_dist": 16.893197,
+          "bias_confidence": 0.9,
+          "r": -1.118
+        },
+        {
+          "time": "2021-08-27T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15404.2,
+          "stop": 15277.364102,
+          "sl_dist": 126.835898,
+          "bias_confidence": 0.9,
+          "r": 1.168
+        },
+        {
+          "time": "2021-09-01T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15612.8,
+          "stop": 15576.029858,
+          "sl_dist": 36.770142,
+          "bias_confidence": 0.9,
+          "r": 0.012
+        },
+        {
+          "time": "2021-09-08T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15687.4,
+          "stop": 15653.758759,
+          "sl_dist": 33.641241,
+          "bias_confidence": 0.9,
+          "r": -1.059
+        },
+        {
+          "time": "2021-11-02T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15907.6,
+          "stop": 15857.863842,
+          "sl_dist": 49.736158,
+          "bias_confidence": 0.9,
+          "r": 0.48
+        },
+        {
+          "time": "2021-11-05T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16360.4,
+          "stop": 16305.911446,
+          "sl_dist": 54.488554,
+          "bias_confidence": 0.9,
+          "r": 0.325
+        },
+        {
+          "time": "2021-11-18T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16457.8,
+          "stop": 16297.121777,
+          "sl_dist": 160.678223,
+          "bias_confidence": 0.9,
+          "r": 0.941
+        },
+        {
+          "time": "2021-11-19T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16570.4,
+          "stop": 16503.716227,
+          "sl_dist": 66.683773,
+          "bias_confidence": 0.9,
+          "r": -0.298
+        },
+        {
+          "time": "2021-11-22T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16618.2,
+          "stop": 16563.176515,
+          "sl_dist": 55.023485,
+          "bias_confidence": 0.9,
+          "r": 1.752
+        },
+        {
+          "time": "2023-12-19T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16748.8,
+          "stop": 16728.266261,
+          "sl_dist": 20.533739,
+          "bias_confidence": 0.9,
+          "r": 2.019
+        },
+        {
+          "time": "2023-12-26T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16873.2,
+          "stop": 16810.776881,
+          "sl_dist": 62.423119,
+          "bias_confidence": 0.55,
+          "r": 0.272
+        },
+        {
+          "time": "2023-12-27T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16922.4,
+          "stop": 16901.950324,
+          "sl_dist": 20.449676,
+          "bias_confidence": 0.9,
+          "r": -0.56
+        },
+        {
+          "time": "2024-01-30T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17609.0,
+          "stop": 17548.873016,
+          "sl_dist": 60.126984,
+          "bias_confidence": 0.9,
+          "r": -1.033
+        },
+        {
+          "time": "2024-02-06T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17637.4,
+          "stop": 17601.2726,
+          "sl_dist": 36.1274,
+          "bias_confidence": 0.9,
+          "r": 0.301
+        },
+        {
+          "time": "2024-02-08T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17771.4,
+          "stop": 17706.321427,
+          "sl_dist": 65.078573,
+          "bias_confidence": 0.9,
+          "r": -0.333
+        },
+        {
+          "time": "2024-02-09T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17804.7,
+          "stop": 17764.751289,
+          "sl_dist": 39.948711,
+          "bias_confidence": 0.9,
+          "r": -0.049
+        },
+        {
+          "time": "2024-02-15T18:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17845.8,
+          "stop": 17739.831731,
+          "sl_dist": 105.968269,
+          "bias_confidence": 0.55,
+          "r": 0.059
+        },
+        {
+          "time": "2024-02-16T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17888.4,
+          "stop": 17847.692628,
+          "sl_dist": 40.707372,
+          "bias_confidence": 0.55,
+          "r": 0.71
+        },
+        {
+          "time": "2024-02-28T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17976.6,
+          "stop": 17945.15569,
+          "sl_dist": 31.44431,
+          "bias_confidence": 0.55,
+          "r": -1.064
+        },
+        {
+          "time": "2024-03-14T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18152.1,
+          "stop": 18116.374921,
+          "sl_dist": 35.725079,
+          "bias_confidence": 0.55,
+          "r": 0.313
+        },
+        {
+          "time": "2024-04-01T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18396.2,
+          "stop": 18360.964229,
+          "sl_dist": 35.235771,
+          "bias_confidence": 0.9,
+          "r": -1.057
+        },
+        {
+          "time": "2024-05-20T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18671.0,
+          "stop": 18549.46789,
+          "sl_dist": 121.53211,
+          "bias_confidence": 0.9,
+          "r": -0.268
+        },
+        {
+          "time": "2024-05-22T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18747.8,
+          "stop": 18672.97502,
+          "sl_dist": 74.82498,
+          "bias_confidence": 0.9,
+          "r": -1.027
+        },
+        {
+          "time": "2024-05-27T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18815.5,
+          "stop": 18794.028957,
+          "sl_dist": 21.471043,
+          "bias_confidence": 0.9,
+          "r": 0.178
+        },
+        {
+          "time": "2024-06-11T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19069.7,
+          "stop": 19043.695746,
+          "sl_dist": 26.004254,
+          "bias_confidence": 0.9,
+          "r": -0.365
+        },
+        {
+          "time": "2024-06-12T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19586.2,
+          "stop": 19398.727748,
+          "sl_dist": 187.472252,
+          "bias_confidence": 0.9,
+          "r": 1.884
+        },
+        {
+          "time": "2024-06-13T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19610.5,
+          "stop": 19576.051559,
+          "sl_dist": 34.448441,
+          "bias_confidence": 0.9,
+          "r": 0.623
+        },
+        {
+          "time": "2024-06-27T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19833.8,
+          "stop": 19766.948953,
+          "sl_dist": 66.851047,
+          "bias_confidence": 0.9,
+          "r": 0.843
+        },
+        {
+          "time": "2024-07-05T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20310.6,
+          "stop": 20172.550757,
+          "sl_dist": 138.049243,
+          "bias_confidence": 0.9,
+          "r": 0.925
+        },
+        {
+          "time": "2024-10-10T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20295.6,
+          "stop": 20248.141121,
+          "sl_dist": 47.458879,
+          "bias_confidence": 0.9,
+          "r": -1.042
+        },
+        {
+          "time": "2024-10-20T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20380.6,
+          "stop": 20309.90069,
+          "sl_dist": 70.69931,
+          "bias_confidence": 0.55,
+          "r": -1.028
+        },
+        {
+          "time": "2024-10-21T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20393.9,
+          "stop": 20304.628186,
+          "sl_dist": 89.271814,
+          "bias_confidence": 0.55,
+          "r": -1.022
+        },
+        {
+          "time": "2024-10-22T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20366.4,
+          "stop": 20220.704756,
+          "sl_dist": 145.695244,
+          "bias_confidence": 0.9,
+          "r": -0.253
+        },
+        {
+          "time": "2024-11-11T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 21197.3,
+          "stop": 21166.124158,
+          "sl_dist": 31.175842,
+          "bias_confidence": 0.9,
+          "r": 0.091
+        },
+        {
+          "time": "2024-12-13T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 21704.2,
+          "stop": 21668.972832,
+          "sl_dist": 35.227168,
+          "bias_confidence": 0.55,
+          "r": 2.367
+        },
+        {
+          "time": "2024-12-16T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 21800.0,
+          "stop": 21754.243838,
+          "sl_dist": 45.756162,
+          "bias_confidence": 0.9,
+          "r": 6.286
+        },
+        {
+          "time": "2024-12-17T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22071.6,
+          "stop": 22002.959098,
+          "sl_dist": 68.640902,
+          "bias_confidence": 0.9,
+          "r": -1.029
+        },
+        {
+          "time": "2025-02-18T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22239.9,
+          "stop": 22189.220456,
+          "sl_dist": 50.679544,
+          "bias_confidence": 0.9,
+          "r": -1.039
+        },
+        {
+          "time": "2025-06-25T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22235.0,
+          "stop": 22191.63012,
+          "sl_dist": 43.36988,
+          "bias_confidence": 0.9,
+          "r": 1.79
+        },
+        {
+          "time": "2025-06-30T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22705.0,
+          "stop": 22587.462739,
+          "sl_dist": 117.537261,
+          "bias_confidence": 0.9,
+          "r": -1.017
+        },
+        {
+          "time": "2025-07-01T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22730.8,
+          "stop": 22690.154666,
+          "sl_dist": 40.645334,
+          "bias_confidence": 0.9,
+          "r": -1.049
+        },
+        {
+          "time": "2025-07-09T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22887.9,
+          "stop": 22804.488472,
+          "sl_dist": 83.411528,
+          "bias_confidence": 0.9,
+          "r": -1.024
+        },
+        {
+          "time": "2025-07-17T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22941.4,
+          "stop": 22859.655072,
+          "sl_dist": 81.744928,
+          "bias_confidence": 0.9,
+          "r": -0.242
+        },
+        {
+          "time": "2025-07-17T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23000.0,
+          "stop": 22916.039235,
+          "sl_dist": 83.960765,
+          "bias_confidence": 0.9,
+          "r": 1.065
+        },
+        {
+          "time": "2025-07-27T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23391.2,
+          "stop": 23272.40318,
+          "sl_dist": 118.79682,
+          "bias_confidence": 0.9,
+          "r": -0.433
+        },
+        {
+          "time": "2025-08-27T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23574.1,
+          "stop": 23426.413326,
+          "sl_dist": 147.686674,
+          "bias_confidence": 0.55,
+          "r": -1.014
+        },
+        {
+          "time": "2025-09-15T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24111.6,
+          "stop": 24065.071456,
+          "sl_dist": 46.528544,
+          "bias_confidence": 0.9,
+          "r": -0.441
+        },
+        {
+          "time": "2025-09-17T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24303.0,
+          "stop": 24249.580969,
+          "sl_dist": 53.419031,
+          "bias_confidence": 0.9,
+          "r": -1.037
+        },
+        {
+          "time": "2025-10-09T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25190.8,
+          "stop": 25134.74265,
+          "sl_dist": 56.05735,
+          "bias_confidence": 0.9,
+          "r": -1.036
+        },
+        {
+          "time": "2025-10-21T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25176.2,
+          "stop": 25111.34722,
+          "sl_dist": 64.85278,
+          "bias_confidence": 0.9,
+          "r": -1.031
+        },
+        {
+          "time": "2025-10-30T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26245.8,
+          "stop": 26130.455981,
+          "sl_dist": 115.344019,
+          "bias_confidence": 0.9,
+          "r": -1.017
+        },
+        {
+          "time": "2026-04-16T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26400.7,
+          "stop": 26124.148375,
+          "sl_dist": 276.551625,
+          "bias_confidence": 0.9,
+          "r": 0.254
+        },
+        {
+          "time": "2026-04-17T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26385.6,
+          "stop": 26295.137963,
+          "sl_dist": 90.462037,
+          "bias_confidence": 0.55,
+          "r": 1.483
+        },
+        {
+          "time": "2026-04-24T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26965.6,
+          "stop": 26875.713608,
+          "sl_dist": 89.886392,
+          "bias_confidence": 0.9,
+          "r": 2.074
+        },
+        {
+          "time": "2026-04-27T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 27338.6,
+          "stop": 27206.083568,
+          "sl_dist": 132.516432,
+          "bias_confidence": 0.9,
+          "r": -0.368
+        }
+      ]
+    },
+    {
+      "pair": "us30",
+      "n_signals": 112,
+      "n_trades": 112,
+      "win_rate": 38.392857142857146,
+      "total_r": 3.076000000000006,
+      "avg_r": 0.027464285714285767,
+      "median_r": -0.2555,
+      "profit_factor": 1.0645134228187918,
+      "trades": [
+        {
+          "time": "2018-03-19T08:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 24796.3,
+          "stop": 24921.008022,
+          "sl_dist": 124.708022,
+          "bias_confidence": 0.9,
+          "r": 1.762
+        },
+        {
+          "time": "2018-03-22T02:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 24705.8,
+          "stop": 24799.142929,
+          "sl_dist": 93.342929,
+          "bias_confidence": 0.55,
+          "r": 0.985
+        },
+        {
+          "time": "2018-03-23T15:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 23812.7,
+          "stop": 24110.542329,
+          "sl_dist": 297.842329,
+          "bias_confidence": 0.55,
+          "r": 0.125
+        },
+        {
+          "time": "2018-05-17T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24808.2,
+          "stop": 24641.256886,
+          "sl_dist": 166.943114,
+          "bias_confidence": 0.55,
+          "r": -1.012
+        },
+        {
+          "time": "2018-05-21T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24976.3,
+          "stop": 24902.514925,
+          "sl_dist": 73.785075,
+          "bias_confidence": 0.9,
+          "r": 0.256
+        },
+        {
+          "time": "2018-07-17T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25096.5,
+          "stop": 24946.319782,
+          "sl_dist": 150.180218,
+          "bias_confidence": 0.9,
+          "r": -0.381
+        },
+        {
+          "time": "2018-07-18T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25111.2,
+          "stop": 25076.054406,
+          "sl_dist": 35.145594,
+          "bias_confidence": 0.9,
+          "r": -1.057
+        },
+        {
+          "time": "2018-07-19T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25183.3,
+          "stop": 25134.561925,
+          "sl_dist": 48.738075,
+          "bias_confidence": 0.9,
+          "r": -1.041
+        },
+        {
+          "time": "2018-08-07T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25471.3,
+          "stop": 25444.865455,
+          "sl_dist": 26.434545,
+          "bias_confidence": 0.9,
+          "r": 2.11
+        },
+        {
+          "time": "2018-08-17T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25661.5,
+          "stop": 25489.183184,
+          "sl_dist": 172.316816,
+          "bias_confidence": 0.9,
+          "r": 0.264
+        },
+        {
+          "time": "2018-08-22T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25790.5,
+          "stop": 25719.123386,
+          "sl_dist": 71.376614,
+          "bias_confidence": 0.55,
+          "r": -0.442
+        },
+        {
+          "time": "2018-08-28T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26106.0,
+          "stop": 26053.643746,
+          "sl_dist": 52.356254,
+          "bias_confidence": 0.9,
+          "r": -0.154
+        },
+        {
+          "time": "2018-08-29T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26167.5,
+          "stop": 26039.916302,
+          "sl_dist": 127.583698,
+          "bias_confidence": 0.9,
+          "r": -1.016
+        },
+        {
+          "time": "2018-09-13T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26155.5,
+          "stop": 26098.783353,
+          "sl_dist": 56.716647,
+          "bias_confidence": 0.9,
+          "r": 0.402
+        },
+        {
+          "time": "2018-09-19T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26444.2,
+          "stop": 26408.98958,
+          "sl_dist": 35.21042,
+          "bias_confidence": 0.9,
+          "r": -0.338
+        },
+        {
+          "time": "2018-09-21T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26766.7,
+          "stop": 26678.416695,
+          "sl_dist": 88.283305,
+          "bias_confidence": 0.9,
+          "r": -1.023
+        },
+        {
+          "time": "2018-12-18T03:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 23729.0,
+          "stop": 23827.386237,
+          "sl_dist": 98.386237,
+          "bias_confidence": 0.9,
+          "r": -0.294
+        },
+        {
+          "time": "2018-12-20T02:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 23373.0,
+          "stop": 23482.848622,
+          "sl_dist": 109.848622,
+          "bias_confidence": 0.9,
+          "r": 1.649
+        },
+        {
+          "time": "2019-01-03T20:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 22660.1,
+          "stop": 22914.991422,
+          "sl_dist": 254.891422,
+          "bias_confidence": 0.9,
+          "r": -1.008
+        },
+        {
+          "time": "2019-07-03T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26769.5,
+          "stop": 26731.827101,
+          "sl_dist": 37.672899,
+          "bias_confidence": 0.9,
+          "r": 1.296
+        },
+        {
+          "time": "2019-07-05T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 26986.0,
+          "stop": 26958.666809,
+          "sl_dist": 27.333191,
+          "bias_confidence": 0.9,
+          "r": -1.073
+        },
+        {
+          "time": "2019-07-15T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 27329.5,
+          "stop": 27245.328202,
+          "sl_dist": 84.171798,
+          "bias_confidence": 0.9,
+          "r": -0.323
+        },
+        {
+          "time": "2019-07-16T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 27375.0,
+          "stop": 27305.612342,
+          "sl_dist": 69.387658,
+          "bias_confidence": 0.9,
+          "r": -1.029
+        },
+        {
+          "time": "2019-11-05T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 27459.1,
+          "stop": 27410.301243,
+          "sl_dist": 48.798757,
+          "bias_confidence": 0.9,
+          "r": -0.473
+        },
+        {
+          "time": "2019-11-12T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 27694.0,
+          "stop": 27603.950533,
+          "sl_dist": 90.049467,
+          "bias_confidence": 0.9,
+          "r": -1.022
+        },
+        {
+          "time": "2019-11-15T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 27850.2,
+          "stop": 27792.450783,
+          "sl_dist": 57.749217,
+          "bias_confidence": 0.9,
+          "r": 2.623
+        },
+        {
+          "time": "2019-11-25T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 28043.2,
+          "stop": 27976.195441,
+          "sl_dist": 67.004559,
+          "bias_confidence": 0.9,
+          "r": 0.586
+        },
+        {
+          "time": "2019-12-16T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 28237.0,
+          "stop": 28181.239754,
+          "sl_dist": 55.760246,
+          "bias_confidence": 0.9,
+          "r": 0.793
+        },
+        {
+          "time": "2019-12-17T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 28301.4,
+          "stop": 28242.809245,
+          "sl_dist": 58.590755,
+          "bias_confidence": 0.9,
+          "r": -0.044
+        },
+        {
+          "time": "2019-12-20T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 28432.1,
+          "stop": 28397.19382,
+          "sl_dist": 34.90618,
+          "bias_confidence": 0.9,
+          "r": 2.366
+        },
+        {
+          "time": "2019-12-30T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 28687.1,
+          "stop": 28660.359614,
+          "sl_dist": 26.740386,
+          "bias_confidence": 0.9,
+          "r": -1.075
+        },
+        {
+          "time": "2020-01-14T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 28942.8,
+          "stop": 28778.43544,
+          "sl_dist": 164.36456,
+          "bias_confidence": 0.9,
+          "r": -0.264
+        },
+        {
+          "time": "2020-01-16T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 29118.0,
+          "stop": 29074.989565,
+          "sl_dist": 43.010435,
+          "bias_confidence": 0.9,
+          "r": 0.776
+        },
+        {
+          "time": "2020-01-16T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 29189.1,
+          "stop": 29133.097434,
+          "sl_dist": 56.002566,
+          "bias_confidence": 0.9,
+          "r": 2.894
+        },
+        {
+          "time": "2020-02-06T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 29456.4,
+          "stop": 29357.375364,
+          "sl_dist": 99.024636,
+          "bias_confidence": 0.9,
+          "r": -1.02
+        },
+        {
+          "time": "2020-03-12T18:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 21494.9,
+          "stop": 22964.660751,
+          "sl_dist": 1469.760751,
+          "bias_confidence": 0.9,
+          "r": -0.247
+        },
+        {
+          "time": "2020-03-16T19:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 20141.5,
+          "stop": 21534.767914,
+          "sl_dist": 1393.267914,
+          "bias_confidence": 0.9,
+          "r": -0.129
+        },
+        {
+          "time": "2020-03-18T05:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 20186.9,
+          "stop": 20801.384322,
+          "sl_dist": 614.484322,
+          "bias_confidence": 0.9,
+          "r": -0.364
+        },
+        {
+          "time": "2020-11-09T18:00:00+00:00",
+          "direction": "LONG",
+          "entry": 29696.8,
+          "stop": 29397.323984,
+          "sl_dist": 299.476016,
+          "bias_confidence": 0.9,
+          "r": -1.007
+        },
+        {
+          "time": "2020-11-24T21:00:00+00:00",
+          "direction": "LONG",
+          "entry": 30090.8,
+          "stop": 29984.563544,
+          "sl_dist": 106.236456,
+          "bias_confidence": 0.9,
+          "r": 0.17
+        },
+        {
+          "time": "2020-12-17T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 30215.5,
+          "stop": 30164.757051,
+          "sl_dist": 50.742949,
+          "bias_confidence": 0.55,
+          "r": 1.369
+        },
+        {
+          "time": "2020-12-18T21:00:00+00:00",
+          "direction": "LONG",
+          "entry": 30373.5,
+          "stop": 30008.667686,
+          "sl_dist": 364.832314,
+          "bias_confidence": 0.9,
+          "r": -1.005
+        },
+        {
+          "time": "2020-12-28T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 30497.5,
+          "stop": 30403.010885,
+          "sl_dist": 94.489115,
+          "bias_confidence": 0.9,
+          "r": 0.413
+        },
+        {
+          "time": "2021-01-07T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 30981.5,
+          "stop": 30784.230528,
+          "sl_dist": 197.269472,
+          "bias_confidence": 0.9,
+          "r": 0.458
+        },
+        {
+          "time": "2021-01-07T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 30980.0,
+          "stop": 30846.39163,
+          "sl_dist": 133.60837,
+          "bias_confidence": 0.9,
+          "r": 0.686
+        },
+        {
+          "time": "2021-01-08T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 31155.5,
+          "stop": 31004.564928,
+          "sl_dist": 150.935072,
+          "bias_confidence": 0.9,
+          "r": -0.247
+        },
+        {
+          "time": "2021-01-14T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 31224.6,
+          "stop": 31126.214805,
+          "sl_dist": 98.385195,
+          "bias_confidence": 0.9,
+          "r": -1.02
+        },
+        {
+          "time": "2021-02-09T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 31422.0,
+          "stop": 31234.334103,
+          "sl_dist": 187.665897,
+          "bias_confidence": 0.9,
+          "r": -0.31
+        },
+        {
+          "time": "2021-02-10T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 31472.6,
+          "stop": 31369.776,
+          "sl_dist": 102.824,
+          "bias_confidence": 0.9,
+          "r": -0.234
+        },
+        {
+          "time": "2021-02-12T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 31419.7,
+          "stop": 31368.681549,
+          "sl_dist": 51.018451,
+          "bias_confidence": 0.55,
+          "r": -1.039
+        },
+        {
+          "time": "2021-03-08T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 31500.2,
+          "stop": 31285.571889,
+          "sl_dist": 214.628111,
+          "bias_confidence": 0.55,
+          "r": 1.999
+        },
+        {
+          "time": "2021-03-15T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 32833.7,
+          "stop": 32739.185969,
+          "sl_dist": 94.514031,
+          "bias_confidence": 0.9,
+          "r": -0.009
+        },
+        {
+          "time": "2021-03-16T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 32937.1,
+          "stop": 32867.811364,
+          "sl_dist": 69.288636,
+          "bias_confidence": 0.9,
+          "r": -0.517
+        },
+        {
+          "time": "2021-03-18T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 33135.4,
+          "stop": 33053.16049,
+          "sl_dist": 82.23951,
+          "bias_confidence": 0.9,
+          "r": -1.024
+        },
+        {
+          "time": "2021-03-30T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 33231.5,
+          "stop": 33118.587392,
+          "sl_dist": 112.912608,
+          "bias_confidence": 0.9,
+          "r": -1.018
+        },
+        {
+          "time": "2021-04-05T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 33373.1,
+          "stop": 33309.206435,
+          "sl_dist": 63.893565,
+          "bias_confidence": 0.55,
+          "r": 0.98
+        },
+        {
+          "time": "2021-04-05T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 33573.1,
+          "stop": 33507.888681,
+          "sl_dist": 65.211319,
+          "bias_confidence": 0.9,
+          "r": -1.031
+        },
+        {
+          "time": "2021-04-15T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 33862.2,
+          "stop": 33797.491929,
+          "sl_dist": 64.708071,
+          "bias_confidence": 0.55,
+          "r": 2.471
+        },
+        {
+          "time": "2021-04-23T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 33910.5,
+          "stop": 33791.678565,
+          "sl_dist": 118.821435,
+          "bias_confidence": 0.55,
+          "r": -1.017
+        },
+        {
+          "time": "2021-04-26T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34072.7,
+          "stop": 33988.711146,
+          "sl_dist": 83.988854,
+          "bias_confidence": 0.9,
+          "r": 0.004
+        },
+        {
+          "time": "2021-05-06T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34251.3,
+          "stop": 34185.816946,
+          "sl_dist": 65.483054,
+          "bias_confidence": 0.9,
+          "r": -0.385
+        },
+        {
+          "time": "2021-05-25T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34452.8,
+          "stop": 34398.427193,
+          "sl_dist": 54.372807,
+          "bias_confidence": 0.9,
+          "r": 0.484
+        },
+        {
+          "time": "2021-05-27T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34631.2,
+          "stop": 34433.614831,
+          "sl_dist": 197.585169,
+          "bias_confidence": 0.9,
+          "r": 0.124
+        },
+        {
+          "time": "2021-06-08T18:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34656.6,
+          "stop": 34598.221808,
+          "sl_dist": 58.378192,
+          "bias_confidence": 0.9,
+          "r": -1.034
+        },
+        {
+          "time": "2021-07-02T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34725.5,
+          "stop": 34618.372321,
+          "sl_dist": 107.127679,
+          "bias_confidence": 0.9,
+          "r": 0.149
+        },
+        {
+          "time": "2021-07-12T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 34964.8,
+          "stop": 34664.263,
+          "sl_dist": 300.537,
+          "bias_confidence": 0.9,
+          "r": -1.007
+        },
+        {
+          "time": "2021-07-13T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 35011.9,
+          "stop": 34931.341199,
+          "sl_dist": 80.558801,
+          "bias_confidence": 0.9,
+          "r": -1.025
+        },
+        {
+          "time": "2021-08-06T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 35038.8,
+          "stop": 34994.312769,
+          "sl_dist": 44.487231,
+          "bias_confidence": 0.55,
+          "r": 0.618
+        },
+        {
+          "time": "2021-08-10T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 35168.4,
+          "stop": 35068.034057,
+          "sl_dist": 100.365943,
+          "bias_confidence": 0.9,
+          "r": 2.547
+        },
+        {
+          "time": "2021-08-13T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 35532.1,
+          "stop": 35485.672645,
+          "sl_dist": 46.427355,
+          "bias_confidence": 0.9,
+          "r": 0.79
+        },
+        {
+          "time": "2021-10-26T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 35828.8,
+          "stop": 35747.955337,
+          "sl_dist": 80.844663,
+          "bias_confidence": 0.9,
+          "r": -0.109
+        },
+        {
+          "time": "2021-11-01T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 35968.5,
+          "stop": 35850.147112,
+          "sl_dist": 118.352888,
+          "bias_confidence": 0.9,
+          "r": -1.017
+        },
+        {
+          "time": "2021-11-15T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 36182.9,
+          "stop": 36061.805906,
+          "sl_dist": 121.094094,
+          "bias_confidence": 0.9,
+          "r": -0.323
+        },
+        {
+          "time": "2021-12-29T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 36540.8,
+          "stop": 36474.627325,
+          "sl_dist": 66.172675,
+          "bias_confidence": 0.9,
+          "r": -0.033
+        },
+        {
+          "time": "2022-01-03T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 36561.9,
+          "stop": 36428.237497,
+          "sl_dist": 133.662503,
+          "bias_confidence": 0.9,
+          "r": -1.015
+        },
+        {
+          "time": "2023-12-14T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 37292.6,
+          "stop": 37048.635194,
+          "sl_dist": 243.964806,
+          "bias_confidence": 0.9,
+          "r": -0.451
+        },
+        {
+          "time": "2023-12-19T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 37371.0,
+          "stop": 37344.006348,
+          "sl_dist": 26.993652,
+          "bias_confidence": 0.9,
+          "r": -0.074
+        },
+        {
+          "time": "2023-12-20T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 37602.6,
+          "stop": 37503.876379,
+          "sl_dist": 98.723621,
+          "bias_confidence": 0.9,
+          "r": 0.013
+        },
+        {
+          "time": "2023-12-29T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 37806.5,
+          "stop": 37765.744832,
+          "sl_dist": 40.755168,
+          "bias_confidence": 0.9,
+          "r": -0.534
+        },
+        {
+          "time": "2024-01-29T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 38331.6,
+          "stop": 38071.117758,
+          "sl_dist": 260.482242,
+          "bias_confidence": 0.9,
+          "r": -0.106
+        },
+        {
+          "time": "2024-01-31T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 38500.0,
+          "stop": 38422.157152,
+          "sl_dist": 77.842848,
+          "bias_confidence": 0.9,
+          "r": -0.403
+        },
+        {
+          "time": "2024-02-05T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 38654.5,
+          "stop": 38487.529891,
+          "sl_dist": 166.970109,
+          "bias_confidence": 0.9,
+          "r": -1.012
+        },
+        {
+          "time": "2024-03-01T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 39012.0,
+          "stop": 38935.547991,
+          "sl_dist": 76.452009,
+          "bias_confidence": 0.9,
+          "r": -1.026
+        },
+        {
+          "time": "2024-03-13T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 39035.9,
+          "stop": 38979.387362,
+          "sl_dist": 56.512638,
+          "bias_confidence": 0.55,
+          "r": 2.622
+        },
+        {
+          "time": "2024-03-26T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 39406.0,
+          "stop": 39372.108035,
+          "sl_dist": 33.891965,
+          "bias_confidence": 0.9,
+          "r": 0.829
+        },
+        {
+          "time": "2024-03-27T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 39513.0,
+          "stop": 39453.043245,
+          "sl_dist": 59.956755,
+          "bias_confidence": 0.9,
+          "r": 1.195
+        },
+        {
+          "time": "2024-04-01T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 40000.2,
+          "stop": 39946.535746,
+          "sl_dist": 53.664254,
+          "bias_confidence": 0.9,
+          "r": -1.037
+        },
+        {
+          "time": "2024-05-20T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 40032.0,
+          "stop": 39991.203524,
+          "sl_dist": 40.796476,
+          "bias_confidence": 0.9,
+          "r": -1.049
+        },
+        {
+          "time": "2024-07-17T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 41119.4,
+          "stop": 40827.673442,
+          "sl_dist": 291.726558,
+          "bias_confidence": 0.9,
+          "r": 0.039
+        },
+        {
+          "time": "2024-07-18T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 41355.6,
+          "stop": 41055.355042,
+          "sl_dist": 300.244958,
+          "bias_confidence": 0.9,
+          "r": -1.007
+        },
+        {
+          "time": "2024-09-02T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 41509.0,
+          "stop": 41392.146256,
+          "sl_dist": 116.853744,
+          "bias_confidence": 0.9,
+          "r": -1.017
+        },
+        {
+          "time": "2024-09-20T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 42121.0,
+          "stop": 42034.965014,
+          "sl_dist": 86.034986,
+          "bias_confidence": 0.55,
+          "r": -1.023
+        },
+        {
+          "time": "2024-10-11T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 42521.2,
+          "stop": 42414.231443,
+          "sl_dist": 106.968557,
+          "bias_confidence": 0.9,
+          "r": 2.306
+        },
+        {
+          "time": "2024-10-14T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 42955.2,
+          "stop": 42732.334948,
+          "sl_dist": 222.865052,
+          "bias_confidence": 0.9,
+          "r": 0.2
+        },
+        {
+          "time": "2024-11-08T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 43838.3,
+          "stop": 43770.386697,
+          "sl_dist": 67.913303,
+          "bias_confidence": 0.9,
+          "r": -1.029
+        },
+        {
+          "time": "2024-11-11T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 44121.3,
+          "stop": 44036.760195,
+          "sl_dist": 84.539805,
+          "bias_confidence": 0.9,
+          "r": 3.745
+        },
+        {
+          "time": "2024-11-26T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 44749.9,
+          "stop": 44658.385172,
+          "sl_dist": 91.514828,
+          "bias_confidence": 0.9,
+          "r": -0.027
+        },
+        {
+          "time": "2024-12-04T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 44841.9,
+          "stop": 44798.568958,
+          "sl_dist": 43.331042,
+          "bias_confidence": 0.55,
+          "r": 1.539
+        },
+        {
+          "time": "2024-12-05T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 45045.6,
+          "stop": 44987.942877,
+          "sl_dist": 57.657123,
+          "bias_confidence": 0.55,
+          "r": -0.506
+        },
+        {
+          "time": "2025-09-09T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 45722.0,
+          "stop": 45403.60604,
+          "sl_dist": 318.39396,
+          "bias_confidence": 0.9,
+          "r": -1.006
+        },
+        {
+          "time": "2025-09-10T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 45659.2,
+          "stop": 45581.669708,
+          "sl_dist": 77.530292,
+          "bias_confidence": 0.9,
+          "r": -0.516
+        },
+        {
+          "time": "2025-09-30T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 46419.0,
+          "stop": 46203.853414,
+          "sl_dist": 215.146586,
+          "bias_confidence": 0.9,
+          "r": -1.009
+        },
+        {
+          "time": "2025-10-02T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 46530.5,
+          "stop": 46438.591533,
+          "sl_dist": 91.908467,
+          "bias_confidence": 0.55,
+          "r": -1.022
+        },
+        {
+          "time": "2025-10-03T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 46604.6,
+          "stop": 46547.703636,
+          "sl_dist": 56.896364,
+          "bias_confidence": 0.9,
+          "r": 1.171
+        },
+        {
+          "time": "2025-10-08T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 46722.8,
+          "stop": 46625.983459,
+          "sl_dist": 96.816541,
+          "bias_confidence": 0.55,
+          "r": -0.458
+        },
+        {
+          "time": "2025-10-21T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 46743.5,
+          "stop": 46641.034453,
+          "sl_dist": 102.465547,
+          "bias_confidence": 0.55,
+          "r": 3.237
+        },
+        {
+          "time": "2025-10-24T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 46801.0,
+          "stop": 46724.090851,
+          "sl_dist": 76.909149,
+          "bias_confidence": 0.55,
+          "r": 0.079
+        },
+        {
+          "time": "2025-10-28T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 47657.1,
+          "stop": 47542.678752,
+          "sl_dist": 114.421248,
+          "bias_confidence": 0.9,
+          "r": 1.632
+        },
+        {
+          "time": "2025-12-05T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 48022.0,
+          "stop": 47740.721338,
+          "sl_dist": 281.278662,
+          "bias_confidence": 0.9,
+          "r": -1.007
+        },
+        {
+          "time": "2025-12-26T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 48765.8,
+          "stop": 48654.534218,
+          "sl_dist": 111.265782,
+          "bias_confidence": 0.9,
+          "r": -1.018
+        },
+        {
+          "time": "2026-01-06T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 49046.5,
+          "stop": 48971.650419,
+          "sl_dist": 74.849581,
+          "bias_confidence": 0.9,
+          "r": -1.027
+        },
+        {
+          "time": "2026-02-09T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 50186.0,
+          "stop": 49810.02814,
+          "sl_dist": 375.97186,
+          "bias_confidence": 0.55,
+          "r": -0.061
+        }
+      ]
+    },
+    {
+      "pair": "spx500",
+      "n_signals": 155,
+      "n_trades": 155,
+      "win_rate": 32.25806451612903,
+      "total_r": -35.396,
+      "avg_r": -0.22836129032258065,
+      "median_r": -0.495,
+      "profit_factor": 0.6125868768127839,
+      "trades": [
+        {
+          "time": "2018-03-23T09:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2622.6,
+          "stop": 2641.99553,
+          "sl_dist": 19.39553,
+          "bias_confidence": 0.9,
+          "r": -1.103
+        },
+        {
+          "time": "2018-05-14T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2735.6,
+          "stop": 2728.950309,
+          "sl_dist": 6.649691,
+          "bias_confidence": 0.9,
+          "r": -1.301
+        },
+        {
+          "time": "2018-06-11T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2781.2,
+          "stop": 2774.789128,
+          "sl_dist": 6.410872,
+          "bias_confidence": 0.9,
+          "r": 0.123
+        },
+        {
+          "time": "2018-07-15T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2805.4,
+          "stop": 2797.742092,
+          "sl_dist": 7.657908,
+          "bias_confidence": 0.9,
+          "r": -1.261
+        },
+        {
+          "time": "2018-07-18T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2814.2,
+          "stop": 2803.335357,
+          "sl_dist": 10.864643,
+          "bias_confidence": 0.9,
+          "r": -1.184
+        },
+        {
+          "time": "2018-07-19T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2814.6,
+          "stop": 2810.678875,
+          "sl_dist": 3.921125,
+          "bias_confidence": 0.9,
+          "r": -1.51
+        },
+        {
+          "time": "2018-07-24T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2814.2,
+          "stop": 2807.979719,
+          "sl_dist": 6.220281,
+          "bias_confidence": 0.9,
+          "r": 0.993
+        },
+        {
+          "time": "2018-08-06T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2840.4,
+          "stop": 2832.005167,
+          "sl_dist": 8.394833,
+          "bias_confidence": 0.9,
+          "r": 1.263
+        },
+        {
+          "time": "2018-08-06T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2847.4,
+          "stop": 2845.000001,
+          "sl_dist": 2.399999,
+          "bias_confidence": 0.9,
+          "r": 1.667
+        },
+        {
+          "time": "2018-08-20T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2858.0,
+          "stop": 2849.821199,
+          "sl_dist": 8.178801,
+          "bias_confidence": 0.9,
+          "r": 0.589
+        },
+        {
+          "time": "2018-08-28T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2901.0,
+          "stop": 2896.236989,
+          "sl_dist": 4.763011,
+          "bias_confidence": 0.9,
+          "r": -0.496
+        },
+        {
+          "time": "2018-08-29T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2908.2,
+          "stop": 2896.455748,
+          "sl_dist": 11.744252,
+          "bias_confidence": 0.9,
+          "r": -0.455
+        },
+        {
+          "time": "2018-09-03T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2909.2,
+          "stop": 2905.818045,
+          "sl_dist": 3.381955,
+          "bias_confidence": 0.9,
+          "r": -1.591
+        },
+        {
+          "time": "2018-09-19T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2912.8,
+          "stop": 2907.164814,
+          "sl_dist": 5.635186,
+          "bias_confidence": 0.55,
+          "r": 3.543
+        },
+        {
+          "time": "2018-09-21T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2937.8,
+          "stop": 2931.886628,
+          "sl_dist": 5.913372,
+          "bias_confidence": 0.9,
+          "r": -0.628
+        },
+        {
+          "time": "2018-12-10T14:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2613.2,
+          "stop": 2647.130857,
+          "sl_dist": 33.930857,
+          "bias_confidence": 0.9,
+          "r": -0.157
+        },
+        {
+          "time": "2018-12-18T03:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2557.2,
+          "stop": 2568.496664,
+          "sl_dist": 11.296664,
+          "bias_confidence": 0.9,
+          "r": -0.487
+        },
+        {
+          "time": "2018-12-19T19:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2517.2,
+          "stop": 2591.174757,
+          "sl_dist": 73.974757,
+          "bias_confidence": 0.9,
+          "r": 1.698
+        },
+        {
+          "time": "2018-12-20T02:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2507.8,
+          "stop": 2519.17519,
+          "sl_dist": 11.37519,
+          "bias_confidence": 0.9,
+          "r": 1.637
+        },
+        {
+          "time": "2018-12-24T11:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2419.6,
+          "stop": 2435.771982,
+          "sl_dist": 16.171982,
+          "bias_confidence": 0.9,
+          "r": 0.608
+        },
+        {
+          "time": "2019-04-29T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2941.6,
+          "stop": 2935.29306,
+          "sl_dist": 6.30694,
+          "bias_confidence": 0.9,
+          "r": -0.81
+        },
+        {
+          "time": "2019-07-01T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2963.6,
+          "stop": 2949.849151,
+          "sl_dist": 13.750849,
+          "bias_confidence": 0.9,
+          "r": 1.487
+        },
+        {
+          "time": "2019-07-05T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2998.8,
+          "stop": 2995.645248,
+          "sl_dist": 3.154752,
+          "bias_confidence": 0.9,
+          "r": -1.634
+        },
+        {
+          "time": "2019-07-11T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3000.0,
+          "stop": 2988.744214,
+          "sl_dist": 11.255786,
+          "bias_confidence": 0.9,
+          "r": -1.178
+        },
+        {
+          "time": "2019-07-15T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3014.2,
+          "stop": 3006.108764,
+          "sl_dist": 8.091236,
+          "bias_confidence": 0.9,
+          "r": -0.555
+        },
+        {
+          "time": "2019-07-15T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3018.2,
+          "stop": 3015.231772,
+          "sl_dist": 2.968228,
+          "bias_confidence": 0.9,
+          "r": -1.674
+        },
+        {
+          "time": "2019-09-13T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3015.2,
+          "stop": 3009.809818,
+          "sl_dist": 5.390182,
+          "bias_confidence": 0.9,
+          "r": -0.332
+        },
+        {
+          "time": "2019-10-27T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3022.6,
+          "stop": 3016.021884,
+          "sl_dist": 6.578116,
+          "bias_confidence": 0.9,
+          "r": 1.493
+        },
+        {
+          "time": "2019-11-01T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3046.6,
+          "stop": 3035.460772,
+          "sl_dist": 11.139228,
+          "bias_confidence": 0.9,
+          "r": 2.16
+        },
+        {
+          "time": "2019-11-05T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3082.6,
+          "stop": 3076.357931,
+          "sl_dist": 6.242069,
+          "bias_confidence": 0.55,
+          "r": -1.32
+        },
+        {
+          "time": "2019-11-07T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3091.2,
+          "stop": 3082.326063,
+          "sl_dist": 8.873937,
+          "bias_confidence": 0.9,
+          "r": -1.225
+        },
+        {
+          "time": "2019-11-14T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3096.4,
+          "stop": 3089.175859,
+          "sl_dist": 7.224141,
+          "bias_confidence": 0.9,
+          "r": -1.277
+        },
+        {
+          "time": "2019-11-18T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3117.6,
+          "stop": 3112.34626,
+          "sl_dist": 5.25374,
+          "bias_confidence": 0.9,
+          "r": 0.332
+        },
+        {
+          "time": "2019-11-27T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3146.8,
+          "stop": 3140.868473,
+          "sl_dist": 5.931527,
+          "bias_confidence": 0.9,
+          "r": -0.123
+        },
+        {
+          "time": "2019-12-18T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3196.2,
+          "stop": 3191.638663,
+          "sl_dist": 4.561337,
+          "bias_confidence": 0.9,
+          "r": -0.781
+        },
+        {
+          "time": "2019-12-20T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3211.2,
+          "stop": 3207.793276,
+          "sl_dist": 3.406724,
+          "bias_confidence": 0.9,
+          "r": 2.229
+        },
+        {
+          "time": "2019-12-30T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3243.8,
+          "stop": 3240.464738,
+          "sl_dist": 3.335262,
+          "bias_confidence": 0.9,
+          "r": -1.6
+        },
+        {
+          "time": "2020-01-02T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3248.6,
+          "stop": 3238.808594,
+          "sl_dist": 9.791406,
+          "bias_confidence": 0.9,
+          "r": 0.307
+        },
+        {
+          "time": "2020-01-13T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3283.4,
+          "stop": 3268.813306,
+          "sl_dist": 14.586694,
+          "bias_confidence": 0.9,
+          "r": -0.15
+        },
+        {
+          "time": "2020-01-14T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3292.4,
+          "stop": 3275.611428,
+          "sl_dist": 16.788572,
+          "bias_confidence": 0.9,
+          "r": 1.228
+        },
+        {
+          "time": "2020-01-16T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3299.6,
+          "stop": 3295.194319,
+          "sl_dist": 4.405681,
+          "bias_confidence": 0.9,
+          "r": 0.725
+        },
+        {
+          "time": "2020-02-06T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3352.0,
+          "stop": 3341.597276,
+          "sl_dist": 10.402724,
+          "bias_confidence": 0.9,
+          "r": -1.192
+        },
+        {
+          "time": "2020-02-12T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3378.2,
+          "stop": 3370.830746,
+          "sl_dist": 7.369254,
+          "bias_confidence": 0.9,
+          "r": -0.566
+        },
+        {
+          "time": "2020-02-16T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3389.3,
+          "stop": 3364.68583,
+          "sl_dist": 24.61417,
+          "bias_confidence": 0.55,
+          "r": -1.081
+        },
+        {
+          "time": "2020-02-17T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3389.6,
+          "stop": 3386.215575,
+          "sl_dist": 3.384425,
+          "bias_confidence": 0.9,
+          "r": -1.591
+        },
+        {
+          "time": "2020-03-16T19:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 2388.2,
+          "stop": 2529.64121,
+          "sl_dist": 141.44121,
+          "bias_confidence": 0.9,
+          "r": -1.014
+        },
+        {
+          "time": "2020-09-02T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3557.4,
+          "stop": 3533.639618,
+          "sl_dist": 23.760382,
+          "bias_confidence": 0.9,
+          "r": 0.237
+        },
+        {
+          "time": "2020-11-13T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3568.6,
+          "stop": 3550.160459,
+          "sl_dist": 18.439541,
+          "bias_confidence": 0.55,
+          "r": 2.872
+        },
+        {
+          "time": "2020-12-02T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3665.0,
+          "stop": 3642.63204,
+          "sl_dist": 22.36796,
+          "bias_confidence": 0.55,
+          "r": -0.365
+        },
+        {
+          "time": "2020-12-03T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3671.6,
+          "stop": 3664.228094,
+          "sl_dist": 7.371906,
+          "bias_confidence": 0.9,
+          "r": -0.702
+        },
+        {
+          "time": "2020-12-04T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3700.2,
+          "stop": 3685.441053,
+          "sl_dist": 14.758947,
+          "bias_confidence": 0.9,
+          "r": -1.136
+        },
+        {
+          "time": "2020-12-07T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3693.8,
+          "stop": 3685.633952,
+          "sl_dist": 8.166048,
+          "bias_confidence": 0.9,
+          "r": -1.245
+        },
+        {
+          "time": "2020-12-17T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3708.1,
+          "stop": 3701.560098,
+          "sl_dist": 6.539902,
+          "bias_confidence": 0.9,
+          "r": 1.447
+        },
+        {
+          "time": "2020-12-31T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3745.2,
+          "stop": 3727.829209,
+          "sl_dist": 17.370791,
+          "bias_confidence": 0.55,
+          "r": 1.13
+        },
+        {
+          "time": "2021-01-07T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3764.2,
+          "stop": 3746.910875,
+          "sl_dist": 17.289125,
+          "bias_confidence": 0.55,
+          "r": -0.051
+        },
+        {
+          "time": "2021-01-14T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3822.6,
+          "stop": 3814.307433,
+          "sl_dist": 8.292567,
+          "bias_confidence": 0.9,
+          "r": -1.241
+        },
+        {
+          "time": "2021-02-03T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3844.3,
+          "stop": 3832.636403,
+          "sl_dist": 11.663597,
+          "bias_confidence": 0.9,
+          "r": -0.563
+        },
+        {
+          "time": "2021-02-12T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3912.6,
+          "stop": 3906.523409,
+          "sl_dist": 6.076591,
+          "bias_confidence": 0.55,
+          "r": -1.329
+        },
+        {
+          "time": "2021-03-11T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3932.4,
+          "stop": 3916.338602,
+          "sl_dist": 16.061398,
+          "bias_confidence": 0.9,
+          "r": 0.569
+        },
+        {
+          "time": "2021-03-15T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3951.7,
+          "stop": 3931.392538,
+          "sl_dist": 20.307462,
+          "bias_confidence": 0.9,
+          "r": -1.098
+        },
+        {
+          "time": "2021-03-18T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3984.5,
+          "stop": 3973.657928,
+          "sl_dist": 10.842072,
+          "bias_confidence": 0.9,
+          "r": -1.184
+        },
+        {
+          "time": "2021-03-31T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 3982.5,
+          "stop": 3975.757947,
+          "sl_dist": 6.742053,
+          "bias_confidence": 0.9,
+          "r": 0.706
+        },
+        {
+          "time": "2021-04-07T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4085.9,
+          "stop": 4070.517372,
+          "sl_dist": 15.382628,
+          "bias_confidence": 0.9,
+          "r": -0.051
+        },
+        {
+          "time": "2021-04-14T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4144.2,
+          "stop": 4138.94209,
+          "sl_dist": 5.25791,
+          "bias_confidence": 0.9,
+          "r": -0.391
+        },
+        {
+          "time": "2021-04-16T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4168.9,
+          "stop": 4163.248573,
+          "sl_dist": 5.651427,
+          "bias_confidence": 0.9,
+          "r": -0.611
+        },
+        {
+          "time": "2021-04-26T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4182.7,
+          "stop": 4172.135866,
+          "sl_dist": 10.564134,
+          "bias_confidence": 0.9,
+          "r": -0.025
+        },
+        {
+          "time": "2021-05-03T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4205.4,
+          "stop": 4189.883868,
+          "sl_dist": 15.516132,
+          "bias_confidence": 0.55,
+          "r": -1.129
+        },
+        {
+          "time": "2021-05-27T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4217.1,
+          "stop": 4195.741653,
+          "sl_dist": 21.358347,
+          "bias_confidence": 0.9,
+          "r": -1.094
+        },
+        {
+          "time": "2021-05-28T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4217.5,
+          "stop": 4208.258875,
+          "sl_dist": 9.241125,
+          "bias_confidence": 0.9,
+          "r": -1.216
+        },
+        {
+          "time": "2021-06-08T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4230.8,
+          "stop": 4221.907433,
+          "sl_dist": 8.892567,
+          "bias_confidence": 0.9,
+          "r": -1.225
+        },
+        {
+          "time": "2021-06-14T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4255.8,
+          "stop": 4231.672464,
+          "sl_dist": 24.127536,
+          "bias_confidence": 0.9,
+          "r": -1.083
+        },
+        {
+          "time": "2021-06-15T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4259.2,
+          "stop": 4253.312869,
+          "sl_dist": 5.887131,
+          "bias_confidence": 0.9,
+          "r": -1.34
+        },
+        {
+          "time": "2021-06-25T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4273.5,
+          "stop": 4264.960209,
+          "sl_dist": 8.539791,
+          "bias_confidence": 0.9,
+          "r": 0.827
+        },
+        {
+          "time": "2021-06-28T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4289.1,
+          "stop": 4283.600902,
+          "sl_dist": 5.499098,
+          "bias_confidence": 0.9,
+          "r": -1.364
+        },
+        {
+          "time": "2021-07-01T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4306.9,
+          "stop": 4296.426705,
+          "sl_dist": 10.473295,
+          "bias_confidence": 0.9,
+          "r": 3.688
+        },
+        {
+          "time": "2021-07-01T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4310.4,
+          "stop": 4302.398792,
+          "sl_dist": 8.001208,
+          "bias_confidence": 0.9,
+          "r": -0.725
+        },
+        {
+          "time": "2021-07-07T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4342.5,
+          "stop": 4334.751833,
+          "sl_dist": 7.748167,
+          "bias_confidence": 0.9,
+          "r": 0.523
+        },
+        {
+          "time": "2021-07-13T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4387.9,
+          "stop": 4377.667167,
+          "sl_dist": 10.232833,
+          "bias_confidence": 0.9,
+          "r": -1.195
+        },
+        {
+          "time": "2021-07-23T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4397.4,
+          "stop": 4380.540591,
+          "sl_dist": 16.859409,
+          "bias_confidence": 0.9,
+          "r": 0.056
+        },
+        {
+          "time": "2021-08-03T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4399.8,
+          "stop": 4392.977482,
+          "sl_dist": 6.822518,
+          "bias_confidence": 0.55,
+          "r": -0.428
+        },
+        {
+          "time": "2021-08-05T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4416.5,
+          "stop": 4401.221366,
+          "sl_dist": 15.278634,
+          "bias_confidence": 0.55,
+          "r": 0.512
+        },
+        {
+          "time": "2021-08-06T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4428.5,
+          "stop": 4423.15545,
+          "sl_dist": 5.34455,
+          "bias_confidence": 0.9,
+          "r": -0.495
+        },
+        {
+          "time": "2021-08-09T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4432.5,
+          "stop": 4426.792736,
+          "sl_dist": 5.707264,
+          "bias_confidence": 0.9,
+          "r": -1.35
+        },
+        {
+          "time": "2021-08-10T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4440.4,
+          "stop": 4431.156054,
+          "sl_dist": 9.243946,
+          "bias_confidence": 0.55,
+          "r": -1.216
+        },
+        {
+          "time": "2021-08-11T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4448.8,
+          "stop": 4440.976829,
+          "sl_dist": 7.823171,
+          "bias_confidence": 0.9,
+          "r": -1.256
+        },
+        {
+          "time": "2021-08-27T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4485.0,
+          "stop": 4476.002464,
+          "sl_dist": 8.997536,
+          "bias_confidence": 0.9,
+          "r": 2.29
+        },
+        {
+          "time": "2021-10-20T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4539.0,
+          "stop": 4529.564367,
+          "sl_dist": 9.435633,
+          "bias_confidence": 0.9,
+          "r": -1.212
+        },
+        {
+          "time": "2021-10-21T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4550.8,
+          "stop": 4531.349464,
+          "sl_dist": 19.450536,
+          "bias_confidence": 0.9,
+          "r": -0.568
+        },
+        {
+          "time": "2021-10-22T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4554.6,
+          "stop": 4537.679808,
+          "sl_dist": 16.920192,
+          "bias_confidence": 0.9,
+          "r": -1.118
+        },
+        {
+          "time": "2021-10-26T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4588.6,
+          "stop": 4580.909361,
+          "sl_dist": 7.690639,
+          "bias_confidence": 0.9,
+          "r": 0.144
+        },
+        {
+          "time": "2021-11-01T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4623.8,
+          "stop": 4608.795943,
+          "sl_dist": 15.004057,
+          "bias_confidence": 0.9,
+          "r": -1.133
+        },
+        {
+          "time": "2021-11-05T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4682.2,
+          "stop": 4677.217189,
+          "sl_dist": 4.982811,
+          "bias_confidence": 0.9,
+          "r": -1.401
+        },
+        {
+          "time": "2021-11-15T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4687.9,
+          "stop": 4682.346354,
+          "sl_dist": 5.553646,
+          "bias_confidence": 0.9,
+          "r": 1.485
+        },
+        {
+          "time": "2021-12-08T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4703.0,
+          "stop": 4689.922741,
+          "sl_dist": 13.077259,
+          "bias_confidence": 0.9,
+          "r": -1.153
+        },
+        {
+          "time": "2022-01-03T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4794.7,
+          "stop": 4784.359718,
+          "sl_dist": 10.340282,
+          "bias_confidence": 0.9,
+          "r": -0.342
+        },
+        {
+          "time": "2024-01-25T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4890.5,
+          "stop": 4868.722323,
+          "sl_dist": 21.777677,
+          "bias_confidence": 0.9,
+          "r": -0.242
+        },
+        {
+          "time": "2024-02-06T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4944.2,
+          "stop": 4935.903283,
+          "sl_dist": 8.296717,
+          "bias_confidence": 0.9,
+          "r": -0.277
+        },
+        {
+          "time": "2024-02-07T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4957.5,
+          "stop": 4951.477549,
+          "sl_dist": 6.022451,
+          "bias_confidence": 0.55,
+          "r": 2.57
+        },
+        {
+          "time": "2024-02-09T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 4997.1,
+          "stop": 4992.550779,
+          "sl_dist": 4.549221,
+          "bias_confidence": 0.9,
+          "r": 0.033
+        },
+        {
+          "time": "2024-02-15T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5000.6,
+          "stop": 4992.759313,
+          "sl_dist": 7.840687,
+          "bias_confidence": 0.55,
+          "r": 0.314
+        },
+        {
+          "time": "2024-02-15T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5011.6,
+          "stop": 4995.459296,
+          "sl_dist": 16.140704,
+          "bias_confidence": 0.55,
+          "r": 0.821
+        },
+        {
+          "time": "2024-02-16T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5031.2,
+          "stop": 5024.517941,
+          "sl_dist": 6.682059,
+          "bias_confidence": 0.55,
+          "r": 0.467
+        },
+        {
+          "time": "2024-03-01T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5102.8,
+          "stop": 5089.491337,
+          "sl_dist": 13.308663,
+          "bias_confidence": 0.9,
+          "r": -1.15
+        },
+        {
+          "time": "2024-03-01T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5093.0,
+          "stop": 5083.331661,
+          "sl_dist": 9.668339,
+          "bias_confidence": 0.9,
+          "r": 3.799
+        },
+        {
+          "time": "2024-03-26T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5240.2,
+          "stop": 5232.593759,
+          "sl_dist": 7.606241,
+          "bias_confidence": 0.9,
+          "r": 0.104
+        },
+        {
+          "time": "2024-03-28T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5259.6,
+          "stop": 5250.351491,
+          "sl_dist": 9.248509,
+          "bias_confidence": 0.55,
+          "r": -0.427
+        },
+        {
+          "time": "2024-04-01T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5280.4,
+          "stop": 5274.759511,
+          "sl_dist": 5.640489,
+          "bias_confidence": 0.9,
+          "r": -1.355
+        },
+        {
+          "time": "2024-05-20T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5324.3,
+          "stop": 5305.716799,
+          "sl_dist": 18.583201,
+          "bias_confidence": 0.9,
+          "r": -1.108
+        },
+        {
+          "time": "2024-06-06T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5357.4,
+          "stop": 5335.551155,
+          "sl_dist": 21.848845,
+          "bias_confidence": 0.9,
+          "r": -1.092
+        },
+        {
+          "time": "2024-06-11T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5360.2,
+          "stop": 5355.029154,
+          "sl_dist": 5.170846,
+          "bias_confidence": 0.9,
+          "r": -0.072
+        },
+        {
+          "time": "2024-06-13T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5437.4,
+          "stop": 5425.033216,
+          "sl_dist": 12.366784,
+          "bias_confidence": 0.55,
+          "r": -0.305
+        },
+        {
+          "time": "2024-06-14T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5434.4,
+          "stop": 5429.380064,
+          "sl_dist": 5.019936,
+          "bias_confidence": 0.55,
+          "r": -0.88
+        },
+        {
+          "time": "2024-07-16T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5645.2,
+          "stop": 5636.671917,
+          "sl_dist": 8.528083,
+          "bias_confidence": 0.9,
+          "r": 0.642
+        },
+        {
+          "time": "2024-09-02T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5638.2,
+          "stop": 5622.948111,
+          "sl_dist": 15.251889,
+          "bias_confidence": 0.9,
+          "r": 0.062
+        },
+        {
+          "time": "2024-09-23T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5730.5,
+          "stop": 5719.462673,
+          "sl_dist": 11.037327,
+          "bias_confidence": 0.9,
+          "r": -1.181
+        },
+        {
+          "time": "2024-09-27T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5757.8,
+          "stop": 5749.718024,
+          "sl_dist": 8.081976,
+          "bias_confidence": 0.9,
+          "r": -0.555
+        },
+        {
+          "time": "2024-10-01T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5779.4,
+          "stop": 5758.824367,
+          "sl_dist": 20.575633,
+          "bias_confidence": 0.55,
+          "r": -1.097
+        },
+        {
+          "time": "2024-10-25T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5819.8,
+          "stop": 5812.669922,
+          "sl_dist": 7.130078,
+          "bias_confidence": 0.55,
+          "r": 0.318
+        },
+        {
+          "time": "2024-10-28T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5852.2,
+          "stop": 5837.031697,
+          "sl_dist": 15.168303,
+          "bias_confidence": 0.9,
+          "r": -1.132
+        },
+        {
+          "time": "2024-11-21T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5925.6,
+          "stop": 5885.644122,
+          "sl_dist": 39.955878,
+          "bias_confidence": 0.55,
+          "r": -0.314
+        },
+        {
+          "time": "2024-11-22T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 5956.4,
+          "stop": 5944.029087,
+          "sl_dist": 12.370913,
+          "bias_confidence": 0.9,
+          "r": -1.162
+        },
+        {
+          "time": "2024-11-26T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6007.2,
+          "stop": 5985.881468,
+          "sl_dist": 21.318532,
+          "bias_confidence": 0.9,
+          "r": 0.173
+        },
+        {
+          "time": "2024-12-26T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6033.0,
+          "stop": 6021.721932,
+          "sl_dist": 11.278068,
+          "bias_confidence": 0.9,
+          "r": -1.177
+        },
+        {
+          "time": "2025-02-06T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6085.1,
+          "stop": 6044.969177,
+          "sl_dist": 40.130823,
+          "bias_confidence": 0.9,
+          "r": -1.05
+        },
+        {
+          "time": "2025-02-14T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6115.8,
+          "stop": 6102.236538,
+          "sl_dist": 13.563462,
+          "bias_confidence": 0.9,
+          "r": -0.241
+        },
+        {
+          "time": "2025-02-17T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6127.6,
+          "stop": 6120.095269,
+          "sl_dist": 7.504731,
+          "bias_confidence": 0.9,
+          "r": -1.266
+        },
+        {
+          "time": "2025-02-18T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6136.8,
+          "stop": 6132.064318,
+          "sl_dist": 4.735682,
+          "bias_confidence": 0.9,
+          "r": -0.704
+        },
+        {
+          "time": "2025-02-19T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6137.1,
+          "stop": 6112.89896,
+          "sl_dist": 24.20104,
+          "bias_confidence": 0.9,
+          "r": -0.446
+        },
+        {
+          "time": "2025-07-01T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6215.6,
+          "stop": 6206.059774,
+          "sl_dist": 9.540226,
+          "bias_confidence": 0.9,
+          "r": -1.21
+        },
+        {
+          "time": "2025-07-07T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6264.4,
+          "stop": 6246.482142,
+          "sl_dist": 17.917858,
+          "bias_confidence": 0.55,
+          "r": -1.112
+        },
+        {
+          "time": "2025-07-15T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6291.6,
+          "stop": 6262.78463,
+          "sl_dist": 28.81537,
+          "bias_confidence": 0.9,
+          "r": -0.528
+        },
+        {
+          "time": "2025-07-21T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6330.9,
+          "stop": 6304.534432,
+          "sl_dist": 26.365568,
+          "bias_confidence": 0.9,
+          "r": -1.076
+        },
+        {
+          "time": "2025-07-24T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6370.8,
+          "stop": 6361.709825,
+          "sl_dist": 9.090175,
+          "bias_confidence": 0.55,
+          "r": -0.582
+        },
+        {
+          "time": "2025-07-25T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6383.8,
+          "stop": 6375.147329,
+          "sl_dist": 8.652671,
+          "bias_confidence": 0.9,
+          "r": -0.376
+        },
+        {
+          "time": "2025-08-14T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6468.2,
+          "stop": 6461.276959,
+          "sl_dist": 6.923041,
+          "bias_confidence": 0.9,
+          "r": -1.289
+        },
+        {
+          "time": "2025-08-14T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6471.7,
+          "stop": 6458.375686,
+          "sl_dist": 13.324314,
+          "bias_confidence": 0.9,
+          "r": -0.64
+        },
+        {
+          "time": "2025-08-27T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6478.7,
+          "stop": 6458.826141,
+          "sl_dist": 19.873859,
+          "bias_confidence": 0.9,
+          "r": -0.462
+        },
+        {
+          "time": "2025-09-09T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6510.1,
+          "stop": 6481.03473,
+          "sl_dist": 29.06527,
+          "bias_confidence": 0.9,
+          "r": 0.62
+        },
+        {
+          "time": "2025-09-11T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6543.0,
+          "stop": 6530.544613,
+          "sl_dist": 12.455387,
+          "bias_confidence": 0.9,
+          "r": -0.566
+        },
+        {
+          "time": "2025-09-18T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6647.3,
+          "stop": 6618.597865,
+          "sl_dist": 28.702135,
+          "bias_confidence": 0.9,
+          "r": -0.314
+        },
+        {
+          "time": "2025-10-03T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6732.4,
+          "stop": 6720.707055,
+          "sl_dist": 11.692945,
+          "bias_confidence": 0.9,
+          "r": 0.043
+        },
+        {
+          "time": "2025-10-06T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6747.6,
+          "stop": 6734.94241,
+          "sl_dist": 12.65759,
+          "bias_confidence": 0.9,
+          "r": -1.158
+        },
+        {
+          "time": "2025-10-06T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6756.6,
+          "stop": 6742.013928,
+          "sl_dist": 14.586072,
+          "bias_confidence": 0.9,
+          "r": -1.137
+        },
+        {
+          "time": "2025-10-09T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6764.4,
+          "stop": 6755.684806,
+          "sl_dist": 8.715194,
+          "bias_confidence": 0.55,
+          "r": -0.61
+        },
+        {
+          "time": "2025-10-28T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6887.4,
+          "stop": 6874.566382,
+          "sl_dist": 12.833618,
+          "bias_confidence": 0.9,
+          "r": -0.018
+        },
+        {
+          "time": "2025-10-29T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6908.0,
+          "stop": 6897.854133,
+          "sl_dist": 10.145867,
+          "bias_confidence": 0.9,
+          "r": 0.419
+        },
+        {
+          "time": "2025-10-30T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6920.2,
+          "stop": 6898.13505,
+          "sl_dist": 22.06495,
+          "bias_confidence": 0.9,
+          "r": -1.091
+        },
+        {
+          "time": "2026-01-07T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6948.6,
+          "stop": 6940.134187,
+          "sl_dist": 8.465813,
+          "bias_confidence": 0.9,
+          "r": 0.618
+        },
+        {
+          "time": "2026-01-15T23:00:00+00:00",
+          "direction": "LONG",
+          "entry": 6960.2,
+          "stop": 6949.037048,
+          "sl_dist": 11.162952,
+          "bias_confidence": 0.55,
+          "r": 0.344
+        },
+        {
+          "time": "2026-01-28T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7002.4,
+          "stop": 6981.30716,
+          "sl_dist": 21.09284,
+          "bias_confidence": 0.9,
+          "r": -0.232
+        },
+        {
+          "time": "2026-04-16T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7053.9,
+          "stop": 7012.987275,
+          "sl_dist": 40.912725,
+          "bias_confidence": 0.9,
+          "r": 1.437
+        },
+        {
+          "time": "2026-04-16T22:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7052.2,
+          "stop": 7041.540452,
+          "sl_dist": 10.659548,
+          "bias_confidence": 0.9,
+          "r": 3.935
+        },
+        {
+          "time": "2026-04-20T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7120.6,
+          "stop": 7101.33472,
+          "sl_dist": 19.26528,
+          "bias_confidence": 0.9,
+          "r": 0.682
+        },
+        {
+          "time": "2026-04-22T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7143.7,
+          "stop": 7119.711583,
+          "sl_dist": 23.988417,
+          "bias_confidence": 0.55,
+          "r": -1.083
+        },
+        {
+          "time": "2026-04-27T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7165.0,
+          "stop": 7141.486485,
+          "sl_dist": 23.513515,
+          "bias_confidence": 0.9,
+          "r": -0.337
+        }
+      ]
+    },
+    {
+      "pair": "de30",
+      "n_signals": 93,
+      "n_trades": 93,
+      "win_rate": 44.086021505376344,
+      "total_r": 1.0130000000000003,
+      "avg_r": 0.010892473118279573,
+      "median_r": -0.208,
+      "profit_factor": 1.025918534438645,
+      "trades": [
+        {
+          "time": "2018-03-20T09:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 12212.6,
+          "stop": 12279.542286,
+          "sl_dist": 66.942286,
+          "bias_confidence": 0.55,
+          "r": -1.03
+        },
+        {
+          "time": "2018-03-23T15:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 11834.0,
+          "stop": 12022.756842,
+          "sl_dist": 188.756842,
+          "bias_confidence": 0.9,
+          "r": -0.314
+        },
+        {
+          "time": "2018-05-02T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 12727.6,
+          "stop": 12584.053604,
+          "sl_dist": 143.546396,
+          "bias_confidence": 0.9,
+          "r": -0.281
+        },
+        {
+          "time": "2018-05-18T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13126.0,
+          "stop": 13083.826355,
+          "sl_dist": 42.173645,
+          "bias_confidence": 0.9,
+          "r": -1.047
+        },
+        {
+          "time": "2018-10-11T14:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 11561.6,
+          "stop": 11717.279219,
+          "sl_dist": 155.679219,
+          "bias_confidence": 0.9,
+          "r": 0.06
+        },
+        {
+          "time": "2018-10-23T06:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 11365.6,
+          "stop": 11570.415464,
+          "sl_dist": 204.815464,
+          "bias_confidence": 0.9,
+          "r": -0.335
+        },
+        {
+          "time": "2018-10-24T07:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 11297.0,
+          "stop": 11451.792152,
+          "sl_dist": 154.792152,
+          "bias_confidence": 0.9,
+          "r": 0.565
+        },
+        {
+          "time": "2018-10-26T14:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 11062.2,
+          "stop": 11220.766821,
+          "sl_dist": 158.566821,
+          "bias_confidence": 0.9,
+          "r": -1.013
+        },
+        {
+          "time": "2018-12-07T07:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 10861.0,
+          "stop": 10963.288642,
+          "sl_dist": 102.288642,
+          "bias_confidence": 0.9,
+          "r": 1.149
+        },
+        {
+          "time": "2018-12-10T15:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 10628.0,
+          "stop": 10772.097155,
+          "sl_dist": 144.097155,
+          "bias_confidence": 0.9,
+          "r": -1.014
+        },
+        {
+          "time": "2018-12-20T04:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 10593.0,
+          "stop": 10682.483447,
+          "sl_dist": 89.483447,
+          "bias_confidence": 0.9,
+          "r": -1.022
+        },
+        {
+          "time": "2018-12-20T13:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 10604.6,
+          "stop": 10698.040602,
+          "sl_dist": 93.440602,
+          "bias_confidence": 0.9,
+          "r": 0.271
+        },
+        {
+          "time": "2019-11-07T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13190.2,
+          "stop": 13164.51132,
+          "sl_dist": 25.68868,
+          "bias_confidence": 0.9,
+          "r": 2.402
+        },
+        {
+          "time": "2019-11-07T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13291.3,
+          "stop": 13250.166025,
+          "sl_dist": 41.133975,
+          "bias_confidence": 0.9,
+          "r": -1.049
+        },
+        {
+          "time": "2019-11-27T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13287.3,
+          "stop": 13255.49157,
+          "sl_dist": 31.80843,
+          "bias_confidence": 0.9,
+          "r": -1.063
+        },
+        {
+          "time": "2019-12-17T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13395.9,
+          "stop": 13365.994743,
+          "sl_dist": 29.905257,
+          "bias_confidence": 0.55,
+          "r": -0.565
+        },
+        {
+          "time": "2020-01-20T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13550.6,
+          "stop": 13487.084889,
+          "sl_dist": 63.515111,
+          "bias_confidence": 0.9,
+          "r": -0.495
+        },
+        {
+          "time": "2020-02-14T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13755.0,
+          "stop": 13709.251156,
+          "sl_dist": 45.748844,
+          "bias_confidence": 0.9,
+          "r": -0.196
+        },
+        {
+          "time": "2020-02-20T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13821.4,
+          "stop": 13761.02177,
+          "sl_dist": 60.37823,
+          "bias_confidence": 0.55,
+          "r": -1.033
+        },
+        {
+          "time": "2020-03-09T12:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 10694.4,
+          "stop": 10865.642183,
+          "sl_dist": 171.242183,
+          "bias_confidence": 0.9,
+          "r": -0.181
+        },
+        {
+          "time": "2020-03-12T12:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 9662.6,
+          "stop": 9971.290546,
+          "sl_dist": 308.690546,
+          "bias_confidence": 0.9,
+          "r": 0.839
+        },
+        {
+          "time": "2020-03-18T16:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 8322.5,
+          "stop": 8678.123028,
+          "sl_dist": 355.623028,
+          "bias_confidence": 0.9,
+          "r": 0.02
+        },
+        {
+          "time": "2021-01-07T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 13992.6,
+          "stop": 13959.418627,
+          "sl_dist": 33.181373,
+          "bias_confidence": 0.9,
+          "r": 2.87
+        },
+        {
+          "time": "2021-02-15T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14107.6,
+          "stop": 14067.227767,
+          "sl_dist": 40.372233,
+          "bias_confidence": 0.9,
+          "r": 0.199
+        },
+        {
+          "time": "2021-03-09T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14430.0,
+          "stop": 14293.241817,
+          "sl_dist": 136.758183,
+          "bias_confidence": 0.9,
+          "r": 0.209
+        },
+        {
+          "time": "2021-03-10T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14473.0,
+          "stop": 14379.172722,
+          "sl_dist": 93.827278,
+          "bias_confidence": 0.55,
+          "r": 0.305
+        },
+        {
+          "time": "2021-03-18T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14775.0,
+          "stop": 14651.682011,
+          "sl_dist": 123.317989,
+          "bias_confidence": 0.9,
+          "r": -1.016
+        },
+        {
+          "time": "2021-03-30T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 14931.6,
+          "stop": 14907.254956,
+          "sl_dist": 24.345044,
+          "bias_confidence": 0.9,
+          "r": 3.559
+        },
+        {
+          "time": "2021-03-31T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15042.8,
+          "stop": 14982.912709,
+          "sl_dist": 59.887291,
+          "bias_confidence": 0.9,
+          "r": 0.232
+        },
+        {
+          "time": "2021-04-01T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15075.8,
+          "stop": 15029.932034,
+          "sl_dist": 45.867966,
+          "bias_confidence": 0.9,
+          "r": -0.11
+        },
+        {
+          "time": "2021-04-06T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15274.8,
+          "stop": 15234.681166,
+          "sl_dist": 40.118834,
+          "bias_confidence": 0.9,
+          "r": 0.6
+        },
+        {
+          "time": "2021-04-20T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15420.1,
+          "stop": 15398.538063,
+          "sl_dist": 21.561937,
+          "bias_confidence": 0.9,
+          "r": -1.093
+        },
+        {
+          "time": "2021-05-17T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15425.9,
+          "stop": 15383.472434,
+          "sl_dist": 42.427566,
+          "bias_confidence": 0.9,
+          "r": -0.474
+        },
+        {
+          "time": "2021-05-24T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15528.6,
+          "stop": 15421.976791,
+          "sl_dist": 106.623209,
+          "bias_confidence": 0.55,
+          "r": -0.289
+        },
+        {
+          "time": "2021-05-24T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15525.0,
+          "stop": 15469.471889,
+          "sl_dist": 55.528111,
+          "bias_confidence": 0.9,
+          "r": 0.142
+        },
+        {
+          "time": "2021-06-01T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15581.8,
+          "stop": 15552.261416,
+          "sl_dist": 29.538584,
+          "bias_confidence": 0.9,
+          "r": -0.309
+        },
+        {
+          "time": "2021-06-07T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15719.2,
+          "stop": 15603.597983,
+          "sl_dist": 115.602017,
+          "bias_confidence": 0.9,
+          "r": -1.017
+        },
+        {
+          "time": "2021-08-05T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15705.1,
+          "stop": 15660.151331,
+          "sl_dist": 44.948669,
+          "bias_confidence": 0.9,
+          "r": -1.044
+        },
+        {
+          "time": "2021-08-05T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15737.2,
+          "stop": 15689.299434,
+          "sl_dist": 47.900566,
+          "bias_confidence": 0.9,
+          "r": 0.395
+        },
+        {
+          "time": "2021-08-06T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15745.1,
+          "stop": 15722.571179,
+          "sl_dist": 22.528821,
+          "bias_confidence": 0.9,
+          "r": 0.522
+        },
+        {
+          "time": "2021-08-11T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15858.0,
+          "stop": 15827.256119,
+          "sl_dist": 30.743881,
+          "bias_confidence": 0.9,
+          "r": -1.065
+        },
+        {
+          "time": "2021-08-13T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 15981.5,
+          "stop": 15923.468342,
+          "sl_dist": 58.031658,
+          "bias_confidence": 0.9,
+          "r": -0.156
+        },
+        {
+          "time": "2021-11-12T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16121.8,
+          "stop": 16072.276116,
+          "sl_dist": 49.523884,
+          "bias_confidence": 0.55,
+          "r": -1.04
+        },
+        {
+          "time": "2021-11-16T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16158.3,
+          "stop": 16115.542168,
+          "sl_dist": 42.757832,
+          "bias_confidence": 0.9,
+          "r": 1.566
+        },
+        {
+          "time": "2023-05-19T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16270.0,
+          "stop": 16190.094459,
+          "sl_dist": 79.905541,
+          "bias_confidence": 0.9,
+          "r": -0.218
+        },
+        {
+          "time": "2023-05-19T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16295.0,
+          "stop": 16267.789712,
+          "sl_dist": 27.210288,
+          "bias_confidence": 0.9,
+          "r": -1.074
+        },
+        {
+          "time": "2023-12-01T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16365.2,
+          "stop": 16275.196298,
+          "sl_dist": 90.003702,
+          "bias_confidence": 0.9,
+          "r": 3.086
+        },
+        {
+          "time": "2023-12-06T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16579.2,
+          "stop": 16529.755318,
+          "sl_dist": 49.444682,
+          "bias_confidence": 0.9,
+          "r": 2.111
+        },
+        {
+          "time": "2023-12-08T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16664.7,
+          "stop": 16628.250528,
+          "sl_dist": 36.449472,
+          "bias_confidence": 0.9,
+          "r": 0.289
+        },
+        {
+          "time": "2023-12-27T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16777.8,
+          "stop": 16725.074954,
+          "sl_dist": 52.725046,
+          "bias_confidence": 0.9,
+          "r": -0.317
+        },
+        {
+          "time": "2024-01-15T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16761.4,
+          "stop": 16695.432711,
+          "sl_dist": 65.967289,
+          "bias_confidence": 0.55,
+          "r": -0.424
+        },
+        {
+          "time": "2024-01-25T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16926.4,
+          "stop": 16877.480727,
+          "sl_dist": 48.919273,
+          "bias_confidence": 0.9,
+          "r": -1.041
+        },
+        {
+          "time": "2024-02-08T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 16979.0,
+          "stop": 16936.120109,
+          "sl_dist": 42.879891,
+          "bias_confidence": 0.9,
+          "r": -1.047
+        },
+        {
+          "time": "2024-02-16T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17103.0,
+          "stop": 17077.139892,
+          "sl_dist": 25.860108,
+          "bias_confidence": 0.9,
+          "r": 0.454
+        },
+        {
+          "time": "2024-02-23T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17422.2,
+          "stop": 17394.217942,
+          "sl_dist": 27.982058,
+          "bias_confidence": 0.9,
+          "r": -1.071
+        },
+        {
+          "time": "2024-02-29T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17615.6,
+          "stop": 17591.059235,
+          "sl_dist": 24.540765,
+          "bias_confidence": 0.9,
+          "r": -0.372
+        },
+        {
+          "time": "2024-02-29T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17700.5,
+          "stop": 17641.214104,
+          "sl_dist": 59.285896,
+          "bias_confidence": 0.9,
+          "r": -0.266
+        },
+        {
+          "time": "2024-02-29T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17718.6,
+          "stop": 17689.693343,
+          "sl_dist": 28.906657,
+          "bias_confidence": 0.9,
+          "r": 2.058
+        },
+        {
+          "time": "2024-03-12T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 17871.5,
+          "stop": 17736.670762,
+          "sl_dist": 134.829238,
+          "bias_confidence": 0.9,
+          "r": 0.205
+        },
+        {
+          "time": "2024-03-18T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18028.0,
+          "stop": 17966.292211,
+          "sl_dist": 61.707789,
+          "bias_confidence": 0.9,
+          "r": -1.032
+        },
+        {
+          "time": "2024-03-22T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18261.5,
+          "stop": 18198.149286,
+          "sl_dist": 63.350714,
+          "bias_confidence": 0.9,
+          "r": 0.296
+        },
+        {
+          "time": "2024-03-26T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18375.0,
+          "stop": 18324.117038,
+          "sl_dist": 50.882962,
+          "bias_confidence": 0.9,
+          "r": 1.447
+        },
+        {
+          "time": "2024-03-26T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18403.5,
+          "stop": 18331.67114,
+          "sl_dist": 71.82886,
+          "bias_confidence": 0.9,
+          "r": 2.042
+        },
+        {
+          "time": "2024-05-15T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18845.0,
+          "stop": 18766.551095,
+          "sl_dist": 78.448905,
+          "bias_confidence": 0.9,
+          "r": 0.122
+        },
+        {
+          "time": "2024-08-29T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 18950.8,
+          "stop": 18842.494221,
+          "sl_dist": 108.305779,
+          "bias_confidence": 0.9,
+          "r": -1.018
+        },
+        {
+          "time": "2024-09-24T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19004.6,
+          "stop": 18899.5003,
+          "sl_dist": 105.0997,
+          "bias_confidence": 0.9,
+          "r": -1.019
+        },
+        {
+          "time": "2024-09-30T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19454.0,
+          "stop": 19374.758069,
+          "sl_dist": 79.241931,
+          "bias_confidence": 0.9,
+          "r": -1.025
+        },
+        {
+          "time": "2024-10-15T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 19613.0,
+          "stop": 19534.9996,
+          "sl_dist": 78.0004,
+          "bias_confidence": 0.9,
+          "r": -1.026
+        },
+        {
+          "time": "2024-12-04T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20032.6,
+          "stop": 19999.276284,
+          "sl_dist": 33.323716,
+          "bias_confidence": 0.9,
+          "r": -0.208
+        },
+        {
+          "time": "2024-12-06T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20350.0,
+          "stop": 20295.143077,
+          "sl_dist": 54.856923,
+          "bias_confidence": 0.55,
+          "r": 0.385
+        },
+        {
+          "time": "2025-01-09T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20354.0,
+          "stop": 20330.516917,
+          "sl_dist": 23.483083,
+          "bias_confidence": 0.55,
+          "r": -1.085
+        },
+        {
+          "time": "2025-01-17T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 20735.0,
+          "stop": 20643.928914,
+          "sl_dist": 91.071086,
+          "bias_confidence": 0.9,
+          "r": 2.772
+        },
+        {
+          "time": "2025-01-20T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 21048.5,
+          "stop": 20894.737565,
+          "sl_dist": 153.762435,
+          "bias_confidence": 0.9,
+          "r": -1.013
+        },
+        {
+          "time": "2025-01-24T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 21530.4,
+          "stop": 21464.764359,
+          "sl_dist": 65.635641,
+          "bias_confidence": 0.9,
+          "r": -1.03
+        },
+        {
+          "time": "2025-02-25T18:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22534.0,
+          "stop": 22399.30403,
+          "sl_dist": 134.69597,
+          "bias_confidence": 0.9,
+          "r": 1.19
+        },
+        {
+          "time": "2025-02-26T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22554.0,
+          "stop": 22498.297882,
+          "sl_dist": 55.702118,
+          "bias_confidence": 0.9,
+          "r": 0.167
+        },
+        {
+          "time": "2025-03-03T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22818.0,
+          "stop": 22502.443369,
+          "sl_dist": 315.556631,
+          "bias_confidence": 0.9,
+          "r": 0.577
+        },
+        {
+          "time": "2025-03-05T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 22844.0,
+          "stop": 22697.600326,
+          "sl_dist": 146.399674,
+          "bias_confidence": 0.9,
+          "r": 1.322
+        },
+        {
+          "time": "2025-03-05T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23139.0,
+          "stop": 22965.456029,
+          "sl_dist": 173.543971,
+          "bias_confidence": 0.9,
+          "r": 0.515
+        },
+        {
+          "time": "2025-03-06T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23210.0,
+          "stop": 23144.159057,
+          "sl_dist": 65.840943,
+          "bias_confidence": 0.9,
+          "r": 1.916
+        },
+        {
+          "time": "2025-05-06T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23378.2,
+          "stop": 23315.690847,
+          "sl_dist": 62.509153,
+          "bias_confidence": 0.9,
+          "r": 0.2
+        },
+        {
+          "time": "2025-05-13T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 23605.4,
+          "stop": 23503.877011,
+          "sl_dist": 101.522989,
+          "bias_confidence": 0.9,
+          "r": -0.251
+        },
+        {
+          "time": "2025-05-20T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24041.3,
+          "stop": 23894.016645,
+          "sl_dist": 147.283355,
+          "bias_confidence": 0.9,
+          "r": -1.014
+        },
+        {
+          "time": "2025-05-23T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24118.1,
+          "stop": 23968.03866,
+          "sl_dist": 150.06134,
+          "bias_confidence": 0.55,
+          "r": -1.013
+        },
+        {
+          "time": "2025-05-27T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24271.4,
+          "stop": 24150.651106,
+          "sl_dist": 120.748894,
+          "bias_confidence": 0.9,
+          "r": -1.017
+        },
+        {
+          "time": "2025-05-28T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24302.9,
+          "stop": 24195.321924,
+          "sl_dist": 107.578076,
+          "bias_confidence": 0.9,
+          "r": -1.019
+        },
+        {
+          "time": "2025-06-04T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24247.5,
+          "stop": 24109.135357,
+          "sl_dist": 138.364643,
+          "bias_confidence": 0.9,
+          "r": 0.745
+        },
+        {
+          "time": "2025-08-18T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24435.6,
+          "stop": 24399.606885,
+          "sl_dist": 35.993115,
+          "bias_confidence": 0.9,
+          "r": -1.056
+        },
+        {
+          "time": "2025-12-12T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24348.4,
+          "stop": 24295.082977,
+          "sl_dist": 53.317023,
+          "bias_confidence": 0.55,
+          "r": 0.097
+        },
+        {
+          "time": "2026-01-05T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 24746.5,
+          "stop": 24674.522101,
+          "sl_dist": 71.977899,
+          "bias_confidence": 0.9,
+          "r": 2.188
+        },
+        {
+          "time": "2026-01-07T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25019.0,
+          "stop": 24966.903176,
+          "sl_dist": 52.096824,
+          "bias_confidence": 0.9,
+          "r": 0.008
+        },
+        {
+          "time": "2026-01-09T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25210.2,
+          "stop": 25167.538603,
+          "sl_dist": 42.661397,
+          "bias_confidence": 0.9,
+          "r": -1.047
+        },
+        {
+          "time": "2026-01-13T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 25469.2,
+          "stop": 25381.873685,
+          "sl_dist": 87.326315,
+          "bias_confidence": 0.9,
+          "r": -0.13
+        }
+      ]
+    },
+    {
+      "pair": "uk100",
+      "n_signals": 57,
+      "n_trades": 57,
+      "win_rate": 36.84210526315789,
+      "total_r": -7.206,
+      "avg_r": -0.12642105263157896,
+      "median_r": -0.405,
+      "profit_factor": 0.7470602688757063,
+      "trades": [
+        {
+          "time": "2018-03-21T18:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 7008.8,
+          "stop": 7050.027834,
+          "sl_dist": 41.227834,
+          "bias_confidence": 0.9,
+          "r": 1.195
+        },
+        {
+          "time": "2018-03-23T09:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6885.6,
+          "stop": 6935.09276,
+          "sl_dist": 49.49276,
+          "bias_confidence": 0.9,
+          "r": -1.04
+        },
+        {
+          "time": "2018-04-26T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7394.8,
+          "stop": 7358.241093,
+          "sl_dist": 36.558907,
+          "bias_confidence": 0.9,
+          "r": 3.117
+        },
+        {
+          "time": "2018-05-01T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7521.3,
+          "stop": 7507.018798,
+          "sl_dist": 14.281202,
+          "bias_confidence": 0.9,
+          "r": -0.405
+        },
+        {
+          "time": "2018-05-08T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7583.8,
+          "stop": 7559.667377,
+          "sl_dist": 24.132623,
+          "bias_confidence": 0.9,
+          "r": -0.544
+        },
+        {
+          "time": "2018-05-09T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7620.6,
+          "stop": 7589.004691,
+          "sl_dist": 31.595309,
+          "bias_confidence": 0.9,
+          "r": 1.57
+        },
+        {
+          "time": "2018-05-11T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7733.3,
+          "stop": 7700.985395,
+          "sl_dist": 32.314605,
+          "bias_confidence": 0.9,
+          "r": -1.062
+        },
+        {
+          "time": "2018-05-18T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7788.8,
+          "stop": 7771.674022,
+          "sl_dist": 17.125978,
+          "bias_confidence": 0.9,
+          "r": -0.533
+        },
+        {
+          "time": "2018-05-21T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7845.8,
+          "stop": 7808.687296,
+          "sl_dist": 37.112704,
+          "bias_confidence": 0.9,
+          "r": 0.53
+        },
+        {
+          "time": "2018-05-22T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 7891.6,
+          "stop": 7866.560635,
+          "sl_dist": 25.039365,
+          "bias_confidence": 0.9,
+          "r": -0.561
+        },
+        {
+          "time": "2018-12-10T16:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6727.0,
+          "stop": 6829.356435,
+          "sl_dist": 102.356435,
+          "bias_confidence": 0.55,
+          "r": -1.02
+        },
+        {
+          "time": "2018-12-18T05:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6722.6,
+          "stop": 6747.148192,
+          "sl_dist": 24.548192,
+          "bias_confidence": 0.9,
+          "r": -1.081
+        },
+        {
+          "time": "2018-12-21T10:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6676.6,
+          "stop": 6742.215396,
+          "sl_dist": 65.615396,
+          "bias_confidence": 0.9,
+          "r": -1.03
+        },
+        {
+          "time": "2018-12-24T06:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6667.0,
+          "stop": 6682.512927,
+          "sl_dist": 15.512927,
+          "bias_confidence": 0.9,
+          "r": -0.484
+        },
+        {
+          "time": "2020-02-28T14:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 6481.0,
+          "stop": 6615.731312,
+          "sl_dist": 134.731312,
+          "bias_confidence": 0.9,
+          "r": -1.015
+        },
+        {
+          "time": "2020-03-13T06:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 5424.9,
+          "stop": 5577.733271,
+          "sl_dist": 152.833271,
+          "bias_confidence": 0.9,
+          "r": -1.013
+        },
+        {
+          "time": "2023-02-16T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8003.9,
+          "stop": 7953.570024,
+          "sl_dist": 50.329976,
+          "bias_confidence": 0.9,
+          "r": -1.04
+        },
+        {
+          "time": "2024-05-02T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8191.0,
+          "stop": 8157.3638,
+          "sl_dist": 33.6362,
+          "bias_confidence": 0.55,
+          "r": 1.146
+        },
+        {
+          "time": "2024-05-08T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8361.0,
+          "stop": 8341.636853,
+          "sl_dist": 19.363147,
+          "bias_confidence": 0.9,
+          "r": -0.132
+        },
+        {
+          "time": "2024-05-09T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8378.8,
+          "stop": 8360.48326,
+          "sl_dist": 18.31674,
+          "bias_confidence": 0.9,
+          "r": -1.109
+        },
+        {
+          "time": "2024-05-17T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8433.6,
+          "stop": 8420.874696,
+          "sl_dist": 12.725304,
+          "bias_confidence": 0.9,
+          "r": 0.375
+        },
+        {
+          "time": "2025-01-20T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8561.0,
+          "stop": 8519.779822,
+          "sl_dist": 41.220178,
+          "bias_confidence": 0.55,
+          "r": -1.049
+        },
+        {
+          "time": "2025-01-22T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8585.4,
+          "stop": 8556.015691,
+          "sl_dist": 29.384309,
+          "bias_confidence": 0.9,
+          "r": -1.068
+        },
+        {
+          "time": "2025-01-23T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8574.4,
+          "stop": 8559.096242,
+          "sl_dist": 15.303758,
+          "bias_confidence": 0.9,
+          "r": -0.242
+        },
+        {
+          "time": "2025-02-10T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8743.6,
+          "stop": 8702.079424,
+          "sl_dist": 41.520576,
+          "bias_confidence": 0.9,
+          "r": 0.204
+        },
+        {
+          "time": "2025-02-11T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8786.3,
+          "stop": 8749.868702,
+          "sl_dist": 36.431298,
+          "bias_confidence": 0.9,
+          "r": 0.276
+        },
+        {
+          "time": "2025-06-03T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8798.4,
+          "stop": 8786.122026,
+          "sl_dist": 12.277974,
+          "bias_confidence": 0.55,
+          "r": -1.163
+        },
+        {
+          "time": "2025-07-09T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8866.8,
+          "stop": 8851.914511,
+          "sl_dist": 14.885489,
+          "bias_confidence": 0.9,
+          "r": 0.478
+        },
+        {
+          "time": "2025-07-10T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 8980.3,
+          "stop": 8939.525965,
+          "sl_dist": 40.774035,
+          "bias_confidence": 0.9,
+          "r": -1.049
+        },
+        {
+          "time": "2025-07-23T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9093.2,
+          "stop": 9057.529967,
+          "sl_dist": 35.670033,
+          "bias_confidence": 0.9,
+          "r": 0.912
+        },
+        {
+          "time": "2025-07-24T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9111.5,
+          "stop": 9100.102539,
+          "sl_dist": 11.397461,
+          "bias_confidence": 0.9,
+          "r": -0.36
+        },
+        {
+          "time": "2025-07-30T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9159.8,
+          "stop": 9138.675455,
+          "sl_dist": 21.124545,
+          "bias_confidence": 0.55,
+          "r": -1.095
+        },
+        {
+          "time": "2025-08-19T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9178.8,
+          "stop": 9154.412739,
+          "sl_dist": 24.387261,
+          "bias_confidence": 0.55,
+          "r": -0.139
+        },
+        {
+          "time": "2025-08-20T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9189.1,
+          "stop": 9176.607109,
+          "sl_dist": 12.492891,
+          "bias_confidence": 0.55,
+          "r": -1.16
+        },
+        {
+          "time": "2025-08-21T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9303.9,
+          "stop": 9253.860992,
+          "sl_dist": 50.039008,
+          "bias_confidence": 0.9,
+          "r": 0.101
+        },
+        {
+          "time": "2025-08-22T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9338.5,
+          "stop": 9326.683937,
+          "sl_dist": 11.816063,
+          "bias_confidence": 0.9,
+          "r": -1.169
+        },
+        {
+          "time": "2025-10-01T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9399.8,
+          "stop": 9360.624551,
+          "sl_dist": 39.175449,
+          "bias_confidence": 0.9,
+          "r": 1.568
+        },
+        {
+          "time": "2025-10-03T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9506.3,
+          "stop": 9480.490344,
+          "sl_dist": 25.809656,
+          "bias_confidence": 0.9,
+          "r": -1.077
+        },
+        {
+          "time": "2025-10-22T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9527.0,
+          "stop": 9484.148498,
+          "sl_dist": 42.851502,
+          "bias_confidence": 0.9,
+          "r": 0.9
+        },
+        {
+          "time": "2025-10-24T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9588.8,
+          "stop": 9569.81413,
+          "sl_dist": 18.98587,
+          "bias_confidence": 0.9,
+          "r": -0.094
+        },
+        {
+          "time": "2025-10-27T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9663.8,
+          "stop": 9638.990489,
+          "sl_dist": 24.809511,
+          "bias_confidence": 0.9,
+          "r": -0.274
+        },
+        {
+          "time": "2025-10-27T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9669.6,
+          "stop": 9639.990899,
+          "sl_dist": 29.609101,
+          "bias_confidence": 0.9,
+          "r": 1.398
+        },
+        {
+          "time": "2025-11-06T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9783.4,
+          "stop": 9760.409862,
+          "sl_dist": 22.990138,
+          "bias_confidence": 0.9,
+          "r": -0.513
+        },
+        {
+          "time": "2025-11-12T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9929.5,
+          "stop": 9905.480278,
+          "sl_dist": 24.019722,
+          "bias_confidence": 0.9,
+          "r": -1.083
+        },
+        {
+          "time": "2025-11-12T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9933.5,
+          "stop": 9910.943874,
+          "sl_dist": 22.556126,
+          "bias_confidence": 0.9,
+          "r": -1.089
+        },
+        {
+          "time": "2025-12-31T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 9952.4,
+          "stop": 9933.21871,
+          "sl_dist": 19.18129,
+          "bias_confidence": 0.9,
+          "r": 0.105
+        },
+        {
+          "time": "2026-01-09T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10095.3,
+          "stop": 10071.10992,
+          "sl_dist": 24.19008,
+          "bias_confidence": 0.9,
+          "r": 1.398
+        },
+        {
+          "time": "2026-01-13T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10168.3,
+          "stop": 10147.945735,
+          "sl_dist": 20.354265,
+          "bias_confidence": 0.9,
+          "r": -1.098
+        },
+        {
+          "time": "2026-01-14T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10175.6,
+          "stop": 10150.84717,
+          "sl_dist": 24.75283,
+          "bias_confidence": 0.9,
+          "r": -0.176
+        },
+        {
+          "time": "2026-01-15T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10250.8,
+          "stop": 10206.293753,
+          "sl_dist": 44.506247,
+          "bias_confidence": 0.9,
+          "r": -0.434
+        },
+        {
+          "time": "2026-02-04T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10435.7,
+          "stop": 10382.858367,
+          "sl_dist": 52.841633,
+          "bias_confidence": 0.9,
+          "r": -1.038
+        },
+        {
+          "time": "2026-02-17T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10493.4,
+          "stop": 10442.147879,
+          "sl_dist": 51.252121,
+          "bias_confidence": 0.55,
+          "r": 3.406
+        },
+        {
+          "time": "2026-02-17T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10561.7,
+          "stop": 10483.661478,
+          "sl_dist": 78.038522,
+          "bias_confidence": 0.9,
+          "r": 1.018
+        },
+        {
+          "time": "2026-02-18T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10710.2,
+          "stop": 10670.094964,
+          "sl_dist": 40.105036,
+          "bias_confidence": 0.9,
+          "r": -1.05
+        },
+        {
+          "time": "2026-02-26T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10821.6,
+          "stop": 10782.317886,
+          "sl_dist": 39.282114,
+          "bias_confidence": 0.9,
+          "r": 0.647
+        },
+        {
+          "time": "2026-02-26T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10842.0,
+          "stop": 10792.135115,
+          "sl_dist": 49.864885,
+          "bias_confidence": 0.9,
+          "r": 0.831
+        },
+        {
+          "time": "2026-02-27T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 10864.3,
+          "stop": 10844.452052,
+          "sl_dist": 19.847948,
+          "bias_confidence": 0.9,
+          "r": 0.108
+        }
+      ]
+    },
+    {
+      "pair": "us2000",
+      "n_signals": 58,
+      "n_trades": 58,
+      "win_rate": 32.758620689655174,
+      "total_r": 0.49400000000000055,
+      "avg_r": 0.008517241379310354,
+      "median_r": -0.235,
+      "profit_factor": 1.0224300762804215,
+      "trades": [
+        {
+          "time": "2018-03-21T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1576.183,
+          "stop": 1566.591677,
+          "sl_dist": 9.591323,
+          "bias_confidence": 0.9,
+          "r": -0.173
+        },
+        {
+          "time": "2018-03-28T07:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1506.062,
+          "stop": 1519.520291,
+          "sl_dist": 13.458291,
+          "bias_confidence": 0.9,
+          "r": -1.149
+        },
+        {
+          "time": "2018-04-04T06:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1505.092,
+          "stop": 1509.679564,
+          "sl_dist": 4.587564,
+          "bias_confidence": 0.9,
+          "r": 2.845
+        },
+        {
+          "time": "2018-04-20T10:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1575.795,
+          "stop": 1567.642818,
+          "sl_dist": 8.152182,
+          "bias_confidence": 0.9,
+          "r": -1.245
+        },
+        {
+          "time": "2018-05-09T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1593.477,
+          "stop": 1581.001173,
+          "sl_dist": 12.475827,
+          "bias_confidence": 0.9,
+          "r": 0.577
+        },
+        {
+          "time": "2018-05-10T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1601.731,
+          "stop": 1594.040565,
+          "sl_dist": 7.690435,
+          "bias_confidence": 0.9,
+          "r": -0.191
+        },
+        {
+          "time": "2018-05-11T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1605.244,
+          "stop": 1601.756846,
+          "sl_dist": 3.487154,
+          "bias_confidence": 0.9,
+          "r": -0.516
+        },
+        {
+          "time": "2018-05-14T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1611.705,
+          "stop": 1606.136326,
+          "sl_dist": 5.568674,
+          "bias_confidence": 0.9,
+          "r": -0.74
+        },
+        {
+          "time": "2018-05-17T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1617.763,
+          "stop": 1614.511643,
+          "sl_dist": 3.251357,
+          "bias_confidence": 0.55,
+          "r": 1.622
+        },
+        {
+          "time": "2018-05-18T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1628.552,
+          "stop": 1621.784175,
+          "sl_dist": 6.767825,
+          "bias_confidence": 0.9,
+          "r": 0.195
+        },
+        {
+          "time": "2018-05-22T03:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1640.189,
+          "stop": 1636.999236,
+          "sl_dist": 3.189764,
+          "bias_confidence": 0.9,
+          "r": -0.817
+        },
+        {
+          "time": "2018-06-08T13:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1670.788,
+          "stop": 1659.838257,
+          "sl_dist": 10.949743,
+          "bias_confidence": 0.9,
+          "r": 0.271
+        },
+        {
+          "time": "2018-06-13T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1683.87,
+          "stop": 1678.134438,
+          "sl_dist": 5.735562,
+          "bias_confidence": 0.9,
+          "r": -1.349
+        },
+        {
+          "time": "2018-07-09T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1701.858,
+          "stop": 1695.558501,
+          "sl_dist": 6.299499,
+          "bias_confidence": 0.9,
+          "r": 0.075
+        },
+        {
+          "time": "2018-08-24T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1724.409,
+          "stop": 1720.458337,
+          "sl_dist": 3.950663,
+          "bias_confidence": 0.9,
+          "r": 1.47
+        },
+        {
+          "time": "2018-08-27T12:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1729.621,
+          "stop": 1726.497726,
+          "sl_dist": 3.123274,
+          "bias_confidence": 0.9,
+          "r": 0.456
+        },
+        {
+          "time": "2018-08-30T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1737.156,
+          "stop": 1726.343345,
+          "sl_dist": 10.812655,
+          "bias_confidence": 0.55,
+          "r": -0.435
+        },
+        {
+          "time": "2018-09-03T06:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1741.067,
+          "stop": 1738.235184,
+          "sl_dist": 2.831816,
+          "bias_confidence": 0.55,
+          "r": -0.609
+        },
+        {
+          "time": "2018-10-25T11:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1476.758,
+          "stop": 1485.740066,
+          "sl_dist": 8.982066,
+          "bias_confidence": 0.9,
+          "r": -1.223
+        },
+        {
+          "time": "2018-12-06T09:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1459.781,
+          "stop": 1474.201329,
+          "sl_dist": 14.420329,
+          "bias_confidence": 0.9,
+          "r": -0.278
+        },
+        {
+          "time": "2018-12-10T14:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1442.973,
+          "stop": 1457.764437,
+          "sl_dist": 14.791437,
+          "bias_confidence": 0.9,
+          "r": 0.414
+        },
+        {
+          "time": "2018-12-14T17:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1420.482,
+          "stop": 1437.122694,
+          "sl_dist": 16.640694,
+          "bias_confidence": 0.9,
+          "r": 0.637
+        },
+        {
+          "time": "2018-12-19T19:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1358.635,
+          "stop": 1399.630892,
+          "sl_dist": 40.995892,
+          "bias_confidence": 0.9,
+          "r": 1.579
+        },
+        {
+          "time": "2019-01-02T13:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1329.227,
+          "stop": 1336.483621,
+          "sl_dist": 7.256621,
+          "bias_confidence": 0.55,
+          "r": -0.574
+        },
+        {
+          "time": "2020-03-12T18:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1130.685,
+          "stop": 1207.534765,
+          "sl_dist": 76.849765,
+          "bias_confidence": 0.9,
+          "r": -0.255
+        },
+        {
+          "time": "2020-03-16T19:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1015.57,
+          "stop": 1094.892332,
+          "sl_dist": 79.322332,
+          "bias_confidence": 0.9,
+          "r": -0.489
+        },
+        {
+          "time": "2020-03-17T09:00:00+00:00",
+          "direction": "SHORT",
+          "entry": 1035.345,
+          "stop": 1055.286332,
+          "sl_dist": 19.941332,
+          "bias_confidence": 0.9,
+          "r": -0.559
+        },
+        {
+          "time": "2020-11-11T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1736.69,
+          "stop": 1725.275447,
+          "sl_dist": 11.414553,
+          "bias_confidence": 0.55,
+          "r": -0.124
+        },
+        {
+          "time": "2020-11-18T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1795.79,
+          "stop": 1778.495369,
+          "sl_dist": 17.294631,
+          "bias_confidence": 0.9,
+          "r": -0.35
+        },
+        {
+          "time": "2020-11-18T16:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1806.09,
+          "stop": 1793.338292,
+          "sl_dist": 12.751708,
+          "bias_confidence": 0.9,
+          "r": -1.157
+        },
+        {
+          "time": "2020-12-10T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1908.65,
+          "stop": 1901.712459,
+          "sl_dist": 6.937541,
+          "bias_confidence": 0.9,
+          "r": -0.653
+        },
+        {
+          "time": "2020-12-11T07:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1924.11,
+          "stop": 1916.195124,
+          "sl_dist": 7.914876,
+          "bias_confidence": 0.9,
+          "r": -1.253
+        },
+        {
+          "time": "2020-12-17T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1960.53,
+          "stop": 1954.282382,
+          "sl_dist": 6.247618,
+          "bias_confidence": 0.9,
+          "r": 0.52
+        },
+        {
+          "time": "2020-12-17T17:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1971.08,
+          "stop": 1953.138349,
+          "sl_dist": 17.941651,
+          "bias_confidence": 0.9,
+          "r": 0.0
+        },
+        {
+          "time": "2020-12-18T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1980.98,
+          "stop": 1967.60419,
+          "sl_dist": 13.37581,
+          "bias_confidence": 0.9,
+          "r": -0.398
+        },
+        {
+          "time": "2020-12-18T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 1982.18,
+          "stop": 1975.359023,
+          "sl_dist": 6.820977,
+          "bias_confidence": 0.9,
+          "r": -0.428
+        },
+        {
+          "time": "2020-12-28T00:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2012.56,
+          "stop": 1990.658378,
+          "sl_dist": 21.901622,
+          "bias_confidence": 0.9,
+          "r": -0.144
+        },
+        {
+          "time": "2021-01-07T20:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2094.935,
+          "stop": 2080.271278,
+          "sl_dist": 14.663722,
+          "bias_confidence": 0.9,
+          "r": 0.107
+        },
+        {
+          "time": "2021-01-12T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2096.07,
+          "stop": 2087.229109,
+          "sl_dist": 8.840891,
+          "bias_confidence": 0.9,
+          "r": -0.304
+        },
+        {
+          "time": "2021-01-12T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2112.47,
+          "stop": 2087.039861,
+          "sl_dist": 25.430139,
+          "bias_confidence": 0.9,
+          "r": -0.251
+        },
+        {
+          "time": "2021-01-14T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2141.16,
+          "stop": 2119.078839,
+          "sl_dist": 22.081161,
+          "bias_confidence": 0.9,
+          "r": -0.051
+        },
+        {
+          "time": "2021-01-26T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2159.306,
+          "stop": 2139.266949,
+          "sl_dist": 20.039051,
+          "bias_confidence": 0.9,
+          "r": 0.069
+        },
+        {
+          "time": "2021-02-08T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2243.475,
+          "stop": 2231.663585,
+          "sl_dist": 11.811415,
+          "bias_confidence": 0.9,
+          "r": 3.15
+        },
+        {
+          "time": "2021-02-10T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2306.776,
+          "stop": 2296.117479,
+          "sl_dist": 10.658521,
+          "bias_confidence": 0.9,
+          "r": -0.031
+        },
+        {
+          "time": "2021-03-15T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2363.237,
+          "stop": 2349.393033,
+          "sl_dist": 13.843967,
+          "bias_confidence": 0.9,
+          "r": -1.144
+        },
+        {
+          "time": "2021-11-05T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2410.301,
+          "stop": 2401.221967,
+          "sl_dist": 9.079033,
+          "bias_confidence": 0.9,
+          "r": 1.789
+        },
+        {
+          "time": "2021-11-08T08:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2443.252,
+          "stop": 2433.484852,
+          "sl_dist": 9.767148,
+          "bias_confidence": 0.9,
+          "r": 0.899
+        },
+        {
+          "time": "2024-11-28T14:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2445.91,
+          "stop": 2439.96458,
+          "sl_dist": 5.94542,
+          "bias_confidence": 0.55,
+          "r": -0.277
+        },
+        {
+          "time": "2025-09-23T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2467.193,
+          "stop": 2456.756885,
+          "sl_dist": 10.436115,
+          "bias_confidence": 0.9,
+          "r": 1.419
+        },
+        {
+          "time": "2025-10-06T09:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2488.059,
+          "stop": 2480.2975,
+          "sl_dist": 7.7615,
+          "bias_confidence": 0.9,
+          "r": -0.214
+        },
+        {
+          "time": "2025-10-09T05:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2486.021,
+          "stop": 2479.52664,
+          "sl_dist": 6.49436,
+          "bias_confidence": 0.9,
+          "r": -1.308
+        },
+        {
+          "time": "2025-10-15T19:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2523.41,
+          "stop": 2506.752645,
+          "sl_dist": 16.657355,
+          "bias_confidence": 0.9,
+          "r": -0.355
+        },
+        {
+          "time": "2026-01-06T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2550.484,
+          "stop": 2543.658282,
+          "sl_dist": 6.825718,
+          "bias_confidence": 0.9,
+          "r": -1.293
+        },
+        {
+          "time": "2026-01-13T02:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2632.197,
+          "stop": 2626.896684,
+          "sl_dist": 5.300316,
+          "bias_confidence": 0.9,
+          "r": 4.424
+        },
+        {
+          "time": "2026-01-15T04:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2652.451,
+          "stop": 2643.003163,
+          "sl_dist": 9.447837,
+          "bias_confidence": 0.9,
+          "r": -0.005
+        },
+        {
+          "time": "2026-01-21T01:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2659.75,
+          "stop": 2645.249056,
+          "sl_dist": 14.500944,
+          "bias_confidence": 0.55,
+          "r": -1.138
+        },
+        {
+          "time": "2026-02-09T15:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2687.06,
+          "stop": 2649.795346,
+          "sl_dist": 37.264654,
+          "bias_confidence": 0.9,
+          "r": -0.325
+        },
+        {
+          "time": "2026-04-23T11:00:00+00:00",
+          "direction": "LONG",
+          "entry": 2783.346,
+          "stop": 2764.269212,
+          "sl_dist": 19.076788,
+          "bias_confidence": 0.55,
+          "r": -0.219
         }
       ]
     }
