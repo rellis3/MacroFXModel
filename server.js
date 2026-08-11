@@ -14972,6 +14972,116 @@ app.get('/api/vol-backtest/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
+// ── OANDA M1 Data Fetch API ────────────────────────────────────────────────
+// Triggers scripts/fetch_m1_oanda.py server-side. This Railway service has
+// real OANDA network access (the live bots trade off it) — a sandboxed dev
+// environment typically doesn't — so this lets the M1 universe be widened
+// from bot-config.html in a browser, without anyone needing a local Python
+// setup. Same async-job-queue shape as /api/vol-backtest/run. Gated with
+// requireAuth explicitly (unlike most /api/* routes — see the note above
+// app.use(requireAuth) further down) because it spawns a real subprocess
+// that makes external network calls and writes to disk.
+const OANDA_FETCH_SCRIPT = path.join(__dirname, 'scripts', 'fetch_m1_oanda.py');
+const oandaFetchJobs = new Map();
+let _oandaFetchRunning = false;
+let _oandaInstrumentCache = null;
+
+function _purgeStaleOandaFetchJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of oandaFetchJobs) if (job.startedAt < cutoff) oandaFetchJobs.delete(id);
+}
+
+// INSTRUMENTS lives in fetch_m1_oanda.py (the single source of truth for
+// oanda-symbol/asset-class mapping) — ask the script for it via --list
+// rather than keeping a second copy here that could drift.
+function _oandaInstruments() {
+  return new Promise((resolve, reject) => {
+    if (_oandaInstrumentCache) return resolve(_oandaInstrumentCache);
+    execFile(BT_PYTHON, [OANDA_FETCH_SCRIPT, '--list'], { timeout: 15_000 }, (err, stdout) => {
+      if (err) return reject(err);
+      try { _oandaInstrumentCache = JSON.parse(stdout); resolve(_oandaInstrumentCache); }
+      catch (e) { reject(e); }
+    });
+  });
+}
+
+app.get('/api/oanda-fetch/instruments', requireAuth, async (req, res) => {
+  try {
+    res.json({ ok: true, instruments: await _oandaInstruments() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/oanda-fetch/run', requireAuth, async (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch from Oanda' });
+  }
+  if (_oandaFetchRunning) {
+    return res.status(409).json({ ok: false, error: 'A fetch is already running — wait for it to finish' });
+  }
+
+  let instruments;
+  try {
+    instruments = await _oandaInstruments();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: `Could not list instruments: ${e.message}` });
+  }
+
+  const { pairs = [], years = 5 } = req.body || {};
+  const selected = (Array.isArray(pairs) ? pairs : []).map(p => String(p).toLowerCase());
+  const unknown  = selected.filter(p => !instruments[p]);
+  if (!selected.length) return res.status(400).json({ ok: false, error: 'No pairs selected' });
+  if (unknown.length) {
+    return res.status(400).json({ ok: false, error: `Unknown instrument key(s): ${unknown.join(', ')}` });
+  }
+  const yearsNum = Math.max(1, Math.min(10, parseInt(years, 10) || 5));
+
+  const jobId     = `oanda_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleOandaFetchJobs();
+  _oandaFetchRunning = true;
+  oandaFetchJobs.set(jobId, { status: 'running', startedAt, log: [], pairs: selected, years: yearsNum });
+
+  const args  = [OANDA_FETCH_SCRIPT, ...selected, '--years', String(yearsNum)];
+  const child = spawn(BT_PYTHON, args, { cwd: __dirname, env: process.env });
+
+  const appendLog = (chunk) => {
+    const job = oandaFetchJobs.get(jobId);
+    if (!job) return;
+    const lines = chunk.toString('utf8').split(/\r?\n/).filter(Boolean);
+    job.log.push(...lines);
+    if (job.log.length > 500) job.log.splice(0, job.log.length - 500);
+  };
+  child.stdout.on('data', appendLog);
+  child.stderr.on('data', appendLog);
+
+  child.on('close', (code) => {
+    _oandaFetchRunning = false;
+    const job = oandaFetchJobs.get(jobId);
+    if (!job) return;
+    if (code === 0) oandaFetchJobs.set(jobId, { ...job, status: 'done', exitCode: code });
+    else oandaFetchJobs.set(jobId, { ...job, status: 'error', exitCode: code,
+                                     error: `fetch_m1_oanda.py exited with code ${code}` });
+  });
+  child.on('error', (e) => {
+    _oandaFetchRunning = false;
+    const job = oandaFetchJobs.get(jobId);
+    if (job) oandaFetchJobs.set(jobId, { ...job, status: 'error', error: e.message });
+  });
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/oanda-fetch/status/:jobId', requireAuth, (req, res) => {
+  const job = oandaFetchJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed, log: job.log });
+  if (job.status === 'done')    return res.json({ ok: true, status: 'done', elapsed, log: job.log });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, elapsed, log: job.log });
+});
+
 // ── Honest Forecast Harness ─────────────────────────────────────────────────
 // Re-tests the daily vol/range forecast under honest fills + costs + a true
 // IS/OOS split, and compares fade vs follow vs regime-gated entry at the

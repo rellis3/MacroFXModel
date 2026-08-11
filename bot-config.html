@@ -540,6 +540,28 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       </div>
     </div>
 
+    <!-- OANDA M1 Data Fetch -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Fetch OANDA M1 Data</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        Pulls years of M1 candles from OANDA and uploads to R2 — runs
+        server-side on this Railway service (has live OANDA access), so it
+        works from any browser with no local Python needed. Wraps
+        scripts/fetch_m1_oanda.py.
+      </div>
+      <div id="oandaFetchPairs" style="display:flex;flex-wrap:wrap;gap:5px 14px;margin-bottom:10px;font-size:12px">
+        Loading instruments…
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Years of history</span>
+        <input type="number" id="oandaFetchYears" min="1" max="10" value="5" style="width:70px">
+      </div>
+      <button id="oandaFetchBtn" class="unlock-btn" style="margin-top:8px" onclick="runOandaFetch()">
+        Run Fetch
+      </button>
+      <div id="oandaFetchStatus" style="font-size:11px;color:var(--text3);margin-top:8px;white-space:pre-wrap;max-height:180px;overflow-y:auto"></div>
+    </div>
+
     <!-- Bot Mode -->
     <div class="card" style="margin-bottom:16px">
       <div class="card-title">Bot Mode</div>
@@ -8513,6 +8535,85 @@ document.addEventListener('click', e => {
   tip.style.left = Math.max(8, left) + 'px';
   tip.style.top  = Math.max(8, top)  + 'px';
 });
+
+// ── OANDA M1 Data Fetch ──────────────────────────────────────────────────────
+// Default-checked: the instruments with no M1 data yet as of when this was
+// wired up (silver, oil). Everything else is available but opt-in so a
+// click doesn't accidentally re-fetch years of data that's already cached.
+const OANDA_FETCH_DEFAULT_CHECKED = ['silver', 'oil'];
+
+async function loadOandaInstruments() {
+  const box = document.getElementById('oandaFetchPairs');
+  try {
+    const r = await fetch('/api/oanda-fetch/instruments');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'failed to list instruments');
+    box.innerHTML = Object.entries(d.instruments).map(([key, info]) => `
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" value="${key}" ${OANDA_FETCH_DEFAULT_CHECKED.includes(key) ? 'checked' : ''}>
+        <span>${info.desc} <span style="color:var(--text3)">(${key})</span></span>
+      </label>`).join('');
+  } catch (e) {
+    box.textContent = 'Could not load instrument list: ' + e.message;
+  }
+}
+loadOandaInstruments();
+
+async function runOandaFetch() {
+  const btn    = document.getElementById('oandaFetchBtn');
+  const status = document.getElementById('oandaFetchStatus');
+  const pairs  = Array.from(document.querySelectorAll('#oandaFetchPairs input:checked')).map(el => el.value);
+  const years  = document.getElementById('oandaFetchYears').value || '5';
+
+  if (!pairs.length) { status.textContent = 'Pick at least one instrument.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  status.textContent = `Starting fetch — ${pairs.join(', ')} (${years}yr)…`;
+
+  let start;
+  try {
+    const r = await fetch('/api/oanda-fetch/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pairs, years }),
+    });
+    try { start = await r.json(); } catch { start = { ok: false, error: `HTTP ${r.status} — non-JSON (are you logged in?)` }; }
+  } catch (e) {
+    start = { ok: false, error: e.message };
+  }
+  if (!start.ok || !start.jobId) {
+    status.textContent = 'Error: ' + (start.error || JSON.stringify(start));
+    btn.disabled = false; btn.textContent = 'Run Fetch';
+    return;
+  }
+
+  const { jobId } = start;
+  while (true) {
+    await new Promise(r => setTimeout(r, 3000));
+    let d;
+    try {
+      const r = await fetch(`/api/oanda-fetch/status/${jobId}`);
+      try { d = await r.json(); } catch { d = { ok: false, status: 'error', error: `HTTP ${r.status}` }; }
+    } catch (e) {
+      d = { ok: false, status: 'error', error: e.message };
+    }
+
+    const tail = (d.log || []).slice(-25).join('\n');
+    if (d.status === 'done') {
+      status.textContent = `Done ✓ (${d.elapsed}s)\n` + tail;
+      break;
+    }
+    if (d.status === 'error' || !d.ok) {
+      status.textContent = `Error: ${d.error || JSON.stringify(d)}\n` + tail;
+      break;
+    }
+    status.textContent = `Running… ${d.elapsed}s\n` + tail;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Run Fetch';
+}
+window.runOandaFetch = runOandaFetch;
 </script>
 </body>
 </html>
