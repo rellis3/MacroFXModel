@@ -113,10 +113,14 @@ if (key !== 'oi_store') {
 }
 
 console.log(`\nINGEST  ${dir}  ->  ${write ? `KV '${key}' at ${base}` : 'DRY RUN (nothing written)'}\n`);
-console.log('  sym          strikes  maxPain      callWall     putWall      complete');
+console.log('  sym          strikes  maxPain      callWall     putWall      iv      complete');
 
 const payload = {};
 let bad = 0;
+// IV/greek coverage — a "complete" entry (REQUIRED above) needs NO IV, so a night
+// with zero smiles ships clean and charm/vanna sit blank on the dashboard with no
+// error anywhere. Count what actually carries IV so the run says so out loud.
+let ivSmile = 0, ivTerm = 0;
 for (const stem of stems.sort()) {
   const sym = SYMS[stem];
   if (!sym) { console.log(`  ${stem.padEnd(12)} no symbol mapping - skipped`); bad++; continue; }
@@ -139,14 +143,27 @@ for (const stem of stems.sort()) {
 
   const missing = REQUIRED.filter(k => r.inst[k] === undefined || r.inst[k] === null);
   const ok = missing.length === 0;
+  // What IV made it in: 'smile' = per-strike chain → charm/vanna computed; 'term' =
+  // per-expiry settlements → expected move / IV term only (NO charm/vanna); '-' = flat-vol.
+  const rmSrc = r.inst.refMove?.source;
+  const ivStat = r.inst.greeksFlow ? 'smile'
+    : (r.inst.ivTermStructure || rmSrc === 'straddle' || rmSrc === 'iv') ? 'term' : '-';
   console.log(`  ${sym.padEnd(12)} ${String(r.parsed.strikes.length).padEnd(8)} `
     + `${String(r.inst.maxPain).padEnd(12)} ${String(r.inst.callWall).padEnd(12)} `
-    + `${String(r.inst.putWall).padEnd(12)} ${ok ? 'yes' : 'NO: ' + missing.join(',')}`);
+    + `${String(r.inst.putWall).padEnd(12)} ${ivStat.padEnd(6)} ${ok ? 'yes' : 'NO: ' + missing.join(',')}`);
   if (!ok) { bad++; continue; }          // never ship a partial entry
+  if (ivStat === 'smile') ivSmile++; else if (ivStat === 'term') ivTerm++;
   payload[sym] = r.inst;
 }
 
 console.log(`\n  ${Object.keys(payload).length} complete · ${bad} skipped`);
+console.log(`  IV coverage: ${ivSmile} smile (charm/vanna) · ${ivTerm} term-only (exp-move) · `
+  + `${Object.keys(payload).length - ivSmile - ivTerm} none`);
+// Loud when NO pair carries a smile: charm/vanna will be blank everywhere and that
+// is the expected state until the per-strike chain (rawIV) scrape is automated —
+// say it so a blank dashboard reads as "not captured yet", not "pipeline broke".
+if (!ivSmile) console.log('  NOTE: 0 pairs carry a per-strike IV smile → charm/vanna flip blank on every pair '
+  + '(rawIV capture is not automated yet — see oi_recon/run_sweep.py).');
 // Say where this is going BEFORE the write, and say it whether or not --write is
 // set, so a dry run still reveals which key a real run would have touched.
 console.log(`  target: ${key}${key === 'oi_store' ? '  ** LIVE - the bots read this **' : '  (shadow)'}  [${target.why}]`);
