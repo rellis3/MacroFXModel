@@ -1453,11 +1453,19 @@ function renderContFade(sym, r) {
     r.htf_trend ? `HTF trend ${r.htf_trend}` : null,
     r.oi ? `gamma regime ${r.oi.side === 'positive' ? 'long (pinning)' : r.oi.side === 'negative' ? 'short (amplifying)' : r.oi.side}${r.oi.near ? ' — near flip' : ''}` : null].filter(Boolean);
 
+  // USD-trend gate (FIT_FINDINGS.md Result 5): the one candidate that earned a
+  // real directional call from the fit — a filter, not a probability nudge, so
+  // it renders as its own unmissable line, not blended into `evidence` below.
+  const usdGateHtml = r.usd_trend
+    ? `<div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:700;background:${r.usd_trend.aligned ? 'var(--bull-soft)' : 'var(--bear-soft)'};color:${r.usd_trend.aligned ? 'var(--bull)' : 'var(--bear)'}">${r.usd_trend.aligned ? '🟢 USD trend ALIGNED — the historically tradeable side' : '🔴 USD trend OPPOSED — historically −3.6bp OOS, skip'}</div>`
+    : '';
+
   body.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span class="chip" style="color:${statusColor};border-color:${statusColor};background:transparent">${statusText}</span>
       <span class="mono" style="font-size:12px;color:var(--text3)">${fmtPx(r.price)}</span>
     </div>
+    ${usdGateHtml}
     <div class="rr" style="margin-bottom:10px"><span class="rr-lbl">Zone quality</span><div class="rr-bar"><span style="width:${r.zone_quality ?? 0}%;background:var(--info)"></span></div><span class="rr-val">${r.zone_quality ?? '—'}</span></div>
     <div style="display:flex;height:22px;border-radius:4px;overflow:hidden;font-size:10.5px;font-weight:700">
       <div style="width:${r.continuation.pct ?? 50}%;background:var(--bull-soft);color:var(--bull);display:flex;align-items:center;justify-content:center;white-space:nowrap">${r.continuation.pct != null ? r.continuation.pct + '%' : '—'}</div>
