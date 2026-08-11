@@ -71,22 +71,49 @@ does for its (different-purpose) reversal trades.
 ```bash
 pip install -r ContinuationBot/requirements.txt
 
-# all 26 instruments, full available history
+# all 32 instruments (26 FX/gold + 6 indices), full available history
 python ContinuationBot/backtest.py
 
 # a subset, a specific window
-python ContinuationBot/backtest.py --pairs eurusd gbpusd gold --from 2022-01-01 --to 2026-01-01
+python ContinuationBot/backtest.py --pairs eurusd gbpusd gold nq us30 --from 2022-01-01 --to 2026-01-01
 
 # per-pair trail-parameter diagnostic (NOT used for the headline numbers —
 # picking each pair's best combo after the fact would be overfitting)
 python ContinuationBot/backtest.py --sweep
 ```
 
-Data source: cached M1 parquet at `VolRangeForecaster/data/m1/{pair}_m1.parquet`
-— the same R2 cache the JS backtests and `Gold/mfe_mae_analysis.py` use.
-No download step needed; it's already on disk for all 26 instruments.
+Data sources: FX + gold come from cached M1 parquet at
+`VolRangeForecaster/data/m1/{pair}_m1.parquet` — the same R2 cache the JS
+backtests and `Gold/mfe_mae_analysis.py` use, already on disk for all 26
+instruments. Indices (`nq`, `us30`, `spx500`, `de30`, `uk100`, `us2000`) are
+fetched on first use via `portfolioBacktest.portfolio_backtest.load_pair_m1`
+— reusing that module's existing R2 client/cache instead of a second copy of
+the credentials — and cached to `portfolioBacktest/cache/`.
 
-## Results — 2018-01-01 to 2026-05-01, all 26 instruments, net of costs
+## Widening past FX: does diversifying into indices help?
+
+FX pairs are heavily cross-correlated (USD, EUR, GBP each touch most of the
+other 25), so "26 pairs" is really closer to a handful of independent bets —
+the reasoning in favour of adding genuinely uncorrelated instruments (equity
+indices, already used by `portfolioBacktest/`) was that a real institutional
+system diversifies across asset classes, not just currency pairs.
+
+Result, run the same way (2018-2026, net of costs, unchanged config): **none
+of the 6 indices show real edge with this design.** NQ/US30/DE30/US2000 are
+all noise-level (|t-stat| < 0.5 — indistinguishable from zero given their
+sample size), UK100 is mildly negative but not significant, and **SPX500 is
+a statistically clear loser** (t=-2.45, n=155 — same caliber of "real, not
+unlucky" as EURCHF's loss below). See `results.json` for the full 32-pair
+table.
+
+Read this straight: diversification only helps if the new instruments
+actually carry the same edge. This pullback-continuation logic — built and
+tuned around FX-style H1/H4/Daily structure — does not transparently
+transfer to equity indices. Extending it there would need index-specific
+tuning (different pivot/ATR parameters, or a different trigger entirely),
+not just pointing the same code at new data.
+
+## Results — 2018-01-01 to 2026-05-01, FX + gold (26 instruments), net of costs
 
 Default config: `pivot_n=4 min_atr_mult=1.0 shallow=[0.236,0.5] min_conf=0.5
 activate_r=0.5 trail_r=1.0`, one fixed global config (not per-pair fitted),
@@ -107,6 +134,29 @@ eurchf           85      85   22.4  0.28   -0.39   -0.47   -33.04
 Portfolio (equal-weight, sum of per-trade R): 1494 trades, +38.79R total, +0.026R/trade avg
 ```
 
+## Which pairs are actually worth trusting
+
+Total R alone is misleading with sample sizes this thin — a rough t-stat
+(avg R ÷ standard error of R across that pair's trades) separates real edge
+from noise. Across the full 32-instrument universe, only three pairs clear
+|t| ≥ 2 (roughly, distinguishable from zero at this sample size):
+
+| Pair | Class | N | t-stat | Read |
+|---|---|---|---|---|
+| GBPJPY | FX | 85 | +2.23 | Real edge candidate |
+| Gold | Commodity | 110 | +2.14 | Real edge candidate |
+| SPX500 | Index | 155 | -2.45 | Real, but a **loser** — worth excluding, not trading |
+| EURCHF | FX | 85 | -5.06 | Real, clear loser (see below) |
+
+Everything else — including USDJPY/AUDUSD/AUDJPY's positive-looking totals,
+and all 5 other indices — sits within roughly ±1.8 t-stat of zero: not
+enough evidence yet to call it edge or noise. Compounding a realistic 1%
+risk/trade on just GBPJPY + gold sequenced together over the same ~8 years
+gives roughly **+91% total (not annualized), ~8.5%/year, with an ~8% max
+drawdown** — a real number, not the inflated one you get from summing
+R-multiples across trades and mistaking that sum for a compounded account
+return (R is a multiple of risk per trade, not a percentage).
+
 ## Read this honestly, not optimistically
 
 - **This is a first screen, not a validated edge.** 1494 trades in aggregate
@@ -121,10 +171,12 @@ Portfolio (equal-weight, sum of per-trade R): 1494 trades, +38.79R total, +0.026
   reported net because gross numbers from any repo tool are not the honest
   number to act on.
 - **EUR crosses are the consistent losers** (eurchf -33R, gbpaud -11R,
-  nzdjpy -14R, eurjpy -13R, eurnzd -10R) even before this run's per-pair
-  breakdown is treated as reliable — worth understanding why (EUR-driven
-  pullbacks may be structurally different, or the pivot/ATR parameters may
-  not suit these pairs) before including them in anything real.
+  nzdjpy -14R, eurjpy -13R, eurnzd -10R), and SPX500 joins them once indices
+  are added — worth understanding why (EUR-driven pullbacks may be
+  structurally different, EURCHF specifically is a low-volatility
+  SNB-managed pair that rarely forms clean impulsive legs — see the trade-log
+  diagnosis in this repo's commit/PR history) before including them in
+  anything real.
 - **No portfolio-level risk limits, no position sizing, no live wiring.**
   This is a signal-generation + backtest layer only — same-instrument /
   cross-instrument concurrency caps (like `ConfluenceBot`'s

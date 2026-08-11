@@ -2,11 +2,18 @@
 """
 ContinuationBot backtest — buy the pullback that resumes the HTF trend, hold
 it with a trailing exit, across every FX pair (+gold) this repo has M1 data
-for.
+for, plus the index/futures universe (NQ, US30, SPX500, DAX, FTSE, Russell
+2000) portfolioBacktest/ already trades — widening past FX matters because
+FX pairs are heavily cross-correlated (USD/EUR/GBP touch most of them), so
+"26 pairs" is really only a handful of independent bets. Indices give
+genuinely uncorrelated exposure the same pullback logic can be tested on.
 
 Pipeline per instrument:
-  1. Load cached M1 parquet (VolRangeForecaster/data/m1/{pair}_m1.parquet —
-     the same R2 cache the JS backtests and Gold/mfe_mae_analysis.py use).
+  1. Load cached M1 parquet. FX + gold come from
+     VolRangeForecaster/data/m1/{pair}_m1.parquet (the same R2 cache the JS
+     backtests and Gold/mfe_mae_analysis.py use). Indices are downloaded
+     on demand via portfolioBacktest.portfolio_backtest.load_pair_m1 — reusing
+     that module's R2 client/cache instead of re-embedding credentials here.
   2. Resample to Daily / H4 / H1.
   3. modules.pullback_engine.htf_bias_series — vectorised port of
      ConfluenceBot's HTF bias rules (Daily EMA trend + H4 structure).
@@ -24,8 +31,8 @@ portfolio_backtest.py's --pair-scan and Gold/mfe_mae_analysis.py's caveat
 about small-sample results are meant to be read.
 
 Usage:
-  python ContinuationBot/backtest.py                       # all 26 instruments
-  python ContinuationBot/backtest.py --pairs eurusd gbpusd gold
+  python ContinuationBot/backtest.py                       # all 32 instruments (26 FX/gold + 6 indices)
+  python ContinuationBot/backtest.py --pairs eurusd gbpusd gold nq us30
   python ContinuationBot/backtest.py --from 2022-01-01 --to 2026-01-01
   python ContinuationBot/backtest.py --sweep                # per-pair trail-param diagnostic
 """
@@ -57,7 +64,7 @@ log = logging.getLogger(__name__)
 
 DATA_DIR = Path(_ROOT) / 'VolRangeForecaster' / 'data' / 'm1'
 
-ALL_PAIRS = [
+FX_PAIRS = [
     'audcad', 'audchf', 'audjpy', 'audnzd', 'audusd',
     'cadjpy', 'chfjpy',
     'euraud', 'eurcad', 'eurchf', 'eurgbp', 'eurjpy', 'eurnzd', 'eurusd',
@@ -66,6 +73,28 @@ ALL_PAIRS = [
     'usdcad', 'usdchf', 'usdjpy',
     'gold',
 ]
+
+# Indices/futures — same universe portfolioBacktest/ trades, fetched via R2 on
+# demand (cached to portfolioBacktest/cache/, not duplicated here). Genuinely
+# uncorrelated with the FX block above, unlike another EUR or GBP cross.
+INDEX_PAIRS = ['nq', 'us30', 'spx500', 'de30', 'uk100', 'us2000']
+
+ALL_PAIRS = FX_PAIRS + INDEX_PAIRS
+
+_index_loader = None
+
+
+def _get_index_loader():
+    """Lazy import of portfolioBacktest's R2 loader — only paid if an index
+    pair is actually requested, and only imported once per run."""
+    global _index_loader
+    if _index_loader is None:
+        pb_dir = os.path.join(_ROOT, 'portfolioBacktest')
+        if pb_dir not in sys.path:
+            sys.path.insert(0, pb_dir)
+        from portfolio_backtest import load_pair_m1   # noqa: E402
+        _index_loader = load_pair_m1
+    return _index_loader
 
 # Default hold/trail config — NOT per-pair-optimised. Optimising this per
 # pair before reporting the headline number would be exactly the overfitting
@@ -80,6 +109,12 @@ SWEEP_GRID = [(0.3, 0.6), (0.5, 0.8), (0.5, 1.0), (0.5, 1.5), (1.0, 1.5), (1.0, 
 
 
 def load_m1(pair: str) -> pd.DataFrame:
+    if pair in INDEX_PAIRS:
+        df = _get_index_loader()(pair)   # already tz-aware UTC, OHLC-only, sorted
+        if df.index.tz is None:
+            df.index = df.index.tz_localize('UTC')
+        return df
+
     path = DATA_DIR / f'{pair}_m1.parquet'
     df = pd.read_parquet(path)
     if df.index.name not in ('datetime', 'time') and 'time' in df.columns:
