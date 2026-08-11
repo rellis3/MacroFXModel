@@ -150,6 +150,11 @@ const zOf   = x => BASIS==='share' ? (x.specShareZ  ?? x.specZ)   : x.specZ;
 const colFor = p => p==null ? 'var(--tx3)' : p>=90 ? 'var(--long)' : p<=10 ? 'var(--short)'
               : p>=70 ? 'rgba(232,97,95,.65)' : p<=30 ? 'rgba(70,184,122,.65)' : 'var(--tx3)';
 const stat = (lbl, val, clr) => '<div class="pa-stat"><div class="pa-lbl">'+lbl+'</div><div class="pa-val" style="color:'+clr+'">'+val+'</div></div>';
+// Display-only override: the 30Y T-BOND ticker is 'US' (CFTC's own symbol), which reads as
+// an obvious abbreviation for the US Dollar right next to Pair Lab's derived 'USD' currency
+// card — two unrelated instruments with near-identical labels. `pick()`/the API still use
+// the real 'US' ticker; this only changes what's drawn on screen.
+const dispSym = x => x.sym === 'US' ? 'US30Y' : x.sym;
 
 const HELP = {
   what:['What COT is','A weekly CFTC report of who holds what in the futures market, split by trader type. It shows <b>positioning</b> — who is already committed — not price.','Read it as crowding: when one side is historically stretched, the fuel for further moves that way is thin and an unwind can be violent. It is not a timing tool.'],
@@ -452,7 +457,7 @@ function leaderboard(big){
     const p=pctOf(x), y=i*rh+3, bh=rh-4, w=((p-50)/50)*SPAN;
     s+='<rect x="'+(w>=0?MID:MID+w)+'" y="'+y+'" width="'+(Math.abs(w)||1)+'" height="'+bh
       +'" fill="'+colFor(p)+'" opacity=".85" rx="1"/>';
-    s+='<text class="lbl" x="'+(MID-SPAN-6)+'" y="'+(y+bh-2)+'" text-anchor="end" style="fill:var(--tx);font-size:'+(big?12:10.5)+'px">'+esc(x.sym)+'</text>';
+    s+='<text class="lbl" x="'+(MID-SPAN-6)+'" y="'+(y+bh-2)+'" text-anchor="end" style="fill:var(--tx);font-size:'+(big?12:10.5)+'px">'+esc(dispSym(x))+'</text>';
     s+='<text class="lbl" x="'+(w>=0?MID+w+6:MID+w-6)+'" y="'+(y+bh-2)+'" text-anchor="'+(w>=0?'start':'end')+'" style="font-size:'+(big?12:10.5)+'px">'+p+'</text>';
   });
   s+='<text class="lbl" x="'+(MID-SPAN)+'" y="'+(H+14)+'" style="fill:var(--short)">&#9664; crowded SHORT</text>'
@@ -488,7 +493,7 @@ function scatter(big){
   list.forEach(x=>{
     s+='<circle cx="'+X(pctOf(x))+'" cy="'+Y(cOf(x))+'" r="'+(big?6:4.5)+'" fill="'+colFor(pctOf(x))+'" opacity=".8"/>';
     if(big||Math.abs(50-pctOf(x))>=35)
-      s+='<text class="lbl" x="'+(X(pctOf(x))+7)+'" y="'+(Y(cOf(x))+4)+'" style="font-size:'+(big?11:9.5)+'px">'+esc(x.sym)+'</text>';
+      s+='<text class="lbl" x="'+(X(pctOf(x))+7)+'" y="'+(Y(cOf(x))+4)+'" style="font-size:'+(big?11:9.5)+'px">'+esc(dispSym(x))+'</text>';
   });
   s+='<text class="lbl" x="'+(W/2)+'" y="'+(H-P+28)+'" text-anchor="middle">speculative crowding percentile &rarr;</text>'
     +'<text class="lbl" x="'+P+'" y="'+(P-14)+'">commercial percentile &uarr;</text></svg>';
@@ -532,7 +537,7 @@ function allTable(){
     +'<th>OI</th><th>OI pct'+h('oi')+'</th><th>Wk chg'+h('wk')+'</th><th>L/S'+h('gross')+'</th></tr></thead><tbody>'
     + rows.map(x=>{const p=pctOf(x);
       return '<tr class="clk '+(SEL===x.sym?'sel':'')+'" onclick="pick(\''+esc(x.sym)+'\')">'
-        +'<td>'+esc(x.sym)+'</td><td class="muted">'+esc(x.group)+'</td>'
+        +'<td>'+esc(dispSym(x))+'</td><td class="muted">'+esc(x.group)+'</td>'
         +'<td style="color:'+colFor(p)+'"><b>'+(p??'—')+'</b></td><td class="muted">'+(zOf(x)??'—')+'</td>'
         +'<td>'+fN(x.specNet)+'</td><td class="muted">'+(x.specShare!=null?x.specShare+'%':'—')+'</td>'
         +'<td class="muted">'+(cOf(x)??'—')+'</td>'
@@ -551,7 +556,7 @@ function disagree(){
   if(!rows.length) return '<div class="empty">The OI-normalised percentiles are not in this payload yet —'
     +' they appear after the next COT refresh. Until then the ranking falls back to raw contracts.</div>';
   return '<table><thead><tr><th>Market</th><th>% of OI rank</th><th>Raw rank</th><th>Gap</th><th>OI pct</th></tr></thead><tbody>'
-    + rows.map(x=>'<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(x.sym)+'</td><td><b>'+x.specSharePct+'</b></td>'
+    + rows.map(x=>'<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(dispSym(x))+'</td><td><b>'+x.specSharePct+'</b></td>'
       +'<td class="muted">'+x.specPct+'</td>'
       +'<td style="color:'+(x.gap>=20?'var(--warn)':'var(--tx3)')+'">'+x.gap+'</td>'
       +'<td class="muted">'+(x.oiPct??'—')+'</td></tr>').join('')
@@ -596,7 +601,7 @@ function render(){
     + panel('c5','grp','By asset class','group',groups,true)
     + panel('c7','scat','Specs vs commercials','scatter',scatter)
     + panel('c5','dis','Where the two rankings disagree','basis',disagree,true)
-    + panel('c12','hist','200-week history'+(SEL?' — '+esc(SEL):''),'hist',history)
+    + panel('c12','hist','200-week history'+(SEL?' — '+esc(SEL==='US'?'US30Y':SEL):''),'hist',history)
     + panel('c12','all','All markets','spec',allTable,true)
     + '</div>';
 }
