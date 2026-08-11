@@ -16,7 +16,17 @@
  *     REVERSION toward the pin (Framework 2), regardless of regime.
  * Filters: only walls ≥ minTier (the 3× rule); skip walls that are LIQUIDATING
  * (defended then fading → likely to break); optionally require ESTABLISHED walls.
- * Size scales with wall strength × concentration.
+ * Size scales with wall strength × concentration × hold-score × GEX conviction.
+ *
+ * 2026-08 quant-review upgrades (see MD files/OI_BOT_QUANT_REVIEW_2026-08.md):
+ *   • structural distances scale with refMove (pip counts stay as the floor)
+ *   • GEX neutral band + conviction sizing vs the trailing median |GEX|
+ *   • minRR gate (too-near TP1 promoted to the next ladder node, else dropped)
+ *   • wall HOLD-SCORE (per-strike net GEX + OI flow + persistence + multiple),
+ *     calibratable from the forward-test via injected weights
+ *   • sub-tier walls trade small WITH confluence (subTierTrade)
+ *   • react-node type weights + volume-magnet quality floor
+ *   • same-side zone spacing dedupe; dropped zones reported via collectDrops
  *
  * FX is the weak asset (CME OI partial); gold + indices are where the mechanism is
  * real. The caller decides the universe — this just plans whatever it's given.
@@ -45,14 +55,22 @@ export function explainNoZones(inst, price, cfg = {}) {
   if (!inst || typeof inst !== 'object') return 'no OI data in store';
   if (!(price > 0)) return 'no live price';
   const { minTier = 'strong', requireEstablished = false,
-          fadeInPin = true, followBreaks = true } = cfg;
+          fadeInPin = true, followBreaks = true,
+          gexNeutralBand = 0.25, gexMedianAbs = null } = cfg;
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
-  const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  // Mirror the planner's neutral band: |gex| inside the band vs the trailing median
+  // → NEUTRAL on purpose (regime not trusted), not a fault.
+  const _med = Number.isFinite(gexMedianAbs) && gexMedianAbs > 0 ? gexMedianAbs : null;
+  const _conv = _med ? Math.abs(gex) / _med : null;
+  const _banded = _conv != null && gexNeutralBand > 0 && _conv < gexNeutralBand;
+  const regime = _banded ? 'NEUTRAL' : gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
   const tierOK = w => _rank(w?.tier) >= _rank(minTier);
   const calls = Array.isArray(inst.callWalls) ? inst.callWalls : [];
   const puts = Array.isArray(inst.putWalls) ? inst.putWalls : [];
   const strongCalls = calls.filter(tierOK), strongPuts = puts.filter(tierOK);
-  if (regime === 'NEUTRAL') return 'flat GEX (gex≈0) — no PIN/BREAKOUT regime, no fade/break zones';
+  if (regime === 'NEUTRAL') return _banded
+    ? `GEX inside the neutral band (|gex| ${_conv.toFixed(2)}× the trailing median < ${gexNeutralBand}) — regime sign not trusted, no fade/break zones`
+    : 'flat GEX (gex≈0) — no PIN/BREAKOUT regime, no fade/break zones';
   if (!strongCalls.length && !strongPuts.length) {
     const best = [...calls, ...puts].reduce((m, w) => Math.max(m, _rank(w?.tier)), 0);
     const bestName = best >= 3 ? 'strong' : best >= 2 ? 'moderate' : best >= 1 ? 'weak' : 'none';
@@ -71,6 +89,52 @@ export function explainNoZones(inst, price, cfg = {}) {
   }
   if (regime === 'BREAKOUT' && !followBreaks) return 'BREAKOUT regime but followBreaks is off';
   return null;     // BREAKOUT with strong walls → break zones expected
+}
+
+// ── Wall hold-score: will price REACT at this wall, or blow through it? ───────
+// A wall's holding power is not its OI count — it is which way dealers hedge when
+// price gets there. Components (each 0–1, missing data drops out and the rest
+// renormalise, so absent inputs never bias the score):
+//   gex          — per-strike net GEX at the wall (from gexProfile): dealers long
+//                  gamma there absorb the move (hold); flat/negative accelerates
+//                  through it. THE mechanistic component.
+//   flow         — OI building at the strike (fresh defence) vs unwinding
+//                  (dissolving) from the day-over-day change classification.
+//   persistence  — a wall across many expiries is structural, not a one-day pin.
+//   mult         — the wall's continuous strength multiple (the 3× rule's raw
+//                  number, finer than the tier bucket).
+// `weights` overrides the priors — the producer injects calibrated weights from
+// the forward-test (oi_hold_calibration) once enough touches have resolved.
+// Returns { score: 0–1, parts: {comp: 0–1} } or null when NO component has data.
+export const HOLD_WEIGHT_DEFAULTS = { gex: 0.35, flow: 0.25, persistence: 0.2, mult: 0.2 };
+export function wallHoldScore(w, kind, { gexProfile = null, change = null, tol = 0, weights = null } = {}) {
+  if (!w || !Number.isFinite(w.strike)) return null;
+  const parts = {};
+  // Per-strike net GEX share: nearest profile row to the strike, scaled by the
+  // profile's max |netGex| → 0.5 = neutral, 1 = strongest positive (absorbing).
+  if (Array.isArray(gexProfile) && gexProfile.length) {
+    const rows = gexProfile.filter(r => Number.isFinite(r?.strike) && Number.isFinite(r?.netGex));
+    if (rows.length) {
+      const near = rows.reduce((b, r) => Math.abs(r.strike - w.strike) < Math.abs(b.strike - w.strike) ? r : b);
+      const maxAbs = rows.reduce((m, r) => Math.max(m, Math.abs(r.netGex)), 0);
+      if (maxAbs > 0) parts.gex = +(0.5 + 0.5 * Math.max(-1, Math.min(1, near.netGex / maxAbs))).toFixed(3);
+    }
+  }
+  // OI flow at the strike: building = 1 (fresh defence), unwinding = 0, no signal = 0.5.
+  if (change && Array.isArray(change.events)) {
+    const ev = change.events.filter(e => e.kind === kind && Math.abs(e.strike - w.strike) <= Math.max(tol, 0));
+    if (ev.length) parts.flow = ev.some(e => e.type === 'liquidation') ? 0
+      : ev.some(e => e.type === 'fresh_wall' || e.type === 'fresh_positioning') ? 1 : 0.5;
+  }
+  if (Number.isFinite(w.persistence)) parts.persistence = +Math.min(1, Math.max(0, w.persistence) / 5).toFixed(3);
+  if (Number.isFinite(w.mult)) parts.mult = +Math.max(0, Math.min(1, (w.mult - 1) / 3)).toFixed(3);
+  const keys = Object.keys(parts);
+  if (!keys.length) return null;
+  const wts = { ...HOLD_WEIGHT_DEFAULTS, ...(weights || {}) };
+  let num = 0, den = 0;
+  for (const k of keys) { const ww = Math.max(0, wts[k] ?? 0); num += ww * parts[k]; den += ww; }
+  if (den <= 0) return null;
+  return { score: +(num / den).toFixed(2), parts };
 }
 
 export function buildOIZones(inst, price, cfg = {}) {
@@ -141,16 +205,84 @@ export function buildOIZones(inst, price, cfg = {}) {
     charmActive = false,           // charm firing near expiry → amplify the max-pain PIN (Mode C): charm
                                    // flows pin price toward strikes as time decays into expiry/the close.
     charmBoost = 1.2,
+    // ── refMove-scaled structural distances ─────────────────────────────────
+    // pip = 1.0 for gold AND every index, so a global pip count is 0.03% of spot on
+    // Dow but 0.63% on Russell (~20× spread in effective buffer). Effective distance
+    // = max(pips × pip, frac × refMove): pips stay as the floor, the fraction of the
+    // instrument's own reference move does the scaling. frac 0 (or no refMove) →
+    // pips-only, exactly the old behaviour.
+    slBufferRefFrac = 0.10,        // SL buffer as a fraction of refMove
+    breakRefFrac = 0.15,           // decisive-break distance as a fraction of refMove
+    extendedRefFrac = 0.25,        // max-pain "extended" threshold as a fraction of refMove
+    // ── GEX conviction (neutral band + sizing) ──────────────────────────────
+    // The regime was SIGN-ONLY: a book +0.1% net GEX today and −0.1% tomorrow flipped
+    // the whole strategy (fade ↔ follow) on noise around zero. gexMedianAbs (injected
+    // by the producer from oi_history — trailing median |netGEX|) anchors a neutral
+    // band: |gex| below band × median → NEUTRAL (no fade/break zones; max-pain
+    // reversion still runs, it is regime-agnostic). Above the band, size scales with
+    // conviction = |gex|/median, clamped — a barely-positive book fades at half size.
+    gexNeutralBand = 0.25,         // |gex| < this × median|gex| → NEUTRAL (0 = off)
+    gexMedianAbs = null,           // trailing median |netGEX| (producer-injected; null = band+conviction off)
+    convictionSizing = true,       // scale zone size with |gex|/median (clamped 0.5–1.2)
+    // ── minimum reward:risk ─────────────────────────────────────────────────
+    minRR = 0.8,                   // drop (or ladder-promote past) a TP1 closer than this × the stop
+                                   // distance — a 0.2R fade was previously planned at full size. 0 = off.
+    // ── smaller trade levels (sub-tier walls, graded in — not gated out) ────
+    subTierTrade = false,          // walls BELOW minTier become fade zones at subTierSize — but only
+                                   // WITH CONFLUENCE (a volume magnet / flip / multi-expiry persistence
+                                   // agreeing within tolerance). A weak wall alone is noise; a weak wall
+                                   // on the day's volume shelf is a level.
+    subTierSize = 0.4,             // size multiplier for sub-tier confluence zones
+    minZoneSpacing = 0.05,         // same-side zones closer than this × refMove collapse to the
+                                   // higher-conviction one (plan-side dedupe; the executor's stack
+                                   // guard stays as the backstop). 0 or no refMove = off.
+    // ── react-node weights + volume-magnet quality ──────────────────────────
+    // Mode D treated every node type identically — but a wall is defended inventory,
+    // a volume magnet is one day's flow, and a flip is a transition zone with nothing
+    // defending it. Per-type size weights (0 = that type doesn't enter); flips and
+    // magnets keep working as TP-ladder nodes regardless.
+    reactNodes = null,             // {walls, gammaFlip, gexFlip, vannaFlip, volMagnets} — merged over defaults
+    volMagnetMinShare = 0.25,      // a magnet needs ≥ this share of the strongest magnet's volume to
+                                   // count as a node (top-8 by volume was the only floor before)
+    // ── wall hold-score (react-vs-blow-through) ─────────────────────────────
+    holdScore = true,              // compute + stamp a 0–1 hold score per wall zone; sizes FADES by it
+                                   // (breaks keep the existing OI-flow confirmation — no double count)
+    holdWeights = null,            // calibrated component weights (producer-injected from
+                                   // oi_hold_calibration once the forward-test has enough trades)
+    collectDrops = null,           // array to receive {level, mode, side, reason} for every zone the
+                                   // planner dropped (minRR / spacing) — so a blank reads as intended
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
-  const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  // Conviction vs the trailing median |GEX| (null when no history was injected).
+  const _medAbs = Number.isFinite(gexMedianAbs) && gexMedianAbs > 0 ? gexMedianAbs : null;
+  const conviction = _medAbs ? +(Math.abs(gex) / _medAbs).toFixed(2) : null;
+  const _neutralByBand = conviction != null && gexNeutralBand > 0 && conviction < gexNeutralBand;
+  const regime = _neutralByBand ? 'NEUTRAL' : gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  // Conviction size multiplier for regime-dependent zones (fade/break/react — NOT
+  // maxpain, which is regime-agnostic). No history → 1 (unchanged behaviour).
+  const convMult = (convictionSizing && conviction != null && regime !== 'NEUTRAL')
+    ? Math.min(1.2, Math.max(0.5, conviction)) : 1;
   const maxPain = Number.isFinite(inst.maxPain) ? inst.maxPain : null;
   const conc = inst.concentration?.read || null;
-  const buf = slBufferPips * pip;
-  const brk = breakPips * pip;
+  // Effective structural distances: pip floor + refMove fraction (see above).
+  const _ref = Number.isFinite(refMove) && refMove > 0 ? refMove : null;
+  const _eff = (pips, frac) => Math.max(pips * pip, (_ref && frac > 0) ? frac * _ref : 0);
+  const buf = _eff(slBufferPips, slBufferRefFrac);
+  const brk = _eff(breakPips, breakRefFrac);
+  const ext = _eff(extendedPips, extendedRefFrac);
   const tol = Math.max(buf, pip);
   const tierOK = w => _rank(w?.tier) >= _rank(minTier);
+  const _reactW = { walls: 1.0, gammaFlip: 0.8, gexFlip: 0.8, vannaFlip: 0.6, volMagnets: 0.6, ...(reactNodes || {}) };
+  // Volume magnets with a quality floor: ≥ minShare of the strongest magnet's volume.
+  // Applied everywhere magnets are used (react nodes AND ladder targets) — magnet #8
+  // at 3% of magnet #1's volume was previously a full node.
+  const _magnets = (() => {
+    const vs = (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).filter(v => Number.isFinite(v?.strike));
+    const top = vs.reduce((m, v) => Math.max(m, v?.volume || 0), 0);
+    return top > 0 ? vs.filter(v => (v.volume || 0) >= volMagnetMinShare * top) : vs;
+  })();
+  const _drop = (z, reason) => { if (Array.isArray(collectDrops)) collectDrops.push({ mode: z.mode, side: z.side, level: z.level ?? null, entry: z.entry ?? null, reason }); };
 
   // Keep walls ≥ minTier, then rank by STRENGTH = OI × durability, where durability
   // rewards a wall present across many expiries (persistence — a wall living in one
@@ -245,7 +377,7 @@ export function buildOIZones(inst, price, cfg = {}) {
     push(maxPain, 'max pain');
     push(gammaFlipLevel, 'gamma flip');
     push(vannaFlipLevel, 'vanna flip');
-    for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : [])) push(v?.strike, 'vol magnet');
+    for (const v of _magnets) push(v?.strike, 'vol magnet');   // quality-floored (volMagnetMinShare)
     return nodes;
   })() : null;
   // Nearest two nodes strictly in the profit direction (dir +1 = above entry, −1 = below),
@@ -278,6 +410,23 @@ export function buildOIZones(inst, price, cfg = {}) {
         rationale = `${rationale} · TP ${fallbackTpR}R measured move (no wall ahead)`;
       }
     }
+    // Minimum reward:risk. TP1 to max pain (or the nearest ladder node) can sit a
+    // handful of pips from the entry while the SL sits a full buffer behind the wall
+    // — a 0.2R trade was previously planned, alerted, and traded at full size. With
+    // a too-near TP1 and a further TP2 that clears the bar, promote TP2; otherwise
+    // drop the zone and record why (SL-only zones pass — no TP to measure).
+    if (minRR > 0 && z.sl != null && tp1 != null) {
+      const risk = Math.abs(z.entry - z.sl);
+      if (risk > 0) {
+        let rr = Math.abs(tp1 - z.entry) / risk;
+        if (rr < minRR && tp2 != null && Math.abs(tp2 - z.entry) / risk >= minRR) {
+          rationale = `${rationale} · TP1 ${+(+tp1).toFixed(6)} inside ${minRR}R → promoted to next level`;
+          tp1 = tp2; tp2 = null;
+          rr = Math.abs(tp1 - z.entry) / risk;
+        }
+        if (rr < minRR) { _drop(z, `${rr.toFixed(2)}R < minRR ${minRR} — target too close to the entry for the stop`); return; }
+      }
+    }
     if (regimeWarning) rationale = `${rationale} · ⚠ ${regimeWarning}`;
     if (vannaNote) rationale = `${rationale} · ${vannaNote}`;
     // Vanna conditioner (theory): a 'tailwind' state = dealer vega-hedging AMPLIFIES the
@@ -308,8 +457,29 @@ export function buildOIZones(inst, price, cfg = {}) {
       rationale = `${rationale} · ⚠ ${reach} — unlikely to fill by expiry`;
       sizeFactor = +(sizeFactor * reachTrim).toFixed(2);
     }
+    // Wall hold-score: sizes FADES (reversion leans on the wall holding) and
+    // annotates breaks (which keep the OI-flow confirmation as their size input —
+    // flow is a hold component, so sizing breaks by hold too would double-count it).
+    if (holdScore && z.hold && Number.isFinite(z.hold.score)) {
+      const hs = z.hold.score;
+      if (z.mode === 'fade') {
+        const hm = +(0.7 + 0.6 * hs).toFixed(2);              // 0.7× (weak wall) … 1.3× (strong hold)
+        sizeFactor = +(sizeFactor * hm).toFixed(2);
+        rationale = `${rationale} · hold ${Math.round(hs * 100)}%${hs < 0.4 ? ' ⚠ weak wall (blow-through risk)' : ''}`;
+      } else if (z.mode === 'break') {
+        rationale = `${rationale} · hold ${Math.round(hs * 100)}%${hs >= 0.7 ? ' ⚠ strong wall (break may stall)' : ''}`;
+      }
+    }
+    // GEX conviction: regime-dependent zones scale with |GEX| vs its trailing median
+    // (maxpain is regime-agnostic and skips it). Surfaced so the paper test can be
+    // reviewed per conviction bucket later.
+    if (conviction != null && z.mode !== 'maxpain') {
+      sizeFactor = +(sizeFactor * convMult).toFixed(2);
+      rationale = `${rationale} · GEX ${conviction}× median${convMult !== 1 ? ` → size ${convMult > 1 ? 'up' : 'down'}` : ''}`;
+    }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
-      tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
+      tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null,
+      hold: z.hold?.score ?? null, holdParts: z.hold?.parts ?? null, conviction, rationale, regime });
   };
 
   // ── Mode A — PIN: fade strong walls toward max pain ─────────────────────────
@@ -320,6 +490,8 @@ export function buildOIZones(inst, price, cfg = {}) {
   // boosts size through sizeFactor(); the reachability gate in add() trims any that sit
   // beyond the implied move. Selecting by distance uses the FULL tierOK set (not the
   // strength-capped calls/puts) so a near strong wall can't be cut by a far stronger one.
+  const _hold = (w, kind) => holdScore
+    ? wallHoldScore(w, kind, { gexProfile: inst.gexProfile, change, tol, weights: holdWeights }) : null;
   if (fadeInPin && regime === 'PIN') {
     const resist = (Array.isArray(inst.callWalls) ? inst.callWalls : [])
       .filter(w => tierOK(w) && w.strike > price).sort((a, b) => a.strike - b.strike);
@@ -336,7 +508,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       const sec = i > 0;
       add({ mode: 'fade', side: 'sell', level: w.strike, entry: w.strike, sl: w.strike + buf,
         tp1, tp2, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
-        blocker: nearestBlocker(w.strike, w.strike),
+        blocker: nearestBlocker(w.strike, w.strike), hold: _hold(w, 'call'),
         rationale: `${regime} · call wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (resistance)${tpNote}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
     });
     supportPin.forEach((w, i) => {
@@ -348,9 +520,53 @@ export function buildOIZones(inst, price, cfg = {}) {
       const sec = i > 0;
       add({ mode: 'fade', side: 'buy', level: w.strike, entry: w.strike, sl: w.strike - buf,
         tp1, tp2, sizeFactor: +(sizeFactor(w) * (sec ? secondaryTrim : 1)).toFixed(2),
-        blocker: nearestBlocker(w.strike, w.strike),
+        blocker: nearestBlocker(w.strike, w.strike), hold: _hold(w, 'put'),
         rationale: `${regime} · put wall ${w.strike} ${w.tier}${w.mult ? ` ${w.mult}×` : ''} → fade (support)${tpNote}${conc ? ` · ${conc}` : ''}${persNote(w)} · ${sec ? 'secondary (further wall)' : 'primary (nearest strong wall)'}` });
     });
+
+    // ── Sub-tier walls, graded in — not gated out ─────────────────────────────
+    // minTier was a binary gate while sizeFactor already grades tiers, so the
+    // machinery for trading smaller levels at smaller size existed but was
+    // unreachable below the gate. A sub-tier wall qualifies only WITH CONFLUENCE:
+    // a second, independent read agreeing within tolerance (volume magnet, a
+    // gamma/GEX/vanna flip, or multi-expiry persistence). A weak wall alone is
+    // noise; a weak wall sitting on the day's volume shelf is a level.
+    if (subTierTrade) {
+      const confluence = (w) => {
+        const near = (lvl) => Number.isFinite(lvl) && Math.abs(lvl - w.strike) <= tol * 2;
+        if (_magnets.some(v => near(v.strike))) return 'volume magnet';
+        if (near(gammaFlipLevel)) return 'gamma flip';
+        if (near(gexFlipLevel)) return 'gex flip';
+        if (near(vannaFlipLevel)) return 'vanna flip';
+        if ((w?.persistence || 0) >= 2) return `persistent ${w.persistence}exp`;
+        return null;
+      };
+      const _capSub = a => (maxZonesPerSide > 0 ? a.slice(0, maxZonesPerSide) : a);
+      const subResist = _capSub((Array.isArray(inst.callWalls) ? inst.callWalls : [])
+        .filter(w => !tierOK(w) && _rank(w?.tier) >= 1 && w.strike > price).sort((a, b) => a.strike - b.strike));
+      const subSupport = _capSub((Array.isArray(inst.putWalls) ? inst.putWalls : [])
+        .filter(w => !tierOK(w) && _rank(w?.tier) >= 1 && w.strike < price).sort((a, b) => b.strike - a.strike));
+      for (const w of subResist) {
+        const c = confluence(w);
+        if (!c || isLiquidating(w.strike, 'call') || !isEstablished(w.strike, 'call')) continue;
+        let tp1 = (maxPain != null && maxPain < w.strike) ? maxPain : null, tp2 = null, tpNote = tp1 != null ? ` toward max pain ${maxPain}` : '';
+        if (levelLadderTP) { const L = ladderTP(w.strike, -1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
+        add({ mode: 'fade', side: 'sell', level: w.strike, entry: w.strike, sl: w.strike + buf,
+          tp1, tp2, sizeFactor: +(sizeFactor(w) * subTierSize).toFixed(2),
+          blocker: nearestBlocker(w.strike, w.strike), hold: _hold(w, 'call'),
+          rationale: `${regime} · sub-tier ${w.tier} call wall ${w.strike} → fade SMALL (confluence: ${c})${tpNote}${persNote(w)}` });
+      }
+      for (const w of subSupport) {
+        const c = confluence(w);
+        if (!c || isLiquidating(w.strike, 'put') || !isEstablished(w.strike, 'put')) continue;
+        let tp1 = (maxPain != null && maxPain > w.strike) ? maxPain : null, tp2 = null, tpNote = tp1 != null ? ` toward max pain ${maxPain}` : '';
+        if (levelLadderTP) { const L = ladderTP(w.strike, +1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
+        add({ mode: 'fade', side: 'buy', level: w.strike, entry: w.strike, sl: w.strike - buf,
+          tp1, tp2, sizeFactor: +(sizeFactor(w) * subTierSize).toFixed(2),
+          blocker: nearestBlocker(w.strike, w.strike), hold: _hold(w, 'put'),
+          rationale: `${regime} · sub-tier ${w.tier} put wall ${w.strike} → fade SMALL (confluence: ${c})${tpNote}${persNote(w)}` });
+      }
+    }
   }
 
   // ── Mode B — BREAKOUT: follow a decisive wall break (gamma squeeze) ──────────
@@ -368,6 +584,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       if (levelLadderTP) { const L = ladderTP(w.strike + brk, +1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
       add({ mode: 'break', side: 'buy', level: w.strike, entry: w.strike + brk, sl: w.strike - buf,
         tp1, tp2, sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike + brk, w.strike),
+        hold: _hold(w, 'call'),
         rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}` });
     }
     for (const w of puts) {
@@ -376,13 +593,14 @@ export function buildOIZones(inst, price, cfg = {}) {
       if (levelLadderTP) { const L = ladderTP(w.strike - brk, -1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
       add({ mode: 'break', side: 'sell', level: w.strike, entry: w.strike - brk, sl: w.strike + buf,
         tp1, tp2, sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike - brk, w.strike),
+        hold: _hold(w, 'put'),
         rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}` });
     }
   }
 
   // ── Mode C — max-pain reversion near expiry ─────────────────────────────────
   const dte = _nearDTE(inst);
-  if (maxPainReversion && dte != null && dte <= nearExpiryDTE && maxPain != null && Math.abs(price - maxPain) >= extendedPips * pip) {
+  if (maxPainReversion && dte != null && dte <= nearExpiryDTE && maxPain != null && Math.abs(price - maxPain) >= ext) {
     const side = price > maxPain ? 'sell' : 'buy';
     const guardWall = side === 'sell'
       ? calls.filter(c => c.strike > price).sort((a, b) => a.strike - b.strike)[0]?.strike
@@ -390,7 +608,11 @@ export function buildOIZones(inst, price, cfg = {}) {
     // Charm (theory): as time decays into expiry, dealer charm-hedging pins price toward
     // the big strikes — so near expiry a firing charm AMPLIFIES the max-pain pull. Boost size.
     const mcSize = charmActive ? +(1.0 * charmBoost).toFixed(2) : 1.0;
-    add({ mode: 'maxpain', side, level: maxPain, entry: price,
+    // minDist rides the zone so the ENGINE re-validates at fire time: the extended
+    // check above ran at plan-build; by the time the bot loads the plan (or restarts)
+    // price may already be back at the pin — the edge is spent and the zone must not
+    // fire. The engine requires |px − level| ≥ minDist on the planned side.
+    add({ mode: 'maxpain', side, level: maxPain, entry: price, minDist: +ext.toFixed(6),
       sl: guardWall != null ? (side === 'sell' ? guardWall + buf : guardWall - buf) : (side === 'sell' ? price + buf * 4 : price - buf * 4),
       tp1: maxPain, tp2: null, sizeFactor: mcSize,
       rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
@@ -411,6 +633,12 @@ export function buildOIZones(inst, price, cfg = {}) {
   // opposite side is allowed so a wall is bracketed (buy the bounce / sell the break).
   if (reactAtLevels && regime !== 'NEUTRAL') {
     const rTierOK = w => _rank(w?.tier) >= _rank(reactMinTier);
+    // Per-node-type weights: a wall is defended inventory, a volume magnet is one
+    // day's flow, a flip is a transition zone with nothing defending it — they are
+    // not equally trustworthy entries. weight 0 = that type never ENTERS (it still
+    // serves as a TP node); the weight multiplies the react zone's size.
+    const _kindW = { 'call wall': _reactW.walls, 'put wall': _reactW.walls, 'gamma flip': _reactW.gammaFlip,
+                     'gex flip': _reactW.gexFlip, 'vanna flip': _reactW.vannaFlip, 'vol magnet': _reactW.volMagnets };
     const rnodes = [];
     const push = (lvl, kind) => { if (Number.isFinite(lvl)) rnodes.push({ lvl, kind }); };
     for (const w of (Array.isArray(inst.callWalls) ? inst.callWalls : [])) if (rTierOK(w)) push(w.strike, 'call wall');
@@ -418,7 +646,7 @@ export function buildOIZones(inst, price, cfg = {}) {
     push(gammaFlipLevel, 'gamma flip');
     push(gexFlipLevel, 'gex flip');
     push(vannaFlipLevel, 'vanna flip');
-    for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : [])) push(v?.strike, 'vol magnet');
+    for (const v of _magnets) push(v?.strike, 'vol magnet');   // quality-floored (volMagnetMinShare)
     // Collapse near-identical nodes (first push wins → a wall label beats a coincident flip/magnet).
     const dedup = [];
     for (const n of rnodes) if (!dedup.some(d => Math.abs(d.lvl - n.lvl) <= tol)) dedup.push(n);
@@ -431,23 +659,44 @@ export function buildOIZones(inst, price, cfg = {}) {
     const cap = a => (maxZonesPerSide > 0 ? a.slice(0, maxZonesPerSide) : a);
     const above = cap(dedup.filter(n => n.lvl > price + tol).sort((a, b) => a.lvl - b.lvl));   // resistance
     const below = cap(dedup.filter(n => n.lvl < price - tol).sort((a, b) => b.lvl - a.lvl));   // support
+    const wNote = (wgt) => wgt !== 1 ? ` · node weight ×${wgt}` : '';
     for (const n of above) {
-      if (already(n.lvl, 'sell')) continue;
+      const wgt = _kindW[n.kind] ?? 1;
+      if (wgt <= 0 || already(n.lvl, 'sell')) continue;
       const t1 = nextNode(n.lvl, -1), t2 = t1 ? nextNode(t1.lvl, -1) : null;
       add({ mode: 'react', side: 'sell', level: n.lvl, entry: n.lvl, sl: n.lvl + buf,
-        tp1: t1?.lvl ?? null, tp2: t2?.lvl ?? null, sizeFactor: +(1 * trim).toFixed(2),
+        tp1: t1?.lvl ?? null, tp2: t2?.lvl ?? null, sizeFactor: +(1 * trim * wgt).toFixed(2),
         blocker: nearestBlocker(n.lvl, n.lvl),
-        rationale: `${regime} · ${n.kind} ${+n.lvl.toFixed(6)} → react-fade (resistance)${t1 ? ` → ${t1.kind} ${+t1.lvl.toFixed(6)}` : ''}${trimNote}` });
+        rationale: `${regime} · ${n.kind} ${+n.lvl.toFixed(6)} → react-fade (resistance)${t1 ? ` → ${t1.kind} ${+t1.lvl.toFixed(6)}` : ''}${trimNote}${wNote(wgt)}` });
     }
     for (const n of below) {
-      if (already(n.lvl, 'buy')) continue;
+      const wgt = _kindW[n.kind] ?? 1;
+      if (wgt <= 0 || already(n.lvl, 'buy')) continue;
       const t1 = nextNode(n.lvl, +1), t2 = t1 ? nextNode(t1.lvl, +1) : null;
       add({ mode: 'react', side: 'buy', level: n.lvl, entry: n.lvl, sl: n.lvl - buf,
-        tp1: t1?.lvl ?? null, tp2: t2?.lvl ?? null, sizeFactor: +(1 * trim).toFixed(2),
+        tp1: t1?.lvl ?? null, tp2: t2?.lvl ?? null, sizeFactor: +(1 * trim * wgt).toFixed(2),
         blocker: nearestBlocker(n.lvl, n.lvl),
-        rationale: `${regime} · ${n.kind} ${+n.lvl.toFixed(6)} → react-fade (support)${t1 ? ` → ${t1.kind} ${+t1.lvl.toFixed(6)}` : ''}${trimNote}` });
+        rationale: `${regime} · ${n.kind} ${+n.lvl.toFixed(6)} → react-fade (support)${t1 ? ` → ${t1.kind} ${+t1.lvl.toFixed(6)}` : ''}${trimNote}${wNote(wgt)}` });
     }
   }
 
-  return zones.sort((a, b) => Math.abs(a.entry - price) - Math.abs(b.entry - price));
+  // ── Zone spacing: two same-side zones within minZoneSpacing × refMove are ONE
+  // level, not two — keep the higher-conviction (sizeFactor) one, record the drop.
+  // Plan-side dedupe; the executor's stack guard stays as the runtime backstop.
+  // maxpain is exempt (its entry is spot — a different semantic, and the engine
+  // re-validates it at fire time anyway).
+  let out = zones;
+  if (minZoneSpacing > 0 && _ref) {
+    const minDist = minZoneSpacing * _ref;
+    const ranked = zones.filter(z => z.mode !== 'maxpain').slice().sort((a, b) => b.sizeFactor - a.sizeFactor);
+    const kept = [];
+    for (const z of ranked) {
+      const dup = kept.find(k => k.side === z.side && Math.abs(k.entry - z.entry) < minDist);
+      if (dup) { _drop(z, `within ${minZoneSpacing}×refMove of ${dup.mode} ${dup.level} (same side — one level, not two)`); continue; }
+      kept.push(z);
+    }
+    out = [...kept, ...zones.filter(z => z.mode === 'maxpain')];
+  }
+
+  return out.sort((a, b) => Math.abs(a.entry - price) - Math.abs(b.entry - price));
 }

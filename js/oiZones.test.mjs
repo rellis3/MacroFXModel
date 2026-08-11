@@ -1,6 +1,6 @@
 // Synthetic test for the OI bot strategy (regime-switch planner). No network.
 //   node js/oiZones.test.mjs
-import { buildOIZones, explainNoZones } from './oiZones.js';
+import { buildOIZones, explainNoZones, wallHoldScore } from './oiZones.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -315,10 +315,19 @@ console.log('[Mode D — react at levels: trade between nodes, treated by regime
   ok('volume magnet is a react node', react.some(x => x.level === 4270 && /vol magnet/.test(x.rationale)));
   ok('MODERATE wall traded by react (Mode A is strong-only)', react.some(x => x.level === 4250));
   ok('strong wall NOT duplicated (only the Mode-A fade at 4300 sell)', z.filter(x => x.level === 4300 && x.side === 'sell').length === 1);
-  // PIN react = NOT regime-trimmed (the nearest node with no path-blocker is full size;
-  // further nodes may still take the ×0.9 path-block trim — that's the blocker feature, not the regime).
-  ok('PIN react nearest node (no blocker) = full size', react.find(x => x.level === 4210)?.sizeFactor === 1, `${react.find(x=>x.level===4210)?.sizeFactor}`);
-  ok('PIN react never regime-trimmed to 0.6 (that is BREAKOUT only)', react.every(x => x.sizeFactor > 0.6));
+  // PIN react = NOT regime-trimmed, but each node type carries its own weight:
+  // walls (defended inventory) 1.0, flips (transition zones — nothing defends
+  // them) 0.8, volume magnets (one day's flow) 0.6.
+  ok('PIN react WALL node = full size (walls weight 1.0)', react.find(x => x.level === 4250)?.sizeFactor === 1, `${react.find(x=>x.level===4250)?.sizeFactor}`);
+  ok('flip node weighted ×0.8 (transition zone)', react.find(x => x.level === 4210)?.sizeFactor === 0.8, `${react.find(x=>x.level===4210)?.sizeFactor}`);
+  ok('vol-magnet node ×0.6 (× the 0.9 path-block trim → 0.54)', react.find(x => x.level === 4270)?.sizeFactor === 0.54, `${react.find(x=>x.level===4270)?.sizeFactor}`);
+  ok('weight noted in the rationale', /node weight ×0.8/.test(react.find(x => x.level === 4210)?.rationale || ''), react.find(x=>x.level===4210)?.rationale);
+  ok('weight 0 removes a node type as an ENTRY', !buildOIZones(inst, 4200, { ...cfg, reactAtLevels: true, gammaFlipLevel: 4210, reactNodes: { gammaFlip: 0 }, maxZonesPerSide: 10 }).some(x => x.mode === 'react' && x.level === 4210));
+  // Volume-magnet quality floor: a magnet with 10% of the top magnet's volume is
+  // not a node (volMagnetMinShare 0.25 default).
+  const manyMag = { ...inst, volumeMagnets: [{ strike: 4270, volume: 5000 }, { strike: 4260, volume: 500 }] };
+  const zm = buildOIZones(manyMag, 4200, { ...cfg, reactAtLevels: true, maxZonesPerSide: 10 });
+  ok('a 10%-share magnet is filtered out; the strong one stays', !zm.some(x => x.mode === 'react' && x.level === 4260) && zm.some(x => x.mode === 'react' && x.level === 4270), zm.filter(x=>x.mode==='react').map(x=>x.level).join(','));
   ok('react TP is the next node (level-to-level)', react.find(x => x.level === 4250 && x.side==='sell')?.tp1 != null);
 
   // BREAKOUT: react-fades are counter-trend → trimmed + annotated.
@@ -345,6 +354,110 @@ console.log('[Vanna + charm conditioners — treat the greeks as theory says]');
   const mp0 = buildOIZones(mpInst, 4260, cfg).find(x => x.mode === 'maxpain');
   const mpC = buildOIZones(mpInst, 4260, { ...cfg, charmActive: true }).find(x => x.mode === 'maxpain');
   ok('charm firing → max-pain reversion size boosted + noted', mpC.sizeFactor > mp0.sizeFactor && /charm firing/.test(mpC.rationale), `${mpC.sizeFactor}>${mp0.sizeFactor}`);
+}
+
+console.log('[refMove-scaled distances — pip floor + fraction of the reference move]');
+{
+  const inst = { ...base, exposures: { gex: 5000 } };
+  // refMove 200: buf = max(5×1, 0.10×200) = 20 → fade SL 4320; break = max(20, 0.15×200) = 30.
+  const sell = buildOIZones(inst, 4200, { ...cfg, refMove: 200 }).find(x => x.side === 'sell' && x.mode === 'fade');
+  ok('SL buffer scales with refMove (max(5p, 0.10×200) = 20)', sell.sl === 4320, `${sell.sl}`);
+  const up = buildOIZones({ ...inst, exposures: { gex: -5000 } }, 4200, { ...cfg, refMove: 200 }).find(x => x.mode === 'break' && x.side === 'buy');
+  ok('break distance scales (max(20p, 0.15×200) = 30)', up.entry === 4330, `${up.entry}`);
+  // Tiny refMove → the pip floor wins (unchanged behaviour).
+  const floor = buildOIZones(inst, 4200, { ...cfg, refMove: 10 }).find(x => x.side === 'sell' && x.mode === 'fade');
+  ok('pip counts stay as the FLOOR (refMove 10 → buf still 5)', floor.sl === 4305, `${floor.sl}`);
+  // No refMove (index straddle rejected etc) → pips only, exactly as before.
+  const noRef = buildOIZones(inst, 4200, cfg).find(x => x.side === 'sell' && x.mode === 'fade');
+  ok('no refMove → pips only (unchanged)', noRef.sl === 4305, `${noRef.sl}`);
+}
+
+console.log('[minRR gate — a target too close to the entry for the stop]');
+{
+  // Max pain 2 points below a wall with a 5-point stop = 0.4R. With a further
+  // TP2 available → promote; with nothing further → drop + record why.
+  const noTp2 = { maxPain: 4298, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3 }], putWalls: [] };
+  const drops = [];
+  const z = buildOIZones(noTp2, 4200, { ...cfg, collectDrops: drops });
+  ok('0.4R fade with no further target is DROPPED', !z.some(x => x.mode === 'fade'), z.map(x=>x.mode).join(','));
+  ok('the drop is recorded with the R and the reason', drops.some(d => /minRR/.test(d.reason)), JSON.stringify(drops));
+  const withTp2 = { ...noTp2, putWalls: [{ strike: 4100, oi: 9000, tier: 'strong', mult: 3 }] };
+  const sell = buildOIZones(withTp2, 4200, cfg).find(x => x.side === 'sell' && x.mode === 'fade');
+  ok('with a further level available, TP1 is PROMOTED past the too-near one',
+    sell && sell.tp1 === 4100 && /promoted to next level/.test(sell.rationale), sell?.rationale);
+  ok('minRR 0 turns the gate off', buildOIZones(noTp2, 4200, { ...cfg, minRR: 0 }).some(x => x.mode === 'fade'));
+}
+
+console.log('[GEX neutral band + conviction sizing — sign alone is not a regime]');
+{
+  // |gex| 500 vs median 5000 = 0.1× < band 0.25 → NEUTRAL (no fade/break zones).
+  const weakGex = { ...base, exposures: { gex: 500 } };
+  const z = buildOIZones(weakGex, 4200, { ...cfg, gexMedianAbs: 5000 });
+  ok('low-conviction +GEX → NEUTRAL, no fade/break', !z.some(x => x.mode === 'fade' || x.mode === 'break'), z.map(x=>x.mode).join(','));
+  ok('explainNoZones cites the neutral band', /neutral band/.test(explainNoZones(weakGex, 4200, { ...cfg, gexMedianAbs: 5000 }) || ''),
+    explainNoZones(weakGex, 4200, { ...cfg, gexMedianAbs: 5000 }));
+  // Above the band, size scales with conviction (clamped 0.5–1.2).
+  const half = buildOIZones({ ...base, exposures: { gex: 2500 } }, 4200, { ...cfg, gexMedianAbs: 5000 }).find(x => x.side === 'sell');
+  const full = buildOIZones({ ...base, exposures: { gex: 6000 } }, 4200, { ...cfg, gexMedianAbs: 5000 }).find(x => x.side === 'sell');
+  ok('0.5× median conviction trades smaller than 1.2×', half.sizeFactor < full.sizeFactor, `${half.sizeFactor} < ${full.sizeFactor}`);
+  ok('conviction surfaced in the rationale + on the zone', /GEX 0\.5× median/.test(half.rationale) && half.conviction === 0.5, half.rationale);
+  ok('no history (gexMedianAbs null) → unchanged, no conviction note',
+    !/GEX .*median/.test(buildOIZones({ ...base, exposures: { gex: 5000 } }, 4200, cfg).find(x => x.side === 'sell').rationale));
+}
+
+console.log('[Wall hold-score — will price react here or blow through?]');
+{
+  const gp = v => [{ strike: 4200, netGex: 1000 }, { strike: 4300, netGex: v }];
+  const hi = wallHoldScore({ strike: 4300, oi: 9000, mult: 3 }, 'call', { gexProfile: gp(2000) });
+  const lo = wallHoldScore({ strike: 4300, oi: 9000, mult: 3 }, 'call', { gexProfile: gp(-2000) });
+  ok('positive per-strike net GEX (dealers absorb) → higher hold than negative', hi.score > lo.score, `${hi.score} > ${lo.score}`);
+  ok('components reported for the audit/calibration', hi.parts.gex != null && hi.parts.mult != null, JSON.stringify(hi.parts));
+  ok('no data at all → null (never a fake score)', wallHoldScore({ strike: 4300 }, 'call', {}) === null);
+  const chg = t => ({ events: [{ type: t, kind: 'call', strike: 4300 }] });
+  const b = wallHoldScore({ strike: 4300, mult: 3 }, 'call', { change: chg('fresh_wall'), tol: 1 });
+  const u = wallHoldScore({ strike: 4300, mult: 3 }, 'call', { change: chg('liquidation'), tol: 1 });
+  ok('OI building at the strike → higher hold than unwinding', b.score > u.score, `${b.score} > ${u.score}`);
+  const wOnly = wallHoldScore({ strike: 4300, mult: 4 }, 'call', { gexProfile: gp(-2000), weights: { mult: 1, gex: 0, flow: 0, persistence: 0 } });
+  ok('calibrated weights re-blend the components (mult-only ignores GEX)', wOnly.score === 1, `${wOnly.score}`);
+  // Zone wiring: fades at weak-hold walls are sized down + annotated; the stamp rides the zone.
+  const weakW = buildOIZones({ ...base, exposures: { gex: 5000 }, gexProfile: gp(-2000) }, 4200, cfg).find(x => x.side === 'sell');
+  const strongW = buildOIZones({ ...base, exposures: { gex: 5000 }, gexProfile: gp(2000) }, 4200, cfg).find(x => x.side === 'sell');
+  ok('fade at a weak-hold wall sized DOWN vs a strong-hold wall', weakW.sizeFactor < strongW.sizeFactor, `${weakW.sizeFactor} < ${strongW.sizeFactor}`);
+  ok('hold % in the rationale + stamped on the zone', /hold \d+%/.test(weakW.rationale) && weakW.hold != null && weakW.holdParts != null, weakW.rationale);
+  ok('weak wall flagged with blow-through risk', /blow-through risk/.test(weakW.rationale), weakW.rationale);
+  ok('holdScore:false → no stamp, no sizing', buildOIZones({ ...base, exposures: { gex: 5000 }, gexProfile: gp(2000) }, 4200, { ...cfg, holdScore: false }).find(x => x.side === 'sell').hold == null);
+}
+
+console.log('[Sub-tier walls — graded in WITH confluence, not gated out]');
+{
+  const inst = { maxPain: 4200, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3 }, { strike: 4250, oi: 3000, tier: 'weak', mult: 1.5 }],
+    putWalls: [{ strike: 4100, oi: 9000, tier: 'strong', mult: 3 }],
+    volumeMagnets: [{ strike: 4251, volume: 5000 }] };
+  ok('subTierTrade OFF (default) → weak wall stays untraded', !buildOIZones(inst, 4200, cfg).some(x => x.level === 4250));
+  const z = buildOIZones(inst, 4200, { ...cfg, subTierTrade: true });
+  const sub = z.find(x => x.level === 4250);
+  ok('weak wall + volume-magnet confluence → SMALL fade zone', !!sub && /sub-tier/.test(sub.rationale) && /confluence: volume magnet/.test(sub.rationale), sub?.rationale);
+  ok('sized well below the full-tier zone', sub.sizeFactor < z.find(x => x.level === 4300).sizeFactor, `${sub?.sizeFactor}`);
+  ok('a weak wall with NO confluence stays untraded (noise, not a level)',
+    !buildOIZones({ ...inst, volumeMagnets: [] }, 4200, { ...cfg, subTierTrade: true }).some(x => x.level === 4250));
+  ok('multi-expiry persistence also counts as confluence',
+    buildOIZones({ ...inst, volumeMagnets: [], callWalls: [inst.callWalls[0], { ...inst.callWalls[1], persistence: 3 }] }, 4200,
+      { ...cfg, subTierTrade: true }).some(x => x.level === 4250));
+}
+
+console.log('[Zone spacing — two same-side zones on one level are one bet]');
+{
+  const inst = { maxPain: 4100, exposures: { gex: 5000 },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }, { strike: 4303, oi: 7000, tier: 'strong', mult: 3 }],
+    putWalls: [{ strike: 4000, oi: 9000, tier: 'strong', mult: 3 }] };
+  const drops = [];
+  const sells = buildOIZones(inst, 4200, { ...cfg, refMove: 100, collectDrops: drops }).filter(x => x.side === 'sell' && x.mode === 'fade');
+  ok('walls 3 apart collapse to ONE zone (spacing 0.05 × refMove 100 = 5)', sells.length === 1, `${sells.length}`);
+  ok('the higher-conviction zone is the one kept', sells[0].level === 4300, `${sells[0]?.level}`);
+  ok('the spacing drop is recorded', drops.some(d => /one level, not two/.test(d.reason)), JSON.stringify(drops));
+  ok('minZoneSpacing 0 → both kept', buildOIZones(inst, 4200, { ...cfg, refMove: 100, minZoneSpacing: 0 }).filter(x => x.side === 'sell' && x.mode === 'fade').length === 2);
 }
 
 console.log('[Guards]');

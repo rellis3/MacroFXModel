@@ -35,6 +35,7 @@
 import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
+import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands } from './oi.js';
 
@@ -143,6 +144,8 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
            + ' · Pin (sticks here) · Edge (changes here) · far = beyond ~2.5x expected move');
   lines.push('  Reject vs Break is decided by the zone: calm = hedging fights the move so levels'
            + ' hold; jumpy = hedging feeds the move so the same level gives way.');
+  lines.push('  hNN on a wall = HOLD score 0-100 (react-vs-blow-through: per-strike dealer GEX'
+           + ' · persistence · wall multiple) — high tends to hold, low tends to give way.');
   lines.push('');
 
   const entries = Object.entries(store || {});
@@ -255,15 +258,28 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       const note  = ex ? ex.mid : '';
       const heat  = heatOf.get(l) || '';
       const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
-      // Touch (index 3) needs a heat placeholder ('-') so its position is stable when
-      // heat is absent; trailing-absent segments are dropped, so a line with no heat and
-      // no touch is byte-identical to before.
-      let suffix = '';
-      if (note) {
-        if (touch)     suffix = ` . ${note} . ${heat || '-'} . ${touch}`;
-        else if (heat) suffix = ` . ${note} . ${heat}`;
-        else           suffix = ` . ${note}`;
+      // HOLD score (walls only): the react-vs-blow-through read the bot sizes fades
+      // by, exported as a compact `hNN` token so the chart shows the SAME strength
+      // read the bot trades. Computed off the level's own expiry book (day levels →
+      // day gexProfile), from per-strike GEX + persistence + multiple (the OI-flow
+      // component needs day-over-day history the paste doesn't carry → renormalised
+      // out). Blank for non-walls and when no component has data.
+      let hold = '';
+      if (l.type === 'call_wall' || l.type === 'put_wall') {
+        const src = isDay(l) ? dayEx : inst;
+        const walls = l.type === 'call_wall' ? (src?.callWalls || []) : (src?.putWalls || []);
+        const w = walls.find(w => Number.isFinite(w?.strike) && Math.abs(w.strike - l.price) <= Math.max(1e-6, Math.abs(l.price) * 1e-7));
+        const hs = w ? wallHoldScore(w, l.type === 'call_wall' ? 'call' : 'put',
+          { gexProfile: isDay(l) ? dayGP : gexProfile }) : null;
+        if (hs) hold = `h${Math.round(hs.score * 100)}`;
       }
+      // Ordered ' . ' segments the Pine parser reads by index — (1) expectation,
+      // (2) heat, (3) P(touch), (4) hold. '-' holds an absent slot so later indexes
+      // stay stable; trailing-absent segments are dropped, so a line with none of
+      // them is byte-identical to before.
+      const segs = [note || '-', heat || '-', touch || '-', hold || '-'];
+      while (segs.length && segs[segs.length - 1] === '-') segs.pop();
+      const suffix = segs.length ? ` . ${segs.join(' . ')}` : '';
       lines.push(`OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
       drawn.add(`${l.type}@${l.price.toFixed(dp)}`);
     }
