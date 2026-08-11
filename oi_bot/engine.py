@@ -26,6 +26,20 @@ Pure: no network / clock / broker. Offline-testable (oi_bot/engine_test.py).
 from __future__ import annotations
 
 
+def position_mode(comment: str) -> str | None:
+    """Which MODE (fade/break/maxpain/react) a live position belongs to, parsed
+    from the dedup tag its order comment carries ("OI [fade_sell_4300]", runner
+    legs "[…~r]"). The time-based exit keys its per-mode max hold off this —
+    the position itself is the only durable record once the plan has rolled.
+    None when the comment has no recognisable tag (never guess a mode)."""
+    c = str(comment or "")
+    i, j = c.find("["), c.find("]")
+    if i < 0 or j <= i + 1:
+        return None
+    mode = c[i + 1:j].split("~")[0].split("_")[0]
+    return mode if mode in ("fade", "break", "maxpain", "react") else None
+
+
 def zone_id(z: dict) -> str:
     """Stable one-shot key — same across intraday plan re-publishes so a restamped
     plan can't double-enter a zone already taken. The level is formatted compactly

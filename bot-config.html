@@ -4059,6 +4059,30 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
             vanna <input type="number" id="oi_rw_vanna" min="0" max="2" step="0.1" style="width:52px">
             vol <input type="number" id="oi_rw_vol" min="0" max="2" step="0.1" style="width:52px">
           </span></div>
+        <div style="margin-top:10px;margin-bottom:4px;font-size:11px;color:#4dd0e1;text-transform:uppercase;letter-spacing:.06em">Advanced <small style="color:var(--text3);text-transform:none;letter-spacing:0">(previously KV-only — defaults are sensible; change deliberately)</small></div>
+        <div class="form-row"><span class="form-lbl">Secondary fade trim <small>PIN: further walls beyond the nearest are sized ×this</small></span><input type="number" id="oi_secondary_trim" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Reach multiple <small>an entry beyond this × the implied move is flagged unlikely-to-fill</small></span><input type="number" id="oi_reach_mult" min="0.1" max="5" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Reach trim <small>size haircut for an entry beyond the reach horizon</small></span><input type="number" id="oi_reach_trim" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Reach cap (pips) <small>fallback when no IV/refMove was pasted (0 = off)</small></span><input type="number" id="oi_max_reach_pips" min="0" max="5000" step="10" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Persistence weight <small>rank/size boost per extra expiry a wall lives in (0 = ignore durability)</small></span><input type="number" id="oi_persistence_weight" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Durable at (expiries) <small>a wall in ≥ this many expiries gets the ×1.15 durability size bump</small></span><input type="number" id="oi_persistent_dte" min="1" max="30" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Path-block check <small>flag + trim when a nearer wall sits between spot and a zone's entry</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_path_block_check"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Path-block min tier <small>a path wall must be ≥ this tier to count as a blocker</small></span>
+          <select id="oi_block_min_tier" style="width:180px;text-align:left">
+            <option value="strong">strong only (≥3×)</option>
+            <option value="moderate">moderate+ (≥2×) — default</option>
+            <option value="weak">weak+ (≥1.5×)</option>
+          </select></div>
+        <div class="form-row"><span class="form-lbl">Path-block trim <small>entry-size haircut when a blocking wall is in the path</small></span><input type="number" id="oi_block_trim" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Fallback TP (R) — gold/indices <small>measured-move TP for a wall-less trade; 0 = leave SL-only</small></span><input type="number" id="oi_fallback_tp_r" min="0" max="10" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Fallback TP (R) — FX <small>same for FX (partial CME OI often has no next wall ahead)</small></span><input type="number" id="oi_fx_fallback_tp_r" min="0" max="10" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Vanna boost / trim <small>size × when a firing vanna state aligns with / against the trade's mode</small></span>
+          <span style="display:flex;gap:6px;align-items:center;font-size:10px;color:var(--text3)">
+            boost <input type="number" id="oi_vanna_boost" min="1" max="2" step="0.05" style="width:60px">
+            trim <input type="number" id="oi_vanna_trim" min="0" max="1" step="0.05" style="width:60px">
+          </span></div>
+        <div class="form-row"><span class="form-lbl">Charm boost <small>max-pain reversion size × when charm is firing near expiry</small></span><input type="number" id="oi_charm_boost" min="1" max="2" step="0.05" style="width:80px"></div>
       </div>
 
       <!-- ── Execution (the bot) ──────────────────────────────────────────── -->
@@ -4086,6 +4110,13 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_scale_out"> on</label></div>
         <div class="form-row"><span class="form-lbl">Break-even at TP1 <small>move the runner's stop to entry once the TP1 leg banks</small></span>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_be_at_tp1"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Time exits (hours) <small>close a position at market once its mode's mechanism has expired — the pin/charm pull is a ≤2-DTE effect and a faded wall's book rolls off. Per mode; 0 = never time-close that mode.</small></span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text3)">
+            fade <input type="number" id="oi_mh_fade" min="0" max="720" step="1" style="width:56px">
+            break <input type="number" id="oi_mh_break" min="0" max="720" step="1" style="width:56px">
+            maxpain <input type="number" id="oi_mh_maxpain" min="0" max="720" step="1" style="width:56px">
+            react <input type="number" id="oi_mh_react" min="0" max="720" step="1" style="width:56px">
+          </span></div>
         <div class="form-row"><span class="form-lbl">Instruments override <small>blank = every plan instrument</small></span><input type="text" id="oi_enabled_pairs" placeholder="gold, nq, us30" style="width:200px;text-align:left"></div>
         <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
         <div class="form-row"><span class="form-lbl">Price tick <small>local watch + touch</small></span><input type="number" id="oi_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
