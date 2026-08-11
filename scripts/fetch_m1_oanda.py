@@ -34,8 +34,8 @@ import boto3
 R2_ENDPOINT   = "https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com"
 R2_BUCKET     = "r2-storage"
 R2_PREFIX     = "m1"
-R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "25f206aea31c52f4f432c46bd6d5a249")
-R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "7a16548bb2b7060ff09dab76e683b8d5334eb1b002ffaf255b258fb6a7c7b0ab")
+R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY")
+R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY")
 
 # ── Oanda config ──────────────────────────────────────────────────────────────
 OANDA_ENV = os.environ.get("OANDA_ENV", "practice")
@@ -44,7 +44,7 @@ OANDA_BASE = (
     if OANDA_ENV == "practice"
     else "https://api-fxtrade.oanda.com"
 )
-OANDA_KEY = os.environ.get("OANDA_KEY", "12ede1dbab4361aa039831ec942603d2-b1691eab23c45cd97d0c1e7e63e9d5cc")
+OANDA_KEY = os.environ.get("OANDA_KEY")
 
 # ── Instrument definitions ────────────────────────────────────────────────────
 # key      = pairKey used for parquet filename (must match cfg.name.toLowerCase() in engine)

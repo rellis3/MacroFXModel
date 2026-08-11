@@ -24,11 +24,11 @@ PAIRS = [
 
 
 def main():
-    access_key = os.environ.get("R2_ACCESS_KEY", "25f206aea31c52f4f432c46bd6d5a249")
+    access_key = os.environ.get("R2_ACCESS_KEY")
     secret_key = os.environ.get("R2_SECRET_KEY")
-    if not secret_key:
-        # fallback — store the secret in env rather than source for production
-        secret_key = "7a16548bb2b7060ff09dab76e683b8d5334eb1b002ffaf255b258fb6a7c7b0ab"
+    if not access_key or not secret_key:
+        print("ERROR: set R2_ACCESS_KEY and R2_SECRET_KEY as environment variables.")
+        sys.exit(1)
 
     os.makedirs(OUTDIR, exist_ok=True)
     s3 = boto3.client("s3",

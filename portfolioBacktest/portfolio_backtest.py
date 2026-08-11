@@ -45,8 +45,8 @@ log = logging.getLogger(__name__)
 R2_ENDPOINT   = os.environ.get("R2_ENDPOINT",   "https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com")
 R2_BUCKET     = os.environ.get("R2_BUCKET",     "r2-storage")
 R2_PREFIX     = os.environ.get("R2_KEY_PREFIX", "m1")
-R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "25f206aea31c52f4f432c46bd6d5a249")
-R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "7a16548bb2b7060ff09dab76e683b8d5334eb1b002ffaf255b258fb6a7c7b0ab")
+R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY")
+R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY")
 
 CACHE_DIR = Path(__file__).parent / "cache"
 
@@ -93,6 +93,8 @@ DEFAULT_PARAMS = dict(
 # ── Data loading ───────────────────────────────────────────────────────────────
 
 def _s3():
+    if not R2_ACCESS_KEY or not R2_SECRET_KEY:
+        raise RuntimeError("R2_ACCESS_KEY / R2_SECRET_KEY must be set as environment variables")
     return boto3.client(
         "s3",
         endpoint_url=R2_ENDPOINT,
