@@ -291,6 +291,13 @@ async function doDecide() {
     if ($('ownLevel').checked) body.own_level = true;
     const r = await api('/api/trade-decision/decide', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
     if (r.error) { $('decErr').textContent = r.error; return; }
+    // per-request, not the static pair-agnostic /health badge — this pair may be
+    // on a different live model than whatever /health reported at page load
+    // (decisionCore.js's defaultModelFor is per-pair since modelV1 shipped).
+    if (r.model_version) {
+      $('modelBadge').textContent = 'model ' + r.model_version;
+      $('calBadge').style.display = r.calibrated ? 'none' : 'inline-block';
+    }
     $('decOut').style.display = 'block';
     const go = r.decision === 'go';
     $('decBig').textContent = go ? '✓ GO' : '✗ SKIP';
