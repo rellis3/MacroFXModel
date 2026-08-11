@@ -170,7 +170,7 @@ const HELP = {
   scatter:['Specs vs commercials','Each dot is one market: speculative crowding across, commercial crowding up.','They should sit near a downward diagonal, because commercials take the other side. A market well <b>off</b> that line means the usual mirror has broken — worth a look, not a signal.'],
   hist:['200-week history','Net positioning over time, with the current reading marked.','A percentile means little without the shape behind it: the 90th after a steady climb is a different situation from the 90th after a spike.'],
   paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
-  pairlab:['Pair lab','Pick any two currencies (or USD) and this scores how crowded the implied FX pair is, combining both legs\' positioning into one read — the same "reinforcing cross" logic behind the alerts above, but for any pair you choose, not just the ones already at an extreme.','It also cross-checks the commercial side (do commercials mirror the spec read, as they normally should?) and flags thin open interest. Still a crowding read, not a backtested trade signal.'],
+  pairlab:['Pair lab','Pick any two currencies (or USD) and this scores how crowded the implied FX pair is, combining both legs\' positioning into one read — the same "reinforcing cross" logic behind the alerts above, but for any pair you choose, not just the ones already at an extreme.','It also cross-checks the commercial side (do commercials mirror the spec read, as they normally should?), flags thin open interest, and — when USD is one of the two legs — shows the 2Y/10Y/30Y Treasury futures\' own independent read on the dollar via the rate-differential channel. Still a crowding read, not a backtested trade signal.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -432,10 +432,51 @@ function pairLab(big){
       +   thin + '</div></div>';
   };
 
+  const fxUsdPct = A._derived ? pA : B._derived ? pB : null;
+
   return picker
     + '<div class="pa-grid">' + card(A) + card(B) + '</div>'
     + '<div class="note" style="margin-top:16px">' + verdict + commNote
-    + ' This is a crowding read built from the same positioning data as the rest of this page — not a backtested signal. Cross-check it against price and, for '+esc(pairName)+' specifically, against dealer options positioning on the <a href="oi-dashboard.html">OI Analytics</a> page — that\'s a separate dataset (options open interest / gamma, not futures specs) and can confirm or contradict what this page alone is saying.</div>';
+    + ' This is a crowding read built from the same positioning data as the rest of this page — not a backtested signal. Cross-check it against price and, for '+esc(pairName)+' specifically, against dealer options positioning on the <a href="oi-dashboard.html">OI Analytics</a> page — that\'s a separate dataset (options open interest / gamma, not futures specs) and can confirm or contradict what this page alone is saying.</div>'
+    + (fxUsdPct != null ? ratesUsdCheck(fxUsdPct) : '');
+}
+
+// USD has no CFTC-tracked FX future of its own, so the derived mirror above is a currency-
+// market-only read. Treasury futures (2Y/10Y/30Y) are a genuinely separate market that also
+// prices a USD view via the rate-differential channel: specs crowded SHORT bonds are betting
+// yields rise, which often (not always) supports the dollar; crowded LONG is the mirror image.
+// Shown as three independent tenors rather than folded into one number, because they can
+// legitimately disagree with each other (2Y prices near-term Fed expectations, 30Y prices
+// longer-run growth/inflation/term-premium views) — collapsing that into a single score would
+// hide a genuine disagreement along the curve, not simplify it.
+function ratesUsdCheck(fxUsdPct){
+  const RATE_SYMS = [['TU','2Y'],['TY','10Y'],['US','30Y']];
+  const rows = RATE_SYMS.map(([sym,tenor]) => {
+    const x = (DATA.instruments||[]).find(r => r.sym === sym);
+    if (!x) return null;
+    const p = pctOf(x);
+    if (p == null) return { sym, tenor, x, p: null, lean: null, agree: null };
+    const lean = 100 - p;   // crowded short bonds (low p) -> high rates-implied USD lean
+    const agree = fxUsdPct != null ? Math.abs(lean - fxUsdPct) <= 25 : null;
+    return { sym, tenor, x, p, lean, agree };
+  }).filter(Boolean);
+  if (!rows.length) return '';
+  const rowsHtml = rows.map(r => {
+    const dir = r.p == null ? 'no reading'
+      : r.p >= 90 ? 'crowded <b>SHORT</b> the '+r.tenor+' — specs betting yields rise'
+      : r.p <= 10 ? 'crowded <b>LONG</b> the '+r.tenor+' — specs betting yields fall'
+      : r.tenor+' positioning near the middle of its range';
+    const leanTxt = r.lean == null ? '—'
+      : r.lean >= 65 ? 'tilts USD-supportive' : r.lean <= 35 ? 'tilts USD-negative' : 'no strong tilt';
+    const agreeTxt = r.agree == null ? ''
+      : r.agree ? ' <span style="color:var(--short)">— agrees with the FX-market read above</span>'
+                : ' <span style="color:var(--warn)">— diverges from the FX-market read above</span>';
+    return '<tr><td>'+esc(dispSym(r.x))+'</td><td class="muted">'+(r.p??'—')+'</td>'
+      + '<td class="muted" style="text-align:left">'+dir+'</td>'
+      + '<td style="text-align:left">'+leanTxt+agreeTxt+'</td></tr>';
+  }).join('');
+  return '<div class="note" style="margin-top:16px"><b>Rates cross-check (USD)</b> — the bond market\'s own read on the dollar, independent of the FX-mirror above. Treat this as extra context, not confirmation: the same short-bond positioning can equally reflect fiscal or inflation risk, which cuts the other way for USD.</div>'
+    + '<table style="margin-top:8px"><thead><tr><th style="text-align:left">Tenor</th><th>Pct</th><th style="text-align:left">Reads as</th><th style="text-align:left">Rates-implied USD lean</th></tr></thead><tbody>'+rowsHtml+'</tbody></table>';
 }
 
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
