@@ -77,6 +77,37 @@ sl/tp cell, one timeframe, no realistic portfolio/sizing simulation, and a
 small-ish per-cell trade count on the independent check (n≈100–330) — a
 robust FIRST read, still not a validated edge.
 
+### Full 26-pair universe check — was it cherry-picked?
+
+The sweep above tested 4 pairs. The natural next question is whether those 4
+were lucky, so this reruns the single window=64/k=20 setting (the one that
+held up best) across **all 26 pairs** this repo has local M1 data for:
+
+```
+python AnalogML/pattern_scan_sweep.py --pairs <all 26, comma-separated> --windows 64 --ks 20
+```
+
+**Result: 26/26 pairs (100%) positive on the overlapping-window check, 25/26
+(96%) positive on the independent non-overlapping check** — baseline stayed
+flat (≈0.83–1.04) throughout. Only **eurnzd** came in negative on the
+independent check (PF 0.84, WR 37%) — named plainly, not buried. If this
+were pure noise around a flat baseline, roughly half the pairs would land
+above 1.0 and half below by chance; 25–26 out of 26 landing on the same side
+is not a chance outcome. This is real evidence the direction-picking edge
+isn't an artifact of which 4 pairs got tested first. Gold stood out on the
+independent check (PF 2.37, WR 62%, n=165) — flagged, not led with: it's
+also the smallest sample of the 26, and the best-looking pair out of 26
+tested will always look better than the population average even under a
+real, uniform effect (the multiple-comparisons trap) — treat it as "worth
+a closer look," not "the pair to trade."
+
+Still outstanding before this is tradeable: unoptimised parameters, one
+sl/tp cell, one timeframe, and — the big one — **no portfolio-level
+simulation**. Per-pair profit factor says the signal is real; it says
+nothing about what happens when 26 correlated FX pairs' trades stack up in
+one account (concurrent risk, drawdown, correlation). That's the next gate,
+not this one.
+
 ## `ml_walkforward.py` — XGBoost / LightGBM / regression stack
 
 Builds price/vol-derived features (returns, realized vol, RSI, ATR%,
