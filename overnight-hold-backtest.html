@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Overnight Hold vs Buy &amp; Hold — Prop-Firm Rule Check</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root { --bg:#0e1117; --panel:#161b22; --line:#2b3340; --tx:#c9d1d9; --mut:#8b949e;
           --grn:#3fb950; --red:#f85149; --acc:#58a6ff; --amber:#d29922; }
@@ -51,6 +52,22 @@
   .tabs { display:flex; gap:6px; margin-bottom:14px; }
   .tabs button { background:transparent; border:1px solid var(--line); color:var(--mut); font-weight:500; padding:7px 14px; }
   .tabs button.active { background:var(--panel); color:var(--tx); border-color:var(--acc); }
+  .price-chart { height:340px; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .price-chart-hint { font-size:11px; color:var(--mut); margin:4px 0 0; }
+  details.subpanel { margin-top:14px; border:1px solid var(--line); border-radius:8px; padding:10px 14px; background:#0d1117; }
+  details.subpanel summary { cursor:pointer; font-weight:600; font-size:13px; color:var(--tx); }
+  details.subpanel summary .cnt { color:var(--mut); font-weight:400; }
+  .mini-bar-row { display:flex; align-items:center; gap:8px; font-size:12px; margin:3px 0; }
+  .mini-bar-label { width:170px; flex-shrink:0; color:var(--mut); }
+  .mini-bar-track { flex:1; background:#161b22; border-radius:3px; height:10px; overflow:hidden; }
+  .mini-bar-fill { height:100%; background:var(--acc); }
+  .mini-bar-n { width:40px; text-align:right; flex-shrink:0; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:50; }
+  .modal-box { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; width:min(760px,92vw); max-height:88vh; overflow:auto; }
+  .modal-box .close { float:right; background:transparent; border:1px solid var(--line); color:var(--tx); padding:4px 10px; }
+  .trade-summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; margin:10px 0 14px; font-size:12.5px; }
+  .trade-summary-grid div { background:#0d1117; border:1px solid var(--line); border-radius:6px; padding:7px 10px; }
+  .trade-summary-grid .k { color:var(--mut); display:block; font-size:11px; }
 </style>
 </head>
 <body>
@@ -95,6 +112,7 @@
   </div>
 
   <div id="results" style="display:none"></div>
+  <div id="modalRoot"></div>
 </div>
 
 <script type="module">
@@ -174,7 +192,56 @@ function ruleCheckCard(rc) {
     <div class="verdict-line ${v.wouldPassOnHistoricalData ? 'pass' : 'fail'}">
       <b>${v.wouldPassOnHistoricalData ? '✅ Would have passed this ruleset on historical data.' : '❌ Would NOT have passed this ruleset on historical data.'}</b>
       If it breaches on historical data, assume it breaches live — the response is to change the strategy or sizing, not soften the ruleset until it passes.
-    </div>`;
+    </div>
+    ${breachEventsTables(rc)}`;
+}
+
+function exceptionsPanel(exceptions, expected, actual) {
+  if (!exceptions || !exceptions.length) {
+    return `<p class="note">Stage-02 gate: 0 exceptions — every expected trading day (${expected}) became a trade.</p>`;
+  }
+  const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const byReason = new Map(), byWeekday = new Map();
+  for (const e of exceptions) {
+    byReason.set(e.reason, (byReason.get(e.reason) || 0) + 1);
+    const wd = WD[new Date(e.date + 'T00:00:00Z').getUTCDay()];
+    byWeekday.set(wd, (byWeekday.get(wd) || 0) + 1);
+  }
+  const maxReason = Math.max(...byReason.values());
+  const maxWd = Math.max(...byWeekday.values(), 1);
+  const barRow = (label, n, max) => `<div class="mini-bar-row"><span class="mini-bar-label">${label}</span><div class="mini-bar-track"><div class="mini-bar-fill" style="width:${max ? (n / max * 100) : 0}%"></div></div><span class="mini-bar-n">${n}</span></div>`;
+  const SHOWN = 500;
+  const rows = exceptions.slice(0, SHOWN).map(e => `<tr><td>${e.date}</td><td>${e.leg}</td><td style="text-align:left">${e.reason}</td></tr>`).join('');
+  return `
+  <details class="subpanel">
+    <summary>Stage-02 gate: skipped / exception days <span class="cnt">(${exceptions.length} of ${expected} expected trading days — ${actual} became trades)</span></summary>
+    <div style="margin-top:10px">
+      <b style="font-size:12.5px">By reason</b>
+      ${[...byReason.entries()].sort((a, b) => b[1] - a[1]).map(([r, n]) => barRow(r, n, maxReason)).join('')}
+      <b style="font-size:12.5px;display:block;margin-top:10px">By weekday</b>
+      ${WD.map(w => barRow(w, byWeekday.get(w) || 0, maxWd)).join('')}
+      <table style="margin-top:12px"><thead><tr><th>Date</th><th>Leg</th><th style="text-align:left">Reason</th></tr></thead><tbody>${rows}</tbody></table>
+      ${exceptions.length > SHOWN ? `<p class="note">Showing the first ${SHOWN} of ${exceptions.length} — the full list is in the API response, not silently dropped, just not all rendered in this table.</p>` : ''}
+    </div>
+  </details>`;
+}
+
+function breachEventsTables(rc) {
+  const dl = rc.dailyLossBreachEvents || [];
+  const ep = rc.activeDrawdownEpisodes || [];
+  return `
+    <details class="subpanel">
+      <summary>Daily-loss breach days <span class="cnt">(${dl.length} of ${rc.tradingDays} trading days breached the ${rc.ruleset.dailyLossLimitPct}% cap)</span></summary>
+      <table style="margin-top:8px"><thead><tr><th>Day</th><th>Day loss %</th></tr></thead><tbody>
+        ${dl.length ? dl.map(e => `<tr><td>${e.day}</td><td class="neg">${fmtN(e.dayLossPct)}</td></tr>`).join('') : '<tr><td colspan="2">none</td></tr>'}
+      </tbody></table>
+    </details>
+    <details class="subpanel">
+      <summary>${rc.activeDrawdownRule} drawdown breach episodes <span class="cnt">(${ep.length} episode${ep.length === 1 ? '' : 's'})</span></summary>
+      <table style="margin-top:8px"><thead><tr><th>Start</th><th>End</th><th>Days</th><th>Trough day</th><th>Trough equity</th></tr></thead><tbody>
+        ${ep.length ? ep.map(e => `<tr><td>${e.startDay}</td><td>${e.endDay}</td><td>${e.days}</td><td>${e.troughDay}</td><td class="neg">${fmtN(e.troughEquity)}</td></tr>`).join('') : '<tr><td colspan="5">none</td></tr>'}
+      </tbody></table>
+    </details>`;
 }
 
 function instrumentPanel(key, inst) {
@@ -190,7 +257,14 @@ function instrumentPanel(key, inst) {
       <span>Stage 02 (coverage) — expected trading days <b>${inst.expectedTradingDays}</b>, actual trades <b>${inst.actualTrades}</b>, exceptions <b>${inst.exceptions.length}</b></span>
       <span>Stage 03 (mirror test) — reconstructed gross <b>${fmtN(mt.reconstructedGrossPct)}%</b> vs buy&amp;hold <b>${fmtN(m?.benchmark?.totalPct)}%</b> (gap ${reconGap ?? '—'}pp from ${inst.expectedTradingDays - inst.actualTrades} uncovered days)</span>
     </div>
-    ${m ? metricsTable(m, m.benchmark) : '<p class="note">No trades produced — see exceptions.</p>'}
+    ${inst.dailyBars && inst.dailyBars.length ? `
+    <div class="chart-wrap">
+      <div class="chart-label">${INSTRUMENT_LABEL[key] || key} — daily price, every overnight trade marked (green = net win, red = net loss). Click a marker to inspect that trade's real M1 path.</div>
+      <div class="price-chart" id="chart-${key}"></div>
+      <p class="price-chart-hint">Scroll to zoom, drag to pan. ${inst.trades.length.toLocaleString()} trade markers plotted.</p>
+    </div>` : ''}
+    ${exceptionsPanel(inst.exceptions, inst.expectedTradingDays, inst.actualTrades)}
+    ${m ? metricsTable(m, m.benchmark) : '<p class="note">No trades produced — see exceptions above.</p>'}
     ${m ? `<p class="note">Exposure: avg hold <b>${fmtN(m.exposure.avgHoldHours,1)}h</b>, time-in-market <b>${fmtN(m.exposure.exposureFraction*100,1)}%</b>,
        return per unit exposure <b>${spanN(m.exposure.returnPerUnitExposurePct)}%</b> (naive linear scale-up, not re-compounded).
        Correlation to buy&amp;hold: <b>${m.correlationToBuyHold.r === null ? 'n/a' : m.correlationToBuyHold.r}</b> (n=${m.correlationToBuyHold.n}).</p>` : ''}
@@ -231,16 +305,122 @@ function combinedPanel(combined) {
   </div>`;
 }
 
+// ── Price chart: daily overview + click-to-inspect single-trade M1 zoom ─────
+const CHART_INSTANCES = {};
+function disposeCharts() {
+  for (const k of Object.keys(CHART_INSTANCES)) { try { CHART_INSTANCES[k].remove(); } catch {} delete CHART_INSTANCES[k]; }
+}
+
+const CHART_DARK_OPTS = {
+  layout: { background: { color: '#0d1117' }, textColor: '#c9d1d9' },
+  grid: { vertLines: { color: '#1c2128' }, horzLines: { color: '#1c2128' } },
+  timeScale: { borderColor: '#2b3340' },
+  rightPriceScale: { borderColor: '#2b3340' },
+};
+const dayBucket = epoch => epoch - (epoch % 86400);
+
+function renderOverviewChart(key, inst) {
+  const el = document.getElementById(`chart-${key}`);
+  if (!el || !window.LightweightCharts) return;
+  const chart = LightweightCharts.createChart(el, { ...CHART_DARK_OPTS, height: el.clientHeight || 340, width: el.clientWidth });
+  const series = chart.addCandlestickSeries({ upColor: '#3fb950', downColor: '#f85149', borderVisible: false, wickUpColor: '#3fb950', wickDownColor: '#f85149' });
+  series.setData(inst.dailyBars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+  series.setMarkers(inst.trades.map(t => {
+    const win = t.netPct >= 0;
+    return {
+      time: dayBucket(t.entryEpoch), position: 'belowBar',
+      color: win ? '#3fb950' : '#f85149', shape: win ? 'arrowUp' : 'arrowDown',
+      text: `${t.netPct >= 0 ? '+' : ''}${t.netPct.toFixed(2)}%`,
+    };
+  }));
+  chart.subscribeClick(param => {
+    if (!param.time) return;
+    let best = null, bestDiff = Infinity;
+    for (const t of inst.trades) {
+      const diff = Math.abs(dayBucket(t.entryEpoch) - param.time);
+      if (diff < bestDiff) { bestDiff = diff; best = t; }
+    }
+    if (best) openTradeModal(key, inst.trades, inst.trades.indexOf(best));
+  });
+  new ResizeObserver(() => { try { chart.applyOptions({ width: el.clientWidth }); } catch {} }).observe(el);
+  CHART_INSTANCES[key] = chart;
+}
+
+let MODAL_STATE = null;
+function closeModal() { $('modalRoot').innerHTML = ''; MODAL_STATE = null; }
+
+async function openTradeModal(key, trades, idx) {
+  MODAL_STATE = { key, trades, idx };
+  await renderModal();
+}
+
+async function renderModal() {
+  const { key, trades, idx } = MODAL_STATE;
+  const t = trades[idx];
+  const root = $('modalRoot');
+  root.innerHTML = `
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-box">
+        <button class="close" id="modalClose">✕ Close</button>
+        <h3 style="margin-top:0">${INSTRUMENT_LABEL[key] || key} — trade ${idx + 1} of ${trades.length} · ${t.date} → ${t.exitDate}</h3>
+        <div class="trade-summary-grid">
+          <div><span class="k">Entry (20:00 UK)</span>${t.entryPrice.toFixed(2)}</div>
+          <div><span class="k">Exit (14:30 UK)</span>${t.exitPrice.toFixed(2)}</div>
+          <div><span class="k">Gross</span>${spanN(t.grossPct)}%</div>
+          <div><span class="k">Net</span>${spanN(t.netPct)}%</div>
+          <div><span class="k">MAE</span><span class="neg">${fmtN(t.maePct)}%</span></div>
+          <div><span class="k">Costs (spread/slip/financing)</span>${fmtN(t.spreadCostPct, 3)} / ${fmtN(t.slipCostPct, 3)} / ${fmtN(t.financingCostPct, 3)}${t.tripleSwap ? ' (3×)' : ''}</div>
+        </div>
+        <div class="row2" style="margin:0 0 10px">
+          <button class="ghost" id="modalPrev" ${idx === 0 ? 'disabled' : ''}>← Prev trade</button>
+          <button class="ghost" id="modalNext" ${idx >= trades.length - 1 ? 'disabled' : ''}>Next trade →</button>
+        </div>
+        <div class="price-chart" id="modalChart" style="height:320px"><p class="note" style="padding:10px">Loading M1 path…</p></div>
+        <p class="price-chart-hint">Real M1 path, entry→exit ±3h. Blue dashed = entry price, grey dashed = exit price. MAE (${fmtN(t.maePct)}%) is the lowest low reached anywhere in this window.</p>
+      </div>
+    </div>`;
+  $('modalOverlay').addEventListener('click', e => { if (e.target.id === 'modalOverlay') closeModal(); });
+  $('modalClose').addEventListener('click', closeModal);
+  if (idx > 0) $('modalPrev').addEventListener('click', () => { MODAL_STATE.idx--; renderModal(); });
+  if (idx < trades.length - 1) $('modalNext').addEventListener('click', () => { MODAL_STATE.idx++; renderModal(); });
+
+  const from = t.entryEpoch - 3 * 3600, to = t.exitEpoch + 3 * 3600;
+  let r;
+  try {
+    r = await fetch(`/api/overnight-hold-v1/m1/${key}?from=${from}&to=${to}`).then(x => x.json());
+  } catch (e) {
+    $('modalChart').innerHTML = `<p class="note" style="padding:10px">fetch failed: ${e.message}</p>`; return;
+  }
+  if (!MODAL_STATE || MODAL_STATE.trades[MODAL_STATE.idx] !== t) return; // user navigated away while this was loading
+  if (!r.ok || !r.bars?.length) { $('modalChart').innerHTML = `<p class="note" style="padding:10px">${r.error || 'no M1 data for this window'}</p>`; return; }
+  const modalEl = $('modalChart');
+  modalEl.innerHTML = '';
+  const chart = LightweightCharts.createChart(modalEl, { ...CHART_DARK_OPTS, height: 320, width: modalEl.clientWidth });
+  const series = chart.addCandlestickSeries({ upColor: '#3fb950', downColor: '#f85149', borderVisible: false, wickUpColor: '#3fb950', wickDownColor: '#f85149' });
+  series.setData(r.bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+  series.createPriceLine({ price: t.entryPrice, color: '#58a6ff', lineWidth: 1, lineStyle: 2, title: 'Entry' });
+  series.createPriceLine({ price: t.exitPrice, color: '#8b949e', lineWidth: 1, lineStyle: 2, title: 'Exit' });
+  series.setMarkers([
+    { time: t.entryEpoch, position: 'belowBar', color: '#58a6ff', shape: 'arrowUp', text: 'Entry' },
+    { time: t.exitEpoch, position: 'aboveBar', color: '#8b949e', shape: 'arrowDown', text: 'Exit' },
+  ]);
+}
+
 let LAST_RESULT = null;
 
 function render(data) {
   LAST_RESULT = data;
+  disposeCharts();
   const parts = [];
   for (const key of Object.keys(data.instruments)) parts.push(instrumentPanel(key, data.instruments[key]));
   parts.push(combinedPanel(data.combined));
   $('results').innerHTML = parts.join('');
   $('results').style.display = 'block';
   document.querySelectorAll('[data-csv]').forEach(b => b.addEventListener('click', () => downloadCsv(b.dataset.csv)));
+  for (const key of Object.keys(data.instruments)) {
+    const inst = data.instruments[key];
+    if (!inst.error && inst.dailyBars?.length) renderOverviewChart(key, inst);
+  }
 }
 
 function downloadCsv(kind) {

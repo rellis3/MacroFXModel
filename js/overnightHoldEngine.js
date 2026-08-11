@@ -52,7 +52,7 @@
  *     both instruments' M1 paths together (documented, not hidden).
  */
 
-import { bisect, extractBars } from './barUtils.js';
+import { bisect, extractBars, resampleTo } from './barUtils.js';
 import { zonedTimeToUtc, localDateString } from './nasdaqSessions.js';
 import { dowOf } from './sessionRanges.js';
 import { assetClass as lookupAssetClass } from './instrumentRegistry.js';
@@ -559,6 +559,31 @@ export function combineInstruments(byInstrument /* { key: netTrades[] } */) {
 
 // ── Stage 07 — prop-firm rule check ─────────────────────────────────────────
 
+// Group a per-day equity series into contiguous breach episodes (start/end/
+// trough), instead of only the single worst one — "when it failed the gate"
+// needs the whole event log, not just the first or worst occurrence.
+function breachEpisodes(series, isBreached) {
+  const episodes = [];
+  let cur = null;
+  for (let i = 0; i < series.length; i++) {
+    if (isBreached(series[i], i, series)) {
+      if (!cur) cur = [];
+      cur.push(series[i]);
+    } else if (cur) {
+      episodes.push(cur); cur = null;
+    }
+  }
+  if (cur) episodes.push(cur);
+  return episodes.map(days => {
+    const trough = days.reduce((min, p) => (p.equity < min.equity ? p : min), days[0]);
+    return {
+      startDay: days[0].day, endDay: days[days.length - 1].day,
+      days: days.length,
+      troughDay: trough.day, troughEquity: +trough.equity.toFixed(2),
+    };
+  });
+}
+
 export function runPropFirmRuleCheck(netTrades, ruleset = DEFAULT_RULESET) {
   if (!netTrades.length) return null;
   const rs = { ...DEFAULT_RULESET, ...ruleset };
@@ -573,6 +598,8 @@ export function runPropFirmRuleCheck(netTrades, ruleset = DEFAULT_RULESET) {
   let dailyLossBreach = null, staticDDBreach = null, trailingDDBreach = null;
   let profitTargetHitDate = null, profitTargetTradingDays = null;
   const dailyEquityStart = new Map();
+  const dailyLossBreachEvents = [];
+  const equitySeries = []; // [{day, equity, peak}] — the full daily equity path, for episode grouping below
 
   for (let i = 0; i < dayDates.length; i++) {
     const day = dayDates[i];
@@ -580,18 +607,29 @@ export function runPropFirmRuleCheck(netTrades, ruleset = DEFAULT_RULESET) {
     dailyEquityStart.set(day, startEquity);
     equity *= (1 + byDay.get(day) / 100);
     const dayLossPct = ((equity - startEquity) / startEquity) * 100;
-    if (!dailyLossBreach && dayLossPct <= -rs.dailyLossLimitPct) dailyLossBreach = { day, dayLossPct: +dayLossPct.toFixed(2) };
+    if (dayLossPct <= -rs.dailyLossLimitPct) {
+      const ev = { day, dayLossPct: +dayLossPct.toFixed(2) };
+      dailyLossBreachEvents.push(ev);
+      if (!dailyLossBreach) dailyLossBreach = ev;
+    }
 
     if (!staticDDBreach && equity <= 100 * (1 - rs.maxDrawdownStaticPct / 100)) staticDDBreach = { day, equity: +equity.toFixed(2) };
 
     peak = Math.max(peak, equity);
     if (!trailingDDBreach && equity <= peak * (1 - rs.maxDrawdownTrailingPct / 100)) trailingDDBreach = { day, equity: +equity.toFixed(2), peak: +peak.toFixed(2) };
+    equitySeries.push({ day, equity, peak });
 
     if (!profitTargetHitDate && equity >= 100 * (1 + rs.profitTargetPct / 100)) {
       profitTargetHitDate = day;
       profitTargetTradingDays = i + 1;
     }
   }
+
+  // Full breach-event logs (not just the first/worst occurrence) — grouped
+  // into contiguous episodes so a multi-year drawdown reads as one event,
+  // not hundreds of daily rows.
+  const staticDrawdownEpisodes = breachEpisodes(equitySeries, pt => pt.equity <= 100 * (1 - rs.maxDrawdownStaticPct / 100));
+  const trailingDrawdownEpisodes = breachEpisodes(equitySeries, pt => pt.equity <= pt.peak * (1 - rs.maxDrawdownTrailingPct / 100));
 
   // Consistency: best single day's profit ÷ total profit, over the window up
   // to the target date (or the whole series if the target was never reached).
@@ -611,10 +649,14 @@ export function runPropFirmRuleCheck(netTrades, ruleset = DEFAULT_RULESET) {
     tradingDays: dayDates.length,
     finalEquity: +equity.toFixed(2),
     dailyLossBreach,
+    dailyLossBreachEvents,          // EVERY day that breached, not just the first
     staticDrawdown: staticDDBreach,
     trailingDrawdown: trailingDDBreach,
+    staticDrawdownEpisodes,         // EVERY contiguous static-DD breach episode
+    trailingDrawdownEpisodes,       // EVERY contiguous trailing-DD breach episode
     activeDrawdownRule: rs.ddMode,
     activeDrawdownBreach: ddBreach,
+    activeDrawdownEpisodes: rs.ddMode === 'static' ? staticDrawdownEpisodes : trailingDrawdownEpisodes,
     profitTargetHitDate,
     profitTargetTradingDays,
     profitTargetWithinTimeLimit: profitTargetHitDate ? !timeExpired : null,
@@ -627,6 +669,31 @@ export function runPropFirmRuleCheck(netTrades, ruleset = DEFAULT_RULESET) {
       wouldPassOnHistoricalData: !dailyLossBreach && !ddBreach && !!profitTargetHitDate && !timeExpired && !consistencyBreach,
     },
   };
+}
+
+// D1 (UTC calendar day) OHLC resample directly off the packed typed arrays —
+// for the overview chart. Deliberately NOT routed through barUtils.resampleTo
+// (which materializes a bar-object array first): at 3.6M+ M1 rows over a full
+// history, that intermediate array is the memory-heavy part this avoids.
+export function resampleDailyFromPacked(packed) {
+  const { n, times, opens, highs, lows, closes } = packed;
+  if (!n) return [];
+  const out = [];
+  let bucketStart = times[0] - (times[0] % 86400);
+  let o = opens[0], h = highs[0], l = lows[0], c = closes[0];
+  for (let i = 1; i < n; i++) {
+    const b = times[i] - (times[i] % 86400);
+    if (b !== bucketStart) {
+      out.push({ time: bucketStart, open: o, high: h, low: l, close: c });
+      bucketStart = b; o = opens[i]; h = highs[i]; l = lows[i]; c = closes[i];
+    } else {
+      if (highs[i] > h) h = highs[i];
+      if (lows[i] < l) l = lows[i];
+      c = closes[i];
+    }
+  }
+  out.push({ time: bucketStart, open: o, high: h, low: l, close: c });
+  return out;
 }
 
 // ── Orchestrator (pure core; data passed in) ────────────────────────────────
@@ -655,6 +722,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
     trades: netTrades,
     metrics,
     ruleCheck,
+    dailyBars: opts.includeDailyBars === false ? null : resampleDailyFromPacked(packed),
     csv: metrics ? { returns: toCsvReturns(netTrades), rMultiples: toCsvRMultiples(netTrades), currency: toCsvCurrency(netTrades, opts.accountSize, opts.notionalPerTrade) } : null,
   };
 }

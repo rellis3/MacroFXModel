@@ -6226,6 +6226,20 @@ function _purgeStaleOhJobs() {
   for (const [id, job] of ohJobs) if (job.startedAt < cutoff) ohJobs.delete(id);
 }
 
+// Cache the loaded M1 packed data per instrument (90MB+ each) so the
+// dashboard's click-to-inspect trade chart doesn't re-fetch the whole file
+// from R2 on every click — reused by both /run and the /m1 zoom endpoint below.
+const ohM1Cache = new Map(); // key -> { packed, fetchedAt }
+const OH_M1_CACHE_TTL = 60 * 60_000; // 60 min
+
+async function ohGetCachedM1(key) {
+  const hit = ohM1Cache.get(key);
+  if (hit && Date.now() - hit.fetchedAt < OH_M1_CACHE_TTL) return hit.packed;
+  const packed = await loadM1ForPair(key);
+  ohM1Cache.set(key, { packed, fetchedAt: Date.now() });
+  return packed;
+}
+
 app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, res) => {
   const body = req.body ?? {};
   const instruments = Array.isArray(body.instruments) && body.instruments.length
@@ -6271,7 +6285,7 @@ app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, r
       const m1ByInstrument = {};
       for (const key of instruments) {
         ohJobs.get(jobId).phase = `Loading M1 for ${key}…`;
-        m1ByInstrument[key] = await loadM1ForPair(key);
+        m1ByInstrument[key] = await ohGetCachedM1(key);
         if (!m1ByInstrument[key]?.n) {
           console.warn(`[overnight-hold] no M1 data found for ${key} (R2/disk/Drive all missed)`);
         }
@@ -6300,6 +6314,33 @@ app.get('/api/overnight-hold-v1/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// GET /api/overnight-hold-v1/m1/:instrument?from=EPOCH&to=EPOCH → { ok, bars }
+// M1 slice for the dashboard's click-to-inspect single-trade chart — served
+// from the same cache /run populates (ohGetCachedM1), so it's a re-fetch only
+// on the very first request after the cache TTL expires. Capped to 7 days per
+// request so a typo in from/to can't try to serialize the whole 10-year file.
+app.get('/api/overnight-hold-v1/m1/:instrument', async (req, res) => {
+  const key = req.params.instrument;
+  if (key !== 'gold' && key !== 'nq') {
+    return res.status(400).json({ ok: false, error: 'instrument must be "gold" or "nq"' });
+  }
+  const from = parseInt(req.query.from, 10);
+  const to = parseInt(req.query.to, 10);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+    return res.status(400).json({ ok: false, error: 'from/to (epoch seconds) required, to > from' });
+  }
+  if (to - from > 7 * 86400) {
+    return res.status(400).json({ ok: false, error: 'window too large — max 7 days per request' });
+  }
+  try {
+    const packed = await ohGetCachedM1(key);
+    if (!packed?.n) return res.status(404).json({ ok: false, error: 'no M1 data available for this instrument' });
+    res.json({ ok: true, bars: extractBars(packed, from, to) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
 });
 
 // ── Global Liquidity real-data backtest (runs on Railway: FRED_KEY + R2 FX) ────

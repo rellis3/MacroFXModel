@@ -6,6 +6,7 @@ import {
   correlationToBuyHold, computeMetricsTable, maxDrawdownWithDuration,
   toCsvReturns, toCsvRMultiples, toCsvCurrency, combineInstruments,
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
+  resampleDailyFromPacked,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -220,6 +221,59 @@ test('runPropFirmRuleCheck: a well-behaved series passes all four rules', () => 
   assert.equal(rc.verdict.dailyLoss, true);
   assert.equal(rc.verdict.drawdown, true);
   assert.equal(rc.verdict.consistency, true);
+});
+
+test('runPropFirmRuleCheck: dailyLossBreachEvents logs EVERY breach day, not just the first', () => {
+  const mk = (date, exitDate, netPct) => ({ date, exitDate, netPct });
+  const netTrades = [
+    mk('2025-02-03', '2025-02-04', -6), // breach #1
+    mk('2025-02-04', '2025-02-05', 2),  // no breach
+    mk('2025-02-05', '2025-02-06', -6), // breach #2
+  ];
+  const rc = runPropFirmRuleCheck(netTrades, { dailyLossLimitPct: 5, maxDrawdownStaticPct: 50, maxDrawdownTrailingPct: 50, ddMode: 'trailing', profitTargetPct: 999, profitTargetDays: 0, consistencyCapPct: 100 });
+  assert.equal(rc.dailyLossBreachEvents.length, 2, 'both breach days should be logged, not just the first');
+  assert.deepEqual(rc.dailyLossBreachEvents.map(e => e.day), ['2025-02-04', '2025-02-06']);
+  assert.equal(rc.dailyLossBreach.day, '2025-02-04', 'the singular field stays the FIRST breach, for back-compat');
+});
+
+test('runPropFirmRuleCheck: drawdown breach episodes group contiguous breach days and reset at a new peak', () => {
+  const mk = (date, exitDate, netPct) => ({ date, exitDate, netPct });
+  // Equity path (trailing 10% cap): 100 -> 85 (breach) -> 84.15 (breach, still
+  // in episode 1) -> 105.19 (new peak, episode 1 ends) -> 89.41 (breach,
+  // episode 2 starts) -> 111.76 (new peak, episode 2 ends).
+  const rets = [0, -15, -1, 25, -15, 25];
+  const dates = [];
+  let d = '2025-03-03';
+  for (let i = 0; i < rets.length; i++) { dates.push(d); d = addDays(d, 1); }
+  const netTrades = rets.map((r, i) => mk(dates[i], addDays(dates[i], 1), r));
+  const rc = runPropFirmRuleCheck(netTrades, { dailyLossLimitPct: 100, maxDrawdownStaticPct: 90, maxDrawdownTrailingPct: 10, ddMode: 'trailing', profitTargetPct: 999, profitTargetDays: 0, consistencyCapPct: 100 });
+  assert.equal(rc.trailingDrawdownEpisodes.length, 2, `expected 2 distinct episodes, got ${JSON.stringify(rc.trailingDrawdownEpisodes)}`);
+  const [ep1, ep2] = rc.trailingDrawdownEpisodes;
+  assert.equal(ep1.days, 2, 'episode 1 spans the two consecutive breach days');
+  assert.ok(Math.abs(ep1.troughEquity - 84.15) < 0.01);
+  assert.equal(ep2.days, 1, 'episode 2 is the single later breach day');
+  assert.equal(rc.activeDrawdownEpisodes, rc.trailingDrawdownEpisodes, 'activeDrawdownEpisodes follows ddMode');
+});
+
+test('resampleDailyFromPacked: aggregates M1 bars into correct UTC-day OHLC buckets', () => {
+  // Two UTC days, hand-built minute bars (not the random synthetic generator)
+  // so the expected open/high/low/close are known exactly.
+  const day1 = Date.parse('2025-01-06T00:00:00Z') / 1000;
+  const times = [day1, day1 + 60, day1 + 120, day1 + 86400, day1 + 86400 + 60];
+  const opens  = [10, 11, 9,  20, 21];
+  const highs  = [12, 13, 9.5, 22, 23];
+  const lows   = [9,  10, 8,  19, 20];
+  const closes = [11, 9,  9.2, 21, 22];
+  const packed = { n: 5, times: Int32Array.from(times), opens: Float32Array.from(opens), highs: Float32Array.from(highs), lows: Float32Array.from(lows), closes: Float32Array.from(closes) };
+  const daily = resampleDailyFromPacked(packed);
+  assert.equal(daily.length, 2);
+  assert.equal(daily[0].time, day1);
+  assert.ok(Math.abs(daily[0].open - 10) < 1e-4, 'day1 open = first bar\'s open');
+  assert.ok(Math.abs(daily[0].high - 13) < 1e-4, 'day1 high = max of all highs that day');
+  assert.ok(Math.abs(daily[0].low - 8) < 1e-4, 'day1 low = min of all lows that day');
+  assert.ok(Math.abs(daily[0].close - 9.2) < 1e-4, 'day1 close = LAST bar\'s close');
+  assert.equal(daily[1].time, day1 + 86400);
+  assert.ok(Math.abs(daily[1].close - 22) < 1e-4);
 });
 
 test('computeMetricsTable + correlationToBuyHold: end-to-end on synthetic data, no NaNs', () => {
