@@ -155,6 +155,67 @@ simulation's headline return number is not a claim about what real trading
 would produce, and the cap/utilization confound above needs resolving
 before the risk-adjusted numbers are trusted either.
 
+**Update — the confound above is now resolved.** `portfolio_sim.py` tracks
+time-weighted average concurrent-risk utilization and adds a SECOND, matched
+benchmark: instead of comparing the portfolio to a single pair at the same
+`--risk-pct` (which was the confound — a single pair almost never gets near
+the concurrency cap, so it was running at far lower capital utilization than
+the portfolio), it scales the single pair's risk-per-trade up until its own
+average utilization matches the portfolio's, then compares Sharpe/drawdown
+at that matched point. **Result (26 pairs, 3yr, 1% risk/trade, 5% cap):**
+portfolio avg utilization 0.5%, Sharpe 1.39, max DD −26.2%. Three single
+pairs matched to that SAME 0.5% utilization: audcad Sharpe 0.29 / DD −38.6%,
+audchf Sharpe 1.28 / DD −22.7%, audjpy Sharpe 0.74 / DD −45.8%. **The
+portfolio beats every matched single pair on Sharpe, and has a shallower
+drawdown than two of the three** — this is now a real, controlled
+diversification read, not the capital-deployed illusion the original
+benchmark A produced (kept in the output for comparison, but benchmark B is
+the one to trust). Same unoptimised-parameters/no-slippage caveats as
+before still apply — this resolves ONE confound, not all of them.
+
+## `paper_track.py` — the one thing every result above is still missing
+
+Every number in this README, however sweep-tested or portfolio-simulated,
+shares the same gap: window=64/k=20 were chosen by looking at aggregate
+performance over roughly the same period being reported. None of it is a
+genuinely blind forward test. `paper_track.py` is the mechanism to get one:
+it logs what the FROZEN signal calls on each new bar as it arrives (`AnalogML/data/paper_trades.json`,
+append-only), and on a later run re-races any still-`open` trade against
+newly-arrived bars (`pylego.barrier_race.race_trades`, same walker as
+everywhere else) to mark it `tp`/`sl`/genuine-`timeout` — never touching the
+frozen parameters based on what comes back.
+
+```
+python AnalogML/paper_track.py --scan          # real forward use, once wired to live data (see below)
+```
+
+**This sandbox cannot reach live data — confirmed, not assumed.** A direct
+`curl` to OANDA from here gets a 403 policy denial from the outbound proxy
+(logged: `"gateway answered 403 to CONNECT (policy denial or upstream
+failure)", host: "api-fxpractice.oanda.com:443"`), matching `CLAUDE.md`'s
+documented "OANDA is reachable in Railway, not in the sandbox." So
+`paper_track.py` reads the same static local M1 parquet snapshot (through
+2026-05-21) as every other script here — there is no live feed wired in yet.
+
+**The mechanism itself is verified, not just written.** `--as-of YYYY-MM-DD`
+truncates the loaded bars as if that date were "now," so the scan → resolve
+→ scan cycle can be exercised honestly against real historical data without
+pretending it's live: step 1 (`--as-of 2026-04-01`) logged an open GBPJPY
+SELL, unable to know its outcome from data available at that point; step 2
+(full snapshot, no cutoff) correctly resolved that SAME trade as an SL hit
+(−1.05R) using bars that were genuinely in the future at step 1, then found
+fresh open signals at the snapshot's true boundary. That's a real proof the
+scan/resolve logic doesn't leak future information and doesn't falsely
+close a trade before its outcome is actually knowable.
+
+`AnalogML/data/paper_trades.json` is seeded with 25/26 pairs' genuinely-open
+signals as of the snapshot's end (2026-05-21) — the starting point for
+whoever picks this up with live data. **Next step, not done here:** wire
+`load_bars()` (or a parallel data path) to something that can actually reach
+fresh prices — e.g. run this on Railway (which the rest of this repo
+confirms CAN reach OANDA), or periodically re-export the local parquet and
+rerun `--scan` (omit `--as-of`) against the refreshed file.
+
 ## `ml_walkforward.py` — XGBoost / LightGBM / regression stack
 
 Builds price/vol-derived features (returns, realized vol, RSI, ATR%,
