@@ -493,6 +493,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 QMR Indices</button>
     <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
+    <button class="tab-btn" data-tab="analogml" onclick="switchTab('analogml')" style="color:#a78bfa" id="amlTabBtn">🔮 AnalogML</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -4949,6 +4950,70 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
 
   </div><!-- /tab-positions -->
 
+  <!-- ═══════════════════════ TAB: ANALOGML PAPER TRADING ═══════════════════════ -->
+  <div class="tab-pane" id="tab-analogml">
+
+    <div class="bot-banner" style="background:#1e1a3a;border:1px solid #6d28d9">
+      <div class="bot-banner-icon">🔮</div>
+      <div>
+        <div class="bot-banner-title" style="color:#a78bfa">AnalogML — Shape-Match Paper Trading</div>
+        <div class="bot-banner-sub">Historical-analog shape matching · paper trades only, no live orders yet · <code>AnalogML/paper_track.py</code>, run hourly on Railway · frozen params: window=64, k=20, SL 20p, TP 1.5R</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:11.5px;color:var(--text3);line-height:1.55">
+        <b style="color:var(--text2)">What this is:</b> every hour the bot scans all 26 pairs for a fresh shape-match
+        entry and logs it below as a paper trade — no real orders are placed. This is a forward-tracking record of a
+        research signal, not a validated live strategy; see the honest read in
+        <a href="AnalogML/README.md" style="color:#a78bfa">AnalogML/README.md</a> and the full backtest at
+        <a href="analogml-backtest.html" style="color:#a78bfa">analogml-backtest.html</a>. If this holds up over enough
+        forward trades, this tab is where it graduates to a real bot.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="pos-header">
+        <div>
+          <div class="card-title">Paper Trades</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">From <code>AnalogML/paper_track.py</code>, refreshed hourly on Railway.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="pos-summary" id="amlSummary"></div>
+          <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadAnalogMLTab()">↺ Refresh</button>
+        </div>
+      </div>
+
+      <div class="pos-subtabs" style="margin-bottom:12px">
+        <button class="pos-subtab active" id="amlSubOpen" onclick="switchAmlSubTab('open')">Open Trades</button>
+        <button class="pos-subtab" id="amlSubClosed" onclick="switchAmlSubTab('closed')">Closed Trades</button>
+      </div>
+
+      <div id="amlOpenView">
+        <div class="pos-table-wrap">
+          <table class="pos-table">
+            <thead>
+              <tr><th>Pair</th><th>Dir</th><th>Entry</th><th>SL</th><th>TP</th><th>Opened</th></tr>
+            </thead>
+            <tbody id="amlOpenBody"><tr><td colspan="6" class="pos-empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="amlClosedView" style="display:none">
+        <div class="pos-table-wrap">
+          <table class="pos-table">
+            <thead>
+              <tr><th>Pair</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Outcome</th><th>R</th><th>Opened</th><th>Closed</th></tr>
+            </thead>
+            <tbody id="amlClosedBody"><tr><td colspan="8" class="pos-empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-analogml -->
+
   <!-- ═══════════════════════ TAB: HEDGE BOT ═══════════════════════ -->
   <div class="tab-pane" id="tab-hedgebot">
 
@@ -7199,6 +7264,83 @@ async function loadPositionsTab() {
 }
 
 window.loadPositionsTab = loadPositionsTab;
+
+// ── AnalogML paper-trading tab ──────────────────────────────────────────────
+// Read-only view of AnalogML/paper_track.py's forward-tracking log, served by
+// server.js's GET /api/analogml/paper-trades (disk-first, R2 fallback — same
+// as the Positions tab's KV reads, just a single fixed JSON file instead of
+// per-bot status keys since paper_track.py owns the whole log itself).
+function _amlFmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
+  catch (e) { return iso; }
+}
+function _amlOutcomeChip(status) {
+  const cls = status === 'tp' ? 'bt-pnl-pos' : (status === 'sl' || status === 'timeout') ? 'bt-pnl-neg' : '';
+  const label = status === 'tp' ? 'TP' : status === 'sl' ? 'SL' : status === 'timeout' ? 'TIMEOUT' : status;
+  return `<span class="${cls}">${label}</span>`;
+}
+async function loadAnalogMLTab() {
+  const openBody = document.getElementById('amlOpenBody');
+  const closedBody = document.getElementById('amlClosedBody');
+  if (!openBody) return;
+  const data = await fetch('/api/analogml/paper-trades').then(r => r.ok ? r.json() : null).catch(() => null);
+  const trades = data?.ok ? (data.trades || []) : [];
+  const open = trades.filter(t => t.status === 'open').sort((a,b) => (b.logged_at||'').localeCompare(a.logged_at||''));
+  const closed = trades.filter(t => t.status !== 'open').sort((a,b) => (b.resolved_at||'').localeCompare(a.resolved_at||''));
+
+  const summaryEl = document.getElementById('amlSummary');
+  if (summaryEl) {
+    if (!data) {
+      summaryEl.innerHTML = `<div class="pos-summary-item" style="color:var(--text3)">No data yet — run AnalogML/paper_track.py</div>`;
+    } else {
+      const withR = closed.filter(t => t.r != null);
+      const wins = withR.filter(t => t.r > 0).length;
+      const avgR = withR.length ? (withR.reduce((s,t) => s + t.r, 0) / withR.length) : null;
+      summaryEl.innerHTML = [
+        `<div class="pos-summary-item">Open <span>${open.length}</span></div>`,
+        `<div class="pos-summary-item">Closed <span>${closed.length}</span></div>`,
+        withR.length ? `<div class="pos-summary-item">Win rate <span>${(100*wins/withR.length).toFixed(0)}%</span></div>` : '',
+        avgR != null ? `<div class="pos-summary-item">Avg R <span>${avgR.toFixed(3)}</span></div>` : '',
+      ].join('');
+    }
+  }
+
+  openBody.innerHTML = open.length ? open.map(t => `
+    <tr>
+      <td>${(t.pair||'').toUpperCase()}</td>
+      <td class="${t.direction==='BUY'?'bt-pnl-pos':'bt-pnl-neg'}">${t.direction||'—'}</td>
+      <td>${t.entry_price ?? '—'}</td>
+      <td>${t.sl_price ?? '—'}</td>
+      <td>${t.tp_price ?? '—'}</td>
+      <td>${_amlFmtDate(t.entry_date)}</td>
+    </tr>`).join('') : `<tr><td colspan="6" class="pos-empty">No open paper trades${data?'':' — no data yet'}</td></tr>`;
+
+  closedBody.innerHTML = closed.length ? closed.map(t => `
+    <tr>
+      <td>${(t.pair||'').toUpperCase()}</td>
+      <td class="${t.direction==='BUY'?'bt-pnl-pos':'bt-pnl-neg'}">${t.direction||'—'}</td>
+      <td>${t.entry_price ?? '—'}</td>
+      <td>${t.exit_price ?? '—'}</td>
+      <td>${_amlOutcomeChip(t.status)}</td>
+      <td class="${t.r>0?'bt-pnl-pos':t.r<0?'bt-pnl-neg':''}">${t.r != null ? t.r.toFixed(3) : '—'}</td>
+      <td>${_amlFmtDate(t.entry_date)}</td>
+      <td>${_amlFmtDate(t.exit_date)}</td>
+    </tr>`).join('') : `<tr><td colspan="8" class="pos-empty">No closed paper trades yet</td></tr>`;
+}
+window.loadAnalogMLTab = loadAnalogMLTab;
+
+function switchAmlSubTab(which) {
+  document.getElementById('amlSubOpen')?.classList.toggle('active', which === 'open');
+  document.getElementById('amlSubClosed')?.classList.toggle('active', which === 'closed');
+  document.getElementById('amlOpenView').style.display = which === 'open' ? '' : 'none';
+  document.getElementById('amlClosedView').style.display = which === 'closed' ? '' : 'none';
+}
+window.switchAmlSubTab = switchAmlSubTab;
+
+document.querySelector('.tab-btn[data-tab="analogml"]')?.addEventListener('click', () => {
+  loadAnalogMLTab();
+});
 
 document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('click', () => {
   // Restore last sub-tab

@@ -16953,6 +16953,39 @@ app.get('/api/vol-forecast-research', async (req, res) => {
   } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
+// ── AnalogML: shape-state + paper-trades JSON, written by AnalogML/paper_track.py
+// (Python, run on a schedule in start.sh) to local disk and/or R2. Same
+// disk-first-then-R2 read pattern as _loadResult above, simplified for a
+// single fixed filename per artifact (no "find the newest timestamped run"
+// scan needed -- paper_track.py overwrites these two files in place).
+const ANALOGML_DATA_DIR = path.join(__dirname, 'AnalogML', 'data');
+const ANALOGML_SHAPE_STATE_PATH = path.join(ANALOGML_DATA_DIR, 'shape_state.json');
+const ANALOGML_PAPER_TRADES_PATH = path.join(ANALOGML_DATA_DIR, 'paper_trades.json');
+
+async function _loadAnalogMLJson(localPath, r2Key) {
+  if (fs.existsSync(localPath)) {
+    try { return { ok: true, src: 'disk', ...JSON.parse(fs.readFileSync(localPath, 'utf8')) }; }
+    catch (e) { console.warn(`[analogml] local read failed (${localPath}): ${e?.message}`); }
+  }
+  if (_r2Ok()) {
+    try { const r2 = await _r2GetJSON(r2Key); if (r2) return { ok: true, src: 'r2', ...r2 }; }
+    catch (e) { console.warn(`[analogml] R2 read failed (${r2Key}): ${e?.message}`); }
+  }
+  return null;
+}
+
+app.get('/api/analogml/shape-state', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_SHAPE_STATE_PATH, 'analogml/shape_state.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no shape_state.json yet -- run AnalogML/paper_track.py' });
+  return res.json(out);
+});
+
+app.get('/api/analogml/paper-trades', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_PAPER_TRADES_PATH, 'analogml/paper_trades.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no paper_trades.json yet -- run AnalogML/paper_track.py' });
+  return res.json(out);
+});
+
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
   const { pair = '' } = req.body || {};

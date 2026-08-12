@@ -193,6 +193,72 @@ def scan_pair(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> dict | 
     }
 
 
+SHAPE_STATE_PATH = Path(__file__).resolve().parent / "data" / "shape_state.json"
+R2_SHAPE_STATE_KEY = "analogml/shape_state.json"
+
+
+def compute_shape_state(pair: str, bars: pd.DataFrame, params: dict) -> dict | None:
+    """The live diagnostic snapshot for `pair` -- what pair cards on
+    today.html/indexv2.html show: the CURRENT window's normalized shape (for
+    a sparkline) plus its neighbour-consensus stats, computed the same way
+    as scan_pair()'s directional call but WITHOUT the min_gap_bars-since-
+    last-logged-trade gate -- this always reflects "right now", the same
+    way a price chart does, whether or not it happens to also be a fresh
+    independent trade signal this run."""
+    n = len(bars)
+    if n < params["window"] + params["min_candidates"]:
+        return None
+    closes = bars["close"].to_numpy()
+    end_idx, shapes = rolling_shapes(closes, params["window"])
+    end_idx_set_pos = {int(e): i for i, e in enumerate(end_idx)}
+
+    q = n - 2  # same "leave room for an entry bar" convention as scan_pair
+    pos = end_idx_set_pos.get(q)
+    if pos is None:
+        return None
+
+    pip = pip_size(pair)
+    sl_price = params["sl_pips"] * pip
+    cost_price = default_spread(pair)
+
+    consensus = neighbor_consensus(
+        bars, end_idx, shapes, shapes[pos], query_end=q,
+        k=params["k"], min_gap_bars=params["window"],
+        sl_price=sl_price, tp_r=params["tp_r"], cost_price=cost_price,
+        max_bars_ahead=params["max_bars_ahead"], min_bars_ahead=params["min_bars_ahead"],
+    )
+    lean = "LONG" if consensus.direction == 1 else ("SHORT" if consensus.direction == -1 else "FLAT")
+
+    return {
+        "pair": pair,
+        "as_of": bars.index[q].isoformat(),
+        "shape": [round(float(v), 4) for v in shapes[pos]],
+        "n_neighbours": consensus.n_neighbours,
+        "avg_long_r": consensus.avg_long_r,
+        "avg_short_r": consensus.avg_short_r,
+        "margin": consensus.margin,
+        "lean": lean,
+        "window": params["window"], "k": params["k"],
+    }
+
+
+def save_shape_state(states: list[dict]) -> None:
+    """Same local-disk + R2 persistence pattern as save_log() -- one R2
+    client helper, two keys."""
+    body = json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "pairs": states},
+                      default=str)
+    SHAPE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SHAPE_STATE_PATH.write_text(body)
+    s3 = _r2_client()
+    if s3 is not None:
+        try:
+            s3.put_object(Bucket=R2_BUCKET, Key=R2_SHAPE_STATE_KEY, Body=body.encode("utf-8"),
+                          ContentType="application/json")
+        except Exception as e:
+            print(f"[warn] R2 shape-state write failed ({e}) -- local copy at "
+                  f"{SHAPE_STATE_PATH} is current")
+
+
 def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> int:
     """Re-race every 'open' logged trade for `pair` against whatever bars
     are now visible. Marks tp/sl the moment a barrier is genuinely touched;
@@ -249,6 +315,7 @@ def run(args: argparse.Namespace) -> None:
 
     log = load_log()
     new_signals, resolved_total = 0, 0
+    shape_states: list[dict] = []
 
     for pair in pairs:
         bars = load_bars(pair, args.timeframe)
@@ -266,7 +333,12 @@ def run(args: argparse.Namespace) -> None:
             print(f"  [new] {pair:<8} {new['direction']} @ {new['entry_price']:.5f}  "
                   f"sl={new['sl_price']:.5f} tp={new['tp_price']:.5f}  {new['entry_date']}")
 
+        state = compute_shape_state(pair, bars, FROZEN)
+        if state:
+            shape_states.append(state)
+
     save_log(log)
+    save_shape_state(shape_states)
     open_n = sum(1 for t in log["trades"] if t["status"] == "open")
     closed = [t for t in log["trades"] if t["status"] != "open"]
     wins = sum(1 for t in closed if t.get("r", 0) > 0)
