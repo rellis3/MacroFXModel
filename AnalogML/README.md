@@ -475,6 +475,104 @@ this signal in place of the retired one. `AnalogML/motif_track_loop.sh`
 process, alongside the still-running (but no longer dashboard-surfaced)
 `paper_track_loop.sh`.
 
+## `flag_scan.py` / `flag_scan_sweep.py` — flags & pennants (null, 2026-08-12)
+
+The owner's full ask for AnalogML is broader than touches alone: EVERY
+recognizable price shape already geometrically defined in
+`js/patternEngine.js` (flags/pennants, head & shoulders, triangles/channels,
+on top of the double/triple-top/bottom touches already built) gets the same
+lifecycle treatment — before/during/after, historical frequency-based
+confidence, adaptive per-cluster SL/TP, multi-timeframe agreement — with
+flags/pennants named as the first family to try after touches, per that
+ask's own minimal-DOF-first build order. This section is that first attempt,
+run on its own branch, same harness/discipline as `motif_scan.py`.
+
+`pylego/flag_pennant.py` regenerates `js/patternEngine.js`'s
+`detectFlagsPennants` (+ its `findPole`/`findConsolidation`/`findBreakout`
+helpers) fresh in Python — same generate-don't-port discipline as
+`swing_structure.py`/`motif_touch.py`, reusing `pivot_highs`/`pivot_lows`
+rather than a third copy of pivot detection. `AnalogML/flag_scan.py` is the
+single-pair evaluation CLI (identical baseline/signal/race_grid harness to
+`motif_scan.py`); `AnalogML/flag_scan_sweep.py` is a new, committed
+26-pair-sweep-plus-pooled-calendar-IS/OOS script — motif's own 26-pair sweep
+wasn't checked in as a script, this fills that reproducibility gap.
+
+```
+python AnalogML/flag_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+python AnalogML/flag_scan_sweep.py --all-pairs --tp-r 1.5 --oos-cutoff 2023-01-01
+```
+
+**Bug-hunt before trusting any number (CLAUDE.md's mandatory review):** the
+exact lookahead-lag bug class that hit `motif_touch.py` (a pivot isn't
+knowable until `pivot_n` bars pass after it) does NOT apply here by
+construction, not by luck — every candidate consolidation window re-slices
+`bars` and re-runs `pivot_highs`/`pivot_lows` on just that slice, so a
+window's last pivot is always at least `consol_pivot_n` bars before the
+window's own end. A regression test
+(`test_causal_ordering_invariant_on_all_synthetic_scenarios`) and the
+real-data smoke test both assert `pole_start_idx < pole_end_idx <
+consol_end_idx < confirm_idx` on every instance found, on synthetic AND real
+GBPJPY bars. 8/8 offline tests pass (`pylego/flag_pennant_test.py`) —
+hand-verified bull-flag, bull-pennant, failed-breakout, mirrored-bear-flag,
+no-consolidation, and no-pole cases, each cross-checked against the
+already-tested `pivot_highs`/`pivot_lows` bricks (printed intermediate pivot
+lists, confirmed by eye) before being baked into an assertion. A real-data
+spot-check on GBPJPY (one instance's actual OHLC path, printed and read: a
+clean 108-pip pole idx47→60, a 43-bar consolidation retracing 33.5%, a
+confirmed continuation breakout) confirmed plausible geometry before any
+aggregate number was trusted.
+
+**Result: null, and it stayed null under every variant tried — reporting
+that plainly, not softening it.** Full 26-pair sweep (H1, the JS engine's
+untouched default params — not tuned on this data, sl=20p, tp_r=1.5, cost
+on): **6/26 pairs (23.1%) signal PF>1.0, 9/26 (34.6%) beat the mechanical
+baseline.** Named losers (20/26): audcad, audchf, audjpy, audnzd, audusd,
+chfjpy, euraud, eurcad, eurchf, eurgbp, eurnzd, eurusd, gbpaud, gbpchf,
+gbpjpy, nzdjpy, nzdusd, usdcad, usdchf, usdjpy. Winners: cadjpy (1.01),
+eurjpy (1.09), gbpcad (1.02), gbpnzd (1.19), gbpusd (1.02), gold (1.06) — no
+consistent direction or currency-block pattern, reading like the scatter a
+true-null baseline produces, not a real edge concentrated somewhere.
+
+Pooled calendar IS/OOS split (cutoff 2023-01-01, all 26 pairs, same cell):
+
+| | n | PF | WR | avg R |
+|---|---:|---:|---:|---:|
+| IS (pre-2023, cost on) | 11,721 | 0.94 | 40.2% | -0.039 |
+| OOS (2023+, cost on) | 5,362 | 0.92 | 39.6% | -0.052 |
+| OOS (2023+, cost OFF) | 5,362 | 0.98 | 39.6% | -0.010 |
+
+Both sides sit at or below the coin-flip baseline — this isn't decay from a
+strong in-sample fit (the signature an overfit result leaves), it's flat
+null throughout. Cost-off does NOT rescue it (IS 1.00, OOS 0.98 — dead flat
+even with zero spread), ruling out "it's a real edge too small to survive
+transaction costs." A second grid cell (tp_r=1.0, cost on) tells the same
+story: 8/26 (30.8%) PF>1.0, IS PF=0.93, OOS PF=0.94. And filtering entries
+down to ONLY the pole's textbook-expected continuation direction
+(`played_out=True`, discarding every "failed flag" entry — a genuinely
+different entry rule, not more tuning of the same one) still doesn't rescue
+it: pooled, sl=20p tp_r=1.5 cost on, n=9,503, PF=0.95, WR=40.5%.
+
+Four independent checks (raw signal, cost stripped out, a second tp_r cell,
+the played-out-only filter) all converging on the same flat-to-negative
+number is itself evidence this is a real null, not a fragile artifact of one
+setting choice.
+
+**Per CLAUDE.md's "Pivot or Pivot" rule**, since a bug audit didn't turn up
+anything to explain it: flags/pennants, on H1, with the untouched JS-default
+geometry thresholds, show no real edge. The brick (`flag_pennant.py`) stays
+— pure, tested, and reusable regardless of this result, same as
+`shape_match.py`/`analog_signal.py` stayed after the k-NN method's null. The
+honest next move for the broader "shape prediction" ask is NOT tuning this
+method's thresholds further (the exact lesson the k-NN method's retirement
+already taught — see the banner at the top of this file) but one of two
+genuinely different angles, neither pre-decided here: a different shape
+family (head & shoulders / triangles-channels are next in
+`js/patternEngine.js`, both already geometrically defined and completely
+untried), or a different timeframe (every AnalogML detector built so far,
+touches included, has only ever been tested on H1 — flags/pennants may
+behave differently on H4/D1; genuinely untested, not a prediction either
+way).
+
 ## Honesty notes (read before trusting a number here)
 
 - **Neighbour pool contained one trivial near-duplicate until 2026-08-12 —
