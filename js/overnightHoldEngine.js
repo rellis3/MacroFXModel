@@ -607,6 +607,117 @@ export function combineInstruments(byInstrument /* { key: netTrades[] } */) {
   });
 }
 
+// ── Cross-instrument diversification analysis (walk-forward + IS/OOS) ──────
+//
+// The combined pass's headline number (equal-weight blend beats each single
+// leg) is a single full-history statistic — exactly the kind of number
+// Lego Principle 5 says isn't evidence on its own. This section asks two
+// separate honesty questions of it:
+//   1. Walk-forward: does the blend beat the stronger leg EVERY year, or is
+//      the full-sample number carried by one or two unusual years (the
+//      "yearly heatmap" concentration check)?
+//   2. True IS/OOS: split the whole run at one calendar date (same boundary
+//      for both legs, no leakage) and see whether the diversification effect
+//      — and the gold/nq correlation that drives it — survives on data after
+//      the split, not just across the full history that already includes it.
+
+function compoundPct(pcts) {
+  return (pcts.reduce((m, x) => m * (1 + x / 100), 1) - 1) * 100;
+}
+
+const yearOf = dateStr => dateStr.slice(0, 4);
+
+// Pearson correlation between two date-keyed {date, pct} series — generic
+// version of correlationToBuyHold's inline math, reused here for gold-vs-nq.
+function pearsonByDate(seriesA, seriesB) {
+  const bByDate = new Map(seriesB.map(s => [s.date, s.pct]));
+  const xs = [], ys = [];
+  for (const a of seriesA) {
+    const b = bByDate.get(a.date);
+    if (b === undefined) continue;
+    xs.push(a.pct); ys.push(b);
+  }
+  if (xs.length < 2) return { n: xs.length, r: null };
+  const mx = mean(xs), my = mean(ys);
+  let num = 0, dx2 = 0, dy2 = 0;
+  for (let i = 0; i < xs.length; i++) { const dx = xs[i] - mx, dy = ys[i] - my; num += dx * dy; dx2 += dx * dx; dy2 += dy * dy; }
+  const den = Math.sqrt(dx2 * dy2);
+  return { n: xs.length, r: den > 1e-12 ? +(num / den).toFixed(3) : 0 };
+}
+
+// One row per calendar year present in either leg: gold/nq/combined net %,
+// trade counts, the year's gold-nq correlation, and whether the blend beat
+// the better leg / the worse leg that specific year (not the full-history
+// average of those comparisons).
+export function yearlyDiversificationBreakdown(goldTrades, nqTrades) {
+  const years = [...new Set([...goldTrades.map(t => yearOf(t.date)), ...nqTrades.map(t => yearOf(t.date))])].sort();
+  const goldByYear = new Map(), nqByYear = new Map();
+  for (const t of goldTrades) { const y = yearOf(t.date); if (!goldByYear.has(y)) goldByYear.set(y, []); goldByYear.get(y).push(t); }
+  for (const t of nqTrades) { const y = yearOf(t.date); if (!nqByYear.has(y)) nqByYear.set(y, []); nqByYear.get(y).push(t); }
+
+  return years.map(y => {
+    const g = goldByYear.get(y) || [], n = nqByYear.get(y) || [];
+    const gPct = g.length ? compoundPct(g.map(t => t.netPct)) : null;
+    const nPct = n.length ? compoundPct(n.map(t => t.netPct)) : null;
+    const combined = combineInstruments({ gold: g, nq: n });
+    const cPct = combined.length ? compoundPct(combined.map(c => c.netPct)) : null;
+    const corr = pearsonByDate(
+      g.map(t => ({ date: t.date, pct: t.netPct })),
+      n.map(t => ({ date: t.date, pct: t.netPct })),
+    );
+    const legPcts = [gPct, nPct].filter(x => x !== null);
+    const betterLeg = legPcts.length ? Math.max(...legPcts) : null;
+    const worseLeg = legPcts.length ? Math.min(...legPcts) : null;
+    return {
+      year: y,
+      goldNetPct: gPct !== null ? +gPct.toFixed(2) : null,
+      nqNetPct: nPct !== null ? +nPct.toFixed(2) : null,
+      combinedNetPct: cPct !== null ? +cPct.toFixed(2) : null,
+      goldTrades: g.length, nqTrades: n.length,
+      correlation: corr.r,
+      beatBetterLeg: cPct !== null && betterLeg !== null ? cPct > betterLeg : null,
+      beatWorseLeg: cPct !== null && worseLeg !== null ? cPct > worseLeg : null,
+    };
+  });
+}
+
+// True chronological in-sample / out-of-sample split (Lego Principle 5 — no
+// number here is evidence without this). Splits at ONE calendar date derived
+// from the shared overlap window (not per-leg trade count, so gold, nq and
+// the combined blend all see the identical boundary — no leakage from one
+// leg's density differing from the other's). oosFrac=0.4 matches
+// honestForecastEngine.js's summarizeSplit default.
+export function diversificationIsOosSplit(goldTrades, nqTrades, overlapWindow, oosFrac = 0.4) {
+  const splitEpoch = overlapWindow.start + (1 - oosFrac) * (overlapWindow.end - overlapWindow.start);
+  const splitDate = localDateString(new Date(splitEpoch * 1000), UK_TZ);
+  const bucket = trades => ({ is: trades.filter(t => t.date < splitDate), oos: trades.filter(t => t.date >= splitDate) });
+  const g = bucket(goldTrades), n = bucket(nqTrades);
+
+  const summarizeHalf = (gSet, nSet) => {
+    const gPct = gSet.length ? compoundPct(gSet.map(t => t.netPct)) : null;
+    const nPct = nSet.length ? compoundPct(nSet.map(t => t.netPct)) : null;
+    const combined = combineInstruments({ gold: gSet, nq: nSet });
+    const cPct = combined.length ? compoundPct(combined.map(c => c.netPct)) : null;
+    const sharpeOf = (rows, pctKey, dateKey) => rows.length >= 2 ? summarizeTrades(rows.map(r => r[pctKey]), rows.map(r => r[dateKey])).sharpe : null;
+    const corr = pearsonByDate(
+      gSet.map(t => ({ date: t.date, pct: t.netPct })),
+      nSet.map(t => ({ date: t.date, pct: t.netPct })),
+    );
+    return {
+      goldTrades: gSet.length, nqTrades: nSet.length, combinedRows: combined.length,
+      goldNetPct: gPct !== null ? +gPct.toFixed(2) : null,
+      nqNetPct: nPct !== null ? +nPct.toFixed(2) : null,
+      combinedNetPct: cPct !== null ? +cPct.toFixed(2) : null,
+      goldSharpe: sharpeOf(gSet, 'netPct', 'date'),
+      nqSharpe: sharpeOf(nSet, 'netPct', 'date'),
+      combinedSharpe: sharpeOf(combined, 'netPct', 'date'),
+      correlation: corr.r,
+    };
+  };
+
+  return { splitDate, oosFrac, inSample: summarizeHalf(g.is, n.is), outOfSample: summarizeHalf(g.oos, n.oos) };
+}
+
 // ── Stage 07 — prop-firm rule check ─────────────────────────────────────────
 
 // Group a per-day equity series into contiguous breach episodes (start/end/
@@ -789,6 +900,17 @@ export function runOvernightHoldBacktest(m1ByInstrument /* { gold: packed, nq: p
   const netByInstrument = {};
   for (const key of keys) if (results[key]?.trades) netByInstrument[key] = results[key].trades;
   const combined = Object.keys(netByInstrument).length > 1 ? combineInstruments(netByInstrument) : null;
+
+  // Diversification is only a meaningful two-leg question — gold vs nq
+  // specifically, not generic to N instruments. Skip silently (not an
+  // error) if either leg is missing or if a third instrument were ever added.
+  let diversification = null;
+  if (netByInstrument.gold && netByInstrument.nq) {
+    diversification = {
+      yearly: yearlyDiversificationBreakdown(netByInstrument.gold, netByInstrument.nq),
+      isOosSplit: diversificationIsOosSplit(netByInstrument.gold, netByInstrument.nq, results.gold.overlapWindow, opts.diversificationOosFrac),
+    };
+  }
   let combinedSummary = null, combinedRuleCheck = null, combinedCsv = null;
   if (combined) {
     const asTrades = combined.map(c => ({ ...c, exitDate: c.date }));
@@ -810,7 +932,11 @@ export function runOvernightHoldBacktest(m1ByInstrument /* { gold: packed, nq: p
     };
   }
 
-  return { instruments: results, combined: combined ? { trades: combined, csv: combinedCsv, ruleCheck: combinedRuleCheck, summary: combinedSummary } : null };
+  return {
+    instruments: results,
+    combined: combined ? { trades: combined, csv: combinedCsv, ruleCheck: combinedRuleCheck, summary: combinedSummary } : null,
+    diversification,
+  };
 }
 
 // Convenience wrapper that DOES do network IO (loadM1ForPair) — for server

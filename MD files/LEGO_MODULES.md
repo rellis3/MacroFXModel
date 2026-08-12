@@ -1260,9 +1260,43 @@ financing numbers would flip the conclusion for either instrument. Before
 trusting the current "fails net" verdict for a real decision, plug in the
 actual broker's numbers rather than the illustrative defaults.
 
----
+**Update (2026-08-11, same day again): the combined-portfolio "diversification
+beats both legs" claim did NOT survive a walk-forward check — retracted, not
+softened.** The full-history combined pass (+0.17% vs gold −2.3% / nq −3.9%)
+had been described as a genuine diversification benefit. Asked directly
+whether that holds up under a proper split rather than the single full-
+history number, two new pure functions were added: `yearlyDiversificationBreakdown`
+(per-calendar-year gold/nq/combined net %, gold-nq correlation, and whether
+combined beat BOTH legs that year) and `diversificationIsOosSplit` (one
+shared chronological split date derived from the overlap window — not
+per-leg trade count, so no leakage — oosFrac=0.4 matching
+`honestForecastEngine.js`'s `summarizeSplit` convention). 5 new unit tests
+(26 total): correct per-year compounding against a hand-built anti-correlated
+pair, exact split-date arithmetic on a leap-year-safe window, and trade-count
+conservation across the IS/OOS partition.
 
-## 2. Candidate bricks — mapped, prioritized, not yet extracted
+**Run against the same R2 data, the answer is no — it does not hold up:**
+combined beat **both** individual legs in **0 of 11** years tested. In the
+true chronological split (before/after 2022-04-05): in-sample, gold −21.8%,
+nq +13.9%, combined −3.6% (combined loses to nq, so "beat both" = **no**);
+out-of-sample, gold +24.8%, nq −15.7%, combined +3.9% (combined loses to
+gold, so "beat both" = **no** again). In every single year and in both
+halves of the IS/OOS split, the equal-weight blend sits between the two legs
+— it never beats the stronger one. The full-history "+0.17%, beats both
+individually" number is real arithmetic, but it is a **compounding-path
+/ volatility-drag artifact specific to that one full ~10.4-year window**, not
+a robust, repeatable diversification effect — it doesn't reproduce in any of
+the 11 years or either IS/OOS half tested separately. The earlier framing
+("pure diversification benefit from the ~0 correlation between them") was too
+generous and is corrected here rather than left standing. Also notable: the
+gold-nq correlation itself is unstable across the split (IS ≈ −0.008, OOS ≈
++0.184) — the "near-zero correlation" full-history read isn't a stable
+structural property either. One documented modeling nuance surfaced by this:
+on a date only one leg has a trade (the other hit a stage-02 exception), the
+combined blend uses that leg's return unweighted rather than halved, so it
+isn't a strictly-constant 50/50 exposure every day — visible in 2022, where
+combined (−12.25%) finished worse than BOTH individual legs, which a true
+constant-weight blend should never do.
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
 drift directly desyncs trading from its backtest (the worst case).
