@@ -151,6 +151,21 @@ test('exitTimeSweep: rebuilds trades per candidate exit time (not just cost re-a
   assert.ok(['14:30', '15:30', '16:30'].includes(sweep.bestExitTime));
 });
 
+test('exitTimeSweep: earlier candidates (toward London open) shrink average hold duration, and baseline is found by value, not array position', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-02-01');
+  const early = exitTimeSweep(packed, packed.times[0], packed.times[packed.n - 1], 'gold', {}, ['14:30', '13:30', '12:30']);
+  assert.equal(early.baselineExitTime, '14:30');
+  assert.ok(early.points[1].avgHoldHours - early.points[0].avgHoldHours < -0.9, 'exit 1h earlier -> ~1h shorter average hold');
+  assert.ok(early.points[2].avgHoldHours - early.points[1].avgHoldHours < -0.9, 'exit another 1h earlier -> ~1h shorter again');
+
+  // Combined earlier+later sweep where 14:30 sits in the MIDDLE of the array,
+  // not first — baseline must still resolve to 14:30 by value.
+  const combined = exitTimeSweep(packed, packed.times[0], packed.times[packed.n - 1], 'gold', {},
+    ['12:30', '13:30', '14:30', '15:30', '16:30']);
+  assert.equal(combined.baselineExitTime, '14:30');
+  assert.equal(combined.points.length, 5);
+});
+
 test('mirrorTest: overnight + mirror reconstructs buy&hold when coverage is full', () => {
   const packed = buildSyntheticPacked('2025-01-06', '2025-01-10'); // Mon-Thu, no weekend gap inside
   const { trades, mirrors } = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);

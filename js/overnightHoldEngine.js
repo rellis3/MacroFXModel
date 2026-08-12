@@ -398,6 +398,20 @@ export function costSensitivitySweep(grossTrades, assetKey, opts = {}) {
 // window nasdaqConfig.js's `london` session uses).
 export const DEFAULT_EXIT_TIMES = ['14:30', '15:30', '16:30'];
 
+// Mirror-image candidates for the OTHER direction — exiting earlier than
+// 14:30, in hourly steps back to London open (08:00 UK, same `london`
+// window as above). Exiting this early means closing out well before the
+// US cash-open volatility the strategy's own exitSlipMult assumption is
+// modeling — see the exitTimeSweep note below.
+export const DEFAULT_EARLY_EXIT_TIMES = ['14:30', '13:30', '12:30', '11:30', '10:30', '09:30', '08:00'];
+
+// Which candidate is "the" baseline for a sweep, independent of where it
+// sits in the caller's array (a combined earlier+later sweep may not have
+// 14:30 first). Falls back to the first candidate if 14:30 isn't present.
+function baselineExitTimeOf(exitTimes) {
+  return exitTimes.includes('14:30') ? '14:30' : (exitTimes[0] ?? null);
+}
+
 // ── Stage 04c — exit-time (hold-duration) sweep ──────────────────────────────
 //
 // Unlike costSensitivitySweep (reuses already-built gross trades, cheap by
@@ -408,15 +422,19 @@ export const DEFAULT_EXIT_TIMES = ['14:30', '15:30', '16:30'];
 // times means a handful of reruns of that, not a full re-backtest of
 // anything expensive.
 //
-// Answers "does holding longer than the default 14:30 UK exit — up to London
-// close — change the result?" One documented simplification: applyCosts'
-// exitSlipMult (widens the exit leg for "US cash-open volatility at 14:30
-// UK") is held fixed across every candidate exit time here, even though a
-// later exit sits further from the actual cash open. If anything that makes
-// the later-exit points slightly conservative (still charging cash-open-
-// level slippage for a calmer, later fill), not optimistic — not corrected
-// here since a time-varying slippage curve would be a new, uncalibrated
-// assumption of its own.
+// Answers "does holding longer (or shorter) than the default 14:30 UK exit
+// change the result?" — exitTimes can move either direction: later toward
+// London close (DEFAULT_EXIT_TIMES) or earlier toward London open
+// (DEFAULT_EARLY_EXIT_TIMES), or a caller-built combination of both. One
+// documented simplification either way: applyCosts' exitSlipMult (widens
+// the exit leg for "US cash-open volatility at 14:30 UK") is held fixed
+// across every candidate exit time here, even though a candidate further
+// from 14:30 — earlier OR later — sits further from the actual cash open.
+// If anything that makes every off-baseline point here slightly
+// conservative (still charging cash-open-level slippage for a fill that's
+// actually calmer), not optimistic — not corrected here since a
+// time-varying slippage curve would be a new, uncalibrated assumption of
+// its own.
 export function exitTimeSweep(packed, startEpoch, endEpoch, assetKey, buildOpts = {}, exitTimes = DEFAULT_EXIT_TIMES) {
   const points = exitTimes.map(exitTime => {
     const { trades: grossTrades } = buildOvernightTrades(packed, startEpoch, endEpoch, { ...buildOpts, exitTime });
@@ -444,7 +462,7 @@ export function exitTimeSweep(packed, startEpoch, endEpoch, assetKey, buildOpts 
   return {
     points,
     bestExitTime: best?.exitTime ?? null,
-    baselineExitTime: exitTimes[0] ?? null,
+    baselineExitTime: baselineExitTimeOf(exitTimes),
     note: 'exitSlipMult (the cash-open slippage widening) is held fixed across every candidate exit time — see module comment above exitTimeSweep.',
   };
 }

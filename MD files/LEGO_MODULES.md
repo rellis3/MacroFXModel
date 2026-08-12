@@ -1531,6 +1531,65 @@ at worst (gold, 15:30) it roughly 7x's it. The original 14:30 exit remains
 the better of the tested options for gold; NQ has a marginal, not
 game-changing, case for London close instead.
 
+**Update (2026-08-12, same day: "how about earlier then?"): built the
+mirror-image direction — exiting BEFORE 14:30, back toward London open —
+and it surfaces a genuine multiple-testing trap worth naming rather than
+selling.** `exitTimeSweep` was direction-agnostic already; added
+`DEFAULT_EARLY_EXIT_TIMES` (`14:30 → 13:30 → … → 08:00`, London open per
+the same `nasdaqConfig.js` `london` window used for the close bound) and
+fixed `baselineExitTime` to resolve by matching `'14:30'` in the candidate
+list rather than assuming it's always `exitTimes[0]` — needed once a caller
+can combine earlier+later candidates into one sorted array with 14:30
+sitting in the middle. 1 new unit test (31 total): earlier candidates
+shrink `avgHoldHours` as expected, and baseline resolves correctly even when
+14:30 isn't first in the array. Dashboard gained a second, independent
+checkbox for the earlier direction; checking both merges into one sorted
+9-point 08:00→16:30 grid in a single run.
+
+**Run for real against the same R2 data, the full grid (08:00 through
+16:30, hourly, both instruments):**
+
+| Exit (UK) | Gold net % | NQ net % |
+|---|---|---|
+| 08:00 | −21.0 | −22.9 |
+| 09:30 | −17.8 | −10.0 |
+| 10:30 | −17.8 | −18.1 |
+| 11:30 | −3.0 | −10.3 |
+| 12:30 | **−0.4** | −1.1 |
+| 13:30 | −4.1 | **+13.0** |
+| 14:30 (baseline) | −2.3 | −3.9 |
+| 15:30 | −15.8 | −13.4 |
+| 16:30 | −6.3 | −2.9 |
+
+Two honest reads, not one blended one:
+- **The coherent part:** exiting anywhere from 08:00–10:30 is clearly worse
+  than the 14:30 baseline for BOTH instruments, by a wide and consistent
+  margin (roughly −18pp to −21pp net) — closing out mid-London-morning,
+  well before the US session, is a real and repeatable drag here, not noise.
+  Gold's best point in the whole 9-candidate grid is 12:30 (−0.4%, close to
+  breakeven and clearly better than the −2.3% baseline) sitting in a smooth,
+  believable trough shape either side of it (11:30 −3.0%, 13:30 −4.1%) —
+  that's the kind of result worth taking seriously.
+- **The part that should NOT be sold as a finding:** NQ's 13:30 point
+  flips to **+13.0%**, the only positive cell anywhere in either sweep,
+  immediately flanked by its own neighbors at −1.1% (12:30) and −3.9%
+  (14:30) — a single hour, single instrument spike surrounded by negative
+  results on both sides, out of a 9-candidate grid with no correction for
+  multiple testing and no OOS split run on it. This is exactly the
+  "finding a few winners among many slices is what noise does" pattern this
+  file's own working agreement warns about — reporting it as "hold NQ to
+  13:30" would be curve-fitting one lucky cell, not evidence of an edge.
+  Flagged here as a candidate for a proper walk-forward check (same
+  discipline as the diversification retraction above) **before** it's
+  treated as anything more than an interesting single data point — not done
+  yet.
+- **Bottom line, combining both directions:** the 14:30 baseline is not the
+  single best point on the grid for either instrument, but nothing on the
+  grid is convincingly better either — gold's best credible improvement
+  (12:30, ~2pp) is modest and sits in a believable local shape; NQ's only
+  standout point (13:30) is the one result across this whole exercise that
+  looks like noise dressed as a finding, not a repeatable edge.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

@@ -97,7 +97,8 @@
         <div class="chk"><input type="checkbox" id="skipThu" value="4"> <label for="skipThu" style="margin:0">Thu</label></div>
       </div>
       <div><label>Hold-duration sweep <span class="note" style="display:inline">(re-scans M1 per candidate exit — optional, off by default)</span></label>
-        <div class="chk"><input type="checkbox" id="exitSweepEnabled"> <label for="exitSweepEnabled" style="margin:0">Test 14:30 → 15:30 → 16:30 (London close) exits</label></div>
+        <div class="chk"><input type="checkbox" id="exitSweepLaterEnabled"> <label for="exitSweepLaterEnabled" style="margin:0">Test later: 14:30 → 15:30 → 16:30 (London close)</label></div>
+        <div class="chk"><input type="checkbox" id="exitSweepEarlierEnabled"> <label for="exitSweepEarlierEnabled" style="margin:0">Test earlier: 14:30 → 13:30 → … → 08:00 (London open)</label></div>
       </div>
       <div><label>Account size ($)</label><input id="accountSize" value="100000" type="number" min="1000" step="1000"></div>
       <div><label>Notional per trade ($)</label><input id="notionalPerTrade" value="100000" type="number" min="1000" step="1000"></div>
@@ -240,7 +241,7 @@ function svgExitTimeSweepChart(sweep, label) {
   const bestIdx = pts.findIndex(p => p.exitTime === sweep.bestExitTime);
   return `
   <div class="chart-wrap">
-    <div class="chart-label">${label} — net total return by exit time (${pts[0].exitTime} baseline → ${pts[pts.length - 1].exitTime})</div>
+    <div class="chart-label">${label} — net total return by exit time (${pts[0].exitTime}–${pts[pts.length - 1].exitTime} scanned, baseline ${sweep.baselineExitTime})</div>
     <svg viewBox="0 0 ${W} ${H + 20}" role="img" aria-label="${label} exit-time sweep" style="width:100%;height:auto;background:#0d1117;border:1px solid var(--line);border-radius:8px">
       <line x1="${PAD}" y1="${y(0).toFixed(1)}" x2="${W-PAD}" y2="${y(0).toFixed(1)}" stroke="#2b3340" stroke-dasharray="4 3"/>
       <path d="${path}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
@@ -252,14 +253,18 @@ function svgExitTimeSweepChart(sweep, label) {
 
 function exitSweepSection(sweep, label) {
   if (!sweep) return '';
-  const rows = sweep.points.map(p => `<tr${p.exitTime === sweep.bestExitTime ? ' style="background:#13291d"' : ''}>
-    <td>${p.exitTime}${p.exitTime === sweep.bestExitTime ? ' <span class="note" style="display:inline">(best)</span>' : ''}</td>
+  const rows = sweep.points.map(p => {
+    const isBest = p.exitTime === sweep.bestExitTime, isBaseline = p.exitTime === sweep.baselineExitTime;
+    const tag = isBest && isBaseline ? ' (baseline, also best)' : isBest ? ' (best)' : isBaseline ? ' (baseline)' : '';
+    return `<tr${isBest ? ' style="background:#13291d"' : isBaseline ? ' style="background:#1c2128"' : ''}>
+    <td>${p.exitTime}${tag ? ` <span class="note" style="display:inline">${tag}</span>` : ''}</td>
     <td>${p.trades}</td><td>${fmtN(p.avgHoldHours, 2)}</td><td>${spanN(p.totalReturnPct)}</td>
     <td>${fmtN(p.sharpe, 3)}</td><td>${fmtN(p.winRatePct, 1)}</td><td>${fmtN(p.profitFactor, 3)}</td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   return `
   <details class="subpanel">
-    <summary>${label} exit-time (hold duration) sweep <span class="cnt">— does holding past 14:30, up to London close, help?</span></summary>
+    <summary>${label} exit-time (hold duration) sweep <span class="cnt">— does holding earlier or later than 14:30 help?</span></summary>
     <table style="margin-top:8px">
       <thead><tr><th>Exit time (UK)</th><th>Trades</th><th>Avg hold (h)</th><th>Net total %</th><th>Sharpe</th><th>Win rate %</th><th>Profit factor</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -670,7 +675,14 @@ async function run() {
   if (!instruments.length) { $('status').textContent = 'select at least one instrument'; $('run').disabled = false; return; }
   const skipWeekdays = ['skipSun', 'skipMon', 'skipTue', 'skipWed', 'skipThu']
     .filter(id => $(id).checked).map(id => parseInt($(id).value, 10));
-  const exitTimes = $('exitSweepEnabled').checked ? ['14:30', '15:30', '16:30'] : undefined;
+  const testLater = $('exitSweepLaterEnabled').checked, testEarlier = $('exitSweepEarlierEnabled').checked;
+  let exitTimes;
+  if (testLater || testEarlier) {
+    const times = new Set(['14:30']);
+    if (testEarlier) ['13:30', '12:30', '11:30', '10:30', '09:30', '08:00'].forEach(t => times.add(t));
+    if (testLater) ['15:30', '16:30'].forEach(t => times.add(t));
+    exitTimes = [...times].sort(); // 'HH:MM' zero-padded strings sort chronologically
+  }
 
   const body = {
     instruments,
