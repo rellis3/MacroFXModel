@@ -64,6 +64,19 @@ INSTRUMENTS = {
     # Additional commodities
     "silver":  {"oanda": "XAG_USD",     "class": "commodity", "desc": "Silver"},
     "oil":     {"oanda": "BCO_USD",     "class": "commodity", "desc": "Brent Crude"},
+
+    # Additional FX pairs — widening the universe past the 26 majors/crosses
+    # already cached (see ContinuationBot/README.md's "widening past FX"
+    # finding: adding uncorrelated instruments only helps if they carry
+    # edge, so these are here to TEST, not because they're assumed good).
+    "usdsek":  {"oanda": "USD_SEK",      "class": "fx",        "desc": "USD/SEK"},
+    "usdnok":  {"oanda": "USD_NOK",      "class": "fx",        "desc": "USD/NOK"},
+    "usdmxn":  {"oanda": "USD_MXN",      "class": "fx",        "desc": "USD/MXN"},
+    "usdzar":  {"oanda": "USD_ZAR",      "class": "fx",        "desc": "USD/ZAR"},
+    "usdtry":  {"oanda": "USD_TRY",      "class": "fx",        "desc": "USD/TRY"},
+    "usdsgd":  {"oanda": "USD_SGD",      "class": "fx",        "desc": "USD/SGD"},
+    "usdhkd":  {"oanda": "USD_HKD",      "class": "fx",        "desc": "USD/HKD"},
+    "eursek":  {"oanda": "EUR_SEK",      "class": "fx",        "desc": "EUR/SEK"},
 }
 
 OUTDIR = Path(__file__).parent.parent / "VolRangeForecaster" / "data" / "m1"
@@ -267,7 +280,16 @@ def main():
     parser.add_argument("pairs", nargs="*", help="Instrument keys to fetch (default: all)")
     parser.add_argument("--years",     type=int,  default=5,    help="Years of history (default 5)")
     parser.add_argument("--no-upload", action="store_true",     help="Skip R2 upload")
+    parser.add_argument("--list",      action="store_true",
+                        help="Print INSTRUMENTS as JSON and exit — no OANDA_KEY required. "
+                             "Lets a caller (e.g. the dashboard's fetch-trigger UI) introspect "
+                             "the available instrument keys without duplicating this table.")
     args = parser.parse_args()
+
+    if args.list:
+        import json
+        print(json.dumps(INSTRUMENTS))
+        return
 
     selected = [p.lower() for p in args.pairs] if args.pairs else list(INSTRUMENTS.keys())
     unknown  = [p for p in selected if p not in INSTRUMENTS]
