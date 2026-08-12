@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Trees &amp; Random Forests — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Tree-Based &amp; Ensemble Machine Learning / Decision Trees &amp; Random Forests</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Tree-Based &amp; Ensemble ML 1 of 2</div>
+  <h1 class="tl-title">Decision Trees &amp; Random Forests</h1>
+  <p class="tl-dek">A single tree grown all the way down can memorize its training data almost perfectly — which is the problem, not the achievement. Random forests fix this by averaging many decorrelated trees instead of trusting one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> (bias-variance framing)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A decision tree is built by <strong>recursive binary splitting</strong>: at every node, try every feature and every candidate threshold, pick the split that most reduces impurity (for regression, variance/MSE), and repeat on each child until a stopping rule is hit — the CART algorithm (Breiman, Friedman, Olshen &amp; Stone, 1984).</li>
+      <li>Grown all the way down, a tree can carve out a leaf for every single training point — training error near zero, but it has memorized noise along with signal, and it generalizes badly.</li>
+      <li>A <strong>random forest</strong> (Breiman, 2001) averages many trees, each trained on an independent bootstrap resample of the data (<strong>bagging</strong>) and restricted to a random subset of candidate features at each split — the second ingredient decorrelates the trees so their individual errors don't all point the same direction.</li>
+      <li>Averaging \(B\) correlated estimators does not drive variance to zero as \(B\to\infty\); it converges to \(\rho\sigma^2\), where \(\rho\) is the average pairwise correlation between trees. Feature subsampling lowers \(\rho\) directly — this, not just "more trees," is the actual lever.</li>
+      <li>Forests naturally produce a genuinely useful practical output: <strong>feature importance</strong> (mean decrease in impurity, or the more reliable permutation importance) — and an internal, free validation estimate from the roughly one-third of rows left out of each bootstrap sample (out-of-bag error).</li>
+      <li>None of this says a specific feature set fed into a forest produces real trading edge — a strong general-purpose method and a validated signal are two different claims, kept separate throughout this lesson.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every regression tool covered elsewhere in this curriculum — OLS, ARIMA,
+    a GARCH variance equation — commits to a single functional form chosen in
+    advance: a straight line, a linear recursion, a specific parametric
+    variance equation. A decision tree commits to nothing in advance beyond
+    "split on whichever feature helps most, wherever it helps." That
+    flexibility is exactly what makes trees powerful for irregular,
+    non-linear relationships with interactions between features — and
+    exactly what makes an unconstrained tree dangerous: nothing stops it from
+    treating every last quirk in the training data as a pattern worth
+    splitting on.
+  </p>
+  <p>
+    <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a>
+    covers the same underlying tension — complexity that always improves
+    in-sample fit but eventually hurts out-of-sample performance — from a
+    completely different angle: an explicit penalty added to a selection
+    criterion, \(k\) or \(k\ln(n)\) charged per parameter. Random forests
+    solve the identical bias-variance problem with a different mechanism
+    entirely — not a penalty term added after the fact, but averaging many
+    high-variance trees so their errors cancel. Two lessons, one problem, two
+    unrelated fixes; worth having both mental tools.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Twenty questions, played by an algorithm that never stops asking</h3>
+    <p>
+      A decision tree is the "twenty questions" game formalized: ask a
+      yes/no question that splits the remaining possibilities as usefully as
+      possible ("is \(x_1\) above 5?"), then ask another question on each of
+      the two resulting groups, and keep going. A shallow tree stops after a
+      few useful, general questions — "is the RSI above 70? is the day a
+      Friday?" — and each leaf still contains a healthy handful of training
+      examples that broadly agree. An unconstrained tree keeps asking
+      questions until every single training example sits alone in its own
+      leaf. At that point the tree hasn't learned a general rule about the
+      data; it has built an elaborate, question-by-question lookup table that
+      reproduces the training set exactly and says nothing reliable about
+      anything it hasn't already seen.
+    </p>
+    <p>
+      A random forest's fix sounds almost too simple to work: instead of
+      trusting one tree's elaborate story, grow hundreds of different trees —
+      each one shown a slightly different, randomly resampled version of the
+      training data, and each one only allowed to consider a random subset of
+      the available questions at each step — and average their answers.
+      Any one tree's overfit quirks are essentially random noise particular
+      to the data and features it happened to see; averaging over many
+      differently-noisy trees cancels most of that noise out, while the
+      genuine signal — the pattern that shows up no matter which resample or
+      feature subset a tree was given — survives the averaging and comes
+      through in the vote.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>Recursive binary splitting.</strong> A regression tree is built
+    top-down, greedily, one split at a time. Every node starts holding some
+    subset of the \(N\) training examples \((x_i, y_i)\). For regression, the
+    impurity of a node holding a set of points \(S\) is its variance around
+    its own mean prediction:
+  </p>
+  <div class="tl-math">\[ I(S) = \frac{1}{|S|}\sum_{i \in S} \big(y_i - \bar{y}_S\big)^2, \qquad \bar{y}_S = \frac{1}{|S|}\sum_{i\in S} y_i \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>I(S)</code><span>the node's impurity — how spread out the targets in this node still are</span></div>
+    <div class="tl-eq-chip c2"><code>ȳ_S</code><span>the node's own prediction if it were left as a leaf right now — the mean of its targets</span></div>
+    <div class="tl-eq-chip c3"><code>|S|</code><span>how many training points currently sit in this node</span></div>
+  </div>
+  <p>
+    A candidate split is a pair (feature \(j\), threshold \(s\)): it sends
+    every point with \(x_{ij} \le s\) to a left child \(S_L\) and every point
+    with \(x_{ij} > s\) to a right child \(S_R\). Among every feature and
+    every realized threshold (in practice, the midpoints between consecutive
+    sorted values of that feature), the algorithm picks the one that
+    maximizes the drop in weighted impurity:
+  </p>
+  <div class="tl-math">\[ \Delta I(j, s) = I(S) - \left[ \frac{|S_L|}{|S|} I(S_L) + \frac{|S_R|}{|S|} I(S_R) \right] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔI(j, s)</code><span>the impurity reduction this specific split would buy — the quantity being maximized</span></div>
+    <div class="tl-eq-chip c2"><code>I(S_L), I(S_R)</code><span>the impurity of the two child nodes this split would create</span></div>
+    <div class="tl-eq-chip c4"><code>|S_L|/|S|, |S_R|/|S|</code><span>weights — a child holding more points counts for more</span></div>
+  </div>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Start at the root</h4>
+        <p>Every training example sits in one node — the whole dataset.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Search every candidate split</h4>
+        <p>For every feature and every realized threshold, compute \(\Delta I(j,s)\).</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Take the single best split</h4>
+        <p>Pick the \((j^*, s^*)\) that maximizes \(\Delta I\); this is a purely greedy, locally-optimal choice — the algorithm never looks ahead to whether a worse split now would enable a better one two levels down.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Recurse on each child</h4>
+        <p>Repeat steps 2–3 independently on \(S_L\) and \(S_R\), and their children, and so on.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">5</div>
+      <div class="tl-step-body">
+        <h4>Stop, and predict at each leaf</h4>
+        <p>Recursion stops at a node once a stopping rule triggers — a maximum depth, a minimum number of points per leaf, or no split left that reduces impurity by more than a set minimum. Each leaf's prediction is simply \(\bar{y}_S\), the mean of the training points that landed there.</p>
+      </div>
+    </div>
+  </div>
+  <p>
+    <strong>The central motivating problem, stated plainly.</strong> If the
+    stopping rule in step 5 never fires — no minimum leaf size, no maximum
+    depth, split until impurity is exactly zero everywhere — the tree keeps
+    splitting until every leaf holds one single training point (or several
+    points sharing an identical target), and training error goes to zero. A
+    tree that deep has not found the underlying relationship between
+    features and target; it has built a lookup table that reproduces the
+    training set exactly, including every bit of measurement noise and every
+    coincidental pattern that will never recur. This is <strong>overfitting</strong>
+    in its most literal form, and it is the single central problem this
+    entire lesson exists to fix.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A small decision tree splitting the feature space</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram: root node asks whether feature x1 is at most 5. If yes, go to a leaf predicting 0.2. If no, a second node asks whether feature x2 is at most 3, leading to two more leaves predicting 0.6 and 1.1 respectively.">
+      <rect x="255" y="14" width="130" height="46" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="320" y="33" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">x₁ ≤ 5 ?</text>
+      <text x="320" y="49" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">root, N=200</text>
+
+      <line x1="290" y1="60" x2="130" y2="120" style="stroke:var(--border2);stroke-width:1.5"/>
+      <text x="185" y="88" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">yes</text>
+      <line x1="350" y1="60" x2="480" y2="120" style="stroke:var(--border2);stroke-width:1.5"/>
+      <text x="440" y="88" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">no</text>
+
+      <rect x="65" y="120" width="130" height="52" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="130" y="142" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">leaf</text>
+      <text x="130" y="160" text-anchor="middle" fill="var(--green)" font-size="13" font-family="'DM Mono',monospace">ŷ = 0.2</text>
+
+      <rect x="410" y="120" width="140" height="46" rx="8" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="480" y="139" text-anchor="middle" fill="var(--text)" font-size="13" font-family="'DM Mono',monospace">x₂ ≤ 3 ?</text>
+      <text x="480" y="155" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">N=120</text>
+
+      <line x1="450" y1="166" x2="380" y2="226" style="stroke:var(--border2);stroke-width:1.5"/>
+      <text x="398" y="200" text-anchor="middle" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">yes</text>
+      <line x1="510" y1="166" x2="580" y2="226" style="stroke:var(--border2);stroke-width:1.5"/>
+      <text x="562" y="200" text-anchor="middle" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">no</text>
+
+      <rect x="315" y="226" width="130" height="52" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="380" y="248" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">leaf</text>
+      <text x="380" y="266" text-anchor="middle" fill="var(--green)" font-size="13" font-family="'DM Mono',monospace">ŷ = 0.6</text>
+
+      <rect x="515" y="226" width="130" height="52" rx="8" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="580" y="248" text-anchor="middle" fill="var(--text)" font-size="12" font-family="'DM Mono',monospace">leaf</text>
+      <text x="580" y="266" text-anchor="middle" fill="var(--green)" font-size="13" font-family="'DM Mono',monospace">ŷ = 1.1</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Every internal node is one binary question chosen by \(\Delta I(j,s)\);
+      every leaf's prediction is just the mean target of the training points
+      that land there. Nothing here is estimated live — the labels are
+      illustrative of the structure the algorithm produces, not a fitted
+      model.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Random forests: bagging plus random feature subsets</h2>
+  <p>
+    A random forest (Breiman, 2001) grows \(B\) trees and combines two
+    separate sources of randomness, each doing a distinct job:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>1. Bagging — bootstrap aggregation</h4>
+      <p>
+        Each of the \(B\) trees is trained on its own bootstrap resample: \(N\)
+        rows drawn <em>with replacement</em> from the original \(N\)-row
+        training set. Some rows appear multiple times in a given resample;
+        others don't appear at all. This alone gives every tree a slightly
+        different training set, so their overfit quirks — driven by which
+        specific noisy points they happened to see — differ from tree to
+        tree.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>2. Random feature subsets at each split</h4>
+      <p>
+        At every single split (not just once per tree), only a random subset
+        of \(m\) features out of the full \(p\) is considered as a candidate
+        — commonly \(m \approx \sqrt{p}\) for classification or \(m \approx
+        p/3\) for regression, Breiman's original defaults. This stops a
+        single dominant feature from being chosen at the top of every tree,
+        which is what would make the trees look alike (and their errors move
+        together) even after bootstrapping.
+      </p>
+    </div>
+  </div>
+  <p>
+    The forest's prediction is the plain average of all \(B\) trees' leaf
+    predictions (majority vote, for classification):
+  </p>
+  <div class="tl-math">\[ \hat{f}_{\text{forest}}(x) = \frac{1}{B}\sum_{b=1}^{B} T_b(x) \]</div>
+  <p>
+    <strong>Why averaging reduces variance without adding much bias.</strong>
+    A single unconstrained tree has low bias (it can fit almost any shape)
+    and high variance (regrow it on a slightly different sample of the same
+    data and you can get a noticeably different tree). Averaging \(B\)
+    <em>independent</em>, identically-distributed estimators, each with
+    variance \(\sigma^2\), gives an average with variance \(\sigma^2/B\) —
+    variance falls straight toward zero as \(B\) grows, while the average's
+    bias is unchanged from a single tree's bias, since averaging unbiased (or
+    equally-biased) predictors doesn't shift the expectation. That is the
+    entire bias-variance case for bagging in one sentence: many high-variance,
+    low-bias estimators, averaged, keep the low bias and lose most of the
+    variance.
+  </p>
+  <div class="tl-solid amber">
+    <strong>Bootstrap-trained trees are not actually independent — they share
+    the same underlying dataset.</strong> The honest formula for the variance
+    of an average of \(B\) estimators, each with variance \(\sigma^2\) and
+    average pairwise correlation \(\rho\), is
+    \(\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2\). As \(B\to\infty\) the second
+    term vanishes, but the <strong>first term does not</strong> — the
+    variance of the averaged forest converges to \(\rho\sigma^2\), a floor set
+    entirely by how correlated the trees are with each other. This is exactly
+    why the random feature subset at each split matters as much as bagging
+    itself: it is the mechanism that lowers \(\rho\), which lowers the floor
+    that adding more trees alone can never get below.
+  </div>
+  <p>
+    This is a genuinely different mechanism from the AIC/BIC penalty covered
+    in <a href="model-selection-aic-bic.html">Model Selection: AIC &amp;
+    BIC</a> — that lesson penalizes complexity directly inside a selection
+    score computed once, on one fitted model; a random forest never penalizes
+    complexity at all, and each individual tree is still allowed to
+    overfit its own bootstrap sample as much as it wants. The variance
+    reduction comes entirely from combining many such trees, not from
+    restraining any single one of them.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Feature importance — a genuinely useful byproduct</h2>
+  <p>
+    Because a forest already tracks every split made by every tree, it
+    produces feature importances essentially for free, in two standard
+    flavors:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Mean decrease in impurity (MDI)</h4>
+      <p>
+        Sum \(\Delta I(j,s)\) over every split that used feature \(j\), across
+        every tree in the forest, weighted by how many training points passed
+        through that split; average over the \(B\) trees. Cheap — it falls
+        out of training with no extra computation — but biased toward
+        continuous features and high-cardinality categoricals, which simply
+        have more candidate thresholds to be picked at, inflating their
+        apparent importance.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔀</div>
+      <h4>Permutation importance</h4>
+      <p>
+        For each feature \(j\), randomly shuffle that feature's column in a
+        held-out (or out-of-bag) set, re-score the forest, and measure how
+        much prediction error <em>increases</em>. A feature the model
+        genuinely relies on causes a large error increase when scrambled; a
+        feature it ignores causes almost none. More expensive to compute, but
+        not biased toward high-cardinality features the way MDI is —
+        generally the more trustworthy of the two.
+      </p>
+    </div>
+  </div>
+  <p>
+    A useful side effect of bagging: since each tree only ever sees roughly
+    63% of the rows in its bootstrap sample (as \(N\to\infty\), the chance
+    any given row is <em>excluded</em> from one bootstrap draw converges to
+    \((1-1/N)^N \to e^{-1} \approx 0.368\)), the remaining ~37% — the
+    <strong>out-of-bag (OOB)</strong> rows for that tree — were never used to
+    train it. Averaging each row's prediction only over the trees that didn't
+    see it during training gives an internal, honest validation estimate
+    without needing to hold out a separate test set at all — the basis for
+    permutation importance above, and a genuinely useful practical
+    convenience of the bagging design.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(I(S)\)</td><td>Impurity of a node — variance of the targets of the points currently in it, for regression.</td></tr>
+    <tr><td>\(\Delta I(j,s)\)</td><td>Impurity reduction a candidate split (feature \(j\), threshold \(s\)) would produce.</td></tr>
+    <tr><td>\(B\)</td><td>Number of trees grown in the forest.</td></tr>
+    <tr><td>\(m\)</td><td>Number of features randomly considered as split candidates at each node (\(m<p\)).</td></tr>
+    <tr><td>\(p\)</td><td>Total number of available features.</td></tr>
+    <tr><td>\(\rho\)</td><td>(rho) Average pairwise correlation between the \(B\) trees' predictions — the variance floor a forest can't average away.</td></tr>
+    <tr><td>OOB</td><td>Out-of-bag — the roughly 37% of rows a given bootstrap-trained tree never saw during training.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A single deep tree memorizes; a small forest generalizes better</h3>
+    <p>
+      Eight training points, one feature \(x=1,\dots,8\), with a true
+      underlying step relationship (0 below the boundary, 1 above it) plus
+      two mislabeled points from noise, at \(x=4\) (noise flips it to 1) and
+      \(x=5\) (noise flips it to 0):
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>x</td><td>1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;5&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;7&nbsp;&nbsp;&nbsp;8</td></tr>
+      <tr><td>y (observed)</td><td>0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;<strong>1</strong>&nbsp;&nbsp;&nbsp;<strong>0</strong>&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;1</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>An unconstrained single tree</h4>
+          <p>
+            Grown with no depth limit, the tree keeps splitting until every
+            point is isolated — it can place a split between \(x=3\) and
+            \(x=4\), then another between \(x=4\) and \(x=5\), then another
+            between \(x=5\) and \(x=6\), reproducing all eight labels exactly,
+            <strong>including both noise flips</strong>. Training error is
+            exactly zero. Asked to predict a brand-new point at \(x=4.5\),
+            this tree — having carved out a dedicated one-point region around
+            the noisy \(x=5\) observation — has no principled reason to
+            answer 0 or 1; it has fit the noise as confidently as the signal.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>A forest of 3 shallow (depth-1) trees on bootstrap resamples</h4>
+          <p>
+            Each tree is restricted to a single split and trained on its own
+            8-point bootstrap resample (drawn with replacement, so each
+            resample over- or under-represents different points, including
+            possibly the two noisy ones). A depth-1 tree can only place one
+            threshold, so it is forced to find the split that best separates
+            the <em>majority</em> of its resampled points — the two isolated
+            noise flips at \(x=4\) and \(x=5\) pull individual splits around
+            slightly, but rarely dominate all three resamples at once.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Average the three trees' votes</h4>
+          <p>
+            Suppose the three depth-1 trees end up splitting at \(x\le3.5\),
+            \(x\le4.5\), and \(x\le5.5\) respectively (plausible outcomes
+            given which points each resample happened to emphasize). Their
+            majority vote at \(x=4.5\) is 1 with probability \(2/3\) — noisy,
+            but pulling toward the correct side of the true boundary more
+            often than the single overfit tree's answer, which was fit to the
+            specific noise realization at \(x=5\) rather than to where the
+            underlying step actually sits.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      This is illustrative of the mechanism, not a live model run on real
+      data — the point is structural: the single deep tree's zero training
+      error is a red flag, not an achievement, while the shallow forest's
+      imperfect-but-more-robust vote is what the bias-variance tradeoff
+      predicts an averaged, decorrelated ensemble should do.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A jagged single-tree fit versus a smoother forest-averaged fit, on the same 8 points</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step chart comparing a single unconstrained decision tree, which forms a jagged staircase touching every one of eight training points exactly including two noisy ones, against a three-tree forest average, which forms a smoother staircase that misses the two noisy points but tracks the true underlying step function more closely.">
+      <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border)"/>
+      <line x1="60" y1="220" x2="600" y2="220" style="stroke:var(--border)"/>
+      <text x="330" y="245" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">x</text>
+      <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">y</text>
+
+      <!-- data points: x=1..8 mapped to 100..560 step 66, y0=200 y1=40 -->
+      <circle cx="100" cy="200" r="4" fill="var(--text)"/>
+      <circle cx="166" cy="200" r="4" fill="var(--text)"/>
+      <circle cx="232" cy="200" r="4" fill="var(--text)"/>
+      <circle cx="298" cy="40" r="4.5" fill="var(--red)"/>
+      <circle cx="364" cy="200" r="4.5" fill="var(--red)"/>
+      <circle cx="430" cy="40" r="4" fill="var(--text)"/>
+      <circle cx="496" cy="40" r="4" fill="var(--text)"/>
+      <circle cx="562" cy="40" r="4" fill="var(--text)"/>
+      <text x="298" y="26" text-anchor="middle" fill="var(--red)" font-size="9" font-family="'DM Mono',monospace">noise</text>
+      <text x="364" y="216" text-anchor="middle" fill="var(--red)" font-size="9" font-family="'DM Mono',monospace">noise</text>
+
+      <!-- single tree: jagged, hits every point exactly -->
+      <path d="M100,200 L133,200 L133,200 L166,200 L199,200 L199,200 L232,200 L265,200 L265,40 L298,40 L331,40 L331,200 L364,200 L397,200 L397,40 L430,40 L496,40 L562,40" style="stroke:var(--red);stroke-width:2;fill:none;stroke-linecap:round;opacity:.85"/>
+
+      <!-- forest average: smoother 2-step, misses both noise points, closer to true boundary near x=4.5-5.5 -->
+      <path d="M100,200 L364,200 L364,40 L562,40" style="stroke:var(--green);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+
+      <text x="470" y="80" fill="var(--green)" font-size="11" font-family="'DM Mono',monospace">forest average (3 trees)</text>
+      <text x="140" y="70" fill="var(--red)" font-size="11" font-family="'DM Mono',monospace">single unconstrained tree</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The single tree (red) threads a dedicated micro-region around each
+      noisy point to fit it exactly — zero training error, but two spurious
+      steps that reflect noise, not signal. The forest average (green) is
+      forced smoother because no one resample dominates every tree, and it
+      lands closer to where the true step actually sits.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A forest fed daily macro/technical features to predict next-day direction</h3>
+    <p>
+      Imagine building a feature table — yesterday's realized volatility, a
+      handful of moving-average distances, a rate-differential level, a
+      day-of-week dummy — and training a random forest to predict next-day
+      FX direction. The forest will happily report feature importances: maybe
+      the volatility feature and one moving-average distance rank highest.
+      That output is real and reproducible in the sense that it faithfully
+      describes which features the trained trees relied on most to reduce
+      training-set impurity (or which features hurt OOB error most when
+      shuffled). It says <strong>nothing yet</strong> about whether that
+      importance reflects a genuine, persistent relationship or a
+      relationship the forest found and exploited only within this
+      particular historical sample — that question is a completely separate
+      one, answered only by genuine out-of-sample testing with costs, exactly
+      as the honest-teammate framing below insists.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>A validated general-purpose method is not the same claim as
+    "this feature set has edge."</strong> Random forests are real, effective,
+    well-evidenced machinery for reducing a high-variance model's variance
+    through averaging — that is a statement about the method. Whether any
+    specific set of FX or macro features fed into that method contains a
+    real, tradable, out-of-sample-surviving relationship is an entirely
+    separate, unanswered question that this lesson does not touch. Nothing
+    here should be read as evidence that a specific forest-based signal has,
+    or will have, real edge — see
+    <a href="research-pipeline-hypothesis-to-backtest.html">The Research
+    Pipeline</a> for the actual discipline that question requires.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In practice, forests are rarely tuned by exhaustively searching every
+    hyperparameter; the handful that matter most are the number of trees
+    \(B\) (more is essentially always at least as good, with diminishing
+    returns and rising compute cost — there is no overfitting-from-more-trees
+    effect the way there is with a single tree's depth), the feature-subset
+    size \(m\) (the main lever on \(\rho\), the correlation floor above), and
+    each tree's own depth or minimum leaf size (a secondary lever, since
+    bagging already tolerates individually overfit trees far better than a
+    single tree would). OOB error is commonly used in place of a separate
+    validation split to tune these, since it comes essentially free from the
+    training procedure itself. Forests are also a common first "sanity check"
+    model before reaching for gradient boosting — covered next — precisely
+    because they have so few hyperparameters that meaningfully change the
+    result, making them harder to accidentally overfit through tuning alone.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where trees and forests quietly go wrong</h3>
+    <p>
+      <strong>Reading MDI feature importance as causal or as unconditionally
+      reliable.</strong> A feature that's highly correlated with another,
+      more genuinely informative feature can still rank as "important" by
+      MDI simply because it was available as a proxy at some splits — MDI
+      also mechanically favors continuous/high-cardinality features over
+      binary ones, independent of true relevance. Prefer permutation
+      importance, and treat both as "what the model leaned on," not "what
+      causes the outcome."
+    </p>
+    <p>
+      <strong>Time-series data breaks the bootstrap's core assumption.</strong>
+      Bootstrap resampling assumes rows are exchangeable — shuffling them and
+      redrawing with replacement doesn't change what the data represents.
+      Financial time series have autocorrelation and regime structure that a
+      plain row-wise bootstrap ignores entirely, and a forest trained this
+      way can leak information from adjacent time-adjacent rows across the
+      train/OOB boundary. A specialized time-series-aware validation split
+      remains necessary; OOB error is not a substitute for it here.
+    </p>
+    <p>
+      <strong>"More trees always helps" is true for variance, not for the
+      correlation floor.</strong> Growing \(B\) from 100 to 10,000 keeps
+      shrinking the \(\frac{1-\rho}{B}\sigma^2\) term, but the forest's
+      variance never drops below \(\rho\sigma^2\) — if the trees are highly
+      correlated (too large a feature subset \(m\), or too little diversity
+      in the underlying features), no amount of extra trees fixes that.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A tree is built by greedy recursive binary splitting,</strong> picking at each node the (feature, threshold) that most reduces impurity, and recursing on the children — the CART algorithm.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An unconstrained deep tree can drive training error to zero by memorizing the data</strong> — that is overfitting, not success, and it generalizes badly.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Random forests average many trees, each on a bootstrap resample (bagging) and restricted to a random feature subset per split.</strong> The feature subset decorrelates the trees — that's what the averaging actually needs to work.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Averaging \(B\) correlated trees converges to a variance floor of \(\rho\sigma^2\), not zero.</strong> Lowering the trees' pairwise correlation matters as much as growing more of them.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Feature importance (MDI or permutation) and OOB error are genuinely useful, low-cost byproducts</strong> of the bagging design — not something bolted on afterward.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A trained forest's feature importances say nothing on their own about real trading edge.</strong> That question needs a genuine out-of-sample test with costs, kept entirely separate from "the method works well in general."</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What quantity does a regression tree's greedy split search actually maximize at each node?</summary>
+    <div class="tl-answer">
+      The impurity reduction \(\Delta I(j,s) = I(S) - \big[\frac{|S_L|}{|S|}I(S_L) + \frac{|S_R|}{|S|}I(S_R)\big]\)
+      — the drop from the parent node's variance to the size-weighted
+      average variance of the two children a candidate split (feature
+      \(j\), threshold \(s\)) would produce. The search is over every
+      feature and every realized threshold, and it is purely greedy: the
+      single best split is taken immediately, with no lookahead to whether a
+      locally worse split might enable a better tree overall.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does an unconstrained single decision tree tend to overfit so badly?</summary>
+    <div class="tl-answer">
+      With no stopping rule (no max depth, no minimum leaf size), recursive
+      splitting continues until every leaf holds a single training point (or
+      a group of points sharing an identical target), driving training error
+      toward zero. At that point the tree has stopped describing a general
+      relationship between features and target and has instead built a
+      lookup table that reproduces the training set exactly — including
+      whatever noise happened to be in it — which has no reason to
+      generalize to new data.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Random forests use two distinct sources of randomness. Name both, and state what each one is for.</summary>
+    <div class="tl-answer">
+      (1) Bagging: each tree trains on its own bootstrap resample (drawn with
+      replacement) of the training rows, giving each tree a different
+      training set and therefore different overfit quirks. (2) A random
+      subset of \(m\) of the \(p\) features is considered at each split
+      (not just once per tree), which stops one dominant feature from
+      producing similar splits — and therefore correlated trees — across the
+      whole forest. Bagging alone gives variety; the random feature subset is
+      what keeps that variety from collapsing back into correlated trees.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why doesn't simply growing more trees (larger \(B\)) drive a random forest's variance all the way to zero?</summary>
+    <div class="tl-answer">
+      The variance of the averaged forest is \(\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2\),
+      where \(\rho\) is the average pairwise correlation between individual
+      trees' predictions. As \(B\to\infty\) the second term vanishes, but the
+      first term, \(\rho\sigma^2\), does not depend on \(B\) at all — it is a
+      floor set purely by how correlated the trees are with each other. More
+      trees only ever removes the part of the variance the trees don't
+      already share.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What is out-of-bag (OOB) error, and why does it come essentially free with a bagged forest?</summary>
+    <div class="tl-answer">
+      Each bootstrap resample, drawn with replacement from \(N\) rows,
+      excludes roughly \(e^{-1}\approx 36.8\%\) of the original rows on
+      average — those excluded rows are that tree's out-of-bag set. Averaging
+      each row's prediction only across the subset of trees that never saw it
+      during training gives an honest validation-style error estimate without
+      setting aside a separate held-out split, since the "held-out" rows are
+      already a natural byproduct of the resampling every tree does anyway.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A random forest's permutation importance ranks a volatility feature as the single most important input for predicting next-day FX direction. Is that, by itself, evidence of real trading edge?</summary>
+    <div class="tl-answer">
+      No. It is evidence that, within this trained model on this historical
+      sample, scrambling that feature hurt the forest's own predictions the
+      most — a statement about what the model leaned on, not a statement
+      about whether that reliance reflects a genuine, persistent,
+      out-of-sample relationship. A strong general-purpose method producing a
+      confident-looking importance ranking is not the same claim as "this
+      specific feature set has validated edge" — that requires a genuine
+      out-of-sample test with realistic costs, entirely separate from the
+      importance ranking itself.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Leo Breiman, Jerome H. Friedman, Richard A. Olshen, and Charles J. Stone, <em>Classification and Regression Trees</em>, Wadsworth, 1984 — the foundational CART reference: the recursive binary splitting algorithm, impurity measures, and pruning.</li>
+    <li>Leo Breiman, <em>"Random Forests"</em>, Machine Learning, 45(1), 2001 — the original random forest paper: bagging plus random feature subsets, the correlation-variance bound, and out-of-bag error estimation.</li>
+    <li>Trevor Hastie, Robert Tibshirani, and Jerome Friedman, <em>The Elements of Statistical Learning</em> (2nd ed.), Springer, 2009 — Chapter 15 covers random forests with the same \(\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2\) variance decomposition used in this lesson.</li>
+    <li>Leo Breiman, <em>"Bagging Predictors"</em>, Machine Learning, 24(2), 1996 — the earlier bagging paper that introduced bootstrap aggregation and out-of-bag error estimation, predating the full random forest algorithm.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="gradient-boosting.html">Gradient Boosting →</a>
+  </div>
+</div>
+</body>
+</html>
