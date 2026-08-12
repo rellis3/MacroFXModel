@@ -559,6 +559,39 @@ function oiCrossCheck(big){
 
   if (!rows.length) return '<div class="empty">No options positioning saved yet — paste a CME chain on the <a href="oi-dashboard.html">OI Analytics</a> page first.</div>';
 
+  // Plain-English breakdown of each row's actual numbers, not just a glossary of the
+  // column headers — written for someone new to COT/options, so it spells out what
+  // "crowded", "put wall" and "stale" concretely mean for THIS pair's numbers rather
+  // than assuming the reader already knows.
+  const legPhrase = x => {
+    if (!x) return 'no COT data for this leg';
+    const p = pctOf(x);
+    if (p == null) return esc(dispSym(x))+' has no current COT reading';
+    const word = p>=90 ? 'crowded <b>LONG</b> — speculators are stretched net long, a one-sided bet that\'s already mostly been made, leaving less fresh buying to push it further'
+      : p<=10 ? 'crowded <b>SHORT</b> — speculators are stretched net short, a one-sided bet that\'s already mostly been made, leaving less fresh selling to push it further'
+      : p>=70 ? 'leaning long, but not stretched enough to call it crowded'
+      : p<=30 ? 'leaning short, but not stretched enough to call it crowded'
+      : 'roughly neutral — no strong lean either way right now';
+    return '<b>'+esc(dispSym(x))+'</b> is '+word+' ('+p+'th percentile of its own 200-week range — 90+ or 10- is what counts as crowded on this page)';
+  };
+  const wallPhrase = (w, spot, kind) => {
+    if (!w) return 'no '+kind+' wall was found in the saved options data for this pair';
+    const side = kind === 'put' ? 'below' : 'above';
+    const role = kind === 'put'
+      ? 'a put wall often acts like a <b>floor</b>: it\'s the strike where the most put open interest sits, so dealers who sold those puts tend to buy as price nears it (they\'re hedging their own risk), which can slow or stall a decline — not guarantee one'
+      : 'a call wall often acts like a <b>ceiling</b>: it\'s the strike where the most call open interest sits, so dealers who sold those calls tend to sell as price nears it, which can slow or stall a rally — not guarantee one';
+    return 'the nearest <b>'+kind+' wall</b> sits at <b>'+w.strike+'</b>, '+distPct(w.strike,spot)+' '+side+' spot — '+role;
+  };
+  const explainers = rows.map(r => {
+    const stale = r.ageH != null && r.ageH > 36
+      ? ' This options data is '+Math.round(r.ageH)+'h old — stale enough that these wall levels may have already shifted since it was pasted, so treat them as a rough guide rather than current.'
+      : '';
+    return '<div class="note" style="margin-top:14px">'
+      + '<b>'+esc(r.pair)+'</b> — ' + legPhrase(r.A) + '. ' + legPhrase(r.B) + '. '
+      + 'On the options side, ' + wallPhrase(r.put, r.spot, 'put') + '. And ' + wallPhrase(r.call, r.spot, 'call') + '.'
+      + stale + '</div>';
+  }).join('');
+
   return '<table><thead><tr><th>Pair</th><th style="text-align:left">COT (base / quote)</th>'
     + '<th style="text-align:left">Put wall (support)</th><th style="text-align:left">Call wall (resistance)</th><th>Options data age</th></tr></thead><tbody>'
     + rows.map(r => {
@@ -570,7 +603,8 @@ function oiCrossCheck(big){
           + '<td class="muted" style="text-align:left">'+(r.call ? r.call.strike+' ('+distPct(r.call.strike,r.spot)+')' : '—')+'</td>'
           + '<td style="color:'+ageClr+'">'+ageTxt+'</td></tr>';
       }).join('')
-    + '</tbody></table><div class="note">COT is weekly <b>futures</b> positioning (who\'s already committed); the walls are dealer <b>options</b> open interest (where hedging flow may cluster) — two separate markets, shown side by side rather than combined. A currency crowded on COT sitting right under a heavy wall is worth noting, not automatically anything. Options data is a manual paste on the <a href="oi-dashboard.html">OI Analytics</a> page — check the age column before leaning on it.</div>';
+    + '</tbody></table><div class="note">COT is weekly <b>futures</b> positioning (who\'s already committed); the walls are dealer <b>options</b> open interest (where hedging flow may cluster) — two separate markets, shown side by side rather than combined. A currency crowded on COT sitting right under a heavy wall is worth noting, not automatically anything.</div>'
+    + explainers;
 }
 
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
