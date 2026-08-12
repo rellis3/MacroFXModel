@@ -1471,6 +1471,66 @@ loss into a smaller final one. Testing the **opposite** — adding a stop-loss
 at some MAE-derived level and comparing net result/Sharpe against the current
 no-stop baseline — is a well-defined next test, not yet built.
 
+**Update (2026-08-12: "what about holding for longer than 14:30? increase an
+hour each time to see if holding until London close gets better results?"):
+built and run — the result is a mild improvement for one instrument, a worse
+one for the other, neither flips net-negative to net-positive.**
+`buildOvernightTrades` gained `opts.exitTime` ('HH:MM', default '14:30' — no
+behavior change for existing callers), threaded through to the mirror leg too
+so overnight+mirror still reconstruct the full calendar day at any exit time.
+New pure function `exitTimeSweep(packed, startEpoch, endEpoch, assetKey,
+opts, exitTimes)` reruns `buildOvernightTrades`+`applyCosts` once per
+candidate exit time (a real M1 rescan each time — this changes which bar
+gets picked, unlike the cost-scale sweep which reuses one set of built
+trades) and reports total return/Sharpe/win rate/profit factor/avg hold
+hours per candidate, plus which one wins. Candidate list defaults to
+`['14:30','15:30','16:30']` — 14:30 through London close, matching
+`nasdaqConfig.js`'s own `london` session window (`08:00–16:30` UK). 2 new
+unit tests (30 total): exitTime correctly shifts the exit fill and the
+mirror leg together (reconstruction identity still holds at a later exit
+time), and the sweep's average hold duration grows by ~1h per candidate as
+expected. Wired opt-in (`opts.exitTimes` — only rescans when the caller asks
+for it) into `runOvernightHoldForInstrument`'s output as `exitSweep`,
+`server.js`'s `/run` route (validated `HH:MM` array), and the dashboard as a
+new "exit-time (hold duration) sweep" table+chart with an opt-in checkbox
+("off by default" per the same "expensive extra sweep, don't run it
+unasked" pattern as the skip-weekday rule).
+
+**One documented modeling simplification, stated not hidden:** `applyCosts`'
+`exitSlipMult` (widens the exit leg for "US cash-open volatility at 14:30
+UK") is held fixed across every candidate exit time — a later exit is
+further from the actual cash open, so if anything this makes the later-exit
+points slightly conservative (still charged cash-open-level slippage for a
+calmer, later fill), not optimistic.
+
+**Run for real against the same R2 data — the honest answer is mixed, not a
+clean win:**
+
+| | Gold 14:30 | Gold 15:30 | Gold 16:30 | NQ 14:30 | NQ 15:30 | NQ 16:30 |
+|---|---|---|---|---|---|---|
+| Net total return % | **−2.3** | −15.8 | −6.3 | **−3.9** | −13.4 | **−2.9** |
+| Sharpe | 0.032 | −0.080 | 0.014 | 0.030 | −0.024 | 0.059 |
+| Win rate % | 51.5 | 49.6 | 50.3 | 52.3 | 50.3 | 53.0 |
+
+Gold gets **worse** at every later exit tested — 15:30 is the sharpest drop
+(−15.8%), 16:30 partially recovers but still sits well below the 14:30
+baseline. NQ's best point in this sweep is actually London close (16:30,
+−2.9%), a small improvement on the 14:30 baseline (−3.9%) — but it's still
+net-negative, not a flip to profitable, and 15:30 is the worst point for NQ
+too (−13.4%), the same non-monotonic dip seen in gold. Both instruments
+dipping hardest at 15:30 UK specifically (not a smooth trend toward London
+close) suggests something in the NY-morning path around that hour is
+genuinely adverse for a long holding through it on this data, not just
+noise from one instrument — worth flagging as a pattern rather than
+explaining away, though decomposing *why* 15:30 is the worst point
+specifically hasn't been done (the same gross/cost-decomposition approach
+used for the Wednesday question above would be the natural next step if
+that's wanted). **Bottom line: holding longer does not rescue this
+strategy** — at best (NQ, London close) it trims the loss by about a point;
+at worst (gold, 15:30) it roughly 7x's it. The original 14:30 exit remains
+the better of the tested options for gold; NQ has a marginal, not
+game-changing, case for London close instead.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

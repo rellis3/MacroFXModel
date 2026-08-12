@@ -3,9 +3,11 @@
  *
  * Implements the Colez Trades "Overnight Hold vs Buy & Hold" research task
  * (education/buy-and-hold-notes.md) as a real, runnable backtest: enter long
- * at 20:00 UK, exit 14:30 UK the following session, on NAS100 and XAUUSD,
- * compared against continuous buy & hold over the same window — then both
- * legs are run through a configurable prop-firm rule check.
+ * at 20:00 UK, exit 14:30 UK the following session (configurable via
+ * opts.exitTime — see exitTimeSweep for testing later exits, up to London
+ * close), on NAS100 and XAUUSD, compared against continuous buy & hold over
+ * the same window — then both legs are run through a configurable prop-firm
+ * rule check.
  *
  * Lego baseplate: M1 packed-array helpers (barUtils), the DST-exact UK/US
  * timezone conversion (nasdaqSessions — Intl/IANA-based, not the ±1h
@@ -214,11 +216,19 @@ export function computeMAEPct(packed, entryEpoch, exitEpoch, entryPrice) {
 // Returns { trades, mirrors, exceptions, entryPriceByDate } where:
 //   trades  = [{ date, exitDate, entryEpoch, exitEpoch, entryPrice, exitPrice,
 //                grossPct, maePct }]   — one per valid Sun–Thu entry night
-//   mirrors = [{ date, entryEpoch, exitEpoch, grossPct }]  — 14:30→20:00 same-day
+//   mirrors = [{ date, entryEpoch, exitEpoch, grossPct }]  — exitTime→20:00 same-day
 //   exceptions = [{ date, leg, reason }]  — every skipped/gap-filled attempt,
 //                logged rather than silently dropped (stage-02 gate).
+//
+// opts.exitTime ('HH:MM', default '14:30'): how long the overnight leg is
+// held into the following UK session before closing. Moving it later (e.g.
+// toward London close, 16:30 UK per nasdaqConfig.js's `london` window) holds
+// through more of the post-cash-open NY session instead of exiting right at
+// the open. The mirror leg's start follows exitTime too, so overnight+mirror
+// still reconstruct the full calendar day regardless of which exitTime is used.
 export function buildOvernightTrades(packed, startEpoch, endEpoch, opts = {}) {
   const maxGapSec = opts.maxGapSec ?? 1800;
+  const exitTime = opts.exitTime || '14:30';
   const dates = buildTradingDates(startEpoch, endEpoch);
   const trades = [];
   const mirrors = [];
@@ -239,7 +249,7 @@ export function buildOvernightTrades(packed, startEpoch, endEpoch, opts = {}) {
     }
     const exitDate = addDays(d, 1);
     const entryEpoch = zonedTimeToUtc(d, '20:00', UK_TZ).getTime() / 1000;
-    const exitEpoch   = zonedTimeToUtc(exitDate, '14:30', UK_TZ).getTime() / 1000;
+    const exitEpoch   = zonedTimeToUtc(exitDate, exitTime, UK_TZ).getTime() / 1000;
     if (entryEpoch < startEpoch || exitEpoch > endEpoch) continue; // outside the trimmed overlap window
 
     const entryFill = priceAt(packed, entryEpoch, maxGapSec);
@@ -257,9 +267,11 @@ export function buildOvernightTrades(packed, startEpoch, endEpoch, opts = {}) {
       entryPrice: entryFill.price, exitPrice: exitFill.price, grossPct, maePct,
     });
 
-    // Mirror leg (14:30 → 20:00, SAME calendar date D) — integrity check only,
-    // gross/no-cost, not a tradable claim.
-    const mEntryEpoch = zonedTimeToUtc(d, '14:30', UK_TZ).getTime() / 1000;
+    // Mirror leg (exitTime → 20:00, SAME calendar date D) — integrity check
+    // only, gross/no-cost, not a tradable claim. Starts at exitTime (not a
+    // hardcoded 14:30) so overnight+mirror still reconstruct the full
+    // calendar day when exitTime is pushed later than the default.
+    const mEntryEpoch = zonedTimeToUtc(d, exitTime, UK_TZ).getTime() / 1000;
     const mExitEpoch  = entryEpoch; // 20:00 same day — closes the loop back into the overnight entry
     if (mEntryEpoch >= startEpoch && mEntryEpoch <= endEpoch) {
       const mEntryFill = priceAt(packed, mEntryEpoch, maxGapSec);
@@ -267,7 +279,7 @@ export function buildOvernightTrades(packed, startEpoch, endEpoch, opts = {}) {
       if (mEntryFill && mExitFill) {
         mirrors.push({ date: d, grossPct: ((mExitFill.price / mEntryFill.price) - 1) * 100 });
       } else {
-        exceptions.push({ date: d, leg: 'mirror', reason: 'no bar within tolerance for the 14:30→20:00 mirror leg' });
+        exceptions.push({ date: d, leg: 'mirror', reason: `no bar within tolerance for the ${exitTime}→20:00 mirror leg` });
       }
     }
   }
@@ -379,6 +391,62 @@ export function costSensitivitySweep(grossTrades, assetKey, opts = {}) {
         : `net return stays positive across the whole scanned range (0x–${scales[scales.length - 1]}x) — no breakeven found in this window`);
 
   return { points, breakevenScale, assumedScaleNote: 'costScale=1.0 is the engine\'s assumed default spread/slip/financing — see DEFAULT_COST_PCT/DEFAULT_SLIP_PCT/DEFAULT_FINANCING_BPS_PER_NIGHT', note };
+}
+
+// Default candidate exit times for the hold-duration sweep: the baseline
+// 14:30 UK exit, in hourly steps up to London close (16:30 UK, the same
+// window nasdaqConfig.js's `london` session uses).
+export const DEFAULT_EXIT_TIMES = ['14:30', '15:30', '16:30'];
+
+// ── Stage 04c — exit-time (hold-duration) sweep ──────────────────────────────
+//
+// Unlike costSensitivitySweep (reuses already-built gross trades, cheap by
+// construction), this DOES rescan the M1 data once per candidate exit time —
+// moving the exit changes which bar is picked as the fill, not just a cost
+// multiplier. Still cheap in practice: buildOvernightTrades is a handful of
+// binary-search lookups per trading date, so a handful of candidate exit
+// times means a handful of reruns of that, not a full re-backtest of
+// anything expensive.
+//
+// Answers "does holding longer than the default 14:30 UK exit — up to London
+// close — change the result?" One documented simplification: applyCosts'
+// exitSlipMult (widens the exit leg for "US cash-open volatility at 14:30
+// UK") is held fixed across every candidate exit time here, even though a
+// later exit sits further from the actual cash open. If anything that makes
+// the later-exit points slightly conservative (still charging cash-open-
+// level slippage for a calmer, later fill), not optimistic — not corrected
+// here since a time-varying slippage curve would be a new, uncalibrated
+// assumption of its own.
+export function exitTimeSweep(packed, startEpoch, endEpoch, assetKey, buildOpts = {}, exitTimes = DEFAULT_EXIT_TIMES) {
+  const points = exitTimes.map(exitTime => {
+    const { trades: grossTrades } = buildOvernightTrades(packed, startEpoch, endEpoch, { ...buildOpts, exitTime });
+    if (!grossTrades.length) {
+      return { exitTime, trades: 0, totalReturnPct: null, sharpe: null, winRatePct: null, profitFactor: null, avgHoldHours: null };
+    }
+    const netTrades = applyCosts(grossTrades, assetKey, buildOpts);
+    const totalMult = netTrades.reduce((m, t) => m * (1 + t.netPct / 100), 1);
+    const totalReturnPct = (totalMult - 1) * 100;
+    const summ = summarizeTrades(netTrades.map(t => t.netPct), netTrades.map(t => t.date));
+    const avgHoldHours = grossTrades.reduce((s, t) => s + (t.exitEpoch - t.entryEpoch), 0) / grossTrades.length / 3600;
+    return {
+      exitTime, trades: grossTrades.length,
+      totalReturnPct: +totalReturnPct.toFixed(3), sharpe: summ.sharpe, winRatePct: summ.winRate,
+      profitFactor: summ.profitFactor, avgHoldHours: +avgHoldHours.toFixed(2),
+    };
+  });
+
+  let best = null;
+  for (const p of points) {
+    if (p.totalReturnPct == null) continue;
+    if (best == null || p.totalReturnPct > best.totalReturnPct) best = p;
+  }
+
+  return {
+    points,
+    bestExitTime: best?.exitTime ?? null,
+    baselineExitTime: exitTimes[0] ?? null,
+    note: 'exitSlipMult (the cash-open slippage widening) is held fixed across every candidate exit time — see module comment above exitTimeSweep.',
+  };
 }
 
 // ── Buy & hold benchmark ─────────────────────────────────────────────────────
@@ -928,6 +996,9 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
   const ruleCheck = metrics ? runPropFirmRuleCheck(netTrades, opts.ruleset) : null;
   const costSweep = opts.includeCostSweep === false ? null : costSensitivitySweep(grossTrades, assetKey, opts);
   const weekday = weekdayBreakdown(netTrades);
+  // Opt-in (rescans M1 once per candidate exit time, unlike costSweep) — only
+  // runs when the caller actually asks for it via opts.exitTimes.
+  const exitSweep = opts.exitTimes ? exitTimeSweep(packed, overlap.start, overlap.end, assetKey, opts, opts.exitTimes) : null;
 
   return {
     assetKey,
@@ -942,6 +1013,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
     ruleCheck,
     costSweep,
     weekday,
+    exitSweep,
     dailyBars: opts.includeDailyBars === false ? null : resampleDailyFromPacked(packed),
     csv: metrics ? { returns: toCsvReturns(netTrades), rMultiples: toCsvRMultiples(netTrades), currency: toCsvCurrency(netTrades, opts.accountSize, opts.notionalPerTrade) } : null,
   };

@@ -96,6 +96,9 @@
         <div class="chk"><input type="checkbox" id="skipWed" value="3"> <label for="skipWed" style="margin:0">Wed (triple swap)</label></div>
         <div class="chk"><input type="checkbox" id="skipThu" value="4"> <label for="skipThu" style="margin:0">Thu</label></div>
       </div>
+      <div><label>Hold-duration sweep <span class="note" style="display:inline">(re-scans M1 per candidate exit — optional, off by default)</span></label>
+        <div class="chk"><input type="checkbox" id="exitSweepEnabled"> <label for="exitSweepEnabled" style="margin:0">Test 14:30 → 15:30 → 16:30 (London close) exits</label></div>
+      </div>
       <div><label>Account size ($)</label><input id="accountSize" value="100000" type="number" min="1000" step="1000"></div>
       <div><label>Notional per trade ($)</label><input id="notionalPerTrade" value="100000" type="number" min="1000" step="1000"></div>
       <div><label>Triple-swap day</label><select id="tripleSwapDow">
@@ -218,6 +221,51 @@ function costSweepSection(sweep, label) {
     <summary>Cost sensitivity <span class="cnt">— how far would costs need to move to flip the sign?</span></summary>
     <p class="note" style="margin-top:8px">${summary}</p>
     ${svgCostSweepChart(sweep, label)}
+  </details>`;
+}
+
+// Exit-time (hold duration) sweep: net total return vs which UK exit time the
+// overnight leg closes at (14:30 baseline up to London close, 16:30 UK).
+// Categorical x-axis (only a handful of candidate times), not a continuous
+// scale like the cost sweep.
+function svgExitTimeSweepChart(sweep, label) {
+  if (!sweep || !sweep.points?.length) return '';
+  const W = 1080, H = 220, PAD = 34;
+  const pts = sweep.points;
+  const ys = pts.map(p => p.totalReturnPct ?? 0);
+  const minY = Math.min(...ys, 0) * 1.05, maxY = Math.max(...ys, 0) * 1.05;
+  const x = i => PAD + (i / Math.max(pts.length - 1, 1)) * (W - 2 * PAD);
+  const y = v => (H - 20) - ((v - minY) / (maxY - minY || 1)) * (H - 40);
+  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.totalReturnPct ?? 0).toFixed(1)}`).join(' ');
+  const bestIdx = pts.findIndex(p => p.exitTime === sweep.bestExitTime);
+  return `
+  <div class="chart-wrap">
+    <div class="chart-label">${label} — net total return by exit time (${pts[0].exitTime} baseline → ${pts[pts.length - 1].exitTime})</div>
+    <svg viewBox="0 0 ${W} ${H + 20}" role="img" aria-label="${label} exit-time sweep" style="width:100%;height:auto;background:#0d1117;border:1px solid var(--line);border-radius:8px">
+      <line x1="${PAD}" y1="${y(0).toFixed(1)}" x2="${W-PAD}" y2="${y(0).toFixed(1)}" stroke="#2b3340" stroke-dasharray="4 3"/>
+      <path d="${path}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>
+      ${pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.totalReturnPct ?? 0).toFixed(1)}" r="${i === bestIdx ? 5 : 3.5}" fill="${i === bestIdx ? '#3fb950' : '#58a6ff'}"/>
+      <text x="${x(i).toFixed(1)}" y="${H-4}" fill="#8b949e" font-size="11" text-anchor="middle">${p.exitTime}</text>`).join('')}
+    </svg>
+  </div>`;
+}
+
+function exitSweepSection(sweep, label) {
+  if (!sweep) return '';
+  const rows = sweep.points.map(p => `<tr${p.exitTime === sweep.bestExitTime ? ' style="background:#13291d"' : ''}>
+    <td>${p.exitTime}${p.exitTime === sweep.bestExitTime ? ' <span class="note" style="display:inline">(best)</span>' : ''}</td>
+    <td>${p.trades}</td><td>${fmtN(p.avgHoldHours, 2)}</td><td>${spanN(p.totalReturnPct)}</td>
+    <td>${fmtN(p.sharpe, 3)}</td><td>${fmtN(p.winRatePct, 1)}</td><td>${fmtN(p.profitFactor, 3)}</td>
+  </tr>`).join('');
+  return `
+  <details class="subpanel">
+    <summary>${label} exit-time (hold duration) sweep <span class="cnt">— does holding past 14:30, up to London close, help?</span></summary>
+    <table style="margin-top:8px">
+      <thead><tr><th>Exit time (UK)</th><th>Trades</th><th>Avg hold (h)</th><th>Net total %</th><th>Sharpe</th><th>Win rate %</th><th>Profit factor</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="note" style="margin-top:8px">${sweep.note}</p>
+    ${svgExitTimeSweepChart(sweep, label)}
   </details>`;
 }
 
@@ -372,6 +420,7 @@ function instrumentPanel(key, inst) {
        Correlation to buy&amp;hold: <b>${m.correlationToBuyHold.r === null ? 'n/a' : m.correlationToBuyHold.r}</b> (n=${m.correlationToBuyHold.n}).</p>` : ''}
     ${costSweepSection(inst.costSweep, INSTRUMENT_LABEL[key] || key)}
     ${weekdaySection(inst.weekday, m?.totalReturnPct, INSTRUMENT_LABEL[key] || key)}
+    ${exitSweepSection(inst.exitSweep, INSTRUMENT_LABEL[key] || key)}
     ${m ? svgEquityChart(m.equityCurve, m.buyHoldEquityCurve, INSTRUMENT_LABEL[key] || key) : ''}
     ${inst.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check</h3>${ruleCheckCard(inst.ruleCheck)}` : ''}
     ${inst.csv ? `
@@ -621,10 +670,12 @@ async function run() {
   if (!instruments.length) { $('status').textContent = 'select at least one instrument'; $('run').disabled = false; return; }
   const skipWeekdays = ['skipSun', 'skipMon', 'skipTue', 'skipWed', 'skipThu']
     .filter(id => $(id).checked).map(id => parseInt($(id).value, 10));
+  const exitTimes = $('exitSweepEnabled').checked ? ['14:30', '15:30', '16:30'] : undefined;
 
   const body = {
     instruments,
     skipWeekdays,
+    exitTimes,
     accountSize: $('accountSize').value,
     notionalPerTrade: $('notionalPerTrade').value,
     tripleSwapDow: $('tripleSwapDow').value,

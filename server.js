@@ -6267,6 +6267,14 @@ app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, r
   const skipWeekdays = Array.isArray(body.skipWeekdays)
     ? [...new Set(body.skipWeekdays.map(v => parseInt(v, 10)).filter(v => Number.isInteger(v) && v >= 0 && v <= 6))]
     : [];
+  // Candidate exit times for the hold-duration sweep ("does holding later
+  // than 14:30 UK, up to London close, change the result?") — opt-in, only
+  // runs (rescanning M1 per candidate) when the caller actually sends this.
+  // Validated 'HH:MM' 24h format; anything malformed is dropped rather than
+  // silently coerced.
+  const exitTimes = Array.isArray(body.exitTimes)
+    ? [...new Set(body.exitTimes.filter(v => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v)))]
+    : undefined;
 
   const opts = {
     ruleset,
@@ -6274,6 +6282,7 @@ app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, r
     notionalPerTrade:  numOr(body.notionalPerTrade, numOr(body.accountSize, OH_DEFAULT_ACCOUNT_SIZE)),
     tripleSwapDow:     body.tripleSwapDow != null ? parseInt(body.tripleSwapDow, 10) : undefined,
     skipWeekdays,
+    exitTimes: exitTimes && exitTimes.length ? exitTimes : undefined,
     financingBpsPerNight: {
       nq:   numOr(body.financingBpsNq, undefined),
       gold: numOr(body.financingBpsGold, undefined),

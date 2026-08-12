@@ -8,7 +8,7 @@ import {
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
   resampleDailyFromPacked, costSensitivitySweep,
   yearlyDiversificationBreakdown, diversificationIsOosSplit,
-  weekdayBreakdown,
+  weekdayBreakdown, exitTimeSweep,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -120,6 +120,35 @@ test('buildOvernightTrades: opts.skipWeekdays excludes the rule as a real trade 
   const ruleExceptions = withRule.exceptions.filter(e => e.reason.startsWith('skipped by rule'));
   assert.equal(ruleExceptions.length, wedCountWithoutRule);
   assert.ok(ruleExceptions.every(e => dowOf(e.date) === 3));
+});
+
+test('buildOvernightTrades: opts.exitTime moves the exit later and the mirror leg follows it, so overnight+mirror still reconstruct the full day', () => {
+  const packed = buildSyntheticPacked('2025-01-06', '2025-01-10'); // Mon-Thu, no weekend gap inside
+  const base = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const later = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1], { exitTime: '16:30' });
+  assert.equal(base.trades.length, later.trades.length);
+  for (let i = 0; i < later.trades.length; i++) {
+    const gap = later.trades[i].exitEpoch - base.trades[i].exitEpoch;
+    assert.ok(gap >= 2 * 3600 - 60, `later exitTime should push the exit fill ~2h later, got ${gap}s`);
+  }
+  const recon = mirrorTest(later.trades, later.mirrors);
+  const first = later.trades[0], last = later.trades[later.trades.length - 1];
+  const firstMirrorEntryEpoch = first.entryEpoch - (3.5 * 3600); // 20:00 -> 16:30 same day
+  const firstMirrorFill = priceAt(packed, firstMirrorEntryEpoch);
+  const directGross = ((last.exitPrice / firstMirrorFill.price) - 1) * 100;
+  assert.ok(Math.abs(recon.reconstructedGrossPct - directGross) < 0.01,
+    `reconstructed ${recon.reconstructedGrossPct} vs direct ${directGross}`);
+});
+
+test('exitTimeSweep: rebuilds trades per candidate exit time (not just cost re-application), and average hold duration grows with a later exit', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-02-01');
+  const sweep = exitTimeSweep(packed, packed.times[0], packed.times[packed.n - 1], 'gold', {}, ['14:30', '15:30', '16:30']);
+  assert.equal(sweep.points.length, 3);
+  assert.equal(sweep.baselineExitTime, '14:30');
+  for (const p of sweep.points) assert.ok(p.trades > 0, `${p.exitTime} should still have trades`);
+  assert.ok(sweep.points[1].avgHoldHours - sweep.points[0].avgHoldHours > 0.9, 'exit 1h later -> ~1h longer average hold');
+  assert.ok(sweep.points[2].avgHoldHours - sweep.points[1].avgHoldHours > 0.9, 'exit another 1h later -> ~1h longer again');
+  assert.ok(['14:30', '15:30', '16:30'].includes(sweep.bestExitTime));
 });
 
 test('mirrorTest: overnight + mirror reconstructs buy&hold when coverage is full', () => {
