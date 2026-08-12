@@ -357,6 +357,28 @@ Not a synthesized stand-in — real next step, waiting on real data.
 
 ## Honesty notes (read before trusting a number here)
 
+- **Neighbour pool contained one trivial near-duplicate until 2026-08-12 —
+  every number above this line predates the fix.** `find_analogs`'s
+  `min_gap_bars` dedup only checked new candidates against already-chosen
+  neighbours, never against the query's own position. Result: the single
+  CLOSEST "neighbour" in the k=20 pool was routinely the window ending
+  literally one bar before the query (63/64 bars of overlap) — not an
+  independent historical repeat, just the query nearly matching itself.
+  Confirmed on real EURUSD 1h data (a mid-history query at bar 40000 pulled
+  in a neighbour at bar 39999). Found while building the pair-card "closest
+  historical analogs" table (exposing per-neighbour dates made it visible;
+  the aggregate consensus alone hid it). Fixed in `pylego/shape_match.py`'s
+  `find_analogs` by seeding the gap-check with `exclude_after` (the query's
+  own end index) — see its docstring. This affects EVERY consensus call
+  throughout this file (`pattern_scan.py`, `pattern_scan_sweep.py`,
+  `ml_walkforward.py`'s `--with-analog`, `backtest_export.py`'s committed
+  19,782-trade log, `portfolio_sim.py`), not just the live diagnostic —
+  1-of-20 neighbours contaminated per call, present whenever the query had
+  forward runway (i.e. most non-tail calls). Direction/magnitude of the
+  effect on the numbers above is not yet re-measured — **re-running the
+  full sweep + portfolio sim with the fix is the honest next step before
+  leaning further on any number in this file**, not an assumption that the
+  effect was negligible just because it's 1-in-20.
 - Costs are on by default (`pylego.costs.default_spread`) in both scripts —
   pass `--no-cost` only to see the pre-cost number, never report that as a
   result.

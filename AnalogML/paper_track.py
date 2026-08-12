@@ -226,8 +226,24 @@ def compute_shape_state(pair: str, bars: pd.DataFrame, params: dict) -> dict | N
         k=params["k"], min_gap_bars=params["window"],
         sl_price=sl_price, tp_r=params["tp_r"], cost_price=cost_price,
         max_bars_ahead=params["max_bars_ahead"], min_bars_ahead=params["min_bars_ahead"],
+        detail=True,
     )
     lean = "LONG" if consensus.direction == 1 else ("SHORT" if consensus.direction == -1 else "FLAT")
+
+    # Top-3 closest historical analogs (of the k=20 raced for consensus) for
+    # the pair-card table -- date + find_analogs closeness percentile (rank
+    # among ALL eligible candidates, not a fabricated similarity score) +
+    # that specific occurrence's own realized long/short R. Full k available
+    # in consensus.neighbours if a future consumer wants more than 3.
+    top_analogs = [
+        {
+            "date": nb["entry_date"],
+            "percentile": round(nb["percentile"], 2) if nb["percentile"] is not None else None,
+            "long_r": round(nb["long_r"], 3) if nb["long_r"] is not None else None,
+            "short_r": round(nb["short_r"], 3) if nb["short_r"] is not None else None,
+        }
+        for nb in (consensus.neighbours or [])[:3]
+    ]
 
     return {
         "pair": pair,
@@ -236,8 +252,11 @@ def compute_shape_state(pair: str, bars: pd.DataFrame, params: dict) -> dict | N
         "n_neighbours": consensus.n_neighbours,
         "avg_long_r": consensus.avg_long_r,
         "avg_short_r": consensus.avg_short_r,
+        "long_win_rate": consensus.long_win_rate,
+        "short_win_rate": consensus.short_win_rate,
         "margin": consensus.margin,
         "lean": lean,
+        "top_analogs": top_analogs,
         "window": params["window"], "k": params["k"],
     }
 

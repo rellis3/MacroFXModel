@@ -70,35 +70,57 @@ def rolling_shapes(closes: np.ndarray, window_len: int) -> tuple[np.ndarray, np.
 
 def find_analogs(query_shape: np.ndarray, end_idx: np.ndarray, shapes: np.ndarray,
                   k: int, min_gap_bars: int = 0,
-                  exclude_after: int | None = None) -> tuple[np.ndarray, np.ndarray]:
+                  exclude_after: int | None = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Nearest neighbours to `query_shape` (same length as each row of
     `shapes`) by Euclidean distance. `exclude_after` drops any candidate
     window ending at or after that bar index (pass the query's own end_idx so
     a query can never match itself or a window overlapping its own future).
     `min_gap_bars` greedily skips any candidate within that many bars of an
-    already-chosen one, so the k neighbours aren't just the same overlapping
-    window shifted by 1 bar. Returns (end_idx_of_matches, distances),
-    nearest-first; both empty if nothing qualifies."""
+    already-chosen one -- OR of `exclude_after` itself when given, since every
+    real caller passes the query's own end_idx there. Without that seed, the
+    single closest "neighbour" is routinely the window ending literally one
+    bar before the query (excluded from being IDENTICAL by `exclude_after`,
+    but not from being a near-total-overlap near-duplicate) -- not an
+    independent historical repeat, just yesterday's price action matching
+    itself. Returns (end_idx_of_matches, distances, percentile), nearest-first;
+    all three empty if nothing qualifies.
+
+    `percentile` is each match's rank among ALL eligible candidate windows
+    (not just the k chosen), 100 = closest possible, 0 = farthest -- "this
+    shape is closer than X% of every historical window it could have
+    matched." A real, directly-computed statistic (rank / candidate count),
+    not a fabricated similarity score -- Euclidean distance alone has no
+    natural 0-100 scale, so don't invent one from raw distance."""
     if len(shapes) == 0 or k <= 0:
-        return np.empty(0, dtype=np.int64), np.empty(0)
+        return np.empty(0, dtype=np.int64), np.empty(0), np.empty(0)
     mask = np.ones(len(end_idx), dtype=bool)
     if exclude_after is not None:
         mask &= end_idx < exclude_after
     if not mask.any():
-        return np.empty(0, dtype=np.int64), np.empty(0)
+        return np.empty(0, dtype=np.int64), np.empty(0), np.empty(0)
     cand_idx = end_idx[mask]
     cand_shapes = shapes[mask]
     dist = np.sqrt(((cand_shapes - query_shape[None, :]) ** 2).sum(axis=1))
     order = np.argsort(dist)
+    n_candidates = len(order)
 
-    chosen_idx: list[int] = []
+    # Seed the gap-check with the query's own position (not a real match, never
+    # emitted) so the FIRST accepted neighbour is also gap-checked against the
+    # query -- otherwise only candidates 2..k get checked against each other,
+    # and the single closest "neighbour" ends up being the query's own
+    # window shifted by ~1 bar. See docstring above.
+    seed = [int(exclude_after)] if exclude_after is not None else []
+    chosen_idx: list[int] = list(seed)
     chosen_dist: list[float] = []
-    for o in order:
+    chosen_pct: list[float] = []
+    for rank, o in enumerate(order):
         bar = int(cand_idx[o])
         if any(abs(bar - b) < min_gap_bars for b in chosen_idx):
             continue
         chosen_idx.append(bar)
         chosen_dist.append(float(dist[o]))
-        if len(chosen_idx) >= k:
+        chosen_pct.append(100.0 * (1.0 - rank / n_candidates))
+        if len(chosen_idx) - len(seed) >= k:
             break
-    return np.array(chosen_idx, dtype=np.int64), np.array(chosen_dist)
+    return (np.array(chosen_idx[len(seed):], dtype=np.int64), np.array(chosen_dist),
+            np.array(chosen_pct))
