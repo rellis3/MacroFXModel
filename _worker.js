@@ -1682,10 +1682,17 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       }
 
       // -- /api/cot-extremes ------------------------------------------
-      // Fetches 3 years of weekly COT history from the CFTC PRE Socrata API.
-      // Computes 3-year percentile ranks and z-scores for 35+ instruments
-      // across FX, metals, energy, grains, equities, rates, and crypto.
-      // Cached in KV for 7 days (COT releases weekly on Fridays).
+      // Fetches the most recent 200 weekly COT reports (~3.85 years, see COT_LIMIT
+      // below) from the CFTC PRE Socrata API. Computes percentile ranks and z-scores
+      // against that ~200-week window for 35+ instruments across FX, metals, energy,
+      // grains, equities, rates, and crypto. Cached in KV for 7 days (COT releases
+      // weekly on Fridays).
+      // NOTE: this used to say "3 years" — a `fromDate` cutoff was computed for that
+      // but never actually applied to the query, so the real window was always this
+      // row-count limit, not a date-anchored one. Comment corrected to match reality;
+      // no behavior change here. A true 156-week (3yr) rolling window is a deliberate,
+      // separate change — it would tighten the window and shift every computed
+      // percentile/z-score, so it's not folded silently into this comment fix.
       if (path === '/api/cot-extremes') {
         const debugMode = url.searchParams.get('debug') === '1';
 
@@ -1721,10 +1728,6 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             } catch(_) {}
           }
         }
-
-        const threeYearsAgo = new Date();
-        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-        const fromDate = threeYearsAgo.toISOString().split('T')[0];
 
         // Disaggregated report: metals, energy, grains, softs, livestock
         const DISAGG = [
