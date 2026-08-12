@@ -172,6 +172,8 @@ const HELP = {
   paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
   flow:['Positioning flow','The crowding percentile is a level — where positioning sits right now. This is the week-over-week change instead: who added or reduced the most, ranked by size relative to open interest.','A market extending an already-stretched position and one paring back from it look identical on the percentile alone but mean very different things going forward.'],
   evrisk:['Event-risk overlay','Cross-references currently-crowded markets (90th/10th percentile+) against the live economic calendar for their own currency — FOMC, ECB, NFP and similar high/medium-impact releases in the next 3 days.','A stretched position walking into a scheduled catalyst is exposed to a fast move — this flags the exposure, not which way the release breaks. Scoped to FX plus the three Treasury tenors (all USD); other groups aren\'t mapped to a single country\'s calendar cleanly enough to include here.'],
+  persist:['Extreme persistence','How many of the most recent weeks, read against the same 200-week window as today\'s reading, would also register at this same 90th/10th extreme.','A percentile alone can\'t tell a freshly-hit extreme from one that has held for months — this is an estimate of how established the crowd looks, not an exact rolling recompute (that would need each week ranked only against what was known at the time, which isn\'t stored).'],
+  oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -443,6 +445,134 @@ function eventRisk(big){
     + '</tbody></table><div class="note">A crowded position walking into a scheduled release for its own currency is exposed to a fast, catalyst-driven move — not necessarily in either direction. This is an <b>attention</b> flag, not a call on which way the release breaks.</div>';
 }
 
+// ── extreme persistence: how established is the crowd, not just how crowded ──
+// A market that just touched a 90th-percentile extreme this week and one that has
+// sat there for months are both "90th percentile" — identical on every panel above.
+// Approximates how many of the most recent weeks, read against the SAME 200-week
+// reference window as today's reading, would also register at this extreme. Not a
+// true rolling recompute (that would need each week ranked only against data known
+// at the time, which isn't stored) — an estimate of how established the crowd looks,
+// not an exact week-by-week history. Reuses the HIST cache pick() already populates,
+// so clicking a market elsewhere never re-fetches it here.
+async function loadHistFor(sym){
+  if (HIST[sym] !== undefined) return;
+  HIST[sym] = 'loading';
+  try {
+    const r = await fetch('/api/cot-extremes?history=' + encodeURIComponent(sym), { cache: 'no-store' });
+    const j = await r.json();
+    HIST[sym] = (j && j.ok && j.history && j.history.sym === sym) ? j.history : null;
+  } catch (e) { HIST[sym] = null; }
+  render();
+}
+
+function extremeStreak(hd, wantLong){
+  const vals = (hd.specShare || []).filter(v => Number.isFinite(v));
+  if (vals.length < 20) return null;
+  let streak = 0;
+  for (let i = vals.length - 1; i >= 0; i--) {
+    const hist = vals.slice(0, i).concat(vals.slice(i + 1));
+    const p = pctRankCalc(hist, vals[i]);
+    if (!(wantLong ? p >= 90 : p <= 10)) break;
+    streak++;
+  }
+  return streak;
+}
+
+function persistence(big){
+  const extremeList = (DATA.instruments || []).filter(x => { const p = pctOf(x); return p != null && (p >= 90 || p <= 10); });
+  if (!extremeList.length) return '<div class="empty">Nothing at a 90th/10th percentile extreme right now.</div>';
+  extremeList.forEach(x => loadHistFor(x.sym));
+
+  const rows = extremeList.map(x => {
+    const p = pctOf(x), wantLong = p >= 90, hd = HIST[x.sym];
+    if (hd === undefined || hd === 'loading') return { x, p, wantLong, streak: null, state: 'loading' };
+    if (!hd) return { x, p, wantLong, streak: null, state: 'unavailable' };
+    return { x, p, wantLong, streak: extremeStreak(hd, wantLong), state: 'ok' };
+  }).sort((a,b) => (b.streak ?? -1) - (a.streak ?? -1));
+
+  return '<table><thead><tr><th>Market</th><th>Positioning</th><th>Weeks in this extreme</th></tr></thead><tbody>'
+    + rows.map(r => {
+        const clr = colFor(r.p);
+        const wkTxt = r.state === 'loading' ? '<span class="muted">loading…</span>'
+          : r.state === 'unavailable' ? '<span class="muted">—</span>'
+          : r.streak == null ? '<span class="muted">—</span>'
+          : '<b>' + r.streak + '</b>' + (r.streak === 1 ? ' wk (fresh)' : ' wks');
+        return '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
+          + '<td style="color:'+clr+'"><b>'+(r.wantLong?'CROWDED LONG':'CROWDED SHORT')+'</b></td>'
+          + '<td>'+wkTxt+'</td></tr>';
+      }).join('')
+    + '</tbody></table><div class="note">Both ends are worth noting for different reasons: a long-running extreme means the crowd has had a long time to prove itself right; a freshly-hit one (1 week) means it just arrived and hasn\'t been tested. Estimate, not an exact figure — see the panel help.</div>';
+}
+
+// ── COT vs options positioning: two separate datasets, read side by side ────
+// oi-dashboard.html's data (/api/oi-store) is dealer OPTIONS open interest / gamma —
+// a different market from the futures positioning COT tracks, populated by a manual
+// CME chain paste per pair, so its age matters. Deliberately NOT blended into one
+// verdict — same lesson as Pair Lab: two independent facts shown together, judged by
+// the reader, not folded into a score.
+let OISTORE = null;   // null = not requested; 'loading'; object; or false = failed
+
+async function loadOiStore(){
+  if (OISTORE !== null) return;
+  OISTORE = 'loading';
+  try {
+    let r = await fetch('/api/oi-store', { cache: 'no-store' });
+    if (!r.ok) r = await fetch('/api/kv/get?key=oi_store', { cache: 'no-store' });
+    const j = await r.json();
+    OISTORE = (j && typeof j === 'object') ? (j.data || j.value || {}) : false;
+  } catch (e) { OISTORE = false; }
+  render();
+}
+
+// Pairs like XAU/USD are priced legs, not currencies — map onto the nearest COT
+// instrument this feed actually tracks. USD uses the same derived mirror as
+// elsewhere on this page.
+const OI_LEG_TO_COT = { XAU:'GOLD', XAG:'SILVER' };
+function legCotRead(leg){
+  const sym = OI_LEG_TO_COT[leg] || leg;
+  if (sym === 'USD') { if (usdDerived === null) loadUsdMirror(); return usdDerivedReading(); }
+  return (DATA.instruments || []).find(x => x.sym === sym) || null;
+}
+
+function oiCrossCheck(big){
+  if (OISTORE === null) { loadOiStore(); return '<div class="empty">Loading options positioning…</div>'; }
+  if (OISTORE === 'loading') return '<div class="empty">Loading options positioning…</div>';
+  if (OISTORE === false) return '<div class="empty">Could not load options positioning.</div>';
+
+  const nearestWall = (walls, spot) => {
+    const valid = (walls || []).filter(w => Number.isFinite(w.strike));
+    if (!valid.length || !Number.isFinite(spot)) return null;
+    return valid.reduce((best, w) => Math.abs(w.strike - spot) < Math.abs(best.strike - spot) ? w : best);
+  };
+  const legBadge = x => !x ? '<span class="muted">—</span>'
+    : '<span style="color:'+colFor(pctOf(x))+'">'+esc(dispSym(x))+' '+(pctOf(x) ?? '—')+'</span>';
+  const distPct = (strike, spot) => (((strike - spot) / spot) * 100).toFixed(2) + '%';
+
+  const rows = Object.keys(OISTORE).map(pair => {
+    const e = OISTORE[pair];
+    if (!e || !Number.isFinite(e.spot)) return null;
+    const [base, quote] = pair.split('/');
+    return { pair, A: legCotRead(base), B: legCotRead(quote),
+      put: nearestWall(e.putWalls, e.spot), call: nearestWall(e.callWalls, e.spot),
+      spot: e.spot, ageH: e.savedAtMs ? (Date.now() - e.savedAtMs) / 36e5 : null };
+  }).filter(Boolean);
+
+  if (!rows.length) return '<div class="empty">No options positioning saved yet — paste a CME chain on the <a href="oi-dashboard.html">OI Analytics</a> page first.</div>';
+
+  return '<table><thead><tr><th>Pair</th><th style="text-align:left">COT (base / quote)</th>'
+    + '<th style="text-align:left">Put wall (support)</th><th style="text-align:left">Call wall (resistance)</th><th>Options data age</th></tr></thead><tbody>'
+    + rows.map(r => {
+        const ageTxt = r.ageH == null ? '—' : r.ageH < 1 ? Math.round(r.ageH*60)+'m' : Math.round(r.ageH)+'h';
+        const ageClr = r.ageH == null ? 'var(--tx3)' : r.ageH > 36 ? 'var(--warn)' : 'var(--tx3)';
+        return '<tr><td>'+esc(r.pair)+'</td>'
+          + '<td style="text-align:left">'+legBadge(r.A)+' / '+legBadge(r.B)+'</td>'
+          + '<td class="muted" style="text-align:left">'+(r.put ? r.put.strike+' ('+distPct(r.put.strike,r.spot)+')' : '—')+'</td>'
+          + '<td class="muted" style="text-align:left">'+(r.call ? r.call.strike+' ('+distPct(r.call.strike,r.spot)+')' : '—')+'</td>'
+          + '<td style="color:'+ageClr+'">'+ageTxt+'</td></tr>';
+      }).join('')
+    + '</tbody></table><div class="note">COT is weekly <b>futures</b> positioning (who\'s already committed); the walls are dealer <b>options</b> open interest (where hedging flow may cluster) — two separate markets, shown side by side rather than combined. A currency crowded on COT sitting right under a heavy wall is worth noting, not automatically anything. Options data is a manual paste on the <a href="oi-dashboard.html">OI Analytics</a> page — check the age column before leaning on it.</div>';
+}
+
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
 function leaderboard(big){
   const rows = (DATA.instruments||[]).filter(x=>pctOf(x)!=null).sort((a,b)=>pctOf(b)-pctOf(a));
@@ -603,6 +733,8 @@ function render(){
     + panel('c12','alerts','Extreme crowding alerts','paira',crowdingCards,true)
     + panel('c7','evr','Event-risk overlay','evrisk',eventRisk,true)
     + panel('c5','flow','Positioning flow — week over week','flow',flow,true)
+    + panel('c5','persist','Extreme persistence','persist',persistence,true)
+    + panel('c7','oix','COT vs options positioning','oixchk',oiCrossCheck,true)
     + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
     + panel('c5','grp','By asset class','group',groups,true)
     + panel('c7','scat','Specs vs commercials','scatter',scatter)
