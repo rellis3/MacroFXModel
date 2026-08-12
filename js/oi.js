@@ -20,7 +20,15 @@ export async function oiLoadStoreFromKV() {
     const localStore = oiLoadStore();
     let changed = false;
     for (const [sym, data] of Object.entries(kvStore)) {
-      if (!localStore[sym]) { localStore[sym] = data; changed = true; }
+      // Freshness-aware, NOT gap-fill. The old `if (!localStore[sym])` never refreshed a
+      // symbol the browser already had, so the server's newer data (auto-sweep, a re-analyse,
+      // or a paste on another device) never reached this page — index.html could show a stale
+      // OI/spot AND a stale charm/vanna smile forever. Take the KV entry whenever it is NEWER
+      // by savedAtMs (or local is missing); keep local only when it is strictly newer — the
+      // brief window after a local paste before it has been pushed to KV.
+      const kvT = Number(data?.savedAtMs) || 0;
+      const localT = Number(localStore[sym]?.savedAtMs) || 0;
+      if (!localStore[sym] || kvT > localT) { localStore[sym] = data; changed = true; }
     }
     if (changed) localStorage.setItem('oi_store', JSON.stringify(localStore));
   } catch(e) {}
@@ -2116,8 +2124,19 @@ export async function buildOIEntry({
     daySpot = priorEntry.daySpot; daySpotAt = priorEntry.daySpotAt;
   }
 
+  // IV-smile capture time: charm/vanna/skew are only as fresh as the IV surface they were
+  // computed from, and that surface (rawIV) PERSISTS across OI re-analyses — so the greeks
+  // can be read off an old smile against new OI. Stamp WHEN the smile was captured: reuse the
+  // prior stamp when the rawIV text is byte-identical (carried forward, unchanged smile), else
+  // stamp now (a genuinely new paste). Lets the card show "IV as of …" so staleness is visible.
+  let ivSavedAtMs = null;
+  if (greeksFlow) {
+    const sameSmile = priorEntry && priorEntry.rawIV && rawIV && String(priorEntry.rawIV) === String(rawIV);
+    ivSavedAtMs = (sameSmile && Number.isFinite(priorEntry.ivSavedAtMs)) ? priorEntry.ivSavedAtMs : Date.now();
+  }
+
   const inst = {
-    pair, spot, daySpot, daySpotAt, futures: futuresUsed, basis: basis || null,
+    pair, spot, daySpot, daySpotAt, ivSavedAtMs, futures: futuresUsed, basis: basis || null,
     cpSwapped,       // inverted pairs only: were call/put labels flipped into pair terms?
     futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
     futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from
@@ -2406,7 +2425,25 @@ function _oiIVReads(inst, pair) {
   const its = inst.ivTermStructure;
   if (its) rows.push(`<b>IV term</b> ${its.front.dte}D ${its.front.iv}% → ${its.back.dte}D ${its.back.iv}% (${its.shape === 'inverted' ? 'inverted — near-term stress priced' : its.shape === 'upward' ? 'upward — normal' : 'flat'})`);
   const g = inst.greeksFlow;
-  if (g) rows.push(`<b>Charm/vanna</b> CEX ${g.cex >= 0 ? '+' : ''}${g.cex} · VEX ${g.vex >= 0 ? '+' : ''}${g.vex}${g.vanna ? ` · vanna ${g.vanna.state}${g.vanna.firing ? ' firing' : ''}` : ''} <span style="color:var(--text3)">(context, indices only)</span>`);
+  if (g) {
+    // Abbreviate: raw CEX/VEX reach 1e10 (the magnitude is flat-sigma "indicative only" —
+    // read the SIGN + firing state, not the number), so an 11-digit figure is just noise.
+    const abbr = (n) => { const a = Math.abs(n), s = n < 0 ? '−' : '+';
+      return a >= 1e9 ? `${s}${(a / 1e9).toFixed(1)}B` : a >= 1e6 ? `${s}${(a / 1e6).toFixed(1)}M`
+           : a >= 1e3 ? `${s}${(a / 1e3).toFixed(1)}K` : `${s}${Math.round(a)}`; };
+    // IV-smile freshness: charm/vanna are only as fresh as the surface they came from, and
+    // that surface persists across OI re-analyses — so surface its age, and flag when the
+    // smile is materially OLDER than the OI it's shown next to (that's the "stale" case).
+    let ivAge = '';
+    if (Number.isFinite(inst.ivSavedAtMs)) {
+      const fmt = (h) => h < 1 ? `${Math.round(h * 60)}m` : h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+      const hrs = (Date.now() - inst.ivSavedAtMs) / 3.6e6;
+      const lag = Number.isFinite(inst.savedAtMs) ? hrs - (Date.now() - inst.savedAtMs) / 3.6e6 : 0;
+      const stale = lag > 6 ? ` <span style="color:var(--gold)">⚠ smile ${fmt(lag)} older than the OI</span>` : '';
+      ivAge = ` <span style="color:var(--text3)">· IV from ${fmt(hrs)} ago</span>${stale}`;
+    }
+    rows.push(`<b>Charm/vanna</b> CEX ${abbr(g.cex)} · VEX ${abbr(g.vex)}${g.vanna ? ` · vanna ${g.vanna.state}${g.vanna.firing ? ' firing' : ''}` : ''} <span style="color:var(--text3)">(context, indices only)</span>${ivAge}`);
+  }
   const rr = inst.riskReversal;
   if (rr) rows.push(`<b>Risk reversal</b> ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt}) <span style="color:var(--text3)">(context)</span>`);
   // Smile-box paste hint — only when the per-strike smile isn't loaded yet.
