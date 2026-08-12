@@ -1973,7 +1973,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
-              weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short),
+              // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract quotes
+              // USD-per-unit, so the raw long-minus-short change is inverted relative to our
+              // currency-direction convention. Left unflipped here for a long time — harmless
+              // as long as nothing depended on the SIGN of week-over-week change, but the flow
+              // leaderboard below does exactly that, so it needed fixing first.
+              weeklyChg: (inst.flip ? -1 : 1) * (pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short)),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
               // The 200-week series is computed here to rank the current value, then was
               // thrown away — so nothing downstream could chart the trend that gives a
