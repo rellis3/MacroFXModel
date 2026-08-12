@@ -392,6 +392,89 @@ columns (exported from the modules above), and it's merged in by date,
 forward-filled to bar cadence, and run through the same ablation machinery.
 Not a synthesized stand-in — real next step, waiting on real data.
 
+## `motif_scan.py` / `motif_track.py` — structural motifs (the post-null pivot)
+
+The k-NN shape-matching method above banked null once its bug was fixed (see
+the banner at the top). Rather than keep tuning a method with no real edge,
+this is a structurally DIFFERENT idea: instead of comparing every 64-bar
+window to every other window regardless of what either looks like, recognize
+a SPECIFIC, NAMED event — 2-3 touches of a level (double/triple top/bottom),
+a genuine retracement between each touch, then a confirmed breakout — and
+only signal on the entry that event actually implies.
+
+Built fresh in `pylego/swing_structure.py` (pivot detection, ATR,
+HH+HL/LH+LL regime classification) and `pylego/motif_touch.py` (the touch-run
+/ breakout detector), both **regenerated, not ported**, from the already-
+shipped `js/patternEngine.js`'s `pivotHighs`/`pivotLows`/`classifySwingStructure`
+/`detectExtremesOneSide` — using that algorithm as the validated spec, a
+fresh Python implementation with its own tests. `AnalogML/motif_scan.py` is
+the evaluation CLI, same honest-harness pattern as `pattern_scan.py`
+(mechanical both-directions baseline at the same opportunity bars, real
+barrier walker, real costs). Entries are raced through the SAME frozen
+SL-pips/TP-R grid every other AnalogML check uses — deliberately NOT a new
+measured-move target/stop (that's the deferred "Phase 1" idea; changing the
+entry AND the risk-sizing in the same test would confound which one moved
+the result).
+
+```
+python AnalogML/motif_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+```
+
+**A real lookahead bug was found and fixed before any number was trusted:**
+a touch isn't actually knowable as a genuine pivot until `pivot_n` bars have
+passed after it (pivot detection needs a centered window) — the breakout
+scan originally started checking for confirmation immediately after the
+last touch, crediting signals a live system couldn't have had yet (measured
+on real data: 15.3% of "confirmed" motifs). Fixed by delaying the scan start
+to `last_touch.idx + pivot_n`; a regression test now guards this invariant.
+
+**Full 26-pair sweep (3yr, frozen params — the JS engine's untouched
+defaults, not tuned on this data):** **20/26 pairs (77%) signal PF>1.0,
+25/26 (96%) beat the mechanical baseline** — broader and stronger than the
+k-NN method ever showed even before its own bug was found. Six pairs
+negative (eurgbp, gbpchf, audcad, usdcad, gbpcad, euraud) — named, not
+hidden. **Calendar IS/OOS split (cutoff 2023-01-01, all 26 pairs pooled,
+sl=20p, tp_r=1.5):**
+
+| | n | PF | WR | avg R |
+|---|---:|---:|---:|---:|
+| IS (pre-2023, cost on) | 19,240 | 1.18 | 45.8% | 0.102 |
+| OOS (2023+, cost on) | 9,183 | 1.16 | 45.3% | 0.091 |
+| OOS (2023+, cost OFF) | 9,183 | 1.24 | 45.3% | 0.133 |
+
+Minimal IS→OOS decay (1.18→1.16) is the OPPOSITE signature of an overfit
+result, and it survives real costs. Genuinely encouraging — **still not a
+validated edge**: no portfolio-level test yet (correlated FX pairs stacking
+concurrent risk is exactly what sank nothing here yet but should be checked
+before trusting per-pair numbers as tradeable), one sl/tp-r cell, and only
+one bug-hunt pass (CLAUDE.md's rule: assume more bugs exist, don't assume
+clean because one was caught).
+
+**Live tracking (`motif_track.py`, new):** forward-tracks the frozen signal
+the same way `paper_track.py` did for the retired method (same R2+disk
+persistence, `--as-of`/`--refresh-data`, resolves via the shared barrier
+walker) PLUS a live "what's forming right now" diagnostic per pair —
+whichever touch-run is currently in progress, distance to the level, a
+`provisional` flag when the last touch is still within `pivot_n` bars of
+"now" (not yet actually confirmable), and "confidence" = the REAL historical
+played-out-rate/PF/avg-R for that exact category on that pair — never a
+fabricated per-instance probability. **A real bug here too, found before
+shipping:** the first version logged every motif in a pair's ENTIRE history
+as "new" on the first run (28,524 signals, one run) — `detect_touch_motifs`
+re-scans full history each call with no cadence bookkeeping. Fixed with a
+per-pair watermark (seeded at "now," nothing backfilled on a fresh pair,
+same contract as `paper_track.py`); verified with a 3-step `--as-of` replay
+(0 / 0 / 83-signals-in-the-gap).
+
+Served at `/api/analogml/motif-state` / `/api/analogml/motif-trades`
+(`server.js`), separate from the retired method's `paper_trades.json`/
+`shape_state.json` (kept as its historical record, not deleted). `today.html`
+/`indexv2.html` pair cards and `bot-config.html`'s AnalogML tab now show
+this signal in place of the retired one. `AnalogML/motif_track_loop.sh`
+(hourly, wrapped by `restart_bot` in `start.sh`) is the new supervised
+process, alongside the still-running (but no longer dashboard-surfaced)
+`paper_track_loop.sh`.
+
 ## Honesty notes (read before trusting a number here)
 
 - **Neighbour pool contained one trivial near-duplicate until 2026-08-12 —

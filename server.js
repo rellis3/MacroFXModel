@@ -17134,6 +17134,27 @@ app.get('/api/analogml/paper-trades', async (_req, res) => {
   return res.json(out);
 });
 
+// ── AnalogML: motif-state + motif-trades JSON, written by AnalogML/motif_track.py
+// -- the structural N-touches-of-a-level signal (pylego/motif_touch.py),
+// tracked SEPARATELY from the shape-state/paper-trades pair above (the
+// fixed-window k-NN method those track banked null on 2026-08-12; this is a
+// different, still-being-validated idea, not a replacement in place). Same
+// disk-first-then-R2 pattern via _loadAnalogMLJson.
+const ANALOGML_MOTIF_STATE_PATH = path.join(ANALOGML_DATA_DIR, 'motif_state.json');
+const ANALOGML_MOTIF_TRADES_PATH = path.join(ANALOGML_DATA_DIR, 'motif_trades.json');
+
+app.get('/api/analogml/motif-state', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_STATE_PATH, 'analogml/motif_state.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_state.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
+app.get('/api/analogml/motif-trades', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_trades.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
   const { pair = '' } = req.body || {};

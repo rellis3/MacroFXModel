@@ -671,7 +671,7 @@ function pairImpactLine(e, name) {
 let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
-let analogml = null;     // /api/analogml/shape-state — current shape + historical-analog lean per pair (research, not a validated signal — see AnalogML/README.md)
+let analogml = null;     // /api/analogml/motif-state — live N-touches-of-a-level structural motif diagnostic per pair (research, not a validated signal — see AnalogML/README.md). Replaces the retired k-NN shape-match diagnostic (banked null 2026-08-12).
 let events = null;       // /api/events — today's economic calendar (zoom 0)
 let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
 let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
@@ -704,7 +704,7 @@ async function loadAll(manual) {
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
-      jget('/api/analogml/shape-state').catch(() => null),
+      jget('/api/analogml/motif-state').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
     analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
@@ -2337,67 +2337,40 @@ function ladderHtml(r) {
   }).join('') + `</div>`;
 }
 
-// ── Shape-match diagnostic (AnalogML/paper_track.py — research, not a
-// validated signal; see AnalogML/README.md for the honest read on it) ──
-// Inline SVG so it lives directly in the cardHtml() template string, same
-// as every other chip here — no post-render canvas pass needed.
-function shapeSparklineSvg(shape) {
-  if (!shape || shape.length < 2) return '';
-  const w = 90, h = 22;
-  const mn = Math.min(...shape), mx = Math.max(...shape);
-  const range = (mx - mn) || 1;
-  const pts = shape.map((v, i) => {
-    const x = (i / (shape.length - 1)) * (w - 4) + 2;
-    const y = h - 2 - ((v - mn) / range) * (h - 4);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  const color = shape[shape.length - 1] >= shape[0] ? '#26a69a' : '#ef5350';
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex:none">
-    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.3"/></svg>`;
-}
+// ── Structural motif diagnostic (AnalogML/motif_track.py — research, not a
+// validated signal; see AnalogML/README.md for the honest read on it).
+// Replaces the retired k-NN shape-match diagnostic (that method banked null
+// 2026-08-12 — see LEGO_MODULES.md). This shows whichever N-touches-of-a-
+// level pattern is CURRENTLY forming for the pair (2-3 touches found, no
+// breakout confirmed yet), how far price is from the level, and the
+// historical played-out-rate/PF for that exact category — a real,
+// already-measured aggregate, never a fabricated per-instance probability.
 function analogFmtDate(iso) {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
   catch (e) { return iso; }
 }
-// Outcome shown per analog is the r that matches the CURRENT lean direction
-// (what a trader following today's lean would have scored on THAT historical
-// occurrence) — not a fabricated "did the pattern complete" call, since
-// shape-matching has no separate completion concept (see AnalogML/README.md).
-function analogRowHtml(nb, lean) {
-  const r = lean === 'LONG' ? nb.long_r : lean === 'SHORT' ? nb.short_r : null;
-  const rTxt = r != null ? `${r >= 0 ? '+' : ''}${r.toFixed(2)}R` : '—';
-  const rCls = r == null ? '' : r >= 0 ? 'bull' : 'bear';
-  return `<tr>
-    <td style="padding:2px 6px 2px 0;color:var(--text3,#8892a6)">${analogFmtDate(nb.date)}</td>
-    <td style="padding:2px 6px;text-align:right;color:var(--text3,#8892a6)">${nb.percentile != null ? nb.percentile.toFixed(2) + '%ile' : '—'}</td>
-    <td style="padding:2px 0 2px 6px;text-align:right" class="chip ${rCls}">${rTxt}</td>
-  </tr>`;
-}
 function analogShapeHtml(name) {
   const a = analogml?.[name.toLowerCase()];
   if (!a) return '';
-  const leanCls = a.lean === 'LONG' ? 'bull' : a.lean === 'SHORT' ? 'bear' : 'neu';
-  const leanIcon = a.lean === 'LONG' ? '↗' : a.lean === 'SHORT' ? '↘' : '→';
-  const winRate = a.lean === 'LONG' ? a.long_win_rate : a.lean === 'SHORT' ? a.short_win_rate : null;
-  const title = `Shape-match diagnostic (research, NOT a validated signal — see AnalogML/README.md): `
-    + `this pair's current ${a.window}-bar price shape, normalized for level/vol. `
-    + `Its ${a.n_neighbours} nearest historical analogs averaged ${a.avg_long_r != null ? a.avg_long_r.toFixed(3) : '–'}R `
-    + `if long vs ${a.avg_short_r != null ? a.avg_short_r.toFixed(3) : '–'}R if short from here `
-    + `(win rate ${winRate != null ? (winRate * 100).toFixed(0) + '%' : '–'} in the leaning direction).`;
-  const analogs = a.top_analogs || [];
+  const isTop = a.kind === 'top';
+  const kindIcon = isTop ? '⌒' : '⌣';
+  const expectedCls = isTop ? 'bear' : 'bull';
+  const c = a.confidence;
+  const title = `Structural motif diagnostic (research, NOT a validated signal — see AnalogML/README.md): `
+    + `a ${a.n_touches}-touch ${a.kind} is currently forming — last touch ${analogFmtDate(a.touch_dates[a.touch_dates.length - 1])}`
+    + (a.provisional ? `, still PROVISIONAL (not yet confirmable as a genuine pivot)` : '') + `. `
+    + `Price is ${a.dist_to_level_pips.toFixed(0)}p from the ${isTop ? 'support' : 'resistance'} that would confirm the textbook reversal, `
+    + `${a.dist_to_touch_level_pips.toFixed(0)}p from the touch level itself (a break there is the failure case). `
+    + (c ? `Historically, ${a.n_touches}-touch ${a.kind}s on this pair played out as the textbook reversal ${(c.played_out_rate * 100).toFixed(0)}% of the time `
+          + `(n=${c.n_samples}, PF ${c.profit_factor.toFixed(2)}, avg ${c.avg_r.toFixed(3)}R).`
+       : `Not enough historical samples of this exact category on this pair yet for a confidence read.`);
   return `<div class="pc-shape help" title="${title}" style="flex-direction:column;align-items:stretch;gap:4px">
-    <div style="display:flex;align-items:center;gap:7px">
-      ${shapeSparklineSvg(a.shape)}
-      <span class="chip ${leanCls}" style="font-size:10px">${leanIcon} shape-match: ${a.lean}</span>
-      ${winRate != null ? `<span style="font-size:10px;color:var(--text3,#8892a6)">${(winRate * 100).toFixed(0)}% win rate, n=${a.n_neighbours}</span>` : ''}
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+      <span class="chip ${expectedCls}" style="font-size:10px">${kindIcon} ${a.n_touches}-touch ${a.kind}${a.provisional ? ' · pending' : ''}</span>
+      <span style="font-size:10px;color:var(--text3,#8892a6)">${a.dist_to_level_pips.toFixed(0)}p from level</span>
+      ${c ? `<span style="font-size:10px;color:var(--text3,#8892a6)">${(c.played_out_rate * 100).toFixed(0)}% historical, n=${c.n_samples}</span>` : ''}
     </div>
-    ${analogs.length ? `<details style="font-size:10px">
-      <summary style="cursor:pointer;color:var(--text3,#8892a6)">▸ ${analogs.length} closest historical analogs</summary>
-      <table style="width:100%;border-collapse:collapse;margin-top:3px;font-family:'DM Mono',monospace">
-        ${analogs.map(nb => analogRowHtml(nb, a.lean)).join('')}
-      </table>
-    </details>` : ''}
   </div>`;
 }
 
