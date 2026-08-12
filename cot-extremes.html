@@ -182,6 +182,7 @@ const HELP = {
   evrisk:['Event-risk overlay','Cross-references currently-crowded markets (90th/10th percentile+) against the live economic calendar for their own currency — FOMC, ECB, NFP and similar high/medium-impact releases in the next 3 days.','A stretched position walking into a scheduled catalyst is exposed to a fast move — this flags the exposure, not which way the release breaks. Scoped to FX plus the three Treasury tenors (all USD); other groups aren\'t mapped to a single country\'s calendar cleanly enough to include here.'],
   persist:['Extreme persistence','How many of the most recent weeks were also a 90th/10th-percentile extreme at the time — each ranked only against its own trailing up-to-156-week window, the same rolling method used for today\'s reading.','A percentile alone can\'t tell a freshly-hit extreme from one that has held for months. Needs at least 52 weeks of trailing history behind a week before ranking it, same floor as the main reading — a market too new to satisfy that just stops the count rather than guessing.'],
   confl:['Confluence','Flags a market where speculators are at a 90th/10th-percentile extreme AND commercials are independently at the opposite extreme, at the same time.','This is the textbook COT contrarian setup — commercials normally sit roughly opposite specs anyway (see the scatter panel), so both hitting their own extreme at once is the strongest version of a "crowded, low-fuel, exposed-to-reversal" read this data can give. Still not a timing signal — it says the setup is textbook, not that it resolves now.'],
+  digest:['At a glance','For every currently-crowded market, checks whether commercials confirm it (Confluence) and whether this week\'s flow is still building the same way (Positioning Flow), and counts how many of those independent reads currently agree.','Not a new calculation — every fact shown is already on a panel below this one. This just answers "do the reads on this market agree or fight each other" without averaging that answer away. Never blends across DIFFERENT markets into one board-wide call; each market keeps its own count.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
@@ -457,6 +458,59 @@ function eventRisk(big){
       + '<td>'+r.when+'</td>'
       + '<td style="color:'+((r.nextEvt.impact||'').toLowerCase()==='high'?'var(--warn)':'var(--tx3)')+'">'+esc(r.nextEvt.impact||'')+'</td></tr>').join('')
     + '</tbody></table><div class="note">A crowded position walking into a scheduled release for its own currency is exposed to a fast, catalyst-driven move — not necessarily in either direction. This is an <b>attention</b> flag, not a call on which way the release breaks.</div>';
+}
+
+// ── digest: roll the granular panels up into one glance-able summary ────────
+// Not a new read — every fact in a row here is already computed by the
+// Reinforcing FX Pairs / Confluence / Flow panels below; this just puts them
+// side by side per market so you don't have to cross-reference three panels
+// yourself. Deliberately per-MARKET, never blended ACROSS markets into one
+// board-wide call — that's the exact thing removed in Pair Lab. Where the
+// reads disagree, that disagreement is named, not averaged away.
+function digest(big){
+  const cOf = x => BASIS==='share' ? (x.commSharePct ?? x.commPct) : x.commPct;
+  const list = (DATA.instruments||[]).filter(x => { const p = pctOf(x); return p != null && (p >= 90 || p <= 10); });
+  if (!list.length) return '<div class="empty">Nothing at a 90th/10th percentile extreme right now — no market has enough of a read to summarise.</div>';
+
+  if (EVENTS === null) loadEvents();   // fire-and-forget, same shared state as the event-risk panel
+  const now = Date.now();
+  const upcoming = (EVENTS && EVENTS !== 'loading' && EVENTS !== false)
+    ? EVENTS.map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
+        .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
+        .sort((a,b) => a.ms - b.ms)
+    : [];
+
+  const rows = list.map(x => {
+    const p = pctOf(x), wantLong = p >= 90, c = cOf(x);
+    const checks = [{ label: 'Spec crowding', agree: true, txt: (wantLong?'CROWDED LONG':'CROWDED SHORT')+' ('+p+'th pct)' }];
+    if (c != null) {
+      const confirms = wantLong ? c <= 10 : c >= 90;
+      checks.push({ label: 'Commercials', agree: confirms,
+        txt: confirms ? 'confluence — also at the opposite extreme ('+c+'th pct)' : 'don\'t confirm ('+c+'th pct — not at the opposite extreme)' });
+    }
+    if (Number.isFinite(x.specShareChg) && x.specShare != null && x.specShareChg !== 0) {
+      const extending = Math.sign(x.specShareChg) === Math.sign(x.specShare);
+      checks.push({ label: 'This week\'s flow', agree: extending,
+        txt: extending ? 'still extending (getting more crowded)' : 'paring back (unwinding, not extending)' });
+    }
+    const agreeCount = checks.filter(k => k.agree).length;
+    const ccy = ccyOf(x), nextEvt = ccy ? upcoming.find(e => e.ccy === ccy) : null;
+    return { x, p, wantLong, checks, agreeCount, total: checks.length, nextEvt };
+  }).sort((a,b) => (b.agreeCount/b.total) - (a.agreeCount/a.total));
+
+  const cardsHtml = rows.map(r => {
+    const clr = colFor(r.p);
+    const chips = r.checks.map(k => '<span class="pill" style="color:'+(k.agree?'var(--ok)':'var(--warn)')+'">'+(k.agree?'&#10003;':'&#10007;')+' '+esc(k.label)+': '+esc(k.txt)+'</span>').join(' ');
+    const evtChip = r.nextEvt ? ' <span class="pill" style="color:var(--warn)">&#9200; '+esc(r.nextEvt.event)+' ('+esc(r.nextEvt.impact)+')</span>' : '';
+    return '<div class="pa-card" style="margin-bottom:10px;cursor:pointer" onclick="pick(\''+esc(r.x.sym)+'\')">'
+      + '<div class="pa-head"><span class="pa-pair">'+esc(dispSym(r.x))+'</span>'
+      + '<span class="pa-badge" style="color:'+(r.agreeCount===r.total?clr:'var(--warn)')+'">'+r.agreeCount+' of '+r.total+' agree</span></div>'
+      + '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+chips+evtChip+'</div></div>';
+  }).join('');
+
+  return '<div class="kicker">Every line below is already computed by the Reinforcing FX Pairs, Confluence, and Positioning Flow panels — this just lines them up per market instead of asking you to cross-reference three panels yourself. Still not a trade signal: a high agreement count means the reads reinforce each other, not that a move is coming.</div>'
+    + cardsHtml
+    + '<div class="note">Full agreement means every available read currently reinforces the same crowding direction — the cleanest version of this data\'s read. A lower count names exactly where they disagree (e.g. crowded on level but already unwinding on flow) rather than hiding it in one blended number. Click a card for its 200-week history.</div>';
 }
 
 // ── extreme persistence: how established is the crowd, not just how crowded ──
@@ -805,6 +859,7 @@ function render(){
     +'. Positioning changes inside that gap and you cannot see it, so treat every number here as a '
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
+    + panel('c12','digest','At a glance — how many reads agree, per market','digest',digest,true)
     + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
     + panel('c12','confl','Confluence (specs vs. commercials, same market)','confl',confluence,true)
     + panel('c7','evr','Event-risk overlay','evrisk',eventRisk,true)
