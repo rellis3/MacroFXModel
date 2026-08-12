@@ -376,12 +376,13 @@ test('diversificationIsOosSplit: one shared calendar split date, every trade con
 });
 
 test('weekdayBreakdown: groups by entry weekday, compounds correctly, surfaces the triple-swap drag', () => {
-  const mk = (date, netPct, financingCostPct, tripleSwap) => ({ date, netPct, financingCostPct, tripleSwap });
+  const mk = (date, grossPct, netPct, spreadCostPct, slipCostPct, financingCostPct, tripleSwap) =>
+    ({ date, grossPct, netPct, spreadCostPct, slipCostPct, financingCostPct, tripleSwap });
   const trades = [
-    mk('2025-01-06', 2, 0.015, false),  // Monday
-    mk('2025-01-13', -1, 0.015, false), // Monday
-    mk('2025-01-08', 1, 0.045, true),   // Wednesday (triple swap)
-    mk('2025-01-15', 1, 0.045, true),   // Wednesday (triple swap)
+    mk('2025-01-06', 2.03, 2, 0.010, 0.005, 0.015, false),  // Monday
+    mk('2025-01-13', -0.97, -1, 0.010, 0.005, 0.015, false), // Monday
+    mk('2025-01-08', 1.06, 1, 0.010, 0.005, 0.045, true),   // Wednesday (triple swap)
+    mk('2025-01-15', 1.06, 1, 0.010, 0.005, 0.045, true),   // Wednesday (triple swap)
   ];
   assert.equal(dowOf('2025-01-06'), 1); // sanity: Monday
   assert.equal(dowOf('2025-01-08'), 3); // sanity: Wednesday
@@ -400,6 +401,14 @@ test('weekdayBreakdown: groups by entry weekday, compounds correctly, surfaces t
   assert.ok(Math.abs(wed.avgFinancingCostPct - 0.045) < 1e-9, 'Wednesday should show the 3x financing cost');
   assert.equal(wed.tripleSwapNights, 2);
   assert.ok(wed.avgFinancingCostPct > mon.avgFinancingCostPct * 2.9, 'Wednesday financing should be roughly 3x a normal night');
+
+  // Gross vs net decomposition — the whole point of this extension: separate
+  // "the price action itself" from "what it costs to hold it".
+  assert.ok(Math.abs(mon.avgGrossPct - 0.53) < 1e-9, 'Monday gross should be the pre-cost average');
+  assert.ok(Math.abs(wed.avgGrossPct - 1.06) < 1e-9, 'Wednesday gross should be the pre-cost average');
+  assert.ok(Math.abs(wed.avgSpreadCostPct - mon.avgSpreadCostPct) < 1e-9, 'spread cost is the SAME baseline every night in this fixture');
+  assert.ok(Math.abs(wed.avgSlipCostPct - mon.avgSlipCostPct) < 1e-9, 'slip cost is the SAME baseline every night in this fixture');
+  assert.ok(wed.compoundedGrossPct > wed.compoundedTotalPct, 'gross should sit above net once costs are subtracted');
 });
 
 test('resampleDailyFromPacked: aggregates M1 bars into correct UTC-day OHLC buckets', () => {

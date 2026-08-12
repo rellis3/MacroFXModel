@@ -225,8 +225,9 @@ function weekdaySection(weekday, actualTotalReturnPct, label) {
   if (!weekday || !weekday.length) return '';
   const rows = weekday.map(r => `<tr${r.weekday === 'Wed' ? ' style="background:#2a2412"' : ''}>
     <td>${r.weekday}${r.tripleSwapNights > 0 ? ' <span class="note" style="display:inline">(3× swap)</span>' : ''}</td>
-    <td>${r.trades}</td><td>${spanN(r.avgNetPct, 3)}</td><td>${spanN(r.compoundedTotalPct)}</td>
-    <td>${fmtN(r.winRatePct, 1)}</td><td>${fmtN(r.profitFactor, 3)}</td><td>${fmtN(r.avgFinancingCostPct, 4)}</td><td>${r.tripleSwapNights}</td>
+    <td>${r.trades}</td><td>${spanN(r.compoundedGrossPct)}</td><td>${spanN(r.compoundedTotalPct)}</td>
+    <td>${fmtN(r.avgSpreadCostPct, 4)}</td><td>${fmtN(r.avgSlipCostPct, 4)}</td><td>${fmtN(r.avgFinancingCostPct, 4)}</td>
+    <td>${fmtN(r.winRatePct, 1)}</td><td>${fmtN(r.profitFactor, 3)}</td>
   </tr>`).join('');
 
   const wed = weekday.find(r => r.weekday === 'Wed');
@@ -249,7 +250,7 @@ function weekdaySection(weekday, actualTotalReturnPct, label) {
   <details class="subpanel">
     <summary>${label} weekday breakdown <span class="cnt">— is one specific night dragging the result down?</span></summary>
     <table style="margin-top:8px">
-      <thead><tr><th>Entry night</th><th>Trades</th><th>Avg net %</th><th>Compounded total %</th><th>Win rate %</th><th>Profit factor</th><th>Avg financing cost %</th><th>3× swap nights</th></tr></thead>
+      <thead><tr><th>Entry night</th><th>Trades</th><th>Compounded gross %</th><th>Compounded net %</th><th>Avg spread %</th><th>Avg slip %</th><th>Avg financing %</th><th>Win rate %</th><th>Profit factor</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     ${withoutWedNote}

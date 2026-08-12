@@ -505,15 +505,27 @@ export function weekdayBreakdown(netTrades) {
   return [...byDow.keys()].sort().map(dow => {
     const rows = byDow.get(dow);
     const netPcts = rows.map(t => t.netPct);
-    const compounded = compoundPct(netPcts);
+    const grossPcts = rows.map(t => t.grossPct);
     return {
       dow,
       weekday: WEEKDAY_NAMES[dow],
       trades: rows.length,
+      // Net (the tradable number) and gross (price action alone, before any
+      // cost) side by side — this is what separates "Wednesday's price
+      // action is unusual" from "Wednesday just pays more in fees for
+      // otherwise ordinary price action". Both are compounded totals so they
+      // can be compared apples-to-apples with the other weekday rows.
       avgNetPct: +mean(netPcts).toFixed(4),
-      compoundedTotalPct: +compounded.toFixed(3),
+      compoundedTotalPct: +compoundPct(netPcts).toFixed(3),
+      avgGrossPct: +mean(grossPcts).toFixed(4),
+      compoundedGrossPct: +compoundPct(grossPcts).toFixed(3),
       winRatePct: +(winRateOf(netPcts) * 100).toFixed(1),
       profitFactor: +profitFactorOf(netPcts).toFixed(3),
+      // Cost decomposition, per-trade average — spread/slip are the SAME
+      // baseline every night (a triple-swap night doesn't widen them);
+      // financing is the one line item that actually changes by weekday.
+      avgSpreadCostPct: +mean(rows.map(t => t.spreadCostPct ?? 0)).toFixed(4),
+      avgSlipCostPct: +mean(rows.map(t => t.slipCostPct ?? 0)).toFixed(4),
       avgFinancingCostPct: +mean(rows.map(t => t.financingCostPct ?? 0)).toFixed(4),
       tripleSwapNights: rows.filter(t => t.tripleSwap).length,
     };

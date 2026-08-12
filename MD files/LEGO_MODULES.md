@@ -1396,6 +1396,81 @@ baseline (1490 vs 92 for gold) despite the far better final number — an
 early-lucky-run artifact in the baseline path, not evidence that skip-Wed
 is strictly better on every single axis.
 
+**Update (2026-08-12: "why is Wednesday so bad? what about not entering a
+stop loss and letting them run to the time out?"): decomposed the Wednesday
+drag into gross-return vs cost, and confirmed the strategy already has no
+stop-loss.** `weekdayBreakdown` now also returns `avgGrossPct`/
+`compoundedGrossPct` (pre-cost) and `avgSpreadCostPct`/`avgSlipCostPct`
+(alongside the existing `avgFinancingCostPct`) per weekday, so the total
+Wednesday drag can be split into "the trades themselves were worse" vs "the
+triple-swap charge did it" rather than inferred. 1 new unit test (28 total):
+hand-built fixture with different weekday gross returns but identical
+spread/slip and only Wednesday's financing tripled, asserting gross sits
+above net and spread/slip are flat across weekdays while financing isn't.
+Surfaced in `overnight-hold-backtest.html`'s weekday table (gross % / net %
+/ spread % / slip % / financing % / win rate / profit factor columns,
+replacing the old net-only view) and re-verified against the live route.
+
+**The two instruments fail for different reasons — this is the actual
+answer to "what's special about Wednesday":**
+
+| | Gold — Mon | Gold — Tue | Gold — Wed | Gold — Thu | NQ — Mon | NQ — Tue | NQ — Wed | NQ — Thu |
+|---|---|---|---|---|---|---|---|---|
+| Compounded **gross** % | 30.2 | 53.1 | **27.7** | 41.5 | 86.5 | 50.3 | **1.4** | **−4.3** |
+| Avg spread % (flat) | 0.025 | 0.025 | 0.025 | 0.025 | 0.010 | 0.010 | 0.010 | 0.010 |
+| Avg slip % (flat) | 0.015 | 0.015 | 0.015 | 0.015 | 0.010 | 0.010 | 0.010 | 0.010 |
+| Avg financing % | 0.015 | 0.015 | **0.045** | 0.015 | 0.020 | 0.020 | **0.060** | 0.020 |
+| Compounded **net** % | −0.7 | 14.0 | **−19.0** | 6.5 | 53.7 | 21.3 | **−33.8** | **−22.2** |
+
+- **Gold's Wednesday problem is almost entirely a cost artifact.** Gross
+  Wednesday (27.7%) sits in the same range as Monday (30.2%) and Thursday
+  (41.5%) — the price action itself isn't unusually bad. Spread and slip are
+  identical every night (0.025/0.015 flat). Financing is exactly 3× on
+  Wednesday (0.045 vs 0.015) and nowhere else. Take the triple-swap charge
+  away and gold's Wednesday looks like an ordinary night.
+- **NQ's Wednesday (and Thursday) problem is real, not just cost.** Gross
+  Wednesday collapses to 1.4% and gross **Thursday goes negative** (−4.3%) —
+  both far below Monday's 86.5% and Tuesday's 50.3%. Thursday carries no
+  triple-swap charge at all (financing back to the normal 0.02) and is still
+  the worst gross night, so something about the price action entering
+  Wednesday night and Thursday night specifically is genuinely weaker for
+  NQ, on top of — not instead of — the triple-swap charge stacking on the
+  same Wednesday night. Both effects are real and compounding, not one
+  explaining the other away.
+- Practical read: correcting an unrealistic triple-swap assumption (per the
+  cost-override fields above) would likely repair most of gold's Wednesday
+  problem but only part of NQ's — NQ needs its actual overnight-hold edge on
+  Wed/Thu explained or excluded, not just its cost model fixed.
+
+**On the stop-loss question: there already isn't one, and MAE evidence
+confirms trades are already given the maximum available time to recover.**
+`buildOvernightTrades` has never had a stop-loss — every trade is opened at
+20:00 UK and closed at the fixed 14:30 UK exit regardless of what happens in
+between; the only way out early is a stage-02 data exception, never a price
+level. Checked directly against the real per-trade `maePct` (worst
+intra-trade adverse excursion) vs the trade's final `netPct` on the same
+2016–2026 R2 run: **95.7% of gold trades (1,991/2,081) and 95.5% of NQ
+trades (1,975/2,068) show a worse intra-trade drawdown than their final
+recorded result** — i.e. the overwhelming majority of trades were already
+underwater by more, at some point overnight, than they finished at losing
+or winning by the scheduled exit. The single worst trade for each
+instrument is itself a Wednesday entry that ended up recovering some ground
+by the timeout: gold's worst MAE (−7.11%, on the 2026-03-18 Wednesday entry)
+finished at −5.48% net, and NQ's worst MAE (−8.26%, on the 2020-03-11
+Wednesday entry) finished at −5.46% net — both are the same two trades that
+tripped the daily-loss-limit breach in the prop-firm rule check above, now
+tied to a concrete number: without the fixed-timeout exit, an intrabar stop
+placed anywhere between the MAE and the final result would have locked in a
+*worse* outcome than just waiting for 14:30. This doesn't prove a stop-loss
+would hurt overall — a stop caps the unknown remaining 4–5% of trades where
+MAE was shallower than the final loss, which this data doesn't isolate — but
+it does confirm the premise behind the question was backwards: the strategy
+already lets every trade run to the timeout with no early exit, and on the
+worst individual trades that no-stop design is what turned a bigger interim
+loss into a smaller final one. Testing the **opposite** — adding a stop-loss
+at some MAE-derived level and comparing net result/Sharpe against the current
+no-stop baseline — is a well-defined next test, not yet built.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
