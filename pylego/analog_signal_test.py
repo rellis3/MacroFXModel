@@ -16,8 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pylego.analog_signal import neighbor_consensus  # noqa: E402
 
 
-def _bars(opens, highs, lows, closes):
-    return pd.DataFrame({'open': opens, 'high': highs, 'low': lows, 'close': closes})
+def _bars(opens, highs, lows, closes, dated=False):
+    df = pd.DataFrame({'open': opens, 'high': highs, 'low': lows, 'close': closes})
+    if dated:
+        df.index = pd.date_range('2024-01-01', periods=len(df), freq='h', tz='UTC')
+    return df
 
 
 def test_flat_when_no_candidate_shapes():
@@ -70,7 +73,7 @@ def test_flat_when_both_sides_lose_to_cost():
     assert res.margin == 0.0
 
 
-def test_consensus_picks_long_when_analogs_ran_up():
+def _two_analog_bars(dated=False):
     # Two candidate windows (ending idx=1, idx=3); price after EACH
     # candidate's entry (idx+1) rallies hard -> long should win the vote.
     n = 20
@@ -84,8 +87,11 @@ def test_consensus_picks_long_when_analogs_ran_up():
             highs[i] = closes[i] + 0.1
             lows[i] = closes[i] - 0.1
             opens[i] = closes[i - 1]
-    bars = _bars(opens, highs, lows, closes)
+    return _bars(opens, highs, lows, closes, dated=dated)
 
+
+def test_consensus_picks_long_when_analogs_ran_up():
+    bars = _two_analog_bars()
     end_idx = np.array([1, 3], dtype=np.int64)
     shapes = np.zeros((2, 3))  # identical shapes -> both always qualify as neighbours
 
@@ -97,6 +103,28 @@ def test_consensus_picks_long_when_analogs_ran_up():
     assert res.avg_long_r is not None and res.avg_long_r > 0
     assert res.avg_short_r is not None and res.avg_short_r < 0
     assert res.margin is not None and res.margin > 0
+    assert res.long_win_rate == 1.0
+    assert res.short_win_rate == 0.0
+    assert res.neighbours is None  # detail=False by default
+
+
+def test_consensus_detail_returns_per_neighbour_rows():
+    bars = _two_analog_bars(dated=True)
+    end_idx = np.array([1, 3], dtype=np.int64)
+    shapes = np.zeros((2, 3))
+
+    res = neighbor_consensus(bars, end_idx, shapes, np.zeros(3), query_end=15,
+                             k=5, min_gap_bars=0, sl_price=2.0, tp_r=1.0, cost_price=0.0,
+                             max_bars_ahead=10, min_bars_ahead=1, min_neighbours=1,
+                             detail=True)
+    assert res.neighbours is not None and len(res.neighbours) == 2
+    # nearest-first: both candidate shapes are identical (all-zero) so distance
+    # ties at 0 -- percentile must still be a valid, bounded, non-fabricated stat.
+    for row in res.neighbours:
+        assert row["percentile"] is not None and 0.0 <= row["percentile"] <= 100.0
+        assert row["entry_date"] is not None  # real ISO timestamp, not None
+        assert row["long_r"] is not None and row["long_r"] > 0
+        assert row["short_r"] is not None and row["short_r"] < 0
 
 
 if __name__ == '__main__':

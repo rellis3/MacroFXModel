@@ -2355,18 +2355,49 @@ function shapeSparklineSvg(shape) {
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex:none">
     <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.3"/></svg>`;
 }
+function analogFmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch (e) { return iso; }
+}
+// Outcome shown per analog is the r that matches the CURRENT lean direction
+// (what a trader following today's lean would have scored on THAT historical
+// occurrence) — not a fabricated "did the pattern complete" call, since
+// shape-matching has no separate completion concept (see AnalogML/README.md).
+function analogRowHtml(nb, lean) {
+  const r = lean === 'LONG' ? nb.long_r : lean === 'SHORT' ? nb.short_r : null;
+  const rTxt = r != null ? `${r >= 0 ? '+' : ''}${r.toFixed(2)}R` : '—';
+  const rCls = r == null ? '' : r >= 0 ? 'bull' : 'bear';
+  return `<tr>
+    <td style="padding:2px 6px 2px 0;color:var(--text3,#8892a6)">${analogFmtDate(nb.date)}</td>
+    <td style="padding:2px 6px;text-align:right;color:var(--text3,#8892a6)">${nb.percentile != null ? nb.percentile.toFixed(2) + '%ile' : '—'}</td>
+    <td style="padding:2px 0 2px 6px;text-align:right" class="chip ${rCls}">${rTxt}</td>
+  </tr>`;
+}
 function analogShapeHtml(name) {
   const a = analogml?.[name.toLowerCase()];
   if (!a) return '';
   const leanCls = a.lean === 'LONG' ? 'bull' : a.lean === 'SHORT' ? 'bear' : 'neu';
   const leanIcon = a.lean === 'LONG' ? '↗' : a.lean === 'SHORT' ? '↘' : '→';
+  const winRate = a.lean === 'LONG' ? a.long_win_rate : a.lean === 'SHORT' ? a.short_win_rate : null;
   const title = `Shape-match diagnostic (research, NOT a validated signal — see AnalogML/README.md): `
     + `this pair's current ${a.window}-bar price shape, normalized for level/vol. `
     + `Its ${a.n_neighbours} nearest historical analogs averaged ${a.avg_long_r != null ? a.avg_long_r.toFixed(3) : '–'}R `
-    + `if long vs ${a.avg_short_r != null ? a.avg_short_r.toFixed(3) : '–'}R if short from here.`;
-  return `<div class="pc-shape help" title="${title}">
-    ${shapeSparklineSvg(a.shape)}
-    <span class="chip ${leanCls}" style="font-size:10px">${leanIcon} shape-match: ${a.lean}</span>
+    + `if long vs ${a.avg_short_r != null ? a.avg_short_r.toFixed(3) : '–'}R if short from here `
+    + `(win rate ${winRate != null ? (winRate * 100).toFixed(0) + '%' : '–'} in the leaning direction).`;
+  const analogs = a.top_analogs || [];
+  return `<div class="pc-shape help" title="${title}" style="flex-direction:column;align-items:stretch;gap:4px">
+    <div style="display:flex;align-items:center;gap:7px">
+      ${shapeSparklineSvg(a.shape)}
+      <span class="chip ${leanCls}" style="font-size:10px">${leanIcon} shape-match: ${a.lean}</span>
+      ${winRate != null ? `<span style="font-size:10px;color:var(--text3,#8892a6)">${(winRate * 100).toFixed(0)}% win rate, n=${a.n_neighbours}</span>` : ''}
+    </div>
+    ${analogs.length ? `<details style="font-size:10px">
+      <summary style="cursor:pointer;color:var(--text3,#8892a6)">▸ ${analogs.length} closest historical analogs</summary>
+      <table style="width:100%;border-collapse:collapse;margin-top:3px;font-family:'DM Mono',monospace">
+        ${analogs.map(nb => analogRowHtml(nb, a.lean)).join('')}
+      </table>
+    </details>` : ''}
   </div>`;
 }
 

@@ -87,12 +87,13 @@ def test_find_analogs_recovers_planted_repeat():
     assert query_shape is not None
 
     query_end = query_start + window_len - 1
-    matches, dists = find_analogs(query_shape, end_idx, shapes, k=3,
-                                  min_gap_bars=5, exclude_after=query_end)
+    matches, dists, pct = find_analogs(query_shape, end_idx, shapes, k=3,
+                                       min_gap_bars=5, exclude_after=query_end)
     assert len(matches) > 0
     best_match_end = history_start + window_len - 1
     assert matches[0] == best_match_end
     assert dists[0] < 1e-6
+    assert pct[0] > 99.0  # the exact planted repeat must rank as (near) the closest candidate
 
 
 def test_find_analogs_exclude_after_blocks_future():
@@ -102,7 +103,7 @@ def test_find_analogs_exclude_after_blocks_future():
     end_idx, shapes = rolling_shapes(closes, window_len)
     query_shape = shapes[-1]
     cutoff = int(end_idx[len(end_idx) // 2])
-    matches, _ = find_analogs(query_shape, end_idx, shapes, k=50, exclude_after=cutoff)
+    matches, _, _ = find_analogs(query_shape, end_idx, shapes, k=50, exclude_after=cutoff)
     assert all(m < cutoff for m in matches)
 
 
@@ -112,17 +113,32 @@ def test_find_analogs_min_gap_dedupes_neighbours():
     window_len = 10
     end_idx, shapes = rolling_shapes(closes, window_len)
     query_shape = shapes[-1]
-    matches, _ = find_analogs(query_shape, end_idx, shapes, k=10, min_gap_bars=20,
-                              exclude_after=int(end_idx[-1]))
+    matches, _, _ = find_analogs(query_shape, end_idx, shapes, k=10, min_gap_bars=20,
+                                 exclude_after=int(end_idx[-1]))
     for i in range(len(matches)):
         for j in range(i + 1, len(matches)):
             assert abs(int(matches[i]) - int(matches[j])) >= 20
 
 
+def test_find_analogs_percentile_is_monotonic_and_bounded():
+    rng = np.random.default_rng(3)
+    closes = 100 * np.exp(np.cumsum(rng.normal(0, 0.001, size=400)))
+    window_len = 10
+    end_idx, shapes = rolling_shapes(closes, window_len)
+    query_shape = shapes[-1]
+    matches, dists, pct = find_analogs(query_shape, end_idx, shapes, k=15,
+                                       exclude_after=int(end_idx[-1]))
+    assert len(matches) == 15
+    assert (pct <= 100.0).all() and (pct >= 0.0).all()
+    # nearest-first distances must correspond to non-increasing percentile
+    assert all(pct[i] >= pct[i + 1] for i in range(len(pct) - 1))
+    assert all(dists[i] <= dists[i + 1] for i in range(len(dists) - 1))
+
+
 def test_find_analogs_empty_inputs():
-    matches, dists = find_analogs(np.zeros(5), np.empty(0, dtype=np.int64),
-                                  np.empty((0, 5)), k=3)
-    assert len(matches) == 0 and len(dists) == 0
+    matches, dists, pct = find_analogs(np.zeros(5), np.empty(0, dtype=np.int64),
+                                       np.empty((0, 5)), k=3)
+    assert len(matches) == 0 and len(dists) == 0 and len(pct) == 0
 
 
 if __name__ == '__main__':
