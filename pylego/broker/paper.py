@@ -216,6 +216,11 @@ class PaperBroker:
                 "lots": round(p["lots"], 2), "open_price": round(p["open_price"], 5),
                 "price": round(cur, 5), "profit": round(profit, 4), "swap": 0.0,
                 "time_open": p.get("time_open"),
+                # Paper fills are stamped with time.time() — already true UTC, so
+                # the offset is a hard 0. Emitted (not omitted) so the dashboard
+                # can distinguish "UTC" from "unknown base" on a mixed table where
+                # Mt5Broker rows carry the broker's +2/+3h.
+                "tz_offset_sec": 0,
                 # comment carries "Vol {line} {decision}" — the dashboard parses it to
                 # show WHICH line each open position is fading. Mt5Broker already emits
                 # it (PYTHON_LEGO.md §7); paper must match or the line is lost in paper mode.
@@ -234,6 +239,8 @@ class PaperBroker:
             "close_price": round(c["close_price"], 5) if c.get("close_price") is not None else None,
             "profit": round(c.get("profit", 0.0), 4), "reason": c.get("reason"),
             "time_open": c.get("time_open"), "time_close": c.get("time_close"),
+            # Already true UTC (time.time()) — see serialize_open_positions.
+            "tz_offset_sec": 0,
             # MFE/MAE in pips (peak favourable / worst adverse) — the give-back
             # inputs; the server rollup persists them into *_trade_log.
             "mfe_pips": c.get("mfe_pips"), "mae_pips": c.get("mae_pips"),

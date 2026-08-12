@@ -731,6 +731,7 @@
         <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
         <button class="vf-exp-item" id="vfCogSessBtn"       onclick="closeExpDropdown();exportCogSession()"        disabled>⬇ COG + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <button class="vf-exp-item" id="vfCogWkBtn"         onclick="closeExpDropdown();exportCogWeekly()"         disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 / √20</span></button>
+        <button class="vf-exp-item" id="vfCogV2Btn"         onclick="closeExpDropdown();exportCogV2()"             disabled>⬇ COG v2 <span style="font-size:9px;opacity:.55">gold=HAR-IV</span></button>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1435,7 +1436,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfCogV2Btn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -1525,16 +1526,10 @@ function loadSession(date) {
 }
 
 // ── triggerRefresh ────────────────────────────────────────────────────────────
-function triggerRefresh() {
-  const btn = document.getElementById('vfRefreshBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '↻ Refreshing…';
-  }
-
-  const date = viewingDate || null;
-
-  Promise.all([
+// Re-fetch the (already computed) forecast + session for `date` and re-render.
+// This does NOT recompute server-side — see triggerRefresh for that.
+function _reloadForecastView(date) {
+  return Promise.all([
     fetch(date ? `/api/vol-forecast?date=${date}` : '/api/vol-forecast').then(r => r.json()),
     fetch(date ? `/api/vol-forecast/session?date=${date}` : '/api/vol-forecast/session').then(r => r.json())
   ])
@@ -1554,16 +1549,41 @@ function triggerRefresh() {
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
     // renderV2Grid already calls loadAllM5Charts — no duplicate call needed
-  })
-  .catch(err => {
-    console.error('triggerRefresh error:', err);
-  })
-  .finally(() => {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '↻ Refresh';
-    }
+    return forecast;
   });
+}
+
+// Refresh = actually RECOMPUTE the live session server-side (runVolForecast →
+// attaches HAR-IV/COG-v2 σ), then poll until computed_at advances, then render.
+// Historical views can't be recomputed via this endpoint, so they just re-fetch.
+async function triggerRefresh() {
+  const btn = document.getElementById('vfRefreshBtn');
+  const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = dis; } };
+  const date = viewingDate || null;
+
+  setBtn('↻ Refreshing…', true);
+  try {
+    if (date) { await _reloadForecastView(date); return; }   // historical: view-only reload
+
+    const prevAt = liveForecast?.computed_at || null;
+    try { await fetch('/api/vol-forecast/refresh', { method: 'POST' }); }
+    catch (e) { console.warn('refresh POST failed, falling back to reload:', e); }
+
+    // Poll for the recompute to land (runVolForecast is fire-and-forget, ~30–60s).
+    let landed = false;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      let fc; try { fc = await fetch('/api/vol-forecast').then(r => r.json()); } catch { continue; }
+      if (fc?.computed_at && fc.computed_at !== prevAt) { landed = true; break; }
+      setBtn(`↻ Recomputing… ${(i + 1) * 3}s`, true);
+    }
+    await _reloadForecastView(null);
+    if (!landed) console.warn('triggerRefresh: computed_at did not advance within poll window');
+  } catch (err) {
+    console.error('triggerRefresh error:', err);
+  } finally {
+    setBtn('↻ Refresh', false);
+  }
 }
 
 // ── loadSessionStats ──────────────────────────────────────────────────────────
@@ -2207,10 +2227,47 @@ function buildCogExportText(data, { weekly = false } = {}) {
   }
   return lines.join('\n');
 }
+// COG v2 — COG for fx & indices, but gold uses the HAR-IV σ + forecaster (non-COG-
+// widened) bands (f.harIv, attached server-side). Falls back to COG for gold if the
+// HAR-IV shadow is unavailable (no FRED_KEY / insufficient IV history).
+function buildCogV2ExportText(data) {
+  const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
+  const lines = ['**VOL & RANGE FORECAST — COG v2 (gold=HAR-IV)**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    if (!(f?.vol_annual > 0)) continue;
+    let vol, hlMed, hl75, ocMed, oc75, tag = '';
+    if (name === 'GOLD' && f.harIv) {                 // gold leg: HAR-IV σ, forecaster bands
+      const h = f.harIv; vol = h.vol_annual; hlMed = h.hl_median; hl75 = h.hl_75; ocMed = h.oc_median; oc75 = h.oc_75;
+      tag = `  (σ=HAR-IV${h.iv_index ? ' ' + h.iv_index : ''})`;
+    } else {                                          // fx & indices: COG, unchanged
+      const va = _cogVol(name, f); if (!(va > 0)) continue;
+      const d = _cogBands(va, 1); vol = va; hlMed = d.hl_median; hl75 = d.hl_75; ocMed = d.oc_median; oc75 = d.oc_75;
+      // Make the fallback VISIBLE, with the server-side reason if we have it
+      // (meta.hariv_diag: no_fred_key / fetch_failed / shadow_null / ok-but-stale).
+      if (name === 'GOLD') {
+        const why = data.meta?.hariv_diag?.GOLD;
+        tag = why ? `  (HAR-IV → COG fallback — ${why})`
+                  : '  (HAR-IV unavailable → COG fallback — hit ↻ Refresh)';
+      }
+    }
+    lines.push(div(name));
+    lines.push(`Volatility (annualized) : ${vol.toFixed(2)}%${tag}`);
+    lines.push(row('High to Low range', hlMed, hl75));
+    lines.push(row('Open to Close move', ocMed, oc75));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
 async function exportCog() {
   if (!currentForecast) return;
   await loadCogHv();
   _emitCalibrated('vfCogBtn', buildCogExportText(currentForecast, { weekly: false }), `vol-forecast-cog-${currentForecast.session_date}.txt`);
+}
+async function exportCogV2() {
+  if (!currentForecast) return;
+  await loadCogHv();
+  _emitCalibrated('vfCogV2Btn', buildCogV2ExportText(currentForecast), `vol-forecast-cogv2-${currentForecast.session_date}.txt`);
 }
 async function exportCogWeekly() {
   if (!currentForecast) return;

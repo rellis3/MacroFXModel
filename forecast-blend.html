@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forecast Blend — Cone A vs Cone B vs Blend</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --good:#34d399; --bad:#f87171; --warn:#fbbf24; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; }
+  .wrap { padding:16px 20px; }
+  .main { width:100%; }
+  #chart { height:480px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:12px; align-items:start; margin-top:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .side .card.wide { grid-column:1 / -1; }
+  .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  select { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:12px; }
+  button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  button.on { border-color:var(--accent); color:var(--accent); }
+  .ctl { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:10px 0; }
+  .mono { font-family:'DM Mono',monospace; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  th, td { text-align:right; padding:3px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; }
+  td:first-child, th:first-child { text-align:left; }
+  .good { color:var(--good); } .bad { color:var(--bad); } .warn { color:var(--warn); }
+  .muted { color:var(--muted); font-size:11px; }
+  .kv { display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:12px; padding:2px 0; }
+  .kv b { font-weight:500; }
+  #status { font-size:12px; color:var(--muted); }
+  .err { color:var(--bad); }
+  .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔀 Forecast Blend — Cone A vs Cone B vs Blend</h1>
+  <div class="sub">Cone A = model-based (<a href="forecast-path.html" style="color:var(--accent)">forecast-path.html</a>'s intraday cone). Cone B = empirical — real historical analogs matched by regime + realized-vol state, no distributional assumption. Blend = trailing-error-weighted quantile average of the two. A calibration viewer, not a strategy.</div>
+</header>
+
+<div class="wrap">
+  <div class="main">
+    <div class="ctl">
+      <select id="gran">
+        <option value="M15" selected>M15 · intraday</option>
+        <option value="M5">M5 · intraday</option>
+      </select>
+      <select id="pair"></select>
+      <select id="horizon"></select>
+      <button id="load">Load</button>
+      <span id="status"></span>
+    </div>
+    <div id="chart"></div>
+    <div class="ctl">
+      <button id="tA" class="on"><span class="swatch" style="background:#5b9dff"></span>Cone A (model)</button>
+      <button id="tB" class="on"><span class="swatch" style="background:#c084fc"></span>Cone B (analog)</button>
+      <button id="tBlend" class="on"><span class="swatch" style="background:#34d399"></span>Blend</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <h2>This forecast</h2>
+      <div id="info"><span class="muted">load a pair</span></div>
+    </div>
+    <div class="card">
+      <h2>Blend weight (fit on the in-sample slice)</h2>
+      <div id="weightInfo"><span class="muted">computing…</span></div>
+    </div>
+    <div class="card wide">
+      <h2>Calibration — held-out (out-of-sample)</h2>
+      <div id="calib"><span class="muted">weights fit on the first part of history; every row here is graded on the part they never saw</span></div>
+    </div>
+    <div class="card wide muted">
+      <b>How to read this honestly.</b> Cone A assumes a lognormal step process
+      (per-bar EWMA σ + session-shaped drift, same math as
+      <code>forecast-path.html</code>). Cone B makes no distributional
+      assumption: it finds every prior bar in the same (trend regime ×
+      realized-vol) state as right now and uses the empirical spread of what
+      price actually did next as the envelope — reused causal classifiers
+      (<code>classifyRegime</code>, <code>rollingPercentile</code>), not new
+      regime logic. <b>Blend</b> is quantile averaging in log-return space
+      (Vincentization), weighted by each cone's trailing pinball loss —
+      practically "Bayesian model averaging in spirit," not a literal
+      posterior-weighted mixture of two likelihoods (this repo doesn't have
+      the live-tracked data yet to fit that honestly). The weight is looked
+      up by Cone B's own (regime, vol-bucket) read when that bucket has
+      graded enough windows, else it falls back to one global weight — a
+      thin bucket is not trusted with its own number. <b>Every calibration
+      number below is out-of-sample</b>: weights are fit on the first slice
+      of history, then blend / Cone A / Cone B are all graded on the
+      remainder they never saw — the blend only earns the extra machinery if
+      it beats both cones there, not in-sample. <b>Not yet built</b>: a
+      replay slider, a persisted forward-track (live post-hoc record), and
+      the third/fourth cone legs (OU reversion timing, options-implied
+      density) discussed as later upgrades — this is the two-cone version,
+      shipped and graded before anything gets added to it.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js?v=1';
+import { priceDigits } from './js/instrumentRegistry.js?v=1';
+import { buildIntradayContext, intradayCone, INTRADAY_DEFAULTS } from './js/forecastPathCore.js?v=1';
+import { buildAnalogContext, analogCone } from './js/analogCone.js?v=1';
+import { fitBlendWeights, blendCones, weightAFor, blendCalibration } from './js/coneBlend.js?v=1';
+
+const PAIRS = [
+  'EURUSD','GBPUSD','USDJPY','AUDUSD','NZDUSD','USDCAD','USDCHF','GBPJPY',
+  'EURJPY','EURGBP','EURAUD','EURCAD','EURCHF','EURNZD',
+  'AUDJPY','AUDNZD','AUDCAD','AUDCHF',
+  'GBPAUD','GBPCAD','GBPCHF','GBPNZD',
+  'CADJPY','CHFJPY','NZDJPY','GOLD',
+];
+// Enough history for the analog cone's warmup + a real IS/OOS split — the
+// 5000-candle/request OANDA cap is handled server-side (pagination), same
+// endpoint forecast-path.html uses.
+const LOOKBACK_DAYS = { M15: 260, M5: 70 };
+const HORIZONS = [['8', '2 hours'], ['16', '4 hours'], ['32', '8 hours']];
+
+const $ = id => document.getElementById(id);
+const pairSel = $('pair');
+for (const p of PAIRS) pairSel.add(new Option(p, p));
+for (const [v, label] of HORIZONS) $('horizon').add(new Option(label, v));
+$('horizon').value = '16';
+
+{ const q = new URLSearchParams(location.search);
+  const qp = (q.get('pair') || '').toUpperCase();
+  if (PAIRS.includes(qp)) pairSel.value = qp;
+  const qg = (q.get('gran') || '').toUpperCase();
+  if (qg === 'M15' || qg === 'M5') $('gran').value = qg;
+}
+
+const view = createLevelChart($('chart'), { height: 480 });
+const chart = view.chart;
+
+let bars = [], ctxA = null, ctxB = null, fit = null, extraSeries = [];
+const toggles = { a: true, b: true, blend: true };
+
+function priceFmt() {
+  const d = priceDigits(pairSel.value);
+  return { type: 'price', precision: d, minMove: Math.pow(10, -d) };
+}
+function clearExtra() {
+  for (const s of extraSeries) { try { chart.removeSeries(s); } catch {} }
+  extraSeries = [];
+}
+function line(color, width, style) {
+  const s = chart.addLineSeries({ color, lineWidth: width, lineStyle: style, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, priceFormat: priceFmt() });
+  extraSeries.push(s);
+  return s;
+}
+function drawCone(cone, color, dashed) {
+  if (!cone) return;
+  const t0 = { time: cone.anchorTime, value: cone.anchor };
+  const mk = k => [t0, ...cone.steps.map(s => ({ time: s.time, value: s[k] }))];
+  line(color, 2, 0).setData(mk('center'));
+  line(color, 1, dashed ? 2 : 2).setData(mk('p50Up'));
+  line(color, 1, dashed ? 2 : 2).setData(mk('p50Dn'));
+  line(color, 1, 3).setData(mk('p75Up'));
+  line(color, 1, 3).setData(mk('p75Dn'));
+}
+
+function fmtCoverage(t) {
+  const vals = t.perStep.map(s => s.c50).filter(v => v != null);
+  const vals75 = t.perStep.map(s => s.c75).filter(v => v != null);
+  const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const c50 = avg(vals), c75 = avg(vals75);
+  const cls = (c, claim) => c == null ? '' : Math.abs(c - claim) < 0.08 ? 'good' : Math.abs(c - claim) < 0.15 ? 'warn' : 'bad';
+  const pct = c => c == null ? '—' : (c * 100).toFixed(0) + '%';
+  const dir = t.direction.hitRate;
+  return `<td>${t.n}</td><td class="${cls(c50, 0.5)}">${pct(c50)}</td><td class="${cls(c75, 0.75)}">${pct(c75)}</td><td>${dir == null ? '—' : (dir * 100).toFixed(0) + '%'}</td>`;
+}
+
+function render() {
+  if (!ctxA || !ctxB) return;
+  clearExtra();
+  const H = +$('horizon').value;
+  const i = bars.length;
+  view.setCandles(bars);
+
+  const coneA = intradayCone(ctxA, i, H);
+  const coneB = analogCone(ctxB, i, H);
+  let blend = null, wA = null, bucketTrusted = false;
+  if (coneA && coneB) {
+    if (fit) {
+      wA = weightAFor(fit, coneB.target.regime, coneB.target.vol);
+      bucketTrusted = fit.bucketWeights.get(`${coneB.target.regime}_${coneB.target.vol}`) != null;
+    } else wA = 0.5;
+    blend = blendCones(coneA, coneB, wA);
+  }
+
+  if (toggles.a) drawCone(coneA, '#5b9dff');
+  if (toggles.b) drawCone(coneB, '#c084fc');
+  if (toggles.blend) drawCone(blend, '#34d399');
+
+  chart.timeScale().setVisibleLogicalRange({ from: bars.length - Math.max(90, H * 6), to: bars.length + H + 4 });
+
+  const dg = priceDigits(pairSel.value);
+  let html = '';
+  if (coneA) html += `<div class="kv"><span>Cone A anchor / σ per bar</span><b>${coneA.anchor.toFixed(dg)} / ${(coneA.sigmaBar * 100).toFixed(3)}%</b></div>`;
+  if (coneB) {
+    html += `<div class="kv"><span>Cone B state</span><b>${coneB.target.regime} · ${coneB.target.vol} vol</b></div>`;
+    html += `<div class="kv"><span>Cone B analogs</span><b class="${coneB.lowConfidence ? 'warn' : 'good'}">${coneB.nAnalogs} windows / ${coneB.nEpisodes} episodes</b></div>`;
+    if (coneB.lowConfidence) html += `<div class="muted">below minAnalogs (${coneB.minAnalogs}) — thin sample, treat the analog band loosely</div>`;
+  } else html += `<div class="muted">Cone B: not enough history for this state yet</div>`;
+  $('info').innerHTML = html || '<span class="muted">not enough history at this date</span>';
+
+  if (wA != null) {
+    $('weightInfo').innerHTML =
+      `<div class="kv"><span>weight A (model) / B (analog)</span><b>${(wA * 100).toFixed(0)}% / ${((1 - wA) * 100).toFixed(0)}%</b></div>` +
+      `<div class="muted">${bucketTrusted ? `this pair's own (${coneB?.target.regime}, ${coneB?.target.vol}) bucket had enough graded windows` : 'bucket too thin — using the global fallback weight'}</div>`;
+  }
+}
+
+let _calibToken = 0;
+function runCalibration() {
+  const token = ++_calibToken;
+  const H = +$('horizon').value;
+  $('calib').innerHTML = '<span class="muted">fitting weights + grading out-of-sample…</span>';
+  setTimeout(() => {
+    if (token !== _calibToken) return; // superseded by a newer load/horizon change
+    try {
+      fit = fitBlendWeights(bars, H, { ctxA, ctxB });
+      const cal = blendCalibration(bars, H, { fit, ctxA, ctxB });
+      if (token !== _calibToken) return;
+      $('calib').innerHTML =
+        `<table><thead><tr><th>cone</th><th>n</th><th>P50 (claim 50%)</th><th>P75 (claim 75%)</th><th>direction</th></tr></thead><tbody>` +
+        `<tr><td>Blend</td>${fmtCoverage(cal.blend)}</tr>` +
+        `<tr><td>Cone A alone</td>${fmtCoverage(cal.coneA)}</tr>` +
+        `<tr><td>Cone B alone</td>${fmtCoverage(cal.coneB)}</tr>` +
+        `</tbody></table>` +
+        `<div class="muted" style="margin-top:6px">Weights fit on [0, ${cal.isEnd}); graded on [${cal.oosStart}, ${bars.length}) — ${cal.oosWindows} non-overlapping OOS windows. ` +
+        `${cal.fit.nTrustedBuckets}/${cal.fit.nBuckets} (regime, vol) buckets had ≥15 graded windows during fitting; the rest used the global ${(cal.fit.globalWeightA * 100).toFixed(0)}% weight.</div>`;
+      render(); // live weight lookup now has a fitted `fit`
+    } catch (err) {
+      if (token !== _calibToken) return;
+      $('calib').innerHTML = `<span class="err">${err.message}</span>`;
+    }
+  }, 30);
+}
+
+async function load() {
+  const gran = $('gran').value, pair = pairSel.value;
+  $('status').textContent = `loading ${gran}…`; $('status').className = '';
+  try {
+    const today = new Date().toISOString().substring(0, 10);
+    const fromD = new Date(Date.now() - LOOKBACK_DAYS[gran] * 86400e3).toISOString().substring(0, 10);
+    const url = `/api/weekly-vol-backtest/${gran.toLowerCase()}/${pair.toLowerCase()}?from=${fromD}&to=${today}`;
+    const j = await fetch(url, { signal: AbortSignal.timeout(45_000) }).then(r => r.json());
+    if (!j.ok) throw new Error(j.error || 'candle fetch failed');
+    bars = j.candles;
+    if (bars.length < INTRADAY_DEFAULTS.warmupBars + 600) throw new Error(`only ${bars.length} bars — not enough history for the analog cone's warmup + a real IS/OOS split`);
+    view.series.applyOptions({ priceFormat: priceFmt() });
+    ctxA = buildIntradayContext(bars);
+    ctxB = buildAnalogContext(bars);
+    fit = null;
+    $('status').textContent = `${bars.length} bars`;
+    render();
+    runCalibration();
+  } catch (err) {
+    $('status').textContent = err.message + ' — on a local sandbox OANDA is unreachable (Railway only)';
+    $('status').className = 'err';
+  }
+}
+
+for (const id of ['tA', 'tB', 'tBlend']) {
+  $(id).onclick = () => {
+    const key = id === 'tA' ? 'a' : id === 'tB' ? 'b' : 'blend';
+    toggles[key] = !toggles[key];
+    $(id).classList.toggle('on', toggles[key]);
+    render();
+  };
+}
+$('load').onclick = load;
+$('gran').onchange = () => { $('horizon').value = '16'; load(); };
+pairSel.onchange = load;
+$('horizon').onchange = () => { render(); runCalibration(); };
+
+load();
+</script>
+</body>
+</html>

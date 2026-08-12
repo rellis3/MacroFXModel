@@ -219,8 +219,14 @@ export function runCogV3(dailyDataset, h1Bars, cfg = {}) {
     const entry = entryBar.o;
     const stopPct = Math.max(+(on.rangePct * stopMultiplier).toFixed(4), minStopPct);
     const leverage = riskPct / stopPct;
+    // INCLUDES the entry bar. You fill at its OPEN, so that bar's own high and
+    // low are real exposure — excluding it hands the trade a free hour through
+    // the 13:30 UTC cash open, which is exactly what falsified QMR on
+    // 2026-07-29. Every result this engine produced before this fix (including
+    // the cross-asset direction null, dirAlpha -0.044) was measured with that
+    // free hour and does not stand.
     const afterEntry = dayBars
-      .filter(b => b.t.substring(11, 13) > entryBar.t.substring(11, 13))
+      .filter(b => b.t.substring(11, 13) >= entryBar.t.substring(11, 13))
       .sort((a, b) => a.t.localeCompare(b.t));
 
     const walk = walkTrade(afterEntry, dir, entry, stopPct, tpPct);

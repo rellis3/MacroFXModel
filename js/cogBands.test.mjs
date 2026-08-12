@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computeCogBands, COG_CONST } from './cogBands.js';
+import { computeCogBands, computeCogV2Bands, COG_CONST } from './cogBands.js';
 import { computeBands } from './forecastCore.js';
 
 test('computeCogBands: fractions are COG constants × σ, no asset-class correction', () => {
@@ -35,4 +35,24 @@ test('computeCogBands is uniform where computeBands (Feller) is class-dependent'
 test('computeCogBands: output keys match computeBands (drop-in shape)', () => {
   const cog = new Set(Object.keys(computeCogBands(100, 0.01)));
   for (const k of Object.keys(computeBands(100, 0.01, 'fx'))) assert.ok(cog.has(k), `missing key ${k}`);
+});
+
+test('computeCogV2Bands: gold uses forecaster per-asset bands (no COG widening)', () => {
+  const open = 2000, sigma = 0.01;
+  const v2gold = computeCogV2Bands(open, sigma, 'commodity');
+  const feller = computeBands(open, sigma, 'commodity');
+  const cog    = computeCogBands(open, sigma);
+  // gold leg == forecaster commodity bands, NOT COG's uniform (wider) median
+  assert.ok(Math.abs(v2gold.hl50 - feller.hl50) < 1e-12, 'gold == forecaster commodity');
+  assert.ok(v2gold.hl50 < cog.hl50, 'gold median tighter than COG (no widening)');
+});
+
+test('computeCogV2Bands: fx & indices stay COG (unchanged)', () => {
+  const open = 100, sigma = 0.01;
+  for (const ac of ['fx', 'index']) {
+    const v2 = computeCogV2Bands(open, sigma, ac);
+    const cog = computeCogBands(open, sigma);
+    assert.ok(Math.abs(v2.hl50 - cog.hl50) < 1e-12 && Math.abs(v2.hl75 - cog.hl75) < 1e-12,
+      `${ac} == COG`);
+  }
 });

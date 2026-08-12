@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Continuation vs Fade — Live Decision Zone Ticker</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--gold:#f4c430;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding:18px;max-width:920px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:2px}
+  .sub{color:var(--text2);margin-bottom:16px;font-size:13px}
+  .sub a{color:var(--blue)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border);color:var(--text2);margin-left:8px;vertical-align:middle}
+  .badge.warn{color:var(--amber);border-color:rgba(210,153,34,.4)}
+  .toprow{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px}
+  label{display:block;font-size:11px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+  select,input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:13px}
+  button{background:var(--blue);border:none;color:#fff;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--card2);border:1px solid var(--border);color:var(--text2)}
+  button:hover{filter:brightness(1.15)}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px}
+
+  /* ── Zone header ─────────────────────────────────────────────── */
+  .zhead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .zpair{font-size:15px;font-weight:700;color:var(--gold);letter-spacing:.02em}
+  .zprice{font-family:'DM Mono',ui-monospace,monospace;font-size:26px;font-weight:700;transition:color .25s}
+  .zprice.up{color:var(--green)} .zprice.down{color:var(--red)}
+  .zsub{color:var(--text3);font-size:11.5px}
+  .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 2s infinite}
+  .live-dot.stale{background:var(--text3);animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .status-banner{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;margin:12px 0;font-weight:700;font-size:13px;letter-spacing:.03em;border:1px solid var(--border);transition:all .25s}
+  .status-banner.watching{color:var(--text3);background:rgba(110,118,129,.08)}
+  .status-banner.approaching{color:var(--blue);background:rgba(79,125,240,.1);border-color:rgba(79,125,240,.35)}
+  .status-banner.testing{color:var(--amber);background:rgba(210,153,34,.1);border-color:rgba(210,153,34,.4)}
+  .status-banner.confirmed-continuation{color:var(--green);background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.45)}
+  .status-banner.confirmed-fade{color:var(--red);background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.45)}
+
+  .usd-gate{display:none;align-items:center;gap:10px;padding:9px 14px;border-radius:8px;margin:0 0 12px;font-weight:700;font-size:13px;border:1px solid}
+  .usd-gate.show{display:flex}
+  .usd-gate.aligned{color:var(--green);background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.45)}
+  .usd-gate.opposed{color:var(--red);background:rgba(248,81,73,.12);border-color:rgba(248,81,73,.45)}
+  .status-banner.tied{color:var(--amber);background:rgba(210,153,34,.1);border-color:rgba(210,153,34,.4)}
+
+  .quality-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .quality-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .qbar{flex:1;height:8px;background:var(--card2);border-radius:5px;overflow:hidden}
+  .qbar>div{height:100%;background:linear-gradient(90deg,var(--amber),var(--gold));transition:width .4s}
+  .qval{font-weight:700;font-size:14px;min-width:48px;text-align:right}
+
+  /* ── Continuation vs Fade duel bar ───────────────────────────── */
+  .duel{margin:16px 0}
+  .duel-labels{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px}
+  .duel-labels .c{color:var(--green)} .duel-labels .f{color:var(--red)}
+  .duel-bar{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--card2)}
+  .duel-bar .cseg{background:linear-gradient(90deg,#2ea043,var(--green));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#04220a;transition:width .4s}
+  .duel-bar .fseg{background:linear-gradient(90deg,var(--red),#d1332a);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#2a0503;transition:width .4s}
+  .duel-raw{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:5px}
+
+  .confidence-row{display:flex;align-items:center;gap:10px;margin:14px 0 4px}
+  .conf-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .conf-pill{padding:3px 12px;border-radius:20px;font-weight:700;font-size:13px;border:1px solid}
+  .conf-pill.hi{color:var(--green);border-color:rgba(63,185,80,.4);background:rgba(63,185,80,.08)}
+  .conf-pill.mid{color:var(--amber);border-color:rgba(210,153,34,.4);background:rgba(210,153,34,.08)}
+  .conf-pill.lo{color:var(--text3);border-color:var(--border);background:var(--card2)}
+
+  .evidence{list-style:none;margin-top:10px}
+  .evidence li{padding:4px 0 4px 20px;position:relative;font-size:12.5px;color:var(--text2);border-bottom:1px solid rgba(48,54,61,.4)}
+  .evidence li:last-child{border-bottom:none}
+  .evidence li::before{content:'▸';position:absolute;left:0;color:var(--text3)}
+  .evidence li b{color:var(--text)}
+
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:12px}
+  .kv .k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .kv .v{font-size:14px;font-weight:600}
+
+  .err{color:var(--red);font-size:12.5px;margin-top:8px}
+  .muted{color:var(--text3);font-size:12px}
+  a{color:var(--blue)}
+  code{background:var(--card2);padding:1px 5px;border-radius:4px;font-size:12px;color:var(--blue)}
+</style>
+</head>
+<body>
+
+<h1>📡 Continuation vs Fade <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
+<div class="sub">Live decision-zone ticker: as price ticks, the engine re-asks decisionCore <b>both</b> questions at once — is this a continuation touch or a fade touch — off the same zone. Manual test harness: <a href="trade-decision-engine.html">trade-decision-engine.html</a></div>
+
+<div class="toprow">
+  <div>
+    <label>Pair</label>
+    <select id="pair"></select>
+  </div>
+  <div>
+    <label>Mode</label>
+    <select id="mode">
+      <option value="live">live (OANDA)</option>
+      <option value="synthetic">synthetic (demo)</option>
+    </select>
+  </div>
+  <div>
+    <label>Poll</label>
+    <select id="pollMs">
+      <option value="2500">2.5s</option>
+      <option value="4000" selected>4s</option>
+      <option value="8000">8s</option>
+    </select>
+  </div>
+  <button id="btnPause">⏸ Pause</button>
+</div>
+
+<div class="card" id="zoneCard">
+  <div class="zhead">
+    <div>
+      <span class="zpair" id="zPair">GOLD</span>
+      <span class="zsub" id="zZoneInfo"></span>
+    </div>
+    <div style="text-align:right">
+      <div class="zprice" id="zPrice"><span class="live-dot" id="liveDot"></span>—</div>
+      <div class="zsub" id="zAge">waiting for first tick…</div>
+    </div>
+  </div>
+
+  <div class="status-banner watching" id="statusBanner">WATCHING — no decision zone in reach</div>
+
+  <div class="usd-gate" id="usdGate"></div>
+
+  <div class="quality-row">
+    <div class="quality-label">Zone Quality</div>
+    <div class="qbar"><div id="qualityFill" style="width:0%"></div></div>
+    <div class="qval" id="qualityVal">—</div>
+  </div>
+
+  <div class="duel">
+    <div class="duel-labels"><span class="c" id="contLabel">CONTINUATION</span><span class="f" id="fadeLabel">FADE</span></div>
+    <div class="duel-bar">
+      <div class="cseg" id="contSeg" style="width:50%">—</div>
+      <div class="fseg" id="fadeSeg" style="width:50%">—</div>
+    </div>
+    <div class="duel-raw"><span id="contRaw">raw p —</span><span id="fadeRaw">raw p —</span></div>
+  </div>
+
+  <div class="confidence-row">
+    <div class="conf-label">Confidence</div>
+    <div class="conf-pill lo" id="confPill">—</div>
+    <div class="muted" id="confNote"></div>
+  </div>
+
+  <ul class="evidence" id="evidenceList"></ul>
+
+  <div class="kv" id="contextKv"></div>
+
+  <div class="err" id="zdErr"></div>
+</div>
+
+<div class="card">
+  <h2 style="font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">How to read this</h2>
+  <div class="muted" style="line-height:1.7">
+    <b>WATCHING</b> — price is nowhere near a mapped decision zone; nothing to score.<br>
+    <b>APPROACHING</b> — a zone is in reach but price hasn't tested it closely yet (&gt;0.15σ away).<br>
+    <b>TESTING</b> — price is inside the zone right now; watch the bar move as new candles close.<br>
+    <b>CONFIRMED</b> — one hypothesis crossed the model's go-threshold; the bar shows which and how hard. Continuation and fade are scored as two <i>independent</i> go/skip questions, not a single either/or pick — both can clear the threshold at once. When they land within ~4 points of each other, the banner reads <b>CONFIRMED — TIED</b> instead of crowning a side: that's a real "go" on both, not a directional edge. The duel labels always show the resolved direction (<code>CONTINUATION · LONG</code>, etc.) as soon as a zone is hit, so you don't need to wait for CONFIRMED to know what each side means as a trade — continuation's direction comes from the day's trend regime (BULL/BEAR) when there is one, or the zone's breakout side when the day is RANGE-y; fade's direction is always the zone's position relative to today's open (fade an up-level = short back toward open, and vice versa).<br><br>
+    Continuation/Fade % are decisionCore's two independent <code>action:'follow'</code> / <code>action:'fade'</code> probabilities, renormalized to sum to 100% for the bar — the raw (non-renormalized) numbers are shown underneath. <b>Confidence</b> is a separate, uncalibrated heuristic: how far apart the two hypotheses have pulled, blended with snapshot freshness — a 51/49 read is never "confident" even when one side is technically ahead. Lines marked <span style="color:var(--gold)">◆ confirms</span> are gamma/OI positioning (dealer long-gamma = pinning/fade, short-gamma = amplifying/follow) and today's liquidity-sweep read at this zone (swept-and-rejected = fade, swept-and-held = follow) — real, computed reads, but carry <b>no weight in the probabilities above</b>, only a small nudge to the confidence pill. They stay unweighted in the model itself until a fit earns them a real weight OOS, same as every other candidate feature in this engine.<br><br>
+    The green/red <b>USD trend</b> banner above the duel bar is different from all of that — it's the one candidate that actually earned a directional call from the fit (110,883 events, OOS, 6/6 majors): fading WITH the prevailing cross-pair USD trend was after-cost-positive, fading AGAINST it lost −3.6bp. It's a <b>filter</b>, not a probability input, so it only appears for a fade winner on a USD major (EUR/GBP/AUD/NZD/USD, USD/CAD, USD/CHF) and says so directly — aligned or skip — rather than nudging a number.
+  </div>
+  <div class="muted" style="margin-top:10px"><code>GET /api/trade-decision/zone-duel?pair=gold&amp;mode=live</code></div>
+</div>
+
+<script>
+const PAIRS = ['gold','eurusd','gbpusd','usdjpy','audusd','usdcad','usdchf','nzdusd','eurgbp','eurjpy','gbpjpy','audjpy','euraud','eurchf','eurcad','eurnzd','gbpaud','gbpcad','gbpchf','gbpnzd','audcad','audchf','audnzd','cadjpy','chfjpy','nzdjpy','nq','spx','dow','rut','ftse','dax'];
+const $ = id => document.getElementById(id);
+PAIRS.forEach(p => { const o = document.createElement('option'); o.value = o.textContent = p; $('pair').appendChild(o); });
+
+let timer = null, paused = false, lastPrice = null;
+
+async function api(path) {
+  const r = await fetch(path);
+  return r.json();
+}
+
+async function health() {
+  try {
+    const h = await api('/api/trade-decision/health');
+    $('modelBadge').textContent = 'model ' + h.model_version;
+    if (!h.calibrated) $('calBadge').style.display = 'inline-block';
+  } catch { $('modelBadge').textContent = 'server unreachable'; }
+}
+
+function fmtPrice(p, pair) {
+  if (p == null) return '—';
+  const digits = pair === 'gold' ? 2 : (pair.includes('jpy') ? 3 : (['nq','spx','dow','rut','ftse','dax'].includes(pair) ? 1 : 5));
+  return p.toFixed(digits);
+}
+
+function confBand(c) {
+  if (c == null) return { cls: 'lo', label: '—' };
+  if (c >= 70) return { cls: 'hi', label: c + '% HIGH' };
+  if (c >= 40) return { cls: 'mid', label: c + '% MEDIUM' };
+  return { cls: 'lo', label: c + '% LOW' };
+}
+
+function render(d, pair) {
+  $('zdErr').textContent = '';
+  $('zPair').textContent = (d.display || pair).toUpperCase();
+
+  // Model badge — PER PAIR, from this tick's own response, not the static
+  // pair-agnostic /health check. Different pairs can be on different live
+  // models (modelV1 for the fitted FX majors, v0 elsewhere — decisionCore.js's
+  // defaultModelFor), so a badge set once at page load was stale/wrong as soon
+  // as you switched pairs or a pair got promoted.
+  if (d.model_version) {
+    $('modelBadge').textContent = 'model ' + d.model_version;
+    $('calBadge').style.display = d.calibrated ? 'none' : 'inline-block';
+  }
+
+  // Duel labels carry the resolved direction — always, not just once CONFIRMED —
+  // so "which way is continuation/fade actually asking to trade" never requires
+  // reading the banner text. Direction is resolved as soon as a zone is hit,
+  // independent of go/skip (decisionCore.buildEventFeatures).
+  $('contLabel').textContent = 'CONTINUATION' + (d.continuation?.direction ? ' · ' + d.continuation.direction.toUpperCase() : '');
+  $('fadeLabel').textContent = 'FADE' + (d.fade?.direction ? ' · ' + d.fade.direction.toUpperCase() : '');
+
+  const px = fmtPrice(d.price, pair);
+  const dir = lastPrice != null ? (d.price > lastPrice ? 'up' : d.price < lastPrice ? 'down' : '') : '';
+  lastPrice = d.price;
+  $('zPrice').innerHTML = `<span class="live-dot" id="liveDot"></span>${px}`;
+  $('zPrice').className = 'zprice ' + dir;
+  $('zAge').textContent = `${d.mode} · ${new Date().toLocaleTimeString()} · ${d.total_ms}ms`;
+
+  if (d.zone) {
+    $('zZoneInfo').textContent = `zone ${fmtPrice(d.zone.price, pair)} · ${d.zone.confluence} source(s) · ${d.zone.distance_sigma}σ away`;
+  } else {
+    $('zZoneInfo').textContent = '';
+  }
+
+  // Status banner
+  const banner = $('statusBanner');
+  banner.className = 'status-banner';
+  if (d.status === 'WATCHING') {
+    banner.classList.add('watching');
+    const why = (d.watching_reasons && d.watching_reasons.length) ? ` (${d.watching_reasons.join(', ')})` : '';
+    banner.textContent = `WATCHING — no decision zone in reach${why}`;
+  } else if (d.status === 'APPROACHING') {
+    banner.classList.add('approaching');
+    banner.textContent = 'APPROACHING — zone in reach, price has not tested it yet';
+  } else if (d.status === 'TESTING') {
+    banner.classList.add('testing');
+    banner.textContent = 'TESTING — price is inside the decision zone now';
+  } else if (d.status === 'CONFIRMED' && d.tied) {
+    // Both continuation AND fade independently cleared the go-threshold and
+    // landed within ~4pp of each other — a real "go" read on both sides, but
+    // NOT a directional edge. cp>=fp still has to pick something for `winner`
+    // internally, but crowning that a confident call here would be dishonest.
+    banner.classList.add('tied');
+    banner.textContent = `CONFIRMED — TIED (${d.continuation.pct}% / ${d.fade.pct}%) · both clear threshold, no real directional edge yet`;
+  } else if (d.status === 'CONFIRMED') {
+    banner.classList.add(d.winner === 'continuation' ? 'confirmed-continuation' : 'confirmed-fade');
+    const side = d.winner === 'continuation' ? d.continuation : d.fade;
+    banner.textContent = `CONFIRMED ${d.winner.toUpperCase()} — ${(side.direction || '').toUpperCase()} · size ${side.size_multiplier}x`;
+  }
+
+  // USD-trend gate — a direct filter, not evidence: only shown for a fade winner
+  // on a USD major, and it says SKIP outright when opposed rather than burying
+  // that in the list (FIT_FINDINGS.md Result 5: opposed fades lost OOS on 6/6
+  // majors; this is the one candidate that earned a real directional call).
+  const gate = $('usdGate');
+  if (d.usd_trend) {
+    gate.classList.add('show');
+    if (d.usd_trend.aligned) {
+      gate.className = 'usd-gate show aligned';
+      gate.textContent = '🟢 USD trend ALIGNED — the historically tradeable fade side';
+    } else {
+      gate.className = 'usd-gate show opposed';
+      gate.textContent = '🔴 USD trend OPPOSED — historically −3.6bp OOS. Skip, or wait for the other side.';
+    }
+  } else {
+    gate.className = 'usd-gate';
+    gate.textContent = '';
+  }
+
+  // Zone quality
+  $('qualityFill').style.width = (d.zone_quality ?? 0) + '%';
+  $('qualityVal').textContent = d.zone_quality != null ? d.zone_quality + '/100' : '—';
+
+  // Continuation vs fade duel bar (renormalized to 100 for display)
+  const cPct = d.continuation.pct, fPct = d.fade.pct;
+  if (cPct != null) {
+    $('contSeg').style.width = cPct + '%'; $('contSeg').textContent = cPct + '%';
+    $('fadeSeg').style.width = fPct + '%'; $('fadeSeg').textContent = fPct + '%';
+  } else {
+    $('contSeg').style.width = '50%'; $('contSeg').textContent = '—';
+    $('fadeSeg').style.width = '50%'; $('fadeSeg').textContent = '—';
+  }
+  $('contRaw').textContent = 'raw p ' + (d.continuation.probability != null ? (100 * d.continuation.probability).toFixed(1) + '%' : '—');
+  $('fadeRaw').textContent = 'raw p ' + (d.fade.probability != null ? (100 * d.fade.probability).toFixed(1) + '%' : '—');
+
+  // Confidence
+  const cb = confBand(d.confidence);
+  $('confPill').className = 'conf-pill ' + cb.cls;
+  $('confPill').textContent = cb.label;
+  $('confNote').textContent = d.confidence != null ? 'separation × freshness heuristic, not a fitted number' : 'no zone in reach';
+
+  // Evidence: top_factors from the winning (or higher-probability) side + context.
+  // confirming_signals (gamma/OI + liquidity-sweep) are unweighted candidates —
+  // they don't move the probabilities above, only the confidence pill — shown
+  // first and marked as such so that distinction stays visible, not implied.
+  const side = d.winner === 'fade' ? d.fade : d.continuation;
+  const items = [];
+  (d.confirming_signals || []).forEach(f => items.push(`<span style="color:var(--gold)">◆ confirms</span> ${f}`));
+  (side.top_factors || []).forEach(f => items.push(f));
+  if (d.regime) items.push(`regime <b>${d.regime}</b> · trend-day T ${d.T}`);
+  if (d.vol_percentile != null) items.push(`vol percentile <b>${(100 * d.vol_percentile).toFixed(0)}%</b>`);
+  if (d.htf_trend) items.push(`HTF trend <b>${d.htf_trend}</b>`);
+  if (d.macro) items.push(`macro <b>${d.macro.regime}</b> (align ${d.macro.align >= 0 ? '+' : ''}${d.macro.align})`);
+  if (d.oi) items.push(`gamma regime <b>${d.oi.side === 'positive' ? 'long (pinning)' : d.oi.side === 'negative' ? 'short (amplifying)' : d.oi.side}</b>${d.oi.near ? ' — near flip' : ''}`);
+  if (d.session_phase) items.push(`session <b>${d.session_phase}</b>`);
+  $('evidenceList').innerHTML = items.length ? items.map(i => `<li>${i}</li>`).join('') : '<li class="muted" style="padding-left:0">no evidence — zone not in reach</li>';
+
+  $('contextKv').innerHTML = d.zone ? `
+    <div><div class="k">Zone price</div><div class="v">${fmtPrice(d.zone.price, pair)}</div></div>
+    <div><div class="k">Confluence</div><div class="v">${d.zone.confluence}</div></div>
+    <div><div class="k">Distance</div><div class="v">${d.zone.distance_sigma}σ</div></div>
+    <div><div class="k">Sources</div><div class="v" style="font-size:11px;font-weight:400">${(d.zone.sources||[]).join(', ') || '—'}</div></div>
+  ` : '';
+}
+
+async function tick() {
+  if (paused) return;
+  const pair = $('pair').value, mode = $('mode').value;
+  const dot = $('liveDot');
+  try {
+    const d = await api(`/api/trade-decision/zone-duel?pair=${encodeURIComponent(pair)}&mode=${mode}`);
+    if (!d.ok) { $('zdErr').textContent = d.error || 'error'; if (dot) dot.classList.add('stale'); return; }
+    if (dot) dot.classList.remove('stale');
+    render(d, pair);
+  } catch (e) {
+    $('zdErr').textContent = 'fetch failed: ' + e.message;
+    if (dot) dot.classList.add('stale');
+  }
+}
+
+function restart() {
+  if (timer) clearInterval(timer);
+  tick();
+  timer = setInterval(tick, parseInt($('pollMs').value, 10));
+}
+
+$('pair').addEventListener('change', restart);
+$('mode').addEventListener('change', restart);
+$('pollMs').addEventListener('change', restart);
+$('btnPause').addEventListener('click', () => {
+  paused = !paused;
+  $('btnPause').textContent = paused ? '▶ Resume' : '⏸ Pause';
+});
+
+health();
+restart();
+</script>
+</body>
+</html>

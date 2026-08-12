@@ -77,6 +77,7 @@
       <div><label>Risk % / trade</label><input id="p_riskPct" style="width:88px"></div>
       <div><label>Round-trip cost %</label><input id="p_costPct" style="width:96px"></div>
       <div><label>Stop slippage %</label><input id="p_stopSlipPct" style="width:96px"></div>
+      <div><label>Exit hour UTC</label><input id="p_eodHour" style="width:88px"></div>
       <button class="ghost" onclick="resetDefaults();run()">Reset to defaults</button>
     </div>
     <p class="note">Defaults are per-instrument — gold trades far smaller % ranges than the equity
@@ -85,6 +86,18 @@
   </div>
 
   <div id="out" style="display:none">
+    <div class="warn" style="background:#2b0a0a;border-color:#b91c1c;color:#fca5a5">
+      <strong>⛔ WITHDRAWN 2026-07-29 — DO NOT TRADE OR SHARE THESE NUMBERS.</strong>
+      This engine walks exit bars <em>strictly after</em> the 13:00 UTC entry bar, so stops were not live
+      until 14:00. <strong>13:30 UTC is the NY cash open</strong> — every trade got a free pass through the
+      most volatile 30 minutes of the session while carrying a ~0.45% stop. Re-run on M1 with stops live
+      from the fill minute, same trades and period: <strong>Sharpe 1.56 → 0.06, total +167.8% → +0.03%</strong>.
+      The free hour was worth 0.1674%/trade against a total edge of 0.172%/trade — it <em>was</em> the edge.
+      <br><br>
+      The walk-forward (mean OOS 1.98), both-sides advantage, exit-rule tests and gold exit comparison all
+      inherit this and are void. The honest engine is <code>js/qmrV2Engine.js</code> via
+      <code>/api/qmr-v2/run</code>; see <code>FIX_TRACKER.md</code>.
+    </div>
     <div class="warn" id="banner"></div>
 
     <div class="panel"><h2>Headline — full sample</h2><div class="grid" id="head"></div></div>
@@ -110,6 +123,10 @@
     <div class="panel"><h2>Monthly returns</h2><div style="overflow-x:auto"><table class="heat" id="heat"></table></div>
       <p class="note">Read the recent rows in isolation before trusting the headline — a strong
       full-sample average can hide a decayed last 12–24 months.</p></div>
+
+    <div class="panel"><h2>Exit rule — tested from both directions</h2>
+      <div style="overflow-x:auto"><table id="exitTable"></table></div>
+      <p class="note" id="exitNote"></p></div>
 
     <div class="panel"><h2>Cost sensitivity — the load-bearing assumption</h2>
       <div style="overflow-x:auto"><table id="costTable"></table></div>
@@ -144,19 +161,27 @@ const INST_DEFAULTS={
   NAS100_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   SPX500_USD:{gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
   US30_USD:  {gate1Threshold:0.60,gate2MinMovePct:0.10,stopMultiplier:0.45,minRangePct:0.15,tpPct:1.50,riskPct:1.00},
-  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00},
+  XAU_USD:   {gate1Threshold:0.60,gate2MinMovePct:0.05,stopMultiplier:0.45,minRangePct:0.10,tpPct:0.80,riskPct:1.00,costPct:0.01521,eodHour:19},  // 19:00 + its own measured cost: walk-forward AGREED (OOS 0.34 -> 0.59), so it is now the default. Gold overall still fails the t>=2 bar.
 };
-const COST_DEFAULTS={costPct:0.008,stopSlipPct:0.005};
-const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct'];
+const COST_DEFAULTS={costPct:0.00937,stopSlipPct:0.005,eodHour:20}  // NAS100 MEASURED round-trip; gold overrides below;
+const PARAM_IDS=['gate1Threshold','gate2MinMovePct','stopMultiplier','minRangePct','tpPct','riskPct','costPct','stopSlipPct','eodHour'];
 
 // Walk-forward results actually RUN, keyed by instrument+mode. Anything not in
 // here has never been walk-forwarded and the page must say so rather than
 // implying NQ's number applies — a hardcoded banner would have shown NQ's
 // 2.31 while displaying gold's card.
+// M1 intrabar validation — the H1 exit walk re-run on real 1-minute bars.
+// Keyed instrument|mode, only where actually run.
+const M1V={
+  'NAS100_USD|bothsides':   {n:590,cover:97,diff:-0.0018,t:-0.15,disagree:36.1},
+  'NAS100_USD|directional': {n:590,cover:97,diff:-0.0092,t:-0.60,disagree:23.9},
+  'XAU_USD|directional':    {n:673,cover:97,diff:-0.0064,t:-0.99,disagree:34.3},
+};
+
 const WF={
-  'NAS100_USD|bothsides':  {sharpe:2.17,t:4.69,pos:'8/8',worst:'+1.1%'},  // joint-walk re-measure 2026-07-29 (was 2.31 under the old averaging method)
+  'NAS100_USD|bothsides':  {sharpe:1.98,t:3.74,pos:'7/8',worst:'-4.5%'},  // at the MEASURED 0.937bp spread. Was 2.17/8/8/+1.1% at the 0.8bp assumption.
   'NAS100_USD|directional':{sharpe:1.18,t:2.56,pos:'6/8',worst:'-11.2%'},
-  'XAU_USD|directional':   {sharpe:0.83,t:1.59,pos:'4/8',worst:'-6.1%'},
+  'XAU_USD|directional':   {sharpe:0.59,t:1.15,pos:'4/8',worst:'n/a'},   // 19:00 exit at the MEASURED 1.521bp. The old 0.83 was priced at 0.8bp, 2.7x below gold's real spread. 20:00 exit scores 0.34. Fix is real; gold still misses the t>=2 bar.
 };
 
 function resetDefaults(){
@@ -189,6 +214,13 @@ function render(j){
     : `<br><strong>⚠ This instrument + construction has NOT been walk-forwarded.</strong> Every number below
        is a single full-sample fit. Do not read it as out-of-sample evidence — the chronological 70/30 split
        further down is one holdout, which is much weaker than a walk-forward.`;
+  const mv=M1V[j.instrument+'|'+j.mode];
+  const mvLine = mv
+    ? `<br><strong>M1 intrabar validation:</strong> the H1 exit walk re-run on real 1-minute bars over
+       ${mv.n} trades (${mv.cover}% coverage) differs by <strong>${mv.diff}%/trade (t=${mv.t})</strong> —
+       indistinguishable from noise. ${mv.disagree}% of individual days resolve differently, but the errors
+       are unbiased and cancel, so the H1 stop-before-target assumption is not flattering these numbers.`
+    : '';
   $('banner').innerHTML = (bothSides
     ? `<strong>Both-sides construction.</strong> Long and short opened together at half size each, so total
        notional — and therefore total cost — equals one full position. It exists because the direction call
@@ -198,7 +230,7 @@ function render(j){
        construction discards a signal that appears to work.
        <strong>Requires a hedging-enabled account</strong> — a netting account flattens the two legs to zero
        and the construction ceases to exist.`
-    : `<strong>Directional construction</strong> — the incumbent live system.`) + wfLine;
+    : `<strong>Directional construction</strong> — the incumbent live system.`) + wfLine + mvLine;
 
   $('head').innerHTML =
       cell(sgn(j.totalReturn)+'%','Total return',j.totalReturn>=0?'pos':'neg')
@@ -241,7 +273,7 @@ function render(j){
     + cell(f(j.excessKurtosis),'Excess kurtosis')
     + cell(j.positiveMonths+' / '+j.negativeMonths,'Pos / neg months');
 
-  drawFlat(j); drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
+  drawExit(j); drawFlat(j); drawCurve(j.curve); drawHeat(j.monthly); drawMC(j.trades.map(t=>t.ret)); drawCost(j);
 
   const lev=(j.config.riskPct/ (j.trades.reduce((s,t)=>s+t.stopPct,0)/j.trades.length)).toFixed(2);
   $('exportNote').innerHTML=`Account size <strong>$${(+$('acct').value).toLocaleString()}</strong>.
@@ -358,6 +390,35 @@ function drawFlat(j){
      <br><br>
      The <strong>Currency P&amp;L CSV export is already on this fixed-stake basis</strong> — constant risk per
      row, no compounding — so it reconciles to this card, not to the one above.`;
+}
+
+// The exit rule was challenged from BOTH sides and survived both. Shown on the
+// page because "we tested the alternatives and they were worse" is stronger
+// evidence than a headline number, and because the losing tests are the ones a
+// reader would otherwise have to take on trust.
+function drawExit(j){
+  if(j.instrument!=='NAS100_USD'){$('exitTable').innerHTML='';$('exitNote').innerHTML=
+    '<span class="muted">Both challenges were run on NAS100. Not yet repeated for this instrument.</span>';return;}
+  $('exitTable').innerHTML=
+    '<tr><th>Variant</th><th>Sharpe</th><th>Mean/trade</th><th>Equity</th><th>Verdict</th></tr>'
+   +'<tr><td style="text-align:left">Stop 0.45% · target 1.5% · EOD close <span class="muted">(current)</span></td>'
+   +'<td class="pos">1.53</td><td class="pos">+0.172%</td><td>2.50</td><td style="text-align:left">—</td></tr>'
+   +'<tr><td style="text-align:left">Remove the TARGET, keep the clock</td><td class="pos">1.74</td>'
+   +'<td class="pos">+0.230%</td><td>3.75</td><td style="text-align:left" class="neg">Rejected — 10 trades supply 78% of the gain, 2022 alone 82%, and the walk-forward chose it in 0 of 8 windows</td></tr>'
+   +'<tr><td style="text-align:left">Remove the CLOCK, keep the target</td><td class="neg">—</td>'
+   +'<td class="neg">-0.093%</td><td class="neg">0.47</td><td style="text-align:left" class="neg">Rejected — 101 of 609 trades (16.6%) gap through the stop; t = -4.11</td></tr>';
+  $('exitNote').innerHTML=
+    `<strong>Removing the target</strong> looks better on the full sample (Sharpe 1.74 vs 1.53) but the gain is
+     carried by 10 trades out of 609 — 2022 alone supplies 82% of it, dominated by the October CPI reversal —
+     and the walk-forward independently rejected it in <strong>8 of 8</strong> windows.
+     <br><br>
+     <strong>Removing the EOD close</strong> does exactly what the thesis predicts: target hits DOUBLE, 70 → 140.
+     But 101 trades gap straight through the stop, and a stop only caps a loss while the market is continuous —
+     at ~3.5× leverage a 1% gap against a 0.45% stop is about −2.2R. It turns +0.172%/trade into
+     <strong>−0.093%</strong> (t = −4.11), equity 2.50 → 0.47.
+     <br><br>
+     So the EOD close is <strong>not an arbitrary clock — it is what keeps the stop a stop.</strong> The current
+     exit rule is the one that survives being attacked from both ends.`;
 }
 
 function drawCost(j){

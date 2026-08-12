@@ -26,6 +26,20 @@ Pure: no network / clock / broker. Offline-testable (oi_bot/engine_test.py).
 from __future__ import annotations
 
 
+def position_mode(comment: str) -> str | None:
+    """Which MODE (fade/break/maxpain/react) a live position belongs to, parsed
+    from the dedup tag its order comment carries ("OI [fade_sell_4300]", runner
+    legs "[…~r]"). The time-based exit keys its per-mode max hold off this —
+    the position itself is the only durable record once the plan has rolled.
+    None when the comment has no recognisable tag (never guess a mode)."""
+    c = str(comment or "")
+    i, j = c.find("["), c.find("]")
+    if i < 0 or j <= i + 1:
+        return None
+    mode = c[i + 1:j].split("~")[0].split("_")[0]
+    return mode if mode in ("fade", "break", "maxpain", "react") else None
+
+
 def zone_id(z: dict) -> str:
     """Stable one-shot key — same across intraday plan re-publishes so a restamped
     plan can't double-enter a zone already taken. The level is formatted compactly
@@ -53,8 +67,25 @@ def arm_above(z: dict, plan_spot: float) -> bool:
 
 def should_fire(z: dict, px: float, plan_spot: float, tol: float = 0.0) -> bool:
     """Has live price reached this zone's entry from the side the plan placed it?
-    maxpain fires immediately (fade from current toward the pin)."""
+
+    maxpain fires on the next tick — but RE-VALIDATED against live price when the
+    plan stamped ``minDist`` (the extended-from-pin threshold, price units): the
+    build-time "price is extended" check is stale by the time the bot loads the
+    plan (or restarts — maxpain is exempt from priming by design), and entering a
+    reversion after price already reverted trades an edge that is spent. Fire only
+    while price is still ≥ minDist from the pin ON THE PLANNED SIDE. Plans without
+    minDist keep the old fire-immediately behaviour."""
     if z.get("mode") == "maxpain":
+        try:
+            md = float(z["minDist"]) if z.get("minDist") is not None else None
+        except (TypeError, ValueError):
+            md = None
+        if md and md > 0:
+            lvl = float(z.get("level", 0))
+            if z.get("side") == "sell":
+                return px - lvl >= md
+            if z.get("side") == "buy":
+                return lvl - px >= md
         return True
     entry = float(z.get("entry", 0))
     if arm_above(z, plan_spot):
@@ -64,7 +95,9 @@ def should_fire(z: dict, px: float, plan_spot: float, tol: float = 0.0) -> bool:
 
 def make_spec(instrument: str, z: dict) -> dict:
     """A ready-to-execute order spec from a fired zone (direction, protective stop,
-    take-profit, size multiplier + the rationale for the comment/audit)."""
+    take-profit, size multiplier + the rationale for the comment/audit). Carries the
+    plan's hold-score/conviction stamps through so the executor can log them as the
+    trade's features (the hold-calibration inputs)."""
     return {
         "instrument": instrument,
         "zone_id": zone_id(z),
@@ -75,10 +108,46 @@ def make_spec(instrument: str, z: dict) -> dict:
         "level": z.get("level"),
         "sl": float(z["sl"]) if z.get("sl") is not None else None,
         "tp": _tp(z),
+        "tp2": float(z["tp2"]) if z.get("tp2") is not None else None,   # runner target (scale-out)
         "size_factor": float(z.get("sizeFactor", 1.0) or 1.0),
         "regime": z.get("regime"),
         "rationale": z.get("rationale", ""),
+        "hold": z.get("hold"),
+        "hold_parts": z.get("holdParts"),
+        "conviction": z.get("conviction"),
     }
+
+
+def stack_conflict(symbols, dir_up: bool, entry: float, open_positions: list,
+                   min_dist: float) -> dict | None:
+    """Return the first OPEN position that would make a new entry a redundant stack —
+    same instrument (any spelling in ``symbols``), same direction, and within
+    ``min_dist`` (price units) of ``entry`` — else ``None``.
+
+    Two zones that point the same way at nearly the same price are ONE bet, not two
+    (the wall fade + the max-pain reversion + a react-at-levels long all cluster near
+    the pin), so opening both silently doubles the open risk on a single directional
+    view — exactly what the Effective-Bets panel flags. The executor uses this to
+    refuse (defer, not burn) the second one.
+
+    ``symbols`` is a set/collection because the broker book may key by the canonical
+    key (paper) or the venue symbol (MT5) — pass both. ``min_dist <= 0`` only blocks
+    an exact-price duplicate; a negative ``min_dist`` disables the check entirely."""
+    if min_dist is None or min_dist < 0:
+        return None
+    want = "BUY" if dir_up else "SELL"
+    for p in (open_positions or []):
+        if p.get("symbol") not in symbols or p.get("direction") != want:
+            continue
+        op = p.get("open_price")
+        if op is None:
+            continue
+        try:
+            if abs(float(op) - float(entry)) <= min_dist:
+                return p
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 class OISession:
@@ -90,7 +159,13 @@ class OISession:
                   "hit but no trade" is legible: you can see whether the zone was
                   marked while price sat on the level or long after it had left, and
                   how far past the entry price already was (``past``).
-    ``entered`` — zones a position has been opened for (fire once, ever)."""
+    ``entered`` — zones a position has been opened for (fire once, ever).
+    ``touches`` — how many times price has REACHED each zone's trigger (rising-edge
+                  count) — telemetry for the hold-score calibration (a first-touch
+                  fade and a fourth-test fade are different trades).
+    ``streak``  — consecutive firing ticks per zone; break zones only emit once the
+                  streak reaches ``break_confirm`` (the wick filter: a single poke
+                  through wall+breakPips on a 3s poll is not a decisive break)."""
 
     def __init__(self, instrument: str, spot: float, zones: list | None = None):
         self.instrument = instrument
@@ -98,6 +173,9 @@ class OISession:
         self.zones = list(zones or [])
         self.primed: dict[str, dict] = {}
         self.entered: set[str] = set()
+        self.touches: dict[str, int] = {}
+        self.streak: dict[str, int] = {}
+        self._firing: dict[str, bool] = {}       # last-tick trigger state (edge detection)
 
     def set_zones(self, spot, zones) -> None:
         """Adopt a refreshed plan slice WITHOUT losing one-shot state (a re-published
@@ -106,13 +184,19 @@ class OISession:
             self.spot = float(spot)
         self.zones = list(zones or [])
 
-    def decide(self, px: float, dry_run: bool = False, tol: float = 0.0, now: float | None = None) -> list:
+    def decide(self, px: float, dry_run: bool = False, tol: float = 0.0, now: float | None = None,
+               break_confirm: int = 0) -> list:
         """Zones that fire at ``px`` this tick. ``dry_run`` primes (marks fade/break
         zones already past their entry) instead of returning specs — used once on
         load so overnight crossings don't retro-enter. ``now`` (epoch seconds, injected
         so the engine stays clock-free) is stamped onto each new primed record; with
         the price + entry it makes clear whether a zone was primed on the level or
-        long after price had left it."""
+        long after price had left it.
+
+        ``break_confirm`` (live ticks only): a ``break`` zone must satisfy its trigger
+        on this many CONSECUTIVE decide() calls before it fires — a wick through the
+        trigger on one poll is not a decisive break. 0 = fire on first touch
+        (unchanged). Touch counts (rising edges of the trigger) are kept per zone."""
         if px is None:
             return []
         out = []
@@ -120,7 +204,13 @@ class OISession:
             zid = zone_id(z)
             if zid in self.entered or zid in self.primed:
                 continue
-            if not should_fire(z, px, self.spot, tol):
+            firing = should_fire(z, px, self.spot, tol)
+            if not dry_run:
+                if firing and not self._firing.get(zid, False):
+                    self.touches[zid] = self.touches.get(zid, 0) + 1
+                self._firing[zid] = firing
+                self.streak[zid] = (self.streak.get(zid, 0) + 1) if firing else 0
+            if not firing:
                 continue
             if dry_run:
                 if z.get("mode") != "maxpain":     # maxpain enters near current price → never primed away
@@ -131,6 +221,8 @@ class OISession:
                         "past": round(abs(float(px) - entry), 6),   # how far price was ALREADY past the entry
                     }
             else:
+                if z.get("mode") == "break" and break_confirm > 0 and self.streak.get(zid, 0) < break_confirm:
+                    continue                        # dwell not met yet — wick filter
                 out.append(make_spec(self.instrument, z))
         return out
 

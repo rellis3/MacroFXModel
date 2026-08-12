@@ -26,6 +26,11 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //                   price pulled to max pain, walls hold.
 //      • BREAKOUT → dealers short gamma, moves amplified,
 //                   wall breaks tend to run.
+//    When the paste carries a "· gex-bands" line, the tint is
+//    resolved by PRICE ZONE instead of one whole-chart colour
+//    (net-GEX sign is a book average that hides short-gamma
+//    pockets): long gamma (PIN) below a zero-gamma crossing,
+//    short (BREAKOUT) above, flipping at each crossing.
 // 5. "Show ONLY OI levels" hides the confluence zones +
 //    POC/NPOC so you see just the option structure.
 // 6. POC and NPOC lines are computed live from the chart's
@@ -54,6 +59,10 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //   gex_flip             — total-net-GEX zero (the rigorous regime boundary)
 //   oi_volume            — heaviest TODAY's option volume (transient)
 //   exp_move_hi/lo       — option-implied expected-move band edges (± range to expiry, EOD)
+// WALL SUFFIX TOKENS (ordered ' . ' segments after the type): (1) expectation note,
+//   (2) gamma heat hot/warm/cold, (3) P(touch) e.g. 82%~2h, (4) hNN = HOLD score 0-100
+//   (react-vs-blow-through: per-strike dealer GEX · persistence · wall multiple — the
+//   same read the OI bot sizes its fades by; '-' in any slot = absent).
 
 // =====================================================
 // INPUTS — TICKER MAPPING (match your chart symbols)
@@ -91,6 +100,7 @@ czText = input.text_area(
 "\n" +
 "GOLD\n" +
 "· saved 6/18/2026, 08:15:00 · spot 2300.0 · DTE 4 · regime PIN\n" +
+"· gex-bands base=pin 2320.00=breakout\n" +
 "OI 2400.00 : call_wall t3\n" +
 "OI 2350.00 : max_pain\n" +
 "OI 2300.00 : put_wall t2\n" +
@@ -141,6 +151,8 @@ show_oi_lbl = input.bool(true, "Show OI Labels", group="OI Walls & Gamma")
 
 show_regime  = input.bool(true, "Show Gamma Regime Tint + Label", group="OI Walls & Gamma",
      tooltip="Tints the background by the pasted gamma regime (from net-GEX sign): PIN = walls hold / pull to max pain; BREAKOUT = wall breaks run. GEX-sign read only (the fuller classifier's gravity weighting needs live ATR, not in the paste).")
+regime_bands = input.bool(true, "Local GEX regime bands (price-zoned, not one tint)", group="OI Walls & Gamma",
+     tooltip="When the paste carries a '· gex-bands' line, shade the regime by PRICE ZONE — the net-GEX sign is a whole-book average that hides short-gamma pockets. Long dealer gamma (PIN) below a zero-gamma crossing, short (BREAKOUT) above it, flipping at each crossing. Falls back to the single background tint when no band data is present.")
 col_pin_bg   = input.color(color.new(color.teal,   90), "PIN Tint",      group="OI Walls & Gamma")
 col_break_bg = input.color(color.new(color.orange, 90), "BREAKOUT Tint", group="OI Walls & Gamma")
 
@@ -237,8 +249,20 @@ var string[] czTypes  = array.new_string()
 
 var float[]  oiPrices = array.new_float()
 var string[] oiTypes  = array.new_string()
+var string[] oiNotes  = array.new_string()   // expectation, e.g. "Reject (turns away)" / "Break (goes through)"
+var string[] oiHeats  = array.new_string()   // gamma heat at the level: "hot" / "warm" / "cold" (blank on older pastes)
+var string[] oiTouch  = array.new_string()   // calibrated P(touch) label, e.g. "82%~2h" (blank on older pastes)
+var string[] oiHold   = array.new_string()   // wall HOLD score token, e.g. "h72" (react-vs-blow-through; blank on older pastes)
 var int[]    oiTiers  = array.new_int()
+var int[]    oiDte    = array.new_int()       // expiry DTE of the level (0 = untagged / single-expiry paste)
+var int      oiMinDte = 0                      // nearest DTE among this symbol's tagged levels = the "day" set; larger = far context
 var string   oiRegime = na
+// Local GEX regime bands (from the export's "· gex-bands base=<r> <price>=<r> …" line):
+// oiBandBase = regime below the lowest zero-gamma crossing; oiBandBnds = crossing prices
+// (ascending); oiBandRegs = regime ABOVE each crossing. Bands flip PIN↔BREAKOUT at each.
+var string   oiBandBase = na
+var float[]  oiBandBnds = array.new_float()
+var string[] oiBandRegs = array.new_string()
 
 if barstate.isfirst
     sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
@@ -305,6 +329,24 @@ if barstate.isfirst
                     else if str.contains(rowUp, "PIN")
                         oiRegime := "PIN"
                     continue
+                // Local GEX regime bands: "· gex-bands base=<r> <price>=<r> …" (our symbol only)
+                if inSymBlock and str.contains(rowUp, "GEX-BANDS")
+                    bsegs = str.split(rowUp, "GEX-BANDS ")
+                    if array.size(bsegs) >= 2
+                        btoks = str.split(str.trim(array.get(bsegs, 1)), " ")
+                        for bi = 0 to array.size(btoks) - 1
+                            kv = str.split(str.trim(array.get(btoks, bi)), "=")
+                            if array.size(kv) == 2
+                                bk = str.trim(array.get(kv, 0))
+                                bv = str.trim(array.get(kv, 1))
+                                if bk == "BASE"
+                                    oiBandBase := bv
+                                else
+                                    bp = str.tonumber(bk)
+                                    if not na(bp)
+                                        array.push(oiBandBnds, bp)
+                                        array.push(oiBandRegs, bv)
+                    continue
                 // Symbol-header line
                 if not str.startswith(rawRow, "OI ") and f_isKnownTicker(rowUp) and str.length(rawRow) <= 12
                     inSymBlock := str.contains(rowUp, symUp)
@@ -319,14 +361,61 @@ if barstate.isfirst
                         rhsParts = str.split(rhs, " ")
                         typ      = array.size(rhsParts) >= 1 ? str.trim(array.get(rhsParts, 0)) : rhs
                         int tier = 0
-                        if array.size(rhsParts) >= 2
-                            tstr = str.trim(array.get(rhsParts, 1))
-                            if str.startswith(tstr, "t")
-                                tier := int(str.tonumber(str.replace_all(tstr, "t", "")))
+                        int dte  = 0
+                        // Scan the tokens BEFORE the first ' . ' (the type + optional t{n} tier +
+                        // optional {n}dte expiry tag) — not the note words, which can end in "dte".
+                        headSeg   = str.split(rhs, " . ")
+                        head      = array.size(headSeg) >= 1 ? array.get(headSeg, 0) : rhs
+                        headParts = str.split(head, " ")
+                        if array.size(headParts) >= 2
+                            for hi = 1 to array.size(headParts) - 1
+                                tok = str.trim(array.get(headParts, hi))
+                                if str.startswith(tok, "t") and not na(str.tonumber(str.replace_all(tok, "t", "")))
+                                    tier := int(str.tonumber(str.replace_all(tok, "t", "")))
+                                if str.endswith(tok, "dte")
+                                    dte := int(str.tonumber(str.replace_all(tok, "dte", "")))
+                        // Expectation note: everything after the ' . ' marker. Absent on
+                        // older paste blocks, so default to empty and draw nothing.
+                        string note = ""
+                        string heat = ""
+                        string touch = ""
+                        string holdTok = ""
+                        noteParts = str.split(rhs, " . ")
+                        // '-' in ANY segment is a placeholder holding the slot so later
+                        // indexes stay stable — treat it as blank everywhere.
+                        if array.size(noteParts) >= 2
+                            note := str.trim(array.get(noteParts, 1))
+                            if note == "-"
+                                note := ""
+                        // Heat is the SECOND ' . ' segment (index 2).
+                        if array.size(noteParts) >= 3
+                            heat := str.trim(array.get(noteParts, 2))
+                            if heat == "-"
+                                heat := ""
+                        // P(touch) is the THIRD ' . ' segment (index 3). Blank on older pastes.
+                        if array.size(noteParts) >= 4
+                            touch := str.trim(array.get(noteParts, 3))
+                            if touch == "-"
+                                touch := ""
+                        // HOLD score is the FOURTH ' . ' segment (index 4), e.g. "h72" —
+                        // the react-vs-blow-through read the bot sizes fades by.
+                        if array.size(noteParts) >= 5
+                            holdTok := str.trim(array.get(noteParts, 4))
+                            if holdTok == "-"
+                                holdTok := ""
                         if not na(price) and price > 0
                             array.push(oiPrices, price)
                             array.push(oiTypes,  typ)
                             array.push(oiTiers,  na(tier) ? 0 : tier)
+                            array.push(oiNotes,  note)
+                            array.push(oiHeats,  heat)
+                            array.push(oiTouch,  touch)
+                            array.push(oiHold,   holdTok)
+                            array.push(oiDte,    na(dte) ? 0 : dte)
+                            // Track the nearest tagged DTE for THIS symbol = the "day" set;
+                            // anything longer-dated is drawn as far context.
+                            if dte > 0 and (oiMinDte == 0 or dte < oiMinDte)
+                                oiMinDte := dte
                 continue
 
 // =====================================================
@@ -369,7 +458,10 @@ if _dayNew or barstate.isfirst
 // GAMMA REGIME BACKGROUND TINT
 // =====================================================
 
-regimeTint = (not show_regime or not show_oi or na(oiRegime)) ? na :
+// Single whole-chart tint — SUPPRESSED when local price-zoned bands are drawn instead
+// (they carry the same regime read, but resolved by price).
+useLocalBands = regime_bands and array.size(oiBandBnds) > 0
+regimeTint = (not show_regime or not show_oi or na(oiRegime) or useLocalBands) ? na :
      oiRegime == "PIN"      ? col_pin_bg :
      oiRegime == "BREAKOUT" ? col_break_bg : na
 bgcolor(regimeTint, title="OI Gamma Regime")
@@ -386,6 +478,7 @@ var line[]  pocLines   = array.new_line()
 var label[] pocLabels  = array.new_label()
 var line[]  npocLines  = array.new_line()
 var label[] npocLabels = array.new_label()
+var box[]   regimeBoxes = array.new_box()
 var label   regimeLbl  = na
 
 f_zoneColour(cnt) =>
@@ -449,6 +542,11 @@ if barstate.islast
         for i = 0 to _nnll - 1
             label.delete(array.get(npocLabels, i))
     array.clear(npocLabels)
+    int _nrb = array.size(regimeBoxes)
+    if _nrb > 0
+        for i = 0 to _nrb - 1
+            box.delete(array.get(regimeBoxes, i))
+    array.clear(regimeBoxes)
     label.delete(regimeLbl)
 
     sym    = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
@@ -459,6 +557,25 @@ if barstate.islast
     x1     = na(dayStartTime) ? time : dayStartTime
     x2     = time
     lblBg  = color.new(color.black, 20)
+
+    // ── Local GEX regime bands (price-zoned PIN/BREAKOUT shading) ──────────────
+    // Where along price the book is PIN (long dealer gamma, ranges hold) vs BREAKOUT
+    // (short gamma, breaks run). Drawn as translucent boxes between the zero-gamma
+    // crossings; the outer bands are padded far beyond the pane (boxes clip to view).
+    if regime_bands and show_regime and show_oi and array.size(oiBandBnds) > 0
+        int nB   = array.size(oiBandBnds)
+        float loB = array.get(oiBandBnds, 0)
+        float hiB = array.get(oiBandBnds, nB - 1)
+        cBase = oiBandBase == "PIN" ? col_pin_bg : oiBandBase == "BREAKOUT" ? col_break_bg : na
+        if not na(cBase)
+            array.push(regimeBoxes, box.new(x1, loB, x2, loB * 0.5, xloc=xloc.bar_time, border_color=color.new(color.gray, 100), bgcolor=cBase, extend=zExt))
+        for bi = 0 to nB - 1
+            float topP = bi < nB - 1 ? array.get(oiBandBnds, bi + 1) : hiB * 1.5
+            float botP = array.get(oiBandBnds, bi)
+            rgTxt = array.get(oiBandRegs, bi)
+            cReg  = rgTxt == "PIN" ? col_pin_bg : rgTxt == "BREAKOUT" ? col_break_bg : na
+            if not na(cReg)
+                array.push(regimeBoxes, box.new(x1, topP, x2, botP, xloc=xloc.bar_time, border_color=color.new(color.gray, 100), bgcolor=cReg, extend=zExt))
 
     // ── Confluence zones (hidden in OI-only mode) ─────────────────────────────
     nZones = array.size(czPrices)
@@ -496,17 +613,41 @@ if barstate.islast
             zCol   = f_oiColour(zType)
             zStyle = f_oiStyle(zType)
             zW     = oi_base_w + (zTier >= 3 ? 2 : zTier == 2 ? 1 : 0)
+            // Gamma HEAT (additive): hot = a touch thicker + full colour, cold = thinner +
+            // faded (paper price passes through). Blank heat = unchanged from before.
+            zHeat  = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
+            zTouch = i < array.size(oiTouch) ? array.get(oiTouch, i) : ""
+            zW    := math.max(1, zW + (zHeat == "hot" ? 1 : zHeat == "cold" ? -1 : 0))
+            zColH  = zHeat == "cold" ? color.new(zCol, 60) : zHeat == "warm" ? color.new(zCol, 25) : zCol
+            // DTE tag: the nearest-dated set (== oiMinDte, or untagged) is the "day" — drawn
+            // normally; anything longer-dated is far context → dashed + faded + thin so it
+            // recedes behind the day levels without disappearing.
+            zDte   = i < array.size(oiDte) ? array.get(oiDte, i) : 0
+            isFar  = zDte > 0 and oiMinDte > 0 and zDte > oiMinDte
+            if isFar
+                zStyle := line.style_dashed
+                zColH  := color.new(zCol, 55)
+                zW     := 1
             ln = line.new(x1, zPrice, x2, zPrice,
-                 color=zCol, width=zW, style=zStyle,
+                 color=zColH, width=zW, style=zStyle,
                  xloc=xloc.bar_time, extend=zExt)
             array.push(oiLines, ln)
+            zHold  = i < array.size(oiHold) ? array.get(oiHold, i) : ""
             if show_oi_lbl
                 string lText = zType
                 if zTier > 0
                     lText := lText + " t" + str.tostring(zTier)
+                if zDte > 0
+                    lText := lText + " " + str.tostring(zDte) + "d"
+                if zHeat != ""
+                    lText := lText + " " + zHeat
+                if zTouch != ""
+                    lText := lText + "  " + zTouch
+                if zHold != ""
+                    lText := lText + "  " + zHold
                 lb = label.new(bar_index + 2, zPrice, lText,
                      style=label.style_label_left,
-                     color=lblBg, textcolor=zCol,
+                     color=lblBg, textcolor=zColH,
                      size=size.small)
                 array.push(oiLabels, lb)
 
@@ -663,10 +804,17 @@ if show_table and barstate.islast
                 zCol   = f_oiColour(zType)
                 pipDist = math.round(math.abs(close - zPrice) / pip, 1)
                 tierStr = zTier > 0 ? " t" + str.tostring(zTier) : ""
+                zDteT   = i < array.size(oiDte) ? array.get(oiDte, i) : 0
+                dteStr  = zDteT > 0 ? " " + str.tostring(zDteT) + "d" : ""
                 row += 1
                 bg = color.new(zCol, 82)
                 table.cell(czTable, 0, row, str.tostring(zPrice), text_color=zCol, text_size=size.tiny, bgcolor=bg)
-                table.cell(czTable, 1, row, zType + tierStr,      text_color=zCol, text_size=size.tiny, bgcolor=bg)
+                zNote  = i < array.size(oiNotes) ? array.get(oiNotes, i) : ""
+                zHeatT = i < array.size(oiHeats) ? array.get(oiHeats, i) : ""
+                zTouchT = i < array.size(oiTouch) ? array.get(oiTouch, i) : ""
+                zHoldT = i < array.size(oiHold) ? array.get(oiHold, i) : ""
+                noteStr = (zNote != "" ? "  " + zNote : "") + (zHeatT != "" ? "  [" + zHeatT + "]" : "") + (zTouchT != "" ? "  " + zTouchT : "") + (zHoldT != "" ? "  " + zHoldT : "")
+                table.cell(czTable, 1, row, zType + tierStr + dteStr + noteStr, text_color=zCol, text_size=size.tiny, bgcolor=bg)
                 table.cell(czTable, 2, row, str.tostring(pipDist) + "p", text_color=zCol, text_size=size.tiny, bgcolor=bg)
 
         // CZ zone rows

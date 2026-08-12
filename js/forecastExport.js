@@ -18,7 +18,7 @@
  */
 
 import { _buildOutput, _driftD, _bmMaxQuantile, ASSET_PARAMS } from './volForecast.js';
-import { realizedVarSeries, sigmaSeriesForExport } from './volForecastBench.js';
+import { realizedVarSeries, sigmaSeriesForExport, ivVarSeries } from './volForecastBench.js';
 
 // Build the full forecast field object for one instrument from a daily-σ series.
 // `series`   — daily σ history (fractional), last element = sigmaFwd (per the
@@ -54,6 +54,29 @@ function harShadowFields(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const { series, sigmaFwd } = sigmaSeriesForExport(ohlc, 'harRV', { rv: realizedVarSeries(ohlc, 'gk') });
   if (!Number.isFinite(sigmaFwd) || sigmaFwd <= 0 || series.length < 60) return null;
   // Same news-multiplier convention as computeForecast(): scale σ before bands.
+  const sF  = newsMult > 1 ? sigmaFwd * newsMult : sigmaFwd;
+  const out = forecastFields(series, sF, ohlc, assetClass);
+  out.news_mult = Math.round(newsMult * 100) / 100;
+  return out;
+}
+
+// ── HAR-IV shadow forecast (the COG-v2 gold σ) ───────────────────────────────
+// The gold leg of COG-v2: the bench's OOS-winning gold σ (HAR-IV — realised-variance
+// HAR + a forward-looking implied-variance regressor from GVZ) run through the SAME
+// forecaster band math + correction factors as everything else. Mirror of
+// harShadowFields, but HAR-IV needs the implied-vol series, so the caller passes
+// `ivAnnualPctByBar` — annualised IV % aligned per-bar to `ohlc` (NaN where absent;
+// e.g. GVZ forward-filled onto gold's D1 dates). Only the IV-covered span trains, so
+// partial history (GVZ from ~2008) is fine. assetClass defaults to commodity (gold),
+// so the bands are the per-asset-CALIBRATED set — i.e. NO COG widening, by design.
+// Returns null when HAR-IV can't forecast (no IV / too few bars). Purely additive:
+// callers attach it as `f.harIv`; the primary/COG numbers never move.
+function harIvShadowFields(ohlc, ivAnnualPctByBar, assetClass = 'commodity', newsMult = 1.0) {
+  if (!Array.isArray(ivAnnualPctByBar) || ivAnnualPctByBar.length !== ohlc.length) return null;
+  const ivVar = ivVarSeries(ivAnnualPctByBar);
+  const { series, sigmaFwd } = sigmaSeriesForExport(ohlc, 'harIV',
+    { rv: realizedVarSeries(ohlc, 'gk'), ivVar });
+  if (!Number.isFinite(sigmaFwd) || sigmaFwd <= 0 || series.length < 60) return null;
   const sF  = newsMult > 1 ? sigmaFwd * newsMult : sigmaFwd;
   const out = forecastFields(series, sF, ohlc, assetClass);
   out.news_mult = Math.round(newsMult * 100) / 100;
@@ -191,4 +214,4 @@ function buildAllExports(data) {
   return out;
 }
 
-export { forecastFields, harShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports };
+export { forecastFields, harShadowFields, harIvShadowFields, buildExportText, buildExportV2Text, buildExtendedText, buildExportHarText, buildAllExports };

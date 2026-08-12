@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BoE Sentiment</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700}
+  .hdr .spacer{flex:1}
+  .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)} .hbtn:disabled{opacity:.5;cursor:default}
+  .hbtn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  .wrap{max-width:960px;margin:0 auto;padding:16px 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:700}
+  .chip.hawk{background:var(--bear-bg);color:var(--bear)} .chip.dove{background:var(--bull-bg);color:var(--bull)}
+  .chip.neu{background:rgba(110,118,129,.15);color:var(--text2)} .chip.mix{background:var(--amber-bg);color:var(--amber)}
+  .chip.conf{background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+  .chip.ai{background:var(--card2);color:var(--text3);border:1px solid var(--border);font-weight:600}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:6px 13px;font-size:12.5px;font-weight:600}
+  .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .tab .dot.have{background:var(--bull)} .tab .dot.due{background:var(--amber)} .tab .dot.none{background:var(--text3)}
+  .meetsel{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:6px 10px;font-size:12.5px}
+
+  .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0}
+
+  .headline{font-size:17px;font-weight:700;line-height:1.4;margin-bottom:10px}
+  .gauge-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .gauge{flex:1;position:relative;height:10px;background:var(--card2);border-radius:5px}
+  .gauge .mid{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--border)}
+  .gauge .fill{position:absolute;top:0;bottom:0;border-radius:5px}
+  .gauge .fill.pos{left:50%;background:var(--bear)} .gauge .fill.neg{right:50%;background:var(--bull)}
+  .gauge-lbl{font-size:11px;color:var(--text3);width:110px;text-align:right;font-variant-numeric:tabular-nums}
+  .summary{font-size:13.5px;color:var(--text2);line-height:1.6;margin-bottom:10px}
+  .whatchanged{font-size:12.5px;color:var(--text2);background:var(--card2);border-left:3px solid var(--amber);border-radius:0 7px 7px 0;padding:8px 12px;margin-bottom:10px}
+  .whatchanged b{color:var(--amber);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:3px}
+  .votenote{font-size:12.5px;color:var(--text2);margin-bottom:6px}
+  .votenote b{color:var(--text)}
+
+  .dims{margin:4px 0 12px}
+  .dim-row{display:grid;grid-template-columns:170px 1fr 34px;align-items:center;gap:8px;margin-bottom:5px}
+  .dim-lbl{font-size:11px;color:var(--text3)}
+  .dim-track{height:7px;background:var(--card2);border-radius:4px;position:relative;overflow:hidden}
+  .dim-fill{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:4px}
+  .dim-val{font-size:10.5px;color:var(--text3);text-align:right;font-variant-numeric:tabular-nums}
+
+  .quote{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:8px}
+  .quote .qtext{font-size:13px;font-style:italic;color:var(--text);margin-bottom:5px}
+  .quote .qmeta{display:flex;gap:8px;align-items:center;font-size:11px;color:var(--text3)}
+  .quote .qwhy{color:var(--text2)}
+
+  .assets{display:flex;flex-wrap:wrap;gap:7px}
+  .a-chip{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11.5px}
+  .a-chip b{font-weight:700} .a-chip.up b{color:var(--bull)} .a-chip.dn b{color:var(--bear)} .a-chip.nu b{color:var(--text2)}
+  .a-chip .an{color:var(--text3)}
+
+  .redline{font-size:13px;line-height:1.85;color:var(--text2)}
+  .redline .add{background:var(--bull-bg);color:var(--bull);border-radius:3px;padding:0 2px}
+  .redline .del{background:var(--bear-bg);color:var(--bear);text-decoration:line-through;border-radius:3px;padding:0 2px}
+  .redline-stats{font-size:11px;color:var(--text3);margin-bottom:10px}
+
+  .timeline{display:flex;gap:6px;align-items:flex-end;height:70px;margin-bottom:6px}
+  .tl-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+  .tl-track{width:100%;height:50px;position:relative;background:var(--card2);border-radius:4px;overflow:hidden}
+  .tl-fill{position:absolute;left:0;right:0;border-radius:4px}
+  .tl-fill.pos{bottom:50%;background:var(--bear)} .tl-fill.neg{top:50%;background:var(--bull)}
+  .tl-mid{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--border)}
+  .tl-lbl{font-size:9px;color:var(--text3)}
+  .tl-bar:hover .tl-lbl{color:var(--text)}
+
+  .relrow{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12.5px}
+  .relrow .k{width:90px;color:var(--text2);font-weight:600}
+  .relrow .stat{font-size:11px;padding:2px 8px;border-radius:5px}
+  .relrow .stat.have{background:var(--bull-bg);color:var(--bull)}
+  .relrow .stat.due{background:var(--amber-bg);color:var(--amber)}
+  .relrow .stat.pending{background:rgba(110,118,129,.15);color:var(--text3)}
+  .relrow .src{margin-left:auto;font-size:10.5px}
+
+  .note{color:var(--text3);font-size:11px;line-height:1.5;margin-top:10px}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--text3);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🇬🇧 BoE Sentiment</h1>
+  <div class="spacer"></div>
+  <span class="stamp" id="lastCheck"></span>
+  <button class="hbtn primary" id="fetchBtn" onclick="fetchNow()">⟳ Fetch now</button>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
+  <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
+  <a class="hbtn" href="beige-book.html">Beige Book</a>
+  <a class="hbtn" href="cpi.html">CPI / Inflation</a>
+  <a class="hbtn" href="gdp.html">GDP / Growth</a>
+  <a class="hbtn" href="ism.html">Business Activity</a>
+  <a class="hbtn" href="labor-market.html">Labor Market</a>
+  <a class="hbtn" href="retail-sales.html">Retail Sales</a>
+  <a class="hbtn" href="trade-balance.html">Trade Balance</a>
+  <a class="hbtn" href="real-yield.html">Real Yield</a>
+  <a class="hbtn" href="ppi.html">PPI</a>
+  <a class="hbtn" href="macro-scorecard.html">Macro Scorecard</a>
+  <a class="hbtn" href="yield-curve.html">Yield Curve</a>
+  <a class="hbtn" href="consumer-confidence.html">Consumer Confidence</a>
+  <a class="hbtn" href="today.html">Daily Brief</a>
+  <a class="hbtn" href="index.html">Dashboard</a>
+</div>
+
+<div class="wrap">
+
+  <div class="card" id="releasesCard">
+    <h2>Tracked releases — latest meeting</h2>
+    <div id="releasesBody" class="empty">Loading calendar…</div>
+    <div class="note">Fully automated: polls bankofengland.co.uk every 30 min against the known MPC calendar. BoE publishes the Summary and Minutes SAME DAY as the decision (no multi-week lag like the Fed/ECB) — 4 of the 8 meetings/year (Feb/Apr/Jul/Nov) additionally publish a quarterly Monetary Policy Report and press-conference transcript.</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:10px">Meeting</h2>
+    <select class="meetsel" id="meetingSel" onchange="selectMeeting(this.value)"></select>
+    <div class="tabs" id="kindTabs" style="margin-top:12px"></div>
+
+    <div id="analysisBody" class="empty">No analysis yet — click "Fetch now" above, or wait for the next automated check.</div>
+    <div class="note">The FIRST market reaction to a fresh release is algorithmic and keyword-based — it often reverses within the day. The real repositioning typically plays out over the following 2-5 days. Read this as the input to a view, not a signal to chase the initial spike.</div>
+  </div>
+
+  <div class="card" id="redlineCard" style="display:none">
+    <h2>Wording change vs previous meeting</h2>
+    <div class="redline-stats" id="redlineStats"></div>
+    <div class="redline" id="redlineBody"></div>
+  </div>
+
+  <div class="card">
+    <h2>Hawkish ← → Dovish, last meetings</h2>
+    <div class="timeline" id="timeline"></div>
+    <div class="note">Summary-only score, one bar per meeting. Click a bar to jump to that meeting above.</div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// BoE combines the decision + minutes into ONE same-day document ("summary")
+// — unlike the Fed's separate statement/transcript/minutes or the ECB's
+// combined statement+Q&A. "report"/"transcript" only exist at 4 of 8
+// meetings/year (see js/boeCalendar.js).
+const KINDS = [
+  { k:'summary', label:'Summary & Minutes' },
+  { k:'report', label:'Monetary Policy Report' },
+  { k:'transcript', label:'Press Conf.' },
+];
+
+let calendar = null, meetingData = {}, curMeeting = null, curKind = 'summary';
+
+async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
+
+function regimeChip(regime) {
+  const m = { HAWKISH:['hawk','🦅 Hawkish'], DOVISH:['dove','🕊 Dovish'], NEUTRAL:['neu','◦ Neutral'], MIXED:['mix','⚖ Mixed'] };
+  const [cls, lbl] = m[regime] || ['neu', regime || '—'];
+  return `<span class="chip ${cls}">${lbl}</span>`;
+}
+function leanCls(lean) { return lean === 'BULLISH' ? 'up' : lean === 'BEARISH' ? 'dn' : 'nu'; }
+
+const DIM_LABELS = {
+  inflationConcern: 'Inflation concern',
+  laborConcern: 'Labor market concern',
+  growthConcern: 'Growth concern',
+  financialStabilityConcern: 'Financial stability concern',
+  committeeConfidence: 'Committee confidence',
+};
+function renderDims(dims) {
+  if (!dims) return '';
+  const rows = Object.entries(DIM_LABELS).filter(([k]) => typeof dims[k] === 'number').map(([k, lbl]) => {
+    const v = Math.max(0, Math.min(1, dims[k]));
+    return `<div class="dim-row"><span class="dim-lbl">${lbl}</span><div class="dim-track"><div class="dim-fill" style="width:${(v*100).toFixed(0)}%"></div></div><span class="dim-val">${v.toFixed(2)}</span></div>`;
+  }).join('');
+  return rows ? `<div class="dims">${rows}</div>` : '';
+}
+
+async function loadCalendar() {
+  calendar = await jget('/api/boe/calendar');
+  const past = calendar.meetings.filter(m => Date.parse(m.date) <= Date.now());
+  const sel = $('meetingSel');
+  sel.innerHTML = past.slice().reverse().map(m => `<option value="${m.date}">${m.date}${m.report ? ' (MPR)' : ''}</option>`).join('');
+  const stillValid = curMeeting && past.some(m => m.date === curMeeting);
+  if (!stillValid) curMeeting = past.at(-1)?.date;
+  if (curMeeting) { sel.value = curMeeting; renderReleaseChecklist(); await selectMeeting(curMeeting); }
+  loadTimeline();
+}
+
+function renderReleaseChecklist() {
+  if (!curMeeting || !calendar) return;
+  const pendingKinds = new Set(calendar.pending.filter(r => r.meetingDate === curMeeting).map(r => r.kind));
+  const rows = KINDS.map(({ k, label }) => {
+    const rel = meetingData[curMeeting]?.releases?.[k];
+    let stat, cls;
+    if (rel) { stat = 'captured ✓'; cls = 'have'; }
+    else if (pendingKinds.has(k)) { stat = 'due — awaiting fetch'; cls = 'due'; }
+    else { stat = 'not yet due'; cls = 'pending'; }
+    const src = rel?.sourceUrl ? `<a class="src" href="${esc(rel.sourceUrl)}" target="_blank" rel="noopener">source ↗</a>` : '';
+    return `<div class="relrow"><span class="k">${label}</span><span class="stat ${cls}">${stat}</span>${src}</div>`;
+  }).join('');
+  $('releasesBody').innerHTML = `<div style="font-size:11.5px;color:var(--text3);margin-bottom:2px">${esc(curMeeting)}</div>` + rows;
+}
+
+async function selectMeeting(date) {
+  curMeeting = date;
+  if (!meetingData[date]) meetingData[date] = await jget(`/api/boe/meeting/${date}`);
+  renderReleaseChecklist();
+  const releases = meetingData[date].releases || {};
+  const have = Object.keys(releases);
+  curKind = have.includes(curKind) ? curKind : (have[0] || 'summary');
+  $('kindTabs').innerHTML = KINDS.map(({ k, label }) => {
+    const dotCls = releases[k] ? 'have' : (calendar.pending.some(r => r.meetingDate === date && r.kind === k) ? 'due' : 'none');
+    return `<button class="tab ${k === curKind ? 'on' : ''}" onclick="selectKind('${k}')"><span class="dot ${dotCls}"></span>${label}</button>`;
+  }).join('');
+  renderAnalysis();
+}
+function selectKind(k) { curKind = k; selectMeeting(curMeeting); }
+
+function renderAnalysis() {
+  const rel = meetingData[curMeeting]?.releases?.[curKind];
+  if (!rel) {
+    $('analysisBody').innerHTML = `<div class="empty">No ${curKind} analysis for ${esc(curMeeting)} yet.</div>`;
+    $('redlineCard').style.display = 'none';
+    return;
+  }
+  const a = rel.analysis || {};
+  const score = typeof a.hawkishScore === 'number' ? a.hawkishScore : 0;
+  const pct = Math.min(50, Math.abs(score) * 50);
+  $('analysisBody').innerHTML = `
+    <div class="headline">${esc(a.headline || '—')}</div>
+    <div style="margin-bottom:10px">${regimeChip(a.regime)}<span class="chip conf" style="margin-left:6px">${esc(a.confidence || '—')} confidence</span><span class="chip ai" style="margin-left:6px">AI · grounded, not backtested</span></div>
+    <div class="gauge-row">
+      <span class="gauge-lbl">Dovish −1</span>
+      <div class="gauge"><div class="mid"></div><div class="fill ${score >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>
+      <span class="gauge-lbl">+1 Hawkish</span>
+    </div>
+    ${renderDims(a.dimensions)}
+    <div class="summary">${esc(a.summary || '')}</div>
+    ${a.whatChanged ? `<div class="whatchanged"><b>What changed</b>${esc(a.whatChanged)}</div>` : ''}
+    ${rel.vote ? `<div class="votenote"><b>Vote:</b> ${rel.vote.unanimous ? 'unanimous' : `majority ${rel.vote.majority}-${rel.vote.minority}`}</div>` : ''}
+    ${a.voteNote ? `<div class="votenote">${esc(a.voteNote)}</div>` : ''}
+    ${(a.keyQuotes || []).map(q => `<div class="quote"><div class="qtext">“${esc(q.quote)}”</div><div class="qmeta"><span class="chip ${leanCls(q.lean)==='up'?'dove':q.lean==='BEARISH'?'hawk':'neu'}" style="font-size:9.5px">${esc(q.asset)} · ${esc(q.lean)}</span><span class="qwhy">${esc(q.why)}</span></div></div>`).join('')}
+    ${a.byAsset?.length ? `<div class="assets" style="margin-top:8px">${a.byAsset.map(x => `<span class="a-chip ${leanCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b><span class="an">${esc(x.note)}</span></span>`).join('')}</div>` : ''}
+    <div class="note">${rel.generatedAt ? `Analysed ${new Date(rel.generatedAt).toLocaleString()} · ` : ''}${rel.sourceUrl ? `<a href="${esc(rel.sourceUrl)}" target="_blank" rel="noopener">source ↗</a> · ` : ''}${rel.prevDate ? `diffed vs ${esc(rel.prevDate)}` : 'no prior release captured to diff against'}.</div>
+  `;
+  if (rel.diffSegments?.length) {
+    $('redlineCard').style.display = '';
+    const added = rel.diffSegments.filter(s => s.type === 'add').length;
+    const removed = rel.diffSegments.filter(s => s.type === 'del').length;
+    $('redlineStats').textContent = `vs ${rel.prevDate} ${curKind} — ${added} addition${added===1?'':'s'}, ${removed} removal${removed===1?'':'s'}`;
+    $('redlineBody').innerHTML = rel.diffSegments.map(s => s.type === 'same' ? esc(s.text) : `<span class="${s.type}">${esc(s.text)}</span>`).join(' ');
+  } else {
+    $('redlineCard').style.display = 'none';
+  }
+}
+
+async function loadTimeline() {
+  const { history } = await jget('/api/boe/history?n=8');
+  $('timeline').innerHTML = history.map(h => {
+    const score = h.hawkishScore ?? 0;
+    const pct = Math.min(50, Math.abs(score) * 50);
+    const cls = score >= 0 ? 'pos' : 'neg';
+    const lbl = h.meetingDate.slice(5).replace('-', '/');
+    return `<div class="tl-bar" onclick="jumpTo('${h.meetingDate}')" title="${esc(h.headline || 'no analysis yet')}">
+      <div class="tl-track"><div class="tl-mid"></div>${h.hawkishScore != null ? `<div class="tl-fill ${cls}" style="height:${pct}%"></div>` : ''}</div>
+      <div class="tl-lbl">${lbl}</div>
+    </div>`;
+  }).join('');
+}
+function jumpTo(date) { $('meetingSel').value = date; selectMeeting(date); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+async function fetchNow() {
+  const btn = $('fetchBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Checking…';
+  try {
+    const kick = await jget('/api/boe/fetch-now', { method: 'POST' });
+    if (kick.alreadyRunning) $('lastCheck').textContent = 'A check is already running…';
+    for (let i = 0; i < 60; i++) {
+      const st = await jget('/api/boe/fetch-status');
+      if (st.last) {
+        $('lastCheck').textContent = `Checked ${new Date(st.last.at).toLocaleTimeString()}${st.last.log?.length ? ' · ' + st.last.log.join(' · ') : ' · nothing new'}`;
+      }
+      if (!st.running) break;
+      await new Promise(r => setTimeout(r, 3000));
+    }
+    meetingData = {};
+    await loadCalendar();
+  } catch (e) {
+    $('lastCheck').textContent = 'Could not reach the server: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⟳ Fetch now';
+  }
+}
+
+loadCalendar();
+</script>
+</body>
+</html>

@@ -12,12 +12,26 @@ _root = str(Path(__file__).resolve().parents[1])
 if _root not in sys.path:
     sys.path.insert(0, _root)                    # repo root → pylego
 from pylego.instruments import pip_sizes_for     # noqa: E402  (shared pip table — single source of truth)
+from pylego.broker.clock import ServerClock      # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
 
 try:
     import MetaTrader5 as mt5
     HAS_MT5 = True
 except ImportError:
     HAS_MT5 = False
+
+_SERVER_CLOCK = None
+
+
+def tz_offset_sec():
+    """Seconds the broker's clock runs ahead of UTC. MT5 stamps `.time` fields on
+    the SERVER's wall clock, so a position's `time_open` is shifted by this much
+    — pushed alongside the stamp so the dashboard renders the real instant
+    instead of assuming UTC. See pylego/broker/clock.py."""
+    global _SERVER_CLOCK
+    if _SERVER_CLOCK is None:
+        _SERVER_CLOCK = ServerClock(mt5 if HAS_MT5 else None, log=log)
+    return _SERVER_CLOCK.offset_sec()
 
 # Keys unchanged; values identical to the former inline literal (golden-tested
 # in pylego/instruments_test.py). 'US100' resolves via the registry's broker

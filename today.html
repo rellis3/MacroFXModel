@@ -184,6 +184,7 @@
   .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
   .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
   .pc-bias b{color:var(--text)}
+  .pc-shape{display:flex;align-items:center;gap:7px;margin-bottom:8px}
 
   /* proximity flash (zoom 3) */
   @keyframes proxpulse{0%,100%{border-color:rgba(210,153,34,.9)}50%{border-color:rgba(210,153,34,.35)}}
@@ -409,6 +410,22 @@
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
   <a class="hbtn" href="index.html">Dashboard</a>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
+  <a class="hbtn" href="labor-market.html">Labor Market</a>
+  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
+  <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
+  <a class="hbtn" href="beige-book.html">Beige Book</a>
+  <a class="hbtn" href="cpi.html">CPI / Inflation</a>
+  <a class="hbtn" href="gdp.html">GDP / Growth</a>
+  <a class="hbtn" href="ism.html">Business Activity</a>
+  <a class="hbtn" href="retail-sales.html">Retail Sales</a>
+  <a class="hbtn" href="trade-balance.html">Trade Balance</a>
+  <a class="hbtn" href="real-yield.html">Real Yield</a>
+  <a class="hbtn" href="ppi.html">PPI</a>
+  <a class="hbtn" href="yield-curve.html">Yield Curve</a>
+  <a class="hbtn" href="consumer-confidence.html">Consumer Confidence</a>
+  <a class="hbtn" href="macro-scorecard.html">Macro Scorecard</a>
   <a class="hbtn" href="vol-forecast-v2.html">Vol Forecast v2</a>
   <a class="hbtn" href="rate-matrix.html">Rate Matrix</a>
   <a class="hbtn" href="trade-decision-engine.html">Decision Engine</a>
@@ -431,6 +448,8 @@
   <div class="gate" id="gate" style="display:none"></div>
 
   <div class="gate" id="riskflags" style="display:none"></div>
+
+  <div class="gate" id="macroMoved" style="display:none"></div>
 
   <div class="qstrip" id="whenWatch" style="display:none"></div>
 
@@ -652,18 +671,23 @@ function pairImpactLine(e, name) {
 let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
+let analogml = null;     // /api/analogml/shape-state — current shape + historical-analog lean per pair (research, not a validated signal — see AnalogML/README.md)
 let events = null;       // /api/events — today's economic calendar (zoom 0)
 let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
 let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
 let fredHist = null;     // /api/fredhistory — rate-spread driver series (story, lazy)
 let livePrices = null;   // /api/hedge-signals/prices — proximity watch (zoom 3)
 let cot = null;          // /api/cot-extremes — spec positioning per instrument (story + chip)
+const cotHistCache = {}; // ccy -> /api/cot-extremes?history= result (currency-drawer sparkline, lazy)
+let openDrawerCcy = null; // which ccy's drawer is currently open — guards the async COT-history repaint
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
+let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
+let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -676,12 +700,14 @@ async function jget(url) {
 
 async function loadAll(manual) {
   try {
-    const [b, s, f] = await Promise.all([
+    const [b, s, f, a] = await Promise.all([
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
+      jget('/api/analogml/shape-state').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
+    analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
     if (!b?.ok) {
       $('grid').innerHTML = `<div class="err">Daily brief unavailable: ${b?.error ?? 'no data'} — the forecast may still be computing, or OANDA/R2 keys are missing in this environment.</div>`;
       return;
@@ -696,7 +722,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc, msc] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -707,6 +733,8 @@ async function loadGate() {
     jget('/api/risk-flags').catch(() => null),
     jget('/api/cvol').catch(() => null),
     jget('/api/oi-history').catch(() => null),
+    jget('/api/macro-changes').catch(() => null),
+    jget('/api/macro-scorecard').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -718,8 +746,10 @@ async function loadGate() {
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
   if (rf?.ok) riskFlags = rf;
   if (cv?.ok) cvol = cv;
+  if (mc?.ok && mc.rows) macroMoved = mc.rows;
+  if (msc?.ok) macroScorecard = msc;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
-  renderGate(); renderRiskFlags(); renderNewsPlay(); renderSummary(); render();
+  renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
 // ── Cross-asset risk flags + implied vol strip ───────────────────────────────
@@ -747,6 +777,37 @@ function renderRiskFlags() {
   el.style.display = 'flex';
   el.innerHTML = `<span class="glbl" title="${riskFlags.note ?? ''}">Risk state</span>` +
     lvlChip + flagChips + ivChip('EVZCLS', 'EUR', 'EURUSD') + ivChip('GVZCLS', 'Gold', 'GOLD');
+}
+
+// ── What moved — per-series macro change (today / 1w / 1m) ────────────────────
+// Directional deltas on the tracked macro series so you can see what's SHIFTING,
+// not just today's level. Fed to the AI briefs too (same /api/macro-changes).
+function renderMacroMoved() {
+  const el = $('macroMoved');
+  if (!macroMoved?.length) { el.style.display = 'none'; return; }
+  const win = { 1: '1d', 5: '5d', 20: '20d' };
+  // Colour by TODAY's move; for credit spreads, widening (up) is the risk-off tint.
+  const tint = (v, spread) => v == null || v === 0 ? 'var(--text3,#64748b)'
+    : (spread ? (v > 0 ? 'var(--red,#e06c75)' : 'var(--green,#7ec699)')
+             : (v > 0 ? 'var(--text,#e2e8f0)' : 'var(--text,#e2e8f0)'));
+  const chips = macroMoved.map(r => {
+    const spread = r.kind === 'spread';
+    const d1 = r.deltas?.[1];
+    const arrow = d1 == null ? '' : d1 > 0 ? '↑' : d1 < 0 ? '↓' : '→';
+    const parts = [1, 5, 20].map(n => {
+      const v = r.deltas?.[n];
+      if (v == null) return '';
+      return `<span style="color:${tint(v, spread)}">${win[n]} ${v > 0 ? '+' : ''}${v}${r.unit}</span>`;
+    }).filter(Boolean).join(' · ');
+    const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
+      : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
+      : r.kind === 'curve' ? `${Math.round(r.last)}bps`
+      : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
+    const title = `${r.label}: now ${lastFmt}. Change vs prior day / week / month.${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
+    return `<span class="gev" title="${title}"><b>${r.label}</b> ${lastFmt} <span style="color:${tint(d1, spread)}">${arrow}</span> <span style="opacity:.8">${parts}</span>${r.note ? ` <i style="opacity:.7">${r.note}</i>` : ''}</span>`;
+  }).join('');
+  el.style.display = 'flex';
+  el.innerHTML = `<span class="glbl" title="Day-over-day / 1-week / 1-month change on the macro series we track. What's shifting, not just the level.">What moved</span>` + chips;
 }
 
 // ── Credit gate — corporate-spread risk appetite, the market's early warning ──
@@ -1296,6 +1357,11 @@ const riskPlain = cls => cls === 'off' ? 'Cautious (risk-off)' : cls === 'on' ? 
 // it apart so a click explains WHY — using data the page has already loaded
 // (cot, fred, brief/session/forecast), no extra network calls.
 const CCY_FRED10Y = { USD: 'us10y', EUR: 'de10y', GBP: 'gb10y', JPY: 'jp10y', AUD: 'au10y', CAD: 'ca10y', CHF: 'ch10y', NZD: null };
+// Short-end (policy-adjacent) rate — same fred_data_v3 payload already fetched for the
+// 10Y line above, just never surfaced. US has no dedicated short series in fred_data_v3,
+// so us2y stands in as the short-end proxy (same convention buildMacro's yield-curve
+// thread already uses). NZD stays null — no NZ series wired into FRED for either tenor.
+const CCY_FRED_SHORT = { USD: 'us2y', EUR: 'de_short', GBP: 'gb_short', JPY: 'jp_short', AUD: 'au_short', CAD: 'ca_short', CHF: 'ch_short', NZD: null };
 // Traditional risk-sentiment bucket — framing context, not a signal on its own.
 const CCY_BUCKET = { USD: 'haven', JPY: 'haven', CHF: 'haven', AUD: 'risk', NZD: 'risk', EUR: 'neutral', GBP: 'neutral', CAD: 'neutral' };
 const CCY_BUCKET_NOTE = {
@@ -1313,6 +1379,36 @@ function sigRead(sig, upWord, downWord) {
   const a = Math.abs(sig), up = sig > 0;
   const mag = a >= 0.45 ? 'strong' : 'building';
   return { word: up ? upWord : downWord, mag, cls: up ? 'bull' : 'bear', arrow: up ? '▲' : '▼' };
+}
+
+// Small inline trend line for a single time series — reused by the carry (FRED
+// yield) and COT (spec positioning) cards in the currency drawer so "getting
+// gradually stronger/weaker" is something you can see, not just a start/now pair
+// of numbers. Single series → no legend needed (the card heading already names
+// it); direct labels only at start/now, matching the house convention already
+// established in cot-extremes.html's history() chart rather than inventing a
+// new visual language.
+function miniSparkline(points, { decimals = 2, suffix = '' } = {}) {
+  const pts = (points ?? []).filter(p => Number.isFinite(p.v));
+  if (pts.length < 2) return '<div class="muted" style="margin-top:6px">Not enough history to chart yet.</div>';
+  const W = 320, H = 72, P = 8, PB = 20; // PB: bottom strip for date labels
+  const lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v));
+  const X = i => P + (i / (pts.length - 1)) * (W - 2 * P);
+  const Y = v => (H - PB) - ((v - lo) / ((hi - lo) || 1)) * (H - PB - P);
+  const path = pts.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const first = pts[0], last = pts[pts.length - 1];
+  const fmt = v => v.toFixed(decimals) + suffix;
+  const rising = last.v > first.v;
+  const nowClr = rising ? 'var(--bull)' : 'var(--bear)';
+  return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block;margin-top:6px" preserveAspectRatio="xMidYMid meet">
+      <path d="${path}" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${X(pts.length - 1).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="3.5" fill="${nowClr}"/>
+      <text x="${X(0).toFixed(1)}" y="${(Y(first.v) - 8).toFixed(1)}" font-size="9.5" fill="var(--text3)">${fmt(first.v)}</text>
+      <text x="${X(pts.length - 1).toFixed(1)}" y="${(Y(last.v) - 8).toFixed(1)}" text-anchor="end" font-size="9.5" fill="${nowClr}">${fmt(last.v)}</text>
+      <text x="${P}" y="${H - 5}" font-size="9" fill="var(--text3)">${first.d ?? ''}</text>
+      <text x="${W - P}" y="${H - 5}" text-anchor="end" font-size="9" fill="var(--text3)">${last.d ?? ''}</text>
+    </svg>`;
 }
 
 function currencyDetail(ccy) {
@@ -1342,11 +1438,18 @@ function currencyDetail(ccy) {
   if (ccy !== 'USD' && cot?.[ccy]) {
     const c = cot[ccy];
     const oi = c.openInterest ?? 0;
+    // 200-week series is a separate lazy fetch (/api/cot-extremes?history=) — not
+    // part of the eagerly-loaded snapshot, so it's only here once openCcyDrawer's
+    // background load for this ccy has completed (cotHistCache warms it).
+    const hist = cotHistCache[ccy];
+    const series = (hist && hist !== 'loading')
+      ? hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v })).filter(p => Number.isFinite(p.v)).slice(-52)
+      : null;
     cotInfo = {
       specNet: c.specNet ?? null, oi,
       pct: oi > 0 ? +(Math.abs(c.specNet ?? 0) / oi * 100).toFixed(1) : null,
       z: c.specZ ?? null, pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null,
-      reportDate: c.reportDate ?? null, derived: false,
+      reportDate: c.reportDate ?? null, derived: false, series,
     };
   } else if (ccy === 'USD') {
     // This feed's CFTC pull (_worker.js TFF list) doesn't currently include the ICE
@@ -1371,7 +1474,26 @@ function currencyDetail(ccy) {
     const all = CCY_ORDER.map(c => ({ c, y: fred?.[CCY_FRED10Y[c]]?.value ?? null })).filter(x => x.y != null);
     all.sort((a, b) => b.y - a.y);
     const rank = all.findIndex(x => x.c === ccy) + 1;
-    carry = { yield: v, dir, rank, of: all.length };
+    // FRED's DE/GB/JP/AU/CA/CH 10y series (IRLTLT01xxM156N) and US10Y (GS10) are
+    // monthly, not daily — the sparkline is labeled as such rather than implying
+    // a daily cadence the underlying data doesn't have. Last 24 obs ≈ 2 years.
+    const series = (fredHist?.[fk] ?? []).slice(-24).map(o => ({ d: o.date, v: o.value }));
+    carry = { yield: v, dir, rank, of: all.length, series };
+  }
+
+  // 3b) Short-end (policy-adjacent) rate — near-term carry, distinct from the 10Y level
+  // above. The 10Y is the market's long-run view; this is what's happening right now at
+  // the policy end, which matters most when the two diverge (e.g. a central bank cutting
+  // while long yields stay anchored on other expectations).
+  let shortRate = null;
+  const fkShort = CCY_FRED_SHORT[ccy];
+  if (fkShort && fred?.[fkShort]?.value != null) {
+    const v = fred[fkShort].value, p = fred[fkShort].prev ?? null;
+    const dir = p == null ? null : (v > p + 0.02 ? 'rising' : v < p - 0.02 ? 'falling' : 'steady');
+    const all = CCY_ORDER.map(c => ({ c, y: fred?.[CCY_FRED_SHORT[c]]?.value ?? null })).filter(x => x.y != null);
+    all.sort((a, b) => b.y - a.y);
+    const rank = all.findIndex(x => x.c === ccy) + 1;
+    shortRate = { yield: v, dir, rank, of: all.length };
   }
 
   // 4) DXY — a real, already-fetched PRICE-based dollar cross-check (not positioning).
@@ -1383,15 +1505,49 @@ function currencyDetail(ccy) {
     dxy = { value: v, dir };
   }
 
-  return { ccy, score: row?.score ?? null, n: row?.n ?? 0, legs, cot: cotInfo, carry, dxy, bucket: CCY_BUCKET[ccy] ?? 'neutral' };
+  return { ccy, score: row?.score ?? null, n: row?.n ?? 0, legs, cot: cotInfo, carry, shortRate, dxy, bucket: CCY_BUCKET[ccy] ?? 'neutral' };
 }
 
 function closeCcyDrawer() {
   $('ovlCcy').classList.remove('open');
   $('drawerCcy').classList.remove('open');
+  openDrawerCcy = null;
 }
 
+// Fundamentals section for the currency drawer — the real per-dimension
+// Macro Scorecard read for this specific currency (js/macroScorecardEngine.js),
+// distinct from the "Today's flow" section above which is pure price/technical.
+const CCY_DIM_LABEL = {
+  cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
+  ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', ppi: 'PPI',
+};
+const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
+function ccyDimHref(dim, ccy) {
+  if (dim === 'cbSentiment') return CCY_DIM_PAGE[ccy] || 'macro-scorecard.html';
+  return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',
+    retailSales: 'retail-sales.html', tradeBalance: 'trade-balance.html', realYield: 'real-yield.html', yieldCurve: 'yield-curve.html', consumerConfidence: 'consumer-confidence.html', ppi: 'ppi.html' }[dim] || 'macro-scorecard.html';
+}
+function fundamentalsHtml(ccy) {
+  const row = macroScorecard?.ranked?.find(r => r.ccy === ccy) ?? (macroScorecard?.uncovered?.includes(ccy) ? { ccy, composite: null, coverage: [], dims: {} } : null);
+  if (!row) return `<div class="muted">No Macro Scorecard data yet — visit the <a href="macro-scorecard.html">Macro Scorecard</a> and click Refresh.</div>`;
+  const dims = row.dims ?? {};
+  const dimRows = Object.keys(CCY_DIM_LABEL).map(dim => {
+    const v = dims[dim];
+    if (v === undefined) return ''; // this currency has no such dimension at all (e.g. AUD has no cbSentiment)
+    const cls = v == null ? 'neu' : (v >= 0 ? 'bull' : 'bear');
+    const valTxt = v == null ? '<span class="muted">no data</span>' : (v > 0 ? `+${v}` : `${v}`);
+    return `<div class="ccy-legrow"><a class="lp" href="${ccyDimHref(dim, ccy)}" style="color:inherit">${CCY_DIM_LABEL[dim]}</a><span class="lv ${cls}">${valTxt}</span></div>`;
+  }).join('');
+  const chipCls = row.composite == null ? 'neu' : row.composite > 0.25 ? 'bull' : row.composite < -0.25 ? 'bear' : 'neu';
+  const chipWord = row.composite == null ? 'No coverage yet' : row.composite > 0.25 ? 'Fundamentally strong' : row.composite < -0.25 ? 'Fundamentally weak' : 'Fundamentally neutral';
+  return `
+    <div style="margin-bottom:8px"><span class="chip ${chipCls}">${chipWord}${row.composite != null ? ` · ${row.composite > 0 ? '+' : ''}${row.composite}` : ''}</span></div>
+    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 11 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
+    <div class="ccy-legs" style="margin-top:8px">${dimRows || '<div class="muted">No dimensions covered yet.</div>'}</div>`;
+}
 function openCcyDrawer(ccy) {
+  openDrawerCcy = ccy;
   const det = currencyDetail(ccy);
   $('ccyName').textContent = `${ccy} — ${ccyFull(ccy)}`;
   const bucketChip = $('ccyBucket');
@@ -1430,6 +1586,9 @@ function openCcyDrawer(ccy) {
     const dxyLine = det.dxy
       ? `<div class="ccy-explain" style="margin-top:8px">A more direct dollar-strength read: the trade-weighted <b>Dollar Index (DXY)</b> is at <b>${det.dxy.value.toFixed(1)}</b>${det.dxy.dir ? `, currently <b>${det.dxy.dir}</b>` : ''} — a PRICE-weighted basket (mostly EUR/JPY/GBP), not a positioning measure like the COT numbers above.</div>`
       : '';
+    const cotSparkInner = c.derived ? ''
+      : c.series ? miniSparkline(c.series, { decimals: 1, suffix: '%' })
+      : '<div class="muted" style="margin-top:6px">Loading 52-week positioning history…</div>';
     cotHtml = `
       <div class="ccy-explain">${c.derived
         ? `This feed doesn't currently pull the ICE US Dollar Index future — a real CFTC-tracked contract (code 098662), just not wired into this dashboard yet — so USD's position here is derived as the mirror image of the other majors' futures vs USD. Read it as a rough cross-check, not a direct read.${dxyLine}`
@@ -1439,7 +1598,8 @@ function openCcyDrawer(ccy) {
         ${c.wkChg != null ? `<span>week Δ <b>${c.wkChg >= 0 ? '+' : ''}${fmtN(c.wkChg, 0)}</b></span>` : ''}
         ${c.z != null ? `<span>z-score <b>${c.z.toFixed(2)}</b></span>` : ''}
         ${c.reportDate ? `<span>report <b>${c.reportDate}</b></span>` : ''}
-      </div>`;
+      </div>
+      <div id="ccyCotSpark">${cotSparkInner}</div>`;
   } else {
     cotHtml = det.dxy
       ? `<div class="ccy-explain">No COT data available for ${ccy} right now. A more direct dollar-strength read: the trade-weighted <b>Dollar Index (DXY)</b> is at <b>${det.dxy.value.toFixed(1)}</b>${det.dxy.dir ? `, currently <b>${det.dxy.dir}</b>` : ''}.</div>`
@@ -1453,12 +1613,53 @@ function openCcyDrawer(ccy) {
     const rankPct = cr.of > 1 ? 100 * (cr.of - cr.rank) / (cr.of - 1) : 50;
     carryHtml = `
       <div class="ccy-explain">${ccyFull(ccy)}'s 10-year government yield is <b>${cr.yield.toFixed(2)}%</b>${cr.dir ? `, currently <b>${cr.dir}</b>` : ''} — ranked <b>#${cr.rank} of ${cr.of}</b> tracked currencies (higher = more attractive to hold for the carry, all else equal). Money tends to drift toward the higher payer, especially when risk appetite is calm.</div>
-      <div class="cone-row"><span class="cone-lbl">yield rank</span><span class="cone-track"><span class="cone-dot" style="left:${rankPct}%"></span></span><span class="cone-val">#${cr.rank}/${cr.of}</span></div>`;
+      <div class="cone-row"><span class="cone-lbl">yield rank</span><span class="cone-track"><span class="cone-dot" style="left:${rankPct}%"></span></span><span class="cone-val">#${cr.rank}/${cr.of}</span></div>
+      ${cr.series?.length ? `<div class="muted" style="font-size:11px;margin-top:8px">10Y yield, last ${cr.series.length} monthly readings — is it gradually building or fading:</div>${miniSparkline(cr.series, { decimals: 2, suffix: '%' })}` : ''}`;
   } else {
     carryHtml = `<div class="muted">No 10Y yield series pulled for ${ccy} yet${ccy === 'NZD' ? ' (FRED has no NZ series wired in)' : ''}.</div>`;
   }
+  if (det.shortRate) {
+    const sr = det.shortRate;
+    carryHtml += `<div class="ccy-explain" style="margin-top:8px">Near-term (policy-adjacent) rate: <b>${sr.yield.toFixed(2)}%</b>${sr.dir ? `, currently <b>${sr.dir}</b>` : ''} — ranked <b>#${sr.rank} of ${sr.of}</b>. The 10Y above is the market's long-run view; this is what's happening at the short end right now, which matters most when the two diverge (e.g. a central bank cutting while long yields stay anchored).</div>`;
+  }
+
+  // Composite: the same four sections below (technical/COT/carry/fundamentals),
+  // combined via the shared pairCompositeEngine brick into one read — this is
+  // what "everything already built here, together" looks like for one
+  // currency. Context, not a backtested rule, same as every leg it draws from.
+  let compositeHtml = '';
+  if (window.pairCompositeBrick) {
+    const cotScore = det.cot
+      ? (det.cot.z != null
+          ? Math.max(-1, Math.min(1, det.cot.z / 4))
+          : Math.max(-1, Math.min(1, ((det.cot.specNet ?? 0) >= 0 ? 1 : -1) * (det.cot.pct ?? 0) / 30))
+        )
+      : null;
+    const mrow = macroScorecard?.ranked?.find(x => x.ccy === ccy);
+    const macroScoreCcy = mrow?.composite ?? null;
+    const carryScoreCcy = (det.carry && det.carry.of > 1)
+      ? +(1 - 2 * (det.carry.rank - 1) / (det.carry.of - 1)).toFixed(2)
+      : null;
+    const comp = window.pairCompositeBrick.pairComposite({
+      technical: { score: det.score, label: "Today's flow" },
+      cot: { score: cotScore, label: 'Positioning (COT)' },
+      macro: { score: macroScoreCcy, label: 'Fundamentals' },
+      carry: { score: carryScoreCcy, label: 'Carry (10Y rank)' },
+    });
+    if (comp.score != null && comp.total >= 2) {
+      const cls = comp.direction === 'LONG' ? 'bull' : comp.direction === 'SHORT' ? 'bear' : 'neu';
+      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${l.score}</span></div>`).join('');
+      compositeHtml = `
+    <div class="dr-sec">
+      <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Arithmetic agreement across signals this dashboard already builds — not a backtested rule, and not a substitute for reading the sections themselves.">Composite (all of the above, combined)</h3>
+      <div style="margin-bottom:8px"><span class="chip ${cls}">${comp.direction} ${ccy} · ${comp.agree}/${comp.total} agree</span></div>
+      <div class="ccy-legs">${legRows}</div>
+    </div>`;
+    }
+  }
 
   $('ccyBody').innerHTML = `
+    ${compositeHtml}
     <div class="dr-sec">
       <h3 class="help" title="Blend of each pair's structural HMM trend regime and today's live session bias, averaged across every pair ${ccy} appears in. This is what's moving TODAY, not a fundamental view.">Today's flow (technical)</h3>
       <div style="margin-bottom:8px"><span class="chip ${scoreRead.cls}">${scoreRead.arrow} ${scoreRead.word}${scoreRead.mag !== 'no edge' ? ` · ${scoreRead.mag}` : ''}</span></div>
@@ -1475,12 +1676,40 @@ function openCcyDrawer(ccy) {
       ${carryHtml}
     </div>
     <div class="dr-sec">
+      <h3 class="help" title="This currency's composite across up to 11 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI and central-bank tone. Refreshed on each source engine's own daily schedule, not live.">Fundamentals (Macro Scorecard)</h3>
+      ${fundamentalsHtml(ccy)}
+    </div>
+    <div class="dr-sec">
       <h3>Risk-sentiment bucket</h3>
       <div class="ccy-explain">${CCY_BUCKET_NOTE[det.bucket]}</div>
     </div>`;
 
   $('ovlCcy').classList.add('open');
   $('drawerCcy').classList.add('open');
+
+  loadCotHistoryFor(ccy);
+}
+
+// Lazy-loads the 200-week COT series for one currency (not part of the eagerly-
+// fetched snapshot) and, if this drawer is still open on the same currency when
+// it lands, repaints just the sparkline slot rather than the whole drawer.
+async function loadCotHistoryFor(ccy) {
+  if (ccy === 'USD' || cotHistCache[ccy]) return;   // USD has no direct COT future here (see cotInfo derivation)
+  cotHistCache[ccy] = 'loading';
+  try {
+    const r = await fetch(`/api/cot-extremes?history=${encodeURIComponent(ccy)}`, { cache: 'no-store' });
+    const j = await r.json();
+    cotHistCache[ccy] = (j?.ok && j.history?.sym === ccy) ? j.history : null;
+  } catch (e) {
+    cotHistCache[ccy] = null;
+  }
+  if (openDrawerCcy !== ccy) return;   // drawer moved on to a different currency — drop it
+  const slot = document.getElementById('ccyCotSpark');
+  if (!slot) return;
+  const hist = cotHistCache[ccy];
+  slot.innerHTML = hist
+    ? miniSparkline(hist.specShare.map((v, i) => ({ d: hist.dates?.[i], v })).filter(p => Number.isFinite(p.v)).slice(-52), { decimals: 1, suffix: '%' })
+    : '<div class="muted" style="margin-top:6px">No positioning history available.</div>';
 }
 
 // The "so what do I do" line, in plain words.
@@ -1616,6 +1845,57 @@ function buildMacro() {
     }
   }
 
+  // 6) Copper (AUD/NZD) — a bellwether for China/global industrial demand, which
+  // the commodity currencies key off even more directly than oil. Same fred_data_v3
+  // payload as wti, {value, prev}, just sourced server-side from OANDA D1 (fetchD1)
+  // instead of FRED since copper has no FRED series.
+  if (has('copper')) {
+    const c = v('copper'), d = dirOf('copper', 0.02);
+    if (d !== 0) {
+      const body = `Copper is <b>${arrow(d)}</b> (around <b>$${c.toFixed(2)}</b>/lb).`;
+      const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the Aussie and Kiwi</b> — the commodity currencies most tied to metals demand.`;
+      threads.push({ ic: '🟠', t: 'Copper', body, so });
+    }
+  }
+
+  // 7) Equity indices — risk mood read straight from today's session move (SPX500
+  // preferred, NQ fallback — both already-tracked brief instruments, no new fetch).
+  {
+    const eqName = brief?.instruments?.SPX500 ? 'SPX500' : (brief?.instruments?.NQ ? 'NQ' : null);
+    const eq = eqName ? brief.instruments[eqName] : null;
+    if (eq?.current_price != null && eq.session_open) {
+      const label = eqName === 'SPX500' ? 'S&P 500' : 'Nasdaq';
+      const chgPct = (eq.current_price / eq.session_open - 1) * 100;
+      if (Math.abs(chgPct) >= 0.15) {
+        const up = chgPct > 0;
+        const body = `Stocks are telling their own story: the <b>${label} is ${up ? 'up' : 'down'} ${Math.abs(chgPct).toFixed(1)}%</b> from today's session open.`;
+        const so = up
+          ? `Stocks higher usually means investors feel comfortable taking risk — a tailwind for the <b>Aussie, Kiwi and Canadian dollar</b>, and a headwind for the safe-haven yen, franc and gold.`
+          : `Stocks lower usually means investors are pulling in risk — a headwind for the <b>Aussie, Kiwi and Canadian dollar</b>, and support for the safe-haven yen, franc and gold.`;
+        threads.push({ ic: '📊', t: 'Stocks (risk mood)', body, so });
+      }
+    }
+  }
+
+  // 8) The Macro Scorecard — everything above is rates/risk-mood proxies (VIX,
+  // yield gaps, TIPS). This is the real thing: each currency's ACTUAL scored
+  // inflation/growth/labor-market/business-activity/retail-sales/trade-balance/
+  // real-yield/PPI/central-bank-tone data, averaged into one composite and
+  // ranked (js/macroScorecardEngine.js, same read as macro-scorecard.html).
+  // Kept as its own thread rather than rewritten into the hand-tuned "what this
+  // means for you" bullets below, which cover AUD+NZD combined and don't carry
+  // real fundamental evidence — this is additive, not a replacement.
+  if (macroScorecard?.ranked?.length) {
+    const rows = macroScorecard.ranked
+      .map(r => `<b>${r.ccy}</b> ${r.composite > 0 ? '+' : ''}${r.composite} <span class="muted">(${r.coverage.length}/11)</span>`)
+      .join(' &nbsp;·&nbsp; ');
+    const body = `Beyond rates and risk mood, this project scores each currency across up to 11 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD) and central-bank tone — and ranks them strongest to weakest:<br><div style="margin-top:6px;font-size:12px;line-height:1.8">${rows}</div>`;
+    const so = macroScorecard.pair
+      ? `The clearest fundamental read today: this favours <b>${macroScorecard.pair.long}</b> over <b>${macroScorecard.pair.short}</b> (composite gap ${macroScorecard.pair.gap}).`
+      : `No standout pairing today — composite scores are bunched too close together to lean hard either way on fundamentals alone.`;
+    threads.push({ ic: '🏆', t: 'The Macro Scorecard — full fundamental ranking', body, so: so + ` <a href="macro-scorecard.html" style="font-size:11px">See the full per-currency breakdown →</a>` });
+  }
+
   // Per-currency "what this means for you"
   const usd = has('us10y') ? v('us10y') : null;
   const gap = k => (usd != null && v(k) != null) ? (usd - v(k)) : null;
@@ -1738,16 +2018,76 @@ const COT_MAP = {
 };
 function cotFor(name) {
   const m = COT_MAP[name];
-  if (!m || !cot?.[m.sym]) return null;
-  const c = cot[m.sym];
-  const specNet = c.specNet ?? 0;
-  const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
-  const oi = c.openInterest ?? 0;
-  const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
-  const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
-  return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
-    pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
-    pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null };
+  if (m && cot?.[m.sym]) {
+    const c = cot[m.sym];
+    const specNet = c.specNet ?? 0;
+    const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
+    const oi = c.openInterest ?? 0;
+    const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
+    const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
+    const zClip = Math.max(-1, Math.min(1, (c.specZ ?? 0) / 4));
+    return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
+      pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
+      pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null,
+      bias: m.flip ? -zClip : zClip, derived: false };
+  }
+  // Crosses (no direct CFTC contract, e.g. GBPJPY) get no entry in COT_MAP —
+  // derive a read from BOTH legs' own positioning instead, via the shared
+  // pairCompositeEngine brick (js/pairCompositeEngine.js, loaded as a module
+  // below and exposed on window — same "shared brick, imported not copied"
+  // pattern as window.creditBrick). Same reinforcing-extreme logic
+  // cot-extremes.html's crowding combos already use, just generalized to
+  // every tracked cross, not only the ones that happen to clear 90/10 both
+  // ways.
+  const cc = PAIR_CCY[name];
+  if (!cc || !window.pairCompositeBrick || !cot) return null;
+  const [base, quote] = cc;
+  const r = window.pairCompositeBrick.cotPairBias(base, quote, cot);
+  if (r.score == null) return null;
+  const level = r.extreme ? 'EXTREME' : (Math.abs(r.score) >= 0.5 ? 'ELEVATED' : null);
+  const crowd = Math.abs(r.score) * 100;
+  return { dir: r.score > 0 ? 'long' : r.score < 0 ? 'short' : 'flat', crowd, level,
+    pct: crowd, z: null, pctile: null, wkChg: null, reportDate: null,
+    bias: r.score, derived: true, baseRead: r.base, quoteRead: r.quote };
+}
+
+// ── Composite signal: technical + positioning + fundamentals + carry, one ──
+// call per pair — the stuff this dashboard already builds separately (each
+// still shown in its own card/section), just combined via the shared
+// pairCompositeEngine brick so "what do the things I've already built say,
+// together" is answerable at a glance instead of requiring four separate
+// looks. Context, not a backtested rule — same posture as every leg it
+// draws from.
+function pairSignalComposite(r) {
+  if (!window.pairCompositeBrick) return null;
+  const cc = PAIR_CCY[r.name];
+  if (!cc) return null;
+  const [base, quote] = cc;
+  const macroScore = (() => {
+    if (!macroScorecard?.ranked) return null;
+    const b = macroScorecard.ranked.find(x => x.ccy === base);
+    const q = macroScorecard.ranked.find(x => x.ccy === quote);
+    if (!b || !q) return null;
+    return Math.max(-1, Math.min(1, (b.composite - q.composite) / 2));
+  })();
+  const carryScore = (() => {
+    const bfk = CCY_FRED10Y[base], qfk = CCY_FRED10Y[quote];
+    if (!bfk || !qfk || fred?.[bfk]?.value == null || fred?.[qfk]?.value == null) return null;
+    return Math.max(-1, Math.min(1, (fred[bfk].value - fred[qfk].value) / 3));
+  })();
+  return window.pairCompositeBrick.pairComposite({
+    technical: { score: pairSignal(r), label: "Today's flow (technical)" },
+    cot: { score: r.ct?.bias ?? null, label: 'Positioning (COT)' },
+    macro: { score: macroScore, label: 'Fundamentals (Macro Scorecard)' },
+    carry: { score: carryScore, label: 'Carry (10Y yield)' },
+  });
+}
+function compositeChip(r) {
+  const c = pairSignalComposite(r);
+  if (!c || c.score == null || c.total < 2) return '';
+  const cls = c.direction === 'LONG' ? 'bull' : c.direction === 'SHORT' ? 'bear' : 'neu';
+  const legTxt = c.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ');
+  return `<span class="chip ${cls}" title="Averages whatever's covered of technical/positioning/fundamentals/carry — ${c.agree}/${c.total} agree in direction. ${legTxt}. This is arithmetic agreement across signals this dashboard already builds, not a backtested rule.">⚖ ${c.direction} ${c.agree}/${c.total}</span>`;
 }
 
 // ── OI (manual CME paste, KV oi_store) — walls, max pain, PIN/BREAKOUT ────────
@@ -1997,6 +2337,70 @@ function ladderHtml(r) {
   }).join('') + `</div>`;
 }
 
+// ── Shape-match diagnostic (AnalogML/paper_track.py — research, not a
+// validated signal; see AnalogML/README.md for the honest read on it) ──
+// Inline SVG so it lives directly in the cardHtml() template string, same
+// as every other chip here — no post-render canvas pass needed.
+function shapeSparklineSvg(shape) {
+  if (!shape || shape.length < 2) return '';
+  const w = 90, h = 22;
+  const mn = Math.min(...shape), mx = Math.max(...shape);
+  const range = (mx - mn) || 1;
+  const pts = shape.map((v, i) => {
+    const x = (i / (shape.length - 1)) * (w - 4) + 2;
+    const y = h - 2 - ((v - mn) / range) * (h - 4);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const color = shape[shape.length - 1] >= shape[0] ? '#26a69a' : '#ef5350';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex:none">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.3"/></svg>`;
+}
+function analogFmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch (e) { return iso; }
+}
+// Outcome shown per analog is the r that matches the CURRENT lean direction
+// (what a trader following today's lean would have scored on THAT historical
+// occurrence) — not a fabricated "did the pattern complete" call, since
+// shape-matching has no separate completion concept (see AnalogML/README.md).
+function analogRowHtml(nb, lean) {
+  const r = lean === 'LONG' ? nb.long_r : lean === 'SHORT' ? nb.short_r : null;
+  const rTxt = r != null ? `${r >= 0 ? '+' : ''}${r.toFixed(2)}R` : '—';
+  const rCls = r == null ? '' : r >= 0 ? 'bull' : 'bear';
+  return `<tr>
+    <td style="padding:2px 6px 2px 0;color:var(--text3,#8892a6)">${analogFmtDate(nb.date)}</td>
+    <td style="padding:2px 6px;text-align:right;color:var(--text3,#8892a6)">${nb.percentile != null ? nb.percentile.toFixed(2) + '%ile' : '—'}</td>
+    <td style="padding:2px 0 2px 6px;text-align:right" class="chip ${rCls}">${rTxt}</td>
+  </tr>`;
+}
+function analogShapeHtml(name) {
+  const a = analogml?.[name.toLowerCase()];
+  if (!a) return '';
+  const leanCls = a.lean === 'LONG' ? 'bull' : a.lean === 'SHORT' ? 'bear' : 'neu';
+  const leanIcon = a.lean === 'LONG' ? '↗' : a.lean === 'SHORT' ? '↘' : '→';
+  const winRate = a.lean === 'LONG' ? a.long_win_rate : a.lean === 'SHORT' ? a.short_win_rate : null;
+  const title = `Shape-match diagnostic (research, NOT a validated signal — see AnalogML/README.md): `
+    + `this pair's current ${a.window}-bar price shape, normalized for level/vol. `
+    + `Its ${a.n_neighbours} nearest historical analogs averaged ${a.avg_long_r != null ? a.avg_long_r.toFixed(3) : '–'}R `
+    + `if long vs ${a.avg_short_r != null ? a.avg_short_r.toFixed(3) : '–'}R if short from here `
+    + `(win rate ${winRate != null ? (winRate * 100).toFixed(0) + '%' : '–'} in the leaning direction).`;
+  const analogs = a.top_analogs || [];
+  return `<div class="pc-shape help" title="${title}" style="flex-direction:column;align-items:stretch;gap:4px">
+    <div style="display:flex;align-items:center;gap:7px">
+      ${shapeSparklineSvg(a.shape)}
+      <span class="chip ${leanCls}" style="font-size:10px">${leanIcon} shape-match: ${a.lean}</span>
+      ${winRate != null ? `<span style="font-size:10px;color:var(--text3,#8892a6)">${(winRate * 100).toFixed(0)}% win rate, n=${a.n_neighbours}</span>` : ''}
+    </div>
+    ${analogs.length ? `<details style="font-size:10px">
+      <summary style="cursor:pointer;color:var(--text3,#8892a6)">▸ ${analogs.length} closest historical analogs</summary>
+      <table style="width:100%;border-collapse:collapse;margin-top:3px;font-family:'DM Mono',monospace">
+        ${analogs.map(nb => analogRowHtml(nb, a.lean)).join('')}
+      </table>
+    </details>` : ''}
+  </div>`;
+}
+
 function cardHtml(r) {
   const d = r.d;
   const volPct = d.vol_pct;
@@ -2015,7 +2419,8 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market. Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}</div>
+    ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
@@ -2981,13 +3386,46 @@ function assembleSnapshot(r) {
     dataWarning: oi.inst?.dataWarning ?? null,   // mis-scaled/stale flag → the AI down-weights it
     volFlow: oi.inst?.volFlow ?? null,           // today's volume P/C flow vs resting OI P/C
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
-  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
-  const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
-  if (ct && rawCot) {
-    const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
-    s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
-      levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
-    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}`;
+  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data.
+  // `ct` alone is enough now: cotFor() already branches direct-major vs derived
+  // cross internally. Previously this required `rawCot` too (only ever set for
+  // the 7 direct-vs-USD majors), which silently dropped the derived read for
+  // every one of the 19 crosses even though cotFor() already computed it.
+  const ct = cotFor(r.name);
+  if (ct) {
+    const rawCot = cot?.[COT_MAP[r.name]?.sym];
+    if (rawCot) {
+      const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
+      s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
+        levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
+    } else if (ct.derived) {
+      // Cross pair — no single CFTC contract for it; derived from both legs'
+      // own positioning (js/pairCompositeEngine.js's cotPairBias).
+      s.cot = { derived: true, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined,
+        baseLeg: ct.baseRead, quoteLeg: ct.quoteRead };
+    }
+    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}${ct.derived ? ' — derived from both legs, no direct CFTC contract for this cross' : ''}`;
+  }
+  // Macro Scorecard (11-dim fundamentals, both legs) — previously never
+  // reached the AI prompt at all.
+  const cc = PAIR_CCY[r.name];
+  if (cc && macroScorecard?.ranked) {
+    const [base, quote] = cc;
+    const b = macroScorecard.ranked.find(x => x.ccy === base);
+    const q = macroScorecard.ranked.find(x => x.ccy === quote);
+    if (b || q) {
+      s.macroScorecard = {
+        [base]: b ? { composite: b.composite, coverage: b.coverage, dims: b.dims } : null,
+        [quote]: q ? { composite: q.composite, coverage: q.coverage, dims: q.dims } : null,
+      };
+    }
+  }
+  // Composite signal (js/pairCompositeEngine.js) — same read as the card's
+  // ⚖ chip, fed to the AI as one more labeled input, not asked to replace its reasoning.
+  const comp = pairSignalComposite(r);
+  if (comp?.score != null) {
+    s.pairComposite = { score: comp.score, direction: comp.direction, agree: comp.agree, total: comp.total,
+      legs: comp.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
   }
   // Event risk for THIS pair — the calendar filtered to its own economies
   const evs = pairEvents(r.name).filter(e => e.ms >= Date.now() - 20 * 60000);
@@ -3258,6 +3696,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as CreditCore from './js/creditCore.js';
   window.creditBrick = CreditCore;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the pair-composite brick (js/pairCompositeEngine.js) —
+     combines technical/COT/macro/carry legs this page already computes into
+     one per-pair read, shared with indexv2.html's drill view. -->
+<script type="module">
+  import * as PairComposite from './js/pairCompositeEngine.js';
+  window.pairCompositeBrick = PairComposite;
   try { window.render?.(); } catch (e) {}
 </script>
 </body>

@@ -1,0 +1,18 @@
+# Generated panels — ~350 MB for three instruments, rebuildable in ~90s from the
+# M1 cache with `python vumanchuLab/panel.py`. Not artifacts to version.
+data/
+__pycache__/
+
+# ...EXCEPT the frozen artifacts the LIVE side reads. These are SHIPPED, not
+# generated at run time — server.js reads them to answer /api/vumanchu/*, so if
+# they are not in the repo Railway boots without them and the features fail
+# silently (a missing table just means "no read"/"no fan", never an error).
+# This is the learn-offline / ship-a-file contract, PYTHON_LEGO.md §3.
+#
+# ANY new frozen artifact must be added here too. The wt_projection file was
+# added and NOT listed, so it never shipped and the fan silently never drew.
+!data/
+data/*
+!data/vumanchu_state_table.json
+!data/vumanchu_wt_projection.json
+!data/vumanchu_transitions.json

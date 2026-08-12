@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pattern Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; background: #0e1117; color: #d1d4dc; font-family: 'DM Sans', sans-serif; font-size: 13px; overflow: hidden; }
+
+.pl-root { display: flex; flex-direction: column; height: 100vh; background: #0e1117; }
+
+/* ── Topbar ── */
+.pl-topbar { display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 48px; border-bottom: 1px solid #1c2133; background: #131722; flex-shrink: 0; flex-wrap: wrap; }
+.pl-title { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: #d1d4dc; white-space: nowrap; margin-right: 4px; }
+.pl-sep { width: 1px; height: 22px; background: #1c2133; flex-shrink: 0; }
+.pl-lbl { font-size: 11px; color: #5a6380; font-family: 'DM Mono', monospace; white-space: nowrap; }
+select.pl-select { background: #1c2133; border: 1px solid #2a3348; color: #d1d4dc; border-radius: 4px; padding: 5px 8px; font-size: 12px; font-family: 'DM Mono', monospace; }
+
+.pl-toggle { display: flex; gap: 0; border: 1px solid #2a3348; border-radius: 4px; overflow: hidden; }
+.pl-toggle-btn { background: #1c2133; border: none; color: #7a88a8; padding: 5px 11px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; }
+.pl-toggle-btn.active { background: #2f6fed; color: #fff; }
+.pl-toggle-btn:hover:not(.active) { background: #232a42; }
+
+.pl-btn { background: #1c2133; border: 1px solid #2a3348; color: #d1d4dc; border-radius: 4px; padding: 5px 12px; font-size: 11px; font-family: 'DM Mono', monospace; cursor: pointer; }
+.pl-btn:hover { background: #232a42; }
+.pl-status { margin-left: auto; font-size: 11px; color: #5a6380; font-family: 'DM Mono', monospace; }
+
+/* ── Body layout ── */
+.pl-body { flex: 1; display: flex; min-height: 0; }
+.pl-chart-wrap { flex: 1; position: relative; min-width: 0; }
+#priceChart { width: 100%; height: 100%; }
+.pl-empty-hint { position: absolute; top: 10px; left: 12px; font-size: 11px; color: #5a6380; font-family: 'DM Mono', monospace; z-index: 5; pointer-events: none; }
+
+.pl-sidebar { width: 380px; flex-shrink: 0; border-left: 1px solid #1c2133; background: #10141f; display: flex; flex-direction: column; min-height: 0; }
+
+/* ── Stats table ── */
+.pl-section-title { font-size: 11px; font-weight: 600; color: #7a88a8; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px 6px; }
+.pl-stats-wrap { max-height: 46%; overflow-y: auto; border-bottom: 1px solid #1c2133; }
+table.pl-stats { width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'DM Mono', monospace; }
+table.pl-stats th { position: sticky; top: 0; background: #10141f; text-align: right; color: #5a6380; font-weight: 500; padding: 4px 8px; border-bottom: 1px solid #1c2133; }
+table.pl-stats th:first-child, table.pl-stats td:first-child { text-align: left; }
+table.pl-stats td { text-align: right; padding: 4px 8px; border-bottom: 1px solid #171c2b; cursor: pointer; }
+table.pl-stats tr:hover td { background: #171c2b; }
+table.pl-stats tr.active td { background: #1c2b4a; }
+.pl-type-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+
+/* ── Instance list ── */
+.pl-inst-wrap { flex: 1; overflow-y: auto; }
+.pl-inst-row { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-bottom: 1px solid #171c2b; cursor: pointer; }
+.pl-inst-row:hover { background: #171c2b; }
+.pl-inst-row.active { background: #1c2b4a; }
+.pl-inst-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+.pl-inst-type { font-weight: 600; color: #d1d4dc; }
+.pl-inst-date { color: #5a6380; font-family: 'DM Mono', monospace; font-size: 10px; }
+.pl-inst-bottom { display: flex; gap: 8px; font-family: 'DM Mono', monospace; font-size: 10px; color: #7a88a8; }
+.pl-badge { padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.pl-badge.up { background: rgba(0,201,125,0.15); color: #00c97d; }
+.pl-badge.down { background: rgba(239,83,80,0.15); color: #ef5350; }
+.pl-badge.target { background: rgba(0,201,125,0.15); color: #00c97d; }
+.pl-badge.stop { background: rgba(239,83,80,0.15); color: #ef5350; }
+.pl-badge.timeout { background: rgba(122,136,168,0.15); color: #7a88a8; }
+.pl-badge.conf-hi { background: rgba(0,201,125,0.15); color: #00c97d; }
+.pl-badge.conf-mid { background: rgba(247,183,49,0.15); color: #f7b731; }
+.pl-badge.conf-lo { background: rgba(122,136,168,0.15); color: #7a88a8; }
+.pl-badge.aligned-yes { background: rgba(84,160,255,0.15); color: #54a0ff; }
+.pl-badge.aligned-no { background: rgba(239,83,80,0.12); color: #ef5350; }
+.pl-badge.aligned-unknown { background: rgba(122,136,168,0.1); color: #5a6380; }
+
+/* ── Confidence bucket panel ── */
+.pl-bucket-wrap { padding: 6px 12px 10px; border-bottom: 1px solid #1c2133; }
+table.pl-buckets { width: 100%; border-collapse: collapse; font-size: 10.5px; font-family: 'DM Mono', monospace; }
+table.pl-buckets th { text-align: right; color: #5a6380; font-weight: 500; padding: 2px 6px; }
+table.pl-buckets th:first-child, table.pl-buckets td:first-child { text-align: left; }
+table.pl-buckets td { text-align: right; padding: 2px 6px; }
+
+/* ── Explainer footer ── */
+.pl-footer { border-top: 1px solid #1c2133; padding: 8px 12px; font-size: 10.5px; color: #5a6380; line-height: 1.5; }
+.pl-footer b { color: #7a88a8; }
+
+.pl-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #5a6380; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+/* ── Live Bot modal ── */
+.pl-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 50; align-items: center; justify-content: center; }
+.pl-modal-backdrop.open { display: flex; }
+.pl-modal { width: 340px; max-width: 92vw; background: #131722; border: 1px solid #2a3348; border-radius: 8px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+.pl-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #1c2133; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; }
+.pl-modal-close { background: none; border: none; color: #7a88a8; font-size: 14px; cursor: pointer; padding: 2px 6px; }
+.pl-modal-close:hover { color: #d1d4dc; }
+.pl-modal-body { padding: 14px; }
+.pl-lb-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+.pl-lb-label { font-size: 12px; color: #7a88a8; font-family: 'DM Mono', monospace; }
+.pl-lb-input { width: 70px; background: #1c2133; border: 1px solid #2a3348; color: #d1d4dc; border-radius: 4px; padding: 5px 8px; font-size: 12px; font-family: 'DM Mono', monospace; text-align: right; }
+.pl-btn-toggle.on { background: rgba(0,201,125,0.15); color: #00c97d; border-color: rgba(0,201,125,0.3); }
+.pl-btn-toggle.off { background: rgba(122,136,168,0.1); color: #7a88a8; }
+.pl-btn-primary { background: #2f6fed; color: #fff; border-color: #2f6fed; }
+.pl-btn-primary:hover { background: #2560d6; }
+.pl-lb-divider { height: 1px; background: #1c2133; margin: 12px 0; }
+.pl-lb-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 11px; font-family: 'DM Mono', monospace; color: #7a88a8; }
+.pl-lb-status-grid b { color: #d1d4dc; }
+</style>
+</head>
+<body>
+<div class="pl-root">
+  <div class="pl-topbar">
+    <div class="pl-title">📐 Pattern Lab</div>
+    <div class="pl-sep"></div>
+    <span class="pl-lbl">PAIR</span>
+    <select id="pairSelect" class="pl-select"></select>
+    <div class="pl-sep"></div>
+    <span class="pl-lbl">TIMEFRAME</span>
+    <div class="pl-toggle" id="tfToggle"></div>
+    <div class="pl-sep"></div>
+    <span class="pl-lbl">MIN CONF</span>
+    <div class="pl-toggle" id="confToggle"></div>
+    <div class="pl-sep"></div>
+    <button class="pl-btn" id="rescanBtn" title="Force a fresh scan for this pair/timeframe">↻ Rescan</button>
+    <button class="pl-btn" id="liveBotBtn">🤖 Live Bot</button>
+    <div class="pl-status" id="statusLbl">—</div>
+  </div>
+
+  <div class="pl-modal-backdrop" id="liveBotBackdrop">
+    <div class="pl-modal">
+      <div class="pl-modal-head">
+        <span>🤖 Live Pattern Bot</span>
+        <button class="pl-modal-close" id="liveBotClose">✕</button>
+      </div>
+      <div class="pl-modal-body">
+        <div class="pl-lb-row">
+          <span class="pl-lb-label">Status</span>
+          <span class="pl-badge" id="lbStatusBadge">—</span>
+        </div>
+        <div class="pl-lb-row">
+          <span class="pl-lb-label">Alerts</span>
+          <button class="pl-btn pl-btn-toggle" id="lbEnableBtn">—</button>
+        </div>
+        <div class="pl-lb-row">
+          <span class="pl-lb-label">Cooldown (hours)</span>
+          <input type="number" id="lbCooldown" class="pl-lb-input" min="1" max="168" step="1">
+        </div>
+        <button class="pl-btn pl-btn-primary" id="lbSaveBtn" style="width:100%;margin-top:4px;">Save</button>
+        <div class="pl-lb-divider"></div>
+        <div class="pl-lb-status-grid" id="lbStatusGrid">Loading status…</div>
+        <button class="pl-btn" id="lbRefreshBtn" style="width:100%;margin-top:8px;">↻ Refresh status</button>
+        <div class="pl-footer" style="padding:10px 0 0;">
+          Scans 26 pairs × 15m/30m/1h/4h every ~10 min and Telegram-alerts on newly confirmed
+          patterns, with a per pair/timeframe/pattern-type cooldown to stop repeat alerts on the
+          same forming shape. Telegram credentials are shared with the other bots (set via the
+          dashboard's Alerts settings) — this panel only controls whether the pattern bot itself
+          scans and sends.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pl-body">
+    <div class="pl-chart-wrap">
+      <div class="pl-empty-hint" id="emptyHint"></div>
+      <div id="priceChart"></div>
+    </div>
+    <div class="pl-sidebar">
+      <div class="pl-section-title">Pattern outcomes — this timeframe, full history</div>
+      <div class="pl-stats-wrap">
+        <table class="pl-stats" id="statsTable">
+          <thead><tr><th>Pattern</th><th>N</th><th>Hit%</th><th>AvgRet%</th><th>Dur</th><th>Conf</th><th title="% that broke in the direction the pattern theoretically implies">PlayedOut%</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pl-section-title">Confidence score validation</div>
+      <div class="pl-bucket-wrap">
+        <table class="pl-buckets" id="bucketTable">
+          <thead><tr><th>Score</th><th>N</th><th>Hit%</th><th>AvgRet%</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="pl-section-title" id="instListTitle">Instances</div>
+      <div class="pl-inst-wrap" id="instList"></div>
+      <div class="pl-footer">
+        <b>PlayedOut%</b> = % that broke in the direction the pattern theoretically implies (pole
+        direction for flags/pennants, reversal direction for H&amp;S/double-triple, conventional bias
+        for triangles/wedges/channels — n/a for symmetrical triangle, which has no textbook bias). The
+        rest still get logged as failed/reversed instances rather than silently dropped, so this is the
+        real base rate, not a rate conditioned on success. <b>Hit%</b> = forward walk reached the
+        measured-move target before hitting the stop, regardless of which way it actually broke.
+        <b>Conf</b> = 0-100 score from impulse quality, shape/touch quality, retracement, volatility
+        compression, breakout strength &amp; acceptance (see bucket table above — does a higher score
+        actually predict a better outcome for this pair/timeframe?). <b>HTF</b> badge = does the next
+        timeframe up agree with this pattern's direction. Click a stat row to filter by type, click an
+        instance to see the exact geometry the engine used.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TF_ORDER = ['1m','5m','15m','30m','1h','4h','1d'];
+const TYPE_COLORS = {
+  bull_flag: '#00c97d', bear_flag: '#ef5350', bull_pennant: '#2fd9a8', bear_pennant: '#ff8a80',
+  head_shoulders: '#ff9f43', inverse_head_shoulders: '#54a0ff',
+  double_top: '#eb5b8c', double_bottom: '#5be1c9', triple_top: '#c44569', triple_bottom: '#2ed8b6',
+  ascending_triangle: '#f7b731', descending_triangle: '#a55eea', symmetrical_triangle: '#778ca3',
+  channel_up: '#26de81', channel_down: '#fc5c65',
+  rising_wedge: '#e15f41', falling_wedge: '#20bf6b',
+};
+const LINE_ROLE_COLORS = { pole: '#3742fa', upper: '#f7b731', lower: '#00d2d3', neckline: '#ff4d94', support: '#a55eea' };
+
+let chart, candleSeries;
+let overlaySeries = [];
+let currentScan = null;
+let currentPair = 'eurusd';
+let currentTf = '30m';
+let activeType = null;
+let activeInstance = null;
+let minConfidence = 0;
+
+function confTier(score) { return score >= 80 ? 'conf-hi' : score >= 65 ? 'conf-mid' : score >= 50 ? 'conf-mid' : 'conf-lo'; }
+
+function fmtType(t) { return t.replace(/_/g, ' '); }
+
+function buildChart() {
+  chart = LightweightCharts.createChart(document.getElementById('priceChart'), {
+    autoSize: true,
+    layout: { background: { color: 'rgba(0,0,0,0)' }, textColor: '#d1d4dc' },
+    grid: { vertLines: { color: '#1c2133' }, horzLines: { color: '#1c2133' } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#1c2133' },
+    timeScale: { borderColor: '#1c2133', timeVisible: true, secondsVisible: false },
+    handleScroll: true, handleScale: true,
+  });
+  candleSeries = chart.addCandlestickSeries({
+    upColor: '#00c97d', downColor: '#ef5350', borderUpColor: '#00c97d', borderDownColor: '#ef5350',
+    wickUpColor: '#00c97d', wickDownColor: '#ef5350',
+  });
+}
+
+// overlaySeries holds a mix of line-series objects (removed via chart.removeSeries)
+// and price-line handles wrapped as { removeIsPriceLine: true, remove() } (removed
+// via candleSeries.removePriceLine) — see drawOverlay().
+function clearOverlay() {
+  for (const s of overlaySeries) {
+    try { if (s.removeIsPriceLine) s.remove(); else chart.removeSeries(s); } catch (e) {}
+  }
+  overlaySeries = [];
+  try { candleSeries.setMarkers([]); } catch (e) {}
+}
+
+async function loadInstruments() {
+  const res = await fetch('/api/pattern-lab/instruments').then(r => r.json());
+  const sel = document.getElementById('pairSelect');
+  sel.innerHTML = '';
+  for (const p of res.instruments) {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p.toUpperCase() + (res.precomputed.includes(p) ? ' ✓' : '');
+    sel.appendChild(opt);
+  }
+  sel.value = currentPair;
+  sel.onchange = () => { currentPair = sel.value; loadScan(); };
+}
+
+function buildTfToggle() {
+  const wrap = document.getElementById('tfToggle');
+  wrap.innerHTML = '';
+  for (const tf of TF_ORDER) {
+    const btn = document.createElement('button');
+    btn.className = 'pl-toggle-btn' + (tf === currentTf ? ' active' : '');
+    btn.textContent = tf;
+    btn.onclick = () => { currentTf = tf; buildTfToggle(); loadScan(); };
+    wrap.appendChild(btn);
+  }
+}
+
+function buildConfToggle() {
+  const wrap = document.getElementById('confToggle');
+  wrap.innerHTML = '';
+  for (const c of [0, 50, 65, 80]) {
+    const btn = document.createElement('button');
+    btn.className = 'pl-toggle-btn' + (c === minConfidence ? ' active' : '');
+    btn.textContent = c === 0 ? 'all' : `${c}+`;
+    btn.onclick = () => { minConfidence = c; buildConfToggle(); renderInstanceList(); };
+    wrap.appendChild(btn);
+  }
+}
+
+async function loadScan(force) {
+  document.getElementById('statusLbl').textContent = 'scanning…';
+  const url = `/api/pattern-lab/scan/${currentPair}?tf=${currentTf}${force ? '&refresh=1' : ''}`;
+  const res = await fetch(url).then(r => r.json());
+  if (!res.ok) { document.getElementById('statusLbl').textContent = 'error: ' + res.error; return; }
+  currentScan = res;
+  activeType = null;
+  const htfNote = res.htfTimeframe ? ` · htf=${res.htfTimeframe}` : '';
+  document.getElementById('statusLbl').textContent =
+    `${res.barCount.toLocaleString()} bars · ${res.totalCount.toLocaleString()} instances found (showing latest ${res.shownCount})${htfNote}`;
+  renderStats();
+  renderBuckets();
+  renderInstanceList();
+  if (res.instances.length) selectInstance(res.instances[res.instances.length - 1]);
+  else { clearOverlay(); document.getElementById('emptyHint').textContent = 'No pattern instances detected at this timeframe for this pair.'; }
+}
+
+function renderStats() {
+  const tbody = document.querySelector('#statsTable tbody');
+  tbody.innerHTML = '';
+  for (const s of currentScan.stats) {
+    const tr = document.createElement('tr');
+    tr.className = activeType === s.type ? 'active' : '';
+    tr.innerHTML = `
+      <td><span class="pl-type-swatch" style="background:${TYPE_COLORS[s.type] || '#7a88a8'}"></span>${fmtType(s.type)}</td>
+      <td>${s.count}</td>
+      <td>${s.hitRatePct}</td>
+      <td style="color:${s.avgForwardReturnPct >= 0 ? '#00c97d' : '#ef5350'}">${s.avgForwardReturnPct}</td>
+      <td>${s.avgDurationBars}</td>
+      <td>${s.avgConfidence ?? '—'}</td>
+      <td>${s.playedOutRatePct == null ? 'n/a' : s.playedOutRatePct}</td>`;
+    tr.onclick = () => { activeType = activeType === s.type ? null : s.type; renderStats(); renderInstanceList(); };
+    tbody.appendChild(tr);
+  }
+}
+
+function renderBuckets() {
+  const tbody = document.querySelector('#bucketTable tbody');
+  tbody.innerHTML = '';
+  for (const b of currentScan.confidenceBuckets || []) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${b.range}</td>
+      <td>${b.count}</td>
+      <td>${b.hitRatePct}</td>
+      <td style="color:${b.avgForwardReturnPct >= 0 ? '#00c97d' : '#ef5350'}">${b.avgForwardReturnPct}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderInstanceList() {
+  const wrap = document.getElementById('instList');
+  wrap.innerHTML = '';
+  const list = (currentScan.instances || [])
+    .filter(i => !activeType || i.type === activeType)
+    .filter(i => (i.confidence?.total ?? 0) >= minConfidence)
+    .slice().reverse();
+  document.getElementById('instListTitle').textContent =
+    `Instances${activeType ? ' — ' + fmtType(activeType) : ''} (${list.length} shown, latest first)`;
+  for (const inst of list) {
+    const row = document.createElement('div');
+    row.className = 'pl-inst-row' + (activeInstance === inst ? ' active' : '');
+    const date = new Date(inst.confirmTime * 1000).toISOString().substring(0, 16).replace('T', ' ');
+    const conf = inst.confidence?.total ?? null;
+    const htf = inst.htf;
+    const htfBadge = htf
+      ? `<span class="pl-badge ${htf.aligned === true ? 'aligned-yes' : htf.aligned === false ? 'aligned-no' : 'aligned-unknown'}" title="${htf.timeframe} regime: ${htf.regime || 'unknown'}">HTF ${htf.aligned === true ? '✓' : htf.aligned === false ? '✗' : '–'}</span>`
+      : '';
+    const playedOutBadge = inst.playedOut == null ? ''
+      : inst.playedOut
+        ? `<span class="pl-badge aligned-yes" title="expected ${inst.expectedDirection}, broke ${inst.direction} — played out as the pattern implies">as expected</span>`
+        : `<span class="pl-badge aligned-no" title="expected ${inst.expectedDirection}, broke ${inst.direction} instead — pattern failed/reversed">failed ✗</span>`;
+    row.innerHTML = `
+      <div class="pl-inst-top">
+        <span class="pl-inst-type">${fmtType(inst.type)}</span>
+        <span class="pl-inst-date">${date}</span>
+      </div>
+      <div class="pl-inst-bottom">
+        <span class="pl-badge ${inst.direction}">${inst.direction === 'up' ? '▲ up' : '▼ down'}</span>
+        <span class="pl-badge ${inst.outcome.outcome}">${inst.outcome.outcome}</span>
+        ${playedOutBadge}
+        ${conf != null ? `<span class="pl-badge ${confTier(conf)}" title="acceptance ${inst.acceptance ? Math.round(inst.acceptance.holdFrac * 100) + '%' : '—'}">conf ${conf}</span>` : ''}
+        ${htfBadge}
+        <span>${inst.outcome.forwardReturnPct}% · ${inst.confirmIdx - inst.startIdx} bars</span>
+      </div>`;
+    row.onclick = () => selectInstance(inst, row);
+    wrap.appendChild(row);
+  }
+}
+
+async function selectInstance(inst) {
+  activeInstance = inst;
+  document.querySelectorAll('.pl-inst-row').forEach(r => r.classList.remove('active'));
+  renderInstanceList();
+  document.getElementById('emptyHint').textContent = `${fmtType(inst.type)} · confirmed ${new Date(inst.confirmTime * 1000).toISOString().substring(0, 16).replace('T', ' ')} UTC`;
+
+  const span = Math.max(inst.outcome.endTime - inst.startTime, 3600);
+  const pad = Math.max(span * 0.4, 3600 * 4);
+  const fromTs = inst.startTime - pad;
+  const toTs = inst.outcome.endTime + pad;
+  const from = new Date(fromTs * 1000).toISOString().substring(0, 10);
+  const to = new Date(toTs * 1000).toISOString().substring(0, 10);
+
+  const res = await fetch(`/api/pattern-lab/candles/${currentPair}?tf=${currentTf}&from=${from}&to=${to}`).then(r => r.json());
+  if (!res.ok) return;
+  candleSeries.setData(res.candles);
+  drawOverlay(inst);
+  chart.timeScale().fitContent();
+}
+
+function drawOverlay(inst) {
+  clearOverlay();
+
+  for (const line of inst.lines || []) {
+    const color = LINE_ROLE_COLORS[line.role] || '#7a88a8';
+    const series = chart.addLineSeries({ color, lineWidth: 2, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
+    series.setData([{ time: line.p1.time, value: line.p1.price }, { time: line.p2.time, value: line.p2.price }]);
+    overlaySeries.push(series);
+  }
+
+  const markers = (inst.points || []).map(p => ({
+    time: p.time, position: 'inBar', color: '#f7b731', shape: 'circle', text: p.role.replace(/_/g, ' '),
+  }));
+  markers.push({
+    time: inst.confirmTime,
+    position: inst.direction === 'up' ? 'belowBar' : 'aboveBar',
+    color: inst.direction === 'up' ? '#00c97d' : '#ef5350',
+    shape: inst.direction === 'up' ? 'arrowUp' : 'arrowDown',
+    text: 'breakout',
+  });
+  markers.sort((a, b) => a.time - b.time);
+  candleSeries.setMarkers(markers);
+
+  const targetLine = candleSeries.createPriceLine({ price: inst.outcome.target, color: '#00c97d', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'target' });
+  const stopLine = candleSeries.createPriceLine({ price: inst.outcome.stop, color: '#ef5350', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: 'stop' });
+  const entryLine = candleSeries.createPriceLine({ price: inst.outcome.entry, color: '#7a88a8', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, title: 'entry' });
+  overlaySeries.push({ removeIsPriceLine: true, remove: () => { candleSeries.removePriceLine(targetLine); candleSeries.removePriceLine(stopLine); candleSeries.removePriceLine(entryLine); } });
+}
+
+document.getElementById('rescanBtn').onclick = () => loadScan(true);
+
+// ── Live Bot control panel ───────────────────────────────────────────────────
+// Reads/writes the same pattern_bot_config / pattern_bot_status KV keys the
+// live scanner (PatternBot/pattern_live_bot.mjs) checks every cycle — this is
+// just a UI over the exact same /api/kv/get + /api/kv/set calls a curl command
+// would make, so there's nothing to remember or retype.
+let lbConfig = { enabled: false, cooldownHours: 4 };
+
+async function kvGet(key) {
+  const res = await fetch(`/api/kv/get?key=${encodeURIComponent(key)}`).then(r => r.json()).catch(() => null);
+  return res && !res.miss ? res.data : null;
+}
+async function kvSet(key, data) {
+  return fetch('/api/kv/set', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ key, data, timestamp: Date.now() }),
+  }).then(r => r.json()).catch(() => ({ ok: false }));
+}
+
+function renderLbToggle() {
+  const btn = document.getElementById('lbEnableBtn');
+  btn.textContent = lbConfig.enabled ? 'ON — click to disable' : 'OFF — click to enable';
+  btn.className = 'pl-btn pl-btn-toggle ' + (lbConfig.enabled ? 'on' : 'off');
+  document.getElementById('lbStatusBadge').textContent = lbConfig.enabled ? 'enabled' : 'disabled';
+  document.getElementById('lbStatusBadge').className = 'pl-badge ' + (lbConfig.enabled ? 'up' : 'timeout');
+  document.getElementById('lbCooldown').value = lbConfig.cooldownHours ?? 4;
+}
+
+async function loadLbStatus() {
+  const grid = document.getElementById('lbStatusGrid');
+  const status = await kvGet('pattern_bot_status');
+  if (!status) { grid.textContent = 'No status yet — bot has not run since this was added, or is still starting up.'; return; }
+  const ago = status.lastRunAt ? Math.round((Date.now() - new Date(status.lastRunAt).getTime()) / 60000) : null;
+  grid.innerHTML = `
+    <div>Last run</div><div><b>${ago == null ? '—' : ago + 'm ago'}</b></div>
+    <div>Pairs × TFs</div><div><b>${status.pairsScanned ?? '—'} × ${status.timeframesScanned ?? '—'}</b></div>
+    <div>Alerts sent</div><div><b>${status.alertsSent ?? 0}</b></div>
+    <div>Alerts failed</div><div><b>${status.alertsFailed ?? 0}</b></div>
+    <div>Scan errors</div><div><b>${status.errors ?? 0}</b></div>`;
+}
+
+async function openLbModal() {
+  document.getElementById('liveBotBackdrop').classList.add('open');
+  lbConfig = (await kvGet('pattern_bot_config')) || { enabled: false, cooldownHours: 4 };
+  renderLbToggle();
+  await loadLbStatus();
+}
+function closeLbModal() { document.getElementById('liveBotBackdrop').classList.remove('open'); }
+
+document.getElementById('liveBotBtn').onclick = openLbModal;
+document.getElementById('liveBotClose').onclick = closeLbModal;
+document.getElementById('liveBotBackdrop').onclick = e => { if (e.target.id === 'liveBotBackdrop') closeLbModal(); };
+document.getElementById('lbEnableBtn').onclick = () => { lbConfig.enabled = !lbConfig.enabled; renderLbToggle(); };
+document.getElementById('lbRefreshBtn').onclick = loadLbStatus;
+document.getElementById('lbSaveBtn').onclick = async () => {
+  const cooldownHours = Math.max(1, Math.min(168, parseInt(document.getElementById('lbCooldown').value, 10) || 4));
+  lbConfig = { enabled: lbConfig.enabled, cooldownHours };
+  const btn = document.getElementById('lbSaveBtn');
+  btn.textContent = 'Saving…';
+  const res = await kvSet('pattern_bot_config', lbConfig);
+  btn.textContent = res.ok ? 'Saved ✓' : 'Save failed';
+  setTimeout(() => { btn.textContent = 'Save'; }, 1500);
+};
+
+(async function init() {
+  buildChart();
+  buildTfToggle();
+  buildConfToggle();
+  await loadInstruments();
+  await loadScan();
+})();
+</script>
+</body>
+</html>

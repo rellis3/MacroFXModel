@@ -88,6 +88,19 @@ def test_closed_trade_carries_history_fields():
     assert c["time_close"] is not None
 
 
+def test_paper_rows_declare_a_utc_time_base():
+    # Paper and MT5 rows land in the SAME Trade History table, but paper stamps
+    # time.time() (true UTC) while Mt5Broker stamps the broker clock (+2/+3h).
+    # Declaring 0 is what lets the dashboard render both correctly.
+    b = PaperBroker()
+    b.set_price("eurusd", 1.1100)
+    b.enter("eurusd", "LONG", 1.1050, 1.1150, 0.5, BIG, True)
+    assert b.serialize_open_positions()[0]["tz_offset_sec"] == 0
+    b.set_price("eurusd", 1.1151)
+    b.check_barriers()
+    assert b.serialize_closed_trades()[-1]["tz_offset_sec"] == 0
+
+
 def test_money_pnl_known_value():
     # profit = Δprice/pip × pip_value × lots in ACCOUNT CURRENCY — not a price
     # delta. Spread zeroed so the number is exact: EUR/USD SHORT 0.5 lots,

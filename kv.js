@@ -35,6 +35,8 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    ai_alert_cfg                         — alert thresholds/pairs
 //    oi_store                             — user-pasted CME OI data (cannot auto-rebuild)
 //    oi_history                           — 60-day OI summary archive (only re-accumulable by waiting)
+//    range_line_oi                        — dated OI levels for the forward test (cannot be back-filled)
+//    hedge_signal_tg                      — hedge-signal Telegram credentials (user-entered)
 //    cot_data, cot_urls, cot_url          — CFTC COT data + user-set report URLs
 //    caps                                 — user-configured proximity caps
 //
@@ -52,6 +54,29 @@ const _CF_EXACT = new Set([
   'surprise_alert_config',   // cone surprise-alert: enable + Telegram creds + thresholds/pairs — user-entered, must survive redeploys
   'journal_store', 'journal_replay_store',
   'oi_store',               // user-pasted CME OI data — cannot be auto-rebuilt
+  'oi_expect_log',          // forward record: what each OI level's expectation CLAIMED, per session.
+                            // Accumulates a post-hoc-proof-resistant log and CANNOT be rebuilt - the
+                            // levels and the spot they were judged against are gone once the day is.
+  'oi_store_py',            // SHADOW of oi_store, written by the automated QuikStrike
+                            // sweep (oi_recon/). Deliberately NOT in _worker.js's
+                            // PERMANENT_KEYS: while it is only being compared against the
+                            // real thing, a 48h TTL is wanted — the key should expire on
+                            // its own rather than linger once the trial ends.
+  'oi_sweep_last',          // heartbeat from the nightly scraper. Its VALUE matters less than
+                            // its AGE - a task that silently stopped firing sends no failure,
+                            // so the only evidence is a last-seen stamp that stops advancing.
+  'oi_auto_target',         // WHERE the nightly sweep writes: the shadow, or the real
+                            // oi_store the bots read. Set from the OI modal so the feed can
+                            // be switched back to manual from a phone, without access to the
+                            // machine running the scraper — the whole point is that the
+                            // rollback does not depend on being at the PC.
+  'range_line_oi',          // DATED per-session OI levels per instrument (~120 days) - the OTHER half of the OI
+                            // forward test. The trade log was already durable but this was not, so the audit
+                            // joined 35 logged trades against ONE surviving OI date: 32 of 35 unjoinable,
+                            // tagged n=1. The test could never accumulate evidence. Built forward only -
+                            // CME serves no history, so a lost day is lost permanently.
+  'hedge_signal_tg',        // hedge-signal Telegram token + chat id - USER-ENTERED credentials. Same class as
+                            // the vol-level-alert creds this project already lost once to the ephemeral store.
   'oi_history',             // ~60-day day-over-day archive of the OI summary per pair. DERIVED from
                             // oi_store, but oi_store only ever holds the LATEST paste, so history is
                             // gone forever if lost — it can only be re-accumulated by waiting 60 more
@@ -60,6 +85,12 @@ const _CF_EXACT = new Set([
                             // built on it (brief oiChange / oiStability / flip-drift, /api/oi-history).
                             // `_snapshotOIHistory` now writes only when the summary actually CHANGED
                             // (~1-2/day on paste, not 48/day on its 30-min timer) to stay quota-cheap.
+  'oi_history_raw',         // ~90-day archive of the FULL per-strike ladder (rawOI/rawChg/rawVol +
+                            // spot/basis context) per pair per day — side-by-side with the lean
+                            // oi_history summary. The strike-over-time map + early wall-building
+                            // signal the top-8 summary can't hold. Same "cannot back-fill, capture
+                            // forward" property as oi_history, so it MUST be durable. Written by the
+                            // same `_snapshotOIHistory` pass, deduped independently of the summary.
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
   'cot_series_v1',          // 200-week COT series per market — a CACHE, but written at most weekly and
                             // rebuilding costs a full CFTC refetch, so it is worth surviving a redeploy
@@ -137,6 +168,8 @@ const _CF_EXACT = new Set([
   'oi_bot_credentials',         // OI bot MT5 credentials — must survive redeploys
   'oi_bot_zones',               // OI bot daily zone plan (per-instrument regime-switch trades) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
+  'oi_hold_calibration',        // OI hold-score calibration (collecting/active + fitted weights) — derived from oi_bot_trade_log but persisted so the plan producer/banner never see a blank right after a redeploy
+  'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need
   // NOTE: oi_bot_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as range_line_bot_status / volatility_bot_status).
@@ -160,8 +193,33 @@ const _CF_EXACT = new Set([
   // source (see COG_OBSERVED_SYSTEM.md). Losing this loses data that cannot be
   // recomputed from anything, ever.
   'cog_signal_log',
+  // COG shadow emitter's daily gate output — the forward record. Cannot be
+  // recomputed after the fact: it is a stamped prediction, not a derivation.
+  'cog_shadow_log',
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
+  // Numeric-composition engines (CPI/GDP/ISM/labor market/retail sales/
+  // trade balance/real yield/PPI) — same "Confluence bot config forgotten
+  // on every deployment" bug class documented above: these were missing
+  // from this allowlist, so every FRED refresh silently landed in the
+  // ephemeral file store and was wiped on the next Railway redeploy —
+  // surfaced live as "cpi/gdp/etc all show no data, they had data last
+  // night" (2026-08-08, right after a redeploy). Each is a daily-gated,
+  // FRED-quota-costing fetch across up to 8 currencies, not a cheap
+  // recompute — worth persisting. The Macro Scorecard has no KV of its
+  // own (pure live aggregation over these) so nothing to add for it
+  // directly, but it's silently empty too until these actually persist.
+  'cpi_v1', 'gdp_v1', 'ism_v1', 'labor_market_v1', 'retail_sales_v1',
+  'trade_balance_v1', 'real_yield_v1', 'ppi_v1', 'yield_curve_v1',
+  'consumer_confidence_v1',
+  // level_engine_bot's enable toggle lives in 'caps' (levelEngineBotEnabled),
+  // already persistent below via 'caps' — no separate key needed for it.
+  'level_engine_fwd_log',     // levelEngine/live_watch.py forward-track log: NQ level-touch alerts + their
+                              // resolved continuation/reversion/no_react outcomes — same "cannot be
+                              // rebuilt" class as fwd_fade_log/cone_fwd_log. This IS the live validation
+                              // record for the two candidates robustness_check.py/confluence_velocity.py
+                              // found but couldn't fully confirm retrospectively; losing it on a redeploy
+                              // would silently reset that forward test to zero.
 ]);
 function isCfKey(key) {
   // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the
@@ -188,6 +246,27 @@ function isCfKey(key) {
   if (key.startsWith('vol_forecast_')) return true;
   // vol_reference_* are user-pasted reference exports — cannot be auto-rebuilt
   if (key.startsWith('vol_reference_')) return true;
+  // vmlog_* are the VuManChu forward-validation log (one key per UTC day) — the
+  // record of what the engine predicted vs what price actually did. It is the
+  // ONLY out-of-sample evidence the VuManChu work will ever have and it cannot
+  // be rebuilt after the fact, so it must survive redeploys.
+  if (key.startsWith('vmlog_')) return true;
+  // fomc_* is the FOMC sentiment engine: raw statement/transcript/minutes text
+  // + the AI analysis built from it, one set per meeting. A source page can be
+  // revised or reworded after the fact (preliminary → final transcript), so a
+  // lost capture cannot be re-fetched into an identical state later — same
+  // "point-in-time record, not a cache" reasoning as vmlog_/vol_forecast_.
+  // Infrequent writes (a handful per ~6-week meeting cycle), well within quota.
+  if (key.startsWith('fomc_')) return true;
+  // ecb_* — same reasoning as fomc_ above, the ECB engine's own point-in-time
+  // captures.
+  if (key.startsWith('ecb_')) return true;
+  // boe_* — same reasoning as fomc_/ecb_ above.
+  if (key.startsWith('boe_')) return true;
+  // boj_* — same reasoning as fomc_/ecb_/boe_ above.
+  if (key.startsWith('boj_')) return true;
+  // beigebook_* — same reasoning as fomc_/ecb_/boe_/boj_ above.
+  if (key.startsWith('beigebook_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
@@ -234,7 +313,7 @@ async function cfFetch(method, key, body, opts) {
   if (method === 'PUT') init.body = body;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    const r = await fetch(url, init);
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
     if (r.status === 429) {
       const delay = Math.min(1_000 * 2 ** attempt, 8_000);
       console.warn(`[KV] CF rate limited (${method} ${key}), retry in ${delay} ms`);

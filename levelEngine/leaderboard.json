@@ -1,0 +1,122 @@
+[
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_up_75",
+    "side": "follow",
+    "is_wr": 57.7,
+    "oos_wr": 59.4,
+    "is_net_r": 0.107,
+    "oos_net_r": 0.153,
+    "is_n": 295,
+    "oos_n": 309
+  },
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "close_up_75",
+    "side": "follow",
+    "is_wr": 57.1,
+    "oos_wr": 56.1,
+    "is_net_r": 0.117,
+    "oos_net_r": 0.095,
+    "is_n": 175,
+    "oos_n": 227
+  },
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "close_dn_med",
+    "side": "follow",
+    "is_wr": 55.8,
+    "oos_wr": 56.1,
+    "is_net_r": 0.088,
+    "oos_net_r": 0.094,
+    "is_n": 462,
+    "oos_n": 565
+  },
+  {
+    "instrument": "usdjpy",
+    "calc": "cog",
+    "level": "close_up_75",
+    "side": "follow",
+    "is_wr": 56.8,
+    "oos_wr": 58.6,
+    "is_net_r": 0.048,
+    "oos_net_r": 0.09,
+    "is_n": 298,
+    "oos_n": 275
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "side": "follow",
+    "is_wr": 55.4,
+    "oos_wr": 55.2,
+    "is_net_r": 0.066,
+    "oos_net_r": 0.07,
+    "is_n": 297,
+    "oos_n": 326
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_up_med",
+    "side": "follow",
+    "is_wr": 54.8,
+    "oos_wr": 54.4,
+    "is_net_r": 0.052,
+    "oos_net_r": 0.053,
+    "is_n": 607,
+    "oos_n": 611
+  },
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "close_up_med",
+    "side": "follow",
+    "is_wr": 54.3,
+    "oos_wr": 54.0,
+    "is_net_r": 0.058,
+    "oos_net_r": 0.053,
+    "is_n": 499,
+    "oos_n": 560
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_dn_med",
+    "side": "follow",
+    "is_wr": 55.3,
+    "oos_wr": 53.4,
+    "is_net_r": 0.064,
+    "oos_net_r": 0.035,
+    "is_n": 530,
+    "oos_n": 598
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "proj_H_med",
+    "side": "follow",
+    "is_wr": 53.4,
+    "oos_wr": 53.0,
+    "is_net_r": 0.023,
+    "oos_net_r": 0.026,
+    "is_n": 380,
+    "oos_n": 417
+  },
+  {
+    "instrument": "nzdusd",
+    "calc": "original",
+    "level": "proj_H_75",
+    "side": "follow",
+    "is_wr": 57.4,
+    "oos_wr": 55.1,
+    "is_net_r": 0.037,
+    "oos_net_r": 0.008,
+    "is_n": 337,
+    "oos_n": 304
+  }
+]

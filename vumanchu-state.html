@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VuManChu State &amp; Forward Validation</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff;
+          --bear:#ef4444; --bull:#22c55e; --warn:#f5d90a; --none:#3f4a5e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; margin-top:4px; max-width:900px; }
+  .sub code { color:var(--accent); }
+  a { color:var(--accent); }
+  .wrap { padding:16px 20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  .card h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  table { border-collapse:collapse; width:100%; min-width:640px; font-size:13px; font-variant-numeric:tabular-nums; }
+  th,td { padding:7px 9px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:var(--muted); font-weight:500; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; }
+  tbody tr:hover { background:#151a26; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; font-weight:600; letter-spacing:.03em; }
+  .FADE   { background:rgba(34,197,94,.14);  color:var(--bull); }
+  .FOLLOW { background:rgba(239,68,68,.14);  color:var(--bear); }
+  .NONE   { background:rgba(100,116,139,.16);color:var(--muted); }
+  .muted { color:var(--muted); }
+  .pos { color:var(--bull); } .neg { color:var(--bear); }
+  .stat { display:inline-block; margin-right:26px; }
+  .stat .k { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .stat .v { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .note { border-left:2px solid var(--line); padding-left:12px; color:var(--muted); font-size:12px; margin-top:10px; }
+  .bar { height:6px; border-radius:3px; background:#1b2130; overflow:hidden; display:inline-block; width:70px; vertical-align:middle; }
+  .bar > i { display:block; height:100%; background:var(--accent); }
+  button { background:#1a2130; color:var(--text); border:1px solid var(--line); border-radius:6px;
+           padding:5px 11px; font:12px 'DM Sans',system-ui,sans-serif; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .banner { display:flex; align-items:center; gap:12px; font-size:15px; font-weight:600; }
+  .dot { width:11px; height:11px; border-radius:50%; flex:0 0 auto; }
+  .dot.up { background:var(--bull); box-shadow:0 0 0 4px rgba(34,197,94,.15); }
+  .dot.down { background:var(--bear); box-shadow:0 0 0 4px rgba(239,68,68,.15); }
+  #healthCard.bad { border-color:var(--bear); }
+</style>
+</head>
+<body>
+<header>
+  <h1>VuManChu State &amp; Forward Validation</h1>
+  <div class="sub">
+    Live multi-timeframe state per instrument, looked up in the frozen table built by
+    <code>vumanchuLab/</code> over 10 years — and the running record of what the engine
+    predicted <em>versus what price actually did</em>. Everything measured offline was
+    in-sample; the scorecard below is the only out-of-sample evidence.
+    <a href="index.html">← Dashboard</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card" id="healthCard">
+    <h2>Logger health</h2>
+    <div id="health" class="muted">checking…</div>
+  </div>
+
+  <div class="card">
+    <h2>Forward validation — predictions already scored</h2>
+    <div id="score" class="muted">loading…</div>
+    <div class="note" id="scoreNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>Live read</h2>
+    <div class="row" style="margin-bottom:10px">
+      <label class="muted" style="font-size:12px">horizon
+        <select id="horizon" style="background:#1a2130;color:var(--text);border:1px solid var(--line);border-radius:5px;padding:3px 6px">
+          <option value="60">60 min</option><option value="240">240 min</option>
+        </select>
+      </label>
+      <button id="refresh">Refresh</button>
+      <span class="muted" id="asOf" style="font-size:12px"></span>
+    </div>
+    <div class="scroll"><table id="live"><thead><tr>
+      <th>Instrument</th><th>Read</th><th>1m</th><th>5m</th><th>15m</th>
+      <th>matched</th><th>n</th><th>P(revert)</th><th>baseline</th><th>delta</th>
+      <th>yrs same sign</th><th>year band</th>
+    </tr></thead><tbody><tr><td colspan="12" class="muted">loading…</td></tr></tbody></table></div>
+    <div class="note">
+      <strong>NONE is the expected answer most of the time.</strong> The lab measured that
+      conflicting timeframes — roughly two thirds of all bars — carry no signal at all, and a
+      cell whose sign did not hold across most years is treated as no read regardless of how
+      large its delta looks. <code>delta</code> is the only informative column: it is the
+      probability difference against a bar matched on hour, volatility regime and prior-move
+      size. A read is a tilt of a few percentage points, not a signal.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Recent predictions and outcomes</h2>
+    <div class="scroll"><table id="log"><thead><tr>
+      <th>Logged (UTC)</th><th>Instrument</th><th>Read</th><th>cell</th>
+      <th>claimed</th><th>prior</th><th>forward</th><th>outcome</th><th>correct?</th>
+    </tr></thead><tbody><tr><td colspan="9" class="muted">loading…</td></tr></tbody></table></div>
+  </div>
+
+</div>
+
+<script type="module">
+const $ = s => document.querySelector(s);
+const pill = r => `<span class="pill ${r}">${r}</span>`;
+const sgn  = v => v == null ? '<span class="muted">—</span>'
+  : `<span class="${v > 0 ? 'pos' : v < 0 ? 'neg' : 'muted'}">${v > 0 ? '+' : ''}${(+v).toFixed(2)}</span>`;
+const pct  = v => v == null ? '<span class="muted">—</span>' : (100 * v).toFixed(1) + '%';
+
+async function loadLive() {
+  const h = $('#horizon').value;
+  const tb = $('#live tbody');
+  tb.innerHTML = '<tr><td colspan="12" class="muted">loading…</td></tr>';
+  try {
+    const r = await fetch(`/api/vumanchu/state?horizon=${h}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    $('#asOf').textContent = 'as of ' + new Date(d.generatedAt * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+    // Informative reads first — a page that buries them under NONEs is unusable,
+    // but the NONEs still have to be visible or the engine looks more decisive
+    // than it is.
+    const rows = d.rows.slice().sort((a, b) =>
+      (a.read === 'NONE') - (b.read === 'NONE') || Math.abs(b.deltaPP ?? 0) - Math.abs(a.deltaPP ?? 0));
+    tb.innerHTML = rows.map(x => x.error
+      ? `<tr><td>${x.instrument}</td><td colspan="11" class="neg">${x.error}</td></tr>`
+      : `<tr>
+          <td><strong>${x.instrument}</strong></td>
+          <td>${pill(x.read)}</td>
+          ${(x.codes || []).map(c => `<td class="muted">${c ?? '—'}</td>`).join('')}
+          <td class="muted">${x.matched ?? '—'}</td>
+          <td>${x.n?.toLocaleString() ?? '—'}</td>
+          <td>${pct(x.pRevert)}</td>
+          <td class="muted">${pct(x.baseline)}</td>
+          <td><strong>${sgn(x.deltaPP)}</strong>pp</td>
+          <td class="muted">${x.yearsSameSign ?? '—'}/${x.years ?? '—'}</td>
+          <td class="muted">${x.yearMinPP == null ? '—' : `${x.yearMinPP} … ${x.yearMaxPP}`}</td>
+        </tr>`).join('');
+  } catch (e) {
+    tb.innerHTML = `<tr><td colspan="12" class="neg">${e.message}</td></tr>`;
+  }
+}
+
+async function loadLog() {
+  try {
+    const r = await fetch('/api/vumanchu/log?days=30');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    const s = d.score;
+
+    if (!s.scored) {
+      $('#score').innerHTML = `<span class="muted">No predictions have resolved yet —
+        ${s.pending || 0} pending, ${s.total || 0} logged.</span>`;
+      $('#scoreNote').innerHTML = `The logger writes a read per instrument on a timer and fills
+        in the outcome once the horizon elapses. The first scores appear about an hour after it
+        starts; a sample large enough to mean anything takes weeks.`;
+    } else {
+      $('#score').innerHTML = `
+        <span class="stat"><div class="k">Scored</div><div class="v">${s.scored.toLocaleString()}</div></span>
+        <span class="stat"><div class="k">Hit rate</div><div class="v">${s.hitPct}%</div></span>
+        <span class="stat"><div class="k">Claimed baseline</div><div class="v muted">${s.claimedBaselinePct}%</div></span>
+        <span class="stat"><div class="k">Realised edge</div><div class="v ${s.edgePP > 0 ? 'pos' : 'neg'}">${s.edgePP > 0 ? '+' : ''}${s.edgePP}pp</div></span>
+        <span class="stat"><div class="k">Table promised</div><div class="v muted">±${s.expectedPP}pp</div></span>
+        <span class="stat"><div class="k">Noise band</div><div class="v muted">±${s.noiseBandPP}pp</div></span>`;
+      const verdict = Math.abs(s.edgePP) < s.noiseBandPP
+        ? `<strong>Too early to say.</strong> The realised edge (${s.edgePP}pp) is inside the
+           noise band (±${s.noiseBandPP}pp) for ${s.scored} scored predictions — this is what
+           "not enough data yet" looks like, not a null.`
+        : s.edgePP > 0
+          ? `<strong>The forward record agrees with the backtest so far</strong> —
+             realised ${s.edgePP}pp against a promised ±${s.expectedPP}pp, outside the ±${s.noiseBandPP}pp noise band.`
+          : `<strong>The forward record disagrees with the backtest.</strong> Realised
+             ${s.edgePP}pp against a promised ±${s.expectedPP}pp. If this holds as the sample
+             grows, the offline finding did not generalise.`;
+      $('#scoreNote').innerHTML = `${verdict}<br>
+        Hit rate is measured only on FADE/FOLLOW reads with a prior move above the lab's 0.5σ
+        floor; ${s.skippedFlat} flat bars were logged but excluded, and ${s.pending} are still
+        pending. NONE reads are recorded but never scored as hits —
+        ${s.byRead?.NONE?.n ?? 0} so far.`;
+    }
+
+    const tb = $('#log tbody');
+    const recent = d.rows.slice().reverse().slice(0, 60);
+    tb.innerHTML = recent.length ? recent.map(x => `<tr>
+        <td class="muted">${new Date(x.slotTs * 1000).toISOString().slice(5, 16).replace('T', ' ')}</td>
+        <td>${x.instrument}</td>
+        <td>${pill(x.read)}</td>
+        <td class="muted">${x.cell ?? '—'}</td>
+        <td>${x.deltaPP == null ? '<span class="muted">—</span>' : sgn(x.deltaPP) + 'pp'}</td>
+        <td class="muted">${x.priorMove == null ? '—' : (100 * x.priorMove).toFixed(2) + '%'}</td>
+        <td class="muted">${x.fwdMove == null ? '—' : (100 * x.fwdMove).toFixed(2) + '%'}</td>
+        <td>${x.skipped ? '<span class="muted">flat</span>'
+             : x.reverted == null ? '<span class="muted">pending</span>'
+             : x.reverted ? 'reverted' : 'continued'}</td>
+        <td>${x.correct == null ? '<span class="muted">—</span>'
+             : x.correct ? '<span class="pos">✓</span>' : '<span class="neg">✗</span>'}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="9" class="muted">nothing logged yet</td></tr>';
+  } catch (e) {
+    $('#score').innerHTML = `<span class="neg">${e.message}</span>`;
+  }
+}
+
+async function loadHealth() {
+  try {
+    const r = await fetch('/api/vumanchu/health');
+    const h = await r.json();
+    $('#healthCard').classList.toggle('bad', !h.ok);
+    const d = h.last24h || {};
+    $('#health').innerHTML = `
+      <div class="banner"><span class="dot ${h.ok ? 'up' : 'down'}"></span>
+        <span class="${h.ok ? 'pos' : 'neg'}">${h.status}</span></div>
+      <div class="muted" style="margin-top:8px;font-size:12.5px">
+        last write ${h.minutesSinceLastWrite == null ? '—' : h.minutesSinceLastWrite + ' min ago'}
+        · cadence ${h.cadenceMin} min
+        · last 24h: <strong>${d.logged ?? 0}</strong> logged,
+        ${d.resolved ?? 0} resolved, ${d.pending ?? 0} pending, ${d.skippedFlat ?? 0} flat
+      </div>
+      <div class="muted" style="margin-top:6px;font-size:12.5px">${
+        Object.entries(h.perInstrument || {}).map(([k, v]) =>
+          `${k}: ${v.rows} rows, seen ${v.lastSeenMin}m ago`).join(' · ') || 'no rows yet'}</div>`;
+  } catch (e) {
+    $('#healthCard').classList.add('bad');
+    $('#health').innerHTML = `<div class="banner"><span class="dot down"></span><span class="neg">health check failed: ${e.message}</span></div>`;
+  }
+}
+
+$('#refresh').onclick = loadLive;
+$('#horizon').onchange = loadLive;
+loadLive(); loadLog(); loadHealth();
+setInterval(() => { loadLog(); loadHealth(); }, 120_000);
+</script>
+</body>
+</html>

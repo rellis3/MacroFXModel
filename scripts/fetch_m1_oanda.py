@@ -34,8 +34,8 @@ import boto3
 R2_ENDPOINT   = "https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com"
 R2_BUCKET     = "r2-storage"
 R2_PREFIX     = "m1"
-R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY", "25f206aea31c52f4f432c46bd6d5a249")
-R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY", "7a16548bb2b7060ff09dab76e683b8d5334eb1b002ffaf255b258fb6a7c7b0ab")
+R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY")
+R2_SECRET_KEY = os.environ.get("R2_SECRET_KEY")
 
 # ── Oanda config ──────────────────────────────────────────────────────────────
 OANDA_ENV = os.environ.get("OANDA_ENV", "practice")
@@ -44,7 +44,7 @@ OANDA_BASE = (
     if OANDA_ENV == "practice"
     else "https://api-fxtrade.oanda.com"
 )
-OANDA_KEY = os.environ.get("OANDA_KEY", "12ede1dbab4361aa039831ec942603d2-b1691eab23c45cd97d0c1e7e63e9d5cc")
+OANDA_KEY = os.environ.get("OANDA_KEY")
 
 # ── Instrument definitions ────────────────────────────────────────────────────
 # key      = pairKey used for parquet filename (must match cfg.name.toLowerCase() in engine)
@@ -64,6 +64,19 @@ INSTRUMENTS = {
     # Additional commodities
     "silver":  {"oanda": "XAG_USD",     "class": "commodity", "desc": "Silver"},
     "oil":     {"oanda": "BCO_USD",     "class": "commodity", "desc": "Brent Crude"},
+
+    # Additional FX pairs — widening the universe past the 26 majors/crosses
+    # already cached (see ContinuationBot/README.md's "widening past FX"
+    # finding: adding uncorrelated instruments only helps if they carry
+    # edge, so these are here to TEST, not because they're assumed good).
+    "usdsek":  {"oanda": "USD_SEK",      "class": "fx",        "desc": "USD/SEK"},
+    "usdnok":  {"oanda": "USD_NOK",      "class": "fx",        "desc": "USD/NOK"},
+    "usdmxn":  {"oanda": "USD_MXN",      "class": "fx",        "desc": "USD/MXN"},
+    "usdzar":  {"oanda": "USD_ZAR",      "class": "fx",        "desc": "USD/ZAR"},
+    "usdtry":  {"oanda": "USD_TRY",      "class": "fx",        "desc": "USD/TRY"},
+    "usdsgd":  {"oanda": "USD_SGD",      "class": "fx",        "desc": "USD/SGD"},
+    "usdhkd":  {"oanda": "USD_HKD",      "class": "fx",        "desc": "USD/HKD"},
+    "eursek":  {"oanda": "EUR_SEK",      "class": "fx",        "desc": "EUR/SEK"},
 }
 
 OUTDIR = Path(__file__).parent.parent / "VolRangeForecaster" / "data" / "m1"
@@ -267,7 +280,16 @@ def main():
     parser.add_argument("pairs", nargs="*", help="Instrument keys to fetch (default: all)")
     parser.add_argument("--years",     type=int,  default=5,    help="Years of history (default 5)")
     parser.add_argument("--no-upload", action="store_true",     help="Skip R2 upload")
+    parser.add_argument("--list",      action="store_true",
+                        help="Print INSTRUMENTS as JSON and exit — no OANDA_KEY required. "
+                             "Lets a caller (e.g. the dashboard's fetch-trigger UI) introspect "
+                             "the available instrument keys without duplicating this table.")
     args = parser.parse_args()
+
+    if args.list:
+        import json
+        print(json.dumps(INSTRUMENTS))
+        return
 
     selected = [p.lower() for p in args.pairs] if args.pairs else list(INSTRUMENTS.keys())
     unknown  = [p for p in selected if p not in INSTRUMENTS]

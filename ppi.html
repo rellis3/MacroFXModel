@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPI / Pipeline Inflation</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700}
+  .hdr .spacer{flex:1}
+  .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)} .hbtn:disabled{opacity:.5;cursor:default}
+  .hbtn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  .card h2{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin:0 0 12px}
+  .note{color:var(--text3);font-size:11px;line-height:1.5;margin-top:10px}
+  .empty{color:var(--text2);font-size:13px;line-height:1.6;padding:8px 0}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+  .ccard{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:13px 14px}
+  .ccard.usd{grid-column:1 / -1;background:var(--card)}
+  .ccard .ctitle{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .ccard .ccy{font-size:14px;font-weight:700}
+  .ccard.usd .ccy{font-size:16px}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 9px;font-size:10.5px;font-weight:700}
+  .chip.strong{background:var(--bull-bg);color:var(--bull)} .chip.weak{background:var(--bear-bg);color:var(--bear)}
+  .chip.neu{background:rgba(110,118,129,.15);color:var(--text2)} .chip.na{background:var(--card2);color:var(--text3);border:1px solid var(--border)}
+
+  .gauge{position:relative;height:8px;background:var(--bg);border-radius:4px;margin:6px 0 10px}
+  .gauge .mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--border)}
+  .gauge .fill{position:absolute;top:0;bottom:0;border-radius:4px}
+  .gauge .fill.pos{left:50%;background:var(--bull)} .gauge .fill.neg{right:50%;background:var(--bear)}
+
+  .growth-val{font-size:22px;font-weight:700;margin-bottom:2px}
+  .growth-val.pos{color:var(--bull)} .growth-val.neg{color:var(--bear)} .growth-val.na{color:var(--text3)}
+  .growth-lbl{font-size:10.5px;color:var(--text3);margin-bottom:8px}
+  .subdim{font-size:11px;color:var(--text2);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .subdim b{color:var(--text)}
+
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--text3);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🏭 PPI / Pipeline Inflation</h1>
+  <div class="spacer"></div>
+  <span class="stamp" id="lastCheck"></span>
+  <button class="hbtn primary" id="refreshBtn" onclick="refreshNow()">⟳ Refresh</button>
+  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
+  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
+  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
+  <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
+  <a class="hbtn" href="beige-book.html">Beige Book</a>
+  <a class="hbtn" href="cpi.html">CPI / Inflation</a>
+  <a class="hbtn" href="gdp.html">GDP / Growth</a>
+  <a class="hbtn" href="labor-market.html">Labor Market</a>
+  <a class="hbtn" href="ism.html">Business Activity</a>
+  <a class="hbtn" href="retail-sales.html">Retail Sales</a>
+  <a class="hbtn" href="trade-balance.html">Trade Balance</a>
+  <a class="hbtn" href="real-yield.html">Real Yield</a>
+  <a class="hbtn" href="macro-scorecard.html">Macro Scorecard</a>
+  <a class="hbtn" href="yield-curve.html">Yield Curve</a>
+  <a class="hbtn" href="consumer-confidence.html">Consumer Confidence</a>
+  <a class="hbtn" href="today.html">Daily Brief</a>
+  <a class="hbtn" href="index.html">Dashboard</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>USD pipeline pressure read</h2>
+    <div id="body" class="empty">Loading…</div>
+    <div class="note">USD-only, deliberately: PPIFIS (BLS's headline PPI print) and PPIFES (core, ex food &amp; energy) are real, live, monthly index levels on FRED. Every non-US OECD PPI series checked was confirmed real but frozen — no new observations since roughly December 2022 — even though the national statistical offices themselves are still publishing PPI live through 2026. Building the other 7 currencies against those stale IDs would silently present 3+-year-old data as current, so this stays USD-only until a live source is found. PPI leads CPI: it captures pipeline/input cost pressure before it passes through to consumer prices, so a PPI acceleration with CPI still calm is an early-warning signal. "Trend" z-scores the latest YoY print against its own trailing history. Refreshes automatically once/day; source is FRED (needs FRED_KEY on the server).</div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function jget(url, opts) { const r = await fetch(url, opts); return r.json(); }
+
+function strengthChip(score) {
+  if (score == null) return '<span class="chip na">no data</span>';
+  if (score > 0.25) return '<span class="chip strong">PRESSURE BUILDING</span>';
+  if (score < -0.25) return '<span class="chip weak">PRESSURE EASING</span>';
+  return '<span class="chip neu">STEADY</span>';
+}
+function gauge(score) {
+  if (score == null) return '';
+  const pct = Math.min(50, Math.abs(score) * 50);
+  return `<div class="gauge"><div class="mid"></div><div class="fill ${score >= 0 ? 'pos' : 'neg'}" style="width:${pct}%"></div></div>`;
+}
+
+function renderCcy(ccy, r) {
+  const h = r?.dims?.headline;
+  const g = h?.latestYoy;
+  const gCls = g == null ? 'na' : (g >= 0 ? 'pos' : 'neg');
+  const core = r?.dims?.core;
+  return `<div class="ccard usd">
+    <div class="ctitle"><span class="ccy">${ccy}</span>${strengthChip(r?.pressure)}</div>
+    <div class="growth-val ${gCls}">${g != null ? `${g > 0 ? '+' : ''}${g}%` : '—'}</div>
+    <div class="growth-lbl">Headline PPI YoY · ${esc(h?.latestDate || '—')}</div>
+    ${gauge(h?.score)}
+    ${core ? `<div class="subdim">Core (ex food &amp; energy): <b>${core.latestYoy != null ? `${core.latestYoy > 0 ? '+' : ''}${core.latestYoy}%` : '—'}</b> YoY · ${esc(core.latestDate || '—')}</div>` : ''}
+  </div>`;
+}
+
+async function load() {
+  const r = await jget('/api/ppi');
+  if (!r.ok) {
+    $('body').innerHTML = `<div class="empty">${esc(r.error || 'No data yet')} — click Refresh (needs FRED_KEY configured on the server).</div>`;
+    return;
+  }
+  $('lastCheck').textContent = `Generated ${new Date(r.generatedAt).toLocaleString()}`;
+  $('body').innerHTML = r.byCcy?.USD ? `<div class="grid">${renderCcy('USD', r.byCcy.USD)}</div>` : `<div class="empty">No USD data yet — click Refresh.</div>`;
+}
+
+async function refreshNow() {
+  const btn = $('refreshBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Refreshing…';
+  try {
+    await jget('/api/ppi/refresh', { method: 'POST' });
+    for (let i = 0; i < 40; i++) {
+      const st = await jget('/api/ppi/refresh-status');
+      if (!st.running) break;
+      await new Promise(res => setTimeout(res, 2000));
+    }
+    await load();
+  } catch (e) {
+    $('lastCheck').textContent = 'Could not reach the server: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⟳ Refresh';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

@@ -22,12 +22,17 @@
 import * as kv from '../kv.js';
 import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './volForecast.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './econCalendar.js';
-import { harShadowFields } from './forecastExport.js';
+import { harShadowFields, harIvShadowFields } from './forecastExport.js';
+import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
+import { fetchFredSeries, forwardFillToDates } from './fredFetch.js';
 import { londonMidnightSec } from './volBacktestEngine.js';
 
 // HAR-RV shadow forecast (challenger σ through the incumbent band math, stored
 // as `f.har` per instrument — purely additive). Kill switch: VOL_FORECAST_HAR=0.
 const HAR_SHADOW_ON = process.env.VOL_FORECAST_HAR !== '0';
+// HAR-IV shadow (COG-v2 gold σ): implied-vol-augmented HAR from the listed IV index
+// (GVZ for gold), stored as `f.harIv`. Needs FRED_KEY. Kill switch: VOL_FORECAST_HARIV=0.
+const HARIV_SHADOW_ON = process.env.VOL_FORECAST_HARIV !== '0';
 
 // ── Instrument definitions ────────────────────────────────────────────────────
 // oandaInstrument: Oanda v20 instrument name (primary data source)
@@ -127,6 +132,7 @@ async function fetchOHLCOanda(instrument) {
       high:  parseFloat(c.mid.h),
       low:   parseFloat(c.mid.l),
       close: parseFloat(c.mid.c),
+      date:  (c.time || '').slice(0, 10),   // for date-aligned IV join (HAR-IV / GVZ)
     }))
     .filter(b => b.close > 0);
   if (bars.length < 60) throw new Error(`Only ${bars.length} valid bars for ${instrument}`);
@@ -151,7 +157,7 @@ async function fetchOHLCYahoo(ticker) {
     const o = q.open[i], h = q.high[i], l = q.low[i], c = q.close[i];
     if (o == null || h == null || l == null || c == null) continue;
     if (h <= 0 || l <= 0 || c <= 0 || o <= 0) continue;
-    bars.push({ open: o, high: h, low: l, close: c });
+    bars.push({ open: o, high: h, low: l, close: c, date: new Date(ts[i] * 1000).toISOString().slice(0, 10) });
   }
   if (bars.length < 60) throw new Error(`Only ${bars.length} valid bars for ${ticker}`);
   return bars;
@@ -354,6 +360,7 @@ export async function runVolForecast(targetDate) {
 
   const instruments = {};
   const errors      = [];
+  const harivDiag   = {};   // per-IV-instrument HAR-IV outcome, surfaced in meta for live diagnosis
 
   for (const cfg of INSTRUMENTS) {
     try {
@@ -364,6 +371,32 @@ export async function runVolForecast(targetDate) {
         // Shadow must never break the primary forecast: any HAR failure → null.
         try { f.har = harShadowFields(ohlc, cfg.assetClass, newsMult); }
         catch (e) { f.har = null; console.warn(`[VOL-FORECAST] ${cfg.name} HAR shadow failed: ${e.message}`); }
+      }
+      // COG-v2 gold σ: HAR-IV from the GVZ implied-vol series (indices/gold that have
+      // a listed IV index). Additive — attaches `f.harIv`; the primary never moves.
+      if (HARIV_SHADOW_ON) {
+        const code = IV_INDEX_BY_INSTRUMENT[cfg.name];
+        const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+        if (code) {
+          // Record why f.harIv did / didn't populate, so the COG-v2 fallback can be
+          // diagnosed live (via meta.hariv_diag) instead of guessed across a deploy.
+          if (!fredKey) { harivDiag[cfg.name] = 'no_fred_key'; }
+          else if (!ohlc[0]?.date) { harivDiag[cfg.name] = 'no_bar_date'; }
+          else {
+            try {
+              const ivMap = await fetchFredSeries(code, ohlc[0].date, fredKey);
+              const ivPct = forwardFillToDates(ohlc.map(b => b.date), ivMap);
+              const ivN   = ivPct.filter(Number.isFinite).length;
+              f.harIv = harIvShadowFields(ohlc, ivPct, cfg.assetClass, newsMult);
+              if (f.harIv) { f.harIv.iv_index = code; harivDiag[cfg.name] = `ok (${code}, ${ivN} obs)`; }
+              else         { harivDiag[cfg.name] = `shadow_null (${code}, ${ivN} obs of ${ohlc.length} bars)`; }
+            } catch (e) {
+              f.harIv = null;
+              harivDiag[cfg.name] = `fetch_failed: ${e.message}`;
+              console.warn(`[VOL-FORECAST] ${cfg.name} HAR-IV shadow failed: ${e.message}`);
+            }
+          }
+        }
       }
       instruments[cfg.name] = f;
       console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}[${dataSource}]`);
@@ -384,6 +417,7 @@ export async function runVolForecast(targetDate) {
       news_flag:   newsLabel,
       news_mult:   newsMult,
       data_source: dataSource,
+      ...(Object.keys(harivDiag).length ? { hariv_diag: harivDiag } : {}),
       ...(errors.length ? { errors } : {}),
     },
   };

@@ -143,35 +143,186 @@ export function tradePctReturn(t) {
 // card. Pure — takes two inst snapshots ({maxPain, callWall, putWall, pcRatio,
 // totalCallOI, totalPutOI, callWalls[], putWalls[]}). Returns null if either side
 // is missing so callers degrade gracefully on the first day (no prior).
-export function oiDeltas(cur, prev) {
+// Strike spacing inferred from ONE day's ladder (the SMALLEST gap between that day's
+// wall strikes - walls are the top-N by OI, not contiguous, so gaps are multiples of the
+// spacing and the minimum IS the spacing). Deliberately not derived from both days
+// pooled: the two ladders are offset by the basis, so a pooled gap list alternates
+// drift-sized and spacing-sized gaps and any median of it is meaningless.
+function _spacingOf(snap) {
+  const ks = [...(snap?.callWalls || []), ...(snap?.putWalls || [])]
+    .map(w => w?.strike).filter(Number.isFinite).sort((a, b) => a - b);
+  let min = Infinity;
+  for (let i = 1; i < ks.length; i++) { const g = ks[i] - ks[i - 1]; if (g > 1e-9 && g < min) min = g; }
+  return Number.isFinite(min) ? min : null;
+}
+
+// Tolerance for calling two strikes "the same strike on different days".
+// This is the PASS-1 (drift-discovery) tolerance, so it is deliberately generous: it must
+// exceed the overnight basis drift, and stay under HALF the spacing or a strike could pair
+// with its neighbour. 0.45x spacing sits just inside that bound. Pass 2 re-matches at a
+// tight tolerance once the drift has been removed, so the loose pass-1 value never decides
+// the final pairing. (EUR/USD: 25-pip ladder -> 11.25 pips of pass-1 room against ~4.5 pips
+// of observed drift; the old fixed 0.25x gave only 6.25 and a 1.4x margin.)
+export function strikeMatchTol(cur, prev, explicit = null) {
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const a = _spacingOf(cur), b = _spacingOf(prev);
+  const sp = (a != null && b != null) ? Math.min(a, b) : (a ?? b);
+  if (sp != null) return sp * 0.45;
+  const ref = cur?.spot ?? cur?.maxPain ?? prev?.spot;              // last resort: 10 bps
+  return Number.isFinite(ref) ? Math.abs(ref) * 0.001 : 0;
+}
+
+// Greedy nearest-within-tolerance pairing; each prior wall is consumed at most once so
+// two current strikes can never both claim the same prior one.
+function _pairWalls(cw, pw, tol) {
+  const used = new Set(), pairs = [];
+  for (const w of cw) {
+    let best = -1, bestD = Infinity;
+    for (let i = 0; i < pw.length; i++) {
+      if (used.has(i)) continue;
+      const dd = Math.abs((pw[i]?.strike ?? NaN) - w.strike);
+      if (dd <= tol && dd < bestD) { bestD = dd; best = i; }
+    }
+    if (best >= 0) { used.add(best); pairs.push([w, pw[best]]); } else pairs.push([w, null]);
+  }
+  return { pairs, faded: pw.filter((_, i) => !used.has(i)) };
+}
+
+// Rigid-shift estimator. Each (current, prior) strike pair proposes an offset; score it by
+// how many current strikes land within `tol` of SOME prior strike once shifted back by it,
+// and keep the best. Requires >=2 corroborating strikes so one coincidental pair can never
+// define the drift; returns 0 (assume no drift) when nothing corroborates. O(n^4) on the
+// wall list, which is <=8 per side - trivial.
+function _estimateDrift(cur, prev, tol) {
+  const pick = o => [...(o?.callWalls || []), ...(o?.putWalls || [])]
+    .map(w => w?.strike).filter(Number.isFinite);
+  const cs = pick(cur), ps = pick(prev);
+  if (!cs.length || !ps.length) return 0;
+
+  // A rigid shift is only identifiable UP TO ONE STRIKE STEP. On a periodic ladder the
+  // offsets `drift` and `drift +/- spacing` both align strikes, and the alias can score
+  // HIGHER purely from which walls happen to be in each day's top-N. Observed on gold:
+  // true drift +0.635 scored 8 matches, the -99.365 alias (one 100-point step away) scored
+  // 10 and won - which then pairs each wall with a DIFFERENT strike and mis-attributes
+  // every firming/fading. So candidates are bounded by:
+  //   * 0.9x the strike spacing - past that the shift is aliased, not measured; and
+  //   * 0.5% of price - an overnight futures-basis move is a carry adjustment, orders of
+  //     magnitude smaller than that (gold 0.635 = 0.016%, NQ 81.25 = 0.29%, EUR/USD
+  //     4.45 pips = 0.04%). The -99.365 gold alias was 2.5%, physically impossible.
+  // The tighter of the two applies, since which one binds differs by instrument (FX has
+  // fine spacing relative to price; gold and the indices the reverse).
+  const sp = _spacingOf(cur) ?? _spacingOf(prev);
+  const ref = Math.abs(cur?.spot ?? cur?.maxPain ?? prev?.spot ?? 0);
+  const caps = [];
+  if (sp != null) caps.push(sp * 0.9);
+  if (ref > 0) caps.push(ref * 0.005);
+  const cap = caps.length ? Math.min(...caps) : Infinity;
+
+  const scored = [];
+  for (const c of cs) for (const p of ps) {
+    const off = c - p;
+    if (Math.abs(off) > cap) continue;                 // aliased or physically implausible
+    let n = 0;
+    for (const c2 of cs) if (ps.some(p2 => Math.abs((c2 - off) - p2) <= tol)) n++;
+    scored.push({ off, n });
+  }
+  if (!scored.length) return { drift: 0, n: 0, ambiguous: false };
+  // Ties break toward the SMALLEST shift - prefer "barely moved" over an equally
+  // well-supported larger shift.
+  scored.sort((a, b) => (b.n - a.n) || (Math.abs(a.off) - Math.abs(b.off)));
+  const top = scored[0];
+  if (top.n < 2) return { drift: 0, n: top.n, ambiguous: false };
+
+  // HONEST AMBIGUITY FLAG. Drift is recoverable only while it stays well under HALF the
+  // strike spacing; past that, shifting by (drift - spacing) aligns the ladder just as well
+  // and there is no way to tell the two apart from strikes alone. When a genuinely DIFFERENT
+  // offset scores within one match of the winner, say so rather than pick one and present it
+  // as fact - a mis-chosen offset pairs every wall with the wrong strike and would report
+  // fabricated firming/fading. Consumers should treat per-wall dynamics as unreliable when
+  // this is set. (Measured limit: a 25-pip ladder recovers a 13-pip drift but not 26 - at 26
+  // it selects the 1-pip alias. Real drifts run 0.02-0.3% of price against 0.2-1.2% spacing,
+  // so they sit inside the reliable band; this flag exists for when they do not.)
+  const rival = scored.find(x => Math.abs(x.off - top.off) > tol && x.n >= top.n - 1);
+  return { drift: top.off, n: top.n, ambiguous: !!rival };
+}
+
+// Day-over-day OI dynamics.
+//
+// WALL MATCHING IS BY TOLERANCE, NOT EQUALITY (fixed 2026-07-29). Archived strikes are
+// stored as SPOT-converted prices (strike - basis), and the futures/spot basis moves
+// overnight, so the identical CME strike lands on a different number each day (observed:
+// EUR/USD 1.157605 -> 1.158050, a 4.45-pip shift applied to EVERY strike). The old
+// `new Map(...).get(w.strike)` exact-float lookup therefore matched NOTHING: `strengthening`
+// and `weakening` came back permanently empty, every current wall was reported `appeared`
+// and every prior one `faded`, and `classifyOIChange` consequently told the daily brief
+// "fresh positioning building" for 9 of 11 unrelated instruments on the same day. That is a
+// confidently-wrong output, not a missing one. (`oiWallStability` was unaffected - it
+// already took a tolerance, which is why wall stability read correctly throughout.)
+//
+// `basisDrift` = the median signed shift across MATCHED walls, i.e. the overnight basis
+// move itself. The `*ShiftNet` fields subtract it, so a max pain that did not actually move
+// reads as 0 instead of inheriting the basis. Raw `*Shift` values are unchanged for
+// back-compat; prefer the Net ones for any "did this level really move" claim.
+export function oiDeltas(cur, prev, tol = null) {
   if (!cur || !prev || typeof cur !== 'object' || typeof prev !== 'object') return null;
   const d = (a, b) => (Number.isFinite(a) && Number.isFinite(b)) ? +(a - b).toFixed(6) : null;
   const totCur = (cur.totalCallOI || 0) + (cur.totalPutOI || 0);
   const totPrev = (prev.totalCallOI || 0) + (prev.totalPutOI || 0);
   const totalOIChange = Math.round(totCur - totPrev);
-  // Per-strike wall dynamics: match walls by strike across the two days.
+  const T = strikeMatchTol(cur, prev, tol);
+  const T2 = T * (0.15 / 0.45);          // tight, post-alignment residual tolerance
+
+  // PASS 1 - discover the overnight basis drift by CONSENSUS, not by proximity. Every
+  // (current, prior) strike pair proposes an offset; the winner is the offset that aligns
+  // the MOST strikes at once. Proximity pairing cannot be used here because it silently
+  // caps the detectable drift at half the strike spacing - the whole ladder shifts
+  // rigidly, so once the drift approaches one strike-step, "nearest" starts pairing each
+  // strike with its NEIGHBOUR and the estimate collapses. Consensus has no such bound: a
+  // rigid shift of any size still produces one offset that matches every strike.
+  // Ties break toward the SMALLEST offset (prefer "no drift" over an equally-good shift by
+  // a whole strike-step, which is the one genuinely ambiguous case on a periodic ladder).
+  const _est = _estimateDrift(cur, prev, T2);
+  const drift0 = _est.drift;
+
+  // PASS 2 - subtract the drift, then match TIGHTLY. After correction the same strike lands
+  // on ~0 residual, so a small tolerance is now both safe and far more discriminating than
+  // the loose pass-1 window. `_raw` preserves the ORIGINAL prior strike for reporting.
+  const align = arr => (Array.isArray(arr) ? arr : [])
+    .map(w => ({ ...w, strike: w.strike + drift0, _raw: w.strike }));
+
+  const drifts = [];
   const wallDyn = (curW, prevW, kind) => {
-    const cw = Array.isArray(curW) ? curW : [], pw = Array.isArray(prevW) ? prevW : [];
-    const pmap = new Map(pw.map(w => [w.strike, w.oi]));
+    const cw = Array.isArray(curW) ? curW : [], pw = align(prevW);
+    const { pairs, faded } = _pairWalls(cw, pw, T2);
     const strengthening = [], weakening = [], appeared = [];
-    for (const w of cw) {
-      const pv = pmap.get(w.strike);
-      if (pv == null) appeared.push({ strike: w.strike, oi: w.oi, kind });   // strike unimportant yesterday → fresh wall
-      else {
-        const dd = Math.round(w.oi - pv);
-        const pct = pv > 0 ? +((w.oi - pv) / pv * 100).toFixed(0) : null;    // OI change % (fresh-positioning vs liquidation)
-        if (dd > 0) strengthening.push({ strike: w.strike, delta: dd, pct, oi: w.oi, kind });
-        else if (dd < 0) weakening.push({ strike: w.strike, delta: dd, pct, oi: w.oi, kind });
-      }
+    for (const [w, p] of pairs) {
+      if (!p) { appeared.push({ strike: w.strike, oi: w.oi, kind }); continue; }
+      drifts.push(w.strike - (p._raw ?? p.strike));      // true drift vs the UNshifted strike
+      const dd = Math.round(w.oi - p.oi);
+      const pct = p.oi > 0 ? +((w.oi - p.oi) / p.oi * 100).toFixed(0) : null;
+      const row = { strike: w.strike, delta: dd, pct, oi: w.oi, kind, prevStrike: p._raw ?? p.strike };
+      if (dd > 0) strengthening.push(row); else if (dd < 0) weakening.push(row);
     }
-    const seen = new Set(cw.map(w => w.strike));
-    const faded = pw.filter(w => !seen.has(w.strike)).map(w => ({ strike: w.strike, oi: w.oi, kind }));
-    return { strengthening, weakening, appeared, faded };
+    return { strengthening, weakening, appeared,
+      faded: faded.map(w => ({ strike: w._raw ?? w.strike, oi: w.oi, kind })) };
   };
+  const callWalls = wallDyn(cur.callWalls, prev.callWalls, 'call');
+  const putWalls  = wallDyn(cur.putWalls,  prev.putWalls,  'put');
+
+  drifts.sort((a, b) => a - b);
+  const basisDrift = drifts.length ? +drifts[drifts.length >> 1].toFixed(6) : null;
+  const net = v => (v == null || basisDrift == null) ? v : +(v - basisDrift).toFixed(6);
+
   return {
     maxPainShift: d(cur.maxPain, prev.maxPain),
     callWallShift: d(cur.callWall, prev.callWall),
     putWallShift: d(cur.putWall, prev.putWall),
+    maxPainShiftNet: net(d(cur.maxPain, prev.maxPain)),
+    callWallShiftNet: net(d(cur.callWall, prev.callWall)),
+    putWallShiftNet: net(d(cur.putWall, prev.putWall)),
+    basisDrift, strikeTol: +T2.toFixed(6), strikeTolPass1: +T.toFixed(6), matchedWalls: drifts.length,
+    // true => the shift could not be pinned down; per-wall firming/fading is unreliable.
+    driftAmbiguous: _est.ambiguous, driftSupport: _est.n,
     pcRatioChange: d(cur.pcRatio, prev.pcRatio),
     totalCallOIChange: Math.round((cur.totalCallOI || 0) - (prev.totalCallOI || 0)),
     totalPutOIChange: Math.round((cur.totalPutOI || 0) - (prev.totalPutOI || 0)),
@@ -179,8 +330,7 @@ export function oiDeltas(cur, prev) {
     totalOIChangePct: totPrev > 0 ? +((totCur - totPrev) / totPrev * 100).toFixed(1) : null,
     // L1: rising total OI = new money entering; falling = positions liquidating.
     flow: totalOIChange > 0 ? 'building' : totalOIChange < 0 ? 'unwinding' : 'flat',
-    callWalls: wallDyn(cur.callWalls, prev.callWalls, 'call'),
-    putWalls: wallDyn(cur.putWalls, prev.putWalls, 'put'),
+    callWalls, putWalls,
   };
 }
 
@@ -407,15 +557,56 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // answer the same question with different accuracy and consumers weight them
   // differently — see `gex_flip` handling in ConfluenceBot's level_matrix, where it is
   // deliberately credited as a BOUNDARY (like gamma_flip) and never as a magnet.
-  push(inst.gexFlip, 'gex_flip');
+  // Every crossing, not just the nearest. A one-sided book crosses more than once,
+  // and each crossing is a real regime edge: the bands between them alternate
+  // long/short gamma. Falls back to the scalar for entries stored before `gexFlips`
+  // existed. Distance relevance is already handled downstream (level_matrix's
+  // `near()`, oiZones' reachMult x refMove), so no filtering is duplicated here.
+  if (Array.isArray(inst.gexFlips) && inst.gexFlips.length) {
+    for (const f of inst.gexFlips) push(f?.price, 'gex_flip');
+  } else {
+    push(inst.gexFlip, 'gex_flip');
+  }
   // Volume magnets are today's flow, not resting structure, and carry no tier — keep
   // them to a small count so they stay a hint rather than crowding the chart.
   for (const v of (Array.isArray(inst.volumeMagnets) ? inst.volumeMagnets : []).slice(0, Number.isFinite(topWalls) ? topWalls : 2)) push(v?.strike, 'oi_volume');
   // Institutional CLUSTER zones (≥2 merged strikes) — a higher-conviction level the
   // bots/OI-bot can trade off. Emit the zone centre as `oi_cluster`.
   for (const c of (Array.isArray(inst.clusters) ? inst.clusters : [])) if ((c?.count ?? 0) >= 2) push(c.center, 'oi_cluster');
+
+  // ── NEAR-DATED "day" level set ──────────────────────────────────────────────
+  // The levels so far are the primary (liquid, often ~14 DTE) expiry — swing context
+  // that price may not reach intraday. When `inst.dayExpiry` is present (the shortest
+  // expiry with real near-money OI), emit ITS walls / max-pain / gamma-flip too, each
+  // carrying its own `dte`, and tag the far primary levels with the primary DTE so the
+  // chart, export and bot can tell the two apart. Reuses the SAME headOK / _selectWalls
+  // gating as the primary — one selection rule, not a second copy. Absent dayExpiry
+  // (single-expiry pastes / older records) → nothing here, and no `dte` tags, so the
+  // output is byte-identical to before.
+  const dayEx = inst.dayExpiry && typeof inst.dayExpiry === 'object' ? inst.dayExpiry : null;
+  if (dayEx) {
+    const primDte = Number.isFinite(inst.dte) ? inst.dte : null;
+    if (primDte != null) for (const l of out) if (l.dte == null) l.dte = primDte;   // tag the far set
+    const dte = Number.isFinite(dayEx.dte) ? dayEx.dte : null;
+    const dcw = Array.isArray(dayEx.callWalls) ? dayEx.callWalls : [];
+    const dpw = Array.isArray(dayEx.putWalls) ? dayEx.putWalls : [];
+    const dpush = (price, type, tier = null) => {
+      if (!(Number.isFinite(price) && price > 0)) return;
+      const l = { price: +price, type }; if (tier) l.tier = tier; if (dte != null) l.dte = dte; out.push(l);
+    };
+    dpush(dayEx.maxPain, 'max_pain');
+    if (headOK(dcw, dayEx.callWall)) dpush(dayEx.callWall, 'call_wall', dcw.find(w => w.strike === dayEx.callWall)?.tier ?? null);
+    if (headOK(dpw, dayEx.putWall)) dpush(dayEx.putWall, 'put_wall', dpw.find(w => w.strike === dayEx.putWall)?.tier ?? null);
+    for (const w of _selectWalls(dcw, wallOpts)) dpush(w?.strike, 'call_wall', w?.tier ?? null);
+    for (const w of _selectWalls(dpw, wallOpts)) dpush(w?.strike, 'put_wall', w?.tier ?? null);
+    const dgp = Array.isArray(dayEx.gexProfile) ? dayEx.gexProfile : [];
+    dpush(Number.isFinite(dayEx.gammaFlip) ? dayEx.gammaFlip : gammaFlip(dgp, inst.spot), 'gamma_flip');
+  }
+
   const seen = new Set(), dedup = [];
-  for (const l of out) { const k = `${l.type}@${l.price}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
+  // Key includes `dte` so a day level and a far level that land on the same price are
+  // both kept (that coincidence is confluence, not a duplicate to drop).
+  for (const l of out) { const k = `${l.type}@${l.price}@${l.dte ?? ''}`; if (!seen.has(k)) { seen.add(k); dedup.push(l); } }
   return dedup;
 }
 

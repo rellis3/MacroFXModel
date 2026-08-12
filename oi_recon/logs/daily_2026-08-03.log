@@ -1,0 +1,44 @@
+ 
+================================================== 
+ RUN STARTED 03/08/2026  0:36:27.82 
+================================================== 
+
+=== DAILY OI - 2026-08-03 ===
+
+  [capture] running...
+  [ingest] running...
+  [compare] running...
+
+=== VERDICT ===
+
+  capture   44/44 tables captured
+  ingest    11 complete · 0 skipped
+  compare   44 agree · 0 differ
+
+  target    oi_store_py
+
+  VERDICT   OK
+[03/08/2026  0:44:19.90] finished with exit code 0 
+ 
+================================================== 
+ RUN STARTED 03/08/2026 14:21:20.89 
+================================================== 
+
+=== DAILY OI - 2026-08-03 ===
+
+  [ingest] running...
+  [expect] running...
+  [compare] running...
+
+=== VERDICT ===
+
+  capture   44 table(s) reused from quikstrike
+  ingest    11 complete Â· 0 skipped
+  expect    184 level(s) across 11 pair(s) for 2026-08-03
+  compare   44 agree Â· 0 differ
+
+  target    oi_store_py
+  pastes    newest manual paste is 1d old
+
+  VERDICT   OK
+[03/08/2026 14:21:33.38] finished with exit code 0 

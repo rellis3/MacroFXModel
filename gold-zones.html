@@ -1508,6 +1508,7 @@ function _renderOIZoneCards(grid, zones) {
     fade:    { tag: 'FADE',       col: '#4dd0e1', note: 'mean-revert to pin' },
     break:   { tag: 'BREAK',      col: '#ff9f43', note: 'gamma squeeze' },
     maxpain: { tag: 'MAX-PAIN',   col: '#c084fc', note: 'expiry reversion' },
+    react:   { tag: 'REACT',      col: '#a3e635', note: 'node fade (level-to-level)' },
   };
   grid.innerHTML = zones.map(z => {
     const isLong = z.direction === 'long';
@@ -1556,6 +1557,7 @@ function _renderOIZoneCards(grid, zones) {
         ${lvl('TP1', z.tp1, '#26a69a', tp1Dist ? ` (${tp1Dist}p)` : '')}
         ${lvl('TP2', z.tp2, '#26a69a')}
         ${rr ? `<span class="gz-fib-pill" style="border-color:#26a69a55;color:#26a69a">${rr}R</span>` : ''}
+        ${z.hold != null ? `<span class="gz-fib-pill" title="wall hold-score — will price react here or blow through? (per-strike GEX · OI flow · persistence · multiple)" style="border-color:${z.hold >= 0.6 ? '#26a69a' : z.hold >= 0.4 ? '#f4c430' : '#ef5350'}55;color:${z.hold >= 0.6 ? '#26a69a' : z.hold >= 0.4 ? '#f4c430' : '#ef5350'}">hold ${Math.round(z.hold * 100)}%</span>` : ''}
       </div>
       <div style="font-size:10.5px;color:var(--text2);margin-top:7px;padding:6px 8px;background:var(--bg3);border-left:2px solid ${m.col};border-radius:4px;line-height:1.55">
         ${z.rationale || `${z.regime} · ${m.note}`}

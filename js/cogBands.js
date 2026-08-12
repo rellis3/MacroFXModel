@@ -23,6 +23,7 @@
  * Pure (no network / no state) and synthetic-testable.
  */
 import { COG_CONST } from './cogReverseEngineer.js';
+import { computeBands } from './forecastCore.js';   // forecaster per-asset bands (cog-v2 gold leg)
 
 // COG bands from a daily σ fraction. Output shape mirrors computeBands so it's a
 // drop-in swap; `open` places the ± price levels. No assetClass — COG is uniform.
@@ -37,6 +38,22 @@ export function computeCogBands(open, sigma) {
     up75: open * (1 + hl75), dn75: open * (1 - hl75),
     ocUp: open * (1 + ocMed), ocDn: open * (1 - ocMed),
   };
+}
+
+// ── COG v2 — the hybrid band set ─────────────────────────────────────────────
+// Keeps COG's uniform constants for fx & indices, but for COMMODITY (gold) drops
+// COG's one-size widening and uses the forecaster's per-asset-CALIBRATED constants
+// (computeBands, 'commodity'). Verified on 3,205 gold days: COG's uniform median
+// runs too wide (37.9% exceedance vs the 50% a median should hit) while the
+// per-asset constant lands at 46.1%; the 75th is 23.4% vs 25.2% (target 25%). The
+// σ side is the caller's job — cog-v2 pairs this with the HAR-IV gold σ (the
+// bench's OOS winner for gold) fed in as `sigma`; fx/index keep their usual σ.
+// So band CONSTANTS live here; σ SELECTION is upstream (producer / caller).
+//   computeCogV2Bands(open, sigma, assetClass) — drop-in for computeBands/computeCogBands.
+export function computeCogV2Bands(open, sigma, assetClass) {
+  return assetClass === 'commodity'
+    ? computeBands(open, sigma, assetClass)   // gold: forecaster per-asset bands, no COG widening
+    : computeCogBands(open, sigma);           // fx & indices: COG uniform, unchanged
 }
 
 // Re-export the constants so a caller can read/label the active band set without

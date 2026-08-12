@@ -42,6 +42,7 @@ _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _REPO_ROOT not in _sys.path:
     _sys.path.insert(0, _REPO_ROOT)
 from pylego.instruments import pip_sizes_for  # shared pip table (single source of truth)
+from pylego.broker.clock import ServerClock   # broker-clock offset (MT5 stamps aren't UTC)
 
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, trigger_refresh, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
@@ -58,6 +59,7 @@ from modules.cot_filter import COTFilterModule
 from modules.news_risk import NewsRiskModule
 from modules.gold_macro_module import GoldMacroModule
 from modules.regime_confidence_module import RegimeConfidenceModule
+from modules.ml_confidence import MLConfidenceModule
 from modules.beta_estimator import BetaEstimator, push_beta_to_kv, BAR_COUNT, fetch_h4_bars_oanda
 from modules.portfolio_beta import compute_portfolio_beta, push_portfolio_beta
 from modules.beta_deviation import compute_beta_deviation, push_beta_deviation, fetch_beta_targets
@@ -126,13 +128,14 @@ log = logging.getLogger(__name__)
 
 # ── Module registry ────────────────────────────────────────────────────────────
 
-MODULE_ORDER = ['vol_gate', 'regime_confidence', 'gold_macro', 'macro_regime', 'confluence', 'oi_walls', 'cot_filter', 'news_risk']
+MODULE_ORDER = ['vol_gate', 'regime_confidence', 'gold_macro', 'macro_regime', 'ml_confidence', 'confluence', 'oi_walls', 'cot_filter', 'news_risk']
 
 MODULE_REGISTRY = {
     'vol_gate':          VolGateModule,
     'regime_confidence': RegimeConfidenceModule,  # continuous sizing scalar from HMM+GARCH+ARMA
     'gold_macro':        GoldMacroModule,          # gold-specific two-layer macro model
     'macro_regime':      MacroRegimeModule,
+    'ml_confidence':     MLConfidenceModule,       # meta-labelling scalar from trained XGBoost/LightGBM (gold-only)
     'confluence':        ConfluenceModule,
     'oi_walls':          OIWallsModule,
     'cot_filter':        COTFilterModule,
@@ -176,6 +179,20 @@ _BETA_HISTORY_DIR  = os.path.join(os.path.dirname(__file__), 'data')
 _BETA_HISTORY_FILE = os.path.join(_BETA_HISTORY_DIR, 'beta_history.jsonl')
 
 
+_SERVER_CLOCK = None
+
+
+def _tz_offset_sec():
+    """Seconds the broker's clock runs ahead of UTC. MT5 stamps `.time` fields on
+    the SERVER's wall clock, so every time_open/time_close below is shifted by
+    this much — the serialisers ship it so the dashboard renders the real instant
+    instead of assuming UTC. See pylego/broker/clock.py."""
+    global _SERVER_CLOCK
+    if _SERVER_CLOCK is None:
+        _SERVER_CLOCK = ServerClock(mt5 if HAS_MT5 else None, log=log)
+    return _SERVER_CLOCK.offset_sec()
+
+
 def _serialize_open_positions(magic: int) -> list:
     """Return a serialisable snapshot of all MT5 positions for the given magic number."""
     if not HAS_MT5:
@@ -192,6 +209,7 @@ def _serialize_open_positions(magic: int) -> list:
                 'profit':     round(float(p.profit), 2),
                 'swap':       round(float(p.swap), 2),
                 'time_open':  int(p.time),
+                'tz_offset_sec': _tz_offset_sec(),
                 'comment':    str(p.comment or ''),
             }
             for p in (mt5.positions_get() or [])
@@ -257,6 +275,7 @@ def _serialize_closed_trades(magic: int) -> list:
                 'commission':  round(sum(d.commission for d in outs), 2),
                 'time_open':   time_open,
                 'time_close':  int(last_out.time),
+                'tz_offset_sec': _tz_offset_sec(),
                 'comment':     str(ind.comment if ind else last_out.comment or ''),
             })
         return sorted(result, key=lambda t: t['time_close'])
@@ -1051,7 +1070,7 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     # macro_regime / upstream ctx (see their evaluate()), so counting them here
     # double-counts one opinion (Batch 6). They still contribute their score to
     # the composite and their size multipliers below; they just don't vote.
-    _DIRECTION_INHERITING = {'vol_gate', 'regime_confidence'}
+    _DIRECTION_INHERITING = {'vol_gate', 'regime_confidence', 'ml_confidence'}
     passing_dir = sum(1 for k, v in results.items()
                       if k not in _DIRECTION_INHERITING
                       and v and v.passed and v.signal == direction)
@@ -1084,7 +1103,10 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
     # Regime confidence provides a continuous multiplier based on HMM+GARCH+ARMA certainty
     rc_result   = results.get('regime_confidence')
     rc_mult     = rc_result.metadata.get('size_mult', 1.0) if rc_result else 1.0
-    risk_pct    = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult * gold_mult * rc_mult
+    # ML meta-label (trained XGBoost/LightGBM win-probability) — gold-only, never sizes up
+    ml_result   = results.get('ml_confidence')
+    ml_mult     = ml_result.metadata.get('size_mult', 1.0) if ml_result else 1.0
+    risk_pct    = (config.get('position') or {}).get('risk_pct', 1.0) * vol_mult * gold_mult * rc_mult * ml_mult
 
     balance = 10_000.0
     if HAS_MT5 and not paper_mode:
