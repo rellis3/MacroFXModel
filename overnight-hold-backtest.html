@@ -102,6 +102,21 @@
       <div><label>Profit target days (0 = none)</label><input id="profitTargetDays" value="30" type="number" step="1"></div>
       <div><label>Consistency cap (%)</label><input id="consistencyCapPct" value="30" type="number" step="5"></div>
     </div>
+
+    <details class="subpanel" open style="margin-top:14px">
+      <summary>Real broker costs <span class="cnt">— leave blank to use the engine's illustrative defaults</span></summary>
+      <p class="note" style="margin-top:8px">The cost-sensitivity panel below shows breakeven sits within a few percent of the assumed defaults for both instruments —
+        plugging in your actual account's spread, slippage and overnight swap here is the single highest-leverage thing to check before trusting any pass/fail verdict.</p>
+      <div class="grid" style="margin-top:10px">
+        <div><label>Gold spread, round-trip (%)</label><input id="spreadPctGold" type="number" step="0.001" min="0" placeholder="default 0.020"></div>
+        <div><label>Gold slippage (%)</label><input id="slipPctGold" type="number" step="0.001" min="0" placeholder="default 0.012"></div>
+        <div><label>Gold financing (bps/night)</label><input id="financingBpsGold" type="number" step="0.1" placeholder="default 1.5"></div>
+        <div><label>NAS100 spread, round-trip (%)</label><input id="spreadPctNq" type="number" step="0.001" min="0" placeholder="default 0.010"></div>
+        <div><label>NAS100 slippage (%)</label><input id="slipPctNq" type="number" step="0.001" min="0" placeholder="default 0.008"></div>
+        <div><label>NAS100 financing (bps/night)</label><input id="financingBpsNq" type="number" step="0.1" placeholder="default 2.0"></div>
+      </div>
+    </details>
+
     <div class="row2">
       <button id="run">Run backtest</button>
       <span class="status" id="status"></span>
@@ -196,6 +211,41 @@ function costSweepSection(sweep, label) {
     <summary>Cost sensitivity <span class="cnt">— how far would costs need to move to flip the sign?</span></summary>
     <p class="note" style="margin-top:8px">${summary}</p>
     ${svgCostSweepChart(sweep, label)}
+  </details>`;
+}
+
+function weekdaySection(weekday, actualTotalReturnPct, label) {
+  if (!weekday || !weekday.length) return '';
+  const rows = weekday.map(r => `<tr${r.weekday === 'Wed' ? ' style="background:#2a2412"' : ''}>
+    <td>${r.weekday}${r.tripleSwapNights > 0 ? ' <span class="note" style="display:inline">(3× swap)</span>' : ''}</td>
+    <td>${r.trades}</td><td>${spanN(r.avgNetPct, 3)}</td><td>${spanN(r.compoundedTotalPct)}</td>
+    <td>${fmtN(r.winRatePct, 1)}</td><td>${fmtN(r.profitFactor, 3)}</td><td>${fmtN(r.avgFinancingCostPct, 4)}</td><td>${r.tripleSwapNights}</td>
+  </tr>`).join('');
+
+  const wed = weekday.find(r => r.weekday === 'Wed');
+  const others = weekday.filter(r => r.weekday !== 'Wed');
+  let withoutWedNote = '';
+  if (wed && others.length && actualTotalReturnPct != null) {
+    // Exact, not an estimate: compounding is associative across weekday
+    // groups, so the total with Wednesday excluded is the product of every
+    // OTHER weekday's own compounded return — no need to re-run the backtest.
+    const withoutWedMult = others.reduce((m, r) => m * (1 + r.compoundedTotalPct / 100), 1);
+    const withoutWedPct = (withoutWedMult - 1) * 100;
+    const delta = withoutWedPct - actualTotalReturnPct;
+    withoutWedNote = `<p class="note">If Wednesday nights (triple-swap) were skipped entirely: total return would be
+      <b>${spanN(withoutWedPct)}%</b> instead of the actual <b>${spanN(actualTotalReturnPct)}%</b> —
+      ${delta >= 0.01 ? `skipping Wednesday would have helped by ${spanN(delta)}pp` : delta <= -0.01 ? `skipping Wednesday would have HURT by ${spanN(-delta)}pp` : 'skipping Wednesday would have made essentially no difference'}.
+      Exact arithmetic (compounding is associative across weekday groups), not an estimate.</p>`;
+  }
+
+  return `
+  <details class="subpanel">
+    <summary>${label} weekday breakdown <span class="cnt">— is one specific night dragging the result down?</span></summary>
+    <table style="margin-top:8px">
+      <thead><tr><th>Entry night</th><th>Trades</th><th>Avg net %</th><th>Compounded total %</th><th>Win rate %</th><th>Profit factor</th><th>Avg financing cost %</th><th>3× swap nights</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${withoutWedNote}
   </details>`;
 }
 
@@ -313,6 +363,7 @@ function instrumentPanel(key, inst) {
        return per unit exposure <b>${spanN(m.exposure.returnPerUnitExposurePct)}%</b> (naive linear scale-up, not re-compounded).
        Correlation to buy&amp;hold: <b>${m.correlationToBuyHold.r === null ? 'n/a' : m.correlationToBuyHold.r}</b> (n=${m.correlationToBuyHold.n}).</p>` : ''}
     ${costSweepSection(inst.costSweep, INSTRUMENT_LABEL[key] || key)}
+    ${weekdaySection(inst.weekday, m?.totalReturnPct, INSTRUMENT_LABEL[key] || key)}
     ${m ? svgEquityChart(m.equityCurve, m.buyHoldEquityCurve, INSTRUMENT_LABEL[key] || key) : ''}
     ${inst.ruleCheck ? `<h3 style="margin-top:16px">Prop-firm rule check</h3>${ruleCheckCard(inst.ruleCheck)}` : ''}
     ${inst.csv ? `
@@ -573,6 +624,12 @@ async function run() {
     profitTargetPct: $('profitTargetPct').value,
     profitTargetDays: $('profitTargetDays').value,
     consistencyCapPct: $('consistencyCapPct').value,
+    spreadPctGold: $('spreadPctGold').value,
+    slipPctGold: $('slipPctGold').value,
+    financingBpsGold: $('financingBpsGold').value,
+    spreadPctNq: $('spreadPctNq').value,
+    slipPctNq: $('slipPctNq').value,
+    financingBpsNq: $('financingBpsNq').value,
   };
   const r = await fetch('/api/overnight-hold-v1/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
   if (!r.ok) { $('status').textContent = 'error: ' + r.error; $('run').disabled = false; return; }

@@ -8,6 +8,7 @@ import {
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
   resampleDailyFromPacked, costSensitivitySweep,
   yearlyDiversificationBreakdown, diversificationIsOosSplit,
+  weekdayBreakdown,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -354,6 +355,33 @@ test('diversificationIsOosSplit: one shared calendar split date, every trade con
   // honestly null rather than a meaningless single-point statistic.
   assert.equal(result.inSample.nqSharpe, null);
   assert.equal(result.outOfSample.nqSharpe, null);
+});
+
+test('weekdayBreakdown: groups by entry weekday, compounds correctly, surfaces the triple-swap drag', () => {
+  const mk = (date, netPct, financingCostPct, tripleSwap) => ({ date, netPct, financingCostPct, tripleSwap });
+  const trades = [
+    mk('2025-01-06', 2, 0.015, false),  // Monday
+    mk('2025-01-13', -1, 0.015, false), // Monday
+    mk('2025-01-08', 1, 0.045, true),   // Wednesday (triple swap)
+    mk('2025-01-15', 1, 0.045, true),   // Wednesday (triple swap)
+  ];
+  assert.equal(dowOf('2025-01-06'), 1); // sanity: Monday
+  assert.equal(dowOf('2025-01-08'), 3); // sanity: Wednesday
+
+  const rows = weekdayBreakdown(trades);
+  const mon = rows.find(r => r.weekday === 'Mon');
+  const wed = rows.find(r => r.weekday === 'Wed');
+
+  assert.equal(mon.trades, 2);
+  assert.ok(Math.abs(mon.avgNetPct - 0.5) < 1e-9);
+  assert.ok(Math.abs(mon.compoundedTotalPct - 0.98) < 0.01); // (1.02*0.99-1)*100
+  assert.equal(mon.winRatePct, 50);
+  assert.equal(mon.tripleSwapNights, 0);
+
+  assert.equal(wed.trades, 2);
+  assert.ok(Math.abs(wed.avgFinancingCostPct - 0.045) < 1e-9, 'Wednesday should show the 3x financing cost');
+  assert.equal(wed.tripleSwapNights, 2);
+  assert.ok(wed.avgFinancingCostPct > mon.avgFinancingCostPct * 2.9, 'Wednesday financing should be roughly 3x a normal night');
 });
 
 test('resampleDailyFromPacked: aggregates M1 bars into correct UTC-day OHLC buckets', () => {
