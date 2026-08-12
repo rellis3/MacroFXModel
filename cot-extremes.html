@@ -172,7 +172,8 @@ const HELP = {
   paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
   flow:['Positioning flow','The crowding percentile is a level — where positioning sits right now. This is the week-over-week change instead: who added or reduced the most, ranked by size relative to open interest.','A market extending an already-stretched position and one paring back from it look identical on the percentile alone but mean very different things going forward.'],
   evrisk:['Event-risk overlay','Cross-references currently-crowded markets (90th/10th percentile+) against the live economic calendar for their own currency — FOMC, ECB, NFP and similar high/medium-impact releases in the next 3 days.','A stretched position walking into a scheduled catalyst is exposed to a fast move — this flags the exposure, not which way the release breaks. Scoped to FX plus the three Treasury tenors (all USD); other groups aren\'t mapped to a single country\'s calendar cleanly enough to include here.'],
-  persist:['Extreme persistence','How many of the most recent weeks, read against the same 200-week window as today\'s reading, would also register at this same 90th/10th extreme.','A percentile alone can\'t tell a freshly-hit extreme from one that has held for months — this is an estimate of how established the crowd looks, not an exact rolling recompute (that would need each week ranked only against what was known at the time, which isn\'t stored).'],
+  persist:['Extreme persistence','How many of the most recent weeks were also a 90th/10th-percentile extreme at the time — each ranked only against its own trailing up-to-156-week window, the same rolling method used for today\'s reading.','A percentile alone can\'t tell a freshly-hit extreme from one that has held for months. Needs at least 52 weeks of trailing history behind a week before ranking it, same floor as the main reading — a market too new to satisfy that just stops the count rather than guessing.'],
+  confl:['Confluence','Flags a market where speculators are at a 90th/10th-percentile extreme AND commercials are independently at the opposite extreme, at the same time.','This is the textbook COT contrarian setup — commercials normally sit roughly opposite specs anyway (see the scatter panel), so both hitting their own extreme at once is the strongest version of a "crowded, low-fuel, exposed-to-reversal" read this data can give. Still not a timing signal — it says the setup is textbook, not that it resolves now.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
@@ -356,36 +357,40 @@ function crowdingCards(big){
 // nothing about which way it's moving. A market building further into an already
 // stretched read is a different situation from one already unwinding from it, and
 // that's invisible unless you already know to click into its 200-week history.
-// Ranked on the week's change as a share of open interest (not raw contracts) for
-// the same reason the main ranking is: a 20K-contract move means very different
-// things in a 300K-OI market and a 5M-OI one.
+// Ranked on `specShareChg` — this week's OI-normalised net share minus last
+// week's, in percentage points — not the raw contract count CFTC reports
+// (`weeklyChg`, still shown alongside for reference). A 20K-contract move means
+// very different things in a 300K-OI market and a 5M-OI one, and normalising by
+// this week's OI-normalised share (rather than dividing the raw change by only
+// today's open interest) is the reference-spec definition of positioning flow.
 function flow(big){
   const rows = (DATA.instruments||[])
-    .filter(x => Number.isFinite(x.weeklyChg) && x.openInterest > 0)
-    .map(x => ({ ...x, wkPct: +(x.weeklyChg / x.openInterest * 100).toFixed(2) }))
+    .filter(x => Number.isFinite(x.specShareChg))
+    .map(x => ({ ...x, wkPct: x.specShareChg }))
     .sort((a,b) => Math.abs(b.wkPct) - Math.abs(a.wkPct))
     .slice(0, big ? 30 : 16);
   if (!rows.length) return '<div class="empty">No weekly-change data available.</div>';
   // "Extending" = this week's flow pushed further the same way as the existing net
-  // position (getting MORE crowded); "paring" = it moved back toward flat (getting
-  // LESS crowded). Needs the net position's sign, not just the percentile, so it
-  // still works for markets nowhere near an extreme.
+  // share (getting MORE crowded); "paring" = it moved back toward flat (getting
+  // LESS crowded). Both specShareChg and specShare already carry the JPY/CAD/CHF
+  // sign flip, so this compares cleanly without any extra sign handling.
   const traj = x => {
-    if (!x.weeklyChg || !x.specNet) return null;
-    const dir = x.specNet >= 0 ? 'long' : 'short';
-    return (Math.sign(x.weeklyChg) === Math.sign(x.specNet) ? 'extending ' : 'paring ') + dir;
+    if (!x.wkPct || x.specShare == null) return null;
+    const dir = x.specShare >= 0 ? 'long' : 'short';
+    return (Math.sign(x.wkPct) === Math.sign(x.specShare) ? 'extending ' : 'paring ') + dir;
   };
-  return '<table><thead><tr><th>Market</th><th>Pct'+h('pct')+'</th><th>Wk chg</th><th>Wk chg % OI</th><th style="text-align:left">Trajectory</th></tr></thead><tbody>'
+  return '<table><thead><tr><th>Market</th><th>Pct'+h('pct')+'</th><th>Wk chg</th><th>Net % OI (Δ this wk)</th><th style="text-align:left">Trajectory</th></tr></thead><tbody>'
     + rows.map(x => {
-        const t = traj(x), p = pctOf(x);
+        const t = traj(x), p = pctOf(x), sh = x.specShare;
         const tClr = t == null ? 'var(--tx3)' : t.startsWith('extending') ? 'var(--warn)' : 'var(--ok)';
         return '<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(dispSym(x))+'</td>'
           + '<td style="color:'+colFor(p)+'">'+(p??'—')+'</td>'
           + '<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td>'
-          + '<td style="color:'+(x.wkPct>0?'var(--long)':x.wkPct<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.wkPct)+x.wkPct+'%</td>'
+          + '<td style="color:'+(sh>0?'var(--long)':sh<0?'var(--short)':'var(--tx3)')+'">'+(sh!=null?sgn(sh)+sh+'%':'—')
+          +   ' <span class="muted" style="color:'+(x.wkPct>0?'var(--long)':x.wkPct<0?'var(--short)':'var(--tx3)')+'">('+sgn(x.wkPct)+x.wkPct+'%)</span></td>'
           + '<td class="muted" style="text-align:left">'+(t??'—')+'</td></tr>';
       }).join('')
-    + '</tbody></table><div class="note">Ranked by this week\'s position change as a share of open interest — the biggest movers, not just the most crowded levels. <b>Extending</b> = still building the same way (more crowded); <b>paring</b> = moving back toward flat (less crowded). Click a row for its 200-week history.</div>';
+    + '</tbody></table><div class="note">Ranked by this week\'s change in the OI-normalised net share (the number in parens) — the biggest movers, not just the most crowded levels. The number before it is <b>where positioning sits right now</b> (net as % of open interest), so you can see the level a move is coming from, not just the size of the move. "Wk chg" is CFTC\'s own raw contract-count change, for reference. <b>Extending</b> = still building the same way (more crowded); <b>paring</b> = moving back toward flat (less crowded). Click a row for its 200-week history.</div>';
 }
 
 // ── event-risk overlay: crowded positions walking into a known catalyst ─────
@@ -448,12 +453,12 @@ function eventRisk(big){
 // ── extreme persistence: how established is the crowd, not just how crowded ──
 // A market that just touched a 90th-percentile extreme this week and one that has
 // sat there for months are both "90th percentile" — identical on every panel above.
-// Approximates how many of the most recent weeks, read against the SAME 200-week
-// reference window as today's reading, would also register at this extreme. Not a
-// true rolling recompute (that would need each week ranked only against data known
-// at the time, which isn't stored) — an estimate of how established the crowd looks,
-// not an exact week-by-week history. Reuses the HIST cache pick() already populates,
-// so clicking a market elsewhere never re-fetches it here.
+// Counts how many of the most recent weeks were ALSO an extreme at the time,
+// each ranked only against the up-to-156 weeks trailing IT (never later weeks it
+// couldn't have known about) — a true rolling percentile walked backward, the
+// same method the backend uses for today's own reading (COT_LIMIT/COT_MIN_HISTORY
+// above), not a fixed reference set. Reuses the HIST cache pick() already
+// populates, so clicking a market elsewhere never re-fetches it here.
 async function loadHistFor(sym){
   if (HIST[sym] !== undefined) return;
   HIST[sym] = 'loading';
@@ -465,12 +470,14 @@ async function loadHistFor(sym){
   render();
 }
 
+const PERSIST_WINDOW = 156, PERSIST_MIN_HISTORY = 52;
 function extremeStreak(hd, wantLong){
   const vals = (hd.specShare || []).filter(v => Number.isFinite(v));
-  if (vals.length < 20) return null;
+  if (vals.length < PERSIST_MIN_HISTORY + 1) return null;
   let streak = 0;
-  for (let i = vals.length - 1; i >= 0; i--) {
-    const hist = vals.slice(0, i).concat(vals.slice(i + 1));
+  for (let i = vals.length - 1; i >= 1; i--) {
+    const hist = vals.slice(Math.max(0, i - PERSIST_WINDOW), i);   // trailing window ending just before week i
+    if (hist.length < PERSIST_MIN_HISTORY) break;
     const p = pctRankCalc(hist, vals[i]);
     if (!(wantLong ? p >= 90 : p <= 10)) break;
     streak++;
@@ -501,7 +508,31 @@ function persistence(big){
           + '<td style="color:'+clr+'"><b>'+(r.wantLong?'CROWDED LONG':'CROWDED SHORT')+'</b></td>'
           + '<td>'+wkTxt+'</td></tr>';
       }).join('')
-    + '</tbody></table><div class="note">Both ends are worth noting for different reasons: a long-running extreme means the crowd has had a long time to prove itself right; a freshly-hit one (1 week) means it just arrived and hasn\'t been tested. Estimate, not an exact figure — see the panel help.</div>';
+    + '</tbody></table><div class="note">Both ends are worth noting for different reasons: a long-running extreme means the crowd has had a long time to prove itself right; a freshly-hit one (1 week) means it just arrived and hasn\'t been tested. Rolling calculation — see the panel help for how it\'s done.</div>';
+}
+
+// ── confluence: specs AND commercials independently at opposite extremes, ───
+// on the SAME market — the textbook COT contrarian setup. Different from the
+// "Extreme crowding alerts" panel above, which checks two DIFFERENT FX legs'
+// SPEC readings against each other; this checks one market's spec reading
+// against its OWN commercial reading, and applies board-wide, not just FX.
+function confluence(big){
+  const cOf = x => BASIS==='share' ? (x.commSharePct ?? x.commPct) : x.commPct;
+  const rows = (DATA.instruments||[]).map(x => {
+    const p = pctOf(x), c = cOf(x);
+    if (p == null || c == null) return null;
+    if (p >= 90 && c <= 10) return { x, p, c, dir: 'long' };
+    if (p <= 10 && c >= 90) return { x, p, c, dir: 'short' };
+    return null;
+  }).filter(Boolean).sort((a,b) => (Math.abs(50-b.p)+Math.abs(50-b.c)) - (Math.abs(50-a.p)+Math.abs(50-a.c)));
+
+  if (!rows.length) return '<div class="empty">No market currently has specs AND commercials independently at opposite 90th/10th-percentile extremes — the classic confluence setup isn\'t present on the board right now.</div>';
+
+  return '<table><thead><tr><th>Market</th><th style="text-align:left">Specs</th><th style="text-align:left">Commercials</th></tr></thead><tbody>'
+    + rows.map(r => '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
+      + '<td style="text-align:left;color:'+colFor(r.p)+'"><b>'+(r.dir==='long'?'CROWDED LONG':'CROWDED SHORT')+'</b> ('+r.p+'th)</td>'
+      + '<td style="text-align:left;color:'+colFor(r.c)+'"><b>'+(r.dir==='long'?'CROWDED SHORT':'CROWDED LONG')+'</b> ('+r.c+'th)</td></tr>').join('')
+    + '</tbody></table><div class="note">The classic COT contrarian setup: speculators stretched one way, and commercials — who normally take the other side of specs anyway — independently confirming it by sitting at their own opposite extreme too. It doesn\'t call which way or when it turns; it flags where a reversal setup is most textbook right now.</div>';
 }
 
 // ── COT vs options positioning: two separate datasets, read side by side ────
@@ -765,6 +796,7 @@ function render(){
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
     + panel('c12','alerts','Extreme crowding alerts','paira',crowdingCards,true)
+    + panel('c12','confl','Confluence','confl',confluence,true)
     + panel('c7','evr','Event-risk overlay','evrisk',eventRisk,true)
     + panel('c5','flow','Positioning flow — week over week','flow',flow,true)
     + panel('c5','persist','Extreme persistence','persist',persistence,true)

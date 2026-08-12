@@ -1682,10 +1682,17 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       }
 
       // -- /api/cot-extremes ------------------------------------------
-      // Fetches 3 years of weekly COT history from the CFTC PRE Socrata API.
-      // Computes 3-year percentile ranks and z-scores for 35+ instruments
-      // across FX, metals, energy, grains, equities, rates, and crypto.
-      // Cached in KV for 7 days (COT releases weekly on Fridays).
+      // Fetches the most recent 200 weekly COT reports (~3.85 years, see COT_LIMIT
+      // below) from the CFTC PRE Socrata API. Computes percentile ranks and z-scores
+      // against that ~200-week window for 35+ instruments across FX, metals, energy,
+      // grains, equities, rates, and crypto. Cached in KV for 7 days (COT releases
+      // weekly on Fridays).
+      // NOTE: this used to say "3 years" — a `fromDate` cutoff was computed for that
+      // but never actually applied to the query, so the real window was always this
+      // row-count limit, not a date-anchored one. Comment corrected to match reality;
+      // no behavior change here. A true 156-week (3yr) rolling window is a deliberate,
+      // separate change — it would tighten the window and shift every computed
+      // percentile/z-score, so it's not folded silently into this comment fix.
       if (path === '/api/cot-extremes') {
         const debugMode = url.searchParams.get('debug') === '1';
 
@@ -1721,10 +1728,6 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             } catch(_) {}
           }
         }
-
-        const threeYearsAgo = new Date();
-        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-        const fromDate = threeYearsAgo.toISOString().split('T')[0];
 
         // Disaggregated report: metals, energy, grains, softs, livestock
         const DISAGG = [
@@ -1785,10 +1788,18 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         };
 
         // Use Socrata's column equality URL parameter (no SoQL $where needed).
-        // $order by the confirmed date field ensures most-recent 200 rows are returned.
+        // $order by the confirmed date field ensures most-recent COT_LIMIT rows are returned.
         // alt names tried sequentially if the primary name returns empty OR is stale.
         // Stale = latest record older than 90 days (CFTC renames instruments; old names persist but stop updating).
-        const COT_LIMIT = 200;
+        // 156 weeks = a true rolling 3-year window (matches the education notes' "3-year
+        // history" and the reference spec's explicit 156-week/3yr window) rather than the
+        // previous fixed 200-row limit, which had drifted to ~3.85 years with no documented
+        // reason. COT_MIN_HISTORY mirrors the same spec: don't produce a percentile/z-score
+        // off too little history — an instrument with under 52 weeks on file gets nulls
+        // instead of a number that looks precise but isn't backed by enough data.
+        const COT_LIMIT = 156;
+        const COT_MIN_HISTORY = 52;
+        const enoughHistory = sorted => sorted.length >= COT_MIN_HISTORY;
         const staleCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         async function fetchInstRows(datasetId, marketName, altNames = []) {
@@ -1896,20 +1907,26 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const clean = a => a.filter(v => v != null && Number.isFinite(v));
+            const eh = enoughHistory(sorted);
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
-              specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
+              specPct: eh ? pctRank(h(specNets), specNets[0]) : null, commPct: eh ? pctRank(h(commNets), commNets[0]) : null,
               specNet: specNets[0], commNet: commNets[0],
-              specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              specZ: eh ? zScore(h(specNets), specNets[0]) : null, commZ: eh ? zScore(h(commNets), commNets[0]) : null,
               // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
               // its percentile over the same window, `specShareZ` the z of that share.
               specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
               commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
-              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
-              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
-              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
+              specSharePct: (eh && specShare[0] != null) ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: (eh && commShare[0] != null) ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: (eh && specShare[0] != null) ? zScore(clean(h(specShare)), specShare[0]) : null,
+              // Week-over-week change in the OI-normalised share itself (percentage points),
+              // not the raw contract delta CFTC reports — this week's share minus last
+              // week's, matching the reference spec's flow definition exactly rather than
+              // dividing a raw contract change by only this week's open interest.
+              specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
-              openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
+              openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
               // The 200-week series is computed here to rank the current value, then was
@@ -1959,20 +1976,26 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const clean = a => a.filter(v => v != null && Number.isFinite(v));
+            const eh = enoughHistory(sorted);
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
-              specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
+              specPct: eh ? pctRank(h(specNets), specNets[0]) : null, commPct: eh ? pctRank(h(commNets), commNets[0]) : null,
               specNet: specNets[0], commNet: commNets[0],
-              specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              specZ: eh ? zScore(h(specNets), specNets[0]) : null, commZ: eh ? zScore(h(commNets), commNets[0]) : null,
               // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
               // its percentile over the same window, `specShareZ` the z of that share.
               specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
               commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
-              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
-              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
-              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
+              specSharePct: (eh && specShare[0] != null) ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: (eh && commShare[0] != null) ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: (eh && specShare[0] != null) ? zScore(clean(h(specShare)), specShare[0]) : null,
+              // Week-over-week change in the OI-normalised share itself (percentage points),
+              // matching the reference spec's flow definition exactly. specNets (and so
+              // specShare) already has the JPY/CAD/CHF flip baked in, so no extra sign
+              // handling is needed here the way weeklyChg below needs it.
+              specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
-              openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
+              openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract quotes
               // USD-per-unit, so the raw long-minus-short change is inverted relative to our
               // currency-direction convention. Left unflipped here for a long time — harmless
