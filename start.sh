@@ -34,4 +34,7 @@ restart_bot "level-touch-bot" \
 restart_bot "analogml-paper-track" \
     bash AnalogML/paper_track_loop.sh &
 
+restart_bot "analogml-motif-track" \
+    bash AnalogML/motif_track_loop.sh &
+
 exec node server.js
