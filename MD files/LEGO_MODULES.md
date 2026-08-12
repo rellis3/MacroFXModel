@@ -1346,6 +1346,250 @@ deleted by an earlier edit in this same file (the prior diversification-
 retraction pass) — the section content itself was never lost, only its
 heading, but it's a real slip worth naming rather than quietly patching.
 
+**Update (2026-08-12: "test skip-Wednesday as an actual rule and rerun"):**
+the arithmetic shortcut above ("if Wednesday were removed, total return
+would be X") is correct as far as it goes, but it can't show the
+risk-adjusted picture — Sharpe, drawdown shape, or whether the prop-firm
+rule check actually changes — because those aren't linear in the trade
+series the way total compounded return is. `buildOvernightTrades` now takes
+`opts.skipWeekdays` (array of `0`=Sun..`6`=Sat): no entry is even attempted
+on an excluded weekday, logged as a distinctly-labeled `skipped by rule —
+{weekday} entries excluded` exception (kept apart from the "no bar within
+tolerance" market-closed/data-gap exceptions it sits alongside in the same
+array), so it flows through the *entire* pipeline as a real rule — cost
+sweep, weekday breakdown, rule-check, diversification — not just total
+return. `server.js`'s `/run` accepts `skipWeekdays` in the body; the
+dashboard gained Sun–Thu exclusion checkboxes (all unchecked by default —
+opt-in, doesn't change baseline behavior). 1 new unit test (28 total):
+confirms no Wednesday trade exists under the rule, the excluded count
+matches exactly, and the exception reason is distinctly labeled.
+
+**Run for real (not the shortcut) with Wednesday excluded — the total
+return numbers match the shortcut exactly (confirms the shortcut was
+sound), and the risk-adjusted picture is genuinely better, though not a
+free pass:**
+
+| | Gold — baseline | Gold — skip Wed | NQ — baseline | NQ — skip Wed |
+|---|---|---|---|---|
+| Total return % | −2.3 | **+20.6** | −3.9 | **+45.1** |
+| Sharpe | 0.032 | **0.244** | 0.030 | **0.394** |
+| Calmar | −0.006 | **+0.070** | −0.014 | **+0.159** |
+| Max drawdown % | −38.75 | −25.75 | −27.24 | −22.87 |
+| Worst DD ever recovers? | **no** (still under at end) | **yes** (took ~8.1yrs) | no | still no |
+| Daily-loss breach | yes (1) | **none** | yes (1) | **none** |
+| Trailing-DD breach | yes | yes (still) | yes | yes (still) |
+| Profit target in time (≤30d) | no (92d) | no (1490d) | no (835d) | no (447d) |
+| **Overall rule-check** | **fail** | **fail** | **fail** | **fail** |
+
+The daily-loss breach disappearing traces to a precise mechanism, not
+coincidence: `runPropFirmRuleCheck` buckets P&L by *exit* date (when it
+books), and both breaches (gold 2026-03-19, NQ 2020-03-12) turn out to be
+labeled by their Thursday exit date for a trade that actually *entered* the
+prior Wednesday (2026-03-18, 2020-03-11 — both confirmed Wednesdays) —
+removing the entry removes the breach it produced. The overall verdict is
+still **fail** for both instruments even with Wednesday excluded — the
+trailing-drawdown and profit-target-timing rules still breach — so this is
+a real, substantial improvement in the underlying edge, not a rule that
+makes the strategy pass a prop-firm check. Worth naming as a caveat too:
+skip-Wed's profit target takes *longer* to reach in raw days than the
+baseline (1490 vs 92 for gold) despite the far better final number — an
+early-lucky-run artifact in the baseline path, not evidence that skip-Wed
+is strictly better on every single axis.
+
+**Update (2026-08-12: "why is Wednesday so bad? what about not entering a
+stop loss and letting them run to the time out?"): decomposed the Wednesday
+drag into gross-return vs cost, and confirmed the strategy already has no
+stop-loss.** `weekdayBreakdown` now also returns `avgGrossPct`/
+`compoundedGrossPct` (pre-cost) and `avgSpreadCostPct`/`avgSlipCostPct`
+(alongside the existing `avgFinancingCostPct`) per weekday, so the total
+Wednesday drag can be split into "the trades themselves were worse" vs "the
+triple-swap charge did it" rather than inferred. 1 new unit test (28 total):
+hand-built fixture with different weekday gross returns but identical
+spread/slip and only Wednesday's financing tripled, asserting gross sits
+above net and spread/slip are flat across weekdays while financing isn't.
+Surfaced in `overnight-hold-backtest.html`'s weekday table (gross % / net %
+/ spread % / slip % / financing % / win rate / profit factor columns,
+replacing the old net-only view) and re-verified against the live route.
+
+**The two instruments fail for different reasons — this is the actual
+answer to "what's special about Wednesday":**
+
+| | Gold — Mon | Gold — Tue | Gold — Wed | Gold — Thu | NQ — Mon | NQ — Tue | NQ — Wed | NQ — Thu |
+|---|---|---|---|---|---|---|---|---|
+| Compounded **gross** % | 30.2 | 53.1 | **27.7** | 41.5 | 86.5 | 50.3 | **1.4** | **−4.3** |
+| Avg spread % (flat) | 0.025 | 0.025 | 0.025 | 0.025 | 0.010 | 0.010 | 0.010 | 0.010 |
+| Avg slip % (flat) | 0.015 | 0.015 | 0.015 | 0.015 | 0.010 | 0.010 | 0.010 | 0.010 |
+| Avg financing % | 0.015 | 0.015 | **0.045** | 0.015 | 0.020 | 0.020 | **0.060** | 0.020 |
+| Compounded **net** % | −0.7 | 14.0 | **−19.0** | 6.5 | 53.7 | 21.3 | **−33.8** | **−22.2** |
+
+- **Gold's Wednesday problem is almost entirely a cost artifact.** Gross
+  Wednesday (27.7%) sits in the same range as Monday (30.2%) and Thursday
+  (41.5%) — the price action itself isn't unusually bad. Spread and slip are
+  identical every night (0.025/0.015 flat). Financing is exactly 3× on
+  Wednesday (0.045 vs 0.015) and nowhere else. Take the triple-swap charge
+  away and gold's Wednesday looks like an ordinary night.
+- **NQ's Wednesday (and Thursday) problem is real, not just cost.** Gross
+  Wednesday collapses to 1.4% and gross **Thursday goes negative** (−4.3%) —
+  both far below Monday's 86.5% and Tuesday's 50.3%. Thursday carries no
+  triple-swap charge at all (financing back to the normal 0.02) and is still
+  the worst gross night, so something about the price action entering
+  Wednesday night and Thursday night specifically is genuinely weaker for
+  NQ, on top of — not instead of — the triple-swap charge stacking on the
+  same Wednesday night. Both effects are real and compounding, not one
+  explaining the other away.
+- Practical read: correcting an unrealistic triple-swap assumption (per the
+  cost-override fields above) would likely repair most of gold's Wednesday
+  problem but only part of NQ's — NQ needs its actual overnight-hold edge on
+  Wed/Thu explained or excluded, not just its cost model fixed.
+
+**On the stop-loss question: there already isn't one, and MAE evidence
+confirms trades are already given the maximum available time to recover.**
+`buildOvernightTrades` has never had a stop-loss — every trade is opened at
+20:00 UK and closed at the fixed 14:30 UK exit regardless of what happens in
+between; the only way out early is a stage-02 data exception, never a price
+level. Checked directly against the real per-trade `maePct` (worst
+intra-trade adverse excursion) vs the trade's final `netPct` on the same
+2016–2026 R2 run: **95.7% of gold trades (1,991/2,081) and 95.5% of NQ
+trades (1,975/2,068) show a worse intra-trade drawdown than their final
+recorded result** — i.e. the overwhelming majority of trades were already
+underwater by more, at some point overnight, than they finished at losing
+or winning by the scheduled exit. The single worst trade for each
+instrument is itself a Wednesday entry that ended up recovering some ground
+by the timeout: gold's worst MAE (−7.11%, on the 2026-03-18 Wednesday entry)
+finished at −5.48% net, and NQ's worst MAE (−8.26%, on the 2020-03-11
+Wednesday entry) finished at −5.46% net — both are the same two trades that
+tripped the daily-loss-limit breach in the prop-firm rule check above, now
+tied to a concrete number: without the fixed-timeout exit, an intrabar stop
+placed anywhere between the MAE and the final result would have locked in a
+*worse* outcome than just waiting for 14:30. This doesn't prove a stop-loss
+would hurt overall — a stop caps the unknown remaining 4–5% of trades where
+MAE was shallower than the final loss, which this data doesn't isolate — but
+it does confirm the premise behind the question was backwards: the strategy
+already lets every trade run to the timeout with no early exit, and on the
+worst individual trades that no-stop design is what turned a bigger interim
+loss into a smaller final one. Testing the **opposite** — adding a stop-loss
+at some MAE-derived level and comparing net result/Sharpe against the current
+no-stop baseline — is a well-defined next test, not yet built.
+
+**Update (2026-08-12: "what about holding for longer than 14:30? increase an
+hour each time to see if holding until London close gets better results?"):
+built and run — the result is a mild improvement for one instrument, a worse
+one for the other, neither flips net-negative to net-positive.**
+`buildOvernightTrades` gained `opts.exitTime` ('HH:MM', default '14:30' — no
+behavior change for existing callers), threaded through to the mirror leg too
+so overnight+mirror still reconstruct the full calendar day at any exit time.
+New pure function `exitTimeSweep(packed, startEpoch, endEpoch, assetKey,
+opts, exitTimes)` reruns `buildOvernightTrades`+`applyCosts` once per
+candidate exit time (a real M1 rescan each time — this changes which bar
+gets picked, unlike the cost-scale sweep which reuses one set of built
+trades) and reports total return/Sharpe/win rate/profit factor/avg hold
+hours per candidate, plus which one wins. Candidate list defaults to
+`['14:30','15:30','16:30']` — 14:30 through London close, matching
+`nasdaqConfig.js`'s own `london` session window (`08:00–16:30` UK). 2 new
+unit tests (30 total): exitTime correctly shifts the exit fill and the
+mirror leg together (reconstruction identity still holds at a later exit
+time), and the sweep's average hold duration grows by ~1h per candidate as
+expected. Wired opt-in (`opts.exitTimes` — only rescans when the caller asks
+for it) into `runOvernightHoldForInstrument`'s output as `exitSweep`,
+`server.js`'s `/run` route (validated `HH:MM` array), and the dashboard as a
+new "exit-time (hold duration) sweep" table+chart with an opt-in checkbox
+("off by default" per the same "expensive extra sweep, don't run it
+unasked" pattern as the skip-weekday rule).
+
+**One documented modeling simplification, stated not hidden:** `applyCosts`'
+`exitSlipMult` (widens the exit leg for "US cash-open volatility at 14:30
+UK") is held fixed across every candidate exit time — a later exit is
+further from the actual cash open, so if anything this makes the later-exit
+points slightly conservative (still charged cash-open-level slippage for a
+calmer, later fill), not optimistic.
+
+**Run for real against the same R2 data — the honest answer is mixed, not a
+clean win:**
+
+| | Gold 14:30 | Gold 15:30 | Gold 16:30 | NQ 14:30 | NQ 15:30 | NQ 16:30 |
+|---|---|---|---|---|---|---|
+| Net total return % | **−2.3** | −15.8 | −6.3 | **−3.9** | −13.4 | **−2.9** |
+| Sharpe | 0.032 | −0.080 | 0.014 | 0.030 | −0.024 | 0.059 |
+| Win rate % | 51.5 | 49.6 | 50.3 | 52.3 | 50.3 | 53.0 |
+
+Gold gets **worse** at every later exit tested — 15:30 is the sharpest drop
+(−15.8%), 16:30 partially recovers but still sits well below the 14:30
+baseline. NQ's best point in this sweep is actually London close (16:30,
+−2.9%), a small improvement on the 14:30 baseline (−3.9%) — but it's still
+net-negative, not a flip to profitable, and 15:30 is the worst point for NQ
+too (−13.4%), the same non-monotonic dip seen in gold. Both instruments
+dipping hardest at 15:30 UK specifically (not a smooth trend toward London
+close) suggests something in the NY-morning path around that hour is
+genuinely adverse for a long holding through it on this data, not just
+noise from one instrument — worth flagging as a pattern rather than
+explaining away, though decomposing *why* 15:30 is the worst point
+specifically hasn't been done (the same gross/cost-decomposition approach
+used for the Wednesday question above would be the natural next step if
+that's wanted). **Bottom line: holding longer does not rescue this
+strategy** — at best (NQ, London close) it trims the loss by about a point;
+at worst (gold, 15:30) it roughly 7x's it. The original 14:30 exit remains
+the better of the tested options for gold; NQ has a marginal, not
+game-changing, case for London close instead.
+
+**Update (2026-08-12, same day: "how about earlier then?"): built the
+mirror-image direction — exiting BEFORE 14:30, back toward London open —
+and it surfaces a genuine multiple-testing trap worth naming rather than
+selling.** `exitTimeSweep` was direction-agnostic already; added
+`DEFAULT_EARLY_EXIT_TIMES` (`14:30 → 13:30 → … → 08:00`, London open per
+the same `nasdaqConfig.js` `london` window used for the close bound) and
+fixed `baselineExitTime` to resolve by matching `'14:30'` in the candidate
+list rather than assuming it's always `exitTimes[0]` — needed once a caller
+can combine earlier+later candidates into one sorted array with 14:30
+sitting in the middle. 1 new unit test (31 total): earlier candidates
+shrink `avgHoldHours` as expected, and baseline resolves correctly even when
+14:30 isn't first in the array. Dashboard gained a second, independent
+checkbox for the earlier direction; checking both merges into one sorted
+9-point 08:00→16:30 grid in a single run.
+
+**Run for real against the same R2 data, the full grid (08:00 through
+16:30, hourly, both instruments):**
+
+| Exit (UK) | Gold net % | NQ net % |
+|---|---|---|
+| 08:00 | −21.0 | −22.9 |
+| 09:30 | −17.8 | −10.0 |
+| 10:30 | −17.8 | −18.1 |
+| 11:30 | −3.0 | −10.3 |
+| 12:30 | **−0.4** | −1.1 |
+| 13:30 | −4.1 | **+13.0** |
+| 14:30 (baseline) | −2.3 | −3.9 |
+| 15:30 | −15.8 | −13.4 |
+| 16:30 | −6.3 | −2.9 |
+
+Two honest reads, not one blended one:
+- **The coherent part:** exiting anywhere from 08:00–10:30 is clearly worse
+  than the 14:30 baseline for BOTH instruments, by a wide and consistent
+  margin (roughly −18pp to −21pp net) — closing out mid-London-morning,
+  well before the US session, is a real and repeatable drag here, not noise.
+  Gold's best point in the whole 9-candidate grid is 12:30 (−0.4%, close to
+  breakeven and clearly better than the −2.3% baseline) sitting in a smooth,
+  believable trough shape either side of it (11:30 −3.0%, 13:30 −4.1%) —
+  that's the kind of result worth taking seriously.
+- **The part that should NOT be sold as a finding:** NQ's 13:30 point
+  flips to **+13.0%**, the only positive cell anywhere in either sweep,
+  immediately flanked by its own neighbors at −1.1% (12:30) and −3.9%
+  (14:30) — a single hour, single instrument spike surrounded by negative
+  results on both sides, out of a 9-candidate grid with no correction for
+  multiple testing and no OOS split run on it. This is exactly the
+  "finding a few winners among many slices is what noise does" pattern this
+  file's own working agreement warns about — reporting it as "hold NQ to
+  13:30" would be curve-fitting one lucky cell, not evidence of an edge.
+  Flagged here as a candidate for a proper walk-forward check (same
+  discipline as the diversification retraction above) **before** it's
+  treated as anything more than an interesting single data point — not done
+  yet.
+- **Bottom line, combining both directions:** the 14:30 baseline is not the
+  single best point on the grid for either instrument, but nothing on the
+  grid is convincingly better either — gold's best credible improvement
+  (12:30, ~2pp) is modest and sits in a believable local shape; NQ's only
+  standout point (13:30) is the one result across this whole exercise that
+  looks like noise dressed as a finding, not a repeatable edge.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

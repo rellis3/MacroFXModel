@@ -8,7 +8,7 @@ import {
   runPropFirmRuleCheck, runOvernightHoldBacktest, addDays,
   resampleDailyFromPacked, costSensitivitySweep,
   yearlyDiversificationBreakdown, diversificationIsOosSplit,
-  weekdayBreakdown,
+  weekdayBreakdown, exitTimeSweep,
 } from './overnightHoldEngine.js';
 import { dowOf } from './sessionRanges.js';
 
@@ -102,6 +102,68 @@ test('buildOvernightTrades: produces trades for the full window and logs excepti
     assert.ok(t.exitEpoch > t.entryEpoch);
     assert.ok(t.maePct <= 0);
   }
+});
+
+test('buildOvernightTrades: opts.skipWeekdays excludes the rule as a real trade construction step, distinctly from data-gap exceptions', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-02-01'); // spans several Wednesdays
+  const withoutRule = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const withRule = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1], { skipWeekdays: [3] });
+
+  // No trade EVER opens on a Wednesday once the rule is active.
+  assert.ok(withRule.trades.every(t => dowOf(t.date) !== 3), 'no Wednesday entries should exist under the rule');
+  const wedCountWithoutRule = withoutRule.trades.filter(t => dowOf(t.date) === 3).length;
+  assert.ok(wedCountWithoutRule > 0, 'sanity: the unrestricted run actually has Wednesday trades to compare against');
+  assert.equal(withRule.trades.length, withoutRule.trades.length - wedCountWithoutRule);
+
+  // The skip shows up as a distinctly-labeled exception, not lumped in with
+  // "no bar within tolerance" market-closed/data-gap exceptions.
+  const ruleExceptions = withRule.exceptions.filter(e => e.reason.startsWith('skipped by rule'));
+  assert.equal(ruleExceptions.length, wedCountWithoutRule);
+  assert.ok(ruleExceptions.every(e => dowOf(e.date) === 3));
+});
+
+test('buildOvernightTrades: opts.exitTime moves the exit later and the mirror leg follows it, so overnight+mirror still reconstruct the full day', () => {
+  const packed = buildSyntheticPacked('2025-01-06', '2025-01-10'); // Mon-Thu, no weekend gap inside
+  const base = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const later = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1], { exitTime: '16:30' });
+  assert.equal(base.trades.length, later.trades.length);
+  for (let i = 0; i < later.trades.length; i++) {
+    const gap = later.trades[i].exitEpoch - base.trades[i].exitEpoch;
+    assert.ok(gap >= 2 * 3600 - 60, `later exitTime should push the exit fill ~2h later, got ${gap}s`);
+  }
+  const recon = mirrorTest(later.trades, later.mirrors);
+  const first = later.trades[0], last = later.trades[later.trades.length - 1];
+  const firstMirrorEntryEpoch = first.entryEpoch - (3.5 * 3600); // 20:00 -> 16:30 same day
+  const firstMirrorFill = priceAt(packed, firstMirrorEntryEpoch);
+  const directGross = ((last.exitPrice / firstMirrorFill.price) - 1) * 100;
+  assert.ok(Math.abs(recon.reconstructedGrossPct - directGross) < 0.01,
+    `reconstructed ${recon.reconstructedGrossPct} vs direct ${directGross}`);
+});
+
+test('exitTimeSweep: rebuilds trades per candidate exit time (not just cost re-application), and average hold duration grows with a later exit', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-02-01');
+  const sweep = exitTimeSweep(packed, packed.times[0], packed.times[packed.n - 1], 'gold', {}, ['14:30', '15:30', '16:30']);
+  assert.equal(sweep.points.length, 3);
+  assert.equal(sweep.baselineExitTime, '14:30');
+  for (const p of sweep.points) assert.ok(p.trades > 0, `${p.exitTime} should still have trades`);
+  assert.ok(sweep.points[1].avgHoldHours - sweep.points[0].avgHoldHours > 0.9, 'exit 1h later -> ~1h longer average hold');
+  assert.ok(sweep.points[2].avgHoldHours - sweep.points[1].avgHoldHours > 0.9, 'exit another 1h later -> ~1h longer again');
+  assert.ok(['14:30', '15:30', '16:30'].includes(sweep.bestExitTime));
+});
+
+test('exitTimeSweep: earlier candidates (toward London open) shrink average hold duration, and baseline is found by value, not array position', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-02-01');
+  const early = exitTimeSweep(packed, packed.times[0], packed.times[packed.n - 1], 'gold', {}, ['14:30', '13:30', '12:30']);
+  assert.equal(early.baselineExitTime, '14:30');
+  assert.ok(early.points[1].avgHoldHours - early.points[0].avgHoldHours < -0.9, 'exit 1h earlier -> ~1h shorter average hold');
+  assert.ok(early.points[2].avgHoldHours - early.points[1].avgHoldHours < -0.9, 'exit another 1h earlier -> ~1h shorter again');
+
+  // Combined earlier+later sweep where 14:30 sits in the MIDDLE of the array,
+  // not first — baseline must still resolve to 14:30 by value.
+  const combined = exitTimeSweep(packed, packed.times[0], packed.times[packed.n - 1], 'gold', {},
+    ['12:30', '13:30', '14:30', '15:30', '16:30']);
+  assert.equal(combined.baselineExitTime, '14:30');
+  assert.equal(combined.points.length, 5);
 });
 
 test('mirrorTest: overnight + mirror reconstructs buy&hold when coverage is full', () => {
@@ -358,12 +420,13 @@ test('diversificationIsOosSplit: one shared calendar split date, every trade con
 });
 
 test('weekdayBreakdown: groups by entry weekday, compounds correctly, surfaces the triple-swap drag', () => {
-  const mk = (date, netPct, financingCostPct, tripleSwap) => ({ date, netPct, financingCostPct, tripleSwap });
+  const mk = (date, grossPct, netPct, spreadCostPct, slipCostPct, financingCostPct, tripleSwap) =>
+    ({ date, grossPct, netPct, spreadCostPct, slipCostPct, financingCostPct, tripleSwap });
   const trades = [
-    mk('2025-01-06', 2, 0.015, false),  // Monday
-    mk('2025-01-13', -1, 0.015, false), // Monday
-    mk('2025-01-08', 1, 0.045, true),   // Wednesday (triple swap)
-    mk('2025-01-15', 1, 0.045, true),   // Wednesday (triple swap)
+    mk('2025-01-06', 2.03, 2, 0.010, 0.005, 0.015, false),  // Monday
+    mk('2025-01-13', -0.97, -1, 0.010, 0.005, 0.015, false), // Monday
+    mk('2025-01-08', 1.06, 1, 0.010, 0.005, 0.045, true),   // Wednesday (triple swap)
+    mk('2025-01-15', 1.06, 1, 0.010, 0.005, 0.045, true),   // Wednesday (triple swap)
   ];
   assert.equal(dowOf('2025-01-06'), 1); // sanity: Monday
   assert.equal(dowOf('2025-01-08'), 3); // sanity: Wednesday
@@ -382,6 +445,14 @@ test('weekdayBreakdown: groups by entry weekday, compounds correctly, surfaces t
   assert.ok(Math.abs(wed.avgFinancingCostPct - 0.045) < 1e-9, 'Wednesday should show the 3x financing cost');
   assert.equal(wed.tripleSwapNights, 2);
   assert.ok(wed.avgFinancingCostPct > mon.avgFinancingCostPct * 2.9, 'Wednesday financing should be roughly 3x a normal night');
+
+  // Gross vs net decomposition — the whole point of this extension: separate
+  // "the price action itself" from "what it costs to hold it".
+  assert.ok(Math.abs(mon.avgGrossPct - 0.53) < 1e-9, 'Monday gross should be the pre-cost average');
+  assert.ok(Math.abs(wed.avgGrossPct - 1.06) < 1e-9, 'Wednesday gross should be the pre-cost average');
+  assert.ok(Math.abs(wed.avgSpreadCostPct - mon.avgSpreadCostPct) < 1e-9, 'spread cost is the SAME baseline every night in this fixture');
+  assert.ok(Math.abs(wed.avgSlipCostPct - mon.avgSlipCostPct) < 1e-9, 'slip cost is the SAME baseline every night in this fixture');
+  assert.ok(wed.compoundedGrossPct > wed.compoundedTotalPct, 'gross should sit above net once costs are subtracted');
 });
 
 test('resampleDailyFromPacked: aggregates M1 bars into correct UTC-day OHLC buckets', () => {
