@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fokker-Planck Equation — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / The Fokker-Planck Equation</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 5 of 7</div>
+  <h1 class="tl-title">The Fokker-Planck Equation</h1>
+  <p class="tl-dek">Itô's Lemma answers "how does a function of a random process evolve?" This is the mirror question: how does the process's own probability density evolve? The answer is a completely deterministic PDE — and confusing its forward direction with the Black-Scholes-style backward equation is one of the most common mix-ups in the whole subject.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — the density-evolution equation every SDE in this curriculum implicitly relies on</span>
+    <span>~19 min read</span>
+    <span>Prereqs: Itô's Lemma, Existence &amp; Uniqueness of SDE Solutions</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>For an SDE \(dX_t=\mu(X_t,t)dt+\sigma(X_t,t)dW_t\), the transition density \(p(x,t)\) — the probability of finding \(X_t\) near \(x\) — satisfies the <strong>Fokker-Planck equation</strong> (also called the forward Kolmogorov equation): \(\partial p/\partial t = -\partial_x[\mu p] + \tfrac12\partial_x^2[\sigma^2 p]\).</li>
+      <li>The first term (drift/advection) <strong>shifts</strong> the density's location without changing its shape; the second term (diffusion) <strong>spreads it out</strong>. Both terms are exactly the ones Itô's Lemma produces, moved from the test function onto the density via integration by parts — the Fokker-Planck operator is the <strong>formal adjoint</strong> of the generator that appears there.</li>
+      <li>This is the <strong>forward</strong> equation: it evolves a fixed initial density forward in time. It is the mirror image of the <strong>backward</strong> Kolmogorov equation, which evolves an expected payoff backward from a fixed terminal condition — the Black-Scholes PDE is precisely a backward-Kolmogorov-type equation with an added discounting term.</li>
+      <li>Verified here by direct substitution: geometric Brownian motion's known lognormal transition density actually solves its own Fokker-Planck equation — not merely asserted, computed term by term.</li>
+      <li>The Fokker-Planck equation is a fully <strong>deterministic</strong> PDE describing how a density evolves. That is exactly the conceptual stepping-stone to stochastic PDEs, where the object evolving is no longer a deterministic density but a genuinely random field.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <code>ito-lemma.html</code> answers a specific question: given an Itô
+    process \(X_t\) and a function \(f\), how does \(f(X_t)\) evolve? That
+    lesson derives the extra \(\tfrac12 f''\sigma^2\,dt\) term ordinary
+    calculus misses, and shows it is exactly the mechanical origin of Black-
+    Scholes's \(\sigma^2/2\). This lesson asks the mirror-image question,
+    about the process itself rather than a function of it: forget any single
+    path — if you ran the SDE many, many times from the same starting point,
+    how does the <em>whole distribution</em> of possible outcomes evolve? The
+    Fokker-Planck equation answers that, and every SDE this curriculum has
+    used so far — Ornstein-Uhlenbeck, geometric Brownian motion, Vasicek/CIR
+    (<code>short-rate-models-vasicek-cir-hull-white.html</code>) — has an
+    implicit Fokker-Planck equation governing how its transition density
+    evolves, whether or not that equation was ever written down explicitly.
+  </p>
+  <p>
+    It also settles a distinction that is genuinely easy to blur:
+    <code>black-scholes.html</code> derives a PDE for an option's value
+    \(V(S,t)\) that is solved <em>backward</em> in time, from a known payoff
+    at expiration. That PDE looks superficially similar to the one built
+    here, and the two are close relatives — but they run in opposite
+    directions, answer different questions, and start from opposite ends of
+    the time axis. Getting this straight is the single most useful thing this
+    lesson delivers, and it earns its own section below rather than a
+    footnote. <code>sde-existence-uniqueness.html</code>'s well-posedness
+    conditions matter here too: the Fokker-Planck equation presupposes that
+    \(X_t\) is a well-defined process with a density in the first place —
+    without a unique strong solution, there is no \(p(x,t)\) to write an
+    equation for.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Itô's Lemma asked about a function of the process. This asks about the process's own shape.</h3>
+    <p>
+      Picture releasing a huge cloud of particles, all starting at the exact
+      same point, each one independently buffeted by the same drift and the
+      same random noise — each particle is one possible realization of
+      \(X_t\). A moment later, that cloud has spread into some shape: shifted
+      a bit in the direction of the drift, blurred out a bit by the noise.
+      A moment after that, it has spread further. The Fokker-Planck equation
+      is simply the equation that shape obeys, instant by instant. It says
+      nothing about any individual particle's jagged, unpredictable path —
+      that randomness is exactly what Itô's Lemma and the SDE itself already
+      describe. It describes something else entirely: the population-level
+      density of <em>where the particles are</em>, which turns out to evolve
+      by a completely ordinary, deterministic partial differential equation —
+      no randomness left in it at all, even though every individual particle
+      inside the cloud is still bouncing around randomly.
+    </p>
+    <p>
+      That's the whole intuition. The math below just makes it precise:
+      which deterministic PDE, exactly, and why.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Start from the same general SDE <code>sde-existence-uniqueness.html</code>
+    and <code>ito-lemma.html</code> both use:
+  </p>
+  <div class="tl-math">
+    \[ dX_t = \mu(X_t,t)\,dt + \sigma(X_t,t)\,dW_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ(X_t,t)</code><span>the drift — how the process moves on average</span></div>
+    <div class="tl-eq-chip c3"><code>σ(X_t,t)</code><span>the diffusion coefficient — the size of the random shock</span></div>
+  </div>
+
+  <h3>1. Stating the equation</h3>
+  <p>
+    Let \(p(x,t)\) denote the transition density of \(X_t\): the probability
+    density that \(X_t\) is near \(x\), given a fixed starting point at an
+    earlier time. \(p(x,t)\) satisfies the <strong>Fokker-Planck equation</strong>
+    (equivalently, the <strong>forward Kolmogorov equation</strong> — both
+    names are standard; see Hannes Risken, <em>The Fokker-Planck Equation:
+    Methods of Solution and Applications</em>, Springer, 2nd ed. 1996, the
+    standard reference for this entire equation and everything built on it):
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial p}{\partial t} = -\frac{\partial}{\partial x}\big[\mu(x,t)\,p(x,t)\big] + \frac{1}{2}\frac{\partial^2}{\partial x^2}\big[\sigma^2(x,t)\,p(x,t)\big] \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">−∂/∂x[μ(x,t)p(x,t)]</div>
+      <div class="tl-fp-name">Drift / advection term</div>
+      <div class="tl-fp-desc">Shifts the density's location — carries probability mass in the direction μ points, without changing the shape</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">½ ∂²/∂x²[σ²(x,t)p(x,t)]</div>
+      <div class="tl-fp-name">Diffusion term</div>
+      <div class="tl-fp-desc">Spreads the density out — the same structural form as the heat equation, driven by the squared diffusion coefficient</div>
+    </div>
+  </div>
+  <p>
+    Read the equation exactly as those two cards describe it: the density
+    \(p(x,\cdot)\) at a fixed time is a curve over \(x\), and the equation
+    says how that curve's <em>height</em> changes at each point \(x\), one
+    instant later. The advection term is a translation — it moves probability
+    mass along \(x\) at the local rate \(\mu(x,t)\), the same way smoke drifts
+    downwind without dispersing on its own. The diffusion term is a spreading
+    — mathematically it is the ordinary heat equation's Laplacian term, with
+    the diffusion coefficient \(\sigma^2\) taking the place of thermal
+    conductivity, blurring the density outward regardless of which way it is
+    drifting. A process with \(\sigma=0\) (no noise) has a Fokker-Planck
+    equation that reduces to pure advection — the density just translates
+    rigidly, exactly matching the deterministic ODE case.
+  </p>
+
+  <h3>2. Where it comes from: the formal adjoint of Itô's Lemma</h3>
+  <p>
+    This lesson states the equation as a result rather than proving it with
+    full rigor — the same choice <code>black-scholes.html</code> makes for
+    Delta and Gamma, stated as the PDE's named partial derivatives without
+    re-deriving the whole replication argument each time a Greek is used.
+    What follows is the informal motivation, using exactly the machinery
+    <code>ito-lemma.html</code> already built, so the result doesn't have to
+    be taken purely on faith.
+  </p>
+  <p>
+    Take any smooth test function \(f(x)\) (not depending on \(t\)) and apply
+    Itô's Lemma to \(f(X_t)\), exactly as in <code>ito-lemma.html</code>:
+  </p>
+  <div class="tl-math">
+    \[ df(X_t) = \left[\mu(X_t,t)f'(X_t) + \tfrac12\sigma^2(X_t,t)f''(X_t)\right]dt + \sigma(X_t,t)f'(X_t)\,dW_t \]
+  </div>
+  <p>
+    Take expectations on both sides. The \(dW_t\) term has zero mean (an Itô
+    integral is a martingale), so it drops out entirely, leaving:
+  </p>
+  <div class="tl-math">
+    \[ \frac{d}{dt}\,\mathbb{E}[f(X_t)] = \mathbb{E}\Big[\mu(X_t,t)f'(X_t) + \tfrac12\sigma^2(X_t,t)f''(X_t)\Big] \]
+  </div>
+  <p>
+    The right-hand side's bracketed expression, \(\mathcal{L}f = \mu f' +
+    \tfrac12\sigma^2 f''\), is called the <strong>generator</strong> of the
+    process \(X_t\) — it is exactly the deterministic part of Itô's Lemma,
+    with the random \(dW_t\) piece stripped away. Now write both sides as
+    integrals against the density \(p(x,t)\), since
+    \(\mathbb{E}[f(X_t)]=\int f(x)\,p(x,t)\,dx\):
+  </p>
+  <div class="tl-math">
+    \[ \int f(x)\,\frac{\partial p}{\partial t}\,dx = \int \big[\mu(x,t)f'(x) + \tfrac12\sigma^2(x,t)f''(x)\big]\,p(x,t)\,dx \]
+  </div>
+  <p>
+    The left side already has \(\partial p/\partial t\) sitting where it
+    needs to be. The right side still has derivatives landing on \(f\), not
+    on \(p\) — integrating each term by parts (twice, for the second-order
+    term) moves those derivatives off \(f\) and onto \(\mu p\) and
+    \(\sigma^2 p\) instead, at the cost of a minus sign each time a derivative
+    crosses the integral sign, and assuming \(p\to0\) fast enough at
+    \(x=\pm\infty\) that every boundary term vanishes:
+  </p>
+  <div class="tl-math">
+    \[ \int f(x)\mu(x,t)f'(x)\text{-style terms} \;\longrightarrow\; \int f(x)\Big(-\frac{\partial}{\partial x}[\mu p] + \frac12\frac{\partial^2}{\partial x^2}[\sigma^2 p]\Big)dx \]
+  </div>
+  <p>
+    Since the resulting identity \(\int f(x)\,\partial_t p\,dx = \int f(x)
+    \big(-\partial_x[\mu p]+\tfrac12\partial_x^2[\sigma^2 p]\big)dx\) has to
+    hold for <em>every</em> test function \(f\), the two integrands themselves
+    must be equal — which is exactly the Fokker-Planck equation from step 1.
+    Stated the way functional analysis states it: the operator on the
+    right-hand side, \(\mathcal{L}^*p := -\partial_x[\mu p] +
+    \tfrac12\partial_x^2[\sigma^2 p]\), is the <strong>formal adjoint</strong>
+    of the generator \(\mathcal{L}\) — "adjoint" in exactly the integration-
+    by-parts sense used to move it there. This is a genuinely deep structural
+    fact (the forward equation and the generator are two faces of the same
+    object), and Risken (1996), Ch. 4-5, works through the full rigorous
+    version, including the technical conditions on \(p\) and its derivatives
+    that make the boundary terms actually vanish. The derivation above carries
+    the idea, not the full rigor.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(p(x,t)\)</td><td>The transition density of \(X_t\) — the object this whole equation describes the evolution of.</td></tr>
+    <tr><td>\(\mu(x,t)\), \(\sigma(x,t)\)</td><td>The SDE's drift and diffusion coefficients — same roles as in <code>sde-existence-uniqueness.html</code> and <code>ito-lemma.html</code>.</td></tr>
+    <tr><td>\(\mathcal{L}f = \mu f' + \tfrac12\sigma^2 f''\)</td><td>The generator of \(X_t\) — the deterministic (drift) half of Itô's Lemma, acting on a test function \(f\).</td></tr>
+    <tr><td>\(\mathcal{L}^*p = -\partial_x[\mu p]+\tfrac12\partial_x^2[\sigma^2 p]\)</td><td>The Fokker-Planck operator — the formal adjoint of \(\mathcal{L}\), acting on the density \(p\) instead of on a test function.</td></tr>
+    <tr><td>\(\delta(x-x_0)\)</td><td>The Dirac delta — the initial condition \(p(x,t_0)=\delta(x-x_0)\) for a process that starts at a known point \(x_0\) with certainty.</td></tr>
+  </table></div>
+
+  <h3>3. Forward vs. backward — the single most important distinction in this lesson</h3>
+  <p>
+    Everything above evolves \(p(x,t)\) <strong>forward</strong> in time,
+    starting from a fixed initial condition — typically
+    \(p(x,t_0)=\delta(x-x_0)\), certainty about where the process starts, at
+    the earliest time. There is a close relative that runs the other way.
+    Define \(u(x,t) = \mathbb{E}\big[g(X_T)\,\big|\,X_t=x\big]\), the expected
+    value of some terminal payoff function \(g\) applied to the process at a
+    <em>later, fixed</em> time \(T\), given that the process is at \(x\) right
+    now, at time \(t\). It satisfies the <strong>backward Kolmogorov
+    equation</strong>:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\partial u}{\partial t} + \mu(x,t)\frac{\partial u}{\partial x} + \frac12\sigma^2(x,t)\frac{\partial^2 u}{\partial x^2} = 0, \qquad u(x,T) = g(x) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>u(x,t)</code><span>an expected future payoff, not a density — no probabilistic normalization requirement</span></div>
+    <div class="tl-eq-chip c4"><code>u(x,T)=g(x)</code><span>a TERMINAL condition fixed at the end of time, not an initial one</span></div>
+  </div>
+  <p>
+    Notice this is literally \(\mathcal{L}u=0\) with a time derivative added —
+    the generator \(\mathcal{L}\) itself, acting on \(u\) directly, with no
+    adjoint and no integration by parts. That is the algebraic fingerprint of
+    "backward": the un-adjointed generator, solved from a condition at the
+    <em>end</em> of the time interval back to the start.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Forward (Fokker-Planck)</h4>
+      <p>
+        Unknown: a <strong>density</strong> \(p(x,t)\). Fixed data: an
+        <strong>initial</strong> condition at the start, \(t_0\). Direction of
+        solution: forward, increasing \(t\). Operator: the adjoint
+        \(\mathcal{L}^*\). Question answered: <em>"given where I start, what
+        is the whole distribution of where I might end up?"</em>
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Backward (Kolmogorov backward)</h4>
+      <p>
+        Unknown: an <strong>expected value / payoff</strong> function
+        \(u(x,t)\). Fixed data: a <strong>terminal</strong> condition at the
+        end, \(T\). Direction of solution: backward, decreasing \(t\) from
+        \(T\). Operator: the plain generator \(\mathcal{L}\), un-adjointed.
+        Question answered: <em>"given what I want to know at the end, what is
+        it worth right now?"</em>
+      </p>
+    </div>
+  </div>
+  <p>
+    <code>black-scholes.html</code>'s no-arbitrage PDE,
+    \(\partial_t V + rS\,\partial_S V + \tfrac12\sigma^2S^2\partial_S^2V - rV
+    = 0\), solved backward from the terminal payoff \(V(S,T)=\max(S_T-K,0)\),
+    is <strong>precisely a backward-Kolmogorov-type equation</strong> for the
+    risk-neutral drift \(\mu(S,t)=rS\), with exactly one addition: the
+    \(-rV\) term, which is a <strong>discounting (or "killing") term</strong>
+    that has no counterpart in the plain backward equation above — it is what
+    turns "the expected terminal payoff" into "the expected terminal payoff,
+    discounted back to today's dollars," which is what an option's fair
+    <em>price</em> actually needs to be. Strip that one term out and the
+    Black-Scholes PDE is exactly \(\mathcal{L}u=0\) with \(u=V\), \(g(S)=\max
+    (S-K,0)\), \(T\) fixed. This is not a loose analogy — it is the identical
+    equation, plus one discounting term that a pricing (rather than a plain
+    conditional-expectation) problem specifically needs.
+  </p>
+  <div class="tl-solid amber">
+    <strong>The one-sentence rule that prevents the mix-up:</strong> if the
+    question is "given where I start, where might I end up?" — a distribution
+    over a future outcome — that's <strong>forward</strong>, Fokker-Planck. If
+    the question is "given what I want to know at some fixed future time,
+    what is it worth (or what do I expect) right now?" — a value computed
+    backward from a known future — that's <strong>backward</strong>,
+    Kolmogorov. Same underlying generator, opposite direction, different
+    unknown function, different fixed condition.
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A density under the Fokker-Planck equation — drifting and spreading over four snapshots in time</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four Gaussian density curves at increasing times, each shifted further right than the last (illustrating the drift/advection term) and each shorter and wider than the last (illustrating the diffusion term spreading the density out). All four curves sit on a shared horizontal axis.">
+      <line x1="50" y1="230" x2="610" y2="230" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="330" y1="20" x2="330" y2="238" style="stroke:var(--border);stroke-dasharray:2,3"/>
+      <text x="330" y="252" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">x = 0 (start)</text>
+      <text x="50" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">x decreasing ←</text>
+      <text x="610" y="266" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="end">→ x increasing</text>
+      <polyline points="50.00,230.00 54.00,230.00 58.00,230.00 62.00,230.00 66.00,230.00 70.00,230.00 74.00,230.00 78.00,230.00 82.00,230.00 86.00,230.00 90.00,230.00 94.00,230.00 98.00,230.00 102.00,230.00 106.00,230.00 110.00,230.00 114.00,230.00 118.00,230.00 122.00,230.00 126.00,230.00 130.00,230.00 134.00,230.00 138.00,230.00 142.00,229.99 146.00,229.99 150.00,229.98 154.00,229.96 158.00,229.92 162.00,229.84 166.00,229.72 170.00,229.50 174.00,229.15 178.00,228.59 182.00,227.70 186.00,226.34 190.00,224.33 194.00,221.44 198.00,217.39 202.00,211.88 206.00,204.60 210.00,195.29 214.00,183.72 218.00,169.83 222.00,153.70 226.00,135.64 230.00,116.18 234.00,96.10 238.00,76.36 242.00,58.07 246.00,42.34 250.00,30.24 254.00,22.61 258.00,20.00 262.00,22.61 266.00,30.24 270.00,42.34 274.00,58.07 278.00,76.36 282.00,96.10 286.00,116.18 290.00,135.64 294.00,153.70 298.00,169.83 302.00,183.72 306.00,195.29 310.00,204.60 314.00,211.88 318.00,217.39 322.00,221.44 326.00,224.33 330.00,226.34 334.00,227.70 338.00,228.59 342.00,229.15 346.00,229.50 350.00,229.72 354.00,229.84 358.00,229.92 362.00,229.96 366.00,229.98 370.00,229.99 374.00,229.99 378.00,230.00 382.00,230.00 386.00,230.00 390.00,230.00 394.00,230.00 398.00,230.00 402.00,230.00 406.00,230.00 410.00,230.00 414.00,230.00 418.00,230.00 422.00,230.00 426.00,230.00 430.00,230.00 434.00,230.00 438.00,230.00 442.00,230.00 446.00,230.00 450.00,230.00 454.00,230.00 458.00,230.00 462.00,230.00 466.00,230.00 470.00,230.00 474.00,230.00 478.00,230.00 482.00,230.00 486.00,230.00 490.00,230.00 494.00,230.00 498.00,230.00 502.00,230.00 506.00,230.00 510.00,230.00 514.00,230.00 518.00,230.00 522.00,230.00 526.00,230.00 530.00,230.00 534.00,230.00 538.00,230.00 542.00,230.00 546.00,230.00 550.00,230.00 554.00,230.00 558.00,230.00 562.00,230.00 566.00,230.00 570.00,230.00 574.00,230.00 578.00,230.00 582.00,230.00 586.00,230.00 590.00,230.00 594.00,230.00 598.00,230.00 602.00,230.00 606.00,230.00 610.00,230.00" style="stroke:var(--blue);stroke-width:2" fill="none"/>
+      <polyline points="50.00,230.00 54.00,230.00 58.00,230.00 62.00,230.00 66.00,230.00 70.00,230.00 74.00,229.99 78.00,229.99 82.00,229.99 86.00,229.98 90.00,229.97 94.00,229.96 98.00,229.95 102.00,229.92 106.00,229.89 110.00,229.85 114.00,229.79 118.00,229.70 122.00,229.60 126.00,229.45 130.00,229.26 134.00,229.02 138.00,228.70 142.00,228.30 146.00,227.79 150.00,227.15 154.00,226.35 158.00,225.38 162.00,224.19 166.00,222.75 170.00,221.03 174.00,219.00 178.00,216.62 182.00,213.86 186.00,210.70 190.00,207.10 194.00,203.06 198.00,198.57 202.00,193.63 206.00,188.27 210.00,182.52 214.00,176.42 218.00,170.04 222.00,163.46 226.00,156.77 230.00,150.07 234.00,143.49 238.00,137.14 242.00,131.15 246.00,125.64 250.00,120.75 254.00,116.58 258.00,113.22 262.00,110.76 266.00,109.26 270.00,108.76 274.00,109.26 278.00,110.76 282.00,113.22 286.00,116.58 290.00,120.75 294.00,125.64 298.00,131.15 302.00,137.14 306.00,143.49 310.00,150.07 314.00,156.77 318.00,163.46 322.00,170.04 326.00,176.42 330.00,182.52 334.00,188.27 338.00,193.63 342.00,198.57 346.00,203.06 350.00,207.10 354.00,210.70 358.00,213.86 362.00,216.62 366.00,219.00 370.00,221.03 374.00,222.75 378.00,224.19 382.00,225.38 386.00,226.35 390.00,227.15 394.00,227.79 398.00,228.30 402.00,228.70 406.00,229.02 410.00,229.26 414.00,229.45 418.00,229.60 422.00,229.70 426.00,229.79 430.00,229.85 434.00,229.89 438.00,229.92 442.00,229.95 446.00,229.96 450.00,229.97 454.00,229.98 458.00,229.99 462.00,229.99 466.00,229.99 470.00,230.00 474.00,230.00 478.00,230.00 482.00,230.00 486.00,230.00 490.00,230.00 494.00,230.00 498.00,230.00 502.00,230.00 506.00,230.00 510.00,230.00 514.00,230.00 518.00,230.00 522.00,230.00 526.00,230.00 530.00,230.00 534.00,230.00 538.00,230.00 542.00,230.00 546.00,230.00 550.00,230.00 554.00,230.00 558.00,230.00 562.00,230.00 566.00,230.00 570.00,230.00 574.00,230.00 578.00,230.00 582.00,230.00 586.00,230.00 590.00,230.00 594.00,230.00 598.00,230.00 602.00,230.00 606.00,230.00 610.00,230.00" style="stroke:var(--green);stroke-width:2" fill="none"/>
+      <polyline points="50.00,229.97 54.00,229.96 58.00,229.94 62.00,229.93 66.00,229.91 70.00,229.89 74.00,229.86 78.00,229.82 82.00,229.78 86.00,229.73 90.00,229.66 94.00,229.58 98.00,229.49 102.00,229.37 106.00,229.24 110.00,229.08 114.00,228.89 118.00,228.66 122.00,228.40 126.00,228.09 130.00,227.73 134.00,227.32 138.00,226.84 142.00,226.29 146.00,225.67 150.00,224.96 154.00,224.15 158.00,223.24 162.00,222.23 166.00,221.10 170.00,219.84 174.00,218.45 178.00,216.93 182.00,215.26 186.00,213.45 190.00,211.49 194.00,209.38 198.00,207.12 202.00,204.71 206.00,202.16 210.00,199.48 214.00,196.67 218.00,193.75 222.00,190.74 226.00,187.64 230.00,184.47 234.00,181.27 238.00,178.05 242.00,174.84 246.00,171.66 250.00,168.54 254.00,165.52 258.00,162.62 262.00,159.87 266.00,157.30 270.00,154.94 274.00,152.81 278.00,150.93 282.00,149.33 286.00,148.03 290.00,147.04 294.00,146.38 298.00,146.04 302.00,146.04 306.00,146.38 310.00,147.04 314.00,148.03 318.00,149.33 322.00,150.93 326.00,152.81 330.00,154.94 334.00,157.30 338.00,159.87 342.00,162.62 346.00,165.52 350.00,168.54 354.00,171.66 358.00,174.84 362.00,178.05 366.00,181.27 370.00,184.47 374.00,187.64 378.00,190.74 382.00,193.75 386.00,196.67 390.00,199.48 394.00,202.16 398.00,204.71 402.00,207.12 406.00,209.38 410.00,211.49 414.00,213.45 418.00,215.26 422.00,216.93 426.00,218.45 430.00,219.84 434.00,221.10 438.00,222.23 442.00,223.24 446.00,224.15 450.00,224.96 454.00,225.67 458.00,226.29 462.00,226.84 466.00,227.32 470.00,227.73 474.00,228.09 478.00,228.40 482.00,228.66 486.00,228.89 490.00,229.08 494.00,229.24 498.00,229.37 502.00,229.49 506.00,229.58 510.00,229.66 514.00,229.73 518.00,229.78 522.00,229.82 526.00,229.86 530.00,229.89 534.00,229.91 538.00,229.93 542.00,229.94 546.00,229.96 550.00,229.97 554.00,229.97 558.00,229.98 562.00,229.98 566.00,229.99 570.00,229.99 574.00,229.99 578.00,229.99 582.00,230.00 586.00,230.00 590.00,230.00 594.00,230.00 598.00,230.00 602.00,230.00 606.00,230.00 610.00,230.00" style="stroke:var(--amber);stroke-width:2" fill="none"/>
+      <polyline points="50.00,229.82 54.00,229.79 58.00,229.75 62.00,229.71 66.00,229.66 70.00,229.60 74.00,229.54 78.00,229.47 82.00,229.38 86.00,229.29 90.00,229.18 94.00,229.06 98.00,228.93 102.00,228.77 106.00,228.60 110.00,228.41 114.00,228.20 118.00,227.96 122.00,227.69 126.00,227.40 130.00,227.07 134.00,226.71 138.00,226.32 142.00,225.89 146.00,225.41 150.00,224.90 154.00,224.33 158.00,223.72 162.00,223.06 166.00,222.35 170.00,221.59 174.00,220.76 178.00,219.88 182.00,218.94 186.00,217.94 190.00,216.88 194.00,215.75 198.00,214.56 202.00,213.32 206.00,212.01 210.00,210.64 214.00,209.21 218.00,207.73 222.00,206.19 226.00,204.61 230.00,202.98 234.00,201.31 238.00,199.60 242.00,197.86 246.00,196.10 250.00,194.33 254.00,192.54 258.00,190.75 262.00,188.97 266.00,187.20 270.00,185.45 274.00,183.73 278.00,182.06 282.00,180.43 286.00,178.87 290.00,177.37 294.00,175.95 298.00,174.61 302.00,173.36 306.00,172.22 310.00,171.18 314.00,170.26 318.00,169.46 322.00,168.78 326.00,168.24 330.00,167.82 334.00,167.55 338.00,167.41 342.00,167.41 346.00,167.55 350.00,167.82 354.00,168.24 358.00,168.78 362.00,169.46 366.00,170.26 370.00,171.18 374.00,172.22 378.00,173.36 382.00,174.61 386.00,175.95 390.00,177.37 394.00,178.87 398.00,180.43 402.00,182.06 406.00,183.73 410.00,185.45 414.00,187.20 418.00,188.97 422.00,190.75 426.00,192.54 430.00,194.33 434.00,196.10 438.00,197.86 442.00,199.60 446.00,201.31 450.00,202.98 454.00,204.61 458.00,206.19 462.00,207.73 466.00,209.21 470.00,210.64 474.00,212.01 478.00,213.32 482.00,214.56 486.00,215.75 490.00,216.88 494.00,217.94 498.00,218.94 502.00,219.88 506.00,220.76 510.00,221.59 514.00,222.35 518.00,223.06 522.00,223.72 526.00,224.33 530.00,224.90 534.00,225.41 538.00,225.89 542.00,226.32 546.00,226.71 550.00,227.07 554.00,227.40 558.00,227.69 562.00,227.96 566.00,228.20 570.00,228.41 574.00,228.60 578.00,228.77 582.00,228.93 586.00,229.06 590.00,229.18 594.00,229.29 598.00,229.38 602.00,229.47 606.00,229.54 610.00,229.60" style="stroke:var(--purple);stroke-width:2" fill="none"/>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>t = 0.4 — narrow, close to the start</span>
+      <span><i style="background:var(--green)"></i>t = 1.2 — shifted right, a bit wider</span>
+      <span><i style="background:var(--amber)"></i>t = 2.5 — shifted further, wider still</span>
+      <span><i style="background:var(--purple)"></i>t = 4.5 — furthest shifted, widest and shortest</span>
+    </div>
+    <div class="tl-chart-caption">
+      Four snapshots of \(p(x,t)\) for a constant-coefficient drift-diffusion
+      process, all starting from the same point at \(t=0\). Each successive
+      curve's peak has moved right — the advection term at work, carrying the
+      density along at the drift rate. Each successive curve is also shorter
+      and wider than the last, with the same total area under every curve
+      (probability is conserved) — the diffusion term at work, spreading
+      probability mass outward. Both effects are visible simultaneously in
+      every snapshot; the Fokker-Planck equation is the instant-by-instant
+      rule that produces this specific combination of shift and spread, for
+      any \(\mu(x,t)\) and \(\sigma(x,t)\), not just the constant case plotted
+      here.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Verifying that GBM's own lognormal density solves its own Fokker-Planck equation</h3>
+    <p>
+      Geometric Brownian motion, \(dX_t=\mu X_t\,dt+\sigma X_t\,dW_t\)
+      (\(X_0=x_0>0\)) — the process behind <code>black-scholes.html</code> —
+      has a well-known closed-form transition density, the lognormal:
+    </p>
+    <div class="tl-math">
+      \[ p(x,t) = \frac{1}{x\sigma\sqrt{2\pi t}}\exp\!\left(-\frac{\big(\ln x - m(t)\big)^2}{2\sigma^2 t}\right), \qquad m(t)=\ln x_0+\Big(\mu-\frac{\sigma^2}{2}\Big)t,\ \ x>0 \]
+    </div>
+    <p>
+      This is stated everywhere as a fact. Actually checking that it solves
+      its own Fokker-Planck equation,
+      \(\partial_tp = -\partial_x[\mu x\,p]+\tfrac12\partial_x^2[\sigma^2x^2p]\),
+      is a genuine computation — done here rather than skipped.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Change variables to \(y=\ln x\)</h4>
+          <p>
+            Write \(p(x,t) = q(y,t)/x\) with \(y=\ln x\), where \(q(y,t) =
+            \tfrac{1}{\sqrt{2\pi v}}\exp\big(-(y-m)^2/2v\big)\) is an ordinary
+            Gaussian density in \(y\), \(v=v(t)=\sigma^2t\). This is exactly
+            the standard density-transformation (Jacobian) formula for
+            \(y=\ln x\), \(dy/dx=1/x\) — not an approximation, an identity.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Differentiate p(x,t) in x, in terms of q's y-derivatives</h4>
+          <p>
+            Using the chain rule through \(y=\ln x\) (writing \(q_y,q_{yy}\)
+            for \(\partial q/\partial y,\ \partial^2q/\partial y^2\)):
+          </p>
+          <div class="tl-math">
+            \[ \frac{\partial p}{\partial x} = \frac{q_y - q}{x^2}, \qquad \frac{\partial^2 p}{\partial x^2} = \frac{q_{yy}-3q_y+2q}{x^3} \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Substitute into the GBM Fokker-Planck equation's right-hand side</h4>
+          <p>
+            Since \(xp=q\), the drift term simplifies directly:
+            \(\mu xp = \mu q\), so \(-\partial_x[\mu xp]=-\mu q_y/x\). Since
+            \(x^2p=xq\), the diffusion term simplifies to
+            \(\sigma^2x^2p=\sigma^2xq\), and differentiating twice gives
+            \(\tfrac12\partial_x^2[\sigma^2x^2p]=\sigma^2(q_y+q_{yy})/(2x)\).
+            Adding them:
+          </p>
+          <div class="tl-math">
+            \[ -\partial_x[\mu xp]+\tfrac12\partial_x^2[\sigma^2x^2p] = \frac{1}{x}\left[-\Big(\mu-\frac{\sigma^2}{2}\Big)q_y + \frac{\sigma^2}{2}q_{yy}\right] \]
+          </div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Compare against ∂p/∂t</h4>
+          <p>
+            Since \(y=\ln x\) doesn't depend on \(t\), \(\partial p/\partial t
+            = q_t/x\) directly. So the GBM Fokker-Planck equation, divided
+            through by the common factor \(1/x\), reduces exactly to:
+          </p>
+          <div class="tl-math">
+            \[ q_t = -\Big(\mu-\frac{\sigma^2}{2}\Big)q_y + \frac{\sigma^2}{2}q_{yy} \]
+          </div>
+          <p>
+            This is the Fokker-Planck equation for a process with
+            <strong>constant</strong> drift \(a=\mu-\sigma^2/2\) and diffusion
+            coefficient \(b=\sigma^2\) — and \(a=\mu-\sigma^2/2\) is exactly
+            \(d(\ln X_t)\)'s drift, derived independently in
+            <code>ito-lemma.html</code> by applying Itô's Lemma to
+            \(f(x)=\ln x\). The substitution has turned "does the lognormal
+            solve the GBM equation" into "does a Gaussian solve the constant-
+            coefficient equation" — a cleaner, fully checkable question.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Verify the Gaussian solves the reduced equation, directly</h4>
+          <p>
+            With \(m(t)=m_0+at\), \(v(t)=v_0+bt\) (so \(m'=a\), \(v'=b\)),
+            differentiate \(q(y,t)=(2\pi v)^{-1/2}\exp(-(y-m)^2/2v)\) via
+            \(\ln q\):
+          </p>
+          <div class="tl-math">
+            \[ q_t = q\left[-\frac{b}{2v} + \frac{(y-m)a}{v} + \frac{(y-m)^2b}{2v^2}\right] \]
+          </div>
+          <p>
+            and separately, from \(q_y=-\tfrac{y-m}{v}q\):
+          </p>
+          <div class="tl-math">
+            \[ -aq_y+\frac{b}{2}q_{yy} = q\left[\frac{a(y-m)}{v} + \frac{b(y-m)^2}{2v^2} - \frac{b}{2v}\right] \]
+          </div>
+          <p>
+            The two bracketed expressions are <strong>identical, term for
+            term</strong> — the \(a(y-m)/v\) pieces match, the
+            \(b(y-m)^2/2v^2\) pieces match, and the \(-b/2v\) pieces match.
+            \(q_t=-aq_y+\tfrac{b}{2}q_{yy}\) holds exactly, which — winding
+            back through steps 1-4 — is precisely the statement that GBM's
+            lognormal \(p(x,t)\) solves its own Fokker-Planck equation. Not
+            asserted: computed.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Two PDE solvers on the same desk, running in opposite directions</h3>
+    <p>
+      A quant sits down with a colleague to explain why two numerical PDE
+      solvers on the desk's shared library, both operating on what looks like
+      "the same kind of equation" for the same underlying diffusion, produce
+      completely different kinds of output. The first solver is inside the
+      options-pricing engine: it takes a known payoff at expiration,
+      \(\max(S_T-K,0)\), and marches the Black-Scholes PDE <em>backward</em>
+      from \(T\) to today, producing a single number — today's fair value.
+      The second solver is inside a risk system, projecting where a risk
+      factor (say, a commodity price or an FX rate) might plausibly sit in
+      six months: it takes today's known starting point as a delta-function
+      initial condition and marches the Fokker-Planck equation
+      <strong>forward</strong> from today to six months out, producing an
+      entire projected distribution, not a single number.
+    </p>
+    <p>
+      The colleague's confusion is understandable — both solvers discretize a
+      second-order parabolic PDE with the same \(\mu\) and \(\sigma\), on the
+      same grid, using the same finite-difference machinery. But swapping one
+      solver's direction convention into the other's code is not a harmless
+      refactor: feeding the pricing engine's terminal-condition, march-
+      backward logic a risk-projection problem (which has an <em>initial</em>
+      condition and needs an adjoint operator, not the plain generator) would
+      silently produce nonsense — a numerically stable computation of the
+      <em>wrong quantity</em>, not a crash that would flag the bug. The one-
+      sentence rule from the solid callout above — "given where I start,
+      where might I end up" is forward; "given what I want at the end, what's
+      it worth now" is backward — is exactly the check that catches this
+      before it ships.
+    </p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>The forward-looking payoff:</strong> everything in this lesson is
+    a fully <strong>deterministic</strong> PDE — no randomness survives once
+    you're asking about the density \(p(x,t)\) rather than any one path
+    \(X_t\). That's exactly the conceptual stepping-stone to <strong>stochastic
+    PDEs</strong>: instead of a deterministic equation describing how a
+    density evolves over one spatial dimension and time, a stochastic PDE
+    describes a genuinely random <em>field</em> — itself buffeted by noise —
+    evolving over space and time. The Fokker-Planck equation is the "easy"
+    half of that story: a PDE, but with no noise term of its own. The harder
+    half puts noise back into the PDE itself.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The Fokker-Planck equation itself is rarely solved by hand outside of the
+    handful of coefficient families (GBM, Ornstein-Uhlenbeck, CIR) that have
+    known closed-form densities — for anything more exotic, it is solved
+    numerically, or its role is played implicitly by Monte Carlo simulation
+    instead (simulating many paths and building a histogram is, in effect, a
+    Monte Carlo estimate of \(p(x,t)\), without ever writing the PDE down).
+    Where the underlying idea genuinely surfaces:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Projecting a risk factor's distribution</h4>
+      <p>A risk system projecting "where might this rate/price plausibly be in N days" is, conceptually, evolving a density forward — whether it does so via a closed-form Fokker-Planck solution, a numerical PDE solve, or a Monte Carlo histogram standing in for the same thing.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Checking which direction a PDE solver actually runs</h4>
+      <p>Before trusting or reusing a numerical PDE solver, the honest first question is whether it is set up as a forward (adjoint operator, initial condition) or backward (plain generator, terminal condition) problem — conflating the two produces a stable computation of the wrong quantity, not an obvious crash.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔬</div>
+      <h4>Diagnosing a physical/statistical-mechanics-flavored model</h4>
+      <p>Fokker-Planck equations originate in statistical physics (Brownian particle diffusion), and Risken (1996) is written primarily for that audience — any model borrowing physics-style diffusion language (a "potential," a "stationary distribution") is very likely leaning on this exact equation under the hood.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this gets misapplied</h3>
+    <p>
+      <strong>Mixing up forward and backward.</strong> This is by far the most
+      common mistake with this equation, and it's easy to make because both
+      equations share the same \(\mu\), the same \(\sigma\), and a visually
+      similar PDE structure. Tie the question to the concrete direction, every
+      time: "given where I start, where might I end up" is forward
+      (Fokker-Planck); "given what payoff I want at the end, what's it worth
+      now" is backward (Kolmogorov / Black-Scholes-style). If either question
+      isn't the one actually being asked, the wrong equation is about to get
+      solved.
+    </p>
+    <p>
+      <strong>Treating the Fokker-Planck equation as itself stochastic.</strong>
+      It is not — \(p(x,t)\) is a completely deterministic PDE, even though
+      the process \(X_t\) it describes is random. The randomness has already
+      been fully absorbed into the shape of \(p\); there is no remaining
+      random term left in the equation for \(p\) itself. Confusing this with
+      a stochastic PDE (where the equation for the evolving object has an
+      explicit noise term of its own) mixes up two genuinely different
+      objects — see the forward-looking callout above.
+    </p>
+    <p>
+      <strong>Assuming a closed-form density always exists.</strong> GBM,
+      Ornstein-Uhlenbeck, and CIR are special precisely because their
+      Fokker-Planck equations happen to admit known closed-form solutions.
+      Most SDEs with more general \(\mu(x,t)\), \(\sigma(x,t)\) do not — the
+      equation is still perfectly well-posed and still governs the true
+      density, but solving it requires numerical PDE methods or simulation,
+      not a formula to look up.
+    </p>
+    <p>
+      <strong>Forgetting the well-posedness prerequisite.</strong>
+      <code>sde-existence-uniqueness.html</code>'s Lipschitz and growth
+      conditions are not a separate, skippable concern here — if the SDE
+      itself doesn't have a unique solution, there is no well-defined
+      \(p(x,t)\) for the Fokker-Planck equation to even be about.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Fokker-Planck equation governs how a transition density evolves forward in time.</strong> \(\partial_tp=-\partial_x[\mu p]+\tfrac12\partial_x^2[\sigma^2p]\) — drift shifts the density's location, diffusion spreads it out.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It is the formal adjoint of the generator that appears in Itô's Lemma.</strong> Taking expectations of Itô's Lemma and integrating by parts moves the derivatives off the test function and onto the density.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Forward (Fokker-Planck) and backward (Kolmogorov / Black-Scholes) equations are mirror images, not the same equation.</strong> Forward: density, initial condition, adjoint operator. Backward: expected value, terminal condition, plain generator. Mixing them up produces a stable computation of the wrong quantity.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GBM's lognormal density was verified, by direct substitution, to solve its own Fokker-Planck equation.</strong> Reduced via \(y=\ln x\) to a constant-coefficient equation whose Gaussian solution was checked term by term.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Closed-form transition densities are the exception, not the rule.</strong> GBM, Ornstein-Uhlenbeck, and CIR admit known solutions; most SDEs with more general coefficients require numerical PDE solution or simulation instead — don't expect a formula to just be sitting there.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The equation is deterministic — a stepping-stone to stochastic PDEs, not one itself.</strong> Stochastic PDEs put a genuine noise term into the evolution equation for the field itself, which the Fokker-Planck equation never has.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Write the Fokker-Planck equation for \(dX_t=\mu(X_t,t)dt+\sigma(X_t,t)dW_t\), and explain in one sentence each what the two terms on the right-hand side do.</summary>
+    <div class="tl-answer">
+      \(\partial p/\partial t = -\partial_x[\mu(x,t)p(x,t)] + \tfrac12\partial_x^2[\sigma^2(x,t)p(x,t)]\). The first term (drift/advection) shifts the density's location, carrying probability mass along at the local drift rate, without changing its shape. The second term (diffusion) spreads the density out, the same structural role the Laplacian plays in the ordinary heat equation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What operation turns the generator \(\mathcal{L}f=\mu f'+\tfrac12\sigma^2f''\) (which appears directly in Itô's Lemma) into the Fokker-Planck operator that acts on the density?</summary>
+    <div class="tl-answer">
+      Taking the formal adjoint — in practice, integration by parts (twice, for the second-order term), which moves the derivatives off the test function f and onto μp and σ²p instead, picking up a sign flip each time a derivative crosses the integral sign. The Fokker-Planck operator \(\mathcal{L}^*p=-\partial_x[\mu p]+\tfrac12\partial_x^2[\sigma^2p]\) is exactly \(\mathcal{L}\)'s formal adjoint under that transfer.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A colleague asks: "given today's spot price, what's the fair value of an option paying off in six months?" versus "given today's spot price, what's the distribution of where it might be in six months?" — which of these is a forward problem and which is backward, and why?</summary>
+    <div class="tl-answer">
+      The option-value question is backward: it starts from a known condition at a fixed future time (the terminal payoff) and needs a value computed backward to today — exactly the structure of the Kolmogorov backward equation (and, with an added discounting term, the Black-Scholes PDE). The distribution question is forward: it starts from a known condition today (certainty about the current spot price) and asks how that density evolves forward to the future time — exactly the structure of the Fokker-Planck equation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. The Black-Scholes PDE is \(\partial_tV+rS\partial_SV+\tfrac12\sigma^2S^2\partial_S^2V-rV=0\). Which piece of this equation is NOT part of the plain backward Kolmogorov equation, and what does it represent?</summary>
+    <div class="tl-answer">
+      The \(-rV\) term. The plain backward Kolmogorov equation for \(u(x,t)=\mathbb{E}[g(X_T)|X_t=x]\) is just \(\partial_tu+\mu\partial_xu+\tfrac12\sigma^2\partial_x^2u=0\) — no extra term. The \(-rV\) in Black-Scholes is a discounting (or "killing") term, needed because an option's price is the expected terminal payoff discounted back to today's dollars, not simply the raw conditional expectation the plain backward equation computes.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the GBM worked example, why does substituting \(y=\ln x\) simplify the verification, and what specific constant-coefficient equation does it reduce the problem to?</summary>
+    <div class="tl-answer">
+      Because GBM's coefficients \(\mu x\) and \(\sigma x\) are level-proportional, the substitution \(p(x,t)=q(\ln x,t)/x\) causes the level-dependence to cancel algebraically (xp=q, x²p=xq), turning the variable-coefficient GBM Fokker-Planck equation into the constant-coefficient equation \(q_t=-(\mu-\sigma^2/2)q_y+\tfrac{\sigma^2}{2}q_{yy}\) for a process with constant drift \(a=\mu-\sigma^2/2\) — exactly the drift Itô's Lemma derives for \(d(\ln X_t)\) — and constant diffusion \(b=\sigma^2\). Verifying a Gaussian solves that constant-coefficient equation is then a direct, mechanical differentiation.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Hannes Risken, <em>The Fokker-Planck Equation: Methods of Solution and Applications</em>, Springer, 2nd ed., 1996 — the standard reference for this equation: derivation, boundary conditions, known closed-form solutions, and numerical solution methods, in full rigor.</li>
+    <li>Bernt Øksendal, <em>Stochastic Differential Equations: An Introduction with Applications</em>, Springer, 6th ed. — the generator, its adjoint, and the forward/backward Kolmogorov equations stated with the technical conditions this lesson's informal derivation skips.</li>
+    <li><code>ito-lemma.html</code> in this Theory Lab — the derivation this lesson's generator and Gaussian-verification steps build directly on; do not re-derive it here, cross-reference it.</li>
+    <li><code>black-scholes.html</code> in this Theory Lab — the backward-equation, discounted-payoff counterpart this lesson contrasts against.</li>
+    <li><code>sde-existence-uniqueness.html</code> in this Theory Lab — the well-posedness conditions a Fokker-Planck equation silently presupposes: no unique solution, no density to write an equation for.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="short-rate-models-vasicek-cir-hull-white.html">← Short-Rate Models: Vasicek, CIR &amp; Hull-White</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+</body>
+</html>
