@@ -475,6 +475,93 @@ this signal in place of the retired one. `AnalogML/motif_track_loop.sh`
 process, alongside the still-running (but no longer dashboard-surfaced)
 `paper_track_loop.sh`.
 
+**Genuine walk-forward split, replacing the single-cutoff read (2026-08-12,
+`AnalogML/motif_walkforward.py`):** the earlier "IS PF=1.18 → OOS PF=1.16"
+table above was ONE fixed 2023-01-01 boundary — a single train/test split,
+not a walk-forward. It can hide a signal that's actually inconsistent
+underneath one lucky (or unlucky) cut. This script buckets every eligible
+motif into **11 consecutive calendar-YEAR folds (2016–2026)** instead, and
+grades each independently. Pooled across all 26 pairs:
+
+| fold | n | signal PF (cost on) | signal PF (no cost) | avg R | baseline PF |
+|---|---:|---:|---:|---:|---:|
+| 2016 | 2,648 | 1.23 | 1.31 | +0.125 | 1.00 |
+| 2017 | 2,771 | 1.25 | 1.34 | +0.138 | 1.00 |
+| 2018 | 2,867 | 1.13 | 1.21 | +0.073 | 0.96 |
+| 2019 | 2,770 | 1.19 | 1.28 | +0.107 | 0.95 |
+| 2020 | 2,740 | 1.26 | 1.35 | +0.143 | 0.98 |
+| 2021 | 2,774 | 1.12 | 1.20 | +0.071 | 0.93 |
+| 2022 | 2,670 | 1.10 | 1.17 | +0.056 | 0.91 |
+| 2023 | 2,641 | 1.23 | 1.32 | +0.129 | 0.97 |
+| 2024 | 2,726 | 1.22 | 1.31 | +0.125 | 0.95 |
+| 2025 | 2,809 | 1.04 | 1.12 | +0.026 | 0.90 |
+| 2026 (partial) | 1,007 | 1.15 | 1.23 | +0.084 | 0.96 |
+
+**11/11 folds PF>1.0 (cost on), 11/11 beat the mechanical baseline** — the
+signature of a real, fold-consistent edge rather than a lucky single split.
+2025 is the weakest year (PF 1.04) but still positive.
+
+**Explicit cost sensitivity (all 11 folds pooled, per the direct ask —
+costs are on by default, but stated side by side here rather than left
+implicit):** n=28,423 trades, **PF cost-ON=1.174, PF cost-OFF=1.259** — costs
+remove 0.085 PF (avg R +0.140 → +0.098). A real, measurable drag; the edge
+clearly survives it.
+
+**Portfolio-level test (2026-08-12, `AnalogML/motif_portfolio_sim.py`,
+same method `portfolio_sim.py` used for the retired k-NN signal — reused,
+not rewritten):** 26 pairs, 1%/trade risk, 5% max concurrent risk, 17,858 of
+28,423 signals taken (10,565 skipped by the risk cap). **Sharpe 1.61, max DD
+−55.1%, avg pairwise weekly-return correlation +0.012** (near-independent
+bets — the reason a 26-pair book doesn't just re-concentrate into a handful
+of effective EUR/GBP/JPY-leg bets). Matched-utilization benchmark (single
+pairs scaled to the portfolio's own 2.7% average capital utilization, so the
+comparison isn't confounded by the portfolio simply deploying more capital):
+**2 of the 3 sampled single pairs (audcad, audjpy) hit −100% max drawdown
+(total ruin) at that utilization; the portfolio drew down only −55.1% at the
+same utilization.** That gap is the real diversification effect. (Raw
+compounded total-return figures from this sim run into the millions of
+percent over 17,858 trades at fixed-fractional sizing — a known artifact of
+compounding at a % of ever-growing equity with no realism cap on trade size
+or market impact, not a claim about achievable real-world returns. Sharpe /
+max DD / utilization are the metrics to read here, not total return.)
+
+**The 6 pairs flagged negative in the original single-split 26-pair sweep**
+(eurgbp, gbpchf, audcad, usdcad, gbpcad, euraud) — investigated rather than
+ignored, per-pair year-by-year via `motif_walkforward.py --pair <pair>`:
+- **No detector malfunction.** Played-out rate (52–56%), touch-count mix
+  (73–78% double vs triple), top/bottom split (~50/50) are statistically
+  indistinguishable from the positive pairs — the touch-motif detector isn't
+  behaving differently on these six.
+- **Spread-cost burden is unremarkable** (spread/ATR 4–9%, in line with
+  several positive pairs) **except eurgbp**, whose spread/ATR (12.6%) is
+  meaningfully higher than the rest of the universe — a plausible partial
+  explanation for eurgbp specifically, not for the other five.
+- **All six track the SAME broad shape as the full 26-pair pool**: strong
+  2016–2020, softer 2021–2023, real decay into 2024–2025 (the pooled-26 table
+  above shows 2025 as its weakest year too, PF=1.04) — these six just
+  happened to land fractionally below 1.0 in that soft stretch on ~100
+  trades/pair/year, which is within noise for a PF swing between 0.85 and
+  1.15 at that sample size.
+- **Most-recent-fold (2026) picture is mixed, not uniformly bad**: euraud
+  (0.99), gbpcad (0.98), eurgbp (0.94) are now essentially breakeven;
+  **gbpchf has flipped clearly positive (1.40)**; **audcad (0.58) and usdcad
+  (0.70) remain the two genuine standouts worth continued monitoring** —
+  persistently weak into 2026, not just a historical pooled artifact.
+- Read plainly: this looks like normal cross-sectional noise around a shared
+  weak 2024–2025 macro backdrop, not six structurally broken pairs — with
+  audcad/usdcad as the two to keep an eye on.
+
+**Dashboard status, checked directly against the merged code (2026-08-12):**
+`today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
+commit `181e1b50`) call `/api/analogml/motif-state` and
+`/api/analogml/motif-trades` — the NEW motif signal, not the retired
+`paper_trades.json`/`shape_state.json` k-NN signal. If the live Railway
+dashboard still visibly shows the old signal, that's a deploy-lag or
+live-data-population issue on Railway (unverifiable from this sandbox — both
+Railway and OANDA are blocked by the outbound proxy here), not a stale-code
+issue in this repo. Still open, needs the user to look at the live site and
+say what the card actually shows before this can be run down further.
+
 ## Honesty notes (read before trusting a number here)
 
 - **Neighbour pool contained one trivial near-duplicate until 2026-08-12 —
