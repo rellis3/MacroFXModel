@@ -1,5 +1,33 @@
 # AnalogML — historical-analog matching + walk-forward ML
 
+> **CORRECTED 2026-08-12 — every positive result below this line was a bug,
+> not an edge.** `pylego/shape_match.py`'s `find_analogs` let the window
+> ending ~1 bar before the query slip into its own k-neighbour pool (near-total
+> overlap, not an independent historical repeat — `min_gap_bars` only checked
+> new candidates against each other, never against the query itself). That
+> inflated EVERY consensus call this file's numbers are built on. Fixed, then
+> the full validation suite was re-run against real data. Corrected results,
+> replacing the false ones in the sections below:
+>
+> | Check | Originally reported | Corrected (post-fix) |
+> |---|---|---|
+> | 4-pair sweep, overlapping | 23/24 cells PF>1.0 (96%) | 11/24 (46%) |
+> | 4-pair sweep, independent | 10/12 (83%) | 6/12 (50%) |
+> | Full 26-pair sweep, overlapping | 26/26 (100%) | 8/26 (31%) |
+> | Full 26-pair sweep, independent | 25/26 (96%) | 10/26 (38%) |
+> | Portfolio sim (26 pairs, 3yr, 1%/trade, 5% cap) | final equity 15.5x, Sharpe 1.39, max DD −26.2% | final equity **0.638x (−36.2%)**, Sharpe **−0.14**, max DD **−62.9%** |
+> | Full backtest export (19,815 trades) | IS/OOS both consistently >1 | **IS PF=0.94, OOS PF=0.95, cost-off PF=1.01** |
+> | `ml_walkforward.py --with-analog` (gbpjpy) | AUC/IC improved in the same direction on every model/scheme | flat-to-mixed, no consistent direction (e.g. expanding stack IC 0.023→0.020, rolling stack IC 0.013→0.017) |
+>
+> This was not "a smaller edge" — the portfolio sim went from a strong winner
+> to a large loser. **This specific method (fixed-window k-NN shape
+> matching, these frozen params) shows no real repeatable edge.** The honest
+> next move isn't tuning this method further — it's a structurally different
+> approach (motif/structural-event matching instead of raw fixed-window
+> Euclidean distance), scoped separately. The narrative sections below are
+> kept as a record of what was originally read from the buggy numbers, NOT as
+> current claims — read the table above as the actual result of each section.
+
 Two honest first reads of two ideas raised in conversation: "shape matching"
 (find historically similar price windows, see what happened next) and
 gradient-boosted-tree / regression-stack macro ML. Both are built on the
@@ -67,8 +95,10 @@ default) so the trade count isn't inflated by autocorrelated near-duplicates:
 python AnalogML/pattern_scan_sweep.py
 ```
 
-**Result: 23/24 overlapping-window cells (96%) and 10/12 independent
-non-overlapping-window cells (83%) had signal profit factor > 1.0**, while
+**[FALSIFIED 2026-08-12 — see banner at top. Corrected: 11/24 (46%) and
+6/12 (50%), i.e. coin-flip.]** Original claim: 23/24 overlapping-window
+cells (96%) and 10/12 independent non-overlapping-window cells (83%) had
+signal profit factor > 1.0, while
 the mechanical baseline hovered at ≈0.83–1.07 throughout (flat, as expected)
 — across every pair and every window/k combination tried, not just the
 original setting. This meaningfully strengthens the original read: it isn't
@@ -87,8 +117,10 @@ held up best) across **all 26 pairs** this repo has local M1 data for:
 python AnalogML/pattern_scan_sweep.py --pairs <all 26, comma-separated> --windows 64 --ks 20
 ```
 
-**Result: 26/26 pairs (100%) positive on the overlapping-window check, 25/26
-(96%) positive on the independent non-overlapping check** — baseline stayed
+**[FALSIFIED 2026-08-12 — see banner at top. Corrected: 8/26 (31%) overlapping,
+10/26 (38%) independent — WORSE than a coin flip, not a broad positive.]**
+Original claim: 26/26 pairs (100%) positive on the overlapping-window check,
+25/26 (96%) positive on the independent non-overlapping check — baseline stayed
 flat (≈0.83–1.04) throughout. Only **eurnzd** came in negative on the
 independent check (PF 0.84, WR 37%) — named plainly, not buried. If this
 were pure noise around a flat baseline, roughly half the pairs would land
@@ -99,7 +131,9 @@ independent check (PF 2.37, WR 62%, n=165) — flagged, not led with: it's
 also the smallest sample of the 26, and the best-looking pair out of 26
 tested will always look better than the population average even under a
 real, uniform effect (the multiple-comparisons trap) — treat it as "worth
-a closer look," not "the pair to trade."
+a closer look," not "the pair to trade." **(All of the above turned out to
+be exactly the multiple-comparisons trap this paragraph warned about — see
+banner.)**
 
 Still outstanding before this is tradeable: unoptimised parameters, one
 sl/tp cell, one timeframe, and — the big one — **no portfolio-level
@@ -121,8 +155,10 @@ refusals are counted, never silently dropped).
 python AnalogML/portfolio_sim.py --all-pairs --risk-pct 0.01 --max-concurrent-risk-pct 0.05
 ```
 
-**Result (26 pairs, 3yr, risk=1%/trade, 5% max concurrent risk): Sharpe
-1.39, max drawdown −26.2%, final equity 15.5x starting capital.** Read the
+**[FALSIFIED 2026-08-12 — see banner at top. Corrected: final equity 0.638x
+(−36.2%), Sharpe −0.14, max DD −62.9% — a losing strategy, not a winner.]**
+Original claim: Sharpe 1.39, max drawdown −26.2%, final equity 15.5x
+starting capital. Read the
 15.5x number with real suspicion, not excitement — it is what happens when
 ~1,953 taken trades compound at a small per-trade edge, and it is a
 mechanical artifact of the sizing assumption (fixed 1% of CURRENT equity,
@@ -155,23 +191,21 @@ simulation's headline return number is not a claim about what real trading
 would produce, and the cap/utilization confound above needs resolving
 before the risk-adjusted numbers are trusted either.
 
-**Update — the confound above is now resolved.** `portfolio_sim.py` tracks
-time-weighted average concurrent-risk utilization and adds a SECOND, matched
-benchmark: instead of comparing the portfolio to a single pair at the same
-`--risk-pct` (which was the confound — a single pair almost never gets near
-the concurrency cap, so it was running at far lower capital utilization than
-the portfolio), it scales the single pair's risk-per-trade up until its own
-average utilization matches the portfolio's, then compares Sharpe/drawdown
-at that matched point. **Result (26 pairs, 3yr, 1% risk/trade, 5% cap):**
-portfolio avg utilization 0.5%, Sharpe 1.39, max DD −26.2%. Three single
-pairs matched to that SAME 0.5% utilization: audcad Sharpe 0.29 / DD −38.6%,
-audchf Sharpe 1.28 / DD −22.7%, audjpy Sharpe 0.74 / DD −45.8%. **The
-portfolio beats every matched single pair on Sharpe, and has a shallower
-drawdown than two of the three** — this is now a real, controlled
-diversification read, not the capital-deployed illusion the original
-benchmark A produced (kept in the output for comparison, but benchmark B is
-the one to trust). Same unoptimised-parameters/no-slippage caveats as
-before still apply — this resolves ONE confound, not all of them.
+**Update, since superseded — see banner.** `portfolio_sim.py` was extended to
+track time-weighted average concurrent-risk utilization and add a SECOND,
+matched benchmark (scale a single pair's risk-per-trade up until its own
+average utilization matches the portfolio's, for a fair apples-to-apples
+comparison). That mechanism is still correct and still in the script — it's
+the NUMBERS run through it that were wrong. **[FALSIFIED 2026-08-12 —
+corrected: portfolio Sharpe −0.14, max DD −62.9%, final equity 0.638x. The
+single-pair benchmarks are losers too post-fix.]** Original claim: portfolio
+avg utilization 0.5%, Sharpe 1.39, max DD −26.2%; three single pairs matched
+to that same 0.5% utilization: audcad Sharpe 0.29/DD −38.6%, audchf Sharpe
+1.28/DD −22.7%, audjpy Sharpe 0.74/DD −45.8%, with the portfolio beating
+every matched single pair on Sharpe. None of that comparison is meaningful
+once the underlying per-trade signal is null — a "wins on Sharpe" result
+where every side of the comparison is losing money is not a diversification
+finding worth anything.
 
 ## `paper_track.py` — the one thing every result above is still missing
 
@@ -314,33 +348,36 @@ python AnalogML/ml_walkforward.py --pair gbpjpy --with-analog --analog-sample-ev
 
 The feature is computed causally but only every `--analog-sample-every` bars
 and forward-filled between (a real cost/accuracy tradeoff — computing it for
-every one of ~64k bars would take ~25min per pair). **Cadence matters a lot:**
-a coarse smoke test at `--analog-sample-every 24` (yearly folds, a full day
-of staleness between samples) moved AUC by ~0.001–0.002 — noise. The real
-run at the default `--analog-sample-every 4` (4-hour staleness) moved it
-for real:
+every one of ~64k bars would take ~25min per pair).
 
-| scheme | model | AUC/IC without | AUC/IC with `analog_margin` | delta |
+**[FALSIFIED 2026-08-12 — see banner at top.]** `analog_margin` is derived
+from the exact same buggy `neighbor_consensus` call as every other result in
+this file — this ablation was re-run post-fix and the "consistent,
+same-direction-everywhere improvement" below did not survive:
+
+| scheme | model | AUC/IC without | AUC/IC with `analog_margin` (corrected) | original (falsified) claim |
 |---|---|---:|---:|---:|
-| expanding | xgboost | 0.510 | 0.532 | +0.022 |
-| expanding | lightgbm | 0.510 | 0.531 | +0.021 |
-| expanding | stack (IC) | 0.023 | 0.069 | +0.046 |
-| rolling (1yr) | xgboost | 0.512 | 0.521 | +0.009 |
-| rolling (1yr) | lightgbm | 0.510 | 0.520 | +0.010 |
-| rolling (1yr) | stack (IC) | 0.013 | 0.044 | +0.031 |
+| expanding | xgboost | 0.510 | 0.510 | 0.510 → 0.532 |
+| expanding | lightgbm | 0.510 | 0.509 | 0.510 → 0.531 |
+| expanding | stack (IC) | 0.023 | 0.020 | 0.023 → 0.069 |
+| rolling (1yr) | xgboost | 0.512 | 0.509 | 0.512 → 0.521 |
+| rolling (1yr) | lightgbm | 0.510 | 0.508 | 0.510 → 0.520 |
+| rolling (1yr) | stack (IC) | 0.013 | 0.017 | 0.013 → 0.044 |
 
-Every model, every scheme, moved in the same direction — profit factor also
-rose in every cell (e.g. expanding xgboost PF 1.09→1.19, stack PF 1.06→1.14)
-and the classifiers took MORE trades at >0.5 confidence (expanding xgboost
-n=2,520→4,275), not fewer, so this isn't just "the model got pickier." Read
-this as the single most encouraging result in this whole first pass — AUC
-0.51→0.53 is still a modest number, nowhere near a validated edge, but a
-*consistent, cadence-sensitive, same-direction-everywhere* move is a real
-signal that the shape-matching idea is contributing information the
-price/vol-only features didn't already have — worth a proper follow-up
-(finer sample-every, more pairs, hyperparameter tuning now that there's a
-feature worth tuning around) rather than the price-only feature family,
-which tested flat on its own.
+Corrected: flat-to-mixed, no consistent direction (three cells move down,
+one up, two flat) — this is what a feature with no real information looks
+like, not the "every model, every scheme, moved the same way" pattern
+originally reported. That original pattern was the self-adjacent neighbour
+smuggling a strong short-horizon autocorrelation/momentum signal into what
+was supposed to be a broad historical-analog vote — real information, just
+not shape-matching, and gone once the leak is closed. The original
+paragraph below is kept for the record, not as a current claim:
+
+*(original, falsified) "Every model, every scheme, moved in the same
+direction — profit factor also rose in every cell (e.g. expanding xgboost
+PF 1.09→1.19, stack PF 1.06→1.14) and the classifiers took MORE trades at
+>0.5 confidence (expanding xgboost n=2,520→4,275), not fewer... Read this
+as the single most encouraging result in this whole first pass..."*
 
 **Not included yet: real macro features.** `RegimeV2/regime_score.py`
 (HMM/BOCPD/session/DXY/vol/credit), `MacroEquityBot/fred_signal.py`
@@ -374,11 +411,17 @@ Not a synthesized stand-in — real next step, waiting on real data.
   `ml_walkforward.py`'s `--with-analog`, `backtest_export.py`'s committed
   19,782-trade log, `portfolio_sim.py`), not just the live diagnostic —
   1-of-20 neighbours contaminated per call, present whenever the query had
-  forward runway (i.e. most non-tail calls). Direction/magnitude of the
-  effect on the numbers above is not yet re-measured — **re-running the
-  full sweep + portfolio sim with the fix is the honest next step before
-  leaning further on any number in this file**, not an assumption that the
-  effect was negligible just because it's 1-in-20.
+  forward runway (i.e. most non-tail calls). **Re-measured 2026-08-12 — the
+  effect was NOT negligible.** Full re-validation (4-pair sweep, full 26-pair
+  sweep, portfolio sim, full backtest export, `ml_walkforward --with-analog`
+  ablation) all completed; see the banner at the top of this file for the
+  corrected numbers. Every previously-reported positive result in this file
+  was almost entirely this bug, not real shape repeatability — the method
+  (fixed-window k-NN shape matching, these frozen params) shows no
+  real edge post-fix. Kept building on it further (adaptive per-cluster
+  SL/TP) was explicitly NOT started once this became clear — see
+  `LEGO_MODULES.md` for the scoped structural-motif alternative being
+  considered instead.
 - Costs are on by default (`pylego.costs.default_spread`) in both scripts —
   pass `--no-cost` only to see the pre-cost number, never report that as a
   result.
