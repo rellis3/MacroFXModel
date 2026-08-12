@@ -104,6 +104,24 @@ test('buildOvernightTrades: produces trades for the full window and logs excepti
   }
 });
 
+test('buildOvernightTrades: opts.skipWeekdays excludes the rule as a real trade construction step, distinctly from data-gap exceptions', () => {
+  const packed = buildSyntheticPacked('2025-01-01', '2025-02-01'); // spans several Wednesdays
+  const withoutRule = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);
+  const withRule = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1], { skipWeekdays: [3] });
+
+  // No trade EVER opens on a Wednesday once the rule is active.
+  assert.ok(withRule.trades.every(t => dowOf(t.date) !== 3), 'no Wednesday entries should exist under the rule');
+  const wedCountWithoutRule = withoutRule.trades.filter(t => dowOf(t.date) === 3).length;
+  assert.ok(wedCountWithoutRule > 0, 'sanity: the unrestricted run actually has Wednesday trades to compare against');
+  assert.equal(withRule.trades.length, withoutRule.trades.length - wedCountWithoutRule);
+
+  // The skip shows up as a distinctly-labeled exception, not lumped in with
+  // "no bar within tolerance" market-closed/data-gap exceptions.
+  const ruleExceptions = withRule.exceptions.filter(e => e.reason.startsWith('skipped by rule'));
+  assert.equal(ruleExceptions.length, wedCountWithoutRule);
+  assert.ok(ruleExceptions.every(e => dowOf(e.date) === 3));
+});
+
 test('mirrorTest: overnight + mirror reconstructs buy&hold when coverage is full', () => {
   const packed = buildSyntheticPacked('2025-01-06', '2025-01-10'); // Mon-Thu, no weekend gap inside
   const { trades, mirrors } = buildOvernightTrades(packed, packed.times[0], packed.times[packed.n - 1]);

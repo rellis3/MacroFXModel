@@ -89,6 +89,13 @@
         <div class="chk"><input type="checkbox" id="incGold" checked> <label for="incGold" style="margin:0">Gold (XAUUSD)</label></div>
         <div class="chk"><input type="checkbox" id="incNq" checked> <label for="incNq" style="margin:0">NAS100 (nq)</label></div>
       </div>
+      <div><label>Skip trading on <span class="note" style="display:inline">(a real rule — no entry attempted at all, not just excluded from the total)</span></label>
+        <div class="chk"><input type="checkbox" id="skipSun" value="0"> <label for="skipSun" style="margin:0">Sun</label></div>
+        <div class="chk"><input type="checkbox" id="skipMon" value="1"> <label for="skipMon" style="margin:0">Mon</label></div>
+        <div class="chk"><input type="checkbox" id="skipTue" value="2"> <label for="skipTue" style="margin:0">Tue</label></div>
+        <div class="chk"><input type="checkbox" id="skipWed" value="3"> <label for="skipWed" style="margin:0">Wed (triple swap)</label></div>
+        <div class="chk"><input type="checkbox" id="skipThu" value="4"> <label for="skipThu" style="margin:0">Thu</label></div>
+      </div>
       <div><label>Account size ($)</label><input id="accountSize" value="100000" type="number" min="1000" step="1000"></div>
       <div><label>Notional per trade ($)</label><input id="notionalPerTrade" value="100000" type="number" min="1000" step="1000"></div>
       <div><label>Triple-swap day</label><select id="tripleSwapDow">
@@ -611,9 +618,12 @@ async function run() {
   if ($('incGold').checked) instruments.push('gold');
   if ($('incNq').checked) instruments.push('nq');
   if (!instruments.length) { $('status').textContent = 'select at least one instrument'; $('run').disabled = false; return; }
+  const skipWeekdays = ['skipSun', 'skipMon', 'skipTue', 'skipWed', 'skipThu']
+    .filter(id => $(id).checked).map(id => parseInt($(id).value, 10));
 
   const body = {
     instruments,
+    skipWeekdays,
     accountSize: $('accountSize').value,
     notionalPerTrade: $('notionalPerTrade').value,
     tripleSwapDow: $('tripleSwapDow').value,

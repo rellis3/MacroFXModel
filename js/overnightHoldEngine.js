@@ -224,8 +224,19 @@ export function buildOvernightTrades(packed, startEpoch, endEpoch, opts = {}) {
   const mirrors = [];
   const exceptions = [];
   const entryPriceByDate = new Map();
+  // A real strategy RULE (e.g. "never enter on triple-swap Wednesday"), not a
+  // data-availability gap — no entry is even attempted, so it's distinct from
+  // the "no bar within tolerance" exceptions below (kept in the same
+  // exceptions[] array, but with its own reason string, so the dashboard's
+  // reason breakdown surfaces it as its own bucket rather than conflating a
+  // deliberate rule with a market-closed/data-gap day).
+  const skipWeekdays = new Set(opts.skipWeekdays || []);
 
   for (const d of dates) {
+    if (skipWeekdays.has(dowOf(d))) {
+      exceptions.push({ date: d, leg: 'overnight-entry', reason: `skipped by rule — ${WEEKDAY_NAMES[dowOf(d)]} entries excluded` });
+      continue;
+    }
     const exitDate = addDays(d, 1);
     const entryEpoch = zonedTimeToUtc(d, '20:00', UK_TZ).getTime() / 1000;
     const exitEpoch   = zonedTimeToUtc(exitDate, '14:30', UK_TZ).getTime() / 1000;

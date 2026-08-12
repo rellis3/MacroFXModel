@@ -6259,11 +6259,21 @@ app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, r
     profitTargetDays:       numOr(body.profitTargetDays,       OH_DEFAULT_RULESET.profitTargetDays),
     consistencyCapPct:      numOr(body.consistencyCapPct,      OH_DEFAULT_RULESET.consistencyCapPct),
   };
+  // A real trade-construction RULE ("never enter on this weekday"), not a
+  // cost knob — flows into buildOvernightTrades so it affects every
+  // downstream number (Sharpe, drawdown, rule-check, cost sweep), not just
+  // total return. Array of 0=Sun..6=Sat; anything else is dropped rather
+  // than silently coerced.
+  const skipWeekdays = Array.isArray(body.skipWeekdays)
+    ? [...new Set(body.skipWeekdays.map(v => parseInt(v, 10)).filter(v => Number.isInteger(v) && v >= 0 && v <= 6))]
+    : [];
+
   const opts = {
     ruleset,
     accountSize:       numOr(body.accountSize, OH_DEFAULT_ACCOUNT_SIZE),
     notionalPerTrade:  numOr(body.notionalPerTrade, numOr(body.accountSize, OH_DEFAULT_ACCOUNT_SIZE)),
     tripleSwapDow:     body.tripleSwapDow != null ? parseInt(body.tripleSwapDow, 10) : undefined,
+    skipWeekdays,
     financingBpsPerNight: {
       nq:   numOr(body.financingBpsNq, undefined),
       gold: numOr(body.financingBpsGold, undefined),

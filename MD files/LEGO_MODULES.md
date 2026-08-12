@@ -1346,6 +1346,56 @@ deleted by an earlier edit in this same file (the prior diversification-
 retraction pass) — the section content itself was never lost, only its
 heading, but it's a real slip worth naming rather than quietly patching.
 
+**Update (2026-08-12: "test skip-Wednesday as an actual rule and rerun"):**
+the arithmetic shortcut above ("if Wednesday were removed, total return
+would be X") is correct as far as it goes, but it can't show the
+risk-adjusted picture — Sharpe, drawdown shape, or whether the prop-firm
+rule check actually changes — because those aren't linear in the trade
+series the way total compounded return is. `buildOvernightTrades` now takes
+`opts.skipWeekdays` (array of `0`=Sun..`6`=Sat): no entry is even attempted
+on an excluded weekday, logged as a distinctly-labeled `skipped by rule —
+{weekday} entries excluded` exception (kept apart from the "no bar within
+tolerance" market-closed/data-gap exceptions it sits alongside in the same
+array), so it flows through the *entire* pipeline as a real rule — cost
+sweep, weekday breakdown, rule-check, diversification — not just total
+return. `server.js`'s `/run` accepts `skipWeekdays` in the body; the
+dashboard gained Sun–Thu exclusion checkboxes (all unchecked by default —
+opt-in, doesn't change baseline behavior). 1 new unit test (28 total):
+confirms no Wednesday trade exists under the rule, the excluded count
+matches exactly, and the exception reason is distinctly labeled.
+
+**Run for real (not the shortcut) with Wednesday excluded — the total
+return numbers match the shortcut exactly (confirms the shortcut was
+sound), and the risk-adjusted picture is genuinely better, though not a
+free pass:**
+
+| | Gold — baseline | Gold — skip Wed | NQ — baseline | NQ — skip Wed |
+|---|---|---|---|---|
+| Total return % | −2.3 | **+20.6** | −3.9 | **+45.1** |
+| Sharpe | 0.032 | **0.244** | 0.030 | **0.394** |
+| Calmar | −0.006 | **+0.070** | −0.014 | **+0.159** |
+| Max drawdown % | −38.75 | −25.75 | −27.24 | −22.87 |
+| Worst DD ever recovers? | **no** (still under at end) | **yes** (took ~8.1yrs) | no | still no |
+| Daily-loss breach | yes (1) | **none** | yes (1) | **none** |
+| Trailing-DD breach | yes | yes (still) | yes | yes (still) |
+| Profit target in time (≤30d) | no (92d) | no (1490d) | no (835d) | no (447d) |
+| **Overall rule-check** | **fail** | **fail** | **fail** | **fail** |
+
+The daily-loss breach disappearing traces to a precise mechanism, not
+coincidence: `runPropFirmRuleCheck` buckets P&L by *exit* date (when it
+books), and both breaches (gold 2026-03-19, NQ 2020-03-12) turn out to be
+labeled by their Thursday exit date for a trade that actually *entered* the
+prior Wednesday (2026-03-18, 2020-03-11 — both confirmed Wednesdays) —
+removing the entry removes the breach it produced. The overall verdict is
+still **fail** for both instruments even with Wednesday excluded — the
+trailing-drawdown and profit-target-timing rules still breach — so this is
+a real, substantial improvement in the underlying edge, not a rule that
+makes the strategy pass a prop-firm check. Worth naming as a caveat too:
+skip-Wed's profit target takes *longer* to reach in raw days than the
+baseline (1490 vs 92 for gold) despite the far better final number — an
+early-lucky-run artifact in the baseline path, not evidence that skip-Wed
+is strictly better on every single axis.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
