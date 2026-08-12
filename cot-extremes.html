@@ -170,6 +170,8 @@ const HELP = {
   scatter:['Specs vs commercials','Each dot is one market: speculative crowding across, commercial crowding up.','They should sit near a downward diagonal, because commercials take the other side. A market well <b>off</b> that line means the usual mirror has broken — worth a look, not a signal.'],
   hist:['200-week history','Net positioning over time, with the current reading marked.','A percentile means little without the shape behind it: the 90th after a steady climb is a different situation from the 90th after a spike.'],
   paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
+  flow:['Positioning flow','The crowding percentile is a level — where positioning sits right now. This is the week-over-week change instead: who added or reduced the most, ranked by size relative to open interest.','A market extending an already-stretched position and one paring back from it look identical on the percentile alone but mean very different things going forward.'],
+  evrisk:['Event-risk overlay','Cross-references currently-crowded markets (90th/10th percentile+) against the live economic calendar for their own currency — FOMC, ECB, NFP and similar high/medium-impact releases in the next 3 days.','A stretched position walking into a scheduled catalyst is exposed to a fast move — this flags the exposure, not which way the release breaks. Scoped to FX plus the three Treasury tenors (all USD); other groups aren\'t mapped to a single country\'s calendar cleanly enough to include here.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -347,6 +349,100 @@ function crowdingCards(big){
     + `<div class="note">${comboLine} This is a crowding read, not a trade signal — it says the fuel for more of the same is thin, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.${usdNote}</div>`;
 }
 
+// ── positioning flow: week-over-week change, ranked by size ────────────────
+// The crowding percentile is a LEVEL — where positioning sits right now. It says
+// nothing about which way it's moving. A market building further into an already
+// stretched read is a different situation from one already unwinding from it, and
+// that's invisible unless you already know to click into its 200-week history.
+// Ranked on the week's change as a share of open interest (not raw contracts) for
+// the same reason the main ranking is: a 20K-contract move means very different
+// things in a 300K-OI market and a 5M-OI one.
+function flow(big){
+  const rows = (DATA.instruments||[])
+    .filter(x => Number.isFinite(x.weeklyChg) && x.openInterest > 0)
+    .map(x => ({ ...x, wkPct: +(x.weeklyChg / x.openInterest * 100).toFixed(2) }))
+    .sort((a,b) => Math.abs(b.wkPct) - Math.abs(a.wkPct))
+    .slice(0, big ? 30 : 16);
+  if (!rows.length) return '<div class="empty">No weekly-change data available.</div>';
+  // "Extending" = this week's flow pushed further the same way as the existing net
+  // position (getting MORE crowded); "paring" = it moved back toward flat (getting
+  // LESS crowded). Needs the net position's sign, not just the percentile, so it
+  // still works for markets nowhere near an extreme.
+  const traj = x => {
+    if (!x.weeklyChg || !x.specNet) return null;
+    const dir = x.specNet >= 0 ? 'long' : 'short';
+    return (Math.sign(x.weeklyChg) === Math.sign(x.specNet) ? 'extending ' : 'paring ') + dir;
+  };
+  return '<table><thead><tr><th>Market</th><th>Pct'+h('pct')+'</th><th>Wk chg</th><th>Wk chg % OI</th><th style="text-align:left">Trajectory</th></tr></thead><tbody>'
+    + rows.map(x => {
+        const t = traj(x), p = pctOf(x);
+        const tClr = t == null ? 'var(--tx3)' : t.startsWith('extending') ? 'var(--warn)' : 'var(--ok)';
+        return '<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(dispSym(x))+'</td>'
+          + '<td style="color:'+colFor(p)+'">'+(p??'—')+'</td>'
+          + '<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td>'
+          + '<td style="color:'+(x.wkPct>0?'var(--long)':x.wkPct<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.wkPct)+x.wkPct+'%</td>'
+          + '<td class="muted" style="text-align:left">'+(t??'—')+'</td></tr>';
+      }).join('')
+    + '</tbody></table><div class="note">Ranked by this week\'s position change as a share of open interest — the biggest movers, not just the most crowded levels. <b>Extending</b> = still building the same way (more crowded); <b>paring</b> = moving back toward flat (less crowded). Click a row for its 200-week history.</div>';
+}
+
+// ── event-risk overlay: crowded positions walking into a known catalyst ─────
+// Cross-references currently-extreme markets against the live economic calendar
+// already used elsewhere in this app (/api/events — Finnhub, next 3 days),
+// flagging when a stretched position is heading into a high/medium-impact release
+// for its own currency. Country→currency mapping mirrors today.html's CC_TO_CCY
+// exactly, so both pages read the calendar the same way. Scoped to FX (direct
+// match) plus the three Treasury tenors (all USD) — nothing else, because gold's
+// or an equity index's link to any one country's calendar is too indirect to
+// assert as a clean mapping here.
+const CC_TO_CCY = { US:'USD', EU:'EUR', DE:'EUR', FR:'EUR', IT:'EUR', ES:'EUR', GB:'GBP', UK:'GBP', JP:'JPY', CH:'CHF', AU:'AUD', CA:'CAD', NZ:'NZD' };
+let EVENTS = null;   // null = not yet requested; 'loading'; array; or false = failed
+
+async function loadEvents(){
+  if (EVENTS !== null) return;
+  EVENTS = 'loading';
+  try {
+    const r = await fetch('/api/events', { cache: 'no-store' });
+    const j = await r.json();
+    EVENTS = Array.isArray(j) ? j : (Array.isArray(j?.events) ? j.events : false);
+  } catch(e) { EVENTS = false; }
+  render();
+}
+
+const ccyOf = x => x.group === 'fx' ? x.sym : (['TU','TY','US'].includes(x.sym) ? 'USD' : null);
+
+function eventRisk(big){
+  if (EVENTS === null) { loadEvents(); return '<div class="empty">Loading the economic calendar…</div>'; }
+  if (EVENTS === 'loading') return '<div class="empty">Loading the economic calendar…</div>';
+  if (EVENTS === false) return '<div class="empty">Could not load the economic calendar.</div>';
+
+  const now = Date.now();
+  const upcoming = EVENTS
+    .map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
+    .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
+    .sort((a,b) => a.ms - b.ms);
+
+  const rows = (DATA.instruments||[]).map(x => {
+    const p = pctOf(x), ccy = ccyOf(x);
+    if (p == null || !(p>=90 || p<=10) || !ccy) return null;
+    const nextEvt = upcoming.find(e => e.ccy === ccy);
+    if (!nextEvt) return null;
+    const hrs = (nextEvt.ms - now) / 3600000;
+    return { x, p, dir: p>=90?'CROWDED LONG':'CROWDED SHORT', nextEvt, hrs,
+      when: hrs < 24 ? Math.round(hrs)+'h' : Math.round(hrs/24)+'d' };
+  }).filter(Boolean).sort((a,b) => a.hrs-b.hrs);
+
+  if (!rows.length) return '<div class="empty">No currently-crowded market has a high/medium-impact release for its own currency in the next 3 days.</div>';
+
+  return '<table><thead><tr><th>Market</th><th>Positioning</th><th style="text-align:left">Next event</th><th>In</th><th>Impact</th></tr></thead><tbody>'
+    + rows.map(r => '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
+      + '<td style="color:'+colFor(r.p)+'"><b>'+r.dir+'</b></td>'
+      + '<td class="muted" style="text-align:left">'+esc(r.nextEvt.event||'')+'</td>'
+      + '<td>'+r.when+'</td>'
+      + '<td style="color:'+((r.nextEvt.impact||'').toLowerCase()==='high'?'var(--warn)':'var(--tx3)')+'">'+esc(r.nextEvt.impact||'')+'</td></tr>').join('')
+    + '</tbody></table><div class="note">A crowded position walking into a scheduled release for its own currency is exposed to a fast, catalyst-driven move — not necessarily in either direction. This is an <b>attention</b> flag, not a call on which way the release breaks.</div>';
+}
+
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
 function leaderboard(big){
   const rows = (DATA.instruments||[]).filter(x=>pctOf(x)!=null).sort((a,b)=>pctOf(b)-pctOf(a));
@@ -505,6 +601,8 @@ function render(){
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
     + panel('c12','alerts','Extreme crowding alerts','paira',crowdingCards,true)
+    + panel('c7','evr','Event-risk overlay','evrisk',eventRisk,true)
+    + panel('c5','flow','Positioning flow — week over week','flow',flow,true)
     + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
     + panel('c5','grp','By asset class','group',groups,true)
     + panel('c7','scat','Specs vs commercials','scatter',scatter)
