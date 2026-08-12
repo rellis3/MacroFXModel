@@ -1298,6 +1298,58 @@ isn't a strictly-constant 50/50 exposure every day — visible in 2022, where
 combined (−12.25%) finished worse than BOTH individual legs, which a true
 constant-weight blend should never do.
 
+**Update (2026-08-11, third pass: "any suggestions on how to turn this
+profitable?"): the single biggest lever found so far — Wednesday (triple
+swap) alone flips both instruments from net-negative to strongly net-positive.**
+Two additions, both cheap given the existing engine: `weekdayBreakdown(netTrades)`
+groups the net trade series by entry weekday (trade count, avg/compounded net
+%, win rate, profit factor, avg financing cost, triple-swap-night count) — a
+zero-new-infrastructure query on data already computed, per the "check the
+cheap, evidence-backed lever first" plan. Separately, `server.js`'s
+`/api/overnight-hold-v1/run` now accepts real-broker cost overrides
+(`spreadPctGold`/`spreadPctNq`, `slipPctGold`/`slipPctNq`,
+`financingBpsGold`/`financingBpsNq`, keyed through to `applyCosts`'
+`costPct`/`slipPct` by asset class) instead of only the financing-bps
+override it had before — surfaced as an open-by-default "Real broker costs"
+form section in `overnight-hold-backtest.html`, blank = engine default.
+6 new unit tests (27 total, all passing): correct per-weekday compounding,
+correct triple-swap financing surfaced per weekday, and a functional
+end-to-end check that the new cost-override fields actually reach `applyCosts`
+(verified live against the real route: overriding to tighter costs moved
+gold's 10.4-year net return from −2.34% to +149.9%, and the per-trade cost
+fields in the response reflected the override exactly).
+
+**The real numbers are stark.** Gold's weekday breakdown: Mon −0.7%, Tue
++14.0%, **Wed −19.0%**, Thu +6.5% (compounded, over the full window). NQ:
+Mon +53.7%, Tue +21.3%, **Wed −33.8%**, Thu −22.2%. Wednesday is financing
+`avgFinancingCostPct` ≈3x every other night (the triple-swap rule doing
+exactly what it's supposed to) and by a wide margin the worst night for
+both instruments. Because compounding is associative across weekday groups,
+the "skip Wednesday entirely" total is exact arithmetic, not an estimate —
+and it's large: **gold goes from −2.3% to +20.6% net; NAS100 goes from
+−3.9% to +45.1% net**, over the same ~10.4-year window, by removing one
+night out of five. Rough decomposition: the marginal 2x-extra financing
+from tripling (vs charging it once) alone compounds to roughly −15pp for
+gold across ~533 Wednesday trades — a large fraction, though clearly not
+all, of Wednesday's −19pp. This is exactly why the cost-override fields
+matter alongside this: **whether a real broker actually triples the charge
+on Wednesday specifically (vs Friday, vs not at all for CFD gold/NAS100)
+is an assumption, and now both directly testable in the same dashboard** —
+skip-Wednesday-as-a-rule and correct-the-swap-assumption are related but
+not identical, and the honest next step is checking which one (or both)
+apply to a specific real account before treating either as a finding about
+the strategy itself rather than about this one configuration.
+
+**A correction made along the way:** this update also restores the
+"## 2. Candidate bricks" section heading below, which was accidentally
+deleted by an earlier edit in this same file (the prior diversification-
+retraction pass) — the section content itself was never lost, only its
+heading, but it's a real slip worth naming rather than quietly patching.
+
+---
+
+## 2. Candidate bricks — mapped, prioritized, not yet extracted
+
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
 drift directly desyncs trading from its backtest (the worst case).
 

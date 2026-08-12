@@ -6268,11 +6268,30 @@ app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, r
       nq:   numOr(body.financingBpsNq, undefined),
       gold: numOr(body.financingBpsGold, undefined),
     },
+    // Real-broker overrides, keyed by asset CLASS (commodity=gold, index=nq)
+    // to match applyCosts' lookup — not the instrument key. Lets a user plug
+    // their actual spread/slippage in instead of the engine's illustrative
+    // defaults (see js/overnightHoldEngine.js header for why those defaults
+    // were chosen and why they should be calibrated before trusting a verdict).
+    costPct: {
+      commodity: numOr(body.spreadPctGold, undefined),
+      index:     numOr(body.spreadPctNq, undefined),
+    },
+    slipPct: {
+      commodity: numOr(body.slipPctGold, undefined),
+      index:     numOr(body.slipPctNq, undefined),
+    },
   };
   // Drop undefined overrides so the engine's own defaults apply.
   if (opts.financingBpsPerNight.nq === undefined) delete opts.financingBpsPerNight.nq;
   if (opts.financingBpsPerNight.gold === undefined) delete opts.financingBpsPerNight.gold;
   if (!Object.keys(opts.financingBpsPerNight).length) delete opts.financingBpsPerNight;
+  if (opts.costPct.commodity === undefined) delete opts.costPct.commodity;
+  if (opts.costPct.index === undefined) delete opts.costPct.index;
+  if (!Object.keys(opts.costPct).length) delete opts.costPct;
+  if (opts.slipPct.commodity === undefined) delete opts.slipPct.commodity;
+  if (opts.slipPct.index === undefined) delete opts.slipPct.index;
+  if (!Object.keys(opts.slipPct).length) delete opts.slipPct;
   if (opts.tripleSwapDow === undefined || Number.isNaN(opts.tripleSwapDow)) delete opts.tripleSwapDow;
 
   const jobId = `oh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

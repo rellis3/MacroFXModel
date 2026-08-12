@@ -58,7 +58,7 @@ import { dowOf } from './sessionRanges.js';
 import { assetClass as lookupAssetClass } from './instrumentRegistry.js';
 import { mean, stdev } from './statsCore.js';
 import {
-  summarizeTrades, calmar, sortinoRatio, sharpeRatio,
+  summarizeTrades, calmar, sortinoRatio, sharpeRatio, winRate as winRateOf, profitFactor as profitFactorOf,
 } from './metricsCore.js';
 
 const UK_TZ = 'Europe/London';
@@ -477,6 +477,38 @@ export function maxDrawdownWithDuration(curve) {
   };
 }
 
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// Per-entry-weekday breakdown of the net trade series — the direct,
+// zero-new-infrastructure check of "is a specific night (e.g. triple-swap
+// Wednesday) dragging the whole result down, and would skipping it help."
+// Only Sun-Thu ever have trades by construction (buildTradingDates excludes
+// Fri/Sat), so those are the only rows that can be non-empty.
+export function weekdayBreakdown(netTrades) {
+  const byDow = new Map();
+  for (const t of netTrades) {
+    const dow = dowOf(t.date);
+    if (!byDow.has(dow)) byDow.set(dow, []);
+    byDow.get(dow).push(t);
+  }
+  return [...byDow.keys()].sort().map(dow => {
+    const rows = byDow.get(dow);
+    const netPcts = rows.map(t => t.netPct);
+    const compounded = compoundPct(netPcts);
+    return {
+      dow,
+      weekday: WEEKDAY_NAMES[dow],
+      trades: rows.length,
+      avgNetPct: +mean(netPcts).toFixed(4),
+      compoundedTotalPct: +compounded.toFixed(3),
+      winRatePct: +(winRateOf(netPcts) * 100).toFixed(1),
+      profitFactor: +profitFactorOf(netPcts).toFixed(3),
+      avgFinancingCostPct: +mean(rows.map(t => t.financingCostPct ?? 0)).toFixed(4),
+      tripleSwapNights: rows.filter(t => t.tripleSwap).length,
+    };
+  });
+}
+
 // One comparison table for an instrument: overnight (gross+net) metrics,
 // alongside buy & hold, exposure and correlation — everything stage 05 asks for.
 export function computeMetricsTable(netTrades, benchmark) {
@@ -872,6 +904,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
   const metrics = computeMetricsTable(netTrades, benchmark);
   const ruleCheck = metrics ? runPropFirmRuleCheck(netTrades, opts.ruleset) : null;
   const costSweep = opts.includeCostSweep === false ? null : costSensitivitySweep(grossTrades, assetKey, opts);
+  const weekday = weekdayBreakdown(netTrades);
 
   return {
     assetKey,
@@ -885,6 +918,7 @@ export function runOvernightHoldForInstrument(assetKey, packed, otherPacked, opt
     metrics,
     ruleCheck,
     costSweep,
+    weekday,
     dailyBars: opts.includeDailyBars === false ? null : resampleDailyFromPacked(packed),
     csv: metrics ? { returns: toCsvReturns(netTrades), rMultiples: toCsvRMultiples(netTrades), currency: toCsvCurrency(netTrades, opts.accountSize, opts.notionalPerTrade) } : null,
   };
