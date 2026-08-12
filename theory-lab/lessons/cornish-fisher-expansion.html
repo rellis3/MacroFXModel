@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cornish-Fisher Expansion — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Management Deep Dive / Cornish-Fisher Expansion</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Deep Dive 4 of 5</div>
+  <h1 class="tl-title">Cornish-Fisher Expansion</h1>
+  <p class="tl-dek">The textbook Gaussian VaR formula quietly assumes returns are symmetric and normally-tailed — the Cornish-Fisher expansion adjusts the quantile itself for skew and fat tails, without ever refitting the whole distribution.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains a quantile-adjustment technique; not built or used anywhere in this repo</span>
+    <span>~13 min read</span>
+    <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> (this lesson builds directly on its VaR definition)</span>
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The standard Gaussian VaR formula, \(\text{VaR}_\alpha = -\mu - z_\alpha \sigma\), assumes returns are normally distributed — but real return series usually have negative skewness \(S\) and positive excess kurtosis \(K\) (fatter tails than a bell curve).</li>
+      <li>The Cornish-Fisher expansion (Cornish &amp; Fisher, 1938) replaces the plain normal quantile \(z_\alpha\) with an adjusted quantile \(z_{CF}\) that corrects for \(S\) and \(K\), then plugs \(z_{CF}\) into the same VaR formula in place of \(z_\alpha\).</li>
+      <li>For a realistic negative-skew, fat-tailed return series (\(S=-0.5\), \(K=3\)), the worked example below shows the CF-adjusted 95% VaR coming out about 4.7% larger than the plain Gaussian VaR — a meaningfully more conservative number, computed from the exact same \(\mu\) and \(\sigma\).</li>
+      <li>The adjustment only touches the quantile \(z_\alpha \to z_{CF}\); it never requires refitting a whole new distribution to the data, which is why it's cheap to bolt onto an existing Gaussian VaR pipeline.</li>
+      <li><strong>Honest limitation:</strong> for sufficiently extreme skew/kurtosis combinations, the Cornish-Fisher transform stops producing a valid, monotonically increasing quantile function — it is a useful correction within a bounded range of inputs, not a universal fix for non-normality.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="coherent-risk-measures.html">Coherent Risk Measures</a> defines \(\text{VaR}_p(L)\) precisely as a
+  quantile of the loss distribution and doesn't assume any particular shape for that distribution. In
+  practice, though, the single most common way people actually <em>compute</em> a VaR number is to assume
+  returns are normally distributed and read the quantile straight off a standard normal table. That's a
+  convenient shortcut, and it's also a specific, checkable assumption — one that fails for almost every
+  real financial return series. Daily FX, equity, and rates returns are not symmetric (a currency can gap
+  much further on a surprise devaluation than it typically drifts on an ordinary day) and they are not
+  thin-tailed (large moves happen more often than a bell curve predicts). A VaR number computed as if
+  neither of those things were true is quietly understating the loss threshold exactly where it matters
+  most — the tail. The Cornish-Fisher expansion is the standard fix that doesn't require throwing out the
+  Gaussian formula and starting over: it corrects the one number that's wrong, the quantile itself.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Same ruler, moved mark</h3>
+    <p>
+    Imagine a tailor who always marks a hem 1.645 inches up from the floor because that's the right
+    number for someone with perfectly average, symmetric proportions. Most customers aren't perfectly
+    average — some lean noticeably more one way, some have unusually long or short limbs relative to
+    their height — and for those customers, using the "average person" mark produces a hem that's
+    subtly wrong, always in the same direction their body deviates from average. The Cornish-Fisher
+    expansion is the tailor learning to nudge that 1.645-inch mark based on two easily measured facts
+    about the specific customer: how lopsided they are (skewness) and how much more extreme their
+    proportions are than typical (kurtosis). The tape measure, the hem formula, none of that changes —
+    only the one number being plugged into it moves, and it moves in a direction and amount that depends
+    on exactly how this customer differs from the idealized average one. That's precisely what
+    Cornish-Fisher does to a VaR quantile: it keeps the same formula, and nudges \(z_\alpha\) into
+    \(z_{CF}\) using the return series's actual skewness and kurtosis instead of assuming they're both
+    zero, as a pure normal distribution would.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Recall: the Gaussian VaR formula</h3>
+  <p>
+  <a href="coherent-risk-measures.html">Coherent Risk Measures</a> already covers what VaR means and why
+  it's a defensible (if incomplete) risk statistic — this lesson doesn't re-derive that. What it adds is
+  the most common way VaR actually gets <em>computed</em> in practice: assume a return \(R\) is normally
+  distributed with mean \(\mu\) and standard deviation \(\sigma\), and read the loss threshold straight off
+  the normal distribution's quantile function.
+  </p>
+  <div class="tl-math">\[ \text{VaR}_\alpha = -\mu - z_\alpha \sigma \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μ</code><span>the mean of the return series</span></div>
+    <div class="tl-eq-chip c2"><code>σ</code><span>the standard deviation of the return series</span></div>
+    <div class="tl-eq-chip c4"><code>α</code><span>the tail probability, e.g. 0.05 for a 95%-confidence VaR</span></div>
+    <div class="tl-eq-chip c3"><code>z_α</code><span>the standard normal quantile at tail probability α, e.g. \(z_{0.05} \approx -1.645\)</span></div>
+  </div>
+  <p>
+  Read this as: the loss threshold equals minus the mean return, minus \(z_\alpha\) standard deviations —
+  and because \(z_\alpha\) is negative for a small \(\alpha\) (it's on the left tail of the return
+  distribution), subtracting it adds a positive amount to the loss threshold, exactly as it should. This
+  formula is exact <em>if</em> returns really are normally distributed. The entire rest of this lesson is
+  about what to do when they aren't.
+  </p>
+
+  <h3>Real returns have skew and fat tails</h3>
+  <p>
+  Two extra moments describe how a real return distribution departs from the normal shape the formula
+  above assumes:
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(S\)</td><td>Skewness — the third standardized moment. \(S=0\) is symmetric (normal). \(S<0\) (common for equity/FX returns) means a longer, fatter left (loss) tail than the right tail.</td></tr>
+      <tr><td>\(K\)</td><td><em>Excess</em> kurtosis — the fourth standardized moment, minus 3 (the normal distribution's own kurtosis), so \(K=0\) means normal-tailed. \(K>0\) ("leptokurtic") means more extreme observations in both tails than a normal distribution produces — the well-known "fat tails" of financial returns.</td></tr>
+    </table>
+  </div>
+  <p>
+  A return series with \(S<0\) and \(K>0\) — negative skew and fat tails — is the typical shape for daily
+  equity and FX returns: crashes are sharper and more frequent than rallies, and both extremes happen more
+  often than a bell curve predicts. Plugging \(\mu\) and \(\sigma\) alone into the Gaussian VaR formula
+  throws this shape information away entirely; \(S\) and \(K\) never appear in it.
+  </p>
+
+  <h3>The Cornish-Fisher adjusted quantile</h3>
+  <p>
+  Cornish and Fisher's 1938 result gives an adjusted quantile \(z_{CF}\) — built from the plain normal
+  quantile \(z_\alpha\) plus correction terms in \(S\) and \(K\) — that is used <em>in place of</em>
+  \(z_\alpha\) in the exact same VaR formula above:
+  </p>
+  <div class="tl-math">\[
+  z_{CF} = z_\alpha + \frac{(z_\alpha^2-1)S}{6} + \frac{(z_\alpha^3-3z_\alpha)K}{24} - \frac{(2z_\alpha^3-5z_\alpha)S^2}{36}
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z_α</code><span>the starting point — the plain Gaussian quantile</span></div>
+    <div class="tl-eq-chip c3"><code>S</code><span>skewness — feeds the two skew-related correction terms</span></div>
+    <div class="tl-eq-chip c2"><code>K</code><span>excess kurtosis — feeds the fat-tail correction term</span></div>
+    <div class="tl-eq-chip c4"><code>z_CF</code><span>the adjusted quantile — substitute this for z_α in the VaR formula</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">z_α</div><div class="tl-fp-name">The baseline</div><div class="tl-fp-desc">What you'd use if returns really were normal — S=0, K=0 collapses everything below to zero</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">(z_α²−1)S/6 − (2z_α³−5z_α)S²/36</div><div class="tl-fp-name">Skew correction</div><div class="tl-fp-desc">Pushes the quantile further into the tail when losses are more extreme than gains (S&lt;0)</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">(z_α³−3z_α)K/24</div><div class="tl-fp-name">Kurtosis correction</div><div class="tl-fp-desc">Pushes the quantile further out when the distribution has fatter tails than normal (K&gt;0)</div></div>
+  </div>
+  <p>
+  Every term besides \(z_\alpha\) vanishes when \(S=0\) and \(K=0\) — so a perfectly normal return series
+  gives \(z_{CF}=z_\alpha\) exactly, and the Cornish-Fisher VaR reduces back to the plain Gaussian VaR. The
+  adjustment is purely a correction for how far the actual distribution's shape departs from normal;
+  it adds nothing when there's no departure to correct for.
+  </p>
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\mu, \sigma\)</td><td>Mean and standard deviation of the return series — unchanged from the plain Gaussian formula.</td></tr>
+      <tr><td>\(\alpha\)</td><td>The tail probability defining the confidence level, e.g. \(\alpha=0.05\) for a 95%-confidence VaR.</td></tr>
+      <tr><td>\(z_\alpha\)</td><td>The \(\alpha\)-quantile of the standard normal distribution — negative for \(\alpha<0.5\), e.g. \(z_{0.05}\approx-1.645\).</td></tr>
+      <tr><td>\(S\)</td><td>Skewness of the return series — the third standardized moment.</td></tr>
+      <tr><td>\(K\)</td><td>Excess kurtosis of the return series — the fourth standardized moment minus 3.</td></tr>
+      <tr><td>\(z_{CF}\)</td><td>The Cornish-Fisher adjusted quantile — substituted for \(z_\alpha\) in the VaR formula to get a skew/kurtosis-aware loss threshold.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A negatively-skewed return distribution (S ≈ −0.5): where the plain Gaussian quantile sits vs. the Cornish-Fisher-adjusted quantile</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Density curve of a left-skewed return distribution with a long left tail. A dashed vertical line marks the plain Gaussian 95 percent VaR quantile at z equals negative 1.645. A second dashed vertical line, positioned further left, marks the Cornish-Fisher-adjusted quantile at z approximately negative 1.722. The region beyond the Cornish-Fisher line is shaded to show the tail it captures, including a highlighted sliver between the two lines showing the extra tail the plain Gaussian quantile misses.">
+      <line x1="40" y1="240" x2="600" y2="240" style="stroke:var(--border);stroke-width:1"></line>
+      <text x="40" y="255" style="font:10px 'DM Mono',monospace;fill:var(--text3)">−4σ</text>
+      <text x="320" y="255" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">0 (mean)</text>
+      <text x="600" y="255" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">+3σ</text>
+      <path style="fill:var(--red);opacity:0.16" d="M 40.0,239.4 L 44.0,239.3 L 48.0,239.2 L 52.0,239.1 L 56.0,239.0 L 60.0,238.8 L 64.0,238.7 L 68.0,238.5 L 72.0,238.4 L 76.0,238.2 L 80.0,238.0 L 84.0,237.8 L 88.0,237.5 L 92.0,237.2 L 96.0,236.9 L 100.0,236.6 L 104.0,236.2 L 108.0,235.8 L 112.0,235.4 L 116.0,234.9 L 120.0,234.4 L 124.0,233.8 L 128.0,233.2 L 132.0,232.6 L 136.0,231.8 L 140.0,231.1 L 144.0,230.2 L 148.0,229.3 L 152.0,228.3 L 156.0,227.3 L 160.0,226.2 L 164.0,225.0 L 168.0,223.7 L 172.0,222.3 L 176.0,220.8 L 180.0,219.2 L 184.0,217.6 L 188.0,215.8 L 192.0,213.9 L 196.0,211.9 L 200.0,209.7 L 204.0,207.5 L 208.0,205.1 L 212.0,202.6 L 216.0,200.0 L 220.0,197.2 L 222.2,195.6 L 222.2,240 L 40.0,240 Z"></path>
+      <path style="fill:var(--amber);opacity:0.35" d="M 222.2,195.6 L 223.8,194.4 L 225.4,193.2 L 227.0,191.9 L 228.4,190.9 L 228.4,240 L 222.2,240 Z"></path>
+      <path style="fill:none;stroke:var(--text2);stroke-width:2" d="M 40.0,239.4 L 56.0,239.0 L 72.0,238.4 L 88.0,237.5 L 104.0,236.2 L 120.0,234.4 L 136.0,231.8 L 152.0,228.3 L 168.0,223.7 L 184.0,217.6 L 200.0,209.7 L 216.0,200.0 L 232.0,188.0 L 248.0,173.8 L 264.0,157.2 L 280.0,138.5 L 296.0,118.1 L 312.0,96.5 L 328.0,75.1 L 344.0,55.5 L 360.0,40.0 L 376.0,31.1 L 392.0,31.5 L 408.0,42.6 L 424.0,64.1 L 440.0,93.5 L 456.0,126.8 L 472.0,159.2 L 488.0,187.0 L 504.0,208.2 L 520.0,222.6 L 536.0,231.4 L 552.0,236.1 L 568.0,238.4 L 584.0,239.4 L 600.0,239.8"></path>
+      <line x1="228.4" y1="190.9" x2="228.4" y2="240" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:4,3"></line>
+      <circle cx="228.4" cy="190.9" r="4" style="fill:var(--blue)"></circle>
+      <text x="228.4" y="70" text-anchor="middle" style="font:600 11px 'DM Sans',sans-serif;fill:var(--blue)">Gaussian z_α = −1.645</text>
+      <line x1="222.2" y1="195.6" x2="222.2" y2="240" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4,3"></line>
+      <circle cx="222.2" cy="195.6" r="4" style="fill:var(--red)"></circle>
+      <text x="180" y="50" text-anchor="middle" style="font:600 11px 'DM Sans',sans-serif;fill:var(--red)">Cornish-Fisher z_CF ≈ −1.722</text>
+      <text x="150" y="95" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--amber)">extra tail CF</text>
+      <text x="150" y="107" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--amber)">captures →</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The curve is a left-skewed distribution shaped to match the worked example's skewness (S=−0.5) — note
+    the long, slow-decaying left (loss) tail versus the shorter right tail. The plain Gaussian quantile
+    (blue) sits at the "average-shape" position; the Cornish-Fisher-adjusted quantile (red) sits further
+    into the tail, capturing the extra loss risk (amber sliver) that treating this distribution as
+    perfectly normal would miss.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Plain Gaussian VaR vs. Cornish-Fisher VaR, walked arithmetically</h3>
+    <p>
+    A daily return series has \(\mu = 0\%\), \(\sigma = 1.20\%\), skewness \(S=-0.5\), and excess kurtosis
+    \(K=3\) — a realistic negative-skew, fat-tailed shape for a daily FX or equity return series. Compute
+    the 95%-confidence VaR (\(\alpha=0.05\), \(z_{0.05}=-1.645\)) both ways.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Plain Gaussian VaR</h4>
+          <p>Plug \(z_\alpha=-1.645\) straight into the VaR formula:</p>
+          <div class="tl-math">\[ \text{VaR}_{0.05} = -0\% - (-1.645)(1.20\%) = 1.974\% \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The skew correction terms</h4>
+          <p>
+          With \(z_\alpha=-1.645\): \(z_\alpha^2-1 = 1.706025\), so the first skew term is
+          \((1.706025)(-0.5)/6 = -0.14217\). And \(2z_\alpha^3-5z_\alpha = -0.67782\), so the second skew
+          term is \(-(-0.67782)(0.25)/36 = +0.00471\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The kurtosis correction term</h4>
+          <p>
+          \(z_\alpha^3-3z_\alpha = 0.48359\), so the kurtosis term is \((0.48359)(3)/24 = 0.06045\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Sum for z_CF, then recompute VaR</h4>
+          <div class="tl-math">\[ z_{CF} = -1.645 - 0.14217 + 0.06045 + 0.00471 \approx -1.7220 \]</div>
+          <div class="tl-math">\[ \text{VaR}_{0.05}^{CF} = -0\% - (-1.7220)(1.20\%) = 2.066\% \]</div>
+        </div>
+      </div>
+    </div>
+    <div class="tl-solid amber">
+    <strong>2.066% vs. 1.974%</strong> — the Cornish-Fisher-adjusted VaR is roughly <strong>4.7% larger</strong>
+    than the plain Gaussian VaR, computed from the exact same \(\mu\) and \(\sigma\). The entire difference
+    comes from the quantile shift \(z_\alpha \to z_{CF}\); nothing else in the formula changed. (Setting
+    \(\mu=0\) here keeps the arithmetic clean — a nonzero mean shifts both VaR numbers by the identical
+    amount and doesn't change this comparison at all.)
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A risk desk's daily VaR limit understates true tail risk on a carry book</h3>
+    <p>
+    A desk running short-volatility FX carry trades reports a daily 99% VaR limit computed the standard
+    way: historical \(\mu\) and \(\sigma\) plugged into the plain Gaussian formula. The strategy's return
+    profile is exactly the shape carry trades are known for — small, steady gains most days (positive
+    carry) punctuated by occasional sharp drawdowns when a funding currency spikes (a classic negative-skew,
+    fat-tailed profile, since the strategy's own construction caps the upside per period while leaving the
+    downside comparatively open). Reporting VaR the plain Gaussian way is, in effect, pretending the desk's
+    returns look like a coin flip around a fair average — the exact opposite of the strategy's actual return
+    shape. A risk manager who recomputes the same VaR limit using the desk's own historical skewness and
+    kurtosis in the Cornish-Fisher adjustment gets a materially larger, more honest number for how bad a
+    genuinely bad day could be — without needing to build or fit an entirely new distributional model, just
+    by feeding two already-computable sample statistics into the adjusted quantile formula above.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <ul>
+    <li>
+    <strong>A drop-in upgrade to an existing Gaussian VaR pipeline.</strong> Because the correction only
+    changes \(z_\alpha \to z_{CF}\) and leaves the rest of the formula untouched, it's a small, cheap change
+    to bolt onto a VaR calculation that's already built around the normal-quantile approach — no need to
+    refit a new parametric distribution or rebuild the pipeline around historical simulation.
+    </li>
+    <li>
+    <strong>A standard tool in risk-management and portfolio software.</strong> Cornish-Fisher-adjusted VaR
+    is a documented, commonly offered option in commercial risk platforms and appears throughout the
+    quantitative risk literature (see Favre &amp; Galeano, 2002, in Further Reading) specifically because it
+    gives a fast, moment-based way to account for non-normality without a full distributional refit.
+    </li>
+    <li>
+    <strong>Only as good as the sample moments feeding it.</strong> Skewness and especially kurtosis are
+    notoriously noisy to estimate from a limited sample — a short or unstable return history can produce
+    an \(S\) and \(K\) that don't reflect the distribution's true shape, and the CF adjustment inherits
+    whatever estimation error is baked into those two numbers.
+    </li>
+    <li>
+    <strong>A stepping stone toward, not a replacement for, full tail modeling.</strong> Cornish-Fisher is
+    a local correction around the Gaussian quantile — for genuinely extreme tail estimation, practitioners
+    often turn to purpose-built tail machinery instead (see Further Reading for pointers on where that
+    conversation continues).
+    </li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where Cornish-Fisher gets over-trusted</h3>
+    <ul>
+      <li>
+      <strong>The expansion can become non-monotonic for extreme skew/kurtosis — this is a real,
+      well-documented limitation, not an edge case to hand-wave away.</strong> The whole point of a quantile
+      function is that it increases as the confidence level increases — a 99% VaR should never come out
+      smaller than a 95% VaR on the same distribution. For sufficiently large \(|S|\) and \(K\), the
+      Cornish-Fisher transform can violate exactly that property, producing an implied quantile function
+      that is no longer monotonically increasing in \(\alpha\). When this happens, the "adjusted VaR" the
+      formula spits out is not a valid quantile at all — it's an artifact of the polynomial correction
+      overshooting, and using it uncritically can silently produce a nonsensical risk number. This failure
+      mode is formally characterized in the literature (see Jaschke, 2002, in Further Reading) — Cornish-Fisher
+      is a useful correction within a bounded range of \((S,K)\) inputs, not a universal fix for
+      non-normality.
+      </li>
+      <li>
+      <strong>Treating "more conservative" as automatically "more correct."</strong> The worked example
+      above shows CF-VaR coming out larger than Gaussian VaR for negative skew and positive excess kurtosis
+      — but the direction and size of the adjustment depend entirely on the sign and magnitude of \(S\) and
+      \(K\) that were fed in. A badly estimated \(S\) or \(K\) (see below) can push \(z_{CF}\) the wrong way
+      just as easily as the right one.
+      </li>
+      <li>
+      <strong>Feeding it noisy sample skewness/kurtosis from a short history.</strong> \(S\) and especially
+      \(K\) are higher-order moments, and higher-order sample moments converge far more slowly and noisily
+      than the mean or variance. A CF adjustment computed from, say, 60 days of returns can be dominated by
+      one or two extreme observations rather than reflecting the distribution's true shape.
+      </li>
+      <li>
+      <strong>Forgetting this is still a quantile-based statistic.</strong> Everything the coherent-risk-measures
+      lesson says about VaR's blind spot past the threshold still applies here — Cornish-Fisher adjusts
+      <em>where</em> the quantile sits, it does not turn VaR into an average-of-the-tail measure like CVaR.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cornish-Fisher adjusts the quantile, not the formula.</strong> \(z_\alpha \to z_{CF}\) is the entire change — the VaR formula \(-\mu-z\sigma\) stays exactly the same.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The correction vanishes for a truly normal series.</strong> S=0, K=0 collapses every correction term to zero, so \(z_{CF}=z_\alpha\) exactly.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example is concrete: 2.066% vs. 1.974%.</strong> A realistic S=−0.5, K=3 return series produces a CF-adjusted 95% VaR about 4.7% larger than the plain Gaussian number, from identical μ and σ.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The expansion can become non-monotonic for extreme skew/kurtosis.</strong> Outside a bounded range of (S,K), the "adjusted quantile" it produces is not a valid quantile function at all — a documented limitation, not a universal fix.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It's only as good as the sample S and K feeding it.</strong> Higher-order moments are noisy in short samples — a badly estimated skew or kurtosis can push the adjustment the wrong way.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique precisely; it is not a claim that Cornish-Fisher-adjusted VaR is computed or used anywhere in this project.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What single quantity does the Cornish-Fisher expansion adjust, and what stays exactly the same as the plain Gaussian VaR formula?</summary>
+    <div class="tl-answer">
+    It adjusts only the quantile — \(z_\alpha\) becomes \(z_{CF}\). The surrounding formula,
+    \(\text{VaR}_\alpha = -\mu - z\sigma\), is completely unchanged; \(z_{CF}\) is simply substituted for
+    \(z_\alpha\) inside it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does z_CF equal z_α exactly when a return series is perfectly normal?</summary>
+    <div class="tl-answer">
+    A perfectly normal series has skewness \(S=0\) and excess kurtosis \(K=0\). Every correction term in
+    the Cornish-Fisher formula is multiplied by \(S\), \(K\), or \(S^2\), so with both equal to zero, all
+    three correction terms vanish and \(z_{CF}\) reduces to \(z_\alpha\) with nothing added or subtracted.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked example (S=−0.5, K=3), is z_CF more negative or less negative than z_α, and why does that make the resulting VaR larger?</summary>
+    <div class="tl-answer">
+    \(z_{CF}\approx-1.722\) is more negative than \(z_\alpha=-1.645\). Because the VaR formula subtracts
+    \(z\) times \(\sigma\), a more negative \(z\) subtracts a more negative quantity, which adds more to
+    the VaR — so a more negative \(z_{CF}\) directly produces a larger (more conservative) VaR number,
+    exactly as the arithmetic in the worked example shows (2.066% vs. 1.974%).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What, precisely, goes wrong with the Cornish-Fisher expansion for sufficiently extreme skew/kurtosis?</summary>
+    <div class="tl-answer">
+    The implied quantile function can stop being monotonically increasing in the confidence level \(\alpha\)
+    — meaning the "adjusted VaR" at a higher confidence level (e.g. 99%) can come out smaller than at a
+    lower one (e.g. 95%) on the same distribution, which is nonsensical for a genuine quantile. This is a
+    known, documented limitation (Jaschke, 2002) — the technique is valid only within a bounded region of
+    skew/kurtosis inputs, not universally.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is the Cornish-Fisher adjustment only as reliable as the sample skewness and kurtosis fed into it?</summary>
+    <div class="tl-answer">
+    \(S\) and \(K\) are higher-order (third and fourth) standardized moments, and higher-order sample
+    moments converge much more slowly and noisily than the mean or standard deviation, especially in short
+    samples. A handful of extreme observations can dominate a sample's estimated skewness or kurtosis,
+    meaning a CF adjustment built on a short or unstable history can reflect estimation noise rather than
+    the distribution's true shape.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A colleague says "Cornish-Fisher VaR is always more conservative than Gaussian VaR, so it's always the safer number to use." What's wrong with that statement?</summary>
+    <div class="tl-answer">
+    Whether \(z_{CF}\) is more or less negative than \(z_\alpha\) — i.e. whether the adjustment makes VaR
+    larger or smaller — depends entirely on the sign and size of the sample \(S\) and \(K\) that go into
+    it, not on some built-in conservative bias in the formula itself. A badly estimated or genuinely
+    positively-skewed, thin-tailed series could push \(z_{CF}\) toward a smaller VaR than the Gaussian
+    number. The direction of the adjustment is data-dependent, not automatic.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>E.A. Cornish and R.A. Fisher, "Moments and Cumulants in the Specification of Distributions," <em>Revue de l'Institut International de Statistique</em>, Vol. 5, No. 4, 1938, pp. 307–320 — the original source deriving the expansion this lesson is built around.</li>
+    <li>Laurent Favre and José-Antonio Galeano, "Mean-Modified Value-at-Risk Optimization with Hedge Funds," <em>Journal of Alternative Investments</em>, Vol. 5, No. 2, 2002, pp. 21–25 — a widely cited application of the Cornish-Fisher-adjusted VaR formula to real, non-normal return series.</li>
+    <li>Stefan Jaschke, "The Cornish-Fisher-Expansion in the Context of Delta-Gamma-Normal Approximations," <em>Journal of Risk</em>, Vol. 4, No. 4, 2002, pp. 33–52 — formally characterizes when the Cornish-Fisher transform fails to produce a valid, monotonic quantile function, the source behind this lesson's non-monotonicity pitfall.</li>
+    <li>See also <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> for the underlying VaR definition this lesson builds on, and <a href="quantile-regression.html">Quantile Regression</a> for a fundamentally different, conditional approach to the same underlying question.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="stress-testing-scenario-analysis.html">← Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a>
+    <a href="quantile-regression.html">Quantile Regression →</a>
+  </div>
+</div>
+</body>
+</html>
