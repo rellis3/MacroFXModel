@@ -379,17 +379,18 @@ function flow(big){
     const dir = x.specShare >= 0 ? 'long' : 'short';
     return (Math.sign(x.wkPct) === Math.sign(x.specShare) ? 'extending ' : 'paring ') + dir;
   };
-  return '<table><thead><tr><th>Market</th><th>Pct'+h('pct')+'</th><th>Wk chg</th><th>Wk chg % OI</th><th style="text-align:left">Trajectory</th></tr></thead><tbody>'
+  return '<table><thead><tr><th>Market</th><th>Pct'+h('pct')+'</th><th>Wk chg</th><th>Net % OI (Δ this wk)</th><th style="text-align:left">Trajectory</th></tr></thead><tbody>'
     + rows.map(x => {
-        const t = traj(x), p = pctOf(x);
+        const t = traj(x), p = pctOf(x), sh = x.specShare;
         const tClr = t == null ? 'var(--tx3)' : t.startsWith('extending') ? 'var(--warn)' : 'var(--ok)';
         return '<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(dispSym(x))+'</td>'
           + '<td style="color:'+colFor(p)+'">'+(p??'—')+'</td>'
           + '<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td>'
-          + '<td style="color:'+(x.wkPct>0?'var(--long)':x.wkPct<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.wkPct)+x.wkPct+'%</td>'
+          + '<td style="color:'+(sh>0?'var(--long)':sh<0?'var(--short)':'var(--tx3)')+'">'+(sh!=null?sgn(sh)+sh+'%':'—')
+          +   ' <span class="muted" style="color:'+(x.wkPct>0?'var(--long)':x.wkPct<0?'var(--short)':'var(--tx3)')+'">('+sgn(x.wkPct)+x.wkPct+'%)</span></td>'
           + '<td class="muted" style="text-align:left">'+(t??'—')+'</td></tr>';
       }).join('')
-    + '</tbody></table><div class="note">Ranked by this week\'s change in the OI-normalised net share — the biggest movers, not just the most crowded levels. "Wk chg" alongside is CFTC\'s own raw contract-count change, for reference. <b>Extending</b> = still building the same way (more crowded); <b>paring</b> = moving back toward flat (less crowded). Click a row for its 200-week history.</div>';
+    + '</tbody></table><div class="note">Ranked by this week\'s change in the OI-normalised net share (the number in parens) — the biggest movers, not just the most crowded levels. The number before it is <b>where positioning sits right now</b> (net as % of open interest), so you can see the level a move is coming from, not just the size of the move. "Wk chg" is CFTC\'s own raw contract-count change, for reference. <b>Extending</b> = still building the same way (more crowded); <b>paring</b> = moving back toward flat (less crowded). Click a row for its 200-week history.</div>';
 }
 
 // ── event-risk overlay: crowded positions walking into a known catalyst ─────
