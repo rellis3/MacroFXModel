@@ -31,7 +31,8 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from forge.discover import (add_pvalues, add_split_columns, scan_cells,
+from forge.discover import (DEFAULT_CONFIDENCE_THRESHOLD, add_pvalues,
+                            add_split_columns, confidence_cells, scan_cells,
                             tercile_cuts)
 
 CELL_KEYS = ["key", "side", "split", "split_value", "sl_atr", "tp_r", "direction"]
@@ -57,7 +58,13 @@ class StrategySpec:
         for c in self.cells:
             d = "LONG" if c["direction"] > 0 else "SHORT"
             approach = "from above (support test)" if c["side"] > 0 else "from below (resistance test)"
-            cond = "" if c["split"] == "none" else f", {c['split']}={c['split_value']}"
+            if c["split"] == "none":
+                cond = ""
+            elif c["split"] == "_conf_t":
+                cond = f", confidence={c['split_value']} (>= threshold)" \
+                       if c["split_value"] == "hi" else ", confidence=lo (< threshold)"
+            else:
+                cond = f", {c['split']}={c['split_value']}"
             out.append(
                 f"{d} on touch of {c['key']} {approach}{cond} "
                 f"| stop {c['sl_atr']}×ATR, target {c['tp_r']}R "
@@ -74,7 +81,8 @@ class StrategySpec:
 
 def design(train: pd.DataFrame, q: float = 0.10, top_k: int = 10,
            min_mean_r: float = 0.0, key: str = "kind",
-           select_stat: str = "t_lift") -> tuple[StrategySpec, pd.DataFrame]:
+           select_stat: str = "t_lift",
+           only_keys: set | None = None) -> tuple[StrategySpec, pd.DataFrame]:
     """Run the full search on one training block and freeze what survives.
 
     `select_stat` decides what the engine is allowed to call an edge:
@@ -90,7 +98,7 @@ def design(train: pd.DataFrame, q: float = 0.10, top_k: int = 10,
     """
     cuts = tercile_cuts(train)
     tr = add_split_columns(train, cuts)
-    cells = scan_cells(tr, key=key)
+    cells = scan_cells(tr, key=key, only_keys=only_keys)
     cells = add_pvalues(cells, q=q, stat=select_stat)
     if cells.empty:
         return StrategySpec([], cuts, "", 0), cells
@@ -172,8 +180,19 @@ def fold_bounds(times: pd.Series, n_folds: int, min_train_frac: float = 0.4) -> 
 
 def walk_forward(lab: pd.DataFrame, n_folds: int = 6, q: float = 0.10,
                  top_k: int = 10, key: str = "kind", select_stat: str = "t_lift",
-                 verbose: bool = True) -> dict:
-    """Design → freeze → score, fold by fold. Returns the aggregate OOS result."""
+                 only_keys: set | None = None, verbose: bool = True) -> dict:
+    """Design → freeze → score, fold by fold. Returns the aggregate OOS result.
+
+    `only_keys` restricts the search to a subset of `key` values (see
+    `discover.scan_cells`'s note on why the baseline stays full-market
+    regardless) — for a targeted follow-up on one or two level kinds that
+    still needs the whole `lab` present so "beating the market" keeps its
+    honest meaning. **This does NOT make the follow-up a clean pre-registered
+    test** if `only_keys` was chosen by looking at an earlier scan of the same
+    or overlapping data — the FDR pool here only counts THIS call's
+    hypotheses, not whatever search surfaced the kind being followed up on.
+    Callers must say so in their own report; this function has no way to know.
+    """
     lab = lab.copy()
     lab["day"] = pd.DatetimeIndex(lab["time"]).floor("D")
     specs, all_trades, fold_rows = [], [], []
@@ -183,7 +202,8 @@ def walk_forward(lab: pd.DataFrame, n_folds: int = 6, q: float = 0.10,
         test = lab[(lab["time"] >= split) & (lab["time"] < te_end)]
         if len(train) < 1000 or test.empty:
             continue
-        spec, cells = design(train, q=q, top_k=top_k, key=key, select_stat=select_stat)
+        spec, cells = design(train, q=q, top_k=top_k, key=key, select_stat=select_stat,
+                             only_keys=only_keys)
         spec.fold = i
         trades = apply_spec(spec, test)
         n_tr = len(trades)
@@ -202,6 +222,140 @@ def walk_forward(lab: pd.DataFrame, n_folds: int = 6, q: float = 0.10,
         if n_tr:
             trades = trades.assign(fold=i)
             all_trades.append(trades)
+        if verbose:
+            print(f"  fold {i}: train→{split:%Y-%m-%d} | {spec.n_hypotheses} hypotheses, "
+                  f"{len(spec.cells)} selected | OOS {n_tr} trades, "
+                  f"raw {mean_r:+.4f}R, excess {mean_x:+.4f}R", flush=True)
+
+    trades = pd.concat(all_trades, ignore_index=True) if all_trades else pd.DataFrame()
+    agg = {"folds": fold_rows, "specs": [s.to_dict() for s in specs]}
+    if len(trades):
+        from forge.discover import _cluster_stats
+        codes = pd.factorize(trades["day"])[0]
+        mean, se, ndays = _cluster_stats(trades["r"].to_numpy(float), codes)
+        xmean, xse, _ = _cluster_stats(trades["r_excess"].to_numpy(float), codes)
+        agg["oos"] = {
+            "trades": int(len(trades)), "days": ndays,
+            "mean_r": mean, "se": se, "t": mean / se if se > 0 else np.nan,
+            "mean_excess": xmean, "se_excess": xse,
+            "t_excess": xmean / xse if xse > 0 else np.nan,
+            "total_r": float(trades["r"].sum()),
+            "win_rate": float((trades["r"] > 0).mean()),
+        }
+    else:
+        agg["oos"] = {"trades": 0}
+    agg["trades"] = trades
+    return agg
+
+
+# ── confidence gate: ONE pre-registered hypothesis, walked forward the same
+#    way as the base search, but through a hypothesis pool ~40x smaller ──────
+
+def design_confidence(train: pd.DataFrame, threshold: int = DEFAULT_CONFIDENCE_THRESHOLD,
+                      q: float = 0.10, top_k: int = 10, key: str = "kind",
+                      min_mean_r: float = 0.0) -> tuple[StrategySpec, pd.DataFrame]:
+    """`design`'s counterpart for the confidence gate: score `confidence_cells`
+    (the ~720-cell pool, not the ~30,000-cell base search) and freeze what
+    survives its OWN FDR pass. Selection is on `t_lift` — does gating beat the
+    same trade taken at any level — for the same reason the base search
+    defaults to it: on a trending instrument, `t` alone rewards the drift.
+    """
+    cells = confidence_cells(train, threshold=threshold, key=key)
+    cells = add_pvalues(cells, q=q, stat="t_lift")
+    if cells.empty:
+        return StrategySpec([], {}, "", 0, meta={"threshold": threshold}), cells
+    keep = cells[cells["bh_pass"] & (cells["lift"] > min_mean_r)]
+    keep = keep.sort_values("t_lift", ascending=False).head(top_k)
+    spec = StrategySpec(
+        cells=keep[["key", "side", "split", "split_value", "sl_atr", "tp_r",
+                    "direction", "n", "n_days", "mean_r", "t", "p", "lift",
+                    "t_lift", "win_rate"]].to_dict("records"),
+        cuts={}, trained_through=str(train["time"].max()),
+        n_hypotheses=int(cells["n_hypotheses"].iloc[0]),
+        meta={"threshold": threshold, "select_stat": "t_lift"},
+    )
+    return spec, cells
+
+
+def apply_confidence_spec(spec: StrategySpec, test: pd.DataFrame) -> pd.DataFrame:
+    """`apply_spec`'s counterpart for a confidence-gated spec.
+
+    Buckets the TEST block on the frozen `threshold` (never refit on test —
+    the threshold was fixed a priori anyway, so there is nothing to refit),
+    separately for the long and short confidence columns, since each cell's
+    bucket must be read off the column that matches its OWN direction.
+    """
+    if not spec.cells:
+        return pd.DataFrame()
+    threshold = spec.meta.get("threshold", DEFAULT_CONFIDENCE_THRESHOLD)
+    te_long = test.assign(_conf_t=np.where(test["confidence_long"] >= threshold, "hi", "lo"))
+    te_short = test.assign(_conf_t=np.where(test["confidence_short"] >= threshold, "hi", "lo"))
+
+    out = []
+    for c in spec.cells:
+        te = te_long if c["direction"] > 0 else te_short
+        m = ((te["kind"] == c["key"]) & (te["side"] == c["side"]) &
+             (te["sl_atr"] == c["sl_atr"]) & (te["tp_r"] == c["tp_r"]) &
+             (te["_conf_t"] == c["split_value"]))
+        sel = te[m]
+        if sel.empty:
+            continue
+        r = sel["r_long"] if c["direction"] > 0 else sel["r_short"]
+        out.append(pd.DataFrame({
+            "time": sel["time"].to_numpy(), "entry_time": sel["entry_time"].to_numpy(),
+            "day": sel["day"].to_numpy(), "r": r.to_numpy(), "direction": c["direction"],
+            "sl_atr": c["sl_atr"], "tp_r": c["tp_r"],
+            "cell": f"{c['key']}|side{c['side']}|conf{c['split_value']}"
+                    f"|sl{c['sl_atr']}|tp{c['tp_r']}|d{c['direction']}",
+        }))
+    if not out:
+        return pd.DataFrame()
+    trades = pd.concat(out, ignore_index=True)
+    trades = trades.drop_duplicates(subset=["entry_time", "direction", "sl_atr", "tp_r"])
+
+    bench = {}
+    for (sl, tp), grp in test.groupby(["sl_atr", "tp_r"], sort=False):
+        bench[(sl, tp, 1)] = float(grp["r_long"].mean())
+        bench[(sl, tp, -1)] = float(grp["r_short"].mean())
+    trades["r_bench"] = [bench.get((sl, tp, d), np.nan) for sl, tp, d
+                         in zip(trades["sl_atr"], trades["tp_r"], trades["direction"])]
+    trades["r_excess"] = trades["r"] - trades["r_bench"]
+    return trades
+
+
+def confidence_walk_forward(lab: pd.DataFrame, n_folds: int = 6, q: float = 0.10,
+                            top_k: int = 10, key: str = "kind",
+                            threshold: int = DEFAULT_CONFIDENCE_THRESHOLD,
+                            verbose: bool = True) -> dict:
+    """`walk_forward`'s counterpart for the confidence gate. Same expanding
+    folds, same freeze-then-score discipline, ~40x smaller hypothesis pool."""
+    lab = lab.copy()
+    lab["day"] = pd.DatetimeIndex(lab["time"]).floor("D")
+    specs, all_trades, fold_rows = [], [], []
+
+    for i, (tr_start, split, te_end) in enumerate(fold_bounds(lab["time"], n_folds)):
+        train = lab[(lab["time"] >= tr_start) & (lab["time"] < split)]
+        test = lab[(lab["time"] >= split) & (lab["time"] < te_end)]
+        if len(train) < 1000 or test.empty:
+            continue
+        spec, cells = design_confidence(train, threshold=threshold, q=q, top_k=top_k, key=key)
+        spec.fold = i
+        trades = apply_confidence_spec(spec, test)
+        n_tr = len(trades)
+        mean_r = float(trades["r"].mean()) if n_tr else np.nan
+        mean_x = float(trades["r_excess"].mean()) if n_tr else np.nan
+        fold_rows.append(dict(
+            fold=i, train_end=str(split), test_end=str(te_end),
+            train_events=len(train), test_events=len(test),
+            n_hypotheses=spec.n_hypotheses, n_cells_selected=len(spec.cells),
+            train_best_t=float(cells["t_lift"].max()) if not cells.empty else np.nan,
+            oos_trades=n_tr, oos_mean_r=mean_r, oos_mean_excess=mean_x,
+            oos_total_r=float(trades["r"].sum()) if n_tr else 0.0,
+            oos_win_rate=float((trades["r"] > 0).mean()) if n_tr else np.nan,
+        ))
+        specs.append(spec)
+        if n_tr:
+            all_trades.append(trades.assign(fold=i))
         if verbose:
             print(f"  fold {i}: train→{split:%Y-%m-%d} | {spec.n_hypotheses} hypotheses, "
                   f"{len(spec.cells)} selected | OOS {n_tr} trades, "

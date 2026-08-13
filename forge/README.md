@@ -1,19 +1,21 @@
 # forge — candles in, analysis + a testable strategy out
 
-> **Read this first.** The headline result on gold is a **null**: after three
-> lookahead bugs were found and fixed, the level-conditional edge the engine
-> discovers is **no better than what the same search finds on randomly-placed
-> lines**, and the strategies it designs lose money out-of-sample. This held
-> under two structurally different trade models — market-on-next-bar and a
-> limit resting at the level — where the second improved every fold and
-> improved the random-line null by exactly as much.
+> **Read this first.** The headline result on gold is a **null**: across two
+> timeframes, two trade models, ~150,000 hypotheses and a composite confluence
+> gate, nothing clears the bar a random-level control also has to clear.
+> A stack of confirmations ("only trade when N things line up") was tested
+> honestly and made results *worse*, not better. One unplanned lead did
+> survive every check thrown at it — a prior-week-high breakout continuation —
+> but it was found by the same search it needs to be judged against, so it is
+> reported as a lead requiring fresh data to confirm, not a result.
 >
 > That is not a failed build. It is the build working — the engine's job is to
-> tell you which of your beliefs about POCs, VALs, FVGs and order blocks
-> survive contact with cost, multiple testing, and a proper walk-forward, and
-> so far the answer is "none of them". The three bugs are documented below
-> because each one produced a *beautiful* fake result, and each is a bug that a
-> backtest cannot reveal by failing.
+> tell you which of your beliefs about POCs, VALs, FVGs, order blocks and
+> confluence stacking survive contact with cost, multiple testing, and a
+> proper walk-forward, and so far the answer is "almost none of them, and the
+> one candidate needs more data before it counts". The bugs found along the
+> way are documented below because each produced a *beautiful* fake result,
+> and each is a bug that a backtest cannot reveal by failing.
 
 ---
 
@@ -137,7 +139,76 @@ That is why an engine with no cost-regime crutch left to lean on returns
 nothing, and it is why "but it repeats" and "but it's tradable" are different
 claims.
 
-### The three runs together
+### Fourth run: does CONFLUENCE — multiple confirmations at once — help?
+
+The natural next question after "no single level touch has an edge" is
+whether *stacking* confirmations does: only take the trade when several things
+agree. `confidence.py` builds exactly that, deliberately guarding against the
+trap in the idea — "N confluences lined up" is not N hypotheses, it's up to
+2^N combinations, and searching all of them reproduces the illusion the null
+control exists to catch. The discipline used: four factors, **fixed a priori,
+not tuned against results**, summed into one integer score, tested as a single
+`confidence >= 3` vs `< 3` split — one new hypothesis per level kind, not a
+search over which factors to require.
+
+The four factors, chosen for being at least partially independent of each
+other: **stack** (other levels piled at the same price), **reject** (a
+thrust-and-rejection shape vs a clean break), **htf_with** (higher-timeframe
+trend agrees with the trade direction), and **dxy_confirm** — a synthetic
+dollar-strength basket (EURUSD+GBPUSD+USDJPY+USDCHF+USDCAD, the classic DXY
+components available in this dataset) moving the way the gold thesis needs.
+That last one is the only factor that is a genuinely *different series* from
+gold's own price, immune to the "it's just gold correlating with itself"
+critique the other three don't fully escape.
+
+**Result: it didn't work, and not narrowly.** Scored across all 1,848 cells
+this pool generates, `confidence=hi` cells averaged **t_lift = −0.41**;
+`confidence=lo` cells averaged **t_lift = +0.01**. High confidence did not
+merely fail to help — it was *systematically worse* than low confidence. Not
+a power problem either: the hi bucket had 588 scoreable cells (101–634 events
+each), plenty to see a pattern, and the pattern is unambiguous. If this result
+holds up under further scrutiny, the most likely explanation is `reject`:
+under a limit entry, "price pierced deep past the level and then reversed"
+describes an order that already had a bad fill relative to a level that was
+simply respected cleanly — the factor may be measuring stress, not quality.
+
+### The unplanned lead: `pwh` breakout continuation
+
+Something else fell out of the confidence run, and it did not come from
+confidence — it appeared in the `lo` bucket regardless. Prior-week-high
+touches **approached from below** — i.e. price has broken up through last
+week's high and is being bought for continuation — showed up as the walk-
+forward's selection in **every one of six folds**, which nothing else in four
+runs had managed. Tested properly afterward (own dedicated scan, correct
+full-market baseline, not the confluence-restricted one):
+
+```
+pwh, approached from below, LONG   OOS: 506 trades / 299 days
+   raw    +0.185R  t = 2.05
+   excess +0.174R  t = 1.94
+5 of 6 folds positive (one clearly negative: fold 2, −0.19R)
+```
+
+Randomizing the level (same births/lifetimes, arbitrary price) and re-running
+the identical restricted scan found **zero surviving cells across all 18
+fold-attempts** (3 randomizations × 6 folds) — the sharpest real-vs-null
+contrast of any result in this document.
+
+**This is a lead, not a finding, and the reason matters.** `pwh` was not
+pre-registered — it was noticed *because* the confidence run scanned 60 level
+kinds and this one kept appearing. The follow-up test above only pays the FDR
+bill for its own ~84–400 hypotheses per fold; it does not pay for the search
+that noticed `pwh` in the first place. That is a real, quantifiable double-
+dipping risk, not a technicality — reporting the t=1.94 without this caveat
+would be the same mistake this whole engine exists to catch in others. The
+honest path forward is the "held-back vault" idea already in the next-steps
+list below: this dataset has now been searched, so validating `pwh`
+specifically needs either new data as it accrues, or accepting the FDR
+correction across the full exploratory search that surfaced it (which would
+very likely not survive — the base H4 search that ran with all 8 standard
+splits already pays roughly this cost and pwh did not clear it there).
+
+### The three core runs together
 
 | Run | Cost (2017) | Real excess | Null excess | Verdict |
 |---|---|---|---|---|
@@ -385,12 +456,19 @@ Read it in this order, and stop at the first line that fails:
 Ranked by expected information per unit of work, not by appeal:
 
 ~~Raise the horizon until cost is not the dominant term.~~ **Done — that was
-the H4 run, and it settled the question rather than opening it.** With cost 4×
-smaller the search returned nothing at all, which is the answer, not a reason
-to keep pushing on this axis.
+the H4 run.** ~~Test whether confluence/confidence stacking helps.~~ **Also
+done — it made results worse, a real and useful negative result.**
 
 What is left, ranked by expected information per unit of work:
 
+0. **Get a genuine holdout for `pwh` before doing anything else with it.**
+   This dataset has now been searched enough times that any further test run
+   on the same 2016–2026 window is contaminated by having informed earlier
+   choices, `pwh` included. The correct move is to wait for new bars to
+   accrue past 2026-06-05 and score the frozen `pwh`-from-below-long spec
+   (fold 5's exact cells, in `forge/out_h4/pwh_report.json`) against THAT,
+   untouched by any run in this document. Anything scored on 2016–2026 again,
+   however cleverly split, is not a fresh test.
 1. **Change the target, not the search.** Every run so far asks the hardest
    possible question: *single-instrument directional prediction*. Two easier
    questions have far better base rates and the same machinery answers them:

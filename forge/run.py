@@ -32,6 +32,7 @@ from forge import events as E
 from forge import label as LB
 from forge import levels as L
 from forge import validate as V
+from forge.confidence import build_dollar_basket, score_events
 
 ROUND_STEPS = {"gold": (50.0, 10.0)}
 
@@ -40,7 +41,7 @@ def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
                   day_start_hour: int, sl_grid, tp_grid, horizon: int,
                   cost_mult: float, levels_override=None, verbose: bool = True,
                   entry_mode: str = "market", level_tfs=("m15", "h1"),
-                  atr_rank_window: int = 5000):
+                  atr_rank_window: int = 5000, confidence: bool = False):
     """Everything up to and including labelled events. Returns (lab, levels, m1)."""
     m1 = B.load_m1(pair, data_root)
     if years:
@@ -72,6 +73,17 @@ def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
                           atr_rank_window=atr_rank_window)
     if verbose:
         print(f"[events] {len(ev):,} level interactions", flush=True)
+
+    if confidence:
+        # The dollar basket is built on gold's own timeframe/clock so the DXY
+        # join is an exact reindex, not an asof — see confidence.py.
+        dxy = build_dollar_basket(event_tf, data_root, index=frames[event_tf].index)
+        ev = score_events(ev, dxy=dxy)
+        if verbose:
+            hi_l = int((ev["confidence_long"] >= 3).sum())
+            hi_s = int((ev["confidence_short"] >= 3).sum())
+            print(f"[confidence] scored — {hi_l:,}/{len(ev):,} long, "
+                  f"{hi_s:,}/{len(ev):,} short at confidence>=3", flush=True)
 
     lab = LB.label_grid(ev, m1, sl_atr_grid=sl_grid, tp_r_grid=tp_grid,
                         horizon_bars=horizon, pair=pair, cost_mult=cost_mult,
@@ -133,6 +145,16 @@ def main(argv=None):
     ap.add_argument("--null-runs", type=int, default=3)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", default="forge/out")
+    ap.add_argument("--confidence", action="store_true",
+                    help="also run the confidence-gated search: a small, "
+                         "pre-registered (stack/reject/htf_with/dxy_confirm) "
+                         "confluence score, threshold>=3, tested as ONE hypothesis "
+                         "per level kind rather than a combinatorial search over "
+                         "which factors to require. Runs alongside, not instead of, "
+                         "the base search — see forge/README.md's 'does confluence "
+                         "help' section for what the first gold run found "
+                         "(answer: no — high confidence scored WORSE than low)")
+    ap.add_argument("--confidence-threshold", type=int, default=3)
     args = ap.parse_args(argv)
 
     level_tfs = tuple(x.strip() for x in args.level_tfs.split(","))
@@ -144,7 +166,8 @@ def main(argv=None):
     lab, lv, m1 = build_dataset(args.pair, args.years, args.event_tf, args.data_root,
                                 args.day_start_hour, sl_grid, tp_grid, args.horizon,
                                 args.cost_mult, entry_mode=args.entry_mode,
-                                level_tfs=level_tfs, atr_rank_window=args.atr_rank_window)
+                                level_tfs=level_tfs, atr_rank_window=args.atr_rank_window,
+                                confidence=args.confidence)
 
     inv = summarize_inventory(lab)
     inv.to_csv(out_dir / f"{args.pair}_inventory.csv")
@@ -178,6 +201,31 @@ def main(argv=None):
     null_x = np.array([n["oos"].get("mean_excess", np.nan) for n in nulls], dtype=float)
     null_ts = np.array([n["oos"].get("t_excess", np.nan) for n in nulls], dtype=float)
 
+    conf_real = conf_nulls = None
+    if args.confidence:
+        print("\n[confidence walk-forward] REAL levels "
+              f"(threshold>={args.confidence_threshold}, ~40x smaller hypothesis pool)",
+              flush=True)
+        conf_real = V.confidence_walk_forward(lab, n_folds=args.folds, q=args.fdr_q,
+                                              top_k=args.top_k,
+                                              threshold=args.confidence_threshold)
+        conf_nulls = []
+        rng2 = np.random.default_rng(args.seed + 1000)
+        for r in range(args.null_runs):
+            print(f"[confidence walk-forward] NULL run {r + 1}/{args.null_runs}", flush=True)
+            lv_null = D.randomize_levels(lv, m1, rng2, args.day_start_hour)
+            lab_n, _, _ = build_dataset(args.pair, args.years, args.event_tf, args.data_root,
+                                        args.day_start_hour, sl_grid, tp_grid, args.horizon,
+                                        args.cost_mult, levels_override=lv_null, verbose=False,
+                                        entry_mode=args.entry_mode, level_tfs=level_tfs,
+                                        atr_rank_window=args.atr_rank_window, confidence=True)
+            res = V.confidence_walk_forward(lab_n, n_folds=args.folds, q=args.fdr_q,
+                                            top_k=args.top_k,
+                                            threshold=args.confidence_threshold, verbose=False)
+            conf_nulls.append(res)
+            print(f"    null OOS: {res['oos'].get('trades', 0)} trades, "
+                  f"excess {res['oos'].get('mean_excess', float('nan')):+.4f}R", flush=True)
+
     report = {
         "pair": args.pair,
         "config": vars(args),
@@ -189,6 +237,16 @@ def main(argv=None):
                  "oos_mean_excess": null_x.tolist(), "oos_t_excess": null_ts.tolist()},
         "verdict": D.null_reference(real["oos"].get("t_excess", np.nan), null_ts),
     }
+    if args.confidence:
+        conf_null_ts = np.array([n["oos"].get("t_excess", np.nan) for n in conf_nulls],
+                                dtype=float)
+        report["confidence"] = {
+            "threshold": args.confidence_threshold,
+            "real": {"folds": conf_real["folds"], "oos": conf_real["oos"],
+                     "specs": conf_real["specs"]},
+            "null": {"runs": [{"oos": n["oos"]} for n in conf_nulls]},
+            "verdict": D.null_reference(conf_real["oos"].get("t_excess", np.nan), conf_null_ts),
+        }
     (out_dir / f"{args.pair}_report.json").write_text(json.dumps(report, indent=2, default=str))
     if len(real["trades"]):
         real["trades"].to_csv(out_dir / f"{args.pair}_oos_trades.csv", index=False)
@@ -208,6 +266,20 @@ def main(argv=None):
         print(f"   → real excess t must clear the null's best to mean anything: "
               f"{o.get('t_excess', float('nan')):.2f} vs {np.nanmax(null_ts):.2f}")
     print("=" * 78)
+
+    if args.confidence:
+        co = conf_real["oos"]
+        print(f"\nCONFIDENCE-GATED (threshold>={args.confidence_threshold})  "
+              f"OOS: {co.get('trades', 0)} trades over {co.get('days', 0)} days")
+        print(f"   raw    mean {co.get('mean_r', float('nan')):+.4f}R  "
+              f"t={co.get('t', float('nan')):.2f}")
+        print(f"   excess mean {co.get('mean_excess', float('nan')):+.4f}R  "
+              f"t={co.get('t_excess', float('nan')):.2f}")
+        cnt = np.array([n["oos"].get("t_excess", np.nan) for n in conf_nulls], dtype=float)
+        if len(cnt):
+            print(f"   NULL (randomized, {len(cnt)} runs): best t_excess={np.nanmax(cnt):.2f}")
+        print("=" * 78)
+
     print(f"\nwrote {out_dir / f'{args.pair}_report.json'}")
     return report
 

@@ -65,7 +65,18 @@ def tercile_cuts(df: pd.DataFrame, cols=("atr_pct", "wick_beyond_atr", "day_rang
 
 
 def _tercile(series: pd.Series, cuts: tuple[float, float]) -> pd.Series:
+    """Bucket into lo/mid/hi at frozen train cut points.
+
+    On a thin or degenerate training window the 1/3 and 2/3 quantiles can
+    coincide (e.g. a feature with a spike at one value) and `pd.cut` requires
+    strictly increasing edges — rather than let a small `--years`/`--folds`
+    combination crash the whole run over one feature's cut points, a
+    degenerate split collapses to a single "all" bucket (no discrimination,
+    which is the honest result of there being nothing to discriminate on).
+    """
     lo, hi = cuts
+    if not (lo < hi):
+        return pd.Series(["all"] * len(series), index=series.index, dtype=object)
     return pd.cut(series, [-np.inf, lo, hi, np.inf], labels=["lo", "mid", "hi"])
 
 
@@ -108,18 +119,38 @@ def _cluster_stats(r: np.ndarray, day_codes: np.ndarray) -> tuple[float, float, 
 
 
 def scan_cells(lab: pd.DataFrame, splits=SPLITS, min_n: int = MIN_N,
-               min_days: int = MIN_DAYS, key: str = "kind") -> pd.DataFrame:
+               min_days: int = MIN_DAYS, key: str = "kind",
+               directions: tuple[int, ...] = (1, -1),
+               only_keys: set | None = None) -> pd.DataFrame:
     """Score every (key × side × direction × split-value × barrier) cell.
 
     Returns one row per cell with n, n_days, mean R, cluster-robust SE, t, and
     the pooled-baseline lift. No selection is applied here — selection is the
     caller's job and has to be done knowing how many cells were examined.
+
+    `directions` restricts which of long/short get scanned. Exists for
+    `confidence_cells` below: a DIRECTION-SPECIFIC split column (the confidence
+    score computed for a long thesis is not the same number as for a short
+    thesis at the same event) has no meaningful reading against the OTHER
+    direction's R, and scanning it anyway would silently double the confidence
+    hypothesis count with cells that pair a long-confidence bucket against a
+    short outcome.
+
+    `only_keys` restricts which values of `key` get EMITTED as cells, without
+    restricting what the baseline is computed from — the baseline (`base`
+    below) is always the full `lab` passed in, so a targeted follow-up on one
+    level kind still asks "does this beat the market", not "does this beat
+    other trades on this same kind", which would be a near-tautology. This
+    is what makes it safe to hand-run a single-kind confirmatory check after
+    the fact instead of re-deriving the same 28,000-hypothesis pool.
     """
     day_codes, _ = pd.factorize(lab["day"])
     lab = lab.assign(_day_code=day_codes)
 
     # Pooled baseline per (barrier cell, direction) — what a no-signal trade in
-    # the same grid cell earned over the same period.
+    # the same grid cell earned over the same period. Computed from the FULL
+    # frame regardless of `only_keys`, so restricting which cells get emitted
+    # never changes what "beating the market" means.
     base: dict[tuple, float] = {}
     for (sl, tp), grp in lab.groupby(["sl_atr", "tp_r"], sort=False):
         base[(sl, tp, 1)] = float(grp["r_long"].mean())
@@ -130,10 +161,14 @@ def scan_cells(lab: pd.DataFrame, splits=SPLITS, min_n: int = MIN_N,
         gcols = [key, "side", split, "sl_atr", "tp_r"]
         for vals, grp in lab.groupby(gcols, sort=False, observed=True):
             k, side, sval, sl, tp = vals
+            if only_keys is not None and k not in only_keys:
+                continue
             if len(grp) < min_n:
                 continue
             codes = pd.factorize(grp["_day_code"])[0]
             for direction, col in ((1, "r_long"), (-1, "r_short")):
+                if direction not in directions:
+                    continue
                 r = grp[col].to_numpy(dtype=float)
                 r = r[np.isfinite(r)]
                 if len(r) < min_n:
@@ -157,6 +192,53 @@ def scan_cells(lab: pd.DataFrame, splits=SPLITS, min_n: int = MIN_N,
                     win_rate=float((r > 0).mean()),
                 ))
     return pd.DataFrame(rows)
+
+
+# Fixed a priori, NOT tuned against any result: "at least 3 of the 4
+# pre-registered factors fire". Sweeping this (2 vs 3 vs 4) per level kind
+# would turn one hypothesis back into several and is exactly the trap this
+# module's own docstring warns about — the threshold is a design decision
+# made once, here, before looking at what it does to the numbers.
+DEFAULT_CONFIDENCE_THRESHOLD = 3
+
+
+def confidence_cells(lab: pd.DataFrame, threshold: int = DEFAULT_CONFIDENCE_THRESHOLD,
+                     min_n: int = MIN_N, min_days: int = MIN_DAYS,
+                     key: str = "kind") -> pd.DataFrame:
+    """Score `confidence_{long,short} >= threshold` as its OWN small search —
+    deliberately kept separate from `scan_cells`'s 8-way SPLITS pool rather
+    than added as a 9th split.
+
+    Two reasons for the separation, not one:
+
+      1. Mixing it in would silently double the existing hypothesis count
+         (every kind × side × barrier cell gets tested against confidence too)
+         for a factor that was added for a specific reason — cheapening the
+         FDR bar paid by the original 8 splits.
+      2. A DIRECTION-SPECIFIC split cannot share a single column across both
+         directions the way every other split here does (see `scan_cells`'s
+         `directions` param) — it needs its own bucketing per direction, so it
+         cannot just be appended to `SPLITS` without special-casing it anyway.
+
+    This keeps `key × direction × barrier` as the ENTIRE hypothesis space for
+    the confidence gate — for gold's 60 kinds, 2 directions, 6 barrier cells,
+    that's 720, not the ~30,000 the base search pays. A real effect that is
+    genuinely about confluence should be far easier to see through this much
+    smaller multiple-testing bill; if it still isn't visible, that is a strong
+    result about the confidence factors, not an artefact of too little power.
+    """
+    rows = []
+    for direction, ccol in ((1, "confidence_long"), (-1, "confidence_short")):
+        if ccol not in lab.columns:
+            continue
+        tagged = lab.assign(_conf_t=np.where(lab[ccol] >= threshold, "hi", "lo"))
+        cells = scan_cells(tagged, splits=("_conf_t",), min_n=min_n,
+                           min_days=min_days, key=key, directions=(direction,))
+        rows.append(cells)
+    out = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
+    if len(out):
+        out["threshold"] = threshold
+    return out
 
 
 def _norm_sf(t: np.ndarray) -> np.ndarray:
