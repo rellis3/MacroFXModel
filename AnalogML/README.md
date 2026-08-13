@@ -573,6 +573,79 @@ touches included, has only ever been tested on H1 — flags/pennants may
 behave differently on H4/D1; genuinely untested, not a prediction either
 way).
 
+## Lifecycle disaggregation — does touch/bounce count predict the outcome?
+
+The owner's fuller shape-prediction ask wants every shape's DURING-formation
+quality analyzed against its own AFTER-outcome, not just a pooled average —
+specifically: does the NUMBER of touches/bounces predict breakout direction
+or magnitude? `pylego/pattern_lifecycle.py` (new) regenerates
+`js/patternEngine.js`'s `compute_acceptance`/`compute_confidence` as a
+shared brick any detector can plug into (does a breakout hold, and a 0-100
+formation-quality score blending each detector's own geometry sub-scores
+with volatility-compression-during-formation and breakout strength) — built
+as Tier-1 infrastructure so future detectors (head & shoulders,
+triangles/wedges/channels) get this scoring for free instead of each
+carrying a copy. Not yet wired into `flag_pennant.py`/`motif_touch.py`'s own
+output (both would need `raw_scores` fields added first).
+
+Then the specific cross-tab was run directly, pooled across all 26 pairs,
+for both existing detectors (touches, flags/pennants): touch-count,
+formation duration, and formation volatility (bar range vs local ATR)
+against real R-outcome via `pylego.barrier_race` (sl=20p, tp_r=1.5, cost on
+— same frozen grid every AnalogML check uses).
+
+**Touches: a real, IS/OOS-confirmed finding — the edge concentrates in
+doubles, not triples.**
+
+| n_touches | n (pooled) | PF | avg R |
+|---|---:|---:|---:|
+| 2 (double top/bottom) | 21,623 | 1.24 | 0.133 |
+| 3 (triple top/bottom) | 6,800 | 0.98 | -0.011 |
+
+Checked against a genuine calendar IS/OOS split (cutoff 2023-01-01, not
+just the pooled full-history number — the standout cell, so it earned the
+extra check):
+
+| n_touches | split | n | PF | avg R |
+|---|---|---:|---:|---:|
+| 2 | IS (pre-2023) | 14,646 | 1.25 | 0.135 |
+| 2 | OOS (2023+) | 6,977 | 1.23 | 0.130 |
+| 3 | IS (pre-2023) | 4,594 | 1.00 | -0.003 |
+| 3 | OOS (2023+) | 2,206 | 0.95 | -0.029 |
+
+Minimal IS→OOS decay on doubles, well past the ≥30-OOS-trade bar, and
+triples stay flat-to-negative on both sides — this is not a
+subset-mining artifact, it survives the exact falsification test CLAUDE.md
+asks for ("survivors must beat chance AND be IS-consistent"). This
+sharpens, doesn't overturn, the touches motif's existing "promising, not
+yet validated" status from the section above — the portfolio-level test and
+a second full bug-hunt pass it was already missing are still missing — but
+it's a real, useful refinement that `motif_track.py`'s existing
+per-(n_touches, is_top)-category confidence design already anticipated,
+even though this is the first time the pooled cross-pair number was
+actually computed and checked OOS.
+
+**Also checked, exploratory only, NOT yet run against a calendar split —
+flagging as leads, not results** (CLAUDE.md's multiple-testing rule: roughly
+20 cells were sliced across both families this pass, so a couple of
+standouts by chance alone would not be surprising; these two are noted
+because they're large-n and monotonic, not because they're proven):
+shorter-duration touch formations (15-27 bars, PF=1.30) outperform longer
+ones (41-127 bars, PF=1.03); formation volatility (candle range vs local
+ATR) showed no meaningful effect on touches (PF 1.15/1.18/1.19 across
+terciles — flat).
+
+**Flags/pennants: slicing did not rescue the null.** Touch-count buckets
+from 5 (the minimum) through 9 stay in the same 0.91-1.00 PF band the
+pooled null already showed (real sample sizes, n=532-11,096); buckets above
+9 touches get too sparse to trust (n<40 — one cell is literally n=8 showing
+PF=0.20, noise not signal, named here so it isn't mistaken for something
+real later). Duration and formation-volatility terciles were flat (PF
+0.92-0.94 throughout). Retrace depth showed a mild monotonic lean (shallow
+retrace PF=0.89 → deep retrace PF=0.97) but every cell stayed below 1.0 — a
+lead worth checking if this family is ever revisited, not a rescue of the
+current null.
+
 ## Honesty notes (read before trusting a number here)
 
 - **Neighbour pool contained one trivial near-duplicate until 2026-08-12 —
