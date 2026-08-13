@@ -695,6 +695,46 @@ retrace PF=0.89 → deep retrace PF=0.97) but every cell stayed below 1.0 — a
 lead worth checking if this family is ever revisited, not a rescue of the
 current null.
 
+## Flags/pennants on H4 — same null, but a real timeframe-scaling trap caught first
+
+Every check above was H1. The owner's reference images specifically showed
+H4/H8, so tested `flag_scan.py --timeframe 4h` the same way — same frozen
+params, only the bar timeframe changes (`pattern_scan.load_bars` resamples
+the same M1 parquet to whatever timeframe is asked for).
+
+**First read looked like real signal, and would have been reported as one
+if not checked further:** full 26-pair sweep, fixed sl=20p tp_r=1.5 cost on:
+20/26 pairs (76.9%) signal PF>1.0, pooled IS PF=1.10 → OOS PF=1.07. But the
+MECHANICAL BASELINE was elevated too (gbpjpy baseline alone: PF=1.23 with
+zero directional signal at all) — only 15/26 pairs (57.7%) actually beat
+that baseline, barely above the 50% coin-flip floor. **The cause: a flat
+20-pip stop is a much tighter risk unit relative to an H4 bar's typical
+range than an H1 bar's** — tight stops get touched fast in both directions,
+but confirm-bar momentum carries price past them often enough that BOTH
+signal and baseline look artificially good. This is exactly the
+timeframe-normalization problem the owner's original ask named directly
+("MAE/TP need to be normalized... so this shape on H4 and the same shape on
+M15 are comparable, not both expressed in raw pips") — caught here as a live
+example of why that requirement exists, not just a design nicety.
+
+Stripped the artifact out with the same measured-move stop/target used for
+the H1 checks (0.5x/1.0x the pole's own height — proportional to the
+pattern, not a fixed pip count, so it scales correctly across timeframes by
+construction):
+
+| | n | PF | WR | avg R |
+|---|---:|---:|---:|---:|
+| SIGNAL (measured-move) | 4,337 | 1.02 | 34.4% | 0.016 |
+| BASELINE (measured-move) | 8,674 | 1.00 | 33.9% | 0.002 |
+| SIGNAL, IS (pre-2023) | 2,980 | 1.02 | 34.2% | 0.010 |
+| SIGNAL, OOS (2023+) | 1,357 | 1.04 | 34.8% | 0.028 |
+
+Flat on both sides of a real calendar split, both well past the ≥30-OOS-trade
+bar. **Flags/pennants on H4: also null, same conclusion as H1**, once tested
+with a risk unit that doesn't silently favor one timeframe's bar geometry
+over another. H8 and Bitcoin (the other specifics in the owner's reference
+images) remain untested — this repo's data is FX+gold only.
+
 ## `head_shoulders_scan.py` / `triangle_channel_scan.py` — two more families, both null
 
 The second and third additional shape families beyond touches (flags/
