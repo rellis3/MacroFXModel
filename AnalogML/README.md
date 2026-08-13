@@ -603,10 +603,36 @@ difference between 2- and 3-touch motifs, not noise, and independent
 confirmation that touch-count is a meaningful axis (matching the original
 "3rd touch" intuition).
 
-Not yet done: a portfolio-level test of the adaptive sizing (does the
-avg-R gain survive as a stacked account the way the entry signal's did?),
-and a proper percentile ablation beyond the one 6-cell sweep the chosen
-(50, 50) cell came from.
+**Portfolio-level test (2026-08-13, `AnalogML/motif_adaptive_portfolio_sim.py`,
+reusing `portfolio_sim.py`'s account simulator verbatim, same 28,223 motifs
+raced both ways):** a 3-pair smoke test looked like a clean win (adaptive
+Sharpe 1.68 vs frozen 1.31, max DD −18.8% vs −26.3%, adaptive using MORE
+capital not less) — **the full 26-pair confirmation walked that back.**
+
+| | n taken | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|---:|
+| Adaptive sizing | 11,829 | 1.86 | −68.6% | 3.6% |
+| Frozen grid (same motifs) | 17,688 | 1.58 | −54.5% | 2.7% |
+
+Sharpe genuinely improves (1.86 vs 1.58) — but **max drawdown is materially
+WORSE, not better** (−68.6% vs −54.5%), at higher capital utilization.
+Adaptive trades typically run wider SL/TP (36–49p vs the frozen 20p/30p),
+hold longer, overlap more, and hit the 5% concurrent-risk cap far more often
+(16,394/28,223 signals skipped vs 10,535/28,223) — fewer trades taken, more
+risk concentrated in the ones that fit. **This is a real trade-off, not a
+decisive win**: higher risk-adjusted return, but a materially deeper real
+drawdown — the opposite of the encouraging small-sample read. The
+diversification effect itself still holds regardless of sizing method
+(matched-utilization single pairs: audcad −99.9% max DD, audchf −88.6%,
+audjpy −86.9%, all worse than either portfolio) — the portfolio structure is
+doing real work, but adaptive sizing is not an unambiguous upgrade over the
+frozen grid at the account level, only at the isolated trade level.
+
+Not yet done: a proper percentile ablation beyond the one 6-cell sweep the
+chosen (50, 50) cell came from — worth revisiting given the portfolio-level
+drawdown cost just found; a tighter SL percentile (e.g. p25/p35 instead of
+p50) may trade some of the avg-R gain for materially better drawdown, and
+should be checked before this replaces the frozen grid as the default.
 
 **Dashboard status, checked directly against the merged code (2026-08-12):**
 `today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
