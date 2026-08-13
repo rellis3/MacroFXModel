@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from barrier_race import Entry, race_grid, race_trailing, race_trades
+from barrier_race import Entry, VariableEntry, excursion, race_grid, race_trades, race_trades_variable, race_trailing
 
 
 def _bars(opens, highs, lows, closes):
@@ -218,6 +218,100 @@ def test_race_trades_timeout_exit_is_last_bar():
     assert t['outcome'] == 'timeout'
     assert t['exit_idx'] == 3 and t['exit_price'] == 101.5   # marks to last close
     assert abs(t['r'] - 0.15) < 1e-9
+
+
+# ── race_trades_variable ─────────────────────────────────────────────────
+
+def test_race_trades_variable_matches_race_trades_same_sl_tp():
+    # Two entries, each given the SAME sl/tp_dist race_trades already proved
+    # correct above -- race_trades_variable must land on identical outcomes,
+    # proving the per-entry path reuses the same walker, not a second copy.
+    bars = _bars(
+        opens=[100, 101, 104, 108, 106],
+        highs=[100, 102, 105, 110, 107],
+        lows=[100, 100, 103, 106, 104],
+        closes=[100, 101, 104, 108, 106],
+    )
+    win = VariableEntry(idx=0, direction=1, sl=5.0, tp_dist=5.0)
+    loss = VariableEntry(idx=0, direction=-1, sl=5.0, tp_dist=5.0)
+    trades = race_trades_variable(bars, [win, loss], max_bars_ahead=10, min_bars_ahead=1)
+    assert len(trades) == 2
+    assert trades[0]['outcome'] == 'tp' and abs(trades[0]['r'] - 1.0) < 1e-9
+    assert trades[1]['outcome'] == 'sl' and trades[1]['r'] == -1.0
+
+
+def test_race_trades_variable_different_sl_tp_per_entry():
+    # Two entries at the same bar with DIFFERENT risk -- the whole point of
+    # this function. A wide sl/tp never gets touched (times out); a tight
+    # one hits its tp first. Must resolve independently per-entry.
+    bars = _bars(
+        opens=[100, 103, 103, 103],
+        highs=[100, 104, 103.5, 103.5],
+        lows=[100, 102, 102.5, 102.5],
+        closes=[100, 103, 103, 103],
+    )
+    tight = VariableEntry(idx=0, direction=1, sl=2.0, tp_dist=2.0)   # tp=102, hit bar1 (high 104)
+    wide = VariableEntry(idx=0, direction=1, sl=20.0, tp_dist=20.0)  # never touched -> timeout
+    trades = race_trades_variable(bars, [tight, wide], max_bars_ahead=4, min_bars_ahead=1)
+    assert trades[0]['outcome'] == 'tp' and abs(trades[0]['r'] - 1.0) < 1e-9
+    assert trades[1]['outcome'] == 'timeout'
+
+
+def test_race_trades_variable_skips_non_positive_sl():
+    bars = _bars(opens=[100, 101], highs=[100, 102], lows=[100, 100], closes=[100, 101])
+    bad = VariableEntry(idx=0, direction=1, sl=0.0, tp_dist=5.0)
+    trades = race_trades_variable(bars, [bad], max_bars_ahead=10, min_bars_ahead=1)
+    assert trades == []
+
+
+def test_race_trades_variable_cost_drags_by_own_sl():
+    bars = _bars(
+        opens=[100, 101, 105],
+        highs=[100, 102, 106],
+        lows=[100, 100, 104],
+        closes=[100, 101, 105],
+    )
+    e = VariableEntry(idx=0, direction=1, sl=5.0, tp_dist=5.0)
+    no_cost = race_trades_variable(bars, [e], max_bars_ahead=10, min_bars_ahead=1)[0]
+    with_cost = race_trades_variable(bars, [e], max_bars_ahead=10, min_bars_ahead=1, cost_price=1.0)[0]
+    assert abs((no_cost['r'] - with_cost['r']) - 0.2) < 1e-9  # 1.0/5.0
+
+
+# ── excursion ────────────────────────────────────────────────────────────
+
+def test_excursion_long_reports_raw_mae_mfe_no_stop():
+    # Long from 100: window low 97 (mae=3), window high 108 (mfe=8) -- no
+    # stop/target caps this, unlike race_trades's graded outcome.
+    bars = _bars(
+        opens=[100, 99, 97, 103, 108],
+        highs=[100, 100, 98, 105, 109],
+        lows=[100, 97, 96, 102, 107],
+        closes=[100, 98, 97, 104, 108],
+    )
+    entries = [Entry(idx=0, direction=1)]
+    res = excursion(bars, entries, max_bars_ahead=10, min_bars_ahead=1)
+    assert len(res) == 1
+    assert abs(res[0]['mae'] - 4.0) < 1e-9   # entry 100 - window low 96
+    assert abs(res[0]['mfe'] - 9.0) < 1e-9   # window high 109 - entry 100
+
+
+def test_excursion_short_mirrors_direction():
+    bars = _bars(
+        opens=[100, 105, 95],
+        highs=[100, 106, 96],
+        lows=[100, 104, 94],
+        closes=[100, 105, 95],
+    )
+    entries = [Entry(idx=0, direction=-1)]
+    res = excursion(bars, entries, max_bars_ahead=10, min_bars_ahead=1)
+    assert abs(res[0]['mae'] - 6.0) < 1e-9   # window high 106 - entry 100
+    assert abs(res[0]['mfe'] - 6.0) < 1e-9   # entry 100 - window low 94
+
+
+def test_excursion_respects_min_bars_ahead():
+    bars = _bars(opens=[100], highs=[100], lows=[100], closes=[100])
+    entries = [Entry(idx=0, direction=1)]
+    assert excursion(bars, entries, max_bars_ahead=10, min_bars_ahead=5) == []
 
 
 if __name__ == '__main__':
