@@ -634,6 +634,55 @@ drawdown cost just found; a tighter SL percentile (e.g. p25/p35 instead of
 p50) may trade some of the avg-R gain for materially better drawdown, and
 should be checked before this replaces the frozen grid as the default.
 
+**True multi-timeframe agreement analysis (2026-08-13,
+`AnalogML/motif_multi_tf.py`)** — a question open since the original scoping
+conversation ("if higher timeframes have a bullish pennant and lower
+timeframes have bearish, what happens") and confirmed absent everywhere:
+`js/patternEngine.js`'s `annotateHtfAlignment` only checks a single
+next-higher timeframe, stores a boolean, never aggregates it into any stat;
+nothing in `motif_touch.py`/`motif_scan.py`/`motif_walkforward.py` looks at
+any timeframe but its own. Detects the SAME touch-motif on H1 (base) and
+independently on 4H and 1D, buckets each H1 entry by whether the most
+recently CONFIRMED HTF motif (known by that H1 entry's own confirm time,
+within a lookback window) agrees, conflicts, or is absent. **A real
+lookahead bug caught before running anything**: a resampled bar is labeled
+by its START, so cutting off against that timestamp directly could let a
+still-forming HTF bar's high/low/close leak into a decision made mid-bar —
+fixed by deriving each HTF bar's actual END time (start + the index's own
+regular bar spacing) and cutting off against that instead.
+
+**A real reversal between the small and full sample — a good example of why
+the sweep ladder exists.** 2-pair smoke test suggested 4H mattered (AGREE
+PF=1.29 vs CONFLICT PF=1.19, 7/11 folds) and 1D didn't (PF=1.20 vs 1.25,
+reversed, only 4/11 folds). **The full 26-pair confirmation found the
+OPPOSITE:**
+
+| HTF | bucket | n | PF | avg R |
+|---|---|---:|---:|---:|
+| 4H | AGREE | 3,605 | 1.19 | +0.105 |
+| 4H | CONFLICT | 3,172 | 1.18 | +0.100 |
+| 1D | AGREE | 4,232 | **1.24** | **+0.133** |
+| 1D | CONFLICT | 4,168 | **1.09** | **+0.055** |
+
+**4H shows no meaningful separation** (PF 1.19 vs 1.18, a wash) — the
+2-pair read was noise. **1D shows a real, sizeable gap**: when the daily
+motif conflicts with the H1 signal, avg R drops to less than half of when
+it agrees (+0.055 vs +0.133), fold-consistent in 7/11 years. CONFLICT trades
+stay net positive (not reversed to a loser) — this reads as "daily HTF
+agreement adds real conviction, daily HTF conflict is a real reason to
+size down or skip," not "daily HTF conflict flips the trade." The largest
+bucket by far in both splits is NONE (no HTF motif confirmed recently
+enough — ~76% of entries at 4H, ~70% at 1D) — most of the time there's
+simply no fresh HTF read available, a real constraint on how often this
+filter could apply live, not a flaw in the method.
+
+Not yet done: an in-progress/provisional HTF read (matching
+`motif_track.py`'s live "what's forming" diagnostic, rather than only
+counting already-CONFIRMED HTF motifs) is a real next variant — and, if the
+1D-conflict finding holds up further, feeding it into `motif_adaptive.py`'s
+position sizing (smaller size or skip on 1D conflict) is the natural
+integration point.
+
 **Dashboard status, checked directly against the merged code (2026-08-12):**
 `today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
 commit `181e1b50`) call `/api/analogml/motif-state` and
