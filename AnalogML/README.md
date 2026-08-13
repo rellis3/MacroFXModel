@@ -729,6 +729,34 @@ sizing (35,35) COMBINED with HTF-conflict sizing together — deliberately not
 done together yet, to keep this build's discipline of one new variable at a
 time.
 
+**Telegram alerts (2026-08-13, `AnalogML/motif_track.py --telegram`)** — the
+"leave it as a signal, alert when a trade is building" decision: not a live
+bot, not automated execution, a human-facing alert with SL/TP markings to
+manually track against. Extracted `pylego/telegram.py` as a genuine shared
+brick first — `send_telegram`/`load_tg_config` had been copy-pasted
+near-identically across 7+ bots (`RegimeV2/V4/V7`, `DynAnchorBot`,
+`YieldSpreadBot`, `oi_bot`, `bot/main.py`) with no `pylego/` brick behind
+them despite CLAUDE.md's own stated threshold ("two copies already exist" —
+this would have been an 8th); the existing 7 are NOT migrated as part of
+this (separate follow-up). Reads the SHARED dashboard `tg_config` (the same
+bot/chat every other bot's alerts already use) via `pylego.kv.KvClient` —
+no new credentials needed unless a dedicated channel is wanted later.
+
+One alert per newly-confirmed motif (the existing per-pair watermark already
+guarantees "only genuinely new," never a backfill-on-first-run flood — same
+mechanism that caught the 28,524-signal bug earlier in this build). The
+alert shows the TRACKED frozen-grid entry/SL/TP (unchanged — the record
+every number in this file is judged against never silently drifts) *plus*
+two separately-validated, FROZEN sizing reads for manual execution: the
+adaptive per-category ATR-scaled SL/TP (the validated (35,35) constants,
+hardcoded — not recomputed live, matching "stop tuning, let it run") and the
+1D HTF agree/conflict state with a size-down note on conflict. Neither
+adaptive number is APPLIED to the tracked trade itself, only shown — the
+combined-sizing test flagged just above stays undone for the tracked signal,
+this is purely an informational overlay on top of it. Opt-in via
+`--telegram` (off by default), and automatically disabled under `--as-of`
+even if passed, so a replay/testing run can never fire a live alert.
+
 **Dashboard status, checked directly against the merged code (2026-08-12):**
 `today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
 commit `181e1b50`) call `/api/analogml/motif-state` and
