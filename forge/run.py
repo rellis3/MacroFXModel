@@ -39,7 +39,8 @@ ROUND_STEPS = {"gold": (50.0, 10.0)}
 def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
                   day_start_hour: int, sl_grid, tp_grid, horizon: int,
                   cost_mult: float, levels_override=None, verbose: bool = True,
-                  entry_mode: str = "market"):
+                  entry_mode: str = "market", level_tfs=("m15", "h1"),
+                  atr_rank_window: int = 5000):
     """Everything up to and including labelled events. Returns (lab, levels, m1)."""
     m1 = B.load_m1(pair, data_root)
     if years:
@@ -50,11 +51,11 @@ def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
               f"{m1.index[-1]:%Y-%m-%d}  price {m1['close'].iloc[0]:.0f} → "
               f"{m1['close'].iloc[-1]:.0f}", flush=True)
 
-    tfs = sorted({event_tf, "m15", "h1", "h4"})
+    tfs = sorted({event_tf, "h1", "h4", *level_tfs})
     frames = {tf: B.frame(m1, tf, day_start_hour=day_start_hour) for tf in tfs}
 
     if levels_override is None:
-        lv = L.build_levels(m1, {k: frames[k] for k in ("m15", "h1")},
+        lv = L.build_levels(m1, {k: frames[k] for k in level_tfs},
                             day_start_hour=day_start_hour,
                             round_steps=ROUND_STEPS.get(pair, ()))
     else:
@@ -67,7 +68,8 @@ def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
     # the bar before — the last moment the order could have been placed.
     ev = E.extract_events(frames[event_tf], lv,
                           trend_frames={"h1": frames["h1"], "h4": frames["h4"]},
-                          feature_offset=(-1 if entry_mode == "limit" else 0))
+                          feature_offset=(-1 if entry_mode == "limit" else 0),
+                          atr_rank_window=atr_rank_window)
     if verbose:
         print(f"[events] {len(ev):,} level interactions", flush=True)
 
@@ -101,6 +103,15 @@ def main(argv=None):
     ap.add_argument("--pair", default="gold")
     ap.add_argument("--years", type=float, default=10.0, help="0 = all history")
     ap.add_argument("--event-tf", default="m15")
+    ap.add_argument("--level-tfs", default="m15,h1",
+                    help="timeframes the FVG / order-block / swing levels are built "
+                         "from. Should track --event-tf: M15 events off M15/H1 "
+                         "structure, H4 events off H1/H4")
+    ap.add_argument("--atr-rank-window", type=int, default=5000,
+                    help="bars of history the vol-regime percentile ranks against. "
+                         "MUST be scaled to the event timeframe — 5000 bars is "
+                         "~2.5 months of M15 but ~3.4 YEARS of H4, which would NaN "
+                         "out most of the sample")
     ap.add_argument("--data-root", default="VolRangeForecaster/data/m1")
     ap.add_argument("--day-start-hour", type=int, default=0,
                     help="UTC hour the trading day rolls (0=UTC midnight, 22=NY close)")
@@ -124,6 +135,7 @@ def main(argv=None):
     ap.add_argument("--out", default="forge/out")
     args = ap.parse_args(argv)
 
+    level_tfs = tuple(x.strip() for x in args.level_tfs.split(","))
     sl_grid = tuple(float(x) for x in args.sl_atr.split(","))
     tp_grid = tuple(float(x) for x in args.tp_r.split(","))
     out_dir = Path(args.out)
@@ -131,7 +143,8 @@ def main(argv=None):
 
     lab, lv, m1 = build_dataset(args.pair, args.years, args.event_tf, args.data_root,
                                 args.day_start_hour, sl_grid, tp_grid, args.horizon,
-                                args.cost_mult, entry_mode=args.entry_mode)
+                                args.cost_mult, entry_mode=args.entry_mode,
+                                level_tfs=level_tfs, atr_rank_window=args.atr_rank_window)
 
     inv = summarize_inventory(lab)
     inv.to_csv(out_dir / f"{args.pair}_inventory.csv")
@@ -151,7 +164,8 @@ def main(argv=None):
         lab_n, _, _ = build_dataset(args.pair, args.years, args.event_tf, args.data_root,
                                     args.day_start_hour, sl_grid, tp_grid, args.horizon,
                                     args.cost_mult, levels_override=lv_null, verbose=False,
-                                    entry_mode=args.entry_mode)
+                                    entry_mode=args.entry_mode, level_tfs=level_tfs,
+                                    atr_rank_window=args.atr_rank_window)
         res = V.walk_forward(lab_n, n_folds=args.folds, q=args.fdr_q,
                              top_k=args.top_k, select_stat=args.select_stat,
                              verbose=False)

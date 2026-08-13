@@ -98,8 +98,62 @@ cells) with `atr_pct_t=hi`, `touch_n=1`, `wick_t=lo` — i.e. *fresh, untouched,
 high-volatility zones approached quietly*. A sensible-sounding setup that a
 random line satisfies just as profitably.
 
-**The honest conclusion:** on gold M15, with this vocabulary, this event
-definition and both trade models, there is no level-conditional edge. The next
+### Third run: H4, where cost is no longer the dominant term — and the cleanest answer
+
+The obvious objection to both runs above is that they were strangled by cost. So
+the third run moves everything up a timeframe: H4 events, levels built from
+H1/H4 structure, a 5-day horizon, limit entries. Cost falls **4×** — from 0.353R
+to 0.086R at the worst point of the sample (2017).
+
+It worked. The unconditional numbers improved dramatically — mean R at a `pdh`
+touch went from −0.25 to **−0.018**, i.e. a level touch at H4 is nearly a fair
+coin after cost, exactly as it should be.
+
+And then the search found **nothing at all**:
+
+```
+fold 0:  17,220 hypotheses tested, best train t_lift = 3.80, 0 survived FDR
+fold 1:  20,076 hypotheses tested, best train t_lift = 3.88, 0 survived FDR
+fold 2:  22,716 hypotheses tested, best train t_lift = 3.99, 0 survived FDR
+fold 3:  25,224 hypotheses tested, best train t_lift = 3.81, 0 survived FDR
+fold 4:  26,880 hypotheses tested, best train t_lift = 4.27, 0 survived FDR
+fold 5:  27,984 hypotheses tested, best train t_lift = 4.40, 0 survived FDR
+```
+
+Zero cells cleared Benjamini–Hochberg in any fold. Two of the three null runs
+produced zero as well. And the reason is worth writing out, because it is the
+whole thesis of this engine in three numbers:
+
+| | t |
+|---|---|
+| Best cell actually found (m ≈ 28,000) | **4.40** |
+| Expected max of 28,000 pure coin flips | **3.99** |
+| BH bar for the best of 28,000 hypotheses at q=0.10 | **4.49** |
+
+**The best repeating pattern in ten years of gold H4 data is the same strength
+as the best of 28,000 coin flips.** Not "weak but real" — indistinguishable
+from the strongest thing noise hands you for free when you look 28,000 times.
+That is why an engine with no cost-regime crutch left to lean on returns
+nothing, and it is why "but it repeats" and "but it's tradable" are different
+claims.
+
+### The three runs together
+
+| Run | Cost (2017) | Real excess | Null excess | Verdict |
+|---|---|---|---|---|
+| M15, market entry | 0.353R | +0.051R | +0.110R | null beats real |
+| M15, limit entry | 0.353R | +0.138R | +0.142R | null ties real |
+| H4, limit entry | 0.086R | — | — | **nothing survives FDR at all** |
+
+Read as a sequence this is more informative than any single row. The M15
+"edge" grew when the trade model improved and grew *identically* for random
+lines; then it vanished entirely once cost stopped being the dominant term.
+That is the signature of an artefact of the cost gradient, not a weak real
+effect — a weak real effect gets *easier* to see when you remove the noise
+source, not impossible.
+
+**The honest conclusion:** on gold, across two timeframes, two trade models and
+~150,000 hypotheses, there is no level-conditional directional edge. The next
 move is a different question, not a finer sweep of this one — see
 [Honest next steps](#honest-next-steps).
 
@@ -330,27 +384,43 @@ Read it in this order, and stop at the first line that fails:
 
 Ranked by expected information per unit of work, not by appeal:
 
-1. **Raise the horizon and the stop until cost is not the dominant term.** The
-   cost table above is the single most actionable thing this run produced. At a
-   0.75×M15-ATR stop the spread was 15–35% of risk for most of the sample —
-   you cannot detect a 2% edge through a 30% toll. Re-run on H1/H4 events with
-   stops of 2–4×ATR and a multi-day horizon, where the same $0.30 is ~0.02R.
-   This is the one change most likely to move the result, and it costs nothing
-   but compute.
-2. **Widen the vocabulary before deepening the search.** More context splits on
-   the same 60 kinds mostly buys multiple-testing burden. Genuinely new
-   *objects* — volume-profile shape (P/b/D day types), composite multi-day
-   profiles, real CME volume, cross-asset conditioning (DXY, real yields — the
-   repo already has these) — buy new information.
-3. **Split the sample by cost regime, don't pool it.** Pre-2020 and post-2024
-   gold are different games at this stop size. Pooling them averages a game you
-   could not win with a game you might.
-4. **Test the day boundary.** `--day-start-hour` 0 vs 22 changes every daily
-   open, pivot and profile. It is currently an untested assumption.
-5. **A held-back vault.** Reserve the final 2 years, never run anything on
-   them, and spend that budget exactly once when something finally clears
-   its null.
-6. **A portfolio layer**, before any spec is taken seriously.
-7. **Do not** tune the existing search harder. When the honest answer is
-   "worse than random lines", the move is a different question, not a finer
-   sweep of the same one.
+~~Raise the horizon until cost is not the dominant term.~~ **Done — that was
+the H4 run, and it settled the question rather than opening it.** With cost 4×
+smaller the search returned nothing at all, which is the answer, not a reason
+to keep pushing on this axis.
+
+What is left, ranked by expected information per unit of work:
+
+1. **Change the target, not the search.** Every run so far asks the hardest
+   possible question: *single-instrument directional prediction*. Two easier
+   questions have far better base rates and the same machinery answers them:
+   * **Volatility.** Vol clusters strongly and persistently; it is the one
+     thing about price that genuinely is predictable. `VolRangeForecaster/`
+     already aims here. Ask "does a level touch predict the *range* of the
+     next session", not its sign.
+   * **Cross-sectional ranking** across the 26 pairs — "which of these is most
+     extended relative to its own structure" is a much easier question than
+     "will gold go up", and it diversifies where a single instrument cannot.
+2. **Widen the vocabulary, don't deepen the splits.** More context splits on
+   the same 60 kinds mostly buys multiple-testing burden — and the H4 run shows
+   exactly what that burden costs: at 28,000 hypotheses the bar for the best
+   cell is t=4.49. Genuinely new *objects* buy information instead: profile
+   shape (P/b/D day types), composite multi-day profiles, real CME volume
+   rather than broker ticks, cross-asset conditioning (DXY, real yields — the
+   repo already has these).
+3. **Prune the hypothesis space on purpose.** Every cell you decline to test
+   lowers the bar for the ones you keep. Choosing 500 pre-registered
+   hypotheses instead of enumerating 28,000 moves the significance bar from
+   t≈4.5 to t≈3.5 — a large real gain, available for free, and the opposite of
+   what the instinct to "test everything" suggests.
+4. **Split the sample by cost regime, don't pool it.** Pre-2020 and post-2024
+   gold are different games at any fixed stop size.
+5. **Test the day boundary.** `--day-start-hour` 0 vs 22 changes every daily
+   open, pivot and profile. Still an untested assumption.
+6. **A held-back vault.** Reserve the final 2 years, never run anything on
+   them, and spend that budget exactly once when something finally clears its
+   null.
+7. **A portfolio layer**, before any spec is taken seriously.
+8. **Do not** tune the existing search harder. When the best cell in the search
+   is the same strength as the best of 28,000 coin flips, the move is a
+   different question, not a finer sweep of the same one.

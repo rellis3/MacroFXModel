@@ -1,0 +1,372 @@
+{
+  "pair": "gold",
+  "config": {
+    "pair": "gold",
+    "years": 10.0,
+    "event_tf": "h4",
+    "level_tfs": "h1,h4",
+    "atr_rank_window": 1500,
+    "data_root": "VolRangeForecaster/data/m1",
+    "day_start_hour": 0,
+    "sl_atr": "0.75,1.5",
+    "tp_r": "1.0,2.0,3.0",
+    "horizon": 7200,
+    "cost_mult": 1.0,
+    "entry_mode": "limit",
+    "folds": 6,
+    "fdr_q": 0.1,
+    "top_k": 10,
+    "select_stat": "t_lift",
+    "null_runs": 3,
+    "seed": 7,
+    "out": "forge/out_h4"
+  },
+  "data": {
+    "m1_bars": 3501046,
+    "start": "2016-06-05 22:00:00+00:00",
+    "end": "2026-06-05 20:59:00+00:00",
+    "levels": 157511,
+    "labelled_rows": 868974
+  },
+  "real": {
+    "folds": [
+      {
+        "fold": 0,
+        "train_end": "2020-06-05 14:24:00+00:00",
+        "test_end": "2021-06-05 18:00:00+00:00",
+        "train_events": 335604,
+        "test_events": 87924,
+        "n_hypotheses": 17220,
+        "n_cells_selected": 0,
+        "train_best_t": 3.796712141185841,
+        "oos_trades": 0,
+        "oos_mean_r": NaN,
+        "oos_mean_excess": NaN,
+        "oos_total_r": 0.0,
+        "oos_win_rate": NaN
+      },
+      {
+        "fold": 1,
+        "train_end": "2021-06-05 18:00:00+00:00",
+        "test_end": "2022-06-05 21:36:00+00:00",
+        "train_events": 423528,
+        "test_events": 87864,
+        "n_hypotheses": 20076,
+        "n_cells_selected": 0,
+        "train_best_t": 3.883515689781342,
+        "oos_trades": 0,
+        "oos_mean_r": NaN,
+        "oos_mean_excess": NaN,
+        "oos_total_r": 0.0,
+        "oos_win_rate": NaN
+      },
+      {
+        "fold": 2,
+        "train_end": "2022-06-05 21:36:00+00:00",
+        "test_end": "2023-06-06 01:12:00+00:00",
+        "train_events": 511392,
+        "test_events": 88818,
+        "n_hypotheses": 22716,
+        "n_cells_selected": 0,
+        "train_best_t": 3.993651330833127,
+        "oos_trades": 0,
+        "oos_mean_r": NaN,
+        "oos_mean_excess": NaN,
+        "oos_total_r": 0.0,
+        "oos_win_rate": NaN
+      },
+      {
+        "fold": 3,
+        "train_end": "2023-06-06 01:12:00+00:00",
+        "test_end": "2024-06-05 04:48:00+00:00",
+        "train_events": 600210,
+        "test_events": 86112,
+        "n_hypotheses": 25224,
+        "n_cells_selected": 0,
+        "train_best_t": 3.8058779849300097,
+        "oos_trades": 0,
+        "oos_mean_r": NaN,
+        "oos_mean_excess": NaN,
+        "oos_total_r": 0.0,
+        "oos_win_rate": NaN
+      },
+      {
+        "fold": 4,
+        "train_end": "2024-06-05 04:48:00+00:00",
+        "test_end": "2025-06-05 08:24:00+00:00",
+        "train_events": 686322,
+        "test_events": 88554,
+        "n_hypotheses": 26880,
+        "n_cells_selected": 0,
+        "train_best_t": 4.271000273733334,
+        "oos_trades": 0,
+        "oos_mean_r": NaN,
+        "oos_mean_excess": NaN,
+        "oos_total_r": 0.0,
+        "oos_win_rate": NaN
+      },
+      {
+        "fold": 5,
+        "train_end": "2025-06-05 08:24:00+00:00",
+        "test_end": "2026-06-05 12:00:00+00:00",
+        "train_events": 774876,
+        "test_events": 93834,
+        "n_hypotheses": 27984,
+        "n_cells_selected": 0,
+        "train_best_t": 4.40030012776299,
+        "oos_trades": 0,
+        "oos_mean_r": NaN,
+        "oos_mean_excess": NaN,
+        "oos_total_r": 0.0,
+        "oos_win_rate": NaN
+      }
+    ],
+    "oos": {
+      "trades": 0
+    },
+    "specs": [
+      {
+        "trained_through": "2020-06-05 12:00:00+00:00",
+        "fold": 0,
+        "n_hypotheses": 17220,
+        "cuts": {
+          "atr_pct": [
+            0.2361574382921948,
+            0.6524349566377585
+          ],
+          "wick_beyond_atr": [
+            -0.39461615645743564,
+            -0.09337966413895273
+          ],
+          "day_range_atr": [
+            1.0884474913958873,
+            1.7319561617090231
+          ],
+          "pos_in_day_range": [
+            0.3537284894837738,
+            0.6839762611275914
+          ],
+          "dist_dopen_atr": [
+            -0.29495420421663004,
+            0.28213922460554164
+          ]
+        },
+        "cells": [],
+        "meta": {
+          "select_stat": "t_lift"
+        },
+        "human": []
+      },
+      {
+        "trained_through": "2021-06-04 12:00:00+00:00",
+        "fold": 1,
+        "n_hypotheses": 20076,
+        "cuts": {
+          "atr_pct": [
+            0.2608405603735824,
+            0.6177451634422949
+          ],
+          "wick_beyond_atr": [
+            -0.3962283527017791,
+            -0.09361220398228824
+          ],
+          "day_range_atr": [
+            1.0959644336862333,
+            1.7473665504851206
+          ],
+          "pos_in_day_range": [
+            0.3535372490148305,
+            0.6840996586038974
+          ],
+          "dist_dopen_atr": [
+            -0.29371393343351215,
+            0.2850443353234143
+          ]
+        },
+        "cells": [],
+        "meta": {
+          "select_stat": "t_lift"
+        },
+        "human": []
+      },
+      {
+        "trained_through": "2022-06-05 20:00:00+00:00",
+        "fold": 2,
+        "n_hypotheses": 22716,
+        "cuts": {
+          "atr_pct": [
+            0.22881921280853904,
+            0.6117411607738492
+          ],
+          "wick_beyond_atr": [
+            -0.3972676737631162,
+            -0.09466986341952534
+          ],
+          "day_range_atr": [
+            1.0912409219108634,
+            1.749135757650162
+          ],
+          "pos_in_day_range": [
+            0.3466647204787565,
+            0.6856476856476915
+          ],
+          "dist_dopen_atr": [
+            -0.29436547040270516,
+            0.29524966501213556
+          ]
+        },
+        "cells": [],
+        "meta": {
+          "select_stat": "t_lift"
+        },
+        "human": []
+      },
+      {
+        "trained_through": "2023-06-06 00:00:00+00:00",
+        "fold": 3,
+        "n_hypotheses": 25224,
+        "cuts": {
+          "atr_pct": [
+            0.2541694462975317,
+            0.6104069379586391
+          ],
+          "wick_beyond_atr": [
+            -0.4007217788709547,
+            -0.09605284963739591
+          ],
+          "day_range_atr": [
+            1.092283959510332,
+            1.7552364036325216
+          ],
+          "pos_in_day_range": [
+            0.3421768707482447,
+            0.6788432593913806
+          ],
+          "dist_dopen_atr": [
+            -0.2977920003117705,
+            0.29524966501213556
+          ]
+        },
+        "cells": [],
+        "meta": {
+          "select_stat": "t_lift"
+        },
+        "human": []
+      },
+      {
+        "trained_through": "2024-06-05 04:00:00+00:00",
+        "fold": 4,
+        "n_hypotheses": 26880,
+        "cuts": {
+          "atr_pct": [
+            0.24616410940627084,
+            0.6124082721814543
+          ],
+          "wick_beyond_atr": [
+            -0.4029821421006038,
+            -0.09653129463327285
+          ],
+          "day_range_atr": [
+            1.0884456099938487,
+            1.7516572363181249
+          ],
+          "pos_in_day_range": [
+            0.3431111111111157,
+            0.6807114122380215
+          ],
+          "dist_dopen_atr": [
+            -0.28899222255189866,
+            0.29725608167022594
+          ]
+        },
+        "cells": [],
+        "meta": {
+          "select_stat": "t_lift"
+        },
+        "human": []
+      },
+      {
+        "trained_through": "2025-06-05 08:00:00+00:00",
+        "fold": 5,
+        "n_hypotheses": 27984,
+        "cuts": {
+          "atr_pct": [
+            0.29086057371581053,
+            0.6657771847898599
+          ],
+          "wick_beyond_atr": [
+            -0.40362882344577394,
+            -0.09651721869834692
+          ],
+          "day_range_atr": [
+            1.100623479953308,
+            1.7677137440233714
+          ],
+          "pos_in_day_range": [
+            0.35043352601156685,
+            0.6877113866967319
+          ],
+          "dist_dopen_atr": [
+            -0.28553169606813716,
+            0.3157225871213039
+          ]
+        },
+        "cells": [],
+        "meta": {
+          "select_stat": "t_lift"
+        },
+        "human": []
+      }
+    ]
+  },
+  "null": {
+    "runs": [
+      {
+        "oos": {
+          "trades": 0
+        }
+      },
+      {
+        "oos": {
+          "trades": 0
+        }
+      },
+      {
+        "oos": {
+          "trades": 108,
+          "days": 92,
+          "mean_r": 0.084119537871692,
+          "se": 0.0949140423261846,
+          "t": 0.8862707330766099,
+          "mean_excess": 0.04230040266052594,
+          "se_excess": 0.0949140423261846,
+          "t_excess": 0.4456706470803871,
+          "total_r": 9.084910090142737,
+          "win_rate": 0.5555555555555556
+        }
+      }
+    ],
+    "oos_mean_r": [
+      NaN,
+      NaN,
+      0.084119537871692
+    ],
+    "oos_mean_excess": [
+      NaN,
+      NaN,
+      0.04230040266052594
+    ],
+    "oos_t_excess": [
+      NaN,
+      NaN,
+      0.4456706470803871
+    ]
+  },
+  "verdict": {
+    "n_null_runs": 1,
+    "real_best_t": NaN,
+    "null_best_t_mean": 0.4456706470803871,
+    "null_best_t_max": 0.4456706470803871,
+    "p_vs_null": 0.0
+  }
+}
