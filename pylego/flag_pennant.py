@@ -65,6 +65,7 @@ import numpy as np
 import pandas as pd
 
 from pylego.swing_structure import Pivot, pivot_highs, pivot_lows
+from pylego.trendline import line_at, line_touches, sign
 
 
 @dataclass
@@ -128,31 +129,6 @@ class FlagPennant:
     upper_touches: int
     lower_touches: int
     retrace: float
-
-
-def _sign(x: float) -> int:
-    return (x > 0) - (x < 0)
-
-
-def _line_at(i1: int, p1: float, i2: int, p2: float, idx: int) -> float:
-    slope = (p2 - p1) / (i2 - i1)
-    return p1 + slope * (idx - i1)
-
-
-def _line_touches(pivots: list[Pivot], i1: int, p1: float, i2: int, p2: float, tol_pct: float) -> int:
-    """Anchors (i1,p1)/(i2,p2) always count as 2; every OTHER pivot in
-    `pivots` (which may lie before i1 or after i2 too — the fitted line is
-    checked against the whole window, not just the segment between anchors)
-    adds one more if it sits within tol_pct of the line's projected price."""
-    slope = (p2 - p1) / (i2 - i1)
-    count = 2
-    for pt in pivots:
-        if pt.idx == i1 or pt.idx == i2:
-            continue
-        expected = p1 + slope * (pt.idx - i1)
-        if expected > 0 and abs(pt.price - expected) / expected < tol_pct:
-            count += 1
-    return count
 
 
 def _find_pole(close: np.ndarray, open_: np.ndarray, abs_diff_cumsum: np.ndarray, atr_arr: np.ndarray,
@@ -226,7 +202,7 @@ def _find_consolidation(bars: pd.DataFrame, atr_arr: np.ndarray, pole: Pole,
             continue
 
         slope_diff = abs(upper_slope - lower_slope)
-        converging = _sign(upper_slope) != _sign(lower_slope) and slope_diff > flat_thresh
+        converging = sign(upper_slope) != sign(lower_slope) and slope_diff > flat_thresh
         is_parallel = (not converging) and slope_diff <= parallel_tol_pct * local_atr
         if converging:
             shape_type = "pennant"
@@ -235,8 +211,8 @@ def _find_consolidation(bars: pd.DataFrame, atr_arr: np.ndarray, pole: Pole,
         else:
             continue
 
-        upper_touches = _line_touches(highs, h1.idx, h1.price, h2.idx, h2.price, touch_tol_pct)
-        lower_touches = _line_touches(lows, l1.idx, l1.price, l2.idx, l2.price, touch_tol_pct)
+        upper_touches = line_touches(highs, h1.idx, h1.price, h2.idx, h2.price, touch_tol_pct)
+        lower_touches = line_touches(lows, l1.idx, l1.price, l2.idx, l2.price, touch_tol_pct)
         if upper_touches + lower_touches < min_touches_total:
             continue
 
@@ -256,8 +232,8 @@ def _find_breakout(bars: pd.DataFrame, consol: Consolidation, breakout_max_bars:
     n = len(bars)
     hi_end = min(consol.abs_end_idx + breakout_max_bars, n - 1)
     for i in range(consol.abs_end_idx + 1, hi_end + 1):
-        up_level = _line_at(consol.upper_p1_idx, consol.upper_p1_price, consol.upper_p2_idx, consol.upper_p2_price, i)
-        dn_level = _line_at(consol.lower_p1_idx, consol.lower_p1_price, consol.lower_p2_idx, consol.lower_p2_price, i)
+        up_level = line_at(consol.upper_p1_idx, consol.upper_p1_price, consol.upper_p2_idx, consol.upper_p2_price, i)
+        dn_level = line_at(consol.lower_p1_idx, consol.lower_p1_price, consol.lower_p2_idx, consol.lower_p2_price, i)
         if close[i] > up_level:
             return Breakout(idx=i, level=up_level, direction=1)
         if close[i] < dn_level:

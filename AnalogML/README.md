@@ -646,6 +646,112 @@ retrace PF=0.89 → deep retrace PF=0.97) but every cell stayed below 1.0 — a
 lead worth checking if this family is ever revisited, not a rescue of the
 current null.
 
+## `head_shoulders_scan.py` / `triangle_channel_scan.py` — two more families, both null
+
+The second and third additional shape families beyond touches (flags/
+pennants was the first). Both regenerated from already-validated
+`js/patternEngine.js` specs — `detectHeadShoulders` and
+`detectTrianglesChannels` — completing every named pattern in the owner's
+retail reference image except cup & handle, which has no existing spec
+anywhere in this repo (flagged to the owner rather than invented from
+scratch). `pylego/trendline.py` (new) extracted the shared `line_at`/
+`line_touches` trendline-fitting math once a second detector needed the
+identical formula `flag_pennant.py` already had privately; `AnalogML/
+pattern_sweep.py` (new) extracted the shared 26-pair-sweep-plus-IS/OOS
+harness for the same reason — every AnalogML detector instance already
+shares the same `confirm_idx`/`direction` fields, so the sweep needs no
+per-detector adapter.
+
+```
+python AnalogML/head_shoulders_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+python AnalogML/triangle_channel_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+```
+
+### Head & shoulders: a real lookahead bug, caught before any number was trusted
+
+Regenerating `detect_head_shoulders`, the left/head/right shoulder triple
+(L, H, R) comes from a single global `pivot_highs`/`pivot_lows(bars,
+pivot_n)` call over the WHOLE array — unlike `flag_pennant`/
+`triangle_channel`, which re-slice-then-detect pivots inside a window and
+get the pivot-confirmability lag for free, this is the EXACT construction
+that caused `motif_touch.py`'s original lookahead bug. R isn't actually
+knowable as a genuine pivot until `pivot_n` bars have passed after it
+(pivot detection needs a centered window) — scanning for confirmation
+starting at `R.idx+1` credited signals a live system couldn't have had yet.
+
+**Measured directly, not estimated** — diffed the buggy vs fixed confirm
+scan on real data: 92/225 GBPJPY instances (40.9%) had a different
+`confirm_idx`/direction after the fix; pooled across 5 pairs, 487/1,144
+(42.6%) — bigger than `motif_touch`'s 15.3%. Fixed the same way (`R.idx +
+pivot_n` instead of `R.idx + 1`), with a regression test that proves the
+fix actually SKIPS a premature one-bar-early confirmation and resolves one
+bar later, not just that the final invariant holds:
+
+| | pairs PF>1.0 | beat baseline | IS PF | OOS PF |
+|---|---:|---:|---:|---:|
+| **Before fix** (bug present) | 21/26 (80.8%) | 24/26 (92.3%) | 1.13 | 1.14 |
+| **After fix** (correct) | 8/26 (30.8%) | 13/26 (50.0%) | 0.98 | 0.95 |
+
+The unfixed number looked like a strong, clean edge — better than touches'
+own first read. It was **entirely the bug**, the same shape of false
+positive the k-NN method's self-adjacency bug produced (see the banner at
+the top of this file). Cost-off gives the same story (IS PF=1.06, OOS
+PF=1.01 — flat, not rescued by removing costs). **Head & shoulders, H1,
+these params: null**, stated as plainly as any positive result would be.
+
+### Triangles/wedges/channels: null from the first sweep, no bug found
+
+Checked explicitly for the same lookahead-lag bug class rather than
+assuming immunity because `flag_pennant` had none — `triangle_channel`'s
+construction (fixed-size sliding window, pivots re-detected fresh inside
+each window) gets the confirmability lag for free by the same reasoning as
+`flag_pennant`, confirmed, not assumed.
+
+Full 26-pair sweep (sl=20p, tp_r=1.5, cost on): 7/26 pairs (26.9%) PF>1.0,
+13/26 (50.0%) beat the mechanical baseline; pooled calendar IS/OOS (cutoff
+2023-01-01): IS PF=0.97 → OOS PF=0.90.
+
+Disaggregated by shape type before accepting the pooled null (CLAUDE.md:
+"pooled nulls hide subset edges — disaggregate before declaring null"),
+pooled across 26 pairs, sl=20p tp_r=1.5 cost on:
+
+| shape_type | n | PF | avg R |
+|---|---:|---:|---:|
+| symmetrical_triangle | 212 | 1.07 | 0.043 |
+| channel_up | 2,681 | 0.98 | -0.015 |
+| ascending_triangle | 836 | 0.97 | -0.016 |
+| channel_down | 2,467 | 0.96 | -0.027 |
+| descending_triangle | 801 | 0.92 | -0.050 |
+| falling_wedge | 832 | 0.89 | -0.073 |
+| rising_wedge | 936 | 0.87 | -0.086 |
+
+No hidden winner. `symmetrical_triangle`'s mild positive read is the
+smallest sample (n=212) and the one type with no directional expectation to
+begin with (a symmetrical triangle's "signal" is just whichever way it
+broke, not a textbook-direction call the way the other six are) — not a
+coherent edge to lead with. **Triangles/wedges/channels, H1, all seven
+types: null.**
+
+Real-data spot-checks before trusting either aggregate: `head_shoulders`'s
+one inspected GBPJPY instance was internally consistent (the failed
+pattern's `breakout_level` exactly matched its own right-shoulder price, as
+the formula requires for a failure case); `triangle_channel`'s smoke test
+found all 7 shape types represented on real data (none degenerate/zero),
+plus a manual OHLC read of one ascending-triangle instance — a genuine
+range-bound consolidation with a rising lower support that, in this case,
+failed to break up as expected (a legitimate real outcome, not every
+instance should succeed).
+
+**Where this leaves the shape-family scoreboard:** touches remains the
+only family with a real (not yet portfolio-validated) positive first read.
+Flags/pennants, head & shoulders, and triangles/wedges/channels are all
+null. That is three real nulls out of four families tried — reported as
+plainly as touches' positive read was, per CLAUDE.md's "report the red
+honestly" rule. Cup & handle is the one image pattern with no existing
+spec; multi-timeframe analysis (does agreement/conflict across M15/H1/H4/D1
+change any of these results) remains completely untried — everything above
+is H1-only.
+
 ## Honesty notes (read before trusting a number here)
 
 - **Neighbour pool contained one trivial near-duplicate until 2026-08-12 —
