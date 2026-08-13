@@ -17,8 +17,16 @@ the only new code here is the motif trade-builder, which plugs into the
 exact same {pair, entry_date, exit_date, r} trade-dict contract
 `simulate_portfolio` already consumes).
 
+Supports `--n-touches` to test the sharper, disaggregation-confirmed
+subset (doubles only, n_touches=2 -- see the AnalogML README's "lifecycle
+disaggregation" section: doubles carry almost all of the edge, triples read
+close to a coin flip both IS and OOS) alongside the full pooled signal,
+since testing the diluted full signal alone would understate what's
+actually been validated.
+
 Usage:
   python AnalogML/motif_portfolio_sim.py --all-pairs --risk-pct 0.01
+  python AnalogML/motif_portfolio_sim.py --all-pairs --n-touches 2 --risk-pct 0.01
 """
 from __future__ import annotations
 
@@ -63,6 +71,8 @@ def build_pair_trades(pair: str, args: argparse.Namespace) -> list[dict]:
     )
     last_possible = n - 1 - args.max_bars_ahead
     eligible = [m for m in motifs if m.confirm_idx is not None and m.confirm_idx <= last_possible]
+    if args.n_touches is not None:
+        eligible = [m for m in eligible if m.n_touches == args.n_touches]
 
     pip = pip_size(pair)
     sl_price = args.sl_pips * pip
@@ -95,6 +105,8 @@ def main() -> None:
     p.add_argument("--min-retrace-atr-mult", type=float, default=2.5)
     p.add_argument("--min-bars-between-touches", type=int, default=10)
     p.add_argument("--breakout-max-bars", type=int, default=40)
+    p.add_argument("--n-touches", type=int, default=None,
+                   help="filter to only this touch count (e.g. 2 for doubles only); default: all")
     p.add_argument("--sl-pips", type=float, default=20.0)
     p.add_argument("--tp-r", type=float, default=1.5)
     p.add_argument("--max-bars-ahead", type=int, default=200)
@@ -106,7 +118,8 @@ def main() -> None:
     args = p.parse_args()
 
     pairs = args.pairs.split(",") if args.pairs else ALL_PAIRS
-    print(f"[setup] {len(pairs)} pairs, motif signal, risk={args.risk_pct:.2%}/trade, "
+    filt = f", n_touches={args.n_touches}" if args.n_touches is not None else " (all touch counts)"
+    print(f"[setup] {len(pairs)} pairs, motif signal{filt}, risk={args.risk_pct:.2%}/trade, "
           f"max concurrent risk={args.max_concurrent_risk_pct:.2%}")
 
     all_trades: list[dict] = []
