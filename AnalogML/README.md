@@ -688,6 +688,45 @@ unoptimised from the k-NN method's original defaults (deliberately — avoids
 a fresh overfit risk, but also means they aren't validated as the right
 choice for touches specifically). Genuinely encouraging, not yet validated.
 
+### Second bug-hunt pass (2026-08-13)
+
+Only one bug-hunt pass had been done on `motif_touch.py` before the
+portfolio test — CLAUDE.md's rule is to assume more bugs exist, not fewer,
+once one is already caught. Did a genuine second pass, not a repeat of the
+first:
+
+- **Re-read the full detector source with fresh, skeptical eyes** — the run
+  builder (`_touch_runs`), the segment-local retracement validation, the
+  confirm scan's condition ordering, the top/bottom independence. No new
+  logic bug found on inspection.
+- **Empirically verified the causal invariant at FULL SCALE, not just the
+  synthetic regression test** — the exact class of check that caught the
+  head & shoulders bug (a synthetic test alone didn't catch that one; only
+  measuring on real data at scale did). Checked every confirmed motif
+  across all 26 pairs: **28,524 confirmed motifs, 0 causal-invariant
+  violations** (`confirm_idx - last_touch_idx >= pivot_n` held on every
+  single one). The existing fix is now verified at scale, not just assumed
+  clean because the synthetic test passes.
+- **Checked touch-run duration realism** — a run with no upper bound on
+  touch-to-touch time span could in principle produce degenerate
+  multi-year "double tops" that wouldn't chart-sense as a real pattern to a
+  human trader. Measured on GBPJPY: median span 0.8 days, p90 1.7 days,
+  p99 2.4 days, max 3.4 days — all realistic, contained formations.
+- **Confirmed no double-counting within a side** — the run builder advances
+  its index past every touch in a completed run (`i += len(run)`),
+  structurally preventing the same pivot from appearing in two overlapping
+  runs on the same (top/bottom) side.
+- **Confirmed entry/exit date ordering** — `race_trades`' exit offset is
+  always found by a forward-only scan from the entry bar, so `exit_date >=
+  entry_date` is structural, not just observed.
+
+**No new bug found this pass.** Reporting that plainly — it's a real,
+useful result (the existing fix now has scale-verification it didn't have
+before), not proof the detector is bug-free forever. The next place a bug
+could plausibly still hide: the portfolio simulation's risk-cap accounting
+under genuinely concurrent same-pair signals (a top and bottom motif
+confirming on the same bar), which hasn't been separately audited.
+
 ## Lifecycle disaggregation — does touch/bounce count predict the outcome?
 
 The owner's fuller shape-prediction ask wants every shape's DURING-formation
