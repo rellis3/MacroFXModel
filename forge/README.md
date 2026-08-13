@@ -502,3 +502,81 @@ What is left, ranked by expected information per unit of work:
 8. **Do not** tune the existing search harder. When the best cell in the search
    is the same strength as the best of 28,000 coin flips, the move is a
    different question, not a finer sweep of the same one.
+
+---
+
+## Fifth run: cross-sectional ranking (`xsect.py`) — a different question, same null
+
+Every run above asks a directional question about ONE instrument. That is the
+hardest version of the question: gold's own price is dominated by market-wide
+shocks (the dollar, macro risk-on/off) no level touch can predict, and a
+directional bet is fully exposed to them — a large part of why `atr_pct=hi`
+and `dxy_confirm` kept getting selected in the runs above, which is the search
+rediscovering "when is the market moving for reasons unrelated to this level."
+
+`xsect.py` asks a relative question instead: not "will gold go up", but "of
+all 26 instruments this repo has local M1 data for, which is most extended
+from its own weekly structure right now, compared to the others, at the same
+moment." Long the compelling end of that ranking, short the other end. Two
+things follow from asking it this way that don't follow from a single-name
+bet: a common shock cancels between the long and short legs (both are exposed
+to it equally), and it only needs the *ordering* to carry weak information,
+not an outright directional call on any one name — a much lower bar.
+
+The score: signed distance of each instrument's own daily open from **this
+week's own open** (known from the moment the week starts), in ATR units — the
+direct cross-sectional generalization of the daily/weekly anchors `levels.py`
+already builds. A small, pre-registered grid (K∈{3,5} legs per side, holding
+H∈{1,3,5} days, fade-the-extremes vs follow-them) is walk-forward selected —
+12 combinations, not a search, so the multiple-testing bill this pays is
+tiny compared to the single-instrument runs above.
+
+**A real bug was caught building this, worth naming because of what kind of
+bug it was.** `audchf`'s local parquet stops in 2020, six years before every
+other pair's. The first version of the years cutoff was applied per pair from
+each pair's OWN last bar — so a "last 2 years" request gave `audchf` a
+2018–2020 window while every other pair got 2024–2026, and concatenating them
+produced a panel that silently spanned eight years instead of two, with most
+dates covered by only one or two names. Not a crash — a cross-section that
+quietly stopped being one. Fixed by anchoring the cutoff to ONE shared
+reference (the latest last-bar across the whole universe); a regression test
+(`xsect_test.py::test_years_cutoff_is_anchored_to_one_shared_reference`)
+guards it directly, in the same spirit as `levels_test.py`'s prefix-invariance
+check — a different bug, but the same lesson that this class of error makes a
+backtest look FINE while corrupting what it's actually measuring.
+
+**Result, 10 years, full 26-instrument universe, all 6 folds:**
+
+```
+fold 0: k=5 h=1 momentum   train t=+0.54 → OOS t=-1.52
+fold 1: k=5 h=5 reversion  train t=+0.77 → OOS t=-0.72
+fold 2: k=3 h=3 reversion  train t=+0.75 → OOS t=+1.86
+fold 3: k=3 h=3 reversion  train t=+1.30 → OOS t=-0.87
+fold 4: k=5 h=3 reversion  train t=+0.91 → OOS t=+0.48
+fold 5: k=3 h=1 reversion  train t=+1.05 → OOS t=+1.74
+
+REAL   OOS: 987 obs, mean +0.0081, t=0.44, hit rate 51.0%
+NULL   (scores shuffled within each date, 3 runs): t ranged -2.05 to +1.68
+   → real t=0.44 doesn't even clear the null's OWN noise floor
+```
+
+Another clean null, and a particularly legible one: the in-sample training
+t-stats the walk-forward had to choose from never exceeded 1.3 in any fold —
+weak to begin with, before even reaching the OOS test — and the fold signs
+flip freely (2 of 6 positive, 3 negative, 1 flat). The shuffled-score null's
+own range (−2.05 to +1.68) is WIDER than the real result, which is exactly
+what "this score carries no information" looks like: with only 26 legs and a
+handful of non-overlapping observations per fold, the noise floor itself is
+not small, and the honest reading is that weekly-open distance doesn't clear
+it — not that cross-sectional ranking as an idea failed.
+
+**What this does and doesn't rule out.** This tests ONE score (distance from
+weekly open) on ONE horizon family (1–5 day holds) with a small K grid. It
+says nothing about carry, real momentum (trailing return rather than
+distance-from-an-anchor), or a level-touch-density score built from the full
+`levels.py` zoo instead of one anchor — all cheap follow-ups on the same
+`xsect.py` machinery, since the panel/walk-forward/null plumbing doesn't
+change, only what feeds `ext_score`. Given how weak even the in-sample
+numbers were here, the more informative next step is probably a different
+score entirely rather than a finer grid on this one — same lesson as every
+prior run in this document.

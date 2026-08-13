@@ -1,0 +1,270 @@
+{
+  "config": {
+    "years": 10.0,
+    "tf": "d1",
+    "data_root": "VolRangeForecaster/data/m1",
+    "day_start_hour": 0,
+    "k_grid": "3,5",
+    "h_grid": "1,3,5",
+    "folds": 6,
+    "null_runs": 3,
+    "seed": 7,
+    "out": "forge/out_xsect"
+  },
+  "universe": [
+    "audcad",
+    "audchf",
+    "audjpy",
+    "audnzd",
+    "audusd",
+    "cadjpy",
+    "chfjpy",
+    "euraud",
+    "eurcad",
+    "eurchf",
+    "eurgbp",
+    "eurjpy",
+    "eurnzd",
+    "eurusd",
+    "gbpaud",
+    "gbpcad",
+    "gbpchf",
+    "gbpjpy",
+    "gbpnzd",
+    "gbpusd",
+    "gold",
+    "nzdjpy",
+    "nzdusd",
+    "usdcad",
+    "usdchf",
+    "usdjpy"
+  ],
+  "panel": {
+    "rows": 78999,
+    "dates": 3122,
+    "pairs": 26
+  },
+  "real": {
+    "folds": [
+      {
+        "fold": 0,
+        "train_end": "2020-06-04 19:12:00+00:00",
+        "test_end": "2021-06-05 00:00:00+00:00",
+        "k": 5,
+        "h": 1,
+        "sign": "momentum",
+        "train_t": 0.5448987840363817,
+        "oos_n": 311,
+        "oos_mean": -0.029630957328675687,
+        "oos_t": -1.5158368742787678
+      },
+      {
+        "fold": 1,
+        "train_end": "2021-06-05 00:00:00+00:00",
+        "test_end": "2022-06-05 04:48:00+00:00",
+        "k": 5,
+        "h": 5,
+        "sign": "reversion",
+        "train_t": 0.7746064849837972,
+        "oos_n": 63,
+        "oos_mean": -0.0914081321906061,
+        "oos_t": -0.7177452331445615
+      },
+      {
+        "fold": 2,
+        "train_end": "2022-06-05 04:48:00+00:00",
+        "test_end": "2023-06-05 09:36:00+00:00",
+        "k": 3,
+        "h": 3,
+        "sign": "reversion",
+        "train_t": 0.7492069217377031,
+        "oos_n": 104,
+        "oos_mean": 0.11505278548328857,
+        "oos_t": 1.8591118209232145
+      },
+      {
+        "fold": 3,
+        "train_end": "2023-06-05 09:36:00+00:00",
+        "test_end": "2024-06-04 14:24:00+00:00",
+        "k": 3,
+        "h": 3,
+        "sign": "reversion",
+        "train_t": 1.3020869613660415,
+        "oos_n": 104,
+        "oos_mean": -0.0636446178573386,
+        "oos_t": -0.8706539438698008
+      },
+      {
+        "fold": 4,
+        "train_end": "2024-06-04 14:24:00+00:00",
+        "test_end": "2025-06-04 19:12:00+00:00",
+        "k": 5,
+        "h": 3,
+        "sign": "reversion",
+        "train_t": 0.914127474738641,
+        "oos_n": 105,
+        "oos_mean": 0.03801333747342956,
+        "oos_t": 0.48355120335245744
+      },
+      {
+        "fold": 5,
+        "train_end": "2025-06-04 19:12:00+00:00",
+        "test_end": "2026-06-05 00:00:00+00:00",
+        "k": 3,
+        "h": 1,
+        "sign": "reversion",
+        "train_t": 1.0517130464769917,
+        "oos_n": 300,
+        "oos_mean": 0.04546367061486867,
+        "oos_t": 1.7412241952996566
+      }
+    ],
+    "oos": {
+      "n": 987,
+      "mean": 0.00810842046103665,
+      "t": 0.4400620795628995,
+      "total": 8.003010995043173,
+      "hit_rate": 0.5096251266464032
+    },
+    "specs": [
+      {
+        "k": 5,
+        "h": 1,
+        "sign": "momentum",
+        "fold": 0,
+        "trained_through": "2020-06-04 00:00:00+00:00",
+        "n_hypotheses": 12,
+        "train_stat": {
+          "k": 5,
+          "h": 1,
+          "sign": "momentum",
+          "mean": 0.005639023437612351,
+          "t": 0.5448987840363817,
+          "n": 1249
+        },
+        "human": "FOLLOW weekly-open extension: long the 5 MOST BELOW week-open(momentum: sell the laggards, buy the leaders), short the 5 MOST ABOVE, hold 1 rebalance bars | train t=0.54"
+      },
+      {
+        "k": 5,
+        "h": 5,
+        "sign": "reversion",
+        "fold": 1,
+        "trained_through": "2021-06-04 00:00:00+00:00",
+        "n_hypotheses": 12,
+        "train_stat": {
+          "k": 5,
+          "h": 5,
+          "sign": "reversion",
+          "mean": 0.03630010574821224,
+          "t": 0.7746064849837972,
+          "n": 312
+        },
+        "human": "FADE weekly-open extension: long the 5 MOST BELOW week-open(reversion: they are oversold), short the 5 MOST ABOVE, hold 5 rebalance bars | train t=0.77"
+      },
+      {
+        "k": 3,
+        "h": 3,
+        "sign": "reversion",
+        "fold": 2,
+        "trained_through": "2022-06-05 00:00:00+00:00",
+        "n_hypotheses": 12,
+        "train_stat": {
+          "k": 3,
+          "h": 3,
+          "sign": "reversion",
+          "mean": 0.02298396869486439,
+          "t": 0.7492069217377031,
+          "n": 624
+        },
+        "human": "FADE weekly-open extension: long the 3 MOST BELOW week-open(reversion: they are oversold), short the 3 MOST ABOVE, hold 3 rebalance bars | train t=0.75"
+      },
+      {
+        "k": 3,
+        "h": 3,
+        "sign": "reversion",
+        "fold": 3,
+        "trained_through": "2023-06-05 00:00:00+00:00",
+        "n_hypotheses": 12,
+        "train_stat": {
+          "k": 3,
+          "h": 3,
+          "sign": "reversion",
+          "mean": 0.03613665680749641,
+          "t": 1.3020869613660415,
+          "n": 728
+        },
+        "human": "FADE weekly-open extension: long the 3 MOST BELOW week-open(reversion: they are oversold), short the 3 MOST ABOVE, hold 3 rebalance bars | train t=1.30"
+      },
+      {
+        "k": 5,
+        "h": 3,
+        "sign": "reversion",
+        "fold": 4,
+        "trained_through": "2024-06-04 00:00:00+00:00",
+        "n_hypotheses": 12,
+        "train_stat": {
+          "k": 5,
+          "h": 3,
+          "sign": "reversion",
+          "mean": 0.01971811368357947,
+          "t": 0.914127474738641,
+          "n": 832
+        },
+        "human": "FADE weekly-open extension: long the 5 MOST BELOW week-open(reversion: they are oversold), short the 5 MOST ABOVE, hold 3 rebalance bars | train t=0.91"
+      },
+      {
+        "k": 3,
+        "h": 1,
+        "sign": "reversion",
+        "fold": 5,
+        "trained_through": "2025-06-04 00:00:00+00:00",
+        "n_hypotheses": 12,
+        "train_stat": {
+          "k": 3,
+          "h": 1,
+          "sign": "reversion",
+          "mean": 0.008342365507616871,
+          "t": 1.0517130464769917,
+          "n": 2808
+        },
+        "human": "FADE weekly-open extension: long the 3 MOST BELOW week-open(reversion: they are oversold), short the 3 MOST ABOVE, hold 1 rebalance bars | train t=1.05"
+      }
+    ]
+  },
+  "null": {
+    "runs": [
+      {
+        "oos": {
+          "n": 1036,
+          "mean": 0.01718177593300414,
+          "t": 1.6780501048424437,
+          "total": 17.80031986659229,
+          "hit_rate": 0.5202702702702703
+        }
+      },
+      {
+        "oos": {
+          "n": 1155,
+          "mean": -0.018804700274945872,
+          "t": -2.0520244868894437,
+          "total": -21.71942881756248,
+          "hit_rate": 0.47619047619047616
+        }
+      },
+      {
+        "oos": {
+          "n": 1036,
+          "mean": -0.014745005440253471,
+          "t": -1.6644374870600283,
+          "total": -15.275825636102596,
+          "hit_rate": 0.4874517374517375
+        }
+      }
+    ],
+    "oos_t": [
+      1.6780501048424437,
+      -2.0520244868894437,
+      -1.6644374870600283
+    ]
+  }
+}
