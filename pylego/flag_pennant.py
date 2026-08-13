@@ -129,6 +129,14 @@ class FlagPennant:
     upper_touches: int
     lower_touches: int
     retrace: float
+    upper_p1_idx: int
+    upper_p1_price: float
+    upper_p2_idx: int
+    upper_p2_price: float
+    lower_p1_idx: int
+    lower_p1_price: float
+    lower_p2_idx: int
+    lower_p2_price: float
 
 
 def _find_pole(close: np.ndarray, open_: np.ndarray, abs_diff_cumsum: np.ndarray, atr_arr: np.ndarray,
@@ -292,6 +300,10 @@ def detect_flags_pennants(bars: pd.DataFrame, atr_arr: np.ndarray, *,
             breakout_level=breakout.level,
             upper_touches=consol.upper_touches, lower_touches=consol.lower_touches,
             retrace=consol.retrace,
+            upper_p1_idx=consol.upper_p1_idx, upper_p1_price=consol.upper_p1_price,
+            upper_p2_idx=consol.upper_p2_idx, upper_p2_price=consol.upper_p2_price,
+            lower_p1_idx=consol.lower_p1_idx, lower_p1_price=consol.lower_p1_price,
+            lower_p2_idx=consol.lower_p2_idx, lower_p2_price=consol.lower_p2_price,
         ))
         i = breakout.idx + 1
     return instances

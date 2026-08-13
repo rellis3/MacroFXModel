@@ -570,11 +570,41 @@ pattern-derived stop (real distribution: median 39.3 pips, p10-p90
 19.0-82.3 pips — genuinely proportional to each pattern's size, not a
 repeat of the fixed-stop test): pooled across 26 pairs, n=17,083, **PF=0.96,
 WR=33.3%, avg_R=-0.026 — still null.** This rules out "the fixed stop killed
-a real edge" specifically. It does NOT rule out multi-timeframe confluence,
-higher-timeframe trend alignment, other timeframes (H4/D1 — everything
-tested here is H1 only), or the fuzzy/discretionary pattern recognition a
-human eye applies that a rigid geometric threshold detector does not — those
-remain genuinely untested, not proven null.
+a real edge" specifically.
+
+**A sixth and seventh check, testing the EXACT mechanics of a specific
+retail reference image the owner supplied** (breakout → retest of the
+broken trendline → continuation to a measured-move target, plus a second
+image showing the flag as a "corrective wave" pause inside an established
+"impulsive wave" trend) — neither mechanic was tested above, and both are
+genuinely different entry rules, not more tuning of the same one:
+
+- **Retest entry**: instead of entering on the breakout bar itself, wait up
+  to 20 bars for price to pull back and touch the broken trendline (within
+  an ATR-scaled tolerance) and close back on the confirmed side — the
+  textbook "don't chase the breakout, wait for the retest" rule. 57.1% of
+  eligible instances (9,724/17,032) retested within the window; the rest
+  ran away without ever pulling back. Same measured-move stop/target as
+  above, entries only on the confirmed retest bar: **n=9,724, PF=0.97,
+  WR=33.5%, avg_R=-0.021 — still null.**
+- **Trend-context filter**: using `classify_swing_structure` (already-built,
+  already-tested), only counted a flag as valid if its pole continued an
+  ALREADY-established HH+HL or LH+LL trend (the "impulsive wave, flag =
+  corrective wave" framing) rather than breaking out of a range. Split the
+  retest-entry trades by this filter: trend-aligned n=2,470 PF=0.95 vs.
+  not-trend-aligned n=7,254 PF=0.97 — the trend-aligned subset was
+  marginally WORSE, not better, so requiring this context doesn't rescue it
+  either.
+
+Four honest variants of "trade the flag/pennant breakout direction" now
+tested — fixed stop, measured-move stop/target, measured-move + retest
+entry, measured-move + retest + trend-context filter — all null, all on
+real 26-pair FX+gold data, real costs, real barrier walks. What remains
+genuinely untested, not proven null: other timeframes (the reference images
+specifically showed H4 and H8 — everything here is H1 only), other asset
+classes (one reference image was Bitcoin — outside this repo's FX+gold
+universe), and the fully discretionary/fuzzy pattern recognition a human
+eye applies that a rigid geometric-threshold detector cannot replicate.
 
 **Per CLAUDE.md's "Pivot or Pivot" rule**, since a bug audit didn't turn up
 anything to explain it: flags/pennants, on H1, with the untouched JS-default
