@@ -475,6 +475,302 @@ this signal in place of the retired one. `AnalogML/motif_track_loop.sh`
 process, alongside the still-running (but no longer dashboard-surfaced)
 `paper_track_loop.sh`.
 
+
+## `flag_scan.py` / `flag_scan_sweep.py` — flags & pennants (null, 2026-08-12)
+
+The owner's full ask for AnalogML is broader than touches alone: EVERY
+recognizable price shape already geometrically defined in
+`js/patternEngine.js` (flags/pennants, head & shoulders, triangles/channels,
+on top of the double/triple-top/bottom touches already built) gets the same
+lifecycle treatment — before/during/after, historical frequency-based
+confidence, adaptive per-cluster SL/TP, multi-timeframe agreement — with
+flags/pennants named as the first family to try after touches, per that
+ask's own minimal-DOF-first build order. This section is that first attempt,
+run on its own branch, same harness/discipline as `motif_scan.py`.
+
+`pylego/flag_pennant.py` regenerates `js/patternEngine.js`'s
+`detectFlagsPennants` (+ its `findPole`/`findConsolidation`/`findBreakout`
+helpers) fresh in Python — same generate-don't-port discipline as
+`swing_structure.py`/`motif_touch.py`, reusing `pivot_highs`/`pivot_lows`
+rather than a third copy of pivot detection. `AnalogML/flag_scan.py` is the
+single-pair evaluation CLI (identical baseline/signal/race_grid harness to
+`motif_scan.py`); `AnalogML/flag_scan_sweep.py` is a new, committed
+26-pair-sweep-plus-pooled-calendar-IS/OOS script — motif's own 26-pair sweep
+wasn't checked in as a script, this fills that reproducibility gap.
+
+```
+python AnalogML/flag_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+python AnalogML/flag_scan_sweep.py --all-pairs --tp-r 1.5 --oos-cutoff 2023-01-01
+```
+
+**Bug-hunt before trusting any number (CLAUDE.md's mandatory review):** the
+exact lookahead-lag bug class that hit `motif_touch.py` (a pivot isn't
+knowable until `pivot_n` bars pass after it) does NOT apply here by
+construction, not by luck — every candidate consolidation window re-slices
+`bars` and re-runs `pivot_highs`/`pivot_lows` on just that slice, so a
+window's last pivot is always at least `consol_pivot_n` bars before the
+window's own end. A regression test
+(`test_causal_ordering_invariant_on_all_synthetic_scenarios`) and the
+real-data smoke test both assert `pole_start_idx < pole_end_idx <
+consol_end_idx < confirm_idx` on every instance found, on synthetic AND real
+GBPJPY bars. 8/8 offline tests pass (`pylego/flag_pennant_test.py`) —
+hand-verified bull-flag, bull-pennant, failed-breakout, mirrored-bear-flag,
+no-consolidation, and no-pole cases, each cross-checked against the
+already-tested `pivot_highs`/`pivot_lows` bricks (printed intermediate pivot
+lists, confirmed by eye) before being baked into an assertion. A real-data
+spot-check on GBPJPY (one instance's actual OHLC path, printed and read: a
+clean 108-pip pole idx47→60, a 43-bar consolidation retracing 33.5%, a
+confirmed continuation breakout) confirmed plausible geometry before any
+aggregate number was trusted.
+
+**Result: null, and it stayed null under every variant tried — reporting
+that plainly, not softening it.** Full 26-pair sweep (H1, the JS engine's
+untouched default params — not tuned on this data, sl=20p, tp_r=1.5, cost
+on): **6/26 pairs (23.1%) signal PF>1.0, 9/26 (34.6%) beat the mechanical
+baseline.** Named losers (20/26): audcad, audchf, audjpy, audnzd, audusd,
+chfjpy, euraud, eurcad, eurchf, eurgbp, eurnzd, eurusd, gbpaud, gbpchf,
+gbpjpy, nzdjpy, nzdusd, usdcad, usdchf, usdjpy. Winners: cadjpy (1.01),
+eurjpy (1.09), gbpcad (1.02), gbpnzd (1.19), gbpusd (1.02), gold (1.06) — no
+consistent direction or currency-block pattern, reading like the scatter a
+true-null baseline produces, not a real edge concentrated somewhere.
+
+Pooled calendar IS/OOS split (cutoff 2023-01-01, all 26 pairs, same cell):
+
+| | n | PF | WR | avg R |
+|---|---:|---:|---:|---:|
+| IS (pre-2023, cost on) | 11,721 | 0.94 | 40.2% | -0.039 |
+| OOS (2023+, cost on) | 5,362 | 0.92 | 39.6% | -0.052 |
+| OOS (2023+, cost OFF) | 5,362 | 0.98 | 39.6% | -0.010 |
+
+Both sides sit at or below the coin-flip baseline — this isn't decay from a
+strong in-sample fit (the signature an overfit result leaves), it's flat
+null throughout. Cost-off does NOT rescue it (IS 1.00, OOS 0.98 — dead flat
+even with zero spread), ruling out "it's a real edge too small to survive
+transaction costs." A second grid cell (tp_r=1.0, cost on) tells the same
+story: 8/26 (30.8%) PF>1.0, IS PF=0.93, OOS PF=0.94. And filtering entries
+down to ONLY the pole's textbook-expected continuation direction
+(`played_out=True`, discarding every "failed flag" entry — a genuinely
+different entry rule, not more tuning of the same one) still doesn't rescue
+it: pooled, sl=20p tp_r=1.5 cost on, n=9,503, PF=0.95, WR=40.5%.
+
+Four independent checks (raw signal, cost stripped out, a second tp_r cell,
+the played-out-only filter) all converging on the same flat-to-negative
+number is itself evidence this is a real null, not a fragile artifact of one
+setting choice.
+
+**A fifth check, added after the owner asked why widely-used retail patterns
+would show no edge here:** every check above used a FIXED 20-pip stop for
+every instance, regardless of the pattern's own size — not how flags/
+pennants are actually traded. The textbook rule sizes the stop and target
+off the pattern's OWN measured move (the pole's height): target = 1.0x the
+pole height projected from the breakout, stop = 0.5x the pole height
+against it (`js/patternEngine.js`'s own `computeOutcome` defaults,
+`stopFrac=0.5`, i.e. tp_r=2.0 but with a stop that scales per instance
+instead of a flat 20 pips). Raced every eligible instance through its own
+pattern-derived stop (real distribution: median 39.3 pips, p10-p90
+19.0-82.3 pips — genuinely proportional to each pattern's size, not a
+repeat of the fixed-stop test): pooled across 26 pairs, n=17,083, **PF=0.96,
+WR=33.3%, avg_R=-0.026 — still null.** This rules out "the fixed stop killed
+a real edge" specifically.
+
+**A sixth and seventh check, testing the EXACT mechanics of a specific
+retail reference image the owner supplied** (breakout → retest of the
+broken trendline → continuation to a measured-move target, plus a second
+image showing the flag as a "corrective wave" pause inside an established
+"impulsive wave" trend) — neither mechanic was tested above, and both are
+genuinely different entry rules, not more tuning of the same one:
+
+- **Retest entry**: instead of entering on the breakout bar itself, wait up
+  to 20 bars for price to pull back and touch the broken trendline (within
+  an ATR-scaled tolerance) and close back on the confirmed side — the
+  textbook "don't chase the breakout, wait for the retest" rule. 57.1% of
+  eligible instances (9,724/17,032) retested within the window; the rest
+  ran away without ever pulling back. Same measured-move stop/target as
+  above, entries only on the confirmed retest bar: **n=9,724, PF=0.97,
+  WR=33.5%, avg_R=-0.021 — still null.**
+- **Trend-context filter**: using `classify_swing_structure` (already-built,
+  already-tested), only counted a flag as valid if its pole continued an
+  ALREADY-established HH+HL or LH+LL trend (the "impulsive wave, flag =
+  corrective wave" framing) rather than breaking out of a range. Split the
+  retest-entry trades by this filter: trend-aligned n=2,470 PF=0.95 vs.
+  not-trend-aligned n=7,254 PF=0.97 — the trend-aligned subset was
+  marginally WORSE, not better, so requiring this context doesn't rescue it
+  either.
+
+Four honest variants of "trade the flag/pennant breakout direction" now
+tested — fixed stop, measured-move stop/target, measured-move + retest
+entry, measured-move + retest + trend-context filter — all null, all on
+real 26-pair FX+gold data, real costs, real barrier walks. What remains
+genuinely untested, not proven null: other timeframes (the reference images
+specifically showed H4 and H8 — everything here is H1 only), other asset
+classes (one reference image was Bitcoin — outside this repo's FX+gold
+universe), and the fully discretionary/fuzzy pattern recognition a human
+eye applies that a rigid geometric-threshold detector cannot replicate.
+
+**Per CLAUDE.md's "Pivot or Pivot" rule**, since a bug audit didn't turn up
+anything to explain it: flags/pennants, on H1, with the untouched JS-default
+geometry thresholds, show no real edge. The brick (`flag_pennant.py`) stays
+— pure, tested, and reusable regardless of this result, same as
+`shape_match.py`/`analog_signal.py` stayed after the k-NN method's null. The
+honest next move for the broader "shape prediction" ask is NOT tuning this
+method's thresholds further (the exact lesson the k-NN method's retirement
+already taught — see the banner at the top of this file) but one of two
+genuinely different angles, neither pre-decided here: a different shape
+family (head & shoulders / triangles-channels are next in
+`js/patternEngine.js`, both already geometrically defined and completely
+untried), or a different timeframe (every AnalogML detector built so far,
+touches included, has only ever been tested on H1 — flags/pennants may
+behave differently on H4/D1; genuinely untested, not a prediction either
+way).
+
+
+## Flags/pennants on H4 — same null, but a real timeframe-scaling trap caught first
+
+Every check above was H1. The owner's reference images specifically showed
+H4/H8, so tested `flag_scan.py --timeframe 4h` the same way — same frozen
+params, only the bar timeframe changes (`pattern_scan.load_bars` resamples
+the same M1 parquet to whatever timeframe is asked for).
+
+**First read looked like real signal, and would have been reported as one
+if not checked further:** full 26-pair sweep, fixed sl=20p tp_r=1.5 cost on:
+20/26 pairs (76.9%) signal PF>1.0, pooled IS PF=1.10 → OOS PF=1.07. But the
+MECHANICAL BASELINE was elevated too (gbpjpy baseline alone: PF=1.23 with
+zero directional signal at all) — only 15/26 pairs (57.7%) actually beat
+that baseline, barely above the 50% coin-flip floor. **The cause: a flat
+20-pip stop is a much tighter risk unit relative to an H4 bar's typical
+range than an H1 bar's** — tight stops get touched fast in both directions,
+but confirm-bar momentum carries price past them often enough that BOTH
+signal and baseline look artificially good. This is exactly the
+timeframe-normalization problem the owner's original ask named directly
+("MAE/TP need to be normalized... so this shape on H4 and the same shape on
+M15 are comparable, not both expressed in raw pips") — caught here as a live
+example of why that requirement exists, not just a design nicety.
+
+Stripped the artifact out with the same measured-move stop/target used for
+the H1 checks (0.5x/1.0x the pole's own height — proportional to the
+pattern, not a fixed pip count, so it scales correctly across timeframes by
+construction):
+
+| | n | PF | WR | avg R |
+|---|---:|---:|---:|---:|
+| SIGNAL (measured-move) | 4,337 | 1.02 | 34.4% | 0.016 |
+| BASELINE (measured-move) | 8,674 | 1.00 | 33.9% | 0.002 |
+| SIGNAL, IS (pre-2023) | 2,980 | 1.02 | 34.2% | 0.010 |
+| SIGNAL, OOS (2023+) | 1,357 | 1.04 | 34.8% | 0.028 |
+
+Flat on both sides of a real calendar split, both well past the ≥30-OOS-trade
+bar. **Flags/pennants on H4: also null, same conclusion as H1**, once tested
+with a risk unit that doesn't silently favor one timeframe's bar geometry
+over another. H8 and Bitcoin (the other specifics in the owner's reference
+images) remain untested — this repo's data is FX+gold only.
+
+
+## `head_shoulders_scan.py` / `triangle_channel_scan.py` — two more families, both null
+
+The second and third additional shape families beyond touches (flags/
+pennants was the first). Both regenerated from already-validated
+`js/patternEngine.js` specs — `detectHeadShoulders` and
+`detectTrianglesChannels` — completing every named pattern in the owner's
+retail reference image except cup & handle, which has no existing spec
+anywhere in this repo (flagged to the owner rather than invented from
+scratch). `pylego/trendline.py` (new) extracted the shared `line_at`/
+`line_touches` trendline-fitting math once a second detector needed the
+identical formula `flag_pennant.py` already had privately; `AnalogML/
+pattern_sweep.py` (new) extracted the shared 26-pair-sweep-plus-IS/OOS
+harness for the same reason — every AnalogML detector instance already
+shares the same `confirm_idx`/`direction` fields, so the sweep needs no
+per-detector adapter.
+
+```
+python AnalogML/head_shoulders_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+python AnalogML/triangle_channel_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
+```
+
+### Head & shoulders: a real lookahead bug, caught before any number was trusted
+
+Regenerating `detect_head_shoulders`, the left/head/right shoulder triple
+(L, H, R) comes from a single global `pivot_highs`/`pivot_lows(bars,
+pivot_n)` call over the WHOLE array — unlike `flag_pennant`/
+`triangle_channel`, which re-slice-then-detect pivots inside a window and
+get the pivot-confirmability lag for free, this is the EXACT construction
+that caused `motif_touch.py`'s original lookahead bug. R isn't actually
+knowable as a genuine pivot until `pivot_n` bars have passed after it
+(pivot detection needs a centered window) — scanning for confirmation
+starting at `R.idx+1` credited signals a live system couldn't have had yet.
+
+**Measured directly, not estimated** — diffed the buggy vs fixed confirm
+scan on real data: 92/225 GBPJPY instances (40.9%) had a different
+`confirm_idx`/direction after the fix; pooled across 5 pairs, 487/1,144
+(42.6%) — bigger than `motif_touch`'s 15.3%. Fixed the same way (`R.idx +
+pivot_n` instead of `R.idx + 1`), with a regression test that proves the
+fix actually SKIPS a premature one-bar-early confirmation and resolves one
+bar later, not just that the final invariant holds:
+
+| | pairs PF>1.0 | beat baseline | IS PF | OOS PF |
+|---|---:|---:|---:|---:|
+| **Before fix** (bug present) | 21/26 (80.8%) | 24/26 (92.3%) | 1.13 | 1.14 |
+| **After fix** (correct) | 8/26 (30.8%) | 13/26 (50.0%) | 0.98 | 0.95 |
+
+The unfixed number looked like a strong, clean edge — better than touches'
+own first read. It was **entirely the bug**, the same shape of false
+positive the k-NN method's self-adjacency bug produced (see the banner at
+the top of this file). Cost-off gives the same story (IS PF=1.06, OOS
+PF=1.01 — flat, not rescued by removing costs). **Head & shoulders, H1,
+these params: null**, stated as plainly as any positive result would be.
+
+### Triangles/wedges/channels: null from the first sweep, no bug found
+
+Checked explicitly for the same lookahead-lag bug class rather than
+assuming immunity because `flag_pennant` had none — `triangle_channel`'s
+construction (fixed-size sliding window, pivots re-detected fresh inside
+each window) gets the confirmability lag for free by the same reasoning as
+`flag_pennant`, confirmed, not assumed.
+
+Full 26-pair sweep (sl=20p, tp_r=1.5, cost on): 7/26 pairs (26.9%) PF>1.0,
+13/26 (50.0%) beat the mechanical baseline; pooled calendar IS/OOS (cutoff
+2023-01-01): IS PF=0.97 → OOS PF=0.90.
+
+Disaggregated by shape type before accepting the pooled null (CLAUDE.md:
+"pooled nulls hide subset edges — disaggregate before declaring null"),
+pooled across 26 pairs, sl=20p tp_r=1.5 cost on:
+
+| shape_type | n | PF | avg R |
+|---|---:|---:|---:|
+| symmetrical_triangle | 212 | 1.07 | 0.043 |
+| channel_up | 2,681 | 0.98 | -0.015 |
+| ascending_triangle | 836 | 0.97 | -0.016 |
+| channel_down | 2,467 | 0.96 | -0.027 |
+| descending_triangle | 801 | 0.92 | -0.050 |
+| falling_wedge | 832 | 0.89 | -0.073 |
+| rising_wedge | 936 | 0.87 | -0.086 |
+
+No hidden winner. `symmetrical_triangle`'s mild positive read is the
+smallest sample (n=212) and the one type with no directional expectation to
+begin with (a symmetrical triangle's "signal" is just whichever way it
+broke, not a textbook-direction call the way the other six are) — not a
+coherent edge to lead with. **Triangles/wedges/channels, H1, all seven
+types: null.**
+
+Real-data spot-checks before trusting either aggregate: `head_shoulders`'s
+one inspected GBPJPY instance was internally consistent (the failed
+pattern's `breakout_level` exactly matched its own right-shoulder price, as
+the formula requires for a failure case); `triangle_channel`'s smoke test
+found all 7 shape types represented on real data (none degenerate/zero),
+plus a manual OHLC read of one ascending-triangle instance — a genuine
+range-bound consolidation with a rising lower support that, in this case,
+failed to break up as expected (a legitimate real outcome, not every
+instance should succeed).
+
+**Where this leaves the shape-family scoreboard:** touches remains the
+only family with a real (not yet portfolio-validated) positive first read.
+Flags/pennants, head & shoulders, and triangles/wedges/channels are all
+null. That is three real nulls out of four families tried — reported as
+plainly as touches' positive read was, per CLAUDE.md's "report the red
+honestly" rule. Cup & handle is the one image pattern with no existing
+spec; multi-timeframe analysis (does agreement/conflict across M15/H1/H4/D1
+change any of these results) remains completely untried — everything above
+is H1-only.
+
 **Genuine walk-forward split, replacing the single-cutoff read (2026-08-12,
 `AnalogML/motif_walkforward.py`):** the earlier "IS PF=1.18 → OOS PF=1.16"
 table above was ONE fixed 2023-01-01 boundary — a single train/test split,
@@ -767,6 +1063,151 @@ live-data-population issue on Railway (unverifiable from this sandbox — both
 Railway and OANDA are blocked by the outbound proxy here), not a stale-code
 issue in this repo. Still open, needs the user to look at the live site and
 say what the card actually shows before this can be run down further.
+
+## Lifecycle disaggregation — does touch/bounce count predict the outcome?
+
+The owner's fuller shape-prediction ask wants every shape's DURING-formation
+quality analyzed against its own AFTER-outcome, not just a pooled average —
+specifically: does the NUMBER of touches/bounces predict breakout direction
+or magnitude? `pylego/pattern_lifecycle.py` (new) regenerates
+`js/patternEngine.js`'s `compute_acceptance`/`compute_confidence` as a
+shared brick any detector can plug into (does a breakout hold, and a 0-100
+formation-quality score blending each detector's own geometry sub-scores
+with volatility-compression-during-formation and breakout strength) — built
+as Tier-1 infrastructure so future detectors (head & shoulders,
+triangles/wedges/channels) get this scoring for free instead of each
+carrying a copy. Not yet wired into `flag_pennant.py`/`motif_touch.py`'s own
+output (both would need `raw_scores` fields added first).
+
+Then the specific cross-tab was run directly, pooled across all 26 pairs,
+for both existing detectors (touches, flags/pennants): touch-count,
+formation duration, and formation volatility (bar range vs local ATR)
+against real R-outcome via `pylego.barrier_race` (sl=20p, tp_r=1.5, cost on
+— same frozen grid every AnalogML check uses).
+
+**Touches: a real, IS/OOS-confirmed finding — the edge concentrates in
+doubles, not triples.**
+
+| n_touches | n (pooled) | PF | avg R |
+|---|---:|---:|---:|
+| 2 (double top/bottom) | 21,623 | 1.24 | 0.133 |
+| 3 (triple top/bottom) | 6,800 | 0.98 | -0.011 |
+
+Checked against a genuine calendar IS/OOS split (cutoff 2023-01-01, not
+just the pooled full-history number — the standout cell, so it earned the
+extra check):
+
+| n_touches | split | n | PF | avg R |
+|---|---|---:|---:|---:|
+| 2 | IS (pre-2023) | 14,646 | 1.25 | 0.135 |
+| 2 | OOS (2023+) | 6,977 | 1.23 | 0.130 |
+| 3 | IS (pre-2023) | 4,594 | 1.00 | -0.003 |
+| 3 | OOS (2023+) | 2,206 | 0.95 | -0.029 |
+
+Minimal IS→OOS decay on doubles, well past the ≥30-OOS-trade bar, and
+triples stay flat-to-negative on both sides — this is not a
+subset-mining artifact, it survives the exact falsification test CLAUDE.md
+asks for ("survivors must beat chance AND be IS-consistent"). This
+sharpens, doesn't overturn, the touches motif's existing "promising, not
+yet validated" status from the section above — the portfolio-level test and
+a second full bug-hunt pass it was already missing are still missing — but
+it's a real, useful refinement that `motif_track.py`'s existing
+per-(n_touches, is_top)-category confidence design already anticipated,
+even though this is the first time the pooled cross-pair number was
+actually computed and checked OOS.
+
+**Also checked, exploratory only, NOT yet run against a calendar split —
+flagging as leads, not results** (CLAUDE.md's multiple-testing rule: roughly
+20 cells were sliced across both families this pass, so a couple of
+standouts by chance alone would not be surprising; these two are noted
+because they're large-n and monotonic, not because they're proven):
+shorter-duration touch formations (15-27 bars, PF=1.30) outperform longer
+ones (41-127 bars, PF=1.03); formation volatility (candle range vs local
+ATR) showed no meaningful effect on touches (PF 1.15/1.18/1.19 across
+terciles — flat).
+
+**Flags/pennants: slicing did not rescue the null.** Touch-count buckets
+from 5 (the minimum) through 9 stay in the same 0.91-1.00 PF band the
+pooled null already showed (real sample sizes, n=532-11,096); buckets above
+9 touches get too sparse to trust (n<40 — one cell is literally n=8 showing
+PF=0.20, noise not signal, named here so it isn't mistaken for something
+real later). Duration and formation-volatility terciles were flat (PF
+0.92-0.94 throughout). Retrace depth showed a mild monotonic lean (shallow
+retrace PF=0.89 → deep retrace PF=0.97) but every cell stayed below 1.0 — a
+lead worth checking if this family is ever revisited, not a rescue of the
+current null.
+
+
+**Independent cross-confirmation:** the adaptive per-category sizing work
+above (built the same day, separately) found per-category SL/TP splits
+cleanly by touch count too — 2-touch categories get a favourable ~1.3:1
+reward:risk, 3-touch categories closer to 1:1 — arrived at from MAE/MFE
+distributions, not from this profit-factor disaggregation, and landing on
+the same conclusion: touch count is a real structural axis for touches, not
+noise. Two different methods, same read.
+
+## Doubles-only portfolio + a second bug-hunt pass (independently converging with the work above)
+
+Built on this same branch, in parallel with the walk-forward/adaptive/
+multi-timeframe work above (both landed the same day) — `pylego/portfolio_sim.py`
+extracts the k-NN method's event-driven single-account simulator as a
+shared, signal-agnostic Tier-1 brick (`simulate_portfolio`, `sharpe_and_dd`,
+`matched_utilization_benchmark`, `pairwise_correlation_summary`, now also
+carrying the `size_mult` support the HTF-sized work above needs — 10
+hand-verified tests; this engine had none before, only ever exercised
+indirectly through the k-NN script). `AnalogML/portfolio_sim.py` re-exports
+from it so every script above keeps working unchanged.
+
+**Full-signal portfolio result converges independently with the number
+above (Sharpe 1.61, max DD −55.1%) — same method, same data, built without
+looking at each other's numbers first.** `AnalogML/motif_portfolio_sim.py`
+additionally supports `--n-touches` to isolate the doubles-only subset
+(n_touches=2 — see "Lifecycle disaggregation" below: doubles carry almost
+all of the edge, triples read close to a coin flip):
+
+```
+python AnalogML/motif_portfolio_sim.py --all-pairs --n-touches 2 --risk-pct 0.01
+```
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| Full touches signal | 1.61 | -55.1% | 2.7% |
+| Doubles only (n_touches=2) | **2.27** | **-31.8%** | 2.4% |
+
+The doubles-only portfolio is BOTH higher-Sharpe and shallower-drawdown
+than the diluted full signal — the same doubles-vs-triples pattern found at
+the per-trade level shows up again at the portfolio level. This is
+additive to, not a re-check of, the fuller adaptive/HTF-sized portfolio
+work above — worth combining with those in a future pass (adaptive SL/TP
+and/or HTF-conflict sizing, restricted to doubles only, is untried).
+
+### A second bug-hunt pass on `motif_touch.py`
+
+CLAUDE.md's rule: assume more bugs exist, don't assume clean because one
+was already caught. Before trusting the portfolio numbers above, did a
+genuine second pass on the detector itself (distinct from the
+`motif_multi_tf.py`/`motif_adaptive.py` bugs already caught above, which
+were in the NEW code built on top of the detector, not the detector
+itself):
+
+- Re-read the full `motif_touch.py` source with fresh, skeptical eyes — the
+  run builder, segment-local retracement validation, confirm-scan condition
+  ordering, top/bottom independence. No new logic bug found on inspection.
+- **Empirically verified the causal invariant at FULL SCALE, not just the
+  synthetic regression test** — the same class of check that caught the
+  head & shoulders bug (a synthetic test alone missed that one; only
+  measuring on real data at scale did). Every confirmed motif across all 26
+  pairs: **28,524 confirmed motifs, 0 causal-invariant violations**
+  (`confirm_idx - last_touch_idx >= pivot_n` held on every single one).
+- Checked touch-run duration realism (median 0.8 days, p99 2.4 days, max
+  3.4 days on GBPJPY — realistic, contained formations, no degenerate
+  multi-year "double tops") and confirmed no same-side double-counting or
+  entry/exit date-ordering issues (both structural, not just observed).
+
+**No new bug found this pass** — reported plainly as a bounded, real result
+(the existing fix is now scale-verified, not just assumed clean), not proof
+of permanent cleanliness.
+
 
 ## Honesty notes (read before trusting a number here)
 
