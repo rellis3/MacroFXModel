@@ -580,3 +580,117 @@ change, only what feeds `ext_score`. Given how weak even the in-sample
 numbers were here, the more informative next step is probably a different
 score entirely rather than a finer grid on this one — same lesson as every
 prior run in this document.
+
+---
+
+## Sixth run: `vol.py` — a real result, not another null
+
+Every run above asked whether a level or a ranking predicts DIRECTION, and
+every one came back null. This one asks a different kind of question —
+**does a volatility forecast's WIDTH match reality** — and it's the first
+run in this document that changes what should actually be done.
+
+### The question, precisely
+
+`MD files/COG_GAP_FINDINGS.md` diagnosed, on ~20 hand-transcribed days, that
+this repo's live daily-range forecaster (30-day Yang-Zhang, the production
+primary for FX and gold) is the stickiest estimator in its own family and
+produces bands too wide for realized range (34% exceed-rate against a 50%
+target). It separated the cause into two pieces — a **responsiveness** gap
+(the 30-day window reacts too slowly) and a **width** gap (bands don't match
+realized range) — and prescribed the fix (a faster estimator, width
+recalibrated to realized, not to COG's or Feller's theoretical constant),
+walk-forward tested with ≥30 OOS windows. That was explicitly marked
+"deferred, not yet run." `vol.py` runs it, on all 10 years instead of 20 days.
+
+Scoring is calibration, not P&L — a magnitude question needs a magnitude
+answer. **Pinball (quantile) loss** (the proper scoring rule for a percentile
+forecast, minimized exactly at the true quantile) plus **exceed-rate**, the
+same convention the repo's own hit-rate backfill already uses. The skeptical
+control isn't a randomization null (shuffling which day's range attaches to
+which forecast tests nothing) — it's a **naive, non-adaptive baseline**
+(expanding-mean sigma with zero day-to-day responsiveness) competing in the
+exact same 12-config grid (6 estimators × {raw Feller constants, realized-fit
+width}) as every adaptive estimator, so the walk-forward can honestly pick it
+if responsiveness isn't earning anything.
+
+### Finding 1 — the original diagnosis reproduces almost exactly, at scale
+
+Status quo (yz_30 + raw Feller — the closest analogue to what's live today),
+scored on the back 60% of ten years of real data, five spot-checked
+instruments:
+
+```
+          exceed50   exceed75
+gold        0.38        0.20
+eurusd      0.40        0.20
+gbpjpy      0.37        0.18
+audchf      0.38        0.21
+usdjpy      0.37        0.19
+```
+
+Target is 0.50 / 0.25. **37–40% almost exactly reproduces the original
+34%-on-20-days finding**, now on a real walk-forward split of the full
+history. Not a fluke of a small sample — a real, structural property of the
+current setup.
+
+### Finding 2 — realized-calibrated width + a faster estimator fixes it
+
+Full 26-instrument universe, 10 years, 6 expanding walk-forward folds, 156
+fold-selections total:
+
+```
+incumbent yz_30 chosen  47/156 (30%)
+naive (non-adaptive)    39/156 (25%)
+a faster estimator      70/156 (45%)
+```
+
+Not a uniform "always go faster" story — eurusd, usdchf and nzdusd keep yz_30
+in every one of their 6 folds; a chunk of pairs (audchf, chfjpy, gbpnzd,
+gbpcad and others) find the dumb non-adaptive baseline calibrates just as
+well OOS, meaning responsiveness isn't free money everywhere. But pooled
+across the universe, OOS calibration lands close to target almost everywhere:
+most instruments sit within exceed50∈[0.47,0.54], exceed75∈[0.24,0.29] of the
+0.50/0.25 targets — against a status quo sitting at 0.37–0.40/0.18–0.21.
+
+Pinball-loss improvement is real but more modest and NOT universal on the
+five spot-checked instruments — gold +5.0%, eurusd +2.3%, usdjpy +4.3%
+improved; gbpjpy −0.4% and audchf −3.7% were marginally WORSE in raw pinball
+loss despite calibrating better on exceed-rate. Worth stating plainly rather
+than smoothing over: better calibration (hitting the target exceed-rate) and
+lower pinball loss (tighter average forecast error) are related but not
+identical, and the fix helps calibration more reliably than it helps loss.
+
+### Finding 3 — the documented gold-specific gap disappears
+
+`COG_GAP_FINDINGS.md`'s Finding 3 flagged gold specifically: no change of
+half-life reached COG's gold level, an unexplained ~6% gold-specific gap
+versus the WHOLE estimator family, distinct from the general responsiveness
+issue. That comparison was against COG's own published number. Against
+REAL REALIZED range, properly walk-forward tested: gold selects a faster
+estimator in all 6 folds and calibrates to **exceed50=0.51, exceed75=0.26**
+— indistinguishable from the 26-instrument average (`calibration_gap_50`:
+gold +0.01 vs FX-universe mean +0.01). **The gold-specific gap was a gap to
+COG's number, not a gap to reality.** This directly resolves the open
+question the original diagnostic left unresolved, and confirms its own
+conclusion: don't chase COG's level, chase realized range.
+
+### What's still open
+
+A few pairs stay imperfectly calibrated even after the fix — audchf
+(+0.07/+0.09), chfjpy (+0.07/+0.11), gbpjpy (+0.06/+0.07), gbpusd
+(+0.06/+0.06) — all still slightly too narrow (realized exceeds the forecast
+more than the target rate), meaning realized range surprises to the upside on
+these names more than the model expects, even calibrated. Worth a dedicated
+look rather than assuming the fix is complete everywhere. And this validates
+the WIDTH/responsiveness half of the repo's own diagnosis, not COG's absolute
+numbers — COG's own tearsheet remains an unverified third-party claim, and
+his discretionary NQ direction system remains untestable (n=2 forward days,
+no historical options-positioning data) — this result says nothing about
+either of those.
+
+### Running it
+
+```bash
+python -m forge.run_vol --years 10 --folds 6 --verbose-pairs gold
+```
