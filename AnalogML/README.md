@@ -628,11 +628,26 @@ audjpy −86.9%, all worse than either portfolio) — the portfolio structure is
 doing real work, but adaptive sizing is not an unambiguous upgrade over the
 frozen grid at the account level, only at the isolated trade level.
 
-Not yet done: a proper percentile ablation beyond the one 6-cell sweep the
-chosen (50, 50) cell came from — worth revisiting given the portfolio-level
-drawdown cost just found; a tighter SL percentile (e.g. p25/p35 instead of
-p50) may trade some of the avg-R gain for materially better drawdown, and
-should be checked before this replaces the frozen grid as the default.
+**Percentile ablation, resolving the drawdown cost (2026-08-13) — DEFAULT
+CHANGED to (35, 35).** An 8-pair sample swept (sl_pctile, tp_pctile) ∈
+{(50,50), (25,25), (35,35), (25,50), (35,50)} at the PORTFOLIO level (the
+level that actually showed the problem). (35,35) stood out clearly — higher
+Sharpe than every other cell tried, AND at capital utilization matched
+almost exactly to the frozen grid (no capital-deployment confound). Full
+26-pair confirmation, same 28,223 motifs:
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| Adaptive (35, 35) | **2.31** | **−41.8%** | 2.7% |
+| Frozen grid (same motifs) | 1.58 | −54.5% | 2.7% |
+
+At MATCHED utilization (2.7% both), adaptive (35,35) now beats the frozen
+grid on BOTH Sharpe and max DD — no trade-off, unlike (50,50)'s Sharpe-for-
+drawdown swap. Trade level barely moves (PF 1.212/avg R +0.110 vs (50,50)'s
+1.227/+0.115 — a wash) but fold consistency IMPROVES (8/11 vs 6/11).
+**(35, 35) is now the default in both `motif_adaptive.py` and
+`motif_adaptive_portfolio_sim.py`** — a materially tighter, more robust
+choice than the original (75, 50) or the trade-level-only-chosen (50, 50).
 
 **True multi-timeframe agreement analysis (2026-08-13,
 `AnalogML/motif_multi_tf.py`)** — a question open since the original scoping
@@ -676,12 +691,43 @@ enough — ~76% of entries at 4H, ~70% at 1D) — most of the time there's
 simply no fresh HTF read available, a real constraint on how often this
 filter could apply live, not a flaw in the method.
 
+**HTF-conflict-aware position sizing (2026-08-13,
+`AnalogML/motif_htf_sized.py`)** — the natural integration of the 1D finding
+above: keep every trade (CONFLICT stays net positive, a hard skip would
+throw away real expectancy), just risk LESS on the ones an independent read
+already flags as lower-conviction. Deliberately isolates ONE new variable
+(position sizing) on top of the ALREADY-VALIDATED frozen-grid entry signal —
+not stacked on the not-fully-vetted adaptive SL/TP, so the two ideas don't
+get confounded. `pylego.barrier_race`'s sibling, `portfolio_sim.py`'s
+`simulate_portfolio`, now reads an optional per-trade `size_mult` (default
+1.0, every existing caller unaffected) — 0.5× on a 1D conflict, 1.0×
+otherwise (deliberately NOT sized UP on agreement — that's a separate,
+unvalidated claim `motif_multi_tf.py` didn't test).
+
+A 3-pair smoke test looked like a wash (Sharpe 1.26 vs 1.32 uniform-sized,
+roughly flat) — **the full 26-pair confirmation found a real win**, same
+28,423 motifs, 4,168 (14.7%) downsized:
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| HTF-sized (0.5× on 1D conflict) | **1.80** | **−42.9%** | 2.6% |
+| Uniform sizing (same motifs) | 1.61 | −55.1% | 2.7% |
+
+At essentially matched utilization, sizing down on a real, already-validated
+conflict signal improves BOTH Sharpe and max DD — a clean, if modest,
+portfolio-level win from position sizing alone, no change to entry
+selection or SL/TP at all. The 3-pair "wash" was another reminder not to
+trust a small sample after a null OR a positive read — this is now the 4th
+time in this build a small-sample first look was overturned at 26-pair
+scale (the excursion-window bug, the 4H/1D reversal, the (50,50)-vs-(35,35)
+drawdown finding, and now this).
+
 Not yet done: an in-progress/provisional HTF read (matching
 `motif_track.py`'s live "what's forming" diagnostic, rather than only
-counting already-CONFIRMED HTF motifs) is a real next variant — and, if the
-1D-conflict finding holds up further, feeding it into `motif_adaptive.py`'s
-position sizing (smaller size or skip on 1D conflict) is the natural
-integration point.
+counting already-CONFIRMED HTF motifs), and testing the adaptive SL/TP
+sizing (35,35) COMBINED with HTF-conflict sizing together — deliberately not
+done together yet, to keep this build's discipline of one new variable at a
+time.
 
 **Dashboard status, checked directly against the merged code (2026-08-12):**
 `today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
