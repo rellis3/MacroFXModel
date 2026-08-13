@@ -622,6 +622,72 @@ touches included, has only ever been tested on H1 — flags/pennants may
 behave differently on H4/D1; genuinely untested, not a prediction either
 way).
 
+## `motif_portfolio_sim.py` — does touches survive being a portfolio?
+
+The outstanding validation debt flagged since touches' very first read: a
+strong per-pair edge on 26 "independent" pairs can still combine into far
+fewer EFFECTIVE bets once currency-leg correlation and concurrent-risk
+limits are accounted for (exactly what sank the retired k-NN method once
+its bug was fixed and its own portfolio sim was re-run — see the banner at
+the top of this file). `pylego/portfolio_sim.py` (new) extracts the k-NN
+method's event-driven single-account simulator as a shared, signal-agnostic
+Tier-1 brick (`simulate_portfolio`, `sharpe_and_dd`,
+`matched_utilization_benchmark`, `pairwise_correlation_summary` — 9 new
+hand-verified tests; this engine had none before, only ever exercised
+indirectly through the k-NN script) and `AnalogML/motif_portfolio_sim.py`
+builds dated touches trades on top of it — same simulator, same two-
+benchmark methodology, zero second implementation.
+
+```
+python AnalogML/motif_portfolio_sim.py --all-pairs --risk-pct 0.01
+python AnalogML/motif_portfolio_sim.py --all-pairs --n-touches 2 --risk-pct 0.01
+```
+
+**Result: the strongest read so far in this build.** 26 pairs, 1%
+risk/trade, 5% concurrent-risk cap, sl=20p tp_r=1.5, cost on:
+
+| | Sharpe | max DD | avg utilization | signals refused (risk cap) |
+|---|---:|---:|---:|---:|
+| Full touches signal | 1.61 | -55.1% | 2.7% | 10,565/28,423 (37.2%) |
+| Doubles only (n_touches=2) | **2.27** | **-31.8%** | 2.4% | 5,876/21,623 (27.2%) |
+
+The doubles-only portfolio is BOTH higher-Sharpe and shallower-drawdown
+than the diluted full signal — the same pattern the lifecycle
+disaggregation found at the per-trade level (doubles carry the edge,
+triples add noise) shows up again at the portfolio level. Average pairwise
+weekly-return correlation across all 26 pairs: +0.012 (full) / +0.007
+(doubles) — close to independent, a genuinely favorable starting point
+given FX pairs share currency legs.
+
+Benchmark B (risk_pct scaled per pair to match the portfolio's own average
+utilization — the fair comparison, since benchmark A's uncontrolled
+utilization is what made the retired k-NN portfolio look falsely good on
+both return AND drawdown) is where the real diversification shows: of the
+3 sample pairs checked, audchf survives fine at that matched risk level
+(Sharpe 1.08-1.28), but audcad and audjpy — scaled to the SAME total risk a
+single pair would need to deploy the portfolio's utilization on its own —
+go to **-100%/-99.4% drawdown (ruin)**. The portfolio, spreading that
+identical total risk across 26 pairs instead of concentrating it in one,
+does not ruin. That gap is the real, controlled diversification effect.
+
+(Headline equity multiples — 46,274x full signal, 2,548,954x doubles-only —
+are mechanical compounding artifacts of ~1,000+ trades/pair at fixed 1%
+risk over ~10.5 years, the same caveat the k-NN method's own 15.5x headline
+needed; read as "the math of compounding a real per-trade edge," not a
+return forecast.)
+
+**Still not the finish line.** Only one bug-hunt pass has been done on
+`motif_touch.py` — flags/pennants and head & shoulders both got repeated
+adversarial variant-testing this session (measured-move stops, retest
+entries, trend-context filters, H4, and in head & shoulders' case a real
+caught bug); touches hasn't had that same scrutiny yet, and CLAUDE.md's
+rule is to assume more bugs exist, not fewer, after one is already caught.
+Sizing here is fixed-percent, not vol-scaled per pair; mark-to-close only
+(no intra-trade floating equity); the 1%/5% risk parameters are inherited
+unoptimised from the k-NN method's original defaults (deliberately — avoids
+a fresh overfit risk, but also means they aren't validated as the right
+choice for touches specifically). Genuinely encouraging, not yet validated.
+
 ## Lifecycle disaggregation — does touch/bounce count predict the outcome?
 
 The owner's fuller shape-prediction ask wants every shape's DURING-formation
