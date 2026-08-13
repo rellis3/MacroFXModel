@@ -2,14 +2,67 @@
 
 > **Read this first.** The headline result of the first gold run is a **null**:
 > after three lookahead bugs were found and fixed, the level-conditional edge
-> the engine discovers is statistically indistinguishable from what the same
-> search finds on **randomly-placed lines**. That is not a failed build. It is
-> the build working — the engine's job is to tell you which of your beliefs
+> the engine discovers is *worse* than what the same search finds on
+> **randomly-placed lines**, and the strategies it designs lose money
+> out-of-sample at −0.083R per trade over 10,112 trades. That is not a failed
+> build. It is the build working — the engine's job is to tell you which of your beliefs
 > about POCs, VALs, FVGs and order blocks survive contact with cost,
 > multiple testing, and a proper walk-forward, and on this first pass the
 > answer is "none of them, yet". The three bugs are documented below because
 > each one produced a *beautiful* fake result, and each is a bug that a
 > backtest cannot reveal by failing.
+
+---
+
+## First run: gold, 2016-06 → 2026-06
+
+3,501,046 M1 bars · 202,397 levels across 60 kinds · 306,401 level interactions ·
+~32,000 hypotheses per fold · 6 expanding walk-forward folds · 3 null repetitions.
+
+```
+REAL levels  OOS: 10,112 trades over 1,432 days
+   raw    mean -0.0830R   t = -5.50     ← what you would actually have earned
+   excess mean +0.0507R   t =  3.40     ← over the same trade at any level
+NULL levels  (randomized prices, 3 runs)
+   raw    mean -0.0283R
+   excess mean +0.1104R   best t = 7.50
+p_vs_null = 1.00   (all 3 null runs beat the real search)
+```
+
+Two independent readings, both negative:
+
+1. **The levels do nothing.** Real levels' excess (t=3.40) is comprehensively
+   beaten by randomly-placed lines (t=7.50, +0.110R vs +0.051R). Every one of
+   the three null runs beat the real one. Whatever the search is picking up,
+   it is not a property of POCs, VALs, pivots, FVGs or order blocks — an
+   arbitrary line drawn at a plausible distance does it better.
+2. **Nothing is tradeable anyway.** The raw number is what a trader receives,
+   and it is **−0.083R per trade with t = −5.50 across 10,112 trades**. Not
+   "no edge" — a statistically significant *loss*.
+
+Fold by fold (raw R per trade): −0.089, −0.115, −0.217, −0.155, −0.073, +0.003.
+Five of six negative, improving monotonically toward the present — which is a
+cost story, not a skill story, and it is the most useful thing this run found:
+
+| Year | Gold | M15 ATR | $0.30 spread, as R at a 0.75×ATR stop |
+|---|---|---|---|
+| 2017 | $1,258 | $1.21 | **0.353 R** |
+| 2019 | $1,393 | $1.32 | 0.353 R |
+| 2021 | $1,799 | $2.15 | 0.209 R |
+| 2024 | $2,389 | $2.95 | 0.147 R |
+| 2026 | $4,774 | $13.38 | **0.037 R** |
+
+A round-trip spread that never changed costs **ten times more in risk terms**
+in 2017 than in 2026, because the stop is volatility-scaled and the spread is
+not. Intraday level-trading gold at a sub-ATR stop was structurally unviable at
+2016–2019 volatility regardless of signal quality: you started every trade a
+third of the way to your stop. Any study pooling that era with this one is
+averaging two different games.
+
+**The honest conclusion:** on gold M15, with this vocabulary, this event
+definition and this barrier grid, there is no level-conditional edge. The next
+move is a different question, not a finer sweep of this one — see
+[Honest next steps](#honest-next-steps).
 
 ---
 
@@ -238,17 +291,27 @@ Read it in this order, and stop at the first line that fails:
 
 Ranked by expected information per unit of work, not by appeal:
 
-1. **Widen the vocabulary before deepening the search.** More context splits on
+1. **Raise the horizon and the stop until cost is not the dominant term.** The
+   cost table above is the single most actionable thing this run produced. At a
+   0.75×M15-ATR stop the spread was 15–35% of risk for most of the sample —
+   you cannot detect a 2% edge through a 30% toll. Re-run on H1/H4 events with
+   stops of 2–4×ATR and a multi-day horizon, where the same $0.30 is ~0.02R.
+   This is the one change most likely to move the result, and it costs nothing
+   but compute.
+2. **Widen the vocabulary before deepening the search.** More context splits on
    the same 60 kinds mostly buys multiple-testing burden. Genuinely new
    *objects* — volume-profile shape (P/b/D day types), composite multi-day
    profiles, real CME volume, cross-asset conditioning (DXY, real yields — the
    repo already has these) — buy new information.
-2. **Test the day boundary.** `--day-start-hour` 0 vs 22 changes every daily
+3. **Split the sample by cost regime, don't pool it.** Pre-2020 and post-2024
+   gold are different games at this stop size. Pooling them averages a game you
+   could not win with a game you might.
+4. **Test the day boundary.** `--day-start-hour` 0 vs 22 changes every daily
    open, pivot and profile. It is currently an untested assumption.
-3. **A held-back vault.** Reserve the final 2 years, never run anything on
+5. **A held-back vault.** Reserve the final 2 years, never run anything on
    them, and spend that budget exactly once when something finally clears
    its null.
-4. **A portfolio layer**, before any spec is taken seriously.
-5. **Do not** tune the existing search harder. When the honest answer is
-   "indistinguishable from random lines", the move is a different question,
-   not a finer sweep of the same one.
+6. **A portfolio layer**, before any spec is taken seriously.
+7. **Do not** tune the existing search harder. When the honest answer is
+   "worse than random lines", the move is a different question, not a finer
+   sweep of the same one.
