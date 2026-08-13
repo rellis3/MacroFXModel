@@ -35,7 +35,13 @@ def simulate_portfolio(trades: list[dict], risk_pct: float, max_concurrent_risk_
     vs single-pair Sharpe/DD comparison apples-to-apples: a portfolio that's
     near its cap most of the time has more capital at work than a single
     pair that rarely is, and that alone will show up as higher return AND
-    higher drawdown regardless of diversification quality."""
+    higher drawdown regardless of diversification quality.
+
+    A trade dict may optionally carry `size_mult` (default 1.0 if absent —
+    every existing caller that doesn't set it is unaffected) to scale that
+    ONE trade's risk relative to `risk_pct`, e.g. sizing down on a signal
+    that some independent read (an HTF conflict, a confidence bucket) marks
+    as lower-conviction, without changing entry/exit selection at all."""
     events = []
     for i, t in enumerate(trades):
         events.append((t["entry_date"], 0, i, "entry"))  # entries sort before exits on a tie
@@ -52,7 +58,7 @@ def simulate_portfolio(trades: list[dict], risk_pct: float, max_concurrent_risk_
         t = trades[i]
         if kind == "entry":
             current_open = sum(open_risk.values())
-            this_risk = equity * risk_pct
+            this_risk = equity * risk_pct * t.get("size_mult", 1.0)
             if current_open + this_risk > equity * max_concurrent_risk_pct:
                 skipped += 1
                 util_samples.append((date, current_open / equity))

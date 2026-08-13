@@ -38,8 +38,25 @@ OANDA (403 policy denial from the outbound proxy, confirmed not assumed).
 local parquet via `refresh_m1.py` first, reused not re-implemented. Without
 it, this reads the same static local snapshot as everything else.
 
+**Telegram alerts (`--telegram`, 2026-08-13):** one alert per newly-confirmed
+motif, via `pylego.telegram` (a shared brick, not yet another copy of the
+send_telegram pattern duplicated across 7+ other bots) reading the shared
+dashboard `tg_config` (same bot/chat every other bot's alerts already use)
+through `pylego.kv.KvClient`. The alert shows the TRACKED frozen-grid
+entry/SL/TP (unchanged -- everything in README.md/LEGO_MODULES.md is judged
+against this, and it stays that way) alongside two SEPARATELY validated,
+FROZEN sizing reads for a human deciding how to size a manual trade: the
+adaptive per-category ATR-scaled SL/TP (`AnalogML/motif_adaptive.py`'s
+validated sl_pctile=35/tp_pctile=35 constants) and the 1D HTF agree/conflict
+state (`AnalogML/motif_multi_tf.py`'s causal, end-of-bar-safe lookup) with a
+size note when it conflicts. Neither of those two is APPLIED to the tracked
+trade itself -- deliberately, so the record this signal is judged by never
+silently drifts. Disabled under `--as-of` even if passed (replay/testing
+only, never a live alert).
+
 Usage:
   python AnalogML/motif_track.py                      # real use (once wired to live data)
+  python AnalogML/motif_track.py --telegram            # + alert on each new confirmation
   python AnalogML/motif_track.py --as-of 2026-03-01    # mechanism test, step 1
   python AnalogML/motif_track.py                       # mechanism test, step 2
 """
@@ -56,6 +73,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pattern_scan import load_bars  # noqa: E402
+from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
@@ -63,9 +81,33 @@ sys.path.insert(0, str(REPO_ROOT))
 from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
+from pylego.kv import KvClient  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
+from pylego.telegram import load_tg_config, send_telegram  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
+
+# Frozen adaptive-sizing multipliers -- from the VALIDATED (sl_pctile=35,
+# tp_pctile=35) percentile ablation (AnalogML/motif_adaptive.py, full
+# 26-pair confirmation, 2026-08-13): median ATR multiples per category.
+# Frozen constants, NOT recomputed live -- this build's own "stop tuning,
+# let it run" rule applies to the alert's sizing too, not just the tracked
+# frozen-grid record below. Only used to LABEL the alert with a better-
+# calibrated level for manual execution; the tracked/logged trade (and
+# every backtest number this signal is judged by) stays on the frozen
+# sl=20p/tp_r=1.5 grid, untouched.
+ADAPTIVE_SIZE_ATR_MULT = {
+    (2, False): (1.53, 2.17),  # 2-touch bottom: (sl_mult, tp_mult)
+    (2, True): (1.51, 2.15),   # 2-touch top
+    (3, False): (1.86, 1.71),  # 3-touch bottom
+    (3, True): (1.76, 1.85),   # 3-touch top
+}
+# Validated in AnalogML/motif_htf_sized.py (full 26-pair confirmation,
+# 2026-08-13): sizing down (not skipping -- CONFLICT trades stay net
+# positive) on a 1D HTF conflict improved both Sharpe and max DD.
+HTF_CONFLICT_SIZE_MULT = 0.5
+HTF_TIMEFRAME = "1D"
+HTF_LOOKBACK_BARS = 20
 
 ALL_PAIRS = [
     "audcad", "audchf", "audjpy", "audnzd", "audusd", "cadjpy", "chfjpy",
@@ -133,7 +175,8 @@ def _motif_key(pair: str, m) -> str:
     return f"{pair}:{'top' if m.is_top else 'bottom'}:{'-'.join(str(i) for i in m.touch_idxs)}"
 
 
-def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list, params: dict) -> list[dict]:
+def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
+                    params: dict) -> list[tuple[dict, object]]:
     """Logs any motif that confirmed SINCE THE LAST RUN and isn't already
     recorded -- keyed by touch identity (survives a missed run), gated by a
     per-pair watermark (survives a re-run against the same data). The
@@ -168,7 +211,7 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list, para
         entry_price = float(bars["open"].to_numpy()[entry_idx])
         tp_price = entry_price + m.direction * sl_price * params["tp_r"]
         sl_level = entry_price - m.direction * sl_price
-        new.append({
+        new.append(({
             "motif_key": key, "pair": pair,
             "n_touches": m.n_touches, "is_top": m.is_top,
             "level": m.level, "touch_level": m.touch_level,
@@ -178,7 +221,7 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list, para
             "entry_price": entry_price, "sl_price": sl_level, "tp_price": tp_price,
             "sl_dist": sl_price, "tp_r": params["tp_r"], "status": "open",
             "logged_at": datetime.now(timezone.utc).isoformat(),
-        })
+        }, m))
     watermarks[pair] = n - 1
     return new
 
@@ -230,6 +273,72 @@ def _category_confidence(motifs: list, n_touches: int, is_top: bool) -> dict | N
     played_out_rate = sum(1 for m in same if m.played_out) / len(same)
     return {"n_samples": len(same), "played_out_rate": round(played_out_rate, 3),
             "profit_factor": round(s["profit_factor"], 2), "avg_r": round(s["avg_r"], 3)}
+
+
+def _htf_lean_for_entry(pair: str, entry_time) -> int | None:
+    """Causal 1D lean as of entry_time -- most recently CONFIRMED 1D motif
+    known by entry_time (within HTF_LOOKBACK_BARS), same method (and the
+    same lookahead-safe end-of-bar cutoff) as motif_multi_tf.py's
+    htf_lean_at, reused here rather than reimplemented. None if the pair
+    has too little 1D history or nothing confirmed recently enough --
+    a real, common state, not an error."""
+    htf_bars = load_bars(pair, HTF_TIMEFRAME)
+    if len(htf_bars) < 50:
+        return None
+    bar_duration = htf_bars.index[1] - htf_bars.index[0]
+    htf_end = htf_bars.index + bar_duration
+    htf_atr = compute_atr(htf_bars, period=FROZEN["atr_period"])
+    htf_motifs = detect_touch_motifs(htf_bars, htf_atr, **DETECT_KW)
+    confirmed = sorted(
+        [(hm.confirm_idx, hm.direction) for hm in htf_motifs if hm.confirm_idx is not None],
+        key=lambda c: c[0])
+    cutoff_idx_htf = int(htf_end.searchsorted(entry_time, side='right')) - 1
+    return htf_lean_at(confirmed, cutoff_idx_htf, HTF_LOOKBACK_BARS)
+
+
+def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None) -> str:
+    """Telegram HTML for one new confirmed motif. Shows the TRACKED
+    frozen-grid entry/SL/TP (the unchanged, validated record everything in
+    README.md/LEGO_MODULES.md is judged against) alongside the adaptive
+    ATR-scaled sizing and 1D HTF read (both separately validated, 2026-08-13)
+    -- for a human deciding whether/how to size a manual trade, not a claim
+    that either replaces the tracked signal."""
+    pip = pip_size(pair)
+    direction = m.direction
+    entry = t["entry_price"]
+    entry_atr = atr_arr[m.confirm_idx] if m.confirm_idx < len(atr_arr) else None
+
+    adaptive_line = ""
+    mults = ADAPTIVE_SIZE_ATR_MULT.get((m.n_touches, m.is_top))
+    if mults and entry_atr and entry_atr > 0:
+        sl_mult, tp_mult = mults
+        adaptive_sl_dist, adaptive_tp_dist = sl_mult * entry_atr, tp_mult * entry_atr
+        adaptive_sl = entry - direction * adaptive_sl_dist
+        adaptive_tp = entry + direction * adaptive_tp_dist
+        adaptive_line = (f"Adaptive: SL {adaptive_sl:.5f} ({adaptive_sl_dist / pip:.1f}p, {sl_mult}xATR) "
+                         f"· TP {adaptive_tp:.5f} ({adaptive_tp_dist / pip:.1f}p, {tp_mult}xATR)\n")
+
+    if htf_lean is None:
+        htf_line = "1D HTF: no recent read"
+    elif htf_lean == direction:
+        htf_line = "1D HTF: AGREE (full size)"
+    else:
+        htf_line = "1D HTF: CONFLICT — consider ~0.5x size (historically ~half the edge)"
+
+    conf_line = ""
+    if confidence:
+        conf_line = (f"Historical: {confidence['played_out_rate'] * 100:.0f}% played out, "
+                     f"PF {confidence['profit_factor']:.2f} (n={confidence['n_samples']})\n")
+
+    kind = "top" if m.is_top else "bottom"
+    icon = "\U0001f53b" if m.is_top else "\U0001f53a"
+    tp_dist_pips = abs(t["tp_price"] - entry) / pip
+    return (f"{icon} <b>{pair.upper()}</b> {t['direction']} — {m.n_touches}-touch {kind}\n"
+           f"Entry: {entry:.5f}\n"
+           f"Tracked (frozen grid): SL {t['sl_price']:.5f} ({t['sl_dist'] / pip:.0f}p) "
+           f"· TP {t['tp_price']:.5f} ({tp_dist_pips:.0f}p, {t['tp_r']}R)\n"
+           f"{adaptive_line}{htf_line}\n{conf_line}"
+           f"<i>Research signal — not a validated live edge. See AnalogML/README.md.</i>")
 
 
 def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dict) -> dict | None:
@@ -305,8 +414,20 @@ def run(args: argparse.Namespace) -> None:
                 print(f"  {pair:<8} refresh failed ({e}) -- scanning against whatever data "
                       f"is already local for this pair")
 
+    tg_token, tg_chat_id = "", ""
+    if args.telegram:
+        if args.as_of:
+            print("[telegram] --as-of is a replay/testing run -- not sending live alerts even "
+                  "though --telegram was passed")
+        else:
+            kv = KvClient(args.dashboard_url)
+            tg_token, tg_chat_id = load_tg_config(kv)
+            if not (tg_token and tg_chat_id):
+                print("[telegram] --telegram passed but no token/chat_id resolved (own config or "
+                      "shared tg_config) -- alerts will be skipped this run")
+
     log = load_log()
-    new_signals, resolved_total = 0, 0
+    new_signals, resolved_total, alerts_sent = 0, 0, 0
     states: list[dict] = []
     forming = 0
 
@@ -328,12 +449,20 @@ def run(args: argparse.Namespace) -> None:
 
         resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
         new = scan_pair_motif(pair, bars, log, motifs, FROZEN)
-        for t in new:
+        for t, m in new:
             log["trades"].append(t)
             new_signals += 1
             print(f"  [new] {pair:<8} {t['n_touches']}-touch {'top' if t['is_top'] else 'bottom'} "
                   f"{t['direction']} @ {t['entry_price']:.5f}  sl={t['sl_price']:.5f} "
                   f"tp={t['tp_price']:.5f}  {t['entry_date']}")
+            if tg_token and tg_chat_id:
+                htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
+                confidence = _category_confidence(motifs, m.n_touches, m.is_top)
+                text = format_alert(pair, t, m, atr_arr, htf_lean, confidence)
+                if send_telegram(tg_token, tg_chat_id, text):
+                    alerts_sent += 1
+                else:
+                    print(f"  [warn] Telegram alert failed to send for {pair}")
 
         state = compute_motif_state(pair, bars, motifs, FROZEN)
         if state:
@@ -349,7 +478,8 @@ def run(args: argparse.Namespace) -> None:
     print(f"\n[motif_track] as_of={args.as_of or 'latest available (static local snapshot)'}  "
           f"new_signals={new_signals}  resolved_this_run={resolved_total}  "
           f"currently_open={open_n}  closed={len(closed)} (wins={wins}, total_R={total_r:.2f})  "
-          f"currently_forming={forming}/{len(pairs)} pairs  total_logged={len(log['trades'])}")
+          f"currently_forming={forming}/{len(pairs)} pairs  total_logged={len(log['trades'])}"
+          + (f"  telegram_alerts_sent={alerts_sent}" if args.telegram else ""))
     if not args.as_of:
         print("[note] no --as-of given: this ran against the static local snapshot, NOT live data. "
               "See this file's module docstring for the data-access blocker and how to wire in a "
@@ -364,6 +494,14 @@ def main() -> None:
                    help="ISO date -- truncate data as if this were 'now'. TESTING/REPLAY ONLY.")
     p.add_argument("--refresh-data", action="store_true",
                    help="pull fresh OANDA bars (refresh_m1.py) before scanning.")
+    p.add_argument("--telegram", action="store_true",
+                   help="send a Telegram alert for each newly-confirmed motif this run (entry, "
+                        "tracked frozen-grid SL/TP, adaptive ATR-scaled SL/TP, 1D HTF read). Uses "
+                        "the shared dashboard tg_config (same bot token/chat as every other bot's "
+                        "alerts) unless this pair's own config sets tg_token/tg_chat_id. Disabled "
+                        "automatically under --as-of (replay/testing, never live).")
+    p.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL", "http://localhost:3000"),
+                   help="base URL for reading the shared Telegram config via the KV API.")
     args = p.parse_args()
     run(args)
 

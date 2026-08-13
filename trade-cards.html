@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Cards — Zone/TP/SL Board</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding:18px;max-width:1600px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:2px}
+  .sub{color:var(--text2);margin-bottom:14px;font-size:13px}
+  a{color:var(--blue)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border);color:var(--text2);margin-left:8px;vertical-align:middle}
+  .badge.warn{color:var(--amber);border-color:rgba(210,153,34,.4)}
+  .honesty{font-size:12px;color:var(--text2);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px}
+  .honesty b{color:var(--amber)}
+  .controls{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+  label{display:block;font-size:11px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+  select,input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:13px;min-width:90px}
+  button{background:var(--blue);border:none;color:#fff;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--card2);border:1px solid var(--border);color:var(--text2)}
+  button:disabled{opacity:.5;cursor:wait}
+  .muted{color:var(--text3);font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .tc-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .tc-card.empty{opacity:.4}
+  .tc-hdr{display:flex;align-items:center;gap:8px}
+  .tc-pair{font-size:16px;font-weight:700}
+  .tc-chip{font-size:10.5px;padding:2px 8px;border-radius:8px;border:1px solid var(--border);font-weight:700}
+  .tc-chip.go{color:var(--green);border-color:rgba(63,185,80,.4)}
+  .tc-chip.skip{color:var(--red);border-color:rgba(248,81,73,.4)}
+  .tc-conf{margin-left:auto;font-size:12px;color:var(--text2)}
+  .tc-countdown{display:flex;align-items:baseline;gap:6px}
+  .tc-countdown .n{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+  .tc-countdown .n.up{color:var(--green)} .tc-countdown .n.dn{color:var(--red)}
+  .tc-countdown .lbl{font-size:11px;color:var(--text3)}
+  .tc-chart{height:220px;position:relative;background:var(--card2);border-radius:6px}
+  .tc-chart .empty-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11.5px;text-align:center;padding:10px}
+  .tc-legend{display:flex;flex-wrap:wrap;gap:6px;font-size:11px}
+  .tc-lv{display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
+  .tc-lv .dot{width:8px;height:8px;border-radius:50%}
+  .tc-stars{color:var(--amber);letter-spacing:-1px;font-size:13px}
+  .tc-sources{color:var(--text3);font-size:11px}
+  .tc-why{font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:6px;margin-top:2px}
+  .tc-why li{margin:1px 0 1px 14px}
+</style>
+</head>
+<body>
+
+<h1>🃏 Trade Cards <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
+<div class="sub">One card per pair: live chart, nearest zone, pip countdown, confidence, and the TP/SL the backtest is actually graded on. List view: <a href="upcoming-trades.html">upcoming-trades.html</a></div>
+
+<div class="honesty">
+  <b>TP/SL convention.</b> The Telegram alert and the raw <code>decide()</code> call never print a price for
+  stop/target — they only score direction + confidence. But every backtest number in this system (FIT_FINDINGS.md,
+  the walk-forward fit, the win-rates you've seen) is graded on the SAME triple-barrier rule:
+  <b>TP = 0.5σ, SL = 0.75σ</b> (daily σ, checked intrabar, SL first). Lines below use that exact rule — it's not a
+  new invention, it's making the existing grading rule visible. <b>Confidence</b> is <code>modelV1</code> (FX majors)
+  or the <code>v0</code> prior (everything else) — calibrated but weakly selective; see <a href="upcoming-trades.html">upcoming-trades.html</a>'s
+  banner for the full caveat. This is an alert board, not an execution system — you place every trade yourself.
+</div>
+
+<div class="controls">
+  <div><label>Mode</label><select id="mode"><option value="live">live (OANDA)</option><option value="synthetic">synthetic (demo — zones only, no chart)</option></select></div>
+  <div><label>Max distance</label><input id="maxSigma" type="number" step="0.1" value="1.5" style="max-width:80px">σ</div>
+  <div><label>Min confluence</label><input id="minConf" type="number" step="1" value="1" style="max-width:70px"></div>
+  <div><label>Asset class</label><select id="assetFilter"><option value="">all</option><option value="fx">FX only</option><option value="commodity">Gold</option><option value="index">Indices</option></select></div>
+  <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer;margin-bottom:8px"><input type="checkbox" id="hideEmpty" style="min-width:auto" checked> hide pairs with no near zone</label>
+  <button id="btnLoad" onclick="loadAll()">↻ Load / refresh</button>
+  <button class="ghost" onclick="warmAll()" id="btnWarm">⟳ Warm snapshots (live)</button>
+  <span class="muted" id="status"></span>
+</div>
+
+<div class="grid" id="cardGrid"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const PAIRS = ['eurusd','gbpusd','usdjpy','audusd','usdcad','usdchf','nzdusd','eurgbp','eurjpy','gbpjpy','audjpy','euraud','eurchf','eurcad','eurnzd','gbpaud','gbpcad','gbpchf','gbpnzd','audcad','audchf','audnzd','cadjpy','chfjpy','nzdjpy','gold','nq','spx','dow','rut','ftse','dax'];
+const ASSET_CLASS = p => p === 'gold' ? 'commodity' : ['nq','spx','dow','rut','ftse','dax'].includes(p) ? 'index' : 'fx';
+const DP = p => ASSET_CLASS(p) === 'fx' ? (p.includes('jpy') ? 3 : 5) : 2;
+// OANDA venue symbols for the M5 chart feed (/api/oanda_ohlc5m) — mirrors instrumentRegistry.js.
+const OANDA_SYM = { eurusd:'EUR_USD', gbpusd:'GBP_USD', usdjpy:'USD_JPY', audusd:'AUD_USD', usdcad:'USD_CAD',
+  usdchf:'USD_CHF', nzdusd:'NZD_USD', eurgbp:'EUR_GBP', eurjpy:'EUR_JPY', gbpjpy:'GBP_JPY', audjpy:'AUD_JPY',
+  euraud:'EUR_AUD', eurchf:'EUR_CHF', eurcad:'EUR_CAD', eurnzd:'EUR_NZD', gbpaud:'GBP_AUD', gbpcad:'GBP_CAD',
+  gbpchf:'GBP_CHF', gbpnzd:'GBP_NZD', audcad:'AUD_CAD', audchf:'AUD_CHF', audnzd:'AUD_NZD', cadjpy:'CAD_JPY',
+  chfjpy:'CHF_JPY', nzdjpy:'NZD_JPY', gold:'XAU_USD', nq:'NAS100_USD', spx:'SPX500_USD', dow:'US30_USD',
+  rut:'US2000_USD', ftse:'UK100_GBP', dax:'DE30_EUR' };
+
+let snaps = {}, decides = {}, charts = {};
+
+async function api(path, opts) { const r = await fetch(path, opts); return r.json(); }
+
+async function health() {
+  try {
+    const h = await api('/api/trade-decision/health');
+    $('modelBadge').textContent = 'model ' + h.model_version;
+    if (!h.calibrated) $('calBadge').style.display = 'inline-block';
+  } catch { $('modelBadge').textContent = 'server unreachable'; }
+}
+
+async function warmAll() {
+  const b = $('btnWarm'); b.disabled = true; b.textContent = '⟳ warming…';
+  try {
+    const r = await api('/api/trade-decision/refresh', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pairs: PAIRS }) });
+    const ok = Object.values(r.pairs ?? {}).filter(x => x.ok).length;
+    $('status').textContent = `warmed ${ok}/${PAIRS.length}`;
+    await loadAll();
+  } catch (e) { $('status').textContent = 'warm failed: ' + (e.message ?? e); }
+  finally { b.disabled = false; b.textContent = '⟳ Warm snapshots (live)'; }
+}
+
+async function loadAll() {
+  const mode = $('mode').value;
+  $('status').textContent = 'loading snapshots…';
+  const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}?mode=${mode}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
+  snaps = {}; for (const [p, s] of results) if (s.ok) snaps[p] = s;
+  $('status').textContent = `${Object.keys(snaps).length}/${PAIRS.length} pairs have a ${mode} snapshot — scoring nearest zones…`;
+
+  // Preview-decide the nearest qualifying zone per pair (bounded to ~32 calls,
+  // each a pure snapshot lookup — no OANDA hit since the snapshot's already warm).
+  // preview:true so these hypothetical "what if price were here" reads never
+  // pollute decisionLog.js's training set (same discipline as upcoming-trades.html).
+  const maxSigma = parseFloat($('maxSigma').value) || 1.5;
+  const minConf = parseInt($('minConf').value) || 1;
+  decides = {};
+  const jobs = [];
+  for (const [pair, s] of Object.entries(snaps)) {
+    const sigmaAbs = (s.sigmaDaily ?? 0) * (s.dayOpen ?? s.price ?? 1);
+    if (!sigmaAbs || !s.price) continue;
+    let best = null, bestD = Infinity;
+    for (const z of (s.zones ?? [])) {
+      if ((z.count ?? 0) < minConf) continue;
+      const d = (z.price - s.price) / sigmaAbs;
+      if (Math.abs(d) > maxSigma) continue;
+      if (Math.abs(d) < Math.abs(bestD)) { best = z; bestD = d; }
+    }
+    if (!best) continue;
+    jobs.push(api('/api/trade-decision/decide', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pair, price: best.price, mode, preview: true }) })
+      .then(r => { decides[pair] = { r, zone: best, distSigma: bestD, sigmaAbs }; })
+      .catch(() => {}));
+  }
+  await Promise.all(jobs);
+  $('status').textContent = `${Object.keys(snaps).length}/${PAIRS.length} snapshots · ${Object.keys(decides).length} scored zones`;
+  render();
+}
+
+function tpSl(entry, direction, sigmaAbs) {
+  if (!direction || !sigmaAbs) return null;
+  const dirSign = direction === 'long' ? 1 : -1;
+  return { tp: entry + dirSign * 0.5 * sigmaAbs, sl: entry - dirSign * 0.75 * sigmaAbs, dirSign };
+}
+
+function render() {
+  const assetFilter = $('assetFilter').value;
+  const hideEmpty = $('hideEmpty').checked;
+  const grid = $('cardGrid');
+  grid.innerHTML = '';
+  Object.values(charts).forEach(c => { try { c.remove(); } catch {} });
+  charts = {};
+
+  for (const pair of PAIRS) {
+    if (assetFilter && ASSET_CLASS(pair) !== assetFilter) continue;
+    const d = decides[pair];
+    if (!d && hideEmpty) continue;
+    grid.appendChild(buildCard(pair, d));
+  }
+  if ($('mode').value === 'live') loadCharts();
+}
+
+function buildCard(pair, d) {
+  const dp = DP(pair);
+  const card = document.createElement('div');
+  card.className = 'tc-card' + (d ? '' : ' empty');
+  card.id = `tc-${pair}`;
+  if (!d) {
+    card.innerHTML = `<div class="tc-hdr"><span class="tc-pair">${pair.toUpperCase()}</span></div><div class="muted">no qualifying zone within the current filter</div>`;
+    return card;
+  }
+  const { r, zone, distSigma, sigmaAbs } = d;
+  const go = r.decision === 'go';
+  const p = r.probability;
+  const ts = tpSl(zone.price, r.direction, sigmaAbs);
+  const distTxt = (Math.abs(distSigma)).toFixed(2) + 'σ';
+  const side = distSigma >= 0 ? 'up' : 'dn';
+  const arrow = distSigma >= 0 ? '▲ above price' : '▼ below price';
+  const stars = '★'.repeat(Math.min(5, zone.count ?? 0)) + '☆'.repeat(Math.max(0, 5 - (zone.count ?? 0)));
+
+  card.innerHTML = `
+    <div class="tc-hdr">
+      <span class="tc-pair">${pair.toUpperCase()}</span>
+      <span class="tc-chip ${go ? 'go' : 'skip'}">${go ? '✓ GO' : '✗ SKIP'}</span>
+      <span class="tc-conf">${p != null ? (100 * p).toFixed(1) + '%' : 'gated'} · ${r.direction ?? '–'} ${r.action ?? ''}</span>
+    </div>
+    <div class="tc-countdown">
+      <span class="n ${side}">${distTxt}</span>
+      <span class="lbl">${arrow} — zone ${zone.price.toFixed(dp)}</span>
+    </div>
+    <div class="tc-chart" id="chart-${pair}"><div class="empty-msg">chart loads in live mode…</div></div>
+    <div class="tc-legend">
+      <span class="tc-lv"><span class="dot" style="background:#d29922"></span>Zone ${zone.price.toFixed(dp)}</span>
+      ${ts ? `<span class="tc-lv"><span class="dot" style="background:#3fb950"></span>TP ${ts.tp.toFixed(dp)}</span>
+             <span class="tc-lv"><span class="dot" style="background:#f85149"></span>SL ${ts.sl.toFixed(dp)}</span>` : `<span class="muted">no directional read — TP/SL unavailable</span>`}
+    </div>
+    <div><span class="tc-stars" title="${(zone.sources ?? []).join(', ')}">${stars}</span> <span class="tc-sources">${(zone.sources ?? []).slice(0, 4).join(', ')} · score ${zone.score}</span></div>
+    ${(r.reasons ?? []).length ? `<div class="tc-why muted">reasons: ${r.reasons.join(', ')}</div>` : ''}
+    ${(r.top_factors ?? []).length ? `<ul class="tc-why">${r.top_factors.slice(0, 4).map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+  `;
+  card._meta = { pair, zone, ts, sigmaAbs, dp };
+  return card;
+}
+
+// Batch-load charts (mirrors vol-forecast-v2.html's pattern) so we don't fire 32
+// OANDA candle requests simultaneously.
+async function loadCharts() {
+  const cards = Array.from($('cardGrid').children).filter(c => c._meta);
+  const BATCH = 4;
+  for (let i = 0; i < cards.length; i += BATCH) {
+    await Promise.all(cards.slice(i, i + BATCH).map(c => loadOneChart(c).catch(() => {})));
+  }
+}
+
+async function loadOneChart(card) {
+  const { pair, zone, ts, dp } = card._meta;
+  const wrap = document.getElementById(`chart-${pair}`);
+  const sym = OANDA_SYM[pair];
+  if (!wrap || !sym) return;
+  wrap.innerHTML = '<div class="empty-msg">loading…</div>';
+  let data;
+  try {
+    const res = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
+    data = await res.json();
+    if (!res.ok || !data?.values?.length) { wrap.innerHTML = `<div class="empty-msg">${data?.error ?? 'no bars'}</div>`; return; }
+  } catch (e) { wrap.innerHTML = `<div class="empty-msg">${e.message}</div>`; return; }
+
+  if (!window.LightweightCharts) { wrap.innerHTML = '<div class="empty-msg">chart lib not loaded</div>'; return; }
+  wrap.innerHTML = '';
+  const bars = [...data.values].reverse().slice(-200).map(c => ({
+    time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+    open: parseFloat(c.open), high: parseFloat(c.high), low: parseFloat(c.low), close: parseFloat(c.close),
+  })).filter(b => Number.isFinite(b.open));
+  if (!bars.length) { wrap.innerHTML = '<div class="empty-msg">no bars</div>'; return; }
+
+  const levelPrices = [zone.price, ts?.tp, ts?.sl].filter(v => v != null);
+  const chart = LightweightCharts.createChart(wrap, {
+    width: wrap.clientWidth || 300, height: 220,
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 9, fontFamily: "'DM Mono', monospace" },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.06)' } },
+    timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.1 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  const series = chart.addCandlestickSeries({
+    upColor: '#10b981', downColor: '#f97316', borderUpColor: '#10b981', borderDownColor: '#f97316',
+    wickUpColor: '#10b981', wickDownColor: '#f97316',
+    priceFormat: { type: 'price', precision: dp, minMove: 1 / 10 ** dp },
+    autoscaleInfoProvider: orig => {
+      const r = orig(); if (!r || !levelPrices.length) return r;
+      return { priceRange: { minValue: Math.min(r.priceRange.minValue, ...levelPrices), maxValue: Math.max(r.priceRange.maxValue, ...levelPrices) }, margins: r.margins };
+    },
+  });
+  series.setData(bars);
+  const LS = LightweightCharts.LineStyle;
+  series.createPriceLine({ price: zone.price, color: '#d29922', lineWidth: 1, lineStyle: LS.Dashed, title: 'ZONE', axisLabelVisible: true });
+  if (ts) {
+    series.createPriceLine({ price: ts.tp, color: '#3fb950', lineWidth: 2, lineStyle: LS.Solid, title: 'TP', axisLabelVisible: true });
+    series.createPriceLine({ price: ts.sl, color: '#f85149', lineWidth: 2, lineStyle: LS.Solid, title: 'SL', axisLabelVisible: true });
+  }
+  charts[pair] = chart;
+}
+
+window.addEventListener('resize', () => {
+  for (const [pair, chart] of Object.entries(charts)) {
+    const wrap = document.getElementById(`chart-${pair}`);
+    if (wrap) chart.applyOptions({ width: wrap.clientWidth });
+  }
+});
+
+['maxSigma', 'minConf', 'assetFilter', 'hideEmpty'].forEach(id => {
+  $(id).addEventListener('change', () => (id === 'maxSigma' || id === 'minConf') ? loadAll() : render());
+});
+$('mode').addEventListener('change', loadAll);
+
+health();
+loadAll();
+</script>
+</body>
+</html>

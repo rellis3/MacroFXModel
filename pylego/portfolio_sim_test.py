@@ -31,6 +31,23 @@ def test_equity_sequencing_hand_verified():
     assert abs(result["final_equity"] - 1.08) < 1e-9
 
 
+def test_size_mult_scales_risk_and_defaults_to_one():
+    # Two identical trades, one with size_mult=0.5 -- its equity impact
+    # should be exactly half the unscaled trade's.
+    trades = [
+        {"pair": "a", "entry_date": pd.Timestamp("2020-01-01"), "exit_date": pd.Timestamp("2020-01-02"), "r": 2.0},
+        {"pair": "b", "entry_date": pd.Timestamp("2020-02-01"), "exit_date": pd.Timestamp("2020-02-02"),
+         "r": 2.0, "size_mult": 0.5},
+    ]
+    r1 = simulate_portfolio([trades[0]], risk_pct=0.1, max_concurrent_risk_pct=1.0)
+    r2 = simulate_portfolio([trades[1]], risk_pct=0.1, max_concurrent_risk_pct=1.0)
+    gain1 = r1["final_equity"] - 1.0  # 0.1 * 2.0 = 0.2
+    gain2 = r2["final_equity"] - 1.0  # 0.5 * 0.1 * 2.0 = 0.1
+    assert abs(gain1 - 0.2) < 1e-9
+    assert abs(gain2 - 0.1) < 1e-9
+    assert abs(gain2 - gain1 / 2) < 1e-9
+
+
 def test_concurrent_risk_cap_refuses_second_entry():
     # Two overlapping trades, each risking 10%; cap at 15% can't fit both.
     trades = [

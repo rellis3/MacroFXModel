@@ -475,6 +475,7 @@ this signal in place of the retired one. `AnalogML/motif_track_loop.sh`
 process, alongside the still-running (but no longer dashboard-surfaced)
 `paper_track_loop.sh`.
 
+
 ## `flag_scan.py` / `flag_scan_sweep.py` — flags & pennants (null, 2026-08-12)
 
 The owner's full ask for AnalogML is broader than touches alone: EVERY
@@ -622,183 +623,6 @@ touches included, has only ever been tested on H1 — flags/pennants may
 behave differently on H4/D1; genuinely untested, not a prediction either
 way).
 
-## `motif_portfolio_sim.py` — does touches survive being a portfolio?
-
-The outstanding validation debt flagged since touches' very first read: a
-strong per-pair edge on 26 "independent" pairs can still combine into far
-fewer EFFECTIVE bets once currency-leg correlation and concurrent-risk
-limits are accounted for (exactly what sank the retired k-NN method once
-its bug was fixed and its own portfolio sim was re-run — see the banner at
-the top of this file). `pylego/portfolio_sim.py` (new) extracts the k-NN
-method's event-driven single-account simulator as a shared, signal-agnostic
-Tier-1 brick (`simulate_portfolio`, `sharpe_and_dd`,
-`matched_utilization_benchmark`, `pairwise_correlation_summary` — 9 new
-hand-verified tests; this engine had none before, only ever exercised
-indirectly through the k-NN script) and `AnalogML/motif_portfolio_sim.py`
-builds dated touches trades on top of it — same simulator, same two-
-benchmark methodology, zero second implementation.
-
-```
-python AnalogML/motif_portfolio_sim.py --all-pairs --risk-pct 0.01
-python AnalogML/motif_portfolio_sim.py --all-pairs --n-touches 2 --risk-pct 0.01
-```
-
-**Result: the strongest read so far in this build.** 26 pairs, 1%
-risk/trade, 5% concurrent-risk cap, sl=20p tp_r=1.5, cost on:
-
-| | Sharpe | max DD | avg utilization | signals refused (risk cap) |
-|---|---:|---:|---:|---:|
-| Full touches signal | 1.61 | -55.1% | 2.7% | 10,565/28,423 (37.2%) |
-| Doubles only (n_touches=2) | **2.27** | **-31.8%** | 2.4% | 5,876/21,623 (27.2%) |
-
-The doubles-only portfolio is BOTH higher-Sharpe and shallower-drawdown
-than the diluted full signal — the same pattern the lifecycle
-disaggregation found at the per-trade level (doubles carry the edge,
-triples add noise) shows up again at the portfolio level. Average pairwise
-weekly-return correlation across all 26 pairs: +0.012 (full) / +0.007
-(doubles) — close to independent, a genuinely favorable starting point
-given FX pairs share currency legs.
-
-Benchmark B (risk_pct scaled per pair to match the portfolio's own average
-utilization — the fair comparison, since benchmark A's uncontrolled
-utilization is what made the retired k-NN portfolio look falsely good on
-both return AND drawdown) is where the real diversification shows: of the
-3 sample pairs checked, audchf survives fine at that matched risk level
-(Sharpe 1.08-1.28), but audcad and audjpy — scaled to the SAME total risk a
-single pair would need to deploy the portfolio's utilization on its own —
-go to **-100%/-99.4% drawdown (ruin)**. The portfolio, spreading that
-identical total risk across 26 pairs instead of concentrating it in one,
-does not ruin. That gap is the real, controlled diversification effect.
-
-(Headline equity multiples — 46,274x full signal, 2,548,954x doubles-only —
-are mechanical compounding artifacts of ~1,000+ trades/pair at fixed 1%
-risk over ~10.5 years, the same caveat the k-NN method's own 15.5x headline
-needed; read as "the math of compounding a real per-trade edge," not a
-return forecast.)
-
-**Still not the finish line.** Only one bug-hunt pass has been done on
-`motif_touch.py` — flags/pennants and head & shoulders both got repeated
-adversarial variant-testing this session (measured-move stops, retest
-entries, trend-context filters, H4, and in head & shoulders' case a real
-caught bug); touches hasn't had that same scrutiny yet, and CLAUDE.md's
-rule is to assume more bugs exist, not fewer, after one is already caught.
-Sizing here is fixed-percent, not vol-scaled per pair; mark-to-close only
-(no intra-trade floating equity); the 1%/5% risk parameters are inherited
-unoptimised from the k-NN method's original defaults (deliberately — avoids
-a fresh overfit risk, but also means they aren't validated as the right
-choice for touches specifically). Genuinely encouraging, not yet validated.
-
-### Second bug-hunt pass (2026-08-13)
-
-Only one bug-hunt pass had been done on `motif_touch.py` before the
-portfolio test — CLAUDE.md's rule is to assume more bugs exist, not fewer,
-once one is already caught. Did a genuine second pass, not a repeat of the
-first:
-
-- **Re-read the full detector source with fresh, skeptical eyes** — the run
-  builder (`_touch_runs`), the segment-local retracement validation, the
-  confirm scan's condition ordering, the top/bottom independence. No new
-  logic bug found on inspection.
-- **Empirically verified the causal invariant at FULL SCALE, not just the
-  synthetic regression test** — the exact class of check that caught the
-  head & shoulders bug (a synthetic test alone didn't catch that one; only
-  measuring on real data at scale did). Checked every confirmed motif
-  across all 26 pairs: **28,524 confirmed motifs, 0 causal-invariant
-  violations** (`confirm_idx - last_touch_idx >= pivot_n` held on every
-  single one). The existing fix is now verified at scale, not just assumed
-  clean because the synthetic test passes.
-- **Checked touch-run duration realism** — a run with no upper bound on
-  touch-to-touch time span could in principle produce degenerate
-  multi-year "double tops" that wouldn't chart-sense as a real pattern to a
-  human trader. Measured on GBPJPY: median span 0.8 days, p90 1.7 days,
-  p99 2.4 days, max 3.4 days — all realistic, contained formations.
-- **Confirmed no double-counting within a side** — the run builder advances
-  its index past every touch in a completed run (`i += len(run)`),
-  structurally preventing the same pivot from appearing in two overlapping
-  runs on the same (top/bottom) side.
-- **Confirmed entry/exit date ordering** — `race_trades`' exit offset is
-  always found by a forward-only scan from the entry bar, so `exit_date >=
-  entry_date` is structural, not just observed.
-
-**No new bug found this pass.** Reporting that plainly — it's a real,
-useful result (the existing fix now has scale-verification it didn't have
-before), not proof the detector is bug-free forever. The next place a bug
-could plausibly still hide: the portfolio simulation's risk-cap accounting
-under genuinely concurrent same-pair signals (a top and bottom motif
-confirming on the same bar), which hasn't been separately audited.
-
-## Lifecycle disaggregation — does touch/bounce count predict the outcome?
-
-The owner's fuller shape-prediction ask wants every shape's DURING-formation
-quality analyzed against its own AFTER-outcome, not just a pooled average —
-specifically: does the NUMBER of touches/bounces predict breakout direction
-or magnitude? `pylego/pattern_lifecycle.py` (new) regenerates
-`js/patternEngine.js`'s `compute_acceptance`/`compute_confidence` as a
-shared brick any detector can plug into (does a breakout hold, and a 0-100
-formation-quality score blending each detector's own geometry sub-scores
-with volatility-compression-during-formation and breakout strength) — built
-as Tier-1 infrastructure so future detectors (head & shoulders,
-triangles/wedges/channels) get this scoring for free instead of each
-carrying a copy. Not yet wired into `flag_pennant.py`/`motif_touch.py`'s own
-output (both would need `raw_scores` fields added first).
-
-Then the specific cross-tab was run directly, pooled across all 26 pairs,
-for both existing detectors (touches, flags/pennants): touch-count,
-formation duration, and formation volatility (bar range vs local ATR)
-against real R-outcome via `pylego.barrier_race` (sl=20p, tp_r=1.5, cost on
-— same frozen grid every AnalogML check uses).
-
-**Touches: a real, IS/OOS-confirmed finding — the edge concentrates in
-doubles, not triples.**
-
-| n_touches | n (pooled) | PF | avg R |
-|---|---:|---:|---:|
-| 2 (double top/bottom) | 21,623 | 1.24 | 0.133 |
-| 3 (triple top/bottom) | 6,800 | 0.98 | -0.011 |
-
-Checked against a genuine calendar IS/OOS split (cutoff 2023-01-01, not
-just the pooled full-history number — the standout cell, so it earned the
-extra check):
-
-| n_touches | split | n | PF | avg R |
-|---|---|---:|---:|---:|
-| 2 | IS (pre-2023) | 14,646 | 1.25 | 0.135 |
-| 2 | OOS (2023+) | 6,977 | 1.23 | 0.130 |
-| 3 | IS (pre-2023) | 4,594 | 1.00 | -0.003 |
-| 3 | OOS (2023+) | 2,206 | 0.95 | -0.029 |
-
-Minimal IS→OOS decay on doubles, well past the ≥30-OOS-trade bar, and
-triples stay flat-to-negative on both sides — this is not a
-subset-mining artifact, it survives the exact falsification test CLAUDE.md
-asks for ("survivors must beat chance AND be IS-consistent"). This
-sharpens, doesn't overturn, the touches motif's existing "promising, not
-yet validated" status from the section above — the portfolio-level test and
-a second full bug-hunt pass it was already missing are still missing — but
-it's a real, useful refinement that `motif_track.py`'s existing
-per-(n_touches, is_top)-category confidence design already anticipated,
-even though this is the first time the pooled cross-pair number was
-actually computed and checked OOS.
-
-**Also checked, exploratory only, NOT yet run against a calendar split —
-flagging as leads, not results** (CLAUDE.md's multiple-testing rule: roughly
-20 cells were sliced across both families this pass, so a couple of
-standouts by chance alone would not be surprising; these two are noted
-because they're large-n and monotonic, not because they're proven):
-shorter-duration touch formations (15-27 bars, PF=1.30) outperform longer
-ones (41-127 bars, PF=1.03); formation volatility (candle range vs local
-ATR) showed no meaningful effect on touches (PF 1.15/1.18/1.19 across
-terciles — flat).
-
-**Flags/pennants: slicing did not rescue the null.** Touch-count buckets
-from 5 (the minimum) through 9 stay in the same 0.91-1.00 PF band the
-pooled null already showed (real sample sizes, n=532-11,096); buckets above
-9 touches get too sparse to trust (n<40 — one cell is literally n=8 showing
-PF=0.20, noise not signal, named here so it isn't mistaken for something
-real later). Duration and formation-volatility terciles were flat (PF
-0.92-0.94 throughout). Retrace depth showed a mild monotonic lean (shallow
-retrace PF=0.89 → deep retrace PF=0.97) but every cell stayed below 1.0 — a
-lead worth checking if this family is ever revisited, not a rescue of the
-current null.
 
 ## Flags/pennants on H4 — same null, but a real timeframe-scaling trap caught first
 
@@ -839,6 +663,7 @@ bar. **Flags/pennants on H4: also null, same conclusion as H1**, once tested
 with a risk unit that doesn't silently favor one timeframe's bar geometry
 over another. H8 and Bitcoin (the other specifics in the owner's reference
 images) remain untested — this repo's data is FX+gold only.
+
 
 ## `head_shoulders_scan.py` / `triangle_channel_scan.py` — two more families, both null
 
@@ -945,6 +770,444 @@ honestly" rule. Cup & handle is the one image pattern with no existing
 spec; multi-timeframe analysis (does agreement/conflict across M15/H1/H4/D1
 change any of these results) remains completely untried — everything above
 is H1-only.
+
+**Genuine walk-forward split, replacing the single-cutoff read (2026-08-12,
+`AnalogML/motif_walkforward.py`):** the earlier "IS PF=1.18 → OOS PF=1.16"
+table above was ONE fixed 2023-01-01 boundary — a single train/test split,
+not a walk-forward. It can hide a signal that's actually inconsistent
+underneath one lucky (or unlucky) cut. This script buckets every eligible
+motif into **11 consecutive calendar-YEAR folds (2016–2026)** instead, and
+grades each independently. Pooled across all 26 pairs:
+
+| fold | n | signal PF (cost on) | signal PF (no cost) | avg R | baseline PF |
+|---|---:|---:|---:|---:|---:|
+| 2016 | 2,648 | 1.23 | 1.31 | +0.125 | 1.00 |
+| 2017 | 2,771 | 1.25 | 1.34 | +0.138 | 1.00 |
+| 2018 | 2,867 | 1.13 | 1.21 | +0.073 | 0.96 |
+| 2019 | 2,770 | 1.19 | 1.28 | +0.107 | 0.95 |
+| 2020 | 2,740 | 1.26 | 1.35 | +0.143 | 0.98 |
+| 2021 | 2,774 | 1.12 | 1.20 | +0.071 | 0.93 |
+| 2022 | 2,670 | 1.10 | 1.17 | +0.056 | 0.91 |
+| 2023 | 2,641 | 1.23 | 1.32 | +0.129 | 0.97 |
+| 2024 | 2,726 | 1.22 | 1.31 | +0.125 | 0.95 |
+| 2025 | 2,809 | 1.04 | 1.12 | +0.026 | 0.90 |
+| 2026 (partial) | 1,007 | 1.15 | 1.23 | +0.084 | 0.96 |
+
+**11/11 folds PF>1.0 (cost on), 11/11 beat the mechanical baseline** — the
+signature of a real, fold-consistent edge rather than a lucky single split.
+2025 is the weakest year (PF 1.04) but still positive.
+
+**Explicit cost sensitivity (all 11 folds pooled, per the direct ask —
+costs are on by default, but stated side by side here rather than left
+implicit):** n=28,423 trades, **PF cost-ON=1.174, PF cost-OFF=1.259** — costs
+remove 0.085 PF (avg R +0.140 → +0.098). A real, measurable drag; the edge
+clearly survives it.
+
+**Portfolio-level test (2026-08-12, `AnalogML/motif_portfolio_sim.py`,
+same method `portfolio_sim.py` used for the retired k-NN signal — reused,
+not rewritten):** 26 pairs, 1%/trade risk, 5% max concurrent risk, 17,858 of
+28,423 signals taken (10,565 skipped by the risk cap). **Sharpe 1.61, max DD
+−55.1%, avg pairwise weekly-return correlation +0.012** (near-independent
+bets — the reason a 26-pair book doesn't just re-concentrate into a handful
+of effective EUR/GBP/JPY-leg bets). Matched-utilization benchmark (single
+pairs scaled to the portfolio's own 2.7% average capital utilization, so the
+comparison isn't confounded by the portfolio simply deploying more capital):
+**2 of the 3 sampled single pairs (audcad, audjpy) hit −100% max drawdown
+(total ruin) at that utilization; the portfolio drew down only −55.1% at the
+same utilization.** That gap is the real diversification effect. (Raw
+compounded total-return figures from this sim run into the millions of
+percent over 17,858 trades at fixed-fractional sizing — a known artifact of
+compounding at a % of ever-growing equity with no realism cap on trade size
+or market impact, not a claim about achievable real-world returns. Sharpe /
+max DD / utilization are the metrics to read here, not total return.)
+
+**The 6 pairs flagged negative in the original single-split 26-pair sweep**
+(eurgbp, gbpchf, audcad, usdcad, gbpcad, euraud) — investigated rather than
+ignored, per-pair year-by-year via `motif_walkforward.py --pair <pair>`:
+- **No detector malfunction.** Played-out rate (52–56%), touch-count mix
+  (73–78% double vs triple), top/bottom split (~50/50) are statistically
+  indistinguishable from the positive pairs — the touch-motif detector isn't
+  behaving differently on these six.
+- **Spread-cost burden is unremarkable** (spread/ATR 4–9%, in line with
+  several positive pairs) **except eurgbp**, whose spread/ATR (12.6%) is
+  meaningfully higher than the rest of the universe — a plausible partial
+  explanation for eurgbp specifically, not for the other five.
+- **All six track the SAME broad shape as the full 26-pair pool**: strong
+  2016–2020, softer 2021–2023, real decay into 2024–2025 (the pooled-26 table
+  above shows 2025 as its weakest year too, PF=1.04) — these six just
+  happened to land fractionally below 1.0 in that soft stretch on ~100
+  trades/pair/year, which is within noise for a PF swing between 0.85 and
+  1.15 at that sample size.
+- **Most-recent-fold (2026) picture is mixed, not uniformly bad**: euraud
+  (0.99), gbpcad (0.98), eurgbp (0.94) are now essentially breakeven;
+  **gbpchf has flipped clearly positive (1.40)**; **audcad (0.58) and usdcad
+  (0.70) remain the two genuine standouts worth continued monitoring** —
+  persistently weak into 2026, not just a historical pooled artifact.
+- Read plainly: this looks like normal cross-sectional noise around a shared
+  weak 2024–2025 macro backdrop, not six structurally broken pairs — with
+  audcad/usdcad as the two to keep an eye on.
+
+**Phase 1: adaptive per-category MAE/MFE-based SL/TP (2026-08-12,
+`AnalogML/motif_adaptive.py`)** — the piece of the ORIGINAL brief ("MAE-based
+stop loss based on all the historic trades of this shape, TP set based on
+historic breakout trades... not on price but on average movement size scaled
+to timeframe") that was deliberately deferred until the detector proved it
+had something real to size risk around. It just did (11/11-fold walk-forward
++ portfolio test above), so this replaces the frozen sl=20p/tp_r=1.5 grid
+with per-category (n_touches × is_top) SL/TP derived from that category's
+own historical max-adverse/max-favourable excursion (`pylego.barrier_race`'s
+new `excursion`/`VariableEntry`/`race_trades_variable`), scaled to that
+trade's own entry-time ATR — dimensionless, cross-pair-comparable, "scaled to
+timeframe" not raw price. Sized causally: only from same-category precedent
+strictly BEFORE that trade's confirm time, pooled across all 26 pairs
+(`motif_walkforward.py`'s per-pair diagnosis found no detector-level
+difference across pairs), expanding window, never the future.
+
+**A real bug found on the first attempt, before trusting anything:** sizing
+the MAE/MFE window off the full 200-bar race horizon produced absurd ~11x-ATR
+(~220-pip) stops that diluted almost every trade into a mark-to-close
+timeout — adaptive avgR +0.006 vs the frozen grid's +0.110 on a 2-pair
+smoke test, a clean null. Root cause: that horizon mostly measures drift
+unrelated to the breakout thesis. Fixed by bounding the excursion window to
+`--excursion-bars` (default 40, the breakout confirmation horizon), not the
+full race horizon. A small percentile sweep (6 cells, same 2 pairs) then
+found SL/TP both at the 50th percentile clearly ahead of the other cells —
+chosen post-hoc from that sweep, so it meant nothing until it cleared the
+full universe.
+
+**Full 26-pair result, SAME 28,223 motifs raced both ways (adaptive vs the
+already-validated frozen grid), calendar-year folds:**
+
+| | n | PF | avg R |
+|---|---:|---:|---:|
+| Adaptive (SL/TP p50, all folds pooled) | 28,223 | 1.227 | +0.115 |
+| Frozen grid (sl=20p, tp_r=1.5, same motifs) | 28,223 | 1.174 | +0.098 |
+
+A real, positive improvement in the pooled numbers (+17% relative avg R) —
+but **fold consistency is 6/11, not 11/11** — weaker than the entry
+signal's own walk-forward. The improvement is concentrated in a few standout
+years (2018 +0.066R, 2020 +0.033R, 2022 +0.049R, 2025 +0.086R) while several
+folds are flat-to-slightly-worse (2017 −0.017R, 2019 −0.020R, 2023 −0.039R,
+2024 −0.014R, 2026 −0.008R). Read this as **a real but modest win, not a
+decisive one** — the honest read, not the sold one.
+
+Per-category sizing (median, all pairs pooled) is now sane, unlike the
+buggy first attempt: 2-touch categories get a favourable ~1.3:1 reward:risk
+(SL≈36–37p/2.3xATR, TP≈49p/3.1xATR); 3-touch categories come out closer to
+1:1 (SL≈41–45p/2.7–2.8xATR, TP≈42–43p/2.7xATR) — a real structural
+difference between 2- and 3-touch motifs, not noise, and independent
+confirmation that touch-count is a meaningful axis (matching the original
+"3rd touch" intuition).
+
+**Portfolio-level test (2026-08-13, `AnalogML/motif_adaptive_portfolio_sim.py`,
+reusing `portfolio_sim.py`'s account simulator verbatim, same 28,223 motifs
+raced both ways):** a 3-pair smoke test looked like a clean win (adaptive
+Sharpe 1.68 vs frozen 1.31, max DD −18.8% vs −26.3%, adaptive using MORE
+capital not less) — **the full 26-pair confirmation walked that back.**
+
+| | n taken | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|---:|
+| Adaptive sizing | 11,829 | 1.86 | −68.6% | 3.6% |
+| Frozen grid (same motifs) | 17,688 | 1.58 | −54.5% | 2.7% |
+
+Sharpe genuinely improves (1.86 vs 1.58) — but **max drawdown is materially
+WORSE, not better** (−68.6% vs −54.5%), at higher capital utilization.
+Adaptive trades typically run wider SL/TP (36–49p vs the frozen 20p/30p),
+hold longer, overlap more, and hit the 5% concurrent-risk cap far more often
+(16,394/28,223 signals skipped vs 10,535/28,223) — fewer trades taken, more
+risk concentrated in the ones that fit. **This is a real trade-off, not a
+decisive win**: higher risk-adjusted return, but a materially deeper real
+drawdown — the opposite of the encouraging small-sample read. The
+diversification effect itself still holds regardless of sizing method
+(matched-utilization single pairs: audcad −99.9% max DD, audchf −88.6%,
+audjpy −86.9%, all worse than either portfolio) — the portfolio structure is
+doing real work, but adaptive sizing is not an unambiguous upgrade over the
+frozen grid at the account level, only at the isolated trade level.
+
+**Percentile ablation, resolving the drawdown cost (2026-08-13) — DEFAULT
+CHANGED to (35, 35).** An 8-pair sample swept (sl_pctile, tp_pctile) ∈
+{(50,50), (25,25), (35,35), (25,50), (35,50)} at the PORTFOLIO level (the
+level that actually showed the problem). (35,35) stood out clearly — higher
+Sharpe than every other cell tried, AND at capital utilization matched
+almost exactly to the frozen grid (no capital-deployment confound). Full
+26-pair confirmation, same 28,223 motifs:
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| Adaptive (35, 35) | **2.31** | **−41.8%** | 2.7% |
+| Frozen grid (same motifs) | 1.58 | −54.5% | 2.7% |
+
+At MATCHED utilization (2.7% both), adaptive (35,35) now beats the frozen
+grid on BOTH Sharpe and max DD — no trade-off, unlike (50,50)'s Sharpe-for-
+drawdown swap. Trade level barely moves (PF 1.212/avg R +0.110 vs (50,50)'s
+1.227/+0.115 — a wash) but fold consistency IMPROVES (8/11 vs 6/11).
+**(35, 35) is now the default in both `motif_adaptive.py` and
+`motif_adaptive_portfolio_sim.py`** — a materially tighter, more robust
+choice than the original (75, 50) or the trade-level-only-chosen (50, 50).
+
+**True multi-timeframe agreement analysis (2026-08-13,
+`AnalogML/motif_multi_tf.py`)** — a question open since the original scoping
+conversation ("if higher timeframes have a bullish pennant and lower
+timeframes have bearish, what happens") and confirmed absent everywhere:
+`js/patternEngine.js`'s `annotateHtfAlignment` only checks a single
+next-higher timeframe, stores a boolean, never aggregates it into any stat;
+nothing in `motif_touch.py`/`motif_scan.py`/`motif_walkforward.py` looks at
+any timeframe but its own. Detects the SAME touch-motif on H1 (base) and
+independently on 4H and 1D, buckets each H1 entry by whether the most
+recently CONFIRMED HTF motif (known by that H1 entry's own confirm time,
+within a lookback window) agrees, conflicts, or is absent. **A real
+lookahead bug caught before running anything**: a resampled bar is labeled
+by its START, so cutting off against that timestamp directly could let a
+still-forming HTF bar's high/low/close leak into a decision made mid-bar —
+fixed by deriving each HTF bar's actual END time (start + the index's own
+regular bar spacing) and cutting off against that instead.
+
+**A real reversal between the small and full sample — a good example of why
+the sweep ladder exists.** 2-pair smoke test suggested 4H mattered (AGREE
+PF=1.29 vs CONFLICT PF=1.19, 7/11 folds) and 1D didn't (PF=1.20 vs 1.25,
+reversed, only 4/11 folds). **The full 26-pair confirmation found the
+OPPOSITE:**
+
+| HTF | bucket | n | PF | avg R |
+|---|---|---:|---:|---:|
+| 4H | AGREE | 3,605 | 1.19 | +0.105 |
+| 4H | CONFLICT | 3,172 | 1.18 | +0.100 |
+| 1D | AGREE | 4,232 | **1.24** | **+0.133** |
+| 1D | CONFLICT | 4,168 | **1.09** | **+0.055** |
+
+**4H shows no meaningful separation** (PF 1.19 vs 1.18, a wash) — the
+2-pair read was noise. **1D shows a real, sizeable gap**: when the daily
+motif conflicts with the H1 signal, avg R drops to less than half of when
+it agrees (+0.055 vs +0.133), fold-consistent in 7/11 years. CONFLICT trades
+stay net positive (not reversed to a loser) — this reads as "daily HTF
+agreement adds real conviction, daily HTF conflict is a real reason to
+size down or skip," not "daily HTF conflict flips the trade." The largest
+bucket by far in both splits is NONE (no HTF motif confirmed recently
+enough — ~76% of entries at 4H, ~70% at 1D) — most of the time there's
+simply no fresh HTF read available, a real constraint on how often this
+filter could apply live, not a flaw in the method.
+
+**HTF-conflict-aware position sizing (2026-08-13,
+`AnalogML/motif_htf_sized.py`)** — the natural integration of the 1D finding
+above: keep every trade (CONFLICT stays net positive, a hard skip would
+throw away real expectancy), just risk LESS on the ones an independent read
+already flags as lower-conviction. Deliberately isolates ONE new variable
+(position sizing) on top of the ALREADY-VALIDATED frozen-grid entry signal —
+not stacked on the not-fully-vetted adaptive SL/TP, so the two ideas don't
+get confounded. `pylego.barrier_race`'s sibling, `portfolio_sim.py`'s
+`simulate_portfolio`, now reads an optional per-trade `size_mult` (default
+1.0, every existing caller unaffected) — 0.5× on a 1D conflict, 1.0×
+otherwise (deliberately NOT sized UP on agreement — that's a separate,
+unvalidated claim `motif_multi_tf.py` didn't test).
+
+A 3-pair smoke test looked like a wash (Sharpe 1.26 vs 1.32 uniform-sized,
+roughly flat) — **the full 26-pair confirmation found a real win**, same
+28,423 motifs, 4,168 (14.7%) downsized:
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| HTF-sized (0.5× on 1D conflict) | **1.80** | **−42.9%** | 2.6% |
+| Uniform sizing (same motifs) | 1.61 | −55.1% | 2.7% |
+
+At essentially matched utilization, sizing down on a real, already-validated
+conflict signal improves BOTH Sharpe and max DD — a clean, if modest,
+portfolio-level win from position sizing alone, no change to entry
+selection or SL/TP at all. The 3-pair "wash" was another reminder not to
+trust a small sample after a null OR a positive read — this is now the 4th
+time in this build a small-sample first look was overturned at 26-pair
+scale (the excursion-window bug, the 4H/1D reversal, the (50,50)-vs-(35,35)
+drawdown finding, and now this).
+
+Not yet done: an in-progress/provisional HTF read (matching
+`motif_track.py`'s live "what's forming" diagnostic, rather than only
+counting already-CONFIRMED HTF motifs), and testing the adaptive SL/TP
+sizing (35,35) COMBINED with HTF-conflict sizing together — deliberately not
+done together yet, to keep this build's discipline of one new variable at a
+time.
+
+**Telegram alerts (2026-08-13, `AnalogML/motif_track.py --telegram`)** — the
+"leave it as a signal, alert when a trade is building" decision: not a live
+bot, not automated execution, a human-facing alert with SL/TP markings to
+manually track against. Extracted `pylego/telegram.py` as a genuine shared
+brick first — `send_telegram`/`load_tg_config` had been copy-pasted
+near-identically across 7+ bots (`RegimeV2/V4/V7`, `DynAnchorBot`,
+`YieldSpreadBot`, `oi_bot`, `bot/main.py`) with no `pylego/` brick behind
+them despite CLAUDE.md's own stated threshold ("two copies already exist" —
+this would have been an 8th); the existing 7 are NOT migrated as part of
+this (separate follow-up). Reads the SHARED dashboard `tg_config` (the same
+bot/chat every other bot's alerts already use) via `pylego.kv.KvClient` —
+no new credentials needed unless a dedicated channel is wanted later.
+
+One alert per newly-confirmed motif (the existing per-pair watermark already
+guarantees "only genuinely new," never a backfill-on-first-run flood — same
+mechanism that caught the 28,524-signal bug earlier in this build). The
+alert shows the TRACKED frozen-grid entry/SL/TP (unchanged — the record
+every number in this file is judged against never silently drifts) *plus*
+two separately-validated, FROZEN sizing reads for manual execution: the
+adaptive per-category ATR-scaled SL/TP (the validated (35,35) constants,
+hardcoded — not recomputed live, matching "stop tuning, let it run") and the
+1D HTF agree/conflict state with a size-down note on conflict. Neither
+adaptive number is APPLIED to the tracked trade itself, only shown — the
+combined-sizing test flagged just above stays undone for the tracked signal,
+this is purely an informational overlay on top of it. Opt-in via
+`--telegram` (off by default), and automatically disabled under `--as-of`
+even if passed, so a replay/testing run can never fire a live alert.
+
+**Dashboard status, checked directly against the merged code (2026-08-12):**
+`today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
+commit `181e1b50`) call `/api/analogml/motif-state` and
+`/api/analogml/motif-trades` — the NEW motif signal, not the retired
+`paper_trades.json`/`shape_state.json` k-NN signal. If the live Railway
+dashboard still visibly shows the old signal, that's a deploy-lag or
+live-data-population issue on Railway (unverifiable from this sandbox — both
+Railway and OANDA are blocked by the outbound proxy here), not a stale-code
+issue in this repo. Still open, needs the user to look at the live site and
+say what the card actually shows before this can be run down further.
+
+## Lifecycle disaggregation — does touch/bounce count predict the outcome?
+
+The owner's fuller shape-prediction ask wants every shape's DURING-formation
+quality analyzed against its own AFTER-outcome, not just a pooled average —
+specifically: does the NUMBER of touches/bounces predict breakout direction
+or magnitude? `pylego/pattern_lifecycle.py` (new) regenerates
+`js/patternEngine.js`'s `compute_acceptance`/`compute_confidence` as a
+shared brick any detector can plug into (does a breakout hold, and a 0-100
+formation-quality score blending each detector's own geometry sub-scores
+with volatility-compression-during-formation and breakout strength) — built
+as Tier-1 infrastructure so future detectors (head & shoulders,
+triangles/wedges/channels) get this scoring for free instead of each
+carrying a copy. Not yet wired into `flag_pennant.py`/`motif_touch.py`'s own
+output (both would need `raw_scores` fields added first).
+
+Then the specific cross-tab was run directly, pooled across all 26 pairs,
+for both existing detectors (touches, flags/pennants): touch-count,
+formation duration, and formation volatility (bar range vs local ATR)
+against real R-outcome via `pylego.barrier_race` (sl=20p, tp_r=1.5, cost on
+— same frozen grid every AnalogML check uses).
+
+**Touches: a real, IS/OOS-confirmed finding — the edge concentrates in
+doubles, not triples.**
+
+| n_touches | n (pooled) | PF | avg R |
+|---|---:|---:|---:|
+| 2 (double top/bottom) | 21,623 | 1.24 | 0.133 |
+| 3 (triple top/bottom) | 6,800 | 0.98 | -0.011 |
+
+Checked against a genuine calendar IS/OOS split (cutoff 2023-01-01, not
+just the pooled full-history number — the standout cell, so it earned the
+extra check):
+
+| n_touches | split | n | PF | avg R |
+|---|---|---:|---:|---:|
+| 2 | IS (pre-2023) | 14,646 | 1.25 | 0.135 |
+| 2 | OOS (2023+) | 6,977 | 1.23 | 0.130 |
+| 3 | IS (pre-2023) | 4,594 | 1.00 | -0.003 |
+| 3 | OOS (2023+) | 2,206 | 0.95 | -0.029 |
+
+Minimal IS→OOS decay on doubles, well past the ≥30-OOS-trade bar, and
+triples stay flat-to-negative on both sides — this is not a
+subset-mining artifact, it survives the exact falsification test CLAUDE.md
+asks for ("survivors must beat chance AND be IS-consistent"). This
+sharpens, doesn't overturn, the touches motif's existing "promising, not
+yet validated" status from the section above — the portfolio-level test and
+a second full bug-hunt pass it was already missing are still missing — but
+it's a real, useful refinement that `motif_track.py`'s existing
+per-(n_touches, is_top)-category confidence design already anticipated,
+even though this is the first time the pooled cross-pair number was
+actually computed and checked OOS.
+
+**Also checked, exploratory only, NOT yet run against a calendar split —
+flagging as leads, not results** (CLAUDE.md's multiple-testing rule: roughly
+20 cells were sliced across both families this pass, so a couple of
+standouts by chance alone would not be surprising; these two are noted
+because they're large-n and monotonic, not because they're proven):
+shorter-duration touch formations (15-27 bars, PF=1.30) outperform longer
+ones (41-127 bars, PF=1.03); formation volatility (candle range vs local
+ATR) showed no meaningful effect on touches (PF 1.15/1.18/1.19 across
+terciles — flat).
+
+**Flags/pennants: slicing did not rescue the null.** Touch-count buckets
+from 5 (the minimum) through 9 stay in the same 0.91-1.00 PF band the
+pooled null already showed (real sample sizes, n=532-11,096); buckets above
+9 touches get too sparse to trust (n<40 — one cell is literally n=8 showing
+PF=0.20, noise not signal, named here so it isn't mistaken for something
+real later). Duration and formation-volatility terciles were flat (PF
+0.92-0.94 throughout). Retrace depth showed a mild monotonic lean (shallow
+retrace PF=0.89 → deep retrace PF=0.97) but every cell stayed below 1.0 — a
+lead worth checking if this family is ever revisited, not a rescue of the
+current null.
+
+
+**Independent cross-confirmation:** the adaptive per-category sizing work
+above (built the same day, separately) found per-category SL/TP splits
+cleanly by touch count too — 2-touch categories get a favourable ~1.3:1
+reward:risk, 3-touch categories closer to 1:1 — arrived at from MAE/MFE
+distributions, not from this profit-factor disaggregation, and landing on
+the same conclusion: touch count is a real structural axis for touches, not
+noise. Two different methods, same read.
+
+## Doubles-only portfolio + a second bug-hunt pass (independently converging with the work above)
+
+Built on this same branch, in parallel with the walk-forward/adaptive/
+multi-timeframe work above (both landed the same day) — `pylego/portfolio_sim.py`
+extracts the k-NN method's event-driven single-account simulator as a
+shared, signal-agnostic Tier-1 brick (`simulate_portfolio`, `sharpe_and_dd`,
+`matched_utilization_benchmark`, `pairwise_correlation_summary`, now also
+carrying the `size_mult` support the HTF-sized work above needs — 10
+hand-verified tests; this engine had none before, only ever exercised
+indirectly through the k-NN script). `AnalogML/portfolio_sim.py` re-exports
+from it so every script above keeps working unchanged.
+
+**Full-signal portfolio result converges independently with the number
+above (Sharpe 1.61, max DD −55.1%) — same method, same data, built without
+looking at each other's numbers first.** `AnalogML/motif_portfolio_sim.py`
+additionally supports `--n-touches` to isolate the doubles-only subset
+(n_touches=2 — see "Lifecycle disaggregation" below: doubles carry almost
+all of the edge, triples read close to a coin flip):
+
+```
+python AnalogML/motif_portfolio_sim.py --all-pairs --n-touches 2 --risk-pct 0.01
+```
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| Full touches signal | 1.61 | -55.1% | 2.7% |
+| Doubles only (n_touches=2) | **2.27** | **-31.8%** | 2.4% |
+
+The doubles-only portfolio is BOTH higher-Sharpe and shallower-drawdown
+than the diluted full signal — the same doubles-vs-triples pattern found at
+the per-trade level shows up again at the portfolio level. This is
+additive to, not a re-check of, the fuller adaptive/HTF-sized portfolio
+work above — worth combining with those in a future pass (adaptive SL/TP
+and/or HTF-conflict sizing, restricted to doubles only, is untried).
+
+### A second bug-hunt pass on `motif_touch.py`
+
+CLAUDE.md's rule: assume more bugs exist, don't assume clean because one
+was already caught. Before trusting the portfolio numbers above, did a
+genuine second pass on the detector itself (distinct from the
+`motif_multi_tf.py`/`motif_adaptive.py` bugs already caught above, which
+were in the NEW code built on top of the detector, not the detector
+itself):
+
+- Re-read the full `motif_touch.py` source with fresh, skeptical eyes — the
+  run builder, segment-local retracement validation, confirm-scan condition
+  ordering, top/bottom independence. No new logic bug found on inspection.
+- **Empirically verified the causal invariant at FULL SCALE, not just the
+  synthetic regression test** — the same class of check that caught the
+  head & shoulders bug (a synthetic test alone missed that one; only
+  measuring on real data at scale did). Every confirmed motif across all 26
+  pairs: **28,524 confirmed motifs, 0 causal-invariant violations**
+  (`confirm_idx - last_touch_idx >= pivot_n` held on every single one).
+- Checked touch-run duration realism (median 0.8 days, p99 2.4 days, max
+  3.4 days on GBPJPY — realistic, contained formations, no degenerate
+  multi-year "double tops") and confirmed no same-side double-counting or
+  entry/exit date-ordering issues (both structural, not just observed).
+
+**No new bug found this pass** — reported plainly as a bounded, real result
+(the existing fix is now scale-verified, not just assumed clean), not proof
+of permanent cleanliness.
+
 
 ## Honesty notes (read before trusting a number here)
 

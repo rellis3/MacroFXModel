@@ -1760,6 +1760,26 @@ async function renderDrill(){
     </div>
 
     <div class="dcard">
+      <div class="dcard-hd"><span class="eyebrow">Structural Motif (AnalogML)</span><span class="trust context">🧪 context, research</span></div>
+      <div class="dcard-body">
+        ${!d.analogml ? `<div class="pending">No N-touches-of-a-level motif currently forming for this instrument. See <a href="bot-config.html" target="_blank" style="color:var(--info)">bot-config.html</a>'s AnalogML tab for the full trade log.</div>` : (()=>{ const a=d.analogml; const isTop=a.kind==='top'; const c=a.confidence;
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
+            <div>
+              <div class="mono" style="font-size:16px;font-weight:600">${isTop?'⌒':'⌣'} ${a.n_touches}-touch ${a.kind}${a.provisional?' · pending':''}</div>
+              <div style="font-size:10.5px;color:var(--text3);margin-top:2px">Last touch ${analogFmtDate(a.touch_dates[a.touch_dates.length-1])}${a.provisional?' — still provisional, not yet confirmable as a genuine pivot':''}</div>
+            </div>
+          </div>
+          <div class="forward-line"><span>Distance to ${isTop?'support':'resistance'} (textbook reversal level)</span><b style="font-weight:600">${a.dist_to_level_pips.toFixed(0)}p</b></div>
+          <div class="forward-line" style="border-top:none;padding-top:0;margin-top:2px"><span>Distance to touch level (failure-case break)</span><b style="font-weight:500;color:var(--text2)">${a.dist_to_touch_level_pips.toFixed(0)}p</b></div>
+          ${c ? `<div class="tilegrid" style="margin-top:8px">
+            <div class="tile"><div class="t-lbl">Played out historically</div><div class="t-val">${(c.played_out_rate*100).toFixed(0)}%</div></div>
+            <div class="tile"><div class="t-lbl">Profit factor (n=${c.n_samples})</div><div class="t-val">${c.profit_factor.toFixed(2)}</div></div>
+          </div>` : `<div class="pending" style="margin-top:8px">Not enough historical samples of this exact category on this pair yet for a confidence read.</div>`}
+          <div class="forward-line" style="border-top:none;padding-top:0;margin-top:6px"><span>26-pair walk-forward: 11/11 calendar years PF&gt;1.0</span><a href="bot-config.html" target="_blank" style="font-size:10.5px;font-weight:600">Full record ›</a></div>`; })()}
+      </div>
+    </div>
+
+    <div class="dcard">
       <div class="dcard-hd"><span class="eyebrow">Pattern Match</span><span class="trust context">🧪 context, self-calibrating</span></div>
       <div class="dcard-body">
         ${extras.patterns===null ? `<div class="pending">${extras.patternsErr?'Pattern scan unavailable in this environment.':'Loading…'}</div>` : !extras.patterns.length ? `<div class="pending">No patterns detected in the current window.</div>` : extras.patterns.map(p=>`<div class="pattern-row"><div><div class="pattern-name">${(p.type||'Pattern').replace(/_/g,' ')}</div><div class="pattern-tf">1h${p.htf?.aligned!=null?` · HTF (${p.htf.timeframe||'?'}) ${p.htf.aligned?'aligned':'not aligned'}`:''} · confidence ${p.confidence?.total ?? '—'}${p.confidence?.total!=null?'%':''}</div></div></div>`).join('')}

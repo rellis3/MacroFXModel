@@ -196,6 +196,91 @@ def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
 
 
 @dataclass
+class VariableEntry:
+    """Like `Entry`, but carries its OWN sl/tp_dist instead of racing through
+    a shared grid cell -- for a signal whose risk is sized PER-TRADE (e.g.
+    from that trade's own category's historical MAE/MFE distribution,
+    scaled to that trade's own entry-time volatility), not one frozen
+    sl-pips/tp-r pair applied to every entry. Reuses `_first_touch`, the
+    same walker every other barrier-race function uses -- no second copy."""
+    idx: int
+    direction: int
+    sl: float
+    tp_dist: float
+    entry_price: float | None = None
+
+
+def race_trades_variable(bars: pd.DataFrame, entries: list[VariableEntry], max_bars_ahead: int,
+                         cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[dict]:
+    """Per-trade race where EACH entry supplies its own (sl, tp_dist),
+    instead of every entry sharing one (sl, tp_r) grid cell like
+    `race_trades`/`race_grid`. Same `_first_touch` walker, same return shape
+    as `race_trades` (idx, direction, entry_price, exit_idx, exit_price,
+    outcome, r, bars_held) plus the sl/tp_dist actually used, for the audit
+    trail. Entries with sl<=0 (e.g. a category with no historical MAE data
+    yet) are skipped, not defaulted to a fabricated stop."""
+    high = bars['high'].to_numpy(); low = bars['low'].to_numpy()
+    close = bars['close'].to_numpy(); opens = bars['open'].to_numpy()
+    n_bars = len(bars)
+    out: list[dict] = []
+    for e in entries:
+        idx = e.idx
+        if idx >= n_bars or e.sl <= 0:
+            continue
+        end_pos = min(idx + max_bars_ahead, n_bars)
+        if end_pos - idx < min_bars_ahead:
+            continue
+        cmax = np.maximum.accumulate(high[idx:end_pos])
+        cmin = np.minimum.accumulate(low[idx:end_pos])
+        last_close = float(close[end_pos - 1])
+        entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
+        tp_r = e.tp_dist / e.sl
+        outcome, off, exit_price, r = _first_touch(entry_price, e.direction, e.sl, e.tp_dist,
+                                                    cmax, cmin, last_close, tp_r)
+        out.append({
+            'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
+            'exit_idx': idx + off, 'exit_price': float(exit_price), 'outcome': outcome,
+            'r': float(r - (cost_price / e.sl if e.sl > 0 else 0.0)), 'bars_held': off,
+            'sl': e.sl, 'tp_dist': e.tp_dist,
+        })
+    return out
+
+
+def excursion(bars: pd.DataFrame, entries: list[Entry], max_bars_ahead: int,
+             min_bars_ahead: int = 1) -> list[dict]:
+    """Raw max-adverse / max-favourable excursion over the FULL
+    max_bars_ahead window, with NO stop/target constraint -- this is not a
+    graded trade outcome, it's the raw material for building a historical
+    MAE/MFE distribution that a caller then uses to size a stop/target
+    (e.g. `AnalogML/motif_adaptive.py`'s per-category percentile sizing).
+    mae/mfe are non-negative price distances. Skips entries without
+    `min_bars_ahead` runway, same convention as every other race_* fn."""
+    high = bars['high'].to_numpy(); low = bars['low'].to_numpy()
+    opens = bars['open'].to_numpy()
+    n_bars = len(bars)
+    out: list[dict] = []
+    for e in entries:
+        idx = e.idx
+        if idx >= n_bars:
+            continue
+        end_pos = min(idx + max_bars_ahead, n_bars)
+        if end_pos - idx < min_bars_ahead:
+            continue
+        entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
+        window_high = float(np.max(high[idx:end_pos]))
+        window_low = float(np.min(low[idx:end_pos]))
+        if e.direction > 0:
+            mfe = max(0.0, window_high - entry_price)
+            mae = max(0.0, entry_price - window_low)
+        else:
+            mfe = max(0.0, entry_price - window_low)
+            mae = max(0.0, window_high - entry_price)
+        out.append({'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
+                    'mae': mae, 'mfe': mfe, 'bars': end_pos - idx})
+    return out
+
+
+@dataclass
 class TrailResult:
     """No fixed TP — the trail IS the exit. avg_r/median_r are full precision,
     same no-premature-rounding contract as BarrierResult."""
