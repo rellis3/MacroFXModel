@@ -38,7 +38,8 @@ ROUND_STEPS = {"gold": (50.0, 10.0)}
 
 def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
                   day_start_hour: int, sl_grid, tp_grid, horizon: int,
-                  cost_mult: float, levels_override=None, verbose: bool = True):
+                  cost_mult: float, levels_override=None, verbose: bool = True,
+                  entry_mode: str = "market"):
     """Everything up to and including labelled events. Returns (lab, levels, m1)."""
     m1 = B.load_m1(pair, data_root)
     if years:
@@ -62,14 +63,17 @@ def build_dataset(pair: str, years: float, event_tf: str, data_root: str,
         print(f"[levels] {len(lv):,} levels across {lv['kind'].nunique()} kinds, "
               f"{lv['family'].nunique()} families", flush=True)
 
+    # A resting limit fills DURING the touch bar, so its context must describe
+    # the bar before — the last moment the order could have been placed.
     ev = E.extract_events(frames[event_tf], lv,
-                          trend_frames={"h1": frames["h1"], "h4": frames["h4"]})
+                          trend_frames={"h1": frames["h1"], "h4": frames["h4"]},
+                          feature_offset=(-1 if entry_mode == "limit" else 0))
     if verbose:
         print(f"[events] {len(ev):,} level interactions", flush=True)
 
     lab = LB.label_grid(ev, m1, sl_atr_grid=sl_grid, tp_r_grid=tp_grid,
                         horizon_bars=horizon, pair=pair, cost_mult=cost_mult,
-                        progress=verbose)
+                        entry_mode=entry_mode, progress=verbose)
     if verbose:
         print(f"[label] {len(lab):,} labelled rows "
               f"({len(sl_grid)}×{len(tp_grid)} barrier cells)", flush=True)
@@ -104,6 +108,11 @@ def main(argv=None):
     ap.add_argument("--tp-r", default="1.0,2.0,3.0")
     ap.add_argument("--horizon", type=int, default=1440, help="M1 bars of runway")
     ap.add_argument("--cost-mult", type=float, default=1.0)
+    ap.add_argument("--entry-mode", default="market", choices=("market", "limit"),
+                    help="market = buy the next bar's open, stop sl_atr from the fill "
+                         "(lands ~0.36 ATR off the level on gold). limit = rest an "
+                         "order AT the level, stop beyond the zone — a test of the "
+                         "level rather than of momentum near it")
     ap.add_argument("--folds", type=int, default=6)
     ap.add_argument("--fdr-q", type=float, default=0.10)
     ap.add_argument("--top-k", type=int, default=10)
@@ -122,7 +131,7 @@ def main(argv=None):
 
     lab, lv, m1 = build_dataset(args.pair, args.years, args.event_tf, args.data_root,
                                 args.day_start_hour, sl_grid, tp_grid, args.horizon,
-                                args.cost_mult)
+                                args.cost_mult, entry_mode=args.entry_mode)
 
     inv = summarize_inventory(lab)
     inv.to_csv(out_dir / f"{args.pair}_inventory.csv")
@@ -141,7 +150,8 @@ def main(argv=None):
         lv_null = D.randomize_levels(lv, m1, rng, args.day_start_hour)
         lab_n, _, _ = build_dataset(args.pair, args.years, args.event_tf, args.data_root,
                                     args.day_start_hour, sl_grid, tp_grid, args.horizon,
-                                    args.cost_mult, levels_override=lv_null, verbose=False)
+                                    args.cost_mult, levels_override=lv_null, verbose=False,
+                                    entry_mode=args.entry_mode)
         res = V.walk_forward(lab_n, n_folds=args.folds, q=args.fdr_q,
                              top_k=args.top_k, select_stat=args.select_stat,
                              verbose=False)

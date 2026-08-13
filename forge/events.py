@@ -100,7 +100,8 @@ def _confluence_counts(prices: np.ndarray, live_prices: list[np.ndarray],
 def extract_events(bars: pd.DataFrame, levels: pd.DataFrame,
                    max_touches: int = 3, cooldown_bars: int = 3,
                    trend_frames: dict[str, pd.DataFrame] | None = None,
-                   atr_rank_window: int = 5000) -> pd.DataFrame:
+                   atr_rank_window: int = 5000,
+                   feature_offset: int = 0) -> pd.DataFrame:
     """Every interaction between `bars` and `levels`, with context.
 
     An *interaction* is a bar whose range intersects the level's zone while the
@@ -112,6 +113,21 @@ def extract_events(bars: pd.DataFrame, levels: pd.DataFrame,
 
     `max_touches` caps how many separate arrivals at the same level are kept
     (the 1st, 2nd, 3rd touch are genuinely different setups; the 9th is noise).
+
+    `feature_offset` selects WHICH bar the context vector describes, and it
+    exists entirely to keep limit-order entries honest:
+
+      ` 0` (default) — context is the trigger bar itself. Correct for a MARKET
+            entry, which is placed after that bar has closed.
+      `-1` — context is the bar BEFORE the trigger. Required for a LIMIT entry
+            resting at the level: that order fills *during* the trigger bar, so
+            conditioning on the trigger bar's own shape would be deciding to
+            place an order using the bar it already filled in. The last moment
+            a resting order could have been placed or cancelled is the close of
+            the preceding bar, so that is the bar the features must describe.
+
+    The touch bar itself is always reported as `time`/`bar_idx`; only the
+    features move.
     """
     bars = bars.reset_index().rename(columns={bars.index.name or "index": "time"})
     times = pd.DatetimeIndex(bars["time"])
@@ -169,11 +185,14 @@ def extract_events(bars: pd.DataFrame, levels: pd.DataFrame,
 
     bi = np.asarray(ev_bar)
     li = np.asarray(ev_lvl)
-    scale = atr0[bi]
+    # `fi` is the bar the CONTEXT describes; `bi` is always the touch bar.
+    # They differ only under a limit-entry configuration — see `feature_offset`.
+    fi = np.maximum(bi + feature_offset, 0)
+    scale = atr0[fi]
     scale = np.where(scale > 0, scale, np.nan)
     price = l_price[li]
 
-    prev_close = close[np.maximum(bi - 1, 0)]
+    prev_close = close[np.maximum(fi - 1, 0)]
     # +1 = approached from ABOVE (level below prior close) → a support test.
     # -1 = approached from BELOW → a resistance test.
     side = np.where(prev_close >= price, 1, -1)
@@ -181,42 +200,49 @@ def extract_events(bars: pd.DataFrame, levels: pd.DataFrame,
     # How far past the level the bar pierced, and where it closed relative to
     # it, both signed so that "beyond" always means "through the level in the
     # direction price was travelling".
-    pierce = np.where(side > 0, price - low[bi], high[bi] - price)
-    close_beyond = np.where(side > 0, price - close[bi], close[bi] - price)
+    pierce = np.where(side > 0, price - low[fi], high[fi] - price)
+    close_beyond = np.where(side > 0, price - close[fi], close[fi] - price)
 
-    body = close[bi] - opn[bi]
-    rng = high[bi] - low[bi]
-    day_rng = day_hi[bi] - day_lo[bi]
+    body = close[fi] - opn[fi]
+    rng = high[fi] - low[fi]
+    day_rng = day_hi[fi] - day_lo[fi]
 
     ev = pd.DataFrame({
         "time": times[bi],
         "bar_idx": bi,
+        "feature_idx": fi,
+        "feature_time": times[fi],
         "entry_idx": bi + 1,
         "entry_time": times[np.minimum(bi + 1, n - 1)],
+        # The touch bar's own window, so a limit fill can be resolved inside it.
+        "touch_start": times[bi],
+        "touch_end": times[np.minimum(bi + 1, n - 1)],
         "kind": l_kind[li],
         "family": l_fam[li],
         "tf": l_tf[li],
         "level_price": price,
+        "zone_lo": l_lo[li],
+        "zone_hi": l_hi[li],
         "touch_n": np.asarray(ev_touch),
         "side": side,
         "atr0": scale,
-        "age_hours": (times[bi] - pd.DatetimeIndex(levels["born"].to_numpy()[li]))
+        "age_hours": (times[fi] - pd.DatetimeIndex(levels["born"].to_numpy()[li]))
                       .total_seconds() / 3600.0,
         "wick_beyond_atr": pierce / scale,
         "close_beyond_atr": close_beyond / scale,
         "body_atr": body / scale,
         "range_atr": rng / scale,
         "body_frac": np.where(rng > 0, np.abs(body) / rng, np.nan),
-        "ret5_atr": ret5[bi] / scale,
-        "ret20_atr": ret20[bi] / scale,
-        "dist_dopen_atr": (close[bi] - day_open[bi]) / scale,
-        "pos_in_day_range": np.where(day_rng > 0, (close[bi] - day_lo[bi]) / day_rng, np.nan),
+        "ret5_atr": ret5[fi] / scale,
+        "ret20_atr": ret20[fi] / scale,
+        "dist_dopen_atr": (close[fi] - day_open[fi]) / scale,
+        "pos_in_day_range": np.where(day_rng > 0, (close[fi] - day_lo[fi]) / day_rng, np.nan),
         "day_range_atr": day_rng / scale,
-        "atr_pct": atr_pct[bi],
+        "atr_pct": atr_pct[fi],
         "zone_width_atr": (l_hi[li] - l_lo[li]) / scale,
-        "session": bars["session"].to_numpy()[bi],
-        "dow": bars["dow"].to_numpy()[bi],
-        "hour_bucket": (bars["hour"].to_numpy()[bi] // 3) * 3,
+        "session": bars["session"].to_numpy()[fi],
+        "dow": bars["dow"].to_numpy()[fi],
+        "hour_bucket": (bars["hour"].to_numpy()[fi] // 3) * 3,
     })
 
     # Sort by time BEFORE the as-of joins below. `pd.merge_asof` requires a
@@ -239,9 +265,21 @@ def extract_events(bars: pd.DataFrame, levels: pd.DataFrame,
         if s.empty:
             ev[col] = "unknown"
         else:
-            right = (s.rename(col).rename_axis("time").reset_index()
-                     .sort_values("time").reset_index(drop=True))
-            ev[col] = pd.merge_asof(ev[["time"]], right, on="time",
+            right = (s.rename(col).rename_axis("feature_time").reset_index()
+                     .sort_values("feature_time").reset_index(drop=True))
+            # Joined on `feature_time`, not the touch time: under a limit
+            # configuration the decision was made a bar earlier, so the trend
+            # read must be the one in force then.
+            #
+            # `ev` is already sorted by `time`, and `feature_time` is that same
+            # bar index shifted by a CONSTANT offset, so it is sorted too — no
+            # re-sort here. Re-sorting and assigning the result back
+            # positionally is precisely the scrambling bug fixed above, and it
+            # would come straight back if this line sorted defensively.
+            left = ev[["feature_time"]]
+            assert left["feature_time"].is_monotonic_increasing, \
+                "feature_time must be sorted before merge_asof — see note above"
+            ev[col] = pd.merge_asof(left, right, on="feature_time",
                                     direction="backward")[col].to_numpy()
         trend_cols.append(col)
     ev["trend"] = ev[trend_cols[0]].fillna("unknown") if trend_cols else "unknown"
@@ -260,7 +298,7 @@ def _confluence(ev: pd.DataFrame, levels: pd.DataFrame, tol_atr: float = 0.25) -
     born = pd.DatetimeIndex(levels["born"])
     expire = pd.DatetimeIndex(levels["expire"])
     lp = levels["price"].to_numpy()
-    ev_day = pd.DatetimeIndex(ev["time"]).floor("D")
+    ev_day = pd.DatetimeIndex(ev["feature_time"]).floor("D")
 
     # Bucket each level into every day of its life, carrying its birth time so
     # the count can still exclude levels born LATER on the event's own day —
@@ -281,7 +319,7 @@ def _confluence(ev: pd.DataFrame, levels: pd.DataFrame, tol_atr: float = 0.25) -
     out = np.zeros(len(ev))
     tol = tol_atr * ev["atr0"].to_numpy()
     prices = ev["level_price"].to_numpy()
-    ev_time = pd.DatetimeIndex(ev["time"]).asi8
+    ev_time = pd.DatetimeIndex(ev["feature_time"]).asi8
     for i, (d, p, t, now) in enumerate(zip(ev_day, prices, tol, ev_time)):
         hit = arrs.get(d)
         if hit is None or not np.isfinite(t):
