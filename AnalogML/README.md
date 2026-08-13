@@ -551,6 +551,63 @@ ignored, per-pair year-by-year via `motif_walkforward.py --pair <pair>`:
   weak 2024–2025 macro backdrop, not six structurally broken pairs — with
   audcad/usdcad as the two to keep an eye on.
 
+**Phase 1: adaptive per-category MAE/MFE-based SL/TP (2026-08-12,
+`AnalogML/motif_adaptive.py`)** — the piece of the ORIGINAL brief ("MAE-based
+stop loss based on all the historic trades of this shape, TP set based on
+historic breakout trades... not on price but on average movement size scaled
+to timeframe") that was deliberately deferred until the detector proved it
+had something real to size risk around. It just did (11/11-fold walk-forward
++ portfolio test above), so this replaces the frozen sl=20p/tp_r=1.5 grid
+with per-category (n_touches × is_top) SL/TP derived from that category's
+own historical max-adverse/max-favourable excursion (`pylego.barrier_race`'s
+new `excursion`/`VariableEntry`/`race_trades_variable`), scaled to that
+trade's own entry-time ATR — dimensionless, cross-pair-comparable, "scaled to
+timeframe" not raw price. Sized causally: only from same-category precedent
+strictly BEFORE that trade's confirm time, pooled across all 26 pairs
+(`motif_walkforward.py`'s per-pair diagnosis found no detector-level
+difference across pairs), expanding window, never the future.
+
+**A real bug found on the first attempt, before trusting anything:** sizing
+the MAE/MFE window off the full 200-bar race horizon produced absurd ~11x-ATR
+(~220-pip) stops that diluted almost every trade into a mark-to-close
+timeout — adaptive avgR +0.006 vs the frozen grid's +0.110 on a 2-pair
+smoke test, a clean null. Root cause: that horizon mostly measures drift
+unrelated to the breakout thesis. Fixed by bounding the excursion window to
+`--excursion-bars` (default 40, the breakout confirmation horizon), not the
+full race horizon. A small percentile sweep (6 cells, same 2 pairs) then
+found SL/TP both at the 50th percentile clearly ahead of the other cells —
+chosen post-hoc from that sweep, so it meant nothing until it cleared the
+full universe.
+
+**Full 26-pair result, SAME 28,223 motifs raced both ways (adaptive vs the
+already-validated frozen grid), calendar-year folds:**
+
+| | n | PF | avg R |
+|---|---:|---:|---:|
+| Adaptive (SL/TP p50, all folds pooled) | 28,223 | 1.227 | +0.115 |
+| Frozen grid (sl=20p, tp_r=1.5, same motifs) | 28,223 | 1.174 | +0.098 |
+
+A real, positive improvement in the pooled numbers (+17% relative avg R) —
+but **fold consistency is 6/11, not 11/11** — weaker than the entry
+signal's own walk-forward. The improvement is concentrated in a few standout
+years (2018 +0.066R, 2020 +0.033R, 2022 +0.049R, 2025 +0.086R) while several
+folds are flat-to-slightly-worse (2017 −0.017R, 2019 −0.020R, 2023 −0.039R,
+2024 −0.014R, 2026 −0.008R). Read this as **a real but modest win, not a
+decisive one** — the honest read, not the sold one.
+
+Per-category sizing (median, all pairs pooled) is now sane, unlike the
+buggy first attempt: 2-touch categories get a favourable ~1.3:1 reward:risk
+(SL≈36–37p/2.3xATR, TP≈49p/3.1xATR); 3-touch categories come out closer to
+1:1 (SL≈41–45p/2.7–2.8xATR, TP≈42–43p/2.7xATR) — a real structural
+difference between 2- and 3-touch motifs, not noise, and independent
+confirmation that touch-count is a meaningful axis (matching the original
+"3rd touch" intuition).
+
+Not yet done: a portfolio-level test of the adaptive sizing (does the
+avg-R gain survive as a stacked account the way the entry signal's did?),
+and a proper percentile ablation beyond the one 6-cell sweep the chosen
+(50, 50) cell came from.
+
 **Dashboard status, checked directly against the merged code (2026-08-12):**
 `today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
 commit `181e1b50`) call `/api/analogml/motif-state` and
