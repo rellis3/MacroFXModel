@@ -557,6 +557,25 @@ the played-out-only filter) all converging on the same flat-to-negative
 number is itself evidence this is a real null, not a fragile artifact of one
 setting choice.
 
+**A fifth check, added after the owner asked why widely-used retail patterns
+would show no edge here:** every check above used a FIXED 20-pip stop for
+every instance, regardless of the pattern's own size — not how flags/
+pennants are actually traded. The textbook rule sizes the stop and target
+off the pattern's OWN measured move (the pole's height): target = 1.0x the
+pole height projected from the breakout, stop = 0.5x the pole height
+against it (`js/patternEngine.js`'s own `computeOutcome` defaults,
+`stopFrac=0.5`, i.e. tp_r=2.0 but with a stop that scales per instance
+instead of a flat 20 pips). Raced every eligible instance through its own
+pattern-derived stop (real distribution: median 39.3 pips, p10-p90
+19.0-82.3 pips — genuinely proportional to each pattern's size, not a
+repeat of the fixed-stop test): pooled across 26 pairs, n=17,083, **PF=0.96,
+WR=33.3%, avg_R=-0.026 — still null.** This rules out "the fixed stop killed
+a real edge" specifically. It does NOT rule out multi-timeframe confluence,
+higher-timeframe trend alignment, other timeframes (H4/D1 — everything
+tested here is H1 only), or the fuzzy/discretionary pattern recognition a
+human eye applies that a rigid geometric threshold detector does not — those
+remain genuinely untested, not proven null.
+
 **Per CLAUDE.md's "Pivot or Pivot" rule**, since a bug audit didn't turn up
 anything to explain it: flags/pennants, on H1, with the untouched JS-default
 geometry thresholds, show no real edge. The brick (`flag_pennant.py`) stays
