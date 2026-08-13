@@ -69,9 +69,11 @@
   <div><label>Min confluence</label><input id="minConf" type="number" step="1" value="1" style="max-width:70px"></div>
   <div><label>Asset class</label><select id="assetFilter"><option value="">all</option><option value="fx">FX only</option><option value="commodity">Gold</option><option value="index">Indices</option></select></div>
   <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer;margin-bottom:8px"><input type="checkbox" id="hideEmpty" style="min-width:auto" checked> hide pairs with no near zone</label>
+  <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer;margin-bottom:8px"><input type="checkbox" id="autoRefresh" style="min-width:auto" checked> <span id="liveDot" style="color:var(--green)">●</span> auto-refresh</label>
   <button id="btnLoad" onclick="loadAll()">↻ Load / refresh</button>
   <button class="ghost" onclick="warmAll()" id="btnWarm">⟳ Warm snapshots (live)</button>
   <span class="muted" id="status"></span>
+  <span class="muted" id="lastUpdated" style="margin-left:auto"></span>
 </div>
 
 <div class="grid" id="cardGrid"></div>
@@ -90,7 +92,10 @@ const OANDA_SYM = { eurusd:'EUR_USD', gbpusd:'GBP_USD', usdjpy:'USD_JPY', audusd
   chfjpy:'CHF_JPY', nzdjpy:'NZD_JPY', gold:'XAU_USD', nq:'NAS100_USD', spx:'SPX500_USD', dow:'US30_USD',
   rut:'US2000_USD', ftse:'UK100_GBP', dax:'DE30_EUR' };
 
-let snaps = {}, decides = {}, charts = {};
+let snaps = {}, decides = {}, charts = {}, chartSeries = {};
+let fastTimer = null, fullTimer = null, lastFullLoad = null;
+const FAST_TICK_MS = 60_000;    // just move the latest candle (cheap, same cadence vol-forecast-v2 uses)
+const FULL_TICK_MS = 180_000;   // re-warm snapshots, re-score zones/confidence, redraw everything
 
 async function api(path, opts) { const r = await fetch(path, opts); return r.json(); }
 
@@ -146,6 +151,7 @@ async function loadAll() {
   }
   await Promise.all(jobs);
   $('status').textContent = `${Object.keys(snaps).length}/${PAIRS.length} snapshots · ${Object.keys(decides).length} scored zones`;
+  stampUpdated();
   render();
 }
 
@@ -161,7 +167,7 @@ function render() {
   const grid = $('cardGrid');
   grid.innerHTML = '';
   Object.values(charts).forEach(c => { try { c.remove(); } catch {} });
-  charts = {};
+  charts = {}; chartSeries = {};
 
   for (const pair of PAIRS) {
     if (assetFilter && ASSET_CLASS(pair) !== assetFilter) continue;
@@ -271,7 +277,49 @@ async function loadOneChart(card) {
     series.createPriceLine({ price: ts.sl, color: '#f85149', lineWidth: 2, lineStyle: LS.Solid, title: 'SL', axisLabelVisible: true });
   }
   charts[pair] = chart;
+  chartSeries[pair] = series;
 }
+
+// Fast tick (every FAST_TICK_MS): just move the last candle on charts already open —
+// mirrors vol-forecast-v2.html's 60s "rescan hit chips" tick rather than a full
+// chart teardown/rebuild. The server-side OHLC cache TTL is ~40s, so this doesn't
+// add real OANDA load beyond what's already cached.
+async function refreshLatestCandles() {
+  const pairs = Object.keys(chartSeries);
+  if (!pairs.length) return;
+  await Promise.all(pairs.map(async pair => {
+    const sym = OANDA_SYM[pair];
+    const series = chartSeries[pair];
+    if (!sym || !series) return;
+    try {
+      const res = await fetch(`/api/oanda_ohlc5m?symbol=${encodeURIComponent(sym)}`);
+      const data = await res.json();
+      if (!res.ok || !data?.values?.length) return;
+      const last = data.values[0];   // API returns descending (most recent first)
+      const bar = {
+        time: Math.floor(new Date(last.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+        open: parseFloat(last.open), high: parseFloat(last.high), low: parseFloat(last.low), close: parseFloat(last.close),
+      };
+      if (Number.isFinite(bar.open)) series.update(bar);
+    } catch { /* best-effort — leave the chart as-is on a transient fetch failure */ }
+  }));
+}
+
+function stampUpdated() {
+  lastFullLoad = Date.now();
+  $('lastUpdated').textContent = `updated ${new Date(lastFullLoad).toLocaleTimeString()}`;
+}
+
+function scheduleAutoRefresh() {
+  clearInterval(fastTimer); clearInterval(fullTimer);
+  const on = $('autoRefresh').checked;
+  $('liveDot').style.color = on ? 'var(--green)' : 'var(--text3)';
+  $('liveDot').title = on ? 'auto-refreshing' : 'paused';
+  if (!on) return;
+  fastTimer = setInterval(() => { if ($('mode').value === 'live') refreshLatestCandles(); }, FAST_TICK_MS);
+  fullTimer = setInterval(() => loadAll(), FULL_TICK_MS);
+}
+$('autoRefresh').addEventListener('change', scheduleAutoRefresh);
 
 window.addEventListener('resize', () => {
   for (const [pair, chart] of Object.entries(charts)) {
@@ -287,6 +335,7 @@ $('mode').addEventListener('change', loadAll);
 
 health();
 loadAll();
+scheduleAutoRefresh();
 </script>
 </body>
 </html>
