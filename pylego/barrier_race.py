@@ -58,13 +58,24 @@ class BarrierResult:
 
 
 def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
-                 cmax, cmin, last_close: float, tp_r: float):
+                 cmax, cmin, last_close: float, tp_r: float,
+                 pessimistic_ties: bool = False):
     """Resolve ONE forward path: which barrier is touched first. Returns
     (outcome, exit_off, exit_price, r) where outcome ∈ {'tp','sl','timeout'},
     exit_off is the 0-based bar offset from entry, and r EXCLUDES cost. Shared
     by race_grid (which only tallies outcome + r) and race_trades (which keeps
     exit_off/price) — one walker, so the aggregate stats and the per-trade audit
-    can never disagree (the whole reason barrier_race exists — see module head)."""
+    can never disagree (the whole reason barrier_race exists — see module head).
+
+    `pessimistic_ties` controls the case where BOTH barriers are first touched
+    inside the SAME bar, where the bar's OHLC cannot say which came first.
+    Default False keeps the historical behaviour (target wins) so existing
+    studies are unchanged; True resolves the ambiguity as a stop, which is the
+    conservative reading and the one a study should use when its stops are
+    tight relative to bar range — at a 1:1 barrier with a sub-ATR stop the
+    same-bar case is common and awarding all of it to the target is a real,
+    one-directional optimism. Callers that care should pass True explicitly.
+    """
     if direction > 0:
         tp_price, sl_price = entry_price + tp_dist, entry_price - sl
         tp_arr = np.flatnonzero(cmax >= tp_price)
@@ -75,7 +86,8 @@ def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
         sl_arr = np.flatnonzero(cmax >= sl_price)
     tp_i = int(tp_arr[0]) if tp_arr.size else None
     sl_i = int(sl_arr[0]) if sl_arr.size else None
-    if tp_i is not None and (sl_i is None or tp_i <= sl_i):
+    tp_wins_tie = tp_i is not None and sl_i is not None and tp_i == sl_i and not pessimistic_ties
+    if tp_i is not None and (sl_i is None or tp_i < sl_i or tp_wins_tie):
         return 'tp', tp_i, tp_price, tp_r
     if sl_i is not None:
         return 'sl', sl_i, sl_price, -1.0
@@ -85,7 +97,7 @@ def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
 
 def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float,
                 max_bars_ahead: int, cost_price: float = 0.0,
-                min_bars_ahead: int = 10) -> list[dict]:
+                min_bars_ahead: int = 10, pessimistic_ties: bool = False) -> list[dict]:
     """Per-trade sibling of `race_grid` for a SINGLE (sl, tp_r) cell: one record
     per entry with its resolved exit, so a viewer can draw each trade on the real
     candles. Same first-touch walker (`_first_touch`) — no second copy.
@@ -110,7 +122,8 @@ def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float
         last_close = float(close[end_pos - 1])
         entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
         outcome, off, exit_price, r = _first_touch(entry_price, e.direction, sl, tp_dist,
-                                                    cmax, cmin, last_close, tp_r)
+                                                    cmax, cmin, last_close, tp_r,
+                                                    pessimistic_ties)
         out.append({
             'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
             'exit_idx': idx + off, 'exit_price': float(exit_price), 'outcome': outcome,
