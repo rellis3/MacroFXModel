@@ -20307,6 +20307,64 @@ async function checkVolLevelAlertsNow() {
   }
 }
 
+// Preview: compose the SAME alert text checkVolLevelAlertsNow would send, without
+// requiring Telegram creds/enabled/cooldown and without sending anything. For
+// demoing/inspecting the alert copy (e.g. from the Upcoming Trades dashboard) and
+// for local dev where no bot is configured. ?pair=eurusd restricts to one
+// instrument; ?thresholdMult=N widens the per-pair pip threshold (default 1×) so a
+// preview can force a look even when live price isn't currently near a level.
+app.get('/api/vol-forecast/level-alerts/preview', async (req, res) => {
+  try {
+    const cfg = await loadVolLevelCfg();
+    const brief = await computeDailyBrief();
+    if (!brief?.ok || !brief.instruments) return res.json({ ok: false, error: 'brief unavailable' });
+    let usdTrendByPair = {};
+    try { usdTrendByPair = await _computeUsdTrends(); } catch { usdTrendByPair = {}; }
+    const wantPair = req.query.pair ? String(req.query.pair).toUpperCase() : null;
+    const mult = Math.max(1, Math.min(50, +req.query.thresholdMult || 1));
+
+    const out = [];
+    for (const inst of Object.values(brief.instruments)) {
+      const { sym, current_price: price, session_open: open, dp, levels } = inst;
+      if (!sym || !price || !open || !levels) continue;
+      const canonical = sym.replace('_', '/');
+      if (wantPair && sym !== wantPair && canonical !== wantPair) continue;
+
+      const pipSize = PIP_SIZE[canonical] ?? PIP_SIZE[sym] ?? PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+      const threshold = mult * (cfg.thresholdPips?.[canonical] ?? cfg.thresholdPips?.[sym] ?? cfg.thresholdPips?.default ?? 10);
+
+      const pre = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+        levels, thresholdPips: threshold, enabled: cfg.levels, bars: null });
+      if (!pre.length) continue;
+
+      const bars = await _fetchVolLevelCandles(sym);
+      let dispersion = null;
+      try {
+        const sessOpenSec = _btLondonMidnightSec(new Date());
+        const sessBars = Array.isArray(bars) ? bars.filter(b => b.t >= sessOpenSec) : [];
+        let sessionHigh = null, sessionLow = null;
+        if (sessBars.length) { sessionHigh = Math.max(...sessBars.map(b => b.high)); sessionLow = Math.min(...sessBars.map(b => b.low)); }
+        const regime = await _volLevelDailyRegime(sym, inst.ac ?? 'fx', brief.session_date);
+        dispersion = volDispersionContext({ sessionHigh, sessionLow, sessionOpen: open,
+          hlMedPct: levels?.hl_med?.pct ?? null, priorExceed: regime.priorExceed, sigAccel: regime.sigAccel });
+      } catch { dispersion = null; }
+
+      let direction = null;
+      try {
+        const [m15, h1] = await Promise.all([_fetchVolLevelCandles(sym, 'M15', 200), _fetchVolLevelCandles(sym, 'H1', 200)]);
+        const z15 = volWtZone(m15), z1h = volWtZone(h1);
+        if (z15 && z1h) direction = { m15: z15, h1: z1h };
+      } catch { direction = null; }
+
+      const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+        levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction,
+        usdTrend: usdTrendByPair[canonical] ?? null });
+      for (const ev of events) out.push({ pair: canonical, key: ev.key, label: ev.near.label, distPips: ev.near.distPips, text: ev.text });
+    }
+    res.json({ ok: true, preview: true, thresholdMult: mult, alerts: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
 // Config: GET status, POST save, (levels/threshold/cooldown/pairs).
 app.get('/api/vol-forecast/level-alerts/config', async (_req, res) => {
   try {

@@ -49,13 +49,16 @@
 <div class="sub">Every zone from the Trade Decision Engine's live level map, across all covered instruments, ranked by distance to price. This is an <b>alert list, not an execution system</b> — nothing here places a trade. Deeper single-pair tool: <a href="trade-decision-engine.html">trade-decision-engine.html</a></div>
 
 <div class="honesty">
-  <b>Read this before trusting the probability column.</b> The engine's own walk-forward research
-  (<code>Trade_Decision_Engine/ARCHITECTURE.md</code> §8b) found the price-derived v0 score carries
-  <b>essentially no out-of-sample edge on the average zone touch</b> — every finer slice tested came back
-  null. The one feature that <i>did</i> survive OOS is <b>higher-timeframe trend alignment</b>
-  (shown below as HTF Trend): touches taken <i>with</i> the pair's trailing trend beat touches against it,
-  consistently in and out of sample. Treat the ranked list as "here's where the ruleset says to look and
-  why" — not as a signal to act on alone.
+  <b>Read this before trusting the probability column.</b> <code>modelV1</code> (live for the 6 FX majors;
+  everything else runs on the hand-set v0 prior) is better-<i>calibrated</i> than the old prior but not more
+  <i>selective</i> — OOS calibration collapses to one ~55%-realized bucket (<code>FIT_FINDINGS.md</code>).
+  <b>HTF Trend</b> below is shown as raw context only — the earlier claim that it was a validated
+  edge did <b>not</b> replicate in the later pooled backfill (agree 55.6% vs oppose 55.7% — null;
+  <code>FIT_FINDINGS.md</code> Result 4). The one feature that <i>did</i> hold up OOS is <b>USD-trend
+  alignment</b> — fading a level WITH the prevailing USD momentum beat fading against it on 6/6 majors —
+  but it's a direction <i>filter</i>, thin after full costs, and not yet wired into this per-zone table
+  (it lives on the Telegram level alert today, not here). Treat this list as "where the ruleset says to
+  look and why" — not as a proven signal to act on alone.
 </div>
 
 <div class="card">
@@ -65,6 +68,7 @@
     <div><label>Min confluence</label><input id="minConf" type="number" step="1" value="1" style="max-width:70px"></div>
     <div><label>Sort by</label><select id="sortBy"><option value="dist">Distance (nearest first)</option><option value="conf">Confluence (highest first)</option><option value="score">Zone score (highest first)</option></select></div>
     <div><label>Asset class</label><select id="assetFilter"><option value="">all</option><option value="fx">FX only</option><option value="commodity">Gold</option><option value="index">Indices</option></select></div>
+    <div><label>Mode</label><select id="mode"><option value="live">live (OANDA)</option><option value="synthetic">synthetic (demo, no network)</option></select></div>
     <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer;margin-bottom:8px"><input type="checkbox" id="htfOnly" style="min-width:auto"> HTF-aligned only</label>
     <button id="btnWarm" onclick="warmAll()">⟳ Warm snapshots (all pairs)</button>
     <button class="ghost" onclick="loadAll()">↻ Refresh list</button>
@@ -109,6 +113,8 @@ async function health() {
 }
 
 async function warmAll() {
+  const mode = $('mode').value;
+  if (mode === 'synthetic') { $('status').textContent = 'synthetic mode needs no warm-up — press Refresh list'; return; }
   const b = $('btnWarm'); b.disabled = true; b.textContent = '⟳ warming…';
   $('status').textContent = `warming ${PAIRS.length} pairs — this hits OANDA per pair, ~15–30s…`;
   try {
@@ -122,12 +128,13 @@ async function warmAll() {
 }
 
 async function loadAll() {
+  const mode = $('mode').value;
   $('status').textContent = 'loading snapshots…';
-  const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
+  const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}?mode=${mode}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
   snaps = {};
   for (const [p, s] of results) if (s.ok) snaps[p] = s;
   const warmed = Object.keys(snaps).length;
-  $('status').textContent = `${warmed}/${PAIRS.length} pairs have a live snapshot`;
+  $('status').textContent = `${warmed}/${PAIRS.length} pairs have a ${mode} snapshot`;
   render();
 }
 
@@ -173,7 +180,7 @@ function render() {
     const sideTxt = r.side > 0 ? '▲ above' : r.side < 0 ? '▼ below' : 'at price';
     const stars = '★'.repeat(Math.min(5, r.z.count ?? 0)) + '☆'.repeat(Math.max(0, 5 - (r.z.count ?? 0)));
     const htfTag = r.htf > 0 ? `<span class="tag up">HTF ▲</span>` : r.htf < 0 ? `<span class="tag dn">HTF ▼</span>` : `<span class="tag">HTF flat</span>`;
-    const alignTag = r.aligned ? `<span class="tag hi">with-trend</span>` : '';
+    const alignTag = r.aligned ? `<span class="tag">htf-context</span>` : '';
     const oiTag = r.oiWall ? `<span class="tag hi">OI wall</span>` : '';
     const creditTag = r.s.credit?.gate && r.s.credit.gate !== 'RISK-ON' ? `<span class="tag dn">credit ${r.s.credit.gate}</span>` : '';
     const macroTag = r.s.macro?.regime && r.s.macro.regime !== 'NEUTRAL' ? `<span class="tag ${r.s.macro.regime === 'RISK_OFF' ? 'dn' : 'up'}">macro ${r.s.macro.regime.replace('_', '-')}</span>` : '';
@@ -190,13 +197,13 @@ function render() {
       <td>${htfTag}</td>
       <td class="muted">${r.s.volPct != null ? (100 * r.s.volPct).toFixed(0) + '%' : '–'}</td>
       <td>${alignTag}${oiTag}${creditTag}${macroTag}${newsTag}</td>
-      <td><button class="ghost" style="padding:3px 10px;font-size:11px" onclick="preview('${rowId}','${r.pair}',${r.z.price})">Preview ▸</button></td>
+      <td><button class="ghost" style="padding:3px 10px;font-size:11px" onclick="preview('${rowId}','${r.pair}',${r.z.price},'${r.s.mode}')">Preview ▸</button></td>
     </tr>
     <tr class="prevrow" id="${rowId}" style="display:none"><td colspan="11"></td></tr>`;
   }).join('');
 }
 
-async function preview(rowId, pair, price) {
+async function preview(rowId, pair, price, mode) {
   const row = $(rowId);
   const cell = row.querySelector('td');
   row.style.display = 'table-row';
@@ -204,7 +211,7 @@ async function preview(rowId, pair, price) {
   try {
     const r = await api('/api/trade-decision/decide', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ pair, price, mode: 'live', preview: true }),
+      body: JSON.stringify({ pair, price, mode: mode || 'live', preview: true }),
     });
     if (r.error && !r.decision) { cell.innerHTML = `<span class="muted">${r.error}</span>`; return; }
     const go = r.decision === 'go';
@@ -224,6 +231,7 @@ async function preview(rowId, pair, price) {
   $(id).addEventListener('change', render);
   $(id).addEventListener('input', render);
 });
+$('mode').addEventListener('change', loadAll);
 
 health();
 loadAll();
