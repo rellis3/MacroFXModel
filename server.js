@@ -22945,7 +22945,7 @@ function tdeWarmSnapshot(pair) {
 app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
   const t0 = Date.now();
   try {
-    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live' } = req.body ?? {};
+    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live', preview } = req.body ?? {};
     if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
     const key = String(pair).toLowerCase();
     let snap, warm = null;
@@ -22961,7 +22961,12 @@ app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
       if (warm.error) result.slow_loop_error = warm.error;
     }
     result.total_ms = Date.now() - t0;
-    tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
+    // preview:true = a hypothetical "what if price were at this zone right now"
+    // read (e.g. a watchlist scanning zones price hasn't touched yet). Real touches
+    // must still log — decisionLog.js is the future training set (ARCHITECTURE.md §6)
+    // and logging fictitious touches would corrupt it with events that never happened.
+    result.preview = preview === true;
+    if (preview !== true) tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message ?? String(e) });
