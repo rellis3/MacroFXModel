@@ -551,6 +551,212 @@ ignored, per-pair year-by-year via `motif_walkforward.py --pair <pair>`:
   weak 2024–2025 macro backdrop, not six structurally broken pairs — with
   audcad/usdcad as the two to keep an eye on.
 
+**Phase 1: adaptive per-category MAE/MFE-based SL/TP (2026-08-12,
+`AnalogML/motif_adaptive.py`)** — the piece of the ORIGINAL brief ("MAE-based
+stop loss based on all the historic trades of this shape, TP set based on
+historic breakout trades... not on price but on average movement size scaled
+to timeframe") that was deliberately deferred until the detector proved it
+had something real to size risk around. It just did (11/11-fold walk-forward
++ portfolio test above), so this replaces the frozen sl=20p/tp_r=1.5 grid
+with per-category (n_touches × is_top) SL/TP derived from that category's
+own historical max-adverse/max-favourable excursion (`pylego.barrier_race`'s
+new `excursion`/`VariableEntry`/`race_trades_variable`), scaled to that
+trade's own entry-time ATR — dimensionless, cross-pair-comparable, "scaled to
+timeframe" not raw price. Sized causally: only from same-category precedent
+strictly BEFORE that trade's confirm time, pooled across all 26 pairs
+(`motif_walkforward.py`'s per-pair diagnosis found no detector-level
+difference across pairs), expanding window, never the future.
+
+**A real bug found on the first attempt, before trusting anything:** sizing
+the MAE/MFE window off the full 200-bar race horizon produced absurd ~11x-ATR
+(~220-pip) stops that diluted almost every trade into a mark-to-close
+timeout — adaptive avgR +0.006 vs the frozen grid's +0.110 on a 2-pair
+smoke test, a clean null. Root cause: that horizon mostly measures drift
+unrelated to the breakout thesis. Fixed by bounding the excursion window to
+`--excursion-bars` (default 40, the breakout confirmation horizon), not the
+full race horizon. A small percentile sweep (6 cells, same 2 pairs) then
+found SL/TP both at the 50th percentile clearly ahead of the other cells —
+chosen post-hoc from that sweep, so it meant nothing until it cleared the
+full universe.
+
+**Full 26-pair result, SAME 28,223 motifs raced both ways (adaptive vs the
+already-validated frozen grid), calendar-year folds:**
+
+| | n | PF | avg R |
+|---|---:|---:|---:|
+| Adaptive (SL/TP p50, all folds pooled) | 28,223 | 1.227 | +0.115 |
+| Frozen grid (sl=20p, tp_r=1.5, same motifs) | 28,223 | 1.174 | +0.098 |
+
+A real, positive improvement in the pooled numbers (+17% relative avg R) —
+but **fold consistency is 6/11, not 11/11** — weaker than the entry
+signal's own walk-forward. The improvement is concentrated in a few standout
+years (2018 +0.066R, 2020 +0.033R, 2022 +0.049R, 2025 +0.086R) while several
+folds are flat-to-slightly-worse (2017 −0.017R, 2019 −0.020R, 2023 −0.039R,
+2024 −0.014R, 2026 −0.008R). Read this as **a real but modest win, not a
+decisive one** — the honest read, not the sold one.
+
+Per-category sizing (median, all pairs pooled) is now sane, unlike the
+buggy first attempt: 2-touch categories get a favourable ~1.3:1 reward:risk
+(SL≈36–37p/2.3xATR, TP≈49p/3.1xATR); 3-touch categories come out closer to
+1:1 (SL≈41–45p/2.7–2.8xATR, TP≈42–43p/2.7xATR) — a real structural
+difference between 2- and 3-touch motifs, not noise, and independent
+confirmation that touch-count is a meaningful axis (matching the original
+"3rd touch" intuition).
+
+**Portfolio-level test (2026-08-13, `AnalogML/motif_adaptive_portfolio_sim.py`,
+reusing `portfolio_sim.py`'s account simulator verbatim, same 28,223 motifs
+raced both ways):** a 3-pair smoke test looked like a clean win (adaptive
+Sharpe 1.68 vs frozen 1.31, max DD −18.8% vs −26.3%, adaptive using MORE
+capital not less) — **the full 26-pair confirmation walked that back.**
+
+| | n taken | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|---:|
+| Adaptive sizing | 11,829 | 1.86 | −68.6% | 3.6% |
+| Frozen grid (same motifs) | 17,688 | 1.58 | −54.5% | 2.7% |
+
+Sharpe genuinely improves (1.86 vs 1.58) — but **max drawdown is materially
+WORSE, not better** (−68.6% vs −54.5%), at higher capital utilization.
+Adaptive trades typically run wider SL/TP (36–49p vs the frozen 20p/30p),
+hold longer, overlap more, and hit the 5% concurrent-risk cap far more often
+(16,394/28,223 signals skipped vs 10,535/28,223) — fewer trades taken, more
+risk concentrated in the ones that fit. **This is a real trade-off, not a
+decisive win**: higher risk-adjusted return, but a materially deeper real
+drawdown — the opposite of the encouraging small-sample read. The
+diversification effect itself still holds regardless of sizing method
+(matched-utilization single pairs: audcad −99.9% max DD, audchf −88.6%,
+audjpy −86.9%, all worse than either portfolio) — the portfolio structure is
+doing real work, but adaptive sizing is not an unambiguous upgrade over the
+frozen grid at the account level, only at the isolated trade level.
+
+**Percentile ablation, resolving the drawdown cost (2026-08-13) — DEFAULT
+CHANGED to (35, 35).** An 8-pair sample swept (sl_pctile, tp_pctile) ∈
+{(50,50), (25,25), (35,35), (25,50), (35,50)} at the PORTFOLIO level (the
+level that actually showed the problem). (35,35) stood out clearly — higher
+Sharpe than every other cell tried, AND at capital utilization matched
+almost exactly to the frozen grid (no capital-deployment confound). Full
+26-pair confirmation, same 28,223 motifs:
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| Adaptive (35, 35) | **2.31** | **−41.8%** | 2.7% |
+| Frozen grid (same motifs) | 1.58 | −54.5% | 2.7% |
+
+At MATCHED utilization (2.7% both), adaptive (35,35) now beats the frozen
+grid on BOTH Sharpe and max DD — no trade-off, unlike (50,50)'s Sharpe-for-
+drawdown swap. Trade level barely moves (PF 1.212/avg R +0.110 vs (50,50)'s
+1.227/+0.115 — a wash) but fold consistency IMPROVES (8/11 vs 6/11).
+**(35, 35) is now the default in both `motif_adaptive.py` and
+`motif_adaptive_portfolio_sim.py`** — a materially tighter, more robust
+choice than the original (75, 50) or the trade-level-only-chosen (50, 50).
+
+**True multi-timeframe agreement analysis (2026-08-13,
+`AnalogML/motif_multi_tf.py`)** — a question open since the original scoping
+conversation ("if higher timeframes have a bullish pennant and lower
+timeframes have bearish, what happens") and confirmed absent everywhere:
+`js/patternEngine.js`'s `annotateHtfAlignment` only checks a single
+next-higher timeframe, stores a boolean, never aggregates it into any stat;
+nothing in `motif_touch.py`/`motif_scan.py`/`motif_walkforward.py` looks at
+any timeframe but its own. Detects the SAME touch-motif on H1 (base) and
+independently on 4H and 1D, buckets each H1 entry by whether the most
+recently CONFIRMED HTF motif (known by that H1 entry's own confirm time,
+within a lookback window) agrees, conflicts, or is absent. **A real
+lookahead bug caught before running anything**: a resampled bar is labeled
+by its START, so cutting off against that timestamp directly could let a
+still-forming HTF bar's high/low/close leak into a decision made mid-bar —
+fixed by deriving each HTF bar's actual END time (start + the index's own
+regular bar spacing) and cutting off against that instead.
+
+**A real reversal between the small and full sample — a good example of why
+the sweep ladder exists.** 2-pair smoke test suggested 4H mattered (AGREE
+PF=1.29 vs CONFLICT PF=1.19, 7/11 folds) and 1D didn't (PF=1.20 vs 1.25,
+reversed, only 4/11 folds). **The full 26-pair confirmation found the
+OPPOSITE:**
+
+| HTF | bucket | n | PF | avg R |
+|---|---|---:|---:|---:|
+| 4H | AGREE | 3,605 | 1.19 | +0.105 |
+| 4H | CONFLICT | 3,172 | 1.18 | +0.100 |
+| 1D | AGREE | 4,232 | **1.24** | **+0.133** |
+| 1D | CONFLICT | 4,168 | **1.09** | **+0.055** |
+
+**4H shows no meaningful separation** (PF 1.19 vs 1.18, a wash) — the
+2-pair read was noise. **1D shows a real, sizeable gap**: when the daily
+motif conflicts with the H1 signal, avg R drops to less than half of when
+it agrees (+0.055 vs +0.133), fold-consistent in 7/11 years. CONFLICT trades
+stay net positive (not reversed to a loser) — this reads as "daily HTF
+agreement adds real conviction, daily HTF conflict is a real reason to
+size down or skip," not "daily HTF conflict flips the trade." The largest
+bucket by far in both splits is NONE (no HTF motif confirmed recently
+enough — ~76% of entries at 4H, ~70% at 1D) — most of the time there's
+simply no fresh HTF read available, a real constraint on how often this
+filter could apply live, not a flaw in the method.
+
+**HTF-conflict-aware position sizing (2026-08-13,
+`AnalogML/motif_htf_sized.py`)** — the natural integration of the 1D finding
+above: keep every trade (CONFLICT stays net positive, a hard skip would
+throw away real expectancy), just risk LESS on the ones an independent read
+already flags as lower-conviction. Deliberately isolates ONE new variable
+(position sizing) on top of the ALREADY-VALIDATED frozen-grid entry signal —
+not stacked on the not-fully-vetted adaptive SL/TP, so the two ideas don't
+get confounded. `pylego.barrier_race`'s sibling, `portfolio_sim.py`'s
+`simulate_portfolio`, now reads an optional per-trade `size_mult` (default
+1.0, every existing caller unaffected) — 0.5× on a 1D conflict, 1.0×
+otherwise (deliberately NOT sized UP on agreement — that's a separate,
+unvalidated claim `motif_multi_tf.py` didn't test).
+
+A 3-pair smoke test looked like a wash (Sharpe 1.26 vs 1.32 uniform-sized,
+roughly flat) — **the full 26-pair confirmation found a real win**, same
+28,423 motifs, 4,168 (14.7%) downsized:
+
+| | Sharpe | max DD | avg utilization |
+|---|---:|---:|---:|
+| HTF-sized (0.5× on 1D conflict) | **1.80** | **−42.9%** | 2.6% |
+| Uniform sizing (same motifs) | 1.61 | −55.1% | 2.7% |
+
+At essentially matched utilization, sizing down on a real, already-validated
+conflict signal improves BOTH Sharpe and max DD — a clean, if modest,
+portfolio-level win from position sizing alone, no change to entry
+selection or SL/TP at all. The 3-pair "wash" was another reminder not to
+trust a small sample after a null OR a positive read — this is now the 4th
+time in this build a small-sample first look was overturned at 26-pair
+scale (the excursion-window bug, the 4H/1D reversal, the (50,50)-vs-(35,35)
+drawdown finding, and now this).
+
+Not yet done: an in-progress/provisional HTF read (matching
+`motif_track.py`'s live "what's forming" diagnostic, rather than only
+counting already-CONFIRMED HTF motifs), and testing the adaptive SL/TP
+sizing (35,35) COMBINED with HTF-conflict sizing together — deliberately not
+done together yet, to keep this build's discipline of one new variable at a
+time.
+
+**Telegram alerts (2026-08-13, `AnalogML/motif_track.py --telegram`)** — the
+"leave it as a signal, alert when a trade is building" decision: not a live
+bot, not automated execution, a human-facing alert with SL/TP markings to
+manually track against. Extracted `pylego/telegram.py` as a genuine shared
+brick first — `send_telegram`/`load_tg_config` had been copy-pasted
+near-identically across 7+ bots (`RegimeV2/V4/V7`, `DynAnchorBot`,
+`YieldSpreadBot`, `oi_bot`, `bot/main.py`) with no `pylego/` brick behind
+them despite CLAUDE.md's own stated threshold ("two copies already exist" —
+this would have been an 8th); the existing 7 are NOT migrated as part of
+this (separate follow-up). Reads the SHARED dashboard `tg_config` (the same
+bot/chat every other bot's alerts already use) via `pylego.kv.KvClient` —
+no new credentials needed unless a dedicated channel is wanted later.
+
+One alert per newly-confirmed motif (the existing per-pair watermark already
+guarantees "only genuinely new," never a backfill-on-first-run flood — same
+mechanism that caught the 28,524-signal bug earlier in this build). The
+alert shows the TRACKED frozen-grid entry/SL/TP (unchanged — the record
+every number in this file is judged against never silently drifts) *plus*
+two separately-validated, FROZEN sizing reads for manual execution: the
+adaptive per-category ATR-scaled SL/TP (the validated (35,35) constants,
+hardcoded — not recomputed live, matching "stop tuning, let it run") and the
+1D HTF agree/conflict state with a size-down note on conflict. Neither
+adaptive number is APPLIED to the tracked trade itself, only shown — the
+combined-sizing test flagged just above stays undone for the tracked signal,
+this is purely an informational overlay on top of it. Opt-in via
+`--telegram` (off by default), and automatically disabled under `--as-of`
+even if passed, so a replay/testing run can never fire a live alert.
+
 **Dashboard status, checked directly against the merged code (2026-08-12):**
 `today.html`/`indexv2.html`/`bot-config.html` on `main` (merged via PR #1216,
 commit `181e1b50`) call `/api/analogml/motif-state` and
