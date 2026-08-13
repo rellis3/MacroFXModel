@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upcoming Trades — Zone Watchlist</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+        --green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding:18px;max-width:1360px;margin:0 auto}
+  h1{font-size:20px;margin-bottom:2px}
+  h2{font-size:14px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  .sub{color:var(--text2);margin-bottom:16px;font-size:13px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid var(--border);color:var(--text2);margin-left:8px;vertical-align:middle}
+  .badge.warn{color:var(--amber);border-color:rgba(210,153,34,.4)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+  label{display:block;font-size:11px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+  select,input{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:13px;min-width:90px}
+  button{background:var(--blue);border:none;color:#fff;border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.15)}
+  button.ghost{background:var(--card2);border:1px solid var(--border);color:var(--text2)}
+  button:disabled{opacity:.5;cursor:wait}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{color:var(--text3);text-align:left;font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  td{padding:6px 8px;border-bottom:1px solid rgba(48,54,61,.5);white-space:nowrap}
+  tr.zrow:hover{background:var(--card2)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .muted{color:var(--text3);font-size:12px}
+  .tag{display:inline-block;font-size:10.5px;padding:1px 6px;border-radius:8px;border:1px solid var(--border);color:var(--text2);margin:0 3px 3px 0}
+  .tag.up{color:var(--green);border-color:rgba(63,185,80,.4)}
+  .tag.dn{color:var(--red);border-color:rgba(248,81,73,.4)}
+  .tag.hi{color:var(--purple);border-color:rgba(139,92,246,.4)}
+  .stars{color:var(--amber);letter-spacing:-1px}
+  .prevrow td{background:var(--card2);white-space:normal}
+  .decision-big{font-size:20px;font-weight:800}
+  .go{color:var(--green)} .skipd{color:var(--red)}
+  .factors{margin-top:4px}
+  .factors li{margin:2px 0 2px 16px;color:var(--text2);font-size:12px}
+  a{color:var(--blue)}
+  .honesty{font-size:12px;color:var(--text2);background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px}
+  .honesty b{color:var(--amber)}
+  .empty{color:var(--text3);padding:16px;text-align:center}
+</style>
+</head>
+<body>
+
+<h1>📋 Upcoming Trades <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
+<div class="sub">Every zone from the Trade Decision Engine's live level map, across all covered instruments, ranked by distance to price. This is an <b>alert list, not an execution system</b> — nothing here places a trade. Card view with live charts + TP/SL: <a href="trade-cards.html">trade-cards.html</a> · Deeper single-pair tool: <a href="trade-decision-engine.html">trade-decision-engine.html</a></div>
+
+<div class="honesty">
+  <b>Read this before trusting the probability column.</b> <code>modelV1</code> (live for the 6 FX majors;
+  everything else runs on the hand-set v0 prior) is better-<i>calibrated</i> than the old prior but not more
+  <i>selective</i> — OOS calibration collapses to one ~55%-realized bucket (<code>FIT_FINDINGS.md</code>).
+  <b>HTF Trend</b> below is shown as raw context only — the earlier claim that it was a validated
+  edge did <b>not</b> replicate in the later pooled backfill (agree 55.6% vs oppose 55.7% — null;
+  <code>FIT_FINDINGS.md</code> Result 4). The one feature that <i>did</i> hold up OOS is <b>USD-trend
+  alignment</b> — fading a level WITH the prevailing USD momentum beat fading against it on 6/6 majors —
+  but it's a direction <i>filter</i>, thin after full costs, and not yet wired into this per-zone table
+  (it lives on the Telegram level alert today, not here). Treat this list as "where the ruleset says to
+  look and why" — not as a proven signal to act on alone.
+</div>
+
+<div class="card">
+  <h2>Controls</h2>
+  <div class="row">
+    <div><label>Max distance</label><input id="maxSigma" type="number" step="0.1" value="1.5" style="max-width:80px">σ</div>
+    <div><label>Min confluence</label><input id="minConf" type="number" step="1" value="1" style="max-width:70px"></div>
+    <div><label>Sort by</label><select id="sortBy"><option value="dist">Distance (nearest first)</option><option value="conf">Confluence (highest first)</option><option value="score">Zone score (highest first)</option></select></div>
+    <div><label>Asset class</label><select id="assetFilter"><option value="">all</option><option value="fx">FX only</option><option value="commodity">Gold</option><option value="index">Indices</option></select></div>
+    <div><label>Mode</label><select id="mode"><option value="live">live (OANDA)</option><option value="synthetic">synthetic (demo, no network)</option></select></div>
+    <label style="display:flex;align-items:center;gap:6px;text-transform:none;font-size:12.5px;color:var(--text2);cursor:pointer;margin-bottom:8px"><input type="checkbox" id="htfOnly" style="min-width:auto"> HTF-aligned only</label>
+    <button id="btnWarm" onclick="warmAll()">⟳ Warm snapshots (all pairs)</button>
+    <button class="ghost" onclick="loadAll()">↻ Refresh list</button>
+    <span class="muted" id="status"></span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Zones <span class="muted" id="zoneCount"></span></h2>
+  <div style="max-height:640px;overflow-y:auto">
+  <table id="zoneTbl">
+    <thead><tr>
+      <th>Pair</th><th>Zone price</th><th>Dist</th><th>Side</th><th>Confluence</th><th>Score</th>
+      <th>Regime</th><th>HTF Trend</th><th>Vol %ile</th><th>Context</th><th></th>
+    </tr></thead>
+    <tbody id="zoneBody"></tbody>
+  </table>
+  <div class="empty" id="emptyMsg" style="display:none">No snapshots warmed yet — press "Warm snapshots" above (needs OANDA on the server; takes ~15–30s for all pairs).</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const PAIRS = ['eurusd','gbpusd','usdjpy','audusd','usdcad','usdchf','nzdusd','eurgbp','eurjpy','gbpjpy','audjpy','euraud','eurchf','eurcad','eurnzd','gbpaud','gbpcad','gbpchf','gbpnzd','audcad','audchf','audnzd','cadjpy','chfjpy','nzdjpy','gold','nq','spx','dow','rut','ftse','dax'];
+const ASSET_CLASS = p => p === 'gold' ? 'commodity' : ['nq','spx','dow','rut','ftse','dax'].includes(p) ? 'index' : 'fx';
+const DP = p => ASSET_CLASS(p) === 'fx' ? (p.includes('jpy') ? 3 : 5) : 2;
+
+let snaps = {};   // pair -> state response
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+async function health() {
+  try {
+    const h = await api('/api/trade-decision/health');
+    $('modelBadge').textContent = 'model ' + h.model_version;
+    if (!h.calibrated) $('calBadge').style.display = 'inline-block';
+  } catch { $('modelBadge').textContent = 'server unreachable'; }
+}
+
+async function warmAll() {
+  const mode = $('mode').value;
+  if (mode === 'synthetic') { $('status').textContent = 'synthetic mode needs no warm-up — press Refresh list'; return; }
+  const b = $('btnWarm'); b.disabled = true; b.textContent = '⟳ warming…';
+  $('status').textContent = `warming ${PAIRS.length} pairs — this hits OANDA per pair, ~15–30s…`;
+  try {
+    const r = await api('/api/trade-decision/refresh', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pairs: PAIRS }) });
+    const ok = Object.values(r.pairs ?? {}).filter(x => x.ok).length;
+    $('status').textContent = `warmed ${ok}/${PAIRS.length} pairs`;
+    await loadAll();
+  } catch (e) {
+    $('status').textContent = 'warm failed: ' + (e.message ?? e);
+  } finally { b.disabled = false; b.textContent = '⟳ Warm snapshots (all pairs)'; }
+}
+
+async function loadAll() {
+  const mode = $('mode').value;
+  $('status').textContent = 'loading snapshots…';
+  const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}?mode=${mode}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
+  snaps = {};
+  for (const [p, s] of results) if (s.ok) snaps[p] = s;
+  const warmed = Object.keys(snaps).length;
+  $('status').textContent = `${warmed}/${PAIRS.length} pairs have a ${mode} snapshot`;
+  render();
+}
+
+function render() {
+  const maxSigma = parseFloat($('maxSigma').value) || 1.5;
+  const minConf = parseInt($('minConf').value) || 1;
+  const sortBy = $('sortBy').value;
+  const assetFilter = $('assetFilter').value;
+  const htfOnly = $('htfOnly').checked;
+
+  const rows = [];
+  for (const [pair, s] of Object.entries(snaps)) {
+    if (assetFilter && ASSET_CLASS(pair) !== assetFilter) continue;
+    const sigmaAbs = (s.sigmaDaily ?? 0) * (s.dayOpen ?? s.price ?? 1);
+    if (!sigmaAbs || !s.price) continue;
+    const tolAbs = s.meta?.tolAbs ?? 0;
+    for (const z of (s.zones ?? [])) {
+      const distSigma = (z.price - s.price) / sigmaAbs;
+      if (Math.abs(distSigma) > maxSigma) continue;
+      if ((z.count ?? 0) < minConf) continue;
+      const htf = s.htfTrend ?? 0;
+      const side = z.price > s.price ? 1 : z.price < s.price ? -1 : 0;
+      // "aligned" heuristic for display only: a zone below price in an uptrend (buy
+      // the dip with the trend) or above price in a downtrend (sell the rally with
+      // the trend) — mirrors decisionCore's htf_align resolution, shown as CONTEXT
+      // only. The actual scored direction/action comes from Preview ▸ (decide()).
+      const aligned = htf !== 0 && ((htf > 0 && side < 0) || (htf < 0 && side > 0));
+      if (htfOnly && !aligned) continue;
+      const oiWall = (s.oi?.walls ?? []).some(w => Math.abs(w.price - z.price) <= (tolAbs || sigmaAbs * 0.01));
+      rows.push({ pair, s, z, distSigma, htf, side, aligned, oiWall, sigmaAbs });
+    }
+  }
+
+  rows.sort((a, b) => sortBy === 'conf' ? (b.z.count - a.z.count) : sortBy === 'score' ? (b.z.score - a.z.score) : (Math.abs(a.distSigma) - Math.abs(b.distSigma)));
+
+  $('zoneCount').textContent = `— ${rows.length} zone(s) within ${maxSigma}σ, min confluence ${minConf}`;
+  $('emptyMsg').style.display = rows.length ? 'none' : (Object.keys(snaps).length ? 'block' : 'block');
+  if (!rows.length) { $('zoneBody').innerHTML = ''; return; }
+
+  $('zoneBody').innerHTML = rows.map((r, i) => {
+    const dp = DP(r.pair);
+    const distTxt = (r.distSigma >= 0 ? '+' : '') + r.distSigma.toFixed(2) + 'σ';
+    const sideTxt = r.side > 0 ? '▲ above' : r.side < 0 ? '▼ below' : 'at price';
+    const stars = '★'.repeat(Math.min(5, r.z.count ?? 0)) + '☆'.repeat(Math.max(0, 5 - (r.z.count ?? 0)));
+    const htfTag = r.htf > 0 ? `<span class="tag up">HTF ▲</span>` : r.htf < 0 ? `<span class="tag dn">HTF ▼</span>` : `<span class="tag">HTF flat</span>`;
+    const alignTag = r.aligned ? `<span class="tag">htf-context</span>` : '';
+    const oiTag = r.oiWall ? `<span class="tag hi">OI wall</span>` : '';
+    const creditTag = r.s.credit?.gate && r.s.credit.gate !== 'RISK-ON' ? `<span class="tag dn">credit ${r.s.credit.gate}</span>` : '';
+    const macroTag = r.s.macro?.regime && r.s.macro.regime !== 'NEUTRAL' ? `<span class="tag ${r.s.macro.regime === 'RISK_OFF' ? 'dn' : 'up'}">macro ${r.s.macro.regime.replace('_', '-')}</span>` : '';
+    const newsTag = (r.s.calendar_events ?? 0) > 0 ? `<span class="tag">news ×${r.s.calendar_events}</span>` : '';
+    const rowId = `pv_${i}`;
+    return `<tr class="zrow">
+      <td><b>${r.pair.toUpperCase()}</b></td>
+      <td>${r.z.price.toFixed(dp)}</td>
+      <td class="${r.distSigma >= 0 ? 'pos' : 'neg'}">${distTxt}</td>
+      <td class="muted">${sideTxt}</td>
+      <td class="stars" title="${(r.z.sources ?? []).join(', ')}">${stars} <span class="muted">(${(r.z.sources ?? []).slice(0, 3).join(', ')})</span></td>
+      <td>${r.z.score}</td>
+      <td class="muted">${r.s.regime ?? '–'}</td>
+      <td>${htfTag}</td>
+      <td class="muted">${r.s.volPct != null ? (100 * r.s.volPct).toFixed(0) + '%' : '–'}</td>
+      <td>${alignTag}${oiTag}${creditTag}${macroTag}${newsTag}</td>
+      <td><button class="ghost" style="padding:3px 10px;font-size:11px" onclick="preview('${rowId}','${r.pair}',${r.z.price},'${r.s.mode}')">Preview ▸</button></td>
+    </tr>
+    <tr class="prevrow" id="${rowId}" style="display:none"><td colspan="11"></td></tr>`;
+  }).join('');
+}
+
+async function preview(rowId, pair, price, mode) {
+  const row = $(rowId);
+  const cell = row.querySelector('td');
+  row.style.display = 'table-row';
+  cell.innerHTML = '<span class="muted">scoring (preview — not logged)…</span>';
+  try {
+    const r = await api('/api/trade-decision/decide', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pair, price, mode: mode || 'live', preview: true }),
+    });
+    if (r.error && !r.decision) { cell.innerHTML = `<span class="muted">${r.error}</span>`; return; }
+    const go = r.decision === 'go';
+    const p = r.probability;
+    cell.innerHTML = `
+      <span class="decision-big ${go ? 'go' : 'skipd'}">${go ? '✓ GO' : '✗ SKIP'}</span>
+      <span class="muted">— ${r.direction ?? ''} ${r.action ?? ''} · ${p != null ? (100 * p).toFixed(1) + '% (uncalibrated prior)' : 'gated'} · size ×${r.size_multiplier ?? 0}</span>
+      ${(r.reasons ?? []).length ? `<div class="muted">reasons: ${r.reasons.join(', ')}</div>` : ''}
+      <ul class="factors">${(r.top_factors ?? []).slice(0, 6).map(f => `<li>${f}</li>`).join('')}</ul>
+      <div class="muted" style="margin-top:4px">preview only — not written to the decision log</div>`;
+  } catch (e) {
+    cell.innerHTML = `<span class="muted">${e.message ?? e}</span>`;
+  }
+}
+
+['maxSigma', 'minConf', 'sortBy', 'assetFilter', 'htfOnly'].forEach(id => {
+  $(id).addEventListener('change', render);
+  $(id).addEventListener('input', render);
+});
+$('mode').addEventListener('change', loadAll);
+
+health();
+loadAll();
+setInterval(loadAll, 45000);
+</script>
+</body>
+</html>
