@@ -1,15 +1,18 @@
 # forge — candles in, analysis + a testable strategy out
 
-> **Read this first.** The headline result of the first gold run is a **null**:
-> after three lookahead bugs were found and fixed, the level-conditional edge
-> the engine discovers is *worse* than what the same search finds on
-> **randomly-placed lines**, and the strategies it designs lose money
-> out-of-sample at −0.083R per trade over 10,112 trades. That is not a failed
-> build. It is the build working — the engine's job is to tell you which of your beliefs
-> about POCs, VALs, FVGs and order blocks survive contact with cost,
-> multiple testing, and a proper walk-forward, and on this first pass the
-> answer is "none of them, yet". The three bugs are documented below because
-> each one produced a *beautiful* fake result, and each is a bug that a
+> **Read this first.** The headline result on gold is a **null**: after three
+> lookahead bugs were found and fixed, the level-conditional edge the engine
+> discovers is **no better than what the same search finds on randomly-placed
+> lines**, and the strategies it designs lose money out-of-sample. This held
+> under two structurally different trade models — market-on-next-bar and a
+> limit resting at the level — where the second improved every fold and
+> improved the random-line null by exactly as much.
+>
+> That is not a failed build. It is the build working — the engine's job is to
+> tell you which of your beliefs about POCs, VALs, FVGs and order blocks
+> survive contact with cost, multiple testing, and a proper walk-forward, and
+> so far the answer is "none of them". The three bugs are documented below
+> because each one produced a *beautiful* fake result, and each is a bug that a
 > backtest cannot reveal by failing.
 
 ---
@@ -59,8 +62,44 @@ not. Intraday level-trading gold at a sub-ATR stop was structurally unviable at
 third of the way to your stop. Any study pooling that era with this one is
 averaging two different games.
 
+### Second run: fix the trade model, same verdict
+
+The first run's biggest design flaw wasn't statistical, it was that it never
+really tested levels. A market order on the bar after the touch fills a median
+**0.36 ATR from the level** — about half of a 0.75-ATR stop — so every trade
+started a third to a half of the way to its own stop, with the stop measured
+from an arbitrary market price. That tests momentum *near* a level, not the
+level.
+
+`--entry-mode limit` rests the order **at** the level's proximal edge with the
+stop placed beyond the zone. Entry distance 0.362 → **0.000 ATR**, 100% fill
+rate, cost-in-R and stop distance held constant so only the one variable moved.
+
+It worked, and it changed nothing:
+
+```
+                        raw            excess         null excess
+market entry     -0.0830R (t -5.50)   +0.051R (t 3.40)   +0.110R (best t 7.50)
+limit  entry     -0.0401R (t -4.43)   +0.138R (t 15.23)  +0.142R (best t 19.94)
+```
+
+Every fold improved. Excess roughly **tripled**, raw losses halved. And the
+random-level null improved by *exactly the same amount* and still ties/beats it
+(`p_vs_null = 1.00` again, all three null runs).
+
+That symmetry is the finding. Entering at a line rather than 0.36 ATR past it is
+worth ~+0.09R — **and it is worth the same to a randomly-placed line.** What
+improved is the mechanics of trading *a* line. Nothing improved about *which*
+line. Two structurally different trade models, same verdict, and the second one
+states it far more cleanly than the first.
+
+Limit-mode selections concentrate on `m15_fvg_bull`/`m15_fvg_bear` (48 of 60
+cells) with `atr_pct_t=hi`, `touch_n=1`, `wick_t=lo` — i.e. *fresh, untouched,
+high-volatility zones approached quietly*. A sensible-sounding setup that a
+random line satisfies just as profitably.
+
 **The honest conclusion:** on gold M15, with this vocabulary, this event
-definition and this barrier grid, there is no level-conditional edge. The next
+definition and both trade models, there is no level-conditional edge. The next
 move is a different question, not a finer sweep of this one — see
 [Honest next steps](#honest-next-steps).
 
