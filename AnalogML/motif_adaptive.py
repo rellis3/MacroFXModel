@@ -36,10 +36,17 @@ Method (causal end to end -- no lookahead anywhere in this pipeline):
      enough precedent.
   4. SL = `--sl-pctile`th percentile of that pool's mae_atr, TP =
      `--tp-pctile`th percentile of that pool's mfe_atr, both x this trade's
-     OWN entry-time ATR. Defaults: SL at the 75th (room to survive a normal
-     adverse excursion for that category, not the max/outlier), TP at the
-     50th (the category's typical/median breakout move -- a measured-move
-     read, not an arbitrary R-multiple).
+     OWN entry-time ATR. Defaults: SL/TP both at the 35th percentile --
+     chosen via an explicit ablation (2026-08-13): (50,50) [the original
+     default] and (75,50) both won at the trade level but cost a materially
+     WORSE portfolio drawdown than the frozen grid (-68.6%/-70%-ish vs
+     -54.5%); (35,35) matches (50,50) at the trade level (PF 1.212 vs 1.227,
+     avg R +0.110 vs +0.115 -- a wash) while being MORE fold-consistent
+     (8/11 vs 6/11) AND, at the portfolio level, beating the frozen grid on
+     BOTH Sharpe (2.31 vs 1.58) and max DD (-41.8% vs -54.5%) at MATCHED
+     capital utilization (2.7% both -- no capital-deployment confound). See
+     `AnalogML/motif_adaptive_portfolio_sim.py` and the README for the full
+     ablation table.
   5. Race via `pylego.barrier_race.race_trades_variable` (each entry gets
      its OWN sl/tp, unlike the shared-grid `race_trades`).
   6. Benchmark: the SAME motifs (only the ones that had an adaptive size
@@ -51,7 +58,8 @@ Method (causal end to end -- no lookahead anywhere in this pipeline):
 
 Usage:
   python AnalogML/motif_adaptive.py --all-pairs
-  python AnalogML/motif_adaptive.py --all-pairs --sl-pctile 75 --tp-pctile 50
+  python AnalogML/motif_adaptive.py --all-pairs
+  python AnalogML/motif_adaptive.py --all-pairs --sl-pctile 75 --tp-pctile 50  # the original, since-superseded default
 """
 from __future__ import annotations
 
@@ -255,8 +263,8 @@ def main() -> None:
                    help="window for the historical MAE/MFE distribution -- the breakout thesis's own "
                         "horizon, deliberately shorter than --max-bars-ahead (default matches "
                         "--breakout-max-bars, not the full race horizon)")
-    p.add_argument("--sl-pctile", type=float, default=75.0)
-    p.add_argument("--tp-pctile", type=float, default=50.0)
+    p.add_argument("--sl-pctile", type=float, default=35.0)
+    p.add_argument("--tp-pctile", type=float, default=35.0)
     p.add_argument("--min-pool", type=int, default=50, help="min same-category precedents before sizing")
     p.add_argument("--bench-sl-pips", type=float, default=20.0)
     p.add_argument("--bench-tp-r", type=float, default=1.5)
