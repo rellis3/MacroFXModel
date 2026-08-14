@@ -119,6 +119,28 @@ def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float
     return out
 
 
+def mae_from_path(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
+                  entry_price: float, sl_price: float) -> tuple[float, float]:
+    """MAE from the REAL bar path between entry and exit (inclusive) — low-vs-
+    entry for longs, high-vs-entry for shorts, never approximated from the
+    close-to-close return (CLAUDE.md's backtest discipline). Capped at
+    `sl_price`: `race_trades`' fixed-barrier walker closes a position exactly
+    when the SL level is first touched, so it never experiences adverse
+    movement beyond that even if the exit bar's own high/low range overshoots
+    it — an uncapped MAE would overstate real risk. Returns (mae_r, mae_pct).
+    Was duplicated once already (`AnalogML/backtest_export.py`'s original
+    `compute_mae`) before this second consumer (`motif_backtest_export.py`)
+    made it a real shared brick — pulled out here rather than copied again."""
+    highs = bars["high"].to_numpy()[idx:exit_idx + 1]
+    lows = bars["low"].to_numpy()[idx:exit_idx + 1]
+    if direction > 0:
+        mae_price = entry_price - float(lows.min())
+    else:
+        mae_price = float(highs.max()) - entry_price
+    mae_price = min(max(mae_price, 0.0), sl_price)
+    return mae_price / sl_price, mae_price / entry_price * 100.0
+
+
 def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
               tp_r_grid: list[float], max_bars_ahead: int,
               cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[BarrierResult]:

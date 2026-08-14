@@ -1,31 +1,28 @@
 #!/usr/bin/env python3
-"""backtest_export.py — the standard backtest results card, for AnalogML.
+"""motif_backtest_export.py — the standard backtest results card, for the
+N-touches-of-a-level structural motif signal (`pylego/motif_touch.py`).
 
-Runs the FROZEN shape-matching signal (window=64, k=20, non-overlapping
-"independent" trades — the setting pattern_scan_sweep.py validated across
-26/26 pairs) and exports a JSON with everything a house-standard results
-card needs: per-trade R AND MAE from the REAL bar path (never approximated
-from close-to-close — CLAUDE.md's backtest discipline), a real calendar
-IS/OOS split, cost-on vs cost-off, and a stated account size / R-unit so the
-$ P&L export isn't a hidden default.
+Same house format `backtest_export.py` built for the (now-retired) k-NN
+shape-matching signal, same discipline: per-trade R AND MAE from the REAL
+bar path (never approximated from close-to-close), a real calendar IS/OOS
+split, cost-on vs cost-off, and a stated account size / R-unit so the $ P&L
+export isn't a hidden default. Shares `pylego.barrier_race.mae_from_path`
+verbatim with that script rather than re-deriving MAE a second way.
 
-**On the IS/OOS split, read this before trusting it.** Every individual
-trade here only ever used data strictly BEFORE its own entry (the
-`exclude_after` guard in pylego.shape_match/analog_signal) — that's always
-true regardless of period, a structural no-lookahead guarantee. But the
-window=64/k=20 SETTING was chosen by pattern_scan_sweep.py, which looked at
-aggregate performance over roughly this same recent-years window. So the
-"OOS" split below (2023-01-01 onward, matching the sweep's own eval window)
-is a real calendar split and a genuine stability check across two periods —
-it is NOT a blind, never-touched holdout the way a proper OOS claim
-requires. A truly blind forward test needs NEW data beyond what's in this
-sandbox's parquet snapshot (through 2026-05-21) — not available here.
-Read the OOS numbers as "did it stay consistent," not "proof it will work
-on unseen data."
+This is a NEW viewer for an ALREADY validated signal, not a new validation.
+The frozen setting raced here (pivot_n=5, tol=1.2xATR, min_retrace=2.5xATR,
+min_gap=10 bars, breakout_max_bars=40, sl=20p, tp_r=1.5) is the exact one
+`motif_scan.py`/`motif_walkforward.py`/`motif_portfolio_sim.py`/
+`motif_track.py` already validated (26-pair sweep, 11/11 calendar-year
+walk-forward folds positive, portfolio Sharpe 1.61-1.80 — see
+`MD files/LEGO_MODULES.md`'s AnalogML entry). This script exists so that
+record can be BROWSED the same way every other AnalogML/vol/regime backtest
+is browsed (`touches-backtest.html`'s CSV exports + trade table + per-pair
+breakdown) instead of only living in sweep printouts.
 
 Usage:
-  python AnalogML/backtest_export.py --all-pairs
-  python AnalogML/backtest_export.py --pairs gbpjpy,eurusd --account-size 10000 --risk-pct 0.01
+  python AnalogML/motif_backtest_export.py --all-pairs
+  python AnalogML/motif_backtest_export.py --pairs gbpjpy,eurusd --account-size 10000 --risk-pct 0.01
 """
 from __future__ import annotations
 
@@ -35,66 +32,54 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pattern_scan import load_bars, pick_queries  # noqa: E402
+from pattern_scan import load_bars  # noqa: E402
+from portfolio_sim import ALL_PAIRS  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from pylego.analog_signal import neighbor_consensus  # noqa: E402
 from pylego.barrier_race import Entry, mae_from_path, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
-from pylego.shape_match import rolling_shapes  # noqa: E402
+from pylego.motif_touch import detect_touch_motifs  # noqa: E402
+from pylego.swing_structure import atr as compute_atr  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
-
-ALL_PAIRS = [
-    "audcad", "audchf", "audjpy", "audnzd", "audusd", "cadjpy", "chfjpy",
-    "euraud", "eurcad", "eurchf", "eurgbp", "eurjpy", "eurnzd", "eurusd",
-    "gbpaud", "gbpcad", "gbpchf", "gbpjpy", "gbpnzd", "gbpusd", "gold",
-    "nzdjpy", "nzdusd", "usdcad", "usdchf", "usdjpy",
-]
 
 IS_OOS_CUTOFF = "2023-01-01"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 def build_pair_trade_log(pair: str, args: argparse.Namespace) -> tuple[list[dict], list[float]]:
-    """Full-history (2016 -> end of data) trade log for one pair, plus the
-    cost-OFF R for the SAME entries (re-races the identical direction calls
-    with cost_price=0 -- cheap, since the expensive shape search isn't
-    redone) for the cost-sensitivity comparison."""
+    """Full-history trade log for one pair, plus the cost-OFF R for the SAME
+    entries (re-raced with cost_price=0 -- cheap, since the expensive motif
+    scan isn't redone) for the cost-sensitivity comparison. Same {pair, date,
+    direction, outcome, r, mae_r, return_pct, mae_pct, pnl_dollars,
+    risk_dollars, is_oos} shape as backtest_export.py's trade dict, plus
+    n_touches/is_top (this signal's own category tags -- see the README's
+    "lifecycle disaggregation": doubles carry almost all the edge)."""
     bars = load_bars(pair, args.timeframe)
     n = len(bars)
-    closes = bars["close"].to_numpy()
-    end_idx, shapes = rolling_shapes(closes, args.window)
-    end_idx_set_pos = {int(e): i for i, e in enumerate(end_idx)}
-    queries = pick_queries(n, args.window, args.window, 0, args.max_bars_ahead, args.min_candidates)
+    atr_arr = compute_atr(bars, period=args.atr_period)
+    motifs = detect_touch_motifs(
+        bars, atr_arr, pivot_n=args.pivot_n, tol_atr_mult=args.tol_atr_mult,
+        min_retrace_atr_mult=args.min_retrace_atr_mult,
+        min_bars_between_touches=args.min_bars_between_touches,
+        breakout_max_bars=args.breakout_max_bars,
+    )
+    last_possible = n - 1 - args.max_bars_ahead
+    eligible = [m for m in motifs if m.confirm_idx is not None and m.confirm_idx <= last_possible]
 
     pip = pip_size(pair)
     sl_price = args.sl_pips * pip
     cost_price = default_spread(pair)
     account_risk_dollars = args.account_size * args.risk_pct
 
-    entries: list[Entry] = []
-    for q in queries:
-        pos = end_idx_set_pos.get(q)
-        if pos is None:
-            continue
-        consensus = neighbor_consensus(
-            bars, end_idx, shapes, shapes[pos], query_end=q,
-            k=args.k, min_gap_bars=args.window,
-            sl_price=sl_price, tp_r=args.tp_r, cost_price=cost_price,
-            max_bars_ahead=args.max_bars_ahead, min_bars_ahead=args.min_bars_ahead,
-        )
-        if consensus.direction == 0:
-            continue
-        entries.append(Entry(idx=q + 1, direction=consensus.direction))
-
+    entries = [Entry(idx=m.confirm_idx + 1, direction=m.direction) for m in eligible]
+    by_idx = {m.confirm_idx + 1: m for m in eligible}
     resolved = race_trades(bars, entries, sl=sl_price, tp_r=args.tp_r,
                            max_bars_ahead=args.max_bars_ahead, cost_price=cost_price,
                            min_bars_ahead=args.min_bars_ahead)
@@ -106,6 +91,7 @@ def build_pair_trade_log(pair: str, args: argparse.Namespace) -> tuple[list[dict
     cutoff = pd.Timestamp(IS_OOS_CUTOFF, tz=bars.index.tz)
     trades = []
     for t in resolved:
+        m = by_idx[t["idx"]]
         entry_date = bars.index[t["idx"]]
         mae_r, mae_pct = mae_from_path(bars, t["idx"], t["exit_idx"], t["direction"], t["entry_price"], sl_price)
         price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
@@ -116,6 +102,8 @@ def build_pair_trade_log(pair: str, args: argparse.Namespace) -> tuple[list[dict
             "exit_date": bars.index[t["exit_idx"]].isoformat(),
             "direction": "BUY" if t["direction"] == 1 else "SELL",
             "outcome": t["outcome"],
+            "n_touches": m.n_touches,
+            "is_top": bool(m.is_top),
             "r": round(t["r"], 4),
             "mae_r": round(mae_r, 4),
             "return_pct": round(price_return_pct, 4),
@@ -141,16 +129,19 @@ def main() -> None:
     p.add_argument("--pairs", default=None, help="comma-separated; default is --all-pairs")
     p.add_argument("--all-pairs", action="store_true")
     p.add_argument("--timeframe", default="1h")
-    p.add_argument("--window", type=int, default=64)
-    p.add_argument("--k", type=int, default=20)
+    p.add_argument("--atr-period", type=int, default=14)
+    p.add_argument("--pivot-n", type=int, default=5)
+    p.add_argument("--tol-atr-mult", type=float, default=1.2)
+    p.add_argument("--min-retrace-atr-mult", type=float, default=2.5)
+    p.add_argument("--min-bars-between-touches", type=int, default=10)
+    p.add_argument("--breakout-max-bars", type=int, default=40)
     p.add_argument("--sl-pips", type=float, default=20.0)
     p.add_argument("--tp-r", type=float, default=1.5)
     p.add_argument("--max-bars-ahead", type=int, default=200)
     p.add_argument("--min-bars-ahead", type=int, default=10)
-    p.add_argument("--min-candidates", type=int, default=2000)
     p.add_argument("--account-size", type=float, default=10000.0)
     p.add_argument("--risk-pct", type=float, default=0.01)
-    p.add_argument("--out", default=str(DATA_DIR / "backtest_export.json"))
+    p.add_argument("--out", default=str(DATA_DIR / "motif_backtest_export.json"))
     args = p.parse_args()
 
     pairs = args.pairs.split(",") if args.pairs else ALL_PAIRS
@@ -175,18 +166,24 @@ def main() -> None:
     out = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "params": {
-            "window": args.window, "k": args.k, "sl_pips": args.sl_pips, "tp_r": args.tp_r,
+            "pivot_n": args.pivot_n, "tol_atr_mult": args.tol_atr_mult,
+            "min_retrace_atr_mult": args.min_retrace_atr_mult,
+            "min_bars_between_touches": args.min_bars_between_touches,
+            "breakout_max_bars": args.breakout_max_bars,
+            "sl_pips": args.sl_pips, "tp_r": args.tp_r,
             "timeframe": args.timeframe, "account_size": args.account_size, "risk_pct": args.risk_pct,
-            "is_oos_cutoff": IS_OOS_CUTOFF, "non_overlapping": True,
+            "is_oos_cutoff": IS_OOS_CUTOFF,
         },
         "caveat": (
-            "Frozen shape-matching direction signal (pylego.shape_match + pylego.analog_signal), "
-            "scored via the shared pylego.barrier_race walker. window=64/k=20 were chosen by "
-            "pattern_scan_sweep.py using aggregate performance over roughly the OOS window shown "
-            "here -- this is a real calendar split and stability check, NOT a blind never-touched "
-            "holdout. Every trade is individually causal (no lookahead), but the SETTING is not. "
-            "Unoptimised beyond that one sweep, no realistic swap/slippage beyond the modeled "
-            "spread, no live/paper verification. Not a validated edge -- see AnalogML/README.md."
+            "Frozen N-touches-of-a-level structural motif signal (pylego.motif_touch), scored via "
+            "the shared pylego.barrier_race walker -- the SAME setting motif_scan.py / "
+            "motif_walkforward.py (11/11 calendar-year folds positive) / motif_portfolio_sim.py "
+            "(portfolio Sharpe 1.61) already validated; this export doesn't re-tune anything, it's "
+            "a browsable view of that already-validated record. Every trade is individually causal "
+            "(no lookahead -- see pylego/motif_touch_test.py's confirmability-lag regression guard). "
+            "No live/paper forward verification beyond this local snapshot (through 2026-05-21) -- "
+            "see AnalogML/README.md and today.html's live 'structural motif diagnostic' chip for the "
+            "forward-tracking mechanism (blocked on OANDA reachability in this sandbox)."
         ),
         "pairs": pairs,
         "summary": {**overall, "cost_sensitivity": cost_sensitivity},
