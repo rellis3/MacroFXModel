@@ -63,10 +63,19 @@
   <br><br>
   <b>How often do the zones themselves change?</b> Most of this map (pivots, prior day/week hi-lo, fib
   clusters, round numbers) is built from the last <b>completed daily bar</b> — it only changes once per
-  session, at the next London-midnight rollover (see the <b>As Of</b> column). Three things move more often:
-  today's developing high/low (continuously, on any new intraday extreme), the Asia range ladder (appears
-  once, 6h into the session), and the Monday ladder (once a week). The page's own 45s auto-refresh and the
-  <b>NEW</b> tag just surface those — most refreshes reconfirm the same zones, they don't invent new ones.
+  session, at the next London-midnight rollover (see the <b>As Of</b> column). Two things move more often:
+  today's developing high/low (continuously, on any new intraday extreme) and Asia/Monday <b>confluence</b>
+  (below). The page's own 45s auto-refresh and the <b>NEW</b> tag just surface those — most refreshes
+  reconfirm the same zones, they don't invent new ones.
+  <br><br>
+  <b>Asia/Monday zones — confluence only, not the raw grid.</b> The raw Asia/Monday fib ladder (every
+  extension rung of today's session range) is deliberately <i>not</i> shown here — a lone, unconfirmed
+  rung is noise. Only <b>confluence</b> earns a zone: today's Asia ladder agreeing with yesterday's, or
+  this week's Monday agreeing with last week's, within the per-instrument threshold (2 pips FX). Tight
+  agreement (≤10% of that, or the same fib) scores higher. Monday confluence scores higher again than
+  Asia — a weekly level repeating from last week is rarer and more reactive than a daily one repeating
+  from yesterday. (Mirrors the source Pine indicator's "Strong Levels" tier — this dashboard never runs
+  "All Levels.")
 </div>
 
 <div class="card">
