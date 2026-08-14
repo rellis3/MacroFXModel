@@ -115,6 +115,14 @@
       <div class="panel"><h3>Out-of-sample</h3><div class="cards" id="oosCards"></div></div>
     </div>
 
+    <div class="sec">Cost sensitivity — does the modeled spread kill this?</div>
+    <div class="colwrap">
+      <div class="panel"><h3>With cost (default, every other number on this page)</h3><div class="cards" id="costOnCards"></div></div>
+      <div class="panel"><h3>Without cost (never the headline — sanity check only)</h3><div class="cards" id="costOffCards"></div></div>
+    </div>
+    <div class="panel" style="margin-top:10px"><h3 style="margin:0 0 8px">Portfolio Sharpe/max DD — combination arm, same trades, same sizing</h3><table id="costPortfolioTbl"></table></div>
+    <div class="hint" id="costHint"></div>
+
     <div class="sec">Combined signal vs frozen-grid benchmark (SAME motifs, uniform sizing)</div>
     <div class="colwrap">
       <div class="panel"><h3>Combined (adaptive + HTF-sized)</h3><div class="cards" id="combinedCards"></div></div>
@@ -276,6 +284,24 @@ function render(d){
   $('combinedCards').innerHTML = summaryCards(d.summary.full);
   $('benchCards').innerHTML = summaryCards(d.summary.bench.full);
 
+  $('costOnCards').innerHTML = summaryCards(d.summary.cost_sensitivity.with_cost);
+  $('costOffCards').innerHTML = summaryCards(d.summary.cost_sensitivity.without_cost);
+  const cOn = d.portfolio.adaptive_htf_sized, cOff = d.portfolio.adaptive_htf_sized_nocost;
+  $('costPortfolioTbl').innerHTML = PORTFOLIO_HEADER
+    + portfolioRowHtml(cOn, 'WITH cost (the real number)', true)
+    + portfolioRowHtml(cOff, 'WITHOUT cost (spread removed)', false);
+  const pfDrop = d.summary.cost_sensitivity.with_cost.profit_factor - d.summary.cost_sensitivity.without_cost.profit_factor;
+  const sharpeDrop = cOn.sharpe - cOff.sharpe;
+  $('costHint').innerHTML = `Modeled cost: <code>pylego.costs.default_spread</code> — 0.8p FX majors, 1.0p JPY crosses, `
+    + `$0.30 gold, subtracted as a round-trip spread on every trade (flat per-asset-class, not time-of-day or `
+    + `volatility-varying, no separate commission). Removing it moves PF ${fmt(pfDrop,3)} `
+    + `(${fmt(d.summary.cost_sensitivity.with_cost.profit_factor,2)} → ${fmt(d.summary.cost_sensitivity.without_cost.profit_factor,2)}) `
+    + `and portfolio Sharpe ${fmt(sharpeDrop,2)} (${fmt(cOn.sharpe,2)} → ${fmt(cOff.sharpe,2)}) — `
+    + `<b>a real, measurable drag, ${cOn.sharpe>1 ? 'not one that kills the edge' : 'and the edge does not clearly survive it'}</b>. `
+    + `This is a spread-only cost model calibrated to liquid majors — it is NOT recalibrated per pair (the same 0.8p `
+    + `is applied to EURUSD and to thinner crosses like GBPNZD/EURNZD, which realistically trade wider), and does not `
+    + `widen around news or low-liquidity sessions. Treat this as a lower bound on real trading cost, not an upper one.`;
+
   const rows = d.per_pair.slice().sort((a,b)=>(b.full.profit_factor||0)-(a.full.profit_factor||0));
   let h = '<tr><th>pair</th><th>n</th><th>full PF</th><th>full avg R</th><th>IS n</th><th>IS PF</th><th>OOS n</th><th>OOS PF</th></tr>';
   for(const r of rows){
@@ -297,7 +323,9 @@ function render(d){
     + `NOT fixed like a frozen-grid export, since sizing is the thing under test. R-unit = each trade's OWN `
     + `adaptive SL (varies by category/entry-vol, not one fixed pip stop), so R across rows isn't directly `
     + `comparable in pips — always compare in R or $. "bench_r" is the SAME motif at the frozen sl=20p/tp_r=1.5 `
-    + `grid, uniform sizing, for a per-trade delta.`;
+    + `grid, uniform sizing, for a per-trade delta. MAE is shown POSITIVE in this table (0 = no adverse move) `
+    + `but exported NEGATIVE in the CSV · % Returns / CSV · R-Multiples downloads, to match an external `
+    + `prop-firm pass/fail simulator's upload format — same number, sign flipped only in the CSV.`;
 
   drawTrades();
 }
@@ -469,8 +497,15 @@ function exportCsv(tag, header, rowFn){
   for(const x of t) rows.push(rowFn(x));
   dl('motif_combined_' + (($('pairFilter').value)||'all') + '_' + tag + '.csv', rows);
 }
-$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + x.mae_pct);
-$('csv2').onclick = () => exportCsv('R', 'date,R,bench R,MAE (R)', x => x.date + ',' + x.r + ',' + x.bench_r + ',' + x.mae_r);
+// MAE is stored/shown on-page as a POSITIVE magnitude ("how far adverse did
+// this trade go", always >= 0 -- pylego.barrier_race.mae_from_path's own
+// convention). These 3 CSV schemas match an external tool's upload format
+// (a prop-firm pass/fail simulator, NOT part of this page) which expects
+// MAE as a NEGATIVE number, same sign convention as a loss -- so it's
+// negated ONLY at CSV-export time here, never in the underlying data or
+// the on-page table.
+$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + (-x.mae_pct));
+$('csv2').onclick = () => exportCsv('R', 'date,R,MAE (R)', x => x.date + ',' + x.r + ',' + (-x.mae_r));
 $('csv3').onclick = () => exportCsv('pnl', 'Trade Date,PnL ($),Risk ($)', x => x.date + ',' + x.pnl_dollars + ',' + x.risk_dollars);
 
 load();
