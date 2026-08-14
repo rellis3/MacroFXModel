@@ -198,6 +198,31 @@ def portfolio_arm(trades: list[dict], key: str, size_mult_key: str | None,
     }
 
 
+def portfolio_arm_with_is_oos(trades: list[dict], key: str, size_mult_key: str | None,
+                              risk_pct: float, max_concurrent_risk_pct: float,
+                              mc_sims: int, mc_seed: int, equity_points: int) -> dict:
+    """The full-history arm (unchanged shape -- every existing page section
+    that reads d.portfolio[key].sharpe etc. keeps working) PLUS `is`/`oos`
+    sub-objects of the SAME shape, computed by re-running the full
+    portfolio_arm pipeline on each calendar-split subset independently --
+    each split starts its own fresh $1 account at its own first trade,
+    exactly like the trade-level IS/OOS split already does for PF/avg R,
+    now extended to Sharpe/Sortino/CAGR/Calmar/max DD/equity curve/Monte
+    Carlo. Answers the question the trade-level split alone couldn't: does
+    the PORTFOLIO-level result (which depends on concurrent-risk sequencing
+    and compounding, not just the pooled R distribution) hold up out of
+    sample, or did 2016-2022 carry it."""
+    full = portfolio_arm(trades, key, size_mult_key, risk_pct, max_concurrent_risk_pct,
+                         mc_sims, mc_seed, equity_points)
+    is_trades = [t for t in trades if t["is_oos"] == "IS"]
+    oos_trades = [t for t in trades if t["is_oos"] == "OOS"]
+    full["is"] = portfolio_arm(is_trades, key, size_mult_key, risk_pct, max_concurrent_risk_pct,
+                               mc_sims, mc_seed, equity_points)
+    full["oos"] = portfolio_arm(oos_trades, key, size_mult_key, risk_pct, max_concurrent_risk_pct,
+                                mc_sims, mc_seed, equity_points)
+    return full
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--pairs", default=None)
@@ -255,10 +280,10 @@ def main() -> None:
 
     arm_args = (args.risk_pct, args.max_concurrent_risk_pct, args.mc_sims, args.mc_seed, args.equity_points)
     portfolio = {
-        "adaptive_htf_sized": portfolio_arm(rows, "r", "size_mult", *arm_args),
-        "adaptive_uniform": portfolio_arm(rows, "r", None, *arm_args),
-        "frozen_htf_sized": portfolio_arm(rows, "bench_r", "size_mult", *arm_args),
-        "frozen_uniform": portfolio_arm(rows, "bench_r", None, *arm_args),
+        "adaptive_htf_sized": portfolio_arm_with_is_oos(rows, "r", "size_mult", *arm_args),
+        "adaptive_uniform": portfolio_arm_with_is_oos(rows, "r", None, *arm_args),
+        "frozen_htf_sized": portfolio_arm_with_is_oos(rows, "bench_r", "size_mult", *arm_args),
+        "frozen_uniform": portfolio_arm_with_is_oos(rows, "bench_r", None, *arm_args),
     }
 
     out = {

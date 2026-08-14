@@ -78,6 +78,13 @@
     <div class="panel" style="overflow-x:auto"><table id="portfolioTbl"></table></div>
     <div class="hint">Standard quant results-card set at matched risk sizing (1%/trade, 5% concurrent cap). <b>CAGR and Calmar are inflated by the same effect as total return, not a separate trustworthy number</b>: fixed-%-of-equity compounding over ~20-28k trades produces triple/quadruple-digit CAGR and Calmar in the double digits — mathematically correct given the inputs, not a realistic forward expectation (uncapped position count/correlated concurrent risk beyond the 5% cap, no capacity limit modeled). Read CAGR/Calmar as a RELATIVE ranking across the 4 arms, same as Sharpe/Sortino — never as an absolute forecast.</div>
 
+    <div class="sec">Portfolio — in-sample vs out-of-sample (same 4 arms, calendar split)</div>
+    <div class="colwrap">
+      <div class="panel" style="overflow-x:auto"><h3>In-sample (pre-2023)</h3><table id="portfolioIsTbl"></table></div>
+      <div class="panel" style="overflow-x:auto"><h3>Out-of-sample (2023+)</h3><table id="portfolioOosTbl"></table></div>
+    </div>
+    <div class="hint">Each split is its OWN fresh account starting at its own first trade — not a slice of the pooled equity curve — so this tests whether the PORTFOLIO-level result (concurrent-risk sequencing, compounding, not just the pooled R distribution) holds up out of sample, the same question the trade-level IS/OOS split further down only answers for raw PF/avg R. Read the flag above first: this is a real calendar split on choices already tuned by looking at full-history results, not a blind holdout.</div>
+
     <div class="sec">Equity curves — all 4 arms, log scale</div>
     <div class="panel">
       <div class="legend" id="eqLegend"></div>
@@ -91,6 +98,13 @@
       <div class="panel"><h3>Frozen grid baseline</h3><table class="mc-table" id="mcBaseTbl"></table></div>
     </div>
     <div class="hint">Resamples the CLOSED-TRADE r×size_mult sequence WITH REPLACEMENT and replays each draw as a sequential fixed-fractional equity curve — the classic trade-based Monte Carlo (MultiCharts/TradeStation-style), not a price-path simulation. Answers "how much does this result depend on the luck of this exact trade order/sample" — NOT a recheck of whether the portfolio mechanics (calendar concurrency, risk caps) were realistic; that's what the table above already tested. <b>The final-return percentiles inherit the same runaway fixed-% compounding as CAGR above</b> (read as relative bands, e.g. "how much wider is p95 vs p5", never as an absolute dollar forecast) — <b>the max-drawdown percentiles are the trustworthy, bounded half of this table</b> and the actual point of running it. Same seed every run — the bands don't change unless the underlying trades do.</div>
+
+    <div class="sec">Monte Carlo — in-sample vs out-of-sample (combination arm only)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>In-sample (pre-2023)</h3><table class="mc-table" id="mcIsTbl"></table></div>
+      <div class="panel"><h3>Out-of-sample (2023+)</h3><table class="mc-table" id="mcOosTbl"></table></div>
+    </div>
+    <div class="hint">Same bootstrap as above, run separately on each period's trades — a widening drawdown band OOS vs IS would be an early warning sign the edge is degrading, not just the point estimate (Sharpe/CAGR above) drifting.</div>
 
     <div class="sec">Combined signal — full history, pooled</div>
     <div class="cards" id="fullCards"></div>
@@ -159,6 +173,33 @@ const bigPct=(v)=>{
 const cls=v=>v==null?'':(v>0?'pos':(v<0?'neg':''));
 const card=(k,v,c='')=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
 
+const PORTFOLIO_HEADER = '<tr><th>arm</th><th>Sharpe</th><th>Sortino</th><th>CAGR</th><th>Calmar</th>'
+  + '<th>max DD</th><th>DD days</th><th>skew</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
+
+function portfolioRowHtml(p, label, winner){
+  return `<tr class="${winner?'winner':''}"><td>${label}</td>`
+      + `<td class="${cls(p.sharpe-1)}">${fmt(p.sharpe,2)}</td>`
+      + `<td class="${cls(p.sortino-1)}">${fmt(p.sortino,2)}</td>`
+      + `<td class="${cls(p.cagr)}">${pct(p.cagr,1)}</td>`
+      + `<td class="${cls(p.calmar-1)}">${fmt(p.calmar,2)}</td>`
+      + `<td class="${cls(p.max_dd)}">${pct(p.max_dd,1)}</td>`
+      + `<td>${p.max_dd_days}</td>`
+      + `<td class="${cls(p.skew)}">${fmt(p.skew,2)}</td>`
+      + `<td>${pct(p.avg_utilization,1)}</td>`
+      + `<td>${p.avg_pairwise_corr==null?'—':(p.avg_pairwise_corr>=0?'+':'')+fmt(p.avg_pairwise_corr,3)}</td>`
+      + `<td>${p.n}</td></tr>`;
+}
+
+function drawPortfolioIsOosTable(d, ARMS, period, tblId){
+  let h = PORTFOLIO_HEADER;
+  for(const [key,label,winner] of ARMS){
+    const p = d.portfolio[key] && d.portfolio[key][period];
+    if(!p) continue;
+    h += portfolioRowHtml(p, label, winner);
+  }
+  $(tblId).innerHTML = h;
+}
+
 function summaryCards(s){
   return card('n', s.n)
        + card('total R', fmt(s.total_r,2), cls(s.total_r))
@@ -213,28 +254,21 @@ function render(d){
     ['frozen_htf_sized', 'FROZEN + HTF-SIZED', false, '#e3b341'],
     ['frozen_uniform', 'FROZEN + UNIFORM (baseline)', false, '#8b949e'],
   ];
-  let ph = '<tr><th>arm</th><th>Sharpe</th><th>Sortino</th><th>CAGR</th><th>Calmar</th>'
-         + '<th>max DD</th><th>DD days</th><th>skew</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
+  let ph = PORTFOLIO_HEADER;
   for(const [key,label,winner] of ARMS){
     const p = d.portfolio[key];
     if(!p) continue;
-    ph += `<tr class="${winner?'winner':''}"><td>${label}</td>`
-        + `<td class="${cls(p.sharpe-1)}">${fmt(p.sharpe,2)}</td>`
-        + `<td class="${cls(p.sortino-1)}">${fmt(p.sortino,2)}</td>`
-        + `<td class="${cls(p.cagr)}">${pct(p.cagr,1)}</td>`
-        + `<td class="${cls(p.calmar-1)}">${fmt(p.calmar,2)}</td>`
-        + `<td class="${cls(p.max_dd)}">${pct(p.max_dd,1)}</td>`
-        + `<td>${p.max_dd_days}</td>`
-        + `<td class="${cls(p.skew)}">${fmt(p.skew,2)}</td>`
-        + `<td>${pct(p.avg_utilization,1)}</td>`
-        + `<td>${p.avg_pairwise_corr==null?'—':(p.avg_pairwise_corr>=0?'+':'')+fmt(p.avg_pairwise_corr,3)}</td>`
-        + `<td>${p.n}</td></tr>`;
+    ph += portfolioRowHtml(p, label, winner);
   }
   $('portfolioTbl').innerHTML = ph;
 
+  drawPortfolioIsOosTable(d, ARMS, 'is', 'portfolioIsTbl');
+  drawPortfolioIsOosTable(d, ARMS, 'oos', 'portfolioOosTbl');
   drawEquityChart(d, ARMS);
   drawMonteCarlo(d.portfolio.adaptive_htf_sized.monte_carlo, 'mcCombinedTbl');
   drawMonteCarlo(d.portfolio.frozen_uniform.monte_carlo, 'mcBaseTbl');
+  drawMonteCarlo(d.portfolio.adaptive_htf_sized.is.monte_carlo, 'mcIsTbl');
+  drawMonteCarlo(d.portfolio.adaptive_htf_sized.oos.monte_carlo, 'mcOosTbl');
 
   $('fullCards').innerHTML = summaryCards(d.summary.full);
   $('isCards').innerHTML = summaryCards(d.summary.is);
