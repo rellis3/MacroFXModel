@@ -207,6 +207,67 @@ def residual_levels(resid: pd.DataFrame) -> pd.DataFrame:
     return cum.where(mask.cummax(), np.nan)
 
 
+def currency_levels(ccy_returns: pd.DataFrame) -> pd.DataFrame:
+    """Cumulative currency index per currency from `decompose`'s per-day
+    fitted strength moves — the un-smoothed "spot" index for each currency.
+    Same fillna/mask discipline as `residual_levels`."""
+    mask = ccy_returns.notna()
+    cum = ccy_returns.fillna(0.0).cumsum()
+    return cum.where(mask.cummax(), np.nan)
+
+
+def ewma_smooth(levels: pd.Series, halflife: float) -> pd.Series:
+    """Backward-looking-only EWMA of a level series with a FIXED, pre-declared
+    half-life — chosen before looking at any result, never fit to make a
+    series look stationary (that fitting is exactly what let the NQ/ES
+    rolling-beta spread manufacture reversion — see module docstring).
+    `.ewm(adjust=False)` is already causal: the value at t uses only
+    observations up to and including t, nothing from the future."""
+    return levels.ewm(halflife=halflife, adjust=False).mean()
+
+
+def ewma_residual_levels(resid_raw_levels: pd.DataFrame, ccy_levels: pd.DataFrame,
+                         pairs: list[str], halflife: float) -> pd.DataFrame:
+    """An alternative residual, defined against an EWMA-SMOOTHED fair value
+    instead of the raw per-day fit — the fix for the daily decomposition's
+    ~0.7-day half-life: a fresh-every-day solve explains almost all of each
+    day's move immediately, leaving next-day noise rather than a real
+    multi-day mispricing to trade. Lagging the currency index with a fixed
+    half-life lets actual price and "fair value" genuinely diverge for days
+    before the smoothing catches up, instead of the two being re-synced from
+    scratch every single day.
+
+    fair_value_t(pair) = smoothed_ccy_level[base] - smoothed_ccy_level[quote]
+    residual_t(pair)   = actual_level_t(pair) - fair_value_t(pair)
+
+    `actual_level_t(pair)` is recovered as `ccy_level[base] - ccy_level[quote]
+    + resid_raw_level(pair)` — the identity the per-day OLS fit guarantees by
+    construction (raw currency levels + raw idiosyncratic level = actual
+    price level) — rather than re-deriving it from price from scratch.
+
+    HONEST CAVEAT, read before trusting a clean stationarity result: this is
+    structurally close to the FIRST failed approach (price minus its own
+    moving average), just applied to each CURRENCY's index instead of a raw
+    asset price, then differenced base-minus-quote. A currency's own index
+    sitting below its EWMA is not obviously "mispriced vs the network" rather
+    than "trending down" — fading it is a bet against that currency's trend,
+    the same failure mode approach #1 hit, just moved up one level. Diversified
+    cross-sectional long/short still nets out a common market-wide shock, but
+    it does NOT protect against one currency having a persistent trend of its
+    own. Report the diagnostics and backtest here as-is; do not treat a
+    stationary-looking result alone as a green light without checking the
+    walk-forward beats its null, same discipline as the daily version.
+    """
+    smoothed = ccy_levels.apply(lambda col: ewma_smooth(col, halflife))
+    out = pd.DataFrame(index=ccy_levels.index, columns=pairs, dtype=float)
+    for p in pairs:
+        b, q = split_pair(p)
+        actual_level = ccy_levels[b] - ccy_levels[q] + resid_raw_levels[p]
+        fair_value = smoothed[b] - smoothed[q]
+        out[p] = actual_level - fair_value
+    return out
+
+
 def adf_test(series: pd.Series) -> dict:
     """Augmented Dickey-Fuller stationarity test (statsmodels, AIC lag
     selection) with a plain-regression fallback if statsmodels is absent —

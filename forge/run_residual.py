@@ -31,6 +31,10 @@ def main(argv=None):
     ap.add_argument("--day-start-hour", type=int, default=0)
     ap.add_argument("--block-days", type=int, default=1,
                     help="decompose on non-overlapping N-day blocks instead of daily (fixed, not rolling)")
+    ap.add_argument("--ewma-halflife", type=float, default=0,
+                    help="0 = raw daily residual (default). >0 = lag the currency index with this FIXED "
+                         "half-life (blocks) instead, so fair value moves slower than price. Mutually "
+                         "meaningful with --block-days too (the lag is then in blocks, not raw days).")
     ap.add_argument("--window", type=int, default=60, help="causal z-score standardizing window, blocks")
     ap.add_argument("--k-grid", default="3,5")
     ap.add_argument("--h-grid", default="1,5,10")
@@ -44,7 +48,9 @@ def main(argv=None):
     h_grid = tuple(int(x) for x in args.h_grid.split(","))
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_name = "residual_report.json" if args.block_days <= 1 else f"residual_report_block{args.block_days}.json"
+    tag = "" if args.block_days <= 1 else f"_block{args.block_days}"
+    tag += "" if not args.ewma_halflife else f"_ewma{args.ewma_halflife:g}"
+    out_name = f"residual_report{tag}.json" if tag else "residual_report.json"
 
     pairs = R.fx_universe(args.data_root)
     currencies, A = R.currency_network(pairs)
@@ -60,9 +66,17 @@ def main(argv=None):
 
     print("[decompose] per-date least-squares currency-network solve...", flush=True)
     resid, ccy = R.decompose(returns, pairs, currencies, A)
-    levels = R.residual_levels(resid)
     solved = resid.notna().any(axis=1).sum()
     print(f"[decompose] solved {solved:,}/{len(returns):,} dates", flush=True)
+
+    if args.ewma_halflife:
+        print(f"[decompose] lagging currency index with FIXED half-life={args.ewma_halflife:g} "
+              f"blocks (fair value now smoothed, not re-fit every date)", flush=True)
+        raw_levels = R.residual_levels(resid)
+        ccy_lvl = R.currency_levels(ccy)
+        levels = R.ewma_residual_levels(raw_levels, ccy_lvl, pairs, args.ewma_halflife)
+    else:
+        levels = R.residual_levels(resid)
 
     print("\n[diagnostics] per-pair residual stationarity + half-life", flush=True)
     diag_rows = []
