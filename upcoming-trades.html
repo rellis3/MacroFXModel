@@ -31,6 +31,7 @@
   .tag.up{color:var(--green);border-color:rgba(63,185,80,.4)}
   .tag.dn{color:var(--red);border-color:rgba(248,81,73,.4)}
   .tag.hi{color:var(--purple);border-color:rgba(139,92,246,.4)}
+  .tag.new{color:#fff;background:var(--blue);border-color:var(--blue);font-weight:700}
   .stars{color:var(--amber);letter-spacing:-1px}
   .prevrow td{background:var(--card2);white-space:normal}
   .decision-big{font-size:20px;font-weight:800}
@@ -59,6 +60,22 @@
   but it's a direction <i>filter</i>, thin after full costs, and not yet wired into this per-zone table
   (it lives on the Telegram level alert today, not here). Treat this list as "where the ruleset says to
   look and why" — not as a proven signal to act on alone.
+  <br><br>
+  <b>How often do the zones themselves change?</b> Most of this map (pivots, prior day/week hi-lo, fib
+  clusters, round numbers) is built from the last <b>completed daily bar</b> — it only changes once per
+  session, at the next London-midnight rollover (see the <b>As Of</b> column). Two things move more often:
+  today's developing high/low (continuously, on any new intraday extreme) and Asia/Monday <b>confluence</b>
+  (below). The page's own 45s auto-refresh and the <b>NEW</b> tag just surface those — most refreshes
+  reconfirm the same zones, they don't invent new ones.
+  <br><br>
+  <b>Asia/Monday zones — confluence only, not the raw grid.</b> The raw Asia/Monday fib ladder (every
+  extension rung of today's session range) is deliberately <i>not</i> shown here — a lone, unconfirmed
+  rung is noise. Only <b>confluence</b> earns a zone: today's Asia ladder agreeing with yesterday's, or
+  this week's Monday agreeing with last week's, within the per-instrument threshold (2 pips FX). Tight
+  agreement (≤10% of that, or the same fib) scores higher. Monday confluence scores higher again than
+  Asia — a weekly level repeating from last week is rarer and more reactive than a daily one repeating
+  from yesterday. (Mirrors the source Pine indicator's "Strong Levels" tier — this dashboard never runs
+  "All Levels.")
 </div>
 
 <div class="card">
@@ -82,7 +99,7 @@
   <table id="zoneTbl">
     <thead><tr>
       <th>Pair</th><th>Zone price</th><th>Dist</th><th>Side</th><th>Confluence</th><th>Score</th>
-      <th>Regime</th><th>HTF Trend</th><th>Vol %ile</th><th>Context</th><th></th>
+      <th>Regime</th><th>HTF Trend</th><th>Vol %ile</th><th title="The session (London-midnight anchored) whose daily bar the STATIC zones (pivots, prior hi/lo, fib, round numbers) are built from — that set won't change again until the next session rollover. Snapshot age = how stale this read itself is.">As Of</th><th>Context</th><th></th>
     </tr></thead>
     <tbody id="zoneBody"></tbody>
   </table>
@@ -98,6 +115,16 @@ const ASSET_CLASS = p => p === 'gold' ? 'commodity' : ['nq','spx','dow','rut','f
 const DP = p => ASSET_CLASS(p) === 'fx' ? (p.includes('jpy') ? 3 : 5) : 2;
 
 let snaps = {};   // pair -> state response
+// "Did a new zone just appear" tracking — compared once per loadAll() (an actual
+// data refresh), not on every filter-only re-render. A zone key (pair|price) that
+// wasn't present in the PRIOR successful load gets tagged NEW for one render pass.
+// Suppressed on the very first load (everything would look "new" otherwise).
+let prevZoneKeys = null, newZoneKeys = new Set();
+// Guards a real race (same fix as trade-cards.html): a mode switch, the 45s
+// auto-tick, or a manual Refresh can all fire loadAll() again before an earlier,
+// slower call is done. Without this, a stale call's render() can land AFTER a
+// newer one and silently clobber it. Each call captures its own generation.
+let loadGen = 0;
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -128,13 +155,27 @@ async function warmAll() {
 }
 
 async function loadAll() {
+  const myGen = ++loadGen;
   const mode = $('mode').value;
   $('status').textContent = 'loading snapshots…';
   const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}?mode=${mode}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
+  if (myGen !== loadGen) return;   // a newer loadAll() started while this one was in flight — bail, don't clobber it
   snaps = {};
   for (const [p, s] of results) if (s.ok) snaps[p] = s;
   const warmed = Object.keys(snaps).length;
   $('status').textContent = `${warmed}/${PAIRS.length} pairs have a ${mode} snapshot`;
+
+  const curKeys = new Set();
+  for (const [p, s] of Object.entries(snaps)) {
+    const dp = DP(p);
+    for (const z of (s.zones ?? [])) curKeys.add(`${p}|${z.price.toFixed(dp)}`);
+  }
+  // Only diff against a previous load that actually had data — otherwise a
+  // transient failed load (e.g. mode switch, brief OANDA hiccup) would make the
+  // next successful load look like every single zone just appeared.
+  newZoneKeys = (prevZoneKeys && prevZoneKeys.size) ? new Set([...curKeys].filter(k => !prevZoneKeys.has(k))) : new Set();
+  if (curKeys.size) prevZoneKeys = curKeys;
+
   render();
 }
 
@@ -185,6 +226,12 @@ function render() {
     const creditTag = r.s.credit?.gate && r.s.credit.gate !== 'RISK-ON' ? `<span class="tag dn">credit ${r.s.credit.gate}</span>` : '';
     const macroTag = r.s.macro?.regime && r.s.macro.regime !== 'NEUTRAL' ? `<span class="tag ${r.s.macro.regime === 'RISK_OFF' ? 'dn' : 'up'}">macro ${r.s.macro.regime.replace('_', '-')}</span>` : '';
     const newsTag = (r.s.calendar_events ?? 0) > 0 ? `<span class="tag">news ×${r.s.calendar_events}</span>` : '';
+    const zoneKey = `${r.pair}|${r.z.price.toFixed(dp)}`;
+    const newTag = newZoneKeys.has(zoneKey) ? `<span class="tag new">NEW</span>` : '';
+    const asOf = r.s.meta?.lastBarTime
+      ? new Date(r.s.meta.lastBarTime * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : '–';
+    const ageMin = r.s.age_ms != null ? Math.round(r.s.age_ms / 60000) : null;
     const rowId = `pv_${i}`;
     return `<tr class="zrow">
       <td><b>${r.pair.toUpperCase()}</b></td>
@@ -196,10 +243,11 @@ function render() {
       <td class="muted">${r.s.regime ?? '–'}</td>
       <td>${htfTag}</td>
       <td class="muted">${r.s.volPct != null ? (100 * r.s.volPct).toFixed(0) + '%' : '–'}</td>
-      <td>${alignTag}${oiTag}${creditTag}${macroTag}${newsTag}</td>
+      <td class="muted" title="daily bar this session's static zones are built from · snapshot read is ${ageMin != null ? ageMin + 'm' : '?'} old">${asOf}${ageMin != null ? ` <span style="opacity:.6">(${ageMin}m)</span>` : ''}</td>
+      <td>${newTag}${alignTag}${oiTag}${creditTag}${macroTag}${newsTag}</td>
       <td><button class="ghost" style="padding:3px 10px;font-size:11px" onclick="preview('${rowId}','${r.pair}',${r.z.price},'${r.s.mode}')">Preview ▸</button></td>
     </tr>
-    <tr class="prevrow" id="${rowId}" style="display:none"><td colspan="11"></td></tr>`;
+    <tr class="prevrow" id="${rowId}" style="display:none"><td colspan="12"></td></tr>`;
   }).join('');
 }
 
