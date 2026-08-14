@@ -201,8 +201,15 @@ function exportCsv(tag, header, rowFn){
   for(const x of t) rows.push(rowFn(x));
   dl('touches_' + (($('pairFilter').value)||'all') + '_' + tag + '.csv', rows);
 }
-$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + x.mae_pct);
-$('csv2').onclick = () => exportCsv('R', 'date,R,MAE (R)', x => x.date + ',' + x.r + ',' + x.mae_r);
+// MAE is stored/shown on-page as a POSITIVE magnitude ("how far adverse
+// did this trade go", always >= 0). These 2 CSV schemas match an external
+// prop-firm pass/fail simulator's upload format (not part of this page),
+// which expects MAE as a NEGATIVE number -- same sign convention as a
+// loss, so a losing trade's worst point can't read as a gain -- negated
+// ONLY at CSV-export time here (see motif-combined-backtest.html for the
+// same fix, applied first).
+$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + (-x.mae_pct));
+$('csv2').onclick = () => exportCsv('R', 'date,R,MAE (R)', x => x.date + ',' + x.r + ',' + (-x.mae_r));
 $('csv3').onclick = () => exportCsv('pnl', 'Trade Date,PnL ($),Risk ($)', x => x.date + ',' + x.pnl_dollars + ',' + x.risk_dollars);
 
 load();
