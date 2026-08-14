@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forge Range Timeline — forecast vs realized, day by day</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; --accent:#7dd3fc; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:24px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:15px; margin:18px 0 6px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:980px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 9px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  button.alt { background:#30363d }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:16px; overflow-x:auto }
+  input, select { background:#0d1117; border:1px solid var(--border); color:var(--text); border-radius:4px; padding:4px 6px; font:11px 'DM Mono',monospace }
+  label { font-size:11px; color:var(--text3); margin-right:4px }
+  .ctrl { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:12px }
+  a { color:#58a6ff }
+  .stat { display:inline-block; margin-right:22px }
+  .stat b { font-size:18px; display:block; font-family:'DM Mono',monospace }
+  svg text { fill:var(--text3); font:9px 'DM Mono',monospace }
+  .legend-dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px; vertical-align:middle }
+</style>
+</head>
+<body>
+  <h1>Forge Range Timeline <span class="muted" style="font-size:12px">— forecast vs realized, day by day (not a single-date snapshot)</span></h1>
+  <div class="sub">
+    <b>Range accuracy ≠ volatility exhaustion</b> — this shows whether the forecast's SIZE tracked reality over a
+    stretch of days (Panel A's question, from <a href="/forecast-accuracy.html">forecast-accuracy.html</a>, made
+    sequential); it says nothing about where price turns (Panel B / <code>volatilityExhaustion/</code>, a separate
+    question). Data is a static walk-forward OOS export
+    (<code>forge/vol.py</code> → <code>forge/export_vol_compare.py</code>) — read-only, independent of the live
+    forecaster's own KV state. Forecast for day <i>t</i> only ever used data through day <i>t−1</i> (see
+    <code>forge/vol.py</code>'s <code>oos_predictions</code> and its causality test).
+  </div>
+
+  <div class="ctrl">
+    <label>Pair</label>
+    <select id="pair">
+      <optgroup label="FX">
+        <option>audcad</option><option>audchf</option><option>audjpy</option><option>audnzd</option><option>audusd</option>
+        <option>cadjpy</option><option>chfjpy</option><option>euraud</option><option>eurcad</option><option>eurchf</option>
+        <option>eurgbp</option><option>eurjpy</option><option>eurnzd</option><option selected>eurusd</option>
+        <option>gbpaud</option><option>gbpcad</option><option>gbpchf</option><option>gbpjpy</option><option>gbpnzd</option>
+        <option>gbpusd</option><option>nzdjpy</option><option>nzdusd</option><option>usdcad</option><option>usdchf</option>
+        <option>usdjpy</option>
+      </optgroup>
+      <optgroup label="Commodity"><option>gold</option></optgroup>
+      <optgroup label="Index"><option>nq</option><option>spx500</option><option>de30</option><option>uk100</option></optgroup>
+    </select>
+    <label>Metric</label>
+    <select id="metric"><option value="hl">High-Low</option><option value="oc">Open-Close</option></select>
+    <label>From</label><input type="date" id="from" value="2026-01-01">
+    <label>To</label><input type="date" id="to" value="2026-06-01">
+    <button onclick="loadRange()">▶ Load</button>
+    <button class="alt" onclick="loadLast(60)">Last 60d</button>
+    <button class="alt" onclick="loadLast(180)">Last 180d</button>
+    <span class="muted" id="status"></span>
+  </div>
+
+  <div id="out"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
+
+async function loadLast(tradingDays){
+  // The export's own coverage ends a few years back on some instruments (a
+  // pair whose local M1 data stopped earlier — see forge/README.md), and not
+  // every calendar day between `from` and `to` is a trading day — so this
+  // requests a generously wide CALENDAR window (2.2x the trading days asked
+  // for, comfortably covering weekends) and trims to the last `tradingDays`
+  // ROWS the endpoint actually returned, rather than trying to compute an
+  // exact calendar `from` date for "N trading days ago" up front.
+  const to = '2026-06-05';
+  const from = new Date(new Date(to).getTime() - tradingDays*2.2*86400000).toISOString().slice(0,10);
+  el('from').value = from; el('to').value = to;
+  await loadRange(tradingDays);
+}
+
+async function loadRange(lastN){
+  const pair = el('pair').value, from = el('from').value, to = el('to').value, metric = el('metric').value;
+  const status = el('status'), out = el('out');
+  status.textContent = 'Loading…'; out.innerHTML = '';
+  try {
+    const j = await fetch(`/api/vol-forecast/compare-forge/range?pair=${pair}&from=${from}&to=${to}`).then(r=>r.json());
+    if (!j.ok) { status.innerHTML = `<span class="neg">⚠ ${j.error}</span>`; return; }
+    const rows = (typeof lastN === 'number') ? j.rows.slice(-lastN) : j.rows;
+    status.textContent = `${rows.length} OOS days · ${rows[0].date} → ${rows.at(-1).date}`;
+    render(rows, metric, pair);
+  } catch(e) { status.innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+}
+
+function render(rows, metric, pair){
+  const fKey = metric==='hl' ? 'forge_hl' : 'forge_oc';
+  const f75Key = metric==='hl' ? 'forge_hl_75' : 'forge_oc_75';
+  const rKey = metric==='hl' ? 'realized_hl' : 'realized_oc';
+  const label = metric==='hl' ? 'High-Low %' : 'Open-Close %';
+
+  // ── summary stats over the loaded window ──
+  let exceed=0, n=0, sumAbsErr=0, sumRelErr=0, hitBand=0;
+  for (const r of rows) {
+    if (r[fKey]==null || r[rKey]==null) continue;
+    n++;
+    if (r[rKey] > r[fKey]) exceed++;
+    const err = r[rKey] - r[fKey];
+    sumAbsErr += Math.abs(err);
+    if (r[fKey] > 0) { sumRelErr += Math.abs(err)/r[fKey]; if (Math.abs(err)/r[fKey] <= 0.15) hitBand++; }
+  }
+  const exceedPct = n ? (exceed/n*100) : null;
+  const excCls = exceedPct==null ? '' : (Math.abs(exceedPct-50)<=8 ? 'pos' : Math.abs(exceedPct-50)>=20 ? 'neg' : 'amber');
+  const estimators = [...new Set(rows.map(r=>r.forge_estimator))];
+
+  let h = `<div class="card">
+    <div class="stat"><span class="muted">Days</span><b>${n}</b></div>
+    <div class="stat"><span class="muted">Exceed rate (target ~50%)</span><b class="${excCls}">${fmt(exceedPct,1)}%</b></div>
+    <div class="stat"><span class="muted">Mean |error|</span><b>${fmt(n?sumAbsErr/n:null)}%</b></div>
+    <div class="stat"><span class="muted">Mean rel. error</span><b>${fmt(n?sumRelErr/n*100:null,1)}%</b></div>
+    <div class="stat"><span class="muted">Within ±15% of forecast</span><b>${fmt(n?hitBand/n*100:null,1)}%</b></div>
+    <div class="muted" style="margin-top:6px;font-size:10px">Estimator(s) in force this window: ${estimators.join(', ')||'—'}
+      · exceed rate is the same calibration tell as Panel A: &lt;50% ⇒ forecast too wide, &gt;50% ⇒ too tight.</div>
+  </div>`;
+
+  h += chartSVG(rows, fKey, f75Key, rKey, label);
+  h += tableHTML(rows, fKey, f75Key, rKey);
+  el('out').innerHTML = h;
+}
+
+function chartSVG(rows, fKey, f75Key, rKey, label){
+  const W = Math.max(900, rows.length*7), H = 260, padL=40, padR=10, padT=14, padB=24;
+  const vals = rows.flatMap(r=>[r[fKey], r[f75Key], r[rKey]]).filter(v=>v!=null && isFinite(v));
+  const yMax = Math.max(...vals, 0.1) * 1.08;
+  const x = i => padL + i/(Math.max(rows.length-1,1)) * (W-padL-padR);
+  const y = v => H-padB - (v/yMax) * (H-padT-padB);
+
+  const path = (key, close) => {
+    let d = '';
+    rows.forEach((r,i) => { if (r[key]==null) return; d += (d?' L ':'M ') + x(i).toFixed(1) + ' ' + y(r[key]).toFixed(1); });
+    return d;
+  };
+  // Shaded band between forecast median and 75th (context for "how much room" the forecast gave).
+  let bandUp = '', bandDown = '';
+  rows.forEach((r,i) => { if (r[f75Key]!=null) bandUp += (bandUp?' L ':'M ') + x(i).toFixed(1) + ' ' + y(r[f75Key]).toFixed(1); });
+  for (let i=rows.length-1;i>=0;i--) { const r=rows[i]; if (r[fKey]!=null) bandDown += (bandDown===''?'L ':'L ') + x(i).toFixed(1) + ' ' + y(r[fKey]).toFixed(1); }
+  const bandPath = bandUp && bandDown ? `${bandUp} ${bandDown} Z` : '';
+
+  // Realized as dots, colored by whether it exceeded the forecast median.
+  const dots = rows.map((r,i) => {
+    if (r[rKey]==null) return '';
+    const above = r[fKey]!=null && r[rKey] > r[fKey];
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(r[rKey]).toFixed(1)}" r="2" fill="${above?'#f85149':'#3fb950'}" opacity="0.85"><title>${r.date}: realized ${fmt(r[rKey])}% vs forecast ${fmt(r[fKey])}%</title></circle>`;
+  }).join('');
+
+  // Sparse x-axis labels (every ~10th day) so dense windows stay readable.
+  const step = Math.max(1, Math.round(rows.length/14));
+  let xlabels = '';
+  rows.forEach((r,i) => { if (i%step===0) xlabels += `<text x="${x(i).toFixed(1)}" y="${H-6}" text-anchor="middle">${r.date.slice(5)}</text>`; });
+  let ylabels = '';
+  for (let k=0;k<=4;k++){ const v = yMax*k/4; ylabels += `<text x="${padL-6}" y="${y(v).toFixed(1)+3}" text-anchor="end">${v.toFixed(1)}</text><line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>`; }
+
+  return `<div class="card" style="overflow-x:auto">
+    <div style="margin-bottom:6px;font-size:11px"><span class="legend-dot" style="background:${'#7dd3fc'}"></span>Forge forecast median
+      <span class="legend-dot" style="background:#7dd3fc;opacity:.18;margin-left:14px"></span>to 75th pct (shaded)
+      <span class="legend-dot" style="background:#3fb950;margin-left:14px"></span>Realized (≤ forecast)
+      <span class="legend-dot" style="background:#f85149"></span>Realized (&gt; forecast, exceeded)
+    </div>
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+      ${ylabels}
+      ${bandPath ? `<path d="${bandPath}" fill="#7dd3fc" opacity="0.12" stroke="none"/>` : ''}
+      <path d="${path(fKey)}" fill="none" stroke="#7dd3fc" stroke-width="1.6"/>
+      ${dots}
+      ${xlabels}
+      <text x="8" y="12" font-size="10">${label}</text>
+    </svg>
+  </div>`;
+}
+
+function tableHTML(rows, fKey, f75Key, rKey){
+  let h = `<div class="card"><table><tr><th>Date</th><th>Estimator</th><th>Forecast med</th><th>Forecast 75th</th><th>Realized</th><th>Exceeded</th></tr>`;
+  for (const r of rows) {
+    const exceeded = (r[fKey]!=null && r[rKey]!=null) ? (r[rKey] > r[fKey]) : null;
+    h += `<tr><td>${r.date}</td><td class="muted">${r.forge_estimator||'—'}</td><td>${fmt(r[fKey])}</td><td>${fmt(r[f75Key])}</td>
+      <td>${fmt(r[rKey])}</td><td class="${exceeded==null?'':exceeded?'neg':'pos'}">${exceeded==null?'—':exceeded?'yes':'no'}</td></tr>`;
+  }
+  return h + `</table></div>`;
+}
+
+window.addEventListener('DOMContentLoaded', () => loadRange());
+</script>
+</body>
+</html>

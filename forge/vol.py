@@ -415,3 +415,77 @@ def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
         cutoff = m1.index[-1] - pd.Timedelta(days=365.25 * years)
         m1 = m1[m1.index >= cutoff]
     return resample(m1, "d1")
+
+
+# Indices have real 10-year M1 data too, just cached under a different root
+# (`portfolioBacktest/cache/`, built for an unrelated portfolio study) rather
+# than `VolRangeForecaster/data/m1/`. `INDEX_DATA_ROOT` and `INDEX_PAIRS`
+# exist so a caller can reach them without hardcoding the second path
+# everywhere index coverage is needed — found by checking, not assumed: the
+# FX+gold-only universe in `xsect.discover_universe` only globs the one root,
+# so indices were silently invisible to `forge` until this was added.
+INDEX_DATA_ROOT = "portfolioBacktest/cache"
+INDEX_PAIRS = ("nq", "spx500", "de30", "uk100")
+
+
+def discover_full_universe(fx_root: str = "VolRangeForecaster/data/m1",
+                           index_root: str = INDEX_DATA_ROOT) -> dict[str, str]:
+    """Every instrument this module can honestly forecast, mapped to the data
+    root that holds it: the 25 FX pairs + gold from `fx_root`, plus
+    NQ/SPX500/DE30(DAX)/UK100(FTSE) from `index_root`. `portfolioBacktest/
+    cache/` also happens to hold a few FX pairs (its own dependency, not
+    index-specific) — `fx_root`'s copy wins for those, so every FX pair is
+    still read from the same place every other `forge` module uses, and only
+    the genuinely index-only names are added from the second root.
+    """
+    from pathlib import Path
+    universe = {p: fx_root for p in discover_universe_fx(fx_root)}
+    for p in INDEX_PAIRS:
+        if (Path(index_root) / f"{p}_m1.parquet").exists():
+            universe[p] = index_root
+    return universe
+
+
+def discover_universe_fx(data_root: str = "VolRangeForecaster/data/m1") -> list[str]:
+    """Same as `xsect.discover_universe` — duplicated rather than imported to
+    keep `vol.py` important-question modules importable without pulling in
+    `xsect`'s cross-sectional machinery for something this small."""
+    from pathlib import Path
+    return sorted(p.stem.removesuffix("_m1") for p in Path(data_root).glob("*_m1.parquet"))
+
+
+# ── per-day OOS reconstruction — what actually gets exported for verification ─
+
+def oos_predictions(frame: pd.DataFrame, n_folds: int = 6) -> pd.DataFrame:
+    """Every OOS day's forecast (from that fold's frozen, train-only spec)
+    alongside what actually happened — the day-by-day evidence behind the
+    aggregate calibration numbers `walk_forward_vol` reports, and the thing
+    to hand someone who wants to "see the output to verify" rather than take
+    a summary statistic's word for it.
+
+    Days in the first ~40% of history (the initial training window, before
+    any fold has a frozen spec to score OOS with) are NOT included — there
+    is no OOS forecast for them, and padding them with an in-sample number
+    would defeat the entire point of a verification export.
+    """
+    rows = []
+    for i, (tr_start, split, te_end) in enumerate(fold_bounds(frame["date"], n_folds)):
+        train = frame[(frame["date"] >= tr_start) & (frame["date"] < split)]
+        test = frame[(frame["date"] >= split) & (frame["date"] < te_end)]
+        if len(train) < 200 or len(test) < 1:
+            continue
+        spec = design_vol(train)
+        sigma = test[f"sigma_{spec.estimator}"].to_numpy()
+        pred = predicted_quantiles(sigma, spec.width_mult)
+        rows.append(pd.DataFrame({
+            "date": test["date"].to_numpy(), "fold": i,
+            "estimator": spec.estimator, "width_source": spec.width_source,
+            "sigma_annual_pct": sigma,
+            "hl_p50": pred["hl_p50"], "hl_p75": pred["hl_p75"],
+            "oc_p50": pred["oc_p50"], "oc_p75": pred["oc_p75"],
+            "realized_hl_pct": test["hl_pct"].to_numpy(),
+            "realized_oc_pct": test["oc_pct"].to_numpy(),
+        }))
+    if not rows:
+        return pd.DataFrame()
+    return pd.concat(rows, ignore_index=True).dropna(subset=["hl_p50"])

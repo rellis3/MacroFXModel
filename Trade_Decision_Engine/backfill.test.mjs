@@ -112,9 +112,12 @@ const packed = synthPacked();
   const evts = [];
   backfillPair('eurusd', packed, { onEvent: e => evts.push(e) });
   ok(evts.every(e => Number.isFinite(e.zone.confluence)), 'merged decide zone recorded on every event');
-  const asiaEvts = evts.filter(e => (e.zone.sources ?? []).includes('asia_ladder'));
-  ok(asiaEvts.length > 0, `asia-ladder touches generated (${asiaEvts.length})`);
-  ok(asiaEvts.every(e => e.ts >= e.session_start + 6 * 3600), 'no asia-ladder event before the formation window closes');
+  // The raw (unconfluenced) ladder grid is deliberately NOT a zone source — only
+  // cross-session CONFLUENCE (asia_prev_align: today's line agrees with
+  // yesterday's) earns one. LADDER_ZONE_STYLE's comment explains why.
+  const asiaEvts = evts.filter(e => (e.zone.sources ?? []).includes('asia_prev_align'));
+  ok(asiaEvts.length > 0, `asia-confluence touches generated (${asiaEvts.length})`);
+  ok(asiaEvts.every(e => e.ts >= e.session_start + 6 * 3600), 'no asia-confluence event before the formation window closes');
   const shilo = evts.filter(e => (e.zone.sources ?? []).includes('session_hilo'));
   ok(shilo.length > 0, `session high/low confluence occurs (${shilo.length})`);
 }
