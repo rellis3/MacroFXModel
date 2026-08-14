@@ -6,10 +6,11 @@ sizing (`motif_combined_portfolio_sim.py`, validated 26-pair: Sharpe 2.45,
 max DD -38.7%, beating either mechanism alone — see AnalogML/README.md).
 
 Pure composition + export layer — reuses `motif_combined_portfolio_sim`'s
-causal pipeline (`build_htf_ctx`, `size_mult_for`) and `motif_adaptive`'s
-motif collection verbatim, adds nothing but per-trade MAE (same real-bar-
-path, capped-at-stop convention as `backtest_export.py`) and the JSON shape
-`analogml-backtest.html`-style viewers already know how to render. Neither
+causal pipeline (`build_htf_ctx`, `size_mult_for`), `motif_adaptive`'s
+motif collection, and the shared `pylego.barrier_race.mae_from_path` /
+`pylego.json_safe.json_safe` bricks (the latter pulled out today after
+`motif_backtest_export.py` became mae_from_path's 2nd consumer, and fixes a
+real NaN-vs-JSON bug caught on this exact export family) verbatim. Neither
 `motif_combined_portfolio_sim.py` nor any of its parents is modified.
 
 Every trade carries BOTH r (the combined signal actually traded) and
@@ -42,27 +43,12 @@ from portfolio_sim import ALL_PAIRS, pairwise_correlation_summary, sharpe_and_dd
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from pylego.barrier_race import Entry, VariableEntry, race_trades, race_trades_variable  # noqa: E402
+from pylego.barrier_race import Entry, VariableEntry, mae_from_path, race_trades, race_trades_variable  # noqa: E402
+from pylego.json_safe import json_safe  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
 IS_OOS_CUTOFF = "2023-01-01"
 DATA_DIR = Path(__file__).resolve().parent / "data"
-
-
-def compute_mae(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
-                entry_price: float, sl_price: float) -> tuple[float, float]:
-    """Same convention as backtest_export.py's compute_mae: real bar-path
-    MAE (low-vs-entry for longs, high-vs-entry for shorts), capped at the
-    trade's OWN sl_price -- the barrier walker guarantees the position
-    never experiences adverse movement beyond its stop."""
-    highs = bars["high"].to_numpy()[idx:exit_idx + 1]
-    lows = bars["low"].to_numpy()[idx:exit_idx + 1]
-    if direction > 0:
-        mae_price = entry_price - float(lows.min())
-    else:
-        mae_price = float(highs.max()) - entry_price
-    mae_price = min(max(mae_price, 0.0), sl_price)
-    return mae_price / sl_price, mae_price / entry_price * 100.0
 
 
 def build_trade_row(m: dict, t: dict, b_trade: dict, size_mult: float, bucket: str,
@@ -71,7 +57,7 @@ def build_trade_row(m: dict, t: dict, b_trade: dict, size_mult: float, bucket: s
     (backtest_export.py's fields) plus the combination's own columns
     (category, htf_bucket, size_mult, bench_r)."""
     entry_date = bars.index[t["idx"]]
-    mae_r, mae_pct = compute_mae(bars, t["idx"], t["exit_idx"], t["direction"], t["entry_price"], t["sl"])
+    mae_r, mae_pct = mae_from_path(bars, t["idx"], t["exit_idx"], t["direction"], t["entry_price"], t["sl"])
     price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
     risk_dollars = account_risk_dollars * size_mult
     n_touches, is_top = m["category"]
@@ -271,7 +257,7 @@ def main() -> None:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w") as f:
-        json.dump(out, f)
+        json.dump(json_safe(out), f)
     print(f"\n[written] {len(rows)} trades, {len(pairs)} pairs -> {out_path}")
     print(f"[overall] IS n={overall['is']['n']} PF={overall['is']['profit_factor']:.2f}  "
           f"OOS n={overall['oos']['n']} PF={overall['oos']['profit_factor']:.2f}")
