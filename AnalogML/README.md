@@ -1025,6 +1025,45 @@ sizing (35,35) COMBINED with HTF-conflict sizing together — deliberately not
 done together yet, to keep this build's discipline of one new variable at a
 time.
 
+**The combination test (2026-08-14,
+`AnalogML/motif_combined_portfolio_sim.py`)** — the deferred item above,
+now done: adaptive (35,35) SL/TP and HTF-conflict sizing stacked in one
+portfolio. A pure composition layer — imports
+`motif_adaptive.collect_pair_motifs`, `motif_multi_tf.htf_lean_at`, and the
+shared `simulate_portfolio` verbatim, modifies neither parent — racing the
+SAME motif set through the full 2x2 so each delta isolates exactly one
+mechanism. **Full 26-pair run (28,223 motifs identical on all four arms,
+4,165 / 14.8% downsized on 1D conflict):**
+
+| arm | Sharpe | max DD | avg util |
+|---|---:|---:|---:|
+| FROZEN + UNIFORM (baseline) | 1.58 | −54.5% | 2.7% |
+| FROZEN + HTF-SIZED | 1.79 | −42.9% | 2.6% |
+| ADAPTIVE + UNIFORM | 2.31 | −41.8% | 2.7% |
+| ADAPTIVE + HTF-SIZED (the combination) | **2.45** | **−38.7%** | 2.6% |
+
+**The gains stack.** The combination beats the best single mechanism on
+BOTH Sharpe (2.45 vs 2.31) and max DD (−38.7% vs −41.8%) at matched
+utilization — consistent with the two mechanisms being genuinely
+orthogonal (one reshapes exit geometry per category, the other scales risk
+on an independent 1D read). Three sanity checks came free: each single-
+mechanism arm reproduces its parent's separately-computed result almost
+exactly (1.58 vs `motif_portfolio_sim.py`'s 1.61 on a slightly different
+set; 1.79/−42.9% vs `motif_htf_sized.py`'s 1.80/−42.9%; 2.31/−41.8%
+matching `motif_adaptive_portfolio_sim.py`), so the composition is faithful,
+not a re-implementation that could drift. And — for the FIFTH time in this
+build — the 3-pair smoke test read the opposite ("no stack": adaptive 1.38
+vs combined 1.37 on eurusd/gbpjpy/audusd); the full 26-pair scale overturned
+it. Total-return figures are ignored on purpose: 1%-of-equity compounding
+over ~20k trades produces absurd absolute numbers under mark-to-close;
+Sharpe/DD at matched utilization are the comparison that means anything.
+Still NOT a validated go-live change: same mark-to-close/no-spread-variation
+caveats as every `portfolio_sim.py` caller, and the combination inherits
+both parents' own open caveats (one percentile cell tested; conflict-side
+only). The tracked live signal (`motif_track.py`) still records the frozen
+grid unchanged — this result informs the manual-execution sizing notes the
+Telegram alert already shows, it does not alter the tracked record.
+
 **Telegram alerts (2026-08-13, `AnalogML/motif_track.py --telegram`)** — the
 "leave it as a signal, alert when a trade is building" decision: not a live
 bot, not automated execution, a human-facing alert with SL/TP markings to
