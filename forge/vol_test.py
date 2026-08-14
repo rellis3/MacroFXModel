@@ -192,6 +192,55 @@ def test_fit_width_multiplier_recovers_a_known_quantile():
     assert abs(q50 - np.quantile(realized, 0.5)) < 1e-9
 
 
+def test_discover_full_universe_includes_indices_without_duplicating_fx():
+    universe = V.discover_full_universe()
+    assert "gold" in universe and universe["gold"] == "VolRangeForecaster/data/m1"
+    for idx in V.INDEX_PAIRS:
+        assert idx in universe, f"{idx} missing from full universe"
+        assert universe[idx] == V.INDEX_DATA_ROOT
+    # FX pairs that also happen to sit in the index cache dir must still
+    # resolve to the canonical FX root, not the incidental second copy.
+    assert universe["eurusd"] == "VolRangeForecaster/data/m1"
+
+
+def test_oos_predictions_matches_design_vol_applied_directly_per_fold():
+    """`oos_predictions` must not be a second, independent computation that
+    could silently drift from `design_vol`/`predicted_quantiles` — for every
+    fold, reproduce its train/test split explicitly (via `vol.fold_bounds`,
+    the same function `oos_predictions` itself uses) and check its per-day
+    numbers exactly match calling the lower-level pieces directly.
+
+    (An earlier version of this test truncated the input frame and expected
+    "fold 1" to mean the same date range before and after — it doesn't:
+    `fold_bounds` divides the FULL visible span into fractions, so trimming
+    the frame silently redefines every fold's boundaries. That was a test
+    bug, not a causality bug; this version pins down the fold boundaries
+    explicitly instead of relying on them staying stable under truncation.)
+    """
+    daily = _synthetic_daily()
+    frame = V.build_forecast_frame(daily)
+    n_folds = 4
+    got = V.oos_predictions(frame, n_folds=n_folds)
+    assert len(got) > 100, "test is vacuous"
+
+    for i, (tr_start, split, te_end) in enumerate(V.fold_bounds(frame["date"], n_folds)):
+        train = frame[(frame["date"] >= tr_start) & (frame["date"] < split)]
+        test = frame[(frame["date"] >= split) & (frame["date"] < te_end)]
+        if len(train) < 200 or len(test) < 1:
+            continue
+        spec = V.design_vol(train)
+        sigma = test[f"sigma_{spec.estimator}"].to_numpy()
+        expected = V.predicted_quantiles(sigma, spec.width_mult)
+
+        fold_rows = got[got["fold"] == i].set_index("date").sort_index()
+        test_sorted = test.set_index("date").sort_index()
+        common = fold_rows.index.intersection(test_sorted.index)
+        assert len(common) > 0
+        exp_series = pd.Series(expected["hl_p50"], index=test_sorted.index)
+        diff = (fold_rows.loc[common, "hl_p50"] - exp_series.loc[common]).abs()
+        assert diff.max() < 1e-9, f"fold {i}: oos_predictions diverged from a direct call"
+
+
 def test_walk_forward_vol_runs_and_reports_every_fold():
     daily = _synthetic_daily()
     frame = V.build_forecast_frame(daily)

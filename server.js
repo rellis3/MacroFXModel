@@ -13665,6 +13665,32 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
   }
 });
 
+// Forge estimator comparison — a WALK-FORWARD OOS volatility forecast, read
+// from a static file `forge/` exports offline (see `forge/export_vol_compare.
+// py` and `forge/vol.py`'s module docstring for the estimator + methodology).
+// Deliberately separate from `/api/vol-forecast/compare/:date` above — that
+// endpoint reads live KV populated by the running scheduler; this one reads
+// a committed JSON snapshot and touches none of that endpoint's state, so a
+// bug or a stale export here cannot affect the live-KV-backed comparison.
+// GET /api/vol-forecast/compare-forge/:date
+const _FORGE_VOL_PATH = path.join(__dirname, 'forge', 'out_vol', 'compare_export.json');
+let _forgeVolCache = null, _forgeVolCacheAt = 0;
+function _loadForgeVolCompare() {
+  if (_forgeVolCache && Date.now() - _forgeVolCacheAt < 300_000) return _forgeVolCache;
+  try { _forgeVolCache = JSON.parse(fs.readFileSync(_FORGE_VOL_PATH, 'utf8')); _forgeVolCacheAt = Date.now(); }
+  catch { _forgeVolCache = null; }
+  return _forgeVolCache;
+}
+app.get('/api/vol-forecast/compare-forge/:date', (req, res) => {
+  const date = req.params.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const day = all[date];
+  if (!day) return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${date} (outside the exported walk-forward window, or the export needs refreshing)` });
+  res.json({ ok: true, date, rows: day });
+});
+
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
 // GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
 app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
