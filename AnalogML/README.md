@@ -1064,6 +1064,96 @@ Railway and OANDA are blocked by the outbound proxy here), not a stale-code
 issue in this repo. Still open, needs the user to look at the live site and
 say what the card actually shows before this can be run down further.
 
+## Pattern-lab audit — extended to the full 26-pair universe (2026-08-13)
+
+`js/patternEngine.js`/`pattern-lab.html` is a SEPARATE, older, already-shipped
+JS shape scanner (flags/pennants, head & shoulders, double/triple tops-
+bottoms, triangles/channels/wedges — 17 sub-types, its own MFE/MAE per
+instance) that had never had a cost model or a calendar IS/OOS split applied
+to it. `AnalogML/scripts/export_pattern_lab.mjs` calls its detectors directly
+(no server, no redetection) and dumps instances to JSON;
+`AnalogML/pattern_lab_validate.py` applies real costs and a real 2023-01-01
+split — the same honest-harness discipline every other check in this file
+uses. The first read (2026-08-12) was GBPJPY-only and found `bull_flag` mild
+positive (IS PF=1.01 → OOS PF=1.18), which conflicted with
+`pylego/flag_pennant.py`'s own fresh regeneration banking a 26-pair null on
+flags/pennants — a real discrepancy worth resolving, not two independently
+true results.
+
+**Extended to all 26 pairs** (`pattern_lab_validate.py --all-pairs`, one
+`export_pattern_lab.mjs` run per pair). Pooled across the full universe, on
+the OLDER JS detector's own output:
+
+| type | IS PF | OOS PF | OOS avg R | pairs PF>1.0 |
+|---|---:|---:|---:|---:|
+| bull_flag | 1.03 | 1.00 | -0.001 | 11/25 |
+| bull_pennant | 1.01 | 0.93 | -0.049 | 11/25 |
+| bear_flag | 0.93 | 0.87 | -0.092 | 6/25 |
+| bear_pennant | 0.92 | 0.96 | -0.028 | 10/25 |
+| double_top | 1.27 | 1.31 | 0.194 | 24/25 |
+| double_bottom | 1.35 | 1.25 | 0.155 | 21/25 |
+| head_shoulders | 1.03 | 1.02 | 0.015 | 12/25 |
+| inverse_head_shoulders | 1.15 | 1.02 | 0.014 | 13/25 |
+
+**Flags/pennants: resolved, coin-flip, on a SECOND independently-built
+detector.** GBPJPY's own mild-positive read was one favorable pair out of
+25, not real signal — the null `flag_pennant.py` already banked stands, now
+confirmed on a structurally different implementation (patternEngine.js's
+detector was never touched or ported for this check, only audited).
+`head_shoulders`/`inverse_head_shoulders` read near-breakeven, consistent
+with `pylego/head_shoulders.py`'s own post-bug-fix null.
+
+**A genuine, independent corroboration, not a re-check:** `double_top`/
+`double_bottom` — patternEngine.js's OWN double/triple-extremes detector,
+built and shipped before `pylego/motif_touch.py` existed, sharing no code
+with it — independently reads OOS PF=1.31/1.25 with 24/25 and 21/25 pairs
+above 1.0. That's the touches motif's edge showing up a second time, from a
+different codepath, on the same real data. `channel_up` read OOS PF=1.43
+(10/25 pairs) but IS PF=0.97 (near-null) — that direction (null-then-
+positive rather than roughly consistent) is the signature of noise, not a
+real effect; flagged, not led with.
+
+## Touches backtest dashboard — CSV export + trade log (2026-08-13)
+
+The touches motif signal (already validated above: 26-pair sweep, 11/11
+calendar-year walk-forward folds, portfolio Sharpe 1.61–1.80) previously
+only lived in sweep printouts and `today.html`'s live "what's forming right
+now" chip — there was no way to browse the historical trade-by-trade record
+the way `analogml-backtest.html` already lets you browse the retired k-NN
+signal's. `AnalogML/motif_backtest_export.py` (new) is the same house-
+standard results-card export `backtest_export.py` built for that signal —
+per-trade R **and MAE from the real bar path** (never approximated,
+capped at the fixed SL), a real calendar IS/OOS split, cost-on/cost-off,
+and a stated account size / R-unit — run against the SAME frozen setting
+`motif_scan.py`/`motif_walkforward.py`/`motif_portfolio_sim.py` already
+validated (this export doesn't re-tune anything). `pylego/barrier_race.py`
+gained a shared `mae_from_path` — `backtest_export.py`'s `compute_mae` had
+never been copied before this became its second consumer, so this is the
+point it actually became a Tier-1 brick rather than premature extraction.
+
+**`touches-backtest.html`** (repo root, linked from `hub.html`) reads that
+JSON the same way `analogml-backtest.html` reads `backtest_export.json`:
+IS/OOS + cost-sensitivity cards, a per-pair table, and the 3 house-standard
+CSV export buttons in the exact schemas (`Date,Return %,MAE %` /
+`date,R,MAE (R)` / `Trade Date,PnL ($),Risk ($)`) — plus a pair AND
+n-touches (2 vs 3) filter on the trade log, since doubles-vs-triples is a
+real, IS/OOS-confirmed disaggregation finding (see "Lifecycle
+disaggregation" below), not a cosmetic filter.
+
+**Why the static-export pattern, not the live async-job pattern
+(`vol-backtest-v2.html`'s `POST /run` → jobId → `GET /status/:jobId`):**
+that pattern needs the detection logic to be server-callable JS —
+`js/patternEngine.js`'s shapes are, `pylego/motif_touch.py` is not
+(Python-only, no port). Porting it to JS just to get a live-refresh button
+on a results viewer wasn't judged worth it here — the underlying signal is
+FROZEN, not something a user tunes interactively from the page the way
+vol-backtest-v2's day-type selector thresholds are. This page and
+`today.html`'s live diagnostic chip answer different questions from
+different JSON files: this is the historical-record view (what already
+happened, browsable/exportable); that chip is the live-state view (what's
+forming right now) fed by `motif_track.py`'s `motif_state.json` via
+`/api/analogml/motif-state`.
+
 ## Lifecycle disaggregation — does touch/bounce count predict the outcome?
 
 The owner's fuller shape-prediction ask wants every shape's DURING-formation

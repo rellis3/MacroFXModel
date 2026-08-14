@@ -25,9 +25,18 @@ matching pylego.barrier_race's cost convention: cost is subtracted as
 cost_price/risk_price, not a flat pct), and reports hit-rate/PF/avg-R per
 shape type, split IS (pre-2023) vs OOS (2023+), cost-on vs cost-off.
 
+**2026-08-13 update: extended from GBPJPY-only to the full 26-pair universe**
+(`--all-pairs`, one export per pair via `export_pattern_lab.mjs`). Motive:
+GBPJPY-only originally read bull_flag mild-positive, which conflicted with
+`pylego/flag_pennant.py`'s fresh Python regeneration banking a 26-pair null
+on flags/pennants -- this resolves that discrepancy on the SAME (older, no
+cost/IS-OOS) JS detector's own output pooled across pairs, not a re-check of
+the Python regeneration.
+
 Usage:
-  node AnalogML/scripts/export_pattern_lab.mjs gbpjpy   # run this first
+  node AnalogML/scripts/export_pattern_lab.mjs gbpjpy   # single pair
   python AnalogML/pattern_lab_validate.py --pair gbpjpy
+  python AnalogML/pattern_lab_validate.py --all-pairs   # pooled across the 26-pair universe
 """
 from __future__ import annotations
 
@@ -40,6 +49,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from portfolio_sim import ALL_PAIRS  # noqa: E402
 
 EXPORT_DIR = Path(__file__).resolve().parent / "data" / "pattern_lab_export"
 IS_OOS_CUTOFF_EPOCH = 1672531200  # 2023-01-01T00:00:00Z, same convention as backtest_export.py
@@ -72,11 +84,37 @@ def instance_r(inst: dict, cost_price: float, cost_on: bool) -> float | None:
     return r
 
 
-def run(pair: str) -> None:
-    instances = load_instances(pair)
+def load_and_tag(pair: str) -> list[dict] | None:
+    """One pair's instances tagged with pair + its own cost_price (spread
+    differs by pair -- pooling raw R across pairs without this would mix
+    R-multiples computed at the wrong cost)."""
+    path = EXPORT_DIR / f"{pair}.json"
+    if not path.exists():
+        return None
+    instances = json.loads(path.read_text())["instances"]
     cost_price = default_spread(pair)
-    print(f"[data] {pair}: {len(instances)} total instances (all shape types pooled)")
-    print(f"[cost] default_spread({pair}) = {cost_price} (price units)")
+    for inst in instances:
+        inst["_pair"] = pair
+        inst["_cost_price"] = cost_price
+    return instances
+
+
+def run(pairs: list[str]) -> None:
+    instances: list[dict] = []
+    missing = []
+    for pair in pairs:
+        tagged = load_and_tag(pair)
+        if tagged is None:
+            missing.append(pair)
+            continue
+        instances.extend(tagged)
+    if missing:
+        print(f"[warn] no export for {len(missing)} pair(s), skipped: {', '.join(missing)} "
+              f"-- run: node AnalogML/scripts/export_pattern_lab.mjs <pair>")
+    if not instances:
+        raise SystemExit("no instances loaded -- run the export step first")
+    n_pairs = len(pairs) - len(missing)
+    print(f"[data] {n_pairs} pair(s), {len(instances)} total instances (all shape types pooled)")
 
     by_type: dict[str, list[dict]] = {}
     for inst in instances:
@@ -88,20 +126,30 @@ def run(pair: str) -> None:
         oos_insts = [i for i in insts if i["confirmTime"] >= IS_OOS_CUTOFF_EPOCH]
 
         def _stats(subset, cost_on):
-            rs = [r for i in subset if (r := instance_r(i, cost_price, cost_on)) is not None]
+            rs = [r for i in subset if (r := instance_r(i, i["_cost_price"], cost_on)) is not None]
             if not rs:
                 return None
             return summarize_r(rs)
+
+        oos_by_pair = {}
+        for i in oos_insts:
+            oos_by_pair.setdefault(i["_pair"], []).append(i)
+        n_pairs_pf_gt1 = sum(
+            1 for p, insts_p in oos_by_pair.items()
+            if (s := _stats(insts_p, True)) and s["n"] >= 5 and s["profit_factor"] > 1.0
+        )
+        n_pairs_with_oos = len(oos_by_pair)
 
         rows.append({
             "type": shape_type, "n_total": len(insts),
             "n_is": len(is_insts), "n_oos": len(oos_insts),
             "is_cost_on": _stats(is_insts, True), "oos_cost_on": _stats(oos_insts, True),
             "oos_cost_off": _stats(oos_insts, False),
+            "n_pairs_pf_gt1": n_pairs_pf_gt1, "n_pairs_with_oos": n_pairs_with_oos,
         })
 
     print(f"\n{'type':<24} {'n_is':>6} {'IS PF':>7} {'IS avgR':>8}   "
-          f"{'n_oos':>6} {'OOS PF':>7} {'OOS avgR':>9}  {'OOS PF(no cost)':>16}")
+          f"{'n_oos':>6} {'OOS PF':>7} {'OOS avgR':>9}  {'OOS PF(no cost)':>16}  {'pairs PF>1':>11}")
     for r in rows:
         is_s, oos_s, oos_nc = r["is_cost_on"], r["oos_cost_on"], r["oos_cost_off"]
         is_pf = f"{is_s['profit_factor']:.2f}" if is_s else "—"
@@ -109,31 +157,43 @@ def run(pair: str) -> None:
         oos_pf = f"{oos_s['profit_factor']:.2f}" if oos_s else "—"
         oos_ar = f"{oos_s['avg_r']:.3f}" if oos_s else "—"
         oos_pf_nc = f"{oos_nc['profit_factor']:.2f}" if oos_nc else "—"
+        pairs_col = f"{r['n_pairs_pf_gt1']}/{r['n_pairs_with_oos']}" if r['n_pairs_with_oos'] else "—"
         print(f"{r['type']:<24} {r['n_is']:>6} {is_pf:>7} {is_ar:>8}   "
-              f"{r['n_oos']:>6} {oos_pf:>7} {oos_ar:>9}  {oos_pf_nc:>16}")
+              f"{r['n_oos']:>6} {oos_pf:>7} {oos_ar:>9}  {oos_pf_nc:>16}  {pairs_col:>11}")
 
     # Overall pooled (all types together) -- the headline honest number.
     all_r_is = [r for i in instances if i["confirmTime"] < IS_OOS_CUTOFF_EPOCH
-               and (r := instance_r(i, cost_price, True)) is not None]
+               and (r := instance_r(i, i["_cost_price"], True)) is not None]
     all_r_oos = [r for i in instances if i["confirmTime"] >= IS_OOS_CUTOFF_EPOCH
-                and (r := instance_r(i, cost_price, True)) is not None]
+                and (r := instance_r(i, i["_cost_price"], True)) is not None]
     all_r_oos_nc = [r for i in instances if i["confirmTime"] >= IS_OOS_CUTOFF_EPOCH
-                    and (r := instance_r(i, cost_price, False)) is not None]
+                    and (r := instance_r(i, i["_cost_price"], False)) is not None]
     s_is, s_oos, s_oos_nc = summarize_r(all_r_is), summarize_r(all_r_oos), summarize_r(all_r_oos_nc)
-    print(f"\n[overall, all shape types pooled] "
+    print(f"\n[overall, all shape types pooled, {n_pairs} pairs] "
           f"IS n={s_is['n']} PF={s_is['profit_factor']:.2f} avgR={s_is['avg_r']:.3f}  |  "
           f"OOS n={s_oos['n']} PF={s_oos['profit_factor']:.2f} avgR={s_oos['avg_r']:.3f}  |  "
           f"OOS(no cost) PF={s_oos_nc['profit_factor']:.2f}")
     print("\n[caveat] fixed 0.5R stop/measured-move target for every shape type (patternEngine.js's own "
           "convention, not adaptive per-cluster) -- Phase 1 of this idea is deferred the same way it was "
           "for the touches motif, until a type here proves it has real signal to size risk around. "
-          "One pair, one timeframe (1h) -- not yet a broad universe check.")
+          "'pairs PF>1' requires >=5 OOS instances on that pair to count (else it's noise, not signal) -- "
+          "read it as a stability check across pairs, same discipline as every other AnalogML sweep.")
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--pair", required=True)
-    run(p.parse_args().pair)
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--pair", default=None)
+    g.add_argument("--all-pairs", action="store_true")
+    g.add_argument("--pairs", default=None, help="comma-separated")
+    args = p.parse_args()
+    if args.pair:
+        pairs = [args.pair]
+    elif args.pairs:
+        pairs = args.pairs.split(",")
+    else:
+        pairs = ALL_PAIRS
+    run(pairs)
 
 
 if __name__ == "__main__":
