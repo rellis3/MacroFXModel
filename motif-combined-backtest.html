@@ -52,6 +52,10 @@
   #chartTitle{font-size:13px;color:var(--fg);margin-bottom:8px}
   #tradeChart{border-radius:8px;overflow:hidden}
   #chartPlaceholder{color:var(--mut);font-size:12.5px;text-align:center;padding:50px 0}
+  #equityChart{margin-top:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:12px;color:var(--mut)}
+  .legend .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .mc-table td.hi{color:var(--up)}.mc-table td.lo{color:var(--dn)}
 </style>
 </head>
 <body>
@@ -71,8 +75,22 @@
     <div class="toprow" id="paramPills"></div>
 
     <div class="sec">Portfolio — the 2×2 (same motifs on every arm)</div>
-    <div class="panel"><table id="portfolioTbl"></table></div>
-    <div class="hint">Sharpe / max DD at matched risk sizing (1%/trade, 5% concurrent cap) — <b>total return isn't shown</b>: fixed-%-of-equity compounding over ~20k trades under mark-to-close produces absurd absolute numbers. Sharpe/DD is the comparison that means anything.</div>
+    <div class="panel" style="overflow-x:auto"><table id="portfolioTbl"></table></div>
+    <div class="hint">Standard quant results-card set at matched risk sizing (1%/trade, 5% concurrent cap). <b>CAGR and Calmar are inflated by the same effect as total return, not a separate trustworthy number</b>: fixed-%-of-equity compounding over ~20-28k trades produces triple/quadruple-digit CAGR and Calmar in the double digits — mathematically correct given the inputs, not a realistic forward expectation (uncapped position count/correlated concurrent risk beyond the 5% cap, no capacity limit modeled). Read CAGR/Calmar as a RELATIVE ranking across the 4 arms, same as Sharpe/Sortino — never as an absolute forecast.</div>
+
+    <div class="sec">Equity curves — all 4 arms, log scale</div>
+    <div class="panel">
+      <div class="legend" id="eqLegend"></div>
+      <div id="equityChart" style="height:320px"></div>
+    </div>
+    <div class="hint">Log scale on purpose: fixed-fractional compounding makes the 4 arms differ by orders of magnitude in absolute terms even though the Sharpe/DD gap between them is modest — a linear scale would show 3 flat lines and 1 line going to the moon. Read the SHAPE (drawdown depth/timing, smoothness), not the vertical distance between curves.</div>
+
+    <div class="sec">Monte Carlo — trade-order bootstrap (2,000 resamples, fixed seed)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>Combined (adaptive + HTF-sized)</h3><table class="mc-table" id="mcCombinedTbl"></table></div>
+      <div class="panel"><h3>Frozen grid baseline</h3><table class="mc-table" id="mcBaseTbl"></table></div>
+    </div>
+    <div class="hint">Resamples the CLOSED-TRADE r×size_mult sequence WITH REPLACEMENT and replays each draw as a sequential fixed-fractional equity curve — the classic trade-based Monte Carlo (MultiCharts/TradeStation-style), not a price-path simulation. Answers "how much does this result depend on the luck of this exact trade order/sample" — NOT a recheck of whether the portfolio mechanics (calendar concurrency, risk caps) were realistic; that's what the table above already tested. <b>The final-return percentiles inherit the same runaway fixed-% compounding as CAGR above</b> (read as relative bands, e.g. "how much wider is p95 vs p5", never as an absolute dollar forecast) — <b>the max-drawdown percentiles are the trustworthy, bounded half of this table</b> and the actual point of running it. Same seed every run — the bands don't change unless the underlying trades do.</div>
 
     <div class="sec">Combined signal — full history, pooled</div>
     <div class="cards" id="fullCards"></div>
@@ -126,6 +144,18 @@ window.oandaSymbolFor = (pair) => { try { return oandaSymbol(pair); } catch (e) 
 const $=id=>document.getElementById(id);
 const fmt=(v,d=3)=>v==null||Number.isNaN(v)?'—':(+v).toFixed(d);
 const pct=(v,d=1)=>v==null||Number.isNaN(v)?'—':(100*v).toFixed(d)+'%';
+// Fixed-%-of-equity compounding over ~20k+ trades produces multi-digit or
+// multi-trillion-% "returns" that are mathematically correct but unreadable
+// as a percentage — switch to a ×-multiplier with a K/M/B/T suffix once the
+// number of DIGITS would make the % form silly, same threshold either way.
+const bigPct=(v)=>{
+  if(v==null||Number.isNaN(v)) return '—';
+  const mult = v+1;
+  if(Math.abs(mult) < 100) return pct(v,0);
+  const abs = Math.abs(mult);
+  for(const [n,suf] of [[1e12,'T'],[1e9,'B'],[1e6,'M'],[1e3,'K']]) if(abs>=n) return (mult<0?'-':'')+(abs/n).toFixed(1)+suf+'×';
+  return mult.toFixed(0)+'×';
+};
 const cls=v=>v==null?'':(v>0?'pos':(v<0?'neg':''));
 const card=(k,v,c='')=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
 
@@ -177,24 +207,34 @@ function render(d){
     `risk ${pct(d.params.risk_pct)}/trade`, `max concurrent risk ${pct(d.params.max_concurrent_risk_pct)}`,
   ].map(p=>`<span class="pill">${p}</span>`).join('');
 
-  const arms = [
-    ['adaptive_htf_sized', 'ADAPTIVE + HTF-SIZED (the combination)', true],
-    ['adaptive_uniform', 'ADAPTIVE + UNIFORM', false],
-    ['frozen_htf_sized', 'FROZEN + HTF-SIZED', false],
-    ['frozen_uniform', 'FROZEN + UNIFORM (baseline)', false],
+  const ARMS = [
+    ['adaptive_htf_sized', 'ADAPTIVE + HTF-SIZED (the combination)', true, '#3fb950'],
+    ['adaptive_uniform', 'ADAPTIVE + UNIFORM', false, '#58a6ff'],
+    ['frozen_htf_sized', 'FROZEN + HTF-SIZED', false, '#e3b341'],
+    ['frozen_uniform', 'FROZEN + UNIFORM (baseline)', false, '#8b949e'],
   ];
-  let ph = '<tr><th>arm</th><th>Sharpe</th><th>max DD</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
-  for(const [key,label,winner] of arms){
+  let ph = '<tr><th>arm</th><th>Sharpe</th><th>Sortino</th><th>CAGR</th><th>Calmar</th>'
+         + '<th>max DD</th><th>DD days</th><th>skew</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
+  for(const [key,label,winner] of ARMS){
     const p = d.portfolio[key];
     if(!p) continue;
     ph += `<tr class="${winner?'winner':''}"><td>${label}</td>`
         + `<td class="${cls(p.sharpe-1)}">${fmt(p.sharpe,2)}</td>`
+        + `<td class="${cls(p.sortino-1)}">${fmt(p.sortino,2)}</td>`
+        + `<td class="${cls(p.cagr)}">${pct(p.cagr,1)}</td>`
+        + `<td class="${cls(p.calmar-1)}">${fmt(p.calmar,2)}</td>`
         + `<td class="${cls(p.max_dd)}">${pct(p.max_dd,1)}</td>`
+        + `<td>${p.max_dd_days}</td>`
+        + `<td class="${cls(p.skew)}">${fmt(p.skew,2)}</td>`
         + `<td>${pct(p.avg_utilization,1)}</td>`
         + `<td>${p.avg_pairwise_corr==null?'—':(p.avg_pairwise_corr>=0?'+':'')+fmt(p.avg_pairwise_corr,3)}</td>`
         + `<td>${p.n}</td></tr>`;
   }
   $('portfolioTbl').innerHTML = ph;
+
+  drawEquityChart(d, ARMS);
+  drawMonteCarlo(d.portfolio.adaptive_htf_sized.monte_carlo, 'mcCombinedTbl');
+  drawMonteCarlo(d.portfolio.frozen_uniform.monte_carlo, 'mcBaseTbl');
 
   $('fullCards').innerHTML = summaryCards(d.summary.full);
   $('isCards').innerHTML = summaryCards(d.summary.is);
@@ -260,6 +300,47 @@ function drawTrades(){
   });
   if(FILTERED.length>500) $('tradeTbl').insertAdjacentHTML('beforebegin',
     `<div class="hint">showing last 500 of ${FILTERED.length} trades in the table (CSV exports include ALL of them) — click any row to see it on the candle chart above</div>`);
+}
+
+// ── Equity curves: all 4 arms overlaid, log scale ──
+let eqChart=null;
+function drawEquityChart(d, ARMS){
+  $('equityChart').innerHTML='';
+  eqChart = LightweightCharts.createChart(document.getElementById('equityChart'), {
+    height: 320,
+    autoSize: true,
+    layout: { background:{color:'#161b22'}, textColor:'#c9d1d9' },
+    grid: { vertLines:{color:'#2b333d'}, horzLines:{color:'#2b333d'} },
+    rightPriceScale: { mode: LightweightCharts.PriceScaleMode.Logarithmic },
+    timeScale: { timeVisible:false },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  let legend = '';
+  for(const [key,label,winner,color] of ARMS){
+    const p = d.portfolio[key];
+    if(!p || !p.equity_curve || !p.equity_curve.length) continue;
+    const line = eqChart.addLineSeries({
+      color, lineWidth: winner?3:1.5,
+      lineStyle: winner?LightweightCharts.LineStyle.Solid:LightweightCharts.LineStyle.Dashed,
+    });
+    line.setData(p.equity_curve.map(([t,v])=>({ time:t, value:v })));
+    legend += `<span><span class="dot" style="background:${color}"></span>${label}</span>`;
+  }
+  $('eqLegend').innerHTML = legend;
+  eqChart.timeScale().fitContent();
+}
+
+// ── Monte Carlo: percentile bands from pylego.portfolio_sim.monte_carlo_bootstrap ──
+function drawMonteCarlo(mc, tblId){
+  if(!mc || !mc.n_sims){ $(tblId).innerHTML = '<tr><td class="muted">no Monte Carlo data</td></tr>'; return; }
+  const row = (label,p5,p50,p95,fmtFn) => `<tr><td>${label}</td>`
+    + `<td class="lo">${fmtFn(p5)}</td><td>${fmtFn(p50)}</td><td class="hi">${fmtFn(p95)}</td></tr>`;
+  $(tblId).innerHTML =
+    `<tr><th></th><th>p5</th><th>p50 (median)</th><th>p95</th></tr>`
+    + row('final return', mc.final_return_p5, mc.final_return_p50, mc.final_return_p95, bigPct)
+    + row('max drawdown', mc.max_dd_p5, mc.max_dd_p50, mc.max_dd_p95, v=>pct(v,1))
+    + `<tr><td>prob. of net loss</td><td colspan="3">${pct(mc.prob_net_loss,1)} across ${mc.n_sims.toLocaleString()} resamples of ${mc.n_trades.toLocaleString()} trades</td></tr>`
+    + `<tr><td>worst single draw</td><td colspan="3">max DD ${pct(mc.worst_max_dd,1)}</td></tr>`;
 }
 
 // ── Trade chart: candles + entry/stop/target lines + entry/exit markers ──

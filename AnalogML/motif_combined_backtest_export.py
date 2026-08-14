@@ -38,13 +38,19 @@ from motif_adaptive import collect_pair_motifs  # noqa: E402
 from motif_combined_portfolio_sim import build_htf_ctx, size_mult_for  # noqa: E402
 from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
 from pattern_scan import load_bars  # noqa: E402
-from portfolio_sim import ALL_PAIRS, pairwise_correlation_summary, sharpe_and_dd, simulate_portfolio  # noqa: E402
+from portfolio_sim import (  # noqa: E402
+    ALL_PAIRS,
+    pairwise_correlation_summary,
+    sharpe_and_dd,
+    simulate_portfolio,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from pylego.barrier_race import Entry, VariableEntry, mae_from_path, race_trades, race_trades_variable  # noqa: E402
 from pylego.json_safe import json_safe  # noqa: E402
+from pylego.portfolio_sim import daily_equity_series, monte_carlo_bootstrap  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
 IS_OOS_CUTOFF = "2023-01-01"
@@ -156,19 +162,40 @@ def split_summary(trades: list[dict], key: str = "r") -> dict:
 
 
 def portfolio_arm(trades: list[dict], key: str, size_mult_key: str | None,
-                  risk_pct: float, max_concurrent_risk_pct: float) -> dict:
+                  risk_pct: float, max_concurrent_risk_pct: float,
+                  mc_sims: int, mc_seed: int, equity_points: int) -> dict:
     """{pair, entry_date, exit_date, r, size_mult} view of the trade log for
     simulate_portfolio -- reads r from `key` and size_mult from
     `size_mult_key` (None -> forced 1.0), so the same trade rows drive all
-    four 2x2 arms without four separate trade lists."""
+    four 2x2 arms without four separate trade lists. Returns the full
+    standard quant results-card set (Sharpe/Sortino/CAGR/Calmar/max DD +
+    duration/skew from pylego.portfolio_sim.sharpe_and_dd), a downsampled
+    equity curve for charting (same daily series the stats were computed
+    from, never a second resample), and a trade-based Monte Carlo bootstrap
+    (pylego.portfolio_sim.monte_carlo_bootstrap) on the SAME per-trade r*
+    size_mult risk fractions this arm actually traded."""
     port_trades = [{"pair": t["pair"], "entry_date": pd.Timestamp(t["entry_date"]),
                     "exit_date": pd.Timestamp(t["exit_date"]),
                     "r": t[key], "size_mult": t[size_mult_key] if size_mult_key else 1.0} for t in trades]
     port = simulate_portfolio(port_trades, risk_pct, max_concurrent_risk_pct)
     stats = sharpe_and_dd(port["equity_curve"])
     corr = pairwise_correlation_summary(port_trades)
-    return {"sharpe": stats["sharpe"], "max_dd": stats["max_dd"], "total_return": stats["total_return"],
-            "avg_utilization": port["avg_utilization"], "avg_pairwise_corr": corr, "n": len(port_trades)}
+    mc = monte_carlo_bootstrap(port_trades, risk_pct, n_sims=mc_sims, seed=mc_seed)
+
+    daily = daily_equity_series(port["equity_curve"])
+    if len(daily) > equity_points:
+        # Evenly-spaced downsample for the chart -- always keep the last
+        # point so the final equity value on the chart matches the stats.
+        idx = np.unique(np.linspace(0, len(daily) - 1, equity_points).astype(int))
+        daily = daily.iloc[idx]
+    equity_curve_chart = [[d.strftime("%Y-%m-%d"), round(float(v), 6)] for d, v in daily.items()]
+
+    return {
+        **stats,
+        "avg_utilization": port["avg_utilization"], "avg_pairwise_corr": corr, "n": len(port_trades),
+        "equity_curve": equity_curve_chart,
+        "monte_carlo": mc,
+    }
 
 
 def main() -> None:
@@ -196,6 +223,9 @@ def main() -> None:
     p.add_argument("--account-size", type=float, default=10000.0)
     p.add_argument("--risk-pct", type=float, default=0.01)
     p.add_argument("--max-concurrent-risk-pct", type=float, default=0.05)
+    p.add_argument("--mc-sims", type=int, default=2000, help="Monte Carlo bootstrap resamples per arm")
+    p.add_argument("--mc-seed", type=int, default=20260814, help="fixed RNG seed -- reruns reproduce identical bands")
+    p.add_argument("--equity-points", type=int, default=1000, help="max points per arm in the exported equity curve")
     p.add_argument("--out", default=str(DATA_DIR / "motif_combined_backtest_export.json"))
     args = p.parse_args()
 
@@ -223,11 +253,12 @@ def main() -> None:
     overall_bench = split_summary(rows, "bench_r")
     per_pair = [{"pair": pair, **split_summary([r for r in rows if r["pair"] == pair], "r")} for pair in pairs]
 
+    arm_args = (args.risk_pct, args.max_concurrent_risk_pct, args.mc_sims, args.mc_seed, args.equity_points)
     portfolio = {
-        "adaptive_htf_sized": portfolio_arm(rows, "r", "size_mult", args.risk_pct, args.max_concurrent_risk_pct),
-        "adaptive_uniform": portfolio_arm(rows, "r", None, args.risk_pct, args.max_concurrent_risk_pct),
-        "frozen_htf_sized": portfolio_arm(rows, "bench_r", "size_mult", args.risk_pct, args.max_concurrent_risk_pct),
-        "frozen_uniform": portfolio_arm(rows, "bench_r", None, args.risk_pct, args.max_concurrent_risk_pct),
+        "adaptive_htf_sized": portfolio_arm(rows, "r", "size_mult", *arm_args),
+        "adaptive_uniform": portfolio_arm(rows, "r", None, *arm_args),
+        "frozen_htf_sized": portfolio_arm(rows, "bench_r", "size_mult", *arm_args),
+        "frozen_uniform": portfolio_arm(rows, "bench_r", None, *arm_args),
     }
 
     out = {
@@ -240,6 +271,7 @@ def main() -> None:
             "timeframe": args.timeframe, "account_size": args.account_size, "risk_pct": args.risk_pct,
             "max_concurrent_risk_pct": args.max_concurrent_risk_pct,
             "is_oos_cutoff": IS_OOS_CUTOFF,
+            "mc_sims": args.mc_sims, "mc_seed": args.mc_seed,
         },
         "caveat": (
             "Combined signal: adaptive per-category MAE/MFE SL/TP (validated (35,35)) stacked with "
