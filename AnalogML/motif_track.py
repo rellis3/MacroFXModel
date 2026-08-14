@@ -297,33 +297,42 @@ def _htf_lean_for_entry(pair: str, entry_time) -> int | None:
 
 
 def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None) -> str:
-    """Telegram HTML for one new confirmed motif. Shows the TRACKED
-    frozen-grid entry/SL/TP (the unchanged, validated record everything in
-    README.md/LEGO_MODULES.md is judged against) alongside the adaptive
-    ATR-scaled sizing and 1D HTF read (both separately validated, 2026-08-13)
-    -- for a human deciding whether/how to size a manual trade, not a claim
-    that either replaces the tracked signal."""
+    """Telegram HTML for one new confirmed motif. Two sizing lines, not
+    three: "Tracked (frozen grid)" stays -- it is the actual record
+    motif_trades.json logs and the ONLY thing every validated Sharpe/PF
+    number in README.md/LEGO_MODULES.md is judged against, so it's kept as
+    a compact anchor a human can eyeball against the recommendation, never
+    silently dropped. The former separate "Adaptive" line is gone -- it was
+    pure duplication, the exact same SL/TP now appear inside "Combined"
+    below with the HTF-driven size multiplier folded in as well (no more
+    separate "1D HTF: ..." line to mentally combine yourself). "Combined"
+    is the STACKED adaptive-SL/TP + HTF-conflict-sizing result
+    `motif_combined_portfolio_sim.py` validated at 26-pair portfolio scale
+    (beats either mechanism alone on both Sharpe and max DD -- see
+    AnalogML/README.md). Still NOT applied to the tracked trade itself --
+    informational only, for a human sizing a manual trade."""
     pip = pip_size(pair)
     direction = m.direction
     entry = t["entry_price"]
     entry_atr = atr_arr[m.confirm_idx] if m.confirm_idx < len(atr_arr) else None
 
-    adaptive_line = ""
+    combined_line = ""
     mults = ADAPTIVE_SIZE_ATR_MULT.get((m.n_touches, m.is_top))
     if mults and entry_atr and entry_atr > 0:
         sl_mult, tp_mult = mults
         adaptive_sl_dist, adaptive_tp_dist = sl_mult * entry_atr, tp_mult * entry_atr
         adaptive_sl = entry - direction * adaptive_sl_dist
         adaptive_tp = entry + direction * adaptive_tp_dist
-        adaptive_line = (f"Adaptive: SL {adaptive_sl:.5f} ({adaptive_sl_dist / pip:.1f}p, {sl_mult}xATR) "
-                         f"· TP {adaptive_tp:.5f} ({adaptive_tp_dist / pip:.1f}p, {tp_mult}xATR)\n")
-
-    if htf_lean is None:
-        htf_line = "1D HTF: no recent read"
-    elif htf_lean == direction:
-        htf_line = "1D HTF: AGREE (full size)"
-    else:
-        htf_line = "1D HTF: CONFLICT — consider ~0.5x size (historically ~half the edge)"
+        if htf_lean is None:
+            size_mult, htf_reason = 1.0, "no 1D read"
+        elif htf_lean == direction:
+            size_mult, htf_reason = 1.0, "1D AGREE"
+        else:
+            size_mult, htf_reason = HTF_CONFLICT_SIZE_MULT, "1D CONFLICT"
+        combined_line = (f"\U0001f3c6 <b>Combined (validated best):</b> "
+                         f"SL {adaptive_sl:.5f} ({adaptive_sl_dist / pip:.1f}p) "
+                         f"· TP {adaptive_tp:.5f} ({adaptive_tp_dist / pip:.1f}p) "
+                         f"· size {size_mult:.1f}x ({htf_reason})\n")
 
     conf_line = ""
     if confidence:
@@ -337,7 +346,7 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
            f"Entry: {entry:.5f}\n"
            f"Tracked (frozen grid): SL {t['sl_price']:.5f} ({t['sl_dist'] / pip:.0f}p) "
            f"· TP {t['tp_price']:.5f} ({tp_dist_pips:.0f}p, {t['tp_r']}R)\n"
-           f"{adaptive_line}{htf_line}\n{conf_line}"
+           f"{combined_line}{conf_line}"
            f"<i>Research signal — not a validated live edge. See AnalogML/README.md.</i>")
 
 
