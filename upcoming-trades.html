@@ -111,6 +111,11 @@ let snaps = {};   // pair -> state response
 // wasn't present in the PRIOR successful load gets tagged NEW for one render pass.
 // Suppressed on the very first load (everything would look "new" otherwise).
 let prevZoneKeys = null, newZoneKeys = new Set();
+// Guards a real race (same fix as trade-cards.html): a mode switch, the 45s
+// auto-tick, or a manual Refresh can all fire loadAll() again before an earlier,
+// slower call is done. Without this, a stale call's render() can land AFTER a
+// newer one and silently clobber it. Each call captures its own generation.
+let loadGen = 0;
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -141,9 +146,11 @@ async function warmAll() {
 }
 
 async function loadAll() {
+  const myGen = ++loadGen;
   const mode = $('mode').value;
   $('status').textContent = 'loading snapshots…';
   const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}?mode=${mode}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
+  if (myGen !== loadGen) return;   // a newer loadAll() started while this one was in flight — bail, don't clobber it
   snaps = {};
   for (const [p, s] of results) if (s.ok) snaps[p] = s;
   const warmed = Object.keys(snaps).length;

@@ -48,12 +48,19 @@
   .tc-why li{margin:1px 0 1px 14px}
   .tc-chip.new{color:#fff;background:var(--blue);border-color:var(--blue)}
   .tc-asof{font-size:10.5px;color:var(--text3)}
+  .tc-others{border-top:1px solid var(--border);padding-top:6px;margin-top:2px}
+  .tc-others-hd{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .tc-other-row{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:3px 0}
+  .tc-other-row button{padding:2px 8px;font-size:10.5px;margin-left:auto}
+  .tc-other-detail{font-size:11px;color:var(--text2);padding:4px 0 6px;border-bottom:1px dashed var(--border)}
+  .tc-other-detail .decision-big{font-size:14px;font-weight:800}
+  .go{color:var(--green)} .skipd{color:var(--red)}
 </style>
 </head>
 <body>
 
 <h1>🃏 Trade Cards <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
-<div class="sub">One card per pair: live chart, nearest zone, pip countdown, confidence, and the TP/SL the backtest is actually graded on. List view: <a href="upcoming-trades.html">upcoming-trades.html</a></div>
+<div class="sub">One card per pair: live chart, nearest zone, pip countdown, confidence, and the TP/SL the backtest is actually graded on — plus every other qualifying zone that session, listed below the chart. List view: <a href="upcoming-trades.html">upcoming-trades.html</a></div>
 
 <div class="honesty">
   <b>TP/SL convention.</b> The Telegram alert and the raw <code>decide()</code> call never print a price for
@@ -106,6 +113,13 @@ let fastTimer = null, fullTimer = null, lastFullLoad = null;
 // suppressed on the first load. A price move that crosses into a new zone (or a
 // session_hilo/ladder shift) flips this pair's key, which flags NEW for one render.
 let prevBestKey = null, newPairs = new Set();
+// Guards a real race: the page auto-loads on init, and a mode switch / the 3-min
+// full tick / a manual refresh can all fire loadAll() again before an earlier,
+// slower call (e.g. a live-mode load stuck on OANDA) has resolved. Without this,
+// the stale call's render() can land AFTER the newer one and silently clobber it —
+// wiping out whatever the trader was just looking at. Each call captures its own
+// generation; only the most recent one is allowed to render.
+let loadGen = 0;
 const FAST_TICK_MS = 60_000;    // just move the latest candle (cheap, same cadence vol-forecast-v2 uses)
 const FULL_TICK_MS = 180_000;   // re-warm snapshots, re-score zones/confidence, redraw everything
 
@@ -131,16 +145,20 @@ async function warmAll() {
 }
 
 async function loadAll() {
+  const myGen = ++loadGen;
   const mode = $('mode').value;
   $('status').textContent = 'loading snapshots…';
   const results = await Promise.all(PAIRS.map(p => api(`/api/trade-decision/state/${p}?mode=${mode}`).then(s => [p, s]).catch(() => [p, { ok: false }])));
+  if (myGen !== loadGen) return;   // a newer loadAll() started while this one was in flight — bail, don't clobber it
   snaps = {}; for (const [p, s] of results) if (s.ok) snaps[p] = s;
   $('status').textContent = `${Object.keys(snaps).length}/${PAIRS.length} pairs have a ${mode} snapshot — scoring nearest zones…`;
 
-  // Preview-decide the nearest qualifying zone per pair (bounded to ~32 calls,
-  // each a pure snapshot lookup — no OANDA hit since the snapshot's already warm).
-  // preview:true so these hypothetical "what if price were here" reads never
-  // pollute decisionLog.js's training set (same discipline as upcoming-trades.html).
+  // Collect EVERY qualifying zone per pair, nearest first — not just the closest
+  // one. Every session typically has several (upcoming-trades.html already lists
+  // them all); the card only auto-scores the nearest ("primary") to keep this page
+  // fast, but the rest are kept and shown below the chart so nothing is silently
+  // dropped. preview:true so this hypothetical "what if price were here" read
+  // never pollutes decisionLog.js's training set (same discipline throughout).
   const maxSigma = parseFloat($('maxSigma').value) || 1.5;
   const minConf = parseInt($('minConf').value) || 1;
   decides = {};
@@ -148,20 +166,23 @@ async function loadAll() {
   for (const [pair, s] of Object.entries(snaps)) {
     const sigmaAbs = (s.sigmaDaily ?? 0) * (s.dayOpen ?? s.price ?? 1);
     if (!sigmaAbs || !s.price) continue;
-    let best = null, bestD = Infinity;
+    const qualifying = [];
     for (const z of (s.zones ?? [])) {
       if ((z.count ?? 0) < minConf) continue;
       const d = (z.price - s.price) / sigmaAbs;
       if (Math.abs(d) > maxSigma) continue;
-      if (Math.abs(d) < Math.abs(bestD)) { best = z; bestD = d; }
+      qualifying.push({ zone: z, distSigma: d });
     }
-    if (!best) continue;
+    if (!qualifying.length) continue;
+    qualifying.sort((a, b) => Math.abs(a.distSigma) - Math.abs(b.distSigma));
+    const [primary, ...others] = qualifying;
     jobs.push(api('/api/trade-decision/decide', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ pair, price: best.price, mode, preview: true }) })
-      .then(r => { decides[pair] = { r, zone: best, distSigma: bestD, sigmaAbs }; })
+      body: JSON.stringify({ pair, price: primary.zone.price, mode, preview: true }) })
+      .then(r => { decides[pair] = { r, zone: primary.zone, distSigma: primary.distSigma, sigmaAbs, others }; })
       .catch(() => {}));
   }
   await Promise.all(jobs);
+  if (myGen !== loadGen) return;   // same guard — a newer load may have finished first during these decide() calls
   $('status').textContent = `${Object.keys(snaps).length}/${PAIRS.length} snapshots · ${Object.keys(decides).length} scored zones`;
 
   const curBestKey = {};
@@ -210,7 +231,7 @@ function buildCard(pair, d) {
     card.innerHTML = `<div class="tc-hdr"><span class="tc-pair">${pair.toUpperCase()}</span></div><div class="muted">no qualifying zone within the current filter</div>`;
     return card;
   }
-  const { r, zone, distSigma, sigmaAbs } = d;
+  const { r, zone, distSigma, sigmaAbs, others } = d;
   const go = r.decision === 'go';
   const p = r.probability;
   const ts = tpSl(zone.price, r.direction, sigmaAbs);
@@ -244,9 +265,49 @@ function buildCard(pair, d) {
     <div><span class="tc-stars" title="${(zone.sources ?? []).join(', ')}">${stars}</span> <span class="tc-sources">${(zone.sources ?? []).slice(0, 4).join(', ')} · score ${zone.score}</span></div>
     ${(r.reasons ?? []).length ? `<div class="tc-why muted">reasons: ${r.reasons.join(', ')}</div>` : ''}
     ${(r.top_factors ?? []).length ? `<ul class="tc-why">${r.top_factors.slice(0, 4).map(f => `<li>${f}</li>`).join('')}</ul>` : ''}
+    ${(others ?? []).length ? otherZonesHtml(pair, others, dp) : ''}
   `;
   card._meta = { pair, zone, ts, sigmaAbs, dp };
   return card;
+}
+
+// The chart/countdown only ever show the nearest zone (one primary per card, for
+// readability) — but every OTHER qualifying zone this session is listed here too,
+// unscored until clicked (Preview ▸), same discipline/cost as upcoming-trades.html:
+// scoring all of them eagerly would multiply the decide() call count for no benefit
+// until the trader actually wants to look at one.
+function otherZonesHtml(pair, others, dp) {
+  const rows = others.map((o, i) => {
+    const id = `oz-${pair}-${i}`;
+    const d = (Math.abs(o.distSigma)).toFixed(2) + 'σ';
+    const stars = '★'.repeat(Math.min(5, o.zone.count ?? 0)) + '☆'.repeat(Math.max(0, 5 - (o.zone.count ?? 0)));
+    return `<div class="tc-other-row">
+        <span>${o.zone.price.toFixed(dp)}</span>
+        <span class="muted">${o.distSigma >= 0 ? '+' : ''}${d}</span>
+        <span class="tc-stars" title="${(o.zone.sources ?? []).join(', ')}">${stars}</span>
+        <button class="ghost" onclick="previewOther('${id}','${pair}',${o.zone.price})">Preview ▸</button>
+      </div>
+      <div class="tc-other-detail" id="${id}" style="display:none"></div>`;
+  }).join('');
+  return `<div class="tc-others"><div class="tc-others-hd">${others.length} other zone(s) this session</div>${rows}</div>`;
+}
+
+async function previewOther(id, pair, price) {
+  const el = $(id);
+  el.style.display = 'block';
+  el.innerHTML = '<span class="muted">scoring (preview — not logged)…</span>';
+  try {
+    const mode = $('mode').value;
+    const r = await api('/api/trade-decision/decide', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pair, price, mode, preview: true }) });
+    if (r.error && !r.decision) { el.innerHTML = `<span class="muted">${r.error}</span>`; return; }
+    const go = r.decision === 'go';
+    const p = r.probability;
+    el.innerHTML = `<span class="decision-big ${go ? 'go' : 'skipd'}">${go ? '✓ GO' : '✗ SKIP'}</span>
+      <span class="muted">— ${r.direction ?? ''} ${r.action ?? ''} · ${p != null ? (100 * p).toFixed(1) + '%' : 'gated'} · size ×${r.size_multiplier ?? 0}</span>
+      ${(r.reasons ?? []).length ? `<div class="muted">reasons: ${r.reasons.join(', ')}</div>` : ''}
+      <div class="muted" style="margin-top:2px">preview only — not written to the decision log</div>`;
+  } catch (e) { el.innerHTML = `<span class="muted">${e.message ?? e}</span>`; }
 }
 
 // Batch-load charts (mirrors vol-forecast-v2.html's pattern) so we don't fire 32
