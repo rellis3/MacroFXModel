@@ -2,7 +2,8 @@
 import numpy as np
 import pandas as pd
 
-from barrier_race import Entry, VariableEntry, excursion, race_grid, race_trades, race_trades_variable, race_trailing
+from barrier_race import (Entry, VariableEntry, excursion, mae_from_path, race_grid,
+                          race_trades, race_trades_variable, race_trailing)
 
 
 def _bars(opens, highs, lows, closes):
@@ -312,6 +313,48 @@ def test_excursion_respects_min_bars_ahead():
     bars = _bars(opens=[100], highs=[100], lows=[100], closes=[100])
     entries = [Entry(idx=0, direction=1)]
     assert excursion(bars, entries, max_bars_ahead=10, min_bars_ahead=5) == []
+
+
+def test_mae_from_path_long_uncapped():
+    # Long from 100, path dips to a low of 97 before exit at bar 2 -- MAE=3,
+    # well under sl_price=10, so uncapped.
+    bars = _bars(
+        opens=[100, 98, 99],
+        highs=[100, 99, 100],
+        lows=[100, 97, 98],
+        closes=[100, 98, 99],
+    )
+    mae_r, mae_pct = mae_from_path(bars, idx=0, exit_idx=2, direction=1, entry_price=100.0, sl_price=10.0)
+    assert abs(mae_r - 0.3) < 1e-9      # 3 / 10
+    assert abs(mae_pct - 3.0) < 1e-9    # 3 / 100 * 100
+
+
+def test_mae_from_path_short_mirrors_direction():
+    # Short from 100, path spikes to a high of 104 before exit -- MAE=4.
+    bars = _bars(
+        opens=[100, 103, 101],
+        highs=[100, 104, 102],
+        lows=[100, 102, 100],
+        closes=[100, 103, 101],
+    )
+    mae_r, mae_pct = mae_from_path(bars, idx=0, exit_idx=2, direction=-1, entry_price=100.0, sl_price=10.0)
+    assert abs(mae_r - 0.4) < 1e-9      # 4 / 10
+    assert abs(mae_pct - 4.0) < 1e-9
+
+
+def test_mae_from_path_capped_at_sl():
+    # Long from 100, sl_price=5 (SL at 95), but the exit bar's own low
+    # overshoots to 90 (a big wick past the touch point within that bar) --
+    # MAE must be capped at the SL distance, never overstating realized risk.
+    bars = _bars(
+        opens=[100, 96],
+        highs=[100, 97],
+        lows=[100, 90],
+        closes=[100, 96],
+    )
+    mae_r, mae_pct = mae_from_path(bars, idx=0, exit_idx=1, direction=1, entry_price=100.0, sl_price=5.0)
+    assert abs(mae_r - 1.0) < 1e-9      # capped at sl_price, not 10
+    assert abs(mae_pct - 5.0) < 1e-9    # 5 / 100 * 100, not 10
 
 
 if __name__ == '__main__':

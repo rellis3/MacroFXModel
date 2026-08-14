@@ -47,7 +47,8 @@ const RECAL_HL = { fx: 0.85, commodity: 0.878, index: 1.0 };   // H-L recal fact
 const _class = pair => { const t = pairType(pair); return t === 'index' ? 'index' : t === 'gold' ? 'commodity' : 'fx'; };
 
 export function forecastAccuracy(intraday, opts = {}) {
-  const { pair = 'EURUSD', band = 0.05, naiveWin = 20, minLookback = 40, minBarsPerDay = 6, revFrac = 0.25 } = opts;
+  const { pair = 'EURUSD', band = 0.05, naiveWin = 20, minLookback = 40, minBarsPerDay = 6, revFrac = 0.25,
+         forgeByDate = null } = opts;
   const lond = buildLondonDaily(intraday);
   if (lond.length < 120) return { insufficient: true, nDays: lond.length };
   const cls = _class(pair), pip = pipSize(pair);
@@ -57,6 +58,16 @@ export function forecastAccuracy(intraday, opts = {}) {
 
   const acc = {}; for (const s of [...setNames, 'naive']) acc[s] = { hlHit: 0, hlExc: 0, ocHit: 0, ocExc: 0 };
   let nA = 0;
+  // Forge (`forge/vol.py`, a walk-forward-SELECTED estimator + width calibrated
+  // to REALIZED range rather than a fixed multiplier) is a DIFFERENT source, not
+  // one more `sets[s].hl × sp` entry — it predicts its own hl/oc directly per
+  // day, from a static export (`forge/out_vol/compare_export.json`, no live
+  // credentials needed for this half). Tracked with its OWN day count
+  // (`nAForge`) since its exported OOS window rarely lines up exactly with
+  // `minLookback`/yz30's own warm-up — reporting it against `nA` would silently
+  // imply full coverage it doesn't have.
+  const accForge = { hlHit: 0, hlExc: 0, ocHit: 0, ocExc: 0 };
+  let nAForge = 0;
   const realizedHL = [];                                     // for the naive trailing-median benchmark
   const hlOverSig = [], ocOverSig = [];                      // realized ÷ σ → the exceed-neutral constant
 
@@ -91,6 +102,23 @@ export function forecastAccuracy(intraday, opts = {}) {
       if (rOC > 0) ocOverSig.push(rOC / sp);
     }
 
+    // ── Forge: only on days its export actually covers (its own OOS window,
+    // not `minLookback`) — day boundary note: `d.date` here is LONDON calendar
+    // date; forge's export is built on UTC-midnight days (`forge/bars.py`'s
+    // `day_start_hour` is a fixed UTC offset, not DST-aware London midnight).
+    // The two agree on the calendar date the overwhelming majority of days;
+    // near the boundary they can differ by one day. Disclosed here rather than
+    // silently treated as exact — a research/comparison column, not a live
+    // trading input, so this approximation is acceptable but not invisible.
+    const fr = forgeByDate ? forgeByDate[d.date] : null;
+    if (fr && fr.forge_hl > 0) {
+      nAForge++;
+      const fHL = fr.forge_hl, fOC = fr.forge_oc;
+      if (Math.abs(rHL - fHL) / fHL <= band) accForge.hlHit++;
+      if (rHL > fHL) accForge.hlExc++;
+      if (fOC > 0) { if (Math.abs(rOC - fOC) / fOC <= band) accForge.ocHit++; if (rOC > fOC) accForge.ocExc++; }
+    }
+
     // ── Panel B: exhaustion / fade at the Feller median line ──
     if (i >= minLookback && sig > 0 && d.bars && d.bars.length >= minBarsPerDay && d.open > 0) {
       nB++;
@@ -122,6 +150,17 @@ export function forecastAccuracy(intraday, opts = {}) {
     ocHit5: rate(acc[s].ocHit, nA), ocExceed: rate(acc[s].ocExc, nA),
   };
   panelA.naive = { hlHit5: rate(acc.naive.hlHit, nA), hlExceed: rate(acc.naive.hlExc, nA) };
+  // hl_const/oc_const are null for forge — unlike feller/cog/recal it isn't ONE
+  // fixed multiplier, it's a per-day estimator+width selection that can change
+  // fold to fold (see `forge_estimator` in the export for which one was live on
+  // any given day). nDays is reported explicitly since forge's coverage is
+  // usually LESS than nA (its export excludes the initial training window a
+  // walk-forward fold needs before it has anything OOS to say).
+  panelA.forge = nAForge > 0 ? {
+    hl_const: null, oc_const: null, nDays: nAForge,
+    hlHit5: rate(accForge.hlHit, nAForge), hlExceed: rate(accForge.hlExc, nAForge),
+    ocHit5: rate(accForge.ocHit, nAForge), ocExceed: rate(accForge.ocExc, nAForge),
+  } : null;
 
   // ── Calibration proposal: the exceed-neutral constants (50% exceed by construction).
   // These are the data-derived median constants to feed the export / sizing — they fix

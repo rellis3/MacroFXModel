@@ -288,8 +288,13 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   const line = lad.asia.lines.find(l => l.label === 'A_1');
   const before = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec - 600) * 1000 });
   ok(before.decision === 'skip' && before.reasons.includes('no_level_nearby'), 'ladder invisible BEFORE Asia closes');
-  const after = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec + 600) * 1000 });
-  ok(after.probability != null && after.zone.sources.includes('asia_ladder'), 'ladder line scores as a zone after validFrom');
+  // A raw, UNCONFLUENCED ladder rung (no prev-Asia alignment in this `lad`) must
+  // stay invisible even after validFrom — LADDER_ZONE_STYLE deliberately only
+  // scores asiaAlign/mondayAlign (confluence), never the raw grid on its own
+  // ("All Levels" mode is noise; only "Strong Levels" confluence earns a zone).
+  const afterUnaligned = decide(zoneless, { price: line.price }, { nowMs: (lad.asia.validFromSec + 600) * 1000 });
+  ok(afterUnaligned.decision === 'skip' && afterUnaligned.reasons.includes('no_level_nearby'),
+    'raw ladder rung with NO cross-session confluence still does not score as a zone');
 
   // prev-Asia ladder + the 2-pip cross-session alignment (detectConfluencesCore)
   const prevAligned = []; for (let m = 0; m < 360; m++) prevAligned.push(mk(t0 - 86400 + m * 60, 1.0, 1.002, 0.998, 1.001));
@@ -298,6 +303,13 @@ const snap = syntheticSnapshot('eurusd', { seed: 7, nowMs: NOW, newsInMin: null 
   ok(lad2.asiaAlign?.lines?.length > 0, `identical ranges align (${lad2.asiaAlign?.lines?.length} clusters)`);
   ok(lad2.asiaAlign.lines.every(l => l.tight === true), 'exact alignment flags tight (same fib / ≤10% of 2 pips)');
   ok(lad2.asiaAlign.validFromSec === lad2.asia.validFromSec, 'alignment needs today\'s lines → inherits Asia validFrom');
+
+  // An ALIGNED line (today vs yesterday agree) DOES score — confluence is the bar.
+  const zoneless2 = { ...snap, zones: [], ladders: lad2, intraday: null };
+  const alignedLine = lad2.asiaAlign.lines[0];
+  const afterAligned = decide(zoneless2, { price: alignedLine.price }, { nowMs: (lad2.asiaAlign.validFromSec + 600) * 1000 });
+  ok(afterAligned.probability != null && afterAligned.zone.sources.includes('asia_prev_align'),
+    'cross-session-confluent ladder line scores as a zone after validFrom');
   // shift yesterday's range OFF-GRID (52.5 pips — not a multiple of the ladder
   // half-step, or the dense grids would legitimately overlap) → no alignment
   const prevFar = prevAligned.map(b => ({ ...b, open: b.open + 0.00525, high: b.high + 0.00525, low: b.low + 0.00525, close: b.close + 0.00525 }));

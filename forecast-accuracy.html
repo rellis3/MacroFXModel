@@ -64,15 +64,19 @@ function render(pp, log){
     <th colspan="2" style="text-align:center">Feller 1.57</th>
     <th colspan="2" style="text-align:center">COG 1.56</th>
     <th colspan="2" style="text-align:center">Recal (tighter)</th>
+    <th colspan="2" style="text-align:center;color:#7dd3fc" title="forge/vol.py — walk-forward-selected estimator, width fit to REALIZED range. n varies by pair (its own OOS window, not this table's minLookback).">Forge</th>
     <th>Naive exceed</th></tr>
-    <tr><th></th><th>HL hit±</th><th>HL exceed</th><th>HL hit±</th><th>HL exceed</th><th>HL hit±</th><th>HL exceed</th><th></th></tr>`;
+    <tr><th></th><th>HL hit±</th><th>HL exceed</th><th>HL hit±</th><th>HL exceed</th><th>HL hit±</th><th>HL exceed</th><th style="color:#7dd3fc">HL hit±</th><th style="color:#7dd3fc">HL exceed</th><th></th></tr>`;
   for(const [name,r] of rows){
     const A=r.panelA;
     const cell = s => `<td>${fmt(A[s].hlHit5)}%</td><td class="${excCls(A[s].hlExceed)}">${fmt(A[s].hlExceed)}%</td>`;
-    h += `<tr><td><strong>${name}</strong> <span class="muted">${r.cls}</span></td>${cell('feller')}${cell('cog')}${cell('recal')}
+    const cellForge = A.forge
+      ? `<td style="color:#7dd3fc">${fmt(A.forge.hlHit5)}%</td><td class="${excCls(A.forge.hlExceed)}" title="n=${A.forge.nDays} OOS days">${fmt(A.forge.hlExceed)}%</td>`
+      : `<td class="muted">—</td><td class="muted" title="no forge export coverage for this pair/date range">—</td>`;
+    h += `<tr><td><strong>${name}</strong> <span class="muted">${r.cls}</span></td>${cell('feller')}${cell('cog')}${cell('recal')}${cellForge}
       <td class="${excCls(A.naive.hlExceed)}">${fmt(A.naive.hlExceed)}%</td></tr>`;
   }
-  h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>HL exceed</b> = % of days realized H-L exceeded that calibration's median. <span class="pos">Green</span> = within 8pts of the ideal 50% (well-calibrated); <span class="amber">amber</span> = 8–20 off; <span class="neg">red</span> = ≥20 off (line too wide if &lt;50, too tight if &gt;50). <b>HL hit±</b> = the colleague's ±band accuracy (low in absolute terms by construction — read relative). Rows sorted by how close Feller's exceed is to 50%. O-C columns omitted for width — in the raw JSON per set (ocExceed).</div></div>`;
+  h += `</table><div class="muted" style="font-size:10px;margin-top:4px"><b>HL exceed</b> = % of days realized H-L exceeded that calibration's median. <span class="pos">Green</span> = within 8pts of the ideal 50% (well-calibrated); <span class="amber">amber</span> = 8–20 off; <span class="neg">red</span> = ≥20 off (line too wide if &lt;50, too tight if &gt;50). <b>HL hit±</b> = the colleague's ±band accuracy (low in absolute terms by construction — read relative). <span style="color:#7dd3fc">Forge</span> is not one fixed multiplier like the other three — a walk-forward-SELECTED estimator (window/half-life) with width fit to realized range per fold; hover its exceed cell for the OOS day count actually behind it. Rows sorted by how close Feller's exceed is to 50%. O-C columns omitted for width — in the raw JSON per set (ocExceed).</div></div>`;
 
   // ── Calibration proposal: the exceed-neutral constants (fixes every class incl. indices) ──
   const byCls = {};

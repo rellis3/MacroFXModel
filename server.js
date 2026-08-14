@@ -13665,6 +13665,59 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
   }
 });
 
+// Forge estimator comparison — a WALK-FORWARD OOS volatility forecast, read
+// from a static file `forge/` exports offline (see `forge/export_vol_compare.
+// py` and `forge/vol.py`'s module docstring for the estimator + methodology).
+// Deliberately separate from `/api/vol-forecast/compare/:date` above — that
+// endpoint reads live KV populated by the running scheduler; this one reads
+// a committed JSON snapshot and touches none of that endpoint's state, so a
+// bug or a stale export here cannot affect the live-KV-backed comparison.
+// GET /api/vol-forecast/compare-forge/:date
+const _FORGE_VOL_PATH = path.join(__dirname, 'forge', 'out_vol', 'compare_export.json');
+let _forgeVolCache = null, _forgeVolCacheAt = 0;
+function _loadForgeVolCompare() {
+  if (_forgeVolCache && Date.now() - _forgeVolCacheAt < 300_000) return _forgeVolCache;
+  try { _forgeVolCache = JSON.parse(fs.readFileSync(_FORGE_VOL_PATH, 'utf8')); _forgeVolCacheAt = Date.now(); }
+  catch { _forgeVolCache = null; }
+  return _forgeVolCache;
+}
+app.get('/api/vol-forecast/compare-forge/:date', (req, res) => {
+  const date = req.params.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const day = all[date];
+  if (!day) return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${date} (outside the exported walk-forward window, or the export needs refreshing)` });
+  res.json({ ok: true, date, rows: day });
+});
+
+// Forge comparison, ONE pair across a date RANGE — the day-by-day "how did it
+// cope over multiple days" view `compare-forge/:date` can't answer (it's a
+// single-date lookup). Same static export, same zero-risk-to-live-KV
+// separation as the endpoint above; just a different slice of the same file.
+// GET /api/vol-forecast/compare-forge/range?pair=gold&from=2024-01-01&to=2024-06-01
+app.get('/api/vol-forecast/compare-forge/range', (req, res) => {
+  const pair = String(req.query.pair || '').toLowerCase();
+  const from = String(req.query.from || '');
+  const to = String(req.query.to || '');
+  if (!pair) return res.status(400).json({ ok: false, error: 'pair is required' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ ok: false, error: 'from/to must be YYYY-MM-DD' });
+  }
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const rows = [];
+  for (const date of Object.keys(all).sort()) {
+    if (date < from || date > to) continue;
+    const v = all[date]?.[pair];
+    if (v) rows.push({ date, ...v });
+  }
+  if (!rows.length) {
+    return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${pair} in [${from}, ${to}]` });
+  }
+  res.json({ ok: true, pair, from, to, rows });
+});
+
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
 // GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
 app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
@@ -17535,12 +17588,26 @@ app.post('/api/forecast-accuracy/run', express.json({ limit: '16kb' }), (req, re
       for (const cfg of insts) {
         try {
           const { bars, src } = await _intradayForAB(cfg);
-          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name });
+          // Reuses the SAME cached export `/api/vol-forecast/compare-forge/:date`
+          // reads (`_loadForgeVolCompare()`) — one file, one 5-min cache, read
+          // twice from two different routes rather than loaded/parsed twice.
+          const forgeAll = _loadForgeVolCompare();
+          const key = cfg.name.toLowerCase();
+          let forgeByDate = null;
+          if (forgeAll) {
+            forgeByDate = {};
+            for (const [date, byPair] of Object.entries(forgeAll)) {
+              const v = byPair[key];
+              if (v) forgeByDate[date] = v;
+            }
+          }
+          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name, forgeByDate });
           if (fa.insufficient) { log.push(`${cfg.name}: insufficient (${fa.nDays}d)`); continue; }
           fa.src = src;
           perPair[cfg.name] = fa;
           const A = fa.panelA, B = fa.panelB;
-          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}% · reversal ${B.reversalOverMedian}× median (src ${src})`);
+          const forgeLog = A.forge ? ` / forge ${A.forge.hlExceed}% (n=${A.forge.nDays})` : '';
+          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}%${forgeLog} · reversal ${B.reversalOverMedian}× median (src ${src})`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);

@@ -234,3 +234,44 @@ is shipped live on the **vol-forecast level alert** (`volLevelAlertCore.decideAt
 computed cross-pair in `featureState`'s slow loop). So the Upcoming Trades
 dashboard (`upcoming-trades.html`), which reads TDE snapshots, does not yet see
 this filter — only the Telegram alert does.
+
+## Asia/Monday ladder: dropped the raw grid, kept only confluence (2026-08-14)
+
+Comparing the live engine against the source Pine indicator (`Asia Session Fib
+Retracement`) surfaced a real gap: the Pine script has three display tiers —
+**All Levels** (every fib rung), **Strong Levels** (confluence only, outside the
+Asia range), **Strongest Levels** (tight confluence only, outside the Asia
+range) — and the engine was running the noisiest of the three, always. Every
+raw, unconfirmed fib rung of today's Asia/Monday range (and yesterday's, on its
+own) was scoring as its own zone (`LADDER_ZONE_STYLE.asia` / `.monday` /
+`.prevAsia`, score 1.0–1.2), on top of the cross-session confluence lines
+(`asiaAlign`/`mondayAlign`). One card in the Trade Cards dashboard showed 16
+qualifying zones for a single pair — mostly this raw-grid noise.
+
+Fix (`decisionCore.js` `LADDER_ZONE_STYLE`/`dynamicZones`): the raw grid is no
+longer a zone source at all — only `asiaAlign`/`mondayAlign` (today's ladder
+line agreeing with yesterday's / this week's Monday agreeing with last week's,
+within the per-instrument confluence threshold) score. This is the engine's
+equivalent of the Pine script's **Strong Levels** tier (confluence-only), minus
+the "outside the Asia range" restriction (the engine's own reachSigma-from-open
+cap already does the relevance filtering that restriction was for). `tight`
+alignment (≤10% of the threshold, or same fib) still adds a +0.4 score bump on
+top, same as before — tight-ness is a *weight*, not a filter, so the engine
+never drops to the Pine script's narrowest "Strongest Levels" tier.
+
+Also: `mondayAlign` is now weighted above `asiaAlign` (base 2.6 vs 2.0, both
++0.4 tight) — a weekly level agreeing with last week is a rarer, more
+reactive confirmation than a daily one agreeing with yesterday. This was a
+judgment call (not a fitted/backtested number, like the rest of v0's hand-set
+weights) — a candidate for a future ablation fit once enough labeled events
+accumulate with the new zone set, same as every other v0 weight.
+
+Updated `decisionCore.test.mjs`/`backfill.test.mjs` (both asserted the OLD
+behavior — a raw, unconfluenced ladder line scoring as a zone — which the fix
+deliberately breaks) and `ARCHITECTURE.md`'s dynamic-zones section. Not yet
+re-run: the backfill/fit pipeline, since this changes the zone/confluence
+inputs future backfill runs will see — `modelV1`'s existing fit (FIT_FINDINGS
+above) predates this change and doesn't need to be redone (its features don't
+reference ladder sources by name), but a fresh backfill run from here on will
+produce different `zone_score`/`confluence` values on Asia/Monday-adjacent
+touches than the historical runs recorded above.

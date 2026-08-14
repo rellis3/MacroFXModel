@@ -260,32 +260,44 @@ packed M1 ─ deriveD1Packed ─▶ per day i:
   static zone map is per-snapshot; levels that move or become valid during the
   session are merged per decision — (a) **today's developing high/low**
   (`session_hilo`, from the intraday state: live snapshot block / exact
-  per-touch in the backfill), and (b) **the range-line bot's Asia + Monday
-  ladders** (`computeSessionLadders`, built with the bot's own
-  `buildRangeLadder` + `bodyRange` bricks: Asia = first 6h 5m-bodies, VALID
-  only after the formation window closes — the analyser's no-lookahead gate;
-  Monday = this week's Monday 15m-bodies, never on Monday itself; only lines
-  within 1.5σ of the open carried — the full ±10 extension grid would blanket
-  the price axis). Confluence merges across the static/dynamic boundary: a PDH
-  that is also today's session high and an Asia line counts all three. Ladder
-  lines are also backfill TOUCH CANDIDATES (the bot enters there), each
-  scanned only from its validFrom onward — verified zero violations over a
-  12-year replay.
-- **Cross-session alignment (`asia_prev_align`, `monday_prev_align`):** the
-  PREVIOUS session's Asia ladder is carried all day (`prev_asia_ladder`), and
-  today's Asia lines are matched against yesterday's — and this week's Monday
-  lines against the PREVIOUS week's Monday (15m bodies, marking only, never
-  standalone) — through `detectConfluencesCore`, the SAME brick the
-  dashboard/Asia backtest/Pine export share. Thresholds are **per instrument
-  from the live caps model** (`confluenceCapsFor`, zero-copy from
+  per-touch in the backfill), and (b) **cross-session confluence on the
+  range-line bot's Asia + Monday ladders** (`computeSessionLadders`, built
+  with the bot's own `buildRangeLadder` + `bodyRange` bricks: Asia = first 6h
+  5m-bodies, VALID only after the formation window closes — the analyser's
+  no-lookahead gate; Monday = this week's Monday 15m-bodies, never on Monday
+  itself; only lines within 1.5σ of the open carried).
+  **The raw ladder grid (every fib rung, unconfirmed) is deliberately NOT a
+  zone source** — `LADDER_ZONE_STYLE` only turns *confluence* (asiaAlign /
+  mondayAlign, below) into a zone; a lone, unconfirmed rung is noise, not a
+  level (this mirrors the source Pine indicator's "All Levels" vs "Strong
+  Levels" display modes — the engine always runs the confluence-only tier,
+  never "All Levels"). `computeSessionLadders` still computes the full raw
+  grid internally — it's the input the alignment match runs against — it's
+  just never surfaced as a standalone zone. Confluence merges across the
+  static/dynamic boundary: a PDH that is also today's session high and an
+  aligned Asia line counts all three. Ladder lines are also backfill TOUCH
+  CANDIDATES (the bot enters there), each scanned only from its validFrom
+  onward — verified zero violations over a 12-year replay.
+- **Cross-session alignment (`asia_prev_align`, `monday_prev_align`) — the
+  ONLY way an Asia/Monday line becomes a zone:** the PREVIOUS session's Asia
+  ladder is carried all day (`prevAsia`, marking only, never a standalone
+  zone), and today's Asia lines are matched against yesterday's — and this
+  week's Monday lines against the PREVIOUS week's Monday (15m bodies, marking
+  only, never standalone) — through `detectConfluencesCore`, the SAME brick
+  the dashboard/Asia backtest/Pine export share. Thresholds are **per
+  instrument from the live caps model** (`confluenceCapsFor`, zero-copy from
   `CAP_DEFAULTS`): fx 2 pips, gold 200 gold-pips ($20), indices per-point
   (NQ 100 / SPX 25 / DAX 80 / FTSE 40 / Dow 60 / Russell 15); tight = 10% of
   the threshold, 0.3× cluster merge, session-range cap, ≥5-pip minimum range.
   Aligned clusters carry **count 2** (two independent sessions agreeing IS
-  confluence) and subsume their constituent lines; coincident dynamic levels
-  consolidate per-source within ~2 pips (a grid cannot confirm itself;
-  adjacent rungs never chain-merge). KV-saved caps overrides are a dashboard
-  concern — the engine mirrors the defaults so backfill and live agree.
+  confluence); coincident dynamic levels (e.g. session_hilo landing on an
+  aligned line) consolidate per-source within ~2 pips (a grid cannot confirm
+  itself; adjacent rungs never chain-merge). `mondayAlign` scores higher than
+  `asiaAlign` (2.6 vs 2.0 base, both +0.4 when tight) — a weekly level
+  agreeing with LAST week is a rarer, higher-conviction, more-reactive
+  confirmation than a daily one agreeing with yesterday. KV-saved caps
+  overrides are a dashboard concern — the engine mirrors the defaults so
+  backfill and live agree.
 - **Instrument coverage — asset-class-agnostic by construction:** every
   asset-specific number switches on `instrumentRegistry` — σ estimator (fx→YZ,
   index→GARCH, commodity→HV20 via `volSigmaSeries`), band constants
