@@ -111,6 +111,23 @@ def currency_network(pairs: list[str]) -> tuple[list[str], np.ndarray]:
     return currencies, A
 
 
+def block_resample(closes: pd.DataFrame, block_days: int) -> pd.DataFrame:
+    """Every `block_days`-th close, non-overlapping — the same discipline
+    `forge.xsect` uses for its rebalance clock, applied here to the
+    decomposition's own sampling frequency instead. This is a coarser
+    frequency, not a smoothing window: block_days is a fixed, pre-declared
+    choice made before looking at results, never a rolling/fitted parameter,
+    so it cannot manufacture reversion the way a rolling hedge ratio does
+    (see module docstring). block_days=1 is the original daily decomposition,
+    unchanged. The motivation for trying >1: at daily frequency the network
+    fit is so tightly overdetermined (8 currencies vs 25 pairs) it explains
+    almost all of each day's move immediately, leaving a residual that is
+    mostly next-day noise (empirically, ~0.7-day half-life) rather than a
+    multi-day mispricing — coarsening the frequency filters out exactly that
+    high-frequency noise, if there is any real slower signal underneath it."""
+    return closes if block_days <= 1 else closes.iloc[::block_days]
+
+
 def load_daily_closes(pairs: list[str], data_root: str = "VolRangeForecaster/data/m1",
                       day_start_hour: int = 0, years: float = 0) -> pd.DataFrame:
     """Wide date x pair frame of daily close prices, outer-joined across the

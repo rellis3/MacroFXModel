@@ -29,7 +29,9 @@ def main(argv=None):
     ap.add_argument("--years", type=float, default=8.0, help="0 = all history")
     ap.add_argument("--data-root", default="VolRangeForecaster/data/m1")
     ap.add_argument("--day-start-hour", type=int, default=0)
-    ap.add_argument("--window", type=int, default=60, help="causal z-score standardizing window, sessions")
+    ap.add_argument("--block-days", type=int, default=1,
+                    help="decompose on non-overlapping N-day blocks instead of daily (fixed, not rolling)")
+    ap.add_argument("--window", type=int, default=60, help="causal z-score standardizing window, blocks")
     ap.add_argument("--k-grid", default="3,5")
     ap.add_argument("--h-grid", default="1,5,10")
     ap.add_argument("--folds", type=int, default=6)
@@ -42,13 +44,16 @@ def main(argv=None):
     h_grid = tuple(int(x) for x in args.h_grid.split(","))
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+    out_name = "residual_report.json" if args.block_days <= 1 else f"residual_report_block{args.block_days}.json"
 
     pairs = R.fx_universe(args.data_root)
     currencies, A = R.currency_network(pairs)
-    print(f"[universe] {len(pairs)} FX pairs -> {len(currencies)} currencies: {', '.join(currencies)}", flush=True)
+    print(f"[universe] {len(pairs)} FX pairs -> {len(currencies)} currencies: {', '.join(currencies)} "
+          f"| block_days={args.block_days}", flush=True)
 
     print(f"[data] loading daily closes, {args.years}y...", flush=True)
     closes = R.load_daily_closes(pairs, args.data_root, args.day_start_hour, args.years)
+    closes = R.block_resample(closes, args.block_days)
     returns = np.log(closes).diff()
     print(f"[data] {closes.shape[0]:,} dates x {closes.shape[1]} pairs "
           f"({closes.notna().sum().min()}-{closes.notna().sum().max()} obs per pair)", flush=True)
@@ -63,7 +68,8 @@ def main(argv=None):
     diag_rows = []
     for p in pairs:
         adf = R.adf_test(levels[p])
-        hl = R.half_life(levels[p])
+        hl_blocks = R.half_life(levels[p])
+        hl = hl_blocks * args.block_days
         diag_rows.append({"pair": p, "n": adf["n"], "adf_stat": adf["stat"],
                           "adf_pvalue": adf["pvalue"], "adf_method": adf["method"],
                           "half_life_days": hl})
@@ -106,7 +112,7 @@ def main(argv=None):
         "real": {"folds": real["folds"], "oos": real["oos"], "specs": real["specs"]},
         "null": {"runs": [{"oos": n["oos"]} for n in nulls], "oos_t": null_ts.tolist()},
     }
-    (out_dir / "residual_report.json").write_text(json.dumps(report, indent=2, default=str))
+    (out_dir / out_name).write_text(json.dumps(report, indent=2, default=str))
 
     o = real["oos"]
     print("\n" + "=" * 78)
@@ -122,7 +128,7 @@ def main(argv=None):
         print(f"  -> real t must clear the null's best to mean anything: "
               f"{o['t']:.2f} vs {np.nanmax(null_ts):.2f}")
     print("=" * 78)
-    print(f"\nwrote {out_dir / 'residual_report.json'}")
+    print(f"\nwrote {out_dir / out_name}")
     return report
 
 
