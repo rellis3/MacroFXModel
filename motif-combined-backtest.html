@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Motif Combined Backtest — Adaptive SL/TP + HTF Sizing</title>
+<style>
+  :root{--bg:#0e1117;--panel:#161b22;--panel2:#1c232c;--bd:#2b333d;--fg:#c9d1d9;--mut:#8b949e;
+        --up:#26a69a;--dn:#ef5350;--acc:#58a6ff;--gold:#e3b341}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+  header{padding:16px 22px;border-bottom:1px solid var(--bd);background:linear-gradient(180deg,#12171e,#0e1117)}
+  h1{margin:0;font-size:19px}
+  .sub{color:var(--mut);font-size:12.5px;margin-top:3px;max-width:960px}
+  main{padding:18px 22px;max-width:1220px;margin:0 auto}
+  .flag{background:#2d2410;border:1px solid #5c4a12;color:#e3c766;border-radius:7px;padding:10px 13px;font-size:12.5px;margin:14px 0;line-height:1.55}
+  .sec{margin:22px 0 8px;font-size:15px;font-weight:600;border-left:3px solid var(--acc);padding-left:9px}
+  .cards{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 10px}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:9px;padding:12px 14px;min-width:118px}
+  .card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .card .v{font-size:21px;font-weight:650;margin-top:2px}
+  .pos{color:var(--up)}.neg{color:var(--dn)}
+  .colwrap{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.colwrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:14px}
+  .panel h3{margin:0 0 8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+  th{color:var(--mut);font-weight:600;text-align:right;position:sticky;top:0;background:var(--panel)}
+  th:first-child,td:first-child{text-align:left}
+  tr:hover td{background:#141a22}
+  tr.winner td{background:#132018}
+  button{cursor:pointer;border:1px solid var(--bd);background:var(--panel2);color:var(--fg);border-radius:6px;padding:6px 11px;font-size:12.5px}
+  button:hover{filter:brightness(1.15)}
+  .hint{color:var(--mut);font-size:11.5px;margin:6px 0 10px}
+  select,input{background:var(--panel2);border:1px solid var(--bd);color:var(--fg);border-radius:6px;padding:5px 8px;font-size:13px}
+  .muted{color:var(--mut)}
+  a{color:var(--acc)}
+  .toprow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+  .pill{background:var(--panel2);border:1px solid var(--bd);border-radius:14px;padding:3px 10px;font-size:11.5px;color:var(--mut)}
+  .bucket-AGREE{color:var(--up)}.bucket-CONFLICT{color:var(--dn)}.bucket-NONE{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Motif Combined Backtest <span class="muted" style="font-size:13px">· adaptive SL/TP + HTF-conflict sizing · 26 pairs · H1</span></h1>
+  <div class="sub">Standard results card for the STACKED combination of <code>AnalogML/motif_adaptive.py</code>'s per-category MAE/MFE SL/TP and <code>AnalogML/motif_htf_sized.py</code>'s daily-conflict position sizing (<code>AnalogML/motif_combined_portfolio_sim.py</code> / <code>motif_combined_backtest_export.py</code>). This page reads a pre-computed JSON — the signal is Python-only, no backend port yet. Real per-trade MAE from the real bar path, capped at each trade's own stop. Full writeup: <a href="AnalogML/README.md" target="_blank">AnalogML/README.md</a>.</div>
+</header>
+<main>
+  <div id="loading" class="muted" style="margin-top:30px;text-align:center">loading AnalogML/data/motif_combined_backtest_export.json …</div>
+  <div id="err" class="flag" style="display:none;background:#2d1414;border-color:#5c1212;color:#f0a3a3"></div>
+  <div id="out" style="display:none">
+
+    <div id="caveatFlag" class="flag"></div>
+
+    <div class="toprow" id="paramPills"></div>
+
+    <div class="sec">Portfolio — the 2×2 (same motifs on every arm)</div>
+    <div class="panel"><table id="portfolioTbl"></table></div>
+    <div class="hint">Sharpe / max DD at matched risk sizing (1%/trade, 5% concurrent cap) — <b>total return isn't shown</b>: fixed-%-of-equity compounding over ~20k trades under mark-to-close produces absurd absolute numbers. Sharpe/DD is the comparison that means anything.</div>
+
+    <div class="sec">Combined signal — full history, pooled</div>
+    <div class="cards" id="fullCards"></div>
+
+    <div class="sec">In-sample vs out-of-sample (calendar split — read the flag above before trusting this)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>In-sample</h3><div class="cards" id="isCards"></div></div>
+      <div class="panel"><h3>Out-of-sample</h3><div class="cards" id="oosCards"></div></div>
+    </div>
+
+    <div class="sec">Combined signal vs frozen-grid benchmark (SAME motifs, uniform sizing)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>Combined (adaptive + HTF-sized)</h3><div class="cards" id="combinedCards"></div></div>
+      <div class="panel"><h3>Frozen grid benchmark</h3><div class="cards" id="benchCards"></div></div>
+    </div>
+
+    <div class="sec">Per-pair breakdown</div>
+    <div class="panel" style="max-height:360px;overflow:auto"><table id="perPairTbl"></table></div>
+
+    <div class="sec">Trade log
+      <span style="float:right;font-weight:400">
+        pair <select id="pairFilter"><option value="">all pairs</option></select>
+        &nbsp;HTF <select id="bucketFilter"><option value="">all</option><option>AGREE</option><option>CONFLICT</option><option>NONE</option></select>
+        &nbsp;
+        <button id="csv1">CSV · % Returns</button>
+        <button id="csv2">CSV · R-Multiples</button>
+        <button id="csv3">CSV · Currency P&amp;L</button>
+      </span>
+    </div>
+    <div class="hint" id="acctHint"></div>
+    <div class="panel" style="max-height:440px;overflow:auto"><table id="tradeTbl"></table></div>
+  </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(v,d=3)=>v==null||Number.isNaN(v)?'—':(+v).toFixed(d);
+const pct=(v,d=1)=>v==null||Number.isNaN(v)?'—':(100*v).toFixed(d)+'%';
+const cls=v=>v==null?'':(v>0?'pos':(v<0?'neg':''));
+const card=(k,v,c='')=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
+
+function summaryCards(s){
+  return card('n', s.n)
+       + card('total R', fmt(s.total_r,2), cls(s.total_r))
+       + card('win rate', pct(s.win_rate,1))
+       + card('profit factor', fmt(s.profit_factor,2), cls((s.profit_factor||1)-1))
+       + card('avg R', fmt(s.avg_r,3), cls(s.avg_r));
+}
+
+let DATA=null, FILTERED=[];
+
+async function load(){
+  try{
+    const d = await (await fetch('./AnalogML/data/motif_combined_backtest_export.json')).json();
+    DATA = d;
+    render(d);
+  }catch(e){
+    $('loading').style.display='none';
+    $('err').style.display='block';
+    $('err').textContent = 'Could not load AnalogML/data/motif_combined_backtest_export.json — run `python AnalogML/motif_combined_backtest_export.py --all-pairs` first (' + e.message + ').';
+  }
+}
+
+function render(d){
+  $('loading').style.display='none';
+  $('out').style.display='block';
+
+  $('caveatFlag').innerHTML = `<b>Read this before trusting the numbers below:</b> ${d.caveat}`;
+
+  $('paramPills').innerHTML = [
+    `adaptive (${d.params.sl_pctile},${d.params.tp_pctile})`, `HTF=${d.params.htf}`,
+    `conflict size=${d.params.conflict_size_mult}x`, `bench sl=${d.params.bench_sl_pips}p tp_r=${d.params.bench_tp_r}`,
+    `${d.params.timeframe}`, `account $${d.params.account_size.toLocaleString()}`,
+    `risk ${pct(d.params.risk_pct)}/trade`, `max concurrent risk ${pct(d.params.max_concurrent_risk_pct)}`,
+  ].map(p=>`<span class="pill">${p}</span>`).join('');
+
+  const arms = [
+    ['adaptive_htf_sized', 'ADAPTIVE + HTF-SIZED (the combination)', true],
+    ['adaptive_uniform', 'ADAPTIVE + UNIFORM', false],
+    ['frozen_htf_sized', 'FROZEN + HTF-SIZED', false],
+    ['frozen_uniform', 'FROZEN + UNIFORM (baseline)', false],
+  ];
+  let ph = '<tr><th>arm</th><th>Sharpe</th><th>max DD</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
+  for(const [key,label,winner] of arms){
+    const p = d.portfolio[key];
+    if(!p) continue;
+    ph += `<tr class="${winner?'winner':''}"><td>${label}</td>`
+        + `<td class="${cls(p.sharpe-1)}">${fmt(p.sharpe,2)}</td>`
+        + `<td class="${cls(p.max_dd)}">${pct(p.max_dd,1)}</td>`
+        + `<td>${pct(p.avg_utilization,1)}</td>`
+        + `<td>${p.avg_pairwise_corr==null?'—':(p.avg_pairwise_corr>=0?'+':'')+fmt(p.avg_pairwise_corr,3)}</td>`
+        + `<td>${p.n}</td></tr>`;
+  }
+  $('portfolioTbl').innerHTML = ph;
+
+  $('fullCards').innerHTML = summaryCards(d.summary.full);
+  $('isCards').innerHTML = summaryCards(d.summary.is);
+  $('oosCards').innerHTML = summaryCards(d.summary.oos);
+  $('combinedCards').innerHTML = summaryCards(d.summary.full);
+  $('benchCards').innerHTML = summaryCards(d.summary.bench.full);
+
+  const rows = d.per_pair.slice().sort((a,b)=>(b.full.profit_factor||0)-(a.full.profit_factor||0));
+  let h = '<tr><th>pair</th><th>n</th><th>full PF</th><th>full avg R</th><th>IS n</th><th>IS PF</th><th>OOS n</th><th>OOS PF</th></tr>';
+  for(const r of rows){
+    h += `<tr><td>${r.pair.toUpperCase()}</td><td>${r.full.n}</td>`
+       + `<td class="${cls((r.full.profit_factor||1)-1)}">${fmt(r.full.profit_factor,2)}</td>`
+       + `<td class="${cls(r.full.avg_r)}">${fmt(r.full.avg_r,3)}</td>`
+       + `<td>${r.is.n}</td><td class="${cls((r.is.profit_factor||1)-1)}">${fmt(r.is.profit_factor,2)}</td>`
+       + `<td>${r.oos.n}</td><td class="${cls((r.oos.profit_factor||1)-1)}">${fmt(r.oos.profit_factor,2)}</td></tr>`;
+  }
+  $('perPairTbl').innerHTML = h;
+
+  const sel = $('pairFilter');
+  sel.innerHTML = '<option value="">all pairs</option>' + d.pairs.map(p=>`<option>${p}</option>`).join('');
+  sel.onchange = () => drawTrades();
+  $('bucketFilter').onchange = () => drawTrades();
+
+  $('acctHint').textContent = `Account $${d.params.account_size.toLocaleString()}, risk ${pct(d.params.risk_pct)} `
+    + `per trade x each trade's own size_mult (0.5x on ${d.params.htf} conflict, 1.0x otherwise) — `
+    + `NOT fixed like a frozen-grid export, since sizing is the thing under test. R-unit = each trade's OWN `
+    + `adaptive SL (varies by category/entry-vol, not one fixed pip stop), so R across rows isn't directly `
+    + `comparable in pips — always compare in R or $. "bench_r" is the SAME motif at the frozen sl=20p/tp_r=1.5 `
+    + `grid, uniform sizing, for a per-trade delta.`;
+
+  drawTrades();
+}
+
+function currentTrades(){
+  const pair = $('pairFilter').value;
+  const bucket = $('bucketFilter').value;
+  let t = DATA.trades;
+  if(pair) t = t.filter(x=>x.pair===pair);
+  if(bucket) t = t.filter(x=>x.htf_bucket===bucket);
+  return t;
+}
+
+function drawTrades(){
+  FILTERED = currentTrades();
+  const show = FILTERED.length>500 ? FILTERED.slice(-500) : FILTERED;
+  let h = '<tr><th>pair</th><th>date</th><th>dir</th><th>category</th><th>HTF</th><th>outcome</th>'
+        + '<th>size</th><th>R</th><th>bench R</th><th>MAE(R)</th><th>PnL $</th><th>IS/OOS</th></tr>';
+  for(const t of show){
+    h += `<tr><td>${t.pair.toUpperCase()}</td><td>${t.date}</td><td>${t.direction}</td>`
+       + `<td>${t.category}</td><td class="bucket-${t.htf_bucket}">${t.htf_bucket}</td><td>${t.outcome}</td>`
+       + `<td>${fmt(t.size_mult,1)}x</td>`
+       + `<td class="${cls(t.r)}">${fmt(t.r,2)}</td><td class="${cls(t.bench_r)}">${fmt(t.bench_r,2)}</td>`
+       + `<td>${fmt(t.mae_r,2)}</td>`
+       + `<td class="${cls(t.pnl_dollars)}">${fmt(t.pnl_dollars,2)}</td><td>${t.is_oos}</td></tr>`;
+  }
+  $('tradeTbl').innerHTML = h;
+  if(FILTERED.length>500) $('tradeTbl').insertAdjacentHTML('beforebegin',
+    `<div class="hint">showing last 500 of ${FILTERED.length} trades in the table (CSV exports include ALL of them)</div>`);
+}
+
+function dl(name, rows){
+  const b = new Blob([rows.join('\n') + '\n'], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
+}
+function exportCsv(tag, header, rowFn){
+  const t = currentTrades();
+  if(!t.length) return;
+  const rows = [header];
+  for(const x of t) rows.push(rowFn(x));
+  dl('motif_combined_' + (($('pairFilter').value)||'all') + '_' + tag + '.csv', rows);
+}
+$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + x.mae_pct);
+$('csv2').onclick = () => exportCsv('R', 'date,R,bench R,MAE (R)', x => x.date + ',' + x.r + ',' + x.bench_r + ',' + x.mae_r);
+$('csv3').onclick = () => exportCsv('pnl', 'Trade Date,PnL ($),Risk ($)', x => x.date + ',' + x.pnl_dollars + ',' + x.risk_dollars);
+
+load();
+</script>
+</body>
+</html>
