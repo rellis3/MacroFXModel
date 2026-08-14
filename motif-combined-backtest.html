@@ -323,7 +323,9 @@ function render(d){
     + `NOT fixed like a frozen-grid export, since sizing is the thing under test. R-unit = each trade's OWN `
     + `adaptive SL (varies by category/entry-vol, not one fixed pip stop), so R across rows isn't directly `
     + `comparable in pips — always compare in R or $. "bench_r" is the SAME motif at the frozen sl=20p/tp_r=1.5 `
-    + `grid, uniform sizing, for a per-trade delta.`;
+    + `grid, uniform sizing, for a per-trade delta. MAE is shown POSITIVE in this table (0 = no adverse move) `
+    + `but exported NEGATIVE in the CSV · % Returns / CSV · R-Multiples downloads, to match an external `
+    + `prop-firm pass/fail simulator's upload format — same number, sign flipped only in the CSV.`;
 
   drawTrades();
 }
@@ -495,8 +497,15 @@ function exportCsv(tag, header, rowFn){
   for(const x of t) rows.push(rowFn(x));
   dl('motif_combined_' + (($('pairFilter').value)||'all') + '_' + tag + '.csv', rows);
 }
-$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + x.mae_pct);
-$('csv2').onclick = () => exportCsv('R', 'date,R,bench R,MAE (R)', x => x.date + ',' + x.r + ',' + x.bench_r + ',' + x.mae_r);
+// MAE is stored/shown on-page as a POSITIVE magnitude ("how far adverse did
+// this trade go", always >= 0 -- pylego.barrier_race.mae_from_path's own
+// convention). These 3 CSV schemas match an external tool's upload format
+// (a prop-firm pass/fail simulator, NOT part of this page) which expects
+// MAE as a NEGATIVE number, same sign convention as a loss -- so it's
+// negated ONLY at CSV-export time here, never in the underlying data or
+// the on-page table.
+$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + (-x.mae_pct));
+$('csv2').onclick = () => exportCsv('R', 'date,R,MAE (R)', x => x.date + ',' + x.r + ',' + (-x.mae_r));
 $('csv3').onclick = () => exportCsv('pnl', 'Trade Date,PnL ($),Risk ($)', x => x.date + ',' + x.pnl_dollars + ',' + x.risk_dollars);
 
 load();
