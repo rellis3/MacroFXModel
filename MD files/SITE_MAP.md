@@ -4,8 +4,10 @@
 > subdirectory apps. Companion to `BACKTEST_INDEX.md` (per-backtest evidence detail),
 > `LEGO_MODULES.md` (module wiring) and `PROJECT_STATUS.md` (banked findings).
 > The in-app version of this map is the 🗺 Site Map overlay on `index.html`;
-> the **Archived** section below mirrors the "Archived" nav group added to both
-> `index.html` (Command Hub dropdown + Site Map overlay) and `hub.html` (Command Centre).
+> the **Archived** section below mirrors the "🗄 Archived ▾" nav group added to
+> `index.html` — the Command Centre and THE Dashboard per `CLAUDE.md` — in both its
+> Command Hub dropdown bar and its Site Map overlay. `hub.html` is only a secondary
+> link index (its dead cards were removed; nothing was added to it, per the CLAUDE.md rule).
 
 **Totals: 167 root pages** — 50 live tools · 57 open research · 30 reference · 19 banked
 nulls · 9 superseded · 1 stub · 1 unclear. **29 pages moved to Archived.**
@@ -47,7 +49,7 @@ Pages with a later date have genuinely been worked on since.
 | `global-liquidity.html` | GLI level/impulse/cycle regime + FX liquidity ranking | 🟢 Live | ≤2026-08-09 | 🔁 re-run GLI backtests post-WALCL fix (Q6) |
 | `gold-zones.html` | Live gold zone verifier — armed zones, confirmations, multiday trades | 🟢 Live | 2026-08-11 | OI Gamma moved to oi-zones.html |
 | `gold.html` | Two-layer adaptive-regime XAU/USD macro model dashboard | 🟢 Live | ≤2026-08-09 | Hub for gold pages |
-| `index.html` | Main MacroFX command centre dashboard with nav hub, site map, API map | 🟢 Live | 2026-08-14 | Canonical dashboard; hosts the shortcut hub |
+| `index.html` | THE Dashboard (Command Centre) — main page; all shortcuts structured under the banner dropdowns, plus Site Map + API Map overlays | 🟢 Live | 2026-08-14 | Canonical per CLAUDE.md — new user-facing links belong here |
 | `journal.html` | Log, tag and review trade entries by pair/session/setup, Pine export | 🟢 Live | ≤2026-08-09 |  |
 | `levels.html` | All-pairs Entry Lens: ACT/WATCH/WAIT/AVOID | 🟢 Live | ≤2026-08-09 |  |
 | `liquidity-pulse.html` | Diagnostic: daily TGA/RRP flows vs next-day NAS100 moves | 🔬 Research | ≤2026-08-09 | Diagnostic, not a trading signal |
@@ -204,7 +206,7 @@ Pages with a later date have genuinely been worked on since.
 
 | Page | Intended purpose | Status | Last modified | Notes |
 |---|---|---|---|---|
-| `hub.html` | Secondary link index / Command Centre + portfolio risk-gate design | 📚 Reference | 2026-08-14 | CLAUDE.md: secondary link index; gate table is unwired design spec |
+| `hub.html` | Risk Hub — secondary link index + portfolio risk-gate design (NOT the main nav) | 📚 Reference | 2026-08-14 | CLAUDE.md: index.html is THE Dashboard; do not add to hub.html unless asked; gate table is unwired design spec |
 | `multi-factor-book.html` | Blends trend + FX carry into one vol-targeted diversified book | 🔬 Research | ≤2026-08-09 | Read-only research; blend only as real as its legs |
 | `system-credit-equity.html` | P2 credit-equity divergence panel | 📚 Reference | ≤2026-08-09 | 📚 display layer |
 | `system-fx-carry-factor.html` | Backtest rate-differential FX carry with real financing | 🔬 Research | ≤2026-08-09 | ✅ built; honest successor to system-fx-carry.html |
