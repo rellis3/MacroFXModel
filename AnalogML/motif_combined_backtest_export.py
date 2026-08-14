@@ -61,6 +61,8 @@ def build_trade_row(m: dict, t: dict, b_trade: dict, size_mult: float, bucket: s
     price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
     risk_dollars = account_risk_dollars * size_mult
     n_touches, is_top = m["category"]
+    stop_price = t["entry_price"] - t["direction"] * t["sl"]
+    target_price = t["entry_price"] + t["direction"] * t["tp_dist"]
     return {
         "pair": m["pair"],
         "date": entry_date.strftime("%Y-%m-%d"),
@@ -72,6 +74,10 @@ def build_trade_row(m: dict, t: dict, b_trade: dict, size_mult: float, bucket: s
         "outcome": t["outcome"],
         "sl_pips": round(t["sl"] / m["pip"], 1),
         "tp_pips": round(t["tp_dist"] / m["pip"], 1),
+        "entry_price": round(t["entry_price"], 6),
+        "exit_price": round(t["exit_price"], 6),
+        "stop_price": round(stop_price, 6),
+        "target_price": round(target_price, 6),
         "size_mult": size_mult,
         "r": round(t["r"], 4),
         "bench_r": round(b_trade["r"], 4),
