@@ -1,0 +1,592 @@
+{
+  "base_oos": {
+    "trades": 188,
+    "days": 92,
+    "mean_r": 0.34969265789405357,
+    "se": 0.14120815595603,
+    "t": 2.4764338541673356,
+    "mean_excess": 0.2841368722911276,
+    "se_excess": 0.14071686645251713,
+    "t_excess": 2.0192097753044087,
+    "total_r": 65.74221968408207,
+    "win_rate": 0.46808510638297873
+  },
+  "base_folds": [
+    {
+      "fold": 0,
+      "train_end": "2020-06-05 14:24:00+00:00",
+      "test_end": "2021-06-05 18:00:00+00:00",
+      "train_events": 335604,
+      "test_events": 87924,
+      "n_hypotheses": 15828,
+      "n_cells_selected": 0,
+      "train_best_t": 3.796712141185841,
+      "oos_trades": 0,
+      "oos_mean_r": NaN,
+      "oos_mean_excess": NaN,
+      "oos_total_r": 0.0,
+      "oos_win_rate": NaN
+    },
+    {
+      "fold": 1,
+      "train_end": "2021-06-05 18:00:00+00:00",
+      "test_end": "2022-06-05 21:36:00+00:00",
+      "train_events": 423528,
+      "test_events": 87864,
+      "n_hypotheses": 19536,
+      "n_cells_selected": 0,
+      "train_best_t": 3.883515689781342,
+      "oos_trades": 0,
+      "oos_mean_r": NaN,
+      "oos_mean_excess": NaN,
+      "oos_total_r": 0.0,
+      "oos_win_rate": NaN
+    },
+    {
+      "fold": 2,
+      "train_end": "2022-06-05 21:36:00+00:00",
+      "test_end": "2023-06-06 01:12:00+00:00",
+      "train_events": 511392,
+      "test_events": 88818,
+      "n_hypotheses": 22032,
+      "n_cells_selected": 0,
+      "train_best_t": 3.993651330833127,
+      "oos_trades": 0,
+      "oos_mean_r": NaN,
+      "oos_mean_excess": NaN,
+      "oos_total_r": 0.0,
+      "oos_win_rate": NaN
+    },
+    {
+      "fold": 3,
+      "train_end": "2023-06-06 01:12:00+00:00",
+      "test_end": "2024-06-05 04:48:00+00:00",
+      "train_events": 600210,
+      "test_events": 86112,
+      "n_hypotheses": 24240,
+      "n_cells_selected": 0,
+      "train_best_t": 3.8058779849300097,
+      "oos_trades": 0,
+      "oos_mean_r": NaN,
+      "oos_mean_excess": NaN,
+      "oos_total_r": 0.0,
+      "oos_win_rate": NaN
+    },
+    {
+      "fold": 4,
+      "train_end": "2024-06-05 04:48:00+00:00",
+      "test_end": "2025-06-05 08:24:00+00:00",
+      "train_events": 686322,
+      "test_events": 88554,
+      "n_hypotheses": 26064,
+      "n_cells_selected": 0,
+      "train_best_t": 3.7858201898781267,
+      "oos_trades": 0,
+      "oos_mean_r": NaN,
+      "oos_mean_excess": NaN,
+      "oos_total_r": 0.0,
+      "oos_win_rate": NaN
+    },
+    {
+      "fold": 5,
+      "train_end": "2025-06-05 08:24:00+00:00",
+      "test_end": "2026-06-05 12:00:00+00:00",
+      "train_events": 774876,
+      "test_events": 93834,
+      "n_hypotheses": 27552,
+      "n_cells_selected": 3,
+      "train_best_t": 4.490065280512438,
+      "oos_trades": 188,
+      "oos_mean_r": 0.34969265789405357,
+      "oos_mean_excess": 0.2841368722911276,
+      "oos_total_r": 65.74221968408207,
+      "oos_win_rate": 0.46808510638297873
+    }
+  ],
+  "confidence_oos": {
+    "trades": 753,
+    "days": 354,
+    "mean_r": 0.1406403645202408,
+    "se": 0.0808327369812205,
+    "t": 1.7398936343441538,
+    "mean_excess": 0.12151075419967652,
+    "se_excess": 0.0806582177743789,
+    "t_excess": 1.5064894508278417,
+    "total_r": 105.90219448374134,
+    "win_rate": 0.3930942895086321
+  },
+  "confidence_folds": [
+    {
+      "fold": 0,
+      "train_end": "2020-06-05 14:24:00+00:00",
+      "test_end": "2021-06-05 18:00:00+00:00",
+      "train_events": 335604,
+      "test_events": 87924,
+      "n_hypotheses": 1374,
+      "n_cells_selected": 5,
+      "train_best_t": 3.5938292692199316,
+      "oos_trades": 228,
+      "oos_mean_r": 0.15707654075778538,
+      "oos_mean_excess": 0.12578822166822085,
+      "oos_total_r": 35.81345129277506,
+      "oos_win_rate": 0.43859649122807015
+    },
+    {
+      "fold": 1,
+      "train_end": "2021-06-05 18:00:00+00:00",
+      "test_end": "2022-06-05 21:36:00+00:00",
+      "train_events": 423528,
+      "test_events": 87864,
+      "n_hypotheses": 1506,
+      "n_cells_selected": 3,
+      "train_best_t": 3.797410443030887,
+      "oos_trades": 169,
+      "oos_mean_r": -0.011472832191273112,
+      "oos_mean_excess": -0.010044670031743223,
+      "oos_total_r": -1.938908640325156,
+      "oos_win_rate": 0.31952662721893493
+    },
+    {
+      "fold": 2,
+      "train_end": "2022-06-05 21:36:00+00:00",
+      "test_end": "2023-06-06 01:12:00+00:00",
+      "train_events": 511392,
+      "test_events": 88818,
+      "n_hypotheses": 1596,
+      "n_cells_selected": 2,
+      "train_best_t": 4.024920255252242,
+      "oos_trades": 72,
+      "oos_mean_r": -0.06044221834071644,
+      "oos_mean_excess": 0.03994978153498768,
+      "oos_total_r": -4.351839720531584,
+      "oos_win_rate": 0.2916666666666667
+    },
+    {
+      "fold": 3,
+      "train_end": "2023-06-06 01:12:00+00:00",
+      "test_end": "2024-06-05 04:48:00+00:00",
+      "train_events": 600210,
+      "test_events": 86112,
+      "n_hypotheses": 1668,
+      "n_cells_selected": 2,
+      "train_best_t": 4.016497722463331,
+      "oos_trades": 92,
+      "oos_mean_r": 0.17448258520853718,
+      "oos_mean_excess": 0.1758905081658162,
+      "oos_total_r": 16.05239783918542,
+      "oos_win_rate": 0.358695652173913
+    },
+    {
+      "fold": 4,
+      "train_end": "2024-06-05 04:48:00+00:00",
+      "test_end": "2025-06-05 08:24:00+00:00",
+      "train_events": 686322,
+      "test_events": 88554,
+      "n_hypotheses": 1716,
+      "n_cells_selected": 1,
+      "train_best_t": 3.9298338728675204,
+      "oos_trades": 57,
+      "oos_mean_r": 0.33706404320137806,
+      "oos_mean_excess": 0.22413719719498862,
+      "oos_total_r": 19.21265046247855,
+      "oos_win_rate": 0.45614035087719296
+    },
+    {
+      "fold": 5,
+      "train_end": "2025-06-05 08:24:00+00:00",
+      "test_end": "2026-06-05 12:00:00+00:00",
+      "train_events": 774876,
+      "test_events": 93834,
+      "n_hypotheses": 1788,
+      "n_cells_selected": 3,
+      "train_best_t": 4.11823738443118,
+      "oos_trades": 135,
+      "oos_mean_r": 0.3045514314826597,
+      "oos_mean_excess": 0.24208371367020823,
+      "oos_total_r": 41.114443250159056,
+      "oos_win_rate": 0.45925925925925926
+    }
+  ],
+  "confidence_specs": [
+    {
+      "trained_through": "2020-06-05 12:00:00+00:00",
+      "fold": 0,
+      "n_hypotheses": 1374,
+      "cuts": {},
+      "cells": [
+        {
+          "key": "h4_swing_high",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 451,
+          "n_days": 283,
+          "mean_r": 0.27843326997327356,
+          "t": 3.0103747812588155,
+          "p": 0.0001629267000718998,
+          "lift": 0.3323976939297034,
+          "t_lift": 3.5938292692199316,
+          "win_rate": 0.45454545454545453
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 1.5,
+          "tp_r": 1.0,
+          "direction": 1,
+          "n": 191,
+          "n_days": 155,
+          "mean_r": 0.25115236986570694,
+          "t": 3.2044958658480893,
+          "p": 0.00019257067245968752,
+          "lift": 0.278236067565043,
+          "t_lift": 3.55006137795458,
+          "win_rate": 0.643979057591623
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 191,
+          "n_days": 155,
+          "mean_r": 0.359782656237836,
+          "t": 2.998275145201241,
+          "p": 0.00028238577046495444,
+          "lift": 0.41374708019426587,
+          "t_lift": 3.447991628940544,
+          "win_rate": 0.4816753926701571
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 191,
+          "n_days": 155,
+          "mean_r": 0.5063795148765796,
+          "t": 3.2169177597057135,
+          "p": 0.00029361285646107985,
+          "lift": 0.5410933243151613,
+          "t_lift": 3.4374469612418994,
+          "win_rate": 0.39790575916230364
+        },
+        {
+          "key": "h4_swing_high",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 1.5,
+          "tp_r": 1.0,
+          "direction": 1,
+          "n": 451,
+          "n_days": 283,
+          "mean_r": 0.17616616501246568,
+          "t": 2.9478256176553552,
+          "p": 0.000335671083185714,
+          "lift": 0.2032498627118017,
+          "t_lift": 3.4010228470625274,
+          "win_rate": 0.6075388026607539
+        }
+      ],
+      "meta": {
+        "threshold": 3,
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of h4_swing_high from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=451, mean +0.278R, t=3.01",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 1.5\u00d7ATR, target 1.0R | train n=191, mean +0.251R, t=3.20",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=191, mean +0.360R, t=3.00",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 3.0R | train n=191, mean +0.506R, t=3.22",
+        "LONG on touch of h4_swing_high from below (resistance test), confidence=lo (< threshold) | stop 1.5\u00d7ATR, target 1.0R | train n=451, mean +0.176R, t=2.95"
+      ]
+    },
+    {
+      "trained_through": "2021-06-04 12:00:00+00:00",
+      "fold": 1,
+      "n_hypotheses": 1506,
+      "cuts": {},
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 243,
+          "n_days": 198,
+          "mean_r": 0.36761222024755974,
+          "t": 3.448580974010914,
+          "p": 7.310778820586488e-05,
+          "lift": 0.40479678298817756,
+          "t_lift": 3.797410443030887,
+          "win_rate": 0.48148148148148145
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 243,
+          "n_days": 198,
+          "mean_r": 0.5198755947331565,
+          "t": 3.6751668512660154,
+          "p": 7.822256837430106e-05,
+          "lift": 0.5347910693396642,
+          "t_lift": 3.780609111683864,
+          "win_rate": 0.3991769547325103
+        },
+        {
+          "key": "h4_swing_high",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 569,
+          "n_days": 357,
+          "mean_r": 0.2678102642674137,
+          "t": 3.226670586018239,
+          "p": 0.00011907243177314934,
+          "lift": 0.3049948270080315,
+          "t_lift": 3.674683044305859,
+          "win_rate": 0.44815465729349735
+        }
+      ],
+      "meta": {
+        "threshold": 3,
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=243, mean +0.368R, t=3.45",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 3.0R | train n=243, mean +0.520R, t=3.68",
+        "LONG on touch of h4_swing_high from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=569, mean +0.268R, t=3.23"
+      ]
+    },
+    {
+      "trained_through": "2022-06-05 20:00:00+00:00",
+      "fold": 2,
+      "n_hypotheses": 1596,
+      "cuts": {},
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 298,
+          "n_days": 239,
+          "mean_r": 0.3566269028214116,
+          "t": 3.69030997689719,
+          "p": 2.8497312930724436e-05,
+          "lift": 0.3889632181903189,
+          "t_lift": 4.024920255252242,
+          "win_rate": 0.47651006711409394
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 298,
+          "n_days": 239,
+          "mean_r": 0.4841436813449015,
+          "t": 3.78601880823717,
+          "p": 5.692480117529586e-05,
+          "lift": 0.49347691818377876,
+          "t_lift": 3.8590050137279905,
+          "win_rate": 0.38926174496644295
+        }
+      ],
+      "meta": {
+        "threshold": 3,
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=298, mean +0.357R, t=3.69",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 3.0R | train n=298, mean +0.484R, t=3.79"
+      ]
+    },
+    {
+      "trained_through": "2023-06-06 00:00:00+00:00",
+      "fold": 3,
+      "n_hypotheses": 1668,
+      "cuts": {},
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 341,
+          "n_days": 275,
+          "mean_r": 0.3204160259027135,
+          "t": 3.562544334689155,
+          "p": 2.953471728046013e-05,
+          "lift": 0.3612446940653418,
+          "t_lift": 4.016497722463331,
+          "win_rate": 0.4633431085043988
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 341,
+          "n_days": 275,
+          "mean_r": 0.42012277077074867,
+          "t": 3.5477873355163796,
+          "p": 8.711424280644611e-05,
+          "lift": 0.44450912557102323,
+          "t_lift": 3.753721426070671,
+          "win_rate": 0.3724340175953079
+        }
+      ],
+      "meta": {
+        "threshold": 3,
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=341, mean +0.320R, t=3.56",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 3.0R | train n=341, mean +0.420R, t=3.55"
+      ]
+    },
+    {
+      "trained_through": "2024-06-05 04:00:00+00:00",
+      "fold": 4,
+      "n_hypotheses": 1716,
+      "cuts": {},
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 393,
+          "n_days": 319,
+          "mean_r": 0.2912502886982864,
+          "t": 3.4927259349019963,
+          "p": 4.250228530918624e-05,
+          "lift": 0.3276997025651502,
+          "t_lift": 3.9298338728675204,
+          "win_rate": 0.4529262086513995
+        }
+      ],
+      "meta": {
+        "threshold": 3,
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=393, mean +0.291R, t=3.49"
+      ]
+    },
+    {
+      "trained_through": "2025-06-05 08:00:00+00:00",
+      "fold": 5,
+      "n_hypotheses": 1788,
+      "cuts": {},
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 456,
+          "n_days": 374,
+          "mean_r": 0.29921576186432575,
+          "t": 3.867745917400586,
+          "p": 1.9089065751619118e-05,
+          "lift": 0.3185942310680227,
+          "t_lift": 4.11823738443118,
+          "win_rate": 0.45394736842105265
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 1.5,
+          "tp_r": 1.0,
+          "direction": 1,
+          "n": 456,
+          "n_days": 374,
+          "mean_r": 0.20796419234273977,
+          "t": 4.061912912769781,
+          "p": 2.9638031152990638e-05,
+          "lift": 0.20559684255574553,
+          "t_lift": 4.015674334096646,
+          "win_rate": 0.618421052631579
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "_conf_t",
+          "split_value": "lo",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 456,
+          "n_days": 374,
+          "mean_r": 0.4022859373029222,
+          "t": 3.9794798110880323,
+          "p": 4.2015674354914144e-05,
+          "lift": 0.3975470427904171,
+          "t_lift": 3.9326018735547854,
+          "win_rate": 0.36622807017543857
+        }
+      ],
+      "meta": {
+        "threshold": 3,
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 2.0R | train n=456, mean +0.299R, t=3.87",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 1.5\u00d7ATR, target 1.0R | train n=456, mean +0.208R, t=4.06",
+        "LONG on touch of pwh from below (resistance test), confidence=lo (< threshold) | stop 0.75\u00d7ATR, target 3.0R | train n=456, mean +0.402R, t=3.98"
+      ]
+    }
+  ],
+  "null_confidence_oos": [
+    {
+      "trades": 0
+    },
+    {
+      "trades": 0
+    }
+  ]
+}
