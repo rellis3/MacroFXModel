@@ -46,6 +46,8 @@
   .tc-sources{color:var(--text3);font-size:11px}
   .tc-why{font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:6px;margin-top:2px}
   .tc-why li{margin:1px 0 1px 14px}
+  .tc-chip.new{color:#fff;background:var(--blue);border-color:var(--blue)}
+  .tc-asof{font-size:10.5px;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -61,6 +63,12 @@
   new invention, it's making the existing grading rule visible. <b>Confidence</b> is <code>modelV1</code> (FX majors)
   or the <code>v0</code> prior (everything else) — calibrated but weakly selective; see <a href="upcoming-trades.html">upcoming-trades.html</a>'s
   banner for the full caveat. This is an alert board, not an execution system — you place every trade yourself.
+  <br><br>
+  <b>How often does the zone change?</b> Most of the map (pivots, prior hi/lo, fib clusters, round numbers) is
+  built from the last completed daily bar — it only moves once per session (see each card's <b>as-of</b> date).
+  Today's developing high/low updates continuously; the Asia/Monday range ladders appear once a day / once a
+  week respectively. A card's zone gets a <b>NEW</b> badge for one refresh when its nearest zone changes.
+  Full detail: <a href="upcoming-trades.html">upcoming-trades.html</a>.
 </div>
 
 <div class="controls">
@@ -94,6 +102,10 @@ const OANDA_SYM = { eurusd:'EUR_USD', gbpusd:'GBP_USD', usdjpy:'USD_JPY', audusd
 
 let snaps = {}, decides = {}, charts = {}, chartSeries = {};
 let fastTimer = null, fullTimer = null, lastFullLoad = null;
+// Per-pair "did the chosen nearest zone just change" — compared once per loadAll(),
+// suppressed on the first load. A price move that crosses into a new zone (or a
+// session_hilo/ladder shift) flips this pair's key, which flags NEW for one render.
+let prevBestKey = null, newPairs = new Set();
 const FAST_TICK_MS = 60_000;    // just move the latest candle (cheap, same cadence vol-forecast-v2 uses)
 const FULL_TICK_MS = 180_000;   // re-warm snapshots, re-score zones/confidence, redraw everything
 
@@ -151,6 +163,17 @@ async function loadAll() {
   }
   await Promise.all(jobs);
   $('status').textContent = `${Object.keys(snaps).length}/${PAIRS.length} snapshots · ${Object.keys(decides).length} scored zones`;
+
+  const curBestKey = {};
+  for (const [pair, d] of Object.entries(decides)) curBestKey[pair] = `${pair}|${d.zone.price.toFixed(DP(pair))}`;
+  const curCount = Object.keys(curBestKey).length;
+  // Same guard as upcoming-trades.html: only diff against a previous load that
+  // actually had scored zones, so a transient failure doesn't flag everything NEW.
+  newPairs = (prevBestKey && Object.keys(prevBestKey).length)
+    ? new Set(Object.keys(curBestKey).filter(p => curBestKey[p] !== prevBestKey[p]))
+    : new Set();
+  if (curCount) prevBestKey = curBestKey;
+
   stampUpdated();
   render();
 }
@@ -195,10 +218,15 @@ function buildCard(pair, d) {
   const side = distSigma >= 0 ? 'up' : 'dn';
   const arrow = distSigma >= 0 ? '▲ above price' : '▼ below price';
   const stars = '★'.repeat(Math.min(5, zone.count ?? 0)) + '☆'.repeat(Math.max(0, 5 - (zone.count ?? 0)));
+  const s = snaps[pair];
+  const asOf = s?.meta?.lastBarTime ? new Date(s.meta.lastBarTime * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '–';
+  const ageMin = s?.age_ms != null ? Math.round(s.age_ms / 60000) : null;
+  const isNew = newPairs.has(pair);
 
   card.innerHTML = `
     <div class="tc-hdr">
       <span class="tc-pair">${pair.toUpperCase()}</span>
+      ${isNew ? `<span class="tc-chip new">NEW ZONE</span>` : ''}
       <span class="tc-chip ${go ? 'go' : 'skip'}">${go ? '✓ GO' : '✗ SKIP'}</span>
       <span class="tc-conf">${p != null ? (100 * p).toFixed(1) + '%' : 'gated'} · ${r.direction ?? '–'} ${r.action ?? ''}</span>
     </div>
@@ -206,6 +234,7 @@ function buildCard(pair, d) {
       <span class="n ${side}">${distTxt}</span>
       <span class="lbl">${arrow} — zone ${zone.price.toFixed(dp)}</span>
     </div>
+    <div class="tc-asof" title="daily bar this session's static zones are built from · snapshot read is ${ageMin != null ? ageMin + 'm' : '?'} old">zones as of ${asOf}${ageMin != null ? ` · read ${ageMin}m ago` : ''}</div>
     <div class="tc-chart" id="chart-${pair}"><div class="empty-msg">chart loads in live mode…</div></div>
     <div class="tc-legend">
       <span class="tc-lv"><span class="dot" style="background:#d29922"></span>Zone ${zone.price.toFixed(dp)}</span>
