@@ -560,6 +560,8 @@ const state = {
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
+  regimeHistBuf:       { v1: {}, v2: {} }, // in-memory regime-history ring buffer, auto-recorded
+                             // off the live 5m HMM loops — see recordRegimeSnapshot()/flushRegimeHistory()
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -22776,9 +22778,94 @@ app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
 setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
 setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
 
+// ── Regime history — automatic recorder ─────────────────────────────────────
+// The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
+// is a MANUAL admin action — nobody was running it, so /api/regime-history came
+// back empty for every pair, every day (found 2026-08-14). Recording directly off
+// the live 5m HMM loops (runHMM5mRefresh/runHMM5mV2Refresh, already running
+// unconditionally every HMM5M_REFRESH_MS on the server) removes that manual step
+// AND removes the dependency on the Python bot process being up and writing to
+// a log file at all — this records the exact state the dashboard itself shows.
+//
+// Records are appended only on a regime change or a 15-min heartbeat (not every
+// 30s tick) so "periods held" stays a meaningful coarse unit and the buffer
+// doesn't balloon. Flushed to local KV every 5 min (cheap — local file store,
+// not CF KV, see kv.js's isCfKey) and to R2 every hour for durability across
+// Railway redeploys (CF KV route would burn quota; R2 does not).
+const REGIME_SNAPSHOT_HEARTBEAT_S = 15 * 60;
+const REGIME_HIST_MAX_RECORDS     = 2000; // ~3 weeks at the 15-min heartbeat floor
+
+function regimeHistPairSafe(sym) { return String(sym || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
+
+function recordRegimeSnapshot(ver, sym, regime, conf) {
+  if (!regime) return;
+  const pairSafe = regimeHistPairSafe(sym);
+  if (!pairSafe) return;
+  const buf = state.regimeHistBuf[ver];
+  const bucket = buf[pairSafe] ?? (buf[pairSafe] = { records: [], events: [], dirty: false });
+  const nowS = Math.floor(Date.now() / 1000);
+  const last = bucket.records[bucket.records.length - 1];
+  if (last && last.regime === regime && (nowS - last.ts) < REGIME_SNAPSHOT_HEARTBEAT_S) return;
+  bucket.records.push({ ts: nowS, regime, conf: conf ?? null });
+  if (bucket.records.length > REGIME_HIST_MAX_RECORDS) {
+    bucket.records.splice(0, bucket.records.length - REGIME_HIST_MAX_RECORDS);
+  }
+  bucket.dirty = true;
+}
+
+// Merge two record arrays by ts (later write wins on a collision) and cap length.
+function mergeRegimeRecords(a, b) {
+  const map = new Map();
+  for (const r of (a || [])) map.set(r.ts, r);
+  for (const r of (b || [])) map.set(r.ts, r);
+  const out = [...map.values()].sort((x, y) => x.ts - y.ts);
+  return out.length > REGIME_HIST_MAX_RECORDS ? out.slice(out.length - REGIME_HIST_MAX_RECORDS) : out;
+}
+
+// Every 5 min: push dirty pairs' in-memory records into local KV (the "current
+// Railway run" tier /api/regime-history already reads — see loadRegimeHistoryFromR2
+// call below it). Local KV lives in the ephemeral file store, not CF KV, so this
+// is unmetered.
+async function flushRegimeHistoryToLocalKV() {
+  for (const ver of ['v1', 'v2']) {
+    for (const [pairSafe, bucket] of Object.entries(state.regimeHistBuf[ver])) {
+      if (!bucket.dirty) continue;
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const existingRaw = await kv.get(key).catch(() => null);
+        const existing = existingRaw ? JSON.parse(existingRaw) : null;
+        const merged = { records: mergeRegimeRecords(existing?.records, bucket.records), events: existing?.events || bucket.events || [] };
+        await kv.put(key, JSON.stringify(merged));
+        bucket.dirty = false;
+      } catch (e) { console.error(`[REGIME-HIST] local KV flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
+// Every hour: fold the local-KV-durable record set into R2 (survives redeploys).
+// Reuses the same helpers the manual /api/regime-history-export path already uses.
+async function flushRegimeHistoryToR2() {
+  for (const ver of ['v1', 'v2']) {
+    for (const pairSafe of Object.keys(state.regimeHistBuf[ver])) {
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const localRaw = await kv.get(key).catch(() => null);
+        const local = localRaw ? JSON.parse(localRaw) : { records: [], events: [] };
+        if (!local.records.length) continue;
+        const r2Existing = await loadRegimeHistoryFromR2(ver, pairSafe).catch(() => null);
+        const merged = { records: mergeRegimeRecords(r2Existing?.records, local.records), events: r2Existing?.events || local.events || [] };
+        await saveRegimeHistoryToR2(ver, pairSafe, merged);
+      } catch (e) { console.error(`[REGIME-HIST] R2 flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.
 // Reads bot log files line-by-line with readline and writes directly to KV.
+// Kept as a manual fallback (regime-viewer.html's "Backfill logs" button) for
+// seeding history from the Python bots' own logs if that's ever useful — the
+// automatic recorder above is the primary path now.
 
 const _RG_V1_LOG = path.join(__dirname, 'bot',  'regime_bot.log');
 const _RG_V2_LOG = path.join(__dirname, 'logs', 'regime_bot_v2.log');
@@ -24021,6 +24108,7 @@ async function runHMM5mRefresh() {
 
       const prev = state.hmm5mRegimes[sym];
       state.hmm5mRegimes[sym] = result;
+      recordRegimeSnapshot('v1', sym, result.regime, result.confidence);
 
       // Telegram alert on regime change, with cooldown
       if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false && state.cfg?.regimeChangeAlerts !== false) {
@@ -24060,6 +24148,7 @@ async function runHMM5mV2Refresh() {
       const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
       if (!result) continue;
       state.hmm5mV2Regimes[sym] = result;
+      recordRegimeSnapshot('v2', sym, result.regime, result.confidence);
     } catch (e) {
       console.error(`[HMM5M-V2] ${sym} error:`, e.message);
     }
@@ -24411,6 +24500,12 @@ setTimeout(() => {
   runHMM5mV2Refresh().catch(console.error);
   setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
 }, 20_000);
+
+// Regime-history auto-recorder flush — local KV every 5 min (cheap, unmetered),
+// R2 every hour (durable across redeploys). See recordRegimeSnapshot() above;
+// this just persists whatever the live HMM loops have already accumulated.
+setInterval(() => flushRegimeHistoryToLocalKV().catch(e => console.error('[REGIME-HIST] local flush error:', e.message)), 5 * 60 * 1000);
+setInterval(() => flushRegimeHistoryToR2().catch(e => console.error('[REGIME-HIST] R2 flush error:', e.message)), 60 * 60 * 1000);
 
 // V2 1h HTF HMM — refreshes every 5 min (H1 bars change slowly), 10s offset
 setTimeout(() => {

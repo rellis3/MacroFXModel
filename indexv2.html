@@ -154,6 +154,15 @@ table.board tbody tr:hover{background:var(--surface-hover)}
 table.board tbody tr.selected{background:var(--surface2)}
 table.board tbody tr.notable{box-shadow:inset 3px 0 0 var(--warn)}
 table.board td{padding:10px 12px;vertical-align:middle}
+/* First column (Instrument) stays pinned on horizontal scroll — on narrow
+   viewports the .scrollx wrapper can load pre-scrolled (async board data
+   changes table width after first paint, and mobile browsers re-anchor
+   scroll position to compensate), which otherwise clips the symbol off
+   the left edge entirely with no way to see what row you're looking at. */
+table.board th:first-child,
+table.board td:first-child{position:sticky;left:0;z-index:2;background:var(--bg)}
+table.board tbody tr:hover td:first-child{background:var(--surface-hover)}
+table.board tbody tr.selected td:first-child{background:var(--surface2)}
 .sym-cell{display:flex;align-items:center;gap:8px}
 .ac-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .ac-dot.fx{background:var(--info)}
@@ -310,6 +319,7 @@ tr.pv-mid td.pv-px{color:var(--accent-text)}
 .regime-strip{display:flex;gap:3px;margin-top:12px}
 .rs-seg{flex:1;height:8px;border-radius:2px}
 .rs-seg.bull{background:var(--bull)}
+.rs-seg.bear{background:var(--bear)}
 .rs-seg.range{background:var(--info)}
 .regime-rows{display:flex;flex-direction:column;gap:8px}
 .rr{display:flex;align-items:center;gap:10px}
@@ -1402,8 +1412,15 @@ function renderTable(){
       <td>${rangeBar(d)}</td>
       <td>${d.v1?`<span class="chip ${d.v1==='TREND'?'bull':'range'}">v1 ${d.v1}</span>`:'<span class="pending">n/a</span>'}${d.v2?`<div class="range-lbl">${d.agree?'✓ v2 agrees':'⚠ v2 '+d.v2}</div>`:''}</td>
       <td>${trustChipHtml(d)}${d.trustScore!=null?`<div class="range-lbl">${d.trustScore}/100</div>`:''}</td>
-      <td class="zone-cell">${d.nearestZone?`<b>${d.nearestZone.label}</b><br><span class="zone-hit mono">${d.nearestZone.distPips!=null?d.nearestZone.distPips.toFixed(0)+'p':''} · ${d.nearestZone.decision}${d.nearestZone.gated?' · gated':''}</span>`:'<span class="pending">no zone data</span>'}</td>
+      <td class="zone-cell">${d.nearestZone?`<b>${d.nearestZone.label}</b><br><span class="zone-hit mono">${d.nearestZone.distPips!=null?d.nearestZone.distPips.toFixed(0)+'p':''} · ${d.nearestZone.decision}${d.nearestZone.gated?' · gated':''}</span>`:d.zonesRaw?'<span class="pending">no tradeable zone today</span>':'<span class="pending">not tracked</span>'}</td>
     </tr>`).join('');
+  // Async board data can widen the table after first paint; some mobile
+  // browsers re-anchor horizontal scroll to compensate, landing the view
+  // scrolled a few px right with the Instrument column clipped. Force it
+  // back to the start on every render (the sticky first column above is
+  // the belt-and-suspenders backup if this ever fires after a user scroll).
+  const wrap = document.getElementById('board-table-wrap');
+  if (wrap) wrap.scrollLeft = 0;
 }
 // ── Structural motif diagnostic (AnalogML/motif_track.py — research, not a
 // validated signal; see AnalogML/README.md). Replaces the retired k-NN
@@ -1709,7 +1726,7 @@ async function renderDrill(){
           ${d.v1&&d.v2?(d.agree?'<span class="chip neu" style="color:var(--bull);border-color:var(--bull-line)">agree</span>':'<span class="chip warn">disagree</span>'):''}
         </div>
         <div class="regime-rows">${rr('Trend prob',d.trendProb,'var(--bull)')}${rr('Range prob',d.rangeProb,'var(--info)')}</div>
-        ${extras.regimeInfo ? `<div class="regime-strip">${extras.regimeInfo.hist.map(s=>`<span class="rs-seg ${s==='TREND'?'bull':'range'}" title="${s}"></span>`).join('')}</div>
+        ${extras.regimeInfo ? `<div class="regime-strip">${extras.regimeInfo.hist.map(s=>`<span class="rs-seg ${s==='BULL'||s==='TREND'?'bull':s==='BEAR'?'bear':'range'}" title="${s}"></span>`).join('')}</div>
         <div class="forward-line" style="border-top:none;padding-top:0;margin-top:4px"><span>${extras.regimeInfo.periodsHeld<=1?'Just flipped into this state':`Held for ${extras.regimeInfo.periodsHeld} logged periods`}</span></div>` : `<div class="pending" style="margin-top:10px">No regime-history logged for this pair yet.</div>`}
         <div class="forward-line" style="border-top:none;padding-top:0;margin-top:2px"><span>No committed accuracy verdict for this state — descriptive, not predictive.</span></div>
       </div>
