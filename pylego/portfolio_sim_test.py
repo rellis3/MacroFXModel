@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pylego.portfolio_sim import (  # noqa: E402
     matched_utilization_benchmark,
+    monte_carlo_bootstrap,
     pairwise_correlation_summary,
     sharpe_and_dd,
     simulate_portfolio,
@@ -93,6 +94,65 @@ def test_sharpe_and_dd_detects_real_drawdown():
     curve = list(zip(dates, values))
     stats = sharpe_and_dd(curve)
     assert stats["max_dd"] < -0.45  # roughly (0.6-1.2)/1.2 = -0.5
+
+
+def test_sharpe_and_dd_cagr_matches_hand_calc():
+    # Exactly 2.0x over exactly 2 years -> CAGR = sqrt(2) - 1 ~= 0.41421356
+    dates = pd.date_range("2020-01-01", periods=int(365.25 * 2) + 1, freq="D")
+    n = len(dates)
+    curve = [(d, 1.0 * (2.0 ** (i / (n - 1)))) for i, d in enumerate(dates)]  # smooth exponential 1 -> 2
+    stats = sharpe_and_dd(curve)
+    assert abs(stats["cagr"] - (2.0 ** 0.5 - 1.0)) < 0.01
+
+
+def test_sharpe_and_dd_max_dd_days_counts_the_underwater_stretch():
+    # Peak on day 3 (value 1.2), doesn't recover above 1.2 until day 9 -> 6 days underwater.
+    dates = pd.date_range("2020-01-01", periods=10, freq="D")
+    values = [1.0, 1.1, 1.2, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15, 1.25]
+    stats = sharpe_and_dd(list(zip(dates, values)))
+    assert stats["max_dd_days"] == 6
+
+
+def test_sharpe_and_dd_sortino_ignores_upside_volatility():
+    # Same downside days, but one curve also has big UP days (higher total
+    # vol, same downside vol) -- Sharpe should drop, Sortino should not.
+    dates = pd.date_range("2020-01-01", periods=20, freq="D")
+    calm_up = [1.0]
+    wild_up = [1.0]
+    for i in range(1, 20):
+        step_down = -0.01 if i % 4 == 0 else 0.0
+        calm_up.append(calm_up[-1] * (1 + 0.005 + step_down))
+        wild_up.append(wild_up[-1] * (1 + (0.03 if i % 3 == 0 else 0.001) + step_down))
+    calm = sharpe_and_dd(list(zip(dates, calm_up)))
+    wild = sharpe_and_dd(list(zip(dates, wild_up)))
+    assert wild["sharpe"] < calm["sharpe"]
+    assert wild["sortino"] > wild["sharpe"]  # upside vol hurts Sharpe, not Sortino
+
+
+def test_sharpe_and_dd_calmar_is_cagr_over_abs_max_dd():
+    dates = pd.date_range("2020-01-01", periods=10, freq="D")
+    values = [1.0, 1.1, 1.2, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
+    stats = sharpe_and_dd(list(zip(dates, values)))
+    assert abs(stats["calmar"] - stats["cagr"] / abs(stats["max_dd"])) < 1e-9
+
+
+def test_monte_carlo_bootstrap_reproducible_with_fixed_seed():
+    trades = [{"r": r} for r in [1.5, -1.0, 0.5, 2.0, -1.0, 0.8, -0.5, 1.2, -1.0, 0.6]]
+    m1 = monte_carlo_bootstrap(trades, risk_pct=0.02, n_sims=500, seed=42)
+    m2 = monte_carlo_bootstrap(trades, risk_pct=0.02, n_sims=500, seed=42)
+    assert m1 == m2  # same seed, same trades -> byte-identical bands, not a fresh draw each call
+
+
+def test_monte_carlo_bootstrap_all_losers_means_certain_loss():
+    trades = [{"r": -1.0} for _ in range(20)]
+    m = monte_carlo_bootstrap(trades, risk_pct=0.05, n_sims=200, seed=1)
+    assert m["prob_net_loss"] == 1.0
+    assert m["final_return_p95"] < 0
+
+
+def test_monte_carlo_bootstrap_empty_trades_reports_zero():
+    m = monte_carlo_bootstrap([], risk_pct=0.01, n_sims=100)
+    assert m["n_trades"] == 0 and m["n_sims"] == 0
 
 
 def test_matched_utilization_benchmark_scales_risk_linearly():

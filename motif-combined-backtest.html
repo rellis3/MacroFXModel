@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Motif Combined Backtest — Adaptive SL/TP + HTF Sizing</title>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{--bg:#0e1117;--panel:#161b22;--panel2:#1c232c;--bd:#2b333d;--fg:#c9d1d9;--mut:#8b949e;
         --up:#26a69a;--dn:#ef5350;--acc:#58a6ff;--gold:#e3b341}
@@ -39,6 +40,22 @@
   .toprow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
   .pill{background:var(--panel2);border:1px solid var(--bd);border-radius:14px;padding:3px 10px;font-size:11.5px;color:var(--mut)}
   .bucket-AGREE{color:var(--up)}.bucket-CONFLICT{color:var(--dn)}.bucket-NONE{color:var(--mut)}
+  .hero{display:flex;flex-wrap:wrap;gap:14px;margin:16px 0}
+  .hero-stat{flex:1;min-width:200px;background:linear-gradient(180deg,#16201c,#131a17);border:1px solid #204d3a;border-radius:12px;padding:16px 18px}
+  .hero-stat.delta{background:linear-gradient(180deg,#161b22,#12171e);border-color:var(--bd)}
+  .hero-k{color:var(--mut);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+  .hero-v{font-size:34px;font-weight:700;margin-top:4px;color:var(--up)}
+  .hero-sub{color:var(--mut);font-size:12px;margin-top:4px}
+  tr.trade-row{cursor:pointer}
+  tr.trade-row.selected td{background:#17324a}
+  #chartPanel{margin:10px 0 16px}
+  #chartTitle{font-size:13px;color:var(--fg);margin-bottom:8px}
+  #tradeChart{border-radius:8px;overflow:hidden}
+  #chartPlaceholder{color:var(--mut);font-size:12.5px;text-align:center;padding:50px 0}
+  #equityChart{margin-top:8px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:10px 0 2px;font-size:12px;color:var(--mut)}
+  .legend .dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .mc-table td.hi{color:var(--up)}.mc-table td.lo{color:var(--dn)}
 </style>
 </head>
 <body>
@@ -51,13 +68,43 @@
   <div id="err" class="flag" style="display:none;background:#2d1414;border-color:#5c1212;color:#f0a3a3"></div>
   <div id="out" style="display:none">
 
+    <div class="hero" id="hero"></div>
+
     <div id="caveatFlag" class="flag"></div>
 
     <div class="toprow" id="paramPills"></div>
 
     <div class="sec">Portfolio — the 2×2 (same motifs on every arm)</div>
-    <div class="panel"><table id="portfolioTbl"></table></div>
-    <div class="hint">Sharpe / max DD at matched risk sizing (1%/trade, 5% concurrent cap) — <b>total return isn't shown</b>: fixed-%-of-equity compounding over ~20k trades under mark-to-close produces absurd absolute numbers. Sharpe/DD is the comparison that means anything.</div>
+    <div class="panel" style="overflow-x:auto"><table id="portfolioTbl"></table></div>
+    <div class="hint">Standard quant results-card set at matched risk sizing (1%/trade, 5% concurrent cap). <b>CAGR and Calmar are inflated by the same effect as total return, not a separate trustworthy number</b>: fixed-%-of-equity compounding over ~20-28k trades produces triple/quadruple-digit CAGR and Calmar in the double digits — mathematically correct given the inputs, not a realistic forward expectation (uncapped position count/correlated concurrent risk beyond the 5% cap, no capacity limit modeled). Read CAGR/Calmar as a RELATIVE ranking across the 4 arms, same as Sharpe/Sortino — never as an absolute forecast.</div>
+
+    <div class="sec">Portfolio — in-sample vs out-of-sample (same 4 arms, calendar split)</div>
+    <div class="colwrap">
+      <div class="panel" style="overflow-x:auto"><h3>In-sample (pre-2023)</h3><table id="portfolioIsTbl"></table></div>
+      <div class="panel" style="overflow-x:auto"><h3>Out-of-sample (2023+)</h3><table id="portfolioOosTbl"></table></div>
+    </div>
+    <div class="hint">Each split is its OWN fresh account starting at its own first trade — not a slice of the pooled equity curve — so this tests whether the PORTFOLIO-level result (concurrent-risk sequencing, compounding, not just the pooled R distribution) holds up out of sample, the same question the trade-level IS/OOS split further down only answers for raw PF/avg R. Read the flag above first: this is a real calendar split on choices already tuned by looking at full-history results, not a blind holdout.</div>
+
+    <div class="sec">Equity curves — all 4 arms, log scale</div>
+    <div class="panel">
+      <div class="legend" id="eqLegend"></div>
+      <div id="equityChart" style="height:320px"></div>
+    </div>
+    <div class="hint">Log scale on purpose: fixed-fractional compounding makes the 4 arms differ by orders of magnitude in absolute terms even though the Sharpe/DD gap between them is modest — a linear scale would show 3 flat lines and 1 line going to the moon. Read the SHAPE (drawdown depth/timing, smoothness), not the vertical distance between curves.</div>
+
+    <div class="sec">Monte Carlo — trade-order bootstrap (2,000 resamples, fixed seed)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>Combined (adaptive + HTF-sized)</h3><table class="mc-table" id="mcCombinedTbl"></table></div>
+      <div class="panel"><h3>Frozen grid baseline</h3><table class="mc-table" id="mcBaseTbl"></table></div>
+    </div>
+    <div class="hint">Resamples the CLOSED-TRADE r×size_mult sequence WITH REPLACEMENT and replays each draw as a sequential fixed-fractional equity curve — the classic trade-based Monte Carlo (MultiCharts/TradeStation-style), not a price-path simulation. Answers "how much does this result depend on the luck of this exact trade order/sample" — NOT a recheck of whether the portfolio mechanics (calendar concurrency, risk caps) were realistic; that's what the table above already tested. <b>The final-return percentiles inherit the same runaway fixed-% compounding as CAGR above</b> (read as relative bands, e.g. "how much wider is p95 vs p5", never as an absolute dollar forecast) — <b>the max-drawdown percentiles are the trustworthy, bounded half of this table</b> and the actual point of running it. Same seed every run — the bands don't change unless the underlying trades do.</div>
+
+    <div class="sec">Monte Carlo — in-sample vs out-of-sample (combination arm only)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>In-sample (pre-2023)</h3><table class="mc-table" id="mcIsTbl"></table></div>
+      <div class="panel"><h3>Out-of-sample (2023+)</h3><table class="mc-table" id="mcOosTbl"></table></div>
+    </div>
+    <div class="hint">Same bootstrap as above, run separately on each period's trades — a widening drawdown band OOS vs IS would be an early warning sign the edge is degrading, not just the point estimate (Sharpe/CAGR above) drifting.</div>
 
     <div class="sec">Combined signal — full history, pooled</div>
     <div class="cards" id="fullCards"></div>
@@ -88,15 +135,70 @@
       </span>
     </div>
     <div class="hint" id="acctHint"></div>
+
+    <div id="chartPanel" class="panel">
+      <div id="chartTitle" class="muted">Click a trade below to see it on the candle chart.</div>
+      <div id="chartPlaceholder">— select a trade —</div>
+      <div id="chartErr" class="flag" style="display:none;background:#2d1414;border-color:#5c1212;color:#f0a3a3"></div>
+      <div id="chartLoading" class="hint" style="display:none">loading candles from OANDA…</div>
+      <div id="tradeChart" style="display:none"></div>
+    </div>
+
     <div class="panel" style="max-height:440px;overflow:auto"><table id="tradeTbl"></table></div>
   </div>
 </main>
+<script type="module">
+// Canonical pair -> OANDA symbol lookup (js/instrumentRegistry.js), reused
+// rather than a second hand-rolled mapping table — see that file's own
+// docstring on the 8-10 places this table used to be duplicated.
+import { oandaSymbol } from './js/instrumentRegistry.js';
+window.oandaSymbolFor = (pair) => { try { return oandaSymbol(pair); } catch (e) { return null; } };
+</script>
 <script>
 const $=id=>document.getElementById(id);
 const fmt=(v,d=3)=>v==null||Number.isNaN(v)?'—':(+v).toFixed(d);
 const pct=(v,d=1)=>v==null||Number.isNaN(v)?'—':(100*v).toFixed(d)+'%';
+// Fixed-%-of-equity compounding over ~20k+ trades produces multi-digit or
+// multi-trillion-% "returns" that are mathematically correct but unreadable
+// as a percentage — switch to a ×-multiplier with a K/M/B/T suffix once the
+// number of DIGITS would make the % form silly, same threshold either way.
+const bigPct=(v)=>{
+  if(v==null||Number.isNaN(v)) return '—';
+  const mult = v+1;
+  if(Math.abs(mult) < 100) return pct(v,0);
+  const abs = Math.abs(mult);
+  for(const [n,suf] of [[1e12,'T'],[1e9,'B'],[1e6,'M'],[1e3,'K']]) if(abs>=n) return (mult<0?'-':'')+(abs/n).toFixed(1)+suf+'×';
+  return mult.toFixed(0)+'×';
+};
 const cls=v=>v==null?'':(v>0?'pos':(v<0?'neg':''));
 const card=(k,v,c='')=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
+
+const PORTFOLIO_HEADER = '<tr><th>arm</th><th>Sharpe</th><th>Sortino</th><th>CAGR</th><th>Calmar</th>'
+  + '<th>max DD</th><th>DD days</th><th>skew</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
+
+function portfolioRowHtml(p, label, winner){
+  return `<tr class="${winner?'winner':''}"><td>${label}</td>`
+      + `<td class="${cls(p.sharpe-1)}">${fmt(p.sharpe,2)}</td>`
+      + `<td class="${cls(p.sortino-1)}">${fmt(p.sortino,2)}</td>`
+      + `<td class="${cls(p.cagr)}">${pct(p.cagr,1)}</td>`
+      + `<td class="${cls(p.calmar-1)}">${fmt(p.calmar,2)}</td>`
+      + `<td class="${cls(p.max_dd)}">${pct(p.max_dd,1)}</td>`
+      + `<td>${p.max_dd_days}</td>`
+      + `<td class="${cls(p.skew)}">${fmt(p.skew,2)}</td>`
+      + `<td>${pct(p.avg_utilization,1)}</td>`
+      + `<td>${p.avg_pairwise_corr==null?'—':(p.avg_pairwise_corr>=0?'+':'')+fmt(p.avg_pairwise_corr,3)}</td>`
+      + `<td>${p.n}</td></tr>`;
+}
+
+function drawPortfolioIsOosTable(d, ARMS, period, tblId){
+  let h = PORTFOLIO_HEADER;
+  for(const [key,label,winner] of ARMS){
+    const p = d.portfolio[key] && d.portfolio[key][period];
+    if(!p) continue;
+    h += portfolioRowHtml(p, label, winner);
+  }
+  $(tblId).innerHTML = h;
+}
 
 function summaryCards(s){
   return card('n', s.n)
@@ -124,6 +226,19 @@ function render(d){
   $('loading').style.display='none';
   $('out').style.display='block';
 
+  const combo = d.portfolio.adaptive_htf_sized, base = d.portfolio.frozen_uniform;
+  $('hero').innerHTML = `
+    <div class="hero-stat">
+      <div class="hero-k">Portfolio Sharpe — combined (adaptive SL/TP + HTF sizing)</div>
+      <div class="hero-v">${fmt(combo.sharpe,2)}</div>
+      <div class="hero-sub">max DD ${pct(combo.max_dd,1)} · matched utilization ${pct(combo.avg_utilization,1)}</div>
+    </div>
+    <div class="hero-stat delta">
+      <div class="hero-k">vs frozen-grid baseline (uniform sizing)</div>
+      <div class="hero-v" style="color:var(--fg)">${fmt(base.sharpe,2)} <span style="font-size:16px;color:var(--mut)">Sharpe</span></div>
+      <div class="hero-sub">max DD ${pct(base.max_dd,1)} — both mechanisms stack: neither alone reaches ${fmt(combo.sharpe,2)}</div>
+    </div>`;
+
   $('caveatFlag').innerHTML = `<b>Read this before trusting the numbers below:</b> ${d.caveat}`;
 
   $('paramPills').innerHTML = [
@@ -133,24 +248,27 @@ function render(d){
     `risk ${pct(d.params.risk_pct)}/trade`, `max concurrent risk ${pct(d.params.max_concurrent_risk_pct)}`,
   ].map(p=>`<span class="pill">${p}</span>`).join('');
 
-  const arms = [
-    ['adaptive_htf_sized', 'ADAPTIVE + HTF-SIZED (the combination)', true],
-    ['adaptive_uniform', 'ADAPTIVE + UNIFORM', false],
-    ['frozen_htf_sized', 'FROZEN + HTF-SIZED', false],
-    ['frozen_uniform', 'FROZEN + UNIFORM (baseline)', false],
+  const ARMS = [
+    ['adaptive_htf_sized', 'ADAPTIVE + HTF-SIZED (the combination)', true, '#3fb950'],
+    ['adaptive_uniform', 'ADAPTIVE + UNIFORM', false, '#58a6ff'],
+    ['frozen_htf_sized', 'FROZEN + HTF-SIZED', false, '#e3b341'],
+    ['frozen_uniform', 'FROZEN + UNIFORM (baseline)', false, '#8b949e'],
   ];
-  let ph = '<tr><th>arm</th><th>Sharpe</th><th>max DD</th><th>avg util</th><th>avg pairwise corr</th><th>n</th></tr>';
-  for(const [key,label,winner] of arms){
+  let ph = PORTFOLIO_HEADER;
+  for(const [key,label,winner] of ARMS){
     const p = d.portfolio[key];
     if(!p) continue;
-    ph += `<tr class="${winner?'winner':''}"><td>${label}</td>`
-        + `<td class="${cls(p.sharpe-1)}">${fmt(p.sharpe,2)}</td>`
-        + `<td class="${cls(p.max_dd)}">${pct(p.max_dd,1)}</td>`
-        + `<td>${pct(p.avg_utilization,1)}</td>`
-        + `<td>${p.avg_pairwise_corr==null?'—':(p.avg_pairwise_corr>=0?'+':'')+fmt(p.avg_pairwise_corr,3)}</td>`
-        + `<td>${p.n}</td></tr>`;
+    ph += portfolioRowHtml(p, label, winner);
   }
   $('portfolioTbl').innerHTML = ph;
+
+  drawPortfolioIsOosTable(d, ARMS, 'is', 'portfolioIsTbl');
+  drawPortfolioIsOosTable(d, ARMS, 'oos', 'portfolioOosTbl');
+  drawEquityChart(d, ARMS);
+  drawMonteCarlo(d.portfolio.adaptive_htf_sized.monte_carlo, 'mcCombinedTbl');
+  drawMonteCarlo(d.portfolio.frozen_uniform.monte_carlo, 'mcBaseTbl');
+  drawMonteCarlo(d.portfolio.adaptive_htf_sized.is.monte_carlo, 'mcIsTbl');
+  drawMonteCarlo(d.portfolio.adaptive_htf_sized.oos.monte_carlo, 'mcOosTbl');
 
   $('fullCards').innerHTML = summaryCards(d.summary.full);
   $('isCards').innerHTML = summaryCards(d.summary.is);
@@ -198,17 +316,146 @@ function drawTrades(){
   const show = FILTERED.length>500 ? FILTERED.slice(-500) : FILTERED;
   let h = '<tr><th>pair</th><th>date</th><th>dir</th><th>category</th><th>HTF</th><th>outcome</th>'
         + '<th>size</th><th>R</th><th>bench R</th><th>MAE(R)</th><th>PnL $</th><th>IS/OOS</th></tr>';
-  for(const t of show){
-    h += `<tr><td>${t.pair.toUpperCase()}</td><td>${t.date}</td><td>${t.direction}</td>`
+  show.forEach((t,i)=>{
+    h += `<tr class="trade-row" data-i="${i}"><td>${t.pair.toUpperCase()}</td><td>${t.date}</td><td>${t.direction}</td>`
        + `<td>${t.category}</td><td class="bucket-${t.htf_bucket}">${t.htf_bucket}</td><td>${t.outcome}</td>`
        + `<td>${fmt(t.size_mult,1)}x</td>`
        + `<td class="${cls(t.r)}">${fmt(t.r,2)}</td><td class="${cls(t.bench_r)}">${fmt(t.bench_r,2)}</td>`
        + `<td>${fmt(t.mae_r,2)}</td>`
        + `<td class="${cls(t.pnl_dollars)}">${fmt(t.pnl_dollars,2)}</td><td>${t.is_oos}</td></tr>`;
-  }
+  });
   $('tradeTbl').innerHTML = h;
+  $('tradeTbl').querySelectorAll('tr.trade-row').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      $('tradeTbl').querySelectorAll('tr.selected').forEach(x=>x.classList.remove('selected'));
+      tr.classList.add('selected');
+      selectTrade(show[+tr.dataset.i]);
+    });
+  });
   if(FILTERED.length>500) $('tradeTbl').insertAdjacentHTML('beforebegin',
-    `<div class="hint">showing last 500 of ${FILTERED.length} trades in the table (CSV exports include ALL of them)</div>`);
+    `<div class="hint">showing last 500 of ${FILTERED.length} trades in the table (CSV exports include ALL of them) — click any row to see it on the candle chart above</div>`);
+}
+
+// ── Equity curves: all 4 arms overlaid, log scale ──
+let eqChart=null;
+function drawEquityChart(d, ARMS){
+  $('equityChart').innerHTML='';
+  eqChart = LightweightCharts.createChart(document.getElementById('equityChart'), {
+    height: 320,
+    autoSize: true,
+    layout: { background:{color:'#161b22'}, textColor:'#c9d1d9' },
+    grid: { vertLines:{color:'#2b333d'}, horzLines:{color:'#2b333d'} },
+    rightPriceScale: { mode: LightweightCharts.PriceScaleMode.Logarithmic },
+    timeScale: { timeVisible:false },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  let legend = '';
+  for(const [key,label,winner,color] of ARMS){
+    const p = d.portfolio[key];
+    if(!p || !p.equity_curve || !p.equity_curve.length) continue;
+    const line = eqChart.addLineSeries({
+      color, lineWidth: winner?3:1.5,
+      lineStyle: winner?LightweightCharts.LineStyle.Solid:LightweightCharts.LineStyle.Dashed,
+    });
+    line.setData(p.equity_curve.map(([t,v])=>({ time:t, value:v })));
+    legend += `<span><span class="dot" style="background:${color}"></span>${label}</span>`;
+  }
+  $('eqLegend').innerHTML = legend;
+  eqChart.timeScale().fitContent();
+}
+
+// ── Monte Carlo: percentile bands from pylego.portfolio_sim.monte_carlo_bootstrap ──
+function drawMonteCarlo(mc, tblId){
+  if(!mc || !mc.n_sims){ $(tblId).innerHTML = '<tr><td class="muted">no Monte Carlo data</td></tr>'; return; }
+  const row = (label,p5,p50,p95,fmtFn) => `<tr><td>${label}</td>`
+    + `<td class="lo">${fmtFn(p5)}</td><td>${fmtFn(p50)}</td><td class="hi">${fmtFn(p95)}</td></tr>`;
+  $(tblId).innerHTML =
+    `<tr><th></th><th>p5</th><th>p50 (median)</th><th>p95</th></tr>`
+    + row('final return', mc.final_return_p5, mc.final_return_p50, mc.final_return_p95, bigPct)
+    + row('max drawdown', mc.max_dd_p5, mc.max_dd_p50, mc.max_dd_p95, v=>pct(v,1))
+    + `<tr><td>prob. of net loss</td><td colspan="3">${pct(mc.prob_net_loss,1)} across ${mc.n_sims.toLocaleString()} resamples of ${mc.n_trades.toLocaleString()} trades</td></tr>`
+    + `<tr><td>worst single draw</td><td colspan="3">max DD ${pct(mc.worst_max_dd,1)}</td></tr>`;
+}
+
+// ── Trade chart: candles + entry/stop/target lines + entry/exit markers ──
+// Same lightweight-charts pattern as pattern-lab.html's overlay (createChart
+// + addCandlestickSeries + createPriceLine + setMarkers) — reused, not
+// reinvented. Candles come from the existing generic /api/ohlc-range
+// endpoint (server.js), not a new route.
+let chart=null, series=null, chartLines=[];
+function ensureChart(){
+  if(chart) return;
+  chart = LightweightCharts.createChart(document.getElementById('tradeChart'), {
+    height: 380,
+    autoSize: true,
+    layout: { background:{color:'#161b22'}, textColor:'#c9d1d9' },
+    grid: { vertLines:{color:'#2b333d'}, horzLines:{color:'#2b333d'} },
+    timeScale: { timeVisible:true, secondsVisible:false },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+  });
+  series = chart.addCandlestickSeries({
+    upColor:'#26a69a', downColor:'#ef5350', borderVisible:false,
+    wickUpColor:'#26a69a', wickDownColor:'#ef5350',
+  });
+}
+
+async function selectTrade(t){
+  $('chartPlaceholder').style.display='none';
+  $('chartErr').style.display='none';
+  $('chartTitle').textContent =
+    `${t.pair.toUpperCase()} · ${t.direction} · ${t.date} · ${t.outcome.toUpperCase()} · R=${fmt(t.r,2)} · ${t.category} · HTF ${t.htf_bucket}`;
+
+  const sym = window.oandaSymbolFor(t.pair);
+  if(!sym){
+    $('chartErr').textContent = `No OANDA symbol mapping for "${t.pair}".`;
+    $('chartErr').style.display='block';
+    return;
+  }
+
+  $('chartLoading').style.display='block';
+
+  const entry = new Date(t.entry_date), exit = new Date(t.exit_date);
+  const from = new Date(entry.getTime() - 3*86400000).toISOString().slice(0,10);
+  const to   = new Date(exit.getTime()  + 1*86400000).toISOString().slice(0,10);
+
+  try{
+    // Container must be visible BEFORE createChart() runs, or it measures a
+    // 0x0 box (display:none) and the chart never gets a real size — autoSize
+    // above covers later window/panel resizes, not this first-paint case.
+    $('tradeChart').style.display='block';
+    // Chart-library setup lives INSIDE the try too — if the CDN script
+    // failed to load (blocked, slow, ad-blocker), LightweightCharts is
+    // undefined and this throws here, where it's caught and shown, instead
+    // of dying silently before the fetch ever runs.
+    ensureChart();
+    chartLines.forEach(l=>{ try{ series.removePriceLine(l); }catch(e){} });
+    chartLines = [];
+
+    const res = await fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&granularity=H1&from=${from}&to=${to}`).then(r=>r.json());
+    $('chartLoading').style.display='none';
+    if(res.error) throw new Error(res.error);
+    if(!res.values || !res.values.length) throw new Error('no candles returned for this window');
+
+    series.setData(res.values.map(v=>({ time:v.t, open:v.open, high:v.high, low:v.low, close:v.close })));
+    chartLines = [
+      series.createPriceLine({ price:t.entry_price,  color:'#7a88a8', lineWidth:1, lineStyle:LightweightCharts.LineStyle.Dotted, title:'entry' }),
+      series.createPriceLine({ price:t.stop_price,   color:'#ef5350', lineWidth:1, lineStyle:LightweightCharts.LineStyle.Dashed, title:'stop' }),
+      series.createPriceLine({ price:t.target_price, color:'#26a69a', lineWidth:1, lineStyle:LightweightCharts.LineStyle.Dashed, title:'target' }),
+    ];
+    series.setMarkers([
+      { time: Math.floor(entry.getTime()/1000), position: t.direction==='BUY'?'belowBar':'aboveBar',
+        color:'#58a6ff', shape: t.direction==='BUY'?'arrowUp':'arrowDown', text:'entry' },
+      { time: Math.floor(exit.getTime()/1000), position:'inBar',
+        color: t.r>0?'#26a69a':'#ef5350', shape:'circle', text:t.outcome },
+    ]);
+    chart.timeScale().fitContent();
+  }catch(e){
+    $('chartLoading').style.display='none';
+    $('tradeChart').style.display='none';
+    $('chartErr').textContent = 'Could not load candles: ' + e.message +
+      ' (requires OANDA_KEY configured server-side — this page has no local-data fallback).';
+    $('chartErr').style.display='block';
+  }
 }
 
 function dl(name, rows){
