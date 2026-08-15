@@ -22,10 +22,37 @@ if [ "${MOTIF_TRACK_TELEGRAM:-1}" != "0" ]; then
     TELEGRAM_FLAG="--telegram"
 fi
 
+# A scan failing inside its own process can't alert about its own crash --
+# a genuinely down bot and "no signals this hour" are both silent from the
+# phone's side otherwise. Alert on the STATE CHANGE (down / recovered), not
+# every single failure, so a one-off transient blip doesn't page anyone --
+# only a real, sustained outage does. FAIL_THRESHOLD consecutive failures
+# before the first alert; exactly one recovery message once it succeeds
+# again, then the flag resets.
+FAIL_THRESHOLD="${MOTIF_TRACK_FAIL_THRESHOLD:-3}"
+consecutive_failures=0
+outage_alerted=0
+
 while true; do
     echo "[motif_track_loop] scanning $(date -u +%FT%TZ)"
-    python3 AnalogML/motif_track.py --refresh-data $TELEGRAM_FLAG \
-        || echo "[motif_track_loop] scan failed -- will retry next interval"
+    if python3 AnalogML/motif_track.py --refresh-data $TELEGRAM_FLAG; then
+        if [ "$outage_alerted" = "1" ]; then
+            python3 AnalogML/motif_track.py --heartbeat-alert \
+                "✅ motif_track recovered after ${consecutive_failures} failed scan(s) in a row." \
+                || echo "[motif_track_loop] recovery heartbeat failed to send"
+            outage_alerted=0
+        fi
+        consecutive_failures=0
+    else
+        consecutive_failures=$((consecutive_failures + 1))
+        echo "[motif_track_loop] scan failed (${consecutive_failures} in a row) -- will retry next interval"
+        if [ "$consecutive_failures" -ge "$FAIL_THRESHOLD" ] && [ "$outage_alerted" = "0" ]; then
+            python3 AnalogML/motif_track.py --heartbeat-alert \
+                "⚠️ motif_track has failed ${consecutive_failures} scan(s) in a row (threshold ${FAIL_THRESHOLD}) -- bot may be down. Check Railway logs." \
+                || echo "[motif_track_loop] outage heartbeat failed to send"
+            outage_alerted=1
+        fi
+    fi
     echo "[motif_track_loop] sleeping ${INTERVAL_SECONDS}s"
     sleep "$INTERVAL_SECONDS"
 done
