@@ -319,6 +319,19 @@ def _htf_lean_for_entry(pair: str, entry_time) -> int | None:
     return htf_lean_at(confirmed, cutoff_idx_htf, HTF_LOOKBACK_BARS)
 
 
+_DIVIDER = "━" * 16  # "━" heavy horizontal line -- a visual section break Telegram renders consistently
+
+
+def _confidence_bar(rate: float, width: int = 5) -> str:
+    """A tiny text-only bar chart (filled/empty block chars) for a 0-1 rate
+    -- the closest thing to a real graphic a plain-text Telegram message can
+    show without attaching an image (pylego.telegram only sends text -- see
+    its own docstring; a chart/photo attachment would need a NEW sendPhoto
+    brick, a separate follow-up, not a formatting change)."""
+    filled = round(max(0.0, min(1.0, rate)) * width)
+    return "▓" * filled + "░" * (width - filled)  # "▓" filled / "░" empty
+
+
 def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None) -> str:
     """Telegram HTML for one new confirmed motif. Two sizing lines, not
     three: "Tracked (frozen grid)" stays -- it is the actual record
@@ -352,24 +365,33 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
             size_mult, htf_reason = 1.0, "1D AGREE"
         else:
             size_mult, htf_reason = HTF_CONFLICT_SIZE_MULT, "1D CONFLICT"
-        combined_line = (f"\U0001f3c6 <b>Combined (validated best):</b> "
-                         f"SL {adaptive_sl:.5f} ({adaptive_sl_dist / pip:.1f}p) "
-                         f"· TP {adaptive_tp:.5f} ({adaptive_tp_dist / pip:.1f}p) "
-                         f"· size {size_mult:.1f}x ({htf_reason})\n")
+        combined_line = (f"\U0001f3c6 <b>Combined (validated best)</b>\n"
+                         f"    SL <code>{adaptive_sl:.5f}</code> ({adaptive_sl_dist / pip:.1f}p) "
+                         f"· TP <code>{adaptive_tp:.5f}</code> ({adaptive_tp_dist / pip:.1f}p) "
+                         f"· <b>{size_mult:.1f}x</b> ({htf_reason})\n")
 
     conf_line = ""
     if confidence:
-        conf_line = (f"Historical: {confidence['played_out_rate'] * 100:.0f}% played out, "
-                     f"PF {confidence['profit_factor']:.2f} (n={confidence['n_samples']})\n")
+        bar = _confidence_bar(confidence["played_out_rate"])
+        conf_line = (f"\U0001f4ca {bar} {confidence['played_out_rate'] * 100:.0f}% played out "
+                     f"· PF {confidence['profit_factor']:.2f} · n={confidence['n_samples']}\n")
 
     kind = "top" if m.is_top else "bottom"
-    icon = "\U0001f53b" if m.is_top else "\U0001f53a"
+    # Direction icon matches the ACTUAL confirmed trade direction, not the
+    # pattern's textbook expectation -- a "top" that FAILED (broke UP
+    # instead of reversing down, m.played_out=False) is a BUY, and the old
+    # is_top-only icon showed a down-triangle for that case regardless,
+    # silently wrong exactly when it mattered most (the failure case).
+    direction_icon = "\U0001f7e2⬆️" if direction == 1 else "\U0001f534⬇️"  # 🟢⬆️ / 🔴⬇️
     tp_dist_pips = abs(t["tp_price"] - entry) / pip
-    return (f"{icon} <b>{pair.upper()}</b> {t['direction']} — {m.n_touches}-touch {kind}\n"
-           f"Entry: {entry:.5f}\n"
-           f"Tracked (frozen grid): SL {t['sl_price']:.5f} ({t['sl_dist'] / pip:.0f}p) "
-           f"· TP {t['tp_price']:.5f} ({tp_dist_pips:.0f}p, {t['tp_r']}R)\n"
+    return (f"{direction_icon} <b>{pair.upper()}</b> · {t['direction']} · {m.n_touches}-touch {kind}\n"
+           f"{_DIVIDER}\n"
+           f"\U0001f3af Entry  <code>{entry:.5f}</code>\n"
+           f"\U0001f4cd <b>Tracked (frozen grid)</b>\n"
+           f"    SL <code>{t['sl_price']:.5f}</code> ({t['sl_dist'] / pip:.0f}p) "
+           f"· TP <code>{t['tp_price']:.5f}</code> ({tp_dist_pips:.0f}p, {t['tp_r']}R)\n"
            f"{combined_line}{conf_line}"
+           f"{_DIVIDER}\n"
            f"<i>Research signal — not a validated live edge. See AnalogML/README.md.</i>")
 
 
@@ -423,17 +445,27 @@ def format_nearing_alert(pair: str, state: dict) -> str:
     motifs use), never repeated every scan it stays close, and only once
     the touch-run is no longer `provisional` (still-forming pivots that
     could be invalidated by the next bar shouldn't trigger an alert)."""
-    icon = "\U0001f440"
     conf_line = ""
     c = state.get("confidence")
     if c:
-        conf_line = (f"Historical: {c['played_out_rate'] * 100:.0f}% played out, "
-                     f"PF {c['profit_factor']:.2f} (n={c['n_samples']})\n")
-    return (f"{icon} <b>{pair.upper()}</b> {state['n_touches']}-touch {state['kind']} — "
-           f"nearing breakout level\n"
-           f"Price: {state['current_price']:.5f}  →  Level: {state['level']:.5f} "
-           f"({state['dist_to_level_pips']:.1f}p away)\n"
+        bar = _confidence_bar(c["played_out_rate"])
+        conf_line = (f"\U0001f4ca {bar} {c['played_out_rate'] * 100:.0f}% played out "
+                     f"· PF {c['profit_factor']:.2f} · n={c['n_samples']}\n")
+    # Textbook expectation, purely informational -- a top expects a reversal
+    # DOWN (SELL), a bottom expects a reversal UP (BUY). Not a claim this
+    # WILL happen (the "failure" case breaks the other way, same as
+    # format_alert's direction icon fix above) -- just what the pattern's
+    # own name implies, worth knowing while it's still forming.
+    textbook = "SELL (reversal down)" if state["kind"] == "top" else "BUY (reversal up)"
+    return (f"\U0001f440 <b>{pair.upper()}</b> · {state['n_touches']}-touch {state['kind']} · "
+           f"nearing breakout\n"
+           f"{_DIVIDER}\n"
+           f"\U0001f4b9 Price  <code>{state['current_price']:.5f}</code>\n"
+           f"\U0001f3af Level  <code>{state['level']:.5f}</code>  "
+           f"(<b>{state['dist_to_level_pips']:.1f}p</b> away)\n"
+           f"\U0001f9ed If textbook plays out: <b>{textbook}</b>\n"
            f"{conf_line}"
+           f"{_DIVIDER}\n"
            f"<i>Not yet confirmed — watch for an H1 close through the level. Research signal, "
            f"not a validated live edge.</i>")
 

@@ -38,7 +38,9 @@ while true; do
     if python3 AnalogML/motif_track.py --refresh-data $TELEGRAM_FLAG; then
         if [ "$outage_alerted" = "1" ]; then
             python3 AnalogML/motif_track.py --heartbeat-alert \
-                "✅ motif_track recovered after ${consecutive_failures} failed scan(s) in a row." \
+                "🟢 <b>motif_track — back up</b>
+━━━━━━━━━━━━━━━━
+Recovered after ${consecutive_failures} failed scan(s) in a row." \
                 || echo "[motif_track_loop] recovery heartbeat failed to send"
             outage_alerted=0
         fi
@@ -48,7 +50,10 @@ while true; do
         echo "[motif_track_loop] scan failed (${consecutive_failures} in a row) -- will retry next interval"
         if [ "$consecutive_failures" -ge "$FAIL_THRESHOLD" ] && [ "$outage_alerted" = "0" ]; then
             python3 AnalogML/motif_track.py --heartbeat-alert \
-                "⚠️ motif_track has failed ${consecutive_failures} scan(s) in a row (threshold ${FAIL_THRESHOLD}) -- bot may be down. Check Railway logs." \
+                "🔴 <b>motif_track — may be down</b>
+━━━━━━━━━━━━━━━━
+${consecutive_failures} scan(s) failed in a row (threshold ${FAIL_THRESHOLD}).
+Check Railway logs." \
                 || echo "[motif_track_loop] outage heartbeat failed to send"
             outage_alerted=1
         fi
