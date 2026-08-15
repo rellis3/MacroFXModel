@@ -55,19 +55,25 @@ trade itself -- deliberately, so the record this signal is judged by never
 silently drifts; informational only, for a human sizing a manual trade.
 Disabled under `--as-of` even if passed (replay/testing only, never live).
 
-**Nearing-level alerts (`--nearing-atr-mult`, default 0.5, 2026-08-14):** a
-SEPARATE, early-warning alert for a touch-run approaching (not yet
-confirmed) its breakout level -- confirmation can only happen at an H1
-close and, on an hourly loop, isn't NOTICED until up to an hour after it
-happened; this fires the SAME scan price gets within `nearing_atr_mult` x
-ATR of the level, closing most of that gap for the decision that actually
-matters live. Fires ONCE per touch-run (`log['nearing_alerted']`, same
-`motif_key` identity confirmed motifs use), and only once the touch-run is
-no longer `provisional` (a still-forming pivot that could yet be
-invalidated by the next bar shouldn't trigger an alert). Set to 0 to
-disable. Does not reduce the RESIDUAL risk of a fast move that closes a
-whole ATR and confirms within a single hourly gap -- only a shorter
-`MOTIF_TRACK_INTERVAL_SECONDS` reduces that further.
+**Nearing-level alerts moved to `motif_nearing_watch.py` (2026-08-14,
+split out 2026-08-15):** originally lived inline here, gated on this
+hourly scan -- moved to a separate, fast-polling script because bundling
+"is price now close to an already-known level" into the same expensive
+hourly full-rescan meant it could ONLY ever notice as often as the whole
+detection pipeline reran, up to an hour late for the one alert where
+timeliness matters most. The level itself doesn't need re-detection to
+notice proximity to -- it's fixed once a touch-run forms -- so the fast
+script polls a cheap live quote (`pylego.quotes.QuoteFeed`) against levels
+THIS scan already computed (`compute_motif_state`'s `atr` field, carried
+into `motif_state.json`) every `MOTIF_NEARING_POLL_SECONDS` (default 60),
+sharing the SAME `log['nearing_alerted']` dedup so the two processes never
+double-alert. Confirmation (`format_alert`, above) is untouched and still
+only ever fires on an actual H1 close -- this narrows the gap between
+"price got close" and "you found out," it can never trade earlier than the
+validated rule allows. See `motif_nearing_watch.py`'s own docstring for why
+a resting limit/stop order AT the level would silently trade a different,
+unvalidated rule (the detector only ever checks bar CLOSES, never intrabar
+touches).
 
 **Heartbeat (`--heartbeat-alert TEXT`, 2026-08-14):** sends TEXT via the
 shared Telegram config and exits -- no scanning. A scan crashing inside its
@@ -332,7 +338,8 @@ def _confidence_bar(rate: float, width: int = 5) -> str:
     return "▓" * filled + "░" * (width - filled)  # "▓" filled / "░" empty
 
 
-def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None) -> str:
+def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None,
+                 current_price: float | None = None) -> str:
     """Telegram HTML for one new confirmed motif. Two sizing lines, not
     three: "Tracked (frozen grid)" stays -- it is the actual record
     motif_trades.json logs and the ONLY thing every validated Sharpe/PF
@@ -346,7 +353,16 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
     `motif_combined_portfolio_sim.py` validated at 26-pair portfolio scale
     (beats either mechanism alone on both Sharpe and max DD -- see
     AnalogML/README.md). Still NOT applied to the tracked trade itself --
-    informational only, for a human sizing a manual trade."""
+    informational only, for a human sizing a manual trade.
+
+    `current_price` (the freshest close available at scan time -- NOT a
+    live tick) drives a "price now" line with explicit drift vs the
+    confirmation-bar price. Without it, "Entry: X" read like an instruction
+    to go get filled at X right now -- but X is where the market was AT
+    CONFIRMATION, up to an hour stale by the time this alert is read, and a
+    bare historical number doesn't say that. Relabelled "Confirmed @" and
+    the drift line makes the staleness and its direction (better/worse than
+    the tracked price) explicit instead of implied."""
     pip = pip_size(pair)
     direction = m.direction
     entry = t["entry_price"]
@@ -384,9 +400,22 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
     # silently wrong exactly when it mattered most (the failure case).
     direction_icon = "\U0001f7e2⬆️" if direction == 1 else "\U0001f534⬇️"  # 🟢⬆️ / 🔴⬇️
     tp_dist_pips = abs(t["tp_price"] - entry) / pip
+
+    price_now_line = ""
+    if current_price is not None:
+        drift_pips = abs(current_price - entry) / pip
+        # For a BUY, a HIGHER current price than the tracked entry is worse
+        # (you'd fill higher than the record); for a SELL, a LOWER current
+        # price is worse. Same comparison, direction-aware.
+        worse = (direction == 1 and current_price > entry) or (direction == -1 and current_price < entry)
+        verdict = "worse than tracked" if worse else "better than tracked"
+        price_now_line = (f"\U0001f4b9 Price now  <code>{current_price:.5f}</code>  "
+                          f"({drift_pips:.1f}p {verdict})\n")
+
     return (f"{direction_icon} <b>{pair.upper()}</b> · {t['direction']} · {m.n_touches}-touch {kind}\n"
            f"{_DIVIDER}\n"
-           f"\U0001f3af Entry  <code>{entry:.5f}</code>\n"
+           f"\U0001f3af <b>Confirmed @</b>  <code>{entry:.5f}</code>  (tracked reference — may be up to 1hr old)\n"
+           f"{price_now_line}"
            f"\U0001f4cd <b>Tracked (frozen grid)</b>\n"
            f"    SL <code>{t['sl_price']:.5f}</code> ({t['sl_dist'] / pip:.0f}p) "
            f"· TP <code>{t['tp_price']:.5f}</code> ({tp_dist_pips:.0f}p, {t['tp_r']}R)\n"
@@ -395,11 +424,18 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
            f"<i>Research signal — not a validated live edge. See AnalogML/README.md.</i>")
 
 
-def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dict) -> dict | None:
+def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dict,
+                        atr_arr=None) -> dict | None:
     """The live diagnostic: whichever touch-run is currently IN PROGRESS
     (unconfirmed, still inside its breakout horizon) and most recent. None
     if nothing is currently forming for this pair -- a real, common state,
-    not an error."""
+    not an error. `atr_arr`'s last value is carried into the returned dict
+    (as `atr`, price units) so a SEPARATE, fast poller (motif_nearing_watch.py)
+    can compute the same ATR-scaled nearing threshold against a fresh live
+    quote without re-running detection or re-fetching M1 bars at all -- it
+    only needs the level (fixed once the touch-run forms) and this ATR
+    snapshot (a volatility scale that doesn't shift meaningfully within an
+    hour), both already computed here."""
     n = len(bars)
     in_progress = [m for m in motifs if m.confirm_idx is None
                   and m.touch_idxs[-1] + params["breakout_max_bars"] >= n - 1]
@@ -418,6 +454,7 @@ def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dic
     dist_to_touch_level_pips = abs(current_price - live.touch_level) / pip
 
     confidence = _category_confidence(motifs, live.n_touches, live.is_top)
+    current_atr = float(atr_arr[-1]) if atr_arr is not None and len(atr_arr) else None
 
     return {
         "pair": pair, "as_of": bars.index[-1].isoformat(),
@@ -433,6 +470,7 @@ def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dic
         "bars_since_last_touch": bars_since_last_touch,
         "bars_left_in_horizon": max(0, bars_left_in_horizon),
         "confidence": confidence,
+        "atr": round(current_atr, 6) if current_atr and current_atr > 0 else None,
     }
 
 
@@ -516,8 +554,7 @@ def run(args: argparse.Namespace) -> None:
                       "shared tg_config) -- alerts will be skipped this run")
 
     log = load_log()
-    nearing_alerted = set(log.setdefault("nearing_alerted", []))
-    new_signals, resolved_total, alerts_sent, nearing_sent = 0, 0, 0, 0
+    new_signals, resolved_total, alerts_sent = 0, 0, 0
     states: list[dict] = []
     forming = 0
 
@@ -548,36 +585,24 @@ def run(args: argparse.Namespace) -> None:
             if tg_token and tg_chat_id:
                 htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
                 confidence = _category_confidence(motifs, m.n_touches, m.is_top)
-                text = format_alert(pair, t, m, atr_arr, htf_lean, confidence)
+                current_price = float(bars["close"].to_numpy()[-1])
+                text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price)
                 if send_telegram(tg_token, tg_chat_id, text):
                     alerts_sent += 1
                 else:
                     print(f"  [warn] Telegram alert failed to send for {pair}")
 
-        state = compute_motif_state(pair, bars, motifs, FROZEN)
+        # "Nearing" alerts are NOT sent from here -- motif_nearing_watch.py
+        # owns that job now, polling a live quote every MOTIF_NEARING_POLL_
+        # SECONDS (default 60) against the level this scan computes below,
+        # instead of waiting for the next full hourly rescan to notice price
+        # got close. Two separate mechanisms racing each other to alert on
+        # the same thing was exactly the "conflicted messaging" problem --
+        # one clear owner per alert type now.
+        state = compute_motif_state(pair, bars, motifs, FROZEN, atr_arr)
         if state:
             states.append(state)
             forming += 1
-            # Early-warning alert: price within --nearing-atr-mult ATR of a
-            # stable (non-provisional) touch-run's breakout level, fired
-            # ONCE per touch-run (log['nearing_alerted']) -- not on every
-            # scan it stays close, and never on a still-forming pivot that
-            # could yet be invalidated. Confirmation (format_alert) can
-            # only happen at an H1 close and stays up to an hour late this
-            # way; this fires the SAME scan price gets close, closing most
-            # of that gap for the decision that actually matters live.
-            if (tg_token and tg_chat_id and args.nearing_atr_mult > 0
-                    and not state["provisional"] and state["motif_key"] not in nearing_alerted):
-                current_atr = atr_arr[-1] if len(atr_arr) else None
-                if current_atr and current_atr > 0:
-                    nearing_pips = (args.nearing_atr_mult * current_atr) / pip_size(pair)
-                    if state["dist_to_level_pips"] <= nearing_pips:
-                        if send_telegram(tg_token, tg_chat_id, format_nearing_alert(pair, state)):
-                            nearing_sent += 1
-                        else:
-                            print(f"  [warn] nearing-alert failed to send for {pair}")
-                        nearing_alerted.add(state["motif_key"])
-                        log["nearing_alerted"] = sorted(nearing_alerted)
 
     save_log(log)
     save_state(states)
@@ -589,7 +614,7 @@ def run(args: argparse.Namespace) -> None:
           f"new_signals={new_signals}  resolved_this_run={resolved_total}  "
           f"currently_open={open_n}  closed={len(closed)} (wins={wins}, total_R={total_r:.2f})  "
           f"currently_forming={forming}/{len(pairs)} pairs  total_logged={len(log['trades'])}"
-          + (f"  telegram_alerts_sent={alerts_sent}  nearing_alerts_sent={nearing_sent}" if args.telegram else ""))
+          + (f"  telegram_alerts_sent={alerts_sent}" if args.telegram else ""))
     if not args.as_of:
         print("[note] no --as-of given: this ran against the static local snapshot, NOT live data. "
               "See this file's module docstring for the data-access blocker and how to wire in a "
@@ -612,10 +637,6 @@ def main() -> None:
                         "automatically under --as-of (replay/testing, never live).")
     p.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL", "http://localhost:3000"),
                    help="base URL for reading the shared Telegram config via the KV API.")
-    p.add_argument("--nearing-atr-mult", type=float,
-                   default=float(os.environ.get("MOTIF_TRACK_NEARING_ATR_MULT", "0.5")),
-                   help="send a one-time 'nearing breakout level' alert when price is within this "
-                        "many ATR of a forming (non-provisional) touch-run's level. 0 disables.")
     p.add_argument("--heartbeat-alert", default=None,
                    help="send this raw text via the shared Telegram config and exit -- no scanning. "
                         "A scan crashing inside its own run can't alert about its own crash; "
