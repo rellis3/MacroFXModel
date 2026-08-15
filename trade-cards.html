@@ -352,8 +352,12 @@ async function loadOneChart(card) {
     layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 9, fontFamily: "'DM Mono', monospace" },
     grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.06)' } },
     timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, secondsVisible: false },
-    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.1 } },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.1 }, autoScale: true },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    // Explicit (library defaults left touch users with no way to change the
+    // vertical range — see today.html's drawer chart for the same fix/why).
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale:  { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
   });
   const series = chart.addCandlestickSeries({
     upColor: '#10b981', downColor: '#f97316', borderUpColor: '#10b981', borderDownColor: '#f97316',

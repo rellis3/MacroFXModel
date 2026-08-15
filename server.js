@@ -560,6 +560,8 @@ const state = {
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
+  regimeHistBuf:       { v1: {}, v2: {} }, // in-memory regime-history ring buffer, auto-recorded
+                             // off the live 5m HMM loops — see recordRegimeSnapshot()/flushRegimeHistory()
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -2464,13 +2466,14 @@ Rules for your response:
 15. MATCH TONE TO CONVICTION. If the read is a positioning lean rather than a high-conviction, well-evidenced setup, say so plainly ("this is a lean, not a high-conviction trade") and keep convictionScore consistent with it. Don't dress a weak, single-signal idea in confident prose.
 16. NUMBER DELIVERY — speak numbers like a trader, not a spreadsheet. In the PROSE, round prices the way you'd say them aloud ("1.1430", "just under 1.1450", "around 29,500") — reserve full precision (1.14298, 1.14508) for the exact entry/stop/target in keyLevels and tradingFramework, where it's actionable. Never quote pointless precision in prose ("0.27% of typical daily range", "114.3×") — say "almost none of the day's range left" instead. A number earns its place only if it changes the decision.
 17. LEAD WITH WHAT DRIVES THE DECISION — don't stack every metric. Pick the ONE or TWO signals that actually make the trade (here it's usually the level + the one evidenced signal) and build around them. Secondary readings get a clause, not a sentence each. If two signals conflict, resolve it for the reader in plain words ("so despite the breakout flag, the near-term odds still favour the fade") — don't just list both and leave them hanging.
+18. CLOSING TASK — TRADE OF THE DAY. As your final step, using everything above, decide whether there is ONE concrete trade worth proposing right now. If yes: fill tradeOfDay with direction ("LONG" or "SHORT"), and entry/stopLoss/takeProfit as REAL levels — reuse a level you already named elsewhere in your response, or one present in the snapshot (a keyLevel, OI wall, pivot, fib, range edge, or retail cluster) — never a fabricated round number (same rule as #14, applied here too). riskReward is the resulting R multiple as a string (e.g. "1:2.1"). confidence is HIGH/MEDIUM/LOW and must be consistent with convictionScore, not more confident than the rest of your read. rationale is ONE sentence citing the 1-2 strongest pieces of evidence behind it — no new claims not already grounded above. If the evidence is thin, conflicting, or nothing here clears a reasonable bar for an actual trade, set direction to "NONE", leave entry/stopLoss/takeProfit as empty strings, and use rationale to say briefly why there's no trade today (e.g. "levels are stacked against each other and vol is too compressed to size a stop") — do not force a trade that isn't there just to fill the field.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
 
-{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
+{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":"","tradeOfDay":{"direction":"LONG|SHORT|NONE","entry":"","stopLoss":"","takeProfit":"","riskReward":"","confidence":"HIGH|MEDIUM|LOW","rationale":""}}`;
 }
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -22776,9 +22779,94 @@ app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
 setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
 setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
 
+// ── Regime history — automatic recorder ─────────────────────────────────────
+// The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
+// is a MANUAL admin action — nobody was running it, so /api/regime-history came
+// back empty for every pair, every day (found 2026-08-14). Recording directly off
+// the live 5m HMM loops (runHMM5mRefresh/runHMM5mV2Refresh, already running
+// unconditionally every HMM5M_REFRESH_MS on the server) removes that manual step
+// AND removes the dependency on the Python bot process being up and writing to
+// a log file at all — this records the exact state the dashboard itself shows.
+//
+// Records are appended only on a regime change or a 15-min heartbeat (not every
+// 30s tick) so "periods held" stays a meaningful coarse unit and the buffer
+// doesn't balloon. Flushed to local KV every 5 min (cheap — local file store,
+// not CF KV, see kv.js's isCfKey) and to R2 every hour for durability across
+// Railway redeploys (CF KV route would burn quota; R2 does not).
+const REGIME_SNAPSHOT_HEARTBEAT_S = 15 * 60;
+const REGIME_HIST_MAX_RECORDS     = 2000; // ~3 weeks at the 15-min heartbeat floor
+
+function regimeHistPairSafe(sym) { return String(sym || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
+
+function recordRegimeSnapshot(ver, sym, regime, conf) {
+  if (!regime) return;
+  const pairSafe = regimeHistPairSafe(sym);
+  if (!pairSafe) return;
+  const buf = state.regimeHistBuf[ver];
+  const bucket = buf[pairSafe] ?? (buf[pairSafe] = { records: [], events: [], dirty: false });
+  const nowS = Math.floor(Date.now() / 1000);
+  const last = bucket.records[bucket.records.length - 1];
+  if (last && last.regime === regime && (nowS - last.ts) < REGIME_SNAPSHOT_HEARTBEAT_S) return;
+  bucket.records.push({ ts: nowS, regime, conf: conf ?? null });
+  if (bucket.records.length > REGIME_HIST_MAX_RECORDS) {
+    bucket.records.splice(0, bucket.records.length - REGIME_HIST_MAX_RECORDS);
+  }
+  bucket.dirty = true;
+}
+
+// Merge two record arrays by ts (later write wins on a collision) and cap length.
+function mergeRegimeRecords(a, b) {
+  const map = new Map();
+  for (const r of (a || [])) map.set(r.ts, r);
+  for (const r of (b || [])) map.set(r.ts, r);
+  const out = [...map.values()].sort((x, y) => x.ts - y.ts);
+  return out.length > REGIME_HIST_MAX_RECORDS ? out.slice(out.length - REGIME_HIST_MAX_RECORDS) : out;
+}
+
+// Every 5 min: push dirty pairs' in-memory records into local KV (the "current
+// Railway run" tier /api/regime-history already reads — see loadRegimeHistoryFromR2
+// call below it). Local KV lives in the ephemeral file store, not CF KV, so this
+// is unmetered.
+async function flushRegimeHistoryToLocalKV() {
+  for (const ver of ['v1', 'v2']) {
+    for (const [pairSafe, bucket] of Object.entries(state.regimeHistBuf[ver])) {
+      if (!bucket.dirty) continue;
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const existingRaw = await kv.get(key).catch(() => null);
+        const existing = existingRaw ? JSON.parse(existingRaw) : null;
+        const merged = { records: mergeRegimeRecords(existing?.records, bucket.records), events: existing?.events || bucket.events || [] };
+        await kv.put(key, JSON.stringify(merged));
+        bucket.dirty = false;
+      } catch (e) { console.error(`[REGIME-HIST] local KV flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
+// Every hour: fold the local-KV-durable record set into R2 (survives redeploys).
+// Reuses the same helpers the manual /api/regime-history-export path already uses.
+async function flushRegimeHistoryToR2() {
+  for (const ver of ['v1', 'v2']) {
+    for (const pairSafe of Object.keys(state.regimeHistBuf[ver])) {
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const localRaw = await kv.get(key).catch(() => null);
+        const local = localRaw ? JSON.parse(localRaw) : { records: [], events: [] };
+        if (!local.records.length) continue;
+        const r2Existing = await loadRegimeHistoryFromR2(ver, pairSafe).catch(() => null);
+        const merged = { records: mergeRegimeRecords(r2Existing?.records, local.records), events: r2Existing?.events || local.events || [] };
+        await saveRegimeHistoryToR2(ver, pairSafe, merged);
+      } catch (e) { console.error(`[REGIME-HIST] R2 flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.
 // Reads bot log files line-by-line with readline and writes directly to KV.
+// Kept as a manual fallback (regime-viewer.html's "Backfill logs" button) for
+// seeding history from the Python bots' own logs if that's ever useful — the
+// automatic recorder above is the primary path now.
 
 const _RG_V1_LOG = path.join(__dirname, 'bot',  'regime_bot.log');
 const _RG_V2_LOG = path.join(__dirname, 'logs', 'regime_bot_v2.log');
@@ -24021,6 +24109,7 @@ async function runHMM5mRefresh() {
 
       const prev = state.hmm5mRegimes[sym];
       state.hmm5mRegimes[sym] = result;
+      recordRegimeSnapshot('v1', sym, result.regime, result.confidence);
 
       // Telegram alert on regime change, with cooldown
       if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false && state.cfg?.regimeChangeAlerts !== false) {
@@ -24060,6 +24149,7 @@ async function runHMM5mV2Refresh() {
       const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
       if (!result) continue;
       state.hmm5mV2Regimes[sym] = result;
+      recordRegimeSnapshot('v2', sym, result.regime, result.confidence);
     } catch (e) {
       console.error(`[HMM5M-V2] ${sym} error:`, e.message);
     }
@@ -24411,6 +24501,12 @@ setTimeout(() => {
   runHMM5mV2Refresh().catch(console.error);
   setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
 }, 20_000);
+
+// Regime-history auto-recorder flush — local KV every 5 min (cheap, unmetered),
+// R2 every hour (durable across redeploys). See recordRegimeSnapshot() above;
+// this just persists whatever the live HMM loops have already accumulated.
+setInterval(() => flushRegimeHistoryToLocalKV().catch(e => console.error('[REGIME-HIST] local flush error:', e.message)), 5 * 60 * 1000);
+setInterval(() => flushRegimeHistoryToR2().catch(e => console.error('[REGIME-HIST] R2 flush error:', e.message)), 60 * 60 * 1000);
 
 // V2 1h HTF HMM — refreshes every 5 min (H1 bars change slowly), 10s offset
 setTimeout(() => {
