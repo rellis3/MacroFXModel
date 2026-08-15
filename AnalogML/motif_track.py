@@ -38,21 +38,44 @@ OANDA (403 policy denial from the outbound proxy, confirmed not assumed).
 local parquet via `refresh_m1.py` first, reused not re-implemented. Without
 it, this reads the same static local snapshot as everything else.
 
-**Telegram alerts (`--telegram`, 2026-08-13):** one alert per newly-confirmed
-motif, via `pylego.telegram` (a shared brick, not yet another copy of the
-send_telegram pattern duplicated across 7+ other bots) reading the shared
-dashboard `tg_config` (same bot/chat every other bot's alerts already use)
-through `pylego.kv.KvClient`. The alert shows the TRACKED frozen-grid
-entry/SL/TP (unchanged -- everything in README.md/LEGO_MODULES.md is judged
-against this, and it stays that way) alongside two SEPARATELY validated,
-FROZEN sizing reads for a human deciding how to size a manual trade: the
-adaptive per-category ATR-scaled SL/TP (`AnalogML/motif_adaptive.py`'s
-validated sl_pctile=35/tp_pctile=35 constants) and the 1D HTF agree/conflict
-state (`AnalogML/motif_multi_tf.py`'s causal, end-of-bar-safe lookup) with a
-size note when it conflicts. Neither of those two is APPLIED to the tracked
+**Telegram alerts (`--telegram`, 2026-08-13, simplified 2026-08-14):** one
+alert per newly-confirmed motif, via `pylego.telegram` (a shared brick, not
+yet another copy of the send_telegram pattern duplicated across 7+ other
+bots) reading the shared dashboard `tg_config` (same bot/chat every other
+bot's alerts already use) through `pylego.kv.KvClient`. The alert shows the
+TRACKED frozen-grid entry/SL/TP (unchanged -- everything in
+README.md/LEGO_MODULES.md is judged against this, and it stays that way)
+alongside ONE "Combined" line -- the adaptive per-category ATR-scaled SL/TP
+(`AnalogML/motif_adaptive.py`'s validated sl_pctile=35/tp_pctile=35
+constants) with the 1D HTF-conflict size_mult already applied
+(`AnalogML/motif_multi_tf.py`'s causal, end-of-bar-safe lookup;
+`motif_combined_portfolio_sim.py` validated this exact stack beats either
+mechanism alone at 26-pair portfolio scale). NOT applied to the tracked
 trade itself -- deliberately, so the record this signal is judged by never
-silently drifts. Disabled under `--as-of` even if passed (replay/testing
-only, never a live alert).
+silently drifts; informational only, for a human sizing a manual trade.
+Disabled under `--as-of` even if passed (replay/testing only, never live).
+
+**Nearing-level alerts (`--nearing-atr-mult`, default 0.5, 2026-08-14):** a
+SEPARATE, early-warning alert for a touch-run approaching (not yet
+confirmed) its breakout level -- confirmation can only happen at an H1
+close and, on an hourly loop, isn't NOTICED until up to an hour after it
+happened; this fires the SAME scan price gets within `nearing_atr_mult` x
+ATR of the level, closing most of that gap for the decision that actually
+matters live. Fires ONCE per touch-run (`log['nearing_alerted']`, same
+`motif_key` identity confirmed motifs use), and only once the touch-run is
+no longer `provisional` (a still-forming pivot that could yet be
+invalidated by the next bar shouldn't trigger an alert). Set to 0 to
+disable. Does not reduce the RESIDUAL risk of a fast move that closes a
+whole ATR and confirms within a single hourly gap -- only a shorter
+`MOTIF_TRACK_INTERVAL_SECONDS` reduces that further.
+
+**Heartbeat (`--heartbeat-alert TEXT`, 2026-08-14):** sends TEXT via the
+shared Telegram config and exits -- no scanning. A scan crashing inside its
+own run can't alert about its own crash, so `motif_track_loop.sh` calls
+this mode from OUTSIDE the scan after `MOTIF_TRACK_FAIL_THRESHOLD`
+(default 3) consecutive scan failures, and once more on recovery -- one
+alert per STATE CHANGE (down / back up), never one per failure, so a
+single transient blip doesn't page anyone.
 
 Usage:
   python AnalogML/motif_track.py                      # real use (once wired to live data)
@@ -376,6 +399,7 @@ def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dic
 
     return {
         "pair": pair, "as_of": bars.index[-1].isoformat(),
+        "motif_key": _motif_key(pair, live),
         "kind": "top" if live.is_top else "bottom",
         "n_touches": live.n_touches,
         "touch_dates": [bars.index[i].isoformat() for i in live.touch_idxs],
@@ -388,6 +412,30 @@ def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dic
         "bars_left_in_horizon": max(0, bars_left_in_horizon),
         "confidence": confidence,
     }
+
+
+def format_nearing_alert(pair: str, state: dict) -> str:
+    """Telegram HTML for a touch-run APPROACHING its breakout level, before
+    confirmation -- the early-warning counterpart to format_alert (which
+    only fires once a pattern has already confirmed, up to
+    MOTIF_TRACK_INTERVAL_SECONDS late). Fires ONCE per touch-run (dedup via
+    motif_key in log['nearing_alerted'] -- same identity scheme confirmed
+    motifs use), never repeated every scan it stays close, and only once
+    the touch-run is no longer `provisional` (still-forming pivots that
+    could be invalidated by the next bar shouldn't trigger an alert)."""
+    icon = "\U0001f440"
+    conf_line = ""
+    c = state.get("confidence")
+    if c:
+        conf_line = (f"Historical: {c['played_out_rate'] * 100:.0f}% played out, "
+                     f"PF {c['profit_factor']:.2f} (n={c['n_samples']})\n")
+    return (f"{icon} <b>{pair.upper()}</b> {state['n_touches']}-touch {state['kind']} — "
+           f"nearing breakout level\n"
+           f"Price: {state['current_price']:.5f}  →  Level: {state['level']:.5f} "
+           f"({state['dist_to_level_pips']:.1f}p away)\n"
+           f"{conf_line}"
+           f"<i>Not yet confirmed — watch for an H1 close through the level. Research signal, "
+           f"not a validated live edge.</i>")
 
 
 def save_state(states: list[dict]) -> None:
@@ -436,7 +484,8 @@ def run(args: argparse.Namespace) -> None:
                       "shared tg_config) -- alerts will be skipped this run")
 
     log = load_log()
-    new_signals, resolved_total, alerts_sent = 0, 0, 0
+    nearing_alerted = set(log.setdefault("nearing_alerted", []))
+    new_signals, resolved_total, alerts_sent, nearing_sent = 0, 0, 0, 0
     states: list[dict] = []
     forming = 0
 
@@ -477,6 +526,26 @@ def run(args: argparse.Namespace) -> None:
         if state:
             states.append(state)
             forming += 1
+            # Early-warning alert: price within --nearing-atr-mult ATR of a
+            # stable (non-provisional) touch-run's breakout level, fired
+            # ONCE per touch-run (log['nearing_alerted']) -- not on every
+            # scan it stays close, and never on a still-forming pivot that
+            # could yet be invalidated. Confirmation (format_alert) can
+            # only happen at an H1 close and stays up to an hour late this
+            # way; this fires the SAME scan price gets close, closing most
+            # of that gap for the decision that actually matters live.
+            if (tg_token and tg_chat_id and args.nearing_atr_mult > 0
+                    and not state["provisional"] and state["motif_key"] not in nearing_alerted):
+                current_atr = atr_arr[-1] if len(atr_arr) else None
+                if current_atr and current_atr > 0:
+                    nearing_pips = (args.nearing_atr_mult * current_atr) / pip_size(pair)
+                    if state["dist_to_level_pips"] <= nearing_pips:
+                        if send_telegram(tg_token, tg_chat_id, format_nearing_alert(pair, state)):
+                            nearing_sent += 1
+                        else:
+                            print(f"  [warn] nearing-alert failed to send for {pair}")
+                        nearing_alerted.add(state["motif_key"])
+                        log["nearing_alerted"] = sorted(nearing_alerted)
 
     save_log(log)
     save_state(states)
@@ -488,7 +557,7 @@ def run(args: argparse.Namespace) -> None:
           f"new_signals={new_signals}  resolved_this_run={resolved_total}  "
           f"currently_open={open_n}  closed={len(closed)} (wins={wins}, total_R={total_r:.2f})  "
           f"currently_forming={forming}/{len(pairs)} pairs  total_logged={len(log['trades'])}"
-          + (f"  telegram_alerts_sent={alerts_sent}" if args.telegram else ""))
+          + (f"  telegram_alerts_sent={alerts_sent}  nearing_alerts_sent={nearing_sent}" if args.telegram else ""))
     if not args.as_of:
         print("[note] no --as-of given: this ran against the static local snapshot, NOT live data. "
               "See this file's module docstring for the data-access blocker and how to wire in a "
@@ -511,7 +580,25 @@ def main() -> None:
                         "automatically under --as-of (replay/testing, never live).")
     p.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL", "http://localhost:3000"),
                    help="base URL for reading the shared Telegram config via the KV API.")
+    p.add_argument("--nearing-atr-mult", type=float,
+                   default=float(os.environ.get("MOTIF_TRACK_NEARING_ATR_MULT", "0.5")),
+                   help="send a one-time 'nearing breakout level' alert when price is within this "
+                        "many ATR of a forming (non-provisional) touch-run's level. 0 disables.")
+    p.add_argument("--heartbeat-alert", default=None,
+                   help="send this raw text via the shared Telegram config and exit -- no scanning. "
+                        "A scan crashing inside its own run can't alert about its own crash; "
+                        "motif_track_loop.sh calls this mode from OUTSIDE the scan to report the "
+                        "loop itself going down after repeated failures, and recovering after.")
     args = p.parse_args()
+    if args.heartbeat_alert is not None:
+        kv = KvClient(args.dashboard_url)
+        tg_token, tg_chat_id = load_tg_config(kv)
+        if tg_token and tg_chat_id:
+            ok = send_telegram(tg_token, tg_chat_id, args.heartbeat_alert)
+            print(f"[heartbeat] alert {'sent' if ok else 'FAILED to send'}")
+        else:
+            print("[heartbeat] no token/chat_id resolved -- alert skipped")
+        return
     run(args)
 
 
