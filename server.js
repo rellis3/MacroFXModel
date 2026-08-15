@@ -897,6 +897,56 @@ function _regime(closes) {
   return 'RANGE';
 }
 
+// ── COT positioning correlation (currency vs currency) ──────────────────────
+// A DIFFERENT relationship from the price-return correlation above: not "do
+// these move together", but "do speculators build/reduce these two
+// currencies' positions together" — reuses the CFTC weekly series the
+// cot-extremes engine already fetches and caches (cot_series_v2, written by
+// _worker.js every time /api/cot-extremes recomputes, ~weekly since COT
+// releases Fridays), so this needs no new data source. Correlates WEEK-OVER-
+// WEEK CHANGES in each currency's OI-normalised spec share (not the levels —
+// same reasoning as _logRets above: levels trend, changes don't, and a
+// levels-correlation would overstate the relationship).
+const COT_CCY_GROUP = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'MXN'];
+
+async function computeCotCorrelations() {
+  let raw;
+  try { raw = await kv.get('cot_series_v2'); } catch { return null; }
+  if (!raw) return null;
+  let series;
+  try { series = JSON.parse(raw)?.series; } catch { return null; }
+  if (!series) return null;
+
+  // Week-over-week delta of specShare, keyed by report date so mismatched
+  // currencies (a late/missing report for one) align correctly instead of
+  // silently pairing the wrong weeks against each other.
+  const deltasByCcy = {};
+  for (const ccy of COT_CCY_GROUP) {
+    const s = series[ccy];
+    if (!s?.dates?.length || !s?.specShare?.length) continue;
+    const m = new Map();
+    for (let i = 1; i < s.dates.length; i++) {
+      const a = s.specShare[i - 1], b = s.specShare[i];
+      if (a == null || b == null || s.dates[i] == null) continue;
+      m.set(s.dates[i], b - a);
+    }
+    if (m.size >= 10) deltasByCcy[ccy] = m;
+  }
+
+  const ccys = Object.keys(deltasByCcy).sort();
+  const corr = {};
+  for (let i = 0; i < ccys.length; i++) {
+    for (let j = i + 1; j < ccys.length; j++) {
+      const ma = deltasByCcy[ccys[i]], mb = deltasByCcy[ccys[j]];
+      const xs = [], ys = [];
+      for (const [date, va] of ma) { const vb = mb.get(date); if (vb != null) { xs.push(va); ys.push(vb); } }
+      const c = _pearson(xs, ys);
+      if (c !== null) corr[`${ccys[i]}_${ccys[j]}`] = +c.toFixed(4);
+    }
+  }
+  return { generated: new Date().toISOString(), currencies: ccys, corr };
+}
+
 async function buildCorrHistoryJS() {
   if (corrRunning) { console.log('[CORR] Already running — skipped'); return; }
   corrRunning = true;
@@ -1008,9 +1058,13 @@ async function buildCorrHistoryJS() {
       }
     }
 
+    corrProgress = { pct: 90, msg: 'Correlating COT positioning…', step: 'cot', error: null };
+    const cotCorr = await computeCotCorrelations().catch(e => { console.warn('[CORR] COT correlation skipped:', e.message); return null; });
+
     const output = { generated:new Date().toISOString(), years:CORR_YEARS,
       window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
-      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr };
+      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr,
+      cot_corr: cotCorr?.corr ?? {}, cot_corr_generated: cotCorr?.generated ?? null };
 
     corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
     fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
@@ -1035,7 +1089,8 @@ async function buildCorrHistoryJS() {
         corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
       }
       const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2 };
+        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2,
+        last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
       await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
     } catch (kvErr) {
@@ -22435,7 +22490,7 @@ app.get('/api/corr-history', (req, res) => {
 // Much smaller than the full corr-history response.
 app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
-  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {} });
+  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {} });
   try {
     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
     const records = data.records || [];
@@ -22460,6 +22515,8 @@ app.get('/api/hedge-alerts', async (req, res) => {
       corr_std,
       last_corr: lastCorr,
       last_betas: lastRec.beta || {},
+      last_cot_corr: data.cot_corr || {},
+      cot_corr_generated: data.cot_corr_generated || null,
     };
     // Cache in KV so the Positions tab can read it from both Railway and CF Pages
     kv.put('hedge_alerts_cache', JSON.stringify(result), { expirationTtl: 86400 }).catch(() => {});
