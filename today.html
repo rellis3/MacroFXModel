@@ -303,6 +303,16 @@
   .ai-dl.pos{color:var(--bull)} .ai-dl.neg{color:var(--bear)}
   .ai-do{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;margin:0 5px 5px 0;line-height:1.35}
   .ai-do.pos{background:var(--bull-bg);color:var(--bull)} .ai-do.neg{background:var(--bear-bg);color:var(--bear)}
+  /* Trade of the Day — the closing structured ask, styled like the Decision
+     Engine's .decide-out card so it reads as "one more actionable box", not
+     a headline claim. Always carries the same AI-opinion caveat as the rest
+     of this section. */
+  .ai-trade{margin-top:12px;padding:11px 13px;border-radius:8px;background:var(--card2);border:1px solid var(--border)}
+  .ai-trade-hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .ai-trade-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:9px}
+  .ai-trade-kv .k{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .ai-trade-kv .v{font-size:14px;font-weight:700;margin-top:1px}
+  .ai-trade-rationale{font-size:12px;color:var(--text2);line-height:1.5;margin-top:9px}
 
   /* Level ladder */
   .ladder{margin:14px 0 8px;font-variant-numeric:tabular-nums}
@@ -3398,8 +3408,30 @@ async function loadDrawerAnalysis(r) {
   // The flowing "brief" is the PRIMARY read (newspaper style); the field-by-field
   // reads are optional detail, hidden behind a toggle so the story reads first.
   const brief = a.brief ? `<div class="ai-brief">${esc(a.brief).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${p}</p>`).join('')}</div>` : '';
+  // Trade of the Day — the closing structured ask (server.js buildAnalysisPrompt
+  // rule 18). Shown at the same "always visible" level as the brief, not buried
+  // behind the detail toggle, since this is the one field meant to be actionable
+  // at a glance — but every path through it still carries the same "AI opinion,
+  // not backtested" framing as the rest of the section.
+  const tod = a.tradeOfDay;
+  let tradeCard = '';
+  if (tod && /^(LONG|SHORT)$/i.test(tod.direction ?? '') && tod.entry) {
+    const dirCls = /LONG/i.test(tod.direction) ? 'bull' : 'bear';
+    tradeCard = `<div class="ai-trade">
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(tod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Trade of the day${tod.confidence ? ` · ${esc(tod.confidence)} confidence` : ''}</span></div>
+      <div class="ai-trade-kv">
+        <div><div class="k">Entry</div><div class="v">${esc(tod.entry)}</div></div>
+        <div><div class="k">Stop</div><div class="v">${esc(tod.stopLoss) || '—'}</div></div>
+        <div><div class="k">Target</div><div class="v">${esc(tod.takeProfit) || '—'}</div></div>
+        <div><div class="k">R:R</div><div class="v">${esc(tod.riskReward) || '—'}</div></div>
+      </div>
+      ${tod.rationale ? `<div class="ai-trade-rationale">${esc(tod.rationale)}</div>` : ''}
+    </div>`;
+  } else if (tod && tod.rationale) {
+    tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
+  }
   const detail = `${reads}${framework}${dodont}${risks}${levels}`;
-  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}` +
+  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${tradeCard}` +
     (detail ? `<div class="ai-body" style="display:none;margin-top:10px">${detail}</div>` : '') + age;
   const body = box.querySelector('.ai-body');
   if (body) {
