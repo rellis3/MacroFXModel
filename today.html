@@ -1457,6 +1457,41 @@ const CCY_BUCKET_NOTE = {
   risk: 'Risk/carry currency — tends to firm when risk appetite improves and funds reach for yield.',
   neutral: 'Sits more neutral to the risk-on/risk-off swing than the havens or the carry currencies.',
 };
+// Non-currency instruments that show up in the correlation/hedge panel (metals,
+// indices, oil) — same 3-bucket idea as CCY_BUCKET above (not a second scheme),
+// extended with 'commodity' for the pure commodity legs it has no use for.
+const INSTR_BUCKET = {
+  XAUUSD: 'haven', XAGUSD: 'commodity', XPTUSD: 'commodity', XCUUSD: 'commodity',
+  WTICO_USD: 'commodity', BCO_USD: 'commodity',
+  NAS100_USD: 'risk', SPX500_USD: 'risk', US30_USD: 'risk', US2000_USD: 'risk',
+  USDCNH: 'risk', USDZAR: 'risk',
+};
+// A short, honest "why" for a correlation/hedge chip — rule-based off the SAME
+// haven/risk/commodity bucket classification already shown on the currency
+// drawer, not a fabricated per-pair story. Returns null (caller shows an
+// "empirical only" fallback) when no structural rule actually fires, rather
+// than forcing an explanation that isn't there.
+function explainRelationship(aKey, bKey) {
+  const bucketOf = c => CCY_BUCKET[c] ?? INSTR_BUCKET[c] ?? null;
+  const legsOf = key => {
+    if (CCY_BUCKET[key] !== undefined) return [key];                 // bare currency code
+    if (PAIR_CCY[key]) return PAIR_CCY[key];                          // known FX pair
+    const m = /^([A-Z]{3})([A-Z]{3})$/.exec(key);
+    if (m && CCY_BUCKET[m[1]] !== undefined && CCY_BUCKET[m[2]] !== undefined) return [m[1], m[2]];
+    return [key];                                                     // metal/index/cross — one "leg"
+  };
+  const la = legsOf(aKey), lb = legsOf(bKey);
+  const shared = la.length > 1 && lb.length > 1 ? la.find(x => lb.includes(x)) : null;
+  if (shared) return `Both trade against ${ccyFull(shared)} — its strength or weakness pushes both the same way.`;
+  const ba = la.map(bucketOf).filter(Boolean), bb = lb.map(bucketOf).filter(Boolean);
+  if (ba.some(x => x === 'haven') && bb.some(x => x === 'risk') || ba.some(x => x === 'risk') && bb.some(x => x === 'haven'))
+    return 'One side sits in the traditional-haven bucket, the other in risk/carry — they naturally sit on opposite sides of the risk-on/risk-off swing.';
+  const common = ba.find(x => bb.includes(x));
+  if (common === 'haven') return 'Both are classed as traditional havens — they tend to move together on broad risk-off swings.';
+  if (common === 'risk') return 'Both are risk/carry-sensitive — they tend to move together when risk appetite shifts.';
+  if (common === 'commodity') return 'Both are commodity-linked — global growth and demand swings tend to move them together.';
+  return null;
+}
 
 // Turn a raw [-1,+1] conviction score into a plain bullish/bearish read instead of
 // a bare decimal. Thresholds reuse the ones already established in renderMarketRead's
@@ -3050,17 +3085,43 @@ function loadDrawerCorr(name) {
   partners.sort((a, b) => b.v - a.v);
   const withIt = partners.filter(p => p.v >= 0.3).slice(0, 3);
   const against = partners.filter(p => p.v <= -0.3).slice(-3).reverse();
-  const chip = (p, cls) => `<span class="corrchip ${cls}" title="10-day rolling correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — moves ${p.v >= 0 ? 'WITH' : 'OPPOSITE'} ${dispCorr(p.other)}.">${dispCorr(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
+  const whyText = w => w ? ` Why: ${w}` : ' Why: empirical only — no single structural driver identified over this window.';
+  const chip = (p, cls, otherKey) => `<span class="corrchip ${cls}" title="10-day rolling correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — moves ${p.v >= 0 ? 'WITH' : 'OPPOSITE'} ${dispCorr(p.other)}.${whyText(explainRelationship(key, otherKey))}">${dispCorr(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
   const bLine = betas ? [
     betas.dxy != null ? `<b>${betas.dxy >= 0 ? '+' : ''}${betas.dxy.toFixed(2)}β</b> to the US dollar` : null,
     betas.rates != null ? `<b>${betas.rates >= 0 ? '+' : ''}${betas.rates.toFixed(2)}β</b> to rates` : null,
     betas.vix != null ? `<b>${betas.vix >= 0 ? '+' : ''}${betas.vix.toFixed(2)}β</b> to risk (VIX)` : null,
   ].filter(Boolean).join(' · ') : '';
+
+  // COT positioning correlation — a DIFFERENT relationship from the price
+  // correlation above: not "do these move together", but "do speculators
+  // build/reduce these currencies' positions together" (week-over-week change
+  // in OI-normalised spec share, correlated across the CFTC-tracked majors).
+  // Only meaningful for the currency LEG(S) of this instrument that actually
+  // have a CFTC contract — USD itself doesn't (see cotFor()'s derived-USD
+  // note elsewhere in this file), so USD-anchored pairs show just one leg.
+  const cc = ha.last_cot_corr ?? {};
+  const legs = (PAIR_CCY[name] || []).filter(c => c !== 'USD');
+  const cotPartners = [];
+  for (const leg of legs) {
+    for (const [k, v] of Object.entries(cc)) {
+      const [a, b] = k.split('_');
+      const other = a === leg ? b : (b === leg ? a : null);
+      if (other != null) cotPartners.push({ leg, other, v });
+    }
+  }
+  cotPartners.sort((a, b) => b.v - a.v);
+  const cotWith = cotPartners.filter(p => p.v >= 0.3).slice(0, 3);
+  const cotAgainst = cotPartners.filter(p => p.v <= -0.3).slice(-3).reverse();
+  const cotChip = (p, cls) => `<span class="corrchip ${cls}" title="${ccyFull(p.leg)} and ${ccyFull(p.other)} speculative positioning, week-over-week change in OI-normalised spec share, correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — funds have been ${p.v >= 0 ? 'building/reducing these two together' : 'moving these two in opposite directions'}.${whyText(explainRelationship(p.leg, p.other))}">${ccyFull(p.leg)}↔${ccyFull(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
+
   box.innerHTML =
-    (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos')).join(' ')}</div>` : '') +
-    (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg')).join(' ')}</div>` : '') +
+    (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos', p.other)).join(' ')}</div>` : '') +
+    (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg', p.other)).join(' ')}</div>` : '') +
     (bLine ? `<div class="corrline"><span class="clbl help" title="Sensitivity (regression beta) of this market to each driver over the window. |β|>1 means it amplifies that driver; sign shows direction. What actually pushes this pair around.">Driven by</span> <span class="muted">${bLine}</span></div>` : '') +
-    `<div class="muted" style="font-size:10px;margin-top:6px">10-day rolling window${ha.generated ? ` · built ${new Date(ha.generated).toLocaleDateString('en-GB')}` : ''} · context only, not a signal.</div>`;
+    (cotWith.length ? `<div class="corrline"><span class="clbl help" title="Speculators (CFTC weekly) have been building or reducing these currencies' positions TOGETHER — a positioning relationship, separate from whether the PRICES move together above.">Positioned together</span> ${cotWith.map(p => cotChip(p, 'pos')).join(' ')}</div>` : '') +
+    (cotAgainst.length ? `<div class="corrline"><span class="clbl help" title="Speculators have been moving these currencies' positions in OPPOSITE directions — one being built while the other is reduced.">Positioned apart</span> ${cotAgainst.map(p => cotChip(p, 'neg')).join(' ')}</div>` : '') +
+    `<div class="muted" style="font-size:10px;margin-top:6px">10-day rolling price window${ha.generated ? ` · built ${new Date(ha.generated).toLocaleDateString('en-GB')}` : ''}${ha.cot_corr_generated ? ` · COT positioning corr built ${new Date(ha.cot_corr_generated).toLocaleDateString('en-GB')}` : ''} · context only, not a signal.</div>`;
   sec.style.display = 'block';
 }
 
