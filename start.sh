@@ -37,4 +37,7 @@ restart_bot "analogml-paper-track" \
 restart_bot "analogml-motif-track" \
     bash AnalogML/motif_track_loop.sh &
 
+restart_bot "analogml-nearing-watch" \
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python3 AnalogML/motif_nearing_watch.py &
+
 exec node server.js
