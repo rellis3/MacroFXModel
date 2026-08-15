@@ -7,11 +7,22 @@
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{
-    --bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --bg:#0d1117;--bg-rgb:13,17,23;--card:#161b22;--card2:#1c2330;--border:#30363d;--border-rgb:48,54,61;--border2:#1c2230;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
     --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
     --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);
     --blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
+  }
+  /* Light theme — same variable names, override on <body class="light">. Kept
+     dark as the default (unchanged for anyone not touching the toggle); values
+     reuse index.html's already-designed light palette (css/index.css) rather
+     than inventing a second one. */
+  body.light{
+    --bg:#f4f6fb;--bg-rgb:244,246,251;--card:#ffffff;--card2:#eef1f7;--border:#d8dee8;--border-rgb:216,222,232;--border2:#c9d1de;
+    --text:#0d1520;--text2:#4b5a6e;--text3:#7c8aa0;
+    --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
+    --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);
+    --blue-bg:rgba(24,71,194,.10);--neu-bg:rgba(75,90,110,.08);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
@@ -19,7 +30,7 @@
   button{font-family:inherit;cursor:pointer}
 
   /* ── Header ─────────────────────────────────────────────── */
-  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(var(--bg-rgb),.94);backdrop-filter:blur(8px);
        border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .hdr h1{font-size:17px;font-weight:700;letter-spacing:.01em}
   .hdr .sess{font-size:12px;color:var(--text2)}
@@ -336,7 +347,7 @@
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
   th{color:var(--text3);text-align:left;font-weight:600;padding:7px 9px;border-bottom:1px solid var(--border);
      font-size:10px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap}
-  td{padding:6px 9px;border-bottom:1px solid rgba(48,54,61,.5);white-space:nowrap}
+  td{padding:6px 9px;border-bottom:1px solid rgba(var(--border-rgb),.5);white-space:nowrap}
   tr.trow{cursor:pointer} tr.trow:hover{background:var(--card2)}
 
   /* ── Detail drawer ──────────────────────────────────────── */
@@ -420,6 +431,7 @@
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('macrofx_theme')==='light')document.body.classList.add('light');}catch(e){}</script>
 
 <!-- ── Command Hub ────────────────────────────────────────────────────────── -->
 <div id="commandHub"></div>
@@ -432,6 +444,7 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
   <a class="hbtn" href="index.html">Dashboard</a>
   <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
   <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
@@ -553,7 +566,7 @@
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Line fade by hit</span> <span class="muted" id="drHitsNote"></span>
       <span style="float:right;font-weight:400;font-size:12px">
         <button class="hits-tgl" id="drHitsDaily" onclick="setHitsHorizon('daily')">Daily</button><button class="hits-tgl" id="drHitsWeekly" onclick="setHitsHorizon('weekly')">Weekly</button>
-        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:5px;padding:2px 4px"></select>
+        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 4px"></select>
       </span>
     </h3>
     <div class="dr-sec-body">
@@ -586,7 +599,7 @@
         <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
         <span><i style="border-color:#4f7df0"></i>O-H / O-L 75th</span>
         <span><i style="border-color:#fbbf24"></i>day high / low</span>
-        <span><i style="border-color:#e6edf3;border-top-style:solid"></i>price</span>
+        <span><i style="border-color:var(--text);border-top-style:solid"></i>price</span>
       </div>
     </div>
   </div>
@@ -640,6 +653,35 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const fmtN = (v, dp) => v == null ? '–' : Number(v).toFixed(dp);
+// Reads a theme variable's CURRENT value (light or dark, whichever body.light
+// says right now) — for the one place CSS can't reach: colors baked into the
+// Lightweight Charts canvas at creation time (textColor, grid lines).
+const _cssVar = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+// Theme toggle. The class itself is applied as early as possible (a tiny
+// inline script right after <body>, before this file even loads) so there's
+// no flash of the wrong theme on page load — this just handles the click.
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  try { localStorage.setItem('macrofx_theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  const btn = $('themeToggleBtn');
+  if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+  // Chart colors are baked into the canvas at creation time (LWC has no CSS
+  // hook) — re-tint whatever's open right now instead of waiting for the
+  // next drawer open to pick up the new palette.
+  if (drChart) {
+    try {
+      drChart.applyOptions({
+        layout: { textColor: _cssVar('--text2') },
+        grid: { vertLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` }, horzLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` } },
+      });
+    } catch (e) {}
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = $('themeToggleBtn');
+  if (btn) btn.textContent = document.body.classList.contains('light') ? '🌙 Dark' : '☀️ Light';
+});
 
 // Map daily-brief instrument NAME → TDE pair key + /api/levels key + display label
 const META = {
@@ -3085,8 +3127,8 @@ async function loadDrawerChart(r, barsP) {
   drChart = LightweightCharts.createChart($('drChart'), {
     autoSize: true,   // track the container (wider modal + the taller/shorter toggle)
     width: $('drChart').clientWidth || 700, height: _drChartTall ? 580 : 300,
-    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9da7b3', fontSize: 10 },
-    grid: { vertLines: { color: 'rgba(48,54,61,.35)' }, horzLines: { color: 'rgba(48,54,61,.35)' } },
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: _cssVar('--text2'), fontSize: 10 },
+    grid: { vertLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` }, horzLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` } },
     // Free movement like TradingView: edges NOT fixed, trailing space so the last
     // candle isn't jammed under the axis labels, full scroll/zoom/pinch enabled.
     timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 10, barSpacing: 7 },
