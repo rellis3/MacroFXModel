@@ -3860,12 +3860,25 @@ function renderMorningBrief(r) {
   const regChip = /RISK-ON/i.test(a.regime) ? 'range' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'neu';
   const aCls = l => /BULL/i.test(l) ? 'up' : /BEAR/i.test(l) ? 'dn' : 'nu';
   const cell = (lbl, v) => v ? `<div class="mb-cell"><div class="mb-cl">${lbl}</div><div class="mb-cv">${esc(v)}</div></div>` : '';
+  const btod = a.boardTradeOfDay;
+  let boardTrade = '';
+  if (btod && /^(LONG|SHORT)$/i.test(btod.direction ?? '') && btod.pair) {
+    const dirCls = /LONG/i.test(btod.direction) ? 'bull' : 'bear';
+    boardTrade = `<div class="ai-trade" style="margin-top:0;margin-bottom:12px">
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(btod.pair)} ${esc(btod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Board trade of the day${btod.confidence ? ` · ${esc(btod.confidence)} confidence` : ''}</span></div>
+      ${btod.rationale ? `<div class="ai-trade-rationale">${esc(btod.rationale)}</div>` : ''}
+    </div>`;
+  } else if (btod && btod.rationale) {
+    boardTrade = `<div class="ai-trade" style="margin-top:0;margin-bottom:12px"><div class="ai-trade-hd"><span class="chip neu">NO STANDOUT PAIR</span><span class="muted" style="font-size:10.5px">Board trade of the day</span></div><div class="ai-trade-rationale">${esc(btod.rationale)}</div></div>`;
+  }
   el.innerHTML =
     `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}</div>` +
     (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
     (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
     `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
     (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+    (a.pairsOutlook?.length ? `<div class="mb-cl" style="margin-bottom:5px">Pair-by-pair read</div><div class="mb-assets">${a.pairsOutlook.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.pair)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+    boardTrade +
     (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
     `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`;
   el.style.display = 'block';
