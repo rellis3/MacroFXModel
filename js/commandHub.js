@@ -36,7 +36,9 @@
 .chub-star:hover{opacity:1!important;color:#f59e0b!important}
 .chub-star.starred{color:#f59e0b!important;opacity:1!important}
 #chubFavDD{display:none}
-#navEditBtn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text3,#4b5563);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;margin-left:auto;white-space:nowrap}
+#scratchBtn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text3,#4b5563);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;margin-left:auto;white-space:nowrap}
+#scratchBtn:hover{background:var(--s2,#161b27);color:var(--text2,#94a3b8)}
+#navEditBtn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text3,#4b5563);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;white-space:nowrap}
 #navEditBtn:hover{background:var(--s2,#161b27);color:var(--text2,#94a3b8)}
 #navEditOverlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:24px}
 #navEditOverlay.open{display:flex}
