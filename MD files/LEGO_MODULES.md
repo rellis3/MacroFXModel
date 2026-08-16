@@ -1215,16 +1215,33 @@ the honest IS/OOS harness. If ever promoted to a real backtest, pre-register
 the benchmark (does the liquidity-vs-VIX divergence read actually precede a
 vol regime shift, at what horizon, vs a naive baseline) before running it.
 
-Not built this pass (deliberately, scope discipline — two more items from the
-same null-backtest sweep, queued as separate follow-up PRs): the Credit
-Stress Index's investment-grade quality spread (`BAA10Y`/`AAA10Y`, already
-live via `/api/credit-stress`'s `current.componentZ.quality`, just not yet
-surfaced on `today.html`); and MVE's fair-value/mispricing read
-(`/api/mve/:sym`, already live for its 6 supported instruments) as a
-clearly-labeled per-pair card chip — explicitly NOT folded into
-`pairComposite`'s agree/total count, since MVE tested null-to-negative in
-this project's own backtest and inflating an "agreement" count with a
-confirmed-non-working leg would be dishonest.
+**Follow-up (2026-08-16, same PR series) — Credit Quality Spread.** The
+Credit Stress Index's investment-grade quality spread (`BAA10Y`/`AAA10Y`)
+turned out NOT cheap to surface via the existing `/api/credit-stress` route —
+that endpoint fetches full daily OANDA history since 2005 across
+`TREND_UNIVERSE` and runs a full trend-basket backtest overlay just to
+produce the one `current.componentZ.quality` number, 1h-cached but still too
+heavy to call from every `today.html` page load. Instead, a new lightweight
+route reuses the SAME already-imported pure functions
+(`buildCsiInputs`/`buildCsi` from `js/creditStressEngine.js`/`creditStressCore.js`)
+**without** the OANDA-dependent backtest — `quality` is derivable from
+`buildCsiInputs`'s FRED-only `components.quality` (Baa−Aaa) alone. New KV-cached,
+daily-gated route `/api/credit-quality` (`credit_quality_v1` — added to
+`kv.js`'s `_CF_EXACT` immediately per this project's own hard-learned
+persistence lesson), same exact shape as every other numeric engine here.
+Wired into `today.html`'s `equitiesRisk()` as `risk.creditQ`, reported as its
+own line right after the Liquidity line — a different axis than the existing
+HY-OAS-LEVEL credit line (junk-bond spreads): this is investment-grade
+credit-curve SHAPE. Same "reported, not folded into tone/cls" treatment as
+Liquidity above.
+
+Not built this pass (deliberately, scope discipline — one more item from the
+same null-backtest sweep, queued as a separate follow-up PR): MVE's
+fair-value/mispricing read (`/api/mve/:sym`, already live for its 6
+supported instruments) as a clearly-labeled per-pair card chip — explicitly
+NOT to be folded into `pairComposite`'s agree/total count, since MVE tested
+null-to-negative in this project's own backtest and inflating an
+"agreement" count with a confirmed-non-working leg would be dishonest.
 
 ---
 

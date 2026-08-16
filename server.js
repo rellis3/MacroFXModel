@@ -8501,6 +8501,54 @@ app.get('/api/credit-stress', async (req, res) => {
   }
 });
 
+// ── Credit Quality Spread (Baa10Y − Aaa10Y) — see js/creditStressCore.js ────
+// Reuses buildCsiInputs/buildCsi (already imported above for /api/credit-stress)
+// WITHOUT that route's OANDA-dependent trend-basket backtest — this is a pure
+// FRED read (the quality-spread z-score only), cheap enough for the same
+// daily-gated-poll pattern every other numeric engine here uses, instead of
+// the heavy 1h-cached backtest endpoint. A different axis than the existing
+// HY-OAS-LEVEL credit gate (js/macro.js's T4 / today.html's creditGate()) —
+// this is credit-curve SHAPE (investment-grade quality dispersion), not
+// duplicated anywhere else in the codebase.
+const _CREDIT_QUALITY_KV = 'credit_quality_v1';
+async function _buildCreditQualityRead() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const { components } = await buildCsiInputs(fredKey, '2004-01-01');
+  const csi = buildCsi(components, { zWindow: CSI_DEFAULTS.zWindow });
+  const latest = csi.series.at(-1);
+  const payload = { quality: csi.componentZ?.quality ?? null, latestDate: latest?.d ?? null, generatedAt: new Date().toISOString() };
+  await kv.put(_CREDIT_QUALITY_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/credit-quality', async (_req, res) => {
+  try {
+    const raw = await kv.get(_CREDIT_QUALITY_KV);
+    if (!raw) return res.json({ ok: false, error: 'No data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _creditQualityRunning = false;
+app.post('/api/credit-quality/refresh', (_req, res) => {
+  if (_creditQualityRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _creditQualityRunning = true;
+  _buildCreditQualityRead().catch(() => {}).finally(() => { _creditQualityRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/credit-quality/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_CREDIT_QUALITY_KV).catch(() => null);
+  res.json({ ok: true, running: _creditQualityRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _creditQualityLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _creditQualityRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_creditQualityLastRun === today) return;
+  _creditQualityLastRun = today;
+  _creditQualityRunning = true;
+  _buildCreditQualityRead().catch(() => {}).finally(() => { _creditQualityRunning = false; });
+}, 20 * 60_000);
+
 // ── /api/fx-carry — the HONEST FX carry factor ───────────────────────────────
 // Long high-rate currencies, short low-rate ones vs USD, inverse-vol sized,
 // rebalanced, net of cost, IS/OOS — with the carry ACCRUAL priced in from FRED

@@ -768,6 +768,7 @@ let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change r
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
 let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
+let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -802,7 +803,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc, msc] = await Promise.all([
+  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc, msc, cq] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -815,6 +816,7 @@ async function loadGate() {
     jget('/api/oi-history').catch(() => null),
     jget('/api/macro-changes').catch(() => null),
     jget('/api/macro-scorecard').catch(() => null),
+    jget('/api/credit-quality').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -828,6 +830,7 @@ async function loadGate() {
   if (cv?.ok) cvol = cv;
   if (mc?.ok && mc.rows) macroMoved = mc.rows;
   if (msc?.ok) macroScorecard = msc;
+  if (cq?.ok) creditQuality = cq;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
@@ -1334,7 +1337,14 @@ function equitiesRisk(rs) {
   // the existing RISK-ON/OFF classification stays driven by the evidenced inputs
   // above (equity breadth, haven flows, credit spreads, VIX/HY levels).
   const liquidity = liquidityGateRead();
-  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven, credit: cg, liquidity };
+  // Credit quality spread (Baa10Y−Aaa10Y, z-scored) — a different axis than
+  // the HY-OAS-LEVEL credit line above (junk-bond spreads): this is
+  // investment-grade credit-curve SHAPE, from js/creditStressCore.js's
+  // buildCsi via /api/credit-quality (lightweight, FRED-only — see
+  // server.js's own note on why it doesn't reuse the heavy /api/credit-stress
+  // backtest endpoint). Also just reported, not folded into tone/cls.
+  const creditQ = creditQuality?.quality != null ? { z: creditQuality.quality, date: creditQuality.latestDate } : null;
+  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven, credit: cg, liquidity, creditQ };
 }
 function pairSignalGold(r) {
   const g = r.d.regime;
@@ -1445,6 +1455,7 @@ function renderMarketRead() {
           ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}</span>` : ''}</div>
         ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
         ${risk.liquidity ? `<div class="riskverdict" style="margin-top:3px" title="Fed (WALCL−TGA−RRP) nets directly (all USD); ECB/BoJ balance sheets are scored independently in their own currency and combined by sign agreement, never summed cross-currency. ${risk.liquidity.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ')}. Context, not a backtested rule — see how many of the 3 central banks agree, not just the composite number.">Liquidity: <b class="tone ${risk.liquidity.direction === 'LONG' ? 'on' : risk.liquidity.direction === 'SHORT' ? 'off' : 'mix'}" style="font-weight:800">${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'}</b><span class="muted"> · ${risk.liquidity.agree}/${risk.liquidity.total} central banks agree${risk.liquidity.vixNote && risk.liquidity.vixNote.read !== 'flat' ? ` · ${risk.liquidity.vixNote.read === 'diverging' ? 'diverging from VIX — worth watching' : 'confirmed by VIX'}` : ''}</span></div>` : ''}
+        ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
       </div>
     </div>
     <div class="mread-watch">
