@@ -1235,13 +1235,18 @@ HY-OAS-LEVEL credit line (junk-bond spreads): this is investment-grade
 credit-curve SHAPE. Same "reported, not folded into tone/cls" treatment as
 Liquidity above.
 
-Not built this pass (deliberately, scope discipline — one more item from the
-same null-backtest sweep, queued as a separate follow-up PR): MVE's
-fair-value/mispricing read (`/api/mve/:sym`, already live for its 6
-supported instruments) as a clearly-labeled per-pair card chip — explicitly
-NOT to be folded into `pairComposite`'s agree/total count, since MVE tested
-null-to-negative in this project's own backtest and inflating an
-"agreement" count with a confirmed-non-working leg would be dishonest.
+**Follow-up (2026-08-16, same PR series) — MVE fair-value chip.** Third and
+last item from the same null-backtest sweep. `today.html`'s `loadMve()`
+fetches `/api/mve/:sym` (already live, 1h server-side cache) for the 6
+MVE-supported instruments (`GOLD→XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD,
+NQ`) once per page load, and `mveChip(r)` renders a `◆ MVE cheap/rich Nσ`
+chip on eligible cards — tooltip states plainly that this project's OWN
+backtest found the underlying signal null-to-negative
+(`MARKET_VALUATION_ENGINE.md`/`js/mve/*`) and it's shown as read-only
+context, not a lean. **Explicitly NOT folded into `pairSignalComposite`/
+`pairComposite`'s agree/total count** — inflating an "agreement" tally with
+a confirmed-non-working leg would be dishonest, same discipline as every
+other "context, not a signal" caveat this session's combiners carry.
 
 ---
 

@@ -769,6 +769,29 @@ let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite 
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
 let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
+// MVE fair-value context (6 supported instruments only, /api/mve/:sym).
+// This project's OWN backtest found the underlying signal null-to-negative
+// for NQ and weak/null for the FX legs (js/mve/*, MARKET_VALUATION_ENGINE.md)
+// — kept as a clearly-labeled READ-ONLY context chip, same posture the
+// codebase already takes on it everywhere else. Deliberately NEVER folded
+// into pairSignalComposite/pairComposite's agree/total count — that would
+// quietly inflate "signals agreeing" with one this project already knows
+// doesn't work.
+const MVE_SYM = { GOLD: 'XAUUSD', EURUSD: 'EURUSD', GBPUSD: 'GBPUSD', USDJPY: 'USDJPY', AUDUSD: 'AUDUSD', NQ: 'NQ' };
+let mveData = {};
+async function loadMve() {
+  const entries = await Promise.all(Object.entries(MVE_SYM).map(async ([name, sym]) => {
+    try { const r = await jget(`/api/mve/${sym}`); return [name, r?.ok ? r : null]; } catch (e) { return [name, null]; }
+  }));
+  mveData = Object.fromEntries(entries);
+}
+function mveChip(r) {
+  const v = mveData[r.name];
+  if (!v || v.signal == null || v.signal === 'none') return '';
+  const z = v.mispricing?.z;
+  const cls = v.signal === 'cheap' ? 'bull' : 'bear';
+  return `<span class="chip ${cls}" title="Macro fair-value read (this pair's own rate-differential/real-yield drivers) — ${z != null ? `${Math.abs(z).toFixed(1)}σ ` : ''}${v.signal} vs its modeled fair value, confidence ${v.confidence != null ? Math.round(v.confidence * 100) + '%' : '—'}. This project's OWN backtest found this signal tested null-to-negative — shown as read-only context, not a lean.">◆ MVE ${v.signal}${z != null ? ` ${z > 0 ? '+' : ''}${z.toFixed(1)}σ` : ''}</span>`;
+}
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -832,6 +855,7 @@ async function loadGate() {
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
+  loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
@@ -2550,7 +2574,7 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}</div>
     ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
