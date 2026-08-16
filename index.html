@@ -6,20 +6,6 @@
 <title>MacroFX — Command Centre</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
-<style>
-#scratchBtn{background:none;border:1px solid var(--border,#1e2a3a);border-radius:6px;color:var(--text3,#4b5563);font-size:11px;font-weight:600;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif;white-space:nowrap}
-#scratchBtn:hover{background:var(--s2,#161b27);color:var(--text2,#94a3b8)}
-#scratchOverlay{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:24px}
-#scratchOverlay.open{display:flex}
-#scratchModal{background:var(--s1,#111827);border:1px solid var(--border,#1e2a3a);border-radius:10px;width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-#scratchHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border,#1e2a3a)}
-#scratchHead h3{margin:0;font-size:14px;color:var(--text,#e2e8f0);font-family:'DM Sans',sans-serif}
-#scratchStatus{font-size:11px;color:var(--text3,#4b5563);font-family:'DM Sans',sans-serif}
-#scratchBody{flex:1;padding:14px 18px;min-height:0;display:flex}
-#scratchTextarea{flex:1;width:100%;resize:none;background:var(--s2,#161b27);border:1px solid var(--border,#1e2a3a);border-radius:8px;color:var(--text,#e2e8f0);font-family:'DM Mono',monospace;font-size:13px;line-height:1.5;padding:12px;box-sizing:border-box}
-#scratchTextarea:focus{outline:none;border-color:#4f7df0}
-#scratchFoot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 18px;border-top:1px solid var(--border,#1e2a3a)}
-</style>
 </head>
 <body>
 <div id="app">
@@ -28,84 +14,8 @@
 <div id="commandHub"></div>
 
 
-<div id="scratchOverlay" onclick="if(event.target===this)scratchClose()">
-  <div id="scratchModal">
-    <div id="scratchHead">
-      <h3>Scratchpad</h3>
-      <span id="scratchStatus">saved</span>
-    </div>
-    <div id="scratchBody"><textarea id="scratchTextarea" placeholder="Jot anything here — synced to your account, same notes on every device…" spellcheck="false"></textarea></div>
-    <div id="scratchFoot">
-      <span style="font-size:11px;color:var(--text3,#4b5563);font-family:'DM Sans',sans-serif">autosaves as you type</span>
-      <button class="ne-btn" onclick="scratchClose()">Close</button>
-    </div>
-  </div>
-</div>
-
 <script src="js/commandHub.js"></script>
-
-<script>
-(function(){
-  var CACHE_KEY='macrofx_scratchpad_cache';
-  var ta,statusEl,saveTimer,loaded=false;
-
-  function setStatus(s,isErr){statusEl.textContent=s;statusEl.style.color=isErr?'#ef4444':'';}
-
-  async function loadFromServer(){
-    try{
-      var r=await fetch('/api/scratchpad');
-      var j=await r.json();
-      if(j&&j.ok&&typeof j.text==='string'){
-        ta.value=j.text;
-        try{localStorage.setItem(CACHE_KEY,j.text)}catch(e){}
-        setStatus('saved');
-      }
-    }catch(e){
-      console.error('[scratchpad] load failed:',e);
-      setStatus('offline — showing local copy',true);
-    }
-    loaded=true;
-  }
-
-  async function saveToServer(){
-    var text=ta.value;
-    try{localStorage.setItem(CACHE_KEY,text)}catch(e){}
-    setStatus('saving…');
-    try{
-      var r=await fetch('/api/scratchpad',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text})});
-      var j=await r.json();
-      if(!j||!j.ok)throw new Error(j&&j.error||'save failed');
-      setStatus('saved');
-    }catch(e){
-      console.error('[scratchpad] sync to server failed, saved locally only:',e);
-      setStatus('saved locally only',true);
-    }
-  }
-
-  window.scratchOpen=function(){
-    if(!ta){
-      ta=document.getElementById('scratchTextarea');
-      statusEl=document.getElementById('scratchStatus');
-      ta.addEventListener('input',function(){
-        setStatus('editing…');
-        clearTimeout(saveTimer);
-        saveTimer=setTimeout(saveToServer,800);
-      });
-    }
-    if(!loaded){
-      try{var cached=localStorage.getItem(CACHE_KEY);if(cached!=null)ta.value=cached}catch(e){}
-    }
-    document.getElementById('scratchOverlay').classList.add('open');
-    loadFromServer();
-    setTimeout(function(){ta.focus()},0);
-  };
-  window.scratchClose=function(){
-    clearTimeout(saveTimer);
-    if(ta)saveToServer();
-    document.getElementById('scratchOverlay').classList.remove('open');
-  };
-})();
-</script>
+<script src="js/scratchpad.js"></script>
 
 <div id="stickysentinel" style="height:0;position:absolute;top:0;left:0;width:100%"></div>
 <div class="sticky-header">
@@ -3081,8 +2991,8 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/kv-health</span><span class="am-desc">KV persistence backend status + round-trip probe of critical keys</span><span class="am-consumers">js/bot-config.js</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nav-layout</span><span class="am-desc">Saved dashboard nav dropdown ordering from KV</span><span class="am-consumers">index.html</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/nav-layout</span><span class="am-desc">Saves the dashboard nav dropdown ordering/layout to KV</span><span class="am-consumers">index.html</span></div>
-          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/scratchpad</span><span class="am-desc">User’s free-text scratchpad notes from KV</span><span class="am-consumers">index.html</span></div>
-          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/scratchpad</span><span class="am-desc">Saves the user’s free-text scratchpad notes to KV</span><span class="am-consumers">index.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/scratchpad</span><span class="am-desc">User’s free-text scratchpad notes from KV</span><span class="am-consumers">js/scratchpad.js (index.html, indexv2.html, today.html)</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/scratchpad</span><span class="am-desc">Saves the user’s free-text scratchpad notes to KV</span><span class="am-consumers">js/scratchpad.js (index.html, indexv2.html, today.html)</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/r2/list</span><span class="am-desc">Lists R2 bucket object keys under a prefix</span><span class="am-consumers">none found</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/config</span><span class="am-desc">Which API keys/KV are configured (booleans only)</span><span class="am-consumers">js/main.js, js/caps.js</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/config/caps</span><span class="am-desc">Proximity-cap config (FX/gold/NAS100) from KV, merged with defaults</span><span class="am-consumers">js/caps.js, js/gold-app.js</span></div>
