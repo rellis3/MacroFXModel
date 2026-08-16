@@ -13,9 +13,15 @@
     --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);
     --blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
     /* js/commandHub.js (shared with index.html/indexv2.html) styles itself with
-       --s1/--s2 — alias them to this page's surface vars so the nav bar and its
-       dropdowns/modal pick up the light/dark toggle instead of staying hardcoded dark. */
-    --s1:var(--card);--s2:var(--card2);
+       --s1/--s2 — mirror this page's --card/--card2 so the nav bar and its
+       dropdowns/modal pick up the light/dark toggle. NOTE: this must be a
+       literal duplicate of --card/--card2 in EACH block below, not a
+       `var(--card)` alias declared once at :root — a custom property's var()
+       references resolve using the value at its OWN declaration point, so an
+       alias declared only at :root keeps resolving against :root's (dark)
+       --card forever, never the body.light override (confirmed empirically:
+       Chromium computed #s1 as the dark hex even with body.light active). */
+    --s1:#161b22;--s2:#1c2330;
   }
   /* Light theme — same variable names, override on <body class="light">. Kept
      dark as the default (unchanged for anyone not touching the toggle); values
@@ -27,6 +33,7 @@
     --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
     --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);
     --blue-bg:rgba(24,71,194,.10);--neu-bg:rgba(75,90,110,.08);
+    --s1:#ffffff;--s2:#eef1f7;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
