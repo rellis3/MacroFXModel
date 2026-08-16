@@ -22,6 +22,8 @@
     <span>Prereqs: Bootstrapping the Yield Curve</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -110,6 +112,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Bootstrapping is like connecting dots with a ruler — perfectly accurate at each dot, but the line between two far-apart dots can zig and zag oddly. Nelson-Siegel instead draws one smooth curve that generally passes close to all the dots without insisting on hitting every single one exactly — like sketching a smooth hill instead of a jagged connect-the-dots picture.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
@@ -161,6 +168,11 @@
     <div class="tl-eq-chip c2"><code>e⁻ˣ</code><span>decays from 1 (at τ=0) toward 0 as τ grows — the "how much short-term behavior is left" weight</span></div>
     <div class="tl-eq-chip c3"><code>L(τ)</code><span>the slope loading — starts at 1, decays smoothly to 0</span></div>
     <div class="tl-eq-chip c4"><code>L(τ) − e⁻ˣ</code><span>the curvature loading — zero at both ends, positive (or negative) in between</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The whole formula is just three ingredients stacked together: a baseline number that never changes with maturity, a piece that matters a lot for short maturities and fades away for long ones, and a piece that's zero at both ends but bulges up or down somewhere in the middle. Mixing different amounts of those three ingredients is literally all it takes to draw almost any realistic yield curve shape.</p>
   </div>
 
   <h3>What each parameter does, and why — the two limiting cases</h3>
@@ -259,6 +271,11 @@
       <h4>\(\lambda\) — Decay</h4>
       <p>Sets the maturity at which the hump sits, and how quickly short-end behavior fades into the long-run level.</p>
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the four numbers as four dials on a machine that draws yield curves. One dial sets how high the curve eventually flattens out far in the future. One dial sets whether short-term rates start above or below that flat level. One dial adds a bump or a dip somewhere in the middle. The last dial slides that bump left or right along the timeline. Four dials, one smooth curve every time — no way to accidentally draw a jagged line.</p>
   </div>
 
   <div class="tl-solid red">
@@ -803,6 +820,29 @@
     s.addEventListener('input', update);
   });
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

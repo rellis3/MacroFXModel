@@ -22,6 +22,8 @@
     <span>Prereqs: Returns, Log-Returns &amp; Compounding</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -159,6 +161,11 @@
     start multiplying instead of adding.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a snowball rolling down a snowy hill. Each bit of extra snow it picks up on the way down doesn't just sit on top loosely — it becomes part of the ball, and now picks up even more snow of its own next time around. That's compounding: interest doesn't just get added on flatly each year, it joins the pile and starts earning interest itself, which is why money grows faster and faster instead of by the same amount every single period.</p>
+  </div>
+
   <h3>2. Present value — discounting</h3>
   <p>
     Present value is nothing more than the future-value formula solved for
@@ -202,6 +209,11 @@
     given \(t\), which is exactly the "low-rate curve declines slowly,
     high-rate curve declines fast" shape in the chart.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If $100 today turns into $105 next year in the bank, flip the question around: $105 arriving next year must be worth exactly $100 today — no more, no less. A discount factor is a shrinking number, always somewhere between 0 and 1, that answers "how much is a dollar arriving later actually worth right now." The longer you have to wait, or the higher the interest rate, the smaller that number gets, because waiting always costs you something.</p>
+  </div>
 
   <h3>3. Continuous compounding — the limit, and why it's the same object as a log return</h3>
   <p>
@@ -273,6 +285,11 @@
     accrues at a constant 0.05 per year — nothing more exotic than that.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Compounding "continuously" just means imagining interest getting added in infinitely tiny drips all the time, instead of once a year in one big splash — like a tap that never stops dripping instead of a bucket poured in once. All those tiny drips add up to one clean, exact number (built from a special math constant called e), and that number turns out to secretly be the same thing as a "log return" — a way of measuring growth that adds up neatly across time.</p>
+  </div>
+
   <h3>4. Nominal vs. real rates — a forward-reference to Fisher and Purchasing Power Parity</h3>
   <p>
     Everything above assumes the interest rate \(r\) buys you something
@@ -308,6 +325,11 @@
     next question once you've internalized that "the rate" a market quotes
     is never automatically "the value you actually gain."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A nominal rate is just the number printed on your bank statement. A real rate is how much richer you actually got, once you account for prices going up too. If your money grows by 5% but the stuff you'd want to buy also got 3% more expensive, you didn't really get 5% richer — you got about 2% richer, because part of that growth just kept up with rising prices instead of buying you anything extra.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Discount factor vs. time, at two different rates</div>
@@ -433,6 +455,12 @@
       the forward rate must exactly reflect that PV/FV gap or a riskless
       arbitrage opens up.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Imagine two banks down the street from each other, one paying almost no interest and one paying a lot. If you could borrow for free from the low-interest bank and just park that money in the high-interest one, everyone would do it and print free money. The "forward rate" — the exchange rate agreed today for a swap that happens later — has to be set at exactly the number that closes that loophole, so borrowing from the cheap currency and parking it in the expensive one doesn't actually make anyone free money once the exchange-rate change is factored in.</p>
+    </div>
+
     <p>
       Here is the no-arbitrage argument, run with these exact numbers.
       Suppose (hypothetically, incorrectly) the forward rate were quoted
@@ -660,5 +688,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

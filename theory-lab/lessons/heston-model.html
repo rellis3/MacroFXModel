@@ -22,6 +22,8 @@
     <span>Prereqs: GARCH &amp; Volatility Clustering, Black-Scholes-Merton Option Pricing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -177,6 +179,11 @@
     <tr><td>\(\rho\)</td><td>(rho) The <strong>correlation</strong> between the price shock \(dW_t^1\) and the variance shock \(dW_t^2\). This is the parameter with no Black-Scholes or plain-OU analogue at all, and it is what makes the model capable of generating a realistic smile/skew — see below.</td></tr>
   </table></div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Black-Scholes treats "how jumpy is the price" as one fixed number you look up once and never revisit. Heston's one big idea is to stop doing that and instead give jumpiness its own little life story — its own equation describing how jumpy-ness itself wanders up and down over time. The price still bounces around randomly, same as before; it's just that the size of the bounces is now allowed to bounce around too.</p>
+  </div>
+
   <h3>The variance process is an Ornstein-Uhlenbeck process — applied to variance instead of price</h3>
   <p>
     It is worth being explicit about how directly this connects to the
@@ -218,6 +225,11 @@
     different variable</strong>, with one technical tweak to keep that variable
     non-negative.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a rubber band tied between "today's variance" and "the long-run average variance" — stretch it far in either direction (a calm spell, a turbulent spell) and it keeps tugging back toward the middle, harder the further it's stretched. That's mean reversion, and it's the exact same rubber-band idea this Theory Lab already uses for mean-reverting spreads, just now tied to volatility instead of price. The one new wrinkle: the band is built so it can never pull variance below zero, since "negative jumpiness" doesn't mean anything.</p>
+  </div>
 
   <h3>Why the correlation \(\rho\) is the whole story behind the smile</h3>
   <p>
@@ -265,6 +277,11 @@
     moves) combined with \(\rho \neq 0\) (that movement is linked to price
     direction).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Negative ρ is a fancy way of saying "storms and price crashes tend to show up together." Because a big drop and a spike in turbulence tend to arrive as a package deal, insurance against a big drop (an out-of-the-money put) has to price in that a payout is more likely to land exactly when things are already going haywire — so it costs more than a model that pretends storms and crashes are unrelated would ever charge.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">What a flat-σ model versus stochastic vol implies about the smile</div>
@@ -329,6 +346,11 @@
     of applied mathematics in its own right and belongs in a dedicated
     numerical-methods treatment, not a conceptual model-specification lesson.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Black-Scholes' price comes from a formula simple enough to type into a calculator. Heston's price comes from a formula that's precise and correct, but instead of a calculator you need a computer to crunch through a specific numerical recipe (integrating a "characteristic function") to get the actual number out. It's not guesswork or approximation — it's just a formula that happens to need more machinery to evaluate.</p>
+  </div>
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -583,5 +605,28 @@
     <a href="sabr-model.html">The SABR Model →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

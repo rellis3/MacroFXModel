@@ -22,6 +22,8 @@
     <span>Prereqs: none</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -207,6 +209,11 @@
     </li>
   </ul>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine everyone in your class writes down how far off their guess was from the right answer — some guessed too high, some too low. If you just add those misses up as they are, the too-high ones and too-low ones cancel out, and it looks like nobody was ever wrong, which is silly. So instead, everyone squares their miss first — that makes every number positive, and it also makes a really wild guess count a lot more than a tiny one, the way missing by 10 feels way worse than missing by 2, not just twice as bad.</p>
+  </div>
+
   <h3>Population variance vs. sample variance — why divide by \(n-1\)?</h3>
   <p>
     There are two versions of the variance formula, and mixing them up is one
@@ -286,6 +293,11 @@
     \(n\) and by \(n-1\) shrinks toward nothing.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you only get to see 5 kids out of a whole classroom of 30, and you use those 5 kids to guess the average height for everybody. Because your "average" was built out of the very same 5 kids you're now measuring, your guess is automatically a little too cozy with them. Dividing by one less than the number of kids you saw is a small correction that makes up for peeking at the same kids twice.</p>
+  </div>
+
   <h3>Standard deviation — back to the original units</h3>
   <p>
     Variance is in <em>squared</em> units — if \(x_i\) is a percentage return,
@@ -309,6 +321,11 @@
     units as the original data, so a standard deviation of "1.4% per day" is
     directly interpretable the way "2 percent-squared" is not.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Variance is like measuring a room in "squared feet" when you really just want to know how wide it is. Taking the square root undoes the squaring and gets you back to a number you can actually picture and compare, in the same units you started with.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(x_i\)</td><td>The \(i\)-th individual data point — for us, usually a single day's percentage return.</td></tr>
@@ -368,6 +385,11 @@
     calculus but not needed to use the distribution.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The bell curve is what you get when most things land close to the middle and fewer and fewer things land way out at the edges — like the heights of kids in a class: lots of average-height kids, a few pretty tall or pretty short ones, and almost nobody who's a giant or a tiny mouse. The formula is just a precise recipe for drawing that exact shape.</p>
+  </div>
+
   <h3>Z-scores — putting any value on the same universal ruler</h3>
   <p>
     A "1.4% move" is meaningless in isolation — is that big or small? It
@@ -409,6 +431,11 @@
     are the standard tool for "is this move unusual" gates and filters (more
     in the practitioner section below).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A z-score answers one simple question: "is this a big deal, or not really?" It counts how many of your "usual wobbles" away from normal something is. Zero wobbles away means totally normal. Two wobbles away means it's starting to look unusual — the bigger the number, the weirder the day.</p>
+  </div>
 
   <h3>The 68/95/99.7 rule</h3>
   <p>
@@ -854,6 +881,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

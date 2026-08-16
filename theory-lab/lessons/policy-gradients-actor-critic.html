@@ -22,6 +22,8 @@
     <span>Prereqs: Q-Learning &amp; Temporal-Difference Methods</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -166,6 +168,12 @@
     which are known exactly, since \(\theta\) is the modeler's own choice of
     parameterization.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>REINFORCE is a simple rule: after you try something and see how it goes, ask "which direction would I need to nudge my habits to make me more likely to do that again?" — and then nudge in that direction, harder if the result was really good, softer if it was just okay, backward if it was bad. Do this over and over across many tries, and your habits drift toward whatever's been working, without ever needing to peek inside the "environment" that produced the outcome.</p>
+  </div>
+
   <p>
     <strong>Why this handles continuous actions for free.</strong> For a
     Gaussian policy over a continuous action (mean \(\mu_\theta(s)\), std
@@ -214,6 +222,12 @@
     prefer), leaving only the part that actually discriminates between
     actions.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine grading a student's test score not against zero, but against how well the class usually does on that particular test. A "good" score on an easy test and the same score on a hard test shouldn't count the same — what actually tells you something is how much better or worse than the usual result this particular answer was. The advantage does exactly that for actions: it compares an action's outcome against what this state usually delivers, so only the genuinely above- or below-average choices push the policy around.</p>
+  </div>
+
   <p>
     In practice \(V^\pi(s)\) is rarely known exactly, so it's learned
     alongside the policy by its own separate function — the
@@ -223,6 +237,12 @@
     itself, updated by the policy gradient using the critic's advantage
     estimate as the weight. This is where the two previous lessons meet:
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Actor-critic is two roles working together. The actor is the one actually making decisions — placing the trade, choosing the position size. The critic is more like a coach standing on the sidelines, constantly updating an opinion of "how good is this situation, roughly?" so the actor has something honest to measure each individual decision against, instead of just reacting to raw, noisy outcomes.</p>
+  </div>
+
   <div class="tl-solid blue">
     <strong>The TD error and the advantage are, to a first approximation,
     the same quantity.</strong> A single-sample estimate of the advantage is
@@ -360,6 +380,11 @@
     the environment it was handed, and none of the above lessons should be
     read as evidence that a specific RL trading system has, or will have,
     real edge.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of RL as an incredibly obedient genie: whatever wish (reward) you phrase, it will grant exactly and only that wish, as literally as possible, with zero judgment about whether the wish was a good idea. Ask it to maximize profit with no mention of risk, and it will happily find you the riskiest possible way to make money look great in a test environment — not because it misunderstood, but because it did precisely what it was asked, and nothing more.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
@@ -527,5 +552,28 @@
     <a href="../hub.html">Theory Lab hub</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

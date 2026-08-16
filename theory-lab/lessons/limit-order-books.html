@@ -32,6 +32,8 @@
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -121,6 +123,11 @@
     next section.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a parking garage with several floors, each floor a different price to park. The cheapest floor for buyers fills up first, then the next-cheapest, and so on. A "level" isn't one car, it's a whole floor's worth of cars all willing to park at that exact price, lined up in the order they arrived.</p>
+  </div>
+
   <div class="tl-table-wrap"><table class="tl-tbl">
     <tr><th>Side</th><th>Level</th><th>Price</th><th>Size at level</th><th>Cumulative size</th></tr>
     <tr><td>Ask</td><td>3 (worst)</td><td class="tl-num">1.1007</td><td class="tl-num">500</td><td class="tl-num">1,000</td></tr>
@@ -202,6 +209,11 @@
     to know first, because it is both the most common and the one every other variant
     is defined as a departure from.
   </p>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>It's exactly like a checkout line at a store: the register only serves whoever's cheapest overall first (price priority), and among people willing to pay that same price, whoever got in line first gets served first (time priority) — no cutting, no matter how big your cart is.</p>
+  </div>
+
   <div class="tl-solid amber">
     <strong>The consequence that matters in practice:</strong> under strict FIFO,
     <em>when</em> you joined a price level is as economically important as
@@ -232,6 +244,11 @@
       down the book?) in exchange for certainty of immediate execution.</p>
     </div>
   </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A limit order is like posting "I'll sell my bike for exactly $200" and waiting for someone to agree — you might wait a while, but you get your price. A market order is like walking into a bike shop and saying "give me a bike right now, whatever it costs" — you get it instantly, but you don't control what you pay.</p>
+  </div>
+
   <p>
     A market order large enough to exceed the size resting at the best price does not
     fail or wait — it "<strong>walks the book</strong>": it fills against the entire
@@ -283,6 +300,11 @@
     through my price" without also tracking queue position will systematically
     overestimate how often it would actually have been filled.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Your fill chances depend on how many people are ahead of you in line, not just whether you're in the right line at all. If 800 people are ahead of you at the return counter and only 300 get helped before the store closes, you're not getting helped today — even though you're standing in exactly the right spot. Nothing about your own order matters here; it's entirely about who's in front of you.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>Bid / Ask</td><td>The buy side / sell side of the book. Best bid = highest resting buy price; best ask (offer) = lowest resting sell price.</td></tr>
@@ -631,5 +653,28 @@
     <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

@@ -22,6 +22,8 @@
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -146,6 +148,11 @@
     ordinary-least-squares step.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Take a chunk of daily price moves and walk a little dot up or down by each day's move, starting from zero. R/S just measures how far that dot's path swings from its highest point to its lowest point, adjusted for how jumpy the days were. Do that for short chunks and long chunks, plot the results, and the steepness of the resulting line — the Hurst exponent — tells you whether longer stretches of time make the swing grow the "normal" amount, faster than normal (trending), or slower than normal (mean-reverting).</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(X_i\)</td><td>the <em>i</em>-th observation in the chunk being analyzed — typically a daily price change or log return, not the raw price level</td></tr>
@@ -178,6 +185,12 @@
       be followed by another up-move than pure chance predicts. The range grows faster than \(\sqrt{n}\) — momentum
       reinforcing itself. \(H\) near 1 is strongly trending (in the limit, a straight line).</li>
   </ul>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of H as a single dial that reports "does this series have a memory, and what kind." Dial at 0.5: no memory, pure coin-flip wandering. Dial pushed above 0.5: a stubborn memory that reinforces itself — an up day makes another up day slightly more likely, so moves compound into trends. Dial pushed below 0.5: a contrarian memory — an up day makes a down day slightly more likely, so moves keep getting undone, which is mean reversion.</p>
+  </div>
+
   <p>
     This is worth pausing on because it's the same fade/follow question that Ornstein-Uhlenbeck mean reversion and
     trend-day classification ask from different angles — <em>H</em> is a third, model-free lens on it: it doesn't
@@ -221,6 +234,12 @@
     return (the daily return). Under the random-walk null hypothesis, \(VR(q) = 1\) for every <em>q</em>, exactly.
     Deviations from 1 are directly interpretable:
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If daily moves were truly independent coin flips, a 5-day return's "wobble" should be exactly 5 times a single day's wobble — no more, no less, because independent wobbles just add up. The variance ratio is a straightforward "actual wobble ÷ expected wobble" check. Above 1 means the days are teaming up to wobble more than expected (trending); below 1 means the days are canceling each other out more than expected (mean-reverting).</p>
+  </div>
+
   <ul>
     <li><strong>\(VR(q) > 1\)</strong>: <em>q</em>-day variance is larger than the random-walk prediction — returns are
       positively autocorrelated — <strong>trending</strong>, the same story as \(H>0.5\).</li>
@@ -550,6 +569,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

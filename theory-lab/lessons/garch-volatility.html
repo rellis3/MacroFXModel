@@ -22,6 +22,8 @@
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -159,6 +161,11 @@
     forecast up.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>ARCH says: "how big was yesterday's move, no matter which direction? Add a chunk of that to my baseline nervousness, and that's my forecast for how big today's move will be." Squaring the shock is just a trick to make "big up day" and "big down day" count the same, since both are equally good evidence the market got jumpy.</p>
+  </div>
+
   <h3>Step 2 — GARCH(1,1): let variance also carry its own momentum</h3>
   <p>
     ARCH(1) has a limitation: it only remembers <em>yesterday's</em> shock, and it forgets everything about how
@@ -206,6 +213,11 @@
     variance process itself has momentum." GARCH's \(\beta\) term encodes that momentum directly into the model.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>GARCH(1,1) is just ARCH with a memory upgrade: instead of only asking "how big was yesterday's move," it also asks "how nervous was I already feeling yesterday," and blends both into today's forecast. That second question is what makes an already-elevated volatility regime stay elevated for a while, rather than the forecast resetting from scratch every single day.</p>
+  </div>
+
   <h3>Stationarity: \(\alpha + \beta < 1\)</h3>
   <p>
     For this recursion to describe a <em>mean-reverting</em> variance process — one that, absent new shocks, settles
@@ -224,6 +236,11 @@
     GARCH(1,1) fit on real return data needs \(\alpha+\beta<1\), and it's a sanity check worth running on any fitted
     or hand-set parameters before trusting them.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of α+β as "how much of today's extra nervousness sticks around tomorrow." If it's less than 1, some of it always fades, so calm eventually returns — the forecast has a home to settle back into. If it were 1 or more, none of it (or more than all of it) ever fades, and the model's forecast would just keep climbing forever, which isn't how real markets behave.</p>
+  </div>
 
   <h3>The unconditional (long-run) variance</h3>
   <p>
@@ -275,6 +292,11 @@
     a fitted GARCH model: it tells you, at a glance, how sticky the volatility regime the model is describing
     actually is.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Volatility "remembers being scared." Persistence (α+β) is basically how good that memory is — close to 1 means it takes weeks to calm back down after a scare, like a jumpy dog that stays on edge long after the loud noise stopped; further from 1 means it settles down again within a few days. Half-life just converts that memory into a number of days: how long until half the extra fear has worn off.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -640,5 +662,28 @@
     <a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

@@ -22,6 +22,8 @@
     <span>Prereqs: Markowitz &amp; Black-Litterman</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -134,6 +136,11 @@
           portfolio's total risk into per-asset pieces that add back up to
           the whole.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Risk contribution is like splitting a restaurant bill by what each person actually ordered, instead of splitting it evenly per head. And it's not a rough guess — it's an exact accounting split: everyone's share adds up perfectly to the total bill, no matter how unevenly the orders were spread.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -158,6 +165,11 @@
           numerically (an iterative scheme, e.g. gradient-based, converging
           on the weights that equalize every \(RC_i\)).
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Think of ERC as handing out backpacks so everyone in a group ends up carrying the exact same amount of strain — but how much strain any one person feels depends on what everyone else is carrying too. There's no clean formula for that; you just have to shuffle the load back and forth, a little at a time, until it balances out evenly.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -192,6 +204,11 @@
           case — it satisfies the ERC condition exactly.
         </p>
         <div class="tl-math">\[ w_i^{ERC} = \frac{1/\sigma_i}{\sum_j 1/\sigma_j} \qquad \text{(exact, under uniform pairwise correlation)} \]</div>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Under this special assumption, the recipe for equal risk turns out to be simple: give the calm, steady assets bigger piles of money and the wild, jumpy ones smaller piles, in exact inverse proportion to how jumpy each one is. It's the seesaw idea again — put more weight closer to the middle to keep things balanced.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -444,6 +461,12 @@
     differently in an inflation shock than in a growth scare is the
     textbook case).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Because a calm asset like government bonds barely moves, a risk-parity fund has to put a huge pile of money into it just to match the risk of a much smaller pile in a wilder asset like commodities. To still earn a decent overall return with so much money parked in the calm stuff, funds often borrow extra money to buy even more of it — like putting a bigger engine in the slow, steady car so the whole trip still finishes on time. That's a real bet, though: if the calm car suddenly turns wild, the extra engine (leverage) makes the crash much worse.</p>
+  </div>
+
   <p>
     The equal-correlation reduction derived above is rarely used as the
     literal production allocator — real cross-asset correlation matrices are
@@ -583,5 +606,28 @@
     <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

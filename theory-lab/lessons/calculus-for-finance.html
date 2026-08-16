@@ -22,6 +22,8 @@
     <span>Prereqs: none</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -195,6 +197,11 @@
     line: the instantaneous steepness of the curve at one specific point.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you measured your speed by dividing the distance you drove by the time it took, over a whole hour, that only tells you your average speed for the hour — not how fast you were going at any one second. A derivative is what happens when you make that measuring window shorter and shorter, down to basically no time at all: it's your speed at this exact instant, read straight off the speedometer.</p>
+  </div>
+
   <h3>A worked derivative: \(d/dx(x^2) = 2x\), from first principles</h3>
   <p>
     Apply the limit definition directly to \(f(x) = x^2\), with every step of
@@ -307,6 +314,11 @@
     each other.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An integral is just adding up a whole lot of tiny slivers of area under a curve, like stacking up a huge pile of super-thin coins until they fill the space beneath the line. The clever shortcut is that you don't actually have to stack them one at a time — if you know a function that "undoes" the curve (its antiderivative), you can check its value at the start and the end, subtract, and instantly get the whole pile's total.</p>
+  </div>
+
   <h3>Taylor series: approximating a function from a single point</h3>
   <p>
     The derivative gives you the tangent line at a point — and the tangent
@@ -330,6 +342,12 @@
     approximation whose error grows as the curve bends away from that
     straight tangent line.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you only know how something looks right this second and which way it's currently heading, you can guess pretty well where it'll be a moment from now — just keep going in that same direction. That's the first-order Taylor guess: today's value, plus "keep walking at today's speed" for one small step. It works fine for a small step, but the guess gets worse the further out you try to use it, because the real path can start curving away from that straight-line guess.</p>
+  </div>
+
   <p>
     That bending-away is precisely what the <strong>second derivative</strong>
     \(f''(x)\) measures — how fast the slope itself is changing, i.e. the
@@ -372,6 +390,11 @@
     finance, because it's usually accurate enough over small moves and far
     simpler than carrying more terms.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The second derivative is a fancy way of saying "is the speed itself changing." If you're walking and speeding up, a straight-line guess about where you'll be in a minute will fall short, because you're not just walking at today's speed — you're walking a bit faster with every step. Adding the second-order term is like admitting "I'm not just moving, I'm also accelerating," which makes the guess about the near future noticeably better.</p>
+  </div>
 
   <h3>Connecting Taylor series to two formulas already in this Theory Lab</h3>
   <p>
@@ -479,6 +502,12 @@
       one — it is one, computed by the pricing model's own machinery (the
       Black-Scholes lesson derives exactly this quantity in closed form).
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Delta is just "how much does the option's price move for every $1 the underlying moves, right now." A delta of 0.60 means the option acts a bit like it's worth 60 cents of the underlying — not a full dollar of it — for a small wiggle. It's the exact same "instant rate of change" idea as a speedometer, just measured on an option's price instead of a car's position.</p>
+    </div>
+
     <p>
       And it's a <em>first-order</em> approximation in exactly the Taylor
       sense above: \(\Delta C \approx \delta \cdot \Delta S\) is the
@@ -754,5 +783,28 @@
     <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

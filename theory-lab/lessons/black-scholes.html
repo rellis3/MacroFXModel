@@ -22,6 +22,8 @@
     <span>Prereqs: GARCH &amp; Volatility Clustering</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -154,6 +156,11 @@
     GBM predicts.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>GBM is just a rule for how the model assumes prices bounce around: a steady average drift, plus random wobbles that are always sized as a percentage of the current price rather than a fixed dollar amount — a 1% wobble on a $10 stock is 10 cents, on a $1000 stock it's $10. That percentage-based wobbling is why prices in this model can never go negative and why big moves compound rather than just add up.</p>
+  </div>
+
   <h3>2. The replication argument and the no-arbitrage PDE</h3>
   <p>
     Here is the core insight from the intuition box, stated precisely.
@@ -219,6 +226,11 @@
     drifted at the risk-free rate, because that's the drift rate implied by
     the no-arbitrage replication argument itself.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Build a stock-plus-cash mix that perfectly copies the option's payoff no matter what happens, and two things that always pay off identically have to cost the same today — otherwise someone could buy the cheap one, sell the expensive one, and pocket free money with zero risk. Following that logic through the math is what makes your opinion about which way the stock is headed completely vanish from the price — the copying trick never needed to know that.</p>
+  </div>
 
   <h3>3. The closed-form solution — the Black-Scholes formula</h3>
   <p>
@@ -300,6 +312,11 @@
     <div class="tl-eq-chip c4"><code>N(−d₂)</code><span>risk-neutral probability the put finishes in the money</span></div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The whole formula boils down to "what you'd expect to get, minus what you'd expect to have to pay, if the option ends up worth something" — each piece weighted by how likely that outcome is. But it's a slightly fictional kind of "likely": for the sake of getting a clean, fair price, the math pretends every investment grows at the same safe, boring rate, not at whatever rate you personally expect it to grow.</p>
+  </div>
+
   <h3>The Greeks — the formula's sensitivities</h3>
   <p>
     A "Greek" is simply a partial derivative of the option price with respect
@@ -372,6 +389,11 @@
     move meaningfully and is a first-order input to carry-sensitive FX
     option pricing.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Greeks are just answers to "how much does the option's price wiggle if one thing changes a little?" Delta: how much it moves if the stock moves a dollar. Gamma: how fast delta itself needs updating. Theta: how much value quietly leaks away just from a day passing, like an ice cube melting. Vega: how much it moves if the market's fear level (volatility) changes. Rho: how much it moves if interest rates change. Each one isolates a single knob and asks "how sensitive is the price to just this?"</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -802,6 +824,29 @@
   sigmaSlider.addEventListener('input', updateChart);
   tSlider.addEventListener('input', updateChart);
   updateChart();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

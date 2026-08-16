@@ -22,6 +22,8 @@
     <span>Prereqs: Conjugate Priors &amp; Bayesian Updating in Practice</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -123,6 +125,11 @@
     correction term, allowing asymmetric proposals.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of exploring a dark room by randomly wandering: at each step you try a random nearby spot. If it feels more interesting than where you're standing, you always move there. If it feels less interesting, you still sometimes move there anyway — how often depends on just how much less interesting it is. That "sometimes wander somewhere worse" habit is what stops you from getting stuck pacing back and forth on the single most interesting spot you happen to find first, and it's the entire accept/reject rule above, in one sentence.</p>
+  </div>
+
   <div class="tl-formula-parts">
     <div class="tl-fp blue">
       <div class="tl-fp-term">θ' ~ q(θ'∣θ)</div>
@@ -171,6 +178,11 @@
     normalizing constant.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Detailed balance just means "as much traffic flows from A to B as flows back from B to A." Picture two neighboring towns connected by a road, with people moving back and forth every day. If the flow in each direction is perfectly balanced, the populations of both towns stay steady over time, even though individual people keep moving. The accept/reject rule is designed so that kind of two-way balance holds between every pair of spots in parameter space — which is exactly why the chain settles into a stable, unchanging pattern of visit frequencies that matches the target distribution.</p>
+  </div>
+
   <h3>Gibbs sampling — the special case with 100% acceptance</h3>
   <p>
     Gibbs sampling applies when the target has multiple parameters,
@@ -198,6 +210,11 @@
     all, only the choice of which full conditional to derive and sample from
     next.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Regular Metropolis-Hastings is like guessing where to step next and then checking whether that guess was any good. Gibbs sampling skips the guessing part entirely — for each parameter in turn, it draws directly from the exact right answer for "given everything else is fixed, what should this one be." There's nothing to double-check, so nothing ever gets rejected; it's the difference between guessing a friend's exact address and simply being handed it.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -419,6 +436,11 @@
     disagree about where the posterior actually is.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>R̂ is a sanity check that asks several independent chains, "did you all end up describing the same place?" It's like sending several search parties out from different starting points to map the same forest — if they all come back with roughly the same map, you can trust it. If one party keeps describing a totally different forest, something went wrong, and R̂ well above 1.00 is the number that tells you so.</p>
+  </div>
+
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -620,6 +642,29 @@
 
   stepSlider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

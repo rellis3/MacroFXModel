@@ -22,6 +22,8 @@
     <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; ARIMA &amp; VAR (for the Granger causality bridge)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -114,6 +116,12 @@
       <div class="tl-fp-desc">Held fixed so only X's contribution is counted, not Y predicting itself</div>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Suppose you want to know whether the weather affects someone's mood. It's not enough that weather and mood are related in general — moods have their own momentum, so a good mood today makes a good mood tomorrow more likely regardless of weather. The real question is narrower: once you already know today's mood, does knowing today's weather help you predict tomorrow's mood any better? Transfer entropy is exactly that narrower, honest question, made precise.</p>
+  </div>
+
   <p>
   Every symbol here was already defined in the previous lesson — transfer entropy adds nothing new
   to the notation, only a conditioning term. Recall conditional mutual information generalizes the
@@ -149,6 +157,11 @@
   directional signature a symmetric measure like ordinary mutual information could never produce, no
   matter how it was computed.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The direction here doesn't have to run both ways, and usually it doesn't. Weather plausibly affects mood more than mood affects weather — nobody's grumpiness changes tomorrow's forecast. Transfer entropy is built specifically to catch that kind of one-way street: how much genuinely new information moves from X's past into Y's future, versus how much moves the other way, computed as two separate numbers that are allowed to disagree.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Conditioning structure of TE_{X→Y}: Y's own past is held fixed, X's past is the candidate</div>
@@ -250,6 +263,11 @@
   the same failure mode already flagged for Granger causality. Treating a transfer-entropy result as
   proof of a causal mechanism, rather than as "X's history carries predictive content for Y," is a
   textbook overclaim.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine two friends who always seem to sneeze within seconds of each other. It's tempting to say one sneeze "causes" the other — but maybe they're both just standing next to the same pile of pollen, reacting to it at slightly different speeds. Transfer entropy can spot the timing pattern perfectly, but it has no way of telling "one directly triggered the other" apart from "something else set them both off." That's why it's a real, useful clue about prediction, but never proof of a mechanism.</p>
   </div>
 
   <div class="tl-symbols"><table>
@@ -405,5 +423,28 @@
     <a href="mdl-information-criteria.html">Minimum Description Length &amp; Information Criteria →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

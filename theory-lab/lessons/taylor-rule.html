@@ -22,6 +22,8 @@
     <span>Prereqs: None required — Interest Rate Parity helpful for framing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -115,6 +117,12 @@
     Every symbol here is a real, publicly trackable quantity (or an estimate of one) — that observability is the
     whole reason the rule is so widely used outside academia, not just inside it.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the formula as a recipe: start with a "normal" interest rate (what you'd charge if everything in the economy were perfectly fine), then add a bit more if prices are rising faster than the central bank wants, and add a bit more still if the economy is running hotter than it can comfortably sustain. Every ingredient in that recipe is something you can actually look up — that's why it's so easy for anyone with a spreadsheet to compute their own version.</p>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(i\)</td><td>The <strong>policy rate</strong> the rule prescribes — the short-term nominal interest rate a central bank should set (e.g. the Fed funds rate, the ECB deposit rate). This is the rule's single output.</td></tr>
     <tr><td>\(r^{*}\)</td><td>The <strong>neutral (equilibrium) real rate</strong> — the short-term real interest rate consistent with the economy running at full employment/potential with stable inflation, once any transitory shocks have faded. It is not directly observable; it is estimated (e.g. via Laubach-Williams-style models) and moves slowly over time as the economy's long-run growth potential shifts. Taylor's original paper simply assumed \(r^{*}=2\%\).</td></tr>
@@ -147,6 +155,11 @@
     replicable benchmark rather than a black box.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture two separate warning lights on a dashboard. One lights up if prices are climbing faster than the target — turn it up, tighten policy. The other lights up if the economy is working harder than it sustainably can — turn it up too, for the same reason. Both lights can be on at once, pushing the rate up together, or one can be on while the other is off, partly canceling out. The rule just adds up however many lights are lit and by how much.</p>
+  </div>
+
   <h3>The neutral case: what the rule collapses to when nothing is out of line</h3>
   <p>
     Set \(\pi=\pi^{*}\) and \(y=y^{*}\) — inflation exactly on target, output exactly at potential. Both correction
@@ -162,6 +175,11 @@
     neither tightening nor easing. It is a genuinely useful anchor: any live policy rate can be read as "the neutral
     nominal rate, plus whatever the two gaps are currently adding or subtracting."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The neutral rate is the "everything's fine" setting on the thermostat — not too hot, not too cold, no correction needed. Whenever both warning lights are off, that's exactly where the rule says to sit. It's a useful reference point precisely because it's the baseline every other reading gets compared against.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -213,6 +231,12 @@
     inflation cool faster than the policy rate itself is cut. Markets read this as disinflationary/cut risk skewed
     higher than what is currently priced.</li>
   </ul>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine the formula tells you a movie theater should charge $15 a ticket given how popular the movie is, but the theater is actually charging $12. That gap doesn't mean the price changes today — it means there's pressure building toward a price hike sooner or later. "Behind the curve" is the central bank charging less than the formula says it should; "ahead of the curve" is charging more. Traders watch that gap, not the sticker price itself, because the gap is where the pressure is.</p>
+  </div>
+
   <p>
     This is not an abstract distinction. Taylor himself argued in his widely cited 2007 Jackson Hole paper
     ("Housing and Monetary Policy") that the Fed held rates well below the rule-implied level from roughly
@@ -377,6 +401,11 @@
       percentage point or more from the exact same CPI print. Never treat one desk's Taylor number as <em>the</em>
       number without checking which proxies it used.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>\(r^{*}\) and the output gap aren't things anyone can directly measure, the way you can read a thermometer — they're estimates, more like a doctor's guess at your "ideal" resting heart rate rather than a number stamped on your body. Different economists' guesses can disagree by a fair amount, and that disagreement alone can shift the formula's answer by a full percentage point, even when everyone's looking at the exact same inflation data.</p>
+    </div>
     <p>
       <strong>Ignoring real-time data revisions.</strong> GDP and the output gap are substantially revised after
       the fact; a well-known critique (Athanasios Orphanides' real-time analysis of Fed policy history) shows the
@@ -495,5 +524,28 @@
     <a href="central-bank-policy.html">Central Bank Policy →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

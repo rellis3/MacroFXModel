@@ -22,6 +22,8 @@
     <span>Prereqs: Kalman Filter &amp; Adaptive Relationships, Bayesian Inference</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -134,6 +136,11 @@
     which can only ever be one symmetric bump.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of describing your belief with one tidy sentence ("it's probably around here, give or take this much"), imagine describing it with a pile of sticky notes scattered on a table, each one a guess, and some notes stuck down harder than others to show how confident you are in that particular guess. A pile of sticky notes can show two separate clumps of guesses, or a lopsided smear toward one side — shapes a single tidy sentence just can't capture. That messy pile of weighted guesses is exactly what a particle filter uses instead of a clean mean-and-variance summary.</p>
+  </div>
+
   <div class="tl-icard-grid">
     <div class="tl-icard">
       <div class="tl-icon-badge blue">🎲</div>
@@ -190,6 +197,12 @@
     too rarely and the swarm degenerates; resample every single step regardless of \(N_{\text{eff}}\) and
     you pay an avoidable diversity cost (see pitfalls) even when the swarm was still healthy.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a group project where, on paper, there are nine people contributing — but in practice one person is doing all the real work and the other eight are just nodding along. The group "looks" like nine people but is effectively worth about one. \(N_{\text{eff}}\) is a number that catches exactly this: it counts how many particles are actually pulling meaningful weight right now, versus just being along for the ride, so you know when it's time to bring in fresh contributors instead of relying on the same one guess.</p>
+  </div>
+
   <p>
     A common, low-variance way to actually draw the resampled particles (rather than picking each one
     independently, which itself adds unnecessary Monte Carlo noise) is <strong>systematic
@@ -200,6 +213,11 @@
     the \([0,1]\) line rather than by \(N\) separate coin-flips, which is what makes it lower-variance
     than naive multinomial resampling.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Resampling is like a raffle where credible particles bought more tickets: the ones the data liked get cloned into the next round, and the ones it didn't get quietly dropped. Systematic resampling is a smarter way to run that raffle — instead of drawing each winner separately (which can randomly favor or shortchange someone by luck alone), it lines every ticket up in a row and picks winners at evenly spaced intervals, so someone who bought twice as many tickets reliably wins about twice as often, with far less luck-of-the-draw noise.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -555,6 +573,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

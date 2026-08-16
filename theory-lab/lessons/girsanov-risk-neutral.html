@@ -22,6 +22,8 @@
     <span>Prereqs: Itô's Lemma, Black-Scholes-Merton Option Pricing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -184,6 +186,11 @@
     correct one for pricing.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine reweighting a bet — not changing what could happen, just changing how likely you're pretending each outcome is — so that the math for "what's a fair price" becomes simple. That's all a change of measure is: the same coin, the same set of possible flips, just different odds written on the betting sheet. Nothing about the coin changed; only which odds you're allowed to use for pricing purposes did.</p>
+  </div>
+
   <h3>2. Girsanov's theorem — why the shift is a legitimate change of measure</h3>
   <p>
     Girsanov's theorem (Igor Girsanov, 1960) is the general result that
@@ -231,6 +238,11 @@
     to time \(T\) — the same filtration notation the EMH lesson uses for "everything
     observable so far."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Radon-Nikodym derivative is basically an exchange rate between two ways of weighting the same set of outcomes — the exact number you'd multiply an old-measure probability by to get the new-measure probability, for any outcome you care to ask about. Girsanov's theorem is the guarantee that this exchange rate exists and behaves itself (never inventing possibilities out of nowhere, never destroying real ones) whenever you shift a Brownian motion's drift by a constant amount.</p>
+  </div>
 
   <h3>3. Why this particular shift — the discounted price becomes a martingale</h3>
   <p>
@@ -282,6 +294,12 @@
     (the same construction applies to any asset in the same economy, since
     they all share the same risk-free discounting).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A martingale is just a fair game — knowing everything that's happened so far gives you no edge in predicting whether the next move is up or down. Once you strip a price down to "today's dollars" (discounting away the guaranteed time-value-of-money growth every asset gets for free), what's left, under the risk-neutral measure, is exactly that kind of fair game: no built-in lean in either direction, by design rather than by luck.</p>
+  </div>
+
   <p>
     The payoff is now direct. If a derivative's own discounted price must
     also be a martingale under \(\mathbb{Q}\) — which the fundamental theorem
@@ -321,6 +339,11 @@
     \(N(d_2)\) — what's fictitious (deliberately, usefully so) is the
     <em>measure</em> it's computed under.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>\(N(d_2)\) is a genuinely real number, computed by genuinely real math — it's not a made-up placeholder. What's "fake" is only the odds sheet it was computed from: like reading off a probability from a rigged casino game deliberately set so every bet is fair, then being careful to remember that number describes the rigged game, not what will actually happen on the street outside.</p>
+  </div>
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -619,5 +642,28 @@
     <a href="heston-model.html">Heston Model →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

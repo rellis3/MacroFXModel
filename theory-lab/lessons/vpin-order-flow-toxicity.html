@@ -22,6 +22,8 @@
     <span>Prereqs: market-microstructure.html (Kyle's Lambda &amp; Glosten-Milgrom)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -192,6 +194,11 @@
     claimed edge over a plain time-sampled toxicity measure.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of checking on a store "every five minutes no matter what," imagine checking in "every time 100 more customers have walked through the door" — however long that takes. On a slow afternoon that might be an hour; during a big sale it might be two minutes. That's the whole trick: measure by how much is happening, not by the clock.</p>
+  </div>
+
   <h3>2. Bulk Volume Classification (BVC) — splitting a bucket into buy and sell volume</h3>
   <p>
     A genuine trade-by-trade classifier (like the Lee-Ready tick rule used
@@ -232,6 +239,11 @@
     on the aggressive-buy side" — a statistical proxy, not a ground-truth tag,
     and exactly the point the academic critique later in this lesson leans on.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>BVC never actually asks any individual trader "were you buying or selling?" It just looks at whether the price went up or down over the whole bucket and guesses: price went up a lot, so probably mostly buying; price stayed flat, so probably an even split. It's a reasonable guess based on the overall effect, not a real headcount of who did what.</p>
+  </div>
 
   <h3>3. Order imbalance and the VPIN average</h3>
   <p>
@@ -291,6 +303,11 @@
     sense its name implies (a pitfall covered below).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>VPIN close to 0 means recent trading was calm and balanced — about as many people buying as selling. VPIN close to 1 means recent trading was heavily one-sided — almost everyone was buying, or almost everyone was selling. It doesn't say who's right or where price is headed, only how lopsided the recent action has looked.</p>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(V\)</td><td>The fixed bucket size — every equal-volume bucket contains exactly this much traded volume.</td></tr>
     <tr><td>\(\tau\)</td><td>(tau) The bucket index, in sequence as buckets close out.</td></tr>
@@ -321,6 +338,11 @@
       <text x="600" y="180" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">≈0.3 baseline</text>
     </svg>
     <div class="tl-chart-caption">Illustrative, not real market data. A rise in VPIN ahead of a stress event, followed by a sharp spike and a slow decay, is the shape of the claim made about the May 2010 Flash Crash — but whether a rise like this is genuinely predictive, or is simply what VPIN mechanically does whenever prices move a lot (since BVC directly converts big price moves into high imbalance), is exactly the disputed question covered in the scenario box below.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>VPIN going up right before a crash sounds like a smoke alarm going off before a fire. But smoke alarms also go off for burnt toast — so before trusting the alarm as proof of danger, you'd want to know how often it goes off for nothing. That's exactly the disagreement among researchers about VPIN: it really did rise before one famous crash, but nobody has proven it doesn't rise just as often on ordinary days too.</p>
   </div>
 
   <div class="tl-box example">
@@ -649,5 +671,28 @@
     <a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

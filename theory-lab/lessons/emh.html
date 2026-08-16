@@ -22,6 +22,8 @@
     <span>Prereqs: none — start here</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -233,6 +235,11 @@
   the popular, slightly stronger shorthand for it.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A market being a "martingale" just means your best guess for tomorrow's price is today's price — not because nothing will happen, but because you have no way to know yet which direction the next surprise will push it. It's like a coin that's landed heads ten times in a row: the honest guess for the next flip is still 50/50, because the coin has no memory, even though the running tally of heads keeps climbing around.</p>
+  </div>
+
   <p>
   Why does this matter for trading? Because it has a sharp, checkable implication for
   <strong>autocorrelation</strong> — whether today's price change helps predict tomorrow's. Define
@@ -256,6 +263,11 @@
   This is precisely the kind of test that underlies decades of empirical market-efficiency research,
   and it's the mathematical core of the "weak form" described below.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Autocorrelation is just asking "does knowing yesterday's move help you guess today's move at all?" If a market is efficient, the honest answer is no — yesterday's up day tells you nothing useful about whether today will be up or down, the same way knowing a fair coin landed heads yesterday tells you nothing about today's flip.</p>
+  </div>
 
   <h3>The three forms of EMH</h3>
   <p>
@@ -529,5 +541,28 @@
     <a href="bayesian-inference.html">Bayesian Inference &amp; Updating →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

@@ -22,6 +22,8 @@
     <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Itô's Lemma</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -116,6 +118,11 @@
     order \(\sqrt{\Delta t}\)" fact from <code>ito-lemma.html</code>, showing
     up again here as the practical recipe for simulating one.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Euler-Maruyama is like predicting a drunk person's next stumble: take their current direction of travel (the drift), add a small step along it, then add one random shove sized by how wobbly they are (the diffusion). Repeat that, one small step at a time, and you trace out a plausible staggering path — not the exact path, since the shove is random, but a reasonable simulation of the kind of path they might take.</p>
+  </div>
 
   <h3>2. Strong vs. weak convergence — two different questions</h3>
   <p>
@@ -478,5 +485,28 @@
     <a href="multivariate-correlated-sdes.html">Multivariate &amp; Correlated SDEs →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

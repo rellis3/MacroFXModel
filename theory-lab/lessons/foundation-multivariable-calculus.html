@@ -22,6 +22,8 @@
     <span>Prereqs: Complex Numbers; Calculus for Finance (Deeper Foundations) for Taylor series</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -126,6 +128,11 @@
     above as a bumpy landscape, with height representing temperature).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine rating a dish not just on how sweet it is, but on sweet AND salty AND crunchy all at once — you need more than one number to describe it fully. A function of several variables is just a rule that looks at several things at the same time and gives back one answer, like a judge scoring a dish on every category together.</p>
+  </div>
+
   <h3>Partial derivatives — one variable at a time, everything else frozen</h3>
   <p>
     The <strong>partial derivative</strong> of \(f(x, y)\) with respect to
@@ -153,6 +160,11 @@
     learned about differentiation itself — the entire new idea is
     "differentiate one variable, freeze the rest."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine baking cookies where both the oven temperature and the baking time change how done they get. A partial derivative answers one question at a time: "if I only turn up the temperature dial and leave the timer exactly where it is, how much more done do the cookies get?" You freeze everything except the one dial you're curious about.</p>
+  </div>
 
   <h3>A first, deliberately simple example</h3>
   <p>
@@ -246,6 +258,11 @@
     in to hunt for a minimum.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you're standing on a hill in the dark and want to find the fastest way to the top, the gradient is like a magic compass that always points in exactly the steepest uphill direction. Walk the opposite way it points, and you're headed downhill as fast as possible instead.</p>
+  </div>
+
   <div class="tl-formula-parts">
     <div class="tl-fp blue">
       <div class="tl-fp-term">∂f/∂xᵢ</div>
@@ -296,6 +313,11 @@
     curving up in some directions and down in others.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Hessian is like checking a bowl from every angle to make sure it's really a bowl, and not secretly shaped like a horse saddle that dips down one way but curves up another. Just because a spot feels flat doesn't mean it's the bottom of a bowl — the Hessian is the tool that checks the shape all around it.</p>
+  </div>
+
   <h3>The multivariable chain rule</h3>
   <p>
     The ordinary chain rule from the calculus lesson (differentiating a
@@ -323,6 +345,11 @@
     randomly-moving \(x\), is the multivariable machinery Itô's Lemma (built
     from the Taylor series covered in Calculus for Finance) builds on.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine turning one dial that's wired up to two different machines at once, and each machine changes your final score a bit. The total change in your score is just the change from machine one added to the change from machine two — you add up every path the wiggle traveled through, instead of picking just one.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(f(x,y)\)</td><td>A function of two (or more) variables — an option value, a portfolio value, anything depending on more than one input.</td></tr>
@@ -633,5 +660,28 @@
     <a href="foundation-optimization-basics.html">Optimization Basics →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

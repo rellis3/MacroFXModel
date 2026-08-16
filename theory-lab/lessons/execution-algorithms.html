@@ -22,6 +22,8 @@
     <span>Prereqs: market-impact-almgren-chriss.html (Market Impact Models &amp; Almgren-Chriss)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -150,6 +152,11 @@
     the heaviest, most liquidity-rich windows.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>TWAP is like deciding to drink exactly one eighth of a bottle of water every half hour no matter what — simple to plan, but it ignores that you're actually much thirstier right after waking up and right before bed than in the middle of the day. It's an easy rule, just not a smart one about when demand is naturally higher or lower.</p>
+  </div>
+
   <h3>2. VWAP — Volume-Weighted Average Price</h3>
   <p>
     VWAP fixes exactly that blind spot by scheduling participation
@@ -197,6 +204,11 @@
     algorithm (and, informally, almost any execution) gets measured against.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>VWAP is the same water-drinking idea as TWAP, but smarter: drink more of the bottle during the times you're actually thirstiest (morning and night) and less during the quiet middle stretch, matching your pace to real demand instead of the plain clock.</p>
+  </div>
+
   <h3>3. POV — Percentage of Volume</h3>
   <p>
     TWAP and VWAP both commit, in advance, to a fixed schedule — \(x_k\) is
@@ -225,6 +237,11 @@
     cost of an unfilled remainder" component of Implementation Shortfall
     covered next.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>POV throws out the pre-planned drinking schedule entirely and says "drink 10% of however much water everyone else in the room is drinking, whenever they drink it." If the room suddenly gets thirsty, you speed up automatically; if it goes quiet, you slow down automatically. The catch: you no longer know exactly when you'll finish your own bottle, because that now depends on everyone else's pace, not just yours.</p>
+  </div>
 
   <div class="tl-compare">
     <div class="tl-compare-card blue">
@@ -324,6 +341,11 @@
     shares reproduces the full Implementation Shortfall formula above exactly
     — nothing is double-counted, and nothing is left out.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Implementation Shortfall answers "what did it really cost me to actually get this done, start to finish?" not just "what price did I pay for the shares I got." It breaks that real cost into three honest buckets: how much the price drifted before you even started (not your fault), how much your own buying pushed the price up while you traded (your footprint), and how much it cost you to simply never finish the order at all (the price of giving up).</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(X\)</td><td>Total order size the decision called for.</td></tr>
@@ -704,5 +726,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

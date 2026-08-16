@@ -22,6 +22,8 @@
     <span>Prereqs: Correlation &amp; Linear Regression primer</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -70,6 +72,12 @@
     \(\hat\beta\) can still be a perfectly reasonable guess at the slope while
     the significance claim built on top of it is fiction.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture guessing someone's height from their shoe size — that guess itself doesn't care whether your data was collected cleanly. But saying "and I'm 99% sure about this guess" is a completely separate claim, and that confidence claim only holds up if your measurements followed certain rules — no repeated measurements of the same shoe pretending to be different people, no wildly different measuring tools for big feet versus small feet. The guess can be fine even when the confidence claim built on top of it is fake.</p>
+  </div>
+
   <p>
     This is precisely the gap this project's own build discipline calls out by
     name. Its backtest-build-discipline section states
@@ -228,6 +236,12 @@
     size and the number of predictors and are read off a Durbin-Watson
     table) is treated as consistent with no meaningful autocorrelation.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine grading how "sticky" a series of misses is — if you overshoot a dart throw today, are you likely to overshoot again tomorrow? Durbin-Watson checks exactly that, by comparing how much the misses change from one throw to the next against how big the misses are overall. Big jumpy changes between throws means the misses are independent (DW near 2); throws that barely change from one to the next means whatever's throwing you off today is still throwing you off tomorrow (DW near 0).</p>
+  </div>
+
   <p>
     <strong>Why does positive autocorrelation specifically make the p-value
     look too good?</strong> The classical standard-error formula for
@@ -265,6 +279,11 @@
     structure, variance pattern, or shape. What breaks is specifically the
     machinery that translates "spread of residuals" into "confidence about
     \(\hat\beta\)."
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you ask the same person the same question 500 times in a row, you don't really have 500 independent opinions — you have one opinion, repeated 500 times, dressed up to look like a big survey. Sticky, autocorrelated residuals are like that: the statistics formula thinks it has hundreds of independent pieces of evidence, but really it has far fewer genuinely separate ones, because consecutive days are largely echoing the same underlying miss rather than each telling you something new.</p>
   </div>
 
   <div class="tl-symbols">
@@ -320,6 +339,11 @@
     p-value more impressive, than it should.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a bathroom scale that's usually accurate to within an ounce for light objects but wobbles by a whole pound for heavy ones — a single "margin of error" sticker slapped on the scale would be misleading for at least some of what you weigh on it. Breusch-Pagan checks for exactly that: whether a model's typical error size actually depends on where you are in the data, which would make reporting one single standard error for every prediction the same kind of misleading sticker.</p>
+  </div>
+
   <p><strong>3. Jarque-Bera — testing for residual normality.</strong> This
   test asks a different kind of question: not about serial structure or
   variance, but about the overall <em>shape</em> of the residual
@@ -343,6 +367,12 @@
     distribution to get a p-value for "these residuals are consistent with
     being drawn from a normal distribution."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Jarque-Bera checks whether the shape of the leftover errors looks like a normal, symmetric bell curve, or whether it's lopsided (a long tail stretching one direction) or has surprisingly many extreme outliers. Why care about the shape specifically? Because with a small dataset, the usual "trust the confidence interval" math secretly assumes a bell-curve shape to be exactly right — if the shape is off and the sample is small, that borrowed trust hasn't been earned yet.</p>
+  </div>
+
   <p>
     Both ingredient statistics are already built, tested, and in production
     in this project — a sample-skewness function
@@ -741,5 +771,28 @@
     <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>
