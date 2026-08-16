@@ -270,7 +270,6 @@
     <strong>Baum-Welch algorithm</strong>, a special case of the more general
     <strong>Expectation-Maximization (EM)</strong> algorithm. Conceptually, without deriving the full
     update equations, Baum-Welch works by iterating two steps until the parameters stop changing much:
-    </p>
     <ol style="margin-top:0.5em;">
       <li><strong>E-step ("guess the states"):</strong> given the <em>current</em> guess of \(A\) and
       the emission parameters, use the forward algorithm (and a companion "backward" pass) to compute,
@@ -280,7 +279,6 @@
       re-estimate \(A\) and each state's \((\mu_k, \sigma_k^2)\) the way you'd estimate any weighted
       mean/variance/transition-frequency, treating the E-step's probabilities as weights.</li>
     </ol>
-    <p>
     Repeat E-step, then M-step, then E-step again, and so on. Each full cycle is guaranteed to never
     decrease the likelihood of the observed data under the model (it converges to at least a local
     maximum, not necessarily the global one — a genuine practical caveat, which is why real

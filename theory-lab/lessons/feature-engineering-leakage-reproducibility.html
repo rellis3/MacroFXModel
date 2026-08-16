@@ -167,7 +167,7 @@
       <tr><td>Vintage</td><td>The specific version of a data series as it stood on a given historical date, before any later revisions were applied.</td></tr>
       <tr><td>Target leakage</td><td>A feature that indirectly encodes the label it's meant to predict, rather than genuinely preceding and explaining it.</td></tr>
       <tr><td>\(\mu_{full}, \sigma_{full}\)</td><td>Mean and standard deviation computed over the <em>entire</em> sample, including future-relative-to-\(i\) data — the contaminated version of a z-score's inputs.</td></tr>
-      <tr><td>\(\mu_{<i}, \sigma_{<i}\)</td><td>Mean and standard deviation computed using only data strictly before \(i\) — the point-in-time-correct version.</td></tr>
+      <tr><td>\(\mu_{< i}, \sigma_{< i}\)</td><td>Mean and standard deviation computed using only data strictly before \(i\) — the point-in-time-correct version.</td></tr>
       <tr><td>Survivorship bias</td><td>A universe that only includes instruments that still exist today, silently excluding the ones that failed, delisted, or were discontinued.</td></tr>
     </table>
   </div>
@@ -250,7 +250,7 @@
         a single feature's own construction rather than at the model-training boundary. A z-score is the
         classic example: computing \(z_i = (x_i - \mu_{full})/\sigma_{full}\), where \(\mu_{full}\) and
         \(\sigma_{full}\) are the mean and standard deviation of the <em>entire</em> sample (including
-        rows chronologically after \(i\)), rather than \(z_i = (x_i - \mu_{<i})/\sigma_{<i}\), using only
+        rows chronologically after \(i\)), rather than \(z_i = (x_i - \mu_{< i})/\sigma_{< i}\), using only
         data strictly before \(i\). The contaminated version bakes in knowledge of the full historical
         range — including future extremes, future regime shifts, future volatility levels — into every
         single row's feature value, even rows dated years before those future events happened. A model
