@@ -309,3 +309,15 @@ h2:first-of-type{margin-top:0}
 .tl-card-toprow .tl-card-num{margin-bottom:0}
 .tl-diff-pill{font-size:10px;padding:2px 8px;flex-shrink:0}
 .tl-cat.tl-cat-hidden{display:none}
+
+/* "Explain Like I'm 5" toggle + simplified companion boxes (lesson pages).
+   Hidden by default; nothing else on the page changes when this is off —
+   these are supplementary, never a replacement for the real explanation. */
+.tl-eli5-toggle{display:inline-flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;margin:2px 0 24px}
+.tl-eli5-toggle:hover{border-color:var(--green-bd);color:var(--text)}
+.tl-eli5-toggle.active{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
+.tl-eli5{display:none;background:var(--green-bg);border:1px solid var(--green-bd);border-left:3px solid var(--green);border-radius:var(--rl);padding:14px 18px;margin:14px 0 22px}
+body.eli5-on .tl-eli5{display:block}
+.tl-eli5-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.tl-eli5 p{margin:0;color:var(--text2);font-size:14px;line-height:1.6}
+.tl-eli5 p+p{margin-top:8px}
