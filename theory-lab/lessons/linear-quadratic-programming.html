@@ -22,6 +22,8 @@
     <span>Prereqs: Convex Optimization</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -126,6 +128,11 @@
     room" of the intuition above.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A linear program is like a room with only flat walls, floor and ceiling — every rule you have to obey is a straight boundary. The shape of allowed answers, all squeezed together, is called a polytope: think of a diamond or a many-sided gem instead of a room with curved walls.</p>
+  </div>
+
   <h3>Quadratic programming — standard form</h3>
   <p>
     A <strong>quadratic program</strong> keeps the same linear constraints but
@@ -148,6 +155,11 @@
     writes the full 3-asset version out explicitly, with box constraints
     added on top.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A quadratic program is the same flat-walled room, but now you're trying to find the lowest point of a bowl sitting somewhere inside it, instead of walking toward whichever wall is best. The bowl's true bottom might comfortably sit in the middle of the room, not shoved against a wall — a genuinely different kind of search than an LP needs.</p>
+  </div>
 
   <h3>Why an LP's optimum always sits at a vertex</h3>
   <p>
@@ -185,6 +197,11 @@
     which is a structurally different algorithm from simplex's vertex-hopping.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you're maximizing something that only ever changes at a steady rate as you walk (a straight-line objective), there's never a reason to stop in the open middle of the room — you can always do better by continuing toward whichever wall helps you, and you only truly stop once you're wedged into a corner. That's why an LP's best answer always sits at a corner of the room, never floating in open space.</p>
+  </div>
+
   <h3>Why real portfolio construction needs a QP solver, not the closed-form formula</h3>
   <p>
     The classical Markowitz minimum-variance-for-target-return problem, with
@@ -213,6 +230,11 @@
     which is to say, essentially every real one — runs on a QP solver, never
     on the textbook closed-form matrix formula alone.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>With no extra rules, finding the minimum-risk portfolio is a one-shot calculation — plug numbers into a formula, done. The moment you add a real-world rule like "no shorting," you don't know in advance which assets will actually want to go negative and get stopped by that rule — so there's no single formula to plug into anymore, and a computer has to try, check, and adjust its way to the answer instead.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(x\)</td><td>The decision variable vector being solved for (an LP's or QP's unknowns).</td></tr>
@@ -656,6 +678,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

@@ -22,6 +22,8 @@
     <span>Prereqs: Calculus for Finance, Black-Scholes-Merton Option Pricing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -152,6 +154,11 @@
     meet in an ordinary calculus course. It does not hold for Brownian motion.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture measuring a gently curving road with a tape measure. Over a short stretch, the road strays from perfectly straight by only a tiny amount — and that stray-ness, squared, is so much tinier still that you can safely ignore it and just measure as if the road were straight. The ordinary chain rule is built on that "safely ignore it" habit. It works great for roads, curves, and every smooth thing calculus normally deals with — it just quietly assumes the wiggle shrinks fast enough to not matter, and Brownian motion is about to break that assumption.</p>
+  </div>
+
   <h3>2. Why Brownian motion breaks the assumption: \((dW_t)^2 = dt\)</h3>
   <p>
     A Wiener process (standard Brownian motion) \(W_t\) has independent,
@@ -275,6 +282,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Flip a coin thousands of times: any single flip is unpredictable, but the total number of heads across all those flips settles into a very predictable number close to half. \((dW_t)^2=dt\) is that same idea for Brownian motion's jaggedness — no single wiggle is predictable, but add up enough squared wiggles and the randomness washes out, leaving a fixed, non-random total. That's why this "coastline that never straightens" keeps contributing to the math even after zooming in forever — its raggedness accumulates at a steady, knowable rate.</p>
+  </div>
+
   <h3>3. Building Itô's Lemma: the same Taylor expansion, one extra term</h3>
   <p>
     Now redo the derivation from step 1, honestly, for a random process
@@ -369,6 +381,11 @@
     algebra with that one fact in hand.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of Itô's Lemma as the ordinary chain rule with a warning label bolted on: "when the thing you're tracking is genuinely random, its own random jiggling adds an extra push that a smooth, predictable quantity would never have." The chain rule you already know still does most of the work — Itô's Lemma just adds one honest correction term for the fact that randomness itself has a texture, and that texture doesn't disappear no matter how finely you zoom in.</p>
+  </div>
+
   <h3>4. Applying Itô's Lemma to \(\ln S_t\) — where Black-Scholes's \(\sigma^2/2\) actually comes from</h3>
   <p>
     Now do exactly what <code>black-scholes.html</code> deferred. Let \(X_t =
@@ -451,6 +468,11 @@
     it is derived, and it is derived from exactly one fact — \((dW_t)^2=dt\)
     — that ordinary calculus doesn't have.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a stock that goes up 10% one day and down 10% the next. The average of those two moves is 0% — but multiply the two together (\(1.10 \times 0.90 = 0.99\)) and you actually end up down 1%. That gap between "average of the moves" and "what you actually end up with after compounding them" is exactly the \(\sigma^2/2\) this section derives: taking a logarithm (which is what compounding really is, added up) quietly taxes a growth rate for how much it bounces around, and Itô's Lemma is what proves precisely how big that tax is.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -736,5 +758,28 @@
     <a href="girsanov-risk-neutral.html">Girsanov's Theorem &amp; the Risk-Neutral Measure →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

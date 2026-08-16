@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anomaly Detection: Isolation Forests &amp; Autoencoders — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deep Learning &amp; Modern ML for Trading / Anomaly Detection: Isolation Forests &amp; Autoencoders</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Deep Learning &amp; Modern ML for Trading · Lesson 5 of 6</div>
+  <h1 class="tl-title">Anomaly Detection: Isolation Forests &amp; Autoencoders</h1>
+  <p class="tl-dek">Two ways to let a model find "this doesn't look like the rest" on its own, across many variables at once — without ever writing down a threshold rule by hand.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> helpful for the classical baseline this lesson contrasts against</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Isolation Forest</strong> (Liu, Ting &amp; Zhou, 2008) builds an ensemble of random trees that split the data on random features at random thresholds; anomalies are "few and different," so they get carved off in <strong>fewer splits</strong> than normal points — a shorter average path length across the ensemble is the anomaly score.</li>
+      <li><strong>Autoencoders</strong> are neural networks trained to reconstruct their own input through a narrow bottleneck layer; the reconstruction only holds up well for patterns the network saw a lot of during training. The <strong>reconstruction error</strong> — how far the output is from the original input — <em>is</em> the anomaly score.</li>
+      <li>Both methods generalize the classical, univariate rules in <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> (rolling median/MAD thresholds) to <strong>multivariate</strong> anomalies — a point that looks completely normal on every single variable in isolation, but whose <em>combination</em> of variables has never occurred before.</li>
+      <li>Anomaly detection is the pointwise, cross-sectional cousin of <a href="change-point-detection.html">Change-Point Detection</a>'s sequential framing: change-point tools ask "has the process shifted, over time"; anomaly detectors ask "is this individual observation unusual, right now, relative to everything else."</li>
+      <li><strong>Mandatory honest framing:</strong> an anomaly score flags "this is statistically unusual" — never "this is wrong," and never "this is a trading opportunity." What counts as unusual always needs a human decision about context, and a model trained on one regime will flag an entirely normal but different regime as one long anomaly.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a>
+  already covers the classical toolkit for catching a bad value: a rolling median/MAD filter, or a
+  maximum-plausible-return-per-tick bound. Both of those are deliberately simple, deliberately
+  <strong>univariate</strong> rules — they look at one series at a time and ask "is this single number too far
+  from its recent neighbors." That simplicity is a feature, not a limitation, for the fat-finger-print and
+  stale-quote problems that lesson targets. But a large class of real anomalies are invisible to any univariate
+  rule, because no single variable ever leaves its normal range — it's the <em>combination</em> that's wrong. A
+  spread that's perfectly normal, paired with a volume that's perfectly normal, paired with a bid-ask width
+  that's perfectly normal, can still be an anomaly if that specific <em>combination</em> of spread, volume, and
+  width has never co-occurred before. Catching that requires a model that can reason about many variables
+  jointly — which is exactly what Isolation Forest and autoencoders are built to do, at the cost of being
+  harder to explain in a single sentence than "more than five MADs from the median."
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two very different ways to notice "this one's odd"</h3>
+    <p>
+    Isolation Forest's idea: if you're trying to separate one weird kid out of a crowded classroom by asking
+    random yes/no questions ("taller than the person next to you?", "wearing blue?"), the weird kid — who
+    stands out on several axes at once — gets isolated in just a couple of questions, while an ordinary kid
+    buried in a dense cluster of similar classmates takes many more questions to separate from everyone else.
+    Isolation Forest does exactly this with random trees: it doesn't need to know <em>what</em> makes a point
+    unusual ahead of time, only that unusual points are quicker to isolate through random splitting.
+    </p>
+    <p>
+    Autoencoders take a completely different route: train a network to compress its input down to a small
+    bottleneck and then rebuild it from that compressed version, using mostly normal data. A network that's
+    only ever practiced compressing-and-rebuilding <em>normal</em> patterns gets good at that specific job and
+    stays bad at anything unfamiliar — so when a genuinely unusual input comes through, the reconstruction
+    comes out noticeably wrong. The size of that mistake is the anomaly score.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <h3>Isolation Forest — anomalies are few and different</h3>
+  <p>
+  Fei Tony Liu, Kai Ming Ting &amp; Zhi-Hua Zhou introduced Isolation Forest in "Isolation Forest," Proceedings
+  of the 8th IEEE International Conference on Data Mining (ICDM), 2008 (cited in full below), built around one
+  precise structural insight: anomalies are <strong>"few and different"</strong> — rare, and sitting apart from
+  the dense region where most of the data lives. That structural property, rather than any distance or density
+  calculation, is what the algorithm exploits directly.
+  </p>
+  <p>
+  An <strong>isolation tree</strong> is built by recursively splitting the data: at each node, pick a feature
+  at random, then pick a split value at random between that feature's observed minimum and maximum in the
+  current node's data, and partition the points into two child nodes. Repeat until every point is alone in its
+  own leaf (or a maximum tree depth is reached). Because anomalies are few and sit apart from the dense normal
+  region, a random split is disproportionately likely to separate an anomaly from everything else almost
+  immediately — it takes only a handful of random cuts to wall off a point that's already far from the crowd,
+  while a normal point buried in a dense cluster requires many more cuts before it ends up alone.
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">random feature, random split</div><div class="tl-fp-name">One node's decision</div><div class="tl-fp-desc">No feature or threshold is chosen deliberately — the randomness is the whole mechanism</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">path length h(x)</div><div class="tl-fp-name">Splits until isolated</div><div class="tl-fp-desc">How many random cuts it took to wall this one point off alone in its own leaf</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">short h(x) → anomaly</div><div class="tl-fp-name">The insight, made operational</div><div class="tl-fp-desc">Few-and-different points get isolated fast; normal points buried in a dense cluster take much longer</div></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a game of "20 Questions," but the questions are all random guesses instead of clever ones — "is it bigger than a shoebox?", "is it red?" If you're thinking of something totally ordinary, like "a regular apple," random questions take forever to pin it down exactly, because there are a million things it could still be confused with. But if you're thinking of something bizarre — "a flaming purple bicycle" — even random, dumb questions narrow it down fast, because almost nothing else fits that weird combination. Isolation Forest is that game played automatically: things that get pinned down in very few random questions are the weird ones.</p>
+  </div>
+
+  <p>
+  A single tree's path length for one point can be noisy — one particular sequence of random splits might get
+  lucky or unlucky. Isolation Forest averages over an <strong>ensemble</strong> of many independently built
+  random trees to smooth this out, and converts the average path length into a bounded anomaly score using
+  Liu, Ting &amp; Zhou's normalization:
+  </p>
+  <div class="tl-math">\[
+    s(x, n) = 2^{-\, \frac{E[h(x)]}{c(n)}}
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>E[h(x)]</code><span>the average path length for point x, across every tree in the ensemble</span></div>
+    <div class="tl-eq-chip c2"><code>c(n)</code><span>the average path length of an unsuccessful search in a Binary Search Tree of n points — the expected path length for an <em>ordinary</em> point, used to normalize the score</span></div>
+    <div class="tl-eq-chip c3"><code>s(x, n)</code><span>the anomaly score — bounded between 0 and 1</span></div>
+  </div>
+  <p>
+  Why a <em>shorter</em> average path length signals an anomaly, made explicit through the formula: as
+  \(E[h(x)]\) gets smaller relative to \(c(n)\), the exponent \(-E[h(x)]/c(n)\) moves toward 0, which pushes
+  \(s(x,n)\) toward 1 — the maximum possible score. As \(E[h(x)]\) approaches \(c(n)\) (an ordinary path
+  length, the same as a typical point in an unstructured tree), \(s(x,n)\) settles around 0.5. Scores well
+  below 0.5 correspond to path lengths <em>longer</em> than typical, meaning that point took extra splits to
+  isolate — consistent with sitting inside a dense, ordinary region. In practice: scores close to 1 flag
+  likely anomalies, scores close to 0.5 or below flag likely normal points, and a threshold (often the top
+  1-5% of scores) turns the continuous score into a binary flag when one is needed.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the score as "how fast did we catch this one?" measured on a 0-to-1 scale. Caught almost instantly (score near 1) means it stuck out a mile. Took forever to corner (score near 0) means it blended right into the crowd. Averaging across a whole forest of random-question games, instead of trusting just one game, keeps a single lucky or unlucky round of questions from fooling the answer.</p>
+  </div>
+
+  <h3>Autoencoders — reconstruction error as the anomaly score</h3>
+  <p>
+  An <strong>autoencoder</strong> is a neural network with two halves: an <strong>encoder</strong> that
+  compresses the input \(x\) down into a lower-dimensional <strong>latent</strong> (or "bottleneck") vector
+  \(z\), and a <strong>decoder</strong> that expands \(z\) back out to reconstruct an approximation
+  \(\hat{x}\) of the original input. The network is trained end-to-end with no labels at all, purely to
+  minimize the gap between its own output and its own input:
+  </p>
+  <div class="tl-math">\[
+    z = f_{\text{enc}}(x), \qquad \hat{x} = f_{\text{dec}}(z), \qquad \mathcal{L}(x) = \lVert x - \hat{x} \rVert^2
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z</code><span>the compressed latent representation — forced through a bottleneck narrower than the raw input, so the network can't just memorize the identity function</span></div>
+    <div class="tl-eq-chip c2"><code>x̂</code><span>the network's reconstruction — its best attempt to rebuild x from only the compressed z</span></div>
+    <div class="tl-eq-chip c3"><code>ℒ(x)</code><span>the reconstruction loss — the squared distance between original and reconstruction, the exact quantity minimized during training</span></div>
+  </div>
+  <p>
+  Because the bottleneck is narrower than the input, the network cannot simply pass every input straight
+  through unchanged — it is forced to learn which patterns in the training data are common enough to be worth
+  encoding efficiently, discarding whatever it can safely reconstruct approximately instead of exactly. Trained
+  on data that is <strong>mostly normal</strong>, the network becomes good specifically at compressing and
+  rebuilding <em>normal</em> patterns, and stays comparatively bad at anything that looks unfamiliar — the
+  network was never given the chance to practice a pattern it rarely or never saw.
+  </p>
+  <p>
+  The reconstruction-error-as-anomaly-score idea, stated precisely: at inference time, run any new point
+  \(x\) through the trained encoder-decoder and measure \(\lVert x - \hat{x} \rVert^2\) again. A normal point,
+  resembling what the network trained on, reconstructs well and produces a small error. An anomalous point —
+  one that doesn't fit the patterns the network learned — reconstructs poorly, and that reconstruction
+  <em>gap</em> is itself the anomaly score. No separate scoring mechanism is bolted on; the training objective
+  and the anomaly score are the same quantity, just evaluated on new data instead of training data.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An autoencoder is like someone who's only ever seen golden retrievers, trying to sketch a cat from memory right after glancing at it. They compress what they saw down to a rough mental note ("four legs, medium size, fur"), then try to redraw it from that note. Because their entire practiced vocabulary is "golden retriever," the sketch comes out looking suspiciously dog-shaped — pointier ears than a real dog, but still not a convincing cat. The sketch isn't wrong because they're bad at drawing; it's wrong in a very specific, informative way that reveals the cat never fit the pattern they'd practiced. That gap between the real cat and the dog-shaped sketch is exactly the reconstruction error.</p>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(h(x)\)</td><td>Path length — the number of random splits an isolation tree needs to isolate point \(x\) alone in a leaf.</td></tr>
+      <tr><td>\(E[h(x)]\)</td><td>The average path length for \(x\), across every tree in the isolation forest ensemble.</td></tr>
+      <tr><td>\(c(n)\)</td><td>The expected path length of an ordinary, unremarkable point, used to normalize the raw path length into a 0-1 score.</td></tr>
+      <tr><td>\(s(x,n)\)</td><td>Isolation Forest's anomaly score — near 1 for likely anomalies, near 0.5 or below for likely normal points.</td></tr>
+      <tr><td>\(x\)</td><td>The input vector — a single observation across several variables at once.</td></tr>
+      <tr><td>\(z\)</td><td>The autoencoder's compressed latent representation of \(x\), squeezed through a bottleneck narrower than \(x\) itself.</td></tr>
+      <tr><td>\(\hat{x}\)</td><td>The autoencoder's reconstruction — its rebuilt approximation of \(x\), decoded back out from \(z\).</td></tr>
+      <tr><td>\(\mathcal{L}(x)\)</td><td>Reconstruction loss / error — the squared distance between \(x\) and \(\hat{x}\); training objective during fitting, anomaly score at inference.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Isolating a normal point vs. an anomaly with random splits</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two scatter panels of the same two-variable data. Left panel shows a dense cluster of normal points with one point far outside the cluster marked as an anomaly, with two random split lines shown isolating that anomaly in just two cuts. Right panel shows the same cluster with four random split lines needed to isolate one ordinary point buried inside the dense region, illustrating that anomalies take fewer random splits to isolate than normal points.">
+      <text x="160" y="20" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Isolating the anomaly: 2 random splits</text>
+      <rect x="30" y="35" width="260" height="235" style="fill:none;stroke:var(--border)"/>
+      <g>
+        <circle cx="110" cy="150" r="3" style="fill:var(--blue)"/>
+        <circle cx="125" cy="165" r="3" style="fill:var(--blue)"/>
+        <circle cx="140" cy="140" r="3" style="fill:var(--blue)"/>
+        <circle cx="118" cy="130" r="3" style="fill:var(--blue)"/>
+        <circle cx="155" cy="160" r="3" style="fill:var(--blue)"/>
+        <circle cx="130" cy="175" r="3" style="fill:var(--blue)"/>
+        <circle cx="145" cy="155" r="3" style="fill:var(--blue)"/>
+        <circle cx="105" cy="170" r="3" style="fill:var(--blue)"/>
+        <circle cx="160" cy="145" r="3" style="fill:var(--blue)"/>
+        <circle cx="135" cy="120" r="3" style="fill:var(--blue)"/>
+        <circle cx="150" cy="130" r="3" style="fill:var(--blue)"/>
+        <circle cx="115" cy="155" r="3" style="fill:var(--blue)"/>
+        <circle cx="170" cy="165" r="3" style="fill:var(--blue)"/>
+        <circle cx="125" cy="145" r="3" style="fill:var(--blue)"/>
+      </g>
+      <circle cx="255" cy="60" r="5" style="fill:var(--red)"/>
+      <text x="255" y="50" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:600">anomaly</text>
+      <line x1="30" y1="95" x2="290" y2="95" style="stroke:var(--amber);stroke-width:1.4;stroke-dasharray:4,3"/>
+      <text x="292" y="99" style="fill:var(--amber);font-family:'DM Mono',monospace;font-size:9px">split 1</text>
+      <line x1="210" y1="35" x2="210" y2="95" style="stroke:var(--purple);stroke-width:1.4;stroke-dasharray:4,3"/>
+      <text x="212" y="45" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9px">split 2 — isolated</text>
+
+      <text x="480" y="20" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">Isolating a normal point: 4+ random splits</text>
+      <rect x="350" y="35" width="260" height="235" style="fill:none;stroke:var(--border)"/>
+      <g>
+        <circle cx="430" cy="150" r="3" style="fill:var(--blue)"/>
+        <circle cx="445" cy="165" r="3" style="fill:var(--blue)"/>
+        <circle cx="460" cy="140" r="3" style="fill:var(--blue)"/>
+        <circle cx="438" cy="130" r="3" style="fill:var(--blue)"/>
+        <circle cx="475" cy="160" r="3" style="fill:var(--blue)"/>
+        <circle cx="450" cy="175" r="3" style="fill:var(--blue)"/>
+        <circle cx="465" cy="155" r="3" style="fill:var(--blue)"/>
+        <circle cx="425" cy="170" r="3" style="fill:var(--blue)"/>
+        <circle cx="480" cy="145" r="3" style="fill:var(--blue)"/>
+        <circle cx="455" cy="120" r="3" style="fill:var(--blue)"/>
+        <circle cx="470" cy="130" r="3" style="fill:var(--blue)"/>
+        <circle cx="435" cy="155" r="3.6" style="fill:var(--green);stroke:var(--green)"/>
+        <circle cx="490" cy="165" r="3" style="fill:var(--blue)"/>
+        <circle cx="445" cy="145" r="3" style="fill:var(--blue)"/>
+      </g>
+      <text x="435" y="112" text-anchor="middle" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:9px;font-weight:600">target (buried in cluster)</text>
+      <line x1="350" y1="135" x2="610" y2="135" style="stroke:var(--amber);stroke-width:1.2;stroke-dasharray:3,2"/>
+      <line x1="420" y1="135" x2="420" y2="270" style="stroke:var(--amber);stroke-width:1.2;stroke-dasharray:3,2"/>
+      <line x1="420" y1="160" x2="500" y2="160" style="stroke:var(--purple);stroke-width:1.2;stroke-dasharray:3,2"/>
+      <line x1="440" y1="160" x2="440" y2="270" style="stroke:var(--purple);stroke-width:1.2;stroke-dasharray:3,2"/>
+      <text x="480" y="255" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9px">…more splits still needed</text>
+
+      <line x1="20" y1="285" x2="620" y2="285" style="stroke:var(--border)"/>
+      <text x="320" y="298" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:9.5px">same underlying data, two different points being isolated</text>
+    </svg>
+    <div class="tl-chart-caption">
+    The anomaly (red, left) sits apart from the dense cluster, so two random splits are enough to wall it off
+    alone. An ordinary point buried inside the same dense cluster (green, right) needs several more splits
+    before the surrounding crowd of similar points has been fully separated away from it — the shorter path
+    length on the left is exactly the signal Isolation Forest's score is built from.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Isolation Forest score from path lengths, across a small ensemble</h3>
+    <p>
+    Take an isolation forest of \(t = 100\) trees built on \(n = 256\) points, giving a normalization constant
+    of roughly \(c(256) \approx 10.24\) (the standard \(c(n) = 2H(n-1) - 2(n-1)/n\), using the harmonic-number
+    approximation \(H(m) \approx \ln(m) + 0.5772\)). Suppose a candidate point's path lengths, averaged across
+    all 100 trees, come out to \(E[h(x)] = 3.2\) — much shorter than the ~10.24 an ordinary point in this
+    dataset would need:
+    </p>
+    <div class="tl-math">\[
+      s(x, 256) = 2^{-\frac{3.2}{10.24}} = 2^{-0.3125} \approx 0.805
+    \]</div>
+    <p>
+    A score of roughly 0.805 sits well above 0.5, flagging this point as a likely anomaly. Contrast that with a
+    second point whose average path length comes out to \(E[h(x)] = 9.8\) — close to the ordinary
+    \(c(256)\approx 10.24\) baseline: \(s(x,256) = 2^{-9.8/10.24} \approx 2^{-0.957} \approx 0.516\), landing
+    right around 0.5, the score of a typical, unremarkable point that took roughly the expected number of
+    splits to isolate.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A multivariate anomaly a MAD filter would sail straight past</h3>
+    <p>
+    Consider a single FX cross's tick, described by three variables at once: the bid-ask spread, the trade
+    volume, and the quote-update frequency in the preceding minute. On this particular tick, the spread sits
+    at the 60th percentile of its own recent history, volume sits at the 55th percentile of its own recent
+    history, and quote-update frequency sits at the 65th percentile of its own recent history — every single
+    variable, taken on its own, is unremarkable. A rolling MAD filter run separately on each of the three
+    series (the classical approach from <a href="data-cleaning-outliers-missing-data.html">Data Cleaning:
+    Outliers, Bad Ticks &amp; Missing Data</a>) would flag none of them; nothing crosses a few-MADs-from-the-median
+    threshold on any single axis.
+    </p>
+    <p>
+    But this exact <em>combination</em> — moderately wide spread, moderately elevated volume, and moderately
+    elevated quote frequency occurring together — has essentially never happened in this pair's recent
+    history; ordinarily, wide spreads and heavy quote-update activity go together with either genuinely high
+    or genuinely low volume, not a bland middle value. An Isolation Forest or an autoencoder trained on the
+    joint distribution of these three variables would isolate this point quickly (few splits needed to wall it
+    off from the "normal" joint clusters) or reconstruct it poorly (the network never practiced this specific
+    combination), flagging it as unusual precisely because the multivariate structure — not any one variable —
+    is what's off. This is presented purely to illustrate <em>why</em> a multivariate detector catches
+    something a univariate rule structurally cannot; it is not a claim that this scenario, or any anomaly
+    detector built on it, has been built, backtested, or validated anywhere in this repo.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Worth remembering:</strong> an anomaly score answers "how statistically unusual is this," full
+    stop. It never answers "is this an error," and it never answers "is this a trading opportunity" — both of
+    those require a human decision about what "unusual" means in this specific context, made after the score
+    comes back, not baked into the score itself. And a model trained on one regime has no way to distinguish
+    "genuinely wrong" from "a different, but entirely legitimate, market regime it simply hadn't seen before" —
+    both look identical to it: unfamiliar.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  Isolation Forest is the workhorse default for tabular, multivariate anomaly detection in practice: it trains
+  fast (no gradient descent, just building random trees), needs very little hyperparameter tuning, and scales
+  well to datasets with many features — a natural fit for a data-quality layer that needs to watch dozens of
+  fields on every incoming record at once, well beyond what a handful of separate univariate rules could
+  practically cover. Autoencoders are reached for when the data has structure a tree-based method handles
+  less naturally — long sequences, images, or very high-dimensional embeddings — or when the practitioner
+  wants a smoothly differentiable score that can itself be inspected (which input dimensions contributed most
+  to the reconstruction error, a form of built-in diagnostic that a tree ensemble's score doesn't offer as
+  directly).
+  </p>
+  <p>
+  In both cases, the standard workflow is the same: fit the model on a large window of data assumed to be
+  <em>mostly</em> normal (both methods tolerate a small contamination fraction of undetected anomalies in the
+  training set without much degradation), score new observations against that fitted model, and treat the
+  resulting score as one input into a human review process — not as an automated accept/reject gate on its
+  own, especially for anything consequential like flagging a trade or halting a feed.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌲</div>
+      <h4>Isolation Forest — fast, tabular-friendly</h4>
+      <p>No distance or density computation needed; trains quickly, handles many features at once, minimal tuning required.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧠</div>
+      <h4>Autoencoders — flexible, inspectable</h4>
+      <p>Handle sequences, images, and high-dimensional structure a tree ensemble handles less naturally; the per-dimension error is itself diagnostic.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧩</div>
+      <h4>Multivariate by construction</h4>
+      <p>Both catch a bad <em>combination</em> of otherwise-normal variables — the structural gap a per-series MAD filter cannot close.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔎</div>
+      <h4>A score, not a verdict</h4>
+      <p>Standard practice treats the anomaly score as one input to human review, not an automatic accept/reject gate.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where anomaly detection gets over-trusted</h3>
+    <ul>
+      <li><strong>Reading "anomalous" as "wrong."</strong> The score measures statistical rarity relative to training data, not correctness. A genuinely valid but rare event (a real, sharp news-driven move) scores identically to a genuine data error — the score alone cannot distinguish them.</li>
+      <li><strong>Reading "anomalous" as "an opportunity."</strong> Nothing about a high anomaly score implies the unusual pattern is profitable, predictable, or repeatable — it is a description of rarity relative to history, not a forecast of future edge.</li>
+      <li><strong>Training on one regime and scoring another.</strong> Both methods learn "normal" from whatever data they were fit on. A model fit during a calm regime will flag an entire subsequent volatile-but-legitimate regime as one long anomaly, because it never saw anything like it before — not because anything is actually wrong.</li>
+      <li><strong>Treating the score as calibrated probability.</strong> Isolation Forest's \(s(x,n)\) and an autoencoder's reconstruction error are both relative, model-specific quantities, not probabilities that a point is "truly" anomalous with some percent confidence.</li>
+      <li><strong>Skipping the human-judgment step.</strong> What counts as "unusual enough to act on" is a threshold decision that depends entirely on context (what asset, what regime, what the downstream consequence of a false positive is) — the model surfaces a ranked list of candidates, it does not make that call.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Isolation Forest's core insight: anomalies are "few and different."</strong> Random recursive splitting isolates rare, separated points in fewer cuts than points buried in a dense normal cluster — the average path length across an ensemble of random trees is the anomaly score.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A shorter average path length signals an anomaly.</strong> \(s(x,n)=2^{-E[h(x)]/c(n)}\) pushes toward 1 as the path length shrinks relative to the ordinary baseline \(c(n)\) — few splits needed means the point sits apart from the crowd.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Autoencoders score anomalies by how badly they reconstruct.</strong> Trained mostly on normal data through a compressed bottleneck, the network reconstructs familiar patterns well and unfamiliar ones poorly — that reconstruction gap is the score.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both are genuinely multivariate.</strong> They catch a bad combination of otherwise-individually-normal variables, closing a structural gap a per-series MAD threshold cannot.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An anomaly score is never "this is wrong" or "this is an opportunity."</strong> It is a measure of statistical rarity relative to training data, full stop — every downstream judgment about what "unusual" means here requires a human.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Regime-trained models flag regime shifts as anomalies.</strong> A model fit on one regime cannot tell "genuinely wrong" apart from "a different, legitimate regime it has simply never seen" — both look identical to it.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State Isolation Forest's core insight in one sentence, and explain why it means anomalies get isolated in fewer splits.</summary>
+    <div class="tl-answer">
+    Anomalies are "few and different" — rare, and sitting apart from the dense region where most of the data
+    lives. Because a random split is disproportionately likely to fall between an isolated point and the
+    crowd, it takes only a handful of random cuts to wall off a point that's already separated from the
+    normal cluster, while a normal point buried deep inside a dense group of similar points needs many more
+    cuts before the whole surrounding crowd has been separated away from it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why does a shorter average path length E[h(x)] push Isolation Forest's score s(x,n) toward 1 rather than toward 0?</summary>
+    <div class="tl-answer">
+    The score formula is \(s(x,n) = 2^{-E[h(x)]/c(n)}\). As \(E[h(x)]\) shrinks relative to the ordinary
+    baseline \(c(n)\), the exponent \(-E[h(x)]/c(n)\) moves toward 0 (from a more negative number), and
+    \(2^0=1\) is the maximum of that function — so a shorter-than-typical path length pushes the score up
+    toward 1, the anomaly end of the scale. A path length close to \(c(n)\) (typical for an ordinary point)
+    pushes the exponent toward \(-1\), giving a score around 0.5.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What forces an autoencoder to learn something other than the identity function, and why does that matter for anomaly detection?</summary>
+    <div class="tl-answer">
+    The bottleneck layer is deliberately narrower (lower-dimensional) than the input, so the network
+    physically cannot pass every input through unchanged — it has to choose which patterns to encode
+    efficiently and which to approximate. Trained mostly on normal data, it becomes specifically good at
+    compressing and rebuilding the patterns common in that training data, and stays comparatively bad at
+    anything unfamiliar. That's exactly why reconstruction error on a new point is informative: it directly
+    measures how well that point fits the patterns the bottleneck learned to prioritize.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Give a concrete example of a multivariate anomaly that a rolling MAD filter, applied separately to each variable, would completely miss.</summary>
+    <div class="tl-answer">
+    A tick where the bid-ask spread, trade volume, and quote-update frequency each sit at an unremarkable
+    percentile individually (say, 55th-65th) but whose specific joint combination has essentially never
+    occurred together before — ordinarily wide spreads and heavy quote activity co-occur with clearly high or
+    clearly low volume, not a bland middle value. Since no single variable crosses a per-series MAD threshold,
+    a univariate filter run on each series separately flags nothing, even though the joint pattern is highly
+    unusual — exactly the gap Isolation Forest and autoencoders are built to close.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why can a model trained during a calm market regime flag an entire subsequent volatile-but-legitimate period as anomalous, and why isn't that necessarily a bug?</summary>
+    <div class="tl-answer">
+    Both Isolation Forest and an autoencoder learn "normal" entirely from whatever data they were trained on.
+    If that training window was calm, the model has never seen the joint patterns that show up in a genuinely
+    different, more volatile — but entirely legitimate — regime, so those patterns look statistically rare to
+    it, producing high anomaly scores throughout. This isn't a flaw in the arithmetic; it's the honest
+    consequence of the method only ever being able to describe "unusual relative to what it was shown," which
+    is exactly why the mandatory framing of this lesson insists a high score means "unusual," never "wrong."
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Fei Tony Liu, Kai Ming Ting &amp; Zhi-Hua Zhou, <em>"Isolation Forest,"</em> Proceedings of the 8th IEEE International Conference on Data Mining (ICDM), 2008 — the original paper introducing Isolation Forest, the "few and different" insight, and the path-length-based anomaly score derived above.</li>
+    <li>Charu C. Aggarwal, <em>Outlier Analysis</em>, 2nd ed., Springer, 2017 — a broad, well-cited survey covering both classical statistical outlier detection and the multivariate/ensemble methods (including isolation-based and autoencoder-based approaches) this lesson focuses on.</li>
+    <li>See <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> for the classical, univariate rolling-median/MAD baseline this lesson's multivariate methods extend.</li>
+    <li>See <a href="change-point-detection.html">Change-Point Detection</a> for the sequential, "has something changed over time" cousin of this lesson's pointwise, "is this one observation unusual right now" framing.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="clustering-market-structure.html">← Clustering &amp; Market Structure</a>
+    <a href="nlp-trading-signals-sentiment.html">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

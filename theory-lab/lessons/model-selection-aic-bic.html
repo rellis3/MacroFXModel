@@ -22,6 +22,8 @@
     <span>Prereqs: Regression Diagnostics</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -101,6 +103,12 @@
     <div class="tl-eq-chip c1"><code>ln L̂_B, ln L̂_A</code><span>the two models' maximized log-likelihoods</span></div>
     <div class="tl-eq-chip c4"><code>≥</code><span>B can always match A's fit, and generically beats it, purely by having more parameters</span></div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Give someone a 3-piece jigsaw puzzle and a picture, and they might match it roughly. Give them a 300-piece version of the same picture and they can trace every tiny detail — but that's not because they understand the picture better, it's just because more pieces let you match anything more closely, including random smudges on the original photo that were never really part of the picture. A bigger model can always match a smaller one's fit, and usually beat it slightly, purely because it has more pieces to work with — not because it found something truer.</p>
+  </div>
+
   <p>
   This is the log-likelihood analogue of the \(R^2\) fact from the regression primer, and it is
   exactly why raw log-likelihood (or raw \(R^2\), or raw sum-of-squared-residuals) is not a valid
@@ -170,6 +178,11 @@
   on any <em>particular</em> noisy sample.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>AIC is basically asking: "if I tried this model on a fresh, never-before-seen batch of data, how well would it actually do?" It knows that a model always looks a bit better on the exact data it was trained on than it will on new data, so it deliberately docks two points for every extra knob the model has, as a rough correction for that "grading on your own homework" effect.</p>
+  </div>
+
   <h3>Deriving BIC: a Bayesian-consistency penalty</h3>
   <p>
   Schwarz's (1978) argument starts from Bayesian model comparison: given a set of candidate
@@ -197,6 +210,11 @@
   an overly complex model, because it is optimizing a different target (expected prediction error,
   not "recover the exact true model").
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>BIC asks a slightly different question than AIC: not "which model predicts best," but "which model is most likely to be the actual, true, correct one." Because it's hunting for the genuinely right answer rather than just a good-enough forecaster, it demands more proof before it'll accept an extra parameter — and the more data you collect, the pickier it gets, on the logic that with lots of evidence, a truly useless parameter has nowhere left to hide.</p>
+  </div>
 
   <h3>Why they disagree: the penalty each parameter has to clear</h3>
   <p>
@@ -226,6 +244,11 @@
   reporting both — and noting when they disagree — is more honest than picking whichever one
   happens to endorse the model you already wanted.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of AIC and BIC as two different judges scoring the same complexity, with BIC simply charging a steeper "cover charge" per extra parameter once you have more than about 8 data points, and that cover charge keeps climbing the more data you collect. That's the entire reason they can disagree — same underlying idea (fit minus a penalty), just a different, and increasingly different, price tag on complexity.</p>
+  </div>
 
   <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
     <h3>A genuine tie on AIC, a clear preference on BIC</h3>
@@ -478,5 +501,28 @@
     <a href="arima-var.html">ARIMA &amp; VAR →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

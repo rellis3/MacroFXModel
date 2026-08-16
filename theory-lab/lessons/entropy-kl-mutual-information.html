@@ -22,6 +22,8 @@
     <span>Prereqs: Probability Primer, Correlation &amp; Regression primer</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -110,6 +112,12 @@
     <div class="tl-eq-chip c2"><code>p(x)</code><span>how likely that outcome is — the averaging weight</span></div>
     <div class="tl-eq-chip c4"><code>H(X)</code><span>expected surprise across all outcomes — measured in bits</span></div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Entropy is a number for "how surprised will I be, on average, before I find out what happens." A fair coin keeps you guessing every single time, so it scores high. A coin that almost always lands heads barely surprises you, so it scores low — and a coin that always lands the same way surprises you never, scoring exactly zero.</p>
+  </div>
+
   <p>
   Entropy is maximized when every outcome is equally likely (maximum genuine uncertainty) and
   minimized (at exactly zero) when one outcome is certain (\(p=1\)) and all others impossible. For a
@@ -166,6 +174,11 @@
   uncertainty the way \(H(X)\) is for a discrete variable.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Discrete entropy counts surprise across a list of distinct possibilities — heads or tails, 1 through 6. A continuous variable, like tomorrow's exact temperature, has infinitely many possible values packed together, so the same bit-counting trick doesn't translate perfectly — it can even come out negative, which just means "this distribution is bunched up so tightly that the usual accounting breaks down," not that uncertainty itself went negative.</p>
+  </div>
+
   <h3>KL divergence — the cost of the wrong model</h3>
   <p>
   Now suppose you have two distributions over the same outcomes: \(P\), the one data actually comes
@@ -193,6 +206,12 @@
       <div class="tl-fp-desc">Weight each outcome's waste by how often it actually happens, under P</div>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>KL divergence is the price you pay for believing the wrong story. If you packed for sunny weather (your mental model, Q) but it's actually been raining all week (the true situation, P), every day you're caught off guard costs you something. KL divergence adds up exactly how many "extra surprises," in bits, believing the wrong thing costs you on average.</p>
+  </div>
+
   <p>
   Two properties matter enough to prove, not just state. First, <strong>\(D_{\text{KL}}(P\|Q) \ge 0\)
   always</strong>, with equality only when \(P=Q\) — this is <strong>Gibbs' inequality</strong>. The
@@ -219,6 +238,11 @@
   loose sense of "how far apart are these two distributions." The worked example below makes the
   size of that asymmetry concrete with real numbers.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Why does the direction matter? Being slightly wrong about something ordinary is cheap — but being caught totally unprepared for something you'd written off as basically impossible is expensive. That's why "assuming the coin is fair when it's really biased" and "assuming the coin is biased when it's really fair" cost different amounts: getting blindsided by an outcome you'd dismissed hurts far more than mildly under-preparing for something common.</p>
+  </div>
 
   <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
     <h3>The same two coins, both directions</h3>
@@ -267,6 +291,12 @@
   unchanged — the joint distribution and the independence benchmark are both symmetric in \(X\) and
   \(Y\) to begin with.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Mutual information answers one plain question: if I tell you what Y turned out to be, how much less do you need to guess about X? If knowing Y is totally useless for guessing X, mutual information is zero. If knowing Y lets you nail X exactly, mutual information is as large as it can possibly get. Unlike correlation, it doesn't care whether the connection is a straight line, a curve, or something weirder — it just measures whether knowing one genuinely helps predict the other, in any shape at all.</p>
+  </div>
+
   <p>
   Mutual information also has an equivalent, often more intuitive form in terms of
   <strong>conditional entropy</strong> \(H(X|Y)\) — the expected remaining uncertainty about \(X\)
@@ -503,5 +533,28 @@
     <a href="transfer-entropy-causality.html">Transfer Entropy &amp; Information-Theoretic Causality →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

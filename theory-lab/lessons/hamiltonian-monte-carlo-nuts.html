@@ -22,6 +22,8 @@
     <span>Prereqs: MCMC: Metropolis-Hastings &amp; Gibbs Sampling</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -125,6 +127,11 @@
     inching along it.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a marble rolling around inside a bowl-shaped valley, where the valley's low point is the posterior's most plausible spot. Give the marble a random flick (that's the momentum), and it rolls off using its own speed plus the pull of the slope beneath it — trading height (potential energy) for speed (kinetic energy) back and forth as it goes, the same way a real marble would. Because it's actually rolling along the terrain instead of hopping randomly, it can sweep a long way across the bowl in one smooth motion instead of inching along one blind little hop at a time.</p>
+  </div>
+
   <h3>Simulating the dynamics: the leapfrog integrator</h3>
   <p>
     Hamilton's equations can't be solved exactly for anything but the
@@ -183,6 +190,11 @@
     posterior's own gradient the entire way.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The leapfrog integrator is just a way of simulating that rolling marble in tiny, careful increments a computer can actually compute: nudge its speed a little based on the slope, move it forward using that speed, then nudge its speed again based on the new slope — over and over. Doing it in this particular back-and-forth "half nudge, move, half nudge" rhythm (rather than any simpler order) is what keeps the simulation well-behaved and reversible, like a flipbook where playing the pages backward retraces the exact same path forward.</p>
+  </div>
+
   <h3>The Metropolis correction</h3>
   <p>
     Leapfrog is a numerical approximation, not an exact solution to
@@ -211,6 +223,11 @@
     discarded and redrawn fresh next iteration); if rejected, the chain stays
     at \(\theta_t\), exactly as in plain Metropolis-Hastings.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Because the marble simulation is only approximate, not perfect physics, it can drift slightly off the energy it should have conserved — like a video game marble that loses or gains a tiny bit of extra "oomph" from rounding errors. So at the end of the whole rolling journey, HMC does one honesty check: compare the energy at the start to the energy at the end, and accept the marble's final resting spot with a probability that reflects how much energy leaked. A near-perfect roll gets accepted almost every time; a roll that leaked a lot of energy is more likely to be rejected and redone.</p>
+  </div>
 
   <p>
     <strong>Why this beats a random walk.</strong> A random-walk Metropolis
@@ -402,6 +419,12 @@
     paper spends most of its length proving is correct; this lesson states
     the stopping criterion conceptually rather than re-deriving that proof).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of a human guessing "roll the marble for exactly 7 seconds" (too short wastes the roll, too long and it doubles back on itself), NUTS just lets the marble keep rolling, checking after every doubling of the distance: "is this thing starting to curl back toward where it began?" The instant it detects that curling-back motion — a U-turn — it stops right there and picks a good resting spot from the path already rolled. No one has to guess the right rolling time in advance; the marble's own path tells NUTS when to stop.</p>
+  </div>
+
   <p>
     The practical result: NUTS runs roughly as long as it needs to and no
     longer, in every direction and at every point in parameter space, without
@@ -646,5 +669,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

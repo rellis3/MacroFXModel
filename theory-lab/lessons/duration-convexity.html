@@ -22,6 +22,8 @@
     <span>Prereqs: Bond Pricing &amp; Yield to Maturity</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -119,6 +121,11 @@
     payment's share of present value instead of \(1/n\) each.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Macaulay duration is like finding the balance point of a seesaw where each of the bond's payments sits at its own future date, weighted by how big a chunk of the bond's value it represents. A bond that pays you a little bit every year balances closer to today than one that pays you nothing until the very last year — because more of its value shows up early.</p>
+  </div>
+
   <h3>Modified duration — turning timing into price sensitivity</h3>
   <p>
     Macaulay duration is measured in years — a statement about timing, not
@@ -183,6 +190,11 @@
     result; this page is one specific, high-stakes application of it.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Modified duration answers one question: if yields nudge up or down just a little, roughly what percent does the bond's price move? It's exactly like using a hill's current steepness to guess how much you'll climb or drop after one small step forward — accurate for a small step, but only a guess, not the exact truth.</p>
+  </div>
+
   <h3>Why the linear approximation isn't enough — convexity as the second Taylor term</h3>
   <p>
     A first-order Taylor term is only exact in the limit of an infinitesimally
@@ -237,6 +249,11 @@
     missing piece that closes most of that gap.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If duration is "guess how far you'll go using the hill's steepness right where you're standing," convexity is the correction for the fact that hills curve — the ground itself starts sloping differently the further you walk. Because a bond's price curve bends in a friendly direction, that correction is always a bonus: the bond ends up worth slightly more than the simple straight-line guess predicted, whether yields went up or down.</p>
+  </div>
+
   <h3>DV01 / PVBP — the practical dollar version</h3>
   <p>
     Trading desks rarely think in percentage sensitivity; they think in
@@ -259,6 +276,11 @@
     It's the same information as modified duration, just denominated the way
     a risk book is actually managed.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>DV01 just translates duration into a language traders actually think in: real dollars. Instead of saying "this bond moves about 4.4% for a 1-percentage-point yield move," DV01 says "this bond gains or loses about this many dollars for every tiny 0.01% wiggle in yield" — the same fact, just priced out in cash instead of percent.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(D_{Mac}\)</td><td>Macaulay duration — the payment-weighted average time (in years) to a bond's cash flows.</td></tr>
@@ -719,6 +741,29 @@
   buildTrueCurve();
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

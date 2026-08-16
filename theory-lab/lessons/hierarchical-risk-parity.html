@@ -22,6 +22,8 @@
     <span>Prereqs: Markowitz &amp; Black-Litterman, Risk Parity &amp; Equal Risk Contribution</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -52,6 +54,12 @@
     Markowitz lesson already flags, this time coming from the matrix
     algebra itself rather than the forecast inputs.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to figure out exactly how much each ingredient in a recipe individually contributed to the taste, by solving for all the ingredient interactions at once. If two ingredients are nearly identical — say butter and margarine — that math gets wobbly, and a tiny measurement error can spit out a wild, nonsensical answer. That wobbliness is exactly what happens when you try to invert a covariance matrix full of very similar, highly correlated assets.</p>
+  </div>
+
   <p>
     The Risk Parity &amp; Equal Risk Contribution lesson offered one way out —
     stop needing expected returns — but its general, correlation-aware
@@ -125,6 +133,11 @@
           individual assets and whose internal nodes are merges, each labeled
           with the distance at which that merge occurred.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Correlation tells you how alike two things are; distance tells you how far apart they are — this formula just flips one into the other, the way "these two songs are 90% similar" and "these two songs are 10% different" say the same thing backwards. Once everything is measured as a distance, an ordinary grouping tool — the same kind used to build a family tree — can start clustering the closest pairs together first.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -145,6 +158,11 @@
           arbitrary correlation structure" into "allocate across a tree of
           nested, mostly-internally-correlated blocks."
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>This step doesn't change any of the actual numbers — it just re-seats everyone at a dinner table so that people who get along best (are most correlated) end up sitting next to each other, instead of scattered randomly around the room. Nobody changed; the seating chart just got smarter, which makes the next step much easier.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -177,6 +195,11 @@
           sub-cluster's inverse-variance weighting or a one-number split
           between two already-computed cluster variances.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Picture splitting an inheritance between two siblings, but the calmer, more financially stable sibling gets a bigger share and the more volatile, unpredictable one gets less. Now repeat that same "calmer one gets more" rule at every fork in the family tree, all the way down to individual people, until everyone ends up with their final amount.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -517,5 +540,28 @@
     <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

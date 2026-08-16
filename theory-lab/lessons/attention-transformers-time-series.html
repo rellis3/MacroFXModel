@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention &amp; Transformers for Time Series — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deep Learning &amp; Modern ML for Trading / Attention &amp; Transformers for Time Series</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Deep Learning &amp; Modern ML for Trading 2 of 6</div>
+  <h1 class="tl-title">Attention &amp; Transformers for Time Series</h1>
+  <p class="tl-dek">Instead of relaying information step by step through a chain of hidden states, let every output position look directly at every input position and decide, by computed relevance, how much attention each one deserves — the mechanism behind the architecture that has displaced recurrent networks for most large-scale sequence modeling.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~19 min read</span>
+    <span>Prereqs: <a href="recurrent-networks-lstm-gru.html">Recurrent Networks: LSTM &amp; GRU</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>An RNN or LSTM processes a sequence one step at a time — every step must wait for the previous one, so training cannot parallelize across time, and even with gating, information from far back can still degrade over very long sequences.</li>
+      <li><strong>Scaled dot-product attention</strong> fixes both problems at once: \(\text{Attention}(Q,K,V)=\text{softmax}\!\left(\dfrac{QK^T}{\sqrt{d_k}}\right)V\) (Vaswani et al., "Attention Is All You Need," NeurIPS 2017) lets every output position directly weigh and combine every input position in one computation, with no step-by-step relay.</li>
+      <li><strong>Self-attention</strong> applies this within a single sequence (queries, keys, and values all come from the same input); <strong>multi-head attention</strong> runs several attention computations in parallel with different learned projections, so different heads can specialize in different kinds of relationships between positions.</li>
+      <li>The direct cost of "everyone looks at everyone" is an \(n\times n\) attention matrix — \(O(n^2)\) time and memory in sequence length \(n\). Time-series-specific architectures like the <strong>Temporal Fusion Transformer</strong> (Lim et al., 2021) and <strong>Informer</strong> (Zhou et al., 2021) exist specifically to make long-sequence forecasting tractable despite this cost.</li>
+      <li><strong>Mandatory honest framing:</strong> transformers are now the dominant architecture for large-scale sequence modeling, but they need substantially more data and compute than LSTMs to realize that advantage. For shorter, lower-data time series — which most individual market series genuinely are — the benefit over a well-tuned classical or LSTM approach is not guaranteed and must be tested empirically, not assumed from the model's reputation in NLP or vision.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson ended on a specific, honest limitation: gating
+    substantially mitigates the vanishing-gradient problem in an LSTM, but it
+    does not eliminate it, and every recurrent architecture — vanilla RNN,
+    LSTM, or GRU alike — shares a second, structural constraint that has
+    nothing to do with gradients at all. Computing \(h_t\) requires \(h_{t-1}\)
+    to already exist, which requires \(h_{t-2}\), all the way back to the
+    start of the sequence. That dependency chain cannot be parallelized
+    across time during training, no matter how much compute is available —
+    step 500 simply cannot begin until step 499 has finished. Attention
+    removes this constraint entirely by replacing "relay information forward,
+    one step at a time" with "let every position look directly at every other
+    position, all at once" — a structurally different mechanism, not merely a
+    faster implementation of the same idea.
+  </p>
+  <p>
+    This lesson picks up exactly where the previous one left off, and closes
+    the same honest loop it opened: attention is a genuine, well-evidenced
+    fix for two specific problems (training parallelism and long-range
+    degradation) — it is not a categorical upgrade that makes the previous
+    lesson's architecture obsolete for every use case, a distinction the
+    mandatory honest framing below returns to directly.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A room where everyone can talk to everyone, instead of a game of telephone</h3>
+    <p>
+      The previous lesson's recurrent network was a game of telephone: a
+      message is whispered from person to person down a line, and by the
+      time it reaches the end, information from early in the line has been
+      diluted by every retelling in between. Attention throws out the line
+      entirely. Instead, imagine a room where every person can speak directly
+      to every other person at once, and each listener decides — based on how
+      relevant each speaker's message actually is to what they're currently
+      trying to figure out — how much weight to give each voice. Nobody's
+      message has to survive a long relay to be heard; it's heard directly,
+      weighted by relevance, with the number of "hops" needed to reach any
+      other position always exactly one.
+    </p>
+    <p>
+      That weighting-by-relevance is precisely what the attention formula
+      computes: for a given position asking "what do I need right now" (a
+      <strong>query</strong>), every other position offers "here's what I
+      contain" (a <strong>key</strong>, used to compute relevance) and "here's
+      the actual content I'd contribute" (a <strong>value</strong>, used in
+      the final weighted combination). The query is compared against every
+      key to get a relevance score, those scores are turned into weights that
+      sum to one, and the output is just a weighted blend of every position's
+      value — exactly the "everyone speaks, weighted by relevance" picture,
+      made numeric.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Queries, keys, and values</h3>
+  <p>
+    Start from a sequence of \(n\) input vectors (e.g. one vector per time
+    step, already embedded to some dimension \(d_{model}\)), stacked as rows
+    of a matrix \(X\). Three separate learned linear projections turn \(X\)
+    into three different views of the same sequence:
+  </p>
+  <div class="tl-math">\[ Q = XW^Q, \qquad K = XW^K, \qquad V = XW^V \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Q</code><span>queries — "what am I looking for," one row per output position</span></div>
+    <div class="tl-eq-chip c2"><code>K</code><span>keys — "what do I contain," one row per input position, compared against every query</span></div>
+    <div class="tl-eq-chip c3"><code>V</code><span>values — "what I'd actually contribute," combined according to the relevance weights</span></div>
+    <div class="tl-eq-chip c4"><code>W^Q, W^K, W^V</code><span>learned weight matrices producing each of the three views from the same input X</span></div>
+  </div>
+  <p>
+    When \(Q\), \(K\), and \(V\) are all derived from the <em>same</em>
+    sequence \(X\), this is <strong>self-attention</strong> — every position
+    in a sequence attends to every position in that same sequence, including
+    itself. (The original transformer also uses cross-attention, where
+    queries come from one sequence and keys/values from another — relevant to
+    encoder-decoder setups, but self-attention is the core mechanism this
+    lesson focuses on.)
+  </p>
+
+  <h3>Scaled dot-product attention</h3>
+  <p>
+    With \(Q\), \(K\), and \(V\) in hand, the full attention operation
+    (Vaswani et al., 2017) is:
+  </p>
+  <div class="tl-math">\[ \text{Attention}(Q,K,V) = \text{softmax}\!\left(\frac{QK^T}{\sqrt{d_k}}\right)V \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>QK^T</code><span>every query dotted with every key — an n×n matrix of raw relevance scores</span></div>
+    <div class="tl-eq-chip c3"><code>√d_k</code><span>a scaling factor, d_k = dimensionality of each key/query vector</span></div>
+    <div class="tl-eq-chip c2"><code>softmax(·)</code><span>turns each row of scores into weights that are non-negative and sum to 1</span></div>
+    <div class="tl-eq-chip c4"><code>· V</code><span>the softmax weights combine the value vectors into the final output, one weighted blend per query</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">QK^T / √d_k</div><div class="tl-fp-name">The relevance scores</div><div class="tl-fp-desc">How much each key matches each query, scaled to keep the softmax well-behaved</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">softmax(·)</div><div class="tl-fp-name">The attention weights</div><div class="tl-fp-desc">Turns raw scores into a proper weighting — non-negative, sums to 1 per query</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">weights · V</div><div class="tl-fp-name">The output</div><div class="tl-fp-desc">A weighted blend of every position's value vector — the whole point of the mechanism</div></div>
+  </div>
+  <p>
+    Read the whole formula in the order it's computed: compare a query
+    against every key by dot product (a large dot product means "this key is
+    very relevant to this query"), scale those scores down, turn them into a
+    proper probability-like weighting with softmax, then use those weights to
+    combine the value vectors. Every output position performs this same
+    computation independently and simultaneously against every input
+    position — no position has to wait for any other position's computation
+    to finish, which is exactly the training-parallelism property the
+    previous lesson's recurrence structurally could not offer.
+  </p>
+  <p>
+    <strong>Why the \(\sqrt{d_k}\) scaling matters.</strong> Vaswani et al.
+    note that for larger \(d_k\), the dot products \(QK^T\) tend to grow
+    large in magnitude (the sum of \(d_k\) roughly independent products grows
+    with \(d_k\)), which pushes the softmax into regions where its gradient
+    is extremely small — the softmax saturates, and one score dominates
+    every other almost completely, well before training has had a chance to
+    learn a genuinely useful weighting. Dividing by \(\sqrt{d_k}\) counteracts
+    this growth in scale, keeping the softmax's inputs in a range where its
+    gradient stays usable throughout training.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a query as a question you're holding up, and every key as a label on a box, saying what's inside. You compare your question against every box's label at once and get a relevance score per box — "this box seems very related to what I'm asking," "this one, not so much." Softmax turns those raw scores into percentages that add up to 100%, and then you open every box a little, taking more from the highly relevant ones and almost nothing from the irrelevant ones, and mix it all together. That mixed result is the attention output — one blend, built by directly comparing your question to every single box at once, not by asking box 1, then box 2, then box 3 in sequence.</p>
+  </div>
+
+  <h3>Multi-head attention</h3>
+  <p>
+    A single attention computation learns one particular notion of
+    "relevance." <strong>Multi-head attention</strong> runs \(h\) independent
+    attention computations in parallel, each with its own learned
+    projections, then combines them:
+  </p>
+  <div class="tl-math">\[ \text{MultiHead}(Q,K,V) = \text{Concat}(\text{head}_1,\dots,\text{head}_h)W^O, \qquad \text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>head_i</code><span>one attention computation using its own learned Q/K/V projections</span></div>
+    <div class="tl-eq-chip c2"><code>Concat(·)</code><span>stack every head's output side by side</span></div>
+    <div class="tl-eq-chip c4"><code>W^O</code><span>a final learned projection mixing the concatenated heads back into one output</span></div>
+  </div>
+  <p>
+    Because each head has its own separately learned \(W_i^Q, W_i^K, W_i^V\),
+    different heads are free to specialize during training — one head might
+    learn to attend mostly to short-range, recent relationships in a
+    sequence, another to a longer-range or seasonal pattern, another to
+    something not easily described in words at all. Nothing forces this
+    specialization explicitly; it emerges from training multiple
+    differently-initialized, independently-projected attention computations
+    side by side and letting each one find whatever relevance pattern
+    reduces the loss most from its own vantage point.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>One attention head is one way of judging relevance — like one friend reading a room and deciding who's talking to whom. Multi-head attention is asking several friends to each read the same room independently, each with their own personal sense of what "relevant" means, and then combining everyone's read at the end. One friend might notice who's standing physically close together; another might notice who's making eye contact; another might notice the topic of conversation. No single friend has to catch everything — the combination is stronger than any one of them alone.</p>
+  </div>
+
+  <h3>Positional information and the O(n²) cost</h3>
+  <p>
+    Attention itself has no built-in notion of order — swap the rows of
+    \(X\) and the set of pairwise dot products is unchanged, just relabeled.
+    The original transformer restores order information by adding a
+    <strong>positional encoding</strong> (a fixed or learned vector unique to
+    each position) directly onto each input embedding before attention is
+    applied — a detail this lesson notes rather than derives in full, since
+    the core mechanism above is unchanged by exactly which positional scheme
+    is used.
+  </p>
+  <p>
+    The direct cost of "every position compares against every other position"
+    is the \(n\times n\) matrix \(QK^T\) — \(O(n^2)\) time and memory in the
+    sequence length \(n\). For a sentence of a few dozen tokens this is
+    trivial; for a long financial time series — years of daily bars, or
+    months of intraday bars — \(n\) can be large enough that this quadratic
+    cost becomes a genuine practical constraint, and is the specific problem
+    the time-series-specific architectures below were built to address.
+  </p>
+  <div class="tl-symbols"><table>
+    <tr><td>\(n\)</td><td>Sequence length — the number of time steps (or tokens) being attended over.</td></tr>
+    <tr><td>\(d_k, d_{model}\)</td><td>Dimensionality of the key/query vectors, and of the model's overall embedding.</td></tr>
+    <tr><td>\(h\)</td><td>Number of attention heads run in parallel.</td></tr>
+    <tr><td>\(\text{softmax}\)</td><td>Turns a vector of raw scores into non-negative weights summing to 1, row-wise.</td></tr>
+    <tr><td>\(W^Q,W^K,W^V,W^O\)</td><td>Learned linear projection matrices — for queries, keys, values, and the final multi-head output mix.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Sequential relay (RNN/LSTM, previous lesson) versus direct attention (every position to every position)</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram contrasting two mechanisms for combining information across a four-step sequence. Top half: a recurrent chain, where each hidden state depends only on the previous one, passing information step by step in a straight line. Bottom half: attention, where a single output position draws lines directly to all four input positions at once, with line thickness indicating that positions one and four receive more attention weight than positions two and three.">
+      <text x="20" y="26" fill="var(--red)" font-size="13" font-family="'DM Mono',monospace" font-weight="600">Recurrent — sequential relay</text>
+      <rect x="20" y="45" width="70" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="55" y="64" text-anchor="middle" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">h₁</text>
+      <line x1="90" y1="60" x2="130" y2="60" style="stroke:var(--border2);stroke-width:2"/>
+      <rect x="130" y="45" width="70" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="165" y="64" text-anchor="middle" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">h₂</text>
+      <line x1="200" y1="60" x2="240" y2="60" style="stroke:var(--border2);stroke-width:2"/>
+      <rect x="240" y="45" width="70" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="275" y="64" text-anchor="middle" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">h₃</text>
+      <line x1="310" y1="60" x2="350" y2="60" style="stroke:var(--border2);stroke-width:2"/>
+      <rect x="350" y="45" width="70" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="385" y="64" text-anchor="middle" fill="var(--text2)" font-size="10" font-family="'DM Mono',monospace">h₄</text>
+      <text x="470" y="64" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">h₄ only sees h₃, which only saw h₂…</text>
+
+      <line x1="20" y1="120" x2="620" y2="120" style="stroke:var(--border);stroke-dasharray:3,3"/>
+
+      <text x="20" y="146" fill="var(--green)" font-size="13" font-family="'DM Mono',monospace" font-weight="600">Attention — direct, parallel, weighted</text>
+      <rect x="30" y="220" width="70" height="30" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="65" y="239" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">pos 1</text>
+      <rect x="150" y="220" width="70" height="30" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="185" y="239" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">pos 2</text>
+      <rect x="270" y="220" width="70" height="30" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="305" y="239" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">pos 3</text>
+      <rect x="390" y="220" width="70" height="30" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="425" y="239" text-anchor="middle" fill="var(--blue)" font-size="10" font-family="'DM Mono',monospace">pos 4</text>
+      <rect x="215" y="160" width="90" height="30" rx="6" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="260" y="179" text-anchor="middle" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">output (query)</text>
+
+      <line x1="65" y1="220" x2="245" y2="190" style="stroke:var(--purple);stroke-width:4" opacity="0.8"/>
+      <line x1="185" y1="220" x2="255" y2="190" style="stroke:var(--purple);stroke-width:1.5" opacity="0.5"/>
+      <line x1="305" y1="220" x2="270" y2="190" style="stroke:var(--purple);stroke-width:1.5" opacity="0.5"/>
+      <line x1="425" y1="220" x2="280" y2="190" style="stroke:var(--purple);stroke-width:4" opacity="0.8"/>
+      <text x="530" y="170" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">thick line = high attention weight</text>
+      <text x="530" y="186" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">(positions 1 and 4 dominate here)</text>
+    </svg>
+    <div class="tl-chart-caption">
+      In the recurrent chain, position 4's hidden state only ever sees
+      position 3 directly — everything from position 1 has already been
+      compressed and re-compressed twice by the time it reaches h₄. In the
+      attention panel, a single output draws a direct line to all four input
+      positions at once, in one computation, with the line weight (the
+      softmax output) determining how much each position actually
+      contributes — no relay, no compounding compression.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One query attending over three time steps, by hand</h3>
+    <p>
+      Take a single query vector \(q=[1,0]\) (\(d_k=2\)) attending over keys
+      and values from three past time steps:
+    </p>
+    <div class="tl-symbols"><table>
+      <tr><td>position 1 (t−2)</td><td>\(k_1=[1,0]\), \(v_1=[2,0]\)</td></tr>
+      <tr><td>position 2 (t−1)</td><td>\(k_2=[0,1]\), \(v_2=[0,2]\)</td></tr>
+      <tr><td>position 3 (t)</td><td>\(k_3=[1,1]\), \(v_3=[1,1]\)</td></tr>
+    </table></div>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Raw scores: q · kᵢ</h4>
+          <div class="tl-math">\[ q\cdot k_1 = 1, \qquad q\cdot k_2 = 0, \qquad q\cdot k_3 = 1 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Scale by √d_k = √2 ≈ 1.414</h4>
+          <div class="tl-math">\[ [1,\,0,\,1]/1.414 = [0.707,\ 0,\ 0.707] \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Softmax</h4>
+          <p>
+            \(e^{0.707}=2.028,\ e^{0}=1,\ e^{0.707}=2.028\); sum \(=5.056\).
+          </p>
+          <div class="tl-math">\[ \text{weights} = [0.401,\ 0.198,\ 0.401] \]</div>
+          <p>Positions 1 and 3 — the two keys most aligned with the query — end up weighted about twice as heavily as position 2.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Weighted sum of the values</h4>
+          <div class="tl-math">\[ \text{output} = 0.401[2,0] + 0.198[0,2] + 0.401[1,1] = [0.802,0]+[0,0.396]+[0.401,0.401] = [1.203,\ 0.797] \]</div>
+          <p>
+            The output is a single blended vector, dominated by values 1 and
+            3 in proportion to how relevant their keys were to the query — no
+            step-by-step relay through positions 1→2→3 was needed to produce
+            it; all three comparisons happened directly and simultaneously.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Interpreting which historical days a forecast actually weighted</h3>
+    <p>
+      Picture a self-attention layer over the last 60 trading days of a
+      macro feature panel, producing a single forecast for next week's
+      realized volatility. Unlike a plain LSTM's final hidden state, which
+      compresses the whole 60-day history into one vector with no direct
+      record of which specific days mattered most, the attention weights
+      themselves are a readable-out artifact: for the forecast's query, the
+      softmax weights over all 60 keys say, explicitly, "day 41 and day 58
+      received far more weight than day 12." This is precisely the kind of
+      built-in interpretability the Temporal Fusion Transformer (Lim et al.,
+      2021) is designed to expose deliberately, through dedicated attention
+      and variable-selection components, rather than as an incidental
+      side-effect of the mechanism. Reading attention weights this way is
+      genuinely useful for understanding what a trained model is doing — it
+      is not, on its own, evidence that what the model is doing constitutes
+      real predictive edge, which remains a separate, empirical question
+      exactly as it is for every other model in this curriculum.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    The raw \(O(n^2)\) attention cost is the specific, named problem behind
+    several real, time-series-focused transformer variants:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Temporal Fusion Transformer</h4>
+      <p>
+        Lim, Arık, Loeff &amp; Pfister, <em>International Journal of
+        Forecasting</em>, 2021. Combines attention with recurrent layers and
+        dedicated variable-selection networks purpose-built for
+        multi-horizon forecasting with mixed static, known-future, and
+        observed-past inputs — explicitly designed for interpretability, not
+        just accuracy, exposing which time steps and which input variables a
+        forecast actually relied on.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚡</div>
+      <h4>Informer</h4>
+      <p>
+        Zhou, Zhang, Peng, Zhang, Li, Xiong &amp; Zhang, <em>AAAI</em>, 2021.
+        Introduces a ProbSparse self-attention mechanism that avoids
+        computing the full \(n\times n\) attention matrix by identifying and
+        keeping only the most informative query-key pairs, reducing
+        complexity from \(O(n^2)\) toward \(O(n\log n)\) — purpose-built for
+        long-sequence time-series forecasting where the full quadratic cost
+        is otherwise prohibitive.
+      </p>
+    </div>
+  </div>
+  <p>
+    Both variants keep the same core scaled dot-product idea from this
+    lesson — a query, a set of keys, a weighted combination of values — while
+    changing how much of the full \(n\times n\) comparison actually needs to
+    be computed, or what other architectural pieces (recurrence,
+    variable-selection gating) get combined alongside it for a forecasting
+    task specifically, rather than the general-purpose language modeling
+    setting the original transformer was built for.
+  </p>
+
+  <div class="tl-solid amber">
+    <strong>Transformers need substantially more data and compute than
+    LSTMs to realize their advantage — this is not guaranteed to transfer to
+    a typical market series.</strong> Transformers are, today, genuinely the
+    dominant architecture for large-scale sequence modeling — that is a
+    well-evidenced statement about the method in the settings (large text
+    and vision corpora) where it was developed and most thoroughly tested. It
+    is not, on its own, evidence that a transformer will outperform a
+    well-tuned classical statistical model or a well-tuned LSTM on a typical
+    individual market time series, which is usually far shorter and far
+    noisier than the datasets that made the architecture's reputation.
+    Attention's parameter count and appetite for data scale differently than
+    a recurrent network's, and without enough data, a transformer's larger
+    capacity can just as easily produce more convincing overfitting rather
+    than a real accuracy gain. Whether a transformer earns its complexity on
+    a specific series is an empirical question, answered only by honest,
+    leakage-free out-of-sample comparison against simpler baselines — never
+    assumed from the architecture's reputation in an unrelated domain.
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where attention and transformers quietly go wrong on time series</h3>
+    <p>
+      <strong>Reaching for a transformer by reputation, not by evidence on
+      the series at hand.</strong> The single most common mistake this
+      lesson's honest framing is built to head off: a transformer's fame in
+      language and vision does not transfer automatically to a specific,
+      short, noisy financial time series. The only valid evidence is a fair,
+      leakage-free comparison against a well-tuned simpler baseline on that
+      exact series.
+    </p>
+    <p>
+      <strong>Forgetting positional encoding, then wondering why order
+      doesn't seem to matter.</strong> Raw attention has no notion of
+      sequence order on its own — omitting or mishandling positional
+      encoding produces a model that is, structurally, blind to whether a
+      big move happened yesterday or three months ago, which defeats the
+      entire point of applying this to a time series in the first place.
+    </p>
+    <p>
+      <strong>Look-ahead leakage through the attention mask.</strong> An
+      attention layer used for forecasting must be explicitly masked so a
+      given position can only attend to earlier positions, not later ones —
+      without a causal mask, the model can trivially "attend to the future,"
+      producing spectacular-looking backtest performance that is pure
+      look-ahead bias, not a real forecasting result.
+    </p>
+    <p>
+      <strong>Treating attention weights as a causal explanation.</strong> A
+      high attention weight on a particular day shows that the model's
+      internal computation relied heavily on that day's representation — it
+      is a real, readable fact about the trained model, but it is not by
+      itself proof that day was causally important to the underlying market
+      process, a distinction worth keeping precise when using attention
+      weights for interpretability.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(\text{Attention}(Q,K,V)=\text{softmax}(QK^T/\sqrt{d_k})V\) lets every output position look directly at every input position</strong>, weighted by relevance, replacing a recurrence's step-by-step relay (Vaswani et al., 2017).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Self-attention</strong> derives Q, K, and V from the same sequence; <strong>multi-head attention</strong> runs several independently-projected attention computations in parallel so different heads can specialize in different relationship types.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This mechanism removes the recurrent chain's training bottleneck</strong> — every position's attention computation can run in parallel, and long-range relationships need only one direct comparison, not many compounded relay steps.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Full attention costs \(O(n^2)\) in sequence length.</strong> The Temporal Fusion Transformer and Informer exist specifically to make long financial or macro sequences tractable despite this cost.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A transformer's dominance in NLP and vision is not evidence it will beat a well-tuned LSTM or classical model on a short, noisy market series.</strong> Transformers need substantially more data and compute to realize their advantage — test empirically, every time, rather than assuming from reputation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A causal attention mask is mandatory for forecasting.</strong> Without one, a model can trivially attend to future positions, producing backtest results that are pure look-ahead leakage rather than a genuine forecasting result.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What specific limitation of recurrent networks, discussed in the previous lesson, does attention directly remove — and how?</summary>
+    <div class="tl-answer">
+      Recurrent networks compute h_t sequentially, requiring h_{t-1} to
+      already exist, so the dependency chain cannot be parallelized across
+      time during training regardless of available compute. Attention
+      removes this by letting every output position compute its relevance to
+      every input position directly and simultaneously — via QK^T — with no
+      step depending on any other step's computation finishing first. This
+      restores full training parallelism across the sequence dimension,
+      something no recurrent architecture, gated or not, can offer.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Write the scaled dot-product attention formula and explain, term by term, what each piece is doing.</summary>
+    <div class="tl-answer">
+      Attention(Q,K,V) = softmax(QK^T/√d_k)V. QK^T computes a raw relevance
+      score between every query and every key via dot product; dividing by
+      √d_k rescales those scores to keep the softmax's gradient well-behaved
+      as d_k grows; softmax turns each row of scaled scores into
+      non-negative weights summing to 1; multiplying by V uses those weights
+      to combine the value vectors into the final output — one weighted
+      blend per query position.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the formula divide by √d_k specifically, rather than leaving the raw dot products unscaled?</summary>
+    <div class="tl-answer">
+      For larger d_k, the dot product QK^T tends to grow large in magnitude,
+      since it sums d_k roughly independent products. Large-magnitude inputs
+      push the softmax into a saturated regime where one score dominates
+      almost completely and the softmax's gradient becomes extremely small,
+      which stalls learning. Dividing by √d_k counteracts this scale growth,
+      keeping the softmax's inputs in a range where its gradient remains
+      usable throughout training, as noted by Vaswani et al. (2017).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What problem do time-series-specific transformer variants like the Temporal Fusion Transformer and Informer address, and how does each approach it?</summary>
+    <div class="tl-answer">
+      Both address the O(n²) time and memory cost of full attention, which
+      becomes a genuine practical constraint for long financial or macro
+      sequences. The Temporal Fusion Transformer (Lim et al., 2021) combines
+      attention with recurrent layers and dedicated variable-selection
+      networks, purpose-built for interpretable multi-horizon forecasting
+      with mixed input types. Informer (Zhou et al., 2021) introduces a
+      ProbSparse self-attention mechanism that avoids computing the full
+      n×n attention matrix by keeping only the most informative query-key
+      pairs, reducing complexity from O(n²) toward O(n log n).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A team observes that transformers dominate state-of-the-art language and vision benchmarks, and concludes a transformer will therefore outperform their well-tuned LSTM on a two-year daily FX return series. What's wrong with that reasoning?</summary>
+    <div class="tl-answer">
+      Transformers need substantially more data and compute than LSTMs to
+      realize their architectural advantage, and their dominance was
+      established on large text and vision corpora — datasets far larger
+      than a two-year daily FX series, which is short and extremely noisy by
+      comparison. Without enough data, a transformer's larger capacity can
+      produce more convincing overfitting rather than a genuine accuracy
+      gain, so the benefit over a well-tuned LSTM or classical baseline is
+      not guaranteed and must be tested empirically, out-of-sample, on that
+      exact series — the model's reputation in an unrelated domain is not
+      evidence about this specific, much smaller dataset.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, and Illia Polosukhin, <em>"Attention Is All You Need"</em>, Advances in Neural Information Processing Systems (NeurIPS), 2017 — the original transformer paper: scaled dot-product attention, multi-head attention, and positional encoding.</li>
+    <li>Bryan Lim, Sercan Ö. Arık, Nicolas Loeff, and Tomas Pfister, <em>"Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting"</em>, International Journal of Forecasting, 37(4), 2021 — the time-series-specific transformer variant referenced above, combining attention, recurrence, and variable-selection gating with an explicit interpretability goal.</li>
+    <li>Haoyi Zhou, Shanghang Zhang, Jieqi Peng, Shuai Zhang, Jianxin Li, Hui Xiong, and Wancai Zhang, <em>"Informer: Beyond Efficient Transformer for Long Sequence Time-Series Forecasting"</em>, Proceedings of the AAAI Conference on Artificial Intelligence, 2021 — the ProbSparse attention mechanism reducing attention cost for long sequences.</li>
+    <li>Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio, <em>"Neural Machine Translation by Jointly Learning to Align and Translate"</em>, ICLR, 2015 — the earlier alignment/attention mechanism in a recurrent encoder-decoder, the direct conceptual predecessor to the transformer's fully attention-based approach.</li>
+    <li>Ian Goodfellow, Yoshua Bengio, and Aaron Courville, <em>Deep Learning</em>, MIT Press, 2016 — background on sequence modeling and encoder-decoder architectures that motivate the shift to attention covered in this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="recurrent-networks-lstm-gru.html">← Recurrent Networks: LSTM &amp; GRU</a>
+    <a href="regularized-regression-lasso-ridge.html">Regularized Regression: Lasso &amp; Ridge →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

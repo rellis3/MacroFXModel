@@ -22,6 +22,8 @@
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -137,6 +139,11 @@
     that way).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A stationary series behaves like a rubber band — it might stretch a little in any given month, but it always has a natural resting length it wants to snap back toward, and that resting length doesn't secretly change over the years. A non-stationary series is more like a kite string being let out — there's no natural length it's trying to return to, it can just keep drifting further in whatever direction the wind happens to blow.</p>
+  </div>
+
   <p><strong>2. The unit root — why a random walk is not stationary.</strong>
   The simplest non-stationary model is the <strong>random walk</strong>:
   each step is the previous value plus an unpredictable, independent shock
@@ -189,6 +196,11 @@
     treated as \(I(1)\); their returns (differences) are typically \(I(0)\).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture flipping a coin every day: heads means take one step forward, tails means take one step back. After a thousand days you could be almost anywhere — there's no "home base" your position keeps drifting back toward, because every single step permanently sticks and adds to wherever you already were. That's a random walk, and it's exactly why a price level with no pull-back force can wander off with no fixed "normal" spot to return to.</p>
+  </div>
+
   <p><strong>3. Spurious regression — Granger &amp; Newbold (1974).</strong>
   Ordinary least squares (OLS) regression, and the classical machinery
   built on top of it (R², t-statistics, p-values), assumes the variables
@@ -212,6 +224,11 @@
   is not, by itself, evidence of anything when X and Y are both
   non-stationary price-like series.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two people who've never met can each wander in a wobbly, drifting path around a city all day, and if you plot how far each one has strayed from where they started, both lines might trend up together and look eerily related — purely because "wandering, unpredictable paths that drift over a long day" just tend to look similar to each other, with zero actual connection between the two walkers.</p>
+  </div>
 
   <p><strong>4. Correlation vs. cointegration — the crucial distinction.</strong>
   Correlation, as computed in a rolling-window Pearson coefficient, is
@@ -241,6 +258,11 @@
     limit — return correlation and cointegration answer different
     questions, and only the second one tells you whether a spread has an
     equilibrium to actually revert to.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Cointegration is the mathematical version of "these two things are tied together with a leash," even though each one individually wanders unpredictably. You can't predict where either price is heading on its own, but the gap between them behaves completely differently from either one alone — it has a normal size it keeps returning to, exactly the way a leash has a normal length even while both the dog and the walker are moving unpredictably.</p>
   </div>
 
   <p><strong>5. The Engle-Granger two-step method.</strong> Robert Engle
@@ -327,6 +349,11 @@
     change should be unrelated to its current level, and \(\gamma\) should
     be statistically indistinguishable from zero. The test is:
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The test is basically asking one question about the gap between the two prices: when the gap gets unusually wide, does it tend to shrink back afterward, or does it just keep going wherever it was already headed, like nothing happened? If the gap reliably shrinks back after getting stretched, that's the signature of a real leash pulling it in. If it doesn't, the gap is just wandering on its own with no leash attached at all.</p>
+  </div>
   <div class="tl-math">\[ H_0: \gamma = 0 \ \text{(unit root — not cointegrated)} \qquad\text{vs.}\qquad H_1: \gamma < 0 \ \text{(stationary — cointegrated)} \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c4"><code>H₀: γ=0</code><span>the null — spread has no memory, a random walk</span></div>
@@ -799,5 +826,28 @@
     <a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

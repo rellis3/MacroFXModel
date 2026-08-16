@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> (bias-variance framing)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -173,6 +175,11 @@
     entire lesson exists to fix.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine "studying" for a test by memorizing the exact answer key for last year's exam, word for word, instead of actually learning the subject. You'd get a perfect score on last year's exam — and probably do terribly on this year's, because you never learned the underlying material, just one specific answer sheet. A tree that's allowed to keep splitting forever does the same thing: it stops learning the general pattern and starts memorizing the exact training examples, noise included.</p>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">A small decision tree splitting the feature space</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree diagram: root node asks whether feature x1 is at most 5. If yes, go to a leaf predicting 0.2. If no, a second node asks whether feature x2 is at most 3, leading to two more leaves predicting 0.6 and 1.1 respectively.">
@@ -247,6 +254,12 @@
       </p>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A random forest is like asking a hundred different doctors for a diagnosis instead of just one. First, each doctor only reviews a randomly reshuffled subset of a patient's test results (bagging) — so no two doctors saw the exact same evidence. Second, at each step of their reasoning, each doctor is only allowed to consider a random handful of possible symptoms, not the entire list (random feature subsets) — so they don't all latch onto the one obvious symptom and reason identically. Then you take a vote across all hundred doctors. Any one doctor's weird individual mistake gets drowned out, while the pattern most of them independently notice survives.</p>
+  </div>
+
   <p>
     The forest's prediction is the plain average of all \(B\) trees' leaf
     predictions (majority vote, for classification):
@@ -279,6 +292,12 @@
     itself: it is the mechanism that lowers \(\rho\), which lowers the floor
     that adding more trees alone can never get below.
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you ask ten people who all read the exact same newspaper for their opinion, averaging their answers doesn't actually give you ten independent opinions — they're all repeating what the same source told them, so the "average" is barely more reliable than asking just one of them. But if you ask ten people who each got their information from a different, independent source, their combined average genuinely gets more trustworthy the more people you ask. Trees trained on similar data using similar rules are like the newspaper-readers — that's why simply growing more of them stops helping past a certain point unless you also make them see genuinely different things.</p>
+  </div>
+
   <p>
     This is a genuinely different mechanism from the AIC/BIC penalty covered
     in <a href="model-selection-aic-bic.html">Model Selection: AIC &amp;
@@ -325,6 +344,12 @@
       </p>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Mean decrease in impurity is like counting how many times a word shows up in a book to guess how important it is — quick to check, but a word like "the" shows up constantly without actually meaning much. Permutation importance is more like removing a word from every page and seeing how much the story stops making sense — slower to check, but a far more honest test of whether that word actually mattered.</p>
+  </div>
+
   <p>
     A useful side effect of bagging: since each tree only ever sees roughly
     63% of the rows in its bootstrap sample (as \(N\to\infty\), the chance
@@ -342,7 +367,7 @@
     <tr><td>\(I(S)\)</td><td>Impurity of a node — variance of the targets of the points currently in it, for regression.</td></tr>
     <tr><td>\(\Delta I(j,s)\)</td><td>Impurity reduction a candidate split (feature \(j\), threshold \(s\)) would produce.</td></tr>
     <tr><td>\(B\)</td><td>Number of trees grown in the forest.</td></tr>
-    <tr><td>\(m\)</td><td>Number of features randomly considered as split candidates at each node (\(m<p\)).</td></tr>
+    <tr><td>\(m\)</td><td>Number of features randomly considered as split candidates at each node (\(m < p\)).</td></tr>
     <tr><td>\(p\)</td><td>Total number of available features.</td></tr>
     <tr><td>\(\rho\)</td><td>(rho) Average pairwise correlation between the \(B\) trees' predictions — the variance floor a forest can't average away.</td></tr>
     <tr><td>OOB</td><td>Out-of-bag — the roughly 37% of rows a given bootstrap-trained tree never saw during training.</td></tr>
@@ -654,5 +679,28 @@
     <a href="gradient-boosting.html">Gradient Boosting →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

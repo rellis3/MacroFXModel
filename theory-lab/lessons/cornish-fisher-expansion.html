@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> (this lesson builds directly on its VaR definition)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -96,6 +98,11 @@
   about what to do when they aren't.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The plain Gaussian formula is like guessing how bad your worst day of the year will be using only "on average, how good or bad are my days" and "how much do my days usually wobble." That works fine if your days are all shaped the same, boringly symmetric way. It stops working the moment your bad days are a very different shape than your good days — which, for most real markets, they are.</p>
+  </div>
+
   <h3>Real returns have skew and fat tails</h3>
   <p>
   Two extra moments describe how a real return distribution departs from the normal shape the formula
@@ -113,6 +120,11 @@
   often than a bell curve predicts. Plugging \(\mu\) and \(\sigma\) alone into the Gaussian VaR formula
   throws this shape information away entirely; \(S\) and \(K\) never appear in it.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Skewness is "which direction are the surprises lopsided in" — negative skewness means the nasty surprises tend to be bigger than the pleasant ones, even if pleasant surprises happen more often. Kurtosis is "how often do genuinely extreme days happen, in either direction, compared to what a nice smooth bell curve would predict." Real markets are typically lopsided toward nasty surprises and have more extreme days than a bell curve expects — both facts a plain average-and-wobble summary completely ignores.</p>
+  </div>
 
   <h3>The Cornish-Fisher adjusted quantile</h3>
   <p>
@@ -140,6 +152,12 @@
   adjustment is purely a correction for how far the actual distribution's shape departs from normal;
   it adds nothing when there's no departure to correct for.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Going back to the tailor: the Cornish-Fisher formula is the exact recipe for how much to nudge that hem mark, based on measuring exactly how lopsided and how extreme this particular customer's proportions are. If the customer happens to be perfectly average in every way, the recipe correctly says "nudge it by zero" — you get the original mark back untouched.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(\mu, \sigma\)</td><td>Mean and standard deviation of the return series — unchanged from the plain Gaussian formula.</td></tr>
@@ -300,6 +318,11 @@
       mode is formally characterized in the literature (see Jaschke, 2002, in Further Reading) — Cornish-Fisher
       is a useful correction within a bounded range of \((S,K)\) inputs, not a universal fix for
       non-normality.
+
+      <div class="tl-eli5">
+        <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+        <p>Imagine the tailor's nudge-the-hem rule works great for normal amounts of lopsidedness, but if you feed it an absurdly extreme customer, the formula can get confused and tell you to make the "worse" hem mark end up higher than the "better" one — nonsense a real ruler would never produce. That's exactly what can happen here: for extreme enough skew or kurtosis, the adjustment can output a 99%-confidence loss number that's smaller than the 95%-confidence one, which is obviously wrong and a sign the formula has been pushed past where it's trustworthy.</p>
+      </div>
       </li>
       <li>
       <strong>Treating "more conservative" as automatically "more correct."</strong> The worked example
@@ -406,5 +429,28 @@
     <a href="quantile-regression.html">Quantile Regression →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

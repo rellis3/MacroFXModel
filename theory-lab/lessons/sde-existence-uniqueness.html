@@ -22,6 +22,8 @@
     <span>Prereqs: Itô's Lemma</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -169,6 +171,11 @@
     <tr><td>Strong solution</td><td>A solution \(X_t\) built as an explicit (measurable) function of the specific Brownian path \(W_t\) you were handed — the practical notion of "solution" used everywhere in this curriculum's simulations.</td></tr>
   </table></div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Lipschitz condition is like saying a hill can't be infinitely steep — a ball rolling down it can slide fast, but it can never suddenly teleport to a totally different spot. That rules out two different solutions branching off from the same starting point. The linear growth condition is a different promise: the hill can't get steeper and steeper without any limit as you go further out, the way a car's engine can't have literally unlimited horsepower. Without that second promise, the ball could accelerate away to infinity before you even finish watching it.</p>
+  </div>
+
   <h3>2. GBM's coefficients: Lipschitz and linear growth, with an honest caveat</h3>
   <p>
     Geometric Brownian motion — the process behind <code>black-scholes.html</code>
@@ -211,6 +218,11 @@
     Øksendal, Chapter 5) does not.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>GBM's coefficients are just "some fixed percentage of the current level" — like a savings account that grows by exactly the same percentage rate no matter how big the balance gets. That kind of same-percentage-every-time relationship is about as gentle and predictable as a slope can be, which is exactly why it sails through both conditions with room to spare. The honest caveat is just: "gentle everywhere I checked" isn't quite the same as "gentle absolutely everywhere," and a fully rigorous proof still has to double-check the process doesn't secretly explode way out at the far edges.</p>
+  </div>
+
   <h3>3. A coefficient that fails: the square-root diffusion</h3>
   <p>
     Contrast GBM's linear \(\sigma(x)=\sigma x\) with the square-root
@@ -249,6 +261,11 @@
     strictly positive.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Near zero, the square-root function is almost vertical — like a cliff edge rather than a gentle hill. A tiny nudge in \(x\) near zero produces a huge jump in \(\sqrt{x}\), and that ratio just keeps getting worse the closer you get to zero. No single "speed limit" \(K\) can describe a slope that's heading toward straight-up-and-down, so this coefficient genuinely breaks the Lipschitz rule right where it matters most for an interest rate: the boundary at zero.</p>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">What the linear-growth condition is actually protecting against</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart comparing a bounded geometric-Brownian-motion-style path, which wanders within a narrow band near its starting value across the whole time axis, against a deterministic path following dX/dt=X squared, which stays small for most of the time axis then rockets upward and diverges to infinity as time approaches 1, illustrating a finite-time blow-up caused by violating the linear growth condition.">
@@ -286,6 +303,11 @@
       the deterministic (drift-only) version of exactly the failure the
       growth condition in step 1 rules out for the full stochastic case.
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a car whose engine gets more powerful the faster it's already going — not just faster, but faster at an accelerating rate. It doesn't just speed off into the distance eventually; it can hit an actual wall of infinite speed at some exact, finite moment, and after that moment there's genuinely nowhere for the story to continue. That's what violating the growth condition means: not "hard to simulate," but "the road itself stops existing" past a specific point in time.</p>
   </div>
 
   <div class="tl-box example">
@@ -474,5 +496,28 @@
     <a href="sde-numerical-schemes.html">Numerical Schemes: Euler-Maruyama &amp; Milstein →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

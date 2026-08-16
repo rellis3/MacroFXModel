@@ -22,6 +22,8 @@
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -172,6 +174,11 @@
     and "time remaining" move in opposite directions.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Theta isn't a separate ingredient someone tossed into the option-pricing recipe — it just falls out of the same equation that already gives you delta and gamma, the way the third side of a triangle is determined the moment you've fixed the other two. If you already know an option's price, delta, and gamma, theta comes along for free; nothing extra needs to be measured or guessed.</p>
+  </div>
+
   <h3>2. The closed-form theta for a European call</h3>
   <p>
     Solving the PDE explicitly (the same derivation that produces the
@@ -253,6 +260,11 @@
     though it was never wrong about direction — theta wins.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Theta is rent, not a random tax. You're paying, every single day, for the privilege of owning a position that gains extra when the underlying swings around a lot. If it actually swings around as much as you paid for (or more), the rent was a fair deal. If it stays unusually calm, you paid rent for a wild ride that never happened — and you lose money even though you never had the direction wrong.</p>
+  </div>
+
   <div class="tl-compare">
     <div class="tl-compare-card green">
       <h4>Realized vol &gt; implied vol</h4>
@@ -281,6 +293,11 @@
     with the same three checkpoints (30, 7, and 1 day to expiry) the Gamma
     Exposure lesson used for gamma.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Theta doesn't drain out at a steady drip like a leaky faucet — it drains faster and faster the closer you get to the very end, like a countdown timer that speeds up. The last few days before expiry lose value far more per day than a stretch of days three weeks out, even though it's the exact same number of days ticking by.</p>
+  </div>
 
   <h3>4. Weekend theta — a practitioner quirk, not a universal rule</h3>
   <p>
@@ -319,6 +336,11 @@
     above, just expressed as a spread between two expiries instead of a
     single delta-hedged option.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A calendar spread is like renting out a fast-melting ice cube while holding onto a slow-melting one of your own. You collect rent on the fast-melting one every day, and as long as nothing dramatic happens, your slow-melting one barely shrinks in comparison — so you pocket the difference. The risk is if things move too far from where you set it up, the trade stops being about melting speed and starts being about something you didn't sign up for.</p>
+  </div>
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">ATM theta magnitude vs. time to expiry</div>
@@ -823,6 +845,29 @@
   buildCurve();
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

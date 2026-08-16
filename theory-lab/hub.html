@@ -598,9 +598,14 @@
         <p>Learning the Bellman equation's values from raw experience, one step at a time, without knowing the environment's transition probabilities.</p>
       </a>
       <a class="tl-card" href="lessons/policy-gradients-actor-critic.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Reinforcement Learning 3 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Reinforcement Learning 3</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Policy Gradients &amp; Actor-Critic Methods</h3>
         <p>Optimizing a policy directly, including a continuous one like a position size — and why a powerful optimizer says nothing about what it's optimizing.</p>
+      </a>
+      <a class="tl-card" href="lessons/deep-q-networks.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Reinforcement Learning 4 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Deep Q-Networks: Function Approximation for Value Learning</h3>
+        <p>Swapping Q-learning's lookup table for a neural network so it scales past toy state spaces — and the instability tricks (replay, target networks) that make it actually converge.</p>
       </a>
     </div>
   </div>
@@ -785,6 +790,43 @@
         <div class="tl-card-toprow"><div class="tl-card-num">Collateral, Funding &amp; Rehypothecation 2 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Rehypothecation &amp; Collateral Chains</h3>
         <p>The Lehman case, the US/UK regulatory gap, and why a collateral re-use chain is a real-world instance of the same contagion network already built in this curriculum.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat" data-level="advanced">
+    <h2>27 · Deep Learning &amp; Modern ML for Trading</h2>
+    <div class="tl-cat-sub">The neural-network and modern-ML machinery behind current systematic research — sequence models, attention, regularized linear methods, unsupervised structure discovery, anomaly detection, and text-derived signals — taught as methods to understand, not strategies with an edge.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/recurrent-networks-lstm-gru.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 1</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Recurrent Networks for Sequential Data: LSTM &amp; GRU</h3>
+        <p>Why plain RNNs forget (the vanishing-gradient problem) and how gated memory cells let a network carry information across long stretches of a price or macro series.</p>
+      </a>
+      <a class="tl-card" href="lessons/attention-transformers-time-series.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 2</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Attention &amp; Transformers for Time Series</h3>
+        <p>Letting a model weigh every past time step directly instead of compressing history into one recurrent state — and the temporal-fusion architectures built on it.</p>
+      </a>
+      <a class="tl-card" href="lessons/regularized-regression-lasso-ridge.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 3</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Regularized Regression: LASSO &amp; Ridge</h3>
+        <p>Why shrinking coefficients toward zero can beat plain OLS when predictors are numerous or collinear — and why LASSO's diamond-shaped constraint zeroes coefficients outright while Ridge's circle only shrinks them.</p>
+      </a>
+      <a class="tl-card" href="lessons/clustering-market-structure.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 4</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Clustering for Market Structure: k-Means &amp; Hierarchical Clustering</h3>
+        <p>Discovering regime and instrument groupings without labels — and how this is the same machinery already used, applied narrowly, inside this curriculum's Hierarchical Risk Parity lesson.</p>
+      </a>
+      <a class="tl-card" href="lessons/anomaly-detection-isolation-autoencoders.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 5</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Anomaly Detection: Isolation Forests &amp; Autoencoders</h3>
+        <p>Flagging bad ticks, fat-finger prints, and structural breaks by how easily a point isolates from the rest of the data, or how badly a compressed reconstruction of it fails.</p>
+      </a>
+      <a class="tl-card" href="lessons/nlp-trading-signals-sentiment.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 6 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</h3>
+        <p>Turning central-bank statements and news into numeric features — word embeddings, transformer-based sentiment models, and the very real lag/lookahead traps in backtesting them.</p>
       </a>
     </div>
   </div>

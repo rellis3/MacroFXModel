@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -103,6 +105,11 @@
     <strong>Nyquist frequency</strong> — carry independent information.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Play a chord on a piano and it sounds like one messy sound — but your ear can still pick out that it's actually several individual notes played together. The Fourier transform does exactly that mathematically: it takes one squiggly line of numbers and tells you which "notes" (frequencies) are hiding inside it, and how loud each one is. A note that's genuinely present in the sound reinforces itself when you check for it; a note that isn't there mostly cancels out to nothing.</p>
+  </div>
+
   <h3>2. Power spectral density and the periodogram</h3>
   <p>
     \(X(f)\) itself is a complex number carrying both magnitude and phase; for the question "which frequencies
@@ -130,6 +137,11 @@
     outsized share of the series' total variance relative to a flat (white-noise) baseline.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The periodogram is just a bar chart of "how much of each note is in this sound." A tall bar at some frequency means that cycle is doing a lot of the work in the series; a flat, low chart everywhere means no particular cycle stands out — the series looks like static, with no one rhythm dominating.</p>
+  </div>
+
   <div class="tl-formula-parts">
     <div class="tl-fp blue"><div class="tl-fp-term">x_t</div><div class="tl-fp-name">Time domain</div><div class="tl-fp-desc">The series as observed — value vs. calendar time</div></div>
     <div class="tl-fp amber"><div class="tl-fp-term">X(f)</div><div class="tl-fp-name">Frequency domain</div><div class="tl-fp-desc">The exact same information, rewritten as amplitude/phase vs. frequency</div></div>
@@ -155,6 +167,11 @@
     average trades timing precision for less noise. A single sharp, unsmoothed periodogram spike from one short
     sample is weaker evidence of a real cycle than the same spike surviving after averaging across several
     independent segments.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You might expect that measuring something with a lot more data always makes the measurement more precise — but the raw periodogram breaks that expectation. More data gives you more frequencies to check, not a sharper answer at any one of them. Averaging several such noisy readings together, not just collecting more of them, is what actually sharpens the picture.</p>
   </div>
 
   <div class="tl-symbols">
@@ -424,5 +441,28 @@
     <a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

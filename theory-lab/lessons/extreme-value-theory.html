@@ -22,6 +22,8 @@
     <span>Prereqs: Merton Jump-Diffusion Model, Kelly Criterion &amp; Position Sizing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -139,6 +141,11 @@
   Expected Shortfall after the 2008 crisis specifically exposed VaR's tail-blindness in practice.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>VaR just answers "how bad does a really bad day have to be before I call it one of my worst 1%?" — it draws a line and stops there. CVaR asks the more useful follow-up: "okay, and once I'm past that line, how bad does it typically get?" Only knowing where the line is can hide a lot — two situations can have the exact same line, but one barely crosses it on its worst days while the other blows way past it, and VaR alone can't tell them apart.</p>
+  </div>
+
   <h3>Why the plain historical (empirical) method breaks down far into the tail</h3>
   <p>
   The most direct way to estimate VaR or CVaR from data — and exactly what this repo's
@@ -161,6 +168,11 @@
   reporting the identity of your single worst historical day and calling it a statistic. That's the
   precise problem EVT exists to address.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you ask "what's a typical Tuesday like," a couple hundred Tuesdays gives you a solid answer. But if you ask "what's the worst thing that could ever happen on a Tuesday," a couple hundred Tuesdays probably hasn't even shown you one. Reading that answer straight off your data, this far out, isn't really measuring anything — it's just naming whatever your single worst day happened to be, which could easily have been different by luck alone.</p>
+  </div>
 
   <h3>The Fisher-Tippett-Gnedenko theorem, stated conceptually</h3>
   <p>
@@ -259,6 +271,11 @@
   model.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Peaks-over-threshold means picking a high bar and only paying attention to what happens once things clear it — throw away all the ordinary, everyday data and study just the overshoot. It turns out that overshoot pattern, no matter what the original data looked like, always settles into one of three basic shapes: a genuinely scary heavy tail, a plain medium tail, or a tail with a hard ceiling. That one shape-defining number (ξ) is the single most important thing this whole method produces.</p>
+  </div>
+
   <h3>From a fitted GPD back to VaR and CVaR</h3>
   <p>
   Once \((\xi, \beta)\) are fitted, there's a closed-form way to convert them into a VaR estimate at
@@ -302,6 +319,11 @@
     <strong>The honesty check:</strong> everything in these formulas is either observed (\(u\), \(n\),
     \(n_u\)) or fitted (\(\xi\), \(\beta\)) from a small number of tail points. The further \(p\) sits
     beyond your data, the more the answer is the fitted shape talking, not anything you actually saw.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once you've fitted the tail's shape, you can plug in any "how rare" level you like — even one rarer than anything in your data — and the formula will happily hand you a number. That's genuinely useful, but it's worth remembering it's a guess built by stretching a pattern further than you've actually watched it go, not a measurement of something you observed.</p>
   </div>
 
   <div class="tl-box example">
@@ -699,5 +721,28 @@
     <a href="../hub.html">Back to hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

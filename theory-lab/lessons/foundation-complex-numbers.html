@@ -22,6 +22,8 @@
     <span>Prereqs: Trigonometry, Logarithms &amp; Exponentials</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -155,6 +157,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of \(i\) as a special ingredient: it's the answer to a question every regular number fails — "what number, times itself, makes negative one?" A complex number like \(3+4i\) is just two numbers glued together, a regular part and an \(i\) part, kept separate like apples and oranges — you add apples to apples and oranges to oranges.</p>
+  </div>
+
   <h3>The complex plane, modulus, and argument</h3>
   <p>
     Plot a complex number \(z=a+bi\) as the point \((a,b)\) on a
@@ -187,6 +194,11 @@
     \[ a = |z|\cos\theta \qquad\qquad b = |z|\sin\theta \]
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you drop a pin on a map, you can describe where it landed two ways: "go 3 blocks east and 4 blocks north" (that's the real and imaginary parts), or "walk 5 blocks in this exact direction" (that's the modulus and the angle). Both describe the very same spot — they're just two different sets of directions to get there.</p>
+  </div>
+
   <h3>Euler's formula</h3>
   <p>
     <strong>Euler's formula</strong> states that raising \(e\) to an imaginary
@@ -206,6 +218,12 @@
     from the previous lesson). Euler's formula says these are, in a precise
     sense, the same object.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Euler's formula is like finding out that two toys you thought were completely different — a toy car that just drives straight ahead, always growing faster (that's \(e^x\)), and a spinning top that goes round and round in a circle (that's cosine and sine) — are secretly built from the exact same gears underneath.</p>
+  </div>
+
   <div class="tl-box intuition">
     <div class="tl-icon-badge blue">💡</div>
     <div class="tl-box-label">Where it comes from — the Taylor-series sketch</div>
@@ -262,6 +280,11 @@
     remarkable: not that it's useful on its own for this curriculum's purposes,
     but that it's a genuine, surprising confirmation that these apparently
     unrelated ideas are deeply connected underneath.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Mathematicians love \(e^{i\pi}+1=0\) because it's like discovering that five of your favorite, totally different toys — one from the growing shelf, one from the circle shelf, one from the counting shelf — all snap together perfectly into one tiny box, with nothing left over and nothing missing.</p>
   </div>
 
   <div class="tl-symbols"><table>
@@ -563,6 +586,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

@@ -22,6 +22,8 @@
     <span>Prereqs: Linear &amp; Quadratic Programming (loosely — mainly needs calculus prerequisites)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -147,6 +149,11 @@
     category, applied here to an interval instead of a single point.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Finding the exact area under a curvy line can be hard, but finding the area of a bunch of thin trapezoid-shaped slices is easy, ordinary geometry. The trapezoidal rule just slices the area into narrow strips, pretends the top of each strip is a straight line instead of the true curve, and adds up all the slices — the thinner the slices, the closer the answer gets to the truth.</p>
+  </div>
+
   <h3>Simpson's rule — fitting parabolas instead of straight lines</h3>
   <p>
     A straight line is the simplest possible curve to fit through two points.
@@ -209,6 +216,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Simpson's rule does the same slicing trick as the trapezoidal rule, but instead of a straight line across the top of each slice, it fits a gently curved arc through three points at a time. A curved arc hugs a real curvy line much more closely than a straight edge can, so for the same number of slices, Simpson's rule usually gets you a noticeably more accurate answer.</p>
+  </div>
+
   <h3>Monte Carlo integration — the same job, sampled instead of gridded</h3>
   <p>
     Recall that an <strong>expectation</strong> of a function \(g\) of a
@@ -252,6 +264,11 @@
     fully next.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of slicing the area into neat, evenly-spaced strips, Monte Carlo throws random darts across the region and averages how high the curve is wherever they land. It sounds like a totally different approach, but it's secretly answering the exact same question — "what's the average height, times the width" — just using random sampling instead of a tidy grid.</p>
+  </div>
+
   <h3>The curse of dimensionality</h3>
   <p>
     Trapezoidal and Simpson's rule, as derived above, are one-dimensional
@@ -288,6 +305,11 @@
     quadrature, which is both more accurate and far cheaper per unit of
     accuracy in that regime.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A grid that needs 10 points to cover one dimension needs 10×10 for two dimensions, 10×10×10 for three, and so on — the cost multiplies out of control as you add more dimensions, until it's simply impossible to compute. Random sampling doesn't have that problem: throwing a million random darts costs the same whether they're landing in 1 dimension or 10, which is exactly why anything with lots of moving parts gets priced with random sampling instead of a grid.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(f(x)\), \(g(x)\)</td><td>The function being integrated — a density, a payoff, or a combination of the two.</td></tr>
@@ -673,6 +695,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

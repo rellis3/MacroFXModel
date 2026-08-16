@@ -22,6 +22,8 @@
     <span>Prereqs: Correlation &amp; Linear Regression</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -136,6 +138,12 @@
     that difference is the whole reason quantitative models default to log
     returns almost everywhere.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>There are two ways to say how much something changed. A simple return is just "went up 10%" — easy to picture. A log return is a slightly different way of counting the same change using a special math trick, and it turns out to behave much more nicely when you chain a bunch of them together.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(P_t\)</td><td>Price (or index level, NAV, exchange rate) at time \(t\).</td></tr>
@@ -159,6 +167,12 @@
     made the +50%/-50% example in the intuition box misleading if you tried
     to average the raw numbers.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you go up 10% one day and up 10% the next, you don't just get 20% total — you get a little extra bonus on top, because the second day's 10% grew off an already-bigger pile of money. That leftover bonus bit is the "cross term," and it's exactly why you can't just add simple percentages together across days.</p>
+  </div>
+
   <p>
     <strong>Why log returns do add across time.</strong> This is the single
     most useful property in this primer, and it falls straight out of one
@@ -184,6 +198,11 @@
     operation to build statistics and probability theory on top of than the
     multiplicative compounding simple returns require.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Log returns are built specially so that leftover bonus bit never shows up — add up log returns from a whole bunch of days in a row, and you get exactly the log return for the whole stretch, no extra bit left over, like stacking blocks that always fit together perfectly.</p>
+  </div>
 
   <p>
     <strong>Arithmetic mean vs. geometric mean.</strong> Given a series of
@@ -212,6 +231,12 @@
     mechanical consequence of multiplying instead of adding, the same
     mechanism the +50%/−50% example showed directly.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine grading a video game player two ways: "what's their typical single round score" (that's the arithmetic mean) versus "if every round had scored exactly the same, what score would give the exact same final total" (that's the geometric mean). These give different numbers whenever the rounds bounce around a lot instead of being steady.</p>
+  </div>
+
   <p>
     <strong>Deriving the gap: volatility drag.</strong> To see exactly where
     the gap comes from — and to see that it's driven by variance
@@ -281,6 +306,11 @@
     variance before it ever reaches the compounding investor.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Bumpy, unpredictable growth quietly eats into your results compared to smooth, steady growth — even if they average out to look the same on paper. The bumpier things are, the bigger the bite taken out of your real, actual growth. This hidden bite is called volatility drag.</p>
+  </div>
+
   <div class="tl-solid amber">
     <strong>The trap:</strong> a gain and an equal-sized loss are not opposites
     once you're compounding. +50% then −50% is a 0% arithmetic average and a
@@ -331,6 +361,11 @@
     volatility, because volatility scales with the square root of the
     horizon, not the horizon itself.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you know how wobbly something is in one day, you can't just multiply that wobbliness by the number of days to guess how wobbly it'll be over a month — you multiply by the square root of the number of days instead. So a month (about 20 days) isn't 20 times wobblier than a day, it's only about 4.5 times wobblier, since √20 ≈ 4.5.</p>
+  </div>
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Arithmetic mean vs. compounded (geometric) growth</div>
@@ -679,6 +714,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

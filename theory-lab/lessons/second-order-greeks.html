@@ -22,6 +22,8 @@
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -89,6 +91,11 @@
       hedging. The other four are genuinely more of a curiosity for most
       traders — worth knowing they exist, rarely worth tracking daily.
     </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Gamma already asks "if price moves, how much does my hedge ratio need to change?" These six Greeks ask that same kind of question about the other two things that can also change on their own — how jumpy the market feels (volatility) and how much time is left. Two of them, Vanna and Charm, matter because they explain real trading that happens even on a day when the price itself barely moved at all.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -253,6 +260,11 @@
     exactly why Vanna is worth a single name rather than two.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you climb a hill and measure "how much does my altitude change per step north" versus "how much does my altitude change per step east," those are naturally different questions. But there's a special, provably-true fact about smooth hills: how your northward slope changes as you walk east always equals how your eastward slope changes as you walk north. Vanna is exactly that fact applied to option prices — asking it two different ways is guaranteed to land on the same number.</p>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(\Delta,\ \Gamma,\ \Theta,\ \nu,\ \rho\)</td><td>The five first-order Greeks from the Black-Scholes lesson — Delta, Gamma, Theta, Vega, Rho.</td></tr>
     <tr><td>\(d_1, d_2\)</td><td>The same intermediate quantities defined in the Black-Scholes lesson — reused here unchanged.</td></tr>
@@ -394,6 +406,11 @@
     when spot itself has barely moved, exactly like the scenario above.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A vanna flow is dealer buying or selling that gets triggered purely because the market suddenly feels more nervous or calmer — not because the price actually went anywhere. If you saw a stock get bought up on a day it barely moved, that's not proof someone knows a rally is coming; it might just be dealers rebalancing because volatility itself ticked up.</p>
+  </div>
+
   <h3>Dollar Charm exposure</h3>
   <p>
     The dollar delta-shift per day passing, aggregated across the open
@@ -427,6 +444,11 @@
     calendar window the dealer-GEX lesson flagged for gamma-driven pinning
     and squeeze effects.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A charm flow is dealer buying or selling that happens purely because a day went by — no price move, no volatility move, just the calendar ticking forward. It's like a parking meter that keeps draining even while your car sits perfectly still; time alone is enough to force the dealer to adjust their hedge, and that effect gets stronger the closer expiry gets.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -606,5 +628,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

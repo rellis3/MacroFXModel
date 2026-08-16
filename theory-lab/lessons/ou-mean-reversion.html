@@ -22,6 +22,8 @@
     <span>Prereqs: none required, EMH lesson helpful for framing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -215,6 +217,11 @@
     \[ dX_t = \sigma\,dW_t \quad (\text{random walk: no drift term, no memory of } \mu) \]
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Every tiny step, the price does two things at once: it gets a little shove back toward "normal" (bigger shove if it's currently far from normal), and it gets a random jolt in some unpredictable direction. Drift is the shove; diffusion is the jolt. A random walk is what's left if you remove the shove entirely — nothing but jolts, so there's nothing keeping it near any particular level.</p>
+  </div>
+
   <div class="tl-compare">
     <div class="tl-compare-card blue">
       <h4>OU process (θ &gt; 0)</h4>
@@ -263,6 +270,11 @@
     (large \(\sigma\)) and quick to revert (large \(\theta\)), and the two combine
     into how wide its resting range actually is.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Leave the ball on its rubber band jiggling long enough, and it settles into a stable "typical range" around the post — not a fixed point, since the jostling never stops, but a predictable cloud of likely positions. A stronger rubber band (\(\theta\)) squeezes that cloud tighter; rougher jostling (\(\sigma\)) spreads it wider. So "high volatility" and "fast mean reversion" can both be true at once — loud jostling plus a strong band still keeps the ball fairly close to home.</p>
+  </div>
 
   <h3>Deriving the half-life</h3>
   <p>
@@ -322,6 +334,11 @@
     shrink, because nothing is pulling it back.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Half-life answers one question: "how long until this gap to normal is cut in half?" It's the same idea as a radioactive substance's half-life, just applied to a price gap instead of atoms decaying. A short half-life means a snappy series that closes gaps fast; a long half-life means a lazy one where today's gap is still mostly there weeks from now.</p>
+  </div>
+
   <h3>The discrete-time analogue: AR(1)</h3>
   <p>
     You almost never fit the continuous-time SDE directly to daily bars — instead
@@ -367,6 +384,11 @@
     negative there, which is the algebra's way of telling you the OU model doesn't
     apply.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You almost never fit the fancy continuous-time equation directly — instead you run the simplest regression there is, "predict today's value from yesterday's," and then translate the result into the rubber-band language. A coefficient close to 1 means yesterday almost fully explains today (weak pull-back, slow reversion); a coefficient close to 0 means yesterday barely matters (strong pull-back, fast reversion).</p>
+  </div>
 
   <div class="tl-solid red">
     <strong>The trap:</strong> a fitted \(\phi \ge 1\) doesn't mean "very slow mean
@@ -636,5 +658,28 @@
     <a href="hurst-variance-ratio.html">Hurst Exponent &amp; Variance Ratio Test →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

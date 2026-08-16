@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -109,6 +111,11 @@
   and legal, within limits, rather than being some kind of edge-case abuse.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Segregated custody is like a coat check that hangs your coat on a labeled hook and gives it back to you, untouched, at the end of the night. Rehypothecation is like a coat check that's allowed to lend your coat to another customer for a few hours while you're inside, as long as they get it back to the hook before you ask for it. Most of the time nobody notices the difference — until the coat check itself runs into trouble, and suddenly it matters a great deal whether your specific coat was ever actually "just sitting on the hook" or was out being used by somebody else.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>The Lehman Brothers case, 2008</h2>
   <p>
@@ -136,6 +143,11 @@
     widely documented, is the structural fact: LBIE's rehypothecation exposure under the then-prevailing UK
     regime is <em>the</em> widely-cited case that crystallized rehypothecation risk for regulators and market
     participants — not a numbers-precise case study, but the real episode that made an abstract risk concrete.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine dropping your bike off at a bike shop for storage, under rules that let the shop lend it out to other customers. Then the shop suddenly goes out of business. You didn't do anything wrong, and you thought your bike was just sitting there — but now you're standing in line with everyone else the shop owes money to, waiting to find out if, or when, you get your actual bike back. That's roughly what happened to clients whose collateral had been rehypothecated when Lehman's European arm collapsed.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -175,6 +187,11 @@
   much of a client's own collateral the broker was permitted to use for its own purposes — a structural
   difference that mattered enormously once LBIE actually failed.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of it like two different neighborhoods with two different rules about how many times a landlord can re-rent out a spare room you're already renting. One neighborhood says "you can only sublet up to a set, fairly small amount tied to what your tenant already owes you." The other neighborhood, at the time, had no such limit written into the rulebook at all — the landlord and tenant could agree to almost anything. Same basic activity, very different amount of protection depending on which neighborhood's rules applied.</p>
+  </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Collateral chains and the re-use multiplier</h2>
@@ -250,6 +267,11 @@
     directions at once — B (who is owed by C) and D (who was relying on C's pledge) — not just a single
     bilateral relationship.
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture one $20 bill getting passed between four friends as an "IOU chip" — friend 1 hands it to friend 2 as a promise, friend 2 hands the same bill to friend 3 as their own promise, and so on. There's still only one $20 bill in the world, but now four people are all quietly counting on it existing and being handed back when asked. If the bill gets lost partway down the chain, everyone downstream of that point suddenly has a promise nobody can actually keep.</p>
   </div>
 
   <div class="tl-solid blue">
@@ -416,5 +438,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

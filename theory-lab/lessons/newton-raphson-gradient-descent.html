@@ -22,6 +22,8 @@
     <span>Prereqs: Optimization Basics, Calculus for Finance</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -159,6 +161,11 @@
     small tolerance you choose in advance.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you're trying to find exactly where a hilly path crosses ground level, but you can only see a little slice of the path at a time. Newton-Raphson's trick: look at how steep the path is right where you're standing, pretend it keeps going in a perfectly straight line at that same steepness, and walk along that imaginary straight line until it hits ground level. That's your next guess, and you repeat.</p>
+  </div>
+
   <h3>Why it converges so fast — quadratic convergence</h3>
   <p>
     Near an actual root \(x^\*\), a smooth function is very well approximated
@@ -184,6 +191,11 @@
     guarantee — it describes what happens once \(x_n\) is already in a
     neighborhood of the true root where the tangent-line approximation is
     good. Far from the root, none of this speed guarantee applies.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once you're close to the real answer, Newton-Raphson gets dramatically more accurate with every single step — roughly doubling the number of correct digits each time, like going from being off by a dollar, to a penny, to a hundredth of a penny, in just three moves. The catch is that speed only kicks in once you're already reasonably close; far from the answer, none of that guarantee applies.</p>
   </div>
 
   <h3>Where Newton-Raphson fails</h3>
@@ -277,6 +289,11 @@
     \[ f(x) = (x-3)^2 \quad\Rightarrow\quad f'(x) = 2(x-3) \quad\Rightarrow\quad x_{n+1} = x_n - \alpha \cdot 2(x_n - 3) \]
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Gradient descent is like finding the bottom of a valley blindfolded, only able to feel which way is downhill right under your feet. You take a step that direction, feel again, take another step, and repeat. How big a step you take each time — the learning rate — is the one thing you get to choose in advance, and it makes all the difference.</p>
+  </div>
+
   <h3>The learning-rate tradeoff</h3>
   <p>
     \(\alpha\) is the single most important knob in gradient descent, and
@@ -310,6 +327,11 @@
     converges. The interactive chart below lets you see exactly this
     behavior on the real numbers, not just the description of it.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Take steps too small and you'll shuffle toward the bottom of the valley forever, safe but painfully slow. Take steps too big and you can stride right over the valley floor and end up higher on the far side than where you started — and if you keep overshooting harder each time, you'll bounce away from the valley entirely instead of settling into it.</p>
+  </div>
 
   <h3>Newton's method for optimization — the bridge between the two ideas</h3>
   <p>
@@ -347,6 +369,11 @@
     plain gradient descent, and its many refinements, remain the workhorse for
     large-scale machine learning where \(p\) can run into the millions).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Plain gradient descent only feels the slope under its feet and has to guess how big a step to take. Newton's method for optimization also feels the curvature of the ground — is it a gentle slope or a sharp bowl — and uses that extra information to pick the perfect step size automatically, no guessing required. The catch is that "feeling the curvature" is expensive to compute when there are millions of directions to check at once.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(f(x)\)</td><td>The function whose root (Newton-Raphson) or minimum (gradient descent, Newton's method for optimization) is being sought.</td></tr>
@@ -727,6 +754,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

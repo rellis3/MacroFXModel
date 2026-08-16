@@ -22,6 +22,8 @@
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion, Existence &amp; Uniqueness of SDE Solutions, Bootstrapping the Yield Curve, Curve Fitting: Nelson-Siegel &amp; Svensson</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -124,6 +126,11 @@
     being used in, not on which one looks more mathematically elegant.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Vasicek says the interest rate is a ball on a string, always pulled back gently toward some average level, but the string doesn't stop random jostles from occasionally shoving the ball below zero. For decades that looked like an obvious flaw — how can borrowing money cost less than nothing? Then real-world rates actually did go negative for years, and the "flaw" turned out to just be an honest description of something that really happens.</p>
+  </div>
+
   <h3>2. CIR — a diffusion that shrinks to zero at the boundary</h3>
   <div class="tl-math">
     \[ dr_t = a(b-r_t)\,dt + \sigma\sqrt{r_t}\,dW_t \]
@@ -140,7 +147,7 @@
     the rate negative gets progressively weaker exactly as the rate
     approaches the boundary it isn't supposed to cross. Combined with a
     positive drift pulling the rate back up (since \(a(b-r_t)>0\) whenever
-    \(r_t<b\)), this can — under one additional condition — keep the process
+    \(r_t < b\)), this can — under one additional condition — keep the process
     strictly positive for all time.
   </p>
   <p>
@@ -163,6 +170,12 @@
     boundary — the mechanism helps, but it isn't a free, parameter-independent
     guarantee.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>CIR is like a car whose brakes get stronger and stronger the closer it gets to a wall — as the rate nears zero, the random jostling shrinks toward nothing, so there's less and less shove available to actually push it through. The Feller condition is just the check that the brakes (the pull back toward a healthy positive average) are strong enough relative to how hard the jostling pushes — if they are, the car never quite touches the wall.</p>
+  </div>
+
   <div class="tl-solid red">
     <strong>Cross-link to lesson 1's honesty check:</strong> \(\sigma\sqrt{r_t}\)
     is exactly the square-root diffusion flagged in
@@ -177,6 +190,12 @@
     of that earlier lesson's caveat, landing on a model this lesson actually
     uses.
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Lipschitz condition from earlier in this sequence is a promise that a coefficient's slope never gets infinitely steep. CIR's \(\sqrt{r}\) term breaks that promise exactly at \(r=0\), where the graph goes nearly vertical — so CIR needs a separate, more forgiving theorem (Yamada-Watanabe) to guarantee it's still a well-defined, genuine process, rather than the standard one used everywhere else in this sequence.</p>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(r_t\)</td><td>The instantaneous short rate — the interest rate for an infinitesimally short borrowing/lending horizon, the fundamental building block every bond price in <code>yield-curve-construction.html</code> is derived from.</td></tr>
     <tr><td>\(a\)</td><td>Mean-reversion speed — how quickly the rate is pulled back toward its long-run level \(b\).</td></tr>
@@ -217,6 +236,11 @@
     essentially never fits an arbitrary observed initial term structure
     exactly.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Vasicek and CIR each predict one fixed "natural" shape for the whole yield curve, and real curves almost never match that shape exactly on any given day. Hull-White's fix is to stop insisting on one fixed target level and instead let that target level change over time, dialed in precisely so the model's prediction lines up with today's actual market curve before letting the randomness take over from there.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Vasicek vs. CIR: one simulated short-rate path each, identical shocks and parameters</div>
@@ -427,5 +451,28 @@
     <a href="fokker-planck-equation.html">The Fokker-Planck Equation →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

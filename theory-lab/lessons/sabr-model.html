@@ -22,6 +22,8 @@
     <span>Prereqs: The Heston Model</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -172,6 +174,11 @@
     exchange gets an implied-vol formula you can write on a whiteboard.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>SABR describes two things wiggling together: the forward price, and how jumpy that forward currently is — and that jumpiness is itself allowed to randomly drift around, linked to the price by a correlation dial. It's the same basic idea as Heston's "give volatility its own random life," just built with a simpler, looser set of rules on purpose, so the resulting formula stays simple enough to write on a whiteboard instead of needing a computer.</p>
+  </div>
+
   <h3>2. What each parameter controls — backbone, skew, curvature</h3>
   <p>
     The four parameters are not four interchangeable dials on the same knob —
@@ -240,6 +247,12 @@
     than treating it as a free parameter to fit — the practical reason why is
     explained after the closed-form formula below.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Beta answers a narrow question: as the underlying price itself rises or falls, does its jumpiness scale up and down in percentage terms, or stay the same in absolute terms? β=1 says "percentage moves matter" — a $1,000 stock and a $10 stock swing very differently in dollar terms even at the same volatility. β=0 says "absolute moves matter, full stop," regardless of the level — which turns out to describe interest rates better, especially when rates sit near or below zero, where "a percentage of a rate near zero" barely means anything.</p>
+  </div>
+
   <p>
     <strong>\(\rho\) — correlation, the smile's skew.</strong> Exactly the
     same conceptual role \(\rho\) plays in Heston: it sets the sign and
@@ -266,6 +279,11 @@
     sharing the same at-the-money level and the same \(\rho\) (so no skew
     tilt), differing only in \(\nu\).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Nu measures how uncertain the uncertainty itself is — if you're not sure how jumpy the market will be, that extra layer of doubt makes really big moves in either direction (up or down) more plausible than a calmer model would admit. That's exactly what fattens both wings of the smile symmetrically: more "maybe volatility goes way up" possibilities means more room for deep out-of-the-money options, calls and puts alike, to be worth more than a simple flat-vol model says.</p>
+  </div>
 
   <h3>3. The closed-form implied-volatility approximation (Hagan et al., 2002)</h3>
   <p>
@@ -348,6 +366,11 @@
     observed quotes about equally well). Fixing \(\beta\) by convention
     removes that ambiguity and lets \(\rho\) alone carry the skew.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Fitting SABR is like solving a small puzzle with exactly as many clues as unknowns: three market quotes desks already watch (the overall vol level, the skew, and the curvature) line up almost perfectly with the three knobs SABR has left free once β is pinned down by convention. That's why a desk can resolve the whole puzzle in an instant, over and over, every time the market ticks — it's a quick three-clue crossword, not an open-ended search.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -725,5 +748,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

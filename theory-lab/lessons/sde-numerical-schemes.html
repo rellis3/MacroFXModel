@@ -22,6 +22,8 @@
     <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Itô's Lemma</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -117,6 +119,11 @@
     up again here as the practical recipe for simulating one.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Euler-Maruyama is like predicting a drunk person's next stumble: take their current direction of travel (the drift), add a small step along it, then add one random shove sized by how wobbly they are (the diffusion). Repeat that, one small step at a time, and you trace out a plausible staggering path — not the exact path, since the shove is random, but a reasonable simulation of the kind of path they might take.</p>
+  </div>
+
   <h3>2. Strong vs. weak convergence — two different questions</h3>
   <p>
     "How accurate is this scheme" is not one question — it's (at least) two,
@@ -179,6 +186,11 @@
     realistic moments — cannot.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Strong convergence asks "did I guess this specific drunk person's actual stumbling path correctly, step for step?" Weak convergence only asks "if I simulated a thousand different drunk people, does the average outcome — where they tend to end up — look right?" You can get the average right while getting almost every individual path wrong in its details, which is exactly why Euler-Maruyama is better at the second question (weak order 1.0) than the first (strong order 0.5).</p>
+  </div>
+
   <h3>3. The Milstein scheme — trading complexity for pathwise accuracy</h3>
   <p>
     Euler-Maruyama's weak spot is entirely in the term it drops: a full Itô-Taylor
@@ -206,6 +218,11 @@
     derivative has to be derived, or it has to be estimated numerically,
     introducing its own additional error.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Euler-Maruyama assumes the "wobbliness" itself stays constant during each tiny step. Milstein adds one correction for the fact that the wobbliness can also change a little as the person moves — a slightly smarter guess about the stumble, at the cost of needing to know how fast the wobbliness itself changes (that's σ′). It's a small refinement, but it noticeably tightens how closely the simulated path can match the true one.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -336,6 +353,11 @@
       extra correction term is winning on pathwise accuracy at every
       resolution, not just in the asymptotic limit.
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>"Strong order 0.5" means if you cut your step size in half, the pathwise error only shrinks by about 1.4x — slow going. "Strong order 1.0" means cutting the step size in half actually halves the error — twice as fast an improvement for the same extra computing effort. That's the entire payoff Milstein is buying with its one extra correction term.</p>
   </div>
 
   <div class="tl-box scenario">
@@ -478,5 +500,28 @@
     <a href="multivariate-correlated-sdes.html">Multivariate &amp; Correlated SDEs →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

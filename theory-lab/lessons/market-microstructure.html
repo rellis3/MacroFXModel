@@ -22,6 +22,8 @@
     <span>Prereqs: none required — Correlation &amp; Linear Regression primer helpful</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -223,6 +225,11 @@
     market's flow the market maker believes is informed.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A trade is a clue, not just a transaction. If you see someone buy, that's slightly more likely to happen in a world where the "true" value is high than in a world where it's low — because the people who actually know the value only buy when it's genuinely worth more. So just watching what people do, without anyone telling you anything, quietly shifts your best guess. The more of the buyers you suspect are "in the know," the more that one buy order should move your guess.</p>
+  </div>
+
   <h3>3. From the posterior to the quoted spread</h3>
   <p>
     The zero-expected-profit condition says the ask must equal the market
@@ -276,6 +283,11 @@
     of it.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a lemonade stand where the seller can't tell honest customers from people who somehow know the weather is about to ruin the lemon crop. If the seller quoted one price, the "insiders" would only ever buy right before the price should really be higher — a guaranteed loss for the seller. So the seller quotes two prices, a bit apart, so the extra money made from everyday customers covers the occasional loss to someone who actually knew something. The more insiders the seller suspects are out there, the wider that gap needs to be.</p>
+  </div>
+
   <h3>4. Kyle's Lambda: the same logic for a continuum of order sizes</h3>
   <p>
     Glosten-Milgrom prices one indivisible order at a time — a single buy or
@@ -318,6 +330,11 @@
     <tr><td>\(\Delta p\)</td><td>The resulting <strong>price impact</strong> — how far the price moves away from where it was, as a direct consequence of that order flow.</td></tr>
     <tr><td>\(\lambda\)</td><td>(lambda) <strong>Kyle's Lambda</strong> — the price-impact coefficient, in price-units-moved per unit of order flow. This is the object the whole model exists to explain.</td></tr>
   </table></div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine dropping stones into two different ponds. A small pond ripples a lot from just one stone — there's not much water to absorb the splash. A big lake barely reacts to the same stone at all. Order size is the stone, price impact is the ripple, and \(\lambda\) is just "how rippled does this particular pond get per stone." A bigger order is a bigger stone; a thinner market is a smaller pond.</p>
+  </div>
+
   <p>
     Kyle's original setup swaps Glosten-Milgrom's binary informed/noise-order
     sequence for a continuous, one-period version: an insider who knows the
@@ -364,6 +381,11 @@
     illiquid moment" — that intuition <em>is</em> \(\lambda\), just not
     usually named as such.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>"Market depth" is just a fancy way of saying "how many other ordinary shoppers are around to soak up one big order without anyone noticing." A crowded farmers' market can absorb one person buying a huge pile of tomatoes without the price budging much — there's plenty of everyday buying and selling happening around it. An empty market stall with just you and the seller has no crowd to hide inside, so your big purchase alone visibly moves the price.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -736,5 +758,28 @@
     <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

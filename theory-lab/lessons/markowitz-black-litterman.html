@@ -22,6 +22,8 @@
     <span>Prereqs: Linear Algebra &amp; Matrices, Correlation &amp; Linear Regression primer</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -180,6 +182,11 @@
     eigen-decomposes for its effective-bets metrics.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Adding up risk isn't like adding up weights on a scale — it's more like packing umbrellas for a trip. If everyone brings the exact same umbrella, you're carrying N times the bulk of one umbrella. But if half the group brings umbrellas and the other half brings sunscreen (things useful in opposite weather), the group as a whole is prepared for more with less total stuff, because the two kinds of gear partly substitute for each other. That "partly substitute for each other" effect is exactly the cross term in the portfolio-variance formula, and it's the entire mathematical reason diversification works.</p>
+  </div>
+
   <h3>Step 3 — the efficient frontier</h3>
   <p>
     Fix a target expected return and ask: among every combination of weights
@@ -208,6 +215,11 @@
     hold — it's strictly dominated by the minimum-variance point itself, which
     gets the same risk for a better return.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture every possible mix of your instruments plotted as a dot on a "how much risk, how much return" map. Most dots are wasteful — you could get more return for the same risk, or less risk for the same return, just by mixing differently. The efficient frontier is the outer edge of that whole cloud of dots: the best deal available at every risk level, with nothing better sitting further out.</p>
+  </div>
 
   <h3>Step 4 — Markowitz's famous practical flaw</h3>
   <p>
@@ -242,6 +254,11 @@
     favorable), and it's the reason "just run Markowitz" was, for a long time,
     something academics recommended and desks quietly avoided doing literally.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Tell a hyper-literal genie "give me the best possible outcome using exactly these numbers, no questions asked," and a tiny nudge to one number can send the genie's answer to a wildly different, extreme place — because the genie treats every number you gave it as gospel truth, not as a rough guess with a fuzzy margin of error. That's the raw optimizer: it isn't broken, it's just taking your uncertain forecasts far more literally than you ever meant them.</p>
+  </div>
 
   <h3>Step 5 — Black-Litterman: start from the market, not from a blank page</h3>
   <p>
@@ -380,6 +397,11 @@
     a fragile, ungrounded guess — it's a market-anchored belief nudged by a
     small, explicitly-quantified amount of genuinely new information.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Black-Litterman starts from "the market's already-existing best guess" instead of a blank page, then lets you nudge that guess only as hard as you're actually willing to bet on your own opinion. A whispered hunch barely moves the needle; a loudly, confidently stated view moves it a lot further — but even the loudest view is still just pulling on a sensible starting point, not replacing it outright, which is exactly what keeps the final answer from swinging to an extreme.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(w\)</td><td>The portfolio weight vector — one entry per instrument, the fraction of capital (or risk budget) allocated to each. What the optimizer solves for.</td></tr>
@@ -848,5 +870,28 @@
     <a href="alpha-beta-separation.html">Alpha vs. Beta Separation →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

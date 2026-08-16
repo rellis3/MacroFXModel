@@ -22,6 +22,8 @@
     <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; Model Selection: AIC &amp; BIC</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -74,6 +76,11 @@
     </p>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>MDL says the best explanation is the shortest one that still lets someone rebuild the full picture — the model plus whatever's left over that the model didn't cover. A model so simple it misses everything leaves a huge "leftover" pile to describe. A model so complicated it memorizes every last data point is expensive to write down in the first place. The winner is whichever total message — model plus leftovers — is shortest.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
 
@@ -116,6 +123,11 @@
   residual surprise; a model that fits poorly needs many.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>This half of the message is "the part your model still can't explain." If your model of the data is a good one, there's very little left to say — a short leftover message. If it's a bad model, everything the data actually did still needs to be spelled out in full, and that costs a lot of bits.</p>
+  </div>
+
   <h3>Costing L(M): Rissanen's parameter-precision argument</h3>
   <p>
   \(L(M)\) is subtler: describing a model with continuous, real-valued parameters exactly would take
@@ -139,6 +151,11 @@
   <div class="tl-eq-break">
     <div class="tl-eq-chip c2"><code>(k/2)log₂(n)</code><span>bits to state k parameters, each to data-supported precision</span></div>
     <div class="tl-eq-chip c1"><code>n</code><span>sample size — more data resolves each parameter more finely, costing slightly more to state</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Writing down a parameter like "3.14159265..." exactly would take forever, since real numbers never actually end. But you don't need every decimal — only as many digits as your data can actually back up. A small sample only justifies a rough value; a huge sample justifies a much more precise one. Rissanen's rule prices out how many "trustworthy digits" a given sample size buys you, per parameter.</p>
   </div>
 
   <h3>The bridge to BIC — the same rule, two directions</h3>
@@ -170,6 +187,11 @@
   the same practical rule — that convergence is exactly the "aha" this lesson exists to make
   explicit, not a coincidence to wave past.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two people, working entirely separately with entirely different toolkits — one thinking about probability and belief, the other thinking about compressing messages — landed on the same formula for "how much a model should be punished for having extra knobs." When two unrelated ways of solving a problem agree on the same answer, that's strong evidence the answer is capturing something real, not an accident of either person's particular approach.</p>
+  </div>
 
   <div class="tl-solid blue">
   <strong>What this does and doesn't say about AIC:</strong> the exact bridge proved above is
@@ -413,5 +435,28 @@
     <a href="../hub.html">Theory Lab hub</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

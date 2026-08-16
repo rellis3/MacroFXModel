@@ -22,6 +22,8 @@
     <span>Prereqs: Descriptive Statistics &amp; the Normal Distribution</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -129,6 +131,12 @@
     arithmetic is transparent; the ideas carry over to the continuous case by
     replacing sums with integrals.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A random variable is just a number-generating machine hooked up to something uncertain, like a die. Before you roll, nobody knows what number will pop out — but you already know all the rules: it'll be 1 through 6, and every number is equally likely to show up.</p>
+  </div>
+
   <p>
     <strong>Expectation.</strong> The expectation (also called the expected
     value, or the mean of the random variable) is a weighted average of every
@@ -166,6 +174,12 @@
     Descriptive Statistics primer is the special, equally-weighted case of
     this more general definition.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Expectation answers "what would the average look like if I did this a jillion times?" Roll a die forever and average all those rolls, and you'll land on 3.5 — even though you can never actually roll a 3.5 on any single roll.</p>
+  </div>
+
   <p>
     <strong>Variance of a random variable.</strong> Expectation tells you the
     center; variance tells you the spread — specifically, the expected value
@@ -205,6 +219,12 @@
     variance of "return-percent squared" isn't directly interpretable; its
     square root, in return-percent, is).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Variance answers a different question than expectation: not "where's the middle," but "how far do things usually wander away from the middle?" A die that always landed on the same number would have zero variance; a die that jumps wildly between 1 and 6 would have a big variance.</p>
+  </div>
+
   <p>
     <strong>Independence.</strong> Two events \(A\) and \(B\) are
     <strong>independent</strong> if knowing one happened tells you nothing
@@ -227,6 +247,12 @@
     because it is exactly where naive use of the ideas on this page breaks
     down for financial data.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two things are independent when knowing about one tells you nothing new about the other — like flipping a coin twice. The first flip landing heads doesn't make the second flip any more or less likely to be heads too. But a hot, sunny day today does make tomorrow more likely to be hot and sunny too — that's not independent.</p>
+  </div>
+
   <div class="tl-solid amber">
     <strong>The trap:</strong> the Law of Large Numbers and the Central Limit
     Theorem below both quietly assume independence. Volatility clustering
@@ -274,6 +300,12 @@
     convergence happens at any particular \(n\), only that it happens
     eventually (a point returned to in the pitfalls section).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Law of Large Numbers is why a casino isn't nervous about any one single hand of cards — they know that if you play a game enough times, the actual average result gets closer and closer to the true expected average, even though any one single game is totally unpredictable.</p>
+  </div>
+
   <p>
     <strong>The Central Limit Theorem (CLT).</strong> The LLN says the sample
     average converges to a single number, \(E[X]\). The CLT goes further and
@@ -304,6 +336,11 @@
     angles (one converges the center, the other converges the shape and
     narrows the spread around that center).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Here's a strange but true fact: even something totally uneven, like a die where every number is equally likely, starts looking like a smooth, even bell shape once you average lots and lots of rolls together. It's like mixing lots of different-colored paints — no matter how weird each individual color is, mix enough of them together and you tend to get a similar, smooth kind of gray.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">The Central Limit Theorem in action</div>
@@ -705,5 +742,28 @@
     <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

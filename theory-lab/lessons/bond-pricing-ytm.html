@@ -22,6 +22,8 @@
     <span>Prereqs: basic compounding / present value (covered in this curriculum's returns &amp; compounding primer)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -134,6 +136,11 @@
     coupon, plus once more for the face value.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A dollar promised to you next year is worth less than a dollar in your hand today, because you could take today's dollar, put it in the bank, and have more than a dollar by next year. A bond's price is just adding up every single future payment it promises, each one shrunk down to reflect how long you have to wait for it.</p>
+  </div>
+
   <h3>Yield to maturity — the same formula, solved backwards</h3>
   <p>
     In the pricing formula above, \(y\) is an input: you're told the going
@@ -163,6 +170,12 @@
     over time — which is precisely why "the 10-year yield" is the headline
     number a macro desk watches, not "the 10-year bond's price."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Yield to maturity is running the pricing math backwards. Instead of "here's the interest rate, tell me the price," it asks "here's the price everyone's actually paying, so what interest rate would make that price fair?" It's one tidy number that lets you compare a five-year bond to a ten-year bond the same way a speed limit sign lets you compare a car and a bike on the same scale.</p>
+  </div>
+
   <div class="tl-solid blue">
     <strong>Why there's no clean formula for \(y\):</strong> for a single-period
     bond, solving for \(y\) is simple algebra: \(P=(C+F)/(1+y)\) rearranges
@@ -202,6 +215,11 @@
     makes visible and that Lesson 2 quantifies precisely.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the bond's future payments as fixed amounts of cash sitting at fixed dates in the future. Turning up the discount rate is like turning up how much you shrink every one of those future payments to bring them back to today. Shrink them more, and the total you're willing to pay right now goes down — every single time, with no exceptions.</p>
+  </div>
+
   <h3>Par, premium, and discount bonds</h3>
   <p>
     Comparing a bond's fixed coupon rate (the coupon divided by face value)
@@ -232,6 +250,11 @@
     practitioners use, covered below).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If a bond's coupon happens to match exactly what the market currently wants, it sells for face value — a fair trade, nothing to make up for. If its coupon is more generous than what's on offer elsewhere, people will pay extra to get it, bidding the price above face value. If its coupon is stingier, buyers only take it at a discount, so the cheap purchase price makes up for the weak coupon.</p>
+  </div>
+
   <h3>Clean price, dirty price, and accrued interest (briefly)</h3>
   <p>
     The pricing formula above assumes you're valuing the bond exactly on a
@@ -250,6 +273,11 @@
     both assume valuation on a coupon date, where clean price and dirty price
     coincide.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine buying a house mid-month from someone who's been paying rent to live there. If you also owe them for the days of rent-value they've already "earned" before handing over the keys, that extra owed amount is like accrued interest. The clean price is the sticker price everyone quotes; the dirty price is the sticker price plus that little extra owed chunk — the amount that actually changes hands.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(P\)</td><td>The bond's price today — present value of every future cash flow.</td></tr>
@@ -648,6 +676,29 @@
   buildCurve();
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

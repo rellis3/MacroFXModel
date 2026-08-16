@@ -22,6 +22,8 @@
     <span>Prereqs: Bayesian Inference</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -223,6 +225,12 @@
     nothing, correctly. As \(p \to 1\), \(f^* \to 1\) — bet everything, also
     correctly, because a certain win has no downside to protect against.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The formula f* = 2p − 1 is just "bet your edge." If you win 55% of the time on a fair coin, your edge over a true 50/50 coin is 5 percentage points, doubled to 10% — bet 10% of your bankroll. No edge (p=0.5) means bet nothing; a sure thing (p→1) means go all in, because there's nothing left to protect.</p>
+  </div>
+
   <p>
     <strong>The general-odds version.</strong> Real bets rarely pay even
     money. If a win pays \(b\) units per unit staked (so \(b=1\) recovers the
@@ -341,6 +349,12 @@
     expectation and false for what a levered account actually experiences
     over time.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Lose 50% then gain 50% and you might think you're back to even — but you're not: you're down 25%, because the 50% gain is calculated on a smaller pile of money than the 50% loss was. Volatility drag is just the name for that tax bumpiness charges you on compounding — the wilder the ride, the more of your average return gets eaten up just from the arithmetic of ups and downs not canceling out symmetrically.</p>
+  </div>
+
   <p>
     Volatility drag is also the mechanism behind full Kelly's most
     counterintuitive property: <strong>overbetting past \(f^*\) doesn't just
@@ -371,6 +385,12 @@
     single bet in isolation still has positive expected value. The edge never
     changed; only the size did.
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Doubling your bet size doubles your expected winnings, but it quadruples how wildly your results swing — because variance grows with the square of bet size, not just in step with it. Push size far enough and the wild swings start eating your compounded returns faster than the bigger bet earns them, so the account actually shrinks over time, even though each individual coin flip is still, in isolation, a good bet.</p>
+  </div>
+
   <p>
     <strong>Fractional Kelly.</strong> Because \(g(f)\) is a smooth peaked
     curve (a parabola in the approximation above, and single-peaked exactly
@@ -395,6 +415,11 @@
     protection against both realized variance and the near-certainty that
     your edge estimate is at least somewhat wrong.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Right at the very best bet size, the growth curve is nearly flat — like standing at the top of a gently rounded hill instead of a sharp peak. So stepping back a little (betting half of "optimal") barely costs you any height, but it moves you well away from the steep drop-off on the other side. That's the whole case for half-Kelly: give up a little of the best-case upside in exchange for a lot less exposure to being wrong about your own edge.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -795,5 +820,28 @@
     <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

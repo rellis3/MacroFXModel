@@ -32,6 +32,8 @@
     <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -136,6 +138,11 @@
     the temporary impact.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Press your thumb into a memory-foam pillow. Some of the dent springs back the moment you let go — that's temporary impact, the market's normal "give" recovering. But if pressing hard enough actually changed something about the foam itself, part of the dent would stay forever — that's permanent impact, because your trade told everyone something real about value, and nobody un-learns that.</p>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Price path during and after a large sell order: temporary impact reverts, permanent impact doesn't</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price versus time chart. Price starts flat, falls steadily during a trading window as a large sell order executes, reaching its lowest point at the end of trading, then partially recovers after trading stops, settling at a level below the starting price. The recovered portion is labeled temporary impact and the residual permanent drop is labeled permanent impact.">
@@ -204,6 +211,11 @@
     square-root curve sits above a straight chord connecting the origin to any larger
     reference point.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think about pouring water into a glass versus a bathtub. Doubling how much water you pour into a small glass makes a big visible difference; doubling the same amount poured into a bathtub barely changes the water line. Big orders work the same way: as they get bigger, each extra chunk moves the price by proportionally less — but that also means a "small" order that looks harmless already costs more per share than a straight-line rule would guess, because the real relationship curves, it doesn't run in a straight line from zero.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Square-root impact vs. a naive linear extrapolation</div>
@@ -299,6 +311,11 @@
     and often large component of total execution cost.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You have to sell a big pile of something. Sell it all in one dump and you get a bad price right now, but you're done fast. Sell it in tiny pieces over a month and each piece barely moves the price, but you're exposed the whole month to the price wandering around for reasons that have nothing to do with you. Almgren-Chriss is just the math for picking the right speed between those two extremes, based on how much you personally hate that month-long uncertainty.</p>
+  </div>
+
   <h3>4. Solving it: the Euler-Lagrange equation and the sinh/cosh trajectory</h3>
   <p>
     This is a standard calculus-of-variations problem — minimize an integral of a
@@ -363,6 +380,12 @@
     total expected impact cost specifically to get the position down faster and cut
     their exposure to timing risk sooner.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>κ is basically a dial for "how nervous are you." Turn it all the way down and you sell at a perfectly steady pace all day, like a metronome. Turn it up and you rush to sell most of it early, accepting a worse average price, just to stop worrying about what the market might do later in the day.</p>
+  </div>
+
   <p>
     The corresponding <strong>trading rate</strong>, \(v(t) = -\dot x(t)\), follows
     directly by differentiating:
@@ -744,6 +767,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

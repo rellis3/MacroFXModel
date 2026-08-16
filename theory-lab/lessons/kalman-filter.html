@@ -22,6 +22,8 @@
     <span>Prereqs: Bayesian Inference, Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -155,6 +157,12 @@
     equation, and it is a modeling choice, not a law of nature (see the
     pitfalls box for what that choice does and doesn't assume).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The state equation is just saying: "the true hedge ratio tomorrow is basically the same as today, give or take a small random wobble." Q controls how big that wobble typically is — a small Q means you believe the true relationship barely changes day to day; a big Q means you're prepared for it to shift around noticeably.</p>
+  </div>
+
   <p>
     <strong>The observation equation</strong> describes how the hidden state
     connects to something you can actually measure:
@@ -179,6 +187,12 @@
     unreliable read on the truth"; a smaller \(R\) says "today's reading is
     quite trustworthy on its own."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The observation equation just says "what I actually get to see is a noisy read on the truth, not the truth itself" — like a bathroom scale that's roughly right but jiggles a pound or two either way each time you step on it. R is how much you trust any single reading: a shaky scale (big R) means you shouldn't overreact to one weird number, while a precise one (small R) means today's reading is worth taking seriously on its own.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(x_t\)</td><td>The hidden <strong>true state</strong> at time \(t\) — e.g. the true, unobservable hedge ratio. You never see this directly, only estimate it.</td></tr>
@@ -222,6 +236,12 @@
     becomes. This inflation is what makes the filter willing to move when new
     data arrives, instead of becoming permanently over-confident.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before checking today's news, your best guess is just "probably about the same as yesterday" — but you're a little less sure of that guess than you were yesterday, simply because a day has gone by and things could have quietly shifted. That's all the predict step does: carries the guess forward unchanged, but admits it's gotten a bit staler.</p>
+  </div>
+
   <p>
     <strong>Update step.</strong> Now the new observation \(y_t\) arrives.
     First compute the innovation — the gap between what was actually seen and
@@ -283,6 +303,12 @@
     EMA uses one fixed smoothing constant chosen in advance; the Kalman gain is
     <em>derived</em>, and adapts on its own as the filter's confidence changes.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Kalman gain answers one question every time new information arrives: "how much should this new clue actually change my mind?" If you were pretty unsure already and the new clue is reliable, believe it a lot. If you were already confident and the new clue is shaky, barely budge. It's the same instinct a good detective uses when weighing a fresh tip against everything already known — just turned into an exact formula instead of a gut feeling.</p>
+  </div>
+
   <p>
     <strong>This update step is a Bayesian update — not "similar to," identical
     to.</strong> Recall from the Bayesian Inference lesson: a prior belief plus
@@ -310,6 +336,11 @@
     as described in that lesson, applied to a state that moves between
     updates.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Updating a belief with new evidence usually means solving a genuinely hard math problem. But there's a lucky shortcut here: if your starting belief is bell-curve shaped and the new evidence points to it in a straight-line way, the updated belief comes out bell-curve shaped too — no hard math required, just plug numbers into a simple formula. That lucky shortcut is the entire reason the Kalman filter can run instantly, every single day, forever, instead of needing a slow simulation each time.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -766,6 +797,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

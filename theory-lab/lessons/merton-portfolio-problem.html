@@ -22,6 +22,8 @@
     <span>Prereqs: Kelly Criterion &amp; Position Sizing, Itô's Lemma</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -130,6 +132,12 @@
     <div class="tl-eq-chip c2"><code>(r+fₜμ)Wₜ−Cₜ</code><span>the deterministic drift: riskless plus risky return, minus consumption</span></div>
     <div class="tl-eq-chip c4"><code>fₜσWₜ dZₜ</code><span>the random shock from holding the risky asset</span></div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Unlike Kelly's lesson, where you pick one bet size and stick with it, Merton's investor gets to make two decisions fresh at every single instant forever: how much money to spend right now, and how much of what's left to risk. It's the difference between deciding your grocery budget once for the whole year versus re-deciding it, continuously, every moment, as your bank balance and the market both keep moving under you.</p>
+  </div>
+
   <p>
     The investor's objective is to choose the entire future path of
     \(\{C_t, f_t\}\) — not just their values right now, but the whole
@@ -191,6 +199,12 @@
     will be, and that "value of every possible future wealth level" is
     precisely what \(J\) encodes.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The HJB equation is a formal way of writing down one sentence: "the best move right now equals what you get from that move immediately, plus how good your situation becomes right after." It's the GPS logic from the intuition box above, turned into an equation — instead of comparing a handful of next turns, it balances an instant's worth of decision against the value of wherever that instant leaves you, over and over, continuously.</p>
+  </div>
+
   <p>
     Taking the first-order condition on \(f\) inside the braces (holding \(C\)
     at its own optimum) gives a clean expression for the optimal allocation in
@@ -262,6 +276,12 @@
     In the literature this constant is often called the <strong>Merton
     fraction</strong> or <strong>Merton ratio</strong>.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You might expect a cautious investor to bet a smaller fraction of a big pile of money than a small one, or to pull back as retirement nears — but for this specific kind of investor (CRRA), that's not what happens: the right fraction to risk stays exactly the same dial setting no matter how rich you get or how much time is left. It's less like adjusting your grip as the rope gets longer, and more like a thermostat set to one temperature that doesn't care how big the house is.</p>
+  </div>
+
   <p>
     <strong>The reduction to Kelly, made exact.</strong> Set \(\gamma=1\) — the
     log-utility case, \(U(c)=\ln c\) — directly into Merton's formula:
@@ -319,6 +339,11 @@
     with that, as the Kelly lesson covered) — for a genuinely more risk-averse
     investor, it is what "correct" means.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Betting less than "full Kelly" used to sound like flinching — playing it safe out of fear that your numbers might be wrong. Merton's math says it can instead just be a different, equally correct answer to a different, equally honest question: not "how fast can this grow," but "how fast can this grow given how much stomach-churn I'm actually willing to sign up for." Neither investor is playing scared — they're solving for different people.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -669,5 +694,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

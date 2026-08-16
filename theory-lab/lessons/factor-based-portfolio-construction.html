@@ -22,6 +22,8 @@
     <span>Prereqs: PCA &amp; Factor Regimes, Alpha vs. Beta Separation</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -108,6 +110,11 @@
           single-index model — that lesson is this one's \(K=1\) special
           case, not a different idea.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Instead of describing every person in a room by how they relate to every other person individually, you describe each person by a few shared traits — how tall, how loud, how funny — and any two people's relationship falls right out of comparing those traits. A factor model does the same thing for an asset's return: instead of one number for every possible pair of assets, use a handful of shared "traits" (carry, momentum, value) per asset.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -138,6 +145,11 @@
           covariances, because every asset's loading estimate is pooling
           information from the same underlying factor return series.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Keeping track of how every guest at a huge party gets along with every other guest is a nightmare that explodes as more guests show up. But if you just note each guest's few defining traits, you can guess how any two get along from those traits alone — way fewer numbers to keep track of, and they're more reliable too, since they're built from broad, shared patterns rather than one noisy guess per pair.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -156,6 +168,11 @@
           exotic than a dot product, just applied to factor loadings
           instead of expected returns.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>If each ingredient in a recipe has a "spiciness" rating, the spiciness of the whole dish is just how much of each ingredient you use, multiplied by its own spiciness, added up. A portfolio's exposure to a factor works exactly the same way — multiply each asset's amount held by its own factor rating and add it all up.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -186,6 +203,11 @@
           hits the target), turning Step 4 into a small constrained
           optimization rather than a single linear solve.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>This flips the previous idea around: instead of asking "how spicy is this dish," you start from "I want a dish that's exactly this spicy and exactly this salty" and work backward to figure out how much of each ingredient to use. With exactly as many ingredients as flavors you're targeting, there's usually one exact answer; with more ingredients than flavors, many different recipes hit the same taste, and you need some other rule to pick just one.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -532,5 +554,28 @@
     <a href="active-portfolio-management.html">Active Portfolio Management →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

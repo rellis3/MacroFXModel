@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -110,6 +112,11 @@
   reasons, not merely current fashion.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a filing cabinet full of forms, and you only ever want to know everyone's birthday, never their whole file. Row-oriented storage means pulling out every single person's entire folder just to read one line off each. Columnar storage is like keeping a separate stack that's nothing but birthdays, already lined up together — you grab exactly what you need, and similar values sitting next to each other also compress down smaller, the same way a page that just says "1985, 1985, 1986, 1985" squishes down easier than a page mixing birthdays with addresses and phone numbers.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Single source of truth: why independent recomputation drifts</h2>
   <p>
@@ -132,6 +139,11 @@
     almost never actually re-verified after the initial build — it's assumed true because it was true on
     day one, and small, individually reasonable changes to either copy over months or years are what
     actually cause the drift, not any single dramatic error.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>It's like two roommates each keeping their own separate shopping list for the same shared kitchen instead of one list taped to the fridge. At first the two lists match, because they started from the same groceries. But every time one roommate crosses something off slightly differently, or adds a substitute item the other doesn't know about, the two lists quietly stop matching — and neither roommate did anything crazy, they just each kept their own copy of something that should have only ever had one copy.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -162,6 +174,11 @@
       the kind of corruption this whole category is about.
       </p>
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Data lineage is a receipt trail — like being able to prove exactly which store, which cashier, and which day produced a specific item in your fridge, instead of just having the item with no memory of where it came from. Schema versioning is a label change notice — if the recipe box that used to hold "ounces" suddenly starts holding "grams" with no new label, anyone still reading it as ounces will cook something completely wrong without ever getting an error message.</p>
   </div>
 
   <div class="tl-symbols">
@@ -304,6 +321,11 @@
     rather than a slow, undetected pipeline problem.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If your car starts getting worse gas mileage, that could mean the engine is genuinely wearing out — or it could mean your gas gauge is broken and lying to you. From the dashboard alone, both look exactly the same: the number just keeps getting worse. The only way to tell them apart is to actually check the engine and the gauge separately, not just stare harder at the dashboard. Same idea here — you have to check the data pipeline itself, not just squint at the declining performance chart.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
@@ -391,5 +413,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

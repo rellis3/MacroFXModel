@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures</a> and <a href="extreme-value-theory.html">Extreme Value Theory</a> help but aren't required</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -99,6 +101,11 @@
   they already did, and the history captures the true joint behavior.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Historical scenario replay is asking "if that exact storm from a few years ago hit again tomorrow, but landed on the house I actually live in right now, what would happen?" You don't have to guess how the wind, rain, and flooding interacted with each other, because they really did happen together, exactly that way, once already — you're just pointing the real storm at your current house instead of the old one.</p>
+  </div>
+
   <h3>2. Hypothetical / Monte Carlo scenario stress</h3>
   <p>
   Rather than replaying an observed episode, this approach specifies a stress <em>distribution</em> —
@@ -121,6 +128,11 @@
   doesn't resemble whatever a real future crisis actually looks like, the simulated loss distribution
   won't either, no matter how many draws \(N\) you run.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of replaying one real storm, Monte Carlo stress testing is imagining thousands of made-up storms based on a rule like "in a real disaster, wind and rain tend to get much worse together than usual" — and then running the house through all of them to see how bad it could get. It's more flexible than replaying just one real storm, but it's only as trustworthy as the made-up rule you fed it; a rule that quietly assumes calmer weather than reality gives will make the house look safer than it actually is.</p>
+  </div>
 
   <h3>3. Reverse stress testing — solving backward</h3>
   <p>
@@ -145,6 +157,12 @@
   one specific factor gets there on its own — and the latter is exactly the hidden-concentration finding
   the worked example below illustrates.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of asking "what does this storm do to my house," reverse stress testing asks "how big would a storm actually have to be to knock my house down — and what would that storm need to hit exactly?" If it turns out only a fairly ordinary gust aimed at one specific weak spot is enough, that's a much scarier and more useful finding than knowing you'd survive a hypothetical monster hurricane you were never really at risk of anyway.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(w\)</td><td>Today's actual portfolio weights or dollar exposures across risk factors — held fixed while the scenario changes.</td></tr>
@@ -193,6 +211,11 @@
     single, moderate risk-off shock (roughly twice an ordinary bad quarter, not an exotic or extreme one)
     hits both desks simultaneously and takes out half the book. What looked like diversification across
     asset classes was, underneath, concentration in a single latent factor.
+    </div>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>It's like two friends who seem totally independent — one drives to work, one bikes — until you realize they both cross the same one bridge every single day. Check each of them separately and everything looks fine and diversified. Ask instead "what's the single smallest thing that could stop both of them at once," and the answer turns out to be "that one bridge closes" — a much smaller, more ordinary event than it looked like two people needed two separate disasters.</p>
     </div>
   </div>
 
@@ -417,5 +440,28 @@
     <a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

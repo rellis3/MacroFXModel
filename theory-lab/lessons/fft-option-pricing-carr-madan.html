@@ -22,6 +22,8 @@
     <span>Prereqs: Numerical Integration, The Heston Model, Fourier Analysis &amp; the Frequency Domain</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -161,6 +163,11 @@
     — which is exactly what the inversion formula in step 3 does.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A mathematical tool called the Fourier transform only works cleanly on functions that eventually fade down to zero — but a call option's price near a very low strike doesn't fade to zero, it stays stubbornly large. Carr and Madan's fix is a trick borrowed from calculus: multiply the price by a shrinking factor first, so the result actually does fade to zero at the edges, do the math on that shrunk version, then multiply back to undo the shrinking at the very end.</p>
+  </div>
+
   <h3>2. The transform of the damped price — the published Carr-Madan result</h3>
   <p>
     This is the paper's central contribution, stated here as the correctly
@@ -205,6 +212,11 @@
     before the transform was ever taken.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once the price is "shrunk" the right way, there turns out to be a clean, one-line formula connecting it to the model's characteristic function (a mathematical fingerprint of the model). Only one piece of that formula actually depends on which pricing model you're using — everything else in it is the same generic machinery no matter what model you plug in.</p>
+  </div>
+
   <h3>3. Recovering the price: the inversion, and why it's FFT-shaped</h3>
   <p>
     Having the damped price's transform \(\psi_T(v)\) in hand, the price
@@ -241,6 +253,11 @@
     construction above, into precisely the shape the FFT algorithm was
     built to exploit.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of solving one option price at a time — 200 separate little calculations for 200 strikes — Carr and Madan noticed those 200 numbers are really just 200 samples of one connected curve. The Fast Fourier Transform is a single, extremely efficient machine for computing an entire curve's worth of samples at once, so instead of running 200 small calculations, you run one big, fast one that spits out all 200 answers together.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">The Carr-Madan pipeline: one characteristic function in, a whole strike grid of prices out</div>
@@ -315,6 +332,11 @@
     must be tuned, without working through the full numerical-analysis
     derivation of the optimal \(\eta\)/\(\lambda\) pairing.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Getting finer detail on the strike prices you care about forces you to cover a wider range of the "frequency" ingredient going into the calculation, and vice versa — you can't get one for free without paying for the other. It's the same kind of trade-off as trying to get a sharper zoomed-in photo: more detail in one place usually costs you something else, like needing a wider shot to make the zoom work.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(K\), \(k=\ln K\)</td><td>The option's strike price, and its natural logarithm — Carr-Madan works in log-strike space throughout.</td></tr>
@@ -601,5 +623,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

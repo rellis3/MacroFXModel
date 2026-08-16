@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clustering for Market Structure — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deep Learning &amp; Modern ML for Trading / Clustering for Market Structure</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Deep Learning &amp; Modern ML for Trading · 4 of 6</div>
+  <h1 class="tl-title">Clustering for Market Structure: k-Means &amp; Hierarchical Clustering</h1>
+  <p class="tl-dek">Two ways of asking the same question with no labeled answer key: which of these things behave alike? k-means picks a number of groups and iterates toward them; hierarchical clustering builds a full tree of every possible grouping at once. Both are honest tools for finding structure — and both are unsupervised, which means neither one can tell you on its own whether what it found is real.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>, Correlation &amp; Linear Regression primer</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>k-means</strong> (MacQueen, 1967; standard practical algorithm from Lloyd, 1957/1982) repeats a two-step loop — assign every point to its nearest centroid, then move each centroid to the mean of its assigned points — until assignments stop changing.</li>
+      <li>Its honest limitation: you must choose \(k\), the number of clusters, <em>before</em> running it. The elbow method and the silhouette score are the two standard heuristics for picking \(k\), and neither gives a provably correct answer — both are read-the-chart-and-judge tools, not calculators.</li>
+      <li><strong>Hierarchical (agglomerative) clustering</strong> builds a full dendrogram instead: start with every point as its own cluster, repeatedly merge the two closest clusters by some linkage rule (single, complete, or average), and record every merge — no \(k\) needs to be chosen upfront, only where to cut the finished tree.</li>
+      <li>This Theory Lab's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> lesson already uses exactly this dendrogram-building technique — for one specific purpose, allocating portfolio weight down the tree. This lesson is the general-purpose version of the same tool: the same dendrogram machinery applies just as directly to regime discovery, grouping similar instruments by behavior, or any other "what clusters with what" question that has nothing to do with position sizing.</li>
+      <li><strong>The mandatory caveat:</strong> clustering is unsupervised — there is no ground-truth label to check a clustering's answer against. A clean-looking split into groups is not, by itself, evidence that the groups mean anything; every clustering result has to be sanity-checked against real domain knowledge, never trusted just because an algorithm produced it.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every regression, classifier, or diagnostic test covered elsewhere in this
+    Theory Lab is <strong>supervised</strong>: it has a known target — a
+    return to predict, a regime label to classify, a residual whose "correct"
+    behavior (patternless noise) is well defined — and it can be scored
+    against that target. Clustering is a different kind of question entirely.
+    It starts from a set of things (instruments, trading days, factor
+    exposures) with no labels attached at all, and asks only: <em>which of
+    these look alike, and which look different?</em> There is no "right
+    answer" file to check the output against, because the entire point is to
+    discover a structure nobody labeled in advance.
+  </p>
+  <p>
+    That makes clustering genuinely useful for a specific kind of question
+    that supervised methods can't answer — <em>"are there natural groups
+    here I haven't already hypothesized?"</em> — and it also makes clustering
+    genuinely easy to misuse, because an algorithm will confidently produce
+    groups from literally any input, including pure noise, with no built-in
+    signal that says "these groups don't actually mean anything." Both
+    honest facts belong in the same sentence: clustering is a real,
+    useful discovery tool, and its output is never self-validating.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Sorting a box of mixed buttons with no picture on the box</h3>
+    <p>
+      Imagine a box of buttons dumped on a table, no instructions, no
+      "correct" sorting provided anywhere. You could decide upfront "I want
+      exactly 4 piles" and start grouping buttons into 4 piles by whatever
+      makes them look similar — moving a button between piles whenever it's
+      clearly closer to a different pile's "typical" button — and keep
+      adjusting until the piles stop changing. That's the k-means idea:
+      decide the number of groups first, then iterate toward a sensible
+      split.
+    </p>
+    <p>
+      Or you could work differently: find the two most similar buttons on
+      the whole table and physically push them together into a pair. Then
+      find the next two most similar things — could be two more individual
+      buttons, or a button and the pair you just made — and merge those.
+      Keep going, always merging whatever's currently most alike, until
+      everything on the table is one giant pile, and write down the order
+      you merged things in. That record of merges is a full family tree of
+      the buttons' similarity, from the most obvious pairs all the way up to
+      "everything, eventually." That's hierarchical clustering — you never
+      had to decide the number of piles upfront, because the whole tree is
+      built regardless, and you choose how many piles you want only at the
+      very end, by picking where to cut the tree.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>k-means is like being handed exactly 4 empty boxes and told "sort your toys into these 4 boxes so similar toys end up together" — you have to decide on 4 boxes before you even start. Hierarchical clustering is different: you just keep taping the two most similar toys together, over and over, until it's all one giant taped-together pile, and you can look at the tape lines afterward to decide where you'd want to cut it into however many groups you actually want.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>k-means — the assign/update loop</h3>
+  <p>
+    k-means, introduced by MacQueen (1967) and standardly implemented via the
+    iterative algorithm described by Stuart Lloyd (developed in 1957,
+    published in 1982) — "Lloyd's algorithm" is the version almost every
+    practical k-means implementation actually runs — has one job: given a
+    dataset and a chosen number of clusters \(k\), find \(k\) centroids and
+    an assignment of every point to one centroid that minimizes the total
+    squared distance from each point to its own centroid:
+  </p>
+  <div class="tl-math">\[ \min_{\{\mu_1,\dots,\mu_k\}} \ \sum_{i=1}^{k} \sum_{x \in C_i} \|x - \mu_i\|^2 \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>μᵢ</code><span>the centroid (mean position) of cluster i</span></div>
+    <div class="tl-eq-chip c2"><code>Cᵢ</code><span>the set of points currently assigned to cluster i</span></div>
+    <div class="tl-eq-chip c3"><code>‖x−μᵢ‖²</code><span>squared Euclidean distance from a point to its cluster's centroid — the "within-cluster sum of squares" (WCSS), a.k.a. inertia</span></div>
+  </div>
+  <p>
+    Solving that minimization exactly is computationally hard (it's a
+    combinatorial problem — every possible way of partitioning \(n\) points
+    into \(k\) groups), so in practice Lloyd's algorithm finds a good
+    approximate solution with a simple, repeated two-step loop:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Initialize</h4>
+        <p>Pick \(k\) starting centroids — commonly \(k\) random data points, or a smarter spread-out initialization like k-means++.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Assign</h4>
+        <p>Assign every point to whichever centroid it is currently closest to (by Euclidean distance).</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Update</h4>
+        <p>Recompute each centroid as the mean position of all points currently assigned to it.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Repeat</h4>
+        <p>Alternate steps 2 and 3 until no point changes its assignment — at that point the algorithm has converged.</p>
+      </div>
+    </div>
+  </div>
+  <p>
+    Each of the assign and update steps can only ever decrease (or leave
+    unchanged) the total WCSS from the previous step — assigning to the
+    nearest centroid is the best possible assignment given the current
+    centroids, and the mean is the position that minimizes squared distance
+    to a fixed set of points — so the loop is guaranteed to converge. What it
+    is <em>not</em> guaranteed to do is converge to the single best possible
+    clustering: it can settle into a local optimum that depends on where the
+    centroids started, which is why practical implementations run the whole
+    loop several times from different random initializations and keep the
+    result with the lowest final WCSS.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Drop k flags randomly on a map. Every town joins whichever flag is closest to it. Then move each flag to sit at the average location of the towns that joined it. Repeat — towns keep re-joining whichever flag is now closest, flags keep re-centering on their towns — until nobody wants to switch flags anymore. That settled-down map is the answer k-means gives you.</p>
+  </div>
+
+  <h3>Choosing k — the elbow method and silhouette score, honestly</h3>
+  <p>
+    k-means needs \(k\) supplied before it starts, and the algorithm itself
+    has no way to tell you the "right" number — a larger \(k\) can always
+    reduce WCSS further (in the extreme, \(k=n\), one cluster per point,
+    drives WCSS to exactly zero), so minimizing WCSS alone would always push
+    toward the largest \(k\) available, which defeats the purpose. Two
+    standard heuristics try to find a defensible \(k\) instead, and it's
+    worth being direct that both are judgment calls dressed up as a
+    procedure, not exact answers:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Elbow method</h4>
+      <p>Plot WCSS against \(k\) for a range of candidate values. WCSS always decreases as \(k\) grows, but often with sharply diminishing returns after some point — the "elbow" where the curve visibly bends. Pick the \(k\) at the bend. The honest problem: real data frequently produces a smooth curve with no obvious bend at all, and different people looking at the same chart can reasonably disagree on exactly where the elbow is.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Silhouette score</h4>
+      <p>For each point, compare its average distance to points in its own cluster against its average distance to points in the nearest other cluster, producing a score from −1 (poorly matched) to +1 (well matched); average across all points for a given \(k\), and pick the \(k\) that maximizes it (Rousseeuw, 1987). The honest problem: it can disagree with the elbow method, and it can be maximized at a small \(k\) (even \(k=2\)) that is technically the "cleanest" split by this metric while being useless for the actual question being asked.</p>
+    </div>
+  </div>
+  <div class="tl-solid amber">
+    <strong>Neither method is a calculator for the correct k.</strong> Both are
+    heuristics for narrowing down a judgment call, and both can point to
+    different answers on the same data. The defensible practice is to look
+    at both, plus the actual clusters they produce, plus whatever domain
+    knowledge exists about how many groups <em>should</em> plausibly be
+    there — not to treat either chart's suggested \(k\) as a proven, final
+    number.
+  </div>
+
+  <h3>Hierarchical (agglomerative) clustering — build the whole tree</h3>
+  <p>
+    Hierarchical clustering sidesteps the "choose \(k\) upfront" problem
+    entirely by building every possible level of grouping at once, from the
+    bottom up:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Start with every point as its own cluster</h4>
+        <p>\(n\) points, \(n\) singleton clusters.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Merge the two closest clusters</h4>
+        <p>"Closest" is defined by a chosen <strong>linkage rule</strong>: single linkage (the distance between the closest pair of points, one from each cluster), complete linkage (the distance between the farthest pair), or average linkage (the mean distance across every cross-cluster pair). Record the distance at which the merge happened.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Repeat until one cluster remains</h4>
+        <p>Every merge is recorded, building a <strong>dendrogram</strong> — a tree whose leaves are the original points and whose internal nodes are merges, each labeled with the distance at which it happened.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Choose k only at the end, by cutting the tree</h4>
+        <p>Draw a horizontal line across the dendrogram at any chosen height; the number of vertical branches it crosses is the resulting number of clusters at that level of granularity. Different cut heights give different \(k\) — all from the exact same tree, computed once.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Single linkage asks "what's the closest that any member of group A gets to any member of group B?" — even one close pair is enough to merge. Complete linkage asks the opposite: "what's the farthest apart any member of A and any member of B are?" — it only merges groups if even their most different members aren't too far apart, which tends to build tighter, more compact groups. Average linkage just takes the average of every possible A-to-B pairing — a middle ground between the other two.</p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>This is the exact same technique the
+    <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>
+    lesson in this Theory Lab already builds, step by step — correlation
+    turned into distance, then agglomerative clustering into a
+    dendrogram.</strong> That lesson uses the resulting tree for one very
+    specific downstream purpose: recursively splitting portfolio weight
+    down the branches. The clustering machinery itself has nothing to do
+    with portfolios — the same dendrogram-building procedure applies
+    identically whenever the question is "which of these things behave
+    alike," whether the "things" are assets being allocated weight, trading
+    days being grouped into regimes, or instruments being grouped purely to
+    understand market structure with no allocation decision attached at
+    all.
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(k\)</td><td>The number of clusters — must be chosen before running k-means; only chosen after the fact (as a tree cut height) in hierarchical clustering.</td></tr>
+    <tr><td>\(\mu_i\)</td><td>The centroid (mean position) of cluster \(i\) in k-means.</td></tr>
+    <tr><td>\(C_i\)</td><td>The set of points currently assigned to cluster \(i\).</td></tr>
+    <tr><td>WCSS / inertia</td><td>Within-cluster sum of squares — total squared distance from every point to its own cluster's centroid; what k-means minimizes.</td></tr>
+    <tr><td>Silhouette score</td><td>Per-point measure (−1 to +1) of how much better-matched a point is to its own cluster than to the nearest other cluster; averaged to score a choice of \(k\).</td></tr>
+    <tr><td>Dendrogram</td><td>The tree produced by hierarchical clustering — leaves are individual points, internal nodes are merges labeled by merge distance.</td></tr>
+    <tr><td>Linkage</td><td>The rule for measuring distance between two clusters (not two points) — single (closest pair), complete (farthest pair), or average (mean pairwise distance).</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">k-means converging on synthetic data, and the elbow-method judgment call</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Left panel: a scatter plot of points forming three visually distinct clusters, each colored by its k-means assignment with a marked centroid. Right panel: an elbow curve of within-cluster sum of squares against k from 1 to 8, decreasing with diminishing returns, with a dashed line marking k=3 as a defensible but not provably correct choice">
+      <g transform="translate(10,10)">
+        <circle cx="60" cy="80" r="4" style="fill:var(--blue)"/>
+        <circle cx="75" cy="95" r="4" style="fill:var(--blue)"/>
+        <circle cx="55" cy="105" r="4" style="fill:var(--blue)"/>
+        <circle cx="80" cy="70" r="4" style="fill:var(--blue)"/>
+        <circle cx="65" cy="110" r="4" style="fill:var(--blue)"/>
+        <circle cx="160" cy="50" r="4" style="fill:var(--green)"/>
+        <circle cx="180" cy="65" r="4" style="fill:var(--green)"/>
+        <circle cx="155" cy="75" r="4" style="fill:var(--green)"/>
+        <circle cx="190" cy="55" r="4" style="fill:var(--green)"/>
+        <circle cx="170" cy="40" r="4" style="fill:var(--green)"/>
+        <circle cx="140" cy="170" r="4" style="fill:var(--amber)"/>
+        <circle cx="160" cy="190" r="4" style="fill:var(--amber)"/>
+        <circle cx="130" cy="200" r="4" style="fill:var(--amber)"/>
+        <circle cx="170" cy="175" r="4" style="fill:var(--amber)"/>
+        <circle cx="145" cy="210" r="4" style="fill:var(--amber)"/>
+        <path d="M60,85 L74,85 M67,78 L67,92" style="stroke:var(--blue);stroke-width:2.5" transform="translate(0,7)"/>
+        <path d="M164,50 L178,50 M171,43 L171,57" style="stroke:var(--green);stroke-width:2.5" transform="translate(0,7)"/>
+        <path d="M142,182 L156,182 M149,175 L149,189" style="stroke:var(--amber);stroke-width:2.5" transform="translate(0,7)"/>
+        <text x="110" y="270" fill="var(--text2)" font-size="12" text-anchor="middle" font-weight="600">3 clusters, converged</text>
+        <text x="110" y="286" fill="var(--text3)" font-size="10" text-anchor="middle">crosses mark final centroids after the assign/update loop settles</text>
+      </g>
+      <g transform="translate(340,10)">
+        <line x1="30" y1="20" x2="30" y2="230" style="stroke:var(--border)"/>
+        <line x1="30" y1="230" x2="270" y2="230" style="stroke:var(--border)"/>
+        <line x1="100" y1="20" x2="100" y2="230" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+        <path d="M40,30 L70,110 L100,154 L130,170 L160,180 L190,188 L220,194 L250,198" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+        <circle cx="40" cy="30" r="3.5" style="fill:var(--purple)"/>
+        <circle cx="70" cy="110" r="3.5" style="fill:var(--purple)"/>
+        <circle cx="100" cy="154" r="4.5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+        <circle cx="130" cy="170" r="3.5" style="fill:var(--purple)"/>
+        <circle cx="160" cy="180" r="3.5" style="fill:var(--purple)"/>
+        <circle cx="190" cy="188" r="3.5" style="fill:var(--purple)"/>
+        <circle cx="220" cy="194" r="3.5" style="fill:var(--purple)"/>
+        <circle cx="250" cy="198" r="3.5" style="fill:var(--purple)"/>
+        <text x="40" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">1</text>
+        <text x="70" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">2</text>
+        <text x="100" y="245" fill="var(--amber)" font-size="9" text-anchor="middle" font-weight="600">3</text>
+        <text x="130" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">4</text>
+        <text x="160" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">5</text>
+        <text x="190" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">6</text>
+        <text x="220" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">7</text>
+        <text x="250" y="245" fill="var(--text3)" font-size="9" text-anchor="middle">8</text>
+        <text x="150" y="262" fill="var(--text3)" font-size="11" text-anchor="middle">k (number of clusters) →</text>
+        <text x="14" y="130" fill="var(--text3)" font-size="10" text-anchor="middle" transform="rotate(-90 14 130)">WCSS (inertia)</text>
+        <text x="103" y="14" fill="var(--amber)" font-size="10">k=3 — defensible, not proven</text>
+      </g>
+    </svg>
+    <div class="tl-chart-caption">Illustrative data, not a fitted model. Left: 15 synthetic points forming three visually obvious groups, colored by their final k-means assignment after the assign/update loop converges; the crosses mark the three converged centroids. Right: the same idea's honest limitation — a WCSS-vs-k elbow curve that bends noticeably around k=3, but the bend is a matter of visual judgment, not an exact computed answer; a reasonable analyst could defend k=2 or k=4 from the identical curve.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>k-means by hand, from a deliberately bad initialization</h3>
+    <p>
+      Six 2D points: \(A(1,1)\), \(B(1,2)\), \(C(2,2)\), \(D(6,6)\),
+      \(E(7,7)\), \(F(6,8)\) — visually two obvious clusters, \(\{A,B,C\}\)
+      and \(\{D,E,F\}\). Run \(k=2\) starting from a deliberately poor
+      initialization — both starting centroids inside the same visual
+      cluster — to see the assign/update loop correct for it.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Bad initialization, iteration 1</h4>
+          <p>
+            Start with \(\mu_1=A=(1,1)\), \(\mu_2=B=(1,2)\) — both centroids
+            sitting inside the left-hand cluster. Assigning every point to
+            its nearest centroid (by squared distance) gives cluster 1 =
+            \(\{A\}\) only, and cluster 2 = \(\{B,C,D,E,F\}\) — a clearly
+            wrong split, since \(D\), \(E\), and \(F\) are much closer to
+            each other than to \(B\) or \(C\), but they still land in
+            cluster 2 simply because both starting centroids happened to be
+            on the same side.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Update, then reassign</h4>
+          <p>
+            Recompute centroids as the mean of each cluster's current
+            members: \(\mu_1 = \text{mean}(A) = (1,1)\) (unchanged, only one
+            point); \(\mu_2 = \text{mean}(B,C,D,E,F) = (4.4,\ 5.0)\) — pulled
+            noticeably up and to the right by \(D\), \(E\), and \(F\).
+            Reassigning every point to its now-nearest centroid: \(B\) and
+            \(C\) are now closer to \(\mu_1=(1,1)\) than to the shifted
+            \(\mu_2=(4.4,5.0)\), so they switch. New clusters: \(\{A,B,C\}\)
+            and \(\{D,E,F\}\) — exactly the visually obvious split, reached
+            purely by the centroid shifting toward the true cluster it was
+            straddling.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Converge</h4>
+          <p>
+            Update centroids again: \(\mu_1 = \text{mean}(A,B,C) =
+            (1.33,\ 1.67)\), \(\mu_2 = \text{mean}(D,E,F) = (6.33,\ 7.0)\).
+            Reassigning every point against these new centroids changes
+            nothing — every point is still closest to the same centroid it
+            was just assigned to. Assignments have stopped changing, so the
+            algorithm has converged, landing on the natural two-cluster
+            split despite starting from centroids that were both on the same
+            side of the data.
+          </p>
+        </div>
+      </div>
+    </div>
+    <p>
+      This particular bad start still self-corrected in two iterations —
+      but that's not guaranteed. A worse or unluckier initialization can
+      converge to a genuinely worse local optimum and stay there, which is
+      exactly why practical k-means runs several random restarts and keeps
+      the lowest-WCSS result rather than trusting any single run.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Hierarchical clustering applied outside portfolio construction — grouping sectors by behavioral similarity</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dendrogram of five equity sectors clustered by behavioral similarity: Tech and Financials merge first at a low distance, Energy and Utilities merge separately, Healthcare joins the Tech-Financials group, and finally the two blocs merge at the root at the highest distance. No portfolio weights are computed anywhere in this diagram">
+      <line x1="50" y1="220" x2="50" y2="50" style="stroke:var(--border)"/>
+      <text x="50" y="238" fill="var(--text3)" font-size="10" text-anchor="middle">d=0</text>
+      <text x="50" y="53" fill="var(--text3)" font-size="10" text-anchor="middle">d=0.80</text>
+      <line x1="100" y1="220" x2="100" y2="156.25" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="180" y1="220" x2="180" y2="156.25" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="100" y1="156.25" x2="180" y2="156.25" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="260" y1="220" x2="260" y2="103.125" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="140" y1="156.25" x2="140" y2="103.125" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="140" y1="103.125" x2="260" y2="103.125" style="stroke:var(--blue);stroke-width:2"/>
+      <line x1="380" y1="220" x2="380" y2="145.6" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="460" y1="220" x2="460" y2="145.6" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="380" y1="145.6" x2="460" y2="145.6" style="stroke:var(--amber);stroke-width:2"/>
+      <line x1="200" y1="103.125" x2="200" y2="50" style="stroke:var(--purple);stroke-width:2.5"/>
+      <line x1="420" y1="145.6" x2="420" y2="50" style="stroke:var(--purple);stroke-width:2.5"/>
+      <line x1="200" y1="50" x2="420" y2="50" style="stroke:var(--purple);stroke-width:2.5"/>
+      <circle cx="100" cy="220" r="4" style="fill:var(--blue)"/>
+      <circle cx="180" cy="220" r="4" style="fill:var(--blue)"/>
+      <circle cx="260" cy="220" r="4" style="fill:var(--blue)"/>
+      <circle cx="380" cy="220" r="4" style="fill:var(--amber)"/>
+      <circle cx="460" cy="220" r="4" style="fill:var(--amber)"/>
+      <text x="100" y="236" fill="var(--text2)" font-size="10.5" text-anchor="middle">Tech</text>
+      <text x="180" y="236" fill="var(--text2)" font-size="10.5" text-anchor="middle">Financials</text>
+      <text x="260" y="236" fill="var(--text2)" font-size="10.5" text-anchor="middle">Healthcare</text>
+      <text x="380" y="236" fill="var(--text2)" font-size="10.5" text-anchor="middle">Energy</text>
+      <text x="460" y="236" fill="var(--text2)" font-size="10.5" text-anchor="middle">Utilities</text>
+      <text x="310" y="42" fill="var(--purple)" font-size="10" text-anchor="middle">root merge — the two blocs only join at the highest distance</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>"Growth-sensitive" bloc — Tech, Financials, Healthcare cluster first</span>
+      <span><i style="background:var(--amber)"></i>"Defensive/rate-sensitive" bloc — Energy, Utilities cluster separately</span>
+    </div>
+    <div class="tl-chart-caption">The identical dendrogram-building procedure the Hierarchical Risk Parity lesson uses for portfolio weight — here applied to a completely different question with no portfolio anywhere in sight: grouping five equity sectors by the similarity of their behavior, purely to map market structure. Cutting this tree at a chosen height would answer "how many behavioral groups are there, and which sector belongs to which" — nothing about how much capital to allocate to any of them.</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Discovering regime structure in a feature panel, without a label to check against</h3>
+    <p>
+      A researcher builds a daily feature vector for a market — realized
+      volatility, trend strength, cross-asset correlation, credit spread
+      momentum — with no pre-assigned "regime" label attached to any day at
+      all. Running k-means with \(k=3\) on two years of these feature
+      vectors produces three clusters that, on inspection, roughly line up
+      with what a human would call "calm trending," "calm range-bound," and
+      "stressed/high-correlation" days. That mapping feels satisfying and
+      intuitive — but it is exactly the moment to remember that k-means
+      would have produced <em>three clusters of some kind</em> from this
+      data regardless of whether real regime structure exists in it or not,
+      because producing \(k\) groups is what the algorithm always does when
+      asked for \(k\) groups.
+    </p>
+    <p>
+      The honest next step is not to declare victory, but to check the
+      finding against independent domain knowledge the clustering never
+      saw: do the days actually assigned to the "stressed" cluster line up
+      with dates the researcher already knows were volatile from other
+      evidence (news flow, VIX levels, known market events)? Does the split
+      hold up if the feature set is perturbed slightly, or if \(k=4\) is
+      tried instead? A regime map that survives that kind of independent
+      sanity check is a genuinely useful discovery. A regime map that's
+      only ever been checked by looking at the same clustering that
+      produced it is not evidence of anything — it's the algorithm
+      confirming its own output.
+    </p>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The mandatory caveat, stated plainly:</strong> clustering is
+    unsupervised. There is no ground-truth label anywhere in the process to
+    check a clustering's answer against, unlike a classifier that can be
+    scored against known outcomes. A clean, well-separated-looking cluster
+    plot is not proof the clusters are meaningful — it only proves the
+    algorithm found <em>some</em> grouping that reduced its objective
+    function, which it will do on essentially any input, including data with
+    no real structure at all. Every clustering result needs an independent
+    sanity check against real domain knowledge before it's treated as a
+    finding, not just an algorithm's output.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Clustering as an exploratory first pass, not a final answer.</strong>
+    The typical workflow is to run both k-means (across a small range of
+    \(k\)) and hierarchical clustering on the same data, look at the elbow
+    and silhouette diagnostics, look at the actual dendrogram, and use all
+    of that together to form a hypothesis about structure — then go check
+    that hypothesis against something the clustering algorithm never had
+    access to: known event dates, an independently built classification,
+    or a domain expert's judgment. Clustering generates candidate structure
+    efficiently; it does not validate that structure.
+  </p>
+  <p>
+    <strong>Beyond portfolio construction — the general-purpose uses.</strong>
+    The Hierarchical Risk Parity lesson in this Theory Lab is a real,
+    worked example of hierarchical clustering solving one specific problem:
+    turning a correlation matrix into a tree and allocating weight down it.
+    The same tree-building machinery, entirely unchanged, is just as
+    directly useful for questions that have nothing to do with allocating
+    capital — grouping trading days into behavioral regimes (the scenario
+    above), grouping a large universe of instruments by return-behavior
+    similarity to build a smaller set of representative baskets, or
+    identifying which of many candidate signals are effectively duplicates
+    of each other before feeding them into a model. Recognizing "this is
+    the same clustering problem, just applied to a different set of
+    things" is the actual transferable skill — the algorithm doesn't know
+    or care whether the points being clustered are assets, days, or
+    signals.
+  </p>
+  <p>
+    <strong>Feature scaling matters as much here as it does for
+    regularized regression.</strong> Both k-means and hierarchical
+    clustering measure distance directly, and any feature with a larger raw
+    numeric range will dominate that distance calculation regardless of
+    whether it's actually more informative — the same standardization
+    discipline this Theory Lab's LASSO &amp; Ridge lesson requires for its
+    penalty terms applies here for exactly the same reason.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where clustering goes wrong in practice</h3>
+    <p>
+      <strong>Treating a clustering's output as validated just because it
+      looks clean.</strong> The single most important pitfall on this page,
+      restated: a well-separated-looking plot of clusters is not evidence
+      the clusters are real or meaningful on their own. Always check against
+      independent domain knowledge before treating a clustering result as a
+      finding.
+    </p>
+    <p>
+      <strong>k-means assumes roughly round, similarly-sized clusters.</strong>
+      Because it minimizes squared Euclidean distance to a single centroid
+      per cluster, k-means implicitly favors compact, blob-shaped groups of
+      roughly comparable size — it will badly mis-cluster data with
+      elongated shapes, very different cluster sizes, or clusters nested
+      inside each other, even when a human would find the true structure
+      obvious by eye.
+    </p>
+    <p>
+      <strong>Not standardizing features before clustering.</strong> As
+      noted above, unscaled features distort every distance-based decision
+      the algorithm makes, in either method — the same failure mode as
+      skipping standardization before LASSO or Ridge.
+    </p>
+    <p>
+      <strong>Not running multiple random initializations for k-means.</strong>
+      A single run can converge to a poor local optimum purely from an
+      unlucky starting point — the worked example above happened to recover
+      cleanly, but that outcome isn't guaranteed, and production use
+      requires comparing several restarts (or a smarter initialization like
+      k-means++) rather than trusting one run.
+    </p>
+    <p>
+      <strong>Forgetting that the linkage rule changes the dendrogram.</strong>
+      As the Hierarchical Risk Parity lesson notes for its own use case, a
+      different linkage choice (single, complete, average, Ward) can produce
+      a meaningfully different tree from the identical distance matrix — "a"
+      dendrogram is not "the" dendrogram, and the choice should be stated
+      and justified, not left as an unexamined default.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>k-means loops: assign to nearest centroid, then update each centroid to the mean of its assigned points.</strong> Guaranteed to converge, not guaranteed to reach the global optimum.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hierarchical clustering builds the entire tree bottom-up by repeatedly merging the closest pair of clusters.</strong> No k needs to be chosen upfront — only where to cut the finished dendrogram.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson generalizes the Hierarchical Risk Parity lesson's own technique.</strong> Same dendrogram machinery, applicable to regime discovery, instrument grouping, or signal deduplication — not only portfolio weight allocation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither the elbow method nor the silhouette score gives a provably correct k.</strong> Both are heuristics for a judgment call, and they can disagree with each other on the identical data.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>k-means assumes roughly round, similarly-sized clusters and needs standardized features and multiple restarts.</strong> None of these are optional in a serious application.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Clustering is unsupervised — there is no ground truth to validate against.</strong> A clean-looking cluster split is never, by itself, proof the groups are meaningful; every result needs an independent sanity check against real domain knowledge before being trusted.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State the two-step loop that Lloyd's k-means algorithm repeats, and explain why it's guaranteed to converge.</summary>
+    <div class="tl-answer">
+      The two steps are: (1) assign every point to the centroid it's
+      currently closest to, and (2) update every centroid to the mean
+      position of the points now assigned to it. It converges because each
+      step can only decrease or leave unchanged the total within-cluster
+      sum of squares — assigning to the nearest centroid is the best
+      possible assignment given the current centroids, and the mean is
+      provably the position that minimizes total squared distance to a
+      fixed set of points, so the objective never gets worse and eventually
+      stops improving, at which point assignments stop changing.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can't you just pick the k that minimizes within-cluster sum of squares (WCSS) directly, the way you'd pick a model by its lowest error?</summary>
+    <div class="tl-answer">
+      WCSS is not comparable across different values of k the way an
+      out-of-sample error is comparable across models — WCSS can only
+      decrease (or stay the same) as k increases, because more clusters
+      always give the algorithm more centroids to fit the data more
+      tightly, and at the extreme k=n (one cluster per point) WCSS is
+      exactly zero. Minimizing WCSS directly would therefore always push
+      toward the largest k available, which produces a meaningless,
+      maximally fragmented clustering rather than a useful one — this is
+      why the elbow method looks at the shape of the WCSS-vs-k curve
+      (where it stops improving much) rather than its raw minimum.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What's the difference between single, complete, and average linkage in hierarchical clustering?</summary>
+    <div class="tl-answer">
+      All three define "distance between two clusters" (as opposed to
+      distance between two points) differently. Single linkage uses the
+      distance between the single closest pair of points, one from each
+      cluster — even one close pair is enough to trigger a merge, which can
+      produce long, straggly clusters. Complete linkage uses the distance
+      between the single farthest pair — it only merges when even the most
+      dissimilar members of the two groups aren't too far apart, tending to
+      produce tighter, more compact clusters. Average linkage uses the mean
+      distance across every possible cross-cluster pair, a middle ground
+      between the other two. The same set of points can produce a
+      meaningfully different dendrogram depending on which rule is used.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is validating a clustering result fundamentally different from validating a supervised classifier?</summary>
+    <div class="tl-answer">
+      A supervised classifier can be scored directly against known,
+      independently observed labels — you can compute an accuracy or an
+      error rate because the "right answer" for each observation exists and
+      is available to check against. Clustering has no such labels anywhere
+      in the process; it only ever measures internal consistency (how
+      tightly grouped points are relative to how far apart different groups
+      are), and an algorithm will produce some grouping that improves that
+      internal measure from essentially any input, including data with no
+      real underlying structure. The only way to validate whether a
+      clustering result means something is to check it against evidence the
+      clustering process itself never had access to — independent domain
+      knowledge, known event dates, or a separately built classification —
+      not by looking at the clustering's own internal metrics again.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Give an example, other than portfolio weight allocation, of a legitimate use for the same hierarchical-clustering/dendrogram technique the Hierarchical Risk Parity lesson uses.</summary>
+    <div class="tl-answer">
+      Any "group things by behavioral similarity" question works: grouping
+      trading days into behavioral regimes from a feature panel (realized
+      volatility, trend strength, cross-asset correlation), grouping a
+      large universe of instruments into a smaller set of representative
+      baskets by return-behavior similarity, or identifying near-duplicate
+      candidate signals before feeding them into a model — all of these use
+      the identical build-the-dendrogram-then-cut-it procedure, just applied
+      to a different set of "things" and with no portfolio weight computed
+      anywhere in the process.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why can two runs of k-means on the identical dataset with the identical k produce different final clusters?</summary>
+    <div class="tl-answer">
+      k-means only ever converges to a local optimum of its objective
+      function, and which local optimum it lands on depends on where the
+      centroids started. Because standard practice initializes centroids
+      randomly (or via a randomized smarter scheme like k-means++), two
+      runs can start from different initial positions, follow different
+      assign/update paths, and settle into different final clusterings —
+      which is exactly why production use compares several random restarts
+      and keeps the one with the lowest final WCSS, rather than trusting the
+      result of any single run.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>J. MacQueen, <em>"Some Methods for Classification and Analysis of Multivariate Observations,"</em> Proceedings of the Fifth Berkeley Symposium on Mathematical Statistics and Probability, 1(14), 281-297, 1967 — the paper that introduced the term and the underlying k-means formulation described in this lesson.</li>
+    <li>Stuart P. Lloyd, <em>"Least Squares Quantization in PCM,"</em> IEEE Transactions on Information Theory, 28(2), 129-137, 1982 (originally an unpublished Bell Labs technical note from 1957) — the iterative assign/update algorithm almost every practical k-means implementation actually runs, standardly referred to as "Lloyd's algorithm."</li>
+    <li>Peter J. Rousseeuw, <em>"Silhouettes: A Graphical Aid to the Interpretation and Validation of Cluster Analysis,"</em> Journal of Computational and Applied Mathematics, 20, 53-65, 1987 — the original silhouette-score paper referenced in this lesson's discussion of choosing k.</li>
+    <li>Marcos López de Prado, <em>"Building Diversified Portfolios that Outperform Out-of-Sample,"</em> Journal of Portfolio Management, 42(4), 59-69, 2016 — the Hierarchical Risk Parity paper this lesson repeatedly cross-references as the worked, portfolio-specific application of the same agglomerative clustering technique.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="regularized-regression-lasso-ridge.html">← Regularized Regression: LASSO &amp; Ridge</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="anomaly-detection-isolation-autoencoders.html">Anomaly Detection: Isolation Forests &amp; Autoencoders →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

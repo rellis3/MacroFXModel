@@ -22,6 +22,8 @@
     <span>Prereqs: Hidden Markov Models &amp; Regime Detection, Regime-Switching State Space Models</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -139,6 +141,11 @@
     a bug to engineer away.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a jar you drop a coin into every time something seems a little off, but you empty the jar back to zero the moment things look fine again. One weird day never fills the jar — it gets emptied right back out. Only a genuine run of "off" days keeps piling coins in without a reset, and you sound the alarm once the jar gets heavy enough. A stingier jar (small k, small h) sounds the alarm sooner but also empties less easily on noise; a more forgiving jar (large k, large h) is calmer but slower to notice a real problem.</p>
+  </div>
+
   <h3>Bayesian Online Changepoint Detection (BOCPD)</h3>
   <p>
     Adams &amp; MacKay, "Bayesian Online Changepoint Detection" (arXiv:0710.3742, 2007, cited below), reframes the
@@ -179,6 +186,12 @@
     changepoints are no more or less likely just because it's "been a while," which may or may not match how change
     actually arrives in the series being monitored.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A constant hazard rate is like a coin that has no memory of its past flips: even if it's landed heads ten times in a row, the next flip is still exactly a 50/50 shot, not "due" for tails. Applied here, it means BOCPD assumes a change is exactly as likely to happen tomorrow whether the current calm stretch has lasted 3 days or 300 — no sense of "it's been quiet for a while, so a change feels overdue." That's a clean assumption to work with, but it's worth noticing it's an assumption, not a fact about how change actually behaves in the real world.</p>
+  </div>
+
   <p>
     Normalizing the joint distribution above by the evidence \(P(x_{1:t})\) yields the actual object BOCPD reports:
     \(P(r_t \mid x_{1:t})\), the full posterior distribution over "how long since the last change," updated fresh
@@ -188,6 +201,11 @@
     including its own uncertainty about that estimate — richer, but requiring a model of what "normal" data looks
     like within a run (the predictive term above), not just a mean and an allowance.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of one tripwire that's either sprung or not, imagine keeping a running list of hunches: "maybe the change happened 1 step ago... maybe 5 steps ago... maybe 20 steps ago," each hunch with its own probability attached, and updating every single hunch's odds the instant a new data point arrives. That whole live-updating list of hunches is the run-length posterior — it never has to commit to one hard answer, it just keeps track of how plausible each possible answer currently is.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -474,5 +492,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>
