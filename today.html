@@ -3863,7 +3863,7 @@ function renderMorningBrief(r) {
     (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
     `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
     (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
-    (a.pairsOutlook?.length ? `<div class="mb-cl" style="margin-bottom:5px">Pair-by-pair read</div><div class="mb-assets">${a.pairsOutlook.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.pair)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+    (a.pairsOutlook?.length ? `<div class="mb-cl" style="margin-bottom:5px">Instrument-by-instrument read</div><div class="mb-assets">${a.pairsOutlook.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.pair)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
     boardTrade +
     (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
     `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`;
