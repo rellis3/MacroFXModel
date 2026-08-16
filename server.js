@@ -2436,6 +2436,19 @@ COMPOSITE SIGNAL (this dashboard's own combined read — averages whichever of t
 ${s.pairComposite ? `${s.pairComposite.direction} — ${s.pairComposite.agree}/${s.pairComposite.total} legs agree (score ${s.pairComposite.score >= 0 ? '+' : ''}${s.pairComposite.score})
 Legs: ${(s.pairComposite.legs || []).join('  ·  ')}` : '  Not available'}
 
+LIQUIDITY GATE (board-wide, not pair-specific — Fed/ECB/BoJ balance-sheet momentum vs VIX; context, NOT a backtested rule)
+${s.liquidityGate ? `${s.liquidityGate.direction} — ${s.liquidityGate.agree}/${s.liquidityGate.total} central banks agree (score ${s.liquidityGate.score >= 0 ? '+' : ''}${s.liquidityGate.score}). ${(s.liquidityGate.legs || []).join('  ·  ')}` : '  Not available'}
+
+CREDIT (board-wide, not pair-specific — two DIFFERENT axes: HY level = junk-bond stress/risk appetite; quality spread = investment-grade credit-curve shape, an earlier and separate tell. Both context, NOT backtested rules)
+${s.creditGateBoard ? `HY level: ${s.creditGateBoard.gate} (${s.creditGateBoard.widening > 0 ? 'widening' : s.creditGateBoard.widening < 0 ? 'tightening' : 'steady'}, ${s.creditGateBoard.hyBps}bps${s.creditGateBoard.d5 != null ? `, ${s.creditGateBoard.d5 >= 0 ? '+' : ''}${s.creditGateBoard.d5}bps/wk` : ''})` : '  HY level not available'}
+${s.creditQualitySpread ? `Quality spread (Baa−Aaa): z ${s.creditQualitySpread.z >= 0 ? '+' : ''}${s.creditQualitySpread.z}` : '  Quality spread not available'}
+
+STRUCTURAL MOTIF (AnalogML — research, explicitly NOT a validated trading signal; a chart-pattern diagnostic, not a directional call)
+${s.analogMotif ? `${s.analogMotif.nTouches}-touch ${s.analogMotif.kind}${s.analogMotif.provisional ? ' (still provisional, not yet confirmable)' : ''} — price ${s.analogMotif.distToLevelPips != null ? s.analogMotif.distToLevelPips.toFixed(0) : '?'}p from the level that would confirm the textbook reversal.${s.analogMotif.playedOutRate != null ? ` Historically this exact category played out as the textbook reversal ${(s.analogMotif.playedOutRate * 100).toFixed(0)}% of the time (n=${s.analogMotif.nSamples}${s.analogMotif.profitFactor != null ? `, PF ${s.analogMotif.profitFactor.toFixed(2)}` : ''}).` : ' Not enough historical samples of this exact category yet for a confidence read.'}` : '  No motif currently forming'}
+
+COT POSITIONING CORRELATION (do THIS PAIR'S OWN currency legs' speculative positioning move with/against other currencies week-over-week — a positioning relationship, separate from price correlation and separate from this pair's own crowding level above)
+${s.cotCorrelation && s.cotCorrelation.length ? s.cotCorrelation.map(c => `${c.leg} positioned ${c.dir} ${c.other} (${c.v >= 0 ? '+' : ''}${c.v.toFixed(2)})`).join('  ·  ') : '  Not available'}
+
 HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
 ${s.topEntries && s.topEntries.length > 0
   ? s.topEntries.map(e => `  ${e.stars}* ${e.direction.toUpperCase()} @ ${e.price}  Tags: ${e.tags}  SL: ${e.sl} (${e.slPips}p)  TP: ${e.tp} (${e.tpNote}${e.tpCapped ? ' - vol capped' : ''}, ${e.tpPips}p)  R:R 1:${e.rr}  Size: ${e.size}%`).join('\n')

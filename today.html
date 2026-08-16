@@ -3683,6 +3683,45 @@ function assembleSnapshot(r) {
     s.pairComposite = { score: comp.score, direction: comp.direction, agree: comp.agree, total: comp.total,
       legs: comp.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
   }
+  // Board-wide gates (Liquidity, Credit — HY level + quality spread) — same
+  // reads the Market Read risk verdict already shows, previously never
+  // reached the AI prompt despite being visible on the page for every pair.
+  const lg = liquidityGateRead();
+  if (lg?.score != null) {
+    s.liquidityGate = { score: lg.score, direction: lg.direction, agree: lg.agree, total: lg.total,
+      legs: lg.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
+  }
+  const boardCredit = creditGate();
+  if (boardCredit) s.creditGateBoard = { gate: boardCredit.gate, widening: boardCredit.widening, hyBps: boardCredit.hyBps, d5: boardCredit.d5 };
+  if (creditQuality?.quality != null) s.creditQualitySpread = { z: creditQuality.quality, date: creditQuality.latestDate };
+  // Structural motif (AnalogML) — research, NOT a validated signal (the
+  // retired k-NN "lean" version banked null; this replacement diagnostic
+  // reports a pattern + its historical base rate, not a directional call).
+  const motif = analogml?.[r.name.toLowerCase()];
+  if (motif) {
+    s.analogMotif = { kind: motif.kind, nTouches: motif.n_touches, provisional: motif.provisional,
+      distToLevelPips: motif.dist_to_level_pips, playedOutRate: motif.confidence?.played_out_rate ?? null,
+      nSamples: motif.confidence?.n_samples ?? null, profitFactor: motif.confidence?.profit_factor ?? null };
+  }
+  // COT positioning correlation — do this pair's OWN legs' speculative
+  // positioning move with/against other currencies (a different relationship
+  // than price correlation, and different from the pair's own crowding level
+  // above). USD has no CFTC contract, so USD-anchored pairs surface only
+  // their non-USD leg.
+  const ccLegs = (PAIR_CCY[r.name] || []).filter(c => c !== 'USD');
+  const cotCorrRaw = hedgeAlerts?.last_cot_corr ?? {};
+  const cotCorr = [];
+  for (const leg of ccLegs) {
+    for (const [k, v] of Object.entries(cotCorrRaw)) {
+      const [a, b] = k.split('_');
+      const other = a === leg ? b : (b === leg ? a : null);
+      if (other != null && Math.abs(v) >= 0.3) cotCorr.push({ leg, other, v, dir: v >= 0 ? 'with' : 'against' });
+    }
+  }
+  if (cotCorr.length) {
+    cotCorr.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+    s.cotCorrelation = cotCorr.slice(0, 4);
+  }
   // Event risk for THIS pair — the calendar filtered to its own economies
   const evs = pairEvents(r.name).filter(e => e.ms >= Date.now() - 20 * 60000);
   if (evs.length) {
