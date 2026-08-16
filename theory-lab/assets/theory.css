@@ -298,7 +298,7 @@ h2:first-of-type{margin-top:0}
 /* Difficulty filter bar + per-card level pill (hub.html only) */
 .tl-diff-filter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 30px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl)}
 .tl-diff-filter-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-right:4px}
-.tl-diff-btn{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.tl-diff-btn{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:background .15s,border-color .15s,color .15s;min-height:44px;box-sizing:border-box}
 .tl-diff-btn:hover{border-color:var(--blue2);color:var(--text)}
 .tl-diff-btn.active[data-level="all"]{background:var(--s3);color:var(--text);border-color:var(--border2)}
 .tl-diff-btn.active[data-level="beginner"]{background:var(--green-bg);color:var(--green);border-color:var(--green-bd)}
@@ -313,7 +313,7 @@ h2:first-of-type{margin-top:0}
 /* "Explain Like I'm 5" toggle + simplified companion boxes (lesson pages).
    Hidden by default; nothing else on the page changes when this is off —
    these are supplementary, never a replacement for the real explanation. */
-.tl-eli5-toggle{display:inline-flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;margin:2px 0 24px}
+.tl-eli5-toggle{display:inline-flex;align-items:center;gap:7px;background:var(--s1);border:1px solid var(--border);border-radius:20px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;margin:2px 0 24px;min-height:44px;box-sizing:border-box}
 .tl-eli5-toggle:hover{border-color:var(--green-bd);color:var(--text)}
 .tl-eli5-toggle.active{background:var(--green-bg);border-color:var(--green-bd);color:var(--green)}
 .tl-eli5{display:none;background:var(--green-bg);border:1px solid var(--green-bd);border-left:3px solid var(--green);border-radius:var(--rl);padding:14px 18px;margin:14px 0 22px}
