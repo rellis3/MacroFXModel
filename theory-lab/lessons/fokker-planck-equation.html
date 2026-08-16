@@ -148,6 +148,11 @@
     rigidly, exactly matching the deterministic ODE case.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture releasing a puff of smoke into a gently moving breeze. The breeze carries the whole cloud sideways without changing its shape — that's the drift term. Meanwhile the smoke also spreads out and blurs on its own, breeze or no breeze — that's the diffusion term. The Fokker-Planck equation is just the rule describing both of those things happening to a probability cloud at once, instant by instant.</p>
+  </div>
+
   <h3>2. Where it comes from: the formal adjoint of Itô's Lemma</h3>
   <p>
     This lesson states the equation as a result rather than proving it with
@@ -218,6 +223,11 @@
     <tr><td>\(\mathcal{L}^*p = -\partial_x[\mu p]+\tfrac12\partial_x^2[\sigma^2 p]\)</td><td>The Fokker-Planck operator — the formal adjoint of \(\mathcal{L}\), acting on the density \(p\) instead of on a test function.</td></tr>
     <tr><td>\(\delta(x-x_0)\)</td><td>The Dirac delta — the initial condition \(p(x,t_0)=\delta(x-x_0)\) for a process that starts at a known point \(x_0\) with certainty.</td></tr>
   </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the generator as a rule for asking "given where a particle is right now, how does some quantity I care about change?" The Fokker-Planck operator is the same rule turned inside-out through some algebra (integration by parts) so it instead answers "given the whole cloud of particles, how does the cloud's shape change?" Same underlying physics, just asked from the particle's point of view versus the cloud's point of view.</p>
+  </div>
 
   <h3>3. Forward vs. backward — the single most important distinction in this lesson</h3>
   <p>
@@ -293,6 +303,11 @@
     backward from a known future — that's <strong>backward</strong>,
     Kolmogorov. Same underlying generator, opposite direction, different
     unknown function, different fixed condition.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Forward is a weather forecast: you know today's conditions and want to know the range of things that might happen next. Backward is an insurance payout calculation: you know exactly what you'll owe on a fixed future date and want to know what that's worth today. Same kind of math machinery under the hood, but pointed in opposite directions and answering opposite questions — mixing them up gives you a confident, wrong answer instead of an obvious error.</p>
   </div>
 
   <div class="tl-chart">
@@ -494,6 +509,11 @@
     evolving over space and time. The Fokker-Planck equation is the "easy"
     half of that story: a PDE, but with no noise term of its own. The harder
     half puts noise back into the PDE itself.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Even though each individual particle in the cloud is bouncing around unpredictably, the cloud's overall shape evolves in a perfectly predictable, deterministic way — like knowing exactly how a wave of dye will spread through water, even though you can't predict any single dye molecule's path. That's the whole point being set up here: a stochastic PDE is what you get when you stop being so lucky, and the shape itself starts wiggling randomly too.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>

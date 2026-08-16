@@ -116,6 +116,11 @@
       <div class="tl-fp-desc">Payoff curves downward, away from the linear line — small gains near the center, accelerating losses at the extremes</div>
     </div>
   </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Convexity is just "does the pain (or gain) speed up the further things move?" A straight line means every extra inch of bad news costs you exactly the same as the last inch — nothing speeds up. A curve that bows away from that line means the pain (or the payoff) starts accelerating the further you go — small moves barely matter, but big moves suddenly matter a lot more per inch than they did before.</p>
+  </div>
+
   <p>
   A short option position (having sold puts or calls) has \(\Gamma < 0\): as the underlying moves further
   from where the option was sold, the position's losses grow faster than linearly — the defining
@@ -147,6 +152,11 @@
   is, by design. The two shapes are, in a real sense, mirror images of each other, and neither one's
   ordinary-time track record tells you what you actually need to know, which is what happens in the tail.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you only watched the last three calm years, the steamroller-picker looks like a genius and the guard-hiring worrywart looks like they're wasting money on a fee that never gets used. That's exactly backwards from the truth — you just haven't watched long enough to see the one day the steamroller actually speeds up. A short track record of "nothing bad happened yet" is not the same thing as "nothing bad can happen."</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Payoff curvature: linear exposure vs. short-convexity vs. long-convexity (tail-hedged), as a function of the market move</div>
@@ -237,6 +247,11 @@
     easily reverse. This example demonstrates the compounding <em>mechanism</em>, not a validated
     real-world result; see the honest cost-of-carry discussion below.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>It's like paying for home insurance for four quiet years and grumbling about the premium, then having your house saved from a fire in year five. Add up all five years together and the insurance clearly paid for itself — but only because the fire actually happened. If the fire never comes, all you're left with is four (or forty) years of premiums and no payout, which is the real, honest possibility this example is not pretending away.</p>
+    </div>
   </div>
 
   <div class="tl-solid amber">
@@ -291,6 +306,14 @@
     away in exchange for a lower ongoing premium, a spectrum practitioners size deliberately rather than
     defaulting to one extreme.
     </li>
+  </ul>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Buying a far out-of-the-money put is like buying flood insurance in a town everybody already knows floods badly — because everyone wants the same policy, the insurer charges more for it than the raw odds alone would suggest. A put spread is like buying a cheaper policy that only pays out up to a certain amount of damage, not infinitely. A collar is like getting that insurance for nearly free by agreeing to give up some of your own upside if things go extremely well instead.</p>
+  </div>
+
+  <ul>
     <li>
     <strong>Volatility-linked hedges.</strong> Instruments whose value rises with volatility itself
     (rather than only with a specific directional price move) can hedge a broader range of crisis

@@ -162,6 +162,11 @@
     underlying relationship. That's the problem correlation exists to solve.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Covariance checks whether two things tend to have good days and bad days together. Imagine two friends' moods — if they're usually both happy on the same days and both grumpy on the same days, that's like positive covariance. If one's happy exactly when the other is grumpy, that's negative.</p>
+  </div>
+
   <p><strong>2. The correlation coefficient.</strong> Divide covariance by
   the product of each variable's own standard deviation:</p>
   <div class="tl-math">\[ r = \frac{\mathrm{Cov}(X,Y)}{\sigma_X\,\sigma_Y} \]</div>
@@ -187,6 +192,11 @@
     rank-based alternatives (Spearman's, Kendall's) that measure a broader
     "moves together" notion without assuming linearity.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Correlation is covariance after it's been squeezed onto a ruler that always goes from -1 to +1, no matter what units you started with. +1 means two things move perfectly together, -1 means they move perfectly opposite, and 0 means there's no straight-line pattern between them at all.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -251,6 +261,12 @@
     point, at the cost of being more sensitive to outliers than an
     absolute-error fit would be (a real trade-off, not a free lunch).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to draw one straight line through a scattered pile of dots so it sits as close to all of them as possible. The gap between each dot and your line is called a residual. Squaring those gaps before adding them up — instead of just adding the plain gaps — stops a dot way above the line from canceling out a dot way below it.</p>
+  </div>
+
   <p>
     To actually minimize SSR, treat it as a function of \(\hat\alpha\) and
     \(\hat\beta\) and use ordinary calculus: take the partial derivative with
@@ -312,6 +328,11 @@
     least-squares arithmetic is identical.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The best-fit line's slope turns out to be a simple recipe: take how much the two things move together (covariance), and divide by how much just one of them, X, wiggles on its own (its variance). That one division tells you exactly how steep the best line should be.</p>
+  </div>
+
   <p><strong>4. R² — the fraction of variance explained.</strong> Once a
   line is fit, a natural question is how good the fit actually is. Split the
   total variation in \(Y\) around its own mean, SST \(= \sum_i (y_i-\bar
@@ -328,7 +349,16 @@
     \(R^2 = 1\) means the line passes through every point exactly (zero
     residual variance); \(R^2 = 0\) means the line explains nothing beyond
     just always guessing \(\bar y\) (the regression's residual variance
-    equals the raw variance of \(Y\)). For the specific case of <strong>simple
+    equals the raw variance of \(Y\)).
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>R² is a report card grade for how good your line's guesses are, from 0 to 1. An R² of 1 means your line nails every single point exactly. An R² of 0 means your line is no better than just guessing the average every time, ignoring X completely.</p>
+  </div>
+
+  <p>
+    For the specific case of <strong>simple
     linear regression</strong> (one predictor \(X\)), there's a direct
     algebraic identity connecting this back to the correlation coefficient
     from step 2:

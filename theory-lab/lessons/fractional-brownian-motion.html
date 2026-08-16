@@ -162,6 +162,11 @@
     always implicitly testing for.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Ordinary Brownian motion is a random walker with total amnesia — every step is a fresh coin flip, no matter what happened before. Fractional Brownian motion is the same kind of walker, but with a memory dial built right into its mathematical DNA: turn the dial and the walker becomes either subtly stubborn (keeps drifting the way it's been drifting) or subtly self-correcting (tends to reverse), and at the dial's exact midpoint it's back to plain amnesia. The whole process is defined by one formula that says precisely how strong that memory is, rather than being measured after the fact.</p>
+  </div>
+
   <h3>2. What non-independent increments actually mean</h3>
   <p>
     For ordinary Brownian motion, non-overlapping increments are independent — that is the entire content of
@@ -186,6 +191,11 @@
     Both cases stand in contrast to \(H=0.5\), where the increment autocorrelation is exactly zero at every nonzero
     lag — no persistence, no anti-persistence, nothing to model.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Persistent (H&gt;0.5) means a streak tends to keep going, and the "keeps going" pull fades out so gradually that it can still matter decades later. Anti-persistent (H&lt;0.5) means a move tends to get reversed soon after, but that reversing pull fades out fast, the ordinary way. Both are real memory effects — they're just different in kind, not just in strength, which is the whole point of the next section.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -255,6 +265,11 @@
     never its fundamentally summable character. Long memory needs a genuinely different kind of process.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine an echo in a canyon (exponential decay) versus a rumor that keeps getting retold slightly weaker each time but never quite disappears (power-law decay). No matter how many times you add another canyon wall, an echo still eventually goes silent — that's what every AR/ARMA model does, however many lags you bolt on. A rumor that fades this slowly is a fundamentally different kind of thing than an echo, not just a louder or longer-lasting one — and that's exactly why "long memory" needs its own kind of model, not a bigger version of the echo model.</p>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Exponential decay (short memory) vs. power-law decay (long memory)</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart comparing two autocorrelation decay curves against lag on the x-axis. A blue curve representing a short-memory AR(1)-style process falls from 1 to near zero by around lag 10 and stays near zero. A red curve representing a long-memory process starts at 1 and decays much more slowly, remaining clearly above zero and still elevated around 0.3 at lag 50 and beyond.">
@@ -313,6 +328,11 @@
     reduction-to-the-familiar-case check as the covariance formula's \(H=0.5\) reduction, now on the econometric
     side of the same coin.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>ARFIMA is fBm's practical, spreadsheet-friendly cousin. Instead of a continuous, exotic process defined by a covariance formula, it lets an ordinary "difference the data until it's stationary" recipe use a fractional amount of differencing — like taking three-and-a-half steps instead of being stuck choosing between three or four. That one tweak is enough to fit the same slow, long-memory decay pattern using tools an econometrician already knows how to run on daily data.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>

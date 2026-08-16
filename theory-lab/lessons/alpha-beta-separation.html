@@ -122,6 +122,11 @@
       <tr><td>\(\varepsilon_t\)</td><td>The idiosyncratic noise/residual — whatever the market factor alone doesn't explain, period to period.</td></tr>
     </table>
   </div>
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>This regression is just a formal version of "how much of your grade came from the curve, and how much came from you actually knowing the material?" The slope (β) says how tightly your score tracks the class average — a high β means you basically move with everyone else. The leftover (α) is whatever your score does that the class average alone can't explain — the part that's genuinely, individually yours.</p>
+  </div>
+
   <p>
     Two things fall out of this immediately. First, <strong>beta is cheap</strong>:
     once you know \(\beta_i\), you can replicate that entire component of the
@@ -132,6 +137,12 @@
     cancel and what remains, in expectation, is \(\alpha_i\) plus noise — a
     "market-neutral" version of the exact same strategy.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you know exactly how much of your test score came from "riding the class curve," you can subtract exactly that much and see your true, curve-free performance — that's what shorting β units of the market does to a return stream. Once you've subtracted the curve's effect, what's left is a clean measurement of your own skill, untangled from whatever the rest of the class happened to do.</p>
+  </div>
+
   <p>
     This is precisely the idea behind <strong>portable alpha</strong>: once a
     genuine alpha stream has been isolated (hedged market-neutral), it no
@@ -142,6 +153,11 @@
     "portable" precisely because hedging severed it from any one specific
     market.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once your "true skill" score is separated from the class curve, you can attach it to a totally different curve if you want — swap into a harder class, an easier class, or no class average at all. The skill itself didn't change; it's just no longer glued to the one specific setting it was originally measured in. That's what makes alpha "portable" once beta has been honestly removed.</p>
+  </div>
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Hedging out beta to isolate alpha</div>

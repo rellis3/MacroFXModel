@@ -184,6 +184,12 @@
       <tr><td>\(P(H \mid E)\)</td><td>The <strong>posterior</strong> — your updated belief in H <em>after</em> seeing E. This is the answer.</td></tr>
     </table>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a detective settling on a suspect. Before any clues (the prior), you already have a rough sense of who's likely guilty based on general patterns. A clue turns up (the evidence) — the likelihood is "how often would this exact clue show up if this suspect really did it." Bayes' rule just says: take your starting guess and adjust it by how strongly the clue actually points at that suspect, and you get your updated guess (the posterior). It isn't a new trick — it's careful bookkeeping for updating a hunch.</p>
+  </div>
+
   <p>
     <code>P(E)</code> is the term people usually get stuck computing, because
     it isn't handed to you directly — it has to be built from every way E could
@@ -206,6 +212,12 @@
     often you'd see the same evidence for the wrong reason). The worked example
     below makes that skip concrete and shows exactly how much it costs you.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>To know how impressed you should be by "dark clouds," you can't just ask "how often are there dark clouds on days it rains." You also have to count "how often are there dark clouds on days it doesn't rain" — because some of every cloudy day you'll ever see is a false alarm. Skipping that second count is exactly what makes a good-sounding test feel far more convincing than it actually is.</p>
+  </div>
+
   <p>
     <strong>Sequential updating.</strong> Bayes' theorem doesn't care whether
     <code>P(H)</code> came from a textbook base rate or from yesterday's
@@ -227,6 +239,12 @@
     belief and start over," but "multiply the old belief by how much more (or
     less) likely the new data makes it."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You don't have to throw out everything you believed and start guessing from zero every time new information shows up. You just take whatever you believed a moment ago and nudge it up or down based on the newest clue — today's answer becomes tomorrow's starting point, over and over, like slowly turning a dial instead of resetting it to zero each time.</p>
+  </div>
+
   <p>
     <strong>Bayes factors.</strong> Sometimes you don't want the raw posterior
     probability — you want to compare two competing hypotheses directly (e.g.
@@ -253,6 +271,11 @@
     betting the account on. A Bayes factor of 30 is a different order of
     claim entirely.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A Bayes factor is a plain "how many times more" number — a factor of 3 means the evidence is 3 times more likely to show up if your idea is right than if it's wrong. It's honest about only describing the strength of the new clue itself, not your whole final opinion — two people who started out disagreeing can look at the exact same clue, agree it's "3 times more supportive" of one idea, and still end up with different final beliefs, because they started from different places.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -476,6 +499,12 @@
       frequency over an ensemble of repeated trials.
     </li>
   </ul>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A frequentist only trusts statements about a coin-flipping machine in general — "if you flipped this coin a million times, it'd land heads about half the time" — but won't say "there's a 70% chance it's heads" about one single flip that already happened. A Bayesian is comfortable putting a number on their confidence about that one specific flip, treating "probability" as a measure of how sure you are, not just a long-run tally.</p>
+  </div>
+
   <p>
     Practically, this cashes out as a difference in what question each
     approach is built to answer. A frequentist significance test answers "if

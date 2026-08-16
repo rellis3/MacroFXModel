@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recurrent Networks for Sequential Data: LSTM &amp; GRU — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deep Learning &amp; Modern ML for Trading / Recurrent Networks for Sequential Data: LSTM &amp; GRU</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Deep Learning &amp; Modern ML for Trading 1 of 6</div>
+  <h1 class="tl-title">Recurrent Networks for Sequential Data: LSTM &amp; GRU</h1>
+  <p class="tl-dek">Ordinary feedforward networks have no notion of "before" and "after" — a recurrent network carries a running summary forward through time, and the specific way LSTM and GRU cells carry that summary is what makes long sequences trainable at all.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="newton-raphson-gradient-descent.html">Gradient Descent</a>, <a href="foundation-multivariable-calculus.html">Multivariable Calculus</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A feedforward network sees each input independently — it has no built-in concept of "this came before that." A <strong>recurrent neural network (RNN)</strong> fixes this by carrying a hidden state \(h_t\) forward across time steps: \(h_t=\tanh(W_h h_{t-1}+W_x x_t+b)\).</li>
+      <li>Training an RNN unrolls this recurrence across every time step and backpropagates through all of them ("backpropagation through time," BPTT). Because the same weight matrix is multiplied in at every step, gradients either shrink toward zero or blow up exponentially with sequence length — the <strong>vanishing/exploding gradient problem</strong> (Bengio, Simard &amp; Frasconi, 1994).</li>
+      <li>The <strong>LSTM</strong> (Hochreiter &amp; Schmidhuber, 1997) fixes this with a separate cell state \(C_t\) updated <em>additively</em> through forget, input, and output gates — an additive path lets gradients flow across many time steps without being repeatedly multiplied down to zero.</li>
+      <li>The <strong>GRU</strong> (Cho et al., 2014) simplifies the gating into just a reset gate and an update gate, with no separate cell state — fewer parameters than an LSTM, and often comparable performance, but not a strict improvement in either direction.</li>
+      <li><strong>Honest framing:</strong> RNNs and LSTMs were the dominant sequence architecture before 2017. The next lesson (<a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series</a>) covers the architecture that has largely superseded them for long sequences — but LSTMs remain a genuinely reasonable, still-current choice for shorter or streaming sequences and lower-compute settings, not an obsolete method.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every model discussed elsewhere in this curriculum's tree-based and
+    classical statistical lessons treats a row of features as a single,
+    order-independent snapshot — shuffle the rows and a random forest or a
+    gradient-boosted tree doesn't notice or care. A time series is the
+    opposite kind of object: the order of the observations <em>is</em> the
+    information. Predicting tomorrow's return from the last 20 days of
+    returns needs a model that can process "day 1, then day 2, then day 3…"
+    and carry forward whatever it learned along the way, rather than treating
+    each day as an unrelated, independent data point. Recurrent networks are
+    the first architecture in this category built specifically around that
+    idea — a hidden state that persists and updates as new time steps arrive
+    — and the two-part story of "vanilla RNNs break on long sequences, gated
+    cells fix it" is exactly the throughline this lesson walks through.
+  </p>
+  <p>
+    This lesson is also the necessary setup for the next one. Attention and
+    transformers were developed specifically to fix problems that gated RNNs
+    like the LSTM narrow but do not fully solve — so understanding what an
+    LSTM actually does, and where it still struggles, is what makes the next
+    lesson's motivation land rather than feeling like an arbitrary "here's a
+    newer architecture" claim.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A running summary you update one word at a time</h3>
+    <p>
+      Imagine reading a sentence one word at a time, and after every word you
+      have to compress everything you've read so far into a single short
+      note — you can't go back and re-read earlier words, only carry that
+      note forward. Read "the," write a nearly blank note. Read "cat," update
+      the note to mention a cat. Read "sat," update again. By the time you
+      reach the end of the sentence, your note is a running summary built up
+      one word at a time, each update blending the new word with whatever the
+      note already said.
+    </p>
+    <p>
+      That note is exactly a recurrent network's <strong>hidden state</strong>
+      \(h_t\). At every time step it takes the previous note (\(h_{t-1}\)) and
+      the new piece of information arriving (\(x_t\)), and produces an
+      updated note (\(h_t\)). The problem this lesson spends most of its time
+      on is what happens to information from far back in the sequence: if the
+      note-updating rule keeps diluting old information a little at each
+      step, by the time you're 50 words in, anything from word 3 has been
+      diluted into near-nothingness — which is precisely the vanishing
+      gradient problem, described plainly before any equations below.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>The vanilla RNN recurrence</h3>
+  <p>
+    At every time step \(t\), a vanilla RNN combines the new input \(x_t\)
+    with the previous hidden state \(h_{t-1}\), passes the combination
+    through a nonlinearity, and produces a new hidden state \(h_t\):
+  </p>
+  <div class="tl-math">\[ h_t = \tanh\big(W_h h_{t-1} + W_x x_t + b\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>h_t</code><span>the hidden state at time t — the "running note," carried forward to the next step</span></div>
+    <div class="tl-eq-chip c2"><code>x_t</code><span>the new input arriving at time t (e.g. today's return)</span></div>
+    <div class="tl-eq-chip c3"><code>W_h, W_x</code><span>learned weight matrices — how much the old state and the new input each contribute</span></div>
+    <div class="tl-eq-chip c4"><code>tanh</code><span>a squashing nonlinearity, keeping every hidden-state value between −1 and 1</span></div>
+  </div>
+  <p>
+    The same weight matrices \(W_h\) and \(W_x\) are reused at <em>every</em>
+    time step — this weight sharing is what makes the network "recurrent"
+    rather than just a very deep feedforward stack, and it's also the direct
+    source of the problem below. A final output (e.g. a next-step return
+    forecast) is typically read off the final hidden state, or off every
+    hidden state along the way, through one more learned layer,
+    \(\hat y_t = W_y h_t + b_y\).
+  </p>
+
+  <h3>Backpropagation through time, and why it breaks</h3>
+  <p>
+    Training an RNN "unrolls" the recurrence across all \(T\) time steps,
+    treating it as one long feedforward computation, and backpropagates the
+    loss gradient from the final output all the way back to \(h_1\) — this is
+    <strong>backpropagation through time (BPTT)</strong>. Because \(h_t\)
+    depends on \(h_{t-1}\), which depends on \(h_{t-2}\), and so on, the chain
+    rule produces a gradient that is a <em>product</em> of many Jacobian
+    terms, one per time step:
+  </p>
+  <div class="tl-math">\[ \frac{\partial h_T}{\partial h_1} = \prod_{t=2}^{T} \frac{\partial h_t}{\partial h_{t-1}} = \prod_{t=2}^{T} \text{diag}\big(\tanh'(\cdot)\big)\,W_h \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∂h_T/∂h_1</code><span>how sensitive the final hidden state is to the very first one — what BPTT needs to compute a useful gradient that far back</span></div>
+    <div class="tl-eq-chip c3"><code>tanh'(·)</code><span>the derivative of tanh, which is always ≤ 1, and much less than 1 whenever the pre-activation is large</span></div>
+    <div class="tl-eq-chip c2"><code>W_h</code><span>the same recurrent weight matrix, multiplied in again at every single step</span></div>
+  </div>
+  <p>
+    This is a product of \(T-1\) matrices. If the dominant eigenvalue of
+    \(W_h\) (scaled by \(\tanh'\), which is itself always at most 1) is less
+    than 1, the product shrinks toward zero <em>exponentially</em> in \(T\) —
+    the <strong>vanishing gradient</strong>. Long-range dependencies simply
+    never get a usable training signal: an error at time 50 has essentially
+    no way to teach the network anything about what happened at time 2, no
+    matter how relevant that early information actually was. If the dominant
+    eigenvalue is greater than 1 instead, the product grows exponentially —
+    the <strong>exploding gradient</strong>, which manifests as wildly
+    unstable training updates (this direction is comparatively easy to patch
+    with gradient clipping; the vanishing direction is not). This precise
+    mechanism — a repeated multiplicative recurrence producing an
+    exponentially decaying or exploding long-range gradient — is the central
+    result of Bengio, Simard &amp; Frasconi's 1994 analysis of why gradient
+    descent struggles to learn long-term dependencies in recurrent networks.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine passing a whispered message down a long line of people, and each person is only allowed to repeat about 70% of the volume they heard. By the tenth person, the message is nearly silent — not because anyone made a mistake, just because quietly repeating something over and over, each time a little quieter, eventually leaves nothing left. That's the vanishing gradient: the "signal" about what happened at step 1 gets multiplied down a little at every single later step, and after enough steps there's essentially nothing left to learn from.</p>
+  </div>
+
+  <h3>The LSTM: an additive path for the cell state</h3>
+  <p>
+    The Long Short-Term Memory cell (Hochreiter &amp; Schmidhuber, 1997)
+    solves this by introducing a second, separate piece of state — the
+    <strong>cell state</strong> \(C_t\) — and updating it through gates that
+    are themselves learned, small networks. Three gates and one candidate
+    update, each computed from the same \([h_{t-1}, x_t]\) input:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Forget gate — what to erase from the old cell state</h4>
+        <div class="tl-math">\[ f_t = \sigma\big(W_f[h_{t-1}, x_t] + b_f\big) \]</div>
+        <p>A number between 0 and 1 for every unit of the cell state — 0 means "forget this completely," 1 means "keep it entirely."</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Input gate and candidate — what new information to add</h4>
+        <div class="tl-math">\[ i_t = \sigma\big(W_i[h_{t-1}, x_t] + b_i\big), \qquad \tilde C_t = \tanh\big(W_C[h_{t-1}, x_t] + b_C\big) \]</div>
+        <p>\(\tilde C_t\) proposes new candidate content; \(i_t\) decides how much of that candidate actually gets written into the cell state.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Update the cell state — additively</h4>
+        <div class="tl-math">\[ C_t = f_t \odot C_{t-1} + i_t \odot \tilde C_t \]</div>
+        <p>The old cell state is scaled down by the forget gate, then the new candidate (scaled by the input gate) is <em>added</em> — not passed through a repeated matrix multiplication like the vanilla RNN's hidden state.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Output gate — what to reveal as the hidden state</h4>
+        <div class="tl-math">\[ o_t = \sigma\big(W_o[h_{t-1}, x_t] + b_o\big), \qquad h_t = o_t \odot \tanh(C_t) \]</div>
+        <p>The cell state \(C_t\) is the LSTM's long-term memory; the hidden state \(h_t\) is a filtered, task-facing view of it, gated by \(o_t\).</p>
+      </div>
+    </div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">f_t, i_t, o_t</div><div class="tl-fp-name">The three gates</div><div class="tl-fp-desc">Each a sigmoid output in [0,1] — how much to forget, write, and reveal</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">C_t</div><div class="tl-fp-name">The cell state</div><div class="tl-fp-desc">Updated additively — this is the path that keeps gradients alive across long sequences</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">h_t</div><div class="tl-fp-name">The hidden state</div><div class="tl-fp-desc">A gated, task-facing readout of the cell state, passed to the next step and/or the output layer</div></div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(\sigma\)</td><td>The logistic sigmoid, squashing values into [0,1] — used for every gate since a gate is a "how much" fraction.</td></tr>
+    <tr><td>\(\odot\)</td><td>Element-wise (Hadamard) multiplication — each unit of the cell state is scaled by its own gate value independently.</td></tr>
+    <tr><td>\([h_{t-1}, x_t]\)</td><td>The previous hidden state and the current input, concatenated into one vector before each gate's linear layer.</td></tr>
+    <tr><td>\(W_f, W_i, W_C, W_o\)</td><td>Separate learned weight matrices for the forget, input, candidate, and output computations.</td></tr>
+  </table></div>
+  <div class="tl-solid green">
+    <strong>Why the additive path fixes the vanishing gradient:</strong> the
+    gradient of the vanilla RNN's hidden state through time is a
+    <em>product</em> of many copies of \(W_h\) — repeated multiplication,
+    which shrinks exponentially whenever the recurrent weight is less than 1
+    in magnitude. The LSTM's cell-state update, \(C_t = f_t \odot C_{t-1} +
+    i_t \odot \tilde C_t\), is an <em>addition</em>, not a multiplication, of
+    the previous state into the new one. Differentiating this update with
+    respect to \(C_{t-1}\) gives \(\partial C_t/\partial C_{t-1} = f_t\) —
+    still less than or equal to 1, but not a matrix product accumulating
+    across every single time step the way the vanilla RNN's does. When the
+    forget gate learns to stay close to 1 for information that matters, the
+    gradient can flow across many time steps largely undiminished — an
+    "error highway" the vanilla recurrence structurally cannot provide.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of a chain of people quietly re-whispering a message and losing volume every time, imagine a conveyor belt running the whole length of the line. Anyone can reach out and add a little something to the belt, or scoop a little off it, but the belt itself just keeps carrying whatever's on it forward — it isn't being re-whispered and quietly fading at every single stop. That belt is the cell state \(C_t\): additions and removals happen at each step (the gates), but the belt's own carrying mechanism is addition, not repeated multiplication, which is exactly why old information can survive a much longer trip down the line.</p>
+  </div>
+
+  <h3>The GRU: fewer gates, no separate cell state</h3>
+  <p>
+    The Gated Recurrent Unit (Cho et al., 2014) simplifies the LSTM's
+    machinery: it merges the cell state and hidden state into a single state
+    \(h_t\), and uses only two gates — a <strong>reset gate</strong> and an
+    <strong>update gate</strong> — instead of three:
+  </p>
+  <div class="tl-math">\[ z_t = \sigma\big(W_z[h_{t-1}, x_t]\big), \qquad r_t = \sigma\big(W_r[h_{t-1}, x_t]\big) \]</div>
+  <div class="tl-math">\[ \tilde h_t = \tanh\big(W[r_t \odot h_{t-1},\, x_t]\big), \qquad h_t = (1-z_t)\odot h_{t-1} + z_t \odot \tilde h_t \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z_t</code><span>the update gate — how much of the new candidate state to blend in versus keeping the old state</span></div>
+    <div class="tl-eq-chip c2"><code>r_t</code><span>the reset gate — how much of the old state to use when computing the new candidate</span></div>
+    <div class="tl-eq-chip c3"><code>h̃_t</code><span>the candidate hidden state, computed with the old state partially or fully reset</span></div>
+  </div>
+  <p>
+    The update rule \(h_t = (1-z_t)\odot h_{t-1} + z_t\odot \tilde h_t\) is
+    itself a convex, additive blend between the old state and the new
+    candidate — structurally the same kind of additive mechanism that lets
+    the LSTM's cell state escape repeated multiplicative shrinkage, achieved
+    here with one fused state and one fewer gate.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>LSTM</h4>
+      <p>Three gates (forget, input, output) plus a separate cell state — four learned weight matrices per layer. More expressive, more parameters, generally the safer default on larger datasets or longer sequences.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>GRU</h4>
+      <p>Two gates (reset, update), no separate cell state — three learned weight matrices per layer. Fewer parameters means faster training and less overfitting risk on smaller datasets, with performance that is often — not always — comparable to an LSTM.</p>
+    </div>
+  </div>
+  <p>
+    Neither is a strict improvement on the other. This is a genuine tradeoff:
+    which one performs better is dataset- and task-dependent, and needs to be
+    checked empirically rather than assumed from general reputation — the
+    same discipline this curriculum applies to every other architecture
+    choice.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If the LSTM is a note-taker with a separate long-term notebook (the cell state) and a short summary card they hand off (the hidden state), the GRU is a note-taker who just keeps one notebook and constantly decides, page by page, how much of the old page to keep versus overwrite. It's a simpler system with fewer moving parts — usually just as good, occasionally not, and cheaper to run either way.</p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Gradient magnitude across 15 backpropagated time steps: vanilla RNN versus LSTM</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart comparing gradient magnitude carried backward through time for a vanilla RNN versus an LSTM cell state. The vanilla RNN's gradient decays exponentially from 1.0 toward nearly zero within about eight steps, illustrating the vanishing gradient problem. The LSTM's cell-state gradient, governed by the additive update through the forget gate, decays far more slowly and remains meaningfully above zero across all fifteen steps.">
+      <line x1="60" y1="20" x2="60" y2="220" style="stroke:var(--border)"/>
+      <line x1="60" y1="220" x2="610" y2="220" style="stroke:var(--border)"/>
+      <text x="335" y="246" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">steps back through time</text>
+      <text x="26" y="120" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 120)">gradient magnitude</text>
+      <line x1="60" y1="20" x2="610" y2="20" style="stroke:var(--text3);stroke-dasharray:2,3" opacity="0.4"/>
+      <text x="614" y="24" fill="var(--text3)" font-size="9" font-family="'DM Mono',monospace">1.0</text>
+
+      <path d="M60,20 L96,32 L132,50 L168,74 L204,105 L240,140 L276,172 L312,196 L348,210 L384,216 L420,219 L456,220 L492,220 L528,220 L564,220 L600,220" style="stroke:var(--red);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <text x="330" y="150" fill="var(--red)" font-size="10.5" font-family="'DM Mono',monospace">vanilla RNN — W_h eigenvalue 0.75</text>
+
+      <path d="M60,20 L96,26 L132,33 L168,41 L204,49 L240,58 L276,67 L312,76 L348,85 L384,94 L420,102 L456,110 L492,117 L528,124 L564,130 L600,136" style="stroke:var(--green);stroke-width:2.5;fill:none;stroke-linecap:round"/>
+      <text x="470" y="98" fill="var(--green)" font-size="10.5" font-family="'DM Mono',monospace">LSTM cell state — forget gate ≈ 0.95</text>
+
+      <circle cx="60" cy="20" r="3.5" fill="var(--text2)"/>
+    </svg>
+    <div class="tl-chart-caption">
+      Illustrative, not measured from a trained model: both curves assume a
+      constant per-step decay factor for clarity (0.75 per step for the
+      vanilla recurrence's dominant eigenvalue, 0.95 for a forget gate that
+      has learned to stay mostly open) purely to make the shape of the
+      difference visible. A real network's decay factor varies by unit and
+      by input, but the qualitative gap — multiplicative collapse versus a
+      much gentler additive decay — is the real, structural point this
+      lesson makes.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three time steps through a tiny scalar LSTM cell, by hand</h3>
+    <p>
+      Simplify to a single-unit (scalar) LSTM cell, with every gate a
+      function of the input \(x_t\) alone (no recurrent weight on
+      \(h_{t-1}\), purely to keep every number hand-computable). Use weights
+      \(w_f=w_i=w_o=2\), \(w_C=1\), all biases zero, starting from
+      \(C_0=0\). Feed in the sequence \(x_1=1,\ x_2=0.5,\ x_3=-1\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Step 1 — x₁ = 1</h4>
+          <p>
+            \(f_1=\sigma(2\cdot1)=\sigma(2)=0.881\),
+            \(i_1=\sigma(2)=0.881\), \(o_1=\sigma(2)=0.881\),
+            \(\tilde C_1=\tanh(1)=0.762\).
+          </p>
+          <div class="tl-math">\[ C_1 = f_1(0) + i_1(0.762) = 0.881(0.762) = 0.671, \qquad h_1 = o_1\tanh(C_1) = 0.881(0.585) = 0.515 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Step 2 — x₂ = 0.5</h4>
+          <p>
+            \(f_2=\sigma(1)=0.731\), \(i_2=\sigma(1)=0.731\),
+            \(o_2=\sigma(1)=0.731\), \(\tilde C_2=\tanh(0.5)=0.462\).
+          </p>
+          <div class="tl-math">\[ C_2 = 0.731(0.671) + 0.731(0.462) = 0.490+0.338 = 0.828, \qquad h_2 = 0.731\tanh(0.828) = 0.731(0.680)=0.497 \]</div>
+          <p>The forget gate is still open (0.731), so most of step 1's cell content survives and blends with step 2's new candidate.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Step 3 — x₃ = −1</h4>
+          <p>
+            \(f_3=\sigma(-2)=0.119\), \(i_3=\sigma(-2)=0.119\),
+            \(o_3=\sigma(-2)=0.119\), \(\tilde C_3=\tanh(-1)=-0.762\).
+          </p>
+          <div class="tl-math">\[ C_3 = 0.119(0.828) + 0.119(-0.762) = 0.0986-0.0907 = 0.008, \qquad h_3 = 0.119\tanh(0.008) \approx 0.001 \]</div>
+          <p>
+            The large-magnitude negative input drives every gate's
+            pre-activation strongly negative, so the forget gate collapses
+            to 0.119 — the cell state is almost entirely flushed, and the
+            output nearly zeroes out. A single sharp, unusual input can shut
+            the gates down and reset most of what the cell was carrying,
+            exactly the gated "decide what to keep versus discard" behavior
+            the equations describe, made numeric.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A rolling 20-bar return window feeding a small LSTM forecaster</h3>
+    <p>
+      Picture a sequence model that consumes the last 20 daily EUR/USD
+      log-returns, one bar at a time, updating a hidden state \(h_t\) at each
+      step, and reads a single next-day directional forecast off the final
+      hidden state \(h_{20}\). Unlike a feedforward network fed a fixed
+      20-column window of lagged returns — which treats "yesterday" and
+      "twenty days ago" as just two more independent input columns, with no
+      structural notion that one came after the other — the LSTM processes
+      the sequence in order, and its gates can, in principle, learn to hold
+      onto a large early move (like the worked example's flushing behavior
+      when an outlier arrives) rather than treating it as one interchangeable
+      column among twenty. Whether that structural advantage actually
+      produces a better out-of-sample forecast than a well-tuned feedforward
+      or gradient-boosted model on the same lagged features is a separate,
+      empirical question — sequence order mattering in principle is not the
+      same claim as a specific architecture winning in practice on a specific
+      series.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>RNNs and LSTMs were the dominant sequence architecture before
+    2017 — and the next lesson explains why that changed for long
+    sequences.</strong> Attention and transformers (covered next) largely
+    supersede recurrent networks for long-sequence problems, because
+    attention lets every output position look directly at every input
+    position instead of relaying information step by step through a chain
+    that, even with gating, still degrades gradually over very long
+    sequences. That is a real, current tradeoff — not a claim that LSTMs are
+    obsolete. For shorter sequences, streaming or online settings where data
+    must be processed one step at a time as it arrives, and lower-compute
+    environments where a transformer's data and compute appetite (developed
+    honestly in the next lesson) isn't affordable, a well-tuned LSTM or GRU
+    remains a genuinely reasonable, still-current choice.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Outside of trading, LSTMs and GRUs were, for roughly two decades, the
+    default architecture for speech recognition, machine translation, and
+    general sequence modeling — Cho et al.'s 2014 GRU paper was itself
+    introduced as part of an encoder-decoder machine translation system, the
+    same broad application area that later motivated the attention mechanism
+    covered in the next lesson. In applied time-series work, stacking
+    multiple recurrent layers, adding dropout between them, and using
+    bidirectional variants (processing a sequence both forward and backward,
+    where the full sequence is available up front rather than arriving live)
+    are standard practical elaborations on the exact same gating equations
+    above — none of them change the core forget/input/output or reset/update
+    mechanism, only how many such cells are stacked and in which directions.
+  </p>
+  <p>
+    In lower-latency or genuinely streaming contexts — processing ticks or
+    bars as they arrive, one at a time, without ever seeing the future of the
+    sequence — a recurrent cell's step-by-step processing is a natural fit in
+    a way a full-sequence attention computation is not, which is precisely
+    why the honest framing above frames this as a real tradeoff rather than
+    a strictly historical architecture.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where recurrent networks quietly go wrong</h3>
+    <p>
+      <strong>"LSTM" does not mean "immune to vanishing gradients."</strong>
+      The additive cell-state path substantially mitigates the problem
+      compared to a vanilla RNN — it does not eliminate it for arbitrarily
+      long sequences. Extremely long sequences can still degrade an LSTM's
+      long-range recall; this is a real, current motivation for attention,
+      not an overstatement invented for this lesson.
+    </p>
+    <p>
+      <strong>Small financial datasets and a large recurrent model is a
+      classic overfitting setup.</strong> An LSTM has meaningfully more
+      parameters than a comparable feedforward model on the same input
+      window, and financial time series are typically short and extremely
+      noisy relative to, say, a text corpus — the same leakage-free,
+      genuinely out-of-sample validation discipline this curriculum applies
+      everywhere else applies with full force here, and arguably more force
+      given how easily a flexible sequence model can fit noise that looks
+      like a pattern.
+    </p>
+    <p>
+      <strong>Sequence construction itself can leak information.</strong>
+      Building a rolling window of "the last 20 bars" needs the exact same
+      point-in-time discipline as any other feature set in this curriculum —
+      it's easy to accidentally include a bar that wouldn't actually have
+      been available yet at prediction time, especially around data
+      revisions or reporting lags in macro series.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A recurrent network carries a hidden state \(h_t=\tanh(W_h h_{t-1}+W_x x_t+b)\) forward through time</strong> — the mechanism that gives it a notion of order a feedforward network structurally lacks.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Vanilla RNN training suffers vanishing/exploding gradients</strong> — the BPTT gradient is a product of many copies of \(W_h\), which shrinks exponentially (or explodes) with sequence length (Bengio, Simard &amp; Frasconi, 1994).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The LSTM's cell state \(C_t=f_t\odot C_{t-1}+i_t\odot\tilde C_t\) is updated additively, not multiplicatively</strong> — this additive path is precisely what lets gradients survive much longer sequences (Hochreiter &amp; Schmidhuber, 1997).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The GRU merges the cell and hidden state and uses two gates instead of three</strong> — fewer parameters, often comparable performance, genuinely dataset-dependent (Cho et al., 2014).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Gating mitigates, it does not eliminate, gradient decay over very long sequences</strong> — this is the real, current motivation for the attention mechanism in the next lesson, not a strategy claim.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>LSTMs are not obsolete.</strong> Transformers largely supersede them for long sequences, but for shorter, streaming, or lower-compute settings a well-tuned LSTM or GRU remains a genuinely reasonable, still-current choice — check both, don't assume.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does a feedforward network fail to naturally capture the order of a time series, and what specifically does an RNN's hidden state recurrence add to fix that?</summary>
+    <div class="tl-answer">
+      A feedforward network maps a fixed input to an output using weights
+      that treat every input dimension independently and identically
+      regardless of position — it has no mechanism that distinguishes "this
+      value came before that one" beyond whatever ordering the modeler
+      happens to encode into separate input columns. An RNN's recurrence,
+      \(h_t=\tanh(W_h h_{t-1}+W_x x_t+b)\), explicitly threads a hidden state
+      through time: each step's output depends on a running summary built
+      from every earlier step, so the sequence's order directly shapes the
+      computation itself, not just which column a value happens to sit in.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Explain, mechanically, why the vanilla RNN's gradient with respect to an early hidden state shrinks (or explodes) exponentially with sequence length.</summary>
+    <div class="tl-answer">
+      Backpropagation through time computes \(\partial h_T/\partial h_1\) as
+      a product of \(T-1\) Jacobian terms, each roughly \(\text{diag}(\tanh'(\cdot))W_h\),
+      because \(h_t\) depends on \(h_{t-1}\) at every single step through the
+      same shared weight matrix \(W_h\). Multiplying many such terms together
+      is a repeated matrix product: if its dominant eigenvalue is below 1,
+      the product shrinks toward zero exponentially in the number of steps
+      (vanishing gradient); if it's above 1, the product grows exponentially
+      instead (exploding gradient). Either way the effect compounds
+      multiplicatively at every time step, which is what makes it
+      exponential rather than merely gradual.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. State the LSTM's cell-state update equation and explain precisely why it avoids the vanilla RNN's vanishing-gradient mechanism.</summary>
+    <div class="tl-answer">
+      \(C_t = f_t \odot C_{t-1} + i_t \odot \tilde C_t\). Differentiating this
+      with respect to \(C_{t-1}\) gives \(\partial C_t/\partial C_{t-1} =
+      f_t\) — a single gate value, not a matrix product accumulated across
+      every prior time step the way the vanilla RNN's hidden-state recurrence
+      is. Because the previous cell state is <em>added</em> into the new one
+      (scaled by the forget gate) rather than being repeatedly passed through
+      the same weight matrix and squashing nonlinearity at every step, a
+      forget gate that learns to stay near 1 for information that matters
+      lets gradients flow across many time steps largely undiminished,
+      instead of being multiplicatively driven toward zero.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What is the core structural difference between a GRU and an LSTM, and what is the honest tradeoff between them?</summary>
+    <div class="tl-answer">
+      A GRU merges the LSTM's separate cell state and hidden state into a
+      single state, and uses only two gates (reset and update) instead of
+      three (forget, input, output) plus a candidate — three learned weight
+      matrices instead of four. This gives it fewer parameters, which
+      typically means faster training and somewhat lower overfitting risk on
+      smaller datasets. The honest tradeoff is that neither is a strict
+      improvement on the other: GRU performance is often, but not always,
+      comparable to an LSTM's, and which one is actually better is
+      dataset- and task-dependent — a claim that needs checking empirically,
+      not assuming from general reputation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why is it inaccurate to describe LSTMs as an obsolete architecture now that attention and transformers exist?</summary>
+    <div class="tl-answer">
+      Transformers largely supersede recurrent networks specifically for
+      long-sequence problems, because attention lets every output position
+      look directly at every input position instead of relaying information
+      step by step through a chain that still degrades gradually over very
+      long sequences even with gating. That advantage doesn't erase the
+      LSTM's genuine strengths elsewhere: for shorter sequences, for
+      streaming or online settings where data arrives one step at a time and
+      must be processed as it comes, and for lower-compute environments where
+      a transformer's larger data and compute requirements aren't affordable,
+      a well-tuned LSTM or GRU remains a reasonable, still-current choice —
+      "superseded for long sequences" and "obsolete everywhere" are different
+      claims, and only the first one is accurate.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Yoshua Bengio, Patrice Simard, and Paolo Frasconi, <em>"Learning Long-Term Dependencies with Gradient Descent is Difficult"</em>, IEEE Transactions on Neural Networks, 5(2), 1994 — the foundational analysis of the vanishing/exploding gradient problem in recurrent networks used throughout this lesson.</li>
+    <li>Sepp Hochreiter and Jürgen Schmidhuber, <em>"Long Short-Term Memory"</em>, Neural Computation, 9(8), 1997 — the original LSTM paper: the forget/input/output gate structure and additive cell-state update.</li>
+    <li>Kyunghyun Cho, Bart van Merriënboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares, Holger Schwenk, and Yoshua Bengio, <em>"Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation"</em>, Proceedings of EMNLP, 2014 — the paper introducing the GRU, in the context of a machine translation encoder-decoder system.</li>
+    <li>Razvan Pascanu, Tomas Mikolov, and Yoshua Bengio, <em>"On the Difficulty of Training Recurrent Neural Networks"</em>, Proceedings of ICML, 2013 — a widely cited formal treatment of the exploding-gradient direction of the same problem, including gradient clipping as a practical fix.</li>
+    <li>Ian Goodfellow, Yoshua Bengio, and Aaron Courville, <em>Deep Learning</em>, MIT Press, 2016 — Chapter 10 covers recurrent networks, LSTM, and GRU architectures with the same notation used in this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

@@ -127,6 +127,12 @@
     if no edge exists). For an undirected graph \(A\) is symmetric
     (\(A_{ij}=A_{ji}\)); for a directed graph it generally isn't.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A graph is just dots (nodes) and lines connecting some of them (edges) — a friendship map, a subway map, a map of which currencies tend to move together. An adjacency matrix is the exact same information written as a grid instead of a picture: a 1 in row i, column j means "there's a line between dot i and dot j," a 0 means there isn't. Same information, two different ways of looking at it.</p>
+  </div>
+
   <p>
     Everything below uses one small worked network, built for teaching, not
     fitted to real data: seven currency-bloc nodes arranged as two fully-
@@ -290,6 +296,11 @@
     between parts of the network it isn't directly touching at all.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Degree centrality is just counting friends — nothing more. It's the simplest possible measure of "how connected" someone is, but it treats every friend the same, whether that friend is the most popular kid in school or someone who barely talks to anyone else.</p>
+  </div>
+
   <h3>Step 3 — betweenness centrality</h3>
   <p>
     Betweenness (Freeman, 1977) measures how often a node lies on the
@@ -326,6 +337,11 @@
     pairs not involving \(v\), for an undirected graph), giving a score in
     \([0,1]\).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Betweenness centrality isn't about how many friends you have — it's about how often you're the only bridge between two groups that otherwise don't talk to each other. A quiet kid with just two friends can score very high here, if those two friends belong to two cliques that would otherwise never connect, because every bit of gossip crossing between the cliques has to go through them.</p>
+  </div>
 
   <h3>Step 4 — eigenvector centrality</h3>
   <p>
@@ -368,6 +384,11 @@
     the PCA lesson, just applied to a 0/1 adjacency matrix instead of a
     covariance matrix.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Eigenvector centrality says: you're only as important as the people you're connected to. Three friends who are themselves hugely popular can make you more "important" than someone with ten friends who are all nobodies. It's importance that echoes back and forth through the network until it settles down — the same recursive idea as "it's not what you know, it's who you know," turned into an exact number.</p>
+  </div>
 
   <h3>Step 5 — PageRank, briefly: eigenvector centrality's directed, damped cousin</h3>
   <p>

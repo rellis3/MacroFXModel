@@ -344,6 +344,12 @@
       </p>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Mean decrease in impurity is like counting how many times a word shows up in a book to guess how important it is — quick to check, but a word like "the" shows up constantly without actually meaning much. Permutation importance is more like removing a word from every page and seeing how much the story stops making sense — slower to check, but a far more honest test of whether that word actually mattered.</p>
+  </div>
+
   <p>
     A useful side effect of bagging: since each tree only ever sees roughly
     63% of the rows in its bootstrap sample (as \(N\to\infty\), the chance
@@ -361,7 +367,7 @@
     <tr><td>\(I(S)\)</td><td>Impurity of a node — variance of the targets of the points currently in it, for regression.</td></tr>
     <tr><td>\(\Delta I(j,s)\)</td><td>Impurity reduction a candidate split (feature \(j\), threshold \(s\)) would produce.</td></tr>
     <tr><td>\(B\)</td><td>Number of trees grown in the forest.</td></tr>
-    <tr><td>\(m\)</td><td>Number of features randomly considered as split candidates at each node (\(m<p\)).</td></tr>
+    <tr><td>\(m\)</td><td>Number of features randomly considered as split candidates at each node (\(m < p\)).</td></tr>
     <tr><td>\(p\)</td><td>Total number of available features.</td></tr>
     <tr><td>\(\rho\)</td><td>(rho) Average pairwise correlation between the \(B\) trees' predictions — the variance floor a forest can't average away.</td></tr>
     <tr><td>OOB</td><td>Out-of-bag — the roughly 37% of rows a given bootstrap-trained tree never saw during training.</td></tr>

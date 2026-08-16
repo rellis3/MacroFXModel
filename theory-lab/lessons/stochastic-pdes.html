@@ -141,6 +141,11 @@
     next section.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An SDE is one number wiggling randomly over time — like one buoy bobbing on the water. An SPDE is an entire ROW of numbers — like a whole yield curve — all wiggling randomly at once, where some of the wiggle spreads between neighboring points too. The "space-time white noise" driving it is so jagged that it doesn't even have a sensible value at any single point in space and time; it only makes sense once you average it over a little neighborhood, the same way "how loud was that instant of static" only means something once averaged over a short stretch of time.</p>
+  </div>
+
   <h3>2. The cylindrical / Q-Wiener process</h3>
   <p>
     The proper infinite-dimensional generalization of a Brownian motion —
@@ -193,6 +198,11 @@
     What's given here is the working picture: enough to understand what an
     HJM/Musiela curve model or a Zakai equation is actually built on, not a
     substitute for the full construction.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of one random wiggle, imagine an entire orchestra of independent random wiggles, one per musical note (spatial frequency). Each note gets its own volume knob (\(q_k\)) controlling how much that particular note contributes to the overall random noise. Turn all the low notes up and the high notes down, and you get smooth, gentle randomness; turn every note up equally (the space-time white noise case) and you get the roughest, jaggedest noise possible — too rough to even listen to at a single instant, only meaningful as a blend.</p>
   </div>
 
   <h3>3. Mild solutions via the stochastic convolution</h3>
@@ -248,6 +258,11 @@
     <tr><td>Mild solution</td><td>The practical solution concept, \(u(t)=S(t)u(0)+\int_0^t S(t-s)\,dW(s)\) — the infinite-dimensional variation-of-constants formula, built from a stochastic convolution.</td></tr>
     <tr><td>Stochastic convolution</td><td>\(\int_0^t S(t-s)\,dW(s)\) — the accumulated, semigroup-propagated effect of noise injected at every past instant.</td></tr>
   </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>For an ordinary SDE, "where does a starting value end up" is answered by multiplying by a growth factor and adding up all the little random pushes along the way. The mild solution does the exact same bookkeeping for an entire field instead of one number — replace "multiply by a growth factor" with "apply the semigroup," and replace "add up the random pushes" with "add up the random pushes at every point in space at once." Same idea, just done for a whole curve instead of a single point.</p>
+  </div>
 
   <h3>4. The HJM/Musiela SPDE for the whole forward curve</h3>
   <p>
@@ -328,6 +343,11 @@
     at all.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture the entire forward interest-rate curve as a long, flexible ruler stretching from "right now" out to 30 years from now, and the whole ruler flexes and ripples randomly along its length. The HJM/Musiela equation describes how the whole ruler moves. A short-rate model like Vasicek only ever watches one single point on that ruler — the very near end — and describes how just that one point bounces around, throwing away everything happening further out.</p>
+  </div>
+
   <h3>5. The Zakai equation</h3>
   <p>
     The second concrete, well-motivated application ties directly to the
@@ -370,6 +390,11 @@
       <h4>Particle filter — a numerical Monte Carlo approximation</h4>
       <p>Outside the linear-Gaussian case, \(\pi_t\) generally has no closed form at all — it is a genuinely infinite-dimensional object with no finite sufficient statistic. The particle filter, built in <code>particle-filter.html</code>, approximates \(\pi_t\) numerically with a weighted swarm of simulated "particles" (sample hidden-state trajectories), whose weighted empirical distribution converges, as the number of particles grows, to the true solution of the Zakai equation. It is a Monte Carlo method for solving this SPDE approximately, not a different problem.</p>
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Zakai equation is the master recipe for "how confident am I about where a hidden thing is, given the noisy hints I've seen so far" — and that confidence is itself a whole curve (a probability density), not a single number. When the world is simple and Gaussian, that whole curve collapses down to just tracking its center and width, which is all the Kalman filter needs to do. When the world is messier, there's no such shortcut, and the particle filter instead approximates the whole curve with a big crowd of simulated guesses.</p>
   </div>
 
   <div class="tl-chart">

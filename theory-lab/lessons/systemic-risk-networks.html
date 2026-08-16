@@ -122,6 +122,11 @@
     the network from there.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of "distress" as a dial from 0 (perfectly fine) to 1 (completely failed) sitting on every bank. The impact factor between two banks is like asking "if my neighbor's house burned down completely, how much of my own house would catch fire too?" A bank heavily exposed to another gets a high number here; one with barely any exposure gets a low one.</p>
+  </div>
+
   <h3>Step 2 — the iterative distress-propagation rule</h3>
   <p>
     At each round \(t\), every node updates its own distress level based on
@@ -164,6 +169,12 @@
     bookkeeping the original paper uses to guarantee no distress
     double-counts around a cycle.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture dominoes wired together in a tangle instead of a line. Knock one over, and everything directly touching it wobbles a bit — not all the way over, just weakened in proportion to how exposed it was. Those wobbling dominoes then pass a smaller wobble on to whatever they touch, and so on, getting weaker each round, until eventually nothing new is wobbling and the whole thing settles down.</p>
+  </div>
+
   <p>
     Iterate this update until nothing changes any further (the network
     reaches a steady state) or every node has hit either 0 or 1. The
@@ -187,6 +198,11 @@
     propagates an actual event forward through simulated time, rather than
     describing a fixed, timeless importance score.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>DebtRank is a single score that answers "if this one bank had been the one to fail, how much total damage would the whole system end up absorbing once every knock-on wobble finally stopped?" It lets regulators compare institutions on a like-for-like basis — not just "how big is this bank," but "how much trouble would this bank's failure actually cause everyone else."</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(h_i(t)\)</td><td>Node \(i\)'s distress level at round \(t\), from 0 (healthy) to 1 (fully defaulted).</td></tr>
@@ -260,6 +276,11 @@
       can amplify a single default far more dramatically than this small
       four-node illustration shows.
     </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You might expect one bank failing to just spread its own trouble around, like slicing a pie into smaller pieces for everyone else — the total pain staying the same size, just shared out. But the worked example shows the total pain (1.04) actually ends up bigger than the original failure (1.00). Each round of wobbling adds a little extra damage on top, rather than simply redistributing what was already there — that "extra on top" is exactly what makes network contagion dangerous.</p>
   </div>
 
   <div class="tl-chart">

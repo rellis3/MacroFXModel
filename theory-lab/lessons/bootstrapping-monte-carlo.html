@@ -216,6 +216,11 @@
     applied statistics after 1979.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You have one hand of cards. To get a feel for "how different could my hand have been," you shuffle those exact same cards back into the deck, redraw the same number of cards (some might come up twice, some might not come up at all), and see what hand you get. Do that thousands of times and you build up a real sense of how much your hand's "score" wobbles — all without ever getting a genuinely new card you didn't already have.</p>
+  </div>
+
   <p>
     <strong>The block bootstrap — for data that isn't independent.</strong>
     The plain bootstrap above assumes each \(x_i\) is drawn independently, and
@@ -258,6 +263,11 @@
     resample meaningfully.)
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Plain bootstrapping tears a movie into individual frames and shuffles them randomly — which destroys the story, because what happens in frame 50 is closely tied to what happened in frame 49. The block bootstrap instead cuts the movie into short scenes and shuffles those scenes around instead. Each scene still plays out in its original order internally, so the "this leads to that" structure — the stuff that actually mattered — survives, even though the overall movie is now a novel remix of real scenes.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(n\)</td><td>Sample size — the number of observations (returns, trades) in the one real dataset you have.</td></tr>
@@ -299,6 +309,12 @@
     what the bootstrap's replicates give you, but generated from a fitted
     model's assumed mechanics rather than resampled from the raw data itself.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of reshuffling real cards like the bootstrap, Monte Carlo builds a little dice-rolling machine that's designed to behave like your data does — same average, same typical swings — and then rolls those dice thousands of times to generate entirely made-up, but statistically similar, outcomes. It's powerful because you can generate as many "what if" paths as you want, but it's only as trustworthy as the little machine's design: if the dice were built wrong, every path it spits out inherits that same wrongness.</p>
+  </div>
+
   <p>
     <strong>The critical distinction — read this paragraph twice.</strong>
     Both techniques answer some version of the same question: "given what I
@@ -327,6 +343,11 @@
     proves the sample (or the fitted model) is internally consistent — it
     proves nothing about whether the signal that generated it will work on
     data it has never seen. Neither tool can leave the sample it started from.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine studying for a test by rewriting your own class notes over and over in slightly different orders. No matter how many times you do it, you're still only ever reviewing what you already wrote down — you can't accidentally learn something the teacher never covered. Bootstrapping and Monte Carlo are exactly this: incredibly useful for understanding how solid your existing notes are, but structurally incapable of testing you on material you haven't seen, which is the only thing that tells you if you're actually ready for a real exam.</p>
   </div>
 
   <div class="tl-chart">

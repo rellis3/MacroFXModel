@@ -119,6 +119,11 @@
     <div class="tl-eq-chip c3"><code>Σ DF(tᵢ)</code><span>often called the swap's "annuity factor" or "PV01 basis" — the sum of all discount factors</span></div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A swap is like two people betting on interest rates without ever touching the underlying pot of money. One agrees to pay a fixed amount each year, the other pays whatever the floating rate happens to be that year, and they only ever hand each other the difference. Valuing the fixed side is easy — it's just adding up a bunch of known future payments, each one shrunk down to today's value, exactly like pricing a bond's coupons.</p>
+  </div>
+
   <h3>Valuing the floating leg — a telescoping argument</h3>
   <p>
     The floating leg looks harder — its future cashflows aren't known yet,
@@ -179,6 +184,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The floating side of a swap turns out to have a surprisingly simple value once you do the math: it behaves just like lending someone your money and getting it back at the end, except you never actually get the principal back since a swap never exchanges the underlying amount. That leaves just one clean number — a stripped-down way of saying "the value of not getting your principal back."</p>
+  </div>
+
   <h3>The par swap rate</h3>
   <p>
     The swap rate quoted in the market is the <strong>par rate</strong> — the
@@ -218,6 +228,11 @@
     <div class="tl-eq-chip c4"><code>K &gt; K_par</code><span>fixed payer is locked into paying above the fair rate — negative value to the payer</span></div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The par swap rate is the "fair price" of the bet — the fixed rate where neither side has an edge on day one. If you're stuck paying a fixed rate higher than what's currently fair, your side of the deal is worth less than zero, because you agreed to pay more than the going rate for something the other side would now happily give you cheaper.</p>
+  </div>
+
   <h3>Why OIS, not LIBOR: the discounting revolution</h3>
   <p>
     None of the derivation above cared <em>which</em> curve \(DF(\cdot)\)
@@ -255,6 +270,11 @@
     OIS-family rate, not LIBOR.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>LIBOR is like asking your neighbor for an unsecured personal loan — there's a small chance they never pay it back, so the rate quietly includes some "trust tax." OIS/SOFR is like a loan backed by collateral you could seize if they didn't pay — much safer, so the rate is cleaner and closer to the true, riskless cost of money. After 2008 revealed how much that "trust tax" could suddenly balloon, the industry switched to pricing safe, collateral-backed trades off the cleaner rate.</p>
+  </div>
+
   <h3>The multi-curve framework</h3>
   <p>
     Pre-2008, the LIBOR curve did double duty exactly as the single-curve
@@ -285,6 +305,11 @@
     stops being exactly correct once the two curves genuinely diverge; each
     period's forward rate has to be estimated from the forecast curve
     explicitly, then discounted at the OIS rate.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before 2008, one single ruler measured both "how much is this future payment worth today" and "what rate will the floating payment actually pay." After 2008 those turned out to need two separate rulers — one for discounting money back to today, a different one for guessing what the floating rate will actually reset to — because the two jobs are no longer reliably answered by the same number.</p>
   </div>
 
   <div class="tl-symbols"><table>

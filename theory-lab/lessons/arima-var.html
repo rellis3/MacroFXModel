@@ -201,6 +201,11 @@
     \(p=1\) because that's the case you happen to already know.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>AR(1) only remembers what happened yesterday. AR(p) has a longer memory — it can look back several days and ask how much each of those days still matters today, after already accounting for the days in between. The trick for figuring out how far back to look is a chart called the PACF: it keeps showing "yes, this lag still matters" until it suddenly stops, and wherever it stops is roughly how far back the model needs to remember.</p>
+  </div>
+
   <h3>The other kind of memory: MA(<i>q</i>)</h3>
   <p>
     AR(<i>p</i>) only ever uses past <em>levels</em> of \(X\). But some series
@@ -233,6 +238,12 @@
     series can carry both mechanisms at once, which is exactly the motivation
     for combining them rather than picking only one.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of an AR term as "the level itself is still off" — like a room that's slow to cool down after the heater's been on. An MA term is more like an echo — the heater already turned off and the room is back to normal temperature, but a loud noise it made while running is still bouncing around the walls for a moment. Both are ways the past keeps affecting right now, just through a different channel — one through the level, one through the leftover ripple of a shock.</p>
+  </div>
+
   <p>
     The identification signature flips for MA(<i>q</i>): its <strong>ACF</strong>
     cuts off sharply after lag \(q\) (spikes at \(1,\ldots,q\), then ~zero),
@@ -322,6 +333,12 @@
     something is off in the transformation choice rather than a genuine
     property of the data.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to describe how a hot air balloon "bounces" while it's steadily climbing thousands of feet — the climb drowns out the bounce and the description just becomes "it went up." Look instead at the balloon's altitude change from minute to minute, and the actual bouncing pattern becomes visible. Differencing does exactly that to a trending price series: subtracting each value from the one before strips out the steady climb (or fall) so whatever real up-and-down pattern is left underneath can actually be seen and modeled.</p>
+  </div>
+
   <p>
     Once the differenced series passes the stationarity check, you fit an
     ordinary ARMA(<i>p</i>,<i>q</i>) to <em>that</em> differenced series — this
@@ -456,6 +473,12 @@
     series regressed on \(p\) lags of every series in the system, with a
     coefficient matrix per lag rather than a single scalar \(\phi\).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A regular regression can only ever check "does yesterday's spread predict today's FX" because that's the one question it was set up to ask — it has no way to also check the reverse. A VAR fits both questions at once, from the same data, in one system: does yesterday's spread predict today's FX, AND does yesterday's FX predict today's spread. That's the only honest way to find out whether the influence runs one way, both ways, or not really at all.</p>
+  </div>
+
   <p>
     This is exactly the right tool for the question this repo's Interest Rate
     Parity lesson and this project's own prior macro research notes'
@@ -484,6 +507,11 @@
     at all. It's a real and useful diagnostic — just a narrower claim than the
     word "causality" in its name suggests.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>"Granger-causes" doesn't mean "X makes Y happen" — despite the name, it only means "knowing X's recent history genuinely helps you guess Y's next move, better than just watching Y alone." Roosters crowing right before sunrise "Granger-causes" the sunrise by this narrow definition, even though everyone knows the rooster isn't actually causing the sun to rise — something else (the Earth's rotation) is driving both on its own schedule.</p>
+  </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>

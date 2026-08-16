@@ -152,6 +152,12 @@
       <div class="tl-fp-desc">How much of h_m's correction is actually applied — typically small (0.01–0.3)</div>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Gradient boosting is like a team of tutors working on the same struggling student, one after another. The first tutor takes a rough first pass. The second tutor doesn't start over — they only look at whatever the first tutor's student is still getting wrong, and focus entirely on fixing that. The third tutor only looks at whatever's still wrong after tutors one and two. Each tutor's job gets narrower and more specific, but the student keeps improving with every tutor added, because nobody is wasting effort re-teaching what's already been fixed.</p>
+  </div>
+
   <p>
     <strong>The squared-error special case, made explicit.</strong> Take
     \(L(y,F) = \frac{1}{2}(y-F)^2\). Its derivative with respect to \(F\) is
@@ -173,6 +179,12 @@
     specific percentile) — each just swaps in a different derivative for
     step 2, with steps 1, 3, and 4 completely unchanged.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A "residual" is just what's left over — the part of the answer still wrong after your best guess so far. If you guess a house is worth $300,000 and it's really worth $340,000, your residual is $40,000: the exact gap the next tutor should focus on closing. Fitting a tree to the residual literally means training it to predict that gap, not the original house price all over again.</p>
+  </div>
+
   <p>
     <strong>Why the shrinkage rate \(\nu\) matters.</strong> Setting
     \(\nu=1\) would let each new tree fully correct the current residual in
@@ -184,6 +196,11 @@
     trees, none of them trusted too much on their own" theme, achieved here
     through small sequential steps rather than through averaging.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Shrinkage is like taking small, careful corrective steps instead of one huge overcorrection. If a recipe tastes slightly bland, you add a pinch of salt, taste again, then decide on the next pinch — rather than dumping in a whole spoonful based on one taste test. Each small correction is safer because it doesn't overreact to that one moment's specific impression; many small pinches, tasted and adjusted along the way, get you to a better final dish than one big confident guess.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(F_m(x)\)</td><td>The ensemble's prediction after \(m\) boosting rounds.</td></tr>
@@ -359,6 +376,11 @@
     out-of-sample validation (see <a href="research-pipeline-hypothesis-to-backtest.html">The
     Research Pipeline: Hypothesis to Honest Backtest</a>) becomes <strong>more</strong>
     important with a model this powerful, not less.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Being told "this is the best-selling, most versatile kitchen knife in the world" tells you the knife is genuinely great — but it tells you nothing about whether it's the right tool for the specific recipe you're making tonight. Gradient boosting being the best general-purpose method for tabular data is the "great knife" claim. Whether it actually finds something real and tradeable in a specific set of FX features is a completely separate question that has to be tested on its own, every single time.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>

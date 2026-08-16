@@ -104,6 +104,11 @@
   at the center.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Pinball loss is a penalty that's deliberately unfair on purpose. If you're trying to guess the 5th-percentile mark, guessing too high (saying "it won't get that bad") gets punished way harder than guessing too low (being overly cautious). Because the punishment is so lopsided, the smartest strategy shifts away from your normal best-guess average and creeps down toward the pessimistic, cautious end — exactly where a 5th-percentile answer should live.</p>
+  </div>
+
   <h3>Why minimizing expected pinball loss recovers exactly the τ-th quantile</h3>
   <p>
   Let \(F\) be the cumulative distribution function of \(Y\). Consider choosing the single number \(q\) that
@@ -156,6 +161,12 @@
   methods — the same Koenker &amp; Bassett (1978) result, extended from a single number to a full regression
   line.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Ordinary regression draws one line that tries to run right through the middle of all the dots. Quantile regression instead draws a line that tries to have only 5% of the dots below it (for τ=0.05) or only 10% below it (for τ=0.1) — a line that hugs the bottom edge of the scatter instead of its center, using that same lopsided penalty from before to decide exactly where "the edge" should sit.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(Y\)</td><td>The response variable whose conditional quantile is being modeled.</td></tr>
@@ -181,6 +192,12 @@
   conditions (e.g. today's realized volatility, a regime indicator, a macro surprise) in a way a static,
   once-computed moment-based correction structurally cannot.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Cornish-Fisher is like a single umbrella-size recommendation printed once a year based on the average rainy season — you use the same umbrella every single day regardless of today's actual forecast. Quantile regression is like checking today's specific weather conditions and picking an umbrella size that adjusts on the spot — bigger on the days that actually look stormy, smaller on the days that look calm, instead of one fixed size forced onto every day alike.</p>
+  </div>
+
   <div class="tl-compare">
     <div class="tl-compare-card amber">
       <h4>Cornish-Fisher — static distributional adjustment</h4>
@@ -389,6 +406,11 @@
       an edge case to ignore. Various extensions (e.g. imposing monotonicity constraints directly in the
       fit) address it, but the basic linear quantile regression described here doesn't guarantee it on its
       own.
+
+      <div class="tl-eli5">
+        <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+        <p>Imagine drawing three separate lines for "typically bad," "typical," and "typically great," each one fit completely independently. Nothing forces them to stay in the sensible order — occasionally, at the edges, the "typically bad" line can accidentally cross above the "typical" line, which would nonsensically claim a worse-case outcome is now higher than an average one. It's an honest side effect of fitting each line separately rather than as one coordinated system.</p>
+      </div>
       </li>
       <li>
       <strong>Extreme τ needs data in the tail to fit well.</strong> A quantile regression at \(\tau=0.01\)

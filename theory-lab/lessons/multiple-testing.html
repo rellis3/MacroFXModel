@@ -93,6 +93,11 @@
   question this lesson answers is: what happens to that risk when you run many tests at once?
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A p-value is basically asking: "if there's actually nothing going on here, how weird would it be to see a result this extreme just by luck?" If that would be pretty rare — say, less than a 1-in-20 shot — you call it significant. But a 1-in-20 shot happening once isn't spooky at all; it's just what a 1-in-20 shot occasionally does, even with nothing real behind it.</p>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(H_0\)</td><td>the null hypothesis for one test — "no real effect / no edge in this slice"</td></tr>
     <tr><td>\(\alpha\)</td><td>the significance threshold for a single test (the false-positive rate you accept per test, e.g. 0.05)</td></tr>
@@ -157,6 +162,11 @@
   claiming a discovery — the same look-elsewhere correction this lesson describes for FX slices.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If a fair coin has a 1-in-20 chance of landing perfectly on its edge on any single flip, flipping it once and seeing that would be surprising. But flip it seventy times, and it stops being surprising at all — you'd almost expect it to happen at least once somewhere in there. Running lots of statistical tests is exactly like flipping that coin lots of times: even if nothing real is going on in any of them, the odds that at least one comes up looking "special" climb fast, just from having so many chances.</p>
+  </div>
+
   <h3>The Bonferroni correction</h3>
   <p>
   The simplest fix is to shrink the per-test threshold so that the <em>family-wise</em> error
@@ -183,6 +193,11 @@
   worst-case correction (built for the independent case) ends up over-punishing real, correlated
   effects — treating seventy correlated looks as if they were seventy independent ones.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you know you're going to take a hundred shots instead of one, and you still only want a 1-in-20 chance of a fluke happening across the whole hundred, each individual shot has to clear a much stricter bar than it would on its own. Bonferroni is exactly that: divide your original strictness by however many shots you're taking, so the total risk across everything adds back up to roughly what you originally wanted.</p>
+  </div>
 
   <h3>False Discovery Rate (Benjamini-Hochberg)</h3>
   <p>
@@ -222,6 +237,11 @@
   among what I call a discovery," which is usually the more useful guarantee for exploratory,
   many-slice research.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of saying "I refuse to ever be fooled even once," the FDR approach says "I'm okay if a small, known fraction of my 'winners' turn out to be flukes, as long as I know roughly what that fraction is." It's like a food inspector who accepts that maybe 1 in 10 approved batches could quietly slip through with a defect, rather than insisting on catching literally every possible flaw — a looser, more practical bar that still keeps things honest.</p>
+  </div>
 
   <div class="tl-box example"><div class="tl-icon-badge purple">🧮</div><div class="tl-box-label">Worked example</div>
     <h3>Seventy slices, one significance threshold</h3>
@@ -427,6 +447,10 @@
     noise — someone has to be the minimum of 70 draws. A low p-value on your single best slice,
     considered alone and out of context of the other 69, is close to uninformative.
     </p>
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>If seventy people each guess a coin flip's result and one of them happens to guess right ten times in a row, that lucky person isn't secretly psychic — someone in a big enough crowd was always going to get a lucky streak. Picking out the one "winner" after the fact and only telling that person's story, without mentioning the other sixty-nine, is exactly the mistake multiple testing warns against.</p>
+    </div>
     <p>
     <strong>Applying Bonferroni honestly to correlated tests and getting nothing.</strong>
     Bonferroni assumes worst-case independence; FX slices sharing USD, EUR, risk-sentiment or a

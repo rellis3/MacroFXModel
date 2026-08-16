@@ -186,6 +186,11 @@
     realistic moments — cannot.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Strong convergence asks "did I guess this specific drunk person's actual stumbling path correctly, step for step?" Weak convergence only asks "if I simulated a thousand different drunk people, does the average outcome — where they tend to end up — look right?" You can get the average right while getting almost every individual path wrong in its details, which is exactly why Euler-Maruyama is better at the second question (weak order 1.0) than the first (strong order 0.5).</p>
+  </div>
+
   <h3>3. The Milstein scheme — trading complexity for pathwise accuracy</h3>
   <p>
     Euler-Maruyama's weak spot is entirely in the term it drops: a full Itô-Taylor
@@ -213,6 +218,11 @@
     derivative has to be derived, or it has to be estimated numerically,
     introducing its own additional error.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Euler-Maruyama assumes the "wobbliness" itself stays constant during each tiny step. Milstein adds one correction for the fact that the wobbliness can also change a little as the person moves — a slightly smarter guess about the stumble, at the cost of needing to know how fast the wobbliness itself changes (that's σ′). It's a small refinement, but it noticeably tightens how closely the simulated path can match the true one.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -343,6 +353,11 @@
       extra correction term is winning on pathwise accuracy at every
       resolution, not just in the asymptotic limit.
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>"Strong order 0.5" means if you cut your step size in half, the pathwise error only shrinks by about 1.4x — slow going. "Strong order 1.0" means cutting the step size in half actually halves the error — twice as fast an improvement for the same extra computing effort. That's the entire payoff Milstein is buying with its one extra correction term.</p>
   </div>
 
   <div class="tl-box scenario">

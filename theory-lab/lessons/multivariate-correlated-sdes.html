@@ -112,6 +112,11 @@
     mixing) — bundling both into one clean object.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of \(W_t\)'s independent components as separate, untouched dice rolls — nobody has rigged them to agree with each other. All the "agreement" between different processes gets built afterward, by mixing those independent rolls together with a recipe (the matrix \(\Sigma\)). Keeping the raw randomness independent and doing all the correlating in one clean mixing step is just tidier than trying to make the dice themselves secretly cooperate.</p>
+  </div>
+
   <h3>2. Where the covariance comes from</h3>
   <p>
     Apply the same \((dW_t)(dW_t)^T \to I\,dt\) rule that underlies Itô's
@@ -136,6 +141,11 @@
     simplest useful form \(L\) — that produces it. That inversion is exactly
     what Cholesky decomposition is for.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>\(\Sigma\Sigma^T\) is a one-step lookup: hand it the mixing recipe \(\Sigma\), and it tells you the resulting covariance for free — like knowing exactly how two paint colors will blend once you know how much of each you poured in. The much harder, more common question in practice runs backward: you already know the blended color you want (a target correlation from market data) and need to work out how much of each raw color to pour. That backward question is exactly what Cholesky decomposition answers.</p>
+  </div>
 
   <h3>3. The Cholesky recipe</h3>
   <p>
@@ -186,6 +196,11 @@
     <tr><td>\(dW_{\text{correlated}} = L\,dW_{\text{independent}}\)</td><td>The actual shocks used in the simulation — correlated exactly as the target \(\rho\) specifies, by construction of \(L\).</td></tr>
     <tr><td>\(\Sigma\Sigma^T\)</td><td>The instantaneous covariance matrix of the vector process \(X_t\) — the multivariate generalization of a single process's \(\sigma^2\).</td></tr>
   </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Cholesky decomposition is a recipe card: given the correlation you want between two things, it tells you exactly how much of the first independent random ingredient to also mix into the second one. Use \(\rho\) parts of the first independent shock plus \(\sqrt{1-\rho^2}\) parts of a fresh independent shock, and the result comes out correlated by exactly \(\rho\) — no more, no less, guaranteed by the algebra rather than by trial and error.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Two Cholesky-correlated GBM paths (ρ = 0.6), one simulated realization</div>
@@ -247,6 +262,11 @@
       exactly" is a very common (and usually harmless) first reaction to
       running this kind of simulation with too few paths.
     </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Ask 50 random strangers whether two coins landed the same way and you'll get a noisy, wobbly estimate of how "linked" the coins really are. Ask 100,000 strangers and the noise mostly washes out, leaving something very close to the true answer. Realized correlation from a small number of simulated paths is exactly this — a noisy poll, not a wrong answer — and it only settles down once you run enough paths.</p>
   </div>
 
   <div class="tl-chart">

@@ -186,6 +186,11 @@
     the first place.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Vega is one of the few things a call and a put agree on completely, no exceptions. Delta differs between them because a call and a put bet on opposite directions, but "how much does this option's value react to the market getting more or less jumpy" doesn't care about direction at all — a call and a put on the same strike are equally exposed to that one.</p>
+  </div>
+
   <h3>Vega's shape — time and moneyness</h3>
   <p>
     Two separate questions live inside the closed form \(\nu=S\varphi(d_1)
@@ -226,6 +231,11 @@
     exactly where the market's opinion about "how much" the underlying will
     move matters most.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Vega is biggest for options that could genuinely go either way, and smallest for options whose outcome already feels obvious. A coin flip that's still up in the air cares a lot about "how volatile is the situation" — a game that's already basically decided doesn't. That's why vega peaks right at the money and fades out as an option gets deep in or out of the money.</p>
+  </div>
 
   <div class="tl-section-mark"><span>Section 02b</span></div>
   <h2>The volatility surface</h2>
@@ -295,6 +305,12 @@
     bid). Neither story is derived from Black-Scholes — both are read off
     what the market actually charges.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Insurance against a car crash costs more than insurance against a minor scratch, even if both are "just insurance." The skew is the same idea: options that pay off in a crash (deep out-of-the-money puts) get priced with extra insurance premium baked in, because the market learned the hard way in 1987 that crashes really do happen and are worse than a calm, textbook model would predict.</p>
+  </div>
+
   <p>
     The term structure's event-risk spikes have a cleaner, more mechanical
     explanation. Treat variance as roughly additive across trading
@@ -357,6 +373,12 @@
     some vega, so an options book's vega risk can only ever be offset by
     another options position, never by the underlying.
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Owning a plain share of stock is like owning a plain photograph — it has no opinion about how shaky the camera was, only about where the picture actually ended up. An option is like a bet on how shaky the camera will be. No amount of buying or selling plain photographs can hedge a bet about shakiness; you can only offset that bet with another bet of the same kind. That's why vega can only be hedged with other options, never with the underlying itself.</p>
+  </div>
+
   <p>
     This is the single clearest way vega management differs from delta
     management, and it's why an options desk that's badly vega-exposed

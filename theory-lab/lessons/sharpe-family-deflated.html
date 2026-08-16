@@ -173,6 +173,11 @@
     worth remembering any time an annualized Sharpe looks unusually clean.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Sharpe ratio is basically "how much extra return did you earn for every unit of bumpiness along the way." Two strategies can make the same amount of money, but the one with a smoother ride — fewer scary swings — gets rewarded with a higher Sharpe, because it delivered that return with less white-knuckle turbulence. The oddly specific square-root-of-time scaling is just the honest way to convert a daily bumpiness number into a fair yearly comparison — it isn't an arbitrary rule, it falls out of how randomness actually stacks up over many days.</p>
+  </div>
+
   <p>
     <strong>Sortino ratio.</strong> Sharpe's standard deviation \(\sigma_X\)
     treats a period that beats expectations and a period that misses it as
@@ -210,6 +215,11 @@
     risky is this, counting only the part of the wobble an investor would
     actually call bad."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine grading a rollercoaster ride by counting every twist and turn as equally scary, even the fun upward loops. Sharpe does that — a big surprise win counts against a strategy exactly like a big surprise loss does, just because both are "surprises." Sortino only counts the drops that actually made your stomach lurch — the downside moves — and lets the upside surprises off the hook entirely, which is a fairer way to score a strategy that mostly surprises you pleasantly.</p>
+  </div>
 
   <p>
     <strong>Calmar ratio.</strong> Sharpe and Sortino both use a dispersion
@@ -257,6 +267,11 @@
     that is occasionally brutal, even when their average risk-adjusted return
     numbers look similar on paper.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Sharpe asks "how bumpy is a typical day." Calmar asks a completely different question: "what was the single worst stretch this thing ever put you through, and how does your yearly gain compare to that?" A strategy can feel calm almost every day and still have one nightmare month buried in the data — Sharpe barely notices that one bad month because it's averaging over hundreds of calm ones, but Calmar is built entirely around that one worst stretch, because that's the part an actual investor remembers and has to survive.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -318,6 +333,11 @@
     page — but they are not the same claim, and only DSR tells them apart.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you buy 50 lottery scratch tickets and one of them wins a decent prize, that winning ticket isn't magic — with 50 tries, someone was going to win something, purely from playing enough times. A backtested Sharpe ratio works the same way: if you test 50 variations of a strategy, the best one is going to look good even if none of the 50 have any real edge, purely because you gave luck 50 chances to show up somewhere. The Deflated Sharpe Ratio asks: how good would the best of 50 lucky-but-worthless tries look, on average — and does your actual best result beat even that inflated bar?</p>
+  </div>
+
   <p>
     <strong>How \(SR_0\), the chance-expected ceiling, is built.</strong>
     This step is a direct application of extreme value theory (the subject of
@@ -374,6 +394,11 @@
     produced it, what's the probability this Sharpe is real right now" — and
     both trace back to the same Bailey &amp; López de Prado research program.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once you know the "luck ceiling" from testing 50 variations, DSR asks the final honest question: how far above that ceiling does your actual best result sit, and how confident can you be in that gap given how much data you actually have? It turns the whole thing into one number between 0% and 100% — not "is this Sharpe good," but "given everything — the search, the sample size, even how lopsided the returns were — what's the real probability this strategy has genuine edge at all."</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
