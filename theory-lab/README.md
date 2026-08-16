@@ -3,18 +3,23 @@
 A from-scratch, math-explained curriculum in the quantitative concepts behind
 this repo's FX/macro research — 34 numbered theory lessons, a 5-lesson
 Foundation Mathematics tier for readers starting from GCSE-level maths, 8
-background primers, and seventeen further categories spanning fixed income,
+background primers, and eighteen further categories spanning fixed income,
 numerical methods, market microstructure, options Greeks, Bayesian/state-space
 extensions, information theory, signal processing, graph theory, reinforcement
 learning, risk management, portfolio construction, research methodology,
 stochastic differential equations (including SPDEs and the Fokker-Planck
 equation), institutional data engineering, tree-based/ensemble machine
-learning, and collateral/funding market structure. Covers everything from
-algebra and Euler's formula to the Heston model, Random Matrix Theory,
-Merton's continuous-time portfolio problem, Nelson-Siegel yield curves,
-dealer gamma exposure, MCMC, DebtRank, the Bellman equation, Neural SDEs,
-the HJM/Musiela forward-curve SPDE, gradient boosting, rehypothecation, and
-the data-pipeline mechanics underneath all of it.
+learning, collateral/funding market structure, and deep learning/modern ML for
+trading. Covers everything from algebra and Euler's formula to the Heston
+model, Random Matrix Theory, Merton's continuous-time portfolio problem,
+Nelson-Siegel yield curves, dealer gamma exposure, MCMC, DebtRank, the Bellman
+equation, Neural SDEs, the HJM/Musiela forward-curve SPDE, gradient boosting,
+rehypothecation, LSTMs and Transformers, and the data-pipeline mechanics
+underneath all of it.
+
+Every lesson also carries an **Explain Like I'm 5** toggle (off by default) —
+a purely additive plain-language pass alongside the full technical content,
+never a replacement for it.
 
 Every card on the hub carries a **Beginner/Intermediate/Advanced** difficulty
 pill (`.tl-pill.tl-diff-pill`), and a filter bar at the top of the page
@@ -136,9 +141,11 @@ markup, the house content order, and a verification checklist.
 - **18 · Graph Theory & Networks** (3) — graph fundamentals & centrality
   measures, correlation networks & minimum spanning trees, systemic risk &
   financial contagion networks (DebtRank).
-- **19 · Reinforcement Learning** (3) — MDPs/value functions/the Bellman
+- **19 · Reinforcement Learning** (4) — MDPs/value functions/the Bellman
   equation, Q-learning & temporal-difference methods, policy gradients &
-  actor-critic methods.
+  actor-critic methods, Deep Q-Networks (swapping the Q-table for a neural
+  function approximator, plus the replay-buffer/target-network tricks that
+  make that substitution stable).
 - **20 · Risk Management Deep Dive** (5) — coherent risk measures (VaR/CVaR
   & the Artzner axioms), tail risk hedging & portfolio convexity, stress
   testing/scenario analysis/reverse stress tests, the Cornish-Fisher
@@ -182,6 +189,17 @@ markup, the house content order, and a verification checklist.
   underneath SOFR), rehypothecation & collateral chains (the Lehman/LBIE
   case, SEC Rule 15c3-3 vs. UK practice, and collateral re-use chains as a
   real-world instance of the contagion-network framework already built).
+- **27 · Deep Learning & Modern ML for Trading** (6) — recurrent networks
+  (LSTM/GRU, and why plain RNNs forget), attention & Transformers for time
+  series, regularized regression (LASSO/Ridge/Elastic Net and the
+  diamond-vs-circle constraint geometry behind LASSO's exact zeroing),
+  clustering for market structure (k-means & hierarchical clustering,
+  cross-linked to this curriculum's own Hierarchical Risk Parity lesson as
+  the same technique applied narrowly), anomaly detection (Isolation Forests
+  & autoencoders for bad ticks and structural breaks), and NLP for trading
+  signals (word embeddings, FinBERT-style sentiment, and the lag/lookahead
+  traps in backtesting text-derived features). Every lesson carries the same
+  honest "method, not strategy" framing as categories 25-26.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -196,7 +214,7 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 114 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 121 lesson files (5 Foundation Mathematics + 8
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 5 Numerical Methods
                         (incl. FFT option pricing) + 4 further Market
@@ -206,12 +224,16 @@ theory-lab/
                         categories: Bayesian Statistics Extensions (4),
                         State Space Models Extensions (4), Information
                         Theory (3), Signal Processing (3), Graph Theory &
-                        Networks (3), Reinforcement Learning (3), Risk
-                        Management Deep Dive (5), Advanced Portfolio
-                        Construction (4), Quantitative Research Process (2),
-                        Stochastic Differential Equations (7, incl.
-                        Fokker-Planck and Stochastic PDEs), Institutional
-                        Data Engineering (5), Tree-Based & Ensemble Machine
-                        Learning (2), and Collateral/Funding/Rehypothecation
-                        (2))
+                        Networks (3), Reinforcement Learning (4, incl. Deep
+                        Q-Networks), Risk Management Deep Dive (5), Advanced
+                        Portfolio Construction (4), Quantitative Research
+                        Process (2), Stochastic Differential Equations (7,
+                        incl. Fokker-Planck and Stochastic PDEs),
+                        Institutional Data Engineering (5), Tree-Based &
+                        Ensemble Machine Learning (2), Collateral/Funding/
+                        Rehypothecation (2), and Deep Learning & Modern ML
+                        for Trading (6, incl. LSTM/GRU, Transformers,
+                        LASSO/Ridge, clustering, anomaly detection, and NLP
+                        sentiment) + every lesson now carries an Explain
+                        Like I'm 5 toggle)
 ```
