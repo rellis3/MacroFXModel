@@ -211,7 +211,7 @@ const _CF_EXACT = new Set([
   // directly, but it's silently empty too until these actually persist.
   'cpi_v1', 'gdp_v1', 'ism_v1', 'labor_market_v1', 'retail_sales_v1',
   'trade_balance_v1', 'real_yield_v1', 'ppi_v1', 'yield_curve_v1',
-  'consumer_confidence_v1',
+  'consumer_confidence_v1', 'credit_quality_v1',
   // level_engine_bot's enable toggle lives in 'caps' (levelEngineBotEnabled),
   // already persistent below via 'caps' — no separate key needed for it.
   'level_engine_fwd_log',     // levelEngine/live_watch.py forward-track log: NQ level-touch alerts + their

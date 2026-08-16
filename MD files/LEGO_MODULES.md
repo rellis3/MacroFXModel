@@ -1192,6 +1192,62 @@ backtest, pre-register the benchmark (does the composite direction beat any
 single leg alone, and does either beat a naive baseline) before running it —
 same discipline §1aj's own note already asks for.
 
+### 1an. Liquidity Gate brick (2026-08-13) — Fed/ECB/BoJ balance-sheet momentum, daily context
+
+Built from an owner request (relayed from an external "liquidity mechanism"
+suggestion) to surface Fed/ECB/BoJ balance-sheet direction vs VIX as daily
+context for setting the day's trade — the same "null system, useful data"
+pattern this project already used for ifo→DAX and `econTrendEngine`'s
+`ECON_UNIVERSE`→`realYieldEngine`/`yieldCurveEngine`/`laborMarketEngine`.
+`js/macro.js`'s `computeT1_Equity()` already computes a bare
+week-over-week `WALCL−TGA−RRP` delta for index sizing, but that's US-only
+and single-point — no ECB/BoJ exposure anywhere live-facing, and no history.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Liquidity gate engine** | `js/liquidityGateEngine.js` | `cbLiquidityLeg(points)` — one central bank's own balance-sheet history, z-scored on the latest period-over-period CHANGE (not the raw level, so a secularly-growing balance sheet doesn't always read "high") — `[-1,+1]`. `mergeFedLiquidity(walcl, tga, rrp)` forward-fills TGA/RRP (both more frequent than WALCL) onto WALCL's own release dates, same "attach the most recently KNOWN reading, no future leak" join `yieldCurveEngine.js`'s `mergeSlope` already uses, extended to three series. `fedNetLiquidityLeg` is the one leg that legitimately nets (WALCL/TGA/RRP all USD). `liquidityVixNote(score, vix, vixPrev)` — a hedged, descriptive-not-predictive confirming/diverging read against the caller's own already-loaded VIX. **Deliberately does NOT net USD+EUR+JPY balance sheets into one dollar-equivalent number** — the existing dormant "COG Liquidity Gate" (`js/cogLiquidityGate.js`/`cogConfig.js`, part of the Global Liquidity family) already tried exactly that and is flagged in `MARKET_DESK_PROPOSAL.md`/`GLOBAL_LIQUIDITY_SYSTEM.md` as "downstream of the WALCL units bug, re-run needed" — an unresolved cross-currency unit-mismatch. This sidesteps that bug class entirely: only same-currency legs are ever summed; ECB/BoJ are scored independently and combined by SIGN AGREEMENT via `js/pairCompositeEngine.js`'s `pairComposite()` (reused, not duplicated) at the call site. Pure, no DOM/network/globals. Unit-tested `js/liquidityGateEngine.test.mjs` (13 cases). | `today.html` (module → `window.liquidityGateBrick`, same pattern as `window.creditBrick`/`window.pairCompositeBrick`) ✅ | 🟡 built + unit-tested — **not backtested, a context combiner not a validated rule**, same posture as §1aj/§1am |
+| **today.html: liquidityGateRead()** | `today.html` (`liquidityGateRead`, wired into `equitiesRisk()`) | Combines the Fed net leg + ECB/BoJ legs via `pairComposite`, adds the VIX-divergence note, and reports the result as `risk.liquidity` — a NEW display line in `renderMarketRead()` (`Liquidity: expanding/contracting/mixed · N/3 central banks agree`), positioned right after the existing Credit line. **Deliberately left OUT of the RISK-ON/OFF `tone`/`cls` classification math** — that stays driven by the pre-existing evidenced inputs (equity breadth, haven flows, credit spreads, VIX/HY levels); an unvalidated new signal doesn't get to quietly move the headline verdict. Data comes free from the existing `/api/fredhistory` pipeline — `walcl`/`tga`/`rrp`/`ecb_assets`/`boj_assets` were already in `_worker.js`'s `ALL_SERIES` allowlist (added earlier for the dormant Global Liquidity engine, never consumed live before now) with its own live FRED fallback fetch, so this shipped with **zero backend/server.js changes** — only `today.html`'s `FREDHIST_KEYS` needed the 5 new keys appended. | `equitiesRisk`, `renderMarketRead` | 🟡 built, same untested-context caveat |
+
+Same evidentiary posture as §1aj/§1am: a *selector*, not a strategy — composes
+already-fetched Tier-2 readings, ships with an explicit "context, not a
+backtested rule" disclaimer in its own tooltip, and has not been run through
+the honest IS/OOS harness. If ever promoted to a real backtest, pre-register
+the benchmark (does the liquidity-vs-VIX divergence read actually precede a
+vol regime shift, at what horizon, vs a naive baseline) before running it.
+
+**Follow-up (2026-08-16, same PR series) — Credit Quality Spread.** The
+Credit Stress Index's investment-grade quality spread (`BAA10Y`/`AAA10Y`)
+turned out NOT cheap to surface via the existing `/api/credit-stress` route —
+that endpoint fetches full daily OANDA history since 2005 across
+`TREND_UNIVERSE` and runs a full trend-basket backtest overlay just to
+produce the one `current.componentZ.quality` number, 1h-cached but still too
+heavy to call from every `today.html` page load. Instead, a new lightweight
+route reuses the SAME already-imported pure functions
+(`buildCsiInputs`/`buildCsi` from `js/creditStressEngine.js`/`creditStressCore.js`)
+**without** the OANDA-dependent backtest — `quality` is derivable from
+`buildCsiInputs`'s FRED-only `components.quality` (Baa−Aaa) alone. New KV-cached,
+daily-gated route `/api/credit-quality` (`credit_quality_v1` — added to
+`kv.js`'s `_CF_EXACT` immediately per this project's own hard-learned
+persistence lesson), same exact shape as every other numeric engine here.
+Wired into `today.html`'s `equitiesRisk()` as `risk.creditQ`, reported as its
+own line right after the Liquidity line — a different axis than the existing
+HY-OAS-LEVEL credit line (junk-bond spreads): this is investment-grade
+credit-curve SHAPE. Same "reported, not folded into tone/cls" treatment as
+Liquidity above.
+
+**Follow-up (2026-08-16, same PR series) — MVE fair-value chip.** Third and
+last item from the same null-backtest sweep. `today.html`'s `loadMve()`
+fetches `/api/mve/:sym` (already live, 1h server-side cache) for the 6
+MVE-supported instruments (`GOLD→XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD,
+NQ`) once per page load, and `mveChip(r)` renders a `◆ MVE cheap/rich Nσ`
+chip on eligible cards — tooltip states plainly that this project's OWN
+backtest found the underlying signal null-to-negative
+(`MARKET_VALUATION_ENGINE.md`/`js/mve/*`) and it's shown as read-only
+context, not a lean. **Explicitly NOT folded into `pairSignalComposite`/
+`pairComposite`'s agree/total count** — inflating an "agreement" tally with
+a confirmed-non-working leg would be dishonest, same discipline as every
+other "context, not a signal" caveat this session's combiners carry.
+
 ---
 
 ### 1an. Overnight-hold vs buy & hold engine (2026-08-11) — the education/buy-and-hold-notes.md task, run for real
