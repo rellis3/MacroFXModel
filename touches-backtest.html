@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Touches Backtest — Structural Motif Results</title>
+<style>
+  :root{--bg:#0e1117;--panel:#161b22;--panel2:#1c232c;--bd:#2b333d;--fg:#c9d1d9;--mut:#8b949e;
+        --up:#26a69a;--dn:#ef5350;--acc:#58a6ff;--gold:#e3b341}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+  header{padding:16px 22px;border-bottom:1px solid var(--bd);background:linear-gradient(180deg,#12171e,#0e1117)}
+  h1{margin:0;font-size:19px}
+  .sub{color:var(--mut);font-size:12.5px;margin-top:3px;max-width:920px}
+  main{padding:18px 22px;max-width:1180px;margin:0 auto}
+  .flag{background:#2d2410;border:1px solid #5c4a12;color:#e3c766;border-radius:7px;padding:10px 13px;font-size:12.5px;margin:14px 0;line-height:1.55}
+  .sec{margin:22px 0 8px;font-size:15px;font-weight:600;border-left:3px solid var(--acc);padding-left:9px}
+  .cards{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 10px}
+  .card{background:var(--panel);border:1px solid var(--bd);border-radius:9px;padding:12px 14px;min-width:118px}
+  .card .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .card .v{font-size:21px;font-weight:650;margin-top:2px}
+  .pos{color:var(--up)}.neg{color:var(--dn)}
+  .colwrap{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.colwrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:14px}
+  .panel h3{margin:0 0 8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.03em}
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+  th{color:var(--mut);font-weight:600;text-align:right;position:sticky;top:0;background:var(--panel)}
+  th:first-child,td:first-child{text-align:left}
+  tr:hover td{background:#141a22}
+  button{cursor:pointer;border:1px solid var(--bd);background:var(--panel2);color:var(--fg);border-radius:6px;padding:6px 11px;font-size:12.5px}
+  button:hover{filter:brightness(1.15)}
+  .hint{color:var(--mut);font-size:11.5px;margin:6px 0 10px}
+  select,input{background:var(--panel2);border:1px solid var(--bd);color:var(--fg);border-radius:6px;padding:5px 8px;font-size:13px}
+  .muted{color:var(--mut)}
+  a{color:var(--acc)}
+  .toprow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+  .pill{background:var(--panel2);border:1px solid var(--bd);border-radius:14px;padding:3px 10px;font-size:11.5px;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Touches Backtest <span class="muted" style="font-size:13px">· N-touches-of-a-level structural motif signal · 26 pairs · H1</span></h1>
+  <div class="sub">Standard results card for the structural motif signal (<code>pylego/motif_touch.py</code> / <code>AnalogML/motif_backtest_export.py</code>) — the touch-count/level-break idea that replaced the retired k-NN shape-matching signal. Config'd, frozen, exported — this page reads a pre-computed JSON, it does not run live (Python-only signal, no backend port yet). Real per-trade MAE from the M1-resampled bar path, capped at the fixed SL. Costs on by default. Full writeup: <a href="AnalogML/README.md" target="_blank">AnalogML/README.md</a> · live per-pair "what's forming now" diagnostic: <a href="today.html" target="_blank">today.html</a>.</div>
+</header>
+<main>
+  <div id="loading" class="muted" style="margin-top:30px;text-align:center">loading AnalogML/data/motif_backtest_export.json …</div>
+  <div id="err" class="flag" style="display:none;background:#2d1414;border-color:#5c1212;color:#f0a3a3"></div>
+  <div id="out" style="display:none">
+
+    <div id="oosFlag" class="flag"></div>
+
+    <div class="toprow" id="paramPills"></div>
+
+    <div class="sec">Pooled — full history</div>
+    <div class="cards" id="fullCards"></div>
+
+    <div class="sec">In-sample vs out-of-sample (calendar split — read the flag above before trusting this)</div>
+    <div class="colwrap">
+      <div class="panel"><h3>In-sample</h3><div class="cards" id="isCards"></div></div>
+      <div class="panel"><h3>Out-of-sample</h3><div class="cards" id="oosCards"></div></div>
+    </div>
+
+    <div class="sec">Cost sensitivity</div>
+    <div class="colwrap">
+      <div class="panel"><h3>With cost (default, reported)</h3><div class="cards" id="costOnCards"></div></div>
+      <div class="panel"><h3>Without cost (never the headline)</h3><div class="cards" id="costOffCards"></div></div>
+    </div>
+
+    <div class="sec">Per-pair breakdown</div>
+    <div class="panel" style="max-height:360px;overflow:auto"><table id="perPairTbl"></table></div>
+
+    <div class="sec">Trade log
+      <span style="float:right;font-weight:400">
+        pair <select id="pairFilter"><option value="">all pairs</option></select>
+        &nbsp;touches <select id="touchFilter"><option value="">all</option><option value="2">2 (doubles)</option><option value="3">3 (triples)</option></select>
+        &nbsp;
+        <button id="csv1">CSV · % Returns</button>
+        <button id="csv2">CSV · R-Multiples</button>
+        <button id="csv3">CSV · Currency P&amp;L</button>
+      </span>
+    </div>
+    <div class="hint" id="acctHint"></div>
+    <div class="hint">Doubles (2-touch) vs triples (3-touch) is a real disaggregation finding, not a cosmetic filter — see AnalogML/README.md's "lifecycle disaggregation" section: doubles carry almost all of the measured edge, triples read close to a coin flip both IS and OOS.</div>
+    <div class="panel" style="max-height:420px;overflow:auto"><table id="tradeTbl"></table></div>
+  </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(v,d=3)=>v==null||Number.isNaN(v)?'—':(+v).toFixed(d);
+const pct=(v,d=1)=>v==null||Number.isNaN(v)?'—':(100*v).toFixed(d)+'%';
+const cls=v=>v==null?'':(v>0?'pos':(v<0?'neg':''));
+const card=(k,v,c='')=>`<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`;
+
+function summaryCards(s){
+  return card('n', s.n)
+       + card('total R', fmt(s.total_r,2), cls(s.total_r))
+       + card('win rate', pct(s.win_rate,1))
+       + card('profit factor', fmt(s.profit_factor,2), cls((s.profit_factor||1)-1))
+       + card('avg R', fmt(s.avg_r,3), cls(s.avg_r));
+}
+
+let DATA=null, FILTERED=[];
+
+async function load(){
+  try{
+    const d = await (await fetch('./AnalogML/data/motif_backtest_export.json')).json();
+    DATA = d;
+    render(d);
+  }catch(e){
+    $('loading').style.display='none';
+    $('err').style.display='block';
+    $('err').textContent = 'Could not load AnalogML/data/motif_backtest_export.json — run `python AnalogML/motif_backtest_export.py --all-pairs` first (' + e.message + ').';
+  }
+}
+
+function render(d){
+  $('loading').style.display='none';
+  $('out').style.display='block';
+
+  $('oosFlag').innerHTML = `<b>Read this before trusting the IS/OOS split:</b> every trade is individually causal
+    (no trade ever used data from after its own entry — see <code>pylego/motif_touch_test.py</code>'s
+    confirmability-lag regression guard). The grid itself (pivot_n, tolerance, SL/TP) is FROZEN, not fit on
+    this window — <code>motif_walkforward.py</code> separately confirmed 11/11 calendar-year folds positive
+    (2016–2026) on the same setting, which is stronger evidence than a single IS/OOS split alone. Cutoff
+    ${d.params.is_oos_cutoff}. ${d.caveat}`;
+
+  $('paramPills').innerHTML = [
+    `pivot_n=${d.params.pivot_n}`, `tol=${d.params.tol_atr_mult}×ATR`, `min_retrace=${d.params.min_retrace_atr_mult}×ATR`,
+    `sl=${d.params.sl_pips}p`, `tp_r=${d.params.tp_r}`, `${d.params.timeframe}`,
+    `account $${d.params.account_size.toLocaleString()}`, `risk ${pct(d.params.risk_pct)}/trade`,
+  ].map(p=>`<span class="pill">${p}</span>`).join('');
+
+  $('fullCards').innerHTML = summaryCards(d.summary.full);
+  $('isCards').innerHTML = summaryCards(d.summary.is);
+  $('oosCards').innerHTML = summaryCards(d.summary.oos);
+  $('costOnCards').innerHTML = summaryCards(d.summary.cost_sensitivity.with_cost);
+  $('costOffCards').innerHTML = summaryCards(d.summary.cost_sensitivity.without_cost);
+
+  // per-pair table
+  const rows = d.per_pair.slice().sort((a,b)=>(b.full.profit_factor||0)-(a.full.profit_factor||0));
+  let h = '<tr><th>pair</th><th>n</th><th>full PF</th><th>full avg R</th><th>IS n</th><th>IS PF</th><th>OOS n</th><th>OOS PF</th></tr>';
+  for(const r of rows){
+    h += `<tr><td>${r.pair.toUpperCase()}</td><td>${r.full.n}</td>`
+       + `<td class="${cls((r.full.profit_factor||1)-1)}">${fmt(r.full.profit_factor,2)}</td>`
+       + `<td class="${cls(r.full.avg_r)}">${fmt(r.full.avg_r,3)}</td>`
+       + `<td>${r.is.n}</td><td class="${cls((r.is.profit_factor||1)-1)}">${fmt(r.is.profit_factor,2)}</td>`
+       + `<td>${r.oos.n}</td><td class="${cls((r.oos.profit_factor||1)-1)}">${fmt(r.oos.profit_factor,2)}</td></tr>`;
+  }
+  $('perPairTbl').innerHTML = h;
+
+  // pair filter
+  const sel = $('pairFilter');
+  sel.innerHTML = '<option value="">all pairs</option>' + d.pairs.map(p=>`<option>${p}</option>`).join('');
+  sel.onchange = () => drawTrades();
+  $('touchFilter').onchange = () => drawTrades();
+
+  $('acctHint').textContent = `Account $${d.params.account_size.toLocaleString()}, risk ${pct(d.params.risk_pct)} `
+    + `($${(d.params.account_size*d.params.risk_pct).toLocaleString()}) per trade, FIXED (not compounding) for this `
+    + `trade-log export. R-unit = the fixed ${d.params.sl_pips}-pip stop (not vol-scaled), so R and % Return are NOT `
+    + `redundant here. MAE is capped at 1 R / the SL price — a position can't experience more adverse move than its `
+    + `own stop before closing.`;
+
+  drawTrades();
+}
+
+function currentTrades(){
+  const pair = $('pairFilter').value;
+  const touches = $('touchFilter').value;
+  let t = pair ? DATA.trades.filter(t=>t.pair===pair) : DATA.trades;
+  if(touches) t = t.filter(x=>String(x.n_touches)===touches);
+  return t;
+}
+
+function drawTrades(){
+  FILTERED = currentTrades();
+  const show = FILTERED.length>500 ? FILTERED.slice(-500) : FILTERED;
+  let h = '<tr><th>pair</th><th>date</th><th>dir</th><th>touches</th><th>kind</th><th>outcome</th><th>R</th><th>MAE(R)</th><th>return %</th><th>MAE %</th><th>PnL $</th><th>IS/OOS</th></tr>';
+  for(const t of show){
+    h += `<tr><td>${t.pair.toUpperCase()}</td><td>${t.date}</td><td>${t.direction}</td>`
+       + `<td>${t.n_touches}</td><td>${t.is_top?'top':'bottom'}</td><td>${t.outcome}</td>`
+       + `<td class="${cls(t.r)}">${fmt(t.r,2)}</td><td>${fmt(t.mae_r,2)}</td>`
+       + `<td class="${cls(t.return_pct)}">${fmt(t.return_pct,3)}</td><td>${fmt(t.mae_pct,3)}</td>`
+       + `<td class="${cls(t.pnl_dollars)}">${fmt(t.pnl_dollars,2)}</td><td>${t.is_oos}</td></tr>`;
+  }
+  $('tradeTbl').innerHTML = h;
+  if(FILTERED.length>500) $('tradeTbl').insertAdjacentHTML('beforebegin',
+    `<div class="hint">showing last 500 of ${FILTERED.length} trades in the table (CSV exports include ALL of them)</div>`);
+}
+
+// CSV exports — the 3 exact house schemas (CLAUDE.md)
+function dl(name, rows){
+  const b = new Blob([rows.join('\n') + '\n'], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click();
+}
+function exportCsv(tag, header, rowFn){
+  const t = currentTrades();
+  if(!t.length) return;
+  const rows = [header];
+  for(const x of t) rows.push(rowFn(x));
+  dl('touches_' + (($('pairFilter').value)||'all') + '_' + tag + '.csv', rows);
+}
+// MAE is stored/shown on-page as a POSITIVE magnitude ("how far adverse
+// did this trade go", always >= 0). These 2 CSV schemas match an external
+// prop-firm pass/fail simulator's upload format (not part of this page),
+// which expects MAE as a NEGATIVE number -- same sign convention as a
+// loss, so a losing trade's worst point can't read as a gain -- negated
+// ONLY at CSV-export time here (see motif-combined-backtest.html for the
+// same fix, applied first).
+$('csv1').onclick = () => exportCsv('pct', 'Date,Return %,MAE %', x => x.date + ',' + x.return_pct + ',' + (-x.mae_pct));
+$('csv2').onclick = () => exportCsv('R', 'date,R,MAE (R)', x => x.date + ',' + x.r + ',' + (-x.mae_r));
+$('csv3').onclick = () => exportCsv('pnl', 'Trade Date,PnL ($),Risk ($)', x => x.date + ',' + x.pnl_dollars + ',' + x.risk_dollars);
+
+load();
+</script>
+</body>
+</html>

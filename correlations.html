@@ -327,7 +327,7 @@ body{font-family:'DM Sans',sans-serif;font-size:13px;background:var(--bg);color:
         <div class="bp-pct" style="font-size:9px;color:var(--text3);text-align:right">0%</div>
       </div>
       <button class="btn-run" id="btnBuild" onclick="triggerBuild()" style="background:var(--green)">⬛ Build 5yr History</button>
-      <div style="font-size:9px;color:var(--text3);margin-top:4px">Fetches OANDA H4 bars, ~3 min. Rebuilds weekly automatically.</div>
+      <div style="font-size:9px;color:var(--text3);margin-top:4px">Fetches OANDA H4 bars, ~3 min. Rebuilds automatically every 6 hours if stale (server.js CORR_STALE_MS) — this button forces it now instead of waiting.</div>
     </div>
 
   </div>

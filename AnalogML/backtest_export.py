@@ -45,9 +45,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from pylego.analog_signal import neighbor_consensus  # noqa: E402
-from pylego.barrier_race import Entry, race_trades  # noqa: E402
+from pylego.barrier_race import Entry, mae_from_path, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
+from pylego.json_safe import json_safe  # noqa: E402
 from pylego.shape_match import rolling_shapes  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
@@ -60,28 +61,6 @@ ALL_PAIRS = [
 
 IS_OOS_CUTOFF = "2023-01-01"
 DATA_DIR = Path(__file__).resolve().parent / "data"
-
-
-def compute_mae(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
-                entry_price: float, sl_price: float) -> tuple[float, float]:
-    """MAE from the REAL bar path between entry and exit (inclusive) --
-    Low-vs-entry for longs, High-vs-entry for shorts, never approximated
-    from the close-to-close return. Capped at `sl_price`: on an H1 bar, the
-    EXIT bar's full high/low range can overshoot the SL price by a lot (a
-    big wick continuing past the touch point within that same hour), but
-    `race_trades`' fixed-barrier walker means the position closes exactly
-    when the SL level is first touched -- it never experiences adverse
-    movement beyond that, so an uncapped MAE here would overstate real
-    risk. Same discipline as the barrier walker itself: one fixed SL, no
-    more, no less."""
-    highs = bars["high"].to_numpy()[idx:exit_idx + 1]
-    lows = bars["low"].to_numpy()[idx:exit_idx + 1]
-    if direction > 0:
-        mae_price = entry_price - float(lows.min())
-    else:
-        mae_price = float(highs.max()) - entry_price
-    mae_price = min(max(mae_price, 0.0), sl_price)
-    return mae_price / sl_price, mae_price / entry_price * 100.0
 
 
 def build_pair_trade_log(pair: str, args: argparse.Namespace) -> tuple[list[dict], list[float]]:
@@ -128,7 +107,7 @@ def build_pair_trade_log(pair: str, args: argparse.Namespace) -> tuple[list[dict
     trades = []
     for t in resolved:
         entry_date = bars.index[t["idx"]]
-        mae_r, mae_pct = compute_mae(bars, t["idx"], t["exit_idx"], t["direction"], t["entry_price"], sl_price)
+        mae_r, mae_pct = mae_from_path(bars, t["idx"], t["exit_idx"], t["direction"], t["entry_price"], sl_price)
         price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
         trades.append({
             "pair": pair,
@@ -218,7 +197,7 @@ def main() -> None:
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w") as f:
-        json.dump(out, f)
+        json.dump(json_safe(out), f)
     print(f"\n[export] {len(all_trades)} trades, {len(pairs)} pairs -> {out_path}")
     print(f"[overall] IS n={overall['is']['n']} PF={overall['is']['profit_factor']:.2f}  "
           f"OOS n={overall['oos']['n']} PF={overall['oos']['profit_factor']:.2f}  "

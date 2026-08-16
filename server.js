@@ -560,6 +560,8 @@ const state = {
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
+  regimeHistBuf:       { v1: {}, v2: {} }, // in-memory regime-history ring buffer, auto-recorded
+                             // off the live 5m HMM loops — see recordRegimeSnapshot()/flushRegimeHistory()
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -895,6 +897,56 @@ function _regime(closes) {
   return 'RANGE';
 }
 
+// ── COT positioning correlation (currency vs currency) ──────────────────────
+// A DIFFERENT relationship from the price-return correlation above: not "do
+// these move together", but "do speculators build/reduce these two
+// currencies' positions together" — reuses the CFTC weekly series the
+// cot-extremes engine already fetches and caches (cot_series_v2, written by
+// _worker.js every time /api/cot-extremes recomputes, ~weekly since COT
+// releases Fridays), so this needs no new data source. Correlates WEEK-OVER-
+// WEEK CHANGES in each currency's OI-normalised spec share (not the levels —
+// same reasoning as _logRets above: levels trend, changes don't, and a
+// levels-correlation would overstate the relationship).
+const COT_CCY_GROUP = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'MXN'];
+
+async function computeCotCorrelations() {
+  let raw;
+  try { raw = await kv.get('cot_series_v2'); } catch { return null; }
+  if (!raw) return null;
+  let series;
+  try { series = JSON.parse(raw)?.series; } catch { return null; }
+  if (!series) return null;
+
+  // Week-over-week delta of specShare, keyed by report date so mismatched
+  // currencies (a late/missing report for one) align correctly instead of
+  // silently pairing the wrong weeks against each other.
+  const deltasByCcy = {};
+  for (const ccy of COT_CCY_GROUP) {
+    const s = series[ccy];
+    if (!s?.dates?.length || !s?.specShare?.length) continue;
+    const m = new Map();
+    for (let i = 1; i < s.dates.length; i++) {
+      const a = s.specShare[i - 1], b = s.specShare[i];
+      if (a == null || b == null || s.dates[i] == null) continue;
+      m.set(s.dates[i], b - a);
+    }
+    if (m.size >= 10) deltasByCcy[ccy] = m;
+  }
+
+  const ccys = Object.keys(deltasByCcy).sort();
+  const corr = {};
+  for (let i = 0; i < ccys.length; i++) {
+    for (let j = i + 1; j < ccys.length; j++) {
+      const ma = deltasByCcy[ccys[i]], mb = deltasByCcy[ccys[j]];
+      const xs = [], ys = [];
+      for (const [date, va] of ma) { const vb = mb.get(date); if (vb != null) { xs.push(va); ys.push(vb); } }
+      const c = _pearson(xs, ys);
+      if (c !== null) corr[`${ccys[i]}_${ccys[j]}`] = +c.toFixed(4);
+    }
+  }
+  return { generated: new Date().toISOString(), currencies: ccys, corr };
+}
+
 async function buildCorrHistoryJS() {
   if (corrRunning) { console.log('[CORR] Already running — skipped'); return; }
   corrRunning = true;
@@ -1006,9 +1058,13 @@ async function buildCorrHistoryJS() {
       }
     }
 
+    corrProgress = { pct: 90, msg: 'Correlating COT positioning…', step: 'cot', error: null };
+    const cotCorr = await computeCotCorrelations().catch(e => { console.warn('[CORR] COT correlation skipped:', e.message); return null; });
+
     const output = { generated:new Date().toISOString(), years:CORR_YEARS,
       window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
-      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr };
+      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr,
+      cot_corr: cotCorr?.corr ?? {}, cot_corr_generated: cotCorr?.generated ?? null };
 
     corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
     fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
@@ -1033,7 +1089,8 @@ async function buildCorrHistoryJS() {
         corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
       }
       const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2 };
+        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2,
+        last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
       await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
     } catch (kvErr) {
@@ -2464,13 +2521,14 @@ Rules for your response:
 15. MATCH TONE TO CONVICTION. If the read is a positioning lean rather than a high-conviction, well-evidenced setup, say so plainly ("this is a lean, not a high-conviction trade") and keep convictionScore consistent with it. Don't dress a weak, single-signal idea in confident prose.
 16. NUMBER DELIVERY — speak numbers like a trader, not a spreadsheet. In the PROSE, round prices the way you'd say them aloud ("1.1430", "just under 1.1450", "around 29,500") — reserve full precision (1.14298, 1.14508) for the exact entry/stop/target in keyLevels and tradingFramework, where it's actionable. Never quote pointless precision in prose ("0.27% of typical daily range", "114.3×") — say "almost none of the day's range left" instead. A number earns its place only if it changes the decision.
 17. LEAD WITH WHAT DRIVES THE DECISION — don't stack every metric. Pick the ONE or TWO signals that actually make the trade (here it's usually the level + the one evidenced signal) and build around them. Secondary readings get a clause, not a sentence each. If two signals conflict, resolve it for the reader in plain words ("so despite the breakout flag, the near-term odds still favour the fade") — don't just list both and leave them hanging.
+18. CLOSING TASK — TRADE OF THE DAY. As your final step, using everything above, decide whether there is ONE concrete trade worth proposing right now. If yes: fill tradeOfDay with direction ("LONG" or "SHORT"), and entry/stopLoss/takeProfit as REAL levels — reuse a level you already named elsewhere in your response, or one present in the snapshot (a keyLevel, OI wall, pivot, fib, range edge, or retail cluster) — never a fabricated round number (same rule as #14, applied here too). riskReward is the resulting R multiple as a string (e.g. "1:2.1"). confidence is HIGH/MEDIUM/LOW and must be consistent with convictionScore, not more confident than the rest of your read. rationale is ONE sentence citing the 1-2 strongest pieces of evidence behind it — no new claims not already grounded above. If the evidence is thin, conflicting, or nothing here clears a reasonable bar for an actual trade, set direction to "NONE", leave entry/stopLoss/takeProfit as empty strings, and use rationale to say briefly why there's no trade today (e.g. "levels are stacked against each other and vol is too compressed to size a stop") — do not force a trade that isn't there just to fill the field.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
 
-{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
+{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":"","tradeOfDay":{"direction":"LONG|SHORT|NONE","entry":"","stopLoss":"","takeProfit":"","riskReward":"","confidence":"HIGH|MEDIUM|LOW","rationale":""}}`;
 }
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -2866,11 +2924,13 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
+Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide FX read across the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD. For each, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean on a currency with thin scorecard coverage less confidently, and say so in the note. Then, from those seven, name the ONE pair whose fundamental case is currently clearest — the single best one to have on the watchlist today — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data) — if nothing clearly stands out, say so honestly and return "pair":null rather than forcing a pick.
+
 Respond with ONLY valid JSON, no markdown:
-{"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"tldr":"one-line bottom line"}`;
+{"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the seven pairs above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 3200, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
@@ -13665,6 +13725,59 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
   }
 });
 
+// Forge estimator comparison — a WALK-FORWARD OOS volatility forecast, read
+// from a static file `forge/` exports offline (see `forge/export_vol_compare.
+// py` and `forge/vol.py`'s module docstring for the estimator + methodology).
+// Deliberately separate from `/api/vol-forecast/compare/:date` above — that
+// endpoint reads live KV populated by the running scheduler; this one reads
+// a committed JSON snapshot and touches none of that endpoint's state, so a
+// bug or a stale export here cannot affect the live-KV-backed comparison.
+// GET /api/vol-forecast/compare-forge/:date
+const _FORGE_VOL_PATH = path.join(__dirname, 'forge', 'out_vol', 'compare_export.json');
+let _forgeVolCache = null, _forgeVolCacheAt = 0;
+function _loadForgeVolCompare() {
+  if (_forgeVolCache && Date.now() - _forgeVolCacheAt < 300_000) return _forgeVolCache;
+  try { _forgeVolCache = JSON.parse(fs.readFileSync(_FORGE_VOL_PATH, 'utf8')); _forgeVolCacheAt = Date.now(); }
+  catch { _forgeVolCache = null; }
+  return _forgeVolCache;
+}
+app.get('/api/vol-forecast/compare-forge/:date', (req, res) => {
+  const date = req.params.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const day = all[date];
+  if (!day) return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${date} (outside the exported walk-forward window, or the export needs refreshing)` });
+  res.json({ ok: true, date, rows: day });
+});
+
+// Forge comparison, ONE pair across a date RANGE — the day-by-day "how did it
+// cope over multiple days" view `compare-forge/:date` can't answer (it's a
+// single-date lookup). Same static export, same zero-risk-to-live-KV
+// separation as the endpoint above; just a different slice of the same file.
+// GET /api/vol-forecast/compare-forge/range?pair=gold&from=2024-01-01&to=2024-06-01
+app.get('/api/vol-forecast/compare-forge/range', (req, res) => {
+  const pair = String(req.query.pair || '').toLowerCase();
+  const from = String(req.query.from || '');
+  const to = String(req.query.to || '');
+  if (!pair) return res.status(400).json({ ok: false, error: 'pair is required' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ ok: false, error: 'from/to must be YYYY-MM-DD' });
+  }
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const rows = [];
+  for (const date of Object.keys(all).sort()) {
+    if (date < from || date > to) continue;
+    const v = all[date]?.[pair];
+    if (v) rows.push({ date, ...v });
+  }
+  if (!rows.length) {
+    return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${pair} in [${from}, ${to}]` });
+  }
+  res.json({ ok: true, pair, from, to, rows });
+});
+
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
 // GET /api/vol-forecast/audit/:date  (date = YYYY-MM-DD, defaults to today)
 app.get('/api/vol-forecast/audit/:date?', async (req, res) => {
@@ -17134,6 +17247,27 @@ app.get('/api/analogml/paper-trades', async (_req, res) => {
   return res.json(out);
 });
 
+// ── AnalogML: motif-state + motif-trades JSON, written by AnalogML/motif_track.py
+// -- the structural N-touches-of-a-level signal (pylego/motif_touch.py),
+// tracked SEPARATELY from the shape-state/paper-trades pair above (the
+// fixed-window k-NN method those track banked null on 2026-08-12; this is a
+// different, still-being-validated idea, not a replacement in place). Same
+// disk-first-then-R2 pattern via _loadAnalogMLJson.
+const ANALOGML_MOTIF_STATE_PATH = path.join(ANALOGML_DATA_DIR, 'motif_state.json');
+const ANALOGML_MOTIF_TRADES_PATH = path.join(ANALOGML_DATA_DIR, 'motif_trades.json');
+
+app.get('/api/analogml/motif-state', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_STATE_PATH, 'analogml/motif_state.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_state.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
+app.get('/api/analogml/motif-trades', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_trades.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
   const { pair = '' } = req.body || {};
@@ -17514,12 +17648,26 @@ app.post('/api/forecast-accuracy/run', express.json({ limit: '16kb' }), (req, re
       for (const cfg of insts) {
         try {
           const { bars, src } = await _intradayForAB(cfg);
-          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name });
+          // Reuses the SAME cached export `/api/vol-forecast/compare-forge/:date`
+          // reads (`_loadForgeVolCompare()`) — one file, one 5-min cache, read
+          // twice from two different routes rather than loaded/parsed twice.
+          const forgeAll = _loadForgeVolCompare();
+          const key = cfg.name.toLowerCase();
+          let forgeByDate = null;
+          if (forgeAll) {
+            forgeByDate = {};
+            for (const [date, byPair] of Object.entries(forgeAll)) {
+              const v = byPair[key];
+              if (v) forgeByDate[date] = v;
+            }
+          }
+          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name, forgeByDate });
           if (fa.insufficient) { log.push(`${cfg.name}: insufficient (${fa.nDays}d)`); continue; }
           fa.src = src;
           perPair[cfg.name] = fa;
           const A = fa.panelA, B = fa.panelB;
-          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}% · reversal ${B.reversalOverMedian}× median (src ${src})`);
+          const forgeLog = A.forge ? ` / forge ${A.forge.hlExceed}% (n=${A.forge.nDays})` : '';
+          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}%${forgeLog} · reversal ${B.reversalOverMedian}× median (src ${src})`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
@@ -20286,6 +20434,64 @@ async function checkVolLevelAlertsNow() {
   }
 }
 
+// Preview: compose the SAME alert text checkVolLevelAlertsNow would send, without
+// requiring Telegram creds/enabled/cooldown and without sending anything. For
+// demoing/inspecting the alert copy (e.g. from the Upcoming Trades dashboard) and
+// for local dev where no bot is configured. ?pair=eurusd restricts to one
+// instrument; ?thresholdMult=N widens the per-pair pip threshold (default 1×) so a
+// preview can force a look even when live price isn't currently near a level.
+app.get('/api/vol-forecast/level-alerts/preview', async (req, res) => {
+  try {
+    const cfg = await loadVolLevelCfg();
+    const brief = await computeDailyBrief();
+    if (!brief?.ok || !brief.instruments) return res.json({ ok: false, error: 'brief unavailable' });
+    let usdTrendByPair = {};
+    try { usdTrendByPair = await _computeUsdTrends(); } catch { usdTrendByPair = {}; }
+    const wantPair = req.query.pair ? String(req.query.pair).toUpperCase() : null;
+    const mult = Math.max(1, Math.min(50, +req.query.thresholdMult || 1));
+
+    const out = [];
+    for (const inst of Object.values(brief.instruments)) {
+      const { sym, current_price: price, session_open: open, dp, levels } = inst;
+      if (!sym || !price || !open || !levels) continue;
+      const canonical = sym.replace('_', '/');
+      if (wantPair && sym !== wantPair && canonical !== wantPair) continue;
+
+      const pipSize = PIP_SIZE[canonical] ?? PIP_SIZE[sym] ?? PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+      const threshold = mult * (cfg.thresholdPips?.[canonical] ?? cfg.thresholdPips?.[sym] ?? cfg.thresholdPips?.default ?? 10);
+
+      const pre = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+        levels, thresholdPips: threshold, enabled: cfg.levels, bars: null });
+      if (!pre.length) continue;
+
+      const bars = await _fetchVolLevelCandles(sym);
+      let dispersion = null;
+      try {
+        const sessOpenSec = _btLondonMidnightSec(new Date());
+        const sessBars = Array.isArray(bars) ? bars.filter(b => b.t >= sessOpenSec) : [];
+        let sessionHigh = null, sessionLow = null;
+        if (sessBars.length) { sessionHigh = Math.max(...sessBars.map(b => b.high)); sessionLow = Math.min(...sessBars.map(b => b.low)); }
+        const regime = await _volLevelDailyRegime(sym, inst.ac ?? 'fx', brief.session_date);
+        dispersion = volDispersionContext({ sessionHigh, sessionLow, sessionOpen: open,
+          hlMedPct: levels?.hl_med?.pct ?? null, priorExceed: regime.priorExceed, sigAccel: regime.sigAccel });
+      } catch { dispersion = null; }
+
+      let direction = null;
+      try {
+        const [m15, h1] = await Promise.all([_fetchVolLevelCandles(sym, 'M15', 200), _fetchVolLevelCandles(sym, 'H1', 200)]);
+        const z15 = volWtZone(m15), z1h = volWtZone(h1);
+        if (z15 && z1h) direction = { m15: z15, h1: z1h };
+      } catch { direction = null; }
+
+      const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+        levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction,
+        usdTrend: usdTrendByPair[canonical] ?? null });
+      for (const ev of events) out.push({ pair: canonical, key: ev.key, label: ev.near.label, distPips: ev.near.distPips, text: ev.text });
+    }
+    res.json({ ok: true, preview: true, thresholdMult: mult, alerts: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
+});
+
 // Config: GET status, POST save, (levels/threshold/cooldown/pairs).
 app.get('/api/vol-forecast/level-alerts/config', async (_req, res) => {
   try {
@@ -22286,7 +22492,7 @@ app.get('/api/corr-history', (req, res) => {
 // Much smaller than the full corr-history response.
 app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
-  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {} });
+  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {} });
   try {
     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
     const records = data.records || [];
@@ -22311,6 +22517,8 @@ app.get('/api/hedge-alerts', async (req, res) => {
       corr_std,
       last_corr: lastCorr,
       last_betas: lastRec.beta || {},
+      last_cot_corr: data.cot_corr || {},
+      cot_corr_generated: data.cot_corr_generated || null,
     };
     // Cache in KV so the Positions tab can read it from both Railway and CF Pages
     kv.put('hedge_alerts_cache', JSON.stringify(result), { expirationTtl: 86400 }).catch(() => {});
@@ -22630,9 +22838,94 @@ app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
 setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
 setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
 
+// ── Regime history — automatic recorder ─────────────────────────────────────
+// The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
+// is a MANUAL admin action — nobody was running it, so /api/regime-history came
+// back empty for every pair, every day (found 2026-08-14). Recording directly off
+// the live 5m HMM loops (runHMM5mRefresh/runHMM5mV2Refresh, already running
+// unconditionally every HMM5M_REFRESH_MS on the server) removes that manual step
+// AND removes the dependency on the Python bot process being up and writing to
+// a log file at all — this records the exact state the dashboard itself shows.
+//
+// Records are appended only on a regime change or a 15-min heartbeat (not every
+// 30s tick) so "periods held" stays a meaningful coarse unit and the buffer
+// doesn't balloon. Flushed to local KV every 5 min (cheap — local file store,
+// not CF KV, see kv.js's isCfKey) and to R2 every hour for durability across
+// Railway redeploys (CF KV route would burn quota; R2 does not).
+const REGIME_SNAPSHOT_HEARTBEAT_S = 15 * 60;
+const REGIME_HIST_MAX_RECORDS     = 2000; // ~3 weeks at the 15-min heartbeat floor
+
+function regimeHistPairSafe(sym) { return String(sym || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
+
+function recordRegimeSnapshot(ver, sym, regime, conf) {
+  if (!regime) return;
+  const pairSafe = regimeHistPairSafe(sym);
+  if (!pairSafe) return;
+  const buf = state.regimeHistBuf[ver];
+  const bucket = buf[pairSafe] ?? (buf[pairSafe] = { records: [], events: [], dirty: false });
+  const nowS = Math.floor(Date.now() / 1000);
+  const last = bucket.records[bucket.records.length - 1];
+  if (last && last.regime === regime && (nowS - last.ts) < REGIME_SNAPSHOT_HEARTBEAT_S) return;
+  bucket.records.push({ ts: nowS, regime, conf: conf ?? null });
+  if (bucket.records.length > REGIME_HIST_MAX_RECORDS) {
+    bucket.records.splice(0, bucket.records.length - REGIME_HIST_MAX_RECORDS);
+  }
+  bucket.dirty = true;
+}
+
+// Merge two record arrays by ts (later write wins on a collision) and cap length.
+function mergeRegimeRecords(a, b) {
+  const map = new Map();
+  for (const r of (a || [])) map.set(r.ts, r);
+  for (const r of (b || [])) map.set(r.ts, r);
+  const out = [...map.values()].sort((x, y) => x.ts - y.ts);
+  return out.length > REGIME_HIST_MAX_RECORDS ? out.slice(out.length - REGIME_HIST_MAX_RECORDS) : out;
+}
+
+// Every 5 min: push dirty pairs' in-memory records into local KV (the "current
+// Railway run" tier /api/regime-history already reads — see loadRegimeHistoryFromR2
+// call below it). Local KV lives in the ephemeral file store, not CF KV, so this
+// is unmetered.
+async function flushRegimeHistoryToLocalKV() {
+  for (const ver of ['v1', 'v2']) {
+    for (const [pairSafe, bucket] of Object.entries(state.regimeHistBuf[ver])) {
+      if (!bucket.dirty) continue;
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const existingRaw = await kv.get(key).catch(() => null);
+        const existing = existingRaw ? JSON.parse(existingRaw) : null;
+        const merged = { records: mergeRegimeRecords(existing?.records, bucket.records), events: existing?.events || bucket.events || [] };
+        await kv.put(key, JSON.stringify(merged));
+        bucket.dirty = false;
+      } catch (e) { console.error(`[REGIME-HIST] local KV flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
+// Every hour: fold the local-KV-durable record set into R2 (survives redeploys).
+// Reuses the same helpers the manual /api/regime-history-export path already uses.
+async function flushRegimeHistoryToR2() {
+  for (const ver of ['v1', 'v2']) {
+    for (const pairSafe of Object.keys(state.regimeHistBuf[ver])) {
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const localRaw = await kv.get(key).catch(() => null);
+        const local = localRaw ? JSON.parse(localRaw) : { records: [], events: [] };
+        if (!local.records.length) continue;
+        const r2Existing = await loadRegimeHistoryFromR2(ver, pairSafe).catch(() => null);
+        const merged = { records: mergeRegimeRecords(r2Existing?.records, local.records), events: r2Existing?.events || local.events || [] };
+        await saveRegimeHistoryToR2(ver, pairSafe, merged);
+      } catch (e) { console.error(`[REGIME-HIST] R2 flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.
 // Reads bot log files line-by-line with readline and writes directly to KV.
+// Kept as a manual fallback (regime-viewer.html's "Backfill logs" button) for
+// seeding history from the Python bots' own logs if that's ever useful — the
+// automatic recorder above is the primary path now.
 
 const _RG_V1_LOG = path.join(__dirname, 'bot',  'regime_bot.log');
 const _RG_V2_LOG = path.join(__dirname, 'logs', 'regime_bot_v2.log');
@@ -22924,7 +23217,7 @@ function tdeWarmSnapshot(pair) {
 app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
   const t0 = Date.now();
   try {
-    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live' } = req.body ?? {};
+    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live', preview } = req.body ?? {};
     if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
     const key = String(pair).toLowerCase();
     let snap, warm = null;
@@ -22940,7 +23233,12 @@ app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
       if (warm.error) result.slow_loop_error = warm.error;
     }
     result.total_ms = Date.now() - t0;
-    tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
+    // preview:true = a hypothetical "what if price were at this zone right now"
+    // read (e.g. a watchlist scanning zones price hasn't touched yet). Real touches
+    // must still log — decisionLog.js is the future training set (ARCHITECTURE.md §6)
+    // and logging fictitious touches would corrupt it with events that never happened.
+    result.preview = preview === true;
+    if (preview !== true) tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
     res.json(result);
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message ?? String(e) });
@@ -23870,6 +24168,7 @@ async function runHMM5mRefresh() {
 
       const prev = state.hmm5mRegimes[sym];
       state.hmm5mRegimes[sym] = result;
+      recordRegimeSnapshot('v1', sym, result.regime, result.confidence);
 
       // Telegram alert on regime change, with cooldown
       if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false && state.cfg?.regimeChangeAlerts !== false) {
@@ -23909,6 +24208,7 @@ async function runHMM5mV2Refresh() {
       const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
       if (!result) continue;
       state.hmm5mV2Regimes[sym] = result;
+      recordRegimeSnapshot('v2', sym, result.regime, result.confidence);
     } catch (e) {
       console.error(`[HMM5M-V2] ${sym} error:`, e.message);
     }
@@ -24260,6 +24560,12 @@ setTimeout(() => {
   runHMM5mV2Refresh().catch(console.error);
   setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
 }, 20_000);
+
+// Regime-history auto-recorder flush — local KV every 5 min (cheap, unmetered),
+// R2 every hour (durable across redeploys). See recordRegimeSnapshot() above;
+// this just persists whatever the live HMM loops have already accumulated.
+setInterval(() => flushRegimeHistoryToLocalKV().catch(e => console.error('[REGIME-HIST] local flush error:', e.message)), 5 * 60 * 1000);
+setInterval(() => flushRegimeHistoryToR2().catch(e => console.error('[REGIME-HIST] R2 flush error:', e.message)), 60 * 60 * 1000);
 
 // V2 1h HTF HMM — refreshes every 5 min (H1 bars change slowly), 10s offset
 setTimeout(() => {

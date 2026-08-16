@@ -1699,8 +1699,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const wantHist0 = (url.searchParams.get('history') || '').toUpperCase();
         const forceFresh = url.searchParams.get('refresh') === '1';
 
+        // v3/v2: bumped when the payload shape changed (COT_LIMIT 200->156,
+        // COT_MIN_HISTORY added, specShareChg added) so a stale-but-unexpired 7-day
+        // cache entry from before that change can't get served under the new schema
+        // — flow() filtering on specShareChg would otherwise silently show "no data"
+        // against an old cached payload that never had that field, for up to 7 days.
         if (!debugMode && !forceFresh && env.FX_SCORES) {
-          const cached = await env.FX_SCORES.get('cot_extremes_v2').catch(() => null);
+          const cached = await env.FX_SCORES.get('cot_extremes_v3').catch(() => null);
           if (cached) {
             try {
               const { ts, data } = JSON.parse(cached);
@@ -1711,7 +1716,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
                 // happened). Serve the series from its OWN key instead, so clicking a market
                 // costs a KV read rather than a fresh CFTC fetch.
                 if (wantHist0) {
-                  const sraw = await env.FX_SCORES.get('cot_series_v1').catch(() => null);
+                  const sraw = await env.FX_SCORES.get('cot_series_v2').catch(() => null);
                   if (sraw) {
                     try {
                       const sj = JSON.parse(sraw);
@@ -2067,13 +2072,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           fetchErrors: fetchErrors.length ? fetchErrors : undefined };
 
         if (env.FX_SCORES) {
-          await env.FX_SCORES.put('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: payload2 }),
+          await env.FX_SCORES.put('cot_extremes_v3', JSON.stringify({ ts: Date.now(), data: payload2 }),
             { expirationTtl: 7 * 86400 }).catch(() => {});
           // Series in a SEPARATE key: keeps the hot path lean while making every
           // instrument's 200-week history a KV read away instead of a CFTC round trip.
           const series = {};
           for (const r of allInstruments) if (r._series) series[r.sym] = { sym: r.sym, label: r.label, ...r._series };
-          await env.FX_SCORES.put('cot_series_v1', JSON.stringify({ ts: Date.now(), series }),
+          await env.FX_SCORES.put('cot_series_v2', JSON.stringify({ ts: Date.now(), series }),
             { expirationTtl: 8 * 86400 }).catch(() => {});
         }
 

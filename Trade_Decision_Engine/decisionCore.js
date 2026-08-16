@@ -127,15 +127,26 @@ export function sessionPhaseUTC(ms) {
 //                  backfill: exact per-touch state on the request)
 //   asia/monday ladder — the range-line bot's lines, visible only once their
 //                  formation window has closed (the analyser's validFrom gate)
-// Zone styling per ladder key. asiaAlign carries count 2 — a today-line and a
-// yesterday-line agreeing within the 2-pip rule IS two sources of confluence —
-// and tight alignment (≤10% of the threshold / same fib) gets a score bump.
+//
+// Deliberately NOT a zone source: the raw, unconfluenced ladder grid (every fib
+// rung of today's Asia/Monday range, and yesterday's, on their own — the Pine
+// indicator's "All Levels" mode). Only CONFLUENCE — today's ladder line agreeing
+// with yesterday's (asiaAlign) or this week's Monday agreeing with last week's
+// (mondayAlign) within the 2-pip rule — earns a zone. That's the Pine script's
+// "Strong Levels" tier (confluence-only), not "All Levels" (everything): a raw,
+// unconfirmed rung is noise, not a level. computeSessionLadders still computes
+// the raw grid (asia/monday/prevAsia) — it's the input alignLines() matches
+// against — it's just never turned into a standalone zone here.
+//
+// mondayAlign is weighted ABOVE asiaAlign (2.6 vs 2.0 base): a weekly level
+// agreeing with LAST week is a rarer, higher-conviction confirmation than a
+// daily one agreeing with yesterday, and reacts more (a full week of price
+// action revisiting the same level, not just one session). Tight alignment
+// (≤10% of the threshold / same fib) adds the same +0.4 bump to both — the
+// tightness bonus is about precision of the match, not which timeframe it's on.
 export const LADDER_ZONE_STYLE = {
-  asia:        { source: 'asia_ladder',       score: 1.2, count: 1 },
-  monday:      { source: 'monday_ladder',     score: 1.2, count: 1 },
-  prevAsia:    { source: 'prev_asia_ladder',  score: 1.0, count: 1 },
   asiaAlign:   { source: 'asia_prev_align',   score: 2.0, count: 2 },
-  mondayAlign: { source: 'monday_prev_align', score: 2.0, count: 2 },
+  mondayAlign: { source: 'monday_prev_align', score: 2.6, count: 2 },
 };
 
 export function dynamicZones(snapshot, intra, nowSec) {
@@ -156,8 +167,8 @@ export function dynamicZones(snapshot, intra, nowSec) {
   // Consolidate COINCIDENT dynamic levels (within ~2 pips — the alignment
   // threshold, deliberately much tighter than the zone tolerance so adjacent
   // ladder rungs never chain-merge): one representative per SOURCE (a grid
-  // cannot confirm itself), and an asia_prev_align member SUBSUMES its
-  // constituent asia/prev lines — its count 2 already represents them.
+  // cannot confirm itself) — e.g. session_hilo landing on the same price as
+  // asiaAlign/mondayAlign combines into one stronger zone instead of two.
   const epsAbs = snapshot.meta?.tolPips > 0 ? 2 * (snapshot.meta.tolAbs / snapshot.meta.tolPips) : 0;
   if (!(epsAbs > 0) || out.length < 2) return out;
   out.sort((a, b) => a.price - b.price);
@@ -170,8 +181,6 @@ export function dynamicZones(snapshot, intra, nowSec) {
       const src = z.sources[0];
       if (!bySource.has(src) || z.score > bySource.get(src).score) bySource.set(src, z);
     }
-    if (bySource.has('asia_prev_align')) { bySource.delete('asia_ladder'); bySource.delete('prev_asia_ladder'); }
-    if (bySource.has('monday_prev_align')) bySource.delete('monday_ladder');
     const reps = [...bySource.values()];
     const base = reps.reduce((a, b) => (b.score > a.score ? b : a));
     merged.push(reps.length === 1 ? base : {

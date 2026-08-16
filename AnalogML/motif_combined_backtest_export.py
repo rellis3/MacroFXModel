@@ -1,0 +1,351 @@
+#!/usr/bin/env python3
+"""motif_combined_backtest_export.py — the standard backtest results card
+(house pattern: `backtest_export.py`/`analogml-backtest.html`) for the
+combined signal: adaptive per-category SL/TP STACKED WITH HTF-conflict
+sizing (`motif_combined_portfolio_sim.py`, validated 26-pair: Sharpe 2.45,
+max DD -38.7%, beating either mechanism alone — see AnalogML/README.md).
+
+Pure composition + export layer — reuses `motif_combined_portfolio_sim`'s
+causal pipeline (`build_htf_ctx`, `size_mult_for`), `motif_adaptive`'s
+motif collection, and the shared `pylego.barrier_race.mae_from_path` /
+`pylego.json_safe.json_safe` bricks (the latter pulled out today after
+`motif_backtest_export.py` became mae_from_path's 2nd consumer, and fixes a
+real NaN-vs-JSON bug caught on this exact export family) verbatim. Neither
+`motif_combined_portfolio_sim.py` nor any of its parents is modified.
+
+Every trade carries BOTH r (the combined signal actually traded) and
+bench_r (the SAME motif raced through the frozen sl=20p/tp_r=1.5 grid,
+uniform sizing) so a viewer can show the delta per-trade, not just in
+aggregate.
+
+Usage:
+  python AnalogML/motif_combined_backtest_export.py --all-pairs
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from motif_adaptive import collect_pair_motifs  # noqa: E402
+from motif_combined_portfolio_sim import build_htf_ctx, size_mult_for  # noqa: E402
+from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
+from pattern_scan import load_bars  # noqa: E402
+from portfolio_sim import (  # noqa: E402
+    ALL_PAIRS,
+    pairwise_correlation_summary,
+    sharpe_and_dd,
+    simulate_portfolio,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+
+from pylego.barrier_race import Entry, VariableEntry, mae_from_path, race_trades, race_trades_variable  # noqa: E402
+from pylego.json_safe import json_safe  # noqa: E402
+from pylego.portfolio_sim import daily_equity_series, monte_carlo_bootstrap  # noqa: E402
+from pylego.trade_stats import summarize_r  # noqa: E402
+
+IS_OOS_CUTOFF = "2023-01-01"
+DATA_DIR = Path(__file__).resolve().parent / "data"
+
+
+def build_trade_row(m: dict, t: dict, b_trade: dict, size_mult: float, bucket: str,
+                    bars: pd.DataFrame, account_risk_dollars: float, cutoff: pd.Timestamp,
+                    r_nocost: float) -> dict:
+    """One combined-signal trade, in the house export schema
+    (backtest_export.py's fields) plus the combination's own columns
+    (category, htf_bucket, size_mult, bench_r, r_nocost -- the SAME entry/
+    stop/target raced again with cost_price=0.0, for the cost-sensitivity
+    check every other AnalogML signal already gets)."""
+    entry_date = bars.index[t["idx"]]
+    mae_r, mae_pct = mae_from_path(bars, t["idx"], t["exit_idx"], t["direction"], t["entry_price"], t["sl"])
+    price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
+    risk_dollars = account_risk_dollars * size_mult
+    n_touches, is_top = m["category"]
+    stop_price = t["entry_price"] - t["direction"] * t["sl"]
+    target_price = t["entry_price"] + t["direction"] * t["tp_dist"]
+    return {
+        "pair": m["pair"],
+        "date": entry_date.strftime("%Y-%m-%d"),
+        "entry_date": entry_date.isoformat(),
+        "exit_date": bars.index[t["exit_idx"]].isoformat(),
+        "direction": "BUY" if t["direction"] == 1 else "SELL",
+        "category": f"{n_touches}-touch {'top' if is_top else 'bottom'}",
+        "htf_bucket": bucket,
+        "outcome": t["outcome"],
+        "sl_pips": round(t["sl"] / m["pip"], 1),
+        "tp_pips": round(t["tp_dist"] / m["pip"], 1),
+        "entry_price": round(t["entry_price"], 6),
+        "exit_price": round(t["exit_price"], 6),
+        "stop_price": round(stop_price, 6),
+        "target_price": round(target_price, 6),
+        "size_mult": size_mult,
+        "r": round(t["r"], 4),
+        "bench_r": round(b_trade["r"], 4),
+        "mae_r": round(mae_r, 4),
+        "return_pct": round(price_return_pct, 4),
+        "mae_pct": round(mae_pct, 4),
+        "pnl_dollars": round(t["r"] * risk_dollars, 2),
+        "risk_dollars": round(risk_dollars, 2),
+        "r_nocost": round(r_nocost, 4),
+        "is_oos": "OOS" if entry_date >= cutoff else "IS",
+    }
+
+
+def build_trade_log(pairs: list[str], args: argparse.Namespace) -> list[dict]:
+    """Full combined-signal trade log across all pairs, on ONE global causal
+    timeline (every pair's motifs collected first, then sized+raced in
+    confirm-time order across ALL pairs) — same invariant as
+    motif_combined_portfolio_sim.build_dated_trades, so this export's
+    aggregate numbers match that script's."""
+    all_motifs_by_pair = {}
+    for pair in pairs:
+        m = collect_pair_motifs(pair, args)
+        all_motifs_by_pair[pair] = m
+        print(f"  {pair:<8} {len(m):>5} eligible motifs")
+
+    order = sorted(
+        ((m["confirm_time"], pair, i) for pair, ms in all_motifs_by_pair.items() for i, m in enumerate(ms)),
+        key=lambda x: x[0])
+
+    bars_by_pair = {pair: load_bars(pair, args.timeframe) for pair in pairs}
+    htf_ctx_by_pair = {pair: build_htf_ctx(pair, args) for pair in pairs}
+    cutoff = pd.Timestamp(IS_OOS_CUTOFF, tz=bars_by_pair[pairs[0]].index.tz)
+    account_risk_dollars = args.account_size * args.risk_pct
+
+    pool: dict[tuple, list[float]] = defaultdict(list)
+    pool_mfe: dict[tuple, list[float]] = defaultdict(list)
+    rows: list[dict] = []
+    for _, pair, i in order:
+        m = all_motifs_by_pair[pair][i]
+        cat = m["category"]
+        mae_pool, mfe_pool = pool[cat], pool_mfe[cat]
+        if len(mae_pool) >= args.min_pool:
+            sl_price = float(np.percentile(mae_pool, args.sl_pctile)) * m["entry_atr"]
+            tp_dist = float(np.percentile(mfe_pool, args.tp_pctile)) * m["entry_atr"]
+            if sl_price > 0 and tp_dist > 0:
+                bars = bars_by_pair[pair]
+                a_entry = VariableEntry(idx=m["entry_idx"], direction=m["direction"],
+                                        sl=sl_price, tp_dist=tp_dist)
+                a_trade = race_trades_variable(bars, [a_entry], max_bars_ahead=args.max_bars_ahead,
+                                               cost_price=m["cost_price"], min_bars_ahead=args.min_bars_ahead)
+                # SAME entry/stop/target, re-raced with cost stripped to zero
+                # -- isolates exactly what the modeled spread costs THIS
+                # trade, nothing else changes (not a second signal).
+                a_trade_nocost = race_trades_variable(bars, [a_entry], max_bars_ahead=args.max_bars_ahead,
+                                                       cost_price=0.0, min_bars_ahead=args.min_bars_ahead)
+                bench_sl = args.bench_sl_pips * m["pip"]
+                b_entry = Entry(idx=m["entry_idx"], direction=m["direction"])
+                b_trade = race_trades(bars, [b_entry], sl=bench_sl, tp_r=args.bench_tp_r,
+                                      max_bars_ahead=args.max_bars_ahead, cost_price=m["cost_price"],
+                                      min_bars_ahead=args.min_bars_ahead)
+                if a_trade and a_trade_nocost and b_trade:
+                    htf_ctx = htf_ctx_by_pair[pair]
+                    size_mult = size_mult_for(m, htf_ctx, args)
+                    cutoff_idx_htf = int(htf_ctx["htf_end"].searchsorted(m["confirm_time"], side="right")) - 1
+                    lean = htf_lean_at(htf_ctx["confirmed"], cutoff_idx_htf, args.htf_lookback_bars)
+                    bucket = "NONE" if lean is None else ("AGREE" if lean == m["direction"] else "CONFLICT")
+                    rows.append(build_trade_row(m, a_trade[0], b_trade[0], size_mult, bucket,
+                                                bars, account_risk_dollars, cutoff, a_trade_nocost[0]["r"]))
+        # Pool updated AFTER sizing this motif — precedent for later motifs
+        # only, same causal invariant as every parent script.
+        mae_pool.append(m["mae_atr"])
+        mfe_pool.append(m["mfe_atr"])
+    return rows
+
+
+def split_summary(trades: list[dict], key: str = "r") -> dict:
+    return {
+        "is": summarize_r(t[key] for t in trades if t["is_oos"] == "IS"),
+        "oos": summarize_r(t[key] for t in trades if t["is_oos"] == "OOS"),
+        "full": summarize_r(t[key] for t in trades),
+    }
+
+
+def portfolio_arm(trades: list[dict], key: str, size_mult_key: str | None,
+                  risk_pct: float, max_concurrent_risk_pct: float,
+                  mc_sims: int, mc_seed: int, equity_points: int) -> dict:
+    """{pair, entry_date, exit_date, r, size_mult} view of the trade log for
+    simulate_portfolio -- reads r from `key` and size_mult from
+    `size_mult_key` (None -> forced 1.0), so the same trade rows drive all
+    four 2x2 arms without four separate trade lists. Returns the full
+    standard quant results-card set (Sharpe/Sortino/CAGR/Calmar/max DD +
+    duration/skew from pylego.portfolio_sim.sharpe_and_dd), a downsampled
+    equity curve for charting (same daily series the stats were computed
+    from, never a second resample), and a trade-based Monte Carlo bootstrap
+    (pylego.portfolio_sim.monte_carlo_bootstrap) on the SAME per-trade r*
+    size_mult risk fractions this arm actually traded."""
+    port_trades = [{"pair": t["pair"], "entry_date": pd.Timestamp(t["entry_date"]),
+                    "exit_date": pd.Timestamp(t["exit_date"]),
+                    "r": t[key], "size_mult": t[size_mult_key] if size_mult_key else 1.0} for t in trades]
+    port = simulate_portfolio(port_trades, risk_pct, max_concurrent_risk_pct)
+    stats = sharpe_and_dd(port["equity_curve"])
+    corr = pairwise_correlation_summary(port_trades)
+    mc = monte_carlo_bootstrap(port_trades, risk_pct, n_sims=mc_sims, seed=mc_seed)
+
+    daily = daily_equity_series(port["equity_curve"])
+    if len(daily) > equity_points:
+        # Evenly-spaced downsample for the chart -- always keep the last
+        # point so the final equity value on the chart matches the stats.
+        idx = np.unique(np.linspace(0, len(daily) - 1, equity_points).astype(int))
+        daily = daily.iloc[idx]
+    equity_curve_chart = [[d.strftime("%Y-%m-%d"), round(float(v), 6)] for d, v in daily.items()]
+
+    return {
+        **stats,
+        "avg_utilization": port["avg_utilization"], "avg_pairwise_corr": corr, "n": len(port_trades),
+        "equity_curve": equity_curve_chart,
+        "monte_carlo": mc,
+    }
+
+
+def portfolio_arm_with_is_oos(trades: list[dict], key: str, size_mult_key: str | None,
+                              risk_pct: float, max_concurrent_risk_pct: float,
+                              mc_sims: int, mc_seed: int, equity_points: int) -> dict:
+    """The full-history arm (unchanged shape -- every existing page section
+    that reads d.portfolio[key].sharpe etc. keeps working) PLUS `is`/`oos`
+    sub-objects of the SAME shape, computed by re-running the full
+    portfolio_arm pipeline on each calendar-split subset independently --
+    each split starts its own fresh $1 account at its own first trade,
+    exactly like the trade-level IS/OOS split already does for PF/avg R,
+    now extended to Sharpe/Sortino/CAGR/Calmar/max DD/equity curve/Monte
+    Carlo. Answers the question the trade-level split alone couldn't: does
+    the PORTFOLIO-level result (which depends on concurrent-risk sequencing
+    and compounding, not just the pooled R distribution) hold up out of
+    sample, or did 2016-2022 carry it."""
+    full = portfolio_arm(trades, key, size_mult_key, risk_pct, max_concurrent_risk_pct,
+                         mc_sims, mc_seed, equity_points)
+    is_trades = [t for t in trades if t["is_oos"] == "IS"]
+    oos_trades = [t for t in trades if t["is_oos"] == "OOS"]
+    full["is"] = portfolio_arm(is_trades, key, size_mult_key, risk_pct, max_concurrent_risk_pct,
+                               mc_sims, mc_seed, equity_points)
+    full["oos"] = portfolio_arm(oos_trades, key, size_mult_key, risk_pct, max_concurrent_risk_pct,
+                                mc_sims, mc_seed, equity_points)
+    return full
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--pairs", default=None)
+    p.add_argument("--all-pairs", action="store_true")
+    p.add_argument("--timeframe", default="1h")
+    p.add_argument("--atr-period", type=int, default=14)
+    p.add_argument("--pivot-n", type=int, default=DETECT_KW["pivot_n"])
+    p.add_argument("--tol-atr-mult", type=float, default=DETECT_KW["tol_atr_mult"])
+    p.add_argument("--min-retrace-atr-mult", type=float, default=DETECT_KW["min_retrace_atr_mult"])
+    p.add_argument("--min-bars-between-touches", type=int, default=DETECT_KW["min_bars_between_touches"])
+    p.add_argument("--breakout-max-bars", type=int, default=DETECT_KW["breakout_max_bars"])
+    p.add_argument("--max-bars-ahead", type=int, default=200)
+    p.add_argument("--min-bars-ahead", type=int, default=10)
+    p.add_argument("--excursion-bars", type=int, default=40)
+    p.add_argument("--sl-pctile", type=float, default=35.0)
+    p.add_argument("--tp-pctile", type=float, default=35.0)
+    p.add_argument("--min-pool", type=int, default=50)
+    p.add_argument("--bench-sl-pips", type=float, default=20.0)
+    p.add_argument("--bench-tp-r", type=float, default=1.5)
+    p.add_argument("--htf", default="1D")
+    p.add_argument("--htf-lookback-bars", type=int, default=20)
+    p.add_argument("--conflict-size-mult", type=float, default=0.5)
+    p.add_argument("--account-size", type=float, default=10000.0)
+    p.add_argument("--risk-pct", type=float, default=0.01)
+    p.add_argument("--max-concurrent-risk-pct", type=float, default=0.05)
+    p.add_argument("--mc-sims", type=int, default=2000, help="Monte Carlo bootstrap resamples per arm")
+    p.add_argument("--mc-seed", type=int, default=20260814, help="fixed RNG seed -- reruns reproduce identical bands")
+    p.add_argument("--equity-points", type=int, default=1000, help="max points per arm in the exported equity curve")
+    p.add_argument("--out", default=str(DATA_DIR / "motif_combined_backtest_export.json"))
+    args = p.parse_args()
+
+    frozen = dict(pivot_n=args.pivot_n, tol_atr_mult=args.tol_atr_mult,
+                  min_retrace_atr_mult=args.min_retrace_atr_mult,
+                  min_bars_between_touches=args.min_bars_between_touches,
+                  breakout_max_bars=args.breakout_max_bars)
+    if frozen != DETECT_KW:
+        print(f"[warn] detector params {frozen} differ from the frozen DETECT_KW {DETECT_KW}")
+
+    pairs = args.pairs.split(",") if args.pairs else (ALL_PAIRS if args.all_pairs else None)
+    if not pairs:
+        raise SystemExit("pass --pairs <a,b,c> or --all-pairs")
+
+    print(f"[setup] {len(pairs)} pairs, adaptive ({args.sl_pctile:.0f},{args.tp_pctile:.0f}) + "
+          f"HTF={args.htf} conflict_size_mult={args.conflict_size_mult}")
+    rows = build_trade_log(pairs, args)
+    if not rows:
+        raise SystemExit("no trades generated")
+    n_conflict = sum(1 for r in rows if r["size_mult"] < 1.0)
+    print(f"\n[export] {len(rows)} motifs sized+dated, {n_conflict} ({n_conflict / len(rows):.1%}) "
+          f"downsized on {args.htf} conflict")
+
+    overall = split_summary(rows, "r")
+    overall_bench = split_summary(rows, "bench_r")
+    overall_nocost = split_summary(rows, "r_nocost")
+    per_pair = [{"pair": pair, **split_summary([r for r in rows if r["pair"] == pair], "r")} for pair in pairs]
+
+    arm_args = (args.risk_pct, args.max_concurrent_risk_pct, args.mc_sims, args.mc_seed, args.equity_points)
+    portfolio = {
+        "adaptive_htf_sized": portfolio_arm_with_is_oos(rows, "r", "size_mult", *arm_args),
+        "adaptive_uniform": portfolio_arm_with_is_oos(rows, "r", None, *arm_args),
+        "frozen_htf_sized": portfolio_arm_with_is_oos(rows, "bench_r", "size_mult", *arm_args),
+        "frozen_uniform": portfolio_arm_with_is_oos(rows, "bench_r", None, *arm_args),
+        # SAME entries/stops/sizing as adaptive_htf_sized -- ONLY the modeled
+        # spread cost removed. Isolates exactly how much of the combination's
+        # portfolio-level edge is the cost model, not a different signal.
+        "adaptive_htf_sized_nocost": portfolio_arm(rows, "r_nocost", "size_mult", *arm_args),
+    }
+
+    out = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "params": {
+            "sl_pctile": args.sl_pctile, "tp_pctile": args.tp_pctile, "min_pool": args.min_pool,
+            "htf": args.htf, "htf_lookback_bars": args.htf_lookback_bars,
+            "conflict_size_mult": args.conflict_size_mult,
+            "bench_sl_pips": args.bench_sl_pips, "bench_tp_r": args.bench_tp_r,
+            "timeframe": args.timeframe, "account_size": args.account_size, "risk_pct": args.risk_pct,
+            "max_concurrent_risk_pct": args.max_concurrent_risk_pct,
+            "is_oos_cutoff": IS_OOS_CUTOFF,
+            "mc_sims": args.mc_sims, "mc_seed": args.mc_seed,
+        },
+        "caveat": (
+            "Combined signal: adaptive per-category MAE/MFE SL/TP (validated (35,35)) stacked with "
+            "HTF-conflict-aware position sizing (0.5x on 1D conflict). Full 26-pair portfolio result: "
+            "the two mechanisms STACK (Sharpe 2.45, max DD -38.7%, beating either alone) -- see "
+            "AnalogML/README.md. This export's per-trade 'r' is the combined signal; 'bench_r' is the "
+            "SAME motif raced through the frozen sl=20p/tp_r=1.5 grid at uniform sizing, for comparison. "
+            "IS/OOS split is a real calendar split on ALREADY-validated choices (both mechanisms' "
+            "percentile/multiplier settings were chosen by inspecting full-history results, not a blind "
+            "holdout) -- read as a stability check, not proof of forward performance. Every 'r'/'bench_r' "
+            "number ALREADY has the modeled round-trip spread subtracted (pylego.costs.default_spread: "
+            "0.8p FX majors, 1.0p JPY crosses, $0.30 gold -- a flat per-asset-class figure, not time- or "
+            "broker-varying, no separate commission modeled) -- 'r_nocost' is the SAME entry/stop/target "
+            "with that cost stripped out, for the cost-sensitivity check. Mark-to-close portfolio sim, no "
+            "live spread variation. Still not a validated go-live edge -- the entry signal itself has not "
+            "been run through forge's null-control validation."
+        ),
+        "pairs": pairs,
+        "summary": {**overall, "bench": overall_bench,
+                   "cost_sensitivity": {"with_cost": overall["full"], "without_cost": overall_nocost["full"]}},
+        "portfolio": portfolio,
+        "per_pair": per_pair,
+        "trades": rows,
+    }
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w") as f:
+        json.dump(json_safe(out), f)
+    print(f"\n[written] {len(rows)} trades, {len(pairs)} pairs -> {out_path}")
+    print(f"[overall] IS n={overall['is']['n']} PF={overall['is']['profit_factor']:.2f}  "
+          f"OOS n={overall['oos']['n']} PF={overall['oos']['profit_factor']:.2f}")
+    print(f"[portfolio] ADAPTIVE+HTF-SIZED Sharpe={portfolio['adaptive_htf_sized']['sharpe']:.2f} "
+          f"max_dd={portfolio['adaptive_htf_sized']['max_dd']:.1%}")
+
+
+if __name__ == "__main__":
+    main()

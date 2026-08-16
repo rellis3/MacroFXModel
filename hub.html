@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MacroFX — Command Centre</title>
+<title>MacroFX — Risk Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/index.css">
 <style>
@@ -195,8 +195,8 @@
 <!-- ── Command Centre header ──────────────────────────────────────────────── -->
 <div class="cc-topbar">
   <div>
-    <div class="cc-logo">Macro<span>FX</span> — Command Centre</div>
-    <div class="cc-sub">All tools in one place · Star any link to pin it to Favourites</div>
+    <div class="cc-logo">Macro<span>FX</span> — Risk Hub</div>
+    <div class="cc-sub">Secondary link index — index.html is THE Dashboard · Star any link to pin it to Favourites</div>
   </div>
   <div class="cc-links">
     <a href="index.html" class="cc-link primary" target="_blank">📊 Live Dashboard →</a>
@@ -225,6 +225,16 @@
     <span class="ng-sub">Tools you open every day</span>
   </div>
   <div class="ng-cards">
+    <a class="nc" href="upcoming-trades.html" target="_blank" data-href="upcoming-trades.html">
+      <span class="nc-icon">📋</span>
+      <div class="nc-body"><div class="nc-name">Upcoming Trades</div><div class="nc-desc">Ranked zone watchlist across all pairs</div></div>
+      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('upcoming-trades.html')" data-href="upcoming-trades.html" title="Add to favourites">☆</button>
+    </a>
+    <a class="nc" href="trade-cards.html" target="_blank" data-href="trade-cards.html">
+      <span class="nc-icon">🃏</span>
+      <div class="nc-body"><div class="nc-name">Trade Cards</div><div class="nc-desc">Per-pair live chart, zone, TP/SL, confidence</div></div>
+      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('trade-cards.html')" data-href="trade-cards.html" title="Add to favourites">☆</button>
+    </a>
     <a class="nc" href="levels.html" target="_blank" data-href="levels.html">
       <span class="nc-icon">🎯</span>
       <div class="nc-body"><div class="nc-name">Entry Lens</div><div class="nc-desc">ACT/WATCH/WAIT/AVOID per pair</div></div>
@@ -234,11 +244,6 @@
       <span class="nc-icon">📐</span>
       <div class="nc-body"><div class="nc-name">Vol Forecast v2</div><div class="nc-desc">Live auto-refresh vol/range grid</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('vol-forecast-v2.html')" data-href="vol-forecast-v2.html" title="Add to favourites">☆</button>
-    </a>
-    <a class="nc" href="vol-forecast.html" target="_blank" data-href="vol-forecast.html">
-      <span class="nc-icon">📐</span>
-      <div class="nc-body"><div class="nc-name">Vol Forecast</div><div class="nc-desc">Daily/weekly/monthly estimates</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('vol-forecast.html')" data-href="vol-forecast.html" title="Add to favourites">☆</button>
     </a>
     <a class="nc" href="telegram-v2.html" target="_blank" data-href="telegram-v2.html">
       <span class="nc-icon">📡</span>
@@ -362,11 +367,6 @@
     <span class="ng-sub">Asia range, fib confluence, per-line, pivots</span>
   </div>
   <div class="ng-cards">
-    <a class="nc" href="backtest.html" target="_blank" data-href="backtest.html">
-      <span class="nc-icon">📈</span>
-      <div class="nc-body"><div class="nc-name">Backtest Engine</div><div class="nc-desc">Main configurable strategy backtester</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('backtest.html')" data-href="backtest.html" title="Add to favourites">☆</button>
-    </a>
     <a class="nc" href="asia-range-backtest.html" target="_blank" data-href="asia-range-backtest.html">
       <span class="nc-icon">📐</span>
       <div class="nc-body"><div class="nc-name">Asia Range BT</div><div class="nc-desc">Asia/Monday fib confluence</div></div>
@@ -396,11 +396,6 @@
       <span class="nc-icon">⚡</span>
       <div class="nc-body"><div class="nc-name">Regime BT</div><div class="nc-desc">Regime-based signal backtester</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('regime-backtest.html')" data-href="regime-backtest.html" title="Add to favourites">☆</button>
-    </a>
-    <a class="nc" href="claude-backtest.html" target="_blank" data-href="claude-backtest.html">
-      <span class="nc-icon">🔬</span>
-      <div class="nc-body"><div class="nc-name">Claude BT</div><div class="nc-desc">Multi-leg Asia backtester</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('claude-backtest.html')" data-href="claude-backtest.html" title="Add to favourites">☆</button>
     </a>
     <a class="nc" href="backtest-viewer.html" target="_blank" data-href="backtest-viewer.html">
       <span class="nc-icon">▶</span>
@@ -443,11 +438,6 @@
       <div class="nc-body"><div class="nc-name">Pattern Lab</div><div class="nc-desc">5-year pattern analyser</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('analysis.html')" data-href="analysis.html" title="Add to favourites">☆</button>
     </a>
-    <a class="nc" href="hedge-signals.html" target="_blank" data-href="hedge-signals.html">
-      <span class="nc-icon">⚡</span>
-      <div class="nc-body"><div class="nc-name">Signals v1</div><div class="nc-desc">Correlation divergence signals</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('hedge-signals.html')" data-href="hedge-signals.html" title="Add to favourites">☆</button>
-    </a>
     <a class="nc" href="hedge-signals-v2.html" target="_blank" data-href="hedge-signals-v2.html">
       <span class="nc-icon">⚡</span>
       <div class="nc-body"><div class="nc-name">Signals v2</div><div class="nc-desc">Cointegration pairs + z-score</div></div>
@@ -458,10 +448,10 @@
       <div class="nc-body"><div class="nc-name">Book Explorer</div><div class="nc-desc">Multi-strategy combined P&amp;L</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('diversification.html')" data-href="diversification.html" title="Add to favourites">☆</button>
     </a>
-    <a class="nc" href="analogml-backtest.html" target="_blank" data-href="analogml-backtest.html">
+    <a class="nc" href="touches-backtest.html" target="_blank" data-href="touches-backtest.html">
       <span class="nc-icon">🧬</span>
-      <div class="nc-body"><div class="nc-name">AnalogML Backtest</div><div class="nc-desc">Shape-matching signal — IS/OOS card + CSV exports</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('analogml-backtest.html')" data-href="analogml-backtest.html" title="Add to favourites">☆</button>
+      <div class="nc-body"><div class="nc-name">Touches Backtest</div><div class="nc-desc">N-touches structural motif signal — IS/OOS card + CSV exports</div></div>
+      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('touches-backtest.html')" data-href="touches-backtest.html" title="Add to favourites">☆</button>
     </a>
   </div>
 </div>
@@ -493,11 +483,6 @@
       <span class="nc-icon">💧</span>
       <div class="nc-body"><div class="nc-name">Liquidity Gate</div><div class="nc-desc">Net liq + coherence + NY confirm</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('liquidity-gate-backtest.html')" data-href="liquidity-gate-backtest.html" title="Add to favourites">☆</button>
-    </a>
-    <a class="nc" href="nq-qmr-backtest.html" target="_blank" data-href="nq-qmr-backtest.html">
-      <span class="nc-icon">⚡</span>
-      <div class="nc-body"><div class="nc-name">NQ-QMR BT</div><div class="nc-desc">Pre-open momentum / gap-revert</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('nq-qmr-backtest.html')" data-href="nq-qmr-backtest.html" title="Add to favourites">☆</button>
     </a>
     <a class="nc" href="zscore-backtest.html" target="_blank" data-href="zscore-backtest.html">
       <span class="nc-icon">⚡</span>
@@ -570,30 +555,10 @@
       <div class="nc-body"><div class="nc-name">P3 Yield Curve</div><div class="nc-desc">ISM × CPI macro rotation</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('system-yield-curve.html')" data-href="system-yield-curve.html" title="Add to favourites">☆</button>
     </a>
-    <a class="nc" href="system-fx-carry.html" target="_blank" data-href="system-fx-carry.html">
-      <span class="nc-icon">📊</span>
-      <div class="nc-body"><div class="nc-name">P4 FX Carry</div><div class="nc-desc">VIX-gated carry premium</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('system-fx-carry.html')" data-href="system-fx-carry.html" title="Add to favourites">☆</button>
-    </a>
-    <a class="nc" href="system-fx-momentum.html" target="_blank" data-href="system-fx-momentum.html">
-      <span class="nc-icon">📊</span>
-      <div class="nc-body"><div class="nc-name">P5 FX Momentum</div><div class="nc-desc">12-1 cross-sectional momentum</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('system-fx-momentum.html')" data-href="system-fx-momentum.html" title="Add to favourites">☆</button>
-    </a>
     <a class="nc" href="vix-vol-carry-backtest.html" target="_blank" data-href="vix-vol-carry-backtest.html">
       <span class="nc-icon">🌋</span>
       <div class="nc-body"><div class="nc-name">P8 VXX Vol-Carry</div><div class="nc-desc">Five-lens cone + term structure</div></div>
       <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('vix-vol-carry-backtest.html')" data-href="vix-vol-carry-backtest.html" title="Add to favourites">☆</button>
-    </a>
-    <a class="nc" href="hedge-backtest.html" target="_blank" data-href="hedge-backtest.html">
-      <span class="nc-icon">📊</span>
-      <div class="nc-body"><div class="nc-name">Hedge BT</div><div class="nc-desc">Cointegration pair backtester</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('hedge-backtest.html')" data-href="hedge-backtest.html" title="Add to favourites">☆</button>
-    </a>
-    <a class="nc" href="results.html" target="_blank" data-href="results.html">
-      <span class="nc-icon">📄</span>
-      <div class="nc-body"><div class="nc-name">Hedge Tearsheet</div><div class="nc-desc">Static 2024-2026 hedge results</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('results.html')" data-href="results.html" title="Add to favourites">☆</button>
     </a>
   </div>
 </div>
@@ -606,11 +571,6 @@
     <span class="ng-sub">Orphaned, dev-only, or not yet linked from any nav</span>
   </div>
   <div class="ng-cards">
-    <a class="nc" href="indexv2.html" target="_blank" data-href="indexv2.html" style="opacity:.75">
-      <span class="nc-icon">📊</span>
-      <div class="nc-body"><div class="nc-name">Market State v2<span class="wip-badge">WIP</span></div><div class="nc-desc">Alternate multi-tab state viewer</div></div>
-      <button class="nc-star" onclick="event.preventDefault();event.stopPropagation();toggleFav('indexv2.html')" data-href="indexv2.html" title="Add to favourites">☆</button>
-    </a>
     <a class="nc" href="level-chart-demo.html" target="_blank" data-href="level-chart-demo.html" style="opacity:.75">
       <span class="nc-icon">🧱</span>
       <div class="nc-body"><div class="nc-name">Level Chart Demo<span class="wip-badge">WIP</span></div><div class="nc-desc">Lego brick dev reference</div></div>
@@ -618,6 +578,8 @@
     </a>
   </div>
 </div>
+
+
 
 <!-- ── Portfolio detail (existing hub content) ───────────────────────────── -->
 <div id="portfolio-detail" class="section-hdr" style="margin-top:36px;padding-top:8px;border-top:2px solid var(--border);">

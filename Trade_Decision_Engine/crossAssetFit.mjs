@@ -7,13 +7,13 @@
 // Result (110,883 events): usd_trend_align agree 58.4% vs oppose 52.8% (~50k each), fitted
 // weight +0.094, OOS Brier 0.2469->0.2458 — the first feature to discriminate DIRECTION.
 
-import { loadM1ForPair } from './js/volBacktestM1Engine.js';
-import { backfillPair, fitLogistic, deriveD1Packed } from './Trade_Decision_Engine/backfill.js';
-import { MODEL_V0 } from './Trade_Decision_Engine/modelV0.js';
+import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
+import { backfillPair, fitLogistic, deriveD1Packed } from './backfill.js';
+import { MODEL_V0 } from './modelV0.js';
 
 const FX = ['eurusd','gbpusd','audusd','nzdusd','usdcad','usdchf'];
 const USD_BASE = { eurusd:-1, gbpusd:-1, audusd:-1, nzdusd:-1, usdcad:+1, usdchf:+1 }; // +1: USD is base
-const cacheDir = new URL('./portfolioBacktest/cache', import.meta.url).pathname;
+const cacheDir = new URL('../portfolioBacktest/cache', import.meta.url).pathname;
 const D = (t)=> new Date(t*1000).toISOString().slice(0,10);
 
 function dailySeries(packed){ // date -> close (London day)
@@ -79,3 +79,30 @@ const fits={ baseline:fitLogistic(all,{features:base}),
   plus_both:fitLogistic(all,{features:[...base,'macro_align','usd_trend_align']}) };
 for(const [k,r] of Object.entries(fits))
   console.log(`${k.padEnd(11)} OOS brier=${r.oos.fitted.brier} (v0 ${r.oos.prior_v0.brier}) macro_w=${r.candidate?.weights?.macro_align??'-'} usd_w=${r.candidate?.weights?.usd_trend_align??'-'}`);
+
+// ── Expectancy check (added — was NOT in the committed script; FIT_FINDINGS.md's
+// Result 5 table said "reproduce with crossAssetFit.mjs (add the expectancy block,
+// or see git history)" — this IS that block, using the same OOS split fitLogistic
+// itself used (oosFrac 0.35, embargo 10d) so the split is identical to the fit above.
+const sorted = all.filter(e=>e.features&&e.outcome).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+const splitIdx = Math.floor(sorted.length*(1-0.35));
+const splitDate = sorted[splitIdx].date;
+const addDays=(d,n)=>{const t=new Date(d+'T00:00:00Z'); t.setUTCDate(t.getUTCDate()+n); return t.toISOString().slice(0,10);};
+const embargoEnd = addDays(splitDate,10);
+const oos = sorted.filter(e=>e.date>=embargoEnd);
+console.log(`\nOOS split date=${splitDate} embargoEnd=${embargoEnd} oos_n=${oos.length}`);
+// outcome.pnlPct is already in PERCENT units (labelOutcome: gross = ... * 100), so
+// bp = pnlPct * 100 (1% = 100bp) — NOT *10000, which would double-convert.
+const meanBp=a=>a.length?+(100*a.reduce((s,e)=>s+e.outcome.pnlPct,0)/a.length).toFixed(2):NaN;
+for(const act of ['fade','follow']){
+  const acts=oos.filter(e=>e.action===act);
+  const al=acts.filter(e=>e.features.usd_trend_align===1), op=acts.filter(e=>e.features.usd_trend_align===-1);
+  console.log(`${act.padEnd(6)} OOS: aligned n=${al.length} mean=${meanBp(al)}bp | opposed n=${op.length} mean=${meanBp(op)}bp | all n=${acts.length} mean=${meanBp(acts)}bp`);
+}
+// per-pair fade breakdown (aligned vs opposed), OOS — the "6/6" claim
+console.log('\nPer-pair fade OOS (aligned vs opposed):');
+for(const p of FX){
+  const acts=oos.filter(e=>e.action==='fade'&&e.pair===p);
+  const al=acts.filter(e=>e.features.usd_trend_align===1), op=acts.filter(e=>e.features.usd_trend_align===-1);
+  console.log(`  ${p}: aligned n=${al.length} mean=${meanBp(al)}bp | opposed n=${op.length} mean=${meanBp(op)}bp`);
+}

@@ -176,3 +176,102 @@ anchored to v0 regardless of what the live default becomes as more pairs get the
 
 Reproduce: pool `backfillPair` events across the majors and run
 `fitLogistic(events, { features: [...Object.keys(MODEL_V0.weights), 'wt_stretch_fade'] })`.
+
+## Independent re-verification (2026-08-13)
+
+Re-ran the reproduce commands for Result 5/6 from a clean checkout to verify the
+numbers above still hold. Two real bugs found and fixed first:
+
+1. **`crossAssetFit.mjs` could not run at all as committed.** Its three imports
+   (`./js/volBacktestM1Engine.js`, `./Trade_Decision_Engine/backfill.js`,
+   `./Trade_Decision_Engine/modelV0.js`) were written as if the file lived at the
+   repo root, but it's committed inside `Trade_Decision_Engine/` — so ESM
+   resolution failed on the very first import. `cacheDir` had the same bug
+   (`./portfolioBacktest/cache` resolved to a nonexistent
+   `Trade_Decision_Engine/portfolioBacktest/cache`). `sweepFit.mjs` right next to
+   it has the correct `../`-relative paths, which is what gave this away. Fixed
+   to match. This means the Result 5 numbers below were not reproducible from the
+   committed tree until now — nobody had actually re-run this script since it was
+   written.
+2. **The expectancy-in-bp table (the `+0.71bp` / `−3.61bp` claim) had no
+   committed code.** The note under Result 5 said "reproduce with
+   `crossAssetFit.mjs` (add the expectancy block, or see git history)" — that
+   block was never checked in. Added it back (same OOS split `fitLogistic` uses:
+   `oosFrac 0.35`, `embargoDays 10`), using `outcome.pnlPct` directly (already
+   percent-units after cost per `labelOutcome`; bp = `pnlPct × 100` — note
+   `sweepFit.mjs`'s own `mean_pnl=…bp` print is mislabeled by 100× using this
+   same convention, cosmetic only, doesn't affect any win-rate/Brier numbers).
+
+With both fixed, re-ran on the same 6-major pool (110,883 events, R2-backed M1,
+current as of 2026-05-20 vs the original run's cache) — **numbers confirm**:
+
+| | doc | re-run |
+|---|---|---|
+| usd_trend_align agree/oppose win | 58.4% / 52.8% | 58.4% / 52.8% |
+| OOS Brier (baseline → +usd) | 0.2469 → 0.2458 | 0.2469 → 0.2458 |
+| OOS split date | 2022-11-18 | 2022-11-18 |
+| fade OOS aligned mean | +0.71bp (n=15,668) | +0.69bp (n=15,580) |
+| fade OOS opposed mean | −3.61bp (n=16,554) | −3.54bp (n=16,441) |
+| follow OOS opposed mean | −7.57bp | −7.57bp (exact) |
+| per-pair aligned > opposed | 6/6 | 6/6 (usdchf aligned still the one near-zero: −0.2bp) |
+
+Small n/bp deltas (~1%) are consistent with the cache having a few more months of
+data than the original run, not a substantive discrepancy. `sweepFit.mjs`
+(Result 6) reproduced exactly (619/61.4%/1626/63.5%, identical Brier deltas) with
+no fix needed. **Verdict: Result 5 and 6 are real, current, and now actually
+reproducible from a clean checkout** — `node Trade_Decision_Engine/crossAssetFit.mjs`
+and `node Trade_Decision_Engine/sweepFit.mjs` (both `R2_ACCESS_KEY= R2_SECRET_KEY=`
+for the local-cache fallback) now run end to end and print this table.
+
+Separately verified: `decisionCore.js`'s `defaultModelFor` (MODEL_V1 for the 6 fit
+pairs, MODEL_V0 elsewhere) matches what's described above — no drift between the
+doc and the live routing code.
+
+**Still not done** (scope for a follow-up, not re-verified here): `usd_trend_align`
+is shipped live on the **vol-forecast level alert** (`volLevelAlertCore.decideAtLevel`
+/ Telegram), a *separate* pipeline from the Trade Decision Engine — it is still
+**not** wired into `modelV1`'s weights (TODO noted above: needs the USD trend
+computed cross-pair in `featureState`'s slow loop). So the Upcoming Trades
+dashboard (`upcoming-trades.html`), which reads TDE snapshots, does not yet see
+this filter — only the Telegram alert does.
+
+## Asia/Monday ladder: dropped the raw grid, kept only confluence (2026-08-14)
+
+Comparing the live engine against the source Pine indicator (`Asia Session Fib
+Retracement`) surfaced a real gap: the Pine script has three display tiers —
+**All Levels** (every fib rung), **Strong Levels** (confluence only, outside the
+Asia range), **Strongest Levels** (tight confluence only, outside the Asia
+range) — and the engine was running the noisiest of the three, always. Every
+raw, unconfirmed fib rung of today's Asia/Monday range (and yesterday's, on its
+own) was scoring as its own zone (`LADDER_ZONE_STYLE.asia` / `.monday` /
+`.prevAsia`, score 1.0–1.2), on top of the cross-session confluence lines
+(`asiaAlign`/`mondayAlign`). One card in the Trade Cards dashboard showed 16
+qualifying zones for a single pair — mostly this raw-grid noise.
+
+Fix (`decisionCore.js` `LADDER_ZONE_STYLE`/`dynamicZones`): the raw grid is no
+longer a zone source at all — only `asiaAlign`/`mondayAlign` (today's ladder
+line agreeing with yesterday's / this week's Monday agreeing with last week's,
+within the per-instrument confluence threshold) score. This is the engine's
+equivalent of the Pine script's **Strong Levels** tier (confluence-only), minus
+the "outside the Asia range" restriction (the engine's own reachSigma-from-open
+cap already does the relevance filtering that restriction was for). `tight`
+alignment (≤10% of the threshold, or same fib) still adds a +0.4 score bump on
+top, same as before — tight-ness is a *weight*, not a filter, so the engine
+never drops to the Pine script's narrowest "Strongest Levels" tier.
+
+Also: `mondayAlign` is now weighted above `asiaAlign` (base 2.6 vs 2.0, both
++0.4 tight) — a weekly level agreeing with last week is a rarer, more
+reactive confirmation than a daily one agreeing with yesterday. This was a
+judgment call (not a fitted/backtested number, like the rest of v0's hand-set
+weights) — a candidate for a future ablation fit once enough labeled events
+accumulate with the new zone set, same as every other v0 weight.
+
+Updated `decisionCore.test.mjs`/`backfill.test.mjs` (both asserted the OLD
+behavior — a raw, unconfluenced ladder line scoring as a zone — which the fix
+deliberately breaks) and `ARCHITECTURE.md`'s dynamic-zones section. Not yet
+re-run: the backfill/fit pipeline, since this changes the zone/confluence
+inputs future backfill runs will see — `modelV1`'s existing fit (FIT_FINDINGS
+above) predates this change and doesn't need to be redone (its features don't
+reference ladder sources by name), but a fresh backfill run from here on will
+produce different `zone_score`/`confluence` values on Asia/Monday-adjacent
+touches than the historical runs recorded above.
