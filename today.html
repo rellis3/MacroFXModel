@@ -3638,6 +3638,16 @@ async function analysePair() {
   const btn = $('drAnalyseBtn'), box = $('drAnalysis'), sec = $('drAnalysisSec');
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Analysing…';
   sec.style.display = 'block';
+  // The section defaults to collapsed (accordion) — "Analyse" is the manual
+  // action that's supposed to reveal it, so force it open here. Without this
+  // the analysis generates fine but stays invisible behind the collapsed body.
+  sec.classList.remove('dr-collapsed');
+  const chev = sec.querySelector(':scope > h3 .dr-chevron');
+  if (chev) chev.textContent = '▾';
+  if (sec.dataset.seckey) {
+    const st = drSecState(); st[sec.dataset.seckey] = false;
+    try { localStorage.setItem('dr_sec_collapsed', JSON.stringify(st)); } catch {}
+  }
   box.innerHTML = '<span class="muted">Generating a full fundamental read — ~15s…</span>';
   try {
     const snapshot = assembleSnapshot(r);
