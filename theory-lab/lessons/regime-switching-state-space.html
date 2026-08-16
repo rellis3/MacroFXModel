@@ -149,6 +149,11 @@
     without an exact way to merge them.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to track a friend's route through a city where, every single block, they might turn left or right, and you honestly don't know which — so to be exact, you'd have to keep a separate, complete map for every possible sequence of turns they could have made so far. After a couple of blocks that's a handful of maps. After thirty blocks, it's over a billion maps. Nobody can actually carry that many maps around, which is exactly the wall exact regime-switching filtering hits.</p>
+  </div>
+
   <h3>Kim's filter: collapse the branches, don't track them all</h3>
   <p>
     Kim's filter (Kim, 1994, cited below) keeps the computation linear in \(T\) instead of exponential, by
@@ -162,6 +167,12 @@
     forward algorithm's running sums and Viterbi's dynamic programming in the Hidden Markov Model lesson,
     here applied to a continuous state instead of a discrete label.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of carrying every possible map of your friend's route forever, Kim's filter does something more practical: at the end of every block, it looks at all the maps that currently agree your friend is standing on, say, the same corner, and merges them into one best-guess map for that corner — throwing away the "how did we get here" detail and keeping only "where are we now, and how sure are we." Do that merge after every single block, and you never end up holding more maps than there are corners, no matter how long the walk gets.</p>
+  </div>
+
   <p>
     The collapse itself is a <strong>moment-matching approximation</strong>: given \(N\) different Gaussian
     estimates that all currently claim to describe "the state, given we're now in regime \(j\)" — one
@@ -192,6 +203,11 @@
     nothing; if they disagree substantially, the collapse inflates the reported uncertainty to (partially)
     reflect that lost distinction.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Suppose two witnesses both say your friend is "near the corner" — one says exactly at the corner, the other says a block away. If you have to boil their two statements down into a single best guess, the honest thing to do isn't just to average their locations and call it a day; you also have to admit you're now less sure than either witness was individually, because they disagreed. That extra dose of "we're less sure because our sources disagreed" is exactly the second term in the collapsed-variance formula — merging opinions that disagree is never free.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>

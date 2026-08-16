@@ -95,6 +95,12 @@
     <div class="tl-eq-chip c2"><code>data known as of i</code><span>everything actually observable at time \(i\), no later</span></div>
     <div class="tl-eq-chip c4"><code>Δ &gt; 0</code><span>any amount of "peeking" forward — the forbidden case</span></div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>It's the difference between a weather forecaster making a call each morning using only that morning's information, versus someone "predicting" yesterday's weather while already holding today's newspaper. A feature is only fair to use if it could have genuinely existed, in real time, on the day it's dated to — not stitched together later using information that hadn't happened yet.</p>
+  </div>
+
   <p>
   This sounds obvious stated abstractly, but it fails constantly in practice, for a specific, boring
   reason: modern data pipelines join tables by <em>calendar date</em>, not by <em>information
@@ -137,6 +143,12 @@
   model never actually learned a stationary relationship — it learned a snapshot of one non-repeating
   historical trend.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If a feature is really just a fancy way of saying "this row happened later in the dataset" (because the underlying price has been drifting one direction the whole time), a model can look impressively smart by learning that trick — but it's not actually predicting anything, it's just reading the page number. The moment the trend changes direction, that trick stops working completely.</p>
+  </div>
+
   <p>
   This is precisely why so many standard features are built as <em>changes</em>, <em>ratios</em>, or
   <em>z-scores</em> relative to a rolling reference rather than as raw levels: a return, a rolling
@@ -221,6 +233,11 @@
         outcome it's predicting was substantially determined? If the honest answer is "not really, they
         happen together," it's target leakage, regardless of how the code is organized.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Target leakage is like a quiz question that secretly already tells you the answer inside the question itself — asking "did the team that scored more points win the game" while using the final score as one of your inputs. Technically the numbers sit in different columns, but they're really just two ways of describing the exact same already-happened event.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -244,6 +261,11 @@
         every point in time, exactly the same "use data \(&lt; i\) only" discipline the walk-forward lesson
         applies to an entire train/test split, applied here one feature-column at a time.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Imagine grading how "unusually tall" someone was for their graduating class, but using the heights of every future graduating class too — including kids who haven't even been born yet — to calculate the average. Their height would get graded against a yardstick that didn't exist yet in their own time. That's exactly what happens when a z-score is calculated using an entire dataset's statistics instead of only what had happened so far.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -265,6 +287,11 @@
         real time with no foreknowledge of which instruments would survive, would actually have
         experienced.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Judging how risky a type of small business is by only interviewing owners who are still in business today completely misses everyone whose business already failed — and the ones who failed are exactly the stories that would tell you the most about the real risk. Building a test universe from "what still exists today" quietly throws out a strategy's own worst-case examples before the test even starts.</p>
+        </div>
       </div>
     </div>
   </div>
