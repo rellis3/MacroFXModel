@@ -1659,6 +1659,60 @@ Two honest reads, not one blended one:
 
 ---
 
+### 1ao. Impulse/EMA/Range-Exhaustion engine + Range Percentile brick (2026-08-17) — mechanising a colleague's posted 1m trades, tested null
+
+Owner shared screenshots of a colleague ("Jordan", tagging `@C.OG`) posting
+"test" trades on 1-minute Gold and Nasdaq TradingView charts — the visible
+elements were an impulsive swing leg, what looked like an EMA cross, an
+"H-L Range: Live / Median / 75th Pct" tool, and TradingView's Long/Short
+Position drawing (the red/green box = SL/entry/TP, **not** a POI zone — a
+correction from the first-pass read of the screenshots). Ask: build a real
+research tool, formalise the visible pattern, and test whether the STYLE has
+edge on real data — not to reproduce those specific screenshotted trades
+(blocked: OANDA is 403 in this sandbox and the cached M1 series ends
+2026-06-05, before the screenshots' 13–14 Aug 2026 dates).
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Range Percentile core** | `js/rangePercentileCore.js` | `trailingRangeDistribution`, `quantile`, `percentileOf`, `rangeExhaustionRead` — ranks a session's forming H-L range against the EMPIRICAL trailing-N-day distribution of realized D1 H-L%. New primitive: `VolRangeForecaster` is a THEORETICAL Brownian-motion range forecast off a vol estimate, not an empirical percentile-of-history read — this fills that gap. Pure, unit-tested (`js/legoBricks.test.mjs`) | `js/impulseEmaRangeV1Engine.js` | 🟢 built + unit-tested |
+| **Impulse/EMA/Range engine** | `js/impulseEmaRangeV1Engine.js` | `runImpulseEmaRange(packed, cfg)` — composes `patternEngine.pivotHighs/pivotLows/computeATR` (impulse-leg detection, ATR-normalized), `indicatorCore.ema` (fast/slow cross), the new range-percentile brick (exhaustion gate), and `forecastCore.walkBars` (fill/exit). Direction = CONTINUATION of the impulse (buy/sell the 38.2–61.8% pullback), stop beyond the realised pullback's own extreme, fixed-RR target, one trade/day. Every judgment call is pinned and documented in the file header per the Build Plan discipline. Costs on. | `education/jordan_impulse_range_backtest/scripts/*.mjs` | 🔴 **built + backtested — tested NULL**, see below |
+
+**Result — null, consistently, across every knob tried.** Full 10.4-year real
+M1 history (2016-01-04 → 2026-06-05, `loadM1ForPair('gold')` and
+`loadM1ForPair('nq', portfolioBacktest/cache)`), costs on, true 60/40 IS/OOS
+split:
+
+| Instrument | Trades | Win% | PF | Sharpe (full) | Sharpe (OOS) | Buy&Hold Sharpe |
+|---|--:|--:|--:|--:|--:|--:|
+| Gold (baseline, RR 2:1) | 3,156 | 24.1% | 0.357 | −5.99 | −4.44 (n=1263) | +0.82 |
+| NQ/NAS100 (baseline, RR 2:1) | 3,149 | 32.3% | 0.642 | −2.49 | −2.63 (n=1260) | +0.81 |
+
+Sensitivity swept RR (1.0/1.5/2.0/3.0), the range-exhaustion gate (on/off/tight),
+and the impulse-size threshold (2.5×/3.5× ATR) — **every single variant on
+both instruments stayed negative**, IS and OOS close together (not an
+overfit-then-broke pattern — there was never an edge to break). The range gate
+barely moved the trade count or Sharpe on/off, meaning as implemented it isn't
+doing meaningful discrimination. Full detail, method, and the pinned judgment
+calls: `education/jordan_impulse_range_backtest/RESULTS.md`.
+
+This lands in the same place as the closely-related `poiReactionV1Engine.js`
+(§ColezTrades POI backtest, `education/coleztrades_poi_backtest/`) — a
+structural-zone-plus-momentum-confirmation family that has now been tested
+null twice, on different instruments and a different confirmation mechanism
+(VuManChu divergence there, EMA cross + range-exhaustion here), both times
+IS-consistent-with-OOS. Not proof the general style can never work — only
+that this specific, honestly-pinned formalisation of it doesn't, on 10 years
+of Gold/NQ M1.
+
+**Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
+local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
+loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,
+`js/backtest-worker.js` and `js/gold-backtest-worker.js` — a P1 extraction
+candidate (see §2), not extracted here to avoid touching those files' tested
+call sites in an unrelated change.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
@@ -1689,6 +1743,7 @@ drift directly desyncs trading from its backtest (the worst case).
 | 14 | **Confluence scorer** | weighted zone ranking across level types | `Gold/modules/confluence_scorer.py:56-186` vs `asiaRangeEngine.runModuleChecks` (module-hit-count, no cross-impulse/nPOC-age/VWAP) | 🟠 VERY HIGH (backtest↔live gap) |
 | 15 | **Swing-pivot detection** | N-bar high/low S/R | `confluenceModules:209-223`, `backtest-engine:189-203`, `range-bias:288-303`, `backtestSystem/indicators.py:111-122`, `Gold/modules/fib_engine.py:100-113`, `GoldV2/modules/level_matrix.py:_find_pivots` + `GoldV2/modules/htf_bias.py:_find_pivots` (N varies) | 🟠 MEDIUM |
 | 15b | **Gold-bot fork copies (V1→V2)** | GoldV2 is a versioned fork of Gold (house rule: version, don't overwrite). `volume_profile.py` / `session_engine.py` / `trendline_engine.py` are verbatim copies; `vumanchu.py` diverges deliberately (WT-mandatory + fuel veto); `level_matrix.py` replaces `fib_engine.py`+`confluence_scorer.py`. V1 is frozen, so copies can't drift while it lives — but when V2 wins the A/B, extract the three verbatim modules into `pylego` instead of letting a V3 copy them again. | `Gold/modules/*` vs `GoldV2/modules/*` | 🟡 MEDIUM (frozen incumbent) |
+| 16 | **D1 bucketing from packed M1 (`buildDaily`)** | fold `{times,opens,highs,lows,closes}` into completed UTC-day D1 bars, one forward pass | `js/poiReactionV1Engine.js:152`, `js/rangeExtEngine.js:80` (`buildDailyBars`), `js/backtest-worker.js:935` (`buildDailyBars`), `js/gold-backtest-worker.js:52` (`buildDailyBars`), `js/impulseEmaRangeV1Engine.js` (5th copy, added 2026-08-17, §1ao) — all byte-identical logic, different names | 🟡 MEDIUM (identical today, 5 places to keep in sync) |
 
 ### P2 — useful consolidation (cleanliness, lower drift risk)
 
