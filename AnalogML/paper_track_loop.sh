@@ -16,7 +16,7 @@ INTERVAL_SECONDS="${PAPER_TRACK_INTERVAL_SECONDS:-3600}"
 
 while true; do
     echo "[paper_track_loop] scanning $(date -u +%FT%TZ)"
-    python3 AnalogML/paper_track.py --refresh-data \
+    python AnalogML/paper_track.py --refresh-data \
         || echo "[paper_track_loop] scan failed -- will retry next interval"
     echo "[paper_track_loop] sleeping ${INTERVAL_SECONDS}s"
     sleep "$INTERVAL_SECONDS"

@@ -35,9 +35,9 @@ outage_alerted=0
 
 while true; do
     echo "[motif_track_loop] scanning $(date -u +%FT%TZ)"
-    if python3 AnalogML/motif_track.py --refresh-data $TELEGRAM_FLAG; then
+    if python AnalogML/motif_track.py --refresh-data $TELEGRAM_FLAG; then
         if [ "$outage_alerted" = "1" ]; then
-            python3 AnalogML/motif_track.py --heartbeat-alert \
+            python AnalogML/motif_track.py --heartbeat-alert \
                 "🟢 <b>motif_track — back up</b>
 ━━━━━━━━━━━━━━━━
 Recovered after ${consecutive_failures} failed scan(s) in a row." \
@@ -49,7 +49,7 @@ Recovered after ${consecutive_failures} failed scan(s) in a row." \
         consecutive_failures=$((consecutive_failures + 1))
         echo "[motif_track_loop] scan failed (${consecutive_failures} in a row) -- will retry next interval"
         if [ "$consecutive_failures" -ge "$FAIL_THRESHOLD" ] && [ "$outage_alerted" = "0" ]; then
-            python3 AnalogML/motif_track.py --heartbeat-alert \
+            python AnalogML/motif_track.py --heartbeat-alert \
                 "🔴 <b>motif_track — may be down</b>
 ━━━━━━━━━━━━━━━━
 ${consecutive_failures} scan(s) failed in a row (threshold ${FAIL_THRESHOLD}).
