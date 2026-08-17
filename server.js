@@ -2465,6 +2465,15 @@ SESSION INTELLIGENCE
 Current session: ${s.session?.name ?? 'N/A'}  |  London time: ${s.session?.londonTime ?? 'N/A'}  |  Confidence multiplier: ${s.session?.confidence ?? 'N/A'}x
 Context: ${s.session?.desc ?? 'N/A'}
 
+SESSION RESEARCH (10-year Asia/London/overlap/NY backtest for THIS pair specifically — every finding below survived a circular-shift null AND a pooled Benjamini-Hochberg FDR correction across everything tested; research context, NOT a live signal. Full methodology: SessionResearch/README.md)
+${s.sessionResearch ? `Data through ${s.sessionResearch.dataThrough}  |  ${s.sessionResearch.nBhPass}/${s.sessionResearch.nHypotheses} tested relationships survive multiple-testing correction for this pair.
+Range persistence: ${s.sessionResearch.rangeHandoff ? `validated — ${s.sessionResearch.rangeHandoff.strongestPair} carries the strongest handoff (ρ ${s.sessionResearch.rangeHandoff.strongestRho}); a wide/quiet session tends to be followed by another wide/quiet one.` : 'no validated session-to-session range persistence for this pair.'}
+Direction handoff: does NOT reliably carry from one session to the next (${s.sessionResearch.directionHandoff.nTested} handoffs tested, ${s.sessionResearch.directionHandoff.anySignificant ? 'weak signal in some' : 'none significant'}) — a session closing up/down is close to a coin flip for the next session's direction. Do not lean on session-to-session momentum for this pair.
+${s.sessionResearch.spikeReversal.length ? `Pre-open spike → reversal (validated): ${s.sessionResearch.spikeReversal.map(v => `${v.boundary} open (spike reverses ${(v.reversalRateSpike * 100).toFixed(0)}% vs ordinary ${(v.reversalRateNonspike * 100).toFixed(0)}%)`).join('; ')} — a sharp move right before that session's open tends to partially reverse.` : 'No validated pre-open spike-reversal effect for this pair.'}
+${s.sessionResearch.impulse ? `Impulse reversal (scalping, M5): impulsive swing pivots beat grind pivots on win-rate${s.sessionResearch.impulse.symmetry ? ` (low-side/high-side symmetry at 30min: ${(s.sessionResearch.impulse.symmetry.winRateLow * 100).toFixed(0)}% vs ${(s.sessionResearch.impulse.symmetry.winRateHigh * 100).toFixed(0)}%${s.sessionResearch.impulse.symmetry.bhPass ? ', a real asymmetry' : ', not distinguishable'})` : ''} — small edge, not a standalone signal.` : ''}
+${s.sessionResearch.todayOutlook && s.sessionResearch.todayOutlook.length ? `Most recent applied checkpoints (from ${s.sessionResearch.todayOutlook[0].day} — the dataset's most recent day, NOT necessarily literally today if this environment's price data hasn't been refreshed since):
+${s.sessionResearch.todayOutlook.map(o => `  ${o.checkpoint}: remaining range model ${o.modelRangeAtr.toFixed(2)}×ATR (persistence ${o.persistenceRangeAtr.toFixed(2)}×ATR); direction ${(o.modelPUp * 100).toFixed(0)}% prob. up — ${o.directionEdge ? 'weak validated edge' : 'NO VALIDATED EDGE, treat as noise'}`).join('\n')}` : ''}` : '  Not available (SessionResearch/dashboard_export.py not yet run for this pair)'}
+
 VOLATILITY IMPULSE (5-bar momentum)
 ${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%
 ${s.volImpulse.bias === 'expanding' ? '→ Vol accelerating — widen stops, beware stop-hunts' : s.volImpulse.bias === 'contracting' ? '→ Vol contracting — tighter stops possible, range trades favoured' : '→ Vol stable — no regime shift signal'}` : '  Not available (< 10 daily bars)'}
@@ -17519,6 +17528,23 @@ const ANALOGML_MOTIF_TRADES_PATH = path.join(ANALOGML_DATA_DIR, 'motif_trades.js
 app.get('/api/analogml/motif-state', async (_req, res) => {
   const out = await _loadAnalogMLJson(ANALOGML_MOTIF_STATE_PATH, 'analogml/motif_state.json');
   if (!out) return res.status(404).json({ ok: false, error: 'no motif_state.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
+// ── SessionResearch: per-pair Asia/London/overlap/NY session-handoff,
+// day-flow, walk-forward-model, and impulse-reversal research, distilled to
+// ONE small combined file by SessionResearch/dashboard_export.py (full
+// methodology + per-finding circular-shift null + pooled Benjamini-Hochberg
+// FDR correction documented in SessionResearch/README.md — this endpoint
+// only ever serves already-validated summary numbers, never raw cells).
+// _loadAnalogMLJson is fully generic (just a disk-first-then-R2 JSON read;
+// nothing AnalogML-specific in its body) -- reused as-is rather than
+// duplicated under a new name.
+const SESSION_RESEARCH_SUMMARY_PATH = path.join(__dirname, 'SessionResearch', 'out', 'dashboard_summary.json');
+
+app.get('/api/session-research/summary', async (_req, res) => {
+  const out = await _loadAnalogMLJson(SESSION_RESEARCH_SUMMARY_PATH, 'session-research/dashboard_summary.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet -- run SessionResearch/dashboard_export.py' });
   return res.json(out);
 });
 

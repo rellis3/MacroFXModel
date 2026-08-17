@@ -146,6 +146,8 @@ def _add_handoff_columns(tab: pd.DataFrame, atr_lookup: pd.Series) -> pd.DataFra
     day_pos = {d: i for i, d in enumerate(days_sorted)}
 
     for i, (day, session) in enumerate(tab.index):
+        if session not in PRIOR_SESSION:
+            continue  # 'late' isn't part of the 4-session cycle (see CYCLE) -- no handoff to compute
         prior_name, offset = PRIOR_SESSION[session]
         prior_day_pos = day_pos[day] + offset
         if prior_day_pos < 0 or prior_day_pos >= len(days_sorted):
