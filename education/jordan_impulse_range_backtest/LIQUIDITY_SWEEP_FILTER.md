@@ -9,14 +9,15 @@ level first — real stops running before the real move, not just any big
 candle. Does requiring that behind the leg change anything?
 
 Script: [`scripts/liquidity_sweep_filter.mjs`](scripts/liquidity_sweep_filter.mjs).
-Post-hoc filter on the already-committed baseline trades (one trade/day) —
-no new backtest run. For an up-leg (buy continuation), "swept" means the
+Post-hoc filter on the baseline trade population (one trade/day, generated
+via `js/impulseEmaRangeV2Engine.js` at v1-matching defaults — v1 stays
+pinned and untouched, see V2's header — verified byte-identical to v1's
+committed baseline). For an up-leg (buy continuation), "swept" means the
 leg's origin (its low point) closed below the **prior calendar day's low**
 before reversing; for a down-leg, the origin (high point) above the prior
-day's high. Uses `legOriginTime` (added to the engine's trade output this
-session, purely additive — verified to change no existing field) plus the
-engine's own `buildDaily` (now exported, reused rather than re-copied) to
-find each leg's origin day and its predecessor's H/L.
+day's high. Uses `legOriginTime` (a v2-only, purely-additive trade field)
+plus v2's own exported `buildDaily` to find each leg's origin day and its
+predecessor's H/L.
 
 ## Result: a real, IS/OOS-consistent improvement — but still a loser
 

@@ -2,7 +2,7 @@
  * Does relaxing "one trade per day" find real edge the baseline engine is
  * missing? Owner's observation: on a real intraday chart it's common to see
  * a SECOND qualifying impulse the same day, after the first one has already
- * resolved — the baseline engine (js/impulseEmaRangeV1Engine.js) only ever
+ * resolved — the baseline engine (js/impulseEmaRangeV2Engine.js) only ever
  * takes the FIRST qualifying setup per day and ignores every later one, a
  * pinned call flagged as untested in RESULTS.md's caveats.
  *
@@ -16,7 +16,7 @@
  * Usage: node multi_trade_per_day.mjs <gold|nq> <outDir> [m1Dir]
  */
 import { loadM1ForPair } from '/home/user/MacroFXModel/js/volBacktestM1Engine.js';
-import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV1Engine.js';
+import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV2Engine.js';
 import { summarizeSplit } from '/home/user/MacroFXModel/js/honestForecastEngine.js';
 import { summarizeTrades } from '/home/user/MacroFXModel/js/metricsCore.js';
 import fs from 'fs';

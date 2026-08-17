@@ -18,10 +18,11 @@ day/session). The trade's fill time gets artificially anchored to day-start
 regardless of when the underlying pattern actually formed — bucketing by
 `fillTime` would have reported a fake "session" finding.
 
-Fixed by adding `legOriginTime`/`legExtremeTime` to the engine's trade
-output (purely additive, verified to change no existing field) and
-re-bucketing by `legExtremeTime` — the moment the leg's own pullback begins,
-immune to the day-boundary artifact.
+Fixed by generating the trade population from **`js/impulseEmaRangeV2Engine.js`**
+instead (v1 stays pinned and untouched), which carries `legOriginTime`/
+`legExtremeTime` on every trade — purely additive, verified byte-identical
+to v1 in every other field — and re-bucketing by `legExtremeTime`: the
+moment the leg's own pullback begins, immune to the day-boundary artifact.
 
 ## Result on the corrected timestamp: still no subset survives
 

@@ -24,7 +24,9 @@
  *      uses (handles OANDA's 5000-bar-per-request cap correctly; a naive
  *      single fetchM1Range call would silently truncate or fail over a
  *      ~10-week gap). Nothing new invented here, no one-off fetch loop.
- *   3. Runs runImpulseEmaRange 4 ways over the extended archive:
+ *   3. Runs runImpulseEmaRange (v2, at v1-matching defaults for 'baseline' —
+ *      verified byte-identical to v1 itself; v1 stays pinned and untouched)
+ *      4 ways over the extended archive:
  *        - baseline   : the pinned defaults (fixed 2:1 RR structural stop,
  *                       Fib 38.2-61.8% entry band, room-left range gate)
  *        - exhausted  : rangeGateMode:'exhausted', rangeGateMinUsedFrac:1.5
@@ -55,7 +57,11 @@
 import { loadM1ForPair } from '../../../js/volBacktestM1Engine.js';
 import { fetchM1Range } from '../../../js/volBacktestEngine.js';
 import { gapFillPacked } from '../../../js/m1GapFill.js';
-import { runImpulseEmaRange, buildDaily } from '../../../js/impulseEmaRangeV1Engine.js';
+// v2 throughout — verified byte-identical to v1 at v1-matching defaults
+// (see js/impulseEmaRangeV2Engine.js's header), needed here for the
+// legOriginTime/buildDaily used by the 'sweptOnly' variant below. v1 stays
+// pinned and untouched.
+import { runImpulseEmaRange, buildDaily } from '../../../js/impulseEmaRangeV2Engine.js';
 import { oandaSymbol } from '../../../js/instrumentRegistry.js';
 
 const KNOWN_TRADES = [

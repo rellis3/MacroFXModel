@@ -8,11 +8,13 @@ Owner's observation, from a real intraday chart: it's common to see a
 **second** impulse the same day, after the first one has already resolved
 — so is the engine silently discarding real opportunities?
 
-`js/impulseEmaRangeV1Engine.js` now takes a `maxTradesPerDay` cfg (default
-`1`, fully backward-compatible — **verified byte-identical to the existing
-committed baseline `trades.json` for both instruments** before trusting
-anything below). When `>1`, the scanner resumes right after each trade's
-own exit and looks for the next qualifying setup the same day, same rules,
+`js/impulseEmaRangeV1Engine.js` stays pinned and untouched. This test's
+`maxTradesPerDay` cfg lives on **`js/impulseEmaRangeV2Engine.js`**, a
+versioned fork (default `1`, fully backward-compatible — **verified
+byte-identical to v1's existing committed baseline `trades.json` for both
+instruments** before trusting anything below). When `>1`, the scanner
+resumes right after each trade's own exit and looks for the next
+qualifying setup the same day, same rules,
 same gates — exactly the pattern in the screenshots (first impulse already
 resolved, second impulse just forming its own zone).
 

@@ -30,34 +30,21 @@
  *     one screenshot crossing right at the reversal/continuation point).
  *   - Range-exhaustion gate: today's session range-so-far, ranked against the
  *     trailing `rangeLookbackDays` sessions' full H-L% (js/rangePercentileCore.js),
- *     must be ≤ `rangeGateMaxUsedFrac` × the trailing median (`rangeGateMode:
- *     'roomLeft'`, the default/pinned read) — i.e. only take the continuation
- *     while the day hasn't already used up a typical day's range. This
- *     operationalises the "Live / Median / 75th Pct" tool visible in one
- *     screenshot. `rangeGateMode: 'exhausted'` inverts it (require
- *     ≥ `rangeGateMinUsedFrac` instead) — the day must already be stretched, a
- *     momentum/trend-day read instead of a room-left read; tested in
- *     education/jordan_impulse_range_backtest/RANGE_GATE_FLIP.md (also null).
+ *     must be ≤ `rangeGateMaxUsedFrac` × the trailing median — i.e. only take
+ *     the continuation while the day hasn't already used up a typical day's
+ *     range. This operationalises the "Live / Median / 75th Pct" tool visible
+ *     in one screenshot.
  *   - Entry = confirmation-bar CLOSE inside the leg's `retraceMin`–`retraceMax`
- *     retracement (`entryBandMode: 'fib'`, the default/pinned read), filled as
- *     a STOP at the NEXT bar's open (no lookahead; no ambiguous same-bar limit
- *     fill). `entryBandMode: 'vwap'` swaps the pullback-quality check for
- *     distance from the SESSION-anchored VWAP (`js/vumanchuCore.js`,
- *     `|close - VWAP| <= vwapBandAtrMult × ATR`) instead of a Fib fraction of
- *     the leg — tests whether VWAP-reversion, not the Fib ratio itself, is
- *     the real trigger; tested in
- *     education/jordan_impulse_range_backtest/VWAP_ENTRY_BAND.md (also null).
+ *     retracement, filled as a STOP at the NEXT bar's open (no lookahead; no
+ *     ambiguous same-bar limit fill).
  *   - Stop = beyond the realised pullback's own extreme (the lowest low / highest
  *     high between the impulse's turning point and the confirmation bar), plus
  *     a small ATR buffer — "beyond recent market structure", the stop-placement
  *     hierarchy's preferred rule (`MD files/ZONE_TRADE_DECISION_FRAMEWORK.md`).
- *   - Target = fixed `rr` × stop distance. `maxTradesPerDay` (default 1, first
- *     qualifying setup) matches this engine family's existing convention
+ *   - Target = fixed `rr` × stop distance. One trade per day (first qualifying
+ *     setup), matching this engine family's existing convention
  *     (js/poiReactionV1Engine.js) and the ~1-trade/day cadence COG's own
- *     observed system runs at (`MD files/COG_OBSERVED_SYSTEM.md` §4b). Set
- *     >1 to resume scanning right after each trade's own exit, same day —
- *     tested in education/jordan_impulse_range_backtest/MULTI_TRADE_PER_DAY.md
- *     (also null; default stays 1, this cfg is fully backward-compatible).
+ *     observed system runs at (`MD files/COG_OBSERVED_SYSTEM.md` §4b).
  *
  * Contract (pure; no network, no DOM):
  *   runImpulseEmaRange(packed, cfg) → { trades[], records[], meta }
@@ -71,13 +58,12 @@
  * strictly before today and the running high/low up to the evaluation bar.
  */
 
-import { extractBars, resampleTo, bisect } from './barUtils.js';
+import { extractBars, resampleTo } from './barUtils.js';
 import { pivotHighs, pivotLows, computeATR } from './patternEngine.js';
 import { ema } from './indicatorCore.js';
 import { walkBars } from './forecastCore.js';
 import { pipSize, assetClass as assetClassOf } from './instrumentRegistry.js';
 import { rangeExhaustionRead } from './rangePercentileCore.js';
-import { computeVWAP } from './vumanchuCore.js';
 
 const DAY = 86400;
 
@@ -98,17 +84,12 @@ export const DEFAULT_CFG = {
   retraceMax: 0.618,
   rangeLookbackDays: 20,
   rangeGateMaxUsedFrac: 1.0, // require live/median ≤ this (room left in the day's range)
-  rangeGateMode: 'roomLeft', // 'roomLeft' (default/pinned) or 'exhausted' — see file header
-  rangeGateMinUsedFrac: 0.5, // 'exhausted' mode only: require live/median ≥ this
-  entryBandMode: 'fib',     // 'fib' (default/pinned) or 'vwap' — see file header
-  vwapBandAtrMult: 0.5,     // 'vwap' mode only: max |close - sessionVWAP| in ATR
   slBufferAtrMult: 0.25,
   rr: 2.0,
   warmupDays: 30,
   oosFrac: 0.4,
   account: 10000,
   riskPct: 1.0,
-  maxTradesPerDay: 1,       // pinned baseline (see file header); >1 scans on after each trade's own exit
 };
 
 // Build all completed D1 bars from packed M1 in one pass (UTC-day buckets).
@@ -117,7 +98,7 @@ export const DEFAULT_CFG = {
 // js/gold-backtest-worker.js (4 independent copies now with this one; flagged
 // as a LEGO_MODULES.md candidate rather than extracted here, to avoid touching
 // those files' own tested call sites in this change).
-export function buildDaily(packed) {
+function buildDaily(packed) {
   const { n, times, opens, highs, lows, closes } = packed;
   const days = [];
   let curKey = -1, cur = null;
@@ -222,121 +203,83 @@ export function runImpulseEmaRange(packed, cfg = {}) {
     const dayOpen = ctxBars[todayStartIdx].open;
     if (!(dayOpen > 0)) continue;
 
-    // Session-anchored VWAP (resets at todayStartIdx, not the multi-day ctx
-    // window) — only computed when entryBandMode actually needs it.
-    let vwapSeries = null;
-    if (c.entryBandMode === 'vwap') {
-      vwapSeries = new Array(ctxBars.length).fill(null);
-      const { vwap } = computeVWAP(ctxBars.slice(todayStartIdx));
-      for (let i = 0; i < vwap.length; i++) vwapSeries[todayStartIdx + i] = vwap[i];
-    }
-
     let runningHigh = -Infinity, runningLow = Infinity;
-    let tradesToday = 0;
-    let scanStart = todayStartIdx;
-    let ctxTimes = null;   // lazily built only when a 2nd+ trade the same day needs a resume point
+    let signal = null;
 
-    while (tradesToday < c.maxTradesPerDay) {
-      let signal = null;
+    for (let j = todayStartIdx; j < ctxBars.length - 1; j++) {
+      const bar = ctxBars[j];
+      if (bar.high > runningHigh) runningHigh = bar.high;
+      if (bar.low < runningLow) runningLow = bar.low;
 
-      for (let j = scanStart; j < ctxBars.length - 1; j++) {
-        const bar = ctxBars[j];
-        if (bar.high > runningHigh) runningHigh = bar.high;
-        if (bar.low < runningLow) runningLow = bar.low;
+      const leg = lastConfirmedImpulse(ctxBars, pivH, pivL, j, c.pivotN, atrSeries, c.impulseAtrMult);
+      if (!leg) continue;
 
-        const leg = lastConfirmedImpulse(ctxBars, pivH, pivL, j, c.pivotN, atrSeries, c.impulseAtrMult);
-        if (!leg) continue;
+      const fastAbove = emaFastSeries[j] > emaSlowSeries[j];
+      const emaAgrees = leg.dir === 'up' ? fastAbove : !fastAbove;
+      if (!emaAgrees) continue;
 
-        const fastAbove = emaFastSeries[j] > emaSlowSeries[j];
-        const emaAgrees = leg.dir === 'up' ? fastAbove : !fastAbove;
-        if (!emaAgrees) continue;
+      const rangeRead = rangeExhaustionRead(daily, di, dayOpen, runningHigh, runningLow, c.rangeLookbackDays);
+      if (!rangeRead || rangeRead.usedFracOfMedian == null || rangeRead.usedFracOfMedian > c.rangeGateMaxUsedFrac) continue;
 
-        const rangeRead = rangeExhaustionRead(daily, di, dayOpen, runningHigh, runningLow, c.rangeLookbackDays);
-        if (!rangeRead || rangeRead.usedFracOfMedian == null) continue;
-        if (c.rangeGateMode === 'exhausted') {
-          if (rangeRead.usedFracOfMedian < c.rangeGateMinUsedFrac) continue;
-        } else if (rangeRead.usedFracOfMedian > c.rangeGateMaxUsedFrac) continue;
+      const span = leg.extremePrice - leg.originPrice;   // signed: >0 for up leg, <0 for down leg
+      const retraceLo = leg.extremePrice - c.retraceMax * span;
+      const retraceHi = leg.extremePrice - c.retraceMin * span;
+      const lo = Math.min(retraceLo, retraceHi), hi = Math.max(retraceLo, retraceHi);
+      if (bar.close < lo || bar.close > hi) continue;   // confirmation bar must CLOSE inside the retracement band
 
-        if (c.entryBandMode === 'vwap') {
-          const vw = vwapSeries[j];
-          if (vw == null || Math.abs(bar.close - vw) > c.vwapBandAtrMult * atrSeries[j]) continue;
-        } else {
-          const span = leg.extremePrice - leg.originPrice;   // signed: >0 for up leg, <0 for down leg
-          const retraceLo = leg.extremePrice - c.retraceMax * span;
-          const retraceHi = leg.extremePrice - c.retraceMin * span;
-          const lo = Math.min(retraceLo, retraceHi), hi = Math.max(retraceLo, retraceHi);
-          if (bar.close < lo || bar.close > hi) continue;   // confirmation bar must CLOSE inside the retracement band
-        }
-
-        // Structural stop: beyond the realised pullback's own extreme (from the
-        // leg's turning point through the confirmation bar), not an arbitrary
-        // fixed distance — "Best: stop just beyond swing_origin" per
-        // MD files/ZONE_TRADE_DECISION_FRAMEWORK.md.
-        let pullbackLow = Infinity, pullbackHigh = -Infinity;
-        for (let k = leg.extremeIdx; k <= j; k++) {
-          if (ctxBars[k].low < pullbackLow) pullbackLow = ctxBars[k].low;
-          if (ctxBars[k].high > pullbackHigh) pullbackHigh = ctxBars[k].high;
-        }
-        const buffer = c.slBufferAtrMult * atrSeries[j];
-
-        signal = { j, leg, rangeRead, isBuy: leg.dir === 'up', pullbackLow, pullbackHigh, buffer };
-        break;   // first qualifying setup from scanStart onward
+      // Structural stop: beyond the realised pullback's own extreme (from the
+      // leg's turning point through the confirmation bar), not an arbitrary
+      // fixed distance — "Best: stop just beyond swing_origin" per
+      // MD files/ZONE_TRADE_DECISION_FRAMEWORK.md.
+      let pullbackLow = Infinity, pullbackHigh = -Infinity;
+      for (let k = leg.extremeIdx; k <= j; k++) {
+        if (ctxBars[k].low < pullbackLow) pullbackLow = ctxBars[k].low;
+        if (ctxBars[k].high > pullbackHigh) pullbackHigh = ctxBars[k].high;
       }
+      const buffer = c.slBufferAtrMult * atrSeries[j];
 
-      if (!signal) break;   // no (more) qualifying setups today
-
-      const entryBar = ctxBars[signal.j + 1];
-      const entry = entryBar.open;
-      const isBuy = signal.isBuy;
-      const sl = isBuy ? signal.pullbackLow - signal.buffer : signal.pullbackHigh + signal.buffer;
-      const stopDist = Math.abs(entry - sl);
-      if (!(stopDist > 0)) break;
-      const tp = isBuy ? entry + c.rr * stopDist : entry - c.rr * stopDist;
-
-      const fillBars = ctxBars.slice(signal.j + 1);
-      const r = walkBars(fillBars, entry, tp, sl, isBuy, 'stop', dayOpen);
-      if (!r || !r.filled) break;
-
-      const grossPct = r.pnlPct;
-      const netPct = +(grossPct - cost).toFixed(5);
-      const riskPctPrice = stopDist / entry * 100;
-      const rMult = +(netPct / riskPctPrice).toFixed(4);
-      const maeFrac = maeFromPath(packed, r.fillTime ?? dStart, r.exitTime, entry, isBuy);
-      const maePct = +(maeFrac * 100).toFixed(5);
-      const maeR = +(maeFrac * 100 / riskPctPrice).toFixed(4);
-
-      const date = isoDay(dStart);
-      records.push({ filled: true, pnl_pct: netPct, date });
-      const cum = (equity.length ? equity[equity.length - 1] : 0) + rMult;
-      equity.push(cum);
-      trades.push({
-        date, instrument, side: isBuy ? 'BUY' : 'SELL',
-        entry: +entry.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
-        legDir: signal.leg.dir, legOrigin: +signal.leg.originPrice.toFixed(6), legExtreme: +signal.leg.extremePrice.toFixed(6),
-        legOriginTime: ctxBars[signal.leg.originIdx].time, legExtremeTime: ctxBars[signal.leg.extremeIdx].time,
-        rangeUsedFracOfMedian: +signal.rangeRead.usedFracOfMedian.toFixed(3),
-        rangeLivePct: +(signal.rangeRead.livePct * 100).toFixed(3),
-        rangeMedianPct: +(signal.rangeRead.medianPct * 100).toFixed(3),
-        outcome: r.outcome, grossPct: +grossPct.toFixed(5), netPct, rMult,
-        maePct, maeR, riskAmount: +riskAmount.toFixed(2),
-        pnlCcy: +(riskAmount * rMult).toFixed(2),
-        fillTime: r.fillTime, exitTime: r.exitTime, cumR: +cum.toFixed(4),
-      });
-      tradesToday++;
-      if (tradesToday >= c.maxTradesPerDay) break;
-
-      // Resume scanning strictly after this trade's own exit bar; fold the
-      // skipped in-trade bars into the running day-range first, so the next
-      // signal's range-exhaustion gate still sees the FULL session-so-far
-      // range, not just the bars the pivot scan actually visited.
-      if (!ctxTimes) ctxTimes = ctxBars.map(b => b.time);
-      const exitIdx = r.exitTime != null ? bisect(ctxTimes, r.exitTime) : ctxBars.length;
-      for (let k = signal.j + 1; k <= exitIdx && k < ctxBars.length; k++) {
-        if (ctxBars[k].high > runningHigh) runningHigh = ctxBars[k].high;
-        if (ctxBars[k].low < runningLow) runningLow = ctxBars[k].low;
-      }
-      scanStart = exitIdx + 1;
+      signal = { j, leg, rangeRead, isBuy: leg.dir === 'up', pullbackLow, pullbackHigh, buffer };
+      break;   // one trade per day: first qualifying setup
     }
+
+    if (!signal) continue;
+
+    const entryBar = ctxBars[signal.j + 1];
+    const entry = entryBar.open;
+    const isBuy = signal.isBuy;
+    const sl = isBuy ? signal.pullbackLow - signal.buffer : signal.pullbackHigh + signal.buffer;
+    const stopDist = Math.abs(entry - sl);
+    if (!(stopDist > 0)) continue;
+    const tp = isBuy ? entry + c.rr * stopDist : entry - c.rr * stopDist;
+
+    const fillBars = ctxBars.slice(signal.j + 1);
+    const r = walkBars(fillBars, entry, tp, sl, isBuy, 'stop', dayOpen);
+    if (!r || !r.filled) continue;
+
+    const grossPct = r.pnlPct;
+    const netPct = +(grossPct - cost).toFixed(5);
+    const riskPctPrice = stopDist / entry * 100;
+    const rMult = +(netPct / riskPctPrice).toFixed(4);
+    const maeFrac = maeFromPath(packed, r.fillTime ?? dStart, r.exitTime, entry, isBuy);
+    const maePct = +(maeFrac * 100).toFixed(5);
+    const maeR = +(maeFrac * 100 / riskPctPrice).toFixed(4);
+
+    const date = isoDay(dStart);
+    records.push({ filled: true, pnl_pct: netPct, date });
+    const cum = (equity.length ? equity[equity.length - 1] : 0) + rMult;
+    equity.push(cum);
+    trades.push({
+      date, instrument, side: isBuy ? 'BUY' : 'SELL',
+      entry: +entry.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
+      legDir: signal.leg.dir, legOrigin: +signal.leg.originPrice.toFixed(6), legExtreme: +signal.leg.extremePrice.toFixed(6),
+      rangeUsedFracOfMedian: +signal.rangeRead.usedFracOfMedian.toFixed(3),
+      rangeLivePct: +(signal.rangeRead.livePct * 100).toFixed(3),
+      rangeMedianPct: +(signal.rangeRead.medianPct * 100).toFixed(3),
+      outcome: r.outcome, grossPct: +grossPct.toFixed(5), netPct, rMult,
+      maePct, maeR, riskAmount: +riskAmount.toFixed(2),
+      pnlCcy: +(riskAmount * rMult).toFixed(2),
+      fillTime: r.fillTime, exitTime: r.exitTime, cumR: +cum.toFixed(4),
+    });
   }
 
   return {

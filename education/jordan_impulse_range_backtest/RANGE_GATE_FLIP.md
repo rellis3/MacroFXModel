@@ -9,10 +9,11 @@ screenshots. Equally plausible from that same tool: Jordan takes the trade
 once the day is already STRETCHED relative to a typical session — a
 momentum/trend-day read, the opposite condition.
 
-`rangeGateMode: 'exhausted'` (new backward-compatible cfg on
-`js/impulseEmaRangeV1Engine.js`, default unchanged — verified byte-identical
-to the committed baseline before trusting this) requires
-`usedFracOfMedian ≥ rangeGateMinUsedFrac` instead of `≤ rangeGateMaxUsedFrac`.
+`rangeGateMode: 'exhausted'` (v1 stays pinned and untouched; this cfg lives
+on **`js/impulseEmaRangeV2Engine.js`**, a versioned fork, default unchanged
+— verified byte-identical to v1's committed baseline before trusting this)
+requires `usedFracOfMedian ≥ rangeGateMinUsedFrac` instead of
+`≤ rangeGateMaxUsedFrac`.
 Script: [`scripts/range_gate_flip.mjs`](scripts/range_gate_flip.mjs), sweeping
 the threshold 0.25 → 1.5.
 

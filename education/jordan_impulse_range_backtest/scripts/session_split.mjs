@@ -1,8 +1,6 @@
 /**
  * Session/time-of-day disaggregation of the baseline impulse/EMA/range
- * engine's ALREADY-COMMITTED trade logs (data/gold.trades.json,
- * data/nq.trades.json) — no new backtest run, this is pure analysis of
- * results that already exist. Question: does pooling all 24 hours hide a
+ * engine's trade population. Question: does pooling all 24 hours hide a
  * real subset edge that only fires in a specific session (London open, NY
  * open, etc.), the way a discretionary trader like the screenshots' would
  * naturally condition on?
@@ -23,22 +21,30 @@
  * often a leg that was already fully formed before midnight (carried over
  * from the prior day/session), so the trade's fill gets artificially
  * anchored to day-start regardless of when the actual pattern formed.
- * `legExtremeTime` (added to the engine's trade output as a purely additive
- * field, verified to change no existing field) is the moment the leg's own
- * pullback begins — the meaningful "when did this shape start" timestamp,
- * immune to the day-boundary artifact.
+ * `legExtremeTime` is the moment the leg's own pullback begins — the
+ * meaningful "when did this shape start" timestamp, immune to the
+ * day-boundary artifact. It's a v2-only, purely-additive field (v1 stays
+ * pinned and untouched, see js/impulseEmaRangeV2Engine.js's header), so
+ * this script runs v2 at its v1-matching defaults (verified byte-identical
+ * to v1's committed baseline) to get the timestamped trade population
+ * directly, rather than reading v1's own trades.json off disk.
  *
- * Usage: node session_split.mjs <gold|nq> <outDir>
+ * Usage: node session_split.mjs <gold|nq> <outDir> [m1Dir]
  */
+import { loadM1ForPair } from '/home/user/MacroFXModel/js/volBacktestM1Engine.js';
+import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV2Engine.js';
 import { summarizeTrades } from '/home/user/MacroFXModel/js/metricsCore.js';
 import fs from 'fs';
 
 const pair = process.argv[2];
 const outDir = process.argv[3];
-if (!pair || !outDir) { console.error('usage: session_split.mjs <gold|nq> <outDir>'); process.exit(1); }
+const m1Dir = process.argv[4] || undefined;
+if (!pair || !outDir) { console.error('usage: session_split.mjs <gold|nq> <outDir> [m1Dir]'); process.exit(1); }
 
-const trades = JSON.parse(fs.readFileSync(`${outDir}/${pair}.trades.json`, 'utf8'));
-console.error(`${pair}: ${trades.length} trades loaded from committed baseline log`);
+const packed = m1Dir ? await loadM1ForPair(pair, m1Dir) : await loadM1ForPair(pair);
+if (!packed) { console.error(`${pair}: no data`); process.exit(2); }
+const trades = runImpulseEmaRange(packed, { instrument: pair }).trades;
+console.error(`${pair}: ${trades.length} trades generated (v2 @ v1-matching defaults)`);
 
 const byHour = new Map();
 for (const t of trades) {

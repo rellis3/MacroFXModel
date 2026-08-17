@@ -7,7 +7,7 @@
  * takes the trade once the day is already STRETCHED relative to a typical
  * session — a momentum/trend-day read, the opposite condition.
  *
- * `rangeGateMode: 'exhausted'` (js/impulseEmaRangeV1Engine.js, backward-
+ * `rangeGateMode: 'exhausted'` (js/impulseEmaRangeV2Engine.js, backward-
  * compatible cfg, default unchanged — verified byte-identical to the
  * committed baseline before trusting this) requires usedFracOfMedian >=
  * rangeGateMinUsedFrac instead of <=. Sweeps the threshold.
@@ -15,7 +15,7 @@
  * Usage: node range_gate_flip.mjs <gold|nq> <outDir> [m1Dir]
  */
 import { loadM1ForPair } from '/home/user/MacroFXModel/js/volBacktestM1Engine.js';
-import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV1Engine.js';
+import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV2Engine.js';
 import { summarizeSplit } from '/home/user/MacroFXModel/js/honestForecastEngine.js';
 import { summarizeTrades } from '/home/user/MacroFXModel/js/metricsCore.js';
 import fs from 'fs';

@@ -5,10 +5,11 @@ gold / −2.49 NQ). Question: is a fixed 38.2–61.8% Fib retracement really the
 pullback-quality trigger, or would distance from the session's own VWAP
 explain the entries just as well (or better)? Same impulse leg, same EMA
 agreement, same range gate — only the "is this pullback good enough" check
-changes: `entryBandMode: 'vwap'` (new backward-compatible cfg on
-`js/impulseEmaRangeV1Engine.js`, default unchanged — verified byte-identical
-to the committed baseline before trusting this) requires
-`|close − sessionVWAP| ≤ vwapBandAtrMult × ATR` instead of the Fib fraction.
+changes: `entryBandMode: 'vwap'` (v1 stays pinned and untouched; this cfg
+lives on **`js/impulseEmaRangeV2Engine.js`**, a versioned fork, default
+unchanged — verified byte-identical to v1's committed baseline before
+trusting this) requires `|close − sessionVWAP| ≤ vwapBandAtrMult × ATR`
+instead of the Fib fraction.
 VWAP is session-anchored (resets at the day boundary, reusing
 `js/vumanchuCore.js`'s `computeVWAP`, not re-derived).
 

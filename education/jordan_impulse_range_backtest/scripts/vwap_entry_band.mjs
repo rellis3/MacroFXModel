@@ -8,7 +8,7 @@
  * Usage: node vwap_entry_band.mjs <gold|nq> <outDir> [m1Dir]
  */
 import { loadM1ForPair } from '/home/user/MacroFXModel/js/volBacktestM1Engine.js';
-import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV1Engine.js';
+import { runImpulseEmaRange } from '/home/user/MacroFXModel/js/impulseEmaRangeV2Engine.js';
 import { summarizeSplit } from '/home/user/MacroFXModel/js/honestForecastEngine.js';
 import { summarizeTrades } from '/home/user/MacroFXModel/js/metricsCore.js';
 import fs from 'fs';

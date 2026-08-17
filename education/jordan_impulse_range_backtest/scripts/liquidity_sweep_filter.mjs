@@ -6,12 +6,15 @@
  * whether it actually ran stops first. Does requiring a real sweep behind
  * the leg improve the (already-null) trade population?
  *
- * Post-hoc filter on the ALREADY-COMMITTED baseline trades.json (one
- * trade/day, maxTradesPerDay=1) — no new backtest run needed. Uses
- * legOriginTime (added to the engine's output this session) to find which
- * day the leg's origin bar falls in, and js/impulseEmaRangeV1Engine.js's own
- * (now-exported) buildDaily to get that day's prior-day H/L for comparison —
- * reusing the engine's exact day-bucketing, not a re-copy.
+ * Uses legOriginTime (a v2-only, purely-additive field — v1 stays pinned
+ * and untouched, see js/impulseEmaRangeV2Engine.js's header) to find which
+ * day the leg's origin bar falls in, and v2's own exported buildDaily to
+ * get that day's prior-day H/L for comparison — reusing the engine's exact
+ * day-bucketing, not a re-copy. Runs v2 at its v1-matching defaults (no new
+ * backtest behavior — verified byte-identical to v1's committed baseline
+ * before any of this session's follow-up numbers were trusted) to get the
+ * timestamped trade population directly, rather than reading v1's
+ * trades.json (which doesn't carry legOriginTime).
  *
  * up leg   (buy continuation)  -> "swept" if legOrigin < prior day's low
  * down leg (sell continuation) -> "swept" if legOrigin > prior day's high
@@ -19,7 +22,7 @@
  * Usage: node liquidity_sweep_filter.mjs <gold|nq> <outDir> [m1Dir]
  */
 import { loadM1ForPair } from '/home/user/MacroFXModel/js/volBacktestM1Engine.js';
-import { buildDaily } from '/home/user/MacroFXModel/js/impulseEmaRangeV1Engine.js';
+import { runImpulseEmaRange, buildDaily } from '/home/user/MacroFXModel/js/impulseEmaRangeV2Engine.js';
 import { summarizeTrades } from '/home/user/MacroFXModel/js/metricsCore.js';
 import { summarizeSplit } from '/home/user/MacroFXModel/js/honestForecastEngine.js';
 import fs from 'fs';
@@ -36,7 +39,7 @@ const daily = buildDaily(packed);
 const DAY = 86400;
 const dayIndexByKey = new Map(daily.map((d, i) => [d.time, i]));
 
-const trades = JSON.parse(fs.readFileSync(`${outDir}/${pair}.trades.json`, 'utf8'));
+const trades = runImpulseEmaRange(packed, { instrument: pair }).trades;
 console.error(`${pair}: ${trades.length} baseline trades loaded`);
 
 let missingPriorDay = 0;
