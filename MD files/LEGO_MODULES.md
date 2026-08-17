@@ -1797,6 +1797,33 @@ working; the chart canvas itself is blank in this sandbox only because the
 lightweight-charts CDN is policy-blocked here (same known limitation as
 above), not a defect in this feature.
 
+**Follow-up (2026-08-17, same day) — small dynamic stop, on the "if it's
+going to lose it loses fast" premise.** Also null, on both instruments. New
+script **`education/jordan_impulse_range_backtest/scripts/mae_dynamic_stop.mjs`**
+re-walks every baseline trade's real M1 path (same source/discipline as the
+existing `maeFromPath` MAE figures, never approximated from closes) two ways:
+(1) an adverse-excursion-by-bar-count profile split winners vs losers — losers
+do reach ≥0.75R adverse fast (~99% by bar 0-1, both instruments), but so do a
+third to over half of WINNERS at the same early bar, from the same mechanical
+cause (entries fill as a stop right as price is mid-retracement, so early
+adverse drift is common to both outcomes, not distinctive to losers); (2) a
+`fracEarly`×`kBars` grid re-simulating a tightened stop active only for the
+first `kBars` bars post-fill, reverting to the full structural stop after —
+bounded to the SAME UTC-day cutoff the baseline engine uses (one trade/day),
+after a first unbounded-horizon version was caught, mid-audit, silently
+carrying trades past midnight and re-labeling ~1-3% of EOD-marked "wins"
+that never actually touched TP; fixed and reverified with 0 outcome
+mismatches vs baseline across all 6,305 trades before trusting the grid.
+Result: Sharpe degrades monotonically as the early stop tightens, on both
+Gold (−6.09 mild → −8.58 aggressive vs −5.99 baseline) and NQ (one
+economically meaningless cell ~0.05 Sharpe better than baseline, everything
+past it worse) — losers "saved" always vastly outnumber winners cut short in
+raw count, but each cut-short winner gives up a full ~2R target for what a
+saved loser only avoids a fraction of a ~1R loss, net negative on Sharpe/PF
+every time it's checked. Third independent test of this engine family now
+null (baseline backtest, VuManChu confirmation gate, and this). Full method
+and both instruments' grids: `education/jordan_impulse_range_backtest/MAE_DYNAMIC_STOP.md`.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

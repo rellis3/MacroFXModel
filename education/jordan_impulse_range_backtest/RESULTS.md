@@ -169,6 +169,10 @@ continuation-on-pullback, fixed RR — is not, by itself, a source of edge on
   not fit** — consistent with the "start with the minimal-DOF version" rule,
   but also means a differently-pinned band/buffer wasn't tried.
 
+**Follow-up tested: a small dynamic stop, on the "if it's going to lose it
+loses fast" premise** — also null, on both instruments. See
+[MAE_DYNAMIC_STOP.md](MAE_DYNAMIC_STOP.md).
+
 ---
 
 ## Reproduce
