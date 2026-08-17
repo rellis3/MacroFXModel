@@ -14,12 +14,19 @@
 # package with no Linux wheel; every bot that imports it already guards
 # with try/except ImportError (paper-mode fallback), so it's deliberately
 # never installed on this Linux container.
+#
+# python-is-python3 matters: Debian's python3 package does NOT create a
+# bare `python` symlink. Every bot in start.sh (not just AnalogML) invokes
+# plain `python`, not `python3` -- without this package the build succeeds
+# but every single bot still fails with "python: command not found" at
+# runtime (caught via Railway's Deploy Logs after the first attempt at
+# this Dockerfile, which only installed python3/python3-pip).
 FROM node:22-bookworm
 
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip \
+    && apt-get install -y --no-install-recommends python3 python3-pip python-is-python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps in their own layer (root requirements.txt only -- see above).
