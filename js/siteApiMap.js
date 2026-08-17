@@ -261,6 +261,7 @@
         <a class="sm-item" href="discipline-map.html" target="_blank" style="opacity:.7"><span class="sm-item-name">🗺 Discipline Map</span><span class="sm-item-desc">Honest audit of the platform against Fundamentals/Technicals/Behavioral/Quantitative, with a live Reflexivity composite board</span></a>
         <a class="sm-item" href="level-chart-demo.html" target="_blank" style="opacity:.7"><span class="sm-item-name">🧱 Level Chart Demo</span><span class="sm-item-desc">Development demo for the levelChart Tier-2 brick (Lightweight-Charts renderer)</span></a>
         <a class="sm-item" href="trade-lab.html" target="_blank" style="opacity:.7"><span class="sm-item-name">🔬 Trade Lab</span><span class="sm-item-desc">Impulse/retracement visual research on Gold &amp; NQ — real candles (frozen archive + live OANDA/Yahoo proxy, Railway-only), Fib pulled-from/to readout, browse other real historical trades with the same shape against the archive-wide pattern</span></a>
+        <a class="sm-item" href="live-validation.html" target="_blank" style="opacity:.7"><span class="sm-item-name">🛰 Live Validation Harness</span><span class="sm-item-desc">Runs the impulse/EMA/range engine (baseline + 3 follow-up variants) against the archive gap-filled to NOW via real OANDA M1 (Railway-only), checks whether any signal lines up with Jordan's known trades</span></a>
       </div>
 
 
