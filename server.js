@@ -77,7 +77,6 @@ import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
 import { gprScore as _gprScore } from './js/gprEngine.js';
-import * as XLSX from 'xlsx';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
@@ -4419,14 +4418,25 @@ setInterval(() => {
 // week's update the same day it lands, just costs nothing on the 6 days it
 // doesn't change. today.html's Market Read line flags >~10 days since the
 // latest date as likely-stale (a missed weekly update), not a bug. Source is
-// a raw .xls download, not a JSON API, hence the xlsx dependency (pinned to
-// SheetJS's own CDN in package.json — the npm-registry copy has an
-// unpatched high-severity prototype-pollution advisory with no fix
-// available, and this parses a third-party file, so the CDN build is used
-// deliberately, not the registry one).
+// a raw .xls download, not a JSON API, hence the xlsx dependency — parsing
+// it needs the `xlsx` package's own patched CDN build (the npm-registry
+// copy has an unpatched high-severity prototype-pollution advisory), which
+// isn't reachable from every build environment. Rather than pin it in
+// package.json (a lockfile entry for a CDN tarball a build can't always
+// resolve breaks `npm ci` for the WHOLE app, not just this one widget —
+// exactly what took production down after this engine first landed), it's
+// an optional peer dependency: install it yourself (`npm install xlsx@https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz`)
+// in an environment that can reach the CDN if you want this feature live;
+// without it, GPR just reports "unavailable" and everything else runs fine.
 const _GPR_KV = 'gpr_v1';
 const GPR_DAILY_URL = 'https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls';
 async function _buildGprScore() {
+  let XLSX;
+  try {
+    XLSX = await import('xlsx');
+  } catch {
+    throw new Error('GPR: xlsx package not installed (optional dependency — see comment above _buildGprScore)');
+  }
   const r = await fetch(GPR_DAILY_URL, { signal: AbortSignal.timeout(20_000) });
   if (!r.ok) throw new Error(`GPR fetch failed (${r.status})`);
   const buf = Buffer.from(await r.arrayBuffer());
