@@ -84,6 +84,11 @@ export function findImpulseRetracements(bars, opts = {}) {
       legSize, legAtrMult: legSize / atrAtB,
       outcome, turnIdx: extremeIdx, turnPrice: extremeRetrace, retraceFrac,
       barsToTurn: extremeIdx - b.idx, emaAgreeAtTurn,
+      // Absolute timestamps (not just array indices) so one occurrence is
+      // self-contained — a caller can jump a chart to a DIFFERENT window and
+      // still know exactly when this leg's origin/extreme/turn were, without
+      // needing the original `bars` array that produced it.
+      aTime: bars[a.idx].time, bTime: bars[b.idx].time, turnTime: bars[extremeIdx].time,
       time: bars[b.idx].time,
     });
   }

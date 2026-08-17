@@ -70,6 +70,34 @@ themselves showed: the visible EMA cross in the NQ 1-minute chart happened
 *at* the sweep low, after price had already turned — a confirmation, not a
 leading signal.
 
+### Up vs down impulses — a real, small asymmetry
+
+Every number above pools both directions together. Split, there's a small
+but consistent, replicated difference:
+
+| | Gold UP | Gold DOWN | NQ UP | NQ DOWN |
+|---|--:|--:|--:|--:|
+| Continuation rate | 49.2% | 46.7% | 51.2% | 45.1% |
+| Median retrace depth | 0.616 | 0.641 | 0.594 | 0.639 |
+| k-means centroids | 0.369/0.619/0.871 | 0.390/0.633/0.877 | 0.334/0.603/0.873 | 0.384/0.639/0.893 |
+
+Up-impulses continue slightly more often and need a slightly shallower
+pullback than down-impulses, on both instruments. Small effect (2-6 points),
+but the direction of the asymmetry replicates — consistent with the
+"fear moves faster, greed grinds" folklore, though 2-6 points is not enough
+to build a directional filter around on its own.
+
+### Does volume/Money-Flow confirmation predict which impulses continue?
+
+Checked separately — see [`VUMANCHU_GATE.md`](VUMANCHU_GATE.md). Short
+version: a naive first pass looked like a huge finding (48% baseline →
+88.7% with confirmation) and turned out to be a hindsight-selection
+artifact, the same class of bug this repo's own `STAGE3_VUMANCHU_GATE.md`
+caught once before on a different geometry. Corrected properly, the
+baseline itself jumps to ~90% (surviving a few bars without resolving is
+informative on its own) and VuManChu confirmation adds close to nothing on
+top of that, inconsistently, on both instruments.
+
 ## Robustness — replicated at native M1 (no resampling artifact)
 
 | | Gold M1 | NQ M1 |
@@ -128,6 +156,8 @@ archive clusters right where 3 of his 4 trades did too.
 node education/jordan_trade_geometry/scripts/run_geometry.mjs gold "" education/jordan_trade_geometry/data
 node education/jordan_trade_geometry/scripts/run_geometry.mjs nq ./portfolioBacktest/cache education/jordan_trade_geometry/data
 node education/jordan_trade_geometry/scripts/run_geometry.mjs gold "" /tmp/geom_m1 1   # native-M1 robustness check
+node education/jordan_trade_geometry/scripts/run_vumanchu_gate.mjs gold "" education/jordan_trade_geometry/data   # see VUMANCHU_GATE.md
+node education/jordan_trade_geometry/scripts/run_vumanchu_gate.mjs nq ./portfolioBacktest/cache education/jordan_trade_geometry/data
 node js/legoBricks.test.mjs   # includes impulseRetracementGeometry's synthetic unit tests
 ```
 

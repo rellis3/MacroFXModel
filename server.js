@@ -110,7 +110,7 @@ import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
-import { loadTradeLabBars } from './js/tradeLabDataSource.js';
+import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
@@ -7072,6 +7072,57 @@ app.post('/api/trade-lab/geometry-window', express.json({ limit: '8kb' }), async
     res.json({ instrument: key, tf: tfMin, source, liveStatus, liveError, nBars: workBars.length, occurrences });
   } catch (err) {
     console.error('[trade-lab/geometry-window]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/trade-lab/similar-trades?instrument=gold|nq&dir=up|down[&refSize=3.4][&outcome=continued][&limit=24][&sort=recent|closest]
+//   Scans the FULL 10-year archive once (cached in memory per instrument —
+//   ~65k occurrences at M5, ~200ms to compute, see js/impulseRetracementGeometry.js)
+//   and returns the trades matching the CURRENT one's shape (same direction,
+//   closest impulse size) so the page can browse other real historical
+//   examples that look like it — not just the one window currently loaded.
+const _tradeLabArchiveOccCache = new Map();   // instrument -> Promise<Occurrence[]>
+async function _archiveOccurrences(instrument) {
+  if (!_tradeLabArchiveOccCache.has(instrument)) {
+    _tradeLabArchiveOccCache.set(instrument, (async () => {
+      const packed = await loadFullArchivePacked(instrument);
+      if (!packed || !packed.n) return [];
+      const bars = plResampleBars(packed, 5);   // M5 — matches education/jordan_trade_geometry's own analysis
+      return findImpulseRetracements(bars, {});
+    })());
+  }
+  return _tradeLabArchiveOccCache.get(instrument);
+}
+app.get('/api/trade-lab/similar-trades', async (req, res) => {
+  try {
+    const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+    if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const dir = req.query.dir === 'down' ? 'down' : req.query.dir === 'up' ? 'up' : null;
+    if (!dir) return res.status(400).json({ error: 'dir must be up|down' });
+    const outcome = ['continued', 'invalidated', 'timeout', 'any'].includes(req.query.outcome) ? req.query.outcome : 'continued';
+    const refSize = Number(req.query.refSize);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 24));
+    const sort = req.query.sort === 'recent' ? 'recent' : 'closest';
+
+    const all = await _archiveOccurrences(instrument);
+    let matches = all.filter(o => o.dir === dir && (outcome === 'any' || o.outcome === outcome));
+    if (sort === 'closest' && Number.isFinite(refSize)) {
+      matches = matches.slice().sort((a, b) => Math.abs(a.legAtrMult - refSize) - Math.abs(b.legAtrMult - refSize));
+    } else {
+      matches = matches.slice().sort((a, b) => b.time - a.time);   // most recent first
+    }
+    res.json({
+      instrument, dir, outcome, refSize: Number.isFinite(refSize) ? refSize : null, total: matches.length,
+      trades: matches.slice(0, limit).map(o => ({
+        aTime: o.aTime, bTime: o.bTime, turnTime: o.turnTime,
+        aPrice: o.aPrice, bPrice: o.bPrice, dir: o.dir,
+        legAtrMult: +o.legAtrMult.toFixed(3), retraceFrac: +o.retraceFrac.toFixed(4),
+        outcome: o.outcome, emaAgreeAtTurn: o.emaAgreeAtTurn,
+      })),
+    });
+  } catch (err) {
+    console.error('[trade-lab/similar-trades]', err.message);
     res.status(502).json({ error: err.message });
   }
 });

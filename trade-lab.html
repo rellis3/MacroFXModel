@@ -70,7 +70,7 @@
       <span><span class="swatch" style="background:var(--up)"></span>Take-profit side</span>
       <span><span class="swatch" style="background:#22d3ee"></span>EMA9</span>
       <span><span class="swatch" style="background:#c084fc"></span>EMA21</span>
-      <span><span class="swatch" style="background:var(--amber)"></span>Nearest detected impulse leg</span>
+      <span><span class="swatch" style="background:var(--amber)"></span>Impulse (origin→extreme) + 38.2/61.8/88.6% Fib</span>
     </div>
   </div>
   <div class="side">
@@ -87,6 +87,16 @@
         <label>Target<input type="number" id="tpInput" step="any"></label>
       </div>
       <div id="tradeStats"><span class="muted">load a trade to see stats</span></div>
+      <div id="impulseDetail" class="muted" style="margin-top:8px;"></div>
+    </div>
+    <div class="card">
+      <h2>Other real trades with the same shape</h2>
+      <div class="controls" style="justify-content:space-between;">
+        <button id="prevSimilar">← Prev</button>
+        <span id="similarCounter" class="muted">load a trade first</span>
+        <button id="nextSimilar">Next →</button>
+      </div>
+      <div id="similarDetail" class="muted"></div>
     </div>
     <div class="card">
       <h2>Archive-wide pattern (10.4y, real M1)</h2>
@@ -199,8 +209,9 @@ function statusBadge(source, liveStatus, liveError) {
   return html;
 }
 
-async function loadAndRender() {
-  const instrument = document.getElementById('instrument').value;
+async function loadAndRender(opts = {}) {
+  const { skipSimilarRefresh = false, explicitOcc = null, instrumentOverride = null } = opts;
+  const instrument = instrumentOverride ?? document.getElementById('instrument').value;
   const from = document.getElementById('fromInput').value, to = document.getElementById('toInput').value;
   const tf = document.getElementById('tfInput').value;
   const statusEl = document.getElementById('status');
@@ -216,7 +227,17 @@ async function loadAndRender() {
     if (j.bars.length) {
       drawEma(j.bars);
       drawTradeLines();
-      await drawImpulseAndUpdatePanel(instrument, from, to, tf, j.bars);
+      if (skipSimilarRefresh && explicitOcc) {
+        // Navigating the similar-trades list — highlight the EXACT occurrence
+        // requested and skip re-fetching/resetting the match list itself.
+        drawImpulseOnChart(explicitOcc, j.bars);
+        renderImpulseDetail(explicitOcc);
+        const entry = Number(document.getElementById('entryInput').value), sl = Number(document.getElementById('slInput').value), tp = Number(document.getElementById('tpInput').value);
+        updateTradeStats(entry, sl, tp, explicitOcc);
+        await drawDensity(instrument, explicitOcc);
+      } else {
+        await drawImpulseAndUpdatePanel(instrument, from, to, tf, j.bars);
+      }
     } else {
       // No stale numbers left on screen from a PREVIOUS successful load —
       // this window genuinely has no data, say so plainly instead of leaving
@@ -242,10 +263,14 @@ function drawEma(bars) {
 
 // Finds the detected impulse leg whose turning point is nearest the loaded
 // window's END (a proxy for "the trade's own moment" — entry time isn't
-// separately tracked from the from/to range), draws it as a diagonal 2-point
-// line + 3 retracement guide price lines, and feeds the per-trade stats panel
-// + the density-heatmap marker. Chart drawing is skipped if the chart lib
-// failed to load, but the stats panel still updates either way.
+// separately tracked from the from/to range). Draws it — the diagonal
+// impulse-origin→extreme line, the 3 Fib retracement levels, and an explicit
+// dates+prices readout — and feeds the per-trade stats panel, the similar-
+// trades list and the density-heatmap marker. Chart drawing is skipped if
+// the chart lib failed to load, but the stats/text panels still update.
+// (The "browse similar trades" navigator bypasses this entirely — it already
+// knows exactly which occurrence to highlight, see loadAndRender's
+// skipSimilarRefresh/explicitOcc path.)
 async function drawImpulseAndUpdatePanel(instrument, from, to, tf, bars) {
   let occurrences = [];
   try {
@@ -256,34 +281,63 @@ async function drawImpulseAndUpdatePanel(instrument, from, to, tf, bars) {
     const j = await r.json();
     occurrences = j.occurrences || [];
   } catch { /* geometry is best-effort context, never block the chart */ }
-
-  if (!occurrences.length) { document.getElementById('tradeStats').innerHTML = '<span class="muted">no impulsive legs (≥2×ATR) detected in this window</span>'; return; }
-
+  if (!occurrences.length) {
+    document.getElementById('tradeStats').innerHTML = '<span class="muted">no impulsive legs (≥2×ATR) detected in this window</span>';
+    document.getElementById('impulseDetail').innerHTML = '';
+    return;
+  }
   const targetSec = Math.floor(new Date(to + ':00Z').getTime() / 1000);
   let best = occurrences[0], bestD = Infinity;
   for (const o of occurrences) { const d = Math.abs(o.time - targetSec); if (d < bestD) { bestD = d; best = o; } }
 
-  if (view) {
-    const originBar = bars[best.aIdx] ?? { time: best.time, close: best.aPrice };
-    const extremeBar = bars[best.bIdx] ?? { time: best.time, close: best.bPrice };
-    impulseSeries = view.chart.addLineSeries({ color: '#facc15', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, lineStyle: 2 });
-    impulseSeries.setData([{ time: originBar.time, value: best.aPrice }, { time: extremeBar.time, value: best.bPrice }]);
-    view.series.setMarkers([
-      { time: originBar.time, position: best.dir === 'up' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: 'circle', text: 'origin' },
-      { time: extremeBar.time, position: best.dir === 'up' ? 'aboveBar' : 'belowBar', color: '#facc15', shape: 'circle', text: 'extreme' },
-    ]);
-    for (const l of retraceLines) { try { view.series.removePriceLine(l); } catch {} }
-    retraceLines = [];
-    const span = best.bPrice - best.aPrice;
-    for (const [frac, label] of [[0.382, '38.2%'], [0.618, '61.8%'], [0.886, '88.6%']]) {
-      const price = best.bPrice - frac * span;
-      retraceLines.push(view.series.createPriceLine({ price, color: '#78716c', lineWidth: 1, lineStyle: 1, title: label, axisLabelVisible: false }));
-    }
-  }
+  drawImpulseOnChart(best, bars);
+  renderImpulseDetail(best);
 
   const entry = Number(document.getElementById('entryInput').value), sl = Number(document.getElementById('slInput').value), tp = Number(document.getElementById('tpInput').value);
   updateTradeStats(entry, sl, tp, best);
   await drawDensity(instrument, best);
+  await loadSimilarTrades(instrument, best);
+}
+
+// Draws THE impulse that produced this trade: a bold diagonal line from its
+// exact origin price/time to its exact extreme price/time (the "pulled from
+// X to Y" the Fib tool is built on), start/end markers labelled with price,
+// and the 3 Fib retracement levels as axis-labelled price lines.
+function drawImpulseOnChart(occ, bars) {
+  if (!view || !occ) return;
+  if (impulseSeries) { try { view.chart.removeSeries(impulseSeries); } catch {} impulseSeries = null; }
+  impulseSeries = view.chart.addLineSeries({ color: '#facc15', lineWidth: 3, priceLineVisible: false, lastValueVisible: false, lineStyle: 0 });
+  impulseSeries.setData([{ time: occ.aTime, value: occ.aPrice }, { time: occ.bTime, value: occ.bPrice }]);
+  view.series.setMarkers([
+    { time: occ.aTime, position: occ.dir === 'up' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: 'circle', text: `IMPULSE START ${occ.aPrice.toFixed(2)}` },
+    { time: occ.bTime, position: occ.dir === 'up' ? 'aboveBar' : 'belowBar', color: '#facc15', shape: 'circle', text: `IMPULSE END ${occ.bPrice.toFixed(2)}` },
+    { time: occ.turnTime, position: occ.dir === 'up' ? 'belowBar' : 'aboveBar', color: '#e5e7eb', shape: 'arrowUp', text: 'entry zone' },
+  ]);
+  for (const l of retraceLines) { try { view.series.removePriceLine(l); } catch {} }
+  retraceLines = [];
+  const span = occ.bPrice - occ.aPrice;
+  for (const [frac, label] of [[0.382, '38.2%'], [0.618, '61.8%'], [0.886, '88.6%']]) {
+    const price = occ.bPrice - frac * span;
+    retraceLines.push(view.series.createPriceLine({ price, color: '#78716c', lineWidth: 1, lineStyle: 1, title: `Fib ${label}`, axisLabelVisible: true }));
+  }
+  if (bars?.length) view.fit();
+}
+
+// Explicit "pulled from X to Y" text — always renders, chart or no chart.
+function renderImpulseDetail(occ) {
+  const el = document.getElementById('impulseDetail');
+  if (!occ) { el.innerHTML = ''; return; }
+  const span = occ.bPrice - occ.aPrice;
+  const fibRows = [[0.382, '38.2%'], [0.618, '61.8%'], [0.886, '88.6%']]
+    .map(([frac, label]) => `<div class="row"><span>Fib ${label}</span><b>${(occ.bPrice - frac * span).toFixed(2)}</b></div>`).join('');
+  el.innerHTML = `
+    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Fib pulled ${occ.dir === 'up' ? 'low → high' : 'high → low'}</div>
+    <div class="row"><span>From (${fmtT(occ.aTime)})</span><b>${occ.aPrice.toFixed(2)}</b></div>
+    <div class="row"><span>To (${fmtT(occ.bTime)})</span><b>${occ.bPrice.toFixed(2)}</b></div>
+    <div class="row"><span>Impulse size</span><b>${Math.abs(span).toFixed(2)} (${occ.legAtrMult.toFixed(2)}× ATR)</b></div>
+    ${fibRows}
+    <div class="row"><span>Turn (${fmtT(occ.turnTime)})</span><b>${occ.turnPrice != null ? occ.turnPrice.toFixed(2) : '—'}</b></div>
+  `;
 }
 
 function updateTradeStats(entry, sl, tp, impulse) {
@@ -374,6 +428,71 @@ async function drawDensity(instrument, impulse) {
     ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
 }
+
+// ── Browse other real historical trades with the same shape ─────────────────
+// "Same shape" = same direction + closest impulse size (ATR multiple) to the
+// one just drawn, pulled from the full 10.4y archive (server-side cached —
+// see /api/trade-lab/similar-trades in server.js). Prev/Next jumps the chart
+// to a window around that occurrence and highlights THAT exact leg (passed
+// through explicitly, not re-detected) so it's always the right one.
+let similarList = [], similarIndex = -1;
+const PADDING_SEC = 8 * 3600;   // context either side of the leg when jumping to a match
+
+async function loadSimilarTrades(instrument, occ) {
+  const counterEl = document.getElementById('similarCounter'), detailEl = document.getElementById('similarDetail');
+  try {
+    const url = `/api/trade-lab/similar-trades?instrument=${instrument}&dir=${occ.dir}&refSize=${occ.legAtrMult}&limit=30&sort=closest`;
+    const r = await fetch(url);
+    const j = await r.json();
+    similarList = j.trades || [];
+    // Put the CURRENTLY shown leg first if it's already in the list (it
+    // usually is — the just-drawn occurrence came from the same detector),
+    // so Prev/Next starts from "here" rather than jumping on the first click.
+    const already = similarList.findIndex(o => o.bTime === occ.bTime && o.aTime === occ.aTime);
+    similarIndex = already >= 0 ? already : 0;
+    renderSimilarCounter();
+  } catch (err) {
+    counterEl.textContent = 'unavailable';
+    detailEl.innerHTML = `<span class="muted">${err.message}</span>`;
+  }
+}
+
+function renderSimilarCounter() {
+  const counterEl = document.getElementById('similarCounter'), detailEl = document.getElementById('similarDetail');
+  if (!similarList.length) { counterEl.textContent = 'no matches found'; detailEl.innerHTML = ''; return; }
+  counterEl.textContent = `match ${similarIndex + 1} of ${similarList.length} (by closest impulse size)`;
+  const o = similarList[similarIndex];
+  detailEl.innerHTML = `<div class="row"><span>${fmtT(o.aTime)} → ${fmtT(o.bTime)}</span><b>${o.legAtrMult.toFixed(2)}× ATR</b></div>
+    <div class="row"><span>Retrace depth</span><b>${(o.retraceFrac * 100).toFixed(1)}%</b></div>
+    <div class="row"><span>Outcome</span><b>${o.outcome}</b></div>`;
+}
+
+async function jumpToSimilar(delta) {
+  if (!similarList.length) return;
+  similarIndex = (similarIndex + delta + similarList.length) % similarList.length;
+  renderSimilarCounter();
+  const o = similarList[similarIndex];
+  const instrument = document.getElementById('instrument').value;
+  const fromSec = Math.min(o.aTime, o.bTime) - PADDING_SEC, toSec = Math.max(o.bTime, o.turnTime) + PADDING_SEC;
+  document.getElementById('fromInput').value = iso(new Date(fromSec * 1000));
+  document.getElementById('toInput').value = iso(new Date(toSec * 1000));
+  // Rebuild the full occurrence shape (legSize/retraceFrac/etc — the list
+  // endpoint returns a trimmed row) by re-deriving what drawImpulseOnChart
+  // and renderImpulseDetail need directly from the row itself.
+  const occ = {
+    aTime: o.aTime, bTime: o.bTime, turnTime: o.turnTime, aPrice: o.aPrice, bPrice: o.bPrice,
+    dir: o.dir, legAtrMult: o.legAtrMult, retraceFrac: o.retraceFrac, outcome: o.outcome,
+    // bPrice - frac*(bPrice-aPrice) is sign-agnostic (works for both up and
+    // down legs since (bPrice-aPrice) is itself signed) — this is an
+    // approximation from the trimmed list row; the exact turnPrice the
+    // detector found isn't in that row, only retraceFrac is.
+    turnPrice: o.bPrice - o.retraceFrac * (o.bPrice - o.aPrice),
+    emaAgreeAtTurn: o.emaAgreeAtTurn,
+  };
+  await loadAndRender({ skipSimilarRefresh: true, explicitOcc: occ, instrumentOverride: instrument });
+}
+document.getElementById('prevSimilar').addEventListener('click', () => jumpToSimilar(-1));
+document.getElementById('nextSimilar').addEventListener('click', () => jumpToSimilar(1));
 
 loadAndRender();
 window.__tradeLabReady = true;   // smoke-test hook
