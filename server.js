@@ -112,6 +112,7 @@ import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForP
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
+import { runImpulseEmaRange } from './js/impulseEmaRangeV1Engine.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -7128,6 +7129,63 @@ app.get('/api/trade-lab/similar-trades', async (req, res) => {
     });
   } catch (err) {
     console.error('[trade-lab/similar-trades]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/trade-lab/strategy-trades?instrument=gold|nq[&outcome=win|loss|all][&limit=20][&offset=0][&sort=recent|oldest]
+//   Every trade the MECHANISED continuation rule (js/impulseEmaRangeV1Engine.js
+//   — impulse detected, EMA agrees, retracement band entry, structural stop,
+//   fixed RR target) would have taken across the full 10-year archive. This is
+//   "assume the rule is correct, show me everywhere it would have fired" —
+//   the honest backtest already ran (education/jordan_impulse_range_backtest/
+//   RESULTS.md — net negative, Sharpe -5.99/-2.49) — this endpoint is the
+//   visual/browsing companion to that, not a claim the rule is profitable.
+//   Cached in memory per instrument (the engine takes a few seconds to run
+//   over 10 years of M1 — too slow to redo per request).
+const _tradeLabStrategyCache = new Map();   // instrument -> Promise<trades[]>
+async function _strategyTrades(instrument) {
+  if (!_tradeLabStrategyCache.has(instrument)) {
+    _tradeLabStrategyCache.set(instrument, (async () => {
+      const packed = await loadFullArchivePacked(instrument);
+      if (!packed || !packed.n) return [];
+      const { trades } = runImpulseEmaRange(packed, { instrument });
+      // entryFrac: where the entry sits between the leg's origin and extreme —
+      // the same retraceFrac measure used everywhere else on this page, plus a
+      // one-line "which Fib zone" description for the trade list.
+      return trades.map(t => {
+        const span = t.legExtreme - t.legOrigin;
+        const entryFrac = span !== 0 ? Math.abs(t.legExtreme - t.entry) / Math.abs(span) : null;
+        const pct = entryFrac != null ? Math.round(entryFrac * 100) : null;
+        const fibText = pct == null ? 'n/a'
+          : pct <= 45 ? `near the 38.2% retracement (${pct}%)`
+          : pct <= 70 ? `near the 61.8% golden-pocket retracement (${pct}%)`
+          : `deep, near the 88.6% retracement (${pct}%)`;
+        return { ...t, entryFrac: entryFrac != null ? +entryFrac.toFixed(4) : null, fibText };
+      });
+    })());
+  }
+  return _tradeLabStrategyCache.get(instrument);
+}
+app.get('/api/trade-lab/strategy-trades', async (req, res) => {
+  try {
+    const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+    if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const outcomeFilter = ['win', 'loss', 'all'].includes(req.query.outcome) ? req.query.outcome : 'all';
+    const sort = req.query.sort === 'oldest' ? 'oldest' : 'recent';
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 20));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+
+    const all = await _strategyTrades(instrument);
+    let filtered = outcomeFilter === 'all' ? all : all.filter(t => t.outcome === outcomeFilter);
+    filtered = sort === 'oldest' ? filtered : filtered.slice().reverse();
+    res.json({
+      instrument, outcomeFilter, sort, total: filtered.length,
+      winRate: all.length ? +(all.filter(t => t.outcome === 'win').length / all.length * 100).toFixed(1) : null,
+      trades: filtered.slice(offset, offset + limit),
+    });
+  } catch (err) {
+    console.error('[trade-lab/strategy-trades]', err.message);
     res.status(502).json({ error: err.message });
   }
 });
