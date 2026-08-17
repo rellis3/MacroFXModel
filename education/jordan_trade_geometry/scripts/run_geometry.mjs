@@ -83,6 +83,28 @@ for (const o of continued) {
   density[sx][fy]++;
 }
 
+// ── Direction split: are up-impulses and down-impulses the SAME pattern, or
+// does one retrace differently than the other? Every stat above was POOLED
+// across both directions — this answers it directly rather than assuming.
+function statsFor(subset) {
+  const xs = subset.map(o => o.retraceFrac);
+  if (!xs.length) return { n: 0, median: null, mean: null, kmeans3: null, regression: null };
+  const sorted = xs.slice().sort((a, b) => a - b);
+  const { centroids: c, counts: k } = kmeans1D(xs, 3);
+  const logX = subset.map(o => Math.log(o.legAtrMult));
+  return {
+    n: xs.length,
+    median: sorted[Math.floor(sorted.length / 2)],
+    mean: meanOf(xs),
+    kmeans3: { centroids: c, counts: k },
+    regression: olsWithR(logX, xs),
+  };
+}
+const byDirection = {
+  up: { ...statsFor(continued.filter(o => o.dir === 'up')), totalLegs: occ.filter(o => o.dir === 'up').length, continuedFrac: (() => { const d = occ.filter(o => o.dir === 'up'); return d.length ? d.filter(o => o.outcome === 'continued').length / d.length : null; })() },
+  down: { ...statsFor(continued.filter(o => o.dir === 'down')), totalLegs: occ.filter(o => o.dir === 'down').length, continuedFrac: (() => { const d = occ.filter(o => o.dir === 'down'); return d.length ? d.filter(o => o.outcome === 'continued').length / d.length : null; })() },
+};
+
 const summary = {
   pair, resampleMin: RESAMPLE_MIN,
   totalLegs: occ.length, byOutcome,
@@ -95,6 +117,7 @@ const summary = {
   },
   kmeans3: { centroids, counts },
   bySize,
+  byDirection,
   emaAgreeAtTurnFrac: emaAgreeFrac,
   meanRetraceWhenEmaAgrees: meanOf(agreeXs),
   meanRetraceWhenEmaDisagrees: meanOf(disagreeXs),
@@ -107,3 +130,5 @@ fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(`${outDir}/${pair}.geometry.json`, JSON.stringify(summary, null, 2));
 fs.writeFileSync(`${outDir}/${pair}.occurrences.json`, JSON.stringify(occ));
 process.stderr.write(`${pair}: DONE. legs=${occ.length} continued=${continued.length} median retrace=${summary.retraceFrac.median?.toFixed(3)} kmeans centroids=${centroids.map(c=>c.toFixed(3))} counts=${counts} regression r=${regression.r?.toFixed(3)} slope=${regression.slope?.toFixed(3)}\n`);
+process.stderr.write(`${pair}: UP   n=${byDirection.up.totalLegs} continuedFrac=${byDirection.up.continuedFrac?.toFixed(3)} median=${byDirection.up.median?.toFixed(3)} kmeans=${byDirection.up.kmeans3?.centroids.map(c=>c.toFixed(3))}\n`);
+process.stderr.write(`${pair}: DOWN n=${byDirection.down.totalLegs} continuedFrac=${byDirection.down.continuedFrac?.toFixed(3)} median=${byDirection.down.median?.toFixed(3)} kmeans=${byDirection.down.kmeans3?.centroids.map(c=>c.toFixed(3))}\n`);

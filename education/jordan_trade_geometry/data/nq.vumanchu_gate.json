@@ -1,0 +1,91 @@
+{
+  "pair": "nq",
+  "resampleMin": 5,
+  "lookbackBars": 80,
+  "confirmBars": 3,
+  "naive": {
+    "baseline": {
+      "n": 64810,
+      "continuedFrac": 0.4818
+    },
+    "byNSignals": [
+      {
+        "nSignals": 0,
+        "n": 48636,
+        "continuedFrac": 0.4281
+      },
+      {
+        "nSignals": 1,
+        "n": 13553,
+        "continuedFrac": 0.6019
+      },
+      {
+        "nSignals": 2,
+        "n": 2580,
+        "continuedFrac": 0.8574
+      },
+      {
+        "nSignals": 3,
+        "n": 41,
+        "continuedFrac": 0.878
+      }
+    ],
+    "byIndividualSignal": {
+      "hiddenDivergence": {
+        "n": 3241,
+        "continuedFrac": 0.4563
+      },
+      "moneyFlowFading": {
+        "n": 8228,
+        "continuedFrac": 0.5605
+      },
+      "vwapAgrees": {
+        "n": 7367,
+        "continuedFrac": 0.8958
+      }
+    }
+  },
+  "corrected": {
+    "baseline": {
+      "n": 25909,
+      "continuedFrac": 0.9155
+    },
+    "byNSignals": [
+      {
+        "nSignals": 0,
+        "n": 4885,
+        "continuedFrac": 0.8919
+      },
+      {
+        "nSignals": 1,
+        "n": 14262,
+        "continuedFrac": 0.9287
+      },
+      {
+        "nSignals": 2,
+        "n": 6673,
+        "continuedFrac": 0.905
+      },
+      {
+        "nSignals": 3,
+        "n": 89,
+        "continuedFrac": 0.8876
+      }
+    ],
+    "byIndividualSignal": {
+      "hiddenDivergence": {
+        "n": 803,
+        "continuedFrac": 0.9203
+      },
+      "moneyFlowFading": {
+        "n": 7141,
+        "continuedFrac": 0.8958
+      },
+      "vwapAgrees": {
+        "n": 19931,
+        "continuedFrac": 0.9244
+      }
+    }
+  },
+  "correctedDroppedForEarlyResolution": 38901
+}

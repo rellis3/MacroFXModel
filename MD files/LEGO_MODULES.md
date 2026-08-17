@@ -1745,6 +1745,29 @@ path (real numbers, verified against `education/jordan_trade_geometry`'s own
 output) — the live-fetch path is untestable from here by construction and
 needs a real check once deployed to Railway.
 
+**Follow-up (2026-08-17, same day) — direction split + the VuManChu volume/
+Money-Flow question, and a caught-in-time lookahead artifact.** Two asks in
+one: (1) had the geometry pooled up- and down-impulses together? Yes — split
+in `run_geometry.mjs`'s new `byDirection`, a small real, replicated asymmetry:
+up-impulses continue slightly more often (49-51% vs 45-47%) and retrace less
+deeply (median ~0.60-0.62 vs ~0.64) than down-impulses, on both instruments.
+(2) does volume/Money-Flow confirmation (reusing `js/vumanchuCore.js` +
+`js/divergenceCore.js` — the SAME bricks `poiReactionV1Engine`'s Stage-3 gate
+uses on a fade geometry, no new math) predict which impulses continue —
+new script `education/jordan_trade_geometry/scripts/run_vumanchu_gate.mjs`.
+**First pass looked like a huge finding (48% baseline → 88.7% with VWAP
+agreement) and was a hindsight-selection artifact**, the same class of bug
+`STAGE3_VUMANCHU_GATE.md` already caught once before, just subtler this time
+— not a same-candle leak (checked: only 1.8%), but scoring the indicator at
+the bar the detector picks by scanning FORWARD to find the retrospectively-
+final extreme, which a live trader could never identify at that exact bar.
+Fixed with a confirmation-delay design (score N bars after the retrospective
+extreme, drop occurrences already resolved within that window) — corrected
+result: baseline jumps to ~90% on its own (surviving a few bars unresolved is
+informative), and VuManChu confirmation adds close to nothing on top,
+inconsistently, on both instruments. Full diagnosis and both the naive and
+corrected numbers: `education/jordan_trade_geometry/VUMANCHU_GATE.md`.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,
