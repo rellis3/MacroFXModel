@@ -796,6 +796,36 @@ function mveChip(r) {
   const cls = v.signal === 'cheap' ? 'bull' : 'bear';
   return `<span class="chip ${cls}" title="Macro fair-value read (this pair's own rate-differential/real-yield drivers) — ${z != null ? `${Math.abs(z).toFixed(1)}σ ` : ''}${v.signal} vs its modeled fair value, confidence ${v.confidence != null ? Math.round(v.confidence * 100) + '%' : '—'}. This project's OWN backtest found this signal tested null-to-negative — shown as read-only context, not a lean.">◆ MVE ${v.signal}${z != null ? ` ${z > 0 ? '+' : ''}${z.toFixed(1)}σ` : ''}</span>`;
 }
+// ── Commodity driver chip (WTI crude → CAD only) ─────────────────────────────
+// Oil is CAD's most established commodity-currency link. AUD's traditional
+// driver is iron ore and NZD's is dairy (GDT auction prices) — neither is
+// anywhere in this repo's data, so those are deliberately left unbuilt rather
+// than forced onto a weak platinum/gold stand-in (see the gap-audit that
+// scoped this — a genuinely new data source, not a quick win). One boot-time
+// fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
+// oil is context here, not a tradeable card, so it doesn't need to tick live.
+let commodityDrivers = null;
+async function loadCommodityDrivers() {
+  try {
+    const [q, oh] = await Promise.all([
+      jget('/api/quote?symbol=WTICO_USD'),
+      jget('/api/ohlc?symbol=WTICO_USD'),
+    ]);
+    const prevClose = oh?.values?.at(-1)?.close;
+    if (q?.price != null && prevClose) {
+      commodityDrivers = { wti: { price: q.price, prevClose, pct: (q.price - prevClose) / prevClose * 100 } };
+    }
+  } catch (e) {}
+}
+function commodityChip(r) {
+  const wti = commodityDrivers?.wti;
+  if (!wti || !PAIR_CCY[r.name]?.includes('CAD')) return '';
+  const up = wti.pct > 0.15, dn = wti.pct < -0.15;
+  if (!up && !dn) return '';
+  const cls = up ? 'bull' : 'bear';
+  return `<span class="chip ${cls}" title="WTI crude ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% vs yesterday's close ($${wti.prevClose.toFixed(2)} → $${wti.price.toFixed(2)}). Oil is CAD's most established commodity driver — context, not a rule; this pair's own technicals/COT/macro/carry still lead.">🛢 WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% (CAD ${up ? 'tailwind' : 'headwind'})</span>`;
+}
+
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -861,6 +891,7 @@ async function loadGate() {
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
+  loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
@@ -2709,7 +2740,7 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}</div>
     ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
