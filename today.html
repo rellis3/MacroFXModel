@@ -448,6 +448,7 @@
 <div id="commandHub"></div>
 <script src="js/commandHub.js"></script>
 <script src="js/scratchpad.js"></script>
+<script src="js/siteApiMap.js"></script>
 
 <div class="hdr">
   <h1>☀️ Daily Trading Brief</h1>
@@ -456,6 +457,8 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <button class="hbtn" onclick="openSiteMap()" title="Site map — all pages with descriptions">🗺 Site Map</button>
+  <button class="hbtn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it">🔌 API Map</button>
   <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
   <a class="hbtn" href="index.html">Dashboard</a>
 </div>
@@ -2172,6 +2175,75 @@ async function pollPrices() {
     if (changed) { renderSummary(); render(); }
   } catch (e) {}
 }
+
+// ── Live price stream (SSE) — ALL instruments over ONE connection ───────────
+// Same /api/oanda_stream mechanism index.html/js/main.js already uses for its
+// single active pair — but today.html shows ~26 instruments at once, so this
+// opens ONE EventSource for the whole symbol list (OANDA's stream endpoint
+// natively takes a comma-separated instruments= param) rather than one stream
+// per pair, which would risk the same per-account connection-limit problem
+// js/main.js's background-stream code explicitly avoids. pollPrices() above
+// (30s REST poll) stays on as a fallback for when SSE can't connect (no
+// OANDA key locally, network hiccup, etc.) — it's cheap and harmless either way.
+let _todaySse = null;
+let _todaySseTimer = null;
+let _todaySseDelay = 3000;
+const TODAY_SSE_MAX_DELAY = 30_000;
+let _lastSseRender = 0;
+const TODAY_SSE_RENDER_MS = 3000;   // throttle full re-render, not every tick
+
+function startLivePriceStream() {
+  if (_todaySseTimer) { clearTimeout(_todaySseTimer); _todaySseTimer = null; }
+  if (_todaySse) { try { _todaySse.close(); } catch (e) {} _todaySse = null; }
+  const syms = [...new Set(Object.values(brief?.instruments ?? {}).map(d => d.sym).filter(Boolean))];
+  if (!syms.length) return;
+  _todaySseDelay = 3000;
+  _openTodaySse(syms);
+}
+
+function _openTodaySse(syms) {
+  try {
+    const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(syms.join(','))}`);
+    src.onmessage = evt => {
+      try {
+        const d = JSON.parse(evt.data);
+        if (d.price == null || !d.instrument) return;
+        _todaySseDelay = 3000;
+        if (!livePrices) livePrices = {};
+        livePrices[d.instrument] = { price: d.price };
+        let changed = false;
+        for (const inst of Object.values(brief?.instruments ?? {})) {
+          if (inst.sym !== d.instrument) continue;
+          if (inst.current_price !== d.price) { inst.current_price = d.price; changed = true; }
+        }
+        const now = Date.now();
+        if (changed && now - _lastSseRender >= TODAY_SSE_RENDER_MS) {
+          _lastSseRender = now;
+          renderSummary(); render();
+        }
+      } catch (e) {}
+    };
+    src.onerror = () => {
+      try { src.close(); } catch (e) {}
+      if (_todaySse !== src) return;
+      _todaySse = null;
+      _todaySseDelay = Math.min(_todaySseDelay * 2, TODAY_SSE_MAX_DELAY);
+      _todaySseTimer = setTimeout(() => { _todaySseTimer = null; _openTodaySse(syms); }, _todaySseDelay);
+    };
+    _todaySse = src;
+  } catch (e) {
+    _todaySseDelay = Math.min(_todaySseDelay * 2, TODAY_SSE_MAX_DELAY);
+    _todaySseTimer = setTimeout(() => { _todaySseTimer = null; _openTodaySse(syms); }, _todaySseDelay);
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (!_todaySse || _todaySse.readyState === EventSource.CLOSED)) {
+    _todaySseDelay = 3000;
+    if (_todaySseTimer) { clearTimeout(_todaySseTimer); _todaySseTimer = null; }
+    startLivePriceStream();
+  }
+});
 
 // nearest ladder level: { tag, pips } or null
 function nearestLevel(d) {
@@ -3990,11 +4062,11 @@ async function generateMorningBrief() {
 }
 
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
-loadAll().then(() => { pollPrices(); });
+loadAll().then(() => { pollPrices(); startLivePriceStream(); });
 loadGate();
 loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
-setInterval(pollPrices, 30_000);               // proximity watch, every 30s
+setInterval(pollPrices, 30_000);               // REST fallback, in case SSE can't connect
 setInterval(() => { renderGate(); renderNewsPlay(); }, 60_000);  // tick countdowns / released-event updates
 setInterval(async () => {           // live session + brief refresh (prices/regime move)
   try {
