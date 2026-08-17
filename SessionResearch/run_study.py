@@ -1,6 +1,6 @@
 """run_study — orchestrates sessions -> handoff -> intraday -> spike_fade ->
-dayflow -> forecast for one pair, pools every p-value produced into ONE
-Benjamini-Hochberg correction, and writes JSON + a text summary.
+dayflow -> forecast -> impulse for one pair, pools every p-value produced
+into ONE Benjamini-Hochberg correction, and writes JSON + a text summary.
 
 Usage (from repo root):
     python3 -m SessionResearch.run_study --pair gold
@@ -24,6 +24,7 @@ from forge.bars import load_m1
 from SessionResearch.dayflow import build_day_checkpoints, dayflow_cells
 from SessionResearch.forecast import run_forecast_study
 from SessionResearch.handoff import run_handoff_study
+from SessionResearch.impulse import build_impulse_events, run_impulse_study
 from SessionResearch.intraday import build_hourly_frame, day_of_week_summary, hour_of_day_cells
 from SessionResearch.sessions import build_session_table
 from SessionResearch.spike_fade import run_spike_fade_study
@@ -93,8 +94,14 @@ def run_study(pair: str, root: str = "VolRangeForecaster/data/m1", out_dir: str 
     forecast_cells = _forecast_to_cells(forecast_res)
     forecast_cells["source"] = "forecast"
 
-    all_cells = pd.concat([handoff_cells, intraday_cells, spike_cells, dayflow_c, forecast_cells],
-                          ignore_index=True, sort=False)
+    impulse_ev = build_impulse_events(m1, day_start_hour=day_start_hour)
+    # Circular-shift nulls here run over ~120k M5 pivots (not ~2.6k session-days), so this
+    # module's n_perm is capped separately — 500 already takes ~50s/horizon-kind at this n.
+    impulse_cells = run_impulse_study(impulse_ev, n_perm=min(n_perm, 500), seed=seed + 5)
+    impulse_cells["source"] = "impulse"
+
+    all_cells = pd.concat([handoff_cells, intraday_cells, spike_cells, dayflow_c, forecast_cells,
+                          impulse_cells], ignore_index=True, sort=False)
     all_cells["primary_p"] = all_cells.apply(_primary_p, axis=1)
     all_cells["bh_pass"] = bh_fdr(all_cells["primary_p"], q=q)
     all_cells["n_hypotheses_pooled"] = int(all_cells["primary_p"].notna().sum())
@@ -107,12 +114,14 @@ def run_study(pair: str, root: str = "VolRangeForecaster/data/m1", out_dir: str 
 
     _dump(tab, "session_table")
     _dump(cp, "day_checkpoints")
+    _dump(impulse_ev, "impulse_events")
     _dump(forecast_res, "forecast")
     _dump(all_cells[all_cells["source"] == "handoff"].drop(columns="source"), "handoff")
     _dump(all_cells[all_cells["source"] == "intraday"].drop(columns="source"), "intraday")
     _dump(all_cells[all_cells["source"] == "spike_fade"].drop(columns="source"), "spike_fade")
     _dump(all_cells[all_cells["source"] == "dayflow"].drop(columns="source"), "dayflow")
     _dump(all_cells[all_cells["source"] == "forecast"].drop(columns="source"), "forecast_cells")
+    _dump(all_cells[all_cells["source"] == "impulse"].drop(columns="source"), "impulse")
     _dump(dow, "day_of_week")
     _dump(all_cells, "all_cells")
 

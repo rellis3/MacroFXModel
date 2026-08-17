@@ -67,6 +67,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       <p><b>Hour-of-day range differences are enormous but not surprising.</b> The 12:00&#8211;15:00 UTC window (US data releases into the London/NY overlap) runs at up to ~1.9&#215; the average hour's range; the 21:00&#8211;04:00 UTC tail runs at ~0.6&#215;. This is well-known market structure, included here mainly as a sanity check that the pipeline recovers a known truth before trusting it on the less obvious questions above.</p>
       <p><b>By the time Asia ends, nearly half the day is already "spent."</b> Median 44.5% of the day's eventual range has printed by 07:00 UTC, 65% by 12:00 UTC — and a wide morning predicts a wide afternoon (range compounds through the day rather than reverting to a fixed daily budget), more strongly the later the checkpoint. The day's move-so-far, by contrast, barely predicts its close — direction not carrying over at the session level (above) holds at the whole-day level too.</p>
       <p><b>The walk-forward prediction model mostly confirms the null, and that's the honest, useful result.</b> A real Ridge/Logistic model, trained only on the past and tested year-by-year going forward, was built to predict the rest of the day from what's happened so far. For <i>range</i> it beats "ignore today entirely" by a small, inconsistent margin — but does not clearly beat the trivial one-variable version of the same idea, and a model trained on scrambled outcomes does about as well roughly a third to a half of the time. For <i>direction</i> there is no walk-forward skill anywhere, and at the London and Overlap checkpoints the trained model is <i>significantly worse</i> than just assuming today's move-so-far continues. This independently reproduces the handoff finding above via a completely different method — see "Can this predict the rest of the day?" below before building anything on it.</p>
+      <p><b>Impulsive swings do reverse more than grind swings — for scalping horizons, that edge is real but small, and it's not quite symmetric.</b> Generalizing the pre-open-spike pattern to ANY confirmed swing pivot at M5 (not just session opens): a fast, sharp push into a swing low or high produces a modestly higher win-rate bounce/fade than a slow grind to the same price (roughly +1&#8211;2 points of win-rate, surviving BH-FDR at most horizons — real, but don't mistake statistically-real for large). At the 5-minute horizon the two directions are close to identical (46.96% vs 46.93% win-rate, not distinguishable, p=0.96) — genuinely "not just one way." By 15&#8211;30 minutes a real asymmetry opens up: impulsive-low bounces pull ahead of impulsive-high fades (50.1% vs 48.3% at 30 min, p=0.0017) — plausibly gold's decade-long uptrend making dip-buys hold up slightly better than top-fades over this sample, not a universal law.</p>
     </div>
     <div class="caveat">Full-sample quantile thresholds (spike/tercile cuts) are fit on the whole 10-year window, which is standard for a descriptive/inferential study like this one but is <b>not</b> walk-forward-safe — a live rule built on these thresholds needs its cut points refit on training data only, exactly like <code>forge/discover.py</code> already does for level backtests. Nothing here has been checked against trading costs, spread, or slippage.</div>
   </div>
@@ -96,6 +97,22 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   <div class="grid2">
     <div class="card">
+      <h3>Impulsive vs. grind swings — win rate at 15 min</h3>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--s1)"></i>grind pivot (bottom quartile displacement)</span>
+        <span><i class="sw" style="background:var(--s2)"></i>impulsive pivot (top quartile displacement)</span>
+      </div>
+      <div id="impulse-chart"></div>
+      <div class="sub" style="margin-top:8px">"Win" = price moves &#8805;0.10&#215;ATR in the expected reversal direction (up after a low, down after a high) within the horizon.</div>
+    </div>
+    <div class="card">
+      <h3>Impulse-low vs. impulse-high win rate, by horizon — is it symmetric?</h3>
+      <div id="impulse-symmetry-chart"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
       <h3>Range handoff — Spearman &#961; (session range vs. next session's range)</h3>
       <div id="handoff-chart"></div>
     </div>
@@ -117,6 +134,9 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   <h2>Full day-flow results</h2>
   <div class="twrap"><table id="dayflow-table"></table></div>
+
+  <h2>Full impulse results</h2>
+  <div class="twrap"><table id="impulse-table"></table></div>
 
   <h2>Day of week (descriptive, not FDR-tested)</h2>
   <div class="twrap"><table id="dow-table"></table></div>
@@ -273,6 +293,69 @@ el('meta').textContent = `${DATA.meta.data_start.slice(0,10)} → ${DATA.meta.da
   });
 })();
 
+// ---- impulse vs. grind win rate, grouped by low/high, at 15 min ----
+(function(){
+  const rows = DATA.impulse.filter(r => r.metric === 'win_rate_impulse_vs_grind' && r.horizon_min === 15);
+  const order = ['low','high'];
+  rows.sort((a,b)=>order.indexOf(a.kind)-order.indexOf(b.kind));
+  const W = 420, H = 220, padL = 40, padB = 24, padT = 10;
+  const groupW = (W - padL) / rows.length;
+  const barW = groupW * 0.32, gap = groupW * 0.06;
+  const maxV = 0.6;
+  const y = v => H - padB - v*(H-padB-padT)/maxV;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">`;
+  svg += `<line class="axis-line" x1="${padL}" y1="${y(0.5)}" x2="${W}" y2="${y(0.5)}" stroke-width="1" stroke-dasharray="2,3"></line>`;
+  svg += `<text class="bar-label" x="${padL-6}" y="${y(0.5)+3}" text-anchor="end">.50</text>`;
+  svg += `<line class="axis-line" x1="${padL}" y1="${H-padB}" x2="${W}" y2="${H-padB}" stroke-width="1"></line>`;
+  rows.forEach((r,i) => {
+    const cx = padL + i*groupW + groupW/2;
+    const x1 = cx - gap/2 - barW, x2 = cx + gap/2;
+    const y1 = y(r.win_rate_grind), y2v = y(r.win_rate_impulse);
+    svg += `<rect data-i="${i}" data-k="0" x="${x1}" y="${y1}" width="${barW}" height="${H-padB-y1}" rx="3" fill="var(--s1)" style="cursor:pointer"></rect>`;
+    svg += `<rect data-i="${i}" data-k="1" x="${x2}" y="${y2v}" width="${barW}" height="${H-padB-y2v}" rx="3" fill="var(--s2)" style="cursor:pointer"></rect>`;
+    svg += `<text class="bar-label" x="${cx}" y="${H-padB+13}" text-anchor="middle">${r.kind}</text>`;
+  });
+  svg += `</svg>`;
+  el('impulse-chart').innerHTML = svg;
+  el('impulse-chart').querySelectorAll('rect[data-i]').forEach(rect => {
+    const r = rows[+rect.dataset.i]; const impulsive = rect.dataset.k === '1';
+    const v = impulsive ? r.win_rate_impulse : r.win_rate_grind;
+    rect.addEventListener('mousemove', e => showTip(e, `<b>${r.kind}, 15min</b><br>${impulsive?'impulsive':'grind'} win rate: ${fmt(v)}<br>n=${r.n} · p=${fmtP(r.p)}<br>${r.bh_pass ? '<span class="pass">survives BH-FDR</span>' : '<span class="fail">does not survive BH-FDR</span>'}`));
+    rect.addEventListener('mouseleave', hideTip);
+  });
+})();
+
+// ---- impulse-low vs. impulse-high win rate across horizons (symmetry) ----
+(function(){
+  const rows = DATA.impulse.filter(r => r.metric === 'low_vs_high_win_rate').sort((a,b)=>a.horizon_min-b.horizon_min);
+  const W = 420, H = 220, padL = 40, padB = 24, padT = 10;
+  const groupW = (W - padL) / rows.length;
+  const barW = groupW * 0.32, gap = groupW * 0.06;
+  const maxV = 0.6;
+  const y = v => H - padB - v*(H-padB-padT)/maxV;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">`;
+  svg += `<line class="axis-line" x1="${padL}" y1="${y(0.5)}" x2="${W}" y2="${y(0.5)}" stroke-width="1" stroke-dasharray="2,3"></line>`;
+  svg += `<text class="bar-label" x="${padL-6}" y="${y(0.5)+3}" text-anchor="end">.50</text>`;
+  svg += `<line class="axis-line" x1="${padL}" y1="${H-padB}" x2="${W}" y2="${H-padB}" stroke-width="1"></line>`;
+  rows.forEach((r,i) => {
+    const cx = padL + i*groupW + groupW/2;
+    const x1 = cx - gap/2 - barW, x2 = cx + gap/2;
+    const y1 = y(r.win_rate_low), y2v = y(r.win_rate_high);
+    const c1 = r.bh_pass ? 'var(--good)' : 'var(--s1)';
+    svg += `<rect data-i="${i}" data-k="0" x="${x1}" y="${y1}" width="${barW}" height="${H-padB-y1}" rx="3" fill="${c1}" style="cursor:pointer"></rect>`;
+    svg += `<rect data-i="${i}" data-k="1" x="${x2}" y="${y2v}" width="${barW}" height="${H-padB-y2v}" rx="3" fill="var(--s4)" style="cursor:pointer"></rect>`;
+    svg += `<text class="bar-label" x="${cx}" y="${H-padB+13}" text-anchor="middle">${r.horizon_min} min</text>`;
+  });
+  svg += `</svg>`;
+  el('impulse-symmetry-chart').innerHTML = svg;
+  el('impulse-symmetry-chart').querySelectorAll('rect[data-i]').forEach(rect => {
+    const r = rows[+rect.dataset.i]; const isLow = rect.dataset.k === '0';
+    const v = isLow ? r.win_rate_low : r.win_rate_high;
+    rect.addEventListener('mousemove', e => showTip(e, `<b>${r.horizon_min}min, ${isLow?'impulse-low bounce':'impulse-high fade'}</b><br>win rate: ${fmt(v)}<br>n=${r.n} · p=${fmtP(r.p)}<br>${r.bh_pass ? '<span class="pass">low vs. high difference survives BH-FDR</span>' : '<span class="fail">difference does not survive BH-FDR</span>'}`));
+    rect.addEventListener('mouseleave', hideTip);
+  });
+})();
+
 // ---- tables ----
 function buildTable(id, rows, cols) {
   const t = el(id);
@@ -292,6 +375,12 @@ buildTable('spike-table', DATA.spike_fade.sort((a,b)=> (a.primary_p??1)-(b.prima
 buildTable('dayflow-table', DATA.dayflow.sort((a,b)=> (a.primary_p??1)-(b.primary_p??1)), [
   ['checkpoint', r=>r.checkpoint], ['metric', r=>r.metric], ['n', r=>r.n], ['value', r=>fmt(r.value)],
   ['p_perm', r=>fmtP(r.p_perm)],
+  ['BH', r=>r.bh_pass?'<span class="pass">pass</span>':'<span class="fail">—</span>'],
+]);
+buildTable('impulse-table', DATA.impulse.sort((a,b)=> (a.primary_p??1)-(b.primary_p??1)), [
+  ['kind', r=>r.kind], ['horizon (min)', r=>r.horizon_min], ['metric', r=>r.metric],
+  ['session', r=>r.session??'—'], ['n', r=>r.n], ['value', r=>fmt(r.value)],
+  ['p', r=>fmtP(r.p)], ['p_perm', r=>fmtP(r.p_perm)],
   ['BH', r=>r.bh_pass?'<span class="pass">pass</span>':'<span class="fail">—</span>'],
 ]);
 buildTable('dow-table', DATA.day_of_week, [
@@ -322,6 +411,7 @@ def build_report(pair: str, out_dir: str = "SessionResearch/out") -> Path:
         "spike_fade": json.loads((base / "spike_fade.json").read_text()),
         "dayflow": json.loads((base / "dayflow.json").read_text()),
         "forecast_cells": json.loads((base / "forecast_cells.json").read_text()),
+        "impulse": json.loads((base / "impulse.json").read_text()),
         "day_of_week": json.loads((base / "day_of_week.json").read_text()),
     }
     html = TEMPLATE.replace("__PAIR_UPPER__", pair.upper()).replace(

@@ -4,8 +4,9 @@ Does the Asia / London / London-NY overlap / NY session cycle predict itself?
 A stats-first research engine over 10 years of M1 gold data, built to run
 unchanged over any of the other 25 pairs in `VolRangeForecaster/data/m1/`.
 
-This answers five related questions, at the level of full trading sessions,
-individual hours, and the day as it unfolds:
+This answers six related questions, at the level of full trading sessions,
+individual hours, the day as it unfolds, and — for `impulse.py` — individual
+swing points at a scalping timeframe:
 
 1. **Range handoff.** Does a wide (or quiet) session predict the next
    session's range?
@@ -25,14 +26,19 @@ individual hours, and the day as it unfolds:
    only on the past, tested year by year going forward — see "Can this
    predict the rest of the day?" below. Short version: mostly no, and that's
    reported as plainly as a "yes" would have been.
+6. **Impulse reversal, for scalping.** Does an impulsive (fast, sharp) push
+   into a swing low force a bounce, does an impulsive push into a swing high
+   force a fade — generalizing the pre-open-spike finding to any confirmed
+   swing pivot, not just session opens — and is it symmetric, or does one
+   direction work better than the other?
 
 Plus an hour-of-day breakdown (which UTC hours produce outsized moves) as a
 sanity check that the pipeline recovers known market structure before
 trusting it on the less obvious questions above.
 
-**Phase 1 (questions 1–4) is descriptive/inferential research; question 5 is
-a genuine walk-forward model, but neither phase is a signal generator.** No
-entries, exits, position sizing, or cost model — see "What this is not"
+**Phase 1 (questions 1–4, 6) is descriptive/inferential research; question 5
+is a genuine walk-forward model, but neither phase is a signal generator.**
+No entries, exits, position sizing, or cost model — see "What this is not"
 below.
 
 ## Run it
@@ -54,11 +60,17 @@ python3 -m SessionResearch.report_html --pair eurusd
 `run_study` writes to `SessionResearch/out/<pair>/`: `meta.json`,
 `handoff.json`, `intraday.json`, `spike_fade.json`, `dayflow.json`,
 `forecast.json` (full walk-forward detail), `forecast_cells.json` (the two
-FDR-pooled hypotheses per checkpoint/target), `day_of_week.json`,
-`all_cells.json` (the pooled table used for the FDR correction), and two
-large, regenerated-every-run, gitignored files: `session_table.json`
-(per-day-per-session raw table, ~5MB) and `day_checkpoints.json`
-(per-day-per-checkpoint raw table, ~4MB).
+FDR-pooled hypotheses per checkpoint/target), `impulse.json`,
+`day_of_week.json`, `all_cells.json` (the pooled table used for the FDR
+correction), and three large, regenerated-every-run, gitignored files:
+`session_table.json` (per-day-per-session raw table, ~5MB),
+`day_checkpoints.json` (per-day-per-checkpoint raw table, ~4MB), and
+`impulse_events.json` (per-swing-pivot raw table, ~26MB — M5 over 10 years
+produces on the order of 10⁵ pivots per side).
+
+Takes a few minutes end to end on gold (`impulse.py`'s circular-shift nulls
+run over ~120k pivots, not ~2.6k session-days, so they dominate the runtime —
+capped at `min(n_perm, 500)` inside `run_study.py` for that reason).
 
 ## Session definitions
 
@@ -167,6 +179,17 @@ shape of what came out of the first run:
   split on each boundary's own trailing daily-ATR median); at the overlap
   open it's concentrated in the high-vol half only (p_perm = 0.61 in the
   low-vol half) — a real, specific nuance, not a blanket claim.
+- **Impulsive swings reverse more than grind swings, by a real but small
+  margin, and the two directions aren't quite symmetric.** At M5, an
+  impulsive (top-quartile displacement) push into a swing low or high wins
+  ~1–2 points of win-rate more often than a grind pivot at the same price
+  (survives BH-FDR at 5/15/30 min for lows, at 5 min for highs). At the
+  5-minute horizon impulse-low and impulse-high win-rates are statistically
+  indistinguishable (46.96% vs. 46.93%, p = 0.96) — genuinely symmetric,
+  short-term. By 30 minutes a real asymmetry opens up (50.1% vs. 48.3%,
+  p = 0.0017): impulsive lows bounce more reliably than impulsive highs
+  fade, plausibly gold's decade-long uptrend, not a universal law. See
+  "Impulse reversal for scalping" below.
 
 ## Can this predict the rest of the day? (`forecast.py`)
 
@@ -212,6 +235,45 @@ walk-forward model with a real out-of-sample test, not just a same-sample
 correlation — which is exactly the kind of convergence that makes a null
 result trustworthy rather than just an artifact of one particular test.
 
+## Impulse reversal for scalping (`impulse.py`)
+
+Generalizes `spike_fade.py`'s finding beyond session opens: does ANY fast,
+sharp push into a swing low force a bounce; does a fast push into a swing
+high force a fade — at a timeframe a scalper would actually trade (M5, not
+whole sessions)?
+
+**Definitions**, kept close to machinery already validated elsewhere in this
+repo rather than invented fresh:
+
+- **Swing pivot** — `pylego.swing_structure.pivot_highs`/`pivot_lows` (the
+  same pivot detector `forge/levels.py`'s swing levels use), confirmed
+  `pivot_n=3` bars later (15 min either side on M5) — same causality rule as
+  `forge/levels.py`: "a pivot needs n bars on each side to be confirmed...
+  reading it at bar i is lookahead dressed up as market structure."
+- **Impulsive** — the 3 bars immediately into the pivot moved by the TOP
+  QUARTILE displacement (in prior-bar-ATR units) among all pivots of that
+  kind — a fast leg, not a slow grind to the same price. The BOTTOM quartile
+  ("grind" pivots) is the control group: same pivot definition, no fast leg.
+- **Reaction** — price change from the CONFIRMATION timestamp (not the pivot
+  bar itself) at 5/15/30-minute horizons, oriented so positive always means
+  "the expected reversal happened" (up after a low, down after a high) —
+  which is what makes a low-pivot row and a high-pivot row directly
+  comparable on the same win-rate scale.
+- **"Forces a buy/sell"** is a win-rate (reaction ≥ 0.10×ATR within the
+  horizon), not just a mean — a few large outliers can fake a positive mean
+  on a pattern that mostly does nothing.
+
+**Result**: real, but modest, and not quite symmetric. Impulsive pivots beat
+grind pivots on win-rate at every horizon for lows (survives BH-FDR at all
+three) and at 5 minutes for highs (does not clearly survive at 15/30 min) —
+the edge is on the order of 1–2 win-rate points, not a strong standalone
+signal. The displacement-size-vs-reaction-size relationship is real and
+continuous for lows (Spearman ρ ≈ 0.01, tiny but p_perm < 0.03 at every
+horizon) and absent for highs (p_perm 0.42–0.86) — another piece of the same
+asymmetry. Win-rate by session (`impulse.json`'s `win_rate_by_session` rows)
+is descriptive only — no session cell reaches the FDR bar on its own, sample
+sizes per session are 1,000–5,000.
+
 ## What this is not
 
 - Not a trading strategy. No entries, exits, stops, targets, position sizing,
@@ -233,6 +295,7 @@ result trustworthy rather than just an artifact of one particular test.
 | `spike_fade.py` | Pre-open spike detection + post-open reversal/retracement study, with a high-vs-low-vol-regime robustness check |
 | `dayflow.py` | Per-day checkpoints (`post_asia`/`post_london`/`post_overlap`): range-so-far vs. remaining range, fraction of the day's range already in |
 | `forecast.py` | The walk-forward prediction model (Ridge/Logistic + HistGBM check) vs. climatology/persistence baselines vs. a circular-shift null |
+| `impulse.py` | Impulsive-vs-grind swing pivot reversal study at M5 (scalping), with a low-vs-high symmetry test and a session breakdown |
 | `stats_util.py` | Shared BH-FDR + circular-shift-null machinery |
 | `run_study.py` | Orchestrates all of the above, pools p-values, writes JSON |
 | `report_html.py` | Renders the static dashboard from a study's JSON output |
