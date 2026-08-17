@@ -448,6 +448,7 @@
 <div id="commandHub"></div>
 <script src="js/commandHub.js"></script>
 <script src="js/scratchpad.js"></script>
+<script src="js/siteApiMap.js"></script>
 
 <div class="hdr">
   <h1>☀️ Daily Trading Brief</h1>
@@ -456,6 +457,8 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <button class="hbtn" onclick="openSiteMap()" title="Site map — all pages with descriptions">🗺 Site Map</button>
+  <button class="hbtn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it">🔌 API Map</button>
   <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
   <a class="hbtn" href="index.html">Dashboard</a>
 </div>
@@ -764,6 +767,7 @@ let weekly = null;       // /api/vol-forecast/weekly — week-to-date range cons
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
+let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
@@ -792,6 +796,36 @@ function mveChip(r) {
   const cls = v.signal === 'cheap' ? 'bull' : 'bear';
   return `<span class="chip ${cls}" title="Macro fair-value read (this pair's own rate-differential/real-yield drivers) — ${z != null ? `${Math.abs(z).toFixed(1)}σ ` : ''}${v.signal} vs its modeled fair value, confidence ${v.confidence != null ? Math.round(v.confidence * 100) + '%' : '—'}. This project's OWN backtest found this signal tested null-to-negative — shown as read-only context, not a lean.">◆ MVE ${v.signal}${z != null ? ` ${z > 0 ? '+' : ''}${z.toFixed(1)}σ` : ''}</span>`;
 }
+// ── Commodity driver chip (WTI crude → CAD only) ─────────────────────────────
+// Oil is CAD's most established commodity-currency link. AUD's traditional
+// driver is iron ore and NZD's is dairy (GDT auction prices) — neither is
+// anywhere in this repo's data, so those are deliberately left unbuilt rather
+// than forced onto a weak platinum/gold stand-in (see the gap-audit that
+// scoped this — a genuinely new data source, not a quick win). One boot-time
+// fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
+// oil is context here, not a tradeable card, so it doesn't need to tick live.
+let commodityDrivers = null;
+async function loadCommodityDrivers() {
+  try {
+    const [q, oh] = await Promise.all([
+      jget('/api/quote?symbol=WTICO_USD'),
+      jget('/api/ohlc?symbol=WTICO_USD'),
+    ]);
+    const prevClose = oh?.values?.at(-1)?.close;
+    if (q?.price != null && prevClose) {
+      commodityDrivers = { wti: { price: q.price, prevClose, pct: (q.price - prevClose) / prevClose * 100 } };
+    }
+  } catch (e) {}
+}
+function commodityChip(r) {
+  const wti = commodityDrivers?.wti;
+  if (!wti || !PAIR_CCY[r.name]?.includes('CAD')) return '';
+  const up = wti.pct > 0.15, dn = wti.pct < -0.15;
+  if (!up && !dn) return '';
+  const cls = up ? 'bull' : 'bear';
+  return `<span class="chip ${cls}" title="WTI crude ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% vs yesterday's close ($${wti.prevClose.toFixed(2)} → $${wti.price.toFixed(2)}). Oil is CAD's most established commodity driver — context, not a rule; this pair's own technicals/COT/macro/carry still lead.">🛢 WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% (CAD ${up ? 'tailwind' : 'headwind'})</span>`;
+}
+
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
 let tableMode = false;
@@ -856,6 +890,8 @@ async function loadGate() {
   if (cq?.ok) creditQuality = cq;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
+  jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
+  loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
@@ -1328,6 +1364,24 @@ function currencyStrength(rs) {
   return out;
 }
 
+// Growth-surprise strength per currency, from js/ismEngine.js's `activity`
+// score (already loaded via /api/ism at boot — see loadAll()). Shown paired
+// with the FX-strength bars above so you can see whether price already
+// reflects the growth data or is lagging it. USD's score is a real composite
+// (industrial production + regional Fed surveys); the other 7 currencies are
+// an OECD business-confidence proxy — NOT official PMI (ismEngine.js header).
+function growthSurpriseRows() {
+  if (!ism?.byCcy) return [];
+  const out = [];
+  for (const c of CCY_ORDER) {
+    const a = ism.byCcy[c]?.activity;
+    if (a == null) continue;
+    out.push({ ccy: c, score: a });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+
 // Equities breadth + risk-on/off verdict (spans the indices).
 function equitiesRisk(rs) {
   const idx = rs.filter(r => r.d.ac === 'index');
@@ -1341,6 +1395,14 @@ function equitiesRisk(rs) {
   const goldRow = rs.find(r => r.name === 'GOLD');
   const goldSig = goldRow ? pairSignalGold(goldRow) : null;
   const vix = fred?.vix?.value ?? null, hy = fred?.hy?.value ?? null;
+  const vix3m = fred?.vix3m?.value ?? null;   // VIX term structure — contango (calm) vs backwardated (near-term fear), already loaded via /api/fred
+  // Real 10Y TIPS yield (DFII10) — a genuine FRED read, not derived. Rising real
+  // yields are typically a headwind for risk assets/gold; falling is supportive.
+  // Breakeven (T10YIE) shown alongside as inflation-expectation context. Both
+  // already loaded via /api/fred, just not previously surfaced on this page.
+  const realYield = fred?.tips?.value != null
+    ? { level: fred.tips.value, prev: fred.tips.prev ?? null, bei: fred?.bei?.value ?? null }
+    : null;
   // Haven demand: JPY/CHF strong + gold bid; risk appetite: indices bid, vol low.
   const cs = currencyStrength(rs);
   const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
@@ -1348,6 +1410,24 @@ function equitiesRisk(rs) {
   const equity = idx.length ? (up - dn) / idx.length : 0;
   // Credit is a leading risk gate — widening/accelerating = stress ahead; tightening = all-clear.
   const cg = creditGate();
+  // Credit persistence (HMM) — is the current widening/tightening regime likely
+  // to continue, via js/creditHmm.js's creditRegime() — a principled
+  // self-transition-probability read, not a hand-drawn day-count. Built and
+  // tested but never wired to any live page (LEGO_MODULES.md flagged it
+  // "intended: today.html credit persistence term 🔲") — fredHist.hy is
+  // already loaded eagerly at boot (see getFredHist() in loadAll()).
+  if (cg && fredHist?.hy?.length >= 20 && window.creditHmmBrick) {
+    try {
+      const diffs = [];
+      for (let i = 1; i < fredHist.hy.length; i++) diffs.push(fredHist.hy[i].value - fredHist.hy[i - 1].value);
+      const reg = window.creditHmmBrick.creditRegime(diffs);
+      if (reg) {
+        cg.persistProb = Math.round(reg.persistence * 100);
+        cg.persistState = reg.curState;   // 'calm' | 'stress'
+        cg.expectedRemaining = Math.round(reg.expectedRemaining);
+      }
+    } catch (e) {}
+  }
   const creditStress = cg ? (cg.gate === 'RISK-OFF' ? 1 : cg.gate === 'CAUTION' ? 0.5 : 0) : 0;
   const creditEase   = cg && cg.gate === 'RISK-ON' ? 1 : 0;
   let tone, cls;
@@ -1368,7 +1448,7 @@ function equitiesRisk(rs) {
   // server.js's own note on why it doesn't reuse the heavy /api/credit-stress
   // backtest endpoint). Also just reported, not folded into tone/cls.
   const creditQ = creditQuality?.quality != null ? { z: creditQuality.quality, date: creditQuality.latestDate } : null;
-  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven, credit: cg, liquidity, creditQ };
+  return { chips, up, dn, tone, cls, goldSig, vix, vix3m, hy, equity, haven, credit: cg, liquidity, creditQ, realYield };
 }
 function pairSignalGold(r) {
   const g = r.d.regime;
@@ -1452,6 +1532,21 @@ function renderMarketRead() {
       <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)}</span></div>`;
   }).join('');
 
+  // ── Growth-surprise bars (paired under FX strength — same bar language) ──
+  const gs = growthSurpriseRows();
+  const gsMaxAbs = gs.length ? Math.max(0.25, ...gs.map(c => Math.abs(c.score))) : 1;
+  const gsBarsHtml = gs.map((c, i) => {
+    const pct = Math.min(50, 50 * Math.abs(c.score) / gsMaxAbs);
+    const cls = i === 0 ? 'top' : i === gs.length - 1 ? 'bot' : '';
+    const bar = c.score >= 0
+      ? `<div class="barp" style="width:${pct}%"></div>`
+      : `<div class="barn" style="width:${pct}%"></div>`;
+    return `<div class="csrow ${cls}" title="${c.ccy} growth-surprise ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} — ${c.ccy === 'USD' ? 'industrial production + regional Fed surveys' : 'OECD business-confidence proxy, NOT official PMI'}">
+      <span class="ccy">${c.ccy}</span>
+      <span class="track"><span class="mid"></span>${bar}</span>
+      <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)}</span></div>`;
+  }).join('');
+
   // ── Equities & risk strip ──
   const eqChips = risk.chips.map(c =>
     `<span class="eqchip ${c.dir === 'up' ? 'up' : c.dir === 'down' ? 'dn' : 'flat'}">${c.name} ${c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '·'}</span>`).join('');
@@ -1471,15 +1566,17 @@ function renderMarketRead() {
       <div>
         <div class="mread-h">Who's being bought (top) vs sold (bottom)</div>
         ${barsHtml}
+        ${gs.length ? `<div class="mread-h" style="margin-top:10px">Growth surprise by currency <span class="muted" style="font-weight:400">(not official PMI)</span></div>${gsBarsHtml}` : ''}
       </div>
       <div>
         <div class="mread-h">Stocks &amp; the market mood</div>
         <div class="eqgrid">${eqChips}${goldChip}</div>
         <div class="riskverdict">Mood: <b class="tone ${risk.cls}" style="font-weight:800">${riskPlain(risk.cls)}</b>
-          ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}</span>` : ''}</div>
-        ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
+          ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}${risk.vix3m != null ? ` · 3m ${fmtN(risk.vix3m, 1)} (${risk.vix > risk.vix3m ? 'backwardated — near-term fear' : 'contango — normal'})` : ''}</span>` : ''}</div>
+        ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive. Persistence % (when shown) is a 2-state HMM's self-transition probability on daily HY-OAS changes — the odds the current regime continues, not a prediction of direction.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''}${risk.credit.persistProb != null ? ` · ${risk.credit.persistProb}% likely to persist` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
         ${risk.liquidity ? `<div class="riskverdict" style="margin-top:3px" title="Fed (WALCL−TGA−RRP) nets directly (all USD); ECB/BoJ balance sheets are scored independently in their own currency and combined by sign agreement, never summed cross-currency. ${risk.liquidity.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ')}. Context, not a backtested rule — see how many of the 3 central banks agree, not just the composite number.">Liquidity: <b class="tone ${risk.liquidity.direction === 'LONG' ? 'on' : risk.liquidity.direction === 'SHORT' ? 'off' : 'mix'}" style="font-weight:800">${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'}</b><span class="muted"> · ${risk.liquidity.agree}/${risk.liquidity.total} central banks agree${risk.liquidity.vixNote && risk.liquidity.vixNote.read !== 'flat' ? ` · ${risk.liquidity.vixNote.read === 'diverging' ? 'diverging from VIX — worth watching' : 'confirmed by VIX'}` : ''}</span></div>` : ''}
         ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
+        ${risk.realYield ? `<div class="riskverdict" style="margin-top:3px" title="10Y TIPS yield (DFII10) — the market's own real, inflation-adjusted rate; a direct FRED read, not derived. Rising real yields are typically a headwind for risk assets/gold; falling is supportive. Breakeven inflation (10Y, T10YIE) shown alongside as inflation-expectation context. Context, not a backtested rule.">Real yield (10Y TIPS): <b class="tone ${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'off' : risk.realYield.level < risk.realYield.prev ? 'on' : 'mix') : 'mix'}" style="font-weight:800">${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'rising' : risk.realYield.level < risk.realYield.prev ? 'falling' : 'flat') : 'steady'}</b><span class="muted"> · ${fmtN(risk.realYield.level, 2)}%${risk.realYield.bei != null ? ` · breakeven ${fmtN(risk.realYield.bei, 2)}%` : ''}</span></div>` : ''}
       </div>
     </div>
     <div class="mread-watch">
@@ -2173,6 +2270,75 @@ async function pollPrices() {
   } catch (e) {}
 }
 
+// ── Live price stream (SSE) — ALL instruments over ONE connection ───────────
+// Same /api/oanda_stream mechanism index.html/js/main.js already uses for its
+// single active pair — but today.html shows ~26 instruments at once, so this
+// opens ONE EventSource for the whole symbol list (OANDA's stream endpoint
+// natively takes a comma-separated instruments= param) rather than one stream
+// per pair, which would risk the same per-account connection-limit problem
+// js/main.js's background-stream code explicitly avoids. pollPrices() above
+// (30s REST poll) stays on as a fallback for when SSE can't connect (no
+// OANDA key locally, network hiccup, etc.) — it's cheap and harmless either way.
+let _todaySse = null;
+let _todaySseTimer = null;
+let _todaySseDelay = 3000;
+const TODAY_SSE_MAX_DELAY = 30_000;
+let _lastSseRender = 0;
+const TODAY_SSE_RENDER_MS = 3000;   // throttle full re-render, not every tick
+
+function startLivePriceStream() {
+  if (_todaySseTimer) { clearTimeout(_todaySseTimer); _todaySseTimer = null; }
+  if (_todaySse) { try { _todaySse.close(); } catch (e) {} _todaySse = null; }
+  const syms = [...new Set(Object.values(brief?.instruments ?? {}).map(d => d.sym).filter(Boolean))];
+  if (!syms.length) return;
+  _todaySseDelay = 3000;
+  _openTodaySse(syms);
+}
+
+function _openTodaySse(syms) {
+  try {
+    const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(syms.join(','))}`);
+    src.onmessage = evt => {
+      try {
+        const d = JSON.parse(evt.data);
+        if (d.price == null || !d.instrument) return;
+        _todaySseDelay = 3000;
+        if (!livePrices) livePrices = {};
+        livePrices[d.instrument] = { price: d.price };
+        let changed = false;
+        for (const inst of Object.values(brief?.instruments ?? {})) {
+          if (inst.sym !== d.instrument) continue;
+          if (inst.current_price !== d.price) { inst.current_price = d.price; changed = true; }
+        }
+        const now = Date.now();
+        if (changed && now - _lastSseRender >= TODAY_SSE_RENDER_MS) {
+          _lastSseRender = now;
+          renderSummary(); render();
+        }
+      } catch (e) {}
+    };
+    src.onerror = () => {
+      try { src.close(); } catch (e) {}
+      if (_todaySse !== src) return;
+      _todaySse = null;
+      _todaySseDelay = Math.min(_todaySseDelay * 2, TODAY_SSE_MAX_DELAY);
+      _todaySseTimer = setTimeout(() => { _todaySseTimer = null; _openTodaySse(syms); }, _todaySseDelay);
+    };
+    _todaySse = src;
+  } catch (e) {
+    _todaySseDelay = Math.min(_todaySseDelay * 2, TODAY_SSE_MAX_DELAY);
+    _todaySseTimer = setTimeout(() => { _todaySseTimer = null; _openTodaySse(syms); }, _todaySseDelay);
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (!_todaySse || _todaySse.readyState === EventSource.CLOSED)) {
+    _todaySseDelay = 3000;
+    if (_todaySseTimer) { clearTimeout(_todaySseTimer); _todaySseTimer = null; }
+    startLivePriceStream();
+  }
+});
+
 // nearest ladder level: { tag, pips } or null
 function nearestLevel(d) {
   const px = d.current_price;
@@ -2574,7 +2740,7 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}</div>
     ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
@@ -3683,6 +3849,45 @@ function assembleSnapshot(r) {
     s.pairComposite = { score: comp.score, direction: comp.direction, agree: comp.agree, total: comp.total,
       legs: comp.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
   }
+  // Board-wide gates (Liquidity, Credit — HY level + quality spread) — same
+  // reads the Market Read risk verdict already shows, previously never
+  // reached the AI prompt despite being visible on the page for every pair.
+  const lg = liquidityGateRead();
+  if (lg?.score != null) {
+    s.liquidityGate = { score: lg.score, direction: lg.direction, agree: lg.agree, total: lg.total,
+      legs: lg.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
+  }
+  const boardCredit = creditGate();
+  if (boardCredit) s.creditGateBoard = { gate: boardCredit.gate, widening: boardCredit.widening, hyBps: boardCredit.hyBps, d5: boardCredit.d5 };
+  if (creditQuality?.quality != null) s.creditQualitySpread = { z: creditQuality.quality, date: creditQuality.latestDate };
+  // Structural motif (AnalogML) — research, NOT a validated signal (the
+  // retired k-NN "lean" version banked null; this replacement diagnostic
+  // reports a pattern + its historical base rate, not a directional call).
+  const motif = analogml?.[r.name.toLowerCase()];
+  if (motif) {
+    s.analogMotif = { kind: motif.kind, nTouches: motif.n_touches, provisional: motif.provisional,
+      distToLevelPips: motif.dist_to_level_pips, playedOutRate: motif.confidence?.played_out_rate ?? null,
+      nSamples: motif.confidence?.n_samples ?? null, profitFactor: motif.confidence?.profit_factor ?? null };
+  }
+  // COT positioning correlation — do this pair's OWN legs' speculative
+  // positioning move with/against other currencies (a different relationship
+  // than price correlation, and different from the pair's own crowding level
+  // above). USD has no CFTC contract, so USD-anchored pairs surface only
+  // their non-USD leg.
+  const ccLegs = (PAIR_CCY[r.name] || []).filter(c => c !== 'USD');
+  const cotCorrRaw = hedgeAlerts?.last_cot_corr ?? {};
+  const cotCorr = [];
+  for (const leg of ccLegs) {
+    for (const [k, v] of Object.entries(cotCorrRaw)) {
+      const [a, b] = k.split('_');
+      const other = a === leg ? b : (b === leg ? a : null);
+      if (other != null && Math.abs(v) >= 0.3) cotCorr.push({ leg, other, v, dir: v >= 0 ? 'with' : 'against' });
+    }
+  }
+  if (cotCorr.length) {
+    cotCorr.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+    s.cotCorrelation = cotCorr.slice(0, 4);
+  }
   // Event risk for THIS pair — the calendar filtered to its own economies
   const evs = pairEvents(r.name).filter(e => e.ms >= Date.now() - 20 * 60000);
   if (evs.length) {
@@ -3951,11 +4156,11 @@ async function generateMorningBrief() {
 }
 
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
-loadAll().then(() => { pollPrices(); });
+loadAll().then(() => { pollPrices(); startLivePriceStream(); });
 loadGate();
 loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
-setInterval(pollPrices, 30_000);               // proximity watch, every 30s
+setInterval(pollPrices, 30_000);               // REST fallback, in case SSE can't connect
 setInterval(() => { renderGate(); renderNewsPlay(); }, 60_000);  // tick countdowns / released-event updates
 setInterval(async () => {           // live session + brief refresh (prices/regime move)
   try {
@@ -3992,6 +4197,17 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as LiquidityGate from './js/liquidityGateEngine.js';
   window.liquidityGateBrick = LiquidityGate;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the credit-persistence brick (js/creditHmm.js) — a
+     principled self-transition-probability read for "is the current credit
+     widening/tightening regime likely to continue", instead of a hand-drawn
+     day-count. Built and tested but never wired to any live page before
+     (LEGO_MODULES.md flagged it "intended: today.html credit persistence
+     term 🔲"). -->
+<script type="module">
+  import * as CreditHmm from './js/creditHmm.js';
+  window.creditHmmBrick = CreditHmm;
   try { window.render?.(); } catch (e) {}
 </script>
 </body>

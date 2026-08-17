@@ -35,6 +35,8 @@
  *   Correction factors reset to 1.0 (previous corrections calibrated for GARCH/RS-EWMA)
  */
 
+import { COG_CONST } from './cogReverseEngineer.js';
+
 const TRADING_DAYS = 252;
 const EWMA_LAMBDA  = 0.94;
 
@@ -340,8 +342,16 @@ export function _driftD(ohlc, sigmaFwd, win = 14) {
 }
 
 // ── Shared output builder ─────────────────────────────────────────────────────
+// Band constants: COG (js/cogBands.js's COG_CONST), uniform across asset classes —
+// standardized 2026-08-17, replacing the prior per-asset-corrected Feller/BM set,
+// so the daily-brief ladder a trader reads on today.html matches the wider COG
+// geometry the volatility bot already trades on (see CLAUDE.md "Band lines: COG
+// is the default"). assetClass still selects the σ ESTIMATOR (YZ/GARCH) above —
+// only the range-CONSTANT step changes here. `p`/ASSET_PARAMS' hl_*_corr/oc_*_corr
+// fields are now unused by this function (COG applies no per-asset correction);
+// they remain live for the assetClass σ-estimator branch in computeForecast() and
+// for the v2 drift-adjusted fields below, which are untouched by this migration.
 export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
-  const p           = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
 
@@ -377,8 +387,11 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
   // O-H and O-L have the same distribution as O-C by the BM reflection principle:
   // max(B_t, t∈[0,T]) ~ |B_T|, so median/75th are identical to the O-C values.
   // They are kept as explicit named fields for API clarity.
-  const oc_med = HN_P50 * p.oc_50_corr * sigmaFwdPct;
-  const oc_75v = HN_P75 * p.oc_75_corr * sigmaFwdPct;
+  // COG's constants are uniform (no per-asset-class correction — see cogBands.js).
+  const hl_med = COG_CONST.BM_P50 * sigmaFwdPct;
+  const hl_75v = COG_CONST.BM_P75 * sigmaFwdPct;
+  const oc_med = COG_CONST.HN_P50 * sigmaFwdPct;
+  const oc_75v = COG_CONST.HN_P75 * sigmaFwdPct;
 
   return {
     vol_annual: r2(volAnnual),
@@ -388,12 +401,12 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
     cone_63d,
     vol_vov,
     vol_vov_label,
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
-    hl_5d:      r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt5),
-    hl_5d_75:   r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * sqrt5),
-    hl_20d:     r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt20),
-    hl_20d_75:  r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * sqrt20),
+    hl_median:  r2(hl_med),
+    hl_75:      r2(hl_75v),
+    hl_5d:      r2(hl_med * sqrt5),
+    hl_5d_75:   r2(hl_75v * sqrt5),
+    hl_20d:     r2(hl_med * sqrt20),
+    hl_20d_75:  r2(hl_75v * sqrt20),
     oc_median:  r2(oc_med),
     oc_75:      r2(oc_75v),
     oc_5d:      r2(oc_med * sqrt5),

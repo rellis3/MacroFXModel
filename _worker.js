@@ -633,7 +633,7 @@ export default {
                     const bid = parseFloat(tick.bids[0].price);
                     const ask = parseFloat(tick.asks[0].price);
                     const mid = (bid + ask) / 2;
-                    const payload = JSON.stringify({ price: mid, bid, ask, time: tick.time });
+                    const payload = JSON.stringify({ price: mid, bid, ask, time: tick.time, instrument: tick.instrument });
                     await writer.write(encoder.encode('data: ' + payload + '\n\n'));
                   } else if (tick.type === 'HEARTBEAT') {
                     await writer.write(encoder.encode(': heartbeat\n\n'));
