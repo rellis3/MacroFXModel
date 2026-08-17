@@ -1723,6 +1723,28 @@ leading trigger. Full result, the 4-known-trade comparison, and the honest
 caveats: `education/jordan_trade_geometry/RESULTS.md`. Unit-tested
 (`js/legoBricks.test.mjs`) against a hand-built synthetic 61.8%-retrace case.
 
+**Follow-up (2026-08-17, same day) — Trade Lab visual page, Railway-deployable.**
+The owner asked for a real chart, not just numbers: `trade-lab.html` (self-contained,
+lightweight-charts, same style as `level-chart-demo.html`) + new server routes
+`GET /api/trade-lab/candles`, `GET /api/trade-lab/geometry`,
+`POST /api/trade-lab/geometry-window`. New brick **`js/tradeLabDataSource.js`**
+(`loadTradeLabBars`) stitches the frozen R2 archive with a LIVE OANDA→Yahoo
+fallback for any window past the archive's last sync (`loadM1ForPair` checks
+R2 before local disk on every call with no caching, so this brick also adds
+its own per-process in-memory archive cache — found the hard way: an
+uncached repeat request took 46s, re-downloading the whole 90MB/65MB archive
+every time). Both OANDA and Yahoo are 403 in this sandbox (confirmed by
+direct test) — the page degrades gracefully and REPORTS the failure
+(`liveStatus`/`liveError`, a visible badge), never silently shows nothing;
+same for the chart-lib CDN itself, which is also policy-blocked here (fixed
+a real bug found by this: `createLevelChart` throws synchronously, which
+silently killed the ENTIRE page script before the fix — now every `view.*`
+call is null-guarded so data/stats/the density plot still work chart-lib-down).
+Tested end-to-end via Playwright against the local server on the cache-only
+path (real numbers, verified against `education/jordan_trade_geometry`'s own
+output) — the live-fetch path is untestable from here by construction and
+needs a real check once deployed to Railway.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

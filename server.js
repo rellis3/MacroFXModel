@@ -108,6 +108,8 @@ import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
+import { loadTradeLabBars } from './js/tradeLabDataSource.js';
+import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -6911,6 +6913,86 @@ app.get('/api/vumanchu/chart', async (req, res) => {
     return res.send(data);
   } catch (err) {
     console.error('[vumanchu/chart]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── Trade Lab — visual research page backend ──────────────────────────────────
+// GET  /api/trade-lab/candles?instrument=gold|nq&from=<iso>&to=<iso>[&tf=1]
+//   Serves real M1 bars for the requested window, stitching the frozen R2
+//   archive with a LIVE OANDA (then Yahoo) fetch for anything the archive
+//   doesn't reach yet — see js/tradeLabDataSource.js. Optionally resamples to
+//   `tf` minutes. Live fetch failures are reported in the response, never
+//   silently swallowed (`liveStatus`/`liveError`).
+app.get('/api/trade-lab/candles', async (req, res) => {
+  try {
+    const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+    if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const fromSec = Math.floor(new Date(String(req.query.from || '')).getTime() / 1000);
+    const toSec = Math.floor(new Date(String(req.query.to || '')).getTime() / 1000);
+    if (!Number.isFinite(fromSec) || !Number.isFinite(toSec) || toSec <= fromSec) {
+      return res.status(400).json({ error: 'from/to must be valid ISO timestamps with to > from' });
+    }
+    if (toSec - fromSec > 45 * 86400) return res.status(400).json({ error: 'window too large (max 45 days) — the trade lab is for zoomed-in trade review, not full-history backtesting' });
+
+    const tfMin = Math.max(1, Math.min(60, Number(req.query.tf) || 1));
+    const { bars, source, archiveTo, liveStatus, liveError } = await loadTradeLabBars(instrument, fromSec, toSec);
+    const outBars = tfMin === 1 ? bars : _resampleTo(bars, tfMin);
+    res.json({
+      instrument, tf: tfMin, from: fromSec, to: toSec,
+      source, archiveTo, liveStatus, liveError,
+      bars: outBars,
+    });
+  } catch (err) {
+    console.error('[trade-lab/candles]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/trade-lab/geometry?instrument=gold|nq
+//   Serves the precomputed full-10-year-archive geometry summary (unsupervised
+//   k-means clusters, size-vs-retrace buckets, EMA-agreement stats — see
+//   education/jordan_trade_geometry/RESULTS.md for how these were produced).
+//   Static file read, cached in memory — this is context for the research
+//   panel, not recomputed per request.
+const _tradeLabGeomCache = new Map();
+app.get('/api/trade-lab/geometry', (req, res) => {
+  const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+  if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+  try {
+    if (!_tradeLabGeomCache.has(instrument)) {
+      const p = path.join(__dirname, 'education', 'jordan_trade_geometry', 'data', `${instrument}.geometry.json`);
+      _tradeLabGeomCache.set(instrument, JSON.parse(fs.readFileSync(p, 'utf8')));
+    }
+    res.json(_tradeLabGeomCache.get(instrument));
+  } catch (err) {
+    res.status(404).json({ error: `geometry summary not found for ${instrument}: ${err.message}` });
+  }
+});
+
+// POST /api/trade-lab/geometry-window — body: { instrument, from, to, tf? }
+//   Runs the SAME impulse/retracement detector (js/impulseRetracementGeometry.js)
+//   on just the requested window's bars, so the chart can overlay real detected
+//   impulses + their turning points directly on whatever's currently loaded —
+//   a small, bounded computation (a window of weeks, not the 10y archive), so
+//   this is a plain synchronous request, not the async-job pattern.
+app.post('/api/trade-lab/geometry-window', express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    const { instrument, from, to, tf = 1 } = req.body ?? {};
+    const key = instrument === 'nq' ? 'nq' : instrument === 'gold' ? 'gold' : null;
+    if (!key) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const fromSec = Math.floor(new Date(String(from)).getTime() / 1000);
+    const toSec = Math.floor(new Date(String(to)).getTime() / 1000);
+    if (!Number.isFinite(fromSec) || !Number.isFinite(toSec) || toSec <= fromSec) {
+      return res.status(400).json({ error: 'from/to must be valid ISO timestamps with to > from' });
+    }
+    const { bars, source, liveStatus, liveError } = await loadTradeLabBars(key, fromSec, toSec);
+    const tfMin = Math.max(1, Math.min(60, Number(tf) || 1));
+    const workBars = tfMin === 1 ? bars : _resampleTo(bars, tfMin);
+    const occurrences = findImpulseRetracements(workBars, {});
+    res.json({ instrument: key, tf: tfMin, source, liveStatus, liveError, nBars: workBars.length, occurrences });
+  } catch (err) {
+    console.error('[trade-lab/geometry-window]', err.message);
     res.status(502).json({ error: err.message });
   }
 });

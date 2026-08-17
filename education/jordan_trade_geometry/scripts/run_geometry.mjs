@@ -53,6 +53,36 @@ const meanOf = xs => xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : nul
 const { centroids, counts } = kmeans1D(fracs, 3);
 const hist = histogram(fracs, 0.05, 0, 1.2);   // allow slightly >1 (overshoot past origin before "continued" still counted if resumed fires first)
 
+// ── Regression: does impulse SIZE predict retracement DEPTH? ────────────────
+// x = log(legAtrMult) (the relationship saturates — see bySize above — so a
+// log-x fit is the honest functional form, not a raw-x line through a curve).
+// Plain OLS + Pearson r, computed once here (not worth a shared brick for a
+// single bivariate scatter fit).
+function olsWithR(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return { slope: null, intercept: null, r: null, n };
+  const mx = xs.reduce((s, v) => s + v, 0) / n, my = ys.reduce((s, v) => s + v, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const dx = xs[i] - mx, dy = ys[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  const slope = sxx > 1e-12 ? sxy / sxx : 0;
+  const intercept = my - slope * mx;
+  const r = (sxx > 1e-12 && syy > 1e-12) ? sxy / Math.sqrt(sxx * syy) : null;
+  return { slope, intercept, r, n };
+}
+const logSizes = continued.map(o => Math.log(o.legAtrMult));
+const regression = olsWithR(logSizes, fracs);   // retraceFrac ≈ intercept + slope*ln(legAtrMult)
+
+// Compact 2D density (legAtrMult × retraceFrac) for a chart scatter/heatmap —
+// small enough to commit (unlike the full per-leg occurrences dump).
+const sizeBins = 24, sizeMin = 2.0, sizeMax = 8.0;      // ATR multiples 2..8, clipped
+const fracBins = 24, fracMinV = 0, fracMaxV = 1.2;
+const density = Array.from({ length: sizeBins }, () => new Array(fracBins).fill(0));
+for (const o of continued) {
+  const sx = Math.min(sizeBins - 1, Math.max(0, Math.floor((Math.min(o.legAtrMult, sizeMax) - sizeMin) / (sizeMax - sizeMin) * sizeBins)));
+  const fy = Math.min(fracBins - 1, Math.max(0, Math.floor((Math.min(o.retraceFrac, fracMaxV) - fracMinV) / (fracMaxV - fracMinV) * fracBins)));
+  density[sx][fy]++;
+}
+
 const summary = {
   pair, resampleMin: RESAMPLE_MIN,
   totalLegs: occ.length, byOutcome,
@@ -69,9 +99,11 @@ const summary = {
   meanRetraceWhenEmaAgrees: meanOf(agreeXs),
   meanRetraceWhenEmaDisagrees: meanOf(disagreeXs),
   histogram: hist,
+  sizeVsDepthRegression: { ...regression, form: 'retraceFrac ≈ intercept + slope × ln(legAtrMult)' },
+  density2d: { sizeBins, sizeMin, sizeMax, fracBins, fracMin: fracMinV, fracMax: fracMaxV, counts: density },
 };
 
 fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(`${outDir}/${pair}.geometry.json`, JSON.stringify(summary, null, 2));
 fs.writeFileSync(`${outDir}/${pair}.occurrences.json`, JSON.stringify(occ));
-process.stderr.write(`${pair}: DONE. legs=${occ.length} continued=${continued.length} median retrace=${summary.retraceFrac.median?.toFixed(3)} kmeans centroids=${centroids.map(c=>c.toFixed(3))} counts=${counts}\n`);
+process.stderr.write(`${pair}: DONE. legs=${occ.length} continued=${continued.length} median retrace=${summary.retraceFrac.median?.toFixed(3)} kmeans centroids=${centroids.map(c=>c.toFixed(3))} counts=${counts} regression r=${regression.r?.toFixed(3)} slope=${regression.slope?.toFixed(3)}\n`);
