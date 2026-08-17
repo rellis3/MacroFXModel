@@ -1768,6 +1768,35 @@ informative), and VuManChu confirmation adds close to nothing on top,
 inconsistently, on both instruments. Full diagnosis and both the naive and
 corrected numbers: `education/jordan_trade_geometry/VUMANCHU_GATE.md`.
 
+**Follow-up (2026-08-17, same day) — "assume the rule is correct" historical
+trade browser.** The owner asked to flip the framing: even though
+`impulseEmaRangeV1Engine.js` backtested null (Sharpe −5.99 gold / −2.49 NQ,
+above), they want to SEE every trade it would have generated on real Gold/NQ
+history, visually, before deciding whether to chase a forward-looking alert
+idea — explicitly deferred until this listing works. New route
+`GET /api/trade-lab/strategy-trades` (instrument, outcome win/loss/all, sort
+recent/oldest, paginated) runs `runImpulseEmaRange` once per instrument
+against the full archive (`loadFullArchivePacked`), cached in-process
+(`_tradeLabStrategyCache`, same lazy-`Map<key,Promise>` pattern as the
+archive cache above — computing it live is ~36-67s of CPU, too slow to redo
+per request) and adds a human-readable `fibText` per trade (which
+38.2/61.8/88.6% zone the entry fell in, derived from `entryFrac`). New
+"Strategy backtest trades" card in `trade-lab.html`: filterable/sortable/
+paginated table, states up front that the rule "isn't validated as
+profitable" and links `RESULTS.md`; clicking a row draws that trade's
+impulse origin/extreme, all three Fib levels, and entry/SL/TP on the chart
+via `drawStrategyTradeOnChart`. Also fixed a real bug this surfaced: empty
+Entry/SL/TP inputs were read with `Number('')` which is `0`, not `NaN`, so
+the panel silently showed "0.00 / 0.00 (NaNR)" instead of "set entry/SL/TP"
+— fixed with a `numOrNull(id)` helper (checks the raw string for `''`
+first) at all 3 call sites that independently read those fields. Verified
+end-to-end via Playwright against the local server (Gold: 3,156 trades,
+32.8% win rate; NQ: 3,149 trades, 35.5% win rate — matches the backtest
+totals above) — table load/filter/paginate/row-click-to-chart all confirmed
+working; the chart canvas itself is blank in this sandbox only because the
+lightweight-charts CDN is policy-blocked here (same known limitation as
+above), not a defect in this feature.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

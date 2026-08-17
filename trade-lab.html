@@ -114,6 +114,44 @@
   </div>
 </div>
 
+<div class="wrap" style="padding-top:0;">
+  <div style="flex:1 1 100%; min-width:320px;">
+    <div class="card">
+      <h2>Strategy backtest trades — every trade the mechanised rule would have taken</h2>
+      <div class="muted" style="margin-bottom:8px;">
+        <b>This assumes the rule is correct — it isn't validated as profitable.</b>
+        The mechanised continuation rule (impulse detected, EMA(9/21) agrees, entry on the
+        38.2–61.8% retracement, structural stop, fixed R:R target — <code>js/impulseEmaRangeV1Engine.js</code>)
+        already ran through an honest backtest with costs:
+        <a href="https://github.com/rellis3/MacroFXModel/blob/main/education/jordan_impulse_range_backtest/RESULTS.md" target="_blank">net-negative on both instruments</a>
+        (Sharpe −5.99 gold / −2.49 NQ). This list is the visual/browsing companion to that result —
+        every trade it generated, real dates and prices, not a claim it works.
+      </div>
+      <div class="controls">
+        <label>Outcome<select id="stratOutcome"><option value="all">All</option><option value="win">Wins only</option><option value="loss">Losses only</option></select></label>
+        <label>Sort<select id="stratSort"><option value="recent">Most recent first</option><option value="oldest">Oldest first</option></select></label>
+        <button id="stratLoadBtn">Load</button>
+        <span id="stratSummary" class="muted"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="stratTable" style="width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:11.5px;">
+          <thead><tr style="text-align:left; color:var(--muted); border-bottom:1px solid var(--line);">
+            <th style="padding:4px 8px;">Date</th><th style="padding:4px 8px;">Side</th>
+            <th style="padding:4px 8px;">Entry</th><th style="padding:4px 8px;">SL</th><th style="padding:4px 8px;">TP</th>
+            <th style="padding:4px 8px;">Outcome</th><th style="padding:4px 8px;">R</th><th style="padding:4px 8px;">Fib zone hit</th>
+          </tr></thead>
+          <tbody id="stratTbody"><tr><td colspan="8" class="muted" style="padding:8px;">Load a trade above first (sets the instrument), then click Load here.</td></tr></tbody>
+        </table>
+      </div>
+      <div class="controls" style="justify-content:space-between; margin-top:8px;">
+        <button id="stratPrevPage">← Prev page</button>
+        <span id="stratPageInfo" class="muted"></span>
+        <button id="stratNextPage">Next page →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
 import { ema } from './js/indicatorCore.js';
@@ -181,16 +219,26 @@ function clearOverlays() {
   emaFastSeries = emaSlowSeries = impulseSeries = null;
 }
 
+// Number('') === 0, and 0 is "finite" — so an EMPTY field silently reads as a
+// real price of zero rather than "not set" (this is exactly the "0.00/NaN"
+// confusion an actual user hit: all three fields empty -> entry=sl=tp=0 ->
+// RR = 0/0 = NaN, looking like a bug instead of "you haven't typed anything
+// yet"). Read the raw input value so an empty box means empty, not zero.
+function numOrNull(id) {
+  const raw = document.getElementById(id).value;
+  if (raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
 function drawTradeLines() {
-  const entry = Number(document.getElementById('entryInput').value);
-  const sl = Number(document.getElementById('slInput').value);
-  const tp = Number(document.getElementById('tpInput').value);
+  const entry = numOrNull('entryInput'), sl = numOrNull('slInput'), tp = numOrNull('tpInput');
   if (view) {
     if (entryLine) { try { view.series.removePriceLine(entryLine); } catch {} entryLine = null; }
     if (slLine) { try { view.series.removePriceLine(slLine); } catch {} slLine = null; }
     if (tpLine) { try { view.series.removePriceLine(tpLine); } catch {} tpLine = null; }
   }
-  if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) return;
+  if (entry == null || sl == null || tp == null) { updateTradeStats(entry, sl, tp); return; }
   if (view) {
     entryLine = view.series.createPriceLine({ price: entry, color: '#e5e7eb', lineWidth: 2, lineStyle: 0, title: 'Entry' });
     slLine = view.series.createPriceLine({ price: sl, color: '#ef5350', lineWidth: 1, lineStyle: 2, title: 'SL' });
@@ -210,7 +258,7 @@ function statusBadge(source, liveStatus, liveError) {
 }
 
 async function loadAndRender(opts = {}) {
-  const { skipSimilarRefresh = false, explicitOcc = null, instrumentOverride = null } = opts;
+  const { skipSimilarRefresh = false, explicitOcc = null, instrumentOverride = null, strategyTrade = null } = opts;
   const instrument = instrumentOverride ?? document.getElementById('instrument').value;
   const from = document.getElementById('fromInput').value, to = document.getElementById('toInput').value;
   const tf = document.getElementById('tfInput').value;
@@ -227,12 +275,17 @@ async function loadAndRender(opts = {}) {
     if (j.bars.length) {
       drawEma(j.bars);
       drawTradeLines();
-      if (skipSimilarRefresh && explicitOcc) {
+      if (strategyTrade) {
+        // A row from the "Strategy backtest trades" list — draw its ACTUAL
+        // recorded impulse (origin/extreme prices from the engine's own trade
+        // log), not a re-detected one.
+        drawStrategyTradeOnChart(strategyTrade);
+      } else if (skipSimilarRefresh && explicitOcc) {
         // Navigating the similar-trades list — highlight the EXACT occurrence
         // requested and skip re-fetching/resetting the match list itself.
         drawImpulseOnChart(explicitOcc, j.bars);
         renderImpulseDetail(explicitOcc);
-        const entry = Number(document.getElementById('entryInput').value), sl = Number(document.getElementById('slInput').value), tp = Number(document.getElementById('tpInput').value);
+        const entry = numOrNull('entryInput'), sl = numOrNull('slInput'), tp = numOrNull('tpInput');
         updateTradeStats(entry, sl, tp, explicitOcc);
         await drawDensity(instrument, explicitOcc);
       } else {
@@ -293,7 +346,7 @@ async function drawImpulseAndUpdatePanel(instrument, from, to, tf, bars) {
   drawImpulseOnChart(best, bars);
   renderImpulseDetail(best);
 
-  const entry = Number(document.getElementById('entryInput').value), sl = Number(document.getElementById('slInput').value), tp = Number(document.getElementById('tpInput').value);
+  const entry = numOrNull('entryInput'), sl = numOrNull('slInput'), tp = numOrNull('tpInput');
   updateTradeStats(entry, sl, tp, best);
   await drawDensity(instrument, best);
   await loadSimilarTrades(instrument, best);
@@ -493,6 +546,83 @@ async function jumpToSimilar(delta) {
 }
 document.getElementById('prevSimilar').addEventListener('click', () => jumpToSimilar(-1));
 document.getElementById('nextSimilar').addEventListener('click', () => jumpToSimilar(1));
+
+// ── Strategy backtest trades — every trade the mechanised rule fired ────────
+// Not a claim of edge (the honest backtest is net-negative — see the card's
+// own text) — this is "assume the rule is right, show me everywhere it would
+// have traded" so the pattern can be eyeballed against real charts. Each row
+// loads its own window and draws the ACTUAL impulse (origin/extreme prices,
+// straight from the engine's trade record) + the 3 Fib levels + entry/SL/TP.
+let stratTrades = [], stratPage = 0;
+const STRAT_PAGE_SIZE = 20;
+
+async function loadStrategyTrades(resetPage) {
+  if (resetPage) stratPage = 0;
+  const instrument = document.getElementById('instrument').value;
+  const outcome = document.getElementById('stratOutcome').value;
+  const sort = document.getElementById('stratSort').value;
+  const tbody = document.getElementById('stratTbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="muted" style="padding:8px;">Loading…</td></tr>';
+  try {
+    const url = `/api/trade-lab/strategy-trades?instrument=${instrument}&outcome=${outcome}&sort=${sort}&limit=${STRAT_PAGE_SIZE}&offset=${stratPage * STRAT_PAGE_SIZE}`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!r.ok) { tbody.innerHTML = `<tr><td colspan="8" class="muted">${j.error || r.statusText}</td></tr>`; return; }
+    stratTrades = j.trades;
+    document.getElementById('stratSummary').textContent = `${j.total.toLocaleString()} trades match · overall win rate ${j.winRate}% (all outcomes, unfiltered)`;
+    document.getElementById('stratPageInfo').textContent = `page ${stratPage + 1} of ${Math.max(1, Math.ceil(j.total / STRAT_PAGE_SIZE))}`;
+    tbody.innerHTML = stratTrades.length ? '' : '<tr><td colspan="8" class="muted" style="padding:8px;">no trades in this filter</td></tr>';
+    stratTrades.forEach((t, i) => {
+      const tr = document.createElement('tr');
+      tr.style.cssText = 'cursor:pointer; border-bottom:1px solid #1a2233;';
+      tr.innerHTML = `<td style="padding:4px 8px;">${t.date}</td><td style="padding:4px 8px; color:${t.side === 'BUY' ? 'var(--up)' : 'var(--down)'}">${t.side}</td>
+        <td style="padding:4px 8px;">${t.entry.toFixed(2)}</td><td style="padding:4px 8px;">${t.sl.toFixed(2)}</td><td style="padding:4px 8px;">${t.tp.toFixed(2)}</td>
+        <td style="padding:4px 8px; color:${t.outcome === 'win' ? 'var(--up)' : t.outcome === 'loss' ? 'var(--down)' : 'var(--muted)'}">${t.outcome}</td>
+        <td style="padding:4px 8px;">${t.rMult.toFixed(2)}</td><td style="padding:4px 8px; color:var(--muted);">${t.fibText}</td>`;
+      tr.addEventListener('click', () => loadStrategyTradeOnChart(t));
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="muted">${err.message}</td></tr>`;
+  }
+}
+
+function drawStrategyTradeOnChart(trade) {
+  if (view) {
+    const span = trade.legExtreme - trade.legOrigin;
+    retraceLines.push(view.series.createPriceLine({ price: trade.legOrigin, color: '#facc15', lineWidth: 2, lineStyle: 2, title: 'Impulse origin' }));
+    retraceLines.push(view.series.createPriceLine({ price: trade.legExtreme, color: '#facc15', lineWidth: 2, lineStyle: 2, title: 'Impulse extreme' }));
+    for (const [frac, label] of [[0.382, '38.2%'], [0.618, '61.8%'], [0.886, '88.6%']]) {
+      const price = trade.legExtreme - frac * span;
+      retraceLines.push(view.series.createPriceLine({ price, color: '#78716c', lineWidth: 1, lineStyle: 1, title: `Fib ${label}`, axisLabelVisible: true }));
+    }
+  }
+  document.getElementById('impulseDetail').innerHTML = `
+    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Strategy trade · ${trade.date} · ${trade.side}</div>
+    <div class="row"><span>Impulse origin → extreme</span><b>${trade.legOrigin.toFixed(2)} → ${trade.legExtreme.toFixed(2)}</b></div>
+    <div class="row"><span>Entry</span><b>${trade.entry.toFixed(2)} — ${trade.fibText}</b></div>
+    <div class="row"><span>Outcome</span><b>${trade.outcome} (${trade.rMult.toFixed(2)}R)</b></div>
+    <div class="row"><span>Session range used</span><b>${(trade.rangeUsedFracOfMedian * 100).toFixed(0)}% of trailing median</b></div>
+  `;
+}
+
+async function loadStrategyTradeOnChart(trade) {
+  const instrument = document.getElementById('instrument').value;
+  const fromSec = Math.min(trade.fillTime, trade.exitTime) - 6 * 3600;
+  const toSec = Math.max(trade.fillTime, trade.exitTime) + 3 * 3600;
+  document.getElementById('fromInput').value = iso(new Date(fromSec * 1000));
+  document.getElementById('toInput').value = iso(new Date(toSec * 1000));
+  document.getElementById('entryInput').value = trade.entry;
+  document.getElementById('slInput').value = trade.sl;
+  document.getElementById('tpInput').value = trade.tp;
+  await loadAndRender({ skipSimilarRefresh: true, instrumentOverride: instrument, strategyTrade: trade });
+}
+
+document.getElementById('stratLoadBtn').addEventListener('click', () => loadStrategyTrades(true));
+document.getElementById('stratOutcome').addEventListener('change', () => loadStrategyTrades(true));
+document.getElementById('stratSort').addEventListener('change', () => loadStrategyTrades(true));
+document.getElementById('stratPrevPage').addEventListener('click', () => { if (stratPage > 0) { stratPage--; loadStrategyTrades(false); } });
+document.getElementById('stratNextPage').addEventListener('click', () => { stratPage++; loadStrategyTrades(false); });
 
 loadAndRender();
 window.__tradeLabReady = true;   // smoke-test hook
