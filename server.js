@@ -16,7 +16,7 @@ import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
 import crypto               from 'crypto';
 import { createInterface as rlCreateInterface } from 'readline';
-import { execFile, spawn } from 'child_process';
+import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
@@ -14949,7 +14949,13 @@ const _execFileAsync   = promisify(execFile);
 const BT_DATA_DIR      = path.join(__dirname, 'VolRangeForecaster', 'data');
 const BT_PYTHON_SCRIPT = path.join(__dirname, 'VolRangeForecaster', 'vol_backtest.py');
 
-// Resolve Python binary once at startup — tries env var, then common paths
+// Resolve Python binary once at startup — tries env var, then common paths.
+// Must use execFileSync here: execFile() is async and returns before it can
+// ever fail, so a try/catch around it never catches anything — every
+// candidate silently "succeeds" and this always returned the first one
+// (/usr/local/bin/python3) whether or not it actually existed. That's the
+// literal cause of "spawn /usr/local/bin/python3 ENOENT" on Debian, which
+// installs to /usr/bin/python3 instead.
 function _resolvePython() {
   if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
   const candidates = [
@@ -14958,7 +14964,7 @@ function _resolvePython() {
     'python3', 'python',
   ];
   for (const c of candidates) {
-    try { execFile(c, ['--version'], (_e, _o, _err) => {}); return c; } catch {}
+    try { execFileSync(c, ['--version'], { stdio: 'ignore' }); return c; } catch {}
   }
   return 'python3';
 }
