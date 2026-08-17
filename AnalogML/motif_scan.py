@@ -40,7 +40,9 @@ of which direction it calls) doesn't get credited as real direction-picking.
 Usage:
   python AnalogML/motif_scan.py --pair gbpjpy --timeframe 1h --eval-years 3
 
-Data: reads VolRangeForecaster/data/m1/<pair>_m1.parquet (must exist locally).
+Data: reads AnalogML/data/m1/<pair>_m1.parquet (must exist locally -- see
+pattern_scan.py's docstring for why this moved off
+VolRangeForecaster/data/m1/ on 2026-08-17).
 """
 from __future__ import annotations
 

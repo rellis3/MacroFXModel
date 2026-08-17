@@ -42,7 +42,9 @@ Usage:
   python ml_walkforward.py --pair gbpjpy --timeframe 1h --sl-pips 20 --tp-r 1.5
   python ml_walkforward.py --pair gbpjpy --with-analog --analog-sample-every 4
 
-Data: reads VolRangeForecaster/data/m1/<pair>_m1.parquet (must exist locally).
+Data: reads AnalogML/data/m1/<pair>_m1.parquet (must exist locally -- see
+pattern_scan.py's docstring for why this moved off
+VolRangeForecaster/data/m1/ on 2026-08-17).
 """
 from __future__ import annotations
 
@@ -57,6 +59,7 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from pattern_scan import M1_DIR  # noqa: E402 -- the one canonical definition; see its docstring
 from pylego.analog_signal import neighbor_consensus  # noqa: E402
 from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
@@ -64,8 +67,6 @@ from pylego.instruments import pip_size  # noqa: E402
 from pylego.shape_match import rolling_shapes  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 from pylego.walkforward import Fold, expanding_folds, rolling_folds  # noqa: E402
-
-M1_DIR = REPO_ROOT / "VolRangeForecaster" / "data" / "m1"
 
 FEATURE_COLS = [
     "ret_1", "ret_4", "ret_24",

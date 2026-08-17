@@ -39,7 +39,14 @@ Usage:
   python pattern_scan.py --pair gbpjpy --timeframe 1h --window 64 --k 20 \
       --stride 24 --eval-years 2
 
-Data: reads VolRangeForecaster/data/m1/<pair>_m1.parquet (must exist locally).
+Data: reads AnalogML/data/m1/<pair>_m1.parquet (must exist locally; topped
+up by refresh_m1.py, R2-persisted there -- see its docstring). Moved off
+VolRangeForecaster/data/m1/ on 2026-08-17: that directory is ALSO written
+by js/volBacktestM1Engine.js's book-rebuild pipeline, in a different
+parquet schema (a 'time' COLUMN vs. this pipeline's DatetimeIndex) --
+sharing it was a live, undiscovered file-format collision between two
+independently-built systems. AnalogML now owns its own copy entirely;
+nothing here reads or writes VolRangeForecaster's directory anymore.
 """
 from __future__ import annotations
 
@@ -60,7 +67,7 @@ from pylego.instruments import pip_size  # noqa: E402
 from pylego.shape_match import rolling_shapes  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
-M1_DIR = REPO_ROOT / "VolRangeForecaster" / "data" / "m1"
+M1_DIR = REPO_ROOT / "AnalogML" / "data" / "m1"
 
 
 def load_bars(pair: str, timeframe: str) -> pd.DataFrame:

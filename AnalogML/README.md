@@ -48,8 +48,12 @@ strictly BEFORE that bar — a genuine walk-forward test, not a demo of
 pip install -r AnalogML/requirements.txt
 ```
 
-Needs local M1 parquet data at `VolRangeForecaster/data/m1/<pair>_m1.parquet`
-(already present in this repo for 29 pairs).
+Needs local M1 parquet data at `AnalogML/data/m1/<pair>_m1.parquet` (topped
+up by `refresh_m1.py`, R2-persisted so a fresh Railway container doesn't
+have to re-backfill from scratch -- see that script's docstring). Moved
+off `VolRangeForecaster/data/m1/` on 2026-08-17 -- that directory is also
+written by `js/volBacktestM1Engine.js` in a different parquet schema, and
+sharing it was an undiscovered collision between the two systems.
 
 ## `pattern_scan.py` — shape matching
 

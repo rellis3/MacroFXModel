@@ -32,6 +32,16 @@ just top up" from "never fetched this pair before" -- every single
 redeploy silently re-triggered a full DEFAULT_LOOKBACK_YEARS backfill for
 all 26 pairs from scratch (hours, not the seconds a normal top-up takes).
 
+M1_DIR (imported from pattern_scan.py, the one place it's defined) points
+at AnalogML/data/m1/, NOT VolRangeForecaster/data/m1/ as it did until
+2026-08-17 -- that directory is ALSO written by
+js/volBacktestM1Engine.js's book-rebuild pipeline, in a DIFFERENT parquet
+schema (a 'time' COLUMN, not this pipeline's DatetimeIndex). Sharing it
+was a live, undiscovered collision between two independently-built
+systems -- caught only because this R2 mirror made the two write to the
+same file around the same time on the same deploy. AnalogML now owns its
+own directory outright; nothing here touches VolRangeForecaster's copy.
+
 Usage:
   python AnalogML/refresh_m1.py --pairs gbpjpy,eurusd
   python AnalogML/refresh_m1.py --all-pairs
@@ -49,11 +59,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+from pattern_scan import M1_DIR  # noqa: E402 -- the one canonical definition; see its docstring
 from pylego.instruments import oanda_symbol  # noqa: E402
 from pylego.r2 import r2_client, R2_BUCKET  # noqa: E402
 from fetch_m1_oanda import fetch_chunk  # noqa: E402
 
-M1_DIR = REPO_ROOT / "VolRangeForecaster" / "data" / "m1"
 DEFAULT_LOOKBACK_YEARS = 5  # only used when NEITHER local disk NOR R2 has this pair yet
 
 # R2-persisted mirror of M1_DIR, same bucket motif_track.py's trade log/state
