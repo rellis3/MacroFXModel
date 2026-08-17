@@ -29,7 +29,7 @@ restart_bot "pattern-live-bot" \
     env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app node PatternBot/pattern_live_bot.mjs &
 
 restart_bot "level-touch-bot" \
-    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python3 levelEngine/live_watch.py &
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python levelEngine/live_watch.py &
 
 restart_bot "analogml-paper-track" \
     bash AnalogML/paper_track_loop.sh &
@@ -38,6 +38,6 @@ restart_bot "analogml-motif-track" \
     bash AnalogML/motif_track_loop.sh &
 
 restart_bot "analogml-nearing-watch" \
-    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python3 AnalogML/motif_nearing_watch.py &
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python AnalogML/motif_nearing_watch.py &
 
 exec node server.js
