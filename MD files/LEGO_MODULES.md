@@ -1824,6 +1824,33 @@ every time it's checked. Third independent test of this engine family now
 null (baseline backtest, VuManChu confirmation gate, and this). Full method
 and both instruments' grids: `education/jordan_impulse_range_backtest/MAE_DYNAMIC_STOP.md`.
 
+**Follow-up (2026-08-17, same day) — relaxing "one trade per day".**
+Owner noticed real intraday charts commonly show a 2nd qualifying impulse
+the same day, after the first has resolved — asked whether the engine's
+one-trade/day cap (already flagged untested in RESULTS.md) was discarding
+real opportunities. Added `maxTradesPerDay` as a backward-compatible cfg
+directly on **`js/impulseEmaRangeV1Engine.js`** (default `1`, unchanged;
+verified byte-identical to the previously-committed baseline
+`trades.json` for both instruments before trusting anything higher) —
+when `>1`, the day loop resumes scanning right after each trade's own exit
+bar, folding the skipped in-trade bars back into the running session range
+first so the next signal's range-exhaustion gate still reads the full
+day-so-far range. Chose to parameterize the shared engine itself, not a
+throwaway copy, per its own header ("a different pin can be tried later
+without re-deriving the whole engine") and Lego Principle 1. New script
+**`education/jordan_impulse_range_backtest/scripts/multi_trade_per_day.mjs`**
+sweeps `maxTradesPerDay` 1/2/3/5. Result: the premise is confirmed (a 2nd+
+setup exists on ~97% of trading days, both instruments — not rare) but
+taking it doesn't help — win rate barely moves (noise either direction)
+and Sharpe gets monotonically WORSE as more trades/day are allowed (Gold
+−5.99→−13.66, NQ −2.49→−7.03 at maxTradesPerDay=5), because every extra
+trade shares the same negative per-trade edge as the first (confirmed by
+scoring the "2nd+-only" trades separately — same win rate, same sign).
+Fourth independent test of this engine family now null (baseline,
+VuManChu gate, dynamic stop, and this) — all four point at the entry
+signal itself, not the exit/sizing/cadence around it. Full method and
+both instruments' tables: `education/jordan_impulse_range_backtest/MULTI_TRADE_PER_DAY.md`.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

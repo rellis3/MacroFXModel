@@ -153,9 +153,10 @@ continuation-on-pullback, fixed RR — is not, by itself, a source of edge on
   access (e.g. Railway), `js/volBacktestEngine.js`'s `fetchM1Range` could pull
   the exact 13–14 Aug 2026 window and this same engine's logic could be
   checked bar-by-bar against those screenshots directly.
-- **One trade/day, first qualifying setup** — deliberately low-DOF (Build
-  Plan discipline) but means a genuinely better setup later the same day is
-  never taken. Not swept here.
+- **One trade/day, first qualifying setup by default** — deliberately
+  low-DOF (Build Plan discipline). `maxTradesPerDay` cfg now exists to
+  relax this (tested, see below) — a 2nd+ same-day setup turns out to be
+  the norm (~97% of days), but taking it doesn't help.
 - **NQ is OANDA's `NAS100_USD` CFD proxy**, not real CME NQ/MNQ futures data —
   no futures-contract Nasdaq data exists anywhere in this repo. Correlated but
   not identical to what a futures trader like the screenshots (`MNQ1!`) sees
@@ -172,6 +173,12 @@ continuation-on-pullback, fixed RR — is not, by itself, a source of edge on
 **Follow-up tested: a small dynamic stop, on the "if it's going to lose it
 loses fast" premise** — also null, on both instruments. See
 [MAE_DYNAMIC_STOP.md](MAE_DYNAMIC_STOP.md).
+
+**Follow-up tested: relaxing "one trade per day"** — a 2nd+ qualifying setup
+the same day is the norm (~97% of days), not rare, but taking it just
+realizes more of the same negative-edge trades faster; Sharpe gets
+monotonically worse as more are allowed, on both instruments. See
+[MULTI_TRADE_PER_DAY.md](MULTI_TRADE_PER_DAY.md).
 
 ---
 
