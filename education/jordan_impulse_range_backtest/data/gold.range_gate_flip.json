@@ -1,0 +1,65 @@
+{
+  "pair": "gold",
+  "rows": [
+    {
+      "rangeGateMinUsedFrac": 0.25,
+      "nTrades": 2862,
+      "winRate": 26.3,
+      "sharpe": -4.266,
+      "pf": 0.429,
+      "oosSharpe": -2.567,
+      "oosN": 1145,
+      "ms": 19281
+    },
+    {
+      "rangeGateMinUsedFrac": 0.5,
+      "nTrades": 2666,
+      "winRate": 30.6,
+      "sharpe": -3.024,
+      "pf": 0.541,
+      "oosSharpe": -2.144,
+      "oosN": 1067,
+      "ms": 60797
+    },
+    {
+      "rangeGateMinUsedFrac": 0.75,
+      "nTrades": 2247,
+      "winRate": 32.8,
+      "sharpe": -2.12,
+      "pf": 0.628,
+      "oosSharpe": -2.301,
+      "oosN": 899,
+      "ms": 109278
+    },
+    {
+      "rangeGateMinUsedFrac": 1,
+      "nTrades": 1567,
+      "winRate": 32.4,
+      "sharpe": -1.831,
+      "pf": 0.624,
+      "oosSharpe": -2.253,
+      "oosN": 627,
+      "ms": 152247
+    },
+    {
+      "rangeGateMinUsedFrac": 1.25,
+      "nTrades": 1000,
+      "winRate": 32.9,
+      "sharpe": -1.026,
+      "pf": 0.712,
+      "oosSharpe": -1.005,
+      "oosN": 400,
+      "ms": 98716
+    },
+    {
+      "rangeGateMinUsedFrac": 1.5,
+      "nTrades": 601,
+      "winRate": 33.9,
+      "sharpe": -0.481,
+      "pf": 0.815,
+      "oosSharpe": -0.25,
+      "oosN": 241,
+      "ms": 105071
+    }
+  ]
+}

@@ -1675,7 +1675,8 @@ edge on real data — not to reproduce those specific screenshotted trades
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
 | **Range Percentile core** | `js/rangePercentileCore.js` | `trailingRangeDistribution`, `quantile`, `percentileOf`, `rangeExhaustionRead` — ranks a session's forming H-L range against the EMPIRICAL trailing-N-day distribution of realized D1 H-L%. New primitive: `VolRangeForecaster` is a THEORETICAL Brownian-motion range forecast off a vol estimate, not an empirical percentile-of-history read — this fills that gap. Pure, unit-tested (`js/legoBricks.test.mjs`) | `js/impulseEmaRangeV1Engine.js` | 🟢 built + unit-tested |
-| **Impulse/EMA/Range engine** | `js/impulseEmaRangeV1Engine.js` | `runImpulseEmaRange(packed, cfg)` — composes `patternEngine.pivotHighs/pivotLows/computeATR` (impulse-leg detection, ATR-normalized), `indicatorCore.ema` (fast/slow cross), the new range-percentile brick (exhaustion gate), and `forecastCore.walkBars` (fill/exit). Direction = CONTINUATION of the impulse (buy/sell the 38.2–61.8% pullback), stop beyond the realised pullback's own extreme, fixed-RR target, one trade/day. Every judgment call is pinned and documented in the file header per the Build Plan discipline. Costs on. | `education/jordan_impulse_range_backtest/scripts/*.mjs` | 🔴 **built + backtested — tested NULL**, see below |
+| **Impulse/EMA/Range engine (v1)** | `js/impulseEmaRangeV1Engine.js` | `runImpulseEmaRange(packed, cfg)` — composes `patternEngine.pivotHighs/pivotLows/computeATR` (impulse-leg detection, ATR-normalized), `indicatorCore.ema` (fast/slow cross), the new range-percentile brick (exhaustion gate), and `forecastCore.walkBars` (fill/exit). Direction = CONTINUATION of the impulse (buy/sell the 38.2–61.8% pullback), stop beyond the realised pullback's own extreme, fixed-RR target, one trade/day. Every judgment call is pinned and documented in the file header per the Build Plan discipline. Costs on. **Pinned — never edited in place after the baseline result below; every follow-up variant forks to v2 instead**, per this repo's own "version it, don't overwrite" rule. | `education/jordan_impulse_range_backtest/scripts/run_one.mjs`, `sensitivity.mjs`, `mae_dynamic_stop.mjs`, `server.js`'s Trade Lab route | 🔴 **built + backtested — tested NULL**, see below |
+| **Impulse/EMA/Range engine (v2)** | `js/impulseEmaRangeV2Engine.js` | Same contract, forked from v1 specifically so v1 never gets touched for an experiment. Adds `maxTradesPerDay` (>1), `rangeGateMode:'exhausted'` + `rangeGateMinUsedFrac`, `entryBandMode:'vwap'` + `vwapBandAtrMult`, exported `buildDaily`, and additive `legOriginTime`/`legExtremeTime` per trade — all backward-compatible (v1-matching defaults verified byte-identical to v1's own committed baseline `trades.json`, both instruments, before any follow-up number was trusted). | `education/jordan_impulse_range_backtest/scripts/multi_trade_per_day.mjs`, `range_gate_flip.mjs`, `vwap_entry_band.mjs`, `session_split.mjs`, `liquidity_sweep_filter.mjs`, `live_validation_harness.mjs` | 🟡 built + unit-verified against v1; the follow-up cfgs it carries are each tested null-but-improving, see below |
 
 **Result — null, consistently, across every knob tried.** Full 10.4-year real
 M1 history (2016-01-04 → 2026-06-05, `loadM1ForPair('gold')` and
@@ -1824,12 +1825,113 @@ every time it's checked. Third independent test of this engine family now
 null (baseline backtest, VuManChu confirmation gate, and this). Full method
 and both instruments' grids: `education/jordan_impulse_range_backtest/MAE_DYNAMIC_STOP.md`.
 
+**Follow-up (2026-08-17, same day) — relaxing "one trade per day".**
+Owner noticed real intraday charts commonly show a 2nd qualifying impulse
+the same day, after the first has resolved — asked whether the engine's
+one-trade/day cap (already flagged untested in RESULTS.md) was discarding
+real opportunities. Added `maxTradesPerDay` as a backward-compatible cfg on
+**`js/impulseEmaRangeV2Engine.js`** (a versioned fork — v1 stays pinned and
+untouched; default `1`, unchanged, verified byte-identical to v1's own
+committed baseline `trades.json` for both instruments before trusting
+anything higher) — when `>1`, the day loop resumes scanning right after
+each trade's own exit bar, folding the skipped in-trade bars back into the
+running session range first so the next signal's range-exhaustion gate
+still reads the full day-so-far range. New script
+**`education/jordan_impulse_range_backtest/scripts/multi_trade_per_day.mjs`**
+sweeps `maxTradesPerDay` 1/2/3/5. Result: the premise is confirmed (a 2nd+
+setup exists on ~97% of trading days, both instruments — not rare) but
+taking it doesn't help — win rate barely moves (noise either direction)
+and Sharpe gets monotonically WORSE as more trades/day are allowed (Gold
+−5.99→−13.66, NQ −2.49→−7.03 at maxTradesPerDay=5), because every extra
+trade shares the same negative per-trade edge as the first (confirmed by
+scoring the "2nd+-only" trades separately — same win rate, same sign).
+Fourth independent test of this engine family now null (baseline,
+VuManChu gate, dynamic stop, and this) — all four point at the entry
+signal itself, not the exit/sizing/cadence around it. Full method and
+both instruments' tables: `education/jordan_impulse_range_backtest/MULTI_TRADE_PER_DAY.md`.
+
+**Follow-up (2026-08-17, same day) — three more entry-hypothesis probes,
+one confound caught, two real (still-negative) improvements found.** Owner
+asked to step back from "is this exact formalisation right" and infer what
+ELSE could produce the visible pattern, given four independent nulls on the
+continuation-on-pullback entry itself. All three probes run
+`js/impulseEmaRangeV2Engine.js` (v1 stays pinned and untouched) for its
+additive `legOriginTime`/`legExtremeTime` and exported `buildDaily`, each
+reusing the now-standard byte-identical-at-default backward-compat check:
+
+- **Session/time-of-day split** (`scripts/session_split.mjs`) — a first pass
+  bucketed by `fillTime` and found 77% of gold trades in hours 22-04 UTC,
+  which turned out to be a day-loop artifact (78% of hour-00 trades fill
+  within 30 min of midnight — carried-over legs, not fresh setups), caught
+  and fixed by re-bucketing on the new `legExtremeTime` instead. Corrected
+  result: still no hour-of-day cell survives n≥30 + full/IS/OOS-positive,
+  either instrument. `education/jordan_impulse_range_backtest/SESSION_SPLIT.md`.
+- **Liquidity-sweep filter** (`scripts/liquidity_sweep_filter.mjs`, post-hoc
+  on the existing baseline trades, no re-backtest) — only count a leg whose
+  origin swept the prior calendar day's H/L first (a stop-hunt-then-reversal
+  read). Result: a real, IS/OOS-consistent improvement on both instruments
+  (Gold Sharpe −5.99→−1.89 on 15% of trades, NQ −2.49→−0.93) — still net
+  negative, but the strongest survivor in this whole investigation.
+  `education/jordan_impulse_range_backtest/LIQUIDITY_SWEEP_FILTER.md`.
+- **VWAP-anchored entry band** (`entryBandMode: 'vwap'` on v2, reuses
+  `js/vumanchuCore.js`'s `computeVWAP` session-anchored) — swap the fixed
+  Fib retracement band for `|close − sessionVWAP| ≤ vwapBandAtrMult × ATR`.
+  Result: beats the Fib band at every threshold tried (0.25×-1.5×ATR), on
+  both instruments, with near-identical trade counts to baseline and low
+  threshold-sensitivity (both signs of a real effect, not a lucky slice) —
+  still net negative (Gold →−3.66, NQ →−0.76).
+  `education/jordan_impulse_range_backtest/VWAP_ENTRY_BAND.md`.
+
+- **Range-gate flip** (`rangeGateMode: 'exhausted'` on v2, inverts the gate
+  to require an already-stretched day instead of room-left) — the
+  strongest result of all four probes: Sharpe improves
+  mostly-monotonically as the threshold rises, reaching −0.48 (gold) and
+  **−0.10, PF 0.961** (NQ) at the highest threshold tried — still net
+  negative, but the closest any variant has come to breakeven this session.
+  `education/jordan_impulse_range_backtest/RANGE_GATE_FLIP.md`.
+
+**Taken together**, every follow-up that showed a real, IS/OOS-consistent
+improvement (liquidity sweep, VWAP band, range-gate flip) shares a theme —
+"the day/move is already significant" beats "wait for it to look tidy."
+None cross into positive Sharpe alone; combining them is untested.
+
+**Follow-up (2026-08-17, later same day) — live-OANDA validation harness.**
+Owner corrected the MAE-dynamic-stop test's framing (Jordan actually runs
+his own MAE analysis and a stop that shifts because of it — a different,
+unspecified mechanism from the one time-boxed-tightening implementation
+already tested null, see `MAE_DYNAMIC_STOP.md`'s correction note) and asked
+for a way to check the engine's live-forward signals against Jordan's
+actual trades directly, on real OANDA data. New script
+**`education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs`**
+— cannot run from this sandbox (OANDA 403 by policy), meant for Railway or
+the owner's own machine. Loads the frozen R2 archive, gap-fills it to NOW
+via real OANDA M1 (reusing `js/m1GapFill.js`'s `gapFillPacked` +
+`fetchM1Range` — the SAME chunked-fetch brick the per-line book's own
+rebuild-time top-up uses, not a new one-off fetch loop; a naive single
+`fetchM1Range` call would silently truncate over a ~10-week gap given
+OANDA's 5000-bar-per-request cap), then runs 4 variants via v2 (`baseline`
+at v1-matching defaults, `rangeGateMode:'exhausted'` @1.5x,
+`entryBandMode:'vwap'` @0.5xATR, and a liquidity-sweep post-filter) over
+the extended data, prints every trade
+since 2026-08-01, and cross-references against the 4 known reconstructed
+Jordan trades (same numbers as `trade-lab.html`'s `KNOWN_TRADES`) for
+timing/direction/price proximity. Verified end-to-end in this sandbox
+(minus the actual OANDA fetch, which correctly 403s here as expected) —
+gap-fill chunking, error handling, and the "still short of Aug 1" guard all
+confirmed working before this was committed. Deliberately uses RELATIVE
+imports (unlike this folder's other scripts, which hardcode this sandbox's
+absolute clone path) since it must run at a different path elsewhere.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
-local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
-loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,
+local `buildDaily(packed)` (unexported, v1 stays untouched) and
+`impulseEmaRangeV2Engine.js`'s own exported copy of the same function are
+now a 5th and 6th independent copy of the same D1-bucketing loop already
+inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,
 `js/backtest-worker.js` and `js/gold-backtest-worker.js` — a P1 extraction
 candidate (see §2), not extracted here to avoid touching those files' tested
-call sites in an unrelated change.
+call sites in an unrelated change. v2 deliberately did NOT import v1's
+`buildDaily` (it isn't exported, and shouldn't be — v1 stays exactly as
+originally committed, nothing added to it, not even an export).
 
 ---
 
@@ -1863,7 +1965,7 @@ drift directly desyncs trading from its backtest (the worst case).
 | 14 | **Confluence scorer** | weighted zone ranking across level types | `Gold/modules/confluence_scorer.py:56-186` vs `asiaRangeEngine.runModuleChecks` (module-hit-count, no cross-impulse/nPOC-age/VWAP) | 🟠 VERY HIGH (backtest↔live gap) |
 | 15 | **Swing-pivot detection** | N-bar high/low S/R | `confluenceModules:209-223`, `backtest-engine:189-203`, `range-bias:288-303`, `backtestSystem/indicators.py:111-122`, `Gold/modules/fib_engine.py:100-113`, `GoldV2/modules/level_matrix.py:_find_pivots` + `GoldV2/modules/htf_bias.py:_find_pivots` (N varies) | 🟠 MEDIUM |
 | 15b | **Gold-bot fork copies (V1→V2)** | GoldV2 is a versioned fork of Gold (house rule: version, don't overwrite). `volume_profile.py` / `session_engine.py` / `trendline_engine.py` are verbatim copies; `vumanchu.py` diverges deliberately (WT-mandatory + fuel veto); `level_matrix.py` replaces `fib_engine.py`+`confluence_scorer.py`. V1 is frozen, so copies can't drift while it lives — but when V2 wins the A/B, extract the three verbatim modules into `pylego` instead of letting a V3 copy them again. | `Gold/modules/*` vs `GoldV2/modules/*` | 🟡 MEDIUM (frozen incumbent) |
-| 16 | **D1 bucketing from packed M1 (`buildDaily`)** | fold `{times,opens,highs,lows,closes}` into completed UTC-day D1 bars, one forward pass | `js/poiReactionV1Engine.js:152`, `js/rangeExtEngine.js:80` (`buildDailyBars`), `js/backtest-worker.js:935` (`buildDailyBars`), `js/gold-backtest-worker.js:52` (`buildDailyBars`), `js/impulseEmaRangeV1Engine.js` (5th copy, added 2026-08-17, §1ao) — all byte-identical logic, different names | 🟡 MEDIUM (identical today, 5 places to keep in sync) |
+| 16 | **D1 bucketing from packed M1 (`buildDaily`)** | fold `{times,opens,highs,lows,closes}` into completed UTC-day D1 bars, one forward pass | `js/poiReactionV1Engine.js:152`, `js/rangeExtEngine.js:80` (`buildDailyBars`), `js/backtest-worker.js:935` (`buildDailyBars`), `js/gold-backtest-worker.js:52` (`buildDailyBars`), `js/impulseEmaRangeV1Engine.js` (5th copy, added 2026-08-17, §1ao), `js/impulseEmaRangeV2Engine.js` (6th copy, added 2026-08-17, §1ao) — all byte-identical logic, different names | 🟡 MEDIUM (identical today, 6 places to keep in sync) |
 
 ### P2 — useful consolidation (cleanliness, lower drift risk)
 

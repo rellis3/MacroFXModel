@@ -1,0 +1,188 @@
+{
+  "pair": "nq",
+  "splitDate": "2022-04-24",
+  "rows": [
+    {
+      "hour": 20,
+      "n": 17,
+      "winRate": 58.8,
+      "sharpe": 0.773,
+      "pf": 4.636,
+      "isSharpe": 0.927,
+      "isN": 11,
+      "oosSharpe": 0.894,
+      "oosN": 6
+    },
+    {
+      "hour": 3,
+      "n": 1,
+      "winRate": 0,
+      "sharpe": 0,
+      "pf": 0,
+      "isSharpe": 0,
+      "isN": 0,
+      "oosSharpe": 0,
+      "oosN": 1
+    },
+    {
+      "hour": 4,
+      "n": 1,
+      "winRate": 0,
+      "sharpe": 0,
+      "pf": 0,
+      "isSharpe": 0,
+      "isN": 1,
+      "oosSharpe": 0,
+      "oosN": 0
+    },
+    {
+      "hour": 5,
+      "n": 1,
+      "winRate": 0,
+      "sharpe": 0,
+      "pf": 0,
+      "isSharpe": 0,
+      "isN": 0,
+      "oosSharpe": 0,
+      "oosN": 1
+    },
+    {
+      "hour": 14,
+      "n": 1,
+      "winRate": 0,
+      "sharpe": 0,
+      "pf": 0,
+      "isSharpe": 0,
+      "isN": 1,
+      "oosSharpe": 0,
+      "oosN": 0
+    },
+    {
+      "hour": 17,
+      "n": 1,
+      "winRate": 100,
+      "sharpe": 0,
+      "pf": 99,
+      "isSharpe": 0,
+      "isN": 0,
+      "oosSharpe": 0,
+      "oosN": 1
+    },
+    {
+      "hour": 2,
+      "n": 11,
+      "winRate": 45.5,
+      "sharpe": -0.132,
+      "pf": 0.71,
+      "isSharpe": -0.294,
+      "isN": 7,
+      "oosSharpe": 0.107,
+      "oosN": 4
+    },
+    {
+      "hour": 21,
+      "n": 3,
+      "winRate": 33.3,
+      "sharpe": -0.568,
+      "pf": 0.332,
+      "isSharpe": -0.568,
+      "isN": 3,
+      "oosSharpe": 0,
+      "oosN": 0
+    },
+    {
+      "hour": 1,
+      "n": 186,
+      "winRate": 33.9,
+      "sharpe": -0.584,
+      "pf": 0.654,
+      "isSharpe": -0.573,
+      "isN": 113,
+      "oosSharpe": -0.676,
+      "oosN": 73
+    },
+    {
+      "hour": 23,
+      "n": 742,
+      "winRate": 33.3,
+      "sharpe": -0.828,
+      "pf": 0.728,
+      "isSharpe": -0.482,
+      "isN": 458,
+      "oosSharpe": -1.621,
+      "oosN": 284
+    },
+    {
+      "hour": 22,
+      "n": 290,
+      "winRate": 32.4,
+      "sharpe": -0.909,
+      "pf": 0.616,
+      "isSharpe": -0.655,
+      "isN": 169,
+      "oosSharpe": -1.226,
+      "oosN": 121
+    },
+    {
+      "hour": 0,
+      "n": 1895,
+      "winRate": 31.4,
+      "sharpe": -2.308,
+      "pf": 0.604,
+      "isSharpe": -2.685,
+      "isN": 1126,
+      "oosSharpe": -1.806,
+      "oosN": 769
+    },
+    {
+      "hour": 6,
+      "n": 0
+    },
+    {
+      "hour": 7,
+      "n": 0
+    },
+    {
+      "hour": 8,
+      "n": 0
+    },
+    {
+      "hour": 9,
+      "n": 0
+    },
+    {
+      "hour": 10,
+      "n": 0
+    },
+    {
+      "hour": 11,
+      "n": 0
+    },
+    {
+      "hour": 12,
+      "n": 0
+    },
+    {
+      "hour": 13,
+      "n": 0
+    },
+    {
+      "hour": 15,
+      "n": 0
+    },
+    {
+      "hour": 16,
+      "n": 0
+    },
+    {
+      "hour": 18,
+      "n": 0
+    },
+    {
+      "hour": 19,
+      "n": 0
+    }
+  ],
+  "survivors": [],
+  "cellsWithEnoughData": 4
+}

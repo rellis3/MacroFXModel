@@ -1,0 +1,55 @@
+{
+  "pair": "gold",
+  "rows": [
+    {
+      "vwapBandAtrMult": 0.25,
+      "nTrades": 3098,
+      "winRate": 29.3,
+      "sharpe": -3.789,
+      "pf": 0.503,
+      "oosSharpe": -2.98,
+      "oosN": 1240,
+      "ms": 9636
+    },
+    {
+      "vwapBandAtrMult": 0.5,
+      "nTrades": 3161,
+      "winRate": 29,
+      "sharpe": -3.66,
+      "pf": 0.521,
+      "oosSharpe": -2.391,
+      "oosN": 1265,
+      "ms": 6865
+    },
+    {
+      "vwapBandAtrMult": 0.75,
+      "nTrades": 3182,
+      "winRate": 28.5,
+      "sharpe": -3.714,
+      "pf": 0.512,
+      "oosSharpe": -2.515,
+      "oosN": 1273,
+      "ms": 5956
+    },
+    {
+      "vwapBandAtrMult": 1,
+      "nTrades": 3190,
+      "winRate": 28.7,
+      "sharpe": -3.743,
+      "pf": 0.514,
+      "oosSharpe": -2.618,
+      "oosN": 1276,
+      "ms": 5498
+    },
+    {
+      "vwapBandAtrMult": 1.5,
+      "nTrades": 3195,
+      "winRate": 27.4,
+      "sharpe": -4.006,
+      "pf": 0.491,
+      "oosSharpe": -2.953,
+      "oosN": 1278,
+      "ms": 5329
+    }
+  ]
+}

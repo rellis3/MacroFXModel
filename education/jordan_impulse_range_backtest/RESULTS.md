@@ -153,9 +153,10 @@ continuation-on-pullback, fixed RR — is not, by itself, a source of edge on
   access (e.g. Railway), `js/volBacktestEngine.js`'s `fetchM1Range` could pull
   the exact 13–14 Aug 2026 window and this same engine's logic could be
   checked bar-by-bar against those screenshots directly.
-- **One trade/day, first qualifying setup** — deliberately low-DOF (Build
-  Plan discipline) but means a genuinely better setup later the same day is
-  never taken. Not swept here.
+- **One trade/day, first qualifying setup by default** — deliberately
+  low-DOF (Build Plan discipline). `maxTradesPerDay` cfg now exists to
+  relax this (tested, see below) — a 2nd+ same-day setup turns out to be
+  the norm (~97% of days), but taking it doesn't help.
 - **NQ is OANDA's `NAS100_USD` CFD proxy**, not real CME NQ/MNQ futures data —
   no futures-contract Nasdaq data exists anywhere in this repo. Correlated but
   not identical to what a futures trader like the screenshots (`MNQ1!`) sees
@@ -172,6 +173,44 @@ continuation-on-pullback, fixed RR — is not, by itself, a source of edge on
 **Follow-up tested: a small dynamic stop, on the "if it's going to lose it
 loses fast" premise** — also null, on both instruments. See
 [MAE_DYNAMIC_STOP.md](MAE_DYNAMIC_STOP.md).
+
+**Follow-up tested: relaxing "one trade per day"** — a 2nd+ qualifying setup
+the same day is the norm (~97% of days), not rare, but taking it just
+realizes more of the same negative-edge trades faster; Sharpe gets
+monotonically worse as more are allowed, on both instruments. See
+[MULTI_TRADE_PER_DAY.md](MULTI_TRADE_PER_DAY.md).
+
+**Follow-up tested: session/time-of-day split** — no hour-of-day subset
+survives a real sample-size + IS/OOS-consistency bar, either instrument.
+Caught and fixed a real confound along the way (fill-time clustering near
+UTC midnight was a day-loop artifact, not a session effect). See
+[SESSION_SPLIT.md](SESSION_SPLIT.md).
+
+**Follow-up tested: a liquidity-sweep filter** (only count a leg whose
+origin swept the prior day's H/L first) — a real, IS/OOS-consistent
+improvement on both instruments (Gold Sharpe −5.99→−1.89, NQ −2.49→−0.93),
+but still net negative. The strongest result in this whole line of testing
+so far; reported straight, not oversold. See
+[LIQUIDITY_SWEEP_FILTER.md](LIQUIDITY_SWEEP_FILTER.md).
+
+**Follow-up tested: a VWAP-anchored entry band** (distance from session
+VWAP instead of a fixed Fib retracement fraction) — also a real, threshold-
+robust improvement on both instruments (Gold →−3.66, NQ →−0.76 at every
+threshold tried), still net negative. See
+[VWAP_ENTRY_BAND.md](VWAP_ENTRY_BAND.md).
+
+**Follow-up tested: flipping the range gate** (require an already-stretched
+day instead of room-left) — the strongest result of every test run against
+this engine: Sharpe improves monotonically (mostly) as the threshold rises,
+reaching −0.48 (gold) and **−0.10 with PF 0.961** (NQ) at the highest
+threshold tried — still a loser, but the closest any variant has come to
+breakeven. See [RANGE_GATE_FLIP.md](RANGE_GATE_FLIP.md).
+
+**Taken together**, every follow-up that showed a real, IS/OOS-consistent
+improvement (this one, the liquidity sweep, and the VWAP band) shares a
+theme — "the day/move is already significant" beats "wait for it to look
+tidy." None of them cross into positive Sharpe on their own; whether
+combining them does is untested.
 
 ---
 

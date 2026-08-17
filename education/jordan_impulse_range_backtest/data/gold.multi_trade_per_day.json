@@ -1,0 +1,61 @@
+{
+  "pair": "gold",
+  "results": [
+    {
+      "maxTradesPerDay": 1,
+      "nTrades": 3156,
+      "daysWithExtra": 0,
+      "winRate": 24.1,
+      "sharpe": -5.987,
+      "profitFactor": 0.357,
+      "oosSharpe": -4.436,
+      "oosTrades": 1263,
+      "extrasCount": 0,
+      "extrasWinRate": null,
+      "extrasSharpe": null,
+      "ms": 4467
+    },
+    {
+      "maxTradesPerDay": 2,
+      "nTrades": 6183,
+      "daysWithExtra": 3027,
+      "winRate": 25.3,
+      "sharpe": -8.029,
+      "profitFactor": 0.38,
+      "oosSharpe": -6.137,
+      "oosTrades": 2475,
+      "extrasCount": 3027,
+      "extrasWinRate": 26.5,
+      "extrasSharpe": -5.356,
+      "ms": 5732
+    },
+    {
+      "maxTradesPerDay": 3,
+      "nTrades": 9088,
+      "daysWithExtra": 3027,
+      "winRate": 25.3,
+      "sharpe": -10.358,
+      "profitFactor": 0.368,
+      "oosSharpe": -8.384,
+      "oosTrades": 3636,
+      "extrasCount": 5932,
+      "extrasWinRate": 25.9,
+      "extrasSharpe": -8.478,
+      "ms": 7110
+    },
+    {
+      "maxTradesPerDay": 5,
+      "nTrades": 14600,
+      "daysWithExtra": 3027,
+      "winRate": 25.6,
+      "sharpe": -13.658,
+      "profitFactor": 0.366,
+      "oosSharpe": -11.225,
+      "oosTrades": 5843,
+      "extrasCount": 11444,
+      "extrasWinRate": 26.1,
+      "extrasSharpe": -12.345,
+      "ms": 11664
+    }
+  ]
+}
