@@ -24,6 +24,7 @@ import { buildOILevelText } from './oiLevelExport.js';
 import { computeExpiryLevels, pickNearExpiry, buildOIEntry, oiDayBandFrac, oiBandSelect, oiReprojectBasis, oiRegimeBands } from './oi.js';
 import { oiStoreToLevels } from './oiConfluence.js';
 import { trailingRangeDistribution, quantile, percentileOf, rangeExhaustionRead } from './rangePercentileCore.js';
+import { findImpulseRetracements, kmeans1D, histogram } from './impulseRetracementGeometry.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -1048,6 +1049,43 @@ console.log('\n[oi day-expiry]');
   ok('rangeExhaustionRead: a tiny live range reads far below median', readTight.usedFracOfMedian < 0.2, `${readTight.usedFracOfMedian}`);
   ok('rangeExhaustionRead: null on too little trailing history', rangeExhaustionRead(daily, 3, 100, 101, 99, 20, 5) === null);
   ok('rangeExhaustionRead: null on degenerate sessionOpen', rangeExhaustionRead(daily, 20, 0, 101, 99, 20) === null);
+}
+
+// ── Impulse/Retracement Geometry (js/impulseRetracementGeometry.js, 2026-08-17) ─
+{
+  // Hand-built bars: an up-impulse from 100 (idx~5) to 110 (idx~15), a
+  // pullback to exactly 61.8% retrace (103.8), then a resumption past 110 —
+  // a clean synthetic "continued" case with a known answer.
+  const N = 60;
+  const bars = [];
+  let px = 100;
+  for (let i = 0; i < N; i++) {
+    let o = px, c = px, h, l;
+    if (i >= 5 && i <= 15) { c = 100 + (i - 5); }         // impulse up 100 -> 110
+    else if (i > 15 && i <= 25) { c = 110 - (i - 15) * 0.618; }  // pullback toward 103.82
+    else if (i > 25 && i <= 35) { c = 103.82 + (i - 25) * 0.8; } // resume up, breaks 110 at i=33
+    else { c = px; }
+    h = Math.max(o, c) + 0.01; l = Math.min(o, c) - 0.01;
+    bars.push({ time: 1700000000 + i * 300, open: o, high: h, low: l, close: c });
+    px = c;
+  }
+  const occ = findImpulseRetracements(bars, { pivotN: 3, minImpulseAtr: 0.5 });
+  const continued = occ.filter(o => o.outcome === 'continued' && o.dir === 'up');
+  ok('findImpulseRetracements: finds the synthetic up-impulse+continuation', continued.length >= 1, `n=${occ.length}, continued=${continued.length}`);
+  if (continued.length) {
+    const best = continued.reduce((a, b) => (a.legSize > b.legSize ? a : b));
+    ok('findImpulseRetracements: retraceFrac matches the hand-built 61.8% pullback', near(best.retraceFrac, 0.618, 0.03), `${best.retraceFrac}`);
+    ok('findImpulseRetracements: dir correctly read as up', best.dir === 'up');
+  }
+  ok('findImpulseRetracements: no lookahead — turnIdx never precedes bIdx', occ.every(o => o.turnIdx >= o.bIdx));
+
+  const vals = [0.1, 0.12, 0.11, 0.5, 0.52, 0.48, 0.9, 0.88, 0.91];
+  const { centroids, counts } = kmeans1D(vals, 3);
+  ok('kmeans1D: recovers 3 well-separated clusters near 0.1/0.5/0.9', near(centroids[0], 0.11, 0.03) && near(centroids[1], 0.5, 0.03) && near(centroids[2], 0.897, 0.03), `${centroids}`);
+  ok('kmeans1D: counts sum to input length', counts.reduce((a, b) => a + b, 0) === vals.length);
+
+  const h = histogram([0.05, 0.12, 0.5, 0.99], 0.5, 0, 1);
+  ok('histogram: 2 bins of width 0.5 over [0,1] bucket correctly', h.length === 2 && h[0].count === 2 && h[1].count === 2, JSON.stringify(h));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' CHECK(S) FAILED ✗'}`);

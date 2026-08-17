@@ -1704,6 +1704,25 @@ IS-consistent-with-OOS. Not proof the general style can never work — only
 that this specific, honestly-pinned formalisation of it doesn't, on 10 years
 of Gold/NQ M1.
 
+**Follow-up (2026-08-17, same day) — the owner correctly rejected the above as
+answering the wrong question** ("build a P&L backtest" vs "read what actually
+preceded these entries and find the real trend"). Built a second, genuinely
+different brick in response: **`js/impulseRetracementGeometry.js`** —
+`findImpulseRetracements(bars, opts)` (pivot-detected impulse legs, ≥2×ATR,
+tracks the deepest pullback before continuation/invalidation as a fraction of
+the leg) + `kmeans1D`/`histogram` for unsupervised pattern discovery. This is
+a **descriptive geometry pass, not a P&L engine** — no entries/stops/costs.
+Run on the full real 10.4y M1 archive (both instruments, replicated at M5 and
+native M1): unsupervised k-means (k=3, no Fib level assumed) lands at
+**0.36-0.38 / 0.62 / 0.87-0.88 on BOTH Gold and NQ** — the classic Fibonacci
+retracement levels, recovered from real data with nothing coded in. Bigger
+impulses (5×+ATR) retrace shallower (~0.45-0.48) before continuing than
+smaller ones (2-3×ATR, ~0.74) on both instruments; EMA(9/21) agreement at the
+turn is a lagging confirmation (only ~59-60% of turns already have it), not a
+leading trigger. Full result, the 4-known-trade comparison, and the honest
+caveats: `education/jordan_trade_geometry/RESULTS.md`. Unit-tested
+(`js/legoBricks.test.mjs`) against a hand-built synthetic 61.8%-retrace case.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

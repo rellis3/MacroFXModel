@@ -1,5 +1,6 @@
 node_modules/
 /data/
+education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 VolRangeForecaster/data/m1/
 VolRangeForecaster/data/cog-threshold/
