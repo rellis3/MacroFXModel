@@ -1897,6 +1897,32 @@ improvement (liquidity sweep, VWAP band, range-gate flip) shares a theme —
 "the day/move is already significant" beats "wait for it to look tidy."
 None cross into positive Sharpe alone; combining them is untested.
 
+**Follow-up (2026-08-17, later same day) — live-OANDA validation harness.**
+Owner corrected the MAE-dynamic-stop test's framing (Jordan actually runs
+his own MAE analysis and a stop that shifts because of it — a different,
+unspecified mechanism from the one time-boxed-tightening implementation
+already tested null, see `MAE_DYNAMIC_STOP.md`'s correction note) and asked
+for a way to check the engine's live-forward signals against Jordan's
+actual trades directly, on real OANDA data. New script
+**`education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs`**
+— cannot run from this sandbox (OANDA 403 by policy), meant for Railway or
+the owner's own machine. Loads the frozen R2 archive, gap-fills it to NOW
+via real OANDA M1 (reusing `js/m1GapFill.js`'s `gapFillPacked` +
+`fetchM1Range` — the SAME chunked-fetch brick the per-line book's own
+rebuild-time top-up uses, not a new one-off fetch loop; a naive single
+`fetchM1Range` call would silently truncate over a ~10-week gap given
+OANDA's 5000-bar-per-request cap), then runs 4 engine variants (baseline,
+`rangeGateMode:'exhausted'` @1.5x, `entryBandMode:'vwap'` @0.5xATR, and a
+liquidity-sweep post-filter) over the extended data, prints every trade
+since 2026-08-01, and cross-references against the 4 known reconstructed
+Jordan trades (same numbers as `trade-lab.html`'s `KNOWN_TRADES`) for
+timing/direction/price proximity. Verified end-to-end in this sandbox
+(minus the actual OANDA fetch, which correctly 403s here as expected) —
+gap-fill chunking, error handling, and the "still short of Aug 1" guard all
+confirmed working before this was committed. Deliberately uses RELATIVE
+imports (unlike this folder's other scripts, which hardcode this sandbox's
+absolute clone path) since it must run at a different path elsewhere.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

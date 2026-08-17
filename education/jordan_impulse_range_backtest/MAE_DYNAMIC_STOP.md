@@ -120,3 +120,16 @@ none has found anything.
 node education/jordan_impulse_range_backtest/scripts/mae_dynamic_stop.mjs gold education/jordan_impulse_range_backtest/data
 node education/jordan_impulse_range_backtest/scripts/mae_dynamic_stop.mjs nq   education/jordan_impulse_range_backtest/data ./portfolioBacktest/cache
 ```
+
+## Correction (2026-08-17, later same day)
+
+Owner clarified: Jordan actually runs his OWN MAE analysis and uses a
+dynamic stop that shifts because of it — not necessarily "a tight stop for
+the first K bars, then revert," which is the ONE specific implementation
+tested above. That implementation tested null; it does not rule out a
+different dynamic-stop mechanism (e.g. a stop that trails/tightens
+continuously as favorable MAE accumulates, rather than a fixed early
+window). Not retested here — flagged so this null isn't read as broader
+than what was actually tried. See `scripts/live_validation_harness.mjs` for
+a way to check generated signals against Jordan's actual trades directly,
+once run somewhere with real OANDA access.
