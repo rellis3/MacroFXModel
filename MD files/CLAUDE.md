@@ -270,6 +270,15 @@ Apply these to any new signal, Python throwaway or JS engine alike.
   secondary link index. New user-facing features/links belong on **`index.html`**
   (and the specific page they extend, e.g. the vol-bot lives on `bot-config.html`),
   **not** on `hub.html`. Do not add things to `hub.html` unless explicitly asked.
+- **`hub.html` is NOT the site's real navigation hub, despite an earlier session
+  declaring it that.** `today.html`'s 🗺 **Site Map** (and 🔌 API Map) — powered by
+  `js/siteApiMap.js`, reference doc `MD files/SITE_MAP.md` — is the actual,
+  actively-used shortcut hub for discovering every page on the site (searchable,
+  grouped, kept current). When registering a new page for discoverability, add it
+  to `js/siteApiMap.js`'s `#smBody` (pick the right group, e.g. `WIP —
+  Work in Progress`) **and** the matching row in `SITE_MAP.md` — not `hub.html`.
+  Verify by opening the target page directly (`file://` works — the Site Map
+  modal is static content, no server needed) and confirming the entry renders.
 - **Data**: OANDA D1 via `fetchD1` (needs `OANDA_KEY`); M1 via `loadM1ForPair`
   (R2 / parquet / Drive). OANDA is reachable in Railway, not in the sandbox
   (expect 403 locally — that's environment, not a bug).
@@ -481,5 +490,19 @@ Report the green honestly and the red honestly.
 ## Git / workflow
 
 - Develop on a feature branch; never commit straight to `main`.
-- One logical change per PR; open as **draft**; link new tools from `hub.html`.
+- One logical change per PR; open as **draft**; register new tools in
+  `today.html`'s Site Map (`js/siteApiMap.js` + `SITE_MAP.md`) — **not**
+  `hub.html`, see the house-conventions note above.
 - Keep commits scoped and messages descriptive.
+
+## Live deployment
+
+Production runs on Railway at **https://macrofxmodel-production.up.railway.app**
+— this is where `OANDA_KEY`/live OANDA and Yahoo Finance fetches actually work.
+Sandboxed dev sessions get 403 from both (an egress policy on the sandbox, not a
+data-availability issue — see `js/tradeLabDataSource.js`'s header for a worked
+example), so anything that depends on live/recent data (a window past the R2
+archive's last sync, a CDN-hosted chart lib, etc.) can only be verified for real
+on this URL, not from here. When a task needs that check, ask the owner to
+confirm the Railway deploy has picked up the latest `main` (Railway redeploys on
+push, but there can be a lag) before treating a live-path test as conclusive.
