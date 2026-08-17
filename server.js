@@ -4437,13 +4437,18 @@ setInterval(() => {
 // ── Geopolitical Risk Index (Caldara & Iacoviello, Fed Board) — see js/gprEngine.js ──
 // The ONE macro series on this dashboard that isn't on FRED — a genuinely
 // global, currency-agnostic backdrop read (counts geopolitical-tension
-// language across 10 major newspapers, published daily). Source is a raw
-// .xls download, not a JSON API, hence the xlsx dependency (pinned to
+// language across 10 major newspapers). The underlying series has a daily
+// date index, but the SOURCE FILE itself is only republished weekly, every
+// Monday (confirmed on the site directly — shifts a day around federal
+// holidays), not daily — checking once/day still correctly catches each
+// week's update the same day it lands, just costs nothing on the 6 days it
+// doesn't change. today.html's Market Read line flags >~10 days since the
+// latest date as likely-stale (a missed weekly update), not a bug. Source is
+// a raw .xls download, not a JSON API, hence the xlsx dependency (pinned to
 // SheetJS's own CDN in package.json — the npm-registry copy has an
 // unpatched high-severity prototype-pollution advisory with no fix
 // available, and this parses a third-party file, so the CDN build is used
-// deliberately, not the registry one). Same daily-gate refresh pattern as
-// every engine above (data itself only moves once a day at most).
+// deliberately, not the registry one).
 const _GPR_KV = 'gpr_v1';
 const GPR_DAILY_URL = 'https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls';
 async function _buildGprScore() {

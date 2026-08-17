@@ -1,10 +1,12 @@
 // js/gprEngine.js — Geopolitical Risk Index (Caldara & Iacoviello, Federal
 // Reserve Board / matteoiacoviello.com) — a genuinely global, currency-
 // agnostic macro-backdrop read: counts geopolitical-tension language across
-// 10 major newspapers, published daily. This is the ONE series this
-// dashboard reads that is NOT on FRED (everything else reuses
+// 10 major newspapers. The series has a daily date index, but the source
+// FILE is only republished weekly (Mondays, per the site itself) — see
+// server.js's _buildGprScore for the refresh-cadence note. This is the ONE
+// series this dashboard reads that is NOT on FRED (everything else reuses
 // fetchFredObservations) — the source file is a raw .xls download, parsed
-// server-side (see server.js's _buildGprScore).
+// server-side.
 //
 // Design: use the DAILY file's own 30-day moving average (GPRD_MA30) as the
 // level, not the raw daily print — the raw print is noisy news-count data;
