@@ -65,6 +65,8 @@ TEMPLATE = r"""<!DOCTYPE html>
       <p><b>Direction does not carry over.</b> Whether a session closed up or down is close to a coin flip for predicting the next session's direction, in every handoff tested. Trend continuation across sessions is not supported by this data.</p>
       <p><b>The pre-open spike finding is the strongest, most specific result.</b> A large move in the 15 minutes before a session opens is reliably followed by <i>reduced</i> continuation (more reversal) over the next 15&#8211;60 minutes, at all four session opens, and it survives the circular-shift null everywhere it was tested. This is close to what the screenshot that prompted this study described &#8212; not "always," but a real, repeatable statistical tilt.</p>
       <p><b>Hour-of-day range differences are enormous but not surprising.</b> The 12:00&#8211;15:00 UTC window (US data releases into the London/NY overlap) runs at up to ~1.9&#215; the average hour's range; the 21:00&#8211;04:00 UTC tail runs at ~0.6&#215;. This is well-known market structure, included here mainly as a sanity check that the pipeline recovers a known truth before trusting it on the less obvious questions above.</p>
+      <p><b>By the time Asia ends, nearly half the day is already "spent."</b> Median 44.5% of the day's eventual range has printed by 07:00 UTC, 65% by 12:00 UTC — and a wide morning predicts a wide afternoon (range compounds through the day rather than reverting to a fixed daily budget), more strongly the later the checkpoint. The day's move-so-far, by contrast, barely predicts its close — direction not carrying over at the session level (above) holds at the whole-day level too.</p>
+      <p><b>The walk-forward prediction model mostly confirms the null, and that's the honest, useful result.</b> A real Ridge/Logistic model, trained only on the past and tested year-by-year going forward, was built to predict the rest of the day from what's happened so far. For <i>range</i> it beats "ignore today entirely" by a small, inconsistent margin — but does not clearly beat the trivial one-variable version of the same idea, and a model trained on scrambled outcomes does about as well roughly a third to a half of the time. For <i>direction</i> there is no walk-forward skill anywhere, and at the London and Overlap checkpoints the trained model is <i>significantly worse</i> than just assuming today's move-so-far continues. This independently reproduces the handoff finding above via a completely different method — see "Can this predict the rest of the day?" below before building anything on it.</p>
     </div>
     <div class="caveat">Full-sample quantile thresholds (spike/tercile cuts) are fit on the whole 10-year window, which is standard for a descriptive/inferential study like this one but is <b>not</b> walk-forward-safe — a live rule built on these thresholds needs its cut points refit on training data only, exactly like <code>forge/discover.py</code> already does for level backtests. Nothing here has been checked against trading costs, spread, or slippage.</div>
   </div>
@@ -73,6 +75,23 @@ TEMPLATE = r"""<!DOCTYPE html>
     <h3>Average move by UTC hour — where the day's range actually comes from</h3>
     <div class="legend" id="hour-legend"></div>
     <div id="hour-chart"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>How much of the day's range is already in, by each checkpoint</h3>
+      <div id="dayflow-chart"></div>
+    </div>
+    <div class="card">
+      <h3>Range persistence through the day (Spearman &#961;, so-far vs. remaining)</h3>
+      <div id="dayflow-persist-chart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Can this predict the rest of the day? — walk-forward model vs. baselines</h3>
+    <div class="sub">Ridge (range) / Logistic (direction), expanding walk-forward by calendar year, vs. a climatology baseline (train-set average, ignores today) and a persistence baseline (the trivial one-variable version of the same idea). <span class="pos">green</span> = model beats that baseline; <span class="neg">red</span> = model loses to it; bold = the difference survives BH-FDR. <code>p_vs_null</code> is the model refit on circularly-shifted training targets — the closer to 1, the more the model's apparent skill looks like what a scrambled-target model achieves by chance.</div>
+    <div class="twrap"><table id="forecast-table"></table></div>
   </div>
 
   <div class="grid2">
@@ -95,6 +114,9 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   <h2>Full spike / gap-fill results</h2>
   <div class="twrap"><table id="spike-table"></table></div>
+
+  <h2>Full day-flow results</h2>
+  <div class="twrap"><table id="dayflow-table"></table></div>
 
   <h2>Day of week (descriptive, not FDR-tested)</h2>
   <div class="twrap"><table id="dow-table"></table></div>
@@ -199,6 +221,58 @@ el('meta').textContent = `${DATA.meta.data_start.slice(0,10)} → ${DATA.meta.da
   });
 })();
 
+// ---- day-flow: fraction of day's range already in, by checkpoint ----
+(function(){
+  const order = ['post_asia','post_london','post_overlap'];
+  const label = {post_asia:'after Asia (07:00)', post_london:'after London (12:00)', post_overlap:'after Overlap (16:00)'};
+  const rows = DATA.dayflow.filter(r => r.metric === 'frac_of_day_range_used_median')
+    .sort((a,b)=>order.indexOf(a.checkpoint)-order.indexOf(b.checkpoint));
+  const W = 420, rowH = 34, padL = 150, padR = 46;
+  const H = rows.length * rowH + 10;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">`;
+  rows.forEach((r,i) => {
+    const y0 = i*rowH + 7, bh = rowH - 14;
+    const w = Math.min(r.value,1) * (W - padL - padR);
+    svg += `<text class="bar-label" x="${padL-8}" y="${y0+bh/2+3}" text-anchor="end">${label[r.checkpoint]||r.checkpoint}</text>`;
+    svg += `<rect data-i="${i}" x="${padL}" y="${y0}" width="${Math.max(w,2)}" height="${bh}" rx="3" fill="var(--s3)" style="cursor:pointer"></rect>`;
+    svg += `<text class="val-label" x="${padL+w+6}" y="${y0+bh/2+3}">${(r.value*100).toFixed(0)}%</text>`;
+  });
+  svg += `</svg>`;
+  el('dayflow-chart').innerHTML = svg;
+  el('dayflow-chart').querySelectorAll('rect[data-i]').forEach(rect => {
+    const r = rows[+rect.dataset.i];
+    rect.addEventListener('mousemove', e => showTip(e, `<b>${label[r.checkpoint]||r.checkpoint}</b><br>median ${(r.value*100).toFixed(1)}% of day's eventual range already in<br>mean ${(r.mean*100).toFixed(1)}% · n=${r.n}`));
+    rect.addEventListener('mouseleave', hideTip);
+  });
+})();
+
+// ---- day-flow: does range-so-far predict remaining range (compounding vs. reverting)? ----
+(function(){
+  const order = ['post_asia','post_london','post_overlap'];
+  const label = {post_asia:'after Asia', post_london:'after London', post_overlap:'after Overlap'};
+  const rows = DATA.dayflow.filter(r => r.metric === 'range_so_far_vs_remaining_spearman')
+    .sort((a,b)=>order.indexOf(a.checkpoint)-order.indexOf(b.checkpoint));
+  const W = 420, rowH = 34, padL = 100, padR = 46;
+  const H = rows.length * rowH + 10;
+  const maxV = Math.max(...rows.map(r=>Math.abs(r.value))) * 1.3;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">`;
+  rows.forEach((r,i) => {
+    const y0 = i*rowH + 7, bh = rowH - 14;
+    const w = (r.value/maxV) * (W - padL - padR);
+    const color = r.bh_pass ? 'var(--good)' : 'var(--text3)';
+    svg += `<text class="bar-label" x="${padL-8}" y="${y0+bh/2+3}" text-anchor="end">${label[r.checkpoint]||r.checkpoint}</text>`;
+    svg += `<rect data-i="${i}" x="${padL}" y="${y0}" width="${Math.max(w,2)}" height="${bh}" rx="3" fill="${color}" style="cursor:pointer"></rect>`;
+    svg += `<text class="val-label" x="${padL+w+6}" y="${y0+bh/2+3}">${fmt(r.value,2)}</text>`;
+  });
+  svg += `</svg>`;
+  el('dayflow-persist-chart').innerHTML = svg;
+  el('dayflow-persist-chart').querySelectorAll('rect[data-i]').forEach(rect => {
+    const r = rows[+rect.dataset.i];
+    rect.addEventListener('mousemove', e => showTip(e, `<b>${label[r.checkpoint]||r.checkpoint}</b><br>range-so-far vs. remaining-range ρ = ${fmt(r.value)}<br>n=${r.n} · p_perm=${fmtP(r.p_perm)}<br>${r.bh_pass ? '<span class="pass">survives BH-FDR</span>' : '<span class="fail">does not survive BH-FDR</span>'}`));
+    rect.addEventListener('mouseleave', hideTip);
+  });
+})();
+
 // ---- tables ----
 function buildTable(id, rows, cols) {
   const t = el(id);
@@ -215,8 +289,21 @@ buildTable('spike-table', DATA.spike_fade.sort((a,b)=> (a.primary_p??1)-(b.prima
   ['value', r=>fmt(r.value)], ['p', r=>fmtP(r.p)], ['p_perm', r=>fmtP(r.p_perm)],
   ['BH', r=>r.bh_pass?'<span class="pass">pass</span>':'<span class="fail">—</span>'],
 ]);
+buildTable('dayflow-table', DATA.dayflow.sort((a,b)=> (a.primary_p??1)-(b.primary_p??1)), [
+  ['checkpoint', r=>r.checkpoint], ['metric', r=>r.metric], ['n', r=>r.n], ['value', r=>fmt(r.value)],
+  ['p_perm', r=>fmtP(r.p_perm)],
+  ['BH', r=>r.bh_pass?'<span class="pass">pass</span>':'<span class="fail">—</span>'],
+]);
 buildTable('dow-table', DATA.day_of_week, [
   ['day', r=>r.dow], ['n', r=>r.n], ['mean range (×ATR)', r=>fmt(r.mean_range_atr)], ['mean |return| (×ATR)', r=>fmt(r.mean_abs_ret_atr)],
+]);
+const fCls = r => r.bh_pass ? (r.better_than_baseline ? 'pos' : 'neg') : (r.better_than_baseline ? '' : 'muted');
+const fLabel = r => (r.bh_pass ? '<b>' : '') + (r.better_than_baseline ? 'beats' : 'loses to') + (r.bh_pass ? '</b>' : '');
+buildTable('forecast-table', DATA.forecast_cells.sort((a,b)=> (a.checkpoint>b.checkpoint?1:-1) || (a.target>b.target?1:-1)), [
+  ['checkpoint', r=>r.checkpoint], ['target', r=>r.target], ['vs.', r=>r.metric.replace('beats_','')],
+  ['n', r=>r.n], ['model', r=>fmt(r.value)], ['baseline', r=>fmt(r.baseline)],
+  ['result', r=>`<span class="${fCls(r)}">${fLabel(r)}</span>`],
+  ['p', r=>fmtP(r.p)], ['p_vs_null', r=>fmtP(r.p_vs_null)],
 ]);
 
 document.addEventListener('mousemove', e => { if (tip.style.display==='block') moveTip(e); });
@@ -233,6 +320,8 @@ def build_report(pair: str, out_dir: str = "SessionResearch/out") -> Path:
         "handoff": json.loads((base / "handoff.json").read_text()),
         "intraday": json.loads((base / "intraday.json").read_text()),
         "spike_fade": json.loads((base / "spike_fade.json").read_text()),
+        "dayflow": json.loads((base / "dayflow.json").read_text()),
+        "forecast_cells": json.loads((base / "forecast_cells.json").read_text()),
         "day_of_week": json.loads((base / "day_of_week.json").read_text()),
     }
     html = TEMPLATE.replace("__PAIR_UPPER__", pair.upper()).replace(

@@ -51,12 +51,15 @@ def _boundary_events(m1: pd.DataFrame, hour: int, day_start_hour: int = 0) -> pd
 
     close = m1["close"]
     m15_atr0 = frame(m1, "m15", day_start_hour=day_start_hour)["atr0"].replace(0, np.nan)
+    d1_atr0 = frame(m1, "d1", day_start_hour=day_start_hour)["atr0"]
 
     p_pre = _price_asof(close, boundary - pd.Timedelta(minutes=PRE_WINDOW_MIN))
     p_open = _price_asof(close, boundary)
     scale = _price_asof(m15_atr0, boundary)
+    day_vol = _price_asof(d1_atr0, boundary)  # the day's OWN prior-day ATR — the vol-regime marker
 
-    out = pd.DataFrame({"boundary": boundary, "p_pre": p_pre, "p_open": p_open, "scale": scale})
+    out = pd.DataFrame({"boundary": boundary, "p_pre": p_pre, "p_open": p_open, "scale": scale,
+                        "day_vol": day_vol})
     for n in POST_WINDOWS_MIN:
         out[f"p_post_{n}"] = _price_asof(close, boundary + pd.Timedelta(minutes=n))
 
@@ -65,7 +68,12 @@ def _boundary_events(m1: pd.DataFrame, hour: int, day_start_hour: int = 0) -> pd
     for n in POST_WINDOWS_MIN:
         out[f"post_move_{n}"] = out[f"p_post_{n}"] - out["p_open"]
         out[f"post_move_{n}_atr"] = out[f"post_move_{n}"] / out["scale"]
-    return out.dropna(subset=["pre_move_atr"])
+    out = out.dropna(subset=["pre_move_atr"])
+    # High/low vol regime, split on THIS boundary's own median day_vol — not gold's overall
+    # median, so each boundary is judged against its own history (a boundary run only over a
+    # later, structurally wider-ATR sub-sample isn't accidentally called "all high-vol").
+    out["vol_regime"] = np.where(out["day_vol"] >= out["day_vol"].median(), "high", "low")
+    return out
 
 
 def run_spike_fade_study(m1: pd.DataFrame, day_start_hour: int = 0,
@@ -107,6 +115,23 @@ def run_spike_fade_study(m1: pd.DataFrame, day_start_hour: int = 0,
                                  n=n1 + n2, value=k1 / n1 - k2 / n2, p=p, p_perm=p_perm,
                                  reversal_rate_spike=k1 / n1, reversal_rate_nonspike=k2 / n2,
                                  spike_threshold_atr=cut))
+
+            # 1b. robustness check (one representative window): is the reversal effect
+            # concentrated in one volatility regime, or does it hold in both? A finding that
+            # only shows up in, say, the 2020/2025-26 high-vol stretch is a period effect
+            # wearing a session-effect costume, not the general pattern it's reported as.
+            if n == 30:
+                regime = ev["vol_regime"].to_numpy()
+                for label in ("high", "low"):
+                    m = valid & (regime == label)
+                    if m.sum() < 100:
+                        continue
+                    stat_val = spike_reversal_stat(pre[m], post[m], SPIKE_QUANTILE)
+                    _, p_perm_r = circular_shift_pvalue(pre[m], post[m], spike_reversal_stat,
+                                                        n_perm=max(200, n_perm // 3), rng=rng)
+                    rows.append(dict(boundary=name, post_min=n, metric="spike_reversal_rate_by_regime",
+                                     n=int(m.sum()), value=stat_val, p=np.nan, p_perm=p_perm_r,
+                                     vol_regime=label))
 
             # 2. how much of the spike actually comes back
             if v_spike.sum() >= 30:

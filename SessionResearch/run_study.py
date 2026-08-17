@@ -1,6 +1,6 @@
-"""run_study — orchestrates sessions -> handoff -> intraday -> spike_fade for
-one pair, pools every p-value produced into ONE Benjamini-Hochberg correction,
-and writes JSON + a text summary.
+"""run_study — orchestrates sessions -> handoff -> intraday -> spike_fade ->
+dayflow -> forecast for one pair, pools every p-value produced into ONE
+Benjamini-Hochberg correction, and writes JSON + a text summary.
 
 Usage (from repo root):
     python3 -m SessionResearch.run_study --pair gold
@@ -21,6 +21,8 @@ import numpy as np
 import pandas as pd
 
 from forge.bars import load_m1
+from SessionResearch.dayflow import build_day_checkpoints, dayflow_cells
+from SessionResearch.forecast import run_forecast_study
 from SessionResearch.handoff import run_handoff_study
 from SessionResearch.intraday import build_hourly_frame, day_of_week_summary, hour_of_day_cells
 from SessionResearch.sessions import build_session_table
@@ -40,6 +42,33 @@ def _primary_p(row: pd.Series) -> float:
     return float(p) if p is not None and np.isfinite(p) else float("nan")
 
 
+def _forecast_to_cells(forecast_res: pd.DataFrame) -> pd.DataFrame:
+    """Reduces each forecast row (one per checkpoint x target, carrying both
+    baselines' errors and the null check) to the two hypotheses that belong in
+    the pooled FDR: does the model beat climatology, does it beat persistence.
+    `p_vs_null` is reported in the full forecast.json for every row but is
+    deliberately NOT pooled here — it's a sanity check on the model itself
+    (comparable-to-null score = don't trust this row), not a "reject H0"
+    test in the same family as the others."""
+    rows = []
+    for _, r in forecast_res.iterrows():
+        regression = r["target"] == "remaining_range_atr"
+        value = r["mae_model"] if regression else r["acc_model"]
+        for metric, p, baseline in (
+            ("beats_climatology", r.get("p_vs_climatology"), r.get("mae_climatology" if regression else "acc_climatology")),
+            ("beats_persistence", r.get("p_vs_persistence"), r.get("mae_persistence" if regression else "acc_persistence")),
+        ):
+            # MAE: lower is better. Accuracy: higher is better. A significant cell here can
+            # mean the model significantly BEATS the baseline OR significantly LOSES to it —
+            # the direction has to travel with the p-value or a "significant" row reads as a
+            # win by default, which is exactly backwards for e.g. post_overlap direction below.
+            better = (value < baseline) if regression else (value > baseline)
+            rows.append(dict(checkpoint=r["checkpoint"], target=r["target"], n=r["n"],
+                             metric=metric, value=value, baseline=baseline, better_than_baseline=bool(better),
+                             p=p, p_perm=None, p_vs_null=r.get("p_vs_null")))
+    return pd.DataFrame(rows)
+
+
 def run_study(pair: str, root: str = "VolRangeForecaster/data/m1", out_dir: str = "SessionResearch/out",
              day_start_hour: int = 0, n_perm: int = 1000, q: float = 0.10, seed: int = 0) -> dict:
     m1 = load_m1(pair, root=root)
@@ -56,7 +85,16 @@ def run_study(pair: str, root: str = "VolRangeForecaster/data/m1", out_dir: str 
     spike_cells = run_spike_fade_study(m1, day_start_hour=day_start_hour, n_perm=n_perm, seed=seed + 1)
     spike_cells["source"] = "spike_fade"
 
-    all_cells = pd.concat([handoff_cells, intraday_cells, spike_cells], ignore_index=True, sort=False)
+    cp = build_day_checkpoints(tab, m1, day_start_hour=day_start_hour)
+    dayflow_c = dayflow_cells(cp, n_perm=n_perm, seed=seed + 2)
+    dayflow_c["source"] = "dayflow"
+
+    forecast_res = run_forecast_study(cp, n_null=max(20, n_perm // 50), seed=seed + 3)
+    forecast_cells = _forecast_to_cells(forecast_res)
+    forecast_cells["source"] = "forecast"
+
+    all_cells = pd.concat([handoff_cells, intraday_cells, spike_cells, dayflow_c, forecast_cells],
+                          ignore_index=True, sort=False)
     all_cells["primary_p"] = all_cells.apply(_primary_p, axis=1)
     all_cells["bh_pass"] = bh_fdr(all_cells["primary_p"], q=q)
     all_cells["n_hypotheses_pooled"] = int(all_cells["primary_p"].notna().sum())
@@ -68,9 +106,13 @@ def run_study(pair: str, root: str = "VolRangeForecaster/data/m1", out_dir: str 
         df.to_json(out / f"{name}.json", orient="records", date_format="iso")
 
     _dump(tab, "session_table")
+    _dump(cp, "day_checkpoints")
+    _dump(forecast_res, "forecast")
     _dump(all_cells[all_cells["source"] == "handoff"].drop(columns="source"), "handoff")
     _dump(all_cells[all_cells["source"] == "intraday"].drop(columns="source"), "intraday")
     _dump(all_cells[all_cells["source"] == "spike_fade"].drop(columns="source"), "spike_fade")
+    _dump(all_cells[all_cells["source"] == "dayflow"].drop(columns="source"), "dayflow")
+    _dump(all_cells[all_cells["source"] == "forecast"].drop(columns="source"), "forecast_cells")
     _dump(dow, "day_of_week")
     _dump(all_cells, "all_cells")
 

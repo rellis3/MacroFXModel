@@ -4,8 +4,8 @@ Does the Asia / London / London-NY overlap / NY session cycle predict itself?
 A stats-first research engine over 10 years of M1 gold data, built to run
 unchanged over any of the other 25 pairs in `VolRangeForecaster/data/m1/`.
 
-This answers three related questions, at the level of full trading sessions
-and at the level of individual hours:
+This answers five related questions, at the level of full trading sessions,
+individual hours, and the day as it unfolds:
 
 1. **Range handoff.** Does a wide (or quiet) session predict the next
    session's range?
@@ -14,20 +14,31 @@ and at the level of individual hours:
    move tend to fade?
 3. **The pre-open spike.** Is there really "a big candle before the open,
    and the gap comes back" — and if so, at which session opens, and how much
-   of the move actually retraces?
+   of the move actually retraces? Checked for robustness across both high-
+   and low-volatility regimes, not just pooled.
+4. **Trending the day as it happens.** Given what's already printed today —
+   after Asia, after London, after the overlap — how much of the day's
+   eventual range is already "spent," and does the day's move-so-far predict
+   its close?
+5. **Can any of this actually predict the rest of the day?** A real
+   walk-forward model (not a backtest with the answer key visible), trained
+   only on the past, tested year by year going forward — see "Can this
+   predict the rest of the day?" below. Short version: mostly no, and that's
+   reported as plainly as a "yes" would have been.
 
 Plus an hour-of-day breakdown (which UTC hours produce outsized moves) as a
 sanity check that the pipeline recovers known market structure before
 trusting it on the less obvious questions above.
 
-**This is Phase 1: descriptive/inferential research, not a signal generator.**
-No entries, exits, position sizing, or cost model — see "What this is not"
+**Phase 1 (questions 1–4) is descriptive/inferential research; question 5 is
+a genuine walk-forward model, but neither phase is a signal generator.** No
+entries, exits, position sizing, or cost model — see "What this is not"
 below.
 
 ## Run it
 
 ```bash
-pip install pandas numpy scipy pyarrow statsmodels    # if not already installed
+pip install pandas numpy scipy pyarrow statsmodels scikit-learn    # if not already installed
 python3 -m SessionResearch.run_study --pair gold
 python3 -m SessionResearch.report_html --pair gold
 open SessionResearch/out/gold/gold-session-research.html
@@ -41,10 +52,13 @@ python3 -m SessionResearch.report_html --pair eurusd
 ```
 
 `run_study` writes to `SessionResearch/out/<pair>/`: `meta.json`,
-`handoff.json`, `intraday.json`, `spike_fade.json`, `day_of_week.json`,
-`all_cells.json` (the pooled table used for the FDR correction), and
-`session_table.json` (the raw per-day-per-session table — regenerated on
-every run, gitignored, ~5MB for gold's full 10-year history).
+`handoff.json`, `intraday.json`, `spike_fade.json`, `dayflow.json`,
+`forecast.json` (full walk-forward detail), `forecast_cells.json` (the two
+FDR-pooled hypotheses per checkpoint/target), `day_of_week.json`,
+`all_cells.json` (the pooled table used for the FDR correction), and two
+large, regenerated-every-run, gitignored files: `session_table.json`
+(per-day-per-session raw table, ~5MB) and `day_checkpoints.json`
+(per-day-per-checkpoint raw table, ~4MB).
 
 ## Session definitions
 
@@ -69,6 +83,24 @@ constant). This module resolves that by matching `forge` exactly on
 asia/london and adding the overlap/ny split on top — it does not change any
 of the other three, which are used for other purposes (live decisioning,
 a specific fib-extension strategy) that this research doesn't touch.
+
+## Day checkpoints (for questions 4 and 5)
+
+Three points where a trader watching the day unfold would naturally ask
+"given what's happened so far, what does the rest of the day look like?" —
+the instant each session ends and the next begins:
+
+| Checkpoint | UTC | Sessions seen | Sessions remaining |
+|---|---|---|---|
+| `post_asia` | 07:00 | asia | london, overlap, ny |
+| `post_london` | 12:00 | asia, london | overlap, ny |
+| `post_overlap` | 16:00 | asia, london, overlap | ny |
+
+No `post_ny` checkpoint — after 21:00 UTC only the thin late tail is left,
+not enough real trading time to make "the rest of the day" mean anything.
+Every feature at a checkpoint (`dayflow.build_day_checkpoints`) is built ONLY
+from sessions that have actually closed by that checkpoint — this is what
+the walk-forward model trains on, so it's a hard rule, not a convention.
 
 ## Methodology — why this isn't just eyeballed correlations
 
@@ -123,13 +155,72 @@ shape of what came out of the first run:
 - **Hour-of-day range is dominated by 12:00–15:00 UTC** (US data releases
   into the London/NY overlap, ~1.7–1.9× an average hour) and troughs at
   21:00–04:00 UTC (~0.6×). Expected, and included as a pipeline sanity check.
+- **By the time Asia ends, nearly half the day is already "spent."** Median
+  44.5% of the day's eventual range has printed by 07:00 UTC, 65% by 12:00 —
+  and a wide morning predicts a wide afternoon (range *compounds* through the
+  day rather than reverting to a fixed daily budget), more strongly the later
+  the checkpoint (post-overlap ρ ≈ 0.20 vs. post-asia ρ ≈ 0.10). The day's
+  move-so-far, by contrast, barely predicts its close — the direction-does-
+  not-carry-over finding above holds at the whole-day level too.
+- **The spike-reversal finding holds in both volatility regimes** at the
+  Asia, London, and NY opens (p_perm ≤ 0.02 in both halves of the sample,
+  split on each boundary's own trailing daily-ATR median); at the overlap
+  open it's concentrated in the high-vol half only (p_perm = 0.61 in the
+  low-vol half) — a real, specific nuance, not a blanket claim.
+
+## Can this predict the rest of the day? (`forecast.py`)
+
+The question the earlier sections all point at: given today's info so far,
+build an actual model and see if it works. One Ridge (regression: remaining
+range) and one Logistic (classification: does the day close above or below
+the checkpoint price) model per checkpoint, **walk-forward validated by
+calendar year** — train on every year strictly before Y, test on year Y,
+expanding window, never the reverse. This is the one part of the study that
+IS walk-forward-safe end to end, not just descriptive.
+
+Every model has to clear three bars, not one:
+
+- **Beat climatology** — the train-set unconditional average. A model that
+  doesn't even look at today's features.
+- **Beat persistence** — the naive one-variable version of the same idea
+  (a straight-line fit of remaining range on range-so-far; "today's move so
+  far continues," for direction). Beating a coin flip is cheap; beating the
+  obvious idea is the actual bar.
+- **Beat a null.** The identical model architecture, refit on the SAME
+  training features but with the training target circularly shifted, then
+  scored against the real, unshifted test target. If a model trained on
+  scrambled outcomes scores comparably, the real model's "skill" isn't
+  trustworthy — this is the number to read first, not a footnote.
+
+**Result: mostly, no — and that's the useful finding, not a disappointing
+one.** Range prediction beats climatology at 2 of 3 checkpoints (weakly,
+`post_overlap` p = 0.0001, `post_london` p = 0.024) but does **not** clearly
+beat the persistence baseline anywhere (best p = 0.13), and 32–51% of
+null (scrambled-target) refits score as well or better than the real model —
+the small edge that exists is mostly the already-known range-persistence
+effect, already captured by the trivial one-variable rule; the fancier model
+adds nothing on top of it. Direction prediction has **no walk-forward skill
+anywhere**, and at `post_london` and `post_overlap` the trained model is
+*significantly worse* than the naive persistence baseline (p = 0.0034 and
+p = 0.044) — a real, if unflattering, result. A HistGradientBoosting variant
+was fit alongside as a "does nonlinearity help" check; it doesn't, scoring
+within noise of the linear model everywhere.
+
+This independently reproduces the handoff-level finding above ("direction
+does not carry over") through a completely different method — a genuine
+walk-forward model with a real out-of-sample test, not just a same-sample
+correlation — which is exactly the kind of convergence that makes a null
+result trustworthy rather than just an artifact of one particular test.
 
 ## What this is not
 
 - Not a trading strategy. No entries, exits, stops, targets, position sizing,
   or cost/spread model.
-- Not walk-forward validated. Thresholds are fit on the full sample; a live
-  rule needs them refit on training folds only.
+- Not fully walk-forward validated. `forecast.py`'s model IS walk-forward
+  (train-on-past, test-on-future, by calendar year) — but the descriptive
+  thresholds used elsewhere (range terciles, the spike quartile cut) are
+  still fit on the full sample, which is standard for a descriptive pass but
+  would need refitting on training folds only before any live use.
 - Not causal. This is observational — it says what happened, not why.
 
 ## Files
@@ -139,7 +230,9 @@ shape of what came out of the first run:
 | `sessions.py` | Raw M1 → one row per (trading day, session): OHLC, range, direction, ATR-normalized, gap vs. prior session, prior-session-break flags |
 | `handoff.py` | Cross-session range & direction predictive tests (7 pairs × 6 metrics) |
 | `intraday.py` | Hour-of-day / day-of-week move sizing |
-| `spike_fade.py` | Pre-open spike detection + post-open reversal/retracement study |
+| `spike_fade.py` | Pre-open spike detection + post-open reversal/retracement study, with a high-vs-low-vol-regime robustness check |
+| `dayflow.py` | Per-day checkpoints (`post_asia`/`post_london`/`post_overlap`): range-so-far vs. remaining range, fraction of the day's range already in |
+| `forecast.py` | The walk-forward prediction model (Ridge/Logistic + HistGBM check) vs. climatology/persistence baselines vs. a circular-shift null |
 | `stats_util.py` | Shared BH-FDR + circular-shift-null machinery |
 | `run_study.py` | Orchestrates all of the above, pools p-values, writes JSON |
 | `report_html.py` | Renders the static dashboard from a study's JSON output |
