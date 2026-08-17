@@ -3,6 +3,7 @@ node_modules/
 education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 VolRangeForecaster/data/m1/
+AnalogML/data/m1/
 SessionResearch/out/*/session_table.json
 SessionResearch/out/*/day_checkpoints.json
 SessionResearch/out/*/impulse_events.json

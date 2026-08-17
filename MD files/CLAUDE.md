@@ -533,3 +533,41 @@ DLL dependency), and every importer of it already guards with
 would only add a Linux-only build failure for zero runtime benefit. If a
 bot's dependencies change, update the root `requirements.txt`, not a
 per-directory one, or the Dockerfile won't pick it up.
+
+The `apt-get install` line also includes **`python-is-python3`** —
+without it, Debian's `python3`/`python3-pip` packages install fine but do
+NOT create a bare `python` symlink, and `start.sh` launches every bot via
+plain `python`, not `python3`. Don't remove this package unless every
+`python` call in `start.sh`/the AnalogML loop scripts is also changed to
+`python3` (there's no reason to — this is the standard Debian/Ubuntu
+package for exactly this situation).
+
+**Every deploy wipes local disk — anything a bot needs to survive a
+redeploy must live in R2, not just local disk.** This bit AnalogML twice
+in one day: first the trade log/state (already R2-backed, see
+`motif_track.py`'s `load_log`/`save_log`/`save_state`), then
+`refresh_m1.py`'s M1 parquet cache (`VolRangeForecaster/data/m1/`,
+gitignored) — a fresh container had no local data to diff against, so
+every redeploy silently re-triggered a full 5-year-per-pair OANDA
+backfill (hours) instead of a normal incremental top-up. Fixed by
+mirroring that cache to R2 too (`analogml/m1/{pair}_m1.parquet`, via the
+shared `pylego/r2.py` brick — see its own docstring). If you add a new
+bot that caches anything to local disk between runs, assume that cache is
+gone on the next deploy unless you've explicitly R2-backed it the same
+way.
+
+**Known, not-yet-fixed bug:** `server.js`'s `_resolvePython()` (used by
+SessionResearch's native scheduling and the vol-backtest routes) hardcodes
+`/usr/local/bin/python3` as its first candidate and returns it
+unconditionally — the `execFile(..., callback)` version check it runs is
+async and its result is never awaited before the function returns, so the
+"check" does nothing. Now that Python actually installs via `apt-get`
+(see above), the real binary lives at `/usr/bin/python3`, not
+`/usr/local/bin/python3`, so every SessionResearch tick fails with `spawn
+/usr/local/bin/python3 ENOENT`. Simplest real fix: just return `'python3'`
+(bare, no path) and let `execFile`/`spawn`'s own `PATH` lookup resolve
+it — same as every bot in `start.sh` already relies on `python-is-python3`
+for. Left unfixed as of 2026-08-17 to avoid piling more unverified `server.js`
+changes onto an already-long incident; low risk to production alerts
+(AnalogML's own bots don't go through this resolver) but breaks
+SessionResearch's dashboard predictions.
