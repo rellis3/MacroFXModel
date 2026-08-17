@@ -51,6 +51,15 @@ TEMPLATE = r"""<!DOCTYPE html>
   .val-label { fill:var(--text); font-size:10.5px; font-family:ui-monospace,monospace; font-weight:600 }
   .axis-line { stroke:var(--border) }
   .tooltip { position:fixed; background:var(--card); border:1px solid var(--border); border-radius:6px; padding:7px 10px; font:11px/1.5 ui-monospace,monospace; color:var(--text); pointer-events:none; z-index:50; display:none; box-shadow:0 4px 16px rgba(0,0,0,.4) }
+  .predict-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-top:12px }
+  .predict-mini { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px }
+  .predict-mini h4 { margin:0 0 8px; font-size:12.5px; color:var(--text) }
+  .predict-mini .so-far { color:var(--text3); font-size:11px; margin-bottom:10px }
+  .prow { display:flex; justify-content:space-between; gap:10px; font:11.5px/1.6 ui-monospace,monospace; padding:1px 0 }
+  .prow .k { color:var(--text3) }
+  .prow .v { color:var(--text); font-weight:600 }
+  .edge-ok { color:var(--good) } .edge-warn { color:var(--crit) }
+  .rel-line { font-size:10.5px; color:var(--text3); margin:6px 0 12px; line-height:1.5; border-top:1px dashed var(--border); padding-top:6px }
 </style>
 </head>
 <body>
@@ -70,6 +79,12 @@ TEMPLATE = r"""<!DOCTYPE html>
       <p><b>Impulsive swings do reverse more than grind swings — for scalping horizons, that edge is real but small, and it's not quite symmetric.</b> Generalizing the pre-open-spike pattern to ANY confirmed swing pivot at M5 (not just session opens): a fast, sharp push into a swing low or high produces a modestly higher win-rate bounce/fade than a slow grind to the same price (roughly +1&#8211;2 points of win-rate, surviving BH-FDR at most horizons — real, but don't mistake statistically-real for large). At the 5-minute horizon the two directions are close to identical (46.96% vs 46.93% win-rate, not distinguishable, p=0.96) — genuinely "not just one way." By 15&#8211;30 minutes a real asymmetry opens up: impulsive-low bounces pull ahead of impulsive-high fades (50.1% vs 48.3% at 30 min, p=0.0017) — plausibly gold's decade-long uptrend making dip-buys hold up slightly better than top-fades over this sample, not a universal law.</p>
     </div>
     <div class="caveat">Full-sample quantile thresholds (spike/tercile cuts) are fit on the whole 10-year window, which is standard for a descriptive/inferential study like this one but is <b>not</b> walk-forward-safe — a live rule built on these thresholds needs its cut points refit on training data only, exactly like <code>forge/discover.py</code> already does for level backtests. Nothing here has been checked against trading costs, spread, or slippage.</div>
+  </div>
+
+  <div class="card" id="predict-today-card">
+    <h2 style="margin-top:0">Applied — what the model actually says (<code>predict_today.py</code>)</h2>
+    <div class="sub">The research above validated WHETHER prediction works. This is that same production-fitted model — trained only on days strictly before the one shown — applied to one real day, so a live number is on the page, not just a walk-forward statistic. Every number carries its checkpoint's own validated accuracy right next to it: read the reliability line before the prediction.</div>
+    <div id="predict-today-body"></div>
   </div>
 
   <div class="card">
@@ -154,6 +169,37 @@ function moveTip(evt){ tip.style.left=(evt.clientX+14)+'px'; tip.style.top=(evt.
 function hideTip(){ tip.style.display='none'; }
 
 el('meta').textContent = `${DATA.meta.data_start.slice(0,10)} → ${DATA.meta.data_end.slice(0,10)} · ${DATA.meta.m1_rows.toLocaleString()} M1 bars · ${DATA.meta.n_trading_day_sessions.toLocaleString()} session-days · ${DATA.meta.n_hypotheses_pooled} hypotheses pooled, ${DATA.meta.n_bh_pass} survive BH-FDR @ q=${DATA.meta.bh_q} · generated ${DATA.meta.generated_at.slice(0,16).replace('T',' ')} UTC`;
+
+// ---- applied prediction: what the production model says for a real day ----
+(function(){
+  const preds = DATA.predict_today || [];
+  const body = el('predict-today-body');
+  if (!preds.length) {
+    body.innerHTML = `<div class="sub">Not generated for this run — run <code>python3 -m SessionResearch.predict_today --pair ${DATA.meta.pair}</code> and re-render to populate this panel.</div>`;
+    return;
+  }
+  const cpLabel = {post_asia:'After Asia (07:00)', post_london:'After London (12:00)', post_overlap:'After Overlap (16:00)'};
+  const pct = v => (v==null||Number.isNaN(v)) ? '—' : (v*100).toFixed(0)+'%';
+  body.innerHTML = '<div class="predict-grid">' + preds.map(p => {
+    const rr = p.range_reliability || {}, dd = p.direction_reliability || {};
+    const rangeBeats = rr.mae_model != null && rr.mae_model < rr.mae_persistence;
+    const dirEdge = dd.acc_model != null && dd.acc_model > dd.acc_persistence + 0.01 && dd.p_vs_persistence < 0.10;
+    const actualRangeRow = ('actual_range_atr' in p) ? `<div class="prow"><span class="k">actual</span><span class="v">${fmt(p.actual_range_atr,2)}×ATR</span></div>` : '';
+    const actualDirRow = ('actual_up' in p) ? `<div class="prow"><span class="k">actual</span><span class="v">${p.actual_up?'up':'down'}</span></div>` : '';
+    return `<div class="predict-mini">
+      <h4>${p.day} — ${cpLabel[p.checkpoint]||p.checkpoint}</h4>
+      <div class="so-far">so far: range ${fmt(p.range_so_far_atr,2)}×ATR · net ${p.net_so_far_atr>=0?'+':''}${fmt(p.net_so_far_atr,2)}×ATR</div>
+      <div class="prow"><span class="k">remaining range — model</span><span class="v">${fmt(p.model_range_atr,2)}×ATR</span></div>
+      <div class="prow"><span class="k">— persistence</span><span class="v">${fmt(p.persistence_range_atr,2)}×ATR</span></div>
+      ${actualRangeRow}
+      <div class="rel-line ${rangeBeats?'edge-ok':''}">walk-forward: model MAE ${fmt(rr.mae_model,3)} vs. persistence ${fmt(rr.mae_persistence,3)} — ${rangeBeats?'beats':'does not beat'} the trivial rule (p=${fmtP(rr.p_vs_persistence)}); ${pct(rr.p_vs_null)} of null refits score as well or better</div>
+      <div class="prow"><span class="k">direction — model P(up)</span><span class="v">${pct(p.model_p_up)}</span></div>
+      <div class="prow"><span class="k">— persistence</span><span class="v">${p.persistence_call_up?'up':'down'}</span></div>
+      ${actualDirRow}
+      <div class="rel-line ${dirEdge?'edge-ok':'edge-warn'}">walk-forward: model ${pct(dd.acc_model)} vs. persistence ${pct(dd.acc_persistence)} accuracy (p=${fmtP(dd.p_vs_persistence)}) → <b>${dirEdge?'weak validated edge':'NO VALIDATED EDGE — read the probability above as noise'}</b></div>
+    </div>`;
+  }).join('') + '</div>';
+})();
 
 // ---- hour-of-day bar chart with session bands ----
 (function(){
@@ -404,7 +450,10 @@ document.addEventListener('mousemove', e => { if (tip.style.display==='block') m
 
 def build_report(pair: str, out_dir: str = "SessionResearch/out") -> Path:
     base = Path(out_dir) / pair
+    predict_today_path = base / "predict_today.json"
     payload = {
+        "predict_today": (json.loads(predict_today_path.read_text())
+                         if predict_today_path.exists() else []),
         "meta": json.loads((base / "meta.json").read_text()),
         "handoff": json.loads((base / "handoff.json").read_text()),
         "intraday": json.loads((base / "intraday.json").read_text()),

@@ -46,6 +46,7 @@ below.
 ```bash
 pip install pandas numpy scipy pyarrow statsmodels scikit-learn    # if not already installed
 python3 -m SessionResearch.run_study --pair gold
+python3 -m SessionResearch.predict_today --pair gold      # optional: see "Applied", below
 python3 -m SessionResearch.report_html --pair gold
 open SessionResearch/out/gold/gold-session-research.html
 ```
@@ -57,6 +58,56 @@ python3 -m SessionResearch.run_study --pair eurusd
 python3 -m SessionResearch.report_html --pair eurusd
 ```
 
+## Applied — an actual prediction, not just a walk-forward statistic (`predict_today.py`)
+
+Everything above validates WHETHER prediction works. This script is the
+other half: take the SAME production model, fit it on every day strictly
+BEFORE a target day (no leave-one-out shortcuts — genuine "as if predicting
+forward," even when the target day isn't the most recent one in the
+dataset), and print what it actually says for that one real day — range,
+direction, the naive-persistence baseline for comparison, and (when the day
+is far enough in the past to know it) the actual outcome.
+
+```
+=== 2026-06-05  (post_london) ===
+So far: range 0.54×ATR, net move +0.10×ATR
+
+REMAINING RANGE
+  model:       0.93×ATR
+  persistence: 0.86×ATR  (naive one-variable rule)
+  actual:      1.89×ATR
+  reliability: walk-forward MAE 0.319 vs. persistence 0.321 (beats the trivial rule,
+               p=0.130); 32% of null refits score as well or better
+
+DIRECTION (close above checkpoint price?)
+  model:       49% probability up
+  persistence: up (today's move so far continues)
+  actual:      down
+  reliability: walk-forward accuracy 47.3% vs. persistence 51.8% (p=0.003) →
+               NO VALIDATED EDGE — read the probability above as noise
+```
+
+That's real output from this dataset's most recent day, not a cherry-picked
+example — and it's a useful one precisely because the direction call was
+wrong at all three checkpoints that day, which is what "no validated edge"
+actually looks like in practice, not a hedge-clause nobody expects to matter.
+Every prediction is printed with its checkpoint/target's own walk-forward
+accuracy from `forecast.py` directly underneath it — the reliability line is
+not optional decoration, it is the thing that keeps a live number from being
+read with more confidence than the research earned. `report_html.py` renders
+this as an "Applied" panel near the top of the dashboard when
+`predict_today.json` exists (run `predict_today.py` before `report_html.py`
+to populate it; the dashboard degrades gracefully with instructions if you
+skip it).
+
+**This is still not a signal.** No entries, exits, sizing, or cost model —
+it prints a number and its own accuracy, and leaves the decision to the
+reader. It also can't tell you about literally today: this sandbox can't
+reach OANDA to refresh the parquet past 2026-06-05 (`AnalogML/refresh_m1.py`
+documents why — it works from Railway, not here), so `--date` defaults to
+the most recent day actually in the dataset. Point `--date YYYY-MM-DD` at
+any earlier day to see the model's call for that one instead.
+
 `run_study` writes to `SessionResearch/out/<pair>/`: `meta.json`,
 `handoff.json`, `intraday.json`, `spike_fade.json`, `dayflow.json`,
 `forecast.json` (full walk-forward detail), `forecast_cells.json` (the two
@@ -66,7 +117,8 @@ correction), and three large, regenerated-every-run, gitignored files:
 `session_table.json` (per-day-per-session raw table, ~5MB),
 `day_checkpoints.json` (per-day-per-checkpoint raw table, ~4MB), and
 `impulse_events.json` (per-swing-pivot raw table, ~26MB — M5 over 10 years
-produces on the order of 10⁵ pivots per side).
+produces on the order of 10⁵ pivots per side). `predict_today` writes
+`predict_today.json` separately (see "Applied," below).
 
 Takes a few minutes end to end on gold (`impulse.py`'s circular-shift nulls
 run over ~120k pivots, not ~2.6k session-days, so they dominate the runtime —
@@ -296,6 +348,7 @@ sizes per session are 1,000–5,000.
 | `dayflow.py` | Per-day checkpoints (`post_asia`/`post_london`/`post_overlap`): range-so-far vs. remaining range, fraction of the day's range already in |
 | `forecast.py` | The walk-forward prediction model (Ridge/Logistic + HistGBM check) vs. climatology/persistence baselines vs. a circular-shift null |
 | `impulse.py` | Impulsive-vs-grind swing pivot reversal study at M5 (scalping), with a low-vs-high symmetry test and a session breakdown |
+| `predict_today.py` | Applies the production-fitted model to one real day and prints/dumps an actual prediction, annotated with that checkpoint/target's own walk-forward reliability |
 | `stats_util.py` | Shared BH-FDR + circular-shift-null machinery |
 | `run_study.py` | Orchestrates all of the above, pools p-values, writes JSON |
 | `report_html.py` | Renders the static dashboard from a study's JSON output |
