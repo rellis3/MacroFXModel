@@ -112,6 +112,7 @@ from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
+from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
 from pylego.telegram import load_tg_config, send_telegram  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
@@ -152,22 +153,8 @@ FROZEN = dict(atr_period=14, pivot_n=5, tol_atr_mult=1.2, min_retrace_atr_mult=2
 LOG_PATH = Path(__file__).resolve().parent / "data" / "motif_trades.json"
 STATE_PATH = Path(__file__).resolve().parent / "data" / "motif_state.json"
 
-R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com")
-R2_BUCKET = os.environ.get("R2_BUCKET", "r2-storage")
 R2_LOG_KEY = "analogml/motif_trades.json"
 R2_STATE_KEY = "analogml/motif_state.json"
-
-
-def _r2_client():
-    """None if R2 credentials aren't configured -- callers fall back to
-    local disk. Same convention as paper_track.py / r2_download.py."""
-    access_key = os.environ.get("R2_ACCESS_KEY")
-    secret_key = os.environ.get("R2_SECRET_KEY")
-    if not access_key or not secret_key:
-        return None
-    import boto3
-    return boto3.client("s3", endpoint_url=R2_ENDPOINT, aws_access_key_id=access_key,
-                        aws_secret_access_key=secret_key, region_name="auto")
 
 
 def load_log() -> dict:

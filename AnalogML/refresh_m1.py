@@ -23,6 +23,15 @@ Requires OANDA_KEY in the environment. Confirmed unreachable from this
 sandbox (403 policy denial from the outbound proxy) -- meant to run
 wherever OANDA actually is reachable (Railway, per CLAUDE.md).
 
+Each pair's parquet is also mirrored to R2 (`analogml/m1/{pair}_m1.parquet`,
+same bucket as motif_track.py's trade log/state) after every successful
+top-up, and pulled from there when local disk has nothing for a pair.
+Railway's disk is wiped on every redeploy and M1_DIR is gitignored, so
+without this a fresh container had no way to tell "already have this,
+just top up" from "never fetched this pair before" -- every single
+redeploy silently re-triggered a full DEFAULT_LOOKBACK_YEARS backfill for
+all 26 pairs from scratch (hours, not the seconds a normal top-up takes).
+
 Usage:
   python AnalogML/refresh_m1.py --pairs gbpjpy,eurusd
   python AnalogML/refresh_m1.py --all-pairs
@@ -41,10 +50,26 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from pylego.instruments import oanda_symbol  # noqa: E402
+from pylego.r2 import r2_client, R2_BUCKET  # noqa: E402
 from fetch_m1_oanda import fetch_chunk  # noqa: E402
 
 M1_DIR = REPO_ROOT / "VolRangeForecaster" / "data" / "m1"
-DEFAULT_LOOKBACK_YEARS = 5  # only used when a pair has no local parquet yet
+DEFAULT_LOOKBACK_YEARS = 5  # only used when NEITHER local disk NOR R2 has this pair yet
+
+# R2-persisted mirror of M1_DIR, same bucket motif_track.py's trade log/state
+# already use. Railway's disk is wiped on every redeploy AND M1_DIR is
+# gitignored (never shipped in the repo), so without this, every single
+# redeploy fell back to DEFAULT_LOOKBACK_YEARS's full from-scratch OANDA
+# backfill for all 26 pairs -- discovered 2026-08-17 when a routine deploy
+# left the hourly loop mid-backfill for hours, not the seconds an
+# incremental top-up normally takes. This makes a redeploy pay the same
+# "top up since last run" cost as any other hourly scan, not a full reload.
+R2_M1_PREFIX = "analogml/m1"
+
+
+def _r2_m1_key(pair: str) -> str:
+    return f"{R2_M1_PREFIX}/{pair}_m1.parquet"
+
 
 ALL_PAIRS = [
     "audcad", "audchf", "audjpy", "audnzd", "audusd", "cadjpy", "chfjpy",
@@ -54,11 +79,29 @@ ALL_PAIRS = [
 ]
 
 
+def _load_existing(pair: str, path: Path):
+    """Local parquet if present; otherwise R2's cached copy, written to
+    local disk so this behaves exactly like a local hit from here on. None
+    only when NEITHER has this pair yet (its very first run anywhere)."""
+    if path.exists():
+        return pd.read_parquet(path)
+    s3 = r2_client()
+    if s3 is None:
+        return None
+    try:
+        obj = s3.get_object(Bucket=R2_BUCKET, Key=_r2_m1_key(pair))
+    except Exception:
+        return None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(obj["Body"].read())
+    return pd.read_parquet(path)
+
+
 def refresh_pair(pair: str) -> int:
     """Top up `pair`'s local parquet with bars newer than what's already
     there. Returns the number of new bars written (0 if already current)."""
     path = M1_DIR / f"{pair}_m1.parquet"
-    existing = pd.read_parquet(path) if path.exists() else None
+    existing = _load_existing(pair, path)
 
     if existing is not None and len(existing):
         last_ts = existing.index.max().to_pydatetime().replace(tzinfo=None)
@@ -98,6 +141,16 @@ def refresh_pair(pair: str) -> int:
 
     M1_DIR.mkdir(parents=True, exist_ok=True)
     combined.to_parquet(path)
+
+    s3 = r2_client()
+    if s3 is not None:
+        try:
+            s3.put_object(Bucket=R2_BUCKET, Key=_r2_m1_key(pair), Body=path.read_bytes(),
+                          ContentType="application/octet-stream")
+        except Exception as e:
+            print(f"  {pair}: R2 M1 cache upload failed ({e}) -- local copy at {path} is "
+                  f"current, R2 cache may be stale until the next successful run")
+
     return len(new_df)
 
 
