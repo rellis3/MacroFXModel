@@ -76,6 +76,8 @@ import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LAB
 import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
+import { gprScore as _gprScore } from './js/gprEngine.js';
+import * as XLSX from 'xlsx';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
@@ -2445,6 +2447,9 @@ CREDIT (board-wide, not pair-specific — two DIFFERENT axes: HY level = junk-bo
 ${s.creditGateBoard ? `HY level: ${s.creditGateBoard.gate} (${s.creditGateBoard.widening > 0 ? 'widening' : s.creditGateBoard.widening < 0 ? 'tightening' : 'steady'}, ${s.creditGateBoard.hyBps}bps${s.creditGateBoard.d5 != null ? `, ${s.creditGateBoard.d5 >= 0 ? '+' : ''}${s.creditGateBoard.d5}bps/wk` : ''})` : '  HY level not available'}
 ${s.creditQualitySpread ? `Quality spread (Baa−Aaa): z ${s.creditQualitySpread.z >= 0 ? '+' : ''}${s.creditQualitySpread.z}` : '  Quality spread not available'}
 
+GEOPOLITICAL RISK (board-wide, not pair-specific — Caldara & Iacoviello's Geopolitical Risk Index, Federal Reserve Board; genuinely global newspaper-based measure, not derived from anything else here. Context, NOT a backtested rule)
+${s.gpr ? `${s.gpr.z > 0.75 ? 'Elevated' : s.gpr.z < -0.5 ? 'Subdued' : 'Normal'} — z ${s.gpr.z >= 0 ? '+' : ''}${s.gpr.z}, ${s.gpr.trend}, 30d-smoothed level ${s.gpr.level} (as of ${s.gpr.asOfDate})` : '  Not available'}
+
 STRUCTURAL MOTIF (AnalogML — research, explicitly NOT a validated trading signal; a chart-pattern diagnostic, not a directional call)
 ${s.analogMotif ? `${s.analogMotif.nTouches}-touch ${s.analogMotif.kind}${s.analogMotif.provisional ? ' (still provisional, not yet confirmable)' : ''} — price ${s.analogMotif.distToLevelPips != null ? s.analogMotif.distToLevelPips.toFixed(0) : '?'}p from the level that would confirm the textbook reversal.${s.analogMotif.playedOutRate != null ? ` Historically this exact category played out as the textbook reversal ${(s.analogMotif.playedOutRate * 100).toFixed(0)}% of the time (n=${s.analogMotif.nSamples}${s.analogMotif.profitFactor != null ? `, PF ${s.analogMotif.profitFactor.toFixed(2)}` : ''}).` : ' Not enough historical samples of this exact category yet for a confidence read.'}` : '  No motif currently forming'}
 
@@ -4402,6 +4407,67 @@ setInterval(() => {
   _ismLastRun = today;
   _ismRunning = true;
   _buildIsmScores().catch(() => {}).finally(() => { _ismRunning = false; });
+}, 20 * 60_000);
+
+// ── Geopolitical Risk Index (Caldara & Iacoviello, Fed Board) — see js/gprEngine.js ──
+// The ONE macro series on this dashboard that isn't on FRED — a genuinely
+// global, currency-agnostic backdrop read (counts geopolitical-tension
+// language across 10 major newspapers, published daily). Source is a raw
+// .xls download, not a JSON API, hence the xlsx dependency (pinned to
+// SheetJS's own CDN in package.json — the npm-registry copy has an
+// unpatched high-severity prototype-pollution advisory with no fix
+// available, and this parses a third-party file, so the CDN build is used
+// deliberately, not the registry one). Same daily-gate refresh pattern as
+// every engine above (data itself only moves once a day at most).
+const _GPR_KV = 'gpr_v1';
+const GPR_DAILY_URL = 'https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls';
+async function _buildGprScore() {
+  const r = await fetch(GPR_DAILY_URL, { signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`GPR fetch failed (${r.status})`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const raw = XLSX.utils.sheet_to_json(sheet, { raw: true });
+  // Confirmed columns (real file, 2026-08): DAY ('YYYYMMDD' string), GPRD_MA30
+  // (the smoothed level this engine uses — see gprEngine.js header for why).
+  const rows = raw
+    .filter(row => row.DAY && Number.isFinite(row.GPRD_MA30))
+    .map(row => {
+      const s = String(row.DAY);
+      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, gprdMa30: row.GPRD_MA30 };
+    });
+  const score = _gprScore(rows);
+  if (!score) throw new Error('GPR: not enough clean history after parsing');
+  const payload = { ...score, generatedAt: new Date().toISOString() };
+  await kv.put(_GPR_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/gpr', async (_req, res) => {
+  try {
+    const raw = await kv.get(_GPR_KV);
+    if (!raw) return res.json({ ok: false, error: 'No geopolitical-risk data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _gprRunning = false;
+app.post('/api/gpr/refresh', (_req, res) => {
+  if (_gprRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _gprRunning = true;
+  _buildGprScore().catch(() => {}).finally(() => { _gprRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/gpr/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_GPR_KV).catch(() => null);
+  res.json({ ok: true, running: _gprRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _gprLastRun = null;
+setInterval(() => {
+  if (_gprRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_gprLastRun === today) return;
+  _gprLastRun = today;
+  _gprRunning = true;
+  _buildGprScore().catch(() => {}).finally(() => { _gprRunning = false; });
 }, 20 * 60_000);
 
 // ── Retail Sales Numeric-Composition Engine (see js/retailSalesEngine.js) ──
