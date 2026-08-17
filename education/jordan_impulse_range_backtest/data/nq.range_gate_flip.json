@@ -1,0 +1,65 @@
+{
+  "pair": "nq",
+  "rows": [
+    {
+      "rangeGateMinUsedFrac": 0.25,
+      "nTrades": 2828,
+      "winRate": 32.1,
+      "sharpe": -2.259,
+      "pf": 0.642,
+      "oosSharpe": -2.531,
+      "oosN": 1132,
+      "ms": 46618
+    },
+    {
+      "rangeGateMinUsedFrac": 0.5,
+      "nTrades": 2572,
+      "winRate": 33,
+      "sharpe": -1.556,
+      "pf": 0.716,
+      "oosSharpe": -1.373,
+      "oosN": 1029,
+      "ms": 122114
+    },
+    {
+      "rangeGateMinUsedFrac": 0.75,
+      "nTrades": 2132,
+      "winRate": 35,
+      "sharpe": -0.35,
+      "pf": 0.926,
+      "oosSharpe": -0.324,
+      "oosN": 853,
+      "ms": 99778
+    },
+    {
+      "rangeGateMinUsedFrac": 1,
+      "nTrades": 1542,
+      "winRate": 34.8,
+      "sharpe": -0.711,
+      "pf": 0.835,
+      "oosSharpe": -0.94,
+      "oosN": 617,
+      "ms": 103681
+    },
+    {
+      "rangeGateMinUsedFrac": 1.25,
+      "nTrades": 1031,
+      "winRate": 37,
+      "sharpe": -0.456,
+      "pf": 0.871,
+      "oosSharpe": -0.385,
+      "oosN": 413,
+      "ms": 113328
+    },
+    {
+      "rangeGateMinUsedFrac": 1.5,
+      "nTrades": 676,
+      "winRate": 37.7,
+      "sharpe": -0.104,
+      "pf": 0.961,
+      "oosSharpe": -0.347,
+      "oosN": 271,
+      "ms": 117688
+    }
+  ]
+}

@@ -199,6 +199,19 @@ robust improvement on both instruments (Gold →−3.66, NQ →−0.76 at every
 threshold tried), still net negative. See
 [VWAP_ENTRY_BAND.md](VWAP_ENTRY_BAND.md).
 
+**Follow-up tested: flipping the range gate** (require an already-stretched
+day instead of room-left) — the strongest result of every test run against
+this engine: Sharpe improves monotonically (mostly) as the threshold rises,
+reaching −0.48 (gold) and **−0.10 with PF 0.961** (NQ) at the highest
+threshold tried — still a loser, but the closest any variant has come to
+breakeven. See [RANGE_GATE_FLIP.md](RANGE_GATE_FLIP.md).
+
+**Taken together**, every follow-up that showed a real, IS/OOS-consistent
+improvement (this one, the liquidity sweep, and the VWAP band) shares a
+theme — "the day/move is already significant" beats "wait for it to look
+tidy." None of them cross into positive Sharpe on their own; whether
+combining them does is untested.
+
 ---
 
 ## Reproduce

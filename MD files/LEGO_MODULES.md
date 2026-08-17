@@ -1884,9 +1884,18 @@ the now-standard byte-identical-at-default backward-compat check:
   (both signs of a real effect, not a lucky slice) — still net negative
   (Gold →−3.66, NQ →−0.76). `education/jordan_impulse_range_backtest/VWAP_ENTRY_BAND.md`.
 
-Also added `rangeGateMode: 'exhausted'` (inverts the range-exhaustion gate
-to require an already-stretched day instead of room-left) — sweep and
-write-up in progress, see `RANGE_GATE_FLIP.md` once complete.
+- **Range-gate flip** (`rangeGateMode: 'exhausted'`, new backward-compatible
+  cfg, inverts the gate to require an already-stretched day instead of
+  room-left) — the strongest result of all four probes: Sharpe improves
+  mostly-monotonically as the threshold rises, reaching −0.48 (gold) and
+  **−0.10, PF 0.961** (NQ) at the highest threshold tried — still net
+  negative, but the closest any variant has come to breakeven this session.
+  `education/jordan_impulse_range_backtest/RANGE_GATE_FLIP.md`.
+
+**Taken together**, every follow-up that showed a real, IS/OOS-consistent
+improvement (liquidity sweep, VWAP band, range-gate flip) shares a theme —
+"the day/move is already significant" beats "wait for it to look tidy."
+None cross into positive Sharpe alone; combining them is untested.
 
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
