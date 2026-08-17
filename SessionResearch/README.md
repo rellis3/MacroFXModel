@@ -139,36 +139,53 @@ docstring and `git log` for the exact fixes).
 This sandbox is frozen at 2026-06-05 and can't reach OANDA — nothing above
 can produce a genuinely live number here, by construction, not by bug.
 Wherever OANDA IS reachable (this repo's Railway deployment, per every other
-OANDA-dependent script in this repo), two loops run continuously,
-supervised by `start.sh` the same way every other bot in this repo is:
+OANDA-dependent script in this repo), `server.js` runs the Python engine on
+two native `setInterval` timers, the "SessionResearch: native in-process
+scheduling" block near the `/api/session-research/summary` route — the same
+way roughly 60 other periodic refreshes in that file already work, rather
+than a separate bash-loop script supervised by `start.sh`'s `restart_bot`
+(an earlier version of this worked that way; collapsed into `server.js`
+because every other background refresh here uses one timer, not a whole
+extra supervision layer, for what amounts to "run this on a schedule"). The
+statistics/ML itself is **not** ported to JS — there's no JS equivalent to
+scikit-learn worth trusting over the already-validated Python engine, so
+`server.js` just spawns it (`BT_PYTHON` + `_execFileAsync`, the same helpers
+the vol-backtest routes already use) rather than reimplementing it:
 
-| Loop | Cadence (default) | Does |
+| Timer | Cadence (default, env override) | Does |
 |---|---|---|
-| `SessionResearch/live_loop.sh` | hourly | `predict_today.py --live` for all 26 pairs, then `dashboard_export.py --all` |
-| `SessionResearch/full_study_loop.sh` | daily | `run_study.py` + `predict_today.py` (historical replay) + `report_html.py` for all 26 pairs, then `dashboard_export.py --all` |
+| `_sessionResearchLiveTick` | hourly, `SESSION_RESEARCH_LIVE_INTERVAL_SECONDS` | `predict_today.py --live` for all 26 pairs, then `dashboard_export.py --all` |
+| `_sessionResearchFullTick` | daily, `SESSION_RESEARCH_FULL_INTERVAL_SECONDS` | `run_study.py` + `predict_today.py` (historical replay) + `report_html.py` for all 26 pairs, then `dashboard_export.py --all` |
 
-Neither loop refreshes the M1 parquet itself — `AnalogML/motif_track_loop.sh`
-(already running hourly in this repo, unrelated to SessionResearch) already
-tops up all 26 pairs' local parquets from OANDA via `refresh_m1.py`, so these
-loops just read whatever's already current on disk. The split exists because
-the two jobs have very different costs: `--live` only fits the already-proven
-model on one new row per pair (seconds, safe hourly); the full study reruns
-every circular-shift null across every handoff/spike/dayflow/impulse cell for
-all 26 pairs (this build's timing: several minutes total with 4 cores; unverified
-on Railway's actual hardware), and the underlying 10-year statistical findings
-don't move meaningfully day to day, so daily is already generous.
+Both fire once immediately on boot, then on their own interval, serially
+across pairs within each tick (not `Promise.all` — predictable resource
+usage on a shared Railway dyno over parallel throughput, matching every
+other sequential loop in this repo). Neither refreshes the M1 parquet
+itself — `AnalogML/motif_track_loop.sh` (already running hourly in this
+repo, unrelated to SessionResearch) already tops up all 26 pairs' local
+parquets from OANDA via `refresh_m1.py`, so these timers just read whatever's
+already current on disk. The two-cadence split exists because the jobs have
+very different costs: `--live` only fits the already-proven model on one new
+row per pair (seconds, safe hourly); the full study reruns every
+circular-shift null across every handoff/spike/dayflow/impulse cell for all
+26 pairs (this build's timing: several minutes total with 4 cores; unverified
+on Railway's actual hardware), and the underlying 10-year statistical
+findings don't move meaningfully day to day, so daily is already generous.
 
 **What's genuinely verified vs. what isn't:** the `--live` prediction logic
 itself is cross-checked line-for-line against the historical code path (see
 above) and runs correctly in this sandbox (correctly reporting
 `no_checkpoint_yet`/`no_data_yet` against frozen data, rather than crashing
-or fabricating a number). What is NOT verified from this sandbox: that
-`start.sh`'s two new `restart_bot` entries actually run on the real Railway
-deployment, that `refresh_m1.py` keeps pace with `live_loop.sh`'s hourly
-cadence there, or that `/api/session-research/summary` serves real pair data
-in production — this sandbox has no network path to Railway or credentials
-to check. All of it follows the exact pattern every other OANDA-dependent
-loop in this repo already uses successfully, but "matches the pattern" and
+or fabricating a number); `server.js`'s new scheduling block passes
+`node --check`. What is NOT verified from this sandbox: that the timers
+actually fire and complete on the real Railway deployment, that
+`refresh_m1.py` keeps pace with the hourly live tick there, or that
+`/api/session-research/summary` serves real pair data in production — this
+sandbox has no network path to Railway or credentials to check, and cannot
+even run `npm install` here (a blocked external dependency unrelated to this
+change) to boot `server.js` locally. All of it follows the exact pattern
+every other background refresh and every other OANDA-dependent script in
+this repo already uses successfully, but "matches the pattern" and
 "confirmed running in production" are different claims, and only the first
 one is being made here.
 
@@ -424,4 +441,4 @@ sizes per session are 1,000–5,000.
 | `run_study.py` | Orchestrates all of the above, pools p-values, writes JSON |
 | `report_html.py` | Renders the static dashboard from a study's JSON output |
 | `dashboard_export.py` | Distills every pair's output into one small `dashboard_summary.json` for `today.html`/`server.js` (see "Running on Railway") |
-| `live_loop.sh` / `full_study_loop.sh` | Railway-only scheduled loops — `--live` hourly, the full study daily (see "Running on Railway") |
+| *(scheduling)* | Native `setInterval` timers inside `server.js` — `--live` hourly, the full study daily (see "Running on Railway") |

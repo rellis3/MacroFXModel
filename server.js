@@ -17564,6 +17564,106 @@ app.get('/api/session-research/summary', async (_req, res) => {
   return res.json(out);
 });
 
+// ── SessionResearch: native in-process scheduling ───────────────────────────
+// Runs the SAME Python engine (SessionResearch/*.py — Ridge/Logistic models,
+// circular-shift permutation tests, all of it) as two setInterval timers in
+// THIS process, the way every other periodic refresh in this file already
+// works (~60 other setInterval blocks), instead of a separate bash-loop
+// script supervised by start.sh's restart_bot. That earlier version worked
+// but added a whole extra supervision layer (start.sh -> restart_bot ->
+// bash sleep-loop -> python) for what every other background refresh here
+// does with one timer — collapsing it removes that layer without touching
+// the statistics/ML code itself, which is NOT being ported to JS: there is
+// no JS equivalent to scikit-learn's Ridge/LogisticRegression worth trusting
+// over the already-validated (see SessionResearch/README.md) Python one,
+// and re-deriving it would trade a real, working, cross-checked engine for
+// a rewrite risk with no operational upside — spawning python 26x/hour costs
+// a few seconds, not something worth that trade. `BT_PYTHON`/`_execFileAsync`
+// (defined above, used by the vol-backtest routes) are reused as-is.
+//
+// Two cadences, same split the old bash loops used: `--live` only fits the
+// already-proven model on one new row per pair (cheap, hourly-safe); the
+// full study reruns every circular-shift null across every handoff/spike/
+// dayflow/impulse cell for all 26 pairs (expensive; the 10-year statistical
+// findings underneath don't move meaningfully day to day, so daily is
+// already generous). Neither refreshes the M1 parquet itself —
+// AnalogML/motif_track_loop.sh already tops up all 26 pairs hourly from
+// OANDA; these just read whatever's already current on disk.
+const SESSION_RESEARCH_PAIRS = [
+  'audcad', 'audchf', 'audjpy', 'audnzd', 'audusd', 'cadjpy', 'chfjpy',
+  'euraud', 'eurcad', 'eurchf', 'eurgbp', 'eurjpy', 'eurnzd', 'eurusd',
+  'gbpaud', 'gbpcad', 'gbpchf', 'gbpjpy', 'gbpnzd', 'gbpusd', 'gold',
+  'nzdjpy', 'nzdusd', 'usdcad', 'usdchf', 'usdjpy',
+];
+
+async function _runSessionResearchPy(pyArgs, { label, timeoutMs = 10 * 60_000 } = {}) {
+  try {
+    await _execFileAsync(BT_PYTHON, ['-m', ...pyArgs],
+      { cwd: __dirname, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
+    return true;
+  } catch (e) {
+    console.warn(`[session-research] ${label} failed: ${e.message}`);
+    return false;
+  }
+}
+
+// Serially, not Promise.all — predictable resource usage on a shared Railway
+// dyno beats parallel throughput here, same reasoning the bash-loop
+// predecessor documented (an xargs -P oversubscription bug cost real
+// debugging time once during this feature's own build).
+let _sessionResearchLiveBusy = false;
+async function _sessionResearchLiveTick() {
+  if (_sessionResearchLiveBusy) { console.warn('[session-research] live tick still running, skipping this interval'); return; }
+  _sessionResearchLiveBusy = true;
+  const startedAt = Date.now();
+  console.log(`[session-research] live tick starting ${new Date().toISOString()}`);
+  try {
+    for (const pair of SESSION_RESEARCH_PAIRS) {
+      await _runSessionResearchPy(['SessionResearch.predict_today', '--pair', pair, '--live'],
+        { label: `predict_today --live ${pair}`, timeoutMs: 60_000 });
+    }
+    await _runSessionResearchPy(['SessionResearch.dashboard_export', '--all'],
+      { label: 'dashboard_export --all', timeoutMs: 60_000 });
+    console.log(`[session-research] live tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`);
+  } finally {
+    _sessionResearchLiveBusy = false;
+  }
+}
+
+let _sessionResearchFullBusy = false;
+async function _sessionResearchFullTick() {
+  if (_sessionResearchFullBusy) { console.warn('[session-research] full-study tick still running, skipping this interval'); return; }
+  _sessionResearchFullBusy = true;
+  const startedAt = Date.now();
+  console.log(`[session-research] full study starting ${new Date().toISOString()}`);
+  try {
+    for (const pair of SESSION_RESEARCH_PAIRS) {
+      const studyOk = await _runSessionResearchPy(['SessionResearch.run_study', '--pair', pair],
+        { label: `run_study ${pair}`, timeoutMs: 10 * 60_000 });
+      if (!studyOk) continue;   // skip this pair's predict/report if the study itself failed
+      await _runSessionResearchPy(['SessionResearch.predict_today', '--pair', pair],
+        { label: `predict_today (replay) ${pair}`, timeoutMs: 60_000 });
+      await _runSessionResearchPy(['SessionResearch.report_html', '--pair', pair],
+        { label: `report_html ${pair}`, timeoutMs: 60_000 });
+    }
+    await _runSessionResearchPy(['SessionResearch.dashboard_export', '--all'],
+      { label: 'dashboard_export --all', timeoutMs: 60_000 });
+    console.log(`[session-research] full study done in ${((Date.now() - startedAt) / 60_000).toFixed(1)}min`);
+  } finally {
+    _sessionResearchFullBusy = false;
+  }
+}
+
+const SESSION_RESEARCH_LIVE_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH_LIVE_INTERVAL_SECONDS, 10) || 3600) * 1000;
+const SESSION_RESEARCH_FULL_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH_FULL_INTERVAL_SECONDS, 10) || 86400) * 1000;
+// Fires once immediately on boot (same behavior the bash-loop predecessor
+// had), then on its own interval — fire-and-forget, does not block server
+// startup below.
+_sessionResearchLiveTick();
+_sessionResearchFullTick();
+setInterval(_sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
+setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
+
 app.get('/api/analogml/motif-trades', async (_req, res) => {
   const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
   if (!out) return res.status(404).json({ ok: false, error: 'no motif_trades.json yet -- run AnalogML/motif_track.py' });
