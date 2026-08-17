@@ -755,6 +755,7 @@ let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
 let analogml = null;     // /api/analogml/motif-state — live N-touches-of-a-level structural motif diagnostic per pair (research, not a validated signal — see AnalogML/README.md). Replaces the retired k-NN shape-match diagnostic (banked null 2026-08-12).
+let sessionResearch = null; // /api/session-research/summary — 10-year Asia/London/overlap/NY session-handoff, day-flow, walk-forward-model, and impulse-reversal research per pair (validated with a circular-shift null + pooled FDR correction; research context, NOT a live signal — see SessionResearch/README.md).
 let events = null;       // /api/events — today's economic calendar (zoom 0)
 let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
 let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
@@ -826,6 +827,25 @@ function commodityChip(r) {
   const cls = up ? 'bull' : 'bear';
   return `<span class="chip ${cls}" title="WTI crude ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% vs yesterday's close ($${wti.prevClose.toFixed(2)} → $${wti.price.toFixed(2)}). Oil is CAD's most established commodity driver — context, not a rule; this pair's own technicals/COT/macro/carry still lead.">🛢 WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% (CAD ${up ? 'tailwind' : 'headwind'})</span>`;
 }
+// ── SessionResearch chip: 10-year Asia/London/overlap/NY session-handoff research ──
+// Deliberately shows only TIMELESS structural findings (range persistence,
+// validated spike-reversal boundaries) here, never the today_outlook numbers —
+// those are computed from this sandbox's frozen data snapshot (see
+// SessionResearch/README.md's OANDA-refresh caveat) and would read as a live
+// call on a live dashboard if surfaced on the card itself. The AI analysis
+// drawer DOES include today_outlook, with that caveat spelled out inline.
+function sessionResearchChip(r) {
+  const sr = sessionResearch?.[r.name.toLowerCase()];
+  if (!sr) return '';
+  const rh = sr.range_handoff;
+  const spikes = Object.entries(sr.spike_reversal || {}).filter(([, v]) => v.bh_pass);
+  if (!rh && !spikes.length) return '';
+  const parts = [];
+  if (rh) parts.push(`range persists ${rh.strongest_pair} (ρ ${rh.strongest_rho})`);
+  if (spikes.length) parts.push(`${spikes.length} pre-open spike-reversal boundar${spikes.length === 1 ? 'y' : 'ies'} validated (${spikes.map(([b]) => b).join(', ')})`);
+  const title = `Session research (10-year backtest for this pair — every finding survived a circular-shift null + pooled FDR correction; research context, NOT a live signal): ${parts.join('; ')}. Direction does not reliably carry from one session to the next for this pair. Full detail in the AI analysis drawer; methodology in SessionResearch/README.md.`;
+  return `<span class="chip neu" title="${title}">◷ session research</span>`;
+}
 
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
@@ -839,14 +859,16 @@ async function jget(url) {
 
 async function loadAll(manual) {
   try {
-    const [b, s, f, a] = await Promise.all([
+    const [b, s, f, a, sr] = await Promise.all([
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
       jget('/api/analogml/motif-state').catch(() => null),
+      jget('/api/session-research/summary').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
     analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
+    sessionResearch = sr?.ok ? Object.fromEntries((sr.pairs ?? []).map(p => [p.pair, p])) : null;
     if (!b?.ok) {
       $('grid').innerHTML = `<div class="err">Daily brief unavailable: ${b?.error ?? 'no data'} — the forecast may still be computing, or OANDA/R2 keys are missing in this environment.</div>`;
       return;
@@ -2756,7 +2778,7 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}</div>
     ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
@@ -3887,6 +3909,34 @@ function assembleSnapshot(r) {
     s.analogMotif = { kind: motif.kind, nTouches: motif.n_touches, provisional: motif.provisional,
       distToLevelPips: motif.dist_to_level_pips, playedOutRate: motif.confidence?.played_out_rate ?? null,
       nSamples: motif.confidence?.n_samples ?? null, profitFactor: motif.confidence?.profit_factor ?? null };
+  }
+  // SessionResearch — 10-year Asia/London/overlap/NY session-handoff, day-flow,
+  // walk-forward-model, and impulse-reversal research for THIS pair, distilled
+  // by SessionResearch/dashboard_export.py. Every number here already survived
+  // a circular-shift null + pooled FDR correction (SessionResearch/README.md);
+  // this snapshot only reduces field names/shape, it doesn't re-derive anything.
+  const sr = sessionResearch?.[r.name.toLowerCase()];
+  if (sr) {
+    s.sessionResearch = {
+      dataThrough: sr.data_through, nHypotheses: sr.n_hypotheses_pooled, nBhPass: sr.n_bh_pass,
+      rangeHandoff: sr.range_handoff
+        ? { strongestPair: sr.range_handoff.strongest_pair, strongestRho: sr.range_handoff.strongest_rho } : null,
+      directionHandoff: { nTested: sr.direction_handoff.n_tested, anySignificant: sr.direction_handoff.any_significant },
+      spikeReversal: Object.entries(sr.spike_reversal || {}).filter(([, v]) => v.bh_pass)
+        .map(([boundary, v]) => ({ boundary, reversalRateSpike: v.reversal_rate_spike, reversalRateNonspike: v.reversal_rate_nonspike })),
+      impulse: sr.impulse?.symmetry_30min ? { symmetry: {
+        winRateLow: sr.impulse.symmetry_30min.win_rate_low, winRateHigh: sr.impulse.symmetry_30min.win_rate_high,
+        bhPass: sr.impulse.symmetry_30min.bh_pass } } : null,
+      todayOutlookIsLive: !!sr.today_outlook_is_live,
+      liveStatus: sr.live_status ?? null,
+      todayOutlook: (sr.today_outlook || []).map(o => ({
+        day: o.day, checkpoint: o.checkpoint, modelRangeAtr: o.model_range_atr, persistenceRangeAtr: o.persistence_range_atr,
+        modelPUp: o.model_p_up,
+        directionEdge: o.direction_reliability?.acc_model != null
+          && o.direction_reliability.acc_model > o.direction_reliability.acc_persistence + 0.01
+          && o.direction_reliability.p_vs_persistence < 0.10,
+      })),
+    };
   }
   // COT positioning correlation — do this pair's OWN legs' speculative
   // positioning move with/against other currencies (a different relationship

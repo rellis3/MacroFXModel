@@ -40,4 +40,10 @@ restart_bot "analogml-motif-track" \
 restart_bot "analogml-nearing-watch" \
     env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python AnalogML/motif_nearing_watch.py &
 
+# SessionResearch's live/full-study refresh runs as native setInterval timers
+# inside server.js itself (see the "SessionResearch: native in-process
+# scheduling" block there) rather than a bash-loop restart_bot entry here —
+# it still shells out to the same Python engine, just scheduled by the node
+# process directly instead of a separate supervised loop script.
+
 exec node server.js

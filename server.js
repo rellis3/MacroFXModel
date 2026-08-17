@@ -77,7 +77,6 @@ import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
 import { gprScore as _gprScore } from './js/gprEngine.js';
-import * as XLSX from 'xlsx';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
@@ -2293,6 +2292,23 @@ async function _injectServerContext(pair, s) {
 }
 
 function buildAnalysisPrompt(pair, s) {
+  // Precomputed OUTSIDE the big template literal below on purpose: this text has its own
+  // nested conditionals (live vs. replay vs. unavailable), and nesting that directly inside
+  // the prompt's single giant template literal previously broke the outer/inner backtick
+  // boundary (a real bug caught by node --check, not a style preference).
+  const srOutlook = (() => {
+    const o = s.sessionResearch?.todayOutlook;
+    const status = s.sessionResearch?.liveStatus;
+    if (!o || !o.length) {
+      return `  Not available (SessionResearch/dashboard_export.py not yet run for this pair${status ? `; live status: ${status}` : ''})`;
+    }
+    const header = s.sessionResearch.todayOutlookIsLive
+      ? `LIVE applied prediction, as of right now (${o[0].day}, checkpoint ${o[0].checkpoint} — genuinely today, computed from today's actual session data so far):`
+      : `Most recent applied checkpoints (from ${o[0].day} — a REPLAY of the dataset's most recent day, NOT today; live prediction unavailable right now${status ? ` [${status}]` : ''}, showing a worked historical example instead):`;
+    const lines = o.map(x => `  ${x.checkpoint}: remaining range model ${x.modelRangeAtr.toFixed(2)}×ATR (persistence ${x.persistenceRangeAtr.toFixed(2)}×ATR); direction ${(x.modelPUp * 100).toFixed(0)}% prob. up — ${x.directionEdge ? 'weak validated edge' : 'NO VALIDATED EDGE, treat as noise'}`);
+    return `${header}\n${lines.join('\n')}`;
+  })();
+
   return `You are a professional FX/futures desk analyst. Analyse the following real-time dashboard snapshot for ${pair} and produce a structured trading intelligence brief. Be direct, specific, and actionable. Think like a prop trader who needs to make a decision in the next 30 minutes.
 
 === DASHBOARD SNAPSHOT: ${pair} ===
@@ -2464,6 +2480,14 @@ ${s.topEntries && s.topEntries.length > 0
 SESSION INTELLIGENCE
 Current session: ${s.session?.name ?? 'N/A'}  |  London time: ${s.session?.londonTime ?? 'N/A'}  |  Confidence multiplier: ${s.session?.confidence ?? 'N/A'}x
 Context: ${s.session?.desc ?? 'N/A'}
+
+SESSION RESEARCH (10-year Asia/London/overlap/NY backtest for THIS pair specifically — every finding below survived a circular-shift null AND a pooled Benjamini-Hochberg FDR correction across everything tested; research context, NOT a live signal. Full methodology: SessionResearch/README.md)
+${s.sessionResearch ? `Data through ${s.sessionResearch.dataThrough}  |  ${s.sessionResearch.nBhPass}/${s.sessionResearch.nHypotheses} tested relationships survive multiple-testing correction for this pair.
+Range persistence: ${s.sessionResearch.rangeHandoff ? `validated — ${s.sessionResearch.rangeHandoff.strongestPair} carries the strongest handoff (ρ ${s.sessionResearch.rangeHandoff.strongestRho}); a wide/quiet session tends to be followed by another wide/quiet one.` : 'no validated session-to-session range persistence for this pair.'}
+Direction handoff: does NOT reliably carry from one session to the next (${s.sessionResearch.directionHandoff.nTested} handoffs tested, ${s.sessionResearch.directionHandoff.anySignificant ? 'weak signal in some' : 'none significant'}) — a session closing up/down is close to a coin flip for the next session's direction. Do not lean on session-to-session momentum for this pair.
+${s.sessionResearch.spikeReversal.length ? `Pre-open spike → reversal (validated): ${s.sessionResearch.spikeReversal.map(v => `${v.boundary} open (spike reverses ${(v.reversalRateSpike * 100).toFixed(0)}% vs ordinary ${(v.reversalRateNonspike * 100).toFixed(0)}%)`).join('; ')} — a sharp move right before that session's open tends to partially reverse.` : 'No validated pre-open spike-reversal effect for this pair.'}
+${s.sessionResearch.impulse ? `Impulse reversal (scalping, M5): impulsive swing pivots beat grind pivots on win-rate${s.sessionResearch.impulse.symmetry ? ` (low-side/high-side symmetry at 30min: ${(s.sessionResearch.impulse.symmetry.winRateLow * 100).toFixed(0)}% vs ${(s.sessionResearch.impulse.symmetry.winRateHigh * 100).toFixed(0)}%${s.sessionResearch.impulse.symmetry.bhPass ? ', a real asymmetry' : ', not distinguishable'})` : ''} — small edge, not a standalone signal.` : ''}
+${srOutlook}` : '  Not available (SessionResearch/dashboard_export.py not yet run for this pair)'}
 
 VOLATILITY IMPULSE (5-bar momentum)
 ${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%
@@ -4419,14 +4443,25 @@ setInterval(() => {
 // week's update the same day it lands, just costs nothing on the 6 days it
 // doesn't change. today.html's Market Read line flags >~10 days since the
 // latest date as likely-stale (a missed weekly update), not a bug. Source is
-// a raw .xls download, not a JSON API, hence the xlsx dependency (pinned to
-// SheetJS's own CDN in package.json — the npm-registry copy has an
-// unpatched high-severity prototype-pollution advisory with no fix
-// available, and this parses a third-party file, so the CDN build is used
-// deliberately, not the registry one).
+// a raw .xls download, not a JSON API, hence the xlsx dependency — parsing
+// it needs the `xlsx` package's own patched CDN build (the npm-registry
+// copy has an unpatched high-severity prototype-pollution advisory), which
+// isn't reachable from every build environment. Rather than pin it in
+// package.json (a lockfile entry for a CDN tarball a build can't always
+// resolve breaks `npm ci` for the WHOLE app, not just this one widget —
+// exactly what took production down after this engine first landed), it's
+// an optional peer dependency: install it yourself (`npm install xlsx@https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz`)
+// in an environment that can reach the CDN if you want this feature live;
+// without it, GPR just reports "unavailable" and everything else runs fine.
 const _GPR_KV = 'gpr_v1';
 const GPR_DAILY_URL = 'https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls';
 async function _buildGprScore() {
+  let XLSX;
+  try {
+    XLSX = await import('xlsx');
+  } catch {
+    throw new Error('GPR: xlsx package not installed (optional dependency — see comment above _buildGprScore)');
+  }
   const r = await fetch(GPR_DAILY_URL, { signal: AbortSignal.timeout(20_000) });
   if (!r.ok) throw new Error(`GPR fetch failed (${r.status})`);
   const buf = Buffer.from(await r.arrayBuffer());
@@ -17526,6 +17561,123 @@ app.get('/api/analogml/motif-state', async (_req, res) => {
   if (!out) return res.status(404).json({ ok: false, error: 'no motif_state.json yet -- run AnalogML/motif_track.py' });
   return res.json(out);
 });
+
+// ── SessionResearch: per-pair Asia/London/overlap/NY session-handoff,
+// day-flow, walk-forward-model, and impulse-reversal research, distilled to
+// ONE small combined file by SessionResearch/dashboard_export.py (full
+// methodology + per-finding circular-shift null + pooled Benjamini-Hochberg
+// FDR correction documented in SessionResearch/README.md — this endpoint
+// only ever serves already-validated summary numbers, never raw cells).
+// _loadAnalogMLJson is fully generic (just a disk-first-then-R2 JSON read;
+// nothing AnalogML-specific in its body) -- reused as-is rather than
+// duplicated under a new name.
+const SESSION_RESEARCH_SUMMARY_PATH = path.join(__dirname, 'SessionResearch', 'out', 'dashboard_summary.json');
+
+app.get('/api/session-research/summary', async (_req, res) => {
+  const out = await _loadAnalogMLJson(SESSION_RESEARCH_SUMMARY_PATH, 'session-research/dashboard_summary.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet -- run SessionResearch/dashboard_export.py' });
+  return res.json(out);
+});
+
+// ── SessionResearch: native in-process scheduling ───────────────────────────
+// Runs the SAME Python engine (SessionResearch/*.py — Ridge/Logistic models,
+// circular-shift permutation tests, all of it) as two setInterval timers in
+// THIS process, the way every other periodic refresh in this file already
+// works (~60 other setInterval blocks), instead of a separate bash-loop
+// script supervised by start.sh's restart_bot. That earlier version worked
+// but added a whole extra supervision layer (start.sh -> restart_bot ->
+// bash sleep-loop -> python) for what every other background refresh here
+// does with one timer — collapsing it removes that layer without touching
+// the statistics/ML code itself, which is NOT being ported to JS: there is
+// no JS equivalent to scikit-learn's Ridge/LogisticRegression worth trusting
+// over the already-validated (see SessionResearch/README.md) Python one,
+// and re-deriving it would trade a real, working, cross-checked engine for
+// a rewrite risk with no operational upside — spawning python 26x/hour costs
+// a few seconds, not something worth that trade. `BT_PYTHON`/`_execFileAsync`
+// (defined above, used by the vol-backtest routes) are reused as-is.
+//
+// Two cadences, same split the old bash loops used: `--live` only fits the
+// already-proven model on one new row per pair (cheap, hourly-safe); the
+// full study reruns every circular-shift null across every handoff/spike/
+// dayflow/impulse cell for all 26 pairs (expensive; the 10-year statistical
+// findings underneath don't move meaningfully day to day, so daily is
+// already generous). Neither refreshes the M1 parquet itself —
+// AnalogML/motif_track_loop.sh already tops up all 26 pairs hourly from
+// OANDA; these just read whatever's already current on disk.
+const SESSION_RESEARCH_PAIRS = [
+  'audcad', 'audchf', 'audjpy', 'audnzd', 'audusd', 'cadjpy', 'chfjpy',
+  'euraud', 'eurcad', 'eurchf', 'eurgbp', 'eurjpy', 'eurnzd', 'eurusd',
+  'gbpaud', 'gbpcad', 'gbpchf', 'gbpjpy', 'gbpnzd', 'gbpusd', 'gold',
+  'nzdjpy', 'nzdusd', 'usdcad', 'usdchf', 'usdjpy',
+];
+
+async function _runSessionResearchPy(pyArgs, { label, timeoutMs = 10 * 60_000 } = {}) {
+  try {
+    await _execFileAsync(BT_PYTHON, ['-m', ...pyArgs],
+      { cwd: __dirname, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
+    return true;
+  } catch (e) {
+    console.warn(`[session-research] ${label} failed: ${e.message}`);
+    return false;
+  }
+}
+
+// Serially, not Promise.all — predictable resource usage on a shared Railway
+// dyno beats parallel throughput here, same reasoning the bash-loop
+// predecessor documented (an xargs -P oversubscription bug cost real
+// debugging time once during this feature's own build).
+let _sessionResearchLiveBusy = false;
+async function _sessionResearchLiveTick() {
+  if (_sessionResearchLiveBusy) { console.warn('[session-research] live tick still running, skipping this interval'); return; }
+  _sessionResearchLiveBusy = true;
+  const startedAt = Date.now();
+  console.log(`[session-research] live tick starting ${new Date().toISOString()}`);
+  try {
+    for (const pair of SESSION_RESEARCH_PAIRS) {
+      await _runSessionResearchPy(['SessionResearch.predict_today', '--pair', pair, '--live'],
+        { label: `predict_today --live ${pair}`, timeoutMs: 60_000 });
+    }
+    await _runSessionResearchPy(['SessionResearch.dashboard_export', '--all'],
+      { label: 'dashboard_export --all', timeoutMs: 60_000 });
+    console.log(`[session-research] live tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`);
+  } finally {
+    _sessionResearchLiveBusy = false;
+  }
+}
+
+let _sessionResearchFullBusy = false;
+async function _sessionResearchFullTick() {
+  if (_sessionResearchFullBusy) { console.warn('[session-research] full-study tick still running, skipping this interval'); return; }
+  _sessionResearchFullBusy = true;
+  const startedAt = Date.now();
+  console.log(`[session-research] full study starting ${new Date().toISOString()}`);
+  try {
+    for (const pair of SESSION_RESEARCH_PAIRS) {
+      const studyOk = await _runSessionResearchPy(['SessionResearch.run_study', '--pair', pair],
+        { label: `run_study ${pair}`, timeoutMs: 10 * 60_000 });
+      if (!studyOk) continue;   // skip this pair's predict/report if the study itself failed
+      await _runSessionResearchPy(['SessionResearch.predict_today', '--pair', pair],
+        { label: `predict_today (replay) ${pair}`, timeoutMs: 60_000 });
+      await _runSessionResearchPy(['SessionResearch.report_html', '--pair', pair],
+        { label: `report_html ${pair}`, timeoutMs: 60_000 });
+    }
+    await _runSessionResearchPy(['SessionResearch.dashboard_export', '--all'],
+      { label: 'dashboard_export --all', timeoutMs: 60_000 });
+    console.log(`[session-research] full study done in ${((Date.now() - startedAt) / 60_000).toFixed(1)}min`);
+  } finally {
+    _sessionResearchFullBusy = false;
+  }
+}
+
+const SESSION_RESEARCH_LIVE_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH_LIVE_INTERVAL_SECONDS, 10) || 3600) * 1000;
+const SESSION_RESEARCH_FULL_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH_FULL_INTERVAL_SECONDS, 10) || 86400) * 1000;
+// Fires once immediately on boot (same behavior the bash-loop predecessor
+// had), then on its own interval — fire-and-forget, does not block server
+// startup below.
+_sessionResearchLiveTick();
+_sessionResearchFullTick();
+setInterval(_sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
+setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
 
 app.get('/api/analogml/motif-trades', async (_req, res) => {
   const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');

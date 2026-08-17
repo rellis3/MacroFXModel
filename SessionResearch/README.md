@@ -46,6 +46,7 @@ below.
 ```bash
 pip install pandas numpy scipy pyarrow statsmodels scikit-learn    # if not already installed
 python3 -m SessionResearch.run_study --pair gold
+python3 -m SessionResearch.predict_today --pair gold      # optional: see "Applied", below
 python3 -m SessionResearch.report_html --pair gold
 open SessionResearch/out/gold/gold-session-research.html
 ```
@@ -57,6 +58,139 @@ python3 -m SessionResearch.run_study --pair eurusd
 python3 -m SessionResearch.report_html --pair eurusd
 ```
 
+## Applied — an actual prediction, not just a walk-forward statistic (`predict_today.py`)
+
+Everything above validates WHETHER prediction works. This script is the
+other half: take the SAME production model, fit it on every day strictly
+BEFORE a target day (no leave-one-out shortcuts — genuine "as if predicting
+forward," even when the target day isn't the most recent one in the
+dataset), and print what it actually says for that one real day — range,
+direction, the naive-persistence baseline for comparison, and (when the day
+is far enough in the past to know it) the actual outcome.
+
+```
+=== 2026-06-05  (post_london) ===
+So far: range 0.54×ATR, net move +0.10×ATR
+
+REMAINING RANGE
+  model:       0.93×ATR
+  persistence: 0.86×ATR  (naive one-variable rule)
+  actual:      1.89×ATR
+  reliability: walk-forward MAE 0.319 vs. persistence 0.321 (beats the trivial rule,
+               p=0.130); 32% of null refits score as well or better
+
+DIRECTION (close above checkpoint price?)
+  model:       49% probability up
+  persistence: up (today's move so far continues)
+  actual:      down
+  reliability: walk-forward accuracy 47.3% vs. persistence 51.8% (p=0.003) →
+               NO VALIDATED EDGE — read the probability above as noise
+```
+
+That's real output from this dataset's most recent day, not a cherry-picked
+example — and it's a useful one precisely because the direction call was
+wrong at all three checkpoints that day, which is what "no validated edge"
+actually looks like in practice, not a hedge-clause nobody expects to matter.
+Every prediction is printed with its checkpoint/target's own walk-forward
+accuracy from `forecast.py` directly underneath it — the reliability line is
+not optional decoration, it is the thing that keeps a live number from being
+read with more confidence than the research earned. `report_html.py` renders
+this as an "Applied" panel near the top of the dashboard when
+`predict_today.json` exists (run `predict_today.py` before `report_html.py`
+to populate it; the dashboard degrades gracefully with instructions if you
+skip it).
+
+**This is still not a signal.** No entries, exits, sizing, or cost model —
+it prints a number and its own accuracy, and leaves the decision to the
+reader. It also can't tell you about literally today when run here: this
+sandbox can't reach OANDA to refresh the parquet past 2026-06-05
+(`AnalogML/refresh_m1.py` documents why — it works from Railway, not here),
+so `--date` defaults to the most recent day actually in the dataset. Point
+`--date YYYY-MM-DD` at any earlier day to see the model's call for that one
+instead.
+
+### `--live`: genuinely real-time, wherever the data actually is fresh
+
+`--date`-mode replays a COMPLETE historical day (it needs all 4 sessions
+present to know which checkpoint to build). `--live` is the other thing
+entirely: as of right now, whichever of today's sessions have already
+closed, build that partial day's feature row directly and predict the rest —
+no historical "actual outcome" to show, because the outcome genuinely isn't
+known yet.
+
+```bash
+python3 -m SessionResearch.predict_today --pair gold --live
+```
+
+Before 07:00 UTC this reports `no_checkpoint_yet` (still in the Asia
+session) rather than fabricating a number. Every status — including the
+non-"ok" ones — is written to `predict_live.json`, not just successes, so a
+dashboard reading it can show "last checked HH:MM, still waiting on London"
+instead of a silently stale file. `build_live_row` (the feature-construction
+function `--live` uses) was cross-checked against `dayflow.build_day_checkpoints`'s
+own output for several known historical days — bit-for-bit match after
+fixing two bugs the cross-check itself caught (today's checkpoint used the
+dataset's LAST atr0 instead of the target day's own, and `prev_day_range_atr`
+used today's ATR scale instead of the prior day's own — see the function's
+docstring and `git log` for the exact fixes).
+
+## Running on Railway (live, with real prices)
+
+This sandbox is frozen at 2026-06-05 and can't reach OANDA — nothing above
+can produce a genuinely live number here, by construction, not by bug.
+Wherever OANDA IS reachable (this repo's Railway deployment, per every other
+OANDA-dependent script in this repo), `server.js` runs the Python engine on
+two native `setInterval` timers, the "SessionResearch: native in-process
+scheduling" block near the `/api/session-research/summary` route — the same
+way roughly 60 other periodic refreshes in that file already work, rather
+than a separate bash-loop script supervised by `start.sh`'s `restart_bot`
+(an earlier version of this worked that way; collapsed into `server.js`
+because every other background refresh here uses one timer, not a whole
+extra supervision layer, for what amounts to "run this on a schedule"). The
+statistics/ML itself is **not** ported to JS — there's no JS equivalent to
+scikit-learn worth trusting over the already-validated Python engine, so
+`server.js` just spawns it (`BT_PYTHON` + `_execFileAsync`, the same helpers
+the vol-backtest routes already use) rather than reimplementing it:
+
+| Timer | Cadence (default, env override) | Does |
+|---|---|---|
+| `_sessionResearchLiveTick` | hourly, `SESSION_RESEARCH_LIVE_INTERVAL_SECONDS` | `predict_today.py --live` for all 26 pairs, then `dashboard_export.py --all` |
+| `_sessionResearchFullTick` | daily, `SESSION_RESEARCH_FULL_INTERVAL_SECONDS` | `run_study.py` + `predict_today.py` (historical replay) + `report_html.py` for all 26 pairs, then `dashboard_export.py --all` |
+
+Both fire once immediately on boot, then on their own interval, serially
+across pairs within each tick (not `Promise.all` — predictable resource
+usage on a shared Railway dyno over parallel throughput, matching every
+other sequential loop in this repo). Neither refreshes the M1 parquet
+itself — `AnalogML/motif_track_loop.sh` (already running hourly in this
+repo, unrelated to SessionResearch) already tops up all 26 pairs' local
+parquets from OANDA via `refresh_m1.py`, so these timers just read whatever's
+already current on disk. The two-cadence split exists because the jobs have
+very different costs: `--live` only fits the already-proven model on one new
+row per pair (seconds, safe hourly); the full study reruns every
+circular-shift null across every handoff/spike/dayflow/impulse cell for all
+26 pairs (this build's timing: several minutes total with 4 cores; unverified
+on Railway's actual hardware), and the underlying 10-year statistical
+findings don't move meaningfully day to day, so daily is already generous.
+
+**What's genuinely verified vs. what isn't:** the `--live` prediction logic
+itself is cross-checked line-for-line against the historical code path (see
+above) and runs correctly in this sandbox (correctly reporting
+`no_checkpoint_yet`/`no_data_yet` against frozen data, rather than crashing
+or fabricating a number); `server.js`'s new scheduling block passes
+`node --check`. What is NOT verified from this sandbox: that the timers
+actually fire and complete on the real Railway deployment, that
+`refresh_m1.py` keeps pace with the hourly live tick there, or that
+`/api/session-research/summary` serves real pair data in production — this
+sandbox has no network path to Railway or credentials to check, and cannot
+even run `npm install` here (a blocked external dependency unrelated to this
+change) to boot `server.js` locally. All of it follows the exact pattern
+every other background refresh and every other OANDA-dependent script in
+this repo already uses successfully, but "matches the pattern" and
+"confirmed running in production" are different claims, and only the first
+one is being made here.
+
+## Output files
+
 `run_study` writes to `SessionResearch/out/<pair>/`: `meta.json`,
 `handoff.json`, `intraday.json`, `spike_fade.json`, `dayflow.json`,
 `forecast.json` (full walk-forward detail), `forecast_cells.json` (the two
@@ -66,7 +200,13 @@ correction), and three large, regenerated-every-run, gitignored files:
 `session_table.json` (per-day-per-session raw table, ~5MB),
 `day_checkpoints.json` (per-day-per-checkpoint raw table, ~4MB), and
 `impulse_events.json` (per-swing-pivot raw table, ~26MB — M5 over 10 years
-produces on the order of 10⁵ pivots per side).
+produces on the order of 10⁵ pivots per side). `predict_today` writes
+`predict_today.json` (historical replay) or `predict_live.json` (`--live`)
+separately (see "Applied," above). `dashboard_export.py --all` reads all of
+the above across every pair and writes ONE small combined
+`SessionResearch/out/dashboard_summary.json` (~140KB for 26 pairs) — this is
+the only file `server.js`/`today.html` ever read; nothing in the live
+dashboard touches the large per-pair raw files directly.
 
 Takes a few minutes end to end on gold (`impulse.py`'s circular-shift nulls
 run over ~120k pivots, not ~2.6k session-days, so they dominate the runtime —
@@ -296,6 +436,9 @@ sizes per session are 1,000–5,000.
 | `dayflow.py` | Per-day checkpoints (`post_asia`/`post_london`/`post_overlap`): range-so-far vs. remaining range, fraction of the day's range already in |
 | `forecast.py` | The walk-forward prediction model (Ridge/Logistic + HistGBM check) vs. climatology/persistence baselines vs. a circular-shift null |
 | `impulse.py` | Impulsive-vs-grind swing pivot reversal study at M5 (scalping), with a low-vs-high symmetry test and a session breakdown |
+| `predict_today.py` | Applies the production-fitted model to one real day (`--date`, historical replay) or right now (`--live`), annotated with that checkpoint/target's own walk-forward reliability |
 | `stats_util.py` | Shared BH-FDR + circular-shift-null machinery |
 | `run_study.py` | Orchestrates all of the above, pools p-values, writes JSON |
 | `report_html.py` | Renders the static dashboard from a study's JSON output |
+| `dashboard_export.py` | Distills every pair's output into one small `dashboard_summary.json` for `today.html`/`server.js` (see "Running on Railway") |
+| *(scheduling)* | Native `setInterval` timers inside `server.js` — `--live` hourly, the full study daily (see "Running on Railway") |

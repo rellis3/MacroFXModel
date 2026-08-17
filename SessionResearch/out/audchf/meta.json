@@ -1,0 +1,13 @@
+{
+  "pair": "audchf",
+  "generated_at": "2026-08-17T17:15:15.077189+00:00",
+  "data_start": "2016-01-04 00:00:00+00:00",
+  "data_end": "2020-07-10 20:59:00+00:00",
+  "m1_rows": 1606553,
+  "n_trading_day_sessions": 5215,
+  "day_start_hour": 0,
+  "n_perm": 1000,
+  "bh_q": 0.1,
+  "n_hypotheses_pooled": 155,
+  "n_bh_pass": 96
+}
