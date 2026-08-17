@@ -1851,6 +1851,43 @@ VuManChu gate, dynamic stop, and this) — all four point at the entry
 signal itself, not the exit/sizing/cadence around it. Full method and
 both instruments' tables: `education/jordan_impulse_range_backtest/MULTI_TRADE_PER_DAY.md`.
 
+**Follow-up (2026-08-17, same day) — three more entry-hypothesis probes,
+one confound caught, two real (still-negative) improvements found.** Owner
+asked to step back from "is this exact formalisation right" and infer what
+ELSE could produce the visible pattern, given four independent nulls on the
+continuation-on-pullback entry itself. Added `legOriginTime`/`legExtremeTime`
+to the engine's trade output (purely additive — verified to change no
+existing field before recommitting the baseline `trades.json`) and exported
+its local `buildDaily` for reuse (no 6th copy). Three probes, all reusing
+the now-standard byte-identical-at-default backward-compat check:
+
+- **Session/time-of-day split** (`scripts/session_split.mjs`) — a first pass
+  bucketed by `fillTime` and found 77% of gold trades in hours 22-04 UTC,
+  which turned out to be a day-loop artifact (78% of hour-00 trades fill
+  within 30 min of midnight — carried-over legs, not fresh setups), caught
+  and fixed by re-bucketing on the new `legExtremeTime` instead. Corrected
+  result: still no hour-of-day cell survives n≥30 + full/IS/OOS-positive,
+  either instrument. `education/jordan_impulse_range_backtest/SESSION_SPLIT.md`.
+- **Liquidity-sweep filter** (`scripts/liquidity_sweep_filter.mjs`, post-hoc
+  on the existing baseline trades, no re-backtest) — only count a leg whose
+  origin swept the prior calendar day's H/L first (a stop-hunt-then-reversal
+  read). Result: a real, IS/OOS-consistent improvement on both instruments
+  (Gold Sharpe −5.99→−1.89 on 15% of trades, NQ −2.49→−0.93) — still net
+  negative, but the strongest survivor in this whole investigation.
+  `education/jordan_impulse_range_backtest/LIQUIDITY_SWEEP_FILTER.md`.
+- **VWAP-anchored entry band** (`entryBandMode: 'vwap'`, new backward-
+  compatible cfg on the shared engine, reuses `js/vumanchuCore.js`'s
+  `computeVWAP` session-anchored) — swap the fixed Fib retracement band for
+  `|close − sessionVWAP| ≤ vwapBandAtrMult × ATR`. Result: beats the Fib
+  band at every threshold tried (0.25×-1.5×ATR), on both instruments, with
+  near-identical trade counts to baseline and low threshold-sensitivity
+  (both signs of a real effect, not a lucky slice) — still net negative
+  (Gold →−3.66, NQ →−0.76). `education/jordan_impulse_range_backtest/VWAP_ENTRY_BAND.md`.
+
+Also added `rangeGateMode: 'exhausted'` (inverts the range-exhaustion gate
+to require an already-stretched day instead of room-left) — sweep and
+write-up in progress, see `RANGE_GATE_FLIP.md` once complete.
+
 **Known duplication flagged, not fixed here:** `impulseEmaRangeV1Engine.js`'s
 local `buildDaily(packed)` is a 5th independent copy of the same D1-bucketing
 loop already inlined in `js/poiReactionV1Engine.js`, `js/rangeExtEngine.js`,

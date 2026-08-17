@@ -30,13 +30,23 @@
  *     one screenshot crossing right at the reversal/continuation point).
  *   - Range-exhaustion gate: today's session range-so-far, ranked against the
  *     trailing `rangeLookbackDays` sessions' full H-L% (js/rangePercentileCore.js),
- *     must be ≤ `rangeGateMaxUsedFrac` × the trailing median — i.e. only take
- *     the continuation while the day hasn't already used up a typical day's
- *     range. This operationalises the "Live / Median / 75th Pct" tool visible
- *     in one screenshot.
+ *     must be ≤ `rangeGateMaxUsedFrac` × the trailing median (`rangeGateMode:
+ *     'roomLeft'`, the default/pinned read) — i.e. only take the continuation
+ *     while the day hasn't already used up a typical day's range. This
+ *     operationalises the "Live / Median / 75th Pct" tool visible in one
+ *     screenshot. `rangeGateMode: 'exhausted'` inverts it (require
+ *     ≥ `rangeGateMinUsedFrac` instead) — the day must already be stretched, a
+ *     momentum/trend-day read instead of a room-left read; tested in
+ *     education/jordan_impulse_range_backtest/RANGE_GATE_FLIP.md (also null).
  *   - Entry = confirmation-bar CLOSE inside the leg's `retraceMin`–`retraceMax`
- *     retracement, filled as a STOP at the NEXT bar's open (no lookahead; no
- *     ambiguous same-bar limit fill).
+ *     retracement (`entryBandMode: 'fib'`, the default/pinned read), filled as
+ *     a STOP at the NEXT bar's open (no lookahead; no ambiguous same-bar limit
+ *     fill). `entryBandMode: 'vwap'` swaps the pullback-quality check for
+ *     distance from the SESSION-anchored VWAP (`js/vumanchuCore.js`,
+ *     `|close - VWAP| <= vwapBandAtrMult × ATR`) instead of a Fib fraction of
+ *     the leg — tests whether VWAP-reversion, not the Fib ratio itself, is
+ *     the real trigger; tested in
+ *     education/jordan_impulse_range_backtest/VWAP_ENTRY_BAND.md (also null).
  *   - Stop = beyond the realised pullback's own extreme (the lowest low / highest
  *     high between the impulse's turning point and the confirmation bar), plus
  *     a small ATR buffer — "beyond recent market structure", the stop-placement
@@ -67,6 +77,7 @@ import { ema } from './indicatorCore.js';
 import { walkBars } from './forecastCore.js';
 import { pipSize, assetClass as assetClassOf } from './instrumentRegistry.js';
 import { rangeExhaustionRead } from './rangePercentileCore.js';
+import { computeVWAP } from './vumanchuCore.js';
 
 const DAY = 86400;
 
@@ -87,6 +98,10 @@ export const DEFAULT_CFG = {
   retraceMax: 0.618,
   rangeLookbackDays: 20,
   rangeGateMaxUsedFrac: 1.0, // require live/median ≤ this (room left in the day's range)
+  rangeGateMode: 'roomLeft', // 'roomLeft' (default/pinned) or 'exhausted' — see file header
+  rangeGateMinUsedFrac: 0.5, // 'exhausted' mode only: require live/median ≥ this
+  entryBandMode: 'fib',     // 'fib' (default/pinned) or 'vwap' — see file header
+  vwapBandAtrMult: 0.5,     // 'vwap' mode only: max |close - sessionVWAP| in ATR
   slBufferAtrMult: 0.25,
   rr: 2.0,
   warmupDays: 30,
@@ -102,7 +117,7 @@ export const DEFAULT_CFG = {
 // js/gold-backtest-worker.js (4 independent copies now with this one; flagged
 // as a LEGO_MODULES.md candidate rather than extracted here, to avoid touching
 // those files' own tested call sites in this change).
-function buildDaily(packed) {
+export function buildDaily(packed) {
   const { n, times, opens, highs, lows, closes } = packed;
   const days = [];
   let curKey = -1, cur = null;
@@ -207,6 +222,15 @@ export function runImpulseEmaRange(packed, cfg = {}) {
     const dayOpen = ctxBars[todayStartIdx].open;
     if (!(dayOpen > 0)) continue;
 
+    // Session-anchored VWAP (resets at todayStartIdx, not the multi-day ctx
+    // window) — only computed when entryBandMode actually needs it.
+    let vwapSeries = null;
+    if (c.entryBandMode === 'vwap') {
+      vwapSeries = new Array(ctxBars.length).fill(null);
+      const { vwap } = computeVWAP(ctxBars.slice(todayStartIdx));
+      for (let i = 0; i < vwap.length; i++) vwapSeries[todayStartIdx + i] = vwap[i];
+    }
+
     let runningHigh = -Infinity, runningLow = Infinity;
     let tradesToday = 0;
     let scanStart = todayStartIdx;
@@ -228,13 +252,21 @@ export function runImpulseEmaRange(packed, cfg = {}) {
         if (!emaAgrees) continue;
 
         const rangeRead = rangeExhaustionRead(daily, di, dayOpen, runningHigh, runningLow, c.rangeLookbackDays);
-        if (!rangeRead || rangeRead.usedFracOfMedian == null || rangeRead.usedFracOfMedian > c.rangeGateMaxUsedFrac) continue;
+        if (!rangeRead || rangeRead.usedFracOfMedian == null) continue;
+        if (c.rangeGateMode === 'exhausted') {
+          if (rangeRead.usedFracOfMedian < c.rangeGateMinUsedFrac) continue;
+        } else if (rangeRead.usedFracOfMedian > c.rangeGateMaxUsedFrac) continue;
 
-        const span = leg.extremePrice - leg.originPrice;   // signed: >0 for up leg, <0 for down leg
-        const retraceLo = leg.extremePrice - c.retraceMax * span;
-        const retraceHi = leg.extremePrice - c.retraceMin * span;
-        const lo = Math.min(retraceLo, retraceHi), hi = Math.max(retraceLo, retraceHi);
-        if (bar.close < lo || bar.close > hi) continue;   // confirmation bar must CLOSE inside the retracement band
+        if (c.entryBandMode === 'vwap') {
+          const vw = vwapSeries[j];
+          if (vw == null || Math.abs(bar.close - vw) > c.vwapBandAtrMult * atrSeries[j]) continue;
+        } else {
+          const span = leg.extremePrice - leg.originPrice;   // signed: >0 for up leg, <0 for down leg
+          const retraceLo = leg.extremePrice - c.retraceMax * span;
+          const retraceHi = leg.extremePrice - c.retraceMin * span;
+          const lo = Math.min(retraceLo, retraceHi), hi = Math.max(retraceLo, retraceHi);
+          if (bar.close < lo || bar.close > hi) continue;   // confirmation bar must CLOSE inside the retracement band
+        }
 
         // Structural stop: beyond the realised pullback's own extreme (from the
         // leg's turning point through the confirmation bar), not an arbitrary
@@ -281,6 +313,7 @@ export function runImpulseEmaRange(packed, cfg = {}) {
         date, instrument, side: isBuy ? 'BUY' : 'SELL',
         entry: +entry.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
         legDir: signal.leg.dir, legOrigin: +signal.leg.originPrice.toFixed(6), legExtreme: +signal.leg.extremePrice.toFixed(6),
+        legOriginTime: ctxBars[signal.leg.originIdx].time, legExtremeTime: ctxBars[signal.leg.extremeIdx].time,
         rangeUsedFracOfMedian: +signal.rangeRead.usedFracOfMedian.toFixed(3),
         rangeLivePct: +(signal.rangeRead.livePct * 100).toFixed(3),
         rangeMedianPct: +(signal.rangeRead.medianPct * 100).toFixed(3),

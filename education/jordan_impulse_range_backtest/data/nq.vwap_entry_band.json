@@ -1,0 +1,55 @@
+{
+  "pair": "nq",
+  "rows": [
+    {
+      "vwapBandAtrMult": 0.25,
+      "nTrades": 3101,
+      "winRate": 33.5,
+      "sharpe": -1.156,
+      "pf": 0.81,
+      "oosSharpe": -2.098,
+      "oosN": 1241,
+      "ms": 17917
+    },
+    {
+      "vwapBandAtrMult": 0.5,
+      "nTrades": 3161,
+      "winRate": 34.8,
+      "sharpe": -0.924,
+      "pf": 0.847,
+      "oosSharpe": -1.594,
+      "oosN": 1265,
+      "ms": 20328
+    },
+    {
+      "vwapBandAtrMult": 0.75,
+      "nTrades": 3179,
+      "winRate": 34.8,
+      "sharpe": -0.924,
+      "pf": 0.848,
+      "oosSharpe": -1.911,
+      "oosN": 1272,
+      "ms": 8530
+    },
+    {
+      "vwapBandAtrMult": 1,
+      "nTrades": 3190,
+      "winRate": 34.6,
+      "sharpe": -0.838,
+      "pf": 0.864,
+      "oosSharpe": -1.612,
+      "oosN": 1276,
+      "ms": 6032
+    },
+    {
+      "vwapBandAtrMult": 1.5,
+      "nTrades": 3199,
+      "winRate": 34.9,
+      "sharpe": -0.761,
+      "pf": 0.876,
+      "oosSharpe": -1.393,
+      "oosN": 1280,
+      "ms": 5685
+    }
+  ]
+}

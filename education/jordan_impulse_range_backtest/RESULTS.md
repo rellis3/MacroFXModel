@@ -180,6 +180,25 @@ realizes more of the same negative-edge trades faster; Sharpe gets
 monotonically worse as more are allowed, on both instruments. See
 [MULTI_TRADE_PER_DAY.md](MULTI_TRADE_PER_DAY.md).
 
+**Follow-up tested: session/time-of-day split** — no hour-of-day subset
+survives a real sample-size + IS/OOS-consistency bar, either instrument.
+Caught and fixed a real confound along the way (fill-time clustering near
+UTC midnight was a day-loop artifact, not a session effect). See
+[SESSION_SPLIT.md](SESSION_SPLIT.md).
+
+**Follow-up tested: a liquidity-sweep filter** (only count a leg whose
+origin swept the prior day's H/L first) — a real, IS/OOS-consistent
+improvement on both instruments (Gold Sharpe −5.99→−1.89, NQ −2.49→−0.93),
+but still net negative. The strongest result in this whole line of testing
+so far; reported straight, not oversold. See
+[LIQUIDITY_SWEEP_FILTER.md](LIQUIDITY_SWEEP_FILTER.md).
+
+**Follow-up tested: a VWAP-anchored entry band** (distance from session
+VWAP instead of a fixed Fib retracement fraction) — also a real, threshold-
+robust improvement on both instruments (Gold →−3.66, NQ →−0.76 at every
+threshold tried), still net negative. See
+[VWAP_ENTRY_BAND.md](VWAP_ENTRY_BAND.md).
+
 ---
 
 ## Reproduce
