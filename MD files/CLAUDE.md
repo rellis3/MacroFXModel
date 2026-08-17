@@ -506,3 +506,30 @@ archive's last sync, a CDN-hosted chart lib, etc.) can only be verified for real
 on this URL, not from here. When a task needs that check, ask the owner to
 confirm the Railway deploy has picked up the latest `main` (Railway redeploys on
 push, but there can be a lag) before treating a live-path test as conclusive.
+
+### Build: Dockerfile, not Nixpacks (2026-08-17)
+
+This service builds from the root **`Dockerfile`** (`railway.json`'s
+`build.builder` is `"DOCKERFILE"`), not Railway's Nixpacks/Railpack
+auto-detection. Do not delete the `Dockerfile`, revert `railway.json`'s
+builder back to `"nixpacks"`/`"RAILPACK"`, or add a `nixpacks.toml` —
+Nixpacks silently built this repo as **Node-only** (it doesn't
+auto-combine multiple self-detected providers when both `package.json`
+and root `requirements.txt` are present), so every Python bot
+(`RegimeV2`, `bot/main.py`, `Gold/main.py`, everything under `AnalogML/`,
+`levelEngine/live_watch.py`, `SessionResearch`) silently never ran on
+Railway — `python`/`python3` simply wasn't on PATH. An explicit
+`nixpacks.toml` multi-provider fix was tried first and broke `npm ci`
+outright (reverted in PR #1270); the Dockerfile replaced it with an
+explicit, auditable build instead of another guess at Nixpacks config.
+
+The Dockerfile installs Python from the **root** `requirements.txt` only
+— verified sufficient for every Railway-launched script's actual
+top-level imports (checked via AST parsing, not assumption). Per-directory
+`requirements.txt` files are deliberately NOT installed:
+`Gold/requirements.txt`'s `MetaTrader5` entry has no Linux wheel (Windows
+DLL dependency), and every importer of it already guards with
+`try/except ImportError` for a paper-mode fallback, so installing it
+would only add a Linux-only build failure for zero runtime benefit. If a
+bot's dependencies change, update the root `requirements.txt`, not a
+per-directory one, or the Dockerfile won't pick it up.
