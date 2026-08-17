@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Lab — Impulse/Retracement Visual Research</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff;
+          --up:#26a69a; --down:#ef5350; --amber:#facc15; --entry:#e5e7eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; margin-top:2px; }
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; align-items:flex-start; }
+  #chartCol { flex:1 1 680px; min-width:320px; }
+  #chart { height:480px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { flex:0 0 320px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; flex-direction:column; gap:3px; }
+  select, input[type=datetime-local], input[type=number] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 7px; font-size:12px; font-family:'DM Mono',monospace; }
+  button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#0b0e14; border-color:var(--accent); font-weight:600; }
+  button.preset { display:block; width:100%; text-align:left; margin-bottom:6px; }
+  .row { display:flex; justify-content:space-between; font-family:'DM Mono',monospace; font-size:12px; padding:2px 0; }
+  .row b { color:var(--accent); }
+  .muted { color:var(--muted); font-size:11px; }
+  .badge { display:inline-block; padding:2px 7px; border-radius:10px; font-size:10.5px; font-family:'DM Mono',monospace; }
+  .badge.ok { background:#064e3b; color:#6ee7b7; }
+  .badge.warn { background:#451a03; color:#fbbf24; }
+  .badge.err { background:#450a0a; color:#fca5a5; }
+  #densityCanvas { width:100%; height:220px; background:#0a0d13; border:1px solid var(--line); border-radius:6px; }
+  .legend { display:flex; gap:12px; font-size:10.5px; color:var(--muted); margin-top:6px; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:4px; }
+  .swatch { width:9px; height:9px; border-radius:2px; display:inline-block; }
+  #status { font-size:11.5px; color:var(--muted); margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Trade Lab — Impulse → Retracement Visual Research</h1>
+  <div class="sub">
+    Loads real candles (frozen R2 archive + live OANDA/Yahoo proxy for anything the archive doesn't reach yet —
+    see <code>js/tradeLabDataSource.js</code>), overlays the detected impulse leg + EMA(9/21) + a drawn Entry/SL/TP,
+    and places the result against the full 10-year archive-wide pattern from
+    <code>education/jordan_trade_geometry/RESULTS.md</code>. Live OANDA/Yahoo access depends on where this is
+    deployed — blocked in a sandboxed dev environment, reachable on Railway.
+  </div>
+</header>
+<div class="wrap">
+  <div id="chartCol">
+    <div class="controls">
+      <label>Instrument
+        <select id="instrument"><option value="gold">Gold (XAU/USD)</option><option value="nq">NQ (NAS100 proxy)</option></select>
+      </label>
+      <label>From (UTC)<input type="datetime-local" id="fromInput"></label>
+      <label>To (UTC)<input type="datetime-local" id="toInput"></label>
+      <label>Timeframe<select id="tfInput"><option value="1">M1</option><option value="5" selected>M5</option><option value="15">M15</option></select></label>
+      <button class="primary" id="loadBtn">Load</button>
+    </div>
+    <div id="chart"></div>
+    <div id="status">Pick a known-trade preset or a range, then Load.</div>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--entry)"></span>Entry</span>
+      <span><span class="swatch" style="background:var(--down)"></span>Stop-loss side</span>
+      <span><span class="swatch" style="background:var(--up)"></span>Take-profit side</span>
+      <span><span class="swatch" style="background:#22d3ee"></span>EMA9</span>
+      <span><span class="swatch" style="background:#c084fc"></span>EMA21</span>
+      <span><span class="swatch" style="background:var(--amber)"></span>Nearest detected impulse leg</span>
+    </div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h2>Known trades (reconstructed from the screenshots — approximate)</h2>
+      <div id="presets"></div>
+      <div class="muted" style="margin-top:6px;">Entry/SL/TP read off the chart labels in the original screenshots — not a bar-by-bar fetch. Nudge the numbers below once real candles are visible.</div>
+    </div>
+    <div class="card">
+      <h2>This trade</h2>
+      <div class="controls">
+        <label>Entry<input type="number" id="entryInput" step="any"></label>
+        <label>Stop-loss<input type="number" id="slInput" step="any"></label>
+        <label>Target<input type="number" id="tpInput" step="any"></label>
+      </div>
+      <div id="tradeStats"><span class="muted">load a trade to see stats</span></div>
+    </div>
+    <div class="card">
+      <h2>Archive-wide pattern (10.4y, real M1)</h2>
+      <div id="archiveStats"><span class="muted">loading…</span></div>
+    </div>
+    <div class="card">
+      <h2>Impulse size → retrace depth</h2>
+      <canvas id="densityCanvas" width="600" height="440"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:#5b9dff"></span>Archive density</span>
+        <span><span class="swatch" style="background:var(--amber)"></span>Regression fit</span>
+        <span><span class="swatch" style="background:#fff"></span>This trade</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+import { ema } from './js/indicatorCore.js';
+
+const iso = d => new Date(d).toISOString().slice(0, 16);
+const fmtT = sec => new Date(sec * 1000).toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+
+// Known trades reconstructed from the screenshots (13-14 Aug 2026). Times
+// assumed UK local (BST, UTC+1 in August) per the same convention documented
+// in `MD files/COG_OBSERVED_SYSTEM.md` §1 for this trader's UI — unverified,
+// adjustable. Price levels are read off the chart labels, not fetched.
+const PRESETS = [
+  { label: 'Gold SHORT · 13 Aug 11:21→14:20', instrument: 'gold', from: '2026-08-13T09:30', to: '2026-08-13T13:45', entry: 4372.3, sl: 4380, tp: 4345.7 },
+  { label: 'NQ SHORT (failed) · 14 Aug 03:37→07:02', instrument: 'nq', from: '2026-08-14T01:30', to: '2026-08-14T06:30', entry: 30274.25, sl: 30285, tp: 30204.5 },
+  { label: 'NQ LONG · 14 Aug 10:19→15:05 ("ignoring the SL")', instrument: 'nq', from: '2026-08-14T08:30', to: '2026-08-14T14:30', entry: 30097.25, sl: 30032, tp: 30160 },
+  { label: 'NQ SHORT · 14 Aug 19:01', instrument: 'nq', from: '2026-08-14T17:00', to: '2026-08-14T18:30', entry: 30226.5, sl: 30230, tp: 30210.75 },
+];
+
+const presetsEl = document.getElementById('presets');
+for (const p of PRESETS) {
+  const b = document.createElement('button');
+  b.className = 'preset';
+  b.textContent = p.label;
+  b.addEventListener('click', () => applyPreset(p));
+  presetsEl.appendChild(b);
+}
+
+function applyPreset(p) {
+  document.getElementById('instrument').value = p.instrument;
+  document.getElementById('fromInput').value = p.from;
+  document.getElementById('toInput').value = p.to;
+  document.getElementById('entryInput').value = p.entry;
+  document.getElementById('slInput').value = p.sl;
+  document.getElementById('tpInput').value = p.tp;
+  loadAndRender();
+}
+
+// Default range: last available week of the frozen archive, so the page
+// shows something real immediately without needing live OANDA/Yahoo access.
+const defTo = new Date('2026-06-05T00:00:00Z');
+const defFrom = new Date(defTo.getTime() - 7 * 86400_000);
+document.getElementById('fromInput').value = iso(defFrom);
+document.getElementById('toInput').value = iso(defTo);
+
+// The chart lib loads from a CDN — build the rest of the page (data fetch,
+// stats, presets, density plot) so it still WORKS if that CDN request fails
+// (network blip, ad-blocker, a locked-down sandbox) rather than going fully
+// inert. `view` is null in that case; every view.* call below is guarded.
+let view = null;
+try {
+  view = createLevelChart(document.getElementById('chart'), { height: 480 });
+} catch (err) {
+  document.getElementById('chart').innerHTML = `<div class="muted" style="padding:16px;">Chart library failed to load (${err.message}). The candle/impulse view is unavailable, but data, stats and the research panel below still work.</div>`;
+}
+let entryLine = null, slLine = null, tpLine = null, emaFastSeries = null, emaSlowSeries = null, impulseSeries = null, retraceLines = [];
+let archiveGeom = { gold: null, nq: null };
+
+function clearOverlays() {
+  if (!view) return;
+  for (const s of [entryLine, slLine, tpLine]) { if (s) { try { view.series.removePriceLine(s); } catch {} } }
+  entryLine = slLine = tpLine = null;
+  for (const l of retraceLines) { try { view.series.removePriceLine(l); } catch {} }
+  retraceLines = [];
+  for (const s of [emaFastSeries, emaSlowSeries, impulseSeries]) { if (s) { try { view.chart.removeSeries(s); } catch {} } }
+  emaFastSeries = emaSlowSeries = impulseSeries = null;
+}
+
+function drawTradeLines() {
+  const entry = Number(document.getElementById('entryInput').value);
+  const sl = Number(document.getElementById('slInput').value);
+  const tp = Number(document.getElementById('tpInput').value);
+  if (view) {
+    if (entryLine) { try { view.series.removePriceLine(entryLine); } catch {} entryLine = null; }
+    if (slLine) { try { view.series.removePriceLine(slLine); } catch {} slLine = null; }
+    if (tpLine) { try { view.series.removePriceLine(tpLine); } catch {} tpLine = null; }
+  }
+  if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) return;
+  if (view) {
+    entryLine = view.series.createPriceLine({ price: entry, color: '#e5e7eb', lineWidth: 2, lineStyle: 0, title: 'Entry' });
+    slLine = view.series.createPriceLine({ price: sl, color: '#ef5350', lineWidth: 1, lineStyle: 2, title: 'SL' });
+    tpLine = view.series.createPriceLine({ price: tp, color: '#26a69a', lineWidth: 1, lineStyle: 2, title: 'TP' });
+  }
+  updateTradeStats(entry, sl, tp);
+}
+['entryInput', 'slInput', 'tpInput'].forEach(id => document.getElementById(id).addEventListener('change', drawTradeLines));
+
+function statusBadge(source, liveStatus, liveError) {
+  const cls = liveStatus === 'not-needed' || liveStatus === 'oanda-ok' || liveStatus === 'yahoo-fallback-ok' ? 'ok'
+            : liveStatus === 'failed' && source !== 'none' ? 'warn' : 'err';
+  const label = liveStatus === 'not-needed' ? 'archive cache' : liveStatus === 'oanda-ok' ? 'live OANDA' : liveStatus === 'yahoo-fallback-ok' ? 'live Yahoo (fallback)' : 'live fetch FAILED';
+  let html = `<span class="badge ${cls}">${label}</span> source=${source}`;
+  if (liveError) html += `<div class="muted" style="margin-top:4px;">${liveError}</div>`;
+  return html;
+}
+
+async function loadAndRender() {
+  const instrument = document.getElementById('instrument').value;
+  const from = document.getElementById('fromInput').value, to = document.getElementById('toInput').value;
+  const tf = document.getElementById('tfInput').value;
+  const statusEl = document.getElementById('status');
+  statusEl.textContent = 'Loading…';
+  try {
+    const url = `/api/trade-lab/candles?instrument=${instrument}&from=${encodeURIComponent(from + ':00Z')}&to=${encodeURIComponent(to + ':00Z')}&tf=${tf}`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!r.ok) { statusEl.innerHTML = `<span class="badge err">error</span> ${j.error || r.statusText}`; return; }
+    statusEl.innerHTML = statusBadge(j.source, j.liveStatus, j.liveError) + (j.bars.length ? ` · ${j.bars.length} bars` : ' · NO BARS — window unreachable from here');
+    clearOverlays();
+    if (view) view.setCandles(j.bars).fit();
+    if (j.bars.length) {
+      drawEma(j.bars);
+      drawTradeLines();
+      await drawImpulseAndUpdatePanel(instrument, from, to, tf, j.bars);
+    } else {
+      // No stale numbers left on screen from a PREVIOUS successful load —
+      // this window genuinely has no data, say so plainly instead of leaving
+      // the last trade's stats up looking like they apply here too.
+      document.getElementById('tradeStats').innerHTML = '<span class="muted">no candles for this window — see the status line above</span>';
+    }
+    await loadArchiveStats(instrument);
+  } catch (err) {
+    statusEl.innerHTML = `<span class="badge err">error</span> ${err.message}`;
+  }
+}
+document.getElementById('loadBtn').addEventListener('click', loadAndRender);
+
+function drawEma(bars) {
+  if (!view) return;
+  const closes = bars.map(b => b.close);
+  const f = ema(closes, 9), s = ema(closes, 21);
+  emaFastSeries = view.chart.addLineSeries({ color: '#22d3ee', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  emaSlowSeries = view.chart.addLineSeries({ color: '#c084fc', lineWidth: 1, priceLineVisible: false, lastValueVisible: false });
+  emaFastSeries.setData(bars.map((b, i) => ({ time: b.time, value: f[i] })));
+  emaSlowSeries.setData(bars.map((b, i) => ({ time: b.time, value: s[i] })));
+}
+
+// Finds the detected impulse leg whose turning point is nearest the loaded
+// window's END (a proxy for "the trade's own moment" — entry time isn't
+// separately tracked from the from/to range), draws it as a diagonal 2-point
+// line + 3 retracement guide price lines, and feeds the per-trade stats panel
+// + the density-heatmap marker. Chart drawing is skipped if the chart lib
+// failed to load, but the stats panel still updates either way.
+async function drawImpulseAndUpdatePanel(instrument, from, to, tf, bars) {
+  let occurrences = [];
+  try {
+    const r = await fetch('/api/trade-lab/geometry-window', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instrument, from: from + ':00Z', to: to + ':00Z', tf: Number(tf) }),
+    });
+    const j = await r.json();
+    occurrences = j.occurrences || [];
+  } catch { /* geometry is best-effort context, never block the chart */ }
+
+  if (!occurrences.length) { document.getElementById('tradeStats').innerHTML = '<span class="muted">no impulsive legs (≥2×ATR) detected in this window</span>'; return; }
+
+  const targetSec = Math.floor(new Date(to + ':00Z').getTime() / 1000);
+  let best = occurrences[0], bestD = Infinity;
+  for (const o of occurrences) { const d = Math.abs(o.time - targetSec); if (d < bestD) { bestD = d; best = o; } }
+
+  if (view) {
+    const originBar = bars[best.aIdx] ?? { time: best.time, close: best.aPrice };
+    const extremeBar = bars[best.bIdx] ?? { time: best.time, close: best.bPrice };
+    impulseSeries = view.chart.addLineSeries({ color: '#facc15', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, lineStyle: 2 });
+    impulseSeries.setData([{ time: originBar.time, value: best.aPrice }, { time: extremeBar.time, value: best.bPrice }]);
+    view.series.setMarkers([
+      { time: originBar.time, position: best.dir === 'up' ? 'belowBar' : 'aboveBar', color: '#facc15', shape: 'circle', text: 'origin' },
+      { time: extremeBar.time, position: best.dir === 'up' ? 'aboveBar' : 'belowBar', color: '#facc15', shape: 'circle', text: 'extreme' },
+    ]);
+    for (const l of retraceLines) { try { view.series.removePriceLine(l); } catch {} }
+    retraceLines = [];
+    const span = best.bPrice - best.aPrice;
+    for (const [frac, label] of [[0.382, '38.2%'], [0.618, '61.8%'], [0.886, '88.6%']]) {
+      const price = best.bPrice - frac * span;
+      retraceLines.push(view.series.createPriceLine({ price, color: '#78716c', lineWidth: 1, lineStyle: 1, title: label, axisLabelVisible: false }));
+    }
+  }
+
+  const entry = Number(document.getElementById('entryInput').value), sl = Number(document.getElementById('slInput').value), tp = Number(document.getElementById('tpInput').value);
+  updateTradeStats(entry, sl, tp, best);
+  await drawDensity(instrument, best);
+}
+
+function updateTradeStats(entry, sl, tp, impulse) {
+  const el = document.getElementById('tradeStats');
+  if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) { el.innerHTML = '<span class="muted">set entry/SL/TP</span>'; return; }
+  const isShort = sl > entry;
+  const span = Math.abs(tp - sl);
+  const entryFrac = span > 0 ? Math.abs(entry - sl) / span : null;
+  let html = `<div class="row"><span>Direction</span><b>${isShort ? 'SHORT' : 'LONG'}</b></div>`;
+  html += `<div class="row"><span>Risk / Reward</span><b>${Math.abs(entry - sl).toFixed(2)} / ${Math.abs(tp - entry).toFixed(2)} (${(Math.abs(tp - entry) / Math.abs(entry - sl)).toFixed(2)}R)</b></div>`;
+  if (entryFrac != null) html += `<div class="row"><span>Entry position in SL→TP span</span><b>${(entryFrac * 100).toFixed(1)}%</b></div>`;
+  if (impulse) {
+    html += `<div class="row"><span>Nearest impulse size</span><b>${impulse.legAtrMult.toFixed(2)}× ATR</b></div>`;
+    html += `<div class="row"><span>Impulse retrace depth</span><b>${(impulse.retraceFrac * 100).toFixed(1)}%</b></div>`;
+    html += `<div class="row"><span>Impulse outcome</span><b>${impulse.outcome}</b></div>`;
+    html += `<div class="row"><span>EMA agreed at the turn</span><b>${impulse.emaAgreeAtTurn ? 'yes' : 'no'}</b></div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function loadArchiveStats(instrument) {
+  if (!archiveGeom[instrument]) {
+    try { archiveGeom[instrument] = await (await fetch(`/api/trade-lab/geometry?instrument=${instrument}`)).json(); }
+    catch (err) { document.getElementById('archiveStats').innerHTML = `<span class="muted">unavailable: ${err.message}</span>`; return; }
+  }
+  const g = archiveGeom[instrument];
+  const el = document.getElementById('archiveStats');
+  el.innerHTML = `
+    <div class="row"><span>Impulsive legs (10.4y)</span><b>${g.totalLegs.toLocaleString()}</b></div>
+    <div class="row"><span>Continued vs invalidated</span><b>${(g.continuedN / g.totalLegs * 100).toFixed(1)}% / ${(100 - g.continuedN / g.totalLegs * 100).toFixed(1)}%</b></div>
+    <div class="row"><span>Median retrace depth</span><b>${(g.retraceFrac.median * 100).toFixed(1)}%</b></div>
+    <div class="row"><span>k-means clusters (k=3)</span><b>${g.kmeans3.centroids.map(c => (c * 100).toFixed(0) + '%').join(' / ')}</b></div>
+    <div class="row"><span>Size→depth correlation (r)</span><b>${g.sizeVsDepthRegression.r?.toFixed(3)}</b></div>
+    <div class="row"><span>EMA already agrees at turn</span><b>${(g.emaAgreeAtTurnFrac * 100).toFixed(1)}%</b></div>
+  `;
+}
+
+async function drawDensity(instrument, impulse) {
+  const g = archiveGeom[instrument] || await (await fetch(`/api/trade-lab/geometry?instrument=${instrument}`)).json();
+  archiveGeom[instrument] = g;
+  const cv = document.getElementById('densityCanvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, padL = 46, padB = 26, padT = 8, padR = 8;
+  ctx.clearRect(0, 0, W, H);
+  const { sizeMin, sizeMax, fracMin, fracMax, counts } = g.density2d;
+  const sizeBins = counts.length, fracBins = counts[0].length;
+  let maxCount = 1;
+  for (const row of counts) for (const c of row) if (c > maxCount) maxCount = c;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const cw = plotW / sizeBins, ch = plotH / fracBins;
+  for (let sx = 0; sx < sizeBins; sx++) {
+    for (let fy = 0; fy < fracBins; fy++) {
+      const v = counts[sx][fy] / maxCount;
+      if (v <= 0) continue;
+      const alpha = Math.min(1, 0.06 + v * 0.9);
+      ctx.fillStyle = `rgba(91,157,255,${alpha})`;
+      const x = padL + sx * cw, y = padT + (fracBins - 1 - fy) * ch;
+      ctx.fillRect(x, y, cw + 0.5, ch + 0.5);
+    }
+  }
+  // Axes
+  ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 1;
+  ctx.strokeRect(padL, padT, plotW, plotH);
+  ctx.fillStyle = '#64748b'; ctx.font = '10px monospace';
+  ctx.fillText(sizeMin.toFixed(1) + 'x', padL - 2, H - padB + 14);
+  ctx.fillText(sizeMax.toFixed(1) + 'x', W - padR - 20, H - padB + 14);
+  ctx.save(); ctx.translate(12, H / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('retrace depth', -30, 0); ctx.restore();
+  ctx.fillText((fracMax * 100).toFixed(0) + '%', 4, padT + 8);
+  ctx.fillText((fracMin * 100).toFixed(0) + '%', 4, H - padB);
+
+  // Regression curve: retraceFrac = intercept + slope*ln(size)
+  const { intercept, slope } = g.sizeVsDepthRegression;
+  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let sx = 0; sx <= sizeBins; sx++) {
+    const size = sizeMin + (sizeMax - sizeMin) * sx / sizeBins;
+    const frac = intercept + slope * Math.log(size);
+    const px = padL + (size - sizeMin) / (sizeMax - sizeMin) * plotW;
+    const py = padT + plotH - (Math.min(fracMax, Math.max(fracMin, frac)) - fracMin) / (fracMax - fracMin) * plotH;
+    sx === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // This trade's own point
+  if (impulse) {
+    const px = padL + (Math.min(sizeMax, impulse.legAtrMult) - sizeMin) / (sizeMax - sizeMin) * plotW;
+    const py = padT + plotH - (Math.min(fracMax, impulse.retraceFrac) - fracMin) / (fracMax - fracMin) * plotH;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+}
+
+loadAndRender();
+window.__tradeLabReady = true;   // smoke-test hook
+</script>
+</body>
+</html>
