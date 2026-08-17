@@ -65,6 +65,14 @@ function loadArchiveCached(key, m1Dir) {
   return _archiveCache.get(key);
 }
 
+// Exposes the same cached packed archive `loadTradeLabBars` uses internally,
+// for callers that need the FULL series (e.g. scanning the whole archive for
+// impulse occurrences to browse) rather than one bounded window.
+export function loadFullArchivePacked(instrumentKey) {
+  const key = instrumentKey === 'nq' ? 'nq' : 'gold';
+  return loadArchiveCached(key, M1_DIR_OVERRIDE[key]);
+}
+
 export async function loadTradeLabBars(instrumentKey, fromSec, toSec) {
   const key = instrumentKey === 'nq' ? 'nq' : 'gold';
   const m1Dir = M1_DIR_OVERRIDE[key];
