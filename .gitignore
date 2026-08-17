@@ -2,6 +2,7 @@ node_modules/
 /data/
 VolRangeForecaster/data/*.parquet
 VolRangeForecaster/data/m1/
+SessionResearch/out/*/session_table.json
 VolRangeForecaster/data/cog-threshold/
 VolRangeForecaster/data/cog-v2/
 .env
