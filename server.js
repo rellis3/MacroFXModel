@@ -2293,6 +2293,23 @@ async function _injectServerContext(pair, s) {
 }
 
 function buildAnalysisPrompt(pair, s) {
+  // Precomputed OUTSIDE the big template literal below on purpose: this text has its own
+  // nested conditionals (live vs. replay vs. unavailable), and nesting that directly inside
+  // the prompt's single giant template literal previously broke the outer/inner backtick
+  // boundary (a real bug caught by node --check, not a style preference).
+  const srOutlook = (() => {
+    const o = s.sessionResearch?.todayOutlook;
+    const status = s.sessionResearch?.liveStatus;
+    if (!o || !o.length) {
+      return `  Not available (SessionResearch/dashboard_export.py not yet run for this pair${status ? `; live status: ${status}` : ''})`;
+    }
+    const header = s.sessionResearch.todayOutlookIsLive
+      ? `LIVE applied prediction, as of right now (${o[0].day}, checkpoint ${o[0].checkpoint} — genuinely today, computed from today's actual session data so far):`
+      : `Most recent applied checkpoints (from ${o[0].day} — a REPLAY of the dataset's most recent day, NOT today; live prediction unavailable right now${status ? ` [${status}]` : ''}, showing a worked historical example instead):`;
+    const lines = o.map(x => `  ${x.checkpoint}: remaining range model ${x.modelRangeAtr.toFixed(2)}×ATR (persistence ${x.persistenceRangeAtr.toFixed(2)}×ATR); direction ${(x.modelPUp * 100).toFixed(0)}% prob. up — ${x.directionEdge ? 'weak validated edge' : 'NO VALIDATED EDGE, treat as noise'}`);
+    return `${header}\n${lines.join('\n')}`;
+  })();
+
   return `You are a professional FX/futures desk analyst. Analyse the following real-time dashboard snapshot for ${pair} and produce a structured trading intelligence brief. Be direct, specific, and actionable. Think like a prop trader who needs to make a decision in the next 30 minutes.
 
 === DASHBOARD SNAPSHOT: ${pair} ===
@@ -2471,8 +2488,7 @@ Range persistence: ${s.sessionResearch.rangeHandoff ? `validated — ${s.session
 Direction handoff: does NOT reliably carry from one session to the next (${s.sessionResearch.directionHandoff.nTested} handoffs tested, ${s.sessionResearch.directionHandoff.anySignificant ? 'weak signal in some' : 'none significant'}) — a session closing up/down is close to a coin flip for the next session's direction. Do not lean on session-to-session momentum for this pair.
 ${s.sessionResearch.spikeReversal.length ? `Pre-open spike → reversal (validated): ${s.sessionResearch.spikeReversal.map(v => `${v.boundary} open (spike reverses ${(v.reversalRateSpike * 100).toFixed(0)}% vs ordinary ${(v.reversalRateNonspike * 100).toFixed(0)}%)`).join('; ')} — a sharp move right before that session's open tends to partially reverse.` : 'No validated pre-open spike-reversal effect for this pair.'}
 ${s.sessionResearch.impulse ? `Impulse reversal (scalping, M5): impulsive swing pivots beat grind pivots on win-rate${s.sessionResearch.impulse.symmetry ? ` (low-side/high-side symmetry at 30min: ${(s.sessionResearch.impulse.symmetry.winRateLow * 100).toFixed(0)}% vs ${(s.sessionResearch.impulse.symmetry.winRateHigh * 100).toFixed(0)}%${s.sessionResearch.impulse.symmetry.bhPass ? ', a real asymmetry' : ', not distinguishable'})` : ''} — small edge, not a standalone signal.` : ''}
-${s.sessionResearch.todayOutlook && s.sessionResearch.todayOutlook.length ? `Most recent applied checkpoints (from ${s.sessionResearch.todayOutlook[0].day} — the dataset's most recent day, NOT necessarily literally today if this environment's price data hasn't been refreshed since):
-${s.sessionResearch.todayOutlook.map(o => `  ${o.checkpoint}: remaining range model ${o.modelRangeAtr.toFixed(2)}×ATR (persistence ${o.persistenceRangeAtr.toFixed(2)}×ATR); direction ${(o.modelPUp * 100).toFixed(0)}% prob. up — ${o.directionEdge ? 'weak validated edge' : 'NO VALIDATED EDGE, treat as noise'}`).join('\n')}` : ''}` : '  Not available (SessionResearch/dashboard_export.py not yet run for this pair)'}
+${srOutlook}` : '  Not available (SessionResearch/dashboard_export.py not yet run for this pair)'}
 
 VOLATILITY IMPULSE (5-bar momentum)
 ${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%

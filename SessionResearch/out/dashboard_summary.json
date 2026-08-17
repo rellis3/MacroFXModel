@@ -1,6 +1,3406 @@
 {
-  "generated_at": "2026-08-17T17:03:38.475181+00:00",
+  "generated_at": "2026-08-17T17:35:12.554197+00:00",
   "pairs": [
+    {
+      "pair": "audcad",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 105,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.248
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.019
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.533,
+          "reversal_rate_nonspike": 0.422,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.536,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.501,
+          "reversal_rate_nonspike": 0.412,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.554,
+          "reversal_rate_nonspike": 0.402,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.489,
+            "win_rate_grind": 0.473,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.489,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.491,
+          "win_rate_high": 0.488,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.0956
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.6724
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0003
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8653
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0002
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.2718
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.9791487624485238,
+          "net_so_far_atr": -0.6004214109354252,
+          "model_range_atr": 1.1265788636144871,
+          "persistence_range_atr": 1.0247581679897695,
+          "model_p_up": 0.46576749875678697,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.27781849536080416,
+            "mae_climatology": 0.2844026054458218,
+            "mae_persistence": 0.280616868871132,
+            "p_vs_persistence": 0.09559461809290781,
+            "p_vs_null": 0.325
+          },
+          "direction_reliability": {
+            "acc_model": 0.4947257383966245,
+            "acc_climatology": 0.5179324894514767,
+            "acc_persistence": 0.5015822784810127,
+            "p_vs_persistence": 0.6723620968881707,
+            "p_vs_null": 0.6125
+          },
+          "actual_range_atr": 1.3332434406925033,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.9791487624485238,
+          "net_so_far_atr": -0.27865711635720575,
+          "model_range_atr": 0.9877392111052625,
+          "persistence_range_atr": 0.8338028734723799,
+          "model_p_up": 0.4257586725427213,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.24584965393346078,
+            "mae_climatology": 0.2569063602862341,
+            "mae_persistence": 0.2533058308061872,
+            "p_vs_persistence": 0.00032897738565133394,
+            "p_vs_null": 0.125
+          },
+          "direction_reliability": {
+            "acc_model": 0.4941860465116279,
+            "acc_climatology": 0.507399577167019,
+            "acc_persistence": 0.4904862579281184,
+            "p_vs_persistence": 0.8653036461604287,
+            "p_vs_null": 0.625
+          },
+          "actual_range_atr": 1.0207163985902228,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.0314931931454592,
+          "net_so_far_atr": 0.08621435644201021,
+          "model_range_atr": 0.4784731611421883,
+          "persistence_range_atr": 0.43070280312639253,
+          "model_p_up": 0.4862652889083443,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.1417105490182215,
+            "mae_climatology": 0.15125906251031607,
+            "mae_persistence": 0.14471465399089994,
+            "p_vs_persistence": 0.00022281359303711587,
+            "p_vs_null": 0.0875
+          },
+          "direction_reliability": {
+            "acc_model": 0.519893899204244,
+            "acc_climatology": 0.49496021220159153,
+            "acc_persistence": 0.4981432360742706,
+            "p_vs_persistence": 0.271812212836088,
+            "p_vs_null": 0.21875
+          },
+          "actual_range_atr": 0.6173563738079711,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "audchf",
+      "data_through": "2020-07-10",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 96,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.275
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.025
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.571,
+          "reversal_rate_nonspike": 0.429,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.527,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.49,
+          "reversal_rate_nonspike": 0.395,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.581,
+          "reversal_rate_nonspike": 0.404,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.482,
+            "win_rate_grind": 0.479,
+            "bh_pass": false
+          },
+          "high": {
+            "win_rate_impulse": 0.491,
+            "win_rate_grind": 0.466,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.493,
+          "win_rate_high": 0.494,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.1934
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 1.0
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0478
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.0929
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0119
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.5958
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2020-07-10",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.42239004526570145,
+          "net_so_far_atr": -0.3082305735722601,
+          "model_range_atr": 0.8598588927993293,
+          "persistence_range_atr": 0.8574722173362541,
+          "model_p_up": 0.4030884989927887,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2825424337841255,
+            "mae_climatology": 0.30102504205531366,
+            "mae_persistence": 0.28655269018104007,
+            "p_vs_persistence": 0.19341389518327723,
+            "p_vs_null": 0.25
+          },
+          "direction_reliability": {
+            "acc_model": 0.513595166163142,
+            "acc_climatology": 0.48942598187311176,
+            "acc_persistence": 0.513595166163142,
+            "p_vs_persistence": 1.0,
+            "p_vs_null": 0.4
+          },
+          "actual_range_atr": 0.5727000163287344,
+          "actual_up": true
+        },
+        {
+          "day": "2020-07-10",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5536734377131644,
+          "net_so_far_atr": -0.030442525784903623,
+          "model_range_atr": 0.7011942901208703,
+          "persistence_range_atr": 0.651766702343382,
+          "model_p_up": 0.42930865670509455,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.21265710522662495,
+            "mae_climatology": 0.2286623848564975,
+            "mae_persistence": 0.22007083876654213,
+            "p_vs_persistence": 0.04782253206006149,
+            "p_vs_null": 0.0
+          },
+          "direction_reliability": {
+            "acc_model": 0.56797583081571,
+            "acc_climatology": 0.5015105740181269,
+            "acc_persistence": 0.5196374622356495,
+            "p_vs_persistence": 0.09291188222054622,
+            "p_vs_null": 0.0
+          },
+          "actual_range_atr": 0.5707973584671647,
+          "actual_up": false
+        },
+        {
+          "day": "2020-07-10",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.5536734377131644,
+          "net_so_far_atr": -0.13318605030901143,
+          "model_range_atr": 0.3632322255899046,
+          "persistence_range_atr": 0.34186301943503555,
+          "model_p_up": 0.5032223180874171,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.13992637454359624,
+            "mae_climatology": 0.15338001286343864,
+            "mae_persistence": 0.1460093155668628,
+            "p_vs_persistence": 0.011922590500799225,
+            "p_vs_null": 0.0
+          },
+          "direction_reliability": {
+            "acc_model": 0.5107033639143731,
+            "acc_climatology": 0.5412844036697247,
+            "acc_persistence": 0.48623853211009177,
+            "p_vs_persistence": 0.5957764574073556,
+            "p_vs_null": 0.525
+          },
+          "actual_range_atr": 0.40716878237324966,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "audjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 108,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.322
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.012
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.514,
+          "reversal_rate_nonspike": 0.39,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.493,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.535,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.579,
+          "reversal_rate_nonspike": 0.409,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.494,
+            "win_rate_grind": 0.485,
+            "bh_pass": false
+          },
+          "high": {
+            "win_rate_impulse": 0.478,
+            "win_rate_grind": 0.467,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.505,
+          "win_rate_high": 0.481,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0009
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1116
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.001
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0475
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.001
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.9222825776839624,
+          "net_so_far_atr": -0.50519227048469,
+          "model_range_atr": 0.9680613210713908,
+          "persistence_range_atr": 0.9648006786232591,
+          "model_p_up": 0.5106395572418284,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2798153458855956,
+            "mae_climatology": 0.29757426152269095,
+            "mae_persistence": 0.28385428375727,
+            "p_vs_persistence": 0.0008964685726610481,
+            "p_vs_null": 0.18125
+          },
+          "direction_reliability": {
+            "acc_model": 0.5310853530031612,
+            "acc_climatology": 0.5389884088514225,
+            "acc_persistence": 0.5073761854583773,
+            "p_vs_persistence": 0.11158961924635148,
+            "p_vs_null": 0.41875
+          },
+          "actual_range_atr": 0.9077847862572596,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.9222825776839624,
+          "net_so_far_atr": -0.21077558304991037,
+          "model_range_atr": 0.7786091911270754,
+          "persistence_range_atr": 0.7169535837039127,
+          "model_p_up": 0.5239554245324679,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.22905575464424574,
+            "mae_climatology": 0.24460507624389305,
+            "mae_persistence": 0.23363930753745202,
+            "p_vs_persistence": 0.0009606367749576085,
+            "p_vs_null": 0.24375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5258166491043204,
+            "acc_climatology": 0.5526870389884089,
+            "acc_persistence": 0.49736564805057953,
+            "p_vs_persistence": 0.04754891049754101,
+            "p_vs_null": 0.55625
+          },
+          "actual_range_atr": 0.5821420865187842,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.9222825776839624,
+          "net_so_far_atr": -0.07694981603409426,
+          "model_range_atr": 0.3615448859763042,
+          "persistence_range_atr": 0.3900920710237533,
+          "model_p_up": 0.5720672211960964,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.15265487199285224,
+            "mae_climatology": 0.16412030293708083,
+            "mae_persistence": 0.15530934686759879,
+            "p_vs_persistence": 0.0010077435966961456,
+            "p_vs_null": 0.00625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5675105485232067,
+            "acc_climatology": 0.584915611814346,
+            "acc_persistence": 0.47943037974683544,
+            "p_vs_persistence": 4.1223487189167785e-07,
+            "p_vs_null": 0.6625
+          },
+          "actual_range_atr": 0.37917300654480174,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "audnzd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 108,
+      "range_handoff": {
+        "n_significant": 6,
+        "strongest_pair": "asia->london",
+        "strongest_rho": 0.261
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.034
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.52,
+          "reversal_rate_nonspike": 0.392,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.506,
+          "reversal_rate_nonspike": 0.382,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.532,
+          "reversal_rate_nonspike": 0.394,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.612,
+          "reversal_rate_nonspike": 0.429,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.484,
+            "win_rate_grind": 0.461,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.486,
+            "win_rate_grind": 0.462,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.49,
+          "win_rate_high": 0.488,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.2479
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.678
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0017
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0289
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0078
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0001
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 1.302338041648705,
+          "net_so_far_atr": -0.8388323150202844,
+          "model_range_atr": 0.8678868637600098,
+          "persistence_range_atr": 0.8868614499016445,
+          "model_p_up": 0.5152633032524533,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.21848136119002773,
+            "mae_climatology": 0.22088649735049912,
+            "mae_persistence": 0.2175265998091441,
+            "p_vs_persistence": 0.2478765797001682,
+            "p_vs_null": 0.5
+          },
+          "direction_reliability": {
+            "acc_model": 0.49867934495509775,
+            "acc_climatology": 0.48811410459587956,
+            "acc_persistence": 0.4907554146856841,
+            "p_vs_persistence": 0.6780206395473558,
+            "p_vs_null": 0.5
+          },
+          "actual_range_atr": 0.9292724568014348,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 1.302338041648705,
+          "net_so_far_atr": -0.36854357775823265,
+          "model_range_atr": 0.7029217113828332,
+          "persistence_range_atr": 0.6740327510084612,
+          "model_p_up": 0.4574207699199261,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.17956924348893655,
+            "mae_climatology": 0.18455845716145827,
+            "mae_persistence": 0.1824213466924589,
+            "p_vs_persistence": 0.0017339734724489588,
+            "p_vs_null": 0.5
+          },
+          "direction_reliability": {
+            "acc_model": 0.5187731359069275,
+            "acc_climatology": 0.4949762030671602,
+            "acc_persistence": 0.4769962982548916,
+            "p_vs_persistence": 0.028890601211735714,
+            "p_vs_null": 0.33125
+          },
+          "actual_range_atr": 0.40019762738164527,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.302338041648705,
+          "net_so_far_atr": -0.09496214887023793,
+          "model_range_atr": 0.3859541618531904,
+          "persistence_range_atr": 0.41020192492133295,
+          "model_p_up": 0.4412069929820982,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.11938337806353379,
+            "mae_climatology": 0.1243330676771392,
+            "mae_persistence": 0.12159070037365673,
+            "p_vs_persistence": 0.007776996674157178,
+            "p_vs_null": 0.375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5402969247083775,
+            "acc_climatology": 0.49151643690349944,
+            "acc_persistence": 0.45811240721102864,
+            "p_vs_persistence": 7.340026026484967e-05,
+            "p_vs_null": 0.2
+          },
+          "actual_range_atr": 0.29166945724424487,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "audusd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 98,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.222
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.015
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.531,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.521,
+          "reversal_rate_nonspike": 0.389,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.49,
+          "reversal_rate_nonspike": 0.395,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.552,
+          "reversal_rate_nonspike": 0.405,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.498,
+            "win_rate_grind": 0.484,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.492,
+            "win_rate_grind": 0.474,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.503,
+          "win_rate_high": 0.496,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0133
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8167
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0063
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.4589
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.295
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.771
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.9652713453747498,
+          "net_so_far_atr": -0.6175022314875434,
+          "model_range_atr": 1.1455984799231669,
+          "persistence_range_atr": 1.0611930880920812,
+          "model_p_up": 0.4650216687410696,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2972539363227366,
+            "mae_climatology": 0.3075950688821251,
+            "mae_persistence": 0.3009237198477693,
+            "p_vs_persistence": 0.013322152049271143,
+            "p_vs_null": 0.31875
+          },
+          "direction_reliability": {
+            "acc_model": 0.49874371859296485,
+            "acc_climatology": 0.5113065326633166,
+            "acc_persistence": 0.5037688442211056,
+            "p_vs_persistence": 0.8167142612404914,
+            "p_vs_null": 0.50625
+          },
+          "actual_range_atr": 1.0246465599408516,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.9652713453747498,
+          "net_so_far_atr": -0.40544789375142726,
+          "model_range_atr": 0.9687154979282321,
+          "persistence_range_atr": 0.8333467769463538,
+          "model_p_up": 0.4526480100755986,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2694042705389825,
+            "mae_climatology": 0.27771225817143097,
+            "mae_persistence": 0.27401665617538945,
+            "p_vs_persistence": 0.006282122157034892,
+            "p_vs_null": 0.3
+          },
+          "direction_reliability": {
+            "acc_model": 0.5044025157232704,
+            "acc_climatology": 0.5044025157232704,
+            "acc_persistence": 0.5169811320754717,
+            "p_vs_persistence": 0.4589029118227763,
+            "p_vs_null": 0.48125
+          },
+          "actual_range_atr": 0.8855389143859617,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.9652713453747498,
+          "net_so_far_atr": -0.2883938993211044,
+          "model_range_atr": 0.4765947331229838,
+          "persistence_range_atr": 0.4421879692023626,
+          "model_p_up": 0.5233738274223008,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.177390123546234,
+            "mae_climatology": 0.18386699948164312,
+            "mae_persistence": 0.17811999949725643,
+            "p_vs_persistence": 0.2949812326167077,
+            "p_vs_null": 0.2875
+          },
+          "direction_reliability": {
+            "acc_model": 0.4911727616645649,
+            "acc_climatology": 0.5239596469104666,
+            "acc_persistence": 0.4968474148802018,
+            "p_vs_persistence": 0.7709592864756436,
+            "p_vs_null": 0.675
+          },
+          "actual_range_atr": 0.6090200579781002,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "cadjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 101,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "asia->london",
+        "strongest_rho": 0.32
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.017
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.51,
+          "reversal_rate_nonspike": 0.392,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.517,
+          "reversal_rate_nonspike": 0.406,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.521,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.53,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.502,
+            "win_rate_grind": 0.484,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.48,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.511,
+          "win_rate_high": 0.486,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0135
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.3651
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0045
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.3536
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0001
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0031
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.21584461779807412,
+          "net_so_far_atr": -0.011533681867080885,
+          "model_range_atr": 0.8757037578025291,
+          "persistence_range_atr": 0.8561299671191361,
+          "model_p_up": 0.49216136223739243,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.31883230460321754,
+            "mae_climatology": 0.32997326606131067,
+            "mae_persistence": 0.32179837304289355,
+            "p_vs_persistence": 0.013478774183328704,
+            "p_vs_null": 0.25625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5149449396958574,
+            "acc_climatology": 0.5317252228631358,
+            "acc_persistence": 0.5285789197692711,
+            "p_vs_persistence": 0.3651283045121154,
+            "p_vs_null": 0.5375
+          },
+          "actual_range_atr": 0.5486737231050245,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.3624871443937097,
+          "net_so_far_atr": 0.03130570792492045,
+          "model_range_atr": 0.7679828156505254,
+          "persistence_range_atr": 0.7284390352549027,
+          "model_p_up": 0.48376212142033737,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.27032505729902007,
+            "mae_climatology": 0.2807307389318832,
+            "mae_persistence": 0.27403052181318927,
+            "p_vs_persistence": 0.0044608532454341885,
+            "p_vs_null": 0.24375
+          },
+          "direction_reliability": {
+            "acc_model": 0.4976402726796015,
+            "acc_climatology": 0.5264813843733613,
+            "acc_persistence": 0.5128474042999476,
+            "p_vs_persistence": 0.3535790705572982,
+            "p_vs_null": 0.6375
+          },
+          "actual_range_atr": 0.5173680151801274,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.4465182551395279,
+          "net_so_far_atr": -0.22902596850329268,
+          "model_range_atr": 0.3867086415746435,
+          "persistence_range_atr": 0.364098592617872,
+          "model_p_up": 0.5747828307381037,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.16624382914505212,
+            "mae_climatology": 0.17743549945640355,
+            "mae_persistence": 0.17046794441833557,
+            "p_vs_persistence": 0.00011634387107882826,
+            "p_vs_null": 0.0375
+          },
+          "direction_reliability": {
+            "acc_model": 0.534419337887546,
+            "acc_climatology": 0.5554387808723069,
+            "acc_persistence": 0.48502364687335786,
+            "p_vs_persistence": 0.0030697534503770314,
+            "p_vs_null": 0.575
+          },
+          "actual_range_atr": 0.29328505319127124,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "chfjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 112,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.303
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.019
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.526,
+          "reversal_rate_nonspike": 0.392,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.528,
+          "reversal_rate_nonspike": 0.398,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.548,
+          "reversal_rate_nonspike": 0.386,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.581,
+          "reversal_rate_nonspike": 0.415,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.492,
+            "win_rate_grind": 0.478,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.483,
+            "win_rate_grind": 0.464,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.502,
+          "win_rate_high": 0.487,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.2148
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7039
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.0976
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1153
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0005
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0166
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.33574222374353513,
+          "net_so_far_atr": 0.17982774377148245,
+          "model_range_atr": 0.874843194897061,
+          "persistence_range_atr": 0.8901891796595812,
+          "model_p_up": 0.5113333707539297,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.2983982444601934,
+            "mae_climatology": 0.3071471378550724,
+            "mae_persistence": 0.2989233225952833,
+            "p_vs_persistence": 0.21475790874311118,
+            "p_vs_null": 0.34375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5170603674540682,
+            "acc_climatology": 0.5396325459317586,
+            "acc_persistence": 0.510236220472441,
+            "p_vs_persistence": 0.7039331008195638,
+            "p_vs_null": 0.60625
+          },
+          "actual_range_atr": 0.7336589333655279,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5547877201460258,
+          "net_so_far_atr": 0.06121795532644996,
+          "model_range_atr": 0.7032408675991277,
+          "persistence_range_atr": 0.6734950029758695,
+          "model_p_up": 0.5468856723506984,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.22971163884692766,
+            "mae_climatology": 0.23942946107826213,
+            "mae_persistence": 0.23223639148726885,
+            "p_vs_persistence": 0.09755622605963471,
+            "p_vs_null": 0.36875
+          },
+          "direction_reliability": {
+            "acc_model": 0.529627687467226,
+            "acc_climatology": 0.5532249606712113,
+            "acc_persistence": 0.5002621919244887,
+            "p_vs_persistence": 0.11530156137607189,
+            "p_vs_null": 0.5375
+          },
+          "actual_range_atr": 0.6045273088487647,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.7336589333655279,
+          "net_so_far_atr": -0.19991488536296323,
+          "model_range_atr": 0.34997102804353303,
+          "persistence_range_atr": 0.3598128054367681,
+          "model_p_up": 0.5466089316964793,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.13818076276972108,
+            "mae_climatology": 0.14688552931858115,
+            "mae_persistence": 0.14088884363129742,
+            "p_vs_persistence": 0.000503759970938439,
+            "p_vs_null": 0.2625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5263157894736842,
+            "acc_climatology": 0.55,
+            "acc_persistence": 0.47947368421052633,
+            "p_vs_persistence": 0.016626264308531043,
+            "p_vs_null": 0.61875
+          },
+          "actual_range_atr": 0.5289613952426624,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "euraud",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 115,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.247
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.016
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.567,
+          "reversal_rate_nonspike": 0.395,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.541,
+          "reversal_rate_nonspike": 0.378,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.563,
+          "reversal_rate_nonspike": 0.391,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.558,
+          "reversal_rate_nonspike": 0.414,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.48,
+            "win_rate_grind": 0.467,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.494,
+            "win_rate_grind": 0.469,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.488,
+          "win_rate_high": 0.502,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0001
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7099
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0552
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.337
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0009
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.9155
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 1.1876649168034301,
+          "net_so_far_atr": 0.8795388783684615,
+          "model_range_atr": 1.1768547318353018,
+          "persistence_range_atr": 1.0972418246333078,
+          "model_p_up": 0.5311604763442705,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.2678544604432396,
+            "mae_climatology": 0.27860571430292846,
+            "mae_persistence": 0.27272962671828027,
+            "p_vs_persistence": 0.00014187217114081989,
+            "p_vs_null": 0.28125
+          },
+          "direction_reliability": {
+            "acc_model": 0.49787007454739085,
+            "acc_climatology": 0.5,
+            "acc_persistence": 0.5042598509052183,
+            "p_vs_persistence": 0.7098556774244262,
+            "p_vs_null": 0.55
+          },
+          "actual_range_atr": 1.3302306957808179,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 1.1876649168034301,
+          "net_so_far_atr": 0.20695032432199545,
+          "model_range_atr": 0.8904815330742804,
+          "persistence_range_atr": 0.7913817038677421,
+          "model_p_up": 0.539769355059676,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.21547370488096884,
+            "mae_climatology": 0.22622715025385176,
+            "mae_persistence": 0.2189443223771459,
+            "p_vs_persistence": 0.05524888888998455,
+            "p_vs_null": 0.325
+          },
+          "direction_reliability": {
+            "acc_model": 0.5029270888770623,
+            "acc_climatology": 0.48323576370409793,
+            "acc_persistence": 0.515167642362959,
+            "p_vs_persistence": 0.3369815252011887,
+            "p_vs_null": 0.4375
+          },
+          "actual_range_atr": 0.7001819306227594,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.3405782119969087,
+          "net_so_far_atr": -0.14946412312144824,
+          "model_range_atr": 0.4412281686587424,
+          "persistence_range_atr": 0.4209044265042261,
+          "model_p_up": 0.5297460279133871,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.12764792967609537,
+            "mae_climatology": 0.13541398112806152,
+            "mae_persistence": 0.13008278392012973,
+            "p_vs_persistence": 0.0008635941182495772,
+            "p_vs_null": 0.23125
+          },
+          "direction_reliability": {
+            "acc_model": 0.48717948717948717,
+            "acc_climatology": 0.5085470085470085,
+            "acc_persistence": 0.48504273504273504,
+            "p_vs_persistence": 0.9155386564120961,
+            "p_vs_null": 0.70625
+          },
+          "actual_range_atr": 0.3713608597555834,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "eurcad",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 112,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.227
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.023
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.553,
+          "reversal_rate_nonspike": 0.406,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.519,
+          "reversal_rate_nonspike": 0.406,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.556,
+          "reversal_rate_nonspike": 0.412,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.573,
+          "reversal_rate_nonspike": 0.409,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.494,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.492,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.495,
+          "win_rate_high": 0.496,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0262
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.9147
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0356
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.6047
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0446
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.4564
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.3733214453343544,
+          "net_so_far_atr": 0.20856925819150146,
+          "model_range_atr": 1.094305546685005,
+          "persistence_range_atr": 1.0651183061693776,
+          "model_p_up": 0.4894405165690456,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.3162852173421881,
+            "mae_climatology": 0.32552379531820536,
+            "mae_persistence": 0.32003139489450905,
+            "p_vs_persistence": 0.026200155508883386,
+            "p_vs_null": 0.325
+          },
+          "direction_reliability": {
+            "acc_model": 0.5078534031413613,
+            "acc_climatology": 0.48900523560209425,
+            "acc_persistence": 0.5099476439790576,
+            "p_vs_persistence": 0.9146845951700276,
+            "p_vs_null": 0.3625
+          },
+          "actual_range_atr": 1.0761472649544148,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.857061909711289,
+          "net_so_far_atr": -0.1998058439817562,
+          "model_range_atr": 1.028324167929577,
+          "persistence_range_atr": 0.9452131540745781,
+          "model_p_up": 0.5215873639824137,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2701808500478852,
+            "mae_climatology": 0.2822493978668759,
+            "mae_persistence": 0.27387613793760013,
+            "p_vs_persistence": 0.03560031365160009,
+            "p_vs_null": 0.35
+          },
+          "direction_reliability": {
+            "acc_model": 0.5131027253668763,
+            "acc_climatology": 0.49947589098532497,
+            "acc_persistence": 0.5041928721174004,
+            "p_vs_persistence": 0.6046573374164349,
+            "p_vs_null": 0.375
+          },
+          "actual_range_atr": 1.0761472649544148,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.9376853204407587,
+          "net_so_far_atr": -0.057838533784186436,
+          "model_range_atr": 0.487434305786372,
+          "persistence_range_atr": 0.46468901771140175,
+          "model_p_up": 0.5709639313228722,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.15299240431080635,
+            "mae_climatology": 0.16013360526827006,
+            "mae_persistence": 0.15421764306092006,
+            "p_vs_persistence": 0.04460109761365129,
+            "p_vs_null": 0.3125
+          },
+          "direction_reliability": {
+            "acc_model": 0.49895068205666315,
+            "acc_climatology": 0.4910807974816369,
+            "acc_persistence": 0.5099685204616999,
+            "p_vs_persistence": 0.4563923795744628,
+            "p_vs_null": 0.4625
+          },
+          "actual_range_atr": 0.7974706930851069,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "eurchf",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 112,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.301
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.03
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.547,
+          "reversal_rate_nonspike": 0.42,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.512,
+          "reversal_rate_nonspike": 0.419,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.511,
+          "reversal_rate_nonspike": 0.421,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.552,
+          "reversal_rate_nonspike": 0.422,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.485,
+            "win_rate_grind": 0.479,
+            "bh_pass": false
+          },
+          "high": {
+            "win_rate_impulse": 0.486,
+            "win_rate_grind": 0.461,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.495,
+          "win_rate_high": 0.496,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0032
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.038
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0077
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.826
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.6495
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.3880885386236636,
+          "net_so_far_atr": -0.08670063096913974,
+          "model_range_atr": 1.0365457492143533,
+          "persistence_range_atr": 1.0478692312721902,
+          "model_p_up": 0.5352348882584042,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.33117359299876103,
+            "mae_climatology": 0.34406139895839566,
+            "mae_persistence": 0.33474194889278736,
+            "p_vs_persistence": 0.0032475409980363542,
+            "p_vs_null": 0.24375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5186170212765957,
+            "acc_climatology": 0.5033244680851063,
+            "acc_persistence": 0.47273936170212766,
+            "p_vs_persistence": 0.03803178886894476,
+            "p_vs_null": 0.26875
+          },
+          "actual_range_atr": 0.6936050477529804,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.6523190330057382,
+          "net_so_far_atr": -0.32615951650291497,
+          "model_range_atr": 0.7150688396555258,
+          "persistence_range_atr": 0.7549820840727195,
+          "model_p_up": 0.48432233369864447,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.24663720385047755,
+            "mae_climatology": 0.2660979462951213,
+            "mae_persistence": 0.25221719680896526,
+            "p_vs_persistence": 0.007707961979341242,
+            "p_vs_null": 0.125
+          },
+          "direction_reliability": {
+            "acc_model": 0.4883411059293804,
+            "acc_climatology": 0.48634243837441704,
+            "acc_persistence": 0.49300466355762823,
+            "p_vs_persistence": 0.8260272749699429,
+            "p_vs_null": 0.51875
+          },
+          "actual_range_atr": 0.6936050477529804,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.6523190330057382,
+          "net_so_far_atr": -0.13624384866578446,
+          "model_range_atr": 0.37533322854490214,
+          "persistence_range_atr": 0.3709584054430296,
+          "model_p_up": 0.49646516357106335,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.1471219698433891,
+            "mae_climatology": 0.16262264371709026,
+            "mae_persistence": 0.15334708224758348,
+            "p_vs_persistence": 2.5109279628642937e-06,
+            "p_vs_null": 0.225
+          },
+          "direction_reliability": {
+            "acc_model": 0.4993324432576769,
+            "acc_climatology": 0.5193591455273698,
+            "acc_persistence": 0.48998664886515353,
+            "p_vs_persistence": 0.6494707767687824,
+            "p_vs_null": 0.6125
+          },
+          "actual_range_atr": 0.5243323872894481,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "eurgbp",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 118,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.276
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.03
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.578,
+          "reversal_rate_nonspike": 0.428,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.527,
+          "reversal_rate_nonspike": 0.412,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.568,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.552,
+          "reversal_rate_nonspike": 0.415,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.495,
+            "win_rate_grind": 0.469,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.488,
+            "win_rate_grind": 0.466,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.495,
+          "win_rate_high": 0.491,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.9058
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0282
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0371
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1645
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.1313
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.001
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.28459462006822644,
+          "net_so_far_atr": -0.12494397954216793,
+          "model_range_atr": 0.9839103306613908,
+          "persistence_range_atr": 1.020454476216067,
+          "model_p_up": 0.5021006696215231,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.326031549813808,
+            "mae_climatology": 0.3317942230548374,
+            "mae_persistence": 0.3262793461375135,
+            "p_vs_persistence": 0.9057551530631768,
+            "p_vs_null": 0.36875
+          },
+          "direction_reliability": {
+            "acc_model": 0.5229411764705882,
+            "acc_climatology": 0.528235294117647,
+            "acc_persistence": 0.48470588235294115,
+            "p_vs_persistence": 0.028184234711911692,
+            "p_vs_null": 0.39375
+          },
+          "actual_range_atr": 0.5587772418413204,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5969545689236271,
+          "net_so_far_atr": -0.38871460302005234,
+          "model_range_atr": 0.7127754812826639,
+          "persistence_range_atr": 0.7231168519123866,
+          "model_p_up": 0.5097136051847366,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.23088555723198143,
+            "mae_climatology": 0.24270467370212281,
+            "mae_persistence": 0.2331806168685023,
+            "p_vs_persistence": 0.03708871498446915,
+            "p_vs_null": 0.35
+          },
+          "direction_reliability": {
+            "acc_model": 0.5191288993525603,
+            "acc_climatology": 0.516774573278399,
+            "acc_persistence": 0.49381989405532667,
+            "p_vs_persistence": 0.16449386671108773,
+            "p_vs_null": 0.25
+          },
+          "actual_range_atr": 0.3297132793473651,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.5969545689236271,
+          "net_so_far_atr": -0.29847728446181354,
+          "model_range_atr": 0.3153957491806241,
+          "persistence_range_atr": 0.349800349642074,
+          "model_p_up": 0.5896897904794515,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.13168835585455355,
+            "mae_climatology": 0.13922732632904933,
+            "mae_persistence": 0.13275820383162115,
+            "p_vs_persistence": 0.13128012514637916,
+            "p_vs_null": 0.375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5292035398230088,
+            "acc_climatology": 0.49734513274336284,
+            "acc_persistence": 0.45899705014749265,
+            "p_vs_persistence": 0.001015490151574406,
+            "p_vs_null": 0.175
+          },
+          "actual_range_atr": 0.2741826217730554,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "eurjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 113,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.293
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.014
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.538,
+          "reversal_rate_nonspike": 0.382,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.499,
+          "reversal_rate_nonspike": 0.399,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.567,
+          "reversal_rate_nonspike": 0.404,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.554,
+          "reversal_rate_nonspike": 0.399,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.502,
+            "win_rate_grind": 0.486,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.483,
+            "win_rate_grind": 0.464,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.512,
+          "win_rate_high": 0.483,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.129
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.539
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0017
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.014
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0171
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.28625777817790216,
+          "net_so_far_atr": 0.13496564446412904,
+          "model_range_atr": 0.8433510742808695,
+          "persistence_range_atr": 0.877056365554055,
+          "model_p_up": 0.5036677067791329,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.30963152232004754,
+            "mae_climatology": 0.31965137434571184,
+            "mae_persistence": 0.31058177796693875,
+            "p_vs_persistence": 0.12903693443267256,
+            "p_vs_null": 0.375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5265986029016658,
+            "acc_climatology": 0.5427189682966147,
+            "acc_persistence": 0.5180010746910263,
+            "p_vs_persistence": 0.5389706885592175,
+            "p_vs_null": 0.40625
+          },
+          "actual_range_atr": 0.597549506538658,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5833998825222544,
+          "net_so_far_atr": -0.11319699213116706,
+          "model_range_atr": 0.7048401105016716,
+          "persistence_range_atr": 0.6805772239918049,
+          "model_p_up": 0.5169698662097651,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2448530348663131,
+            "mae_climatology": 0.25490552560095914,
+            "mae_persistence": 0.24886629718056366,
+            "p_vs_persistence": 0.0017144883234947988,
+            "p_vs_null": 0.2
+          },
+          "direction_reliability": {
+            "acc_model": 0.5433028509951587,
+            "acc_climatology": 0.5589026358257128,
+            "acc_persistence": 0.5034965034965035,
+            "p_vs_persistence": 0.014032818913812573,
+            "p_vs_null": 0.5
+          },
+          "actual_range_atr": 0.41360439432547286,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.597549506538658,
+          "net_so_far_atr": -0.2819040477112974,
+          "model_range_atr": 0.3472484641369922,
+          "persistence_range_atr": 0.3369728433445106,
+          "model_p_up": 0.5868219001930244,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.14751560919900378,
+            "mae_climatology": 0.1542616762691858,
+            "mae_persistence": 0.1495210650374919,
+            "p_vs_persistence": 0.01714193877550075,
+            "p_vs_null": 0.2625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5721205597416577,
+            "acc_climatology": 0.5844994617868676,
+            "acc_persistence": 0.49892357373519913,
+            "p_vs_persistence": 1.1491613793749827e-05,
+            "p_vs_null": 0.51875
+          },
+          "actual_range_atr": 0.40054320292572043,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "eurnzd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 104,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.238
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.023
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.499,
+          "reversal_rate_nonspike": 0.397,
+          "bh_pass": false
+        },
+        "london": {
+          "reversal_rate_spike": 0.525,
+          "reversal_rate_nonspike": 0.387,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.517,
+          "reversal_rate_nonspike": 0.402,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.578,
+          "reversal_rate_nonspike": 0.396,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.491,
+            "win_rate_grind": 0.47,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.489,
+            "win_rate_grind": 0.473,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.494,
+          "win_rate_high": 0.494,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.1442
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.0558
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8852
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0106
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.5467
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.4959988154879242,
+          "net_so_far_atr": 0.3168613792146178,
+          "model_range_atr": 0.9213412323150506,
+          "persistence_range_atr": 0.8633764088611288,
+          "model_p_up": 0.5101352437165411,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.25865413216058986,
+            "mae_climatology": 0.25967862447184964,
+            "mae_persistence": 0.26045341669418937,
+            "p_vs_persistence": 0.1442120102903054,
+            "p_vs_null": 0.625
+          },
+          "direction_reliability": {
+            "acc_model": 0.4965879265091864,
+            "acc_climatology": 0.5023622047244094,
+            "acc_persistence": 0.521259842519685,
+            "p_vs_persistence": 0.05582153183105969,
+            "p_vs_null": 0.5625
+          },
+          "actual_range_atr": 0.9332482567141719,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5114084874254071,
+          "net_so_far_atr": -0.037561075347618746,
+          "model_range_atr": 0.7119401150024595,
+          "persistence_range_atr": 0.6375133506192168,
+          "model_p_up": 0.5583409172633834,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.20156518139660315,
+            "mae_climatology": 0.21144282124061614,
+            "mae_persistence": 0.20838736512122977,
+            "p_vs_persistence": 4.516226049534478e-06,
+            "p_vs_null": 0.39375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5028901734104047,
+            "acc_climatology": 0.49710982658959535,
+            "acc_persistence": 0.5002627430373096,
+            "p_vs_persistence": 0.8851717976893144,
+            "p_vs_null": 0.51875
+          },
+          "actual_range_atr": 0.6558741618393714,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.7724098058666252,
+          "net_so_far_atr": -0.21091988464437164,
+          "model_range_atr": 0.3737932842854487,
+          "persistence_range_atr": 0.3600255019683464,
+          "model_p_up": 0.5293429885542977,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.12355137639345103,
+            "mae_climatology": 0.1286485270960731,
+            "mae_persistence": 0.12537754548453225,
+            "p_vs_persistence": 0.01058161300422239,
+            "p_vs_null": 0.40625
+          },
+          "direction_reliability": {
+            "acc_model": 0.49815886375591795,
+            "acc_climatology": 0.5065754865860074,
+            "acc_persistence": 0.486586007364545,
+            "p_vs_persistence": 0.5467177540182372,
+            "p_vs_null": 0.50625
+          },
+          "actual_range_atr": 0.4305077097535948,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "eurusd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 106,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.222
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.04
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.495,
+          "reversal_rate_nonspike": 0.391,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.533,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.559,
+          "reversal_rate_nonspike": 0.403,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.595,
+          "reversal_rate_nonspike": 0.386,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.497,
+            "win_rate_grind": 0.471,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.491,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.507,
+          "win_rate_high": 0.489,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.9026
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7724
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0023
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.3433
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.064
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7769
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.359535989757718,
+          "net_so_far_atr": -0.08212751035075784,
+          "model_range_atr": 1.1287029357395226,
+          "persistence_range_atr": 1.0362613343669542,
+          "model_p_up": 0.4715868218693814,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.33170022534178384,
+            "mae_climatology": 0.33640721578236965,
+            "mae_persistence": 0.33219450774500625,
+            "p_vs_persistence": 0.902591082820241,
+            "p_vs_null": 0.3
+          },
+          "direction_reliability": {
+            "acc_model": 0.5022296544035675,
+            "acc_climatology": 0.5117056856187291,
+            "acc_persistence": 0.496098104793757,
+            "p_vs_persistence": 0.7723824826060502,
+            "p_vs_null": 0.50625
+          },
+          "actual_range_atr": 1.0840831366298658,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.757398151012459,
+          "net_so_far_atr": -0.472689448463203,
+          "model_range_atr": 0.965777931261502,
+          "persistence_range_atr": 0.8619823202257839,
+          "model_p_up": 0.4835262307106997,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.29369287137359745,
+            "mae_climatology": 0.3010322498324043,
+            "mae_persistence": 0.2999606148062555,
+            "p_vs_persistence": 0.0023136944538833196,
+            "p_vs_null": 0.2125
+          },
+          "direction_reliability": {
+            "acc_model": 0.480178671133445,
+            "acc_climatology": 0.49581239530988275,
+            "acc_persistence": 0.4963707426018984,
+            "p_vs_persistence": 0.34330916059844024,
+            "p_vs_null": 0.675
+          },
+          "actual_range_atr": 0.9837050684233885,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.0840831366298658,
+          "net_so_far_atr": -0.6661453617338212,
+          "model_range_atr": 0.4450989697026217,
+          "persistence_range_atr": 0.46243395447354363,
+          "model_p_up": 0.4878576249685729,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.1735615563307585,
+            "mae_climatology": 0.179444926040975,
+            "mae_persistence": 0.17493979218260738,
+            "p_vs_persistence": 0.06395448361530262,
+            "p_vs_null": 0.175
+          },
+          "direction_reliability": {
+            "acc_model": 0.5008393956351427,
+            "acc_climatology": 0.5254616675993284,
+            "acc_persistence": 0.5058757694459989,
+            "p_vs_persistence": 0.7769106717500908,
+            "p_vs_null": 0.5375
+          },
+          "actual_range_atr": 0.8304003824352963,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "gbpaud",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 108,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.279
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.022
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.563,
+          "reversal_rate_nonspike": 0.408,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.491,
+          "reversal_rate_nonspike": 0.389,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.562,
+          "reversal_rate_nonspike": 0.389,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.54,
+          "reversal_rate_nonspike": 0.421,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.482,
+            "win_rate_grind": 0.471,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.487,
+            "win_rate_grind": 0.467,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.488,
+          "win_rate_high": 0.498,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0422
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.6021
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0003
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.5721
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0005
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.0627
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 1.116883862428715,
+          "net_so_far_atr": 0.944452669632724,
+          "model_range_atr": 1.1300339842347036,
+          "persistence_range_atr": 1.1076040054798713,
+          "model_p_up": 0.4765791999239741,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.2846389436829105,
+            "mae_climatology": 0.2886660433268908,
+            "mae_persistence": 0.2867317477268202,
+            "p_vs_persistence": 0.042191662568070484,
+            "p_vs_null": 0.375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5015739769150053,
+            "acc_climatology": 0.49527806925498424,
+            "acc_persistence": 0.4910807974816369,
+            "p_vs_persistence": 0.6021185352552793,
+            "p_vs_null": 0.4125
+          },
+          "actual_range_atr": 1.3294836853647323,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 1.116883862428715,
+          "net_so_far_atr": 0.44773326765782906,
+          "model_range_atr": 0.830183314685821,
+          "persistence_range_atr": 0.7742523405219622,
+          "model_p_up": 0.5285786631526902,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.21153212970274463,
+            "mae_climatology": 0.2232738184403466,
+            "mae_persistence": 0.21578078413523222,
+            "p_vs_persistence": 0.0003216059877056493,
+            "p_vs_null": 0.24375
+          },
+          "direction_reliability": {
+            "acc_model": 0.4876769795490299,
+            "acc_climatology": 0.497115888830624,
+            "acc_persistence": 0.4976402726796015,
+            "p_vs_persistence": 0.5721032214334133,
+            "p_vs_null": 0.61875
+          },
+          "actual_range_atr": 0.7778998129547522,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.116883862428715,
+          "net_so_far_atr": 0.039188907453635305,
+          "model_range_atr": 0.4261447137967944,
+          "persistence_range_atr": 0.395391019948059,
+          "model_p_up": 0.5651484779102333,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.12752464155126358,
+            "mae_climatology": 0.13453373286899695,
+            "mae_persistence": 0.13024490978127518,
+            "p_vs_persistence": 0.0004658005341516902,
+            "p_vs_null": 0.35
+          },
+          "direction_reliability": {
+            "acc_model": 0.5081364829396325,
+            "acc_climatology": 0.48661417322834644,
+            "acc_persistence": 0.473490813648294,
+            "p_vs_persistence": 0.06270776573016837,
+            "p_vs_null": 0.4375
+          },
+          "actual_range_atr": 0.36837573006421104,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "gbpcad",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 106,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.225
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.014
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.59,
+          "reversal_rate_nonspike": 0.431,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.48,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.547,
+          "reversal_rate_nonspike": 0.392,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.543,
+          "reversal_rate_nonspike": 0.41,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.488,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.486,
+            "win_rate_grind": 0.467,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.488,
+          "win_rate_high": 0.49,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.4335
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7086
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0044
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8649
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0138
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 1.0
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.33648168262696687,
+          "net_so_far_atr": 0.23286668829422694,
+          "model_range_atr": 1.0718900179650417,
+          "persistence_range_atr": 1.052955526685675,
+          "model_p_up": 0.4985809084756592,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.316675686969235,
+            "mae_climatology": 0.3213393708460573,
+            "mae_persistence": 0.31744956707183564,
+            "p_vs_persistence": 0.43350249063813684,
+            "p_vs_null": 0.3875
+          },
+          "direction_reliability": {
+            "acc_model": 0.4968553459119497,
+            "acc_climatology": 0.49947589098532497,
+            "acc_persistence": 0.5041928721174004,
+            "p_vs_persistence": 0.7086263727855238,
+            "p_vs_null": 0.5
+          },
+          "actual_range_atr": 0.6708269736182166,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5864395040070014,
+          "net_so_far_atr": 0.11536514832924308,
+          "model_range_atr": 0.8549596583596216,
+          "persistence_range_atr": 0.8196036142550072,
+          "model_p_up": 0.515706420215242,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.2540376642781175,
+            "mae_climatology": 0.26471069655044327,
+            "mae_persistence": 0.25833914183965734,
+            "p_vs_persistence": 0.004364180279605451,
+            "p_vs_null": 0.225
+          },
+          "direction_reliability": {
+            "acc_model": 0.4918720503408495,
+            "acc_climatology": 0.4992134242265338,
+            "acc_persistence": 0.48820136339800735,
+            "p_vs_persistence": 0.8648750944457463,
+            "p_vs_null": 0.64375
+          },
+          "actual_range_atr": 0.6708269736182166,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.5864395040070014,
+          "net_so_far_atr": 0.15809298104377403,
+          "model_range_atr": 0.43013172128976207,
+          "persistence_range_atr": 0.4006070740731348,
+          "model_p_up": 0.5106682202029514,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.14320407600591886,
+            "mae_climatology": 0.14868398130887076,
+            "mae_persistence": 0.14485034298098706,
+            "p_vs_persistence": 0.013796540940218635,
+            "p_vs_null": 0.375
+          },
+          "direction_reliability": {
+            "acc_model": 0.4963273871983211,
+            "acc_climatology": 0.5036726128016789,
+            "acc_persistence": 0.49580272822665267,
+            "p_vs_persistence": 1.0,
+            "p_vs_null": 0.525
+          },
+          "actual_range_atr": 0.5170067758459005,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "gbpchf",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 104,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.286
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.019
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.558,
+          "reversal_rate_nonspike": 0.422,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.5,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.514,
+          "reversal_rate_nonspike": 0.397,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.557,
+          "reversal_rate_nonspike": 0.407,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.493,
+            "win_rate_grind": 0.467,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.485,
+            "win_rate_grind": 0.463,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.494,
+          "win_rate_high": 0.492,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.1464
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1998
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.6822
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8478
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0468
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1491
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.30086242847924105,
+          "net_so_far_atr": 0.04860085383126913,
+          "model_range_atr": 0.9362711958317651,
+          "persistence_range_atr": 1.0047861505333808,
+          "model_p_up": 0.4718401197624696,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.3202157395733294,
+            "mae_climatology": 0.3281344804795282,
+            "mae_persistence": 0.3214619726096148,
+            "p_vs_persistence": 0.1464360347548078,
+            "p_vs_null": 0.275
+          },
+          "direction_reliability": {
+            "acc_model": 0.5055060304142632,
+            "acc_climatology": 0.49868904037755635,
+            "acc_persistence": 0.48295752490823285,
+            "p_vs_persistence": 0.1997566018223574,
+            "p_vs_null": 0.3875
+          },
+          "actual_range_atr": 0.6248681206876505,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.4489793163458779,
+          "net_so_far_atr": 0.11340199227290991,
+          "model_range_atr": 0.6644963479291593,
+          "persistence_range_atr": 0.6726910575188944,
+          "model_p_up": 0.5226179558480732,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.22858373808777496,
+            "mae_climatology": 0.2399011508097597,
+            "mae_persistence": 0.22915605253844057,
+            "p_vs_persistence": 0.6821504098466532,
+            "p_vs_null": 0.15
+          },
+          "direction_reliability": {
+            "acc_model": 0.48293963254593175,
+            "acc_climatology": 0.49553805774278215,
+            "acc_persistence": 0.48661417322834644,
+            "p_vs_persistence": 0.8477882544842357,
+            "p_vs_null": 0.68125
+          },
+          "actual_range_atr": 0.6248681206876505,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.5785815932292623,
+          "net_so_far_atr": 0.15737419335836592,
+          "model_range_atr": 0.31987014337520636,
+          "persistence_range_atr": 0.34715692947184595,
+          "model_p_up": 0.5217854988860611,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.13368843575191136,
+            "mae_climatology": 0.14090470709351705,
+            "mae_persistence": 0.13490901449728318,
+            "p_vs_persistence": 0.04681230240767832,
+            "p_vs_null": 0.2375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5099894847528917,
+            "acc_climatology": 0.5099894847528917,
+            "acc_persistence": 0.4852786540483701,
+            "p_vs_persistence": 0.14914266917866065,
+            "p_vs_null": 0.325
+          },
+          "actual_range_atr": 0.46749392732928463,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "gbpjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 106,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.333
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.017
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.532,
+          "reversal_rate_nonspike": 0.384,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.498,
+          "reversal_rate_nonspike": 0.386,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.552,
+          "reversal_rate_nonspike": 0.395,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.526,
+          "reversal_rate_nonspike": 0.405,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.496,
+            "win_rate_grind": 0.483,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.482,
+            "win_rate_grind": 0.467,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.502,
+          "win_rate_high": 0.486,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0035
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0376
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0134
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.025
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0558
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0002
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.3229396454414067,
+          "net_so_far_atr": 0.18386344776954405,
+          "model_range_atr": 0.8616708890800949,
+          "persistence_range_atr": 0.9086932734929084,
+          "model_p_up": 0.5060704800182111,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.3221031368377536,
+            "mae_climatology": 0.3332170622251917,
+            "mae_persistence": 0.3243877316427255,
+            "p_vs_persistence": 0.0034533783903768155,
+            "p_vs_null": 0.25625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5238344683080147,
+            "acc_climatology": 0.5316919853326348,
+            "acc_persistence": 0.4934520691461498,
+            "p_vs_persistence": 0.03758590259004588,
+            "p_vs_null": 0.4375
+          },
+          "actual_range_atr": 0.4243002640836147,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.42115729916446193,
+          "net_so_far_atr": 0.12257563184637758,
+          "model_range_atr": 0.6256796486236708,
+          "persistence_range_atr": 0.633797922671788,
+          "model_p_up": 0.5387403251083644,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.23791976893960665,
+            "mae_climatology": 0.2520040159218378,
+            "mae_persistence": 0.24026635593741183,
+            "p_vs_persistence": 0.013411792413609638,
+            "p_vs_null": 0.25
+          },
+          "direction_reliability": {
+            "acc_model": 0.5343111576741749,
+            "acc_climatology": 0.5589313776846516,
+            "acc_persistence": 0.49449973808276587,
+            "p_vs_persistence": 0.02497913133465225,
+            "p_vs_null": 0.51875
+          },
+          "actual_range_atr": 0.33236854019882034,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.4243002640836147,
+          "net_so_far_atr": -0.06835948699126021,
+          "model_range_atr": 0.3071479719771263,
+          "persistence_range_atr": 0.31529118219974445,
+          "model_p_up": 0.5724838762003284,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.14610384875093513,
+            "mae_climatology": 0.15444658946630818,
+            "mae_persistence": 0.14674161030545066,
+            "p_vs_persistence": 0.05577191587268314,
+            "p_vs_null": 0.34375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5390665967488202,
+            "acc_climatology": 0.5684320922915574,
+            "acc_persistence": 0.47194546407970633,
+            "p_vs_persistence": 0.00020474388370890574,
+            "p_vs_null": 0.60625
+          },
+          "actual_range_atr": 0.3142964919137589,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "gbpnzd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 97,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.233
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.032
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.494,
+          "reversal_rate_nonspike": 0.403,
+          "bh_pass": false
+        },
+        "london": {
+          "reversal_rate_spike": 0.511,
+          "reversal_rate_nonspike": 0.399,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.558,
+          "reversal_rate_nonspike": 0.38,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.551,
+          "reversal_rate_nonspike": 0.392,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.481,
+            "win_rate_grind": 0.478,
+            "bh_pass": false
+          },
+          "high": {
+            "win_rate_impulse": 0.481,
+            "win_rate_grind": 0.466,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.493,
+          "win_rate_high": 0.496,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.7056
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.3542
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0001
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.6938
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.0799
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1357
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.5177349562379755,
+          "net_so_far_atr": 0.39591496653492675,
+          "model_range_atr": 0.962064969794481,
+          "persistence_range_atr": 0.911620012577675,
+          "model_p_up": 0.5091149182907295,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.2721690890847493,
+            "mae_climatology": 0.27305253475014163,
+            "mae_persistence": 0.27208029304739145,
+            "p_vs_persistence": 0.7055762028035218,
+            "p_vs_null": 0.5
+          },
+          "direction_reliability": {
+            "acc_model": 0.48898216159496327,
+            "acc_climatology": 0.5020986358866737,
+            "acc_persistence": 0.5020986358866737,
+            "p_vs_persistence": 0.3541897297699544,
+            "p_vs_null": 0.61875
+          },
+          "actual_range_atr": 0.9548053246996238,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5893453555904774,
+          "net_so_far_atr": 0.21236187394181408,
+          "model_range_atr": 0.752412806068095,
+          "persistence_range_atr": 0.6634213902445776,
+          "model_p_up": 0.5172546122053031,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.20176040079687516,
+            "mae_climatology": 0.21004233803985148,
+            "mae_persistence": 0.2066322432046388,
+            "p_vs_persistence": 6.295440031760283e-05,
+            "p_vs_null": 0.25625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5007865757734662,
+            "acc_climatology": 0.5081279496591505,
+            "acc_persistence": 0.49344520188778185,
+            "p_vs_persistence": 0.6937780494497147,
+            "p_vs_null": 0.4875
+          },
+          "actual_range_atr": 0.7078729131393681,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.7292737221412866,
+          "net_so_far_atr": -0.01316972861652309,
+          "model_range_atr": 0.40778780889774,
+          "persistence_range_atr": 0.3693229502505875,
+          "model_p_up": 0.5503748399261646,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.1291786659712247,
+            "mae_climatology": 0.13241698975586116,
+            "mae_persistence": 0.13042518164878045,
+            "p_vs_persistence": 0.0798863877864469,
+            "p_vs_null": 0.26875
+          },
+          "direction_reliability": {
+            "acc_model": 0.5184016824395373,
+            "acc_climatology": 0.5047318611987381,
+            "acc_persistence": 0.48843322818086227,
+            "p_vs_persistence": 0.13570348105773417,
+            "p_vs_null": 0.275
+          },
+          "actual_range_atr": 0.4477707729625527,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "gbpusd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 89,
+      "range_handoff": {
+        "n_significant": 6,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.259
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.013
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.49,
+          "reversal_rate_nonspike": 0.408,
+          "bh_pass": false
+        },
+        "london": {
+          "reversal_rate_spike": 0.502,
+          "reversal_rate_nonspike": 0.4,
+          "bh_pass": false
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.549,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.549,
+          "reversal_rate_nonspike": 0.414,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.487,
+            "win_rate_grind": 0.479,
+            "bh_pass": false
+          },
+          "high": {
+            "win_rate_impulse": 0.49,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.496,
+          "win_rate_high": 0.496,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.7879
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.3716
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.022
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8299
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.3907
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.5989
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.31509827841716065,
+          "net_so_far_atr": 0.0024053303696123427,
+          "model_range_atr": 1.0270839544364347,
+          "persistence_range_atr": 1.0259144293389753,
+          "model_p_up": 0.4826572948938847,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.323298438210093,
+            "mae_climatology": 0.3259982255996526,
+            "mae_persistence": 0.3233238096092491,
+            "p_vs_persistence": 0.7879321852054122,
+            "p_vs_null": 0.2625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5085849615156898,
+            "acc_climatology": 0.5002960331557135,
+            "acc_persistence": 0.48845470692717585,
+            "p_vs_persistence": 0.3715819598141793,
+            "p_vs_null": 0.375
+          },
+          "actual_range_atr": 0.7552737360533354,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.47745807836492565,
+          "net_so_far_atr": -0.152738478469369,
+          "model_range_atr": 0.7938029227943698,
+          "persistence_range_atr": 0.7613527061810204,
+          "model_p_up": 0.536337390605013,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2658576259941065,
+            "mae_climatology": 0.2727320912624215,
+            "mae_persistence": 0.2689153783334459,
+            "p_vs_persistence": 0.022023569085856516,
+            "p_vs_null": 0.1375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5067926757235677,
+            "acc_climatology": 0.49970466627288834,
+            "acc_persistence": 0.5020673360897815,
+            "p_vs_persistence": 0.8299352257795984,
+            "p_vs_null": 0.4125
+          },
+          "actual_range_atr": 0.6855191553350314,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.7552737360533354,
+          "net_so_far_atr": -0.3487729035914931,
+          "model_range_atr": 0.38902980278686206,
+          "persistence_range_atr": 0.4065581235090452,
+          "model_p_up": 0.5211146642459231,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.16135273068780884,
+            "mae_climatology": 0.16660072410428906,
+            "mae_persistence": 0.16197951375889894,
+            "p_vs_persistence": 0.3907314823635556,
+            "p_vs_null": 0.4
+          },
+          "direction_reliability": {
+            "acc_model": 0.488468361916026,
+            "acc_climatology": 0.5150798344175045,
+            "acc_persistence": 0.498521584861029,
+            "p_vs_persistence": 0.5988587429562394,
+            "p_vs_null": 0.68125
+          },
+          "actual_range_atr": 0.5796846190727826,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
     {
       "pair": "gold",
       "data_through": "2026-06-05",
@@ -168,7 +3568,859 @@
           "actual_range_atr": 0.4095246172653617,
           "actual_up": false
         }
-      ]
+      ],
+      "today_outlook_is_live": false,
+      "live_status": "no_data_yet"
+    },
+    {
+      "pair": "nzdjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 109,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.308
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.011
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.469,
+          "reversal_rate_nonspike": 0.403,
+          "bh_pass": false
+        },
+        "london": {
+          "reversal_rate_spike": 0.528,
+          "reversal_rate_nonspike": 0.402,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.541,
+          "reversal_rate_nonspike": 0.401,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.551,
+          "reversal_rate_nonspike": 0.407,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.499,
+            "win_rate_grind": 0.484,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.479,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.502,
+          "win_rate_high": 0.491,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.044
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.8927
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.0895
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0143
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0509
+          },
+          "direction": {
+            "beats_persistence": true,
+            "p": 0.0016
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.45123952066964934,
+          "net_so_far_atr": -0.12892557733418267,
+          "model_range_atr": 0.820214830561028,
+          "persistence_range_atr": 0.7998986392663159,
+          "model_p_up": 0.5125851973992838,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2648124376242556,
+            "mae_climatology": 0.27505400990797607,
+            "mae_persistence": 0.26634756260472725,
+            "p_vs_persistence": 0.04404617814395791,
+            "p_vs_null": 0.3
+          },
+          "direction_reliability": {
+            "acc_model": 0.49266247379454925,
+            "acc_climatology": 0.5062893081761006,
+            "acc_persistence": 0.490041928721174,
+            "p_vs_persistence": 0.8926877193807602,
+            "p_vs_null": 0.6
+          },
+          "actual_range_atr": 0.6838661058595864,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5255118641339039,
+          "net_so_far_atr": -0.0462450440437853,
+          "model_range_atr": 0.6703754522448285,
+          "persistence_range_atr": 0.6162958508306956,
+          "model_p_up": 0.5458113845456105,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.21940373099482535,
+            "mae_climatology": 0.2290623412124562,
+            "mae_persistence": 0.22190803152736974,
+            "p_vs_persistence": 0.08945922762000369,
+            "p_vs_null": 0.36875
+          },
+          "direction_reliability": {
+            "acc_model": 0.5246589716684156,
+            "acc_climatology": 0.5283315844700944,
+            "acc_persistence": 0.4837355718782791,
+            "p_vs_persistence": 0.014256614950464808,
+            "p_vs_null": 0.34375
+          },
+          "actual_range_atr": 0.580165098003832,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.5255118641339039,
+          "net_so_far_atr": -0.03923821918867295,
+          "model_range_atr": 0.335950740910315,
+          "persistence_range_atr": 0.34070864265734047,
+          "model_p_up": 0.6151064507155944,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.14804467468766272,
+            "mae_climatology": 0.15584204581032135,
+            "mae_persistence": 0.14920412932702676,
+            "p_vs_persistence": 0.050933222229115886,
+            "p_vs_null": 0.11875
+          },
+          "direction_reliability": {
+            "acc_model": 0.5468421052631579,
+            "acc_climatology": 0.5589473684210526,
+            "acc_persistence": 0.4884210526315789,
+            "p_vs_persistence": 0.0015618806729880057,
+            "p_vs_null": 0.44375
+          },
+          "actual_range_atr": 0.4638518054088635,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "nzdusd",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 92,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "overlap->ny",
+        "strongest_rho": 0.199
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.017
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.485,
+          "reversal_rate_nonspike": 0.406,
+          "bh_pass": false
+        },
+        "london": {
+          "reversal_rate_spike": 0.548,
+          "reversal_rate_nonspike": 0.405,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.467,
+          "reversal_rate_nonspike": 0.405,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.526,
+          "reversal_rate_nonspike": 0.398,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.497,
+            "win_rate_grind": 0.481,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.495,
+            "win_rate_grind": 0.477,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.499,
+          "win_rate_high": 0.497,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0238
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.5587
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0052
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.9697
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0191
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7629
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.48635111870270675,
+          "net_so_far_atr": -0.24317555935135338,
+          "model_range_atr": 0.9549144370270649,
+          "persistence_range_atr": 0.9065350999325305,
+          "model_p_up": 0.4507447815172282,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.28416127963779914,
+            "mae_climatology": 0.2889834120001433,
+            "mae_persistence": 0.28657781503908575,
+            "p_vs_persistence": 0.023804871472747537,
+            "p_vs_null": 0.3625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5268948655256723,
+            "acc_climatology": 0.4908312958435208,
+            "acc_persistence": 0.5177261613691931,
+            "p_vs_persistence": 0.5586807180531964,
+            "p_vs_null": 0.225
+          },
+          "actual_range_atr": 0.8371617617013776,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5062835416003565,
+          "net_so_far_atr": -0.239189074771819,
+          "model_range_atr": 0.8372261670090587,
+          "persistence_range_atr": 0.7431571890873969,
+          "model_p_up": 0.43930553647678455,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.2535740606205633,
+            "mae_climatology": 0.2584861629477814,
+            "mae_persistence": 0.25791614815039954,
+            "p_vs_persistence": 0.005169619647228592,
+            "p_vs_null": 0.3625
+          },
+          "direction_reliability": {
+            "acc_model": 0.4923453766074709,
+            "acc_climatology": 0.49969381506429883,
+            "acc_persistence": 0.4911206368646663,
+            "p_vs_persistence": 0.9696799358366315,
+            "p_vs_null": 0.63125
+          },
+          "actual_range_atr": 0.8371617617013776,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.5660808102933057,
+          "net_so_far_atr": -0.2411823170615751,
+          "model_range_atr": 0.41668671075476726,
+          "persistence_range_atr": 0.39342530873206816,
+          "model_p_up": 0.49956210483318075,
+          "persistence_call_up": false,
+          "range_reliability": {
+            "mae_model": 0.16261483215699504,
+            "mae_climatology": 0.16761683636762434,
+            "mae_persistence": 0.16451958898571312,
+            "p_vs_persistence": 0.019088190248858803,
+            "p_vs_null": 0.2375
+          },
+          "direction_reliability": {
+            "acc_model": 0.48865726548129984,
+            "acc_climatology": 0.5082771305947271,
+            "acc_persistence": 0.48252605763335377,
+            "p_vs_persistence": 0.7629151039270852,
+            "p_vs_null": 0.65625
+          },
+          "actual_range_atr": 0.6497969864634612,
+          "actual_up": true
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "usdcad",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 99,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "asia->london",
+        "strongest_rho": 0.252
+      },
+      "direction_handoff": {
+        "any_significant": false,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.016
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.54,
+          "reversal_rate_nonspike": 0.413,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.525,
+          "reversal_rate_nonspike": 0.377,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.51,
+          "reversal_rate_nonspike": 0.399,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.573,
+          "reversal_rate_nonspike": 0.389,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.493,
+            "win_rate_grind": 0.465,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.491,
+            "win_rate_grind": 0.479,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.503,
+          "win_rate_high": 0.494,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.4302
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.684
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.063
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.2221
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0068
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.9034
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.4974134896058166,
+          "net_so_far_atr": 0.35594726779134434,
+          "model_range_atr": 1.1060325659813193,
+          "persistence_range_atr": 1.0932253301835935,
+          "model_p_up": 0.4977178429758382,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.3168173769000816,
+            "mae_climatology": 0.3257502754244167,
+            "mae_persistence": 0.3177452358822347,
+            "p_vs_persistence": 0.43017491986200207,
+            "p_vs_null": 0.3625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5013989927252378,
+            "acc_climatology": 0.5041969781757135,
+            "acc_persistence": 0.4918858421936206,
+            "p_vs_persistence": 0.6839792395520072,
+            "p_vs_null": 0.4375
+          },
+          "actual_range_atr": 0.9035584490087855,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.7027676825623886,
+          "net_so_far_atr": 0.472314643800055,
+          "model_range_atr": 0.9396778800522639,
+          "persistence_range_atr": 0.9470888930736701,
+          "model_p_up": 0.45169114799869525,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.29619520621078027,
+            "mae_climatology": 0.30105685323639475,
+            "mae_persistence": 0.2988532443266393,
+            "p_vs_persistence": 0.06304555298995458,
+            "p_vs_null": 0.35
+          },
+          "direction_reliability": {
+            "acc_model": 0.5033632286995515,
+            "acc_climatology": 0.4899103139013453,
+            "acc_persistence": 0.4781390134529148,
+            "p_vs_persistence": 0.2221434205434216,
+            "p_vs_null": 0.425
+          },
+          "actual_range_atr": 0.7894727862551625,
+          "actual_up": true
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.2412520107595297,
+          "net_so_far_atr": 0.924093868304473,
+          "model_range_atr": 0.5080842302130985,
+          "persistence_range_atr": 0.5565957793124321,
+          "model_p_up": 0.5073386893425582,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.180519810167291,
+            "mae_climatology": 0.1873088707460022,
+            "mae_persistence": 0.18306100100287304,
+            "p_vs_persistence": 0.006843906208463789,
+            "p_vs_null": 0.25625
+          },
+          "direction_reliability": {
+            "acc_model": 0.5025238362310712,
+            "acc_climatology": 0.5058889512058329,
+            "acc_persistence": 0.5053280987100393,
+            "p_vs_persistence": 0.9033535081294982,
+            "p_vs_null": 0.4375
+          },
+          "actual_range_atr": 0.5864003065537287,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "usdchf",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 104,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "asia->london",
+        "strongest_rho": 0.267
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.026
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.519,
+          "reversal_rate_nonspike": 0.394,
+          "bh_pass": true
+        },
+        "london": {
+          "reversal_rate_spike": 0.559,
+          "reversal_rate_nonspike": 0.412,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.515,
+          "reversal_rate_nonspike": 0.408,
+          "bh_pass": false
+        },
+        "ny": {
+          "reversal_rate_spike": 0.579,
+          "reversal_rate_nonspike": 0.398,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.499,
+            "win_rate_grind": 0.473,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.49,
+            "win_rate_grind": 0.474,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.499,
+          "win_rate_high": 0.496,
+          "bh_pass": false
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.0729
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.9062
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0004
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.183
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0105
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.451
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.3291689873490426,
+          "net_so_far_atr": 0.025679850076887983,
+          "model_range_atr": 1.0597391828770681,
+          "persistence_range_atr": 1.0170429997205082,
+          "model_p_up": 0.48785551385716763,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.3476980210127376,
+            "mae_climatology": 0.36311493560140107,
+            "mae_persistence": 0.35125409035673594,
+            "p_vs_persistence": 0.07291539511730451,
+            "p_vs_null": 0.25
+          },
+          "direction_reliability": {
+            "acc_model": 0.5028712059064807,
+            "acc_climatology": 0.49548810500410173,
+            "acc_persistence": 0.4995898277276456,
+            "p_vs_persistence": 0.906197484279404,
+            "p_vs_null": 0.46875
+          },
+          "actual_range_atr": 1.0785537032287509,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.5999746790688038,
+          "net_so_far_atr": 0.24979490529324475,
+          "model_range_atr": 0.8811313146101717,
+          "persistence_range_atr": 0.8270181266841495,
+          "model_p_up": 0.47561219779648856,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.27971585615392974,
+            "mae_climatology": 0.2961592209914763,
+            "mae_persistence": 0.28770768692078513,
+            "p_vs_persistence": 0.0004123395521658642,
+            "p_vs_null": 0.33125
+          },
+          "direction_reliability": {
+            "acc_model": 0.4868421052631579,
+            "acc_climatology": 0.5106907894736842,
+            "acc_persistence": 0.5172697368421053,
+            "p_vs_persistence": 0.18298335638350313,
+            "p_vs_null": 0.58125
+          },
+          "actual_range_atr": 1.0785537032287509,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 1.0505393213267031,
+          "net_so_far_atr": 0.5135970015375004,
+          "model_range_atr": 0.4112306081330362,
+          "persistence_range_atr": 0.4553710392996866,
+          "model_p_up": 0.481385873342316,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.16285297181994257,
+            "mae_climatology": 0.17573019429050124,
+            "mae_persistence": 0.167083398231008,
+            "p_vs_persistence": 0.010520823893566006,
+            "p_vs_null": 0.13125
+          },
+          "direction_reliability": {
+            "acc_model": 0.5049261083743842,
+            "acc_climatology": 0.48111658456486045,
+            "acc_persistence": 0.48686371100164205,
+            "p_vs_persistence": 0.450956731862083,
+            "p_vs_null": 0.4625
+          },
+          "actual_range_atr": 0.8731149026137507,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
+    },
+    {
+      "pair": "usdjpy",
+      "data_through": "2026-05-21",
+      "n_hypotheses_pooled": 155,
+      "n_bh_pass": 100,
+      "range_handoff": {
+        "n_significant": 7,
+        "strongest_pair": "asia->london",
+        "strongest_rho": 0.372
+      },
+      "direction_handoff": {
+        "any_significant": true,
+        "n_tested": 7,
+        "max_deviation_from_coinflip": 0.026
+      },
+      "spike_reversal": {
+        "asia": {
+          "reversal_rate_spike": 0.477,
+          "reversal_rate_nonspike": 0.392,
+          "bh_pass": false
+        },
+        "london": {
+          "reversal_rate_spike": 0.542,
+          "reversal_rate_nonspike": 0.406,
+          "bh_pass": true
+        },
+        "overlap": {
+          "reversal_rate_spike": 0.514,
+          "reversal_rate_nonspike": 0.379,
+          "bh_pass": true
+        },
+        "ny": {
+          "reversal_rate_spike": 0.532,
+          "reversal_rate_nonspike": 0.414,
+          "bh_pass": true
+        }
+      },
+      "impulse": {
+        "by_kind": {
+          "low": {
+            "win_rate_impulse": 0.502,
+            "win_rate_grind": 0.488,
+            "bh_pass": true
+          },
+          "high": {
+            "win_rate_impulse": 0.486,
+            "win_rate_grind": 0.474,
+            "bh_pass": true
+          }
+        },
+        "symmetry_30min": {
+          "win_rate_low": 0.511,
+          "win_rate_high": 0.488,
+          "bh_pass": true
+        }
+      },
+      "forecast_reliability": {
+        "post_asia": {
+          "remaining_range_atr": {
+            "beats_persistence": false,
+            "p": 0.4466
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.7028
+          }
+        },
+        "post_london": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.0009
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.1336
+          }
+        },
+        "post_overlap": {
+          "remaining_range_atr": {
+            "beats_persistence": true,
+            "p": 0.001
+          },
+          "direction": {
+            "beats_persistence": false,
+            "p": 0.3957
+          }
+        }
+      },
+      "today_outlook": [
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_asia",
+          "range_so_far_atr": 0.31091643323549234,
+          "net_so_far_atr": 0.1987059911655442,
+          "model_range_atr": 0.8695805457889859,
+          "persistence_range_atr": 0.8490873753391586,
+          "model_p_up": 0.578385505584612,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.3349633197133217,
+            "mae_climatology": 0.3477723216867118,
+            "mae_persistence": 0.33572165153045025,
+            "p_vs_persistence": 0.44660815071246407,
+            "p_vs_null": 0.26875
+          },
+          "direction_reliability": {
+            "acc_model": 0.5296017222820237,
+            "acc_climatology": 0.553821313240043,
+            "acc_persistence": 0.523681377825619,
+            "p_vs_persistence": 0.7028440252421493,
+            "p_vs_null": 0.5
+          },
+          "actual_range_atr": 0.6159885726131472,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_london",
+          "range_so_far_atr": 0.4231268753054072,
+          "net_so_far_atr": 0.3097475744639248,
+          "model_range_atr": 0.7112018397618002,
+          "persistence_range_atr": 0.7110003761936012,
+          "model_p_up": 0.5240840522087058,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.2958660298148877,
+            "mae_climatology": 0.3083247293556007,
+            "mae_persistence": 0.30081420852129026,
+            "p_vs_persistence": 0.0009073826719746552,
+            "p_vs_null": 0.375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5311827956989247,
+            "acc_climatology": 0.55,
+            "acc_persistence": 0.5075268817204301,
+            "p_vs_persistence": 0.13361772595120427,
+            "p_vs_null": 0.45
+          },
+          "actual_range_atr": 0.6159885726131472,
+          "actual_up": false
+        },
+        {
+          "day": "2026-05-21",
+          "checkpoint": "post_overlap",
+          "range_so_far_atr": 0.6300148778718907,
+          "net_so_far_atr": 0.32494273849420263,
+          "model_range_atr": 0.3214968830123555,
+          "persistence_range_atr": 0.36482939617794335,
+          "model_p_up": 0.5594708591992864,
+          "persistence_call_up": true,
+          "range_reliability": {
+            "mae_model": 0.1849351608609064,
+            "mae_climatology": 0.19314978048623657,
+            "mae_persistence": 0.187287223431888,
+            "p_vs_persistence": 0.0009580255497257279,
+            "p_vs_null": 0.29375
+          },
+          "direction_reliability": {
+            "acc_model": 0.5258342303552207,
+            "acc_climatology": 0.5645855758880517,
+            "acc_persistence": 0.511302475780409,
+            "p_vs_persistence": 0.3956799905906828,
+            "p_vs_null": 0.675
+          },
+          "actual_range_atr": 0.4429974744219882,
+          "actual_up": false
+        }
+      ],
+      "today_outlook_is_live": false
     }
   ]
 }

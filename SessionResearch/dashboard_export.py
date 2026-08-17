@@ -118,9 +118,22 @@ def build_pair_summary(pair: str, out_dir: str = "SessionResearch/out") -> dict 
         impulse=_impulse(cells),
         forecast_reliability=_forecast_reliability(cells),
     )
-    today_outlook = _load(base, "predict_today")
-    if today_outlook:
-        summary["today_outlook"] = today_outlook
+    # Prefer the genuinely live prediction (predict_today.py --live) over the historical
+    # replay (predict_today.py's default mode) whenever a real live one is available —
+    # the replay exists mainly so the engine has *something* to show/demo when live data
+    # isn't current (e.g. in this sandbox), not because it should be preferred when a real
+    # live number exists.
+    live = _load(base, "predict_live")
+    if live and live.get("status") == "ok":
+        summary["today_outlook"] = [live]
+        summary["today_outlook_is_live"] = True
+    else:
+        historical = _load(base, "predict_today")
+        if historical:
+            summary["today_outlook"] = historical
+            summary["today_outlook_is_live"] = False
+    if live and live.get("status") != "ok":
+        summary["live_status"] = live.get("status")
     return summary
 
 

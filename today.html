@@ -3919,6 +3919,8 @@ function assembleSnapshot(r) {
       impulse: sr.impulse?.symmetry_30min ? { symmetry: {
         winRateLow: sr.impulse.symmetry_30min.win_rate_low, winRateHigh: sr.impulse.symmetry_30min.win_rate_high,
         bhPass: sr.impulse.symmetry_30min.bh_pass } } : null,
+      todayOutlookIsLive: !!sr.today_outlook_is_live,
+      liveStatus: sr.live_status ?? null,
       todayOutlook: (sr.today_outlook || []).map(o => ({
         day: o.day, checkpoint: o.checkpoint, modelRangeAtr: o.model_range_atr, persistenceRangeAtr: o.persistence_range_atr,
         modelPUp: o.model_p_up,

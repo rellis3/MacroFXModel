@@ -40,4 +40,10 @@ restart_bot "analogml-motif-track" \
 restart_bot "analogml-nearing-watch" \
     env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python AnalogML/motif_nearing_watch.py &
 
+restart_bot "session-research-live" \
+    bash SessionResearch/live_loop.sh &
+
+restart_bot "session-research-full" \
+    bash SessionResearch/full_study_loop.sh &
+
 exec node server.js
