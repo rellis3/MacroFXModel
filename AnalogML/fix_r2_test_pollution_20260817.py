@@ -18,8 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from motif_track import _r2_client, R2_BUCKET, R2_LOG_KEY, load_log, save_log  # noqa: E402
 
 BAD_PAIR = "eurusd"
-BAD_START = "2026-08-17T23:29:46.313271"
-BAD_END = "2026-08-17T23:29:46.362167"
+BAD_LOGGED_AT_PREFIX = "2026-08-17T23:29:46"  # to-the-second is already unique here
 EXPECTED_REMOVED = 559
 
 
@@ -39,7 +38,7 @@ def main() -> None:
     kept, removed = [], []
     for t in trades:
         la = t.get("logged_at", "")
-        if t.get("pair") == BAD_PAIR and BAD_START <= la <= BAD_END:
+        if t.get("pair") == BAD_PAIR and la.startswith(BAD_LOGGED_AT_PREFIX):
             removed.append(t)
         else:
             kept.append(t)
@@ -58,7 +57,7 @@ def main() -> None:
     log2 = json.loads(obj2["Body"].read())
     post_trades = log2["trades"]
     print(f"[fix] post-write trade count: {len(post_trades)}")
-    leftover = [t for t in post_trades if t.get("pair") == BAD_PAIR and BAD_START <= t.get("logged_at", "") <= BAD_END]
+    leftover = [t for t in post_trades if t.get("pair") == BAD_PAIR and t.get("logged_at", "").startswith(BAD_LOGGED_AT_PREFIX)]
     print(f"[fix] remaining fabricated entries: {len(leftover)}")
     if leftover:
         print("[fix] WARNING: fabricated entries still present after write")
