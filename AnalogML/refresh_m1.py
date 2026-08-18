@@ -49,6 +49,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import io
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -169,12 +171,28 @@ def refresh_pair(pair: str) -> int:
         combined = new_df.sort_index()
 
     M1_DIR.mkdir(parents=True, exist_ok=True)
-    combined.to_parquet(path)
+
+    # Serialize once, in memory, then write atomically (temp file + os.replace
+    # on the SAME directory/filesystem, so it's a single atomic rename, never
+    # a partial write at the real path) and upload those exact same bytes to
+    # R2. `to_parquet(path)` directly is NOT atomic -- a redeploy killing the
+    # container mid-write left a truncated file that this script would then
+    # read back and faithfully upload to R2 as if it were complete, corrupting
+    # the cache (caught live 2026-08-18: 6 of 26 pairs). A kill can now only
+    # ever catch this before the rename (old file untouched) or after (new
+    # file already complete on disk) -- never mid-write.
+    buf = io.BytesIO()
+    combined.to_parquet(buf)
+    body = buf.getvalue()
+
+    tmp_path = path.with_suffix(f".tmp{os.getpid()}")
+    tmp_path.write_bytes(body)
+    os.replace(tmp_path, path)
 
     s3 = r2_client()
     if s3 is not None:
         try:
-            s3.put_object(Bucket=R2_BUCKET, Key=_r2_m1_key(pair), Body=path.read_bytes(),
+            s3.put_object(Bucket=R2_BUCKET, Key=_r2_m1_key(pair), Body=body,
                           ContentType="application/octet-stream")
         except Exception as e:
             print(f"  {pair}: R2 M1 cache upload failed ({e}) -- local copy at {path} is "
