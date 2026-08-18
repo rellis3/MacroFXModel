@@ -92,9 +92,23 @@ ALL_PAIRS = [
 def _load_existing(pair: str, path: Path):
     """Local parquet if present; otherwise R2's cached copy, written to
     local disk so this behaves exactly like a local hit from here on. None
-    only when NEITHER has this pair yet (its very first run anywhere)."""
+    when NEITHER has usable data for this pair -- either its very first
+    run anywhere, or the cache (local OR R2) turned out to be corrupt.
+
+    Both `pd.read_parquet` calls are guarded: a corrupt cache must fall
+    through to a fresh backfill for just this one pair, never raise --
+    caught live 2026-08-18, where 6 of 26 pairs had a truncated R2 object
+    (two independent hourly loops racing to write the same key, most
+    likely) that crashed every subsequent run partway through, before
+    save_log()/save_state() ever ran for ANY pair. A bad cache for one
+    pair must never be able to block the other 25."""
     if path.exists():
-        return pd.read_parquet(path)
+        try:
+            return pd.read_parquet(path)
+        except Exception as e:
+            print(f"  {pair}: local M1 cache unreadable ({e}) -- discarding, will re-fetch")
+            path.unlink(missing_ok=True)
+
     s3 = r2_client()
     if s3 is None:
         return None
@@ -104,7 +118,12 @@ def _load_existing(pair: str, path: Path):
         return None
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(obj["Body"].read())
-    return pd.read_parquet(path)
+    try:
+        return pd.read_parquet(path)
+    except Exception as e:
+        print(f"  {pair}: R2 M1 cache unreadable ({e}) -- discarding, will backfill from scratch")
+        path.unlink(missing_ok=True)
+        return None
 
 
 def refresh_pair(pair: str) -> int:
