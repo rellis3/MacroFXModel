@@ -271,15 +271,15 @@
   #drNews .nimpact{font-size:11px;color:var(--text2);padding:3px 6px 7px 62px;line-height:1.45}
   #drNews .nimpact b.pos{color:var(--bull)} #drNews .nimpact b.neg{color:var(--bear)}
 
-  /* Morning Brief — the top-down macro front page */
-  .mbrief{background:linear-gradient(180deg,rgba(79,125,240,.08),var(--card));border:1px solid var(--border);
-          border-radius:14px;padding:16px 20px;margin-bottom:16px}
+  /* Morning Brief — the top-down macro front page (AI-hero treatment) */
+  .mbrief{background:linear-gradient(135deg,rgba(79,125,240,.10),var(--card) 55%);border:1px solid var(--border);
+          border-left:3px solid var(--blue);border-radius:14px;padding:18px 22px;margin-bottom:16px}
   .mbrief .mb-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
   .mbrief .mb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--blue);text-transform:uppercase}
   .mbrief .mb-btn{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 11px;font-size:11px;font-weight:600;cursor:pointer}
   .mbrief .mb-btn:disabled{opacity:.55}
-  .mbrief .mb-head{font-size:17px;font-weight:700;line-height:1.4;margin:2px 0 10px}
-  .mbrief .mb-theme{font-size:13.5px;color:var(--text2);line-height:1.55;margin-bottom:12px}
+  .mbrief .mb-head{font-size:18px;font-weight:700;line-height:1.4;margin:2px 0 10px}
+  .mbrief .mb-theme{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:14px;padding-left:12px;border-left:2px solid var(--border)}
   .mbrief .mb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:12px}
   .mbrief .mb-cell{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
   .mbrief .mb-cl{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--text3);text-transform:uppercase;margin-bottom:3px}
@@ -4324,8 +4324,8 @@ function renderMorningBrief(r) {
   const esc = s => (s ?? '').toString().replace(/</g, '&lt;');
   const gen = `<a class="mb-btn" href="brief-config.html" style="text-decoration:none" title="Turn on auto-generation and pick which pairs auto-analyse each morning">⚙ Auto</a><button class="mb-btn" id="mbBtn" onclick="generateMorningBrief()">↻ Generate</button>`;
   if (!r || !r.ok || !r.analysis) {
-    el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}</div>` +
-      `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`;
+    el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}${secChev('mbrief')}</div>` +
+      secBody('mbrief', `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`);
     el.style.display = 'block'; return;
   }
   const a = r.analysis;
@@ -4343,16 +4343,32 @@ function renderMorningBrief(r) {
   } else if (btod && btod.rationale) {
     boardTrade = `<div class="ai-trade" style="margin-top:0;margin-bottom:12px"><div class="ai-trade-hd"><span class="chip neu">NO STANDOUT PAIR</span><span class="muted" style="font-size:10.5px">Board trade of the day</span></div><div class="ai-trade-rationale">${esc(btod.rationale)}</div></div>`;
   }
+  // Meter row — only genuinely real numbers here, no fabricated conviction/edge scores:
+  // headline count (grounding depth) and the AI's own stated board-trade confidence (categorical, real).
+  const meters = [];
+  if (r.headlineCount != null) {
+    const pct = Math.max(6, Math.min(100, Math.round(r.headlineCount / 30 * 100)));
+    meters.push(`<div class="hero-meter"><span class="mk">Data Coverage</span><div class="hero-meter-bar"><i style="width:${pct}%;background:var(--blue)"></i></div><span class="mv">${r.headlineCount} headlines</span></div>`);
+  }
+  if (btod?.confidence && /^(LOW|MEDIUM|HIGH)$/i.test(btod.confidence)) {
+    const pct = { LOW: 33, MEDIUM: 66, HIGH: 100 }[btod.confidence.toUpperCase()];
+    const dirCol = /LONG/i.test(btod.direction ?? '') ? 'var(--bull)' : /SHORT/i.test(btod.direction ?? '') ? 'var(--bear)' : 'var(--amber)';
+    meters.push(`<div class="hero-meter"><span class="mk">Trade Confidence</span><div class="hero-meter-bar"><i style="width:${pct}%;background:${dirCol}"></i></div><span class="mv">${esc(btod.confidence).toUpperCase()}</span></div>`);
+  }
+  const meterRow = meters.length ? `<div class="hero-meter-row">${meters.join('')}</div>` : '';
   el.innerHTML =
-    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}</div>` +
-    (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
-    (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
-    `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
-    (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
-    (a.pairsOutlook?.length ? `<div class="mb-cl" style="margin-bottom:5px">Instrument-by-instrument read</div><div class="mb-assets">${a.pairsOutlook.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.pair)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
-    boardTrade +
-    (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
-    `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`;
+    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}${secChev('mbrief')}</div>` +
+    secBody('mbrief',
+      (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
+      (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
+      meterRow +
+      `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
+      (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+      (a.pairsOutlook?.length ? `<div class="mb-cl" style="margin-bottom:5px">Instrument-by-instrument read</div><div class="mb-assets">${a.pairsOutlook.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.pair)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+      boardTrade +
+      (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
+      `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`
+    );
   el.style.display = 'block';
 }
 async function generateMorningBrief() {
