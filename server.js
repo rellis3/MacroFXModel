@@ -112,6 +112,7 @@ import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
 import { runImpulseEmaRange } from './js/impulseEmaRangeV1Engine.js';
+import { runLiveValidation } from './js/liveValidationCore.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
@@ -15658,6 +15659,55 @@ app.get('/api/honest-forecast/status/:jobId', (req, res) => {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Live Validation Harness ──────────────────────────────────────────────
+// Runs js/liveValidationCore.js's runLiveValidation (also used by
+// education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs
+// — one shared core, per Lego Principle 1) against real OANDA M1 data.
+// Only reachable on Railway (or anywhere OANDA_KEY actually resolves) —
+// sandboxed dev sessions 403. Same async-job pattern as /api/honest-forecast/*.
+const lvJobs = new Map();
+function _purgeStaleLvJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of lvJobs) if (job.startedAt < cutoff) lvJobs.delete(id);
+}
+
+app.post('/api/live-validation/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live OANDA data' });
+  }
+  const pair = req.body?.pair === 'nq' ? 'nq' : req.body?.pair === 'gold' ? 'gold' : null;
+  if (!pair) return res.status(400).json({ ok: false, error: 'pair must be gold|nq' });
+
+  const jobId = `lv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleLvJobs();
+  lvJobs.set(jobId, { status: 'running', startedAt, log: [] });
+
+  (async () => {
+    try {
+      const job = lvJobs.get(jobId);
+      const result = await runLiveValidation(pair, { onLog: msg => job.log.push(msg) });
+      lvJobs.set(jobId, { status: 'done', result, startedAt, log: job.log });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[live-validation/run]', msg, e?.stack ?? '');
+      lvJobs.set(jobId, { status: 'error', error: msg, startedAt, log: lvJobs.get(jobId)?.log ?? [] });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/live-validation/status/:jobId', (req, res) => {
+  const job = lvJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', result: job.result, log: job.log });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 

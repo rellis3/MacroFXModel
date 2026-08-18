@@ -225,6 +225,7 @@ Pages with a later date have genuinely been worked on since.
 | `discipline-map.html` | Maps system coverage and honest gaps by trading discipline | 📚 Reference | ≤2026-08-09 | Records banked nulls; same status legend as BACKTEST_INDEX |
 | `level-chart-demo.html` | Dev demo wiring levelSources.js modules into the levelChart renderer | 📚 Reference | ≤2026-08-09 | Dev brick demo, synthetic data |
 | `trade-lab.html` | Impulse/retracement visual research on Gold & NQ — real candles (frozen R2 archive + live OANDA/Yahoo proxy for anything past it, Railway-only), Fib pulled-from/to readout, browse other real historical trades with the same shape via `/api/trade-lab/similar-trades` | 🔬 Research | 2026-08-17 | Live OANDA/Yahoo fetch untestable in this sandbox (403) — needs a real check once deployed |
+| `live-validation.html` | Runs `js/impulseEmaRangeV2Engine.js` (baseline + 3 follow-up variants) against the R2 archive gap-filled to NOW via real OANDA M1 (`/api/live-validation/run`+`/status`, Railway-only), checks whether any generated signal lines up with Jordan's 4 known reconstructed trades on timing/direction/price | 🔬 Research | 2026-08-17 | Live OANDA fetch untestable in this sandbox (403) — needs a real check once deployed |
 
 ## 🗄 Archived — null results, superseded versions, stubs
 
