@@ -480,6 +480,35 @@
   .hero-meter-bar{width:52px;height:6px;border-radius:4px;background:var(--border);overflow:hidden}
   .hero-meter-bar i{display:block;height:100%;background:var(--amber);border-radius:4px}
   .hero-meter .mv{font-size:11px;font-weight:800}
+
+  /* ── Sidebar (Phase 2c) — Market Tone gauge, Key Takeaways, Today At A
+     Glance, Volatility Outlook, Quick Links. All built from data already
+     computed elsewhere on this page (equitiesRisk/currencyStrength/rows) —
+     no new fetches, no invented numbers. Stacks below main content on
+     narrow viewports instead of squeezing into a column. ─────────────── */
+  .dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+  @media(max-width:980px){ .dashgrid{grid-template-columns:1fr} .sidebar{position:static !important} }
+  .sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:14px}
+  .side-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .side-card h3{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:11px}
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .gauge-tone{font-size:14px;font-weight:800;margin-top:2px}
+  .gauge-tone.on{color:var(--bull)} .gauge-tone.off{color:var(--bear)} .gauge-tone.mix{color:var(--amber)}
+  .gauge-sub{font-size:10.5px;color:var(--text3);text-align:center;line-height:1.4}
+  .takeaway-list{display:flex;flex-direction:column;gap:9px}
+  .takeaway{display:flex;gap:8px;font-size:12px;line-height:1.5;color:var(--text2)}
+  .takeaway .tic{flex-shrink:0;font-size:12px;line-height:1.5}
+  .takeaway b{color:var(--text)}
+  .glance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .glance-cell .gv{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+  .glance-cell .gl{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+  .volout-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)}
+  .volout-row:last-child{border-bottom:none}
+  .volout-row b{color:var(--text);font-variant-numeric:tabular-nums}
+  .qlink-list{display:flex;flex-direction:column;gap:6px}
+  .qlink{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);text-decoration:none;padding:5px 7px;border-radius:7px;transition:background .12s}
+  .qlink:hover{background:var(--card2);color:var(--text)}
+  .qlink .qarrow{margin-left:auto;color:var(--text3);font-size:11px}
 </style>
 </head>
 <body>
@@ -507,49 +536,55 @@
 <div class="wrap">
   <div class="statrow" id="statRow" style="display:none"></div>
 
-  <div class="mbrief" id="mbrief" style="display:none"></div>
+  <div class="dashgrid">
+    <div class="main-col">
+      <div class="mbrief" id="mbrief" style="display:none"></div>
 
-  <div class="qstrip delta" id="sinceYday" style="display:none"></div>
+      <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
-  <div class="mread" id="mread" style="display:none"></div>
+      <div class="mread" id="mread" style="display:none"></div>
 
-  <div class="qstrip" id="weekCtx" style="display:none"></div>
-  <div class="qstrip" id="concentration" style="display:none"></div>
+      <div class="qstrip" id="weekCtx" style="display:none"></div>
+      <div class="qstrip" id="concentration" style="display:none"></div>
 
-  <div class="macro" id="macro" style="display:none"></div>
+      <div class="macro" id="macro" style="display:none"></div>
 
-  <div class="summary" id="summary"></div>
+      <div class="summary" id="summary"></div>
 
-  <div class="gate" id="gate" style="display:none"></div>
+      <div class="gate" id="gate" style="display:none"></div>
 
-  <div class="gate" id="riskflags" style="display:none"></div>
+      <div class="gate" id="riskflags" style="display:none"></div>
 
-  <div class="gate" id="macroMoved" style="display:none"></div>
+      <div class="gate" id="macroMoved" style="display:none"></div>
 
-  <div class="qstrip" id="whenWatch" style="display:none"></div>
+      <div class="qstrip" id="whenWatch" style="display:none"></div>
 
-  <div class="news" id="newsPlay" style="display:none"></div>
+      <div class="news" id="newsPlay" style="display:none"></div>
 
-  <div class="ctl">
-    <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
-    <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
-    <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
-    <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
-    <span class="lbl" style="margin-left:8px">Sort</span>
-    <select id="sortSel" onchange="render()">
-      <option value="attention">Attention (hot first)</option>
-      <option value="used">Range used</option>
-      <option value="vol">Vol percentile</option>
-      <option value="trend">Trending first</option>
-      <option value="name">Name</option>
-    </select>
-    <button class="fchip" id="viewBtn" onclick="toggleView()" style="margin-left:auto">☰ Table view</button>
+      <div class="ctl">
+        <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
+        <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
+        <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
+        <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
+        <span class="lbl" style="margin-left:8px">Sort</span>
+        <select id="sortSel" onchange="render()">
+          <option value="attention">Attention (hot first)</option>
+          <option value="used">Range used</option>
+          <option value="vol">Vol percentile</option>
+          <option value="trend">Trending first</option>
+          <option value="name">Name</option>
+        </select>
+        <button class="fchip" id="viewBtn" onclick="toggleView()" style="margin-left:auto">☰ Table view</button>
+      </div>
+
+      <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
+      <div class="tview" id="tview"></div>
+
+      <div class="muted" style="margin-top:14px" id="footNote"></div>
+    </div>
+
+    <div class="sidebar" id="sidebarCol"></div>
   </div>
-
-  <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
-  <div class="tview" id="tview"></div>
-
-  <div class="muted" style="margin-top:14px" id="footNote"></div>
 </div>
 
 <!-- Detail drawer -->
@@ -2965,9 +3000,105 @@ function tableHtml(rs) {
     <tbody>${rs.map(row).join('')}</tbody></table>`;
 }
 
+// ── Sidebar (Phase 2c) — Market Tone gauge, Key Takeaways, Today At A Glance,
+// Volatility Outlook, Quick Links. Every number here is recomputed from the
+// same pure functions (equitiesRisk/currencyStrength/nextHighImpact) the main
+// column already calls — no new fetches, no invented scores.
+function marketToneGaugeHtml(risk) {
+  // Semi-circle gauge: needle angle from risk.equity (indices breadth, -1..+1),
+  // the same input equitiesRisk() already uses for its RISK-ON/OFF verdict.
+  const eq = Math.max(-1, Math.min(1, risk.equity ?? 0));
+  const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
+  const cx = 75, cy = 72, r = 58;
+  const rad = (deg) => (deg - 180) * Math.PI / 180;
+  const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
+  const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
+  const toneCls = risk.cls === 'on' ? 'on' : risk.cls === 'off' ? 'off' : 'mix';
+  const subBits = [];
+  if (risk.chips.length) subBits.push(`${risk.up}/${risk.chips.length} indices bid`);
+  if (risk.credit?.gate) subBits.push(`credit ${risk.credit.gate.toLowerCase()}`);
+  if (risk.vix != null) subBits.push(`VIX ${fmtN(risk.vix, 1)}`);
+  return `<div class="gauge-wrap">
+    <svg width="150" height="90" viewBox="0 0 150 90">
+      <path d="M 17 72 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bear)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+      <path d="M 41 27 A 58 58 0 0 1 109 27" fill="none" stroke="var(--amber)" stroke-width="10" opacity=".55"/>
+      <path d="M 109 27 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bull)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+      <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="4.5" fill="var(--text)"/>
+    </svg>
+    <div class="gauge-tone ${toneCls}">${esc0(risk.tone)}</div>
+    ${subBits.length ? `<div class="gauge-sub">${subBits.join(' · ')}</div>` : ''}
+  </div>`;
+}
+function esc0(s) { return (s ?? '').toString().replace(/</g, '&lt;'); }
+function renderSidebar() {
+  const el = $('sidebarCol');
+  if (!el) return;
+  if (!brief?.instruments) { el.innerHTML = ''; return; }
+  const rs = allRows();
+  if (rs.length < 4) { el.innerHTML = ''; return; }
+  const risk = equitiesRisk(rs);
+  const cs = currencyStrength(rs);
+  const strongest = cs[0], weakest = cs[cs.length - 1];
+  const trending = rs.filter(r => r.trending);
+  const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
+  const nearLevel = rs.filter(r => r.isProx).length;
+  const hotSetups = rs.filter(r => (r.used ?? 0) >= 0.8 || r.d.news_flag).length;
+
+  // Key Takeaways — short, scannable version of the same reads Market Read
+  // states in full sentences below.
+  const takeaways = [];
+  if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
+    takeaways.push(`<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest today.`);
+  }
+  if (hot[0]) {
+    const h = hot[0];
+    takeaways.push(`<b>${dispName(h.name)}</b> is today's most-watched pair${h.isProx ? ' — right at a key level' : h.ct?.level === 'EXTREME' ? ' — COT positioning is stretched' : ''}.`);
+  }
+  if (risk.credit?.gate) takeaways.push(`Credit gate reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`);
+  if (risk.gpr?.stale) takeaways.push(`Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`);
+  const nextEv = nextHighImpact();
+  if (nextEv) takeaways.push(`Next high-impact release: ${nextEv}`);
+
+  el.innerHTML = `
+    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk)}</div>
+
+    <div class="side-card"><h3>Key Takeaways</h3>
+      <div class="takeaway-list">${takeaways.length ? takeaways.map(t => `<div class="takeaway"><span class="tic">•</span><span>${t}</span></div>`).join('') : '<div class="muted">Not enough live data yet.</div>'}</div>
+    </div>
+
+    <div class="side-card"><h3>Today At A Glance</h3>
+      <div class="glance-grid">
+        <div class="glance-cell"><div class="gv">${trending.length}/${rs.length}</div><div class="gl">Trending</div></div>
+        <div class="glance-cell"><div class="gv">${risk.chips.length ? `${risk.up}/${risk.chips.length}` : '–'}</div><div class="gl">Indices Bid</div></div>
+        <div class="glance-cell"><div class="gv">${nearLevel}</div><div class="gl">Near A Level</div></div>
+        <div class="glance-cell"><div class="gv">${hotSetups}</div><div class="gl">Hot Setups</div></div>
+      </div>
+    </div>
+
+    <div class="side-card"><h3>Volatility Outlook</h3>
+      <div class="volout-row"><span>VIX</span><b>${risk.vix != null ? fmtN(risk.vix, 1) : '–'}${risk.vix != null ? (risk.vix > 20 ? ' (jittery)' : ' (calm)') : ''}</b></div>
+      ${risk.vix != null && risk.vix3m != null ? `<div class="volout-row"><span>Term structure</span><b>${risk.vix > risk.vix3m ? 'Backwardated' : 'Contango'}</b></div>` : ''}
+      <div class="volout-row"><span>σ building</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) >= 15).length} pairs</b></div>
+      <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
+    </div>
+
+    <div class="side-card"><h3>Quick Links</h3>
+      <div class="qlink-list">
+        <a class="qlink" href="macro-scorecard.html">📊 Macro Scorecard<span class="qarrow">→</span></a>
+        <a class="qlink" href="cot-extremes.html">🎯 COT Extremes<span class="qarrow">→</span></a>
+        <a class="qlink" href="credit-leadlag.html">📈 Credit Lead-Lag<span class="qarrow">→</span></a>
+        <a class="qlink" href="continuation-fade-ticker.html">🔁 Continuation vs Fade<span class="qarrow">→</span></a>
+        <a class="qlink" href="brief-config.html">⚙ Brief Config<span class="qarrow">→</span></a>
+        <div class="qlink" onclick="openSiteMap()" style="cursor:pointer">🗺 Full Site Map<span class="qarrow">→</span></div>
+      </div>
+    </div>`;
+}
+
 function render() {
   renderStatRow();
   renderMarketRead();
+  renderSidebar();
   renderSinceYesterday();
   renderWeekly();
   renderConcentration();
