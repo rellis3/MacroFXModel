@@ -546,50 +546,60 @@ def run(args: argparse.Namespace) -> None:
     forming = 0
 
     for pair in pairs:
-        bars = load_bars(pair, args.timeframe)
-        if args.as_of:
-            cutoff = pd.Timestamp(args.as_of, tz=bars.index.tz)
-            bars = bars[bars.index <= cutoff]
-        if len(bars) < 200:
-            continue
+        # A single pair's bad data (corrupt cache, a detection-logic edge
+        # case, anything) must never take down the whole run -- caught live
+        # 2026-08-18, where one pair's truncated M1 cache crashed this loop
+        # every hour, before save_log()/save_state() ever ran for ANY pair,
+        # silently undoing every other pair's successful refresh. Same
+        # per-pair isolation the refresh loop above already has.
+        try:
+            bars = load_bars(pair, args.timeframe)
+            if args.as_of:
+                cutoff = pd.Timestamp(args.as_of, tz=bars.index.tz)
+                bars = bars[bars.index <= cutoff]
+            if len(bars) < 200:
+                continue
 
-        atr_arr = compute_atr(bars, period=FROZEN["atr_period"])
-        motifs = detect_touch_motifs(
-            bars, atr_arr, pivot_n=FROZEN["pivot_n"], tol_atr_mult=FROZEN["tol_atr_mult"],
-            min_retrace_atr_mult=FROZEN["min_retrace_atr_mult"],
-            min_bars_between_touches=FROZEN["min_bars_between_touches"],
-            breakout_max_bars=FROZEN["breakout_max_bars"],
-        )
+            atr_arr = compute_atr(bars, period=FROZEN["atr_period"])
+            motifs = detect_touch_motifs(
+                bars, atr_arr, pivot_n=FROZEN["pivot_n"], tol_atr_mult=FROZEN["tol_atr_mult"],
+                min_retrace_atr_mult=FROZEN["min_retrace_atr_mult"],
+                min_bars_between_touches=FROZEN["min_bars_between_touches"],
+                breakout_max_bars=FROZEN["breakout_max_bars"],
+            )
 
-        resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
-        new = scan_pair_motif(pair, bars, log, motifs, FROZEN)
-        for t, m in new:
-            log["trades"].append(t)
-            new_signals += 1
-            print(f"  [new] {pair:<8} {t['n_touches']}-touch {'top' if t['is_top'] else 'bottom'} "
-                  f"{t['direction']} @ {t['entry_price']:.5f}  sl={t['sl_price']:.5f} "
-                  f"tp={t['tp_price']:.5f}  {t['entry_date']}")
-            if tg_token and tg_chat_id:
-                htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
-                confidence = _category_confidence(motifs, m.n_touches, m.is_top)
-                current_price = float(bars["close"].to_numpy()[-1])
-                text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price)
-                if send_telegram(tg_token, tg_chat_id, text):
-                    alerts_sent += 1
-                else:
-                    print(f"  [warn] Telegram alert failed to send for {pair}")
+            resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
+            new = scan_pair_motif(pair, bars, log, motifs, FROZEN)
+            for t, m in new:
+                log["trades"].append(t)
+                new_signals += 1
+                print(f"  [new] {pair:<8} {t['n_touches']}-touch {'top' if t['is_top'] else 'bottom'} "
+                      f"{t['direction']} @ {t['entry_price']:.5f}  sl={t['sl_price']:.5f} "
+                      f"tp={t['tp_price']:.5f}  {t['entry_date']}")
+                if tg_token and tg_chat_id:
+                    htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
+                    confidence = _category_confidence(motifs, m.n_touches, m.is_top)
+                    current_price = float(bars["close"].to_numpy()[-1])
+                    text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price)
+                    if send_telegram(tg_token, tg_chat_id, text):
+                        alerts_sent += 1
+                    else:
+                        print(f"  [warn] Telegram alert failed to send for {pair}")
 
-        # "Nearing" alerts are NOT sent from here -- motif_nearing_watch.py
-        # owns that job now, polling a live quote every MOTIF_NEARING_POLL_
-        # SECONDS (default 60) against the level this scan computes below,
-        # instead of waiting for the next full hourly rescan to notice price
-        # got close. Two separate mechanisms racing each other to alert on
-        # the same thing was exactly the "conflicted messaging" problem --
-        # one clear owner per alert type now.
-        state = compute_motif_state(pair, bars, motifs, FROZEN, atr_arr)
-        if state:
-            states.append(state)
-            forming += 1
+            # "Nearing" alerts are NOT sent from here -- motif_nearing_watch.py
+            # owns that job now, polling a live quote every MOTIF_NEARING_POLL_
+            # SECONDS (default 60) against the level this scan computes below,
+            # instead of waiting for the next full hourly rescan to notice price
+            # got close. Two separate mechanisms racing each other to alert on
+            # the same thing was exactly the "conflicted messaging" problem --
+            # one clear owner per alert type now.
+            state = compute_motif_state(pair, bars, motifs, FROZEN, atr_arr)
+            if state:
+                states.append(state)
+                forming += 1
+        except Exception as e:
+            print(f"  [warn] {pair}: detection failed ({e}) -- skipping this pair, "
+                  f"continuing with the rest")
 
     save_log(log)
     save_state(states)
