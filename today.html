@@ -379,6 +379,12 @@
             border-radius:6px;padding:4px 12px;font-size:13px}
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+  /* AI Analysis — the drawer's hero section (already first in DOM order; this
+     is the visual half of "front and centre" — same accent treatment as the
+     Morning Brief hero card, so it reads as the primary section at a glance
+     instead of an equal-weight box next to Bot Level Book / Rates Context. */
+  #drAnalysisSec{border-left:3px solid var(--blue);background:linear-gradient(135deg,rgba(79,125,240,.08),var(--card) 55%);padding:16px 18px}
+  #drAnalysisSec h3{color:var(--blue);font-size:11.5px}
   /* Concertina: .dr-sec-h is the clickable label (title + chevron only) — action
      buttons stay siblings inside <h3>, outside this span, so they don't toggle
      the section when clicked. Collapsed state hides .dr-sec-body and is per
