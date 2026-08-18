@@ -439,6 +439,44 @@
   .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:6px}
   .legend i{display:inline-block;width:14px;height:0;border-top:2px dashed;margin-right:4px;vertical-align:middle}
   @media(max-width:640px){ .grid{grid-template-columns:1fr} .lrow .hit{display:none} }
+
+  /* ── Graphical reskin (Phase 1) — reuses the existing --bull/--bear/--amber/
+     --blue/--text/--card tokens above, so it works in both dark and light
+     with zero new color definitions. See the design mockup this was built
+     from for the full direction. ────────────────────────────────────────── */
+  .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,1fr)} }
+  .statcard{background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:13px 15px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .statcard .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+  .statcard .row1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .statcard .big{font-size:21px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .statcard .sdelta{font-size:11px;font-weight:800;padding:2px 6px;border-radius:6px;white-space:nowrap}
+  .statcard .sdelta.up{color:var(--bull);background:var(--bull-bg)}
+  .statcard .sdelta.dn{color:var(--bear);background:var(--bear-bg)}
+  .statcard .spark{height:30px;margin:1px 0 0}
+  .statcard .swk{font-size:10.5px;color:var(--text3);font-weight:600}
+  .statcard .swk b.up{color:var(--bull)} .statcard .swk b.dn{color:var(--bear)}
+
+  /* Collapse/expand — applied to any card-style section via secChev()/secBody() */
+  .sec-hd-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sec-hd-row .sec-title{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;flex:1}
+  .sec-chevbtn{width:22px;height:22px;border-radius:6px;border:1px solid transparent;
+    background:none;display:inline-flex;align-items:center;justify-content:center;color:var(--text3);
+    cursor:pointer;flex-shrink:0;vertical-align:middle}
+  .sec-chevbtn:hover{background:var(--card2);color:var(--text2);border-color:var(--border)}
+  .sec-chev{width:13px;height:13px;transition:transform .15s ease}
+  .sec-chev.sec-closed{transform:rotate(-90deg)}
+  .sec-body.sec-hidden{display:none}
+
+  /* AI-hero narrative card (headline + tight narrative + meter row) */
+  .hero-meter-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:11px 13px;margin:10px 0 4px;
+    background:var(--card2);border:1px solid var(--border);border-radius:9px}
+  .hero-meter{display:flex;align-items:center;gap:7px}
+  .hero-meter .mk{font-size:9.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .hero-meter-bar{width:52px;height:6px;border-radius:4px;background:var(--border);overflow:hidden}
+  .hero-meter-bar i{display:block;height:100%;background:var(--amber);border-radius:4px}
+  .hero-meter .mv{font-size:11px;font-weight:800}
 </style>
 </head>
 <body>
@@ -464,6 +502,8 @@
 </div>
 
 <div class="wrap">
+  <div class="statrow" id="statRow" style="display:none"></div>
+
   <div class="mbrief" id="mbrief" style="display:none"></div>
 
   <div class="qstrip delta" id="sinceYday" style="display:none"></div>
@@ -814,8 +854,11 @@ async function loadCommodityDrivers() {
       jget('/api/ohlc?symbol=WTICO_USD'),
     ]);
     const prevClose = oh?.values?.at(-1)?.close;
+    const wkAgoPrice = oh?.values?.at(-6)?.close ?? null;   // ~5 trading days back
     if (q?.price != null && prevClose) {
-      commodityDrivers = { wti: { price: q.price, prevClose, pct: (q.price - prevClose) / prevClose * 100 } };
+      const hist = (oh.values ?? []).slice(-15).map(v => v.close);
+      hist.push(q.price);   // append today's live price so the sparkline reflects the current tick
+      commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist } };
     }
   } catch (e) {}
 }
@@ -826,6 +869,78 @@ function commodityChip(r) {
   if (!up && !dn) return '';
   const cls = up ? 'bull' : 'bear';
   return `<span class="chip ${cls}" title="WTI crude ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% vs yesterday's close ($${wti.prevClose.toFixed(2)} → $${wti.price.toFixed(2)}). Oil is CAD's most established commodity driver — context, not a rule; this pair's own technicals/COT/macro/carry still lead.">🛢 WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% (CAD ${up ? 'tailwind' : 'headwind'})</span>`;
+}
+
+// ── Top stat-card row (US 10Y / DXY / VIX / Oil) — every input here was
+// already loaded elsewhere on this page (fred, fredHist, commodityDrivers);
+// this is pure render-layer work, no new fetches beyond the FREDHIST_KEYS
+// 'dxy' addition and loadCommodityDrivers()'s existing history capture.
+function sparklinePoints(vals, w = 200, h = 36) {
+  const clean = (vals ?? []).filter(Number.isFinite);
+  if (clean.length < 2) return null;
+  const lo = Math.min(...clean), hi = Math.max(...clean);
+  const span = hi - lo || Math.abs(lo) * 0.001 || 1;
+  const step = w / (clean.length - 1);
+  return clean.map((v, i) => `${(i * step).toFixed(1)},${(h - (v - lo) / span * h).toFixed(1)}`).join(' ');
+}
+function statCardHtml(lbl, big, deltaTxt, deltaUp, sparkVals, sparkUp, wkTxt, wkUp) {
+  const pts = sparklinePoints(sparkVals);
+  return `<div class="statcard">
+    <div class="lbl">${lbl}</div>
+    <div class="row1"><span class="big">${big}</span>${deltaTxt != null ? `<span class="sdelta ${deltaUp ? 'up' : 'dn'}">${deltaTxt}</span>` : ''}</div>
+    ${pts ? `<svg class="spark" viewBox="0 0 200 36" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${sparkUp ? 'var(--bull)' : 'var(--bear)'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '<div class="spark"></div>'}
+    ${wkTxt != null ? `<div class="swk">1W <b class="${wkUp ? 'up' : 'dn'}">${wkTxt}</b></div>` : ''}
+  </div>`;
+}
+function renderStatRow() {
+  const el = $('statRow');
+  const us10y = fred?.us10y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
+  if (!us10y?.value && !dxy?.value && !vix?.value && !wti) { el.style.display = 'none'; return; }
+  const cards = [];
+
+  if (us10y?.value != null) {
+    const dBps = us10y.prev != null ? (us10y.value - us10y.prev) * 100 : null;
+    const hist = (fredHist?.us10y ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wkBps = wkAgo != null ? (us10y.value - wkAgo) * 100 : null;
+    cards.push(statCardHtml('US 10Y Yield', `${us10y.value.toFixed(2)}%`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      hist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0));
+  }
+
+  if (dxy?.value != null) {
+    const dPct = dxy.prev != null ? (dxy.value - dxy.prev) / dxy.prev * 100 : null;
+    const hist = (fredHist?.dxy ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wkPct = wkAgo != null ? (dxy.value - wkAgo) / wkAgo * 100 : null;
+    cards.push(statCardHtml('DXY Index', dxy.value.toFixed(2),
+      dPct != null ? `${dPct >= 0 ? '+' : ''}${dPct.toFixed(2)}%` : null, dPct == null || dPct >= 0,
+      hist, wkPct == null || wkPct >= 0,
+      wkPct != null ? `${wkPct >= 0 ? '+' : ''}${wkPct.toFixed(2)}%` : null, wkPct == null || wkPct >= 0));
+  }
+
+  if (vix?.value != null) {
+    const d = vix.prev != null ? (vix.value - vix.prev) : null;
+    const hist = (fredHist?.vix ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wk = wkAgo != null ? (vix.value - wkAgo) : null;
+    cards.push(statCardHtml('VIX Index', vix.value.toFixed(2),
+      d != null ? `${d >= 0 ? '+' : ''}${d.toFixed(2)}` : null, d == null || d >= 0,
+      hist, wk == null || wk >= 0,
+      wk != null ? `${wk >= 0 ? '+' : ''}${wk.toFixed(2)}` : null, wk == null || wk >= 0));
+  }
+
+  if (wti) {
+    const wkPct = wti.wkAgoPrice ? (wti.price - wti.wkAgoPrice) / wti.wkAgoPrice * 100 : null;
+    cards.push(statCardHtml('Oil (WTI)', `$${wti.price.toFixed(2)}`,
+      `${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(2)}`, wti.pct >= 0,
+      wti.hist, wkPct == null || wkPct >= 0,
+      wkPct != null ? `${wkPct >= 0 ? '+' : ''}${wkPct.toFixed(2)}%` : null, wkPct == null || wkPct >= 0));
+  }
+
+  el.style.display = cards.length ? 'grid' : 'none';
+  el.innerHTML = cards.join('');
 }
 // ── SessionResearch chip: 10-year Asia/London/overlap/NY session-handoff research ──
 // Deliberately shows only TIMELESS structural findings (range persistence,
@@ -1495,6 +1610,33 @@ function pairSignalGold(r) {
   return 0;
 }
 
+// ── Generic collapse/expand for card-style sections ──────────────────────
+// State lives here (a Set, mirrored to localStorage), not in the DOM — a
+// section stays collapsed across both the periodic re-render (every data
+// refresh calls render() and rebuilds the innerHTML from scratch) and across
+// page loads. toggleSection() does an immediate DOM class flip for snappy
+// feedback AND updates the Set, so the next full re-render's secBody() call
+// picks up the same state instead of silently re-expanding everything.
+let collapsedSections;
+try { collapsedSections = new Set(JSON.parse(localStorage.getItem('collapsedSections') || '[]')); }
+catch (e) { collapsedSections = new Set(); }
+function toggleSection(id) {
+  if (collapsedSections.has(id)) collapsedSections.delete(id); else collapsedSections.add(id);
+  try { localStorage.setItem('collapsedSections', JSON.stringify([...collapsedSections])); } catch (e) {}
+  const body = document.querySelector(`.sec-body[data-sec="${id}"]`);
+  const chev = document.querySelector(`.sec-chev[data-sec="${id}"]`);
+  if (body) body.classList.toggle('sec-hidden', collapsedSections.has(id));
+  if (chev) chev.classList.toggle('sec-closed', collapsedSections.has(id));
+}
+function secChev(id) {
+  const closed = collapsedSections.has(id);
+  return `<button class="sec-chevbtn" onclick="toggleSection('${id}')" title="Show/hide this section"><svg class="sec-chev${closed ? ' sec-closed' : ''}" data-sec="${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`;
+}
+function secBody(id, bodyHtml) {
+  const closed = collapsedSections.has(id);
+  return `<div class="sec-body${closed ? ' sec-hidden' : ''}" data-sec="${id}">${bodyHtml}</div>`;
+}
+
 function renderMarketRead() {
   const el = $('mread');
   if (!brief?.instruments) { el.style.display = 'none'; return; }
@@ -1596,6 +1738,8 @@ function renderMarketRead() {
 
   el.style.display = 'block';
   el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">Market Read</span>${secChev('mread')}</div>
+    ${secBody('mread', `
     <div class="mread-verdict">${verdictSentence}</div>
     <div class="mread-bottom"><span class="bl-k">Bottom line</span> ${bottom}</div>
     <div class="mread-precise">${breadthSentence}</div>
@@ -1622,7 +1766,7 @@ function renderMarketRead() {
       ${nextEv ? `<span>${nextEv}</span>` : '<span class="muted">no high-impact event imminent</span>'}
       <span class="wk" style="margin-left:6px">Hottest</span>
       <span>${hotHtml || '—'}</span>
-    </div>`;
+    </div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
@@ -2815,6 +2959,7 @@ function tableHtml(rs) {
 }
 
 function render() {
+  renderStatRow();
   renderMarketRead();
   renderSinceYesterday();
   renderWeekly();
@@ -3536,7 +3681,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
