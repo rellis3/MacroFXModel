@@ -188,13 +188,16 @@
 
   /* ── Cards grid ─────────────────────────────────────────── */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
-  .pcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;
-         cursor:pointer;transition:border-color .15s}
+  .pcard{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border);
+         border-radius:12px;padding:13px 15px 13px 13px;cursor:pointer;transition:border-color .15s}
   .pcard:hover{border-color:var(--text3)}
+  .pcard.dir-up{border-left-color:var(--bull)}
+  .pcard.dir-dn{border-left-color:var(--bear)}
   .pcard.hot{border-color:rgba(210,153,34,.55)}
+  .pcard.hot.dir-up,.pcard.hot.dir-dn{border-left-color:rgba(210,153,34,.55)}
   .pc-top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
-  .pc-name{font-size:15.5px;font-weight:700}
-  .pc-price{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2)}
+  .pc-name{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.01em}
+  .pc-price{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
   .pc-top .push{margin-left:auto;display:flex;gap:5px}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
         font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
@@ -2916,7 +2919,11 @@ function cardHtml(r) {
     : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th in its 5-day window vs ${volPct}th over the last year. Moves may get bigger from here; size and stops should respect that.">σ↑ building</span>`
     : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. A compression stretch; ranges may run smaller than the year suggests.">σ↓ cooling</span>`
     : '';
-  return `<div class="pcard ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
+  // Directional accent on the card's left edge — same bull/bear read biasLine() already
+  // shows in words, just made scannable at a glance across a grid of 20+ cards.
+  const biasTxt = r.s?.bias_detail ?? r.s?.bias ?? '';
+  const dirCls = /bull/i.test(biasTxt) ? 'dir-up' : /bear/i.test(biasTxt) ? 'dir-dn' : '';
+  return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
