@@ -364,6 +364,28 @@
   td{padding:6px 9px;border-bottom:1px solid rgba(var(--border-rgb),.5);white-space:nowrap}
   tr.trow{cursor:pointer} tr.trow:hover{background:var(--card2)}
 
+  /* ── Scorecard view — glanceable Instrument Snapshot table (Phase 2f) ────
+     Every column is a value already computed elsewhere on this page
+     (pairSignal, pairSignalComposite's agree/total, real forecast levels) —
+     just laid out as a scannable row instead of a dense card. ──────────── */
+  .sview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
+  .sview table{font-size:12.5px}
+  .sview td{white-space:normal;vertical-align:top;padding:9px}
+  .sc-inst{display:flex;align-items:center;gap:8px}
+  .sc-inst .sc-ic{font-size:16px}
+  .sc-inst .sc-name{font-weight:700;color:var(--text)}
+  .sc-inst .sc-sub{font-size:10px;color:var(--text3)}
+  .sc-pill{display:inline-block;padding:2.5px 9px;border-radius:12px;font-size:10.5px;font-weight:800;letter-spacing:.02em}
+  .sc-pill.bull{background:var(--bull-bg);color:var(--bull)} .sc-pill.bear{background:var(--bear-bg);color:var(--bear)} .sc-pill.neu{background:var(--neu-bg);color:var(--text2)}
+  .sc-score{font-weight:800;font-variant-numeric:tabular-nums}
+  .sc-score.bull{color:var(--bull)} .sc-score.bear{color:var(--bear)} .sc-score.neu{color:var(--text2)}
+  .sc-drivers{color:var(--text2);font-size:11.5px;line-height:1.4}
+  .sc-dots{display:flex;gap:3px}
+  .sc-dots i{width:7px;height:7px;border-radius:50%;background:var(--border);display:inline-block}
+  .sc-dots i.on{background:var(--blue)}
+  .sc-level{font-weight:600;font-variant-numeric:tabular-nums}
+  .sc-level-note{color:var(--text3);font-size:10.5px;margin-top:2px}
+
   /* ── Detail drawer ──────────────────────────────────────── */
   .ovl{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:none}
   .ovl.open{display:block}
@@ -597,6 +619,7 @@
 
       <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
       <div class="tview" id="tview"></div>
+      <div class="sview" id="sview" style="display:none"></div>
 
       <div class="muted" style="margin-top:14px" id="footNote"></div>
     </div>
@@ -1020,7 +1043,7 @@ function sessionResearchChip(r) {
 
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
-let tableMode = false;
+let viewMode = 'card';   // 'card' | 'table' | 'scorecard' — cycled by toggleView()
 
 async function jget(url) {
   const r = await fetch(url);
@@ -3018,6 +3041,63 @@ function tableHtml(rs) {
     <tbody>${rs.map(row).join('')}</tbody></table>`;
 }
 
+// ── Scorecard view (Phase 2f) — the mockup's "Instrument Snapshot" table:
+// glanceable bias/score/drivers/conviction/level-to-watch per instrument.
+// Every column reuses a value this page already computes elsewhere (pairSignal,
+// pairSignalComposite's agree/total, real forecast levels) — nothing new is
+// invented here, just laid out as a scannable row instead of a dense card.
+const SC_CCY_FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', CHF: '🇨🇭', AUD: '🇦🇺', CAD: '🇨🇦', NZD: '🇳🇿' };
+function scDots(agree, total) {
+  if (agree == null || !total) return '<span class="muted">–</span>';
+  let dots = '';
+  for (let i = 0; i < total; i++) dots += `<i class="${i < agree ? 'on' : ''}"></i>`;
+  return `<span class="sc-dots" title="${agree}/${total} of this dashboard's own signals (technical/positioning/fundamentals/carry) agree in direction — arithmetic agreement, not a backtested rule.">${dots}</span>`;
+}
+function scorecardHtml(rs) {
+  const row = r => {
+    const d = r.d;
+    const score = pairSignal(r);
+    const biasLbl = score == null ? 'NEUTRAL' : score > 0.12 ? 'BULLISH' : score < -0.12 ? 'BEARISH' : 'NEUTRAL';
+    const biasCls = biasLbl === 'BULLISH' ? 'bull' : biasLbl === 'BEARISH' ? 'bear' : 'neu';
+    const icon = d.ac === 'commodity' ? '🥇' : d.ac === 'index' ? '📈' : (SC_CCY_FLAG[PAIR_CCY[r.name]?.[0]] ?? '💱');
+
+    const drivers = [];
+    if (d.regime?.label === 'TREND') drivers.push(`${d.regime.trend_dir === 'up' ? 'Uptrend' : 'Downtrend'} ${d.regime.trend_prob}%`);
+    else if (d.regime?.label === 'RANGE') drivers.push(`Ranging ${d.regime.range_prob}%`);
+    if (r.ct?.level === 'EXTREME') drivers.push(`COT ${r.ct.dir} extreme`);
+    const wti = commodityDrivers?.wti;
+    if (wti && PAIR_CCY[r.name]?.includes('CAD') && Math.abs(wti.pct) > 0.15) drivers.push(`WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}%`);
+    const coneGap = (d.cone_5d != null && d.vol_pct != null) ? d.cone_5d - d.vol_pct : null;
+    if (coneGap != null && coneGap >= 15) drivers.push('Vol building');
+    else if (coneGap != null && coneGap <= -15) drivers.push('Vol cooling');
+    if (d.news_flag) drivers.push(`⚠ ${d.news_flag}`);
+    const driverTxt = drivers.length ? drivers.slice(0, 3).join(', ') : 'No standout driver today';
+
+    const ohMed = d.levels?.oh_med?.price, olMed = d.levels?.ol_med?.price;
+    const oh75 = d.levels?.oh_75?.price, ol75 = d.levels?.ol_75?.price;
+    const levelTxt = (olMed != null && ohMed != null) ? `${fmtN(olMed, d.dp)} / ${fmtN(ohMed, d.dp)}` : '–';
+    let levelNote = '';
+    if (biasLbl === 'BEARISH' && olMed != null) levelNote = `Below ${fmtN(olMed, d.dp)}${ol75 != null ? ` targets ${fmtN(ol75, d.dp)}` : ''}`;
+    else if (biasLbl === 'BULLISH' && ohMed != null) levelNote = `Above ${fmtN(ohMed, d.dp)}${oh75 != null ? ` targets ${fmtN(oh75, d.dp)}` : ''}`;
+    else if (olMed != null && ohMed != null) levelNote = `Range bound ${fmtN(olMed, d.dp)}–${fmtN(ohMed, d.dp)}`;
+
+    const comp = pairSignalComposite(r);
+
+    return `<tr class="trow" onclick="openDrawer('${r.name}')">
+      <td><div class="sc-inst"><span class="sc-ic">${icon}</span><div><div class="sc-name">${dispName(r.name)}</div><div class="sc-sub">${esc0(d.sym ?? '')}</div></div></div></td>
+      <td><span class="sc-pill ${biasCls}">${biasLbl}</span></td>
+      <td><span class="sc-score ${biasCls}">${score != null ? (score >= 0 ? '+' : '') + score.toFixed(2) : '–'}</span></td>
+      <td><span class="sc-drivers">${esc0(driverTxt)}</span></td>
+      <td>${comp && comp.total >= 2 ? scDots(comp.agree, comp.total) : '<span class="muted">–</span>'}</td>
+      <td><div class="sc-level">${levelTxt}</div>${levelNote ? `<div class="sc-level-note">${esc0(levelNote)}</div>` : ''}</td>
+    </tr>`;
+  };
+  return `<table>
+    <thead><tr><th>Instrument</th><th>Bias</th><th>Score</th><th>Key Drivers</th><th>Conviction</th><th>Level To Watch</th></tr></thead>
+    <tbody>${rs.map(row).join('')}</tbody></table>
+    <div class="muted" style="padding:8px 9px 4px">Scores: -1.00 (strong bearish) to +1.00 (strong bullish) — today's session flow. Conviction dots: how many of this dashboard's own signals (technical/positioning/fundamentals/carry) agree in direction, not a backtested win rate.</div>`;
+}
+
 // ── Sidebar (Phase 2c) — Market Tone gauge, Key Takeaways, Today At A Glance,
 // Volatility Outlook, Quick Links. Every number here is recomputed from the
 // same pure functions (equitiesRisk/currencyStrength/nextHighImpact) the main
@@ -3137,12 +3217,16 @@ function render() {
   renderWhenToWatch();
   renderMacro();
   const rs = sortRows(rows());
-  if (tableMode) {
-    $('grid').style.display = 'none';
+  $('grid').style.display = 'none';
+  $('tview').style.display = 'none';
+  $('sview').style.display = 'none';
+  if (viewMode === 'table') {
     $('tview').style.display = 'block';
     $('tview').innerHTML = tableHtml(rs);
+  } else if (viewMode === 'scorecard') {
+    $('sview').style.display = 'block';
+    $('sview').innerHTML = scorecardHtml(rs);
   } else {
-    $('tview').style.display = 'none';
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
@@ -3154,9 +3238,11 @@ function setFilter(f) {
   document.querySelectorAll('.fchip[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f));
   renderSummary(); render();
 }
+const VIEW_CYCLE = { card: 'table', table: 'scorecard', scorecard: 'card' };
+const VIEW_BTN_LABEL = { card: '☰ Table view', table: '📊 Scorecard view', scorecard: '▦ Card view' };
 function toggleView() {
-  tableMode = !tableMode;
-  $('viewBtn').textContent = tableMode ? '▦ Card view' : '☰ Table view';
+  viewMode = VIEW_CYCLE[viewMode];
+  $('viewBtn').textContent = VIEW_BTN_LABEL[viewMode];
   render();
 }
 
