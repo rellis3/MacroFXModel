@@ -379,6 +379,12 @@
             border-radius:6px;padding:4px 12px;font-size:13px}
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+  /* AI Analysis — the drawer's hero section (already first in DOM order; this
+     is the visual half of "front and centre" — same accent treatment as the
+     Morning Brief hero card, so it reads as the primary section at a glance
+     instead of an equal-weight box next to Bot Level Book / Rates Context. */
+  #drAnalysisSec{border-left:3px solid var(--blue);background:linear-gradient(135deg,rgba(79,125,240,.08),var(--card) 55%);padding:16px 18px}
+  #drAnalysisSec h3{color:var(--blue);font-size:11.5px}
   /* Concertina: .dr-sec-h is the clickable label (title + chevron only) — action
      buttons stay siblings inside <h3>, outside this span, so they don't toggle
      the section when clicked. Collapsed state hides .dr-sec-body and is per
@@ -491,13 +497,22 @@
   .sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:14px}
   .side-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
   .side-card h3{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:11px}
-  .gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
-  .gauge-tone{font-size:14px;font-weight:800;margin-top:2px}
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:0}
+  .gauge-svg-wrap{position:relative;width:150px;height:90px}
+  .gauge-score{position:absolute;left:0;right:0;top:38px;text-align:center;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+  .gauge-score.on{color:var(--bull)} .gauge-score.off{color:var(--bear)} .gauge-score.mix{color:var(--amber)}
+  .gauge-scale{display:flex;justify-content:space-between;width:132px;margin-top:2px;font-size:9px;color:var(--text3);font-weight:600}
+  .gauge-tone{font-size:12px;font-weight:800;letter-spacing:.04em;margin-top:5px}
   .gauge-tone.on{color:var(--bull)} .gauge-tone.off{color:var(--bear)} .gauge-tone.mix{color:var(--amber)}
-  .gauge-sub{font-size:10.5px;color:var(--text3);text-align:center;line-height:1.4}
-  .takeaway-list{display:flex;flex-direction:column;gap:9px}
-  .takeaway{display:flex;gap:8px;font-size:12px;line-height:1.5;color:var(--text2)}
-  .takeaway .tic{flex-shrink:0;font-size:12px;line-height:1.5}
+  .gauge-sub{font-size:10.5px;color:var(--text3);text-align:center;line-height:1.4;margin-top:8px}
+  .gauge-sub .gs-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+  .gs-val{font-weight:700;font-size:11px}
+  .gs-val.on{color:var(--bull)} .gs-val.off{color:var(--bear)} .gs-val.mix{color:var(--amber)}
+  .takeaway-list{display:flex;flex-direction:column;gap:10px}
+  .takeaway{display:flex;gap:9px;font-size:12px;line-height:1.5;color:var(--text2);align-items:flex-start}
+  .takeaway .tic{flex-shrink:0;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px}
+  .takeaway .tic.bull{background:var(--bull-bg)} .takeaway .tic.blue{background:var(--blue-bg)}
+  .takeaway .tic.purple{background:rgba(167,139,250,.16)} .takeaway .tic.amber{background:var(--amber-bg)}
   .takeaway b{color:var(--text)}
   .glance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .glance-cell .gv{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
@@ -505,10 +520,13 @@
   .volout-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)}
   .volout-row:last-child{border-bottom:none}
   .volout-row b{color:var(--text);font-variant-numeric:tabular-nums}
-  .qlink-list{display:flex;flex-direction:column;gap:6px}
-  .qlink{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);text-decoration:none;padding:5px 7px;border-radius:7px;transition:background .12s}
-  .qlink:hover{background:var(--card2);color:var(--text)}
-  .qlink .qarrow{margin-left:auto;color:var(--text3);font-size:11px}
+  .qtile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .qtile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:inherit;border:1px solid var(--border);
+    border-radius:10px;padding:10px 11px;cursor:pointer;transition:border-color .12s,background .12s}
+  .qtile:hover{border-color:var(--text3);background:var(--card2)}
+  .qtile .qt-ic{font-size:15px;margin-bottom:2px}
+  .qtile .qt-t{font-size:11px;font-weight:700;color:var(--text);line-height:1.3}
+  .qtile .qt-s{font-size:9.5px;color:var(--text3);line-height:1.3}
 </style>
 </head>
 <body>
@@ -3004,30 +3022,43 @@ function tableHtml(rs) {
 // Volatility Outlook, Quick Links. Every number here is recomputed from the
 // same pure functions (equitiesRisk/currencyStrength/nextHighImpact) the main
 // column already calls — no new fetches, no invented scores.
-function marketToneGaugeHtml(risk) {
-  // Semi-circle gauge: needle angle from risk.equity (indices breadth, -1..+1),
-  // the same input equitiesRisk() already uses for its RISK-ON/OFF verdict.
+function marketToneGaugeHtml(risk, cs, usTen, wti) {
+  // Semi-circle gauge: needle + a 0-100 score, both from risk.equity (indices
+  // breadth, -1..+1) — the same input equitiesRisk() already uses for its
+  // RISK-ON/OFF verdict, just rescaled for display.
   const eq = Math.max(-1, Math.min(1, risk.equity ?? 0));
+  const score = Math.round((eq + 1) / 2 * 100);
   const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
   const cx = 75, cy = 72, r = 58;
   const rad = (deg) => (deg - 180) * Math.PI / 180;
   const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
   const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
   const toneCls = risk.cls === 'on' ? 'on' : risk.cls === 'off' ? 'off' : 'mix';
-  const subBits = [];
-  if (risk.chips.length) subBits.push(`${risk.up}/${risk.chips.length} indices bid`);
-  if (risk.credit?.gate) subBits.push(`credit ${risk.credit.gate.toLowerCase()}`);
-  if (risk.vix != null) subBits.push(`VIX ${fmtN(risk.vix, 1)}`);
+
+  // Real-data rows below the gauge — same convention as the mockup's list,
+  // but every value is read off data already computed elsewhere on this page.
+  const rows = [];
+  if (risk.credit?.gate) rows.push(['Credit Spreads', risk.credit.widening ? 'Widening' : 'Tightening', risk.credit.widening ? 'off' : 'on']);
+  if (risk.vix != null) rows.push(['Equity Vol (VIX)', risk.vix > 20 ? 'Elevated' : 'Low', risk.vix > 20 ? 'off' : 'on']);
+  const usd = cs.find(c => c.ccy === 'USD');
+  if (usd) rows.push(['USD Trend', usd.score > 0.05 ? 'Strengthening' : usd.score < -0.05 ? 'Weakening' : 'Flat', usd.score > 0.05 ? 'on' : usd.score < -0.05 ? 'off' : 'mix']);
+  if (usTen?.value != null && usTen.prev != null) rows.push(['Rate Trend (10Y)', usTen.value > usTen.prev ? 'Rising' : usTen.value < usTen.prev ? 'Falling' : 'Flat', 'mix']);
+  if (wti?.pct != null) rows.push(['Oil Trend (WTI)', wti.pct > 0.15 ? 'Firming' : wti.pct < -0.15 ? 'Slightly Weak' : 'Flat', wti.pct > 0.15 ? 'on' : wti.pct < -0.15 ? 'off' : 'mix']);
+
   return `<div class="gauge-wrap">
-    <svg width="150" height="90" viewBox="0 0 150 90">
-      <path d="M 17 72 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bear)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
-      <path d="M 41 27 A 58 58 0 0 1 109 27" fill="none" stroke="var(--amber)" stroke-width="10" opacity=".55"/>
-      <path d="M 109 27 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bull)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
-      <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
-      <circle cx="${cx}" cy="${cy}" r="4.5" fill="var(--text)"/>
-    </svg>
+    <div class="gauge-svg-wrap">
+      <svg width="150" height="90" viewBox="0 0 150 90">
+        <path d="M 17 72 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bear)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+        <path d="M 41 27 A 58 58 0 0 1 109 27" fill="none" stroke="var(--amber)" stroke-width="10" opacity=".55"/>
+        <path d="M 109 27 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bull)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+        <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="${cx}" cy="${cy}" r="4.5" fill="var(--text)"/>
+      </svg>
+      <div class="gauge-score ${toneCls}">${score}</div>
+    </div>
+    <div class="gauge-scale"><span>0</span><span>100</span></div>
     <div class="gauge-tone ${toneCls}">${esc0(risk.tone)}</div>
-    ${subBits.length ? `<div class="gauge-sub">${subBits.join(' · ')}</div>` : ''}
+    ${rows.length ? `<div class="gauge-sub">${rows.map(([k, v, cls2]) => `<div class="gs-row"><span>${esc0(k)}</span><b class="gs-val ${cls2}">${esc0(v)}</b></div>`).join('')}</div>` : ''}
   </div>`;
 }
 function esc0(s) { return (s ?? '').toString().replace(/</g, '&lt;'); }
@@ -3046,25 +3077,26 @@ function renderSidebar() {
   const hotSetups = rs.filter(r => (r.used ?? 0) >= 0.8 || r.d.news_flag).length;
 
   // Key Takeaways — short, scannable version of the same reads Market Read
-  // states in full sentences below.
+  // states in full sentences below. Each carries an icon+color matching the
+  // kind of read it is (direction, attention, risk, data-health, timing).
   const takeaways = [];
   if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
-    takeaways.push(`<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest today.`);
+    takeaways.push(['📈', 'bull', `<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest today.`]);
   }
   if (hot[0]) {
     const h = hot[0];
-    takeaways.push(`<b>${dispName(h.name)}</b> is today's most-watched pair${h.isProx ? ' — right at a key level' : h.ct?.level === 'EXTREME' ? ' — COT positioning is stretched' : ''}.`);
+    takeaways.push(['📊', 'blue', `<b>${dispName(h.name)}</b> is today's most-watched pair${h.isProx ? ' — right at a key level' : h.ct?.level === 'EXTREME' ? ' — COT positioning is stretched' : ''}.`]);
   }
-  if (risk.credit?.gate) takeaways.push(`Credit gate reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`);
-  if (risk.gpr?.stale) takeaways.push(`Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`);
+  if (risk.credit?.gate) takeaways.push(['🛡', 'purple', `Credit gate reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`]);
+  if (risk.gpr?.stale) takeaways.push(['⚑', 'amber', `Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`]);
   const nextEv = nextHighImpact();
-  if (nextEv) takeaways.push(`Next high-impact release: ${nextEv}`);
+  if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
 
   el.innerHTML = `
-    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk)}</div>
+    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti)}</div>
 
     <div class="side-card"><h3>Key Takeaways</h3>
-      <div class="takeaway-list">${takeaways.length ? takeaways.map(t => `<div class="takeaway"><span class="tic">•</span><span>${t}</span></div>`).join('') : '<div class="muted">Not enough live data yet.</div>'}</div>
+      <div class="takeaway-list">${takeaways.length ? takeaways.map(([ic, cls, t]) => `<div class="takeaway"><span class="tic ${cls}">${ic}</span><span>${t}</span></div>`).join('') : '<div class="muted">Not enough live data yet.</div>'}</div>
     </div>
 
     <div class="side-card"><h3>Today At A Glance</h3>
@@ -3084,13 +3116,13 @@ function renderSidebar() {
     </div>
 
     <div class="side-card"><h3>Quick Links</h3>
-      <div class="qlink-list">
-        <a class="qlink" href="macro-scorecard.html">📊 Macro Scorecard<span class="qarrow">→</span></a>
-        <a class="qlink" href="cot-extremes.html">🎯 COT Extremes<span class="qarrow">→</span></a>
-        <a class="qlink" href="credit-leadlag.html">📈 Credit Lead-Lag<span class="qarrow">→</span></a>
-        <a class="qlink" href="continuation-fade-ticker.html">🔁 Continuation vs Fade<span class="qarrow">→</span></a>
-        <a class="qlink" href="brief-config.html">⚙ Brief Config<span class="qarrow">→</span></a>
-        <div class="qlink" onclick="openSiteMap()" style="cursor:pointer">🗺 Full Site Map<span class="qarrow">→</span></div>
+      <div class="qtile-grid">
+        <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
+        <a class="qtile" href="cot-extremes.html"><span class="qt-ic">🎯</span><span class="qt-t">COT Extremes</span><span class="qt-s">Crowded positioning</span></a>
+        <a class="qtile" href="credit-leadlag.html"><span class="qt-ic">📈</span><span class="qt-t">Credit Lead-Lag</span><span class="qt-s">Is the gate proven?</span></a>
+        <a class="qtile" href="continuation-fade-ticker.html"><span class="qt-ic">🔁</span><span class="qt-t">Continuation vs Fade</span><span class="qt-s">USD-trend filter</span></a>
+        <a class="qtile" href="brief-config.html"><span class="qt-ic">⚙</span><span class="qt-t">Brief Config</span><span class="qt-s">Auto-generation setup</span></a>
+        <div class="qtile" onclick="openSiteMap()"><span class="qt-ic">🗺</span><span class="qt-t">Full Site Map</span><span class="qt-s">Every page, explained</span></div>
       </div>
     </div>`;
 }
