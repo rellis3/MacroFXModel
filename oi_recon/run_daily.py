@@ -139,6 +139,11 @@ def main() -> None:
     ap.add_argument('--live', action='store_true',
                     help='force oi_store, overriding the oi_auto_target toggle (one-off runs)')
     ap.add_argument('--skip-sweep', action='store_true', help='reuse today\'s captures')
+    # Pass 2 (the per-strike IV smile -> charm/vanna) is ON here. Its failure mode
+    # is degraded, not corrupt: it drops the cached session after selecting an
+    # expiry, so a bad pass 2 costs a smile and never narrows pass 1's matrices.
+    ap.add_argument('--no-chain', action='store_true',
+                    help='skip the per-strike IV smile capture (charm/vanna)')
     ap.add_argument('--headless', action='store_true', help='off-screen browser')
     ap.add_argument('--dir', help="capture dir to use (default: today's)")
     a = ap.parse_args()
@@ -157,7 +162,9 @@ def main() -> None:
         if not n:
             failed.append('capture')
     else:
-        cmd = [PY, 'run_sweep.py'] + (['--headless'] if a.headless else [])
+        cmd = ([PY, 'run_sweep.py']
+               + (['--headless'] if a.headless else [])
+               + ([] if a.no_chain else ['--chain']))
         rc, out = run(cmd, 'capture')
         stages['capture'] = grab(out, 'tables captured') or 'no summary line'
         if rc:

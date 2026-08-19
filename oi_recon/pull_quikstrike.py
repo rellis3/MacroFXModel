@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -186,6 +187,27 @@ def _cached_url() -> str | None:
 def _cache_url(url: str) -> None:
     try:
         QS_SESSION.write_text(json.dumps({'url': url}, indent=2))
+    except OSError:
+        pass
+
+
+def _drop_cached_session() -> None:
+    """Forget the cached tool URL so the next pull MINTS a fresh session.
+
+    This is the only known way to clear a selected expiry. QuikStrike keeps the
+    selection in the session behind insid/qsid, and it survives a page.goto: after
+    pass 2 chose WE3Q6, every subsequent pull came back scoped to that expiry -
+
+        settles ! wrong view: expected a expiry table, got "strike ladder"
+        oi      -> EUR_USD_rawOI.tsv  [strike ladder]      <- ONE expiry's strikes
+
+    and the OI matrix half of that is silent, because a single-expiry ladder is
+    still a strike ladder. Minting a new session restored the unscoped view
+    immediately (verified 2026-08-19), so pass 2 pays for one extra wrapper load
+    rather than leaving the tool in a state that quietly narrows the next capture.
+    """
+    try:
+        QS_SESSION.unlink(missing_ok=True)
     except OSError:
         pass
 
@@ -629,6 +651,77 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
     return fr, False
 
 
+def _expiry_tabs(frame) -> list:
+    """The expiry tab strip on the Settles view -> [{id, code, title}].
+
+    Each tab carries its metadata in a title attribute:
+
+        Contract: EU3Q6 (Aug 2026) Expiration: 21/08/2026 (2.14 DTE) Future: 6EU6
+
+    so the CODE is read rather than inferred from the tab's visible text (which is
+    whatever the ddlLabels selector is set to - Symbol, DTE, Exp Date ... - and is
+    therefore not a stable handle).
+    """
+    try:
+        rows = frame.evaluate(r"""() => Array.from(
+            document.querySelectorAll('a[id*="lbExpirationTab"]'))
+            .filter(a => !!(a.offsetParent))
+            .map(a => ({ id: a.id, title: (a.getAttribute('title')||'').replace(/\s+/g,' ').trim() }))""")
+    except Exception:                                    # noqa: BLE001
+        return []
+    out = []
+    for r in rows or []:
+        m = re.search(r'Contract:\s*([A-Z0-9]{3,6})\b', r.get('title') or '')
+        if m:
+            out.append({'id': r['id'], 'code': m.group(1), 'title': r['title']})
+    return out
+
+
+def _select_expiry(ctx, page, fr, code: str):
+    """Click the expiry tab for `code` and PROVE the view followed. -> (fr, ok).
+
+    The Settles view renders the per-EXPIRY term table until an expiry is chosen,
+    and the per-STRIKE smile once one is. So the chain capture is this click - no
+    separate tool page, despite 'Settlement Prices' sitting unclickable in the nav.
+
+    THE PROOF IS THE POINT. A smile from the wrong expiry is worse than no smile:
+    charm, vanna and skew would be computed confidently against a surface that
+    belongs to another date, and every downstream number would look reasonable.
+    So the view heading - which becomes e.g.
+
+        EUR/USD (EUU|6E) EU3Q6 (2.14 DTE) vs 1.16225 (+0.0034) - Settles
+
+    must contain the code we asked for, or this returns False and the caller
+    writes nothing. Never 'close enough', never the tab that happened to be open.
+    """
+    tabs = _expiry_tabs(fr)
+    if not tabs:
+        print(f'  chain      no expiry tabs on this view - cannot select {code}')
+        return fr, False
+    hit = next((t for t in tabs if t['code'].upper() == code.upper()), None)
+    if not hit:
+        have = ', '.join(t['code'] for t in tabs[:12])
+        print(f'  chain      {code} is not offered here. Tabs: {have}'
+              f'{" ..." if len(tabs) > 12 else ""}')
+        return fr, False
+    try:
+        fr.locator(f"a[id='{hit['id']}']").first.click(timeout=20_000)
+    except Exception as e:                               # noqa: BLE001
+        print(f'  chain    ! could not click the {code} tab: {type(e).__name__}')
+        return fr, False
+    _settle(fr, page, 4000)
+    fr = _wait_for_tool(ctx, page, 25) or fr
+    for _ in range(10):
+        lab = _view_label(fr) or ''
+        if code.upper() in lab.upper():
+            return fr, True
+        page.wait_for_timeout(2000)
+        fr = _qs_frame(ctx) or fr
+    print(f'  chain    ! asked for {code} but the heading says {_view_label(fr)!r} '
+          f'- refusing to write a smile whose expiry is unconfirmed')
+    return fr, False
+
+
 def _settle(frame, page, ms: int = 2500) -> None:
     """WebForms postbacks have no completion signal we can await reliably."""
     try:
@@ -912,6 +1005,60 @@ def pull_product(ctx, page, product: str | None, views: list,
     for f in written:
         results[f.name] = str(f)
     return results
+
+
+def pull_chain(ctx, page, product: str, code: str) -> str | None:
+    """PASS 2: the per-strike IV smile for ONE expiry -> <SYM>_rawIV.tsv.
+
+    Charm, vanna and skew need a per-STRIKE chain, and the four matrix views do
+    not carry one. This is the same Settles view pass 1 already visits, with an
+    expiry tab selected: choosing an expiry swaps the per-expiry term table for
+    that expiry's strike ladder. (Confirmed 2026-08-19 - the 'Settlement Prices'
+    entry in the nav is a different, unclickable tool and is NOT this.)
+
+    `code` comes from resolve_smile.mjs, which imports js/oi.js so the expiry
+    decision cannot drift from the one the dashboard makes. Two passes, not a
+    blanket grab of every DTE: only one chain is wanted, and which one is a
+    question only the OI matrix can answer.
+
+    Returns the written path, or None. None is a normal outcome - no smile is a
+    feature that is simply absent, whereas the WRONG expiry's smile is silent
+    corruption of every greek downstream. Nothing is written unless the view
+    heading names the expiry we asked for.
+    """
+    d = outdir('quikstrike')
+    fr = _qs_frame(ctx)
+    if not fr:
+        print('  chain    ! no tool frame')
+        return None
+    # Ensure we are on Settles: pass 1 leaves the browser on whatever it pulled last.
+    ids, text, _ = VIEWS['settles']
+    fr, ok = _ensure_view(ctx, page, fr, 'settles')
+    if not ok:
+        print('  chain    ! could not reach the Settles view')
+        return None
+    fr, ok = _select_expiry(ctx, page, fr, code)
+    # Unconditionally, and BEFORE any early return: a failed selection can still
+    # have moved the tool, so the cleanup must not depend on the happy path.
+    _drop_cached_session()
+    if not ok:
+        return None
+
+    tsv, n, why, stable = _stable_table(fr, ctx, page)
+    if not stable:
+        print('  chain    ! table never stopped growing - refusing a mid-render read')
+        return None
+    # The term table and the smile are BOTH on this view; only the shape tells
+    # them apart. Writing a term table as rawIV would hand js/oi.js an expiry
+    # ladder where it expects strikes.
+    if not tsv or not why.startswith('strike ladder'):
+        print(f'  chain    ! expected a strike ladder, got "{why}" - not writing')
+        return None
+    fn = d / f'{safe_name(product)}_rawIV.tsv'
+    _atomic(fn, tsv)
+    print(f'  chain    -> {fn.name}  [{why}, expiry {code}]')
+    print(f'  {"":<8}    {shape_line(shape(tsv))}  {grade_line(grade(tsv))}')
+    return str(fn)
 
 
 def mode_settings(product: str | None, view: str, headless: bool) -> None:

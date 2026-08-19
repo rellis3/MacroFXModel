@@ -33,6 +33,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import subprocess
 import sys
 import time
 import traceback
@@ -43,8 +45,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 from pull_quikstrike import (VIEWS, _launch, _load_qs_ids,        # noqa: E402
-                             pull_product)
-from recon import outdir                                          # noqa: E402
+                             pull_chain, pull_product)
+from recon import outdir, safe_name                               # noqa: E402
 
 DEFAULT_VIEWS = ['settles', 'oi', 'chg', 'vol']   # settles first: it is the light view
 
@@ -85,6 +87,27 @@ def main() -> None:
     ap.add_argument('--dry-run', action='store_true', help='list the plan, do nothing')
     ap.add_argument('--pause', type=float, default=3.0,
                     help='seconds between products (default 3)')
+    # OPT-IN, and it must stay opt-in until the deselect problem below is solved.
+    #
+    # Pass 2 works - it captures the right expiry's smile and proves the expiry
+    # before writing. What it does NOT do is put the tool back afterwards, and
+    # QuikStrike restores the last selection from the session. An expiry left
+    # selected scopes the WHOLE tool to that expiry, so the next product's (and
+    # the next night's) pass 1 sees:
+    #
+    #   settles ! wrong view: expected a expiry table, got "strike ladder"
+    #   oi      -> EUR_USD_rawOI.tsv  [strike ladder (44 strikes)]   <- ONE expiry
+    #
+    # The settles shape check catches its half. The OI matrix does NOT: a
+    # single-expiry ladder is still "a strike ladder", so it is written as the
+    # full book, and every wall and max-pain derived from it is then computed
+    # from one expiry's strikes. Measured 2026-08-19: primary expiry went from
+    # "16 DTE / 95,715 near-money OI" to "- (dte -)".
+    #
+    # So: default off until pass 2 can restore the unscoped view.
+    ap.add_argument('--chain', action='store_true',
+                    help='EXPERIMENTAL pass 2: per-strike IV smile. Leaves an expiry '
+                         'selected, which corrupts the NEXT capture - see the source.')
     a = ap.parse_args()
 
     # Filter by SHAPE, not by key prefix: quikstrike_ids.json carries explanatory
@@ -129,6 +152,11 @@ def main() -> None:
                   f'{"-" * max(0, 46 - len(prod))}')
             try:
                 results[prod] = pull_product(ctx, page, prod, list(views))
+                # PASS 2 - the per-strike smile, if pass 1 gave us what we need to
+                # decide WHICH expiry. Deliberately after pull_product and inside
+                # the same session: one browser, one product, both passes.
+                if a.chain and 'settles' in views:
+                    _chain_pass(ctx, page, prod, results[prod], d)
             except Exception:                            # noqa: BLE001
                 # Deliberately broad: a scheduled sweep must survive anything one
                 # product does, and the traceback goes to the log for diagnosis.
@@ -145,6 +173,44 @@ def main() -> None:
     _report(results, products, views, d, stamp, time.time() - started, log)
 
 
+def _chain_pass(ctx, page, prod: str, res: dict, d: Path) -> None:
+    """Resolve which expiry the walls sit on, then capture just that chain.
+
+    The resolution is delegated to resolve_smile.mjs (which imports js/oi.js)
+    rather than reimplemented here: picking the expiry is exactly the decision
+    that was silently wrong before oiPasteContract.test.mjs existed - correct
+    maths, wrong expiry, entirely plausible output - and a Python second opinion
+    would be free to drift from the dashboard's.
+
+    Never fatal. A product without a smile still has its four matrices; charm and
+    vanna are simply not shown, which is the documented behaviour when IV is
+    absent.
+    """
+    stem = safe_name(prod)
+    oi_f, term_f = d / f'{stem}_rawOI.tsv', d / f'{stem}_rawIVTerm.tsv'
+    if not oi_f.exists():
+        print('  chain      no rawOI from pass 1 - cannot resolve an expiry, skipping')
+        return
+    try:
+        r = subprocess.run(
+            ['node', str(HERE / 'resolve_smile.mjs'), str(oi_f),
+             *( [str(term_f)] if term_f.exists() else [] )],
+            capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
+    except Exception as e:                               # noqa: BLE001
+        print(f'  chain      could not run resolve_smile ({type(e).__name__}) - skipping')
+        return
+    m = re.search(r'RESOLVED_CODE=([A-Z0-9]+)', r.stdout or '')
+    if not m:
+        print('  chain      resolve_smile named no expiry - skipping (no smile is safe; '
+              'a guessed one is not)')
+        return
+    code = m.group(1)
+    print(f'  chain      walls sit on {code} - capturing that chain')
+    path = pull_chain(ctx, page, prod, code)
+    if path:
+        res[Path(path).name] = path
+
+
 def _report(results: dict, products: list, views: list, d: Path,
             stamp: str, secs: float, log: Path) -> None:
     """Product x table grid, a manifest, and an exit code a scheduler can act on."""
@@ -156,11 +222,12 @@ def _report(results: dict, products: list, views: list, d: Path,
     print('  columns are  view -> store box:')
     for v in views:
         print(f'      {v:<8} -> {VIEWS[v][2]:<10} {_BOX_DESC.get(VIEWS[v][2], "")}')
-    print(f'      {"(chain)":<8} -> {"rawIV":<10} per-strike IV smile - NOT YET AUTOMATED')
+    print(f'      {"(chain)":<8} -> {"rawIV":<10} per-strike IV smile for the walls\' expiry (pass 2)')
     print()
-    print('  product      ' + '  '.join(f'{b:<10}' for b in boxes))
+    print('  product      ' + '  '.join(f'{b:<10}' for b in boxes) + f'  {"rawIV":<10}')
     ok_total = 0
     per_box = {b: 0 for b in boxes}   # per-view hit count → names WHICH view fell short
+    smiles = 0
     for prod in products:
         r = results.get(prod) or {}
         cells = []
@@ -170,8 +237,15 @@ def _report(results: dict, products: list, views: list, d: Path,
             ok_total += 1 if hit else 0
             if hit:
                 per_box[b] += 1
+        # rawIV is reported but NOT counted in the total. A smile can be legitimately
+        # absent - resolve_smile may decline to name an expiry, and refusing to guess
+        # one is the correct outcome. Counting it would make an honest abstention look
+        # like a broken capture and mask a real 4-view failure behind it.
+        got_iv = any(k.endswith('_rawIV.tsv') for k in r)
+        smiles += 1 if got_iv else 0
         err = '  ERROR' if r.get('_error') else ('' if r.get('_validated', True) else '  (validation failed)')
-        print(f'  {prod:<12} ' + '  '.join(f'{c:<10}' for c in cells) + err)
+        print(f'  {prod:<12} ' + '  '.join(f'{c:<10}' for c in cells)
+              + f'  {"ok" if got_iv else "--":<10}' + err)
 
     want = len(products) * len(boxes)
     # Per-view breakdown rides the SAME "tables captured" line the heartbeat grabs
@@ -181,6 +255,8 @@ def _report(results: dict, products: list, views: list, d: Path,
     # dig to diagnose. No .bat pattern change needed.
     by_view = ' · '.join(f'{b} {per_box[b]}/{len(products)}' for b in boxes)
     print(f'\n  {ok_total}/{want} tables captured  (by view: {by_view})')
+    print(f'  {smiles}/{len(products)} per-strike smile(s) captured '
+          f'(rawIV -> charm/vanna/skew; not counted above)')
     manifest = d / f'sweep_{stamp}.json'
     manifest.write_text(json.dumps(
         dict(when=stamp, seconds=round(secs), products=products, views=views,
