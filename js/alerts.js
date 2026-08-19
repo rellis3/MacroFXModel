@@ -111,6 +111,11 @@ const DEFAULT_CFG = {
   macroContextAlerts:  true,  // 📊 structural FRED regime shift alerts
   dailyToneAlerts:     true,  // ⚡ daily tone / session alerts
   activeDays: [1, 2, 3, 4, 5], // UTC days alerts are active: 0=Sun 1=Mon…6=Sat; default Mon-Fri
+  // Per-sender Telegram master switches: { levelProximity: false, ... }. Read
+  // server-side by tgOn() in server.js; the sender list itself comes from
+  // GET /api/telegram/senders so this client never hardcodes it. Absent key =
+  // ON, so {} means "everything on".
+  tgMaster: {},
 };
 
 export function loadAlertCfg() {
@@ -575,10 +580,50 @@ export function openAlertModal() {
     if (el) el.checked = activeDays.includes(d);
   });
 
+  // Telegram master switches — one row per SENDER, built from the server's
+  // registry so a newly added sender appears here without a client change.
+  renderTgMasterRows(cfg.tgMaster ?? {});
+
   // Load saved bot status
   loadBotStatus();
 
   overlay.classList.add('open');
+}
+
+// Build the per-sender switch rows. Fetch failure leaves whatever is already in
+// the container plus a note — better than an empty box that reads as "nothing to
+// switch off" when the real problem is the request died.
+async function renderTgMasterRows(saved) {
+  const host = document.getElementById('alertTgMasterRows');
+  if (!host) return;
+  host.innerHTML = '<div style="font-size:11px;color:var(--text3)">Loading senders…</div>';
+  let senders;
+  try {
+    const r = await fetch('/api/telegram/senders');
+    const j = await r.json();
+    senders = j?.senders;
+    if (!Array.isArray(senders) || !senders.length) throw new Error('empty sender list');
+  } catch (e) {
+    host.innerHTML = `<div style="font-size:11px;color:var(--red)">⚠ Could not load sender list (${e.message}) — existing switches are unchanged.</div>`;
+    return;
+  }
+  host.innerHTML = senders.map(s => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:3px 0">
+      <input type="checkbox" class="tg-master-cb" data-sender="${s.key}"
+             style="width:14px;height:14px;cursor:pointer"${saved[s.key] === false ? '' : ' checked'}>
+      <span>${s.label}</span>
+    </label>`).join('');
+}
+
+// Collect the switch rows. Only OFF senders are persisted — an absent key reads
+// as ON server-side, so the saved config stays small and a sender added later
+// defaults to on rather than inheriting a stale false.
+function collectTgMaster() {
+  const out = {};
+  document.querySelectorAll('.tg-master-cb').forEach(cb => {
+    if (!cb.checked) out[cb.dataset.sender] = false;
+  });
+  return out;
 }
 
 export function closeAlertModal() {
@@ -607,6 +652,12 @@ export function saveAlertModal() {
     pairs: document.getElementById('alertPairs').value
       .split(',').map(s => s.trim()).filter(Boolean),
     activeDays: [0, 1, 2, 3, 4, 5, 6].filter(d => document.getElementById('alertDay' + d)?.checked),
+    // If the sender rows never rendered (fetch failed), collectTgMaster() would
+    // return {} and silently switch every muted sender back ON. Keep the saved
+    // value in that case — a save of the OTHER fields must not un-mute anything.
+    tgMaster: document.querySelector('.tg-master-cb')
+      ? collectTgMaster()
+      : (loadAlertCfg().tgMaster ?? {}),
   };
   saveAlertCfg(cfg);
 

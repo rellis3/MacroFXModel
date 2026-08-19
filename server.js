@@ -545,6 +545,9 @@ const DEFAULT_CFG = {
   vuManChuChart: true,  // attach the rendered WaveTrend pane as a photo after each alert
                         // (ignored when vuManChu is 'off' — see sendVumanchuChart)
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
+  // Per-sender Telegram master switches — see TG_SENDERS / tgOn() below. Empty
+  // default = everything on; only the senders you explicitly switch off appear.
+  tgMaster:    {},
 };
 
 // ── In-memory monitoring state ────────────────────────────────────────────────
@@ -1227,7 +1230,9 @@ async function computeHedgeSignals(force = false) {
       try { sigData = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8')); } catch {}
     }
 
-    const tgRaw = await kv.get('hedge_signal_tg');
+    // Master switch mutes the Telegram push only — signals are still computed,
+    // scored and written to HEDGE_SIGNALS_PATH so the page stays live.
+    const tgRaw = tgOn('hedgeSignals') ? await kv.get('hedge_signal_tg') : null;
     const tgCfg = tgRaw ? JSON.parse(tgRaw) : null;
     const now   = new Date().toISOString();
     sigData.last_run = now;
@@ -1536,6 +1541,37 @@ async function buildBetaEstimates() {
   } finally {
     _betaRunning = false;
   }
+}
+
+// ── Telegram master switches ─────────────────────────────────────────────────
+// One on/off per Telegram SENDER, set in index.html's ⚙ Alerts modal and stored
+// in ai_alert_cfg.tgMaster (reloaded with the rest of the config every 60 s).
+//
+// This is an override that sits ON TOP of each sender's own config, never under
+// it: senders that own an `enabled` flag elsewhere (levels-v2, vol-levels,
+// surprise, hedge) still honour it — a master switch can only SILENCE, never
+// turn something on. It exists because "turn this off" was spread across eight
+// separate KV keys with three different spellings of the gate, so muting one
+// thing meant knowing which page happened to own it.
+//
+// An unknown/missing name reads as ON, so adding a sender here never leaves it
+// silently muted by an older saved config that predates it.
+const TG_SENDERS = {
+  levelProximity:    'Level proximity (main monitor)',
+  regimeChange:      'Live 5m HMM regime change',
+  creditFlip:        'Credit gate regime flip',
+  vumanchuHeartbeat: 'VuManChu logger daily heartbeat',
+  oiSweep:           'OI nightly scraper failure',
+  qmrIndices:        'SPX/DOW/DAX QMR gates',
+  cogShadow:         'COG shadow gates',
+  levelsV2:          'Telegram-v2 zone alerts',
+  volLevels:         'Vol-forecast level proximity',
+  surprise:          'Forecast-path surprise pings',
+  hedgeSignals:      'Hedge pair signals',
+};
+
+function tgOn(sender) {
+  return state.cfg?.tgMaster?.[sender] !== false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1934,6 +1970,7 @@ async function monitorTick() {
     }
 
     if (!state.cfg?.enabled || state.cfg?.serverEnabled === false || !state.tg?.token || !state.tg?.chatId) return;
+    if (!tgOn('levelProximity')) return;
 
     // Do-not-disturb: skip if today (UTC) is not in the active days list
     {
@@ -2631,6 +2668,18 @@ app.get('/api/levels', (_req, res) => {
 });
 
 // Manual levels reload — pull latest KV data into memory immediately
+// Sender registry + live switch state for the ⚙ Alerts modal. Served from
+// TG_SENDERS so the client never hardcodes the list — a sender added there shows
+// up as a new row on the next page load rather than being invisibly unmanaged.
+app.get('/api/telegram/senders', (_req, res) => {
+  res.json({
+    ok: true,
+    senders: Object.entries(TG_SENDERS).map(([key, label]) => ({
+      key, label, on: tgOn(key),
+    })),
+  });
+});
+
 app.post('/api/telegram/test-server', async (_req, res) => {
   if (!state.tg?.token || !state.tg?.chatId) {
     return res.json({ ok: false, error: 'Telegram not configured on server' });
@@ -7901,6 +7950,7 @@ let _vmHeartbeatSentOn = null;
 async function _vmHeartbeat() {
   const tok = state.tg?.token, cid = state.tg?.chatId;
   if (!tok || !cid) return;
+  if (!tgOn('vumanchuHeartbeat')) return;
   try {
     const rows = await vmReadRange(kv, 7);
     const now = Math.floor(Date.now() / 1000);
@@ -13149,7 +13199,7 @@ app.post('/api/oi/sweep-alert', async (req, res) => {
     // Only shout on failure. A nightly "it worked" for a fortnight trains you to
     // ignore the one that matters.
     let notified = false;
-    if (!ok && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false) {
+    if (!ok && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false && tgOn('oiSweep')) {
       notified = await sendTelegram(state.tg.token, state.tg.chatId,
         `⚠️ <b>Nightly OI sweep FAILED</b>\n<code>${detail || 'no detail'}</code>\n\nTarget: ${target || 'unknown'}\nLevels for today were not captured. CME serves no history, so this day cannot be recovered.`,
       ).catch(() => false);
@@ -19782,6 +19832,9 @@ async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
   try {
     const cfg = await _saLoadConfig();
     if (!force && !cfg.enabled) return { skipped: 'disabled' };
+    // Master override — see TG_SENDERS. Skipped for dryRun so the preview/test
+    // endpoints still compose their text while the live push is muted.
+    if (!dryRun && !tgOn('surprise')) return { skipped: 'muted' };
     if (!dryRun && (!cfg.token || !cfg.chatId)) return { skipped: 'no Telegram creds' };
     // Blank pairs list = monitor every pair (same default as the forward-track
     // and /summary). A non-empty list narrows it to those pairs.
@@ -20881,6 +20934,7 @@ async function _computeUsdTrends() {
 async function checkVolLevelAlertsNow() {
   const cfg = await loadVolLevelCfg();
   if (!cfg.enabled) return;
+  if (!tgOn('volLevels')) return;   // master override — see TG_SENDERS
   const creds = await loadVolLevelCreds();
   if (!creds) return;                                   // no dedicated bot configured
 
@@ -24225,7 +24279,10 @@ async function _creditFlipCheck() {
     const prev = _lastCreditGate;
     _lastCreditGate = ctx.gate;
     if (!prev || prev === ctx.gate) return;                       // first read or no change
-    if (state.cfg?.enabled === false || !state.tg?.token || !state.tg?.chatId) return;
+    // Same `serverEnabled` omission as the regime-change alert had — this one
+    // kept firing after server alerts were switched off in the modal.
+    if (state.cfg?.enabled === false || state.cfg?.serverEnabled === false) return;
+    if (!state.tg?.token || !state.tg?.chatId || !tgOn('creditFlip')) return;
     if (Date.now() - _lastCreditAlertAt < CREDIT_ALERT_COOLDOWN_MS) return;
     const worse = ['RISK-ON', 'NEUTRAL', 'CAUTION', 'RISK-OFF'].indexOf(ctx.gate) > ['RISK-ON', 'NEUTRAL', 'CAUTION', 'RISK-OFF'].indexOf(prev);
     const so = ctx.widening > 0
@@ -24702,7 +24759,12 @@ async function runHMM5mRefresh() {
       recordRegimeSnapshot('v1', sym, result.regime, result.confidence);
 
       // Telegram alert on regime change, with cooldown
-      if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false && state.cfg?.regimeChangeAlerts !== false) {
+      // NOTE: `serverEnabled` is checked here too. It used to be omitted, so
+      // switching server alerts off in the modal silenced the main monitor but
+      // left this one firing.
+      if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false
+          && state.cfg?.serverEnabled !== false
+          && state.cfg?.regimeChangeAlerts !== false && tgOn('regimeChange')) {
         const lastAlert = state.hmm5mLastAlert[sym] ?? 0;
         const now       = Date.now();
         if (now - lastAlert >= HMM5M_ALERT_COOLDOWN_MS && state.tg?.token && state.tg?.chatId) {
@@ -25068,6 +25130,7 @@ runLevelsRefresh().catch(console.error);
 // alerts are enabled + a bot is configured).
 const V2_ALERT_MS = parseInt(process.env.V2_ALERT_MS || String(90 * 1000));
 setInterval(() => {
+  if (!tgOn('levelsV2')) return;   // master override — see TG_SENDERS
   const v2pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS).map(p => p.toUpperCase?.() ?? p);
   checkV2AlertsNow(v2pairs).catch(e => console.error('[LEVELS-V2] alert loop error:', e.message));
 }, V2_ALERT_MS);
@@ -25731,6 +25794,7 @@ async function nqSendTg(msg) {
     console.log('[qmr] alert suppressed (system retired):', String(msg).slice(0, 60));
     return;
   }
+  if (!tgOn('cogShadow')) return;
   // Check NQ-specific TG config first, fall back to shared state.tg
   try {
     const cfg    = await nqLoadMonCfg();
@@ -25744,6 +25808,13 @@ async function nqSendTg(msg) {
 }
 
 async function _iqrSendTg(mon, msg) {
+  // NOTE: QMR_ALERTS_RETIRED is deliberately NOT applied here. The retirement
+  // above says it is gated "at the single send point", but there are two — this
+  // is the SPX/DOW/DAX half, and it has been sending all along. Left firing
+  // rather than silently retired as a side effect of adding switches; use the
+  // 'qmrIndices' master switch to mute it, or extend QMR_ALERTS_RETIRED here to
+  // finish the 2026-07-30 retirement properly.
+  if (!tgOn('qmrIndices')) return;
   // Check instrument-specific TG config first, fall back to shared state.tg
   try {
     const cfg    = await _iqrLoadMonCfg(mon);

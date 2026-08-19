@@ -599,7 +599,7 @@ def _view_title_ok(frame, key: str) -> bool:
     return False
 
 
-def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
+def _ensure_view(ctx, page, fr, key: str, tries: int = 2):
     """Click a view and WAIT until its own toolbar appears; retry if it doesn't.
 
     A single click was not enough: the session restores the last view, and on
@@ -624,6 +624,13 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
     and it is untouched here. So: wait for the marker, and if it never comes but
     the heading says we are in the right place, proceed and let shape arbitrate.
     """
+    # TWO ATTEMPTS, NOT THREE. Measured over a full sweep on 2026-08-19: 21 failed
+    # attempts, of which only 3 were followed by a successful retry - the other 18
+    # ran the loop out and were rescued by pull_product's reload instead. Each
+    # attempt costs ~47s (a click, a settle, and a 24s poll), so the third was
+    # about six minutes of an 81-minute run spent re-clicking something that had
+    # already proved it would not move. Two keeps the retry that does sometimes
+    # work; the reload handles the rest, and it handled 6 of 6.
     ids, text, _ = VIEWS[key]
     marker = 'Standard' if key == 'settles' else '(All)'
     for attempt in range(tries):
@@ -915,6 +922,25 @@ def pull_product(ctx, page, product: str | None, views: list,
         fr, switched = _ensure_view(ctx, page, fr, key)
         if switched:
             print(f'  {key:<8} view    -> "{_view_label(fr)}"')
+        if not switched:
+            # RELOAD AND RETRY ONCE before giving up. Nav clicks between the
+            # Settles view and the matrices no-op in both directions: the sweep
+            # already orders settles first because switching TO it from a 482x43
+            # matrix timed out, and on 2026-08-19 the reverse leg failed too -
+            # settles captured cleanly, then 'oi' reported
+            #
+            #   view did not switch (3/3) - label='S&P 500 (ES|ES) Settles'
+            #
+            # three times, and the sweep lost 24 of 44 tables to it. A fresh load
+            # lands on the OI heatmap by default, so re-navigating resets the view
+            # instead of trying to click off a stuck one. Once only - a second
+            # failure is a real failure, and retry loops are how a broken night
+            # turns into an hour of nothing.
+            print(f'  {key:<8}   nav no-opped - reloading the product and retrying once')
+            fr2 = _open_product(ctx, page, product)
+            if fr2:
+                fr = fr2
+                fr, switched = _ensure_view(ctx, page, fr, key)
         if not switched:
             print(f'  {key:<8} ! could not switch to this view - skipping it')
             _dump_frame(fr, f'what the frame actually contains ({key})')
