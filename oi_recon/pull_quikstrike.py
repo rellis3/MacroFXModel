@@ -782,17 +782,19 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
             pass
 
 
-def pull_product(ctx, page, product: str | None, views: list,
-                 all_strikes: bool = True) -> dict:
-    """One product, on an EXISTING browser context. Returns {box: path|None}.
+def _open_product(ctx, page, product: str | None):
+    """Load the tool on `product` and CONFIRM it. -> frame, or None.
 
-    Split out of mode_pull so a scheduled sweep can drive every product through
-    a single session instead of launching (and re-minting) a browser per product.
-    Never raises: a scheduled run must not lose nine products because the tenth
-    misbehaved.
+    Extracted from pull_product so pass 2 can reach a product on its own instead
+    of inheriting whatever pass 1 happened to leave loaded. That inheritance is
+    what forced the per-product session mint, and eleven mints in a row is what
+    QuikStrike refused (see run_sweep's --chain note).
+
+    Everything here is load-and-verify, not capture: session (cached, re-minting
+    on expiry), direct pid navigation, and the header check that refuses a
+    mispaired pid rather than writing a valid-looking table of the wrong
+    instrument.
     """
-    d = outdir('quikstrike')
-    results: dict = {}
     # Cached session first (no wrapper load at all), minting only if it fails.
     minted = _cached_url()
     src = 'cached'
@@ -801,7 +803,7 @@ def pull_product(ctx, page, product: str | None, views: list,
         src = 'minted'
     if not minted:
         print('[pull] could not reach the QuikStrike tool - is the session logged in?')
-        return results
+        return None
     print(f'[pull] session ({src}): {minted[:80]}')
 
     # DIRECT NAVIGATION, no iframe and no product popup. pid identifies the
@@ -817,7 +819,7 @@ def pull_product(ctx, page, product: str | None, views: list,
         page.goto(target, wait_until='domcontentloaded', timeout=90_000)
     except Exception as e:                               # noqa: BLE001
         print(f'[pull] navigation failed: {type(e).__name__}')
-        return results
+        return None
     _settle(None, page, 4000)
     fr = _wait_for_tool(ctx, page, 30)
     if not fr and src == 'cached':
@@ -836,7 +838,7 @@ def pull_product(ctx, page, product: str | None, views: list,
     if not fr:
         print('[pull] tool did not finish loading')
         _dump_frame(page.main_frame, 'main document')
-        return results
+        return None
     if minted:
         _cache_url(minted)
     print(f'[pull] tool ready{" (pid " + str(ent["pid"]) + ")" if ent else ""}')
@@ -880,8 +882,31 @@ def pull_product(ctx, page, product: str | None, views: list,
             print(f'    header says: {" | ".join(first[:3])[:120]}')
             print(f'    pid={ent["pid"]} pf={ent.get("pf")} may be mispaired - '
                   f'run --learn-pid --product "{product}" to record the real one.')
-            return results
+            return None
         print(f'[pull] product confirmed: "{want}" present in header')
+
+    return fr
+
+
+def pull_product(ctx, page, product: str | None, views: list,
+                 all_strikes: bool = True) -> dict:
+    """One product's matrix views, on an EXISTING browser context.
+    Returns {box: path|None}.
+
+    Split out of mode_pull so a scheduled sweep can drive every product through
+    a single session instead of launching (and re-minting) a browser per product.
+    Never raises: a scheduled run must not lose nine products because the tenth
+    misbehaved.
+
+    PASS 1 ONLY - it must never select an expiry. Selecting one scopes the whole
+    tool, and the OI matrix would then be captured as a single expiry's strikes
+    while still looking like a valid ladder. The smile lives in pull_chain.
+    """
+    d = outdir('quikstrike')
+    results: dict = {}
+    fr = _open_product(ctx, page, product)
+    if not fr:
+        return results
 
     written = []
     seen_tables: dict = {}          # content hash -> which view produced it
@@ -1027,20 +1052,18 @@ def pull_chain(ctx, page, product: str, code: str) -> str | None:
     heading names the expiry we asked for.
     """
     d = outdir('quikstrike')
-    fr = _qs_frame(ctx)
+    # Navigate to the product ourselves rather than inheriting whatever is loaded.
+    # This is what lets phase 2 run as its own sweep, so the session only has to
+    # be dropped ONCE at the end instead of after every product.
+    fr = _open_product(ctx, page, product)
     if not fr:
-        print('  chain    ! no tool frame')
+        print('  chain    ! could not open the product')
         return None
-    # Ensure we are on Settles: pass 1 leaves the browser on whatever it pulled last.
-    ids, text, _ = VIEWS['settles']
     fr, ok = _ensure_view(ctx, page, fr, 'settles')
     if not ok:
         print('  chain    ! could not reach the Settles view')
         return None
     fr, ok = _select_expiry(ctx, page, fr, code)
-    # Unconditionally, and BEFORE any early return: a failed selection can still
-    # have moved the tool, so the cleanup must not depend on the happy path.
-    _drop_cached_session()
     if not ok:
         return None
 

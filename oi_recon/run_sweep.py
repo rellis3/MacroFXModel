@@ -44,8 +44,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from pull_quikstrike import (VIEWS, _launch, _load_qs_ids,        # noqa: E402
-                             pull_chain, pull_product)
+from pull_quikstrike import (VIEWS, _drop_cached_session, _launch,  # noqa: E402
+                             _load_qs_ids, pull_chain, pull_product)
 from recon import outdir, safe_name                               # noqa: E402
 
 DEFAULT_VIEWS = ['settles', 'oi', 'chg', 'vol']   # settles first: it is the light view
@@ -87,27 +87,16 @@ def main() -> None:
     ap.add_argument('--dry-run', action='store_true', help='list the plan, do nothing')
     ap.add_argument('--pause', type=float, default=3.0,
                     help='seconds between products (default 3)')
-    # OPT-IN, and it must stay opt-in until the deselect problem below is solved.
+    # Phase 2: the per-strike IV smile -> charm/vanna/skew.
     #
-    # Pass 2 works - it captures the right expiry's smile and proves the expiry
-    # before writing. What it does NOT do is put the tool back afterwards, and
-    # QuikStrike restores the last selection from the session. An expiry left
-    # selected scopes the WHOLE tool to that expiry, so the next product's (and
-    # the next night's) pass 1 sees:
-    #
-    #   settles ! wrong view: expected a expiry table, got "strike ladder"
-    #   oi      -> EUR_USD_rawOI.tsv  [strike ladder (44 strikes)]   <- ONE expiry
-    #
-    # The settles shape check catches its half. The OI matrix does NOT: a
-    # single-expiry ladder is still "a strike ladder", so it is written as the
-    # full book, and every wall and max-pain derived from it is then computed
-    # from one expiry's strikes. Measured 2026-08-19: primary expiry went from
-    # "16 DTE / 95,715 near-money OI" to "- (dte -)".
-    #
-    # So: default off until pass 2 can restore the unscoped view.
+    # Runs as a SECOND SWEEP over all products, not interleaved with phase 1. An
+    # earlier interleaved version dropped the session after each product (the only
+    # way to clear a selected expiry) and QuikStrike refused after ~5 mints,
+    # taking the matrices down with it: 20/44 tables on 2026-08-19. As its own
+    # phase it costs one mint per sweep.
     ap.add_argument('--chain', action='store_true',
-                    help='EXPERIMENTAL pass 2: per-strike IV smile. Leaves an expiry '
-                         'selected, which corrupts the NEXT capture - see the source.')
+                    help='also capture the per-strike IV smile (charm/vanna), as a '
+                         'second phase after all four-view captures')
     a = ap.parse_args()
 
     # Filter by SHAPE, not by key prefix: quikstrike_ids.json carries explanatory
@@ -147,16 +136,16 @@ def main() -> None:
     ctx = _launch(headless=a.headless)
     try:
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
+
+        # ── PHASE 1: the four matrix views, every product ────────────────────
+        # No expiry is ever selected here, so the session stays unscoped for the
+        # whole phase and one cached session serves all eleven products.
+        print(f'--- PHASE 1: {", ".join(views)} for {len(products)} product(s) ---')
         for i, prod in enumerate(products, 1):
             print(f'\n----- [{i}/{len(products)}] {prod} '
                   f'{"-" * max(0, 46 - len(prod))}')
             try:
                 results[prod] = pull_product(ctx, page, prod, list(views))
-                # PASS 2 - the per-strike smile, if pass 1 gave us what we need to
-                # decide WHICH expiry. Deliberately after pull_product and inside
-                # the same session: one browser, one product, both passes.
-                if a.chain and 'settles' in views:
-                    _chain_pass(ctx, page, prod, results[prod], d)
             except Exception:                            # noqa: BLE001
                 # Deliberately broad: a scheduled sweep must survive anything one
                 # product does, and the traceback goes to the log for diagnosis.
@@ -164,6 +153,30 @@ def main() -> None:
                 traceback.print_exc(file=sys.stdout)
                 results[prod] = {'_error': traceback.format_exc(limit=3)}
             time.sleep(a.pause)
+
+        # ── PHASE 2: the per-strike smile, every product ─────────────────────
+        # Separated from phase 1 for one reason: selecting an expiry scopes the
+        # tool, and the ONLY way to clear it is a fresh session. Interleaved, that
+        # meant a mint per product, and QuikStrike refused after about five -
+        # costing the matrices, not just the smiles (20/44 on 2026-08-19).
+        #
+        # Run as its own phase, contamination between products no longer matters:
+        # every chain capture opens its own product and selects its own expiry,
+        # and refuses to write unless the heading confirms it. So the session is
+        # dropped ONCE, after the phase, purely so TOMORROW's phase 1 starts clean.
+        if a.chain and 'settles' in views:
+            print(f'\n\n--- PHASE 2: per-strike IV smile for {len(products)} product(s) ---')
+            for i, prod in enumerate(products, 1):
+                print(f'\n----- [{i}/{len(products)}] {prod} (smile) '
+                      f'{"-" * max(0, 38 - len(prod))}')
+                try:
+                    _chain_pass(ctx, page, prod, results.setdefault(prod, {}), d)
+                except Exception:                        # noqa: BLE001
+                    print(f'  !! {prod} smile raised - continuing')
+                    traceback.print_exc(file=sys.stdout)
+                time.sleep(a.pause)
+            _drop_cached_session()
+            print('\n  [session dropped so the next run starts on an unscoped view]')
     finally:
         try:
             ctx.close()
