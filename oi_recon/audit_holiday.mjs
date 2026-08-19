@@ -60,8 +60,16 @@ if (!runs.length) {
   const days = [...byDay.keys()].sort();
   const first = days[0], last = days[days.length - 1];
 
+  // THE WINDOW ENDS TODAY, NOT AT THE LAST RUN. Bounding it by `last` made the
+  // one failure this report exists to catch invisible: when the task stopped
+  // firing on 11 Aug and the machine slept for eight days, the window simply
+  // ended on the 11th and the report said "0 never ran". A scheduler that stops
+  // silently produces no failed runs, no logs and no journal lines - the only
+  // evidence it was ever supposed to run is the calendar.
+  const today = day(new Date());
+  const end = last > today ? last : today;
   const expected = [];
-  for (let d = first; d <= last; d = addDays(d, 1)) if (!isWeekend(d)) expected.push(d);
+  for (let d = first; d <= end; d = addDays(d, 1)) if (!isWeekend(d)) expected.push(d);
   const missing = expected.filter(d => !byDay.has(d));
   const failedDays = days.filter(d => !byDay.get(d).ok);
 

@@ -586,6 +586,21 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
     strike selector offering '(All)' for the matrix views, the report selector
     offering 'Standard' for settlements - so we wait for evidence the view
     actually changed rather than for a fixed delay.
+
+    THE LABEL DECIDES; THE MARKER ONLY HURRIES US ALONG. Requiring both cost 11
+    tables a night for most of Aug 2026: the settles view logged
+    `marker 'Standard'=False, label='S&P 500 (ES|ES) Settles'` and was abandoned
+    three times per product - the page was loaded and correct, and we threw it
+    away because a dropdown had not populated. `_view_label` reads the tool's own
+    view heading and has been hardened twice (once for reading the nav instead of
+    the page, once for gold's multi-span heading); it is the better evidence.
+
+    Discarding the marker entirely is still not safe on its own, but it does not
+    have to be: `pull_product` independently checks the captured table's SHAPE
+    against the view ('expiry table' vs 'strike ladder') and refuses to write one
+    view's table under another's name. That check is what actually caught gold,
+    and it is untouched here. So: wait for the marker, and if it never comes but
+    the heading says we are in the right place, proceed and let shape arbitrate.
     """
     ids, text, _ = VIEWS[key]
     marker = 'Standard' if key == 'settles' else '(All)'
@@ -594,11 +609,18 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
             return fr, False
         _settle(fr, page, 2500)
         fr = _wait_for_tool(ctx, page, 20) or fr
+        title_ok = False
         for _ in range(12):                              # up to ~24s for the postback
-            if _has_option(fr, marker) and _view_title_ok(fr, key):
+            title_ok = _view_title_ok(fr, key)
+            if title_ok and _has_option(fr, marker):
                 return fr, True
             page.wait_for_timeout(2000)
             fr = _qs_frame(ctx) or fr
+        title_ok = title_ok or _view_title_ok(fr, key)
+        if title_ok:
+            print(f'  {key:<8}   marker {marker!r} never appeared, but the heading says '
+                  f'{_view_label(fr)!r} - proceeding on the heading (shape is still checked)')
+            return fr, True
         # Say WHAT was on screen, not just that it wasn't right. Four rounds were
         # lost this session to "did not switch" messages that named no evidence.
         print(f'  {key:<8}   view did not switch (attempt {attempt + 1}/{tries}) '
