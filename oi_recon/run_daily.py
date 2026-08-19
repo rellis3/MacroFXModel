@@ -139,11 +139,24 @@ def main() -> None:
     ap.add_argument('--live', action='store_true',
                     help='force oi_store, overriding the oi_auto_target toggle (one-off runs)')
     ap.add_argument('--skip-sweep', action='store_true', help='reuse today\'s captures')
-    # Pass 2 (the per-strike IV smile -> charm/vanna) is ON here. Its failure mode
-    # is degraded, not corrupt: it drops the cached session after selecting an
-    # expiry, so a bad pass 2 costs a smile and never narrows pass 1's matrices.
-    ap.add_argument('--no-chain', action='store_true',
-                    help='skip the per-strike IV smile capture (charm/vanna)')
+    # Pass 2 (the per-strike IV smile -> charm/vanna) is OFF in the nightly.
+    #
+    # It works per product, but not eleven times in a row. Clearing a selected
+    # expiry requires minting a fresh session, and a full sweep therefore minted
+    # one per product; QuikStrike served about five before it began refusing:
+    #
+    #   [5] XAU   chain ! could not reach the Settles view
+    #   [6] EUR   ! REFUSING: expected "EUR/USD" in the tool header, not found
+    #   [8] CAD   [pull] could not reach the QuikStrike tool
+    #
+    #   20/44 tables captured (5/11 per view) - measured 2026-08-19
+    #
+    # That is worse than having no smile: it costs the MATRICES too. Until pass 2
+    # is restructured to run as a second phase after all of pass 1 - one session
+    # mint per sweep instead of eleven - the nightly captures four views only.
+    ap.add_argument('--chain', action='store_true',
+                    help='EXPERIMENTAL: also capture the per-strike IV smile. Mints a '
+                         'session per product; degrades after ~5. One product at a time only.')
     ap.add_argument('--headless', action='store_true', help='off-screen browser')
     ap.add_argument('--dir', help="capture dir to use (default: today's)")
     a = ap.parse_args()
@@ -164,7 +177,7 @@ def main() -> None:
     else:
         cmd = ([PY, 'run_sweep.py']
                + (['--headless'] if a.headless else [])
-               + ([] if a.no_chain else ['--chain']))
+               + (['--chain'] if a.chain else []))
         rc, out = run(cmd, 'capture')
         stages['capture'] = grab(out, 'tables captured') or 'no summary line'
         if rc:
