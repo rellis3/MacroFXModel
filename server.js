@@ -123,7 +123,7 @@ import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill)
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -213,7 +213,6 @@ import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MIN
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
-import { distanceToFlip as _tdeDistanceToFlip } from './js/gammaFlow.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
@@ -12043,6 +12042,11 @@ app.post('/api/range-line-bot/oi/sync', async (_req, res) => {
 function _oiHistorySummary(inst) {
   if (!inst || typeof inst !== 'object') return null;
   const topN = (arr) => (Array.isArray(arr) ? arr.slice(0, 8).map(w => ({ strike: w.strike, oi: w.oi, chg: w.chg ?? null, tier: w.tier ?? null })) : []);
+  // Canonical pin/breakout regime (oiRegimeAtSpot, js/oi.js) — the price-window-aware
+  // read off the rigorous gexFlips crossings, not the whole-book GEX sign. Archived so a
+  // pin-vs-acceleration backtest is possible later; CME serves no OI history, so a day
+  // this isn't captured is a day of regime history that can never be recovered.
+  const regimeAt = _oiRegimeAtSpot(inst);
   return {
     spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
     callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,
@@ -12052,6 +12056,17 @@ function _oiHistorySummary(inst) {
     totalCallChg: inst.totalCallChg ?? null, totalPutChg: inst.totalPutChg ?? null,
     gex: inst.exposures?.gex ?? null, dex: inst.exposures?.dex ?? null,
     gammaFlip: inst.gammaFlip ?? null,   // archived so flip-drift (day-over-day) can be read back
+    // gexFlips trimmed to {price, dir} only — distPct is spot-relative and goes stale;
+    // re-derive distance against whatever spot a later reader cares about.
+    gexFlips: Array.isArray(inst.gexFlips)
+      ? inst.gexFlips.filter(f => Number.isFinite(f?.price)).map(f => ({ price: f.price, dir: f.dir ?? null }))
+      : null,
+    regime: regimeAt?.regime ?? null, distToFlipPct: regimeAt?.distToFlipPct ?? null,
+    // Minimal near-vs-far tenor split: was today's regime driven by near-dated (0DTE/weekly)
+    // OI or the far monthly book? Full per-expiry detail stays out of the archive on purpose —
+    // oi_history_raw is the irreplaceable-capture key, this is the lean day-over-day summary.
+    dayExpiryDTE: inst.dayExpiry?.dte ?? null, dayExpiryGex: inst.dayExpiry?.exposures?.gex ?? null,
+    primaryDTE: inst.dte ?? null, primaryGex: inst.exposures?.gex ?? null,
     hadChangeData: !!(inst.rawChg && String(inst.rawChg).trim()),
     savedAtMs: inst.savedAtMs ?? null,
   };
@@ -12075,7 +12090,7 @@ function _oiHistoryRaw(inst) {
     dte: inst.dte ?? null, savedAtMs: inst.savedAtMs ?? null,
   };
 }
-const _OI_RAW_KEEP_DAYS = 90;   // the raw ladder is the irreplaceable capture — keep a longer window than the summary
+const _OI_RAW_KEEP_DAYS = 365;   // the raw ladder is the irreplaceable capture — keep a longer window than the summary. CME serves no history, so a regime backtest wants years, not months, once it starts accumulating; KV storage cost is the only real constraint here.
 
 // Returns { n, wrote, day }. `force` makes the manual endpoint write even when nothing
 // changed, so a user-triggered archive is never a no-op that reports zero. Writes BOTH the
@@ -12104,7 +12119,7 @@ async function _snapshotOIHistory(force = false) {
         hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
         if (JSON.stringify(summary) !== before) changed++;
         const dates = Object.keys(hist[pair]).sort();
-        const trim = dates.slice(0, Math.max(0, dates.length - 60));            // keep ~60 days
+        const trim = dates.slice(0, Math.max(0, dates.length - 365));           // keep ~1yr — see _OI_RAW_KEEP_DAYS note above
         for (const d of trim) delete hist[pair][d];
         if (trim.length) changed++;                                // a trim is a real change too
         n++;
@@ -12178,7 +12193,7 @@ app.get('/api/oi-history', async (req, res) => {
     const pk = Object.keys(hist).find(k => k === key || norm(k) === norm(key));
     const perPair = pk ? hist[pk] : {};
     const dates = Object.keys(perPair).sort();
-    const limit = Math.min(60, parseInt(req.query.limit) || 30);
+    const limit = Math.min(400, parseInt(req.query.limit) || 30);   // cap raised alongside the 365-day retention bump — was capped below the archive's own window
     const recent = dates.slice(-limit).map(d => ({ date: d, ...perPair[d] }));
     const { curDate, prevDate, deltas } = latestDelta(perPair);
     res.json({ ok: true, pair: pk || key, dates, history: recent, deltas, curDate, prevDate });
@@ -23801,23 +23816,43 @@ async function _tdeOiStoreCached() {
   _tdeOiStoreAt = Date.now();
   return _tdeOiStore;
 }
+// Sibling of _tdeOiStoreCached, but for oi_history (the day-keyed archive) — used
+// only by the backfill/fit path, which needs the WHOLE date series per pair rather
+// than today's latest snapshot. Same 10-min cache, same fail-neutral shape.
+let _tdeOiHistoryCache = null, _tdeOiHistoryCacheAt = 0;
+async function _tdeOiHistoryCached() {
+  if (_tdeOiHistoryCache && Date.now() - _tdeOiHistoryCacheAt < 10 * 60_000) return _tdeOiHistoryCache;
+  try {
+    const raw = await kv.get('oi_history');
+    const parsed = raw ? JSON.parse(raw) : null;
+    _tdeOiHistoryCache = parsed ? (parsed.data ?? parsed) : {};
+  } catch (e) {
+    console.warn('[tde-backfill] oi_history read failed (fail-neutral):', e.message ?? e);
+    _tdeOiHistoryCache = {};
+  }
+  _tdeOiHistoryCacheAt = Date.now();
+  return _tdeOiHistoryCache;
+}
+// Backfill's contextByDate.oi socket: oiContextByDate (js/oi.js) shapes the archive
+// into {date: oiCtx} with the SAME oiCtxFrom definition the live path uses. Only
+// resolves days on/after whenever _oiHistorySummary started archiving regime/gexFlips
+// (Phase B) — CME serves no OI history, so earlier days are permanently oi:null, same
+// as any other pre-context backfill row.
+async function _tdeOiContextByDateFor(pair) {
+  let rec; try { rec = instrument(pair); } catch { return {}; }
+  const hist = await _tdeOiHistoryCached();
+  return _oiContextByDate(hist?.[rec.display]);
+}
 async function _tdeOiContext(pair) {
   try {
     const store = await _tdeOiStoreCached();
     let rec; try { rec = instrument(pair); } catch { return null; }
     const inst = store?.[rec.display];
-    if (!inst || !Number.isFinite(inst.spot) || !Number.isFinite(inst.gammaFlip)) return null;
-    const dist = _tdeDistanceToFlip(inst.spot, inst.gammaFlip);
-    if (!dist) return null;
-    const walls = [
-      ...(Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'call' })),
-      ...(Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'put' })),
-    ];
-    return {
-      spot: inst.spot, flip: inst.gammaFlip, side: dist.side, near: dist.near, pctToFlip: dist.pct,
-      walls, pcRatio: Number.isFinite(inst.pcRatio) ? inst.pcRatio : null,
-      asOf: inst.asOf ?? inst.updatedAt ?? null,
-    };
+    // oiCtxFrom (js/oi.js) is the ONE shaping definition — nearest-to-spot gexFlips
+    // crossing (root-found, not the naive single-scan gammaFlip scalar), canonical
+    // regime, walls, pcRatio — shared with the offline backfill path below so live
+    // decide() and the fit pipeline read OI identically.
+    return _oiCtxFrom(inst);
   } catch (e) {
     console.warn('[trade-decision] OI context failed (fail-neutral):', e.message ?? e);
     return null;
@@ -23864,7 +23899,7 @@ app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
   const out = {};
   for (const p of pairs) {
     try {
-      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext() });
+      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext(), oi: await _tdeOiContext(p) });
       out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime,
                  macro: s.macro ? { regime: s.macro.regime, stale: s.macro.stale } : null };
     }
@@ -23894,7 +23929,7 @@ if (process.env.TDE_PAIRS) {
     if (_tdeLoopBusy) return;
     _tdeLoopBusy = true;
     for (const p of tdePairs) {
-      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext() }); }
+      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext(), oi: await _tdeOiContext(p) }); }
       catch (e) { console.log(`[trade-decision] refresh ${p} failed: ${e.message ?? e}`); }
     }
     _tdeLoopBusy = false;
@@ -23994,8 +24029,18 @@ function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true 
 
       let report = null;
       for (const pair of runPairs) {
-        const contextByDate = fredHist ? _macroContextByDate(pair, fredHist) : null;
+        let contextByDate = fredHist ? _macroContextByDate(pair, fredHist) : null;
         if (fredHist) onLog(`${pair}: macro context ${contextByDate && Object.keys(contextByDate).length ? `${Object.keys(contextByDate).length} days` : 'none (no riskSens driver) — macro-neutral'}`);
+        // oi context is a separate, narrower archive (NQ/gold realistically — CME OI
+        // doesn't back spot FX) — merge in whatever days it has rather than gating the
+        // whole run on it the way macro gates runPairs above.
+        const oiByDate = await _tdeOiContextByDateFor(pair);
+        const oiDays = Object.keys(oiByDate).length;
+        if (oiDays) {
+          contextByDate = contextByDate ? { ...contextByDate } : {};
+          for (const [date, oi] of Object.entries(oiByDate)) contextByDate[date] = { ...(contextByDate[date] || {}), oi };
+          onLog(`${pair}: oi context ${oiDays} day(s) (archive-limited — CME serves no OI history, forward-only)`);
+        }
         report = await tdeRunBackfill([pair], { incremental: true, gapFill, contextByDate, onLog });
       }
       job.status = 'done'; job.report = report;

@@ -123,12 +123,18 @@ export function labelOutcome(packed, fromIdx, endIdx, entry, dirSign, sigmaAbs, 
 // live), then scan today's M1 for FIRST touches of the top zones and push each
 // through the same decide() the API serves. onEvent(evt) receives each event.
 //
-// contextByDate (optional): { 'YYYY-MM-DD': { macro?, calendar? } } — the
+// contextByDate (optional): { 'YYYY-MM-DD': { macro?, calendar?, oi? } } — the
 // historical-context injection socket. A macro loader (obs-dated FRED with
-// publication lags) supplies per-day { regime, riskSens }; a historical
-// calendar can adopt the same shape later (today the replayed calendar is []
-// — which is why the fitted news_soon weight is currently meaningless).
-// Absent dates ⇒ macro-neutral, empty calendar: pre-context rows are unchanged.
+// publication lags) supplies per-day { regime, riskSens }; oi is the sibling
+// socket fed from js/oi.js's oiContextByDate (the oi_history archive shaped
+// the same way _tdeOiContext shapes the live oi_store read — one definition,
+// oiCtxFrom, both paths). A historical calendar can adopt the same shape later
+// (today the replayed calendar is [] — which is why the fitted news_soon
+// weight is currently meaningless).
+// Absent dates ⇒ macro-neutral / oi-neutral, empty calendar: pre-context rows
+// are unchanged. oi only resolves for dates on/after the archival schema
+// change that started capturing regime/gexFlips (Phase B) — earlier days
+// resolve oi:null, same as a pre-archive live snapshot.
 // Precompute a causal MTF WaveTrend-STRETCH lookup from packed M1 (the Phase-11
 // gate): resample to M15 + H1, compute wt1 (9/12/3), and return
 // wtStretchAt(epochSec) → +1 (both TFs overbought) / −1 (both oversold) / 0 (mixed),
@@ -229,6 +235,7 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     let snap;
     try {
       snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
+        oi: dayCtx.oi ?? null,
         intradayBars: asiaBars.length >= 2 ? asiaBars : null, mondayBars,
         prevAsiaBars: prevAsiaBars?.length >= 10 ? prevAsiaBars : null,
         prevMondayBars: prevMondayBars?.length >= 20 ? prevMondayBars : null,
