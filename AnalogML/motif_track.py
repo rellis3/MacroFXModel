@@ -244,7 +244,20 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
 
 def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> int:
     """Identical mechanism to paper_track.py's resolve_open_trades -- same
-    shared barrier walker, same genuine-timeout-only convention."""
+    shared barrier walker, same genuine-timeout-only convention.
+
+    Re-derives each trade's position in `bars` fresh, from its recorded
+    `entry_date`, rather than trusting the `entry_idx` stored at logging
+    time. That stored value is a raw position into whatever bars array
+    existed on the run that logged it -- fine as long as the data window's
+    start never changes, but caught live 2026-08-19: moving M1_DIR to a
+    fresh backfill with a shorter history (5yr vs the previous ~10yr)
+    shifted every bar's position, silently stranding 275+ older trades
+    forever past `resolve_open_trades`'s old bounds check (entry_idx now
+    exceeding the new, shorter array's length) -- they'd never resolve
+    again under any data window shorter than the one that logged them.
+    `entry_date` is the actual stable identity; re-look-up is cheap and
+    immune to the data window ever changing shape again."""
     n = len(bars)
     pip = pip_size(pair)
     sl_price = params["sl_pips"] * pip
@@ -253,17 +266,28 @@ def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) 
     for t in log["trades"]:
         if t["pair"] != pair or t["status"] != "open":
             continue
-        if t["entry_idx"] >= n:
+        try:
+            entry_ts = pd.Timestamp(t["entry_date"])
+            if entry_ts.tzinfo is None:
+                entry_ts = entry_ts.tz_localize(bars.index.tz)
+            else:
+                entry_ts = entry_ts.tz_convert(bars.index.tz)
+            entry_idx = bars.index.get_loc(entry_ts)
+        except KeyError:
+            continue  # entry bar predates the current window or fell in a gap -- try again once more history is cached
+        if isinstance(entry_idx, slice):
+            entry_idx = entry_idx.start  # duplicate-index edge case; shouldn't happen for real H1 bars
+        if entry_idx >= n:
             continue
         direction = 1 if t["direction"] == "BUY" else -1
-        entry = Entry(idx=t["entry_idx"], direction=direction, entry_price=t["entry_price"])
+        entry = Entry(idx=entry_idx, direction=direction, entry_price=t["entry_price"])
         result = race_trades(bars, [entry], sl=sl_price, tp_r=t["tp_r"],
                              max_bars_ahead=params["max_bars_ahead"], cost_price=cost_price,
                              min_bars_ahead=0)
         if not result:
             continue
         r = result[0]
-        genuinely_timed_out = (n - 1) >= t["entry_idx"] + params["max_bars_ahead"]
+        genuinely_timed_out = (n - 1) >= entry_idx + params["max_bars_ahead"]
         if r["outcome"] in ("tp", "sl") or genuinely_timed_out:
             t["status"] = r["outcome"]
             t["exit_date"] = bars.index[r["exit_idx"]].isoformat()
