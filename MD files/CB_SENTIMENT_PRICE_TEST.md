@@ -156,3 +156,37 @@ needs its own pre-registration (obvious confounds to address there: the
 dies; Stage 2 (score backfill, server-side) and Stage 3 cell 1 (Δscore vs R1)
 still run as registered — a text score could yet correlate with the daily
 drift even though the initial reaction does not.
+
+---
+
+## Stage 2 build (2026-08-17) — built, awaiting a run on the deployed server
+
+Bricks: `js/cbLexicon.js` (Scorer A, `cb-lexicon-v1`, unit-tested) and
+`js/fomcHistory.js` (2016–2025 scheduled decision days, Stage-1-validated),
+plus the backfill job in `server.js`. Registered in `LEGO_MODULES.md` §1ao.
+
+**Freeze guarantee:** the lexicon term lists were written and committed from a
+sandbox that cannot reach federalreserve.gov — no historical statement text was
+readable while they were authored, so they are frozen-before-scoring by
+construction, as this document requires. Changing them after scores exist
+voids Stage 3 (re-register as v2).
+
+**To run (on the deployed Railway server, after this merges and deploys):**
+
+1. `POST /api/fomc-backfill/run?llm=1` — one call; runs in the background
+   (~3–5 min: ~80 fed.gov fetches at 1.2s spacing, then LLM reads for
+   meetings without an analysis). Idempotent and additive: existing raw
+   captures and analyses are never overwritten, and `fomc_latest` is
+   snapshotted/restored so the dashboard pointer can't regress.
+2. Poll `GET /api/fomc-backfill/status` until `phase: "done"`.
+3. `GET /api/fomc-backfill/scores` → the per-meeting lexicon + LLM scores
+   with meeting-over-meeting Δs. Spot-check a few `hits` audit trails against
+   the source statements before Stage 3.
+4. Stage 3 then joins Δscore to the Stage-1 R1 series
+   (`analysis/fomc_event_study/stage1_events.csv`) — cell 1 as registered
+   above. The join can run anywhere the scores JSON can be downloaded to.
+
+Pre-Stage-3 checklist (from the design above): cross-check the historical
+date list against federalreserve.gov/monetarypolicy/fomccalendars.htm, and
+verify `fomcFetch.js`'s text extraction is tight on a couple of real pages
+(its own header flags that the extraction was built blind to the live DOM).

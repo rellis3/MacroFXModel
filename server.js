@@ -86,6 +86,8 @@ import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDEN
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
+import { allMeetings as fomcAllMeetings, previousMeetingDate as fomcPreviousMeetingDate } from './js/fomcHistory.js';
+import { score as cbLexiconScore, LEXICON_VERSION as CB_LEXICON_VERSION } from './js/cbLexicon.js';
 import { ECB_MEETINGS, pendingAsOf as ecbPendingAsOf } from './js/ecbCalendar.js';
 import { FETCHERS as ECB_FETCHERS, PRESS_RSS_URL as ECB_PRESS_RSS_URL, yymmdd as ecbYymmdd } from './js/ecbFetch.js';
 import { parseRssItems as ecbParseRssItems } from './js/cbIndexFetch.js';
@@ -3226,8 +3228,10 @@ function _fomcReadingGuidance(kind) {
   return '';
 }
 function _fomcPrevMeetingDate(meetingDate) {
-  const idx = FOMC_MEETINGS.findIndex(m => m.date === meetingDate);
-  return idx > 0 ? FOMC_MEETINGS[idx - 1].date : null;
+  // Merged historical+live lookup (js/fomcHistory.js), so the first meeting
+  // on the live calendar — and any backfilled 2016-2025 meeting — still diffs
+  // against its true predecessor instead of getting no diff block at all.
+  return fomcPreviousMeetingDate(meetingDate);
 }
 async function _fomcGetRaw(kind, date) {
   const raw = await kv.get(`fomc_raw_${kind}_${date}`);
@@ -3411,6 +3415,122 @@ app.get('/api/fomc/fetch-status', async (_req, res) => {
 // same running-guard as the manual trigger so the two can never overlap and
 // race on the same KV writes.
 setInterval(() => { _fomcRunCheck('poll'); }, 30 * 60_000);
+
+// ── FOMC Statement Backfill — Stage 2 of MD files/CB_SENTIMENT_PRICE_TEST.md ──
+// Backfills every scheduled FOMC statement 2016→today (js/fomcHistory.js —
+// dates validated by the Stage-1 vol-spike join proof), then scores each one
+// with the frozen cbLexicon (Scorer A, confirmatory, hindsight-free) and —
+// only with ?llm=1 and ANT_KEY — runs the standard LLM engine over meetings
+// with no analysis yet (Scorer B, exploratory; the pre-registration explains
+// why B alone can never pass Stage 3). Raw captures are idempotent: an
+// existing fomc_raw_statement_<date> is never refetched or overwritten, so
+// live point-in-time captures are untouchable by this job.
+//
+// Results land in ONE KV key for the Stage-3 join:
+//   fomc_lexicon_scores = { generatedAt, lexicon, total, captured, meetings:
+//     [{ date, sep, hawk, dove, score, dScore, llmScore, dLlmScore, missing }] }
+// Fire-and-forget + poll (same reason as /api/fomc/fetch-now): 80 sequential
+// fed.gov fetches outlive any reverse-proxy timeout. ~1.2s politeness delay
+// between network fetches; already-captured statements cost no fetch at all.
+const _FOMC_BACKFILL_LOG_KV = 'fomc_backfill_log';
+let _fomcBackfillRunning = false;
+
+async function _fomcBackfillJob(withLlm) {
+  const meetings = fomcAllMeetings().filter(m => Date.parse(m.date) <= Date.now());
+  const log = [];
+  const heartbeat = async phase => kv.put(_FOMC_BACKFILL_LOG_KV, JSON.stringify({
+    at: new Date().toISOString(), phase, total: meetings.length, log: log.slice(-30),
+  })).catch(() => {});
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Phase 1 — ensure raw capture + lexicon score, oldest first.
+  const rows = [];
+  let fetched = 0, missing = 0;
+  for (const m of meetings) {
+    let raw = await _fomcGetRaw('statement', m.date);
+    if (!raw) {
+      try {
+        const r = await FOMC_FETCHERS.statement(m.date);
+        if (r.ok) {
+          raw = { text: r.text, url: r.url, tables: null, fetchedAt: new Date().toISOString() };
+          await kv.put(`fomc_raw_statement_${m.date}`, JSON.stringify(raw));
+          fetched++;
+        } else {
+          log.push(`${m.date} ✗ ${r.notYetPublished ? '404 (no statement page)' : r.error || r.status}`);
+        }
+      } catch (e) { log.push(`${m.date} ✗ ${e.message}`); }
+      await sleep(1200); // politeness: only after an actual network fetch
+    }
+    if (!raw?.text) { missing++; rows.push({ date: m.date, sep: m.sep, missing: true }); continue; }
+    const lex = cbLexiconScore(raw.text);
+    rows.push({ date: m.date, sep: m.sep, hawk: lex.hawk, dove: lex.dove, score: lex.score, sourceUrl: raw.url });
+    if (rows.length % 10 === 0) await heartbeat(`capture+lexicon ${rows.length}/${meetings.length}`);
+  }
+  log.push(`phase 1 done: ${rows.length - missing}/${meetings.length} scored (${fetched} newly fetched, ${missing} missing)`);
+  await heartbeat('phase 1 done');
+
+  // Phase 2 (opt-in) — LLM analysis for meetings that have none. The engine
+  // writes fomc_latest as a side effect; snapshot and restore it so a
+  // historical backfill can never repoint the dashboard at a 2016 meeting.
+  if (withLlm && process.env.ANT_KEY) {
+    const latestSnapshot = await kv.get('fomc_latest').catch(() => null);
+    let built = 0, failed = 0;
+    for (const row of rows) {
+      if (row.missing) continue;
+      const existing = await kv.get(`fomc_analysis_statement_${row.date}`).catch(() => null);
+      if (existing) continue;
+      try { await _buildFomcAnalysis('statement', row.date); built++; }
+      catch (e) { failed++; log.push(`${row.date} llm ✗ ${e.message}`); }
+      await sleep(500);
+      if ((built + failed) % 10 === 0) await heartbeat(`llm ${built + failed} built/failed`);
+    }
+    if (latestSnapshot) await kv.put('fomc_latest', latestSnapshot).catch(() => {});
+    log.push(`phase 2 done: ${built} LLM analyses built, ${failed} failed`);
+  } else if (withLlm) {
+    log.push('phase 2 skipped: ANT_KEY not configured');
+  }
+
+  // Attach LLM scores (from any analysis, pre-existing or just built) and
+  // both scorers' meeting-over-meeting deltas vs the previous SCORED meeting.
+  for (const row of rows) {
+    if (row.missing) continue;
+    const rawA = await kv.get(`fomc_analysis_statement_${row.date}`).catch(() => null);
+    if (rawA) { try { row.llmScore = JSON.parse(rawA).analysis?.hawkishScore ?? null; } catch { row.llmScore = null; } }
+  }
+  let prevLex = null, prevLlm = null;
+  for (const row of rows) {
+    if (row.missing) continue;
+    row.dScore = prevLex == null ? null : +(row.score - prevLex).toFixed(4);
+    row.dLlmScore = (prevLlm == null || row.llmScore == null) ? null : +(row.llmScore - prevLlm).toFixed(4);
+    prevLex = row.score;
+    if (row.llmScore != null) prevLlm = row.llmScore;
+  }
+
+  await kv.put('fomc_lexicon_scores', JSON.stringify({
+    generatedAt: new Date().toISOString(), lexicon: CB_LEXICON_VERSION,
+    total: meetings.length, captured: rows.filter(r => !r.missing).length, meetings: rows,
+  }));
+  await heartbeat('done');
+  console.log(`[fomc-backfill] ${log.join(' · ')}`);
+}
+
+app.post('/api/fomc-backfill/run', (req, res) => {
+  if (_fomcBackfillRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _fomcBackfillRunning = true;
+  const withLlm = req.query.llm === '1';
+  _fomcBackfillJob(withLlm).catch(e => console.error('[fomc-backfill]', e.message))
+    .finally(() => { _fomcBackfillRunning = false; });
+  res.json({ ok: true, started: true, withLlm });
+});
+app.get('/api/fomc-backfill/status', async (_req, res) => {
+  const raw = await kv.get(_FOMC_BACKFILL_LOG_KV).catch(() => null);
+  res.json({ ok: true, running: _fomcBackfillRunning, last: raw ? JSON.parse(raw) : null });
+});
+app.get('/api/fomc-backfill/scores', async (_req, res) => {
+  const raw = await kv.get('fomc_lexicon_scores').catch(() => null);
+  if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/fomc-backfill/run first' });
+  res.json({ ok: true, ...JSON.parse(raw) });
+});
 
 // ── ECB Sentiment Engine ───────────────────────────────────────────────────────
 // Same shape as the FOMC engine (calendar-driven fetch → diff vs previous →

@@ -1601,6 +1601,21 @@ Two honest reads, not one blended one:
   standout point (13:30) is the one result across this whole exercise that
   looks like noise dressed as a finding, not a repeatable edge.
 
+### 1ao. CB-sentiment lexicon + FOMC statement backfill (2026-08-17) — Stage 2 of the sentiment→price test
+
+Built for `MD files/CB_SENTIMENT_PRICE_TEST.md` (pre-registered 2026-08-15;
+Stage 1's registered drift cell came back a clean null, banked). This pass
+adds the two bricks Stage 2 needs and the server job that runs them where
+fed.gov and the LLM API are reachable (Railway — the build sandbox reaches
+neither, which is also *why* the lexicon lists are guaranteed frozen-before-
+scoring: no historical document was fetchable while they were written).
+
+| Brick | File | What it does | Consumers | Status |
+|---|---|---|---|---|
+| **CB lexicon scorer** | `js/cbLexicon.js` | Deterministic hawk/dove scorer (Apel–Blix Grimaldi-style term counting, statement-register phrase regexes, ~26 terms/side, FROZEN as `cb-lexicon-v1`): `score(text)` → `{score∈[−1,1], hawk, dove, nWords, hits}` with the matched-substring audit trail. Zero tunables by design — it is Scorer A (confirmatory) precisely because an LLM scoring 2019 text knows 2020. Changing a list after historical scores exist voids Stage 3 (re-register as v2). Unit-tested `js/cbLexicon.test.mjs` (direction, determinism, false-positive guards, edge cases). | `server.js` `_fomcBackfillJob` | 🟢 built, tested; **not yet run on a real statement** (needs the deployed server) |
+| **FOMC historical calendar** | `js/fomcHistory.js` | Scheduled decision days 2016→2025 (79 meetings + sep flags; 2020 intermeeting emergency actions excluded by design), `allMeetings()` (merged+deduped with live `FOMC_MEETINGS`), `previousMeetingDate()`. Deliberately NOT merged into `fomcCalendar.js` so `pendingAsOf`/calendar routes keep their behavior. Provenance: all dates passed Stage 1's ≥2× 14:00 ET vol-spike join proof (82/82 incl. 2026). | `server.js` backfill + `_fomcPrevMeetingDate` (now diffs the first live-calendar meeting against its true 2025 predecessor instead of returning null) | 🟢 built |
+| **Backfill job + routes** | `server.js` | `POST /api/fomc-backfill/run[?llm=1]` (fire-and-forget + running guard, same pattern as `/api/fomc/fetch-now`), `GET /api/fomc-backfill/status` (heartbeat KV `fomc_backfill_log`), `GET /api/fomc-backfill/scores`. Phase 1: idempotent raw capture (`fomc_raw_statement_<date>` never refetched/overwritten — live point-in-time captures are safe) + lexicon scores, 1.2s politeness delay on actual fetches only. Phase 2 (`?llm=1`, needs `ANT_KEY`): standard `_buildFomcAnalysis` over meetings with no analysis, `fomc_latest` pointer snapshotted+restored so a historical backfill can't repoint the dashboard. Output: KV `fomc_lexicon_scores` (per-meeting lexicon + LLM scores and meeting-over-meeting Δs) — the Stage-3 join input. | Stage 3 event-study join (`analysis/fomc_event_study/`, to be extended) | 🟢 built; ⏳ **awaiting a run on the deployed server** |
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
