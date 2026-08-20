@@ -48,8 +48,24 @@ up in prior image-based reconstruction. When transcripts mention *any* of:
 where possible (his exact wording on period/multiplier/timeframe matters
 more than paraphrase).
 
-**Status: no transcript evidence yet.** Nothing found in videos logged so far
-(transcript 1 doesn't mention it — see Video Log below).
+**Status: leading hypothesis, not confirmed.** Transcript 1 has no literal
+mention of "Bollinger"/"band"/"standard deviation", but it does describe a
+tool that's structurally the same job: the **range/volatility forecasting
+tool** (see Theme Index) — a pasted indicator script that draws expected-move
+levels per asset from **high-to-low median** and **close median** stats,
+explicitly framed as an envelope of expected movement rather than a
+directional S/R line. That matches the screenshot closely: a shaded
+green/red zone (inside vs. outside expected range) around a horizontal
+break level, drawn by an indicator script — not one of the VuManChu panes
+already mapped elsewhere in this repo. Median-range-based rather than
+classic rolling-stdev, but functionally an envelope band either way.
+
+**Working theory: the screenshot band = this tool, not a separate classic
+Bollinger indicator.** Needs confirming — watch for the tool's actual
+construction (lookback/period, session vs. rolling anchor, whether it's
+median-based or stdev-based under the hood) in future transcripts,
+especially anything referencing the "additional materials" walkthrough
+video Husky mentions.
 
 ---
 
