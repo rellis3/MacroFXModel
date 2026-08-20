@@ -212,6 +212,70 @@ these same screenshots; the colored rectangle is almost certainly
 TradingView's Long/Short Position drawing tool, a manual per-trade
 annotation, not a computed indicator). This entry is kept short and points
 there rather than duplicating it.
+### Cross-check: VWAP ± SD / Bollinger Z-score hypothesis (external ChatGPT
+analysis of the same transcripts, checked against this repo's own history)
+
+**Source: not a transcript** — the user separately ran a ChatGPT pass over
+(a version of) the same video material, aimed specifically at surfacing
+"potential ideas and bands which maybe Jordan's strategy." Confidence:
+**mixed — treat per-claim, not as a package.** ChatGPT proposed, as its
+top candidate, that Jordan's system likely uses **VWAP ± statistical
+deviation** (σ-bands around VWAP, or VWAP-distance normalised by ATR)
+rather than a classic Bollinger Band, and separately floated a compound
+"BB Z-score + range-consumed% + ATR percentile + VWAP distance + macro
+regime → mean reversion" hypothesis, explicitly *not* claiming the
+transcripts state Bollinger Bands outright.
+
+**What's actually checkable against this repo, done before taking this
+further:**
+- **The core claim — VWAP ± 2σ bands as a standalone fade/bounce signal —
+  is not a fresh hypothesis here. It was already built and tested**:
+  `js/vwapReversionEngine.js` / `MD files/VWAP_REVERSION_FINDINGS.md`.
+  Result: **definitive null**, 26 FX pairs, real OANDA M1 2016-2026, costed,
+  true IS/OOS split. Both `band_fade` (fade the ±2σ VWAP band back to VWAP)
+  and `vwap_bounce` (trade the pullback to VWAP after a stretch, betting it
+  holds) scored **0/26 pairs OOS-positive**, pooled OOS t-stats of −46.6 and
+  −21.7 respectively, and — importantly — **there is no gross edge either**:
+  backing out costs, `band_fade`'s gross mean is ≈ −0.0015%/trade,
+  indistinguishable from zero. This isn't "a real edge killed by costs," it's
+  "no signal, ever." So ChatGPT's framing of VWAP±SD as *the* strong,
+  under-explored candidate doesn't hold up against what this repo has
+  already run — it's a closed question, not an open one, for the standalone
+  version.
+- **Bollinger Bands as a *filter/confluence component*** genuinely does
+  appear in this repo (`MD files/Backtest handover.md`, `MASTER_STRATEGY_
+  DOCUMENTATION.md`, `Fib_STRATEGY_DOCUMENTATION.md`) — a 20-period/2.0σ BB
+  "statistical extreme" toggle inside a range-extension backtest *tool*.
+  But those are **feature descriptions of a configurable tool, not a
+  reported result** — nothing found shows this filter (alone or combined
+  with "range consumed / ATR percentile / macro regime") was ever actually
+  run and scored. So the compound hypothesis is a real, present concept in
+  this repo, but **genuinely untested**, not validated and not refuted.
+- **"Range consumed / daily budget"** is real and already used
+  (`WEEKLY_VOL_RANGE_FORECAST_GUIDE.md`, `DAILY_VOL_RANGE_FORECAST_GUIDE.md`,
+  `REGIME_CONFLUENCE_DASHBOARD_HANDOVER.md`) — the same concept already
+  logged in this file from the transcripts (Husky's daily forecasting tool).
+  Not new, but confirms that part of ChatGPT's read is grounded.
+- **`VWAP_REVERSION_FINDINGS.md` explicitly flags what it did *not* test**:
+  "VWAP as a *conditioning filter* on an edge that already exists... this is
+  meta-labeling — it needs a primary edge to size, which this repo does not
+  yet have validated intraday." That's exactly the shape of ChatGPT's
+  compound hypothesis (VWAP-distance as one input among several, not the
+  sole trigger) — so the existing null does not settle it, per this repo's
+  own stated epistemic-humility rule ("everything is null but needs
+  reviewing with a different context," `MD files/CLAUDE.md`).
+
+**Bottom line**: don't chase VWAP±SD bands as a standalone signal — that's
+answered. The open, worth-a-decision question is whether the *compound*
+version (BB Z-score / VWAP-distance-normalised-by-ATR as one gated input
+among range-consumed%, ATR percentile, and regime, not the sole trigger) is
+worth its own honest build — genuinely untested, meaningfully different in
+kind from both the standalone VWAP null and the already-built ATR-band
+engine above (that one gates on ADX regime; this one would be a multi-
+factor confluence score).
+**Videos:** n/a — this entry is a cross-check against existing repo files,
+not new transcript material.
+
 A **dynamically/continuously recalculated band** — the user is explicit
 this is *not* the group's existing daily median/75th-percentile forecast
 tool (fixed once at session open), which this repo already has built.
