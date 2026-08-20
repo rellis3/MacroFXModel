@@ -299,9 +299,19 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       const cands = [];
       for (const e of inst.perExpiry) {
         if (!Number.isFinite(e.dte)) continue;
-        for (const [v, t] of [[e.maxPain, 'max_pain'], [e.callWall, 'call_wall'], [e.putWall, 'put_wall']]) {
-          if (Number.isFinite(v) && !drawn.has(`${t}@${v.toFixed(dp)}`)) cands.push({ price: v, type: t, dte: e.dte });
-        }
+      // MAX PAIN IS TIME-BOUND, WALLS ARE PRICE-BOUND. The band filter below asks "can
+      // price reach this level today", which is the right question for a wall: a wall
+      // matters because price arrives at it. It is the WRONG question for max pain,
+      // whose pull comes from time to expiry, not distance — a 20DTE max pain sitting
+      // inside today's range exerts no pin today, and gold was exporting a dozen of
+      // them. So max pain from OTHER expiries is capped by DTE before the band filter
+      // ever sees it. The primary and day expiries are drawn in full above regardless,
+      // so the near-dated max pain that actually pins is never dropped.
+      const MAXPAIN_MAX_DTE = 7;
+      for (const [v, t] of [[e.maxPain, 'max_pain'], [e.callWall, 'call_wall'], [e.putWall, 'put_wall']]) {
+        if (t === 'max_pain' && !allExpiry && e.dte > MAXPAIN_MAX_DTE) continue;
+        if (Number.isFinite(v) && !drawn.has(`${t}@${v.toFixed(dp)}`)) cands.push({ price: v, type: t, dte: e.dte });
+      }
       }
       let emit = cands;
       if (!allExpiry && bandFrac) {
