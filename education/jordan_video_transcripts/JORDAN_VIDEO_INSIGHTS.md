@@ -108,17 +108,34 @@ itself transcribed here.
 **Videos:** 1.
 
 ### Range extension methodology (weekly + daily variants)
-**Speaker: Husky**, describes his own live-stream markup process.
-Confidence: high.
+**Speaker: Husky** (video 1) / **host of videos 2-3** (Tuesday weekly
+markup call — same schedule Husky described, consistent presenter across
+2-3, name still unconfirmed in-transcript). Confidence: high.
 Two variants: (1) **weekly range extensions** on the **15m** chart,
-recomputed/reviewed Tuesdays; (2) **daily range extensions** built from the
-**Asia session range**, plotted on the **5m** chart, reviewed Thursdays.
-Same underlying approach at two different scales. Once drawn, levels are
-fixed for the period (again: no redrawing on new highs/lows — this is
-stated as a deliberate discretion-removal mechanism, appears twice).
-Common target use: **50% (midpoint) of the day's range so far** as a
-partial-TP / final-TP area, not just the range edges.
-**Videos:** 1.
+recomputed/reviewed Tuesdays, anchored to the **Monday range**; (2) **daily
+range extensions** built from the **Asia session range**, plotted on the
+**5m** chart, reviewed Thursdays. Same underlying approach at two different
+scales — both anchor to a fixed prior range and project multiples of its
+width beyond the edges (see the range-extension-multiples entry below for
+the exact formula). Once drawn, levels are fixed for the period (again: no
+redrawing on new highs/lows — a deliberate discretion-removal mechanism,
+repeated across videos). Common target use: **50% (midpoint) of the day's
+range so far** as a partial-TP / final-TP area, not just the range edges.
+
+**Anchor time matters (video 3, new):** the weekly/Monday range is measured
+from **midnight**, not the instrument's official session/market open
+(e.g. not 11:00) — explicitly to avoid contaminating the range with
+**mark-to-open / rollover gaps**. If replicating this in a backtest, the
+range window must use a fixed midnight-to-midnight (or midnight-to-now)
+boundary, not exchange session times, or the levels won't match what's
+being described.
+
+**Volatility overlay scope (video 3, new):** the daily volatility/range
+forecasting tool (the "high-to-low median" / "close median" one) is used
+**only for daily levels** — explicitly *not* applied to weekly range
+extensions, since "they're only valid till the end of the day." Keep that
+distinction if trying to reproduce both processes.
+**Videos:** 1, 3.
 
 ### Mean reversion across multiple timeframes, sparse levels, wait-to-invalidate entry style
 **Speaker: Husky**, personal execution style. Confidence: med.
@@ -210,23 +227,121 @@ support/resistance in the new direction; wait for price to come back and
 retest it as an entry, not enter on the initial break).
 **Videos:** 2.
 
-### Range-extension multiples off the Asia session range
-**Speaker: host of transcript 2.** Confidence: high (stated with specific
-numbers, repeated as a personal preference).
-The daily range-extension levels aren't just Fib-style ratios — they're
-literal **multiples of the Asia session's own range, projected beyond it**:
-"two is a 100% extension away from the Asia range — if you copied and
-pasted this Asia range and then put it below, that's going to be the
-level." Named multiples in use: **1.5, 2, 2.75** (host says 1.5 and 2 are
-personal favorites). Golden pocket (Fib 0.618–0.65) is used as separate
-confluence, pulled from a 1H-context Fibonacci retracement, cross-checked
-against these extension levels to narrow down which one(s) to keep — the
-process explicitly discards levels that cluster too close together ("we
-don't want three levels, especially not that close together"), aiming for
-1-2 final levels per side.
-**Videos:** 2. Relevant to the Asia-range work already noted for
+### Range-extension multiples — formula now confirmed
+**Speaker: host of transcripts 2-3.** Confidence: high (stated with
+specific numbers across two videos, formula is now fully derivable).
+The range-extension levels aren't Fib-style ratios of a swing — they're
+literal **multiples of a reference range's own width, projected beyond its
+edge**, where the reference range is the Asia session range for daily
+levels or the Monday range for weekly levels (see methodology entry
+above). Two independent confirmations give the same formula:
+- Video 2: "two is a 100% extension away from the Asia range — if you
+  copied and pasted this Asia range and put it below, that's the level."
+- Video 3: "1.5, moving below Monday's range — 50% extension beyond it."
+
+So **extension multiple N → level = range_edge ± (N−1) × range_width**.
+Named multiples in use: **1.25, 1.5, 2, 2.75, 3.5, 4.5** across the two
+videos (1.5 and 2 called out as personal favorites). Golden pocket (Fib
+0.618–0.65) is used as separate confluence — pulled from a swing high/low
+on a *higher* timeframe (1H for daily levels, 4H for weekly, see the
+swing-selection entry below) — cross-checked against these extension
+levels to narrow down which to keep. Levels that cluster too close together
+are explicitly discarded/merged (see confluence-clustering entry below),
+aiming for roughly 1-3 final levels per side, and it's stated as fine to
+end up with **zero** levels on a side rather than force one.
+**Videos:** 2, 3. Relevant to the Asia-range work already noted for
 `education/jordan_impulse_range_backtest/` — check for overlap/consistency
-with the extension ratios already tested there before adding these.
+with the extension ratios already tested there before adding these; the
+formula above is concrete enough to implement directly.
+
+### Confluence clustering / merge-nearby-levels threshold
+**Speaker: host of transcript 3.** Confidence: med (one concrete number
+given, likely instrument-specific rather than universal).
+When multiple candidate levels (from range extensions, fibs, and the daily
+volatility overlay) land close together, they're treated as **confluent
+and merged into one** rather than kept as separate levels — stated
+threshold for gold: **$5**. No EU/NQ-specific number given yet, so this
+likely scales with instrument/price (a fixed-dollar threshold on gold ≈
+~0.1% of price at ~$4,100-4,500 — worth checking whether other instruments
+use a similar *percentage* rather than the same dollar amount).
+**Videos:** 3.
+
+### Swing high/low selection heuristic for Fibonacci anchors ("blur your eyes")
+**Speaker: host of transcript 3.** Confidence: med — a discretion-control
+technique, explicitly named and justified, not just an aside.
+When picking the high/low to draw a Fibonacci retracement from: zoom out,
+then deliberately "blur your eyes" past the small-timeframe jaggedness and
+pick **one** key swing high and **one** key swing low — not whichever pair
+of local peaks happens to produce a convenient level. Stated rationale:
+avoids retrofitting a Fib to justify a level after the fact ("trying to
+make a case for a level" — implicitly a self-aware anti-p-hacking / anti
+confirmation-bias rule). Practical implication for automation: swing
+detection needs to run on a meaningfully higher timeframe than the entry
+timeframe (1H swings feeding 5m/15m levels, 4H swings feeding weekly
+levels) rather than the lowest-timeframe pivot detector, or it will surface
+too many candidate anchors.
+**Videos:** 3.
+
+### Zone-based levels, not single-price lines
+**Speaker: host of transcript 3.** Confidence: med.
+When a level is imprecise (e.g. sits between the top of a golden pocket and
+a nearby extension level), mark it as a **price zone** rather than a single
+line — explicit reasoning: "you wouldn't want to necessarily miss out on
+the right idea just because you were waiting for pixel-perfect entry of
+the line." Practical for backtesting: entry/exit logic built purely on
+exact price-touch will systematically miss trades this system would take;
+a tolerance band per level may be closer to the real rule.
+**Videos:** 3.
+
+### ADX-based regime filter (trend vs. mean-reversion switch)
+**Speaker: host of transcript 3**, floated as a suggestion to a struggling
+member (Mike), not stated as something currently in use personally, but
+described with real numbers. Confidence: med.
+Use ADX (Average Directional Index) on the **4H** chart. ADX is magnitude
+of directional strength, not a bull/bear signal — "up here means we're
+really strong in our direction, either bullish or bearish." Around
+**~30** is treated as the regime midpoint: below ~30 → choppy/ranging
+regime → favor **mean reversion**, enter at levels, target back to the
+mean; above ~30 → trending regime → hold trades longer, wait for/trade the
+breakout instead of fading it. **This repo already has ADX in several
+places** (`regime_classifier_mtf.py`, `js/regime-v2.js`, `pine/hmm-v2-regime.pine`,
+etc.) — worth checking whether any existing regime classifier already uses
+something close to this exact threshold/timeframe before building a new
+one.
+**Videos:** 3.
+
+### Levels are bidirectional — entries AND take-profit targets
+**Speaker: host of transcript 3.** Confidence: med, extends the "close
+median as reversion magnet" idea from video 2 to the range-extension levels
+generally, not just the close median.
+Any marked level (range extension, golden pocket zone, close median) is
+explicitly usable both ways — as a potential entry *and* as a take-profit
+target for a position already open in that direction. Demonstrated live:
+NQ closing almost exactly on the close-median level after an up move —
+"if you were long on NAS yesterday... and closed out around here, you
+wouldn't be disappointed."
+**Videos:** 2 (close-median version), 3 (generalized to all level types).
+
+### Spacing resting levels apart to avoid correlated stop-outs
+**Speaker: host of transcript 3.** Confidence: low-med, single mention but
+a clear risk-management rationale.
+When keeping two candidate levels on the same side (e.g. two sell zones
+above price), deliberately keep them a "decent enough distance apart" so
+that a single sharp move can't fill/invalidate both simultaneously —
+explicit reasoning is avoiding a scenario where both resting orders get
+taken out together by one spike.
+**Videos:** 3.
+
+### Explicit discretion/intuition callouts, separate from the systematic process
+**Speaker: host of transcript 3.** Confidence: n/a (meta-note, not a rule).
+Notable for honesty about where the process stops being systematic: when
+skipping a gold buy level, the host explicitly flags the reasoning as pure
+opinion — "this is just complete discretion and intuition... I've been
+saying for a few weeks I feel like gold needs to revisit these areas before
+we see a move up." Useful as a marker: anything phrased this way should
+*not* be treated as part of the reproducible system, even though it comes
+from the same person in the same markup process.
+**Videos:** 3.
 
 ### Close median as a magnet / "predicted close" level
 **Speaker: host of transcript 2.** Confidence: med.
@@ -331,6 +446,24 @@ logic). Links to a script/dir once work starts._
 - **Level-flip-and-retest after impulse break.** Testable as a standalone
   rule: does a decisively broken range-extension/weekly level perform
   better as a retest entry than as a breakout entry?
+- **Range-extension formula is now fully specified**: `level = range_edge ±
+  (N−1) × range_width`, with the reference range being Asia-session (daily)
+  or Monday-midnight-to-midnight (weekly). This is directly implementable —
+  the main remaining question is which is the actual bar-anchoring in
+  `jordan_impulse_range_backtest/` today (does it already use a
+  midnight anchor, or exchange-session open? see the anchor-time note in
+  the methodology entry — this is a correctness check, not just a new
+  feature).
+- **ADX regime filter (~30 threshold, 4H) gating mean-reversion vs.
+  trend-following.** Directly testable and this repo already has ADX
+  plumbing (`regime_classifier_mtf.py`, `js/regime-v2.js`,
+  `pine/hmm-v2-regime.pine`) — check whether an existing classifier already
+  captures this threshold/timeframe combo before adding a new one.
+- **Confluence-clustering threshold ($5 on gold).** Worth checking whether
+  a fixed-percentage threshold (rather than fixed-dollar) reproduces the
+  same clustering behavior across gold/EU/NQ — cheap to test once the
+  range-extension formula above is implemented, since it's just a
+  post-processing merge step on the generated level list.
 
 ---
 
@@ -431,3 +564,46 @@ tool from whatever Jordan's own band screenshot shows.
 Asia-range extension multiples are both concrete and cheap to backtest
 against existing data. The level-flip-and-retest rule is a good candidate
 to test against the existing range-extension backtests already in the repo.
+
+### Transcript 3 — Tuesday weekly markup call (gold, EU, NAS; same
+presenter style/schedule as transcript 2)
+
+**Speaker note:** still not confirmed by name; Jordan again appears only
+as a chat participant (asked about a drive, referenced as someone who could
+answer an execution-automation question the host couldn't). No Jordan
+trading footage yet across 3 transcripts.
+
+**New:**
+- Range-extension formula fully confirmed: `level = range_edge ± (N−1) ×
+  range_width`, off Asia range (daily) or Monday range (weekly)
+- Midnight anchor (not exchange session open) used to define the
+  weekly/Monday range, specifically to avoid rollover/gap contamination
+- Volatility overlay tool confirmed daily-only, not used for weekly levels
+- Confluence-clustering threshold: $5 on gold, levels within that get merged
+- Swing high/low selection heuristic for Fib anchors ("blur your eyes",
+  pick one key pivot, avoid retrofitting a level)
+- Zone-based (not single-price) levels when precision is ambiguous
+- ADX regime filter suggestion: ~30 threshold on 4H, below = mean reversion
+  regime, above = trend/breakout regime — floated as advice, not confirmed
+  personal practice, but concrete and testable
+- Levels are bidirectional: also used as take-profit targets for existing
+  positions, not just entries
+- Spacing multiple resting levels apart to avoid correlated stop-outs
+- Explicit self-flagged discretion/intuition calls, kept separate from the
+  systematic process
+
+**Repeats (already in Theme Index, extended with new detail):**
+- Range extension methodology — now includes the anchor-time and
+  volatility-overlay-scope clarifications
+- Range-extension multiples — formula now fully derivable from two videos'
+  worth of examples
+
+**Bollinger/band mentions:** none. Three transcripts in, still nothing
+matching the screenshot — all three have been group markup/induction
+calls, not Jordan's own trading footage.
+
+**Worth researching:** yes, several concrete/cheap items — the
+range-extension formula (now fully specified, should be checked against
+what `jordan_impulse_range_backtest/` already implements), the ADX regime
+filter (repo already has ADX code to check against), and the
+confluence-clustering threshold.
