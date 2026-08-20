@@ -36,67 +36,86 @@ stated it, not whether it works.
 
 ## ⭐ Priority Watch: Bollinger-style band
 
-Flagged before any transcript was reviewed: a screenshot Jordan left in a
-message by mistake (`New test`, MGC1! gold chart, 02:53) shows a shaded
-green/red band overlay around price with a horizontal level break at
-~4,464.9, distinct from the VuManChu panes already mapped. This looks like
-a volatility/mean-reversion band (Bollinger-style envelope, possibly a
-custom multiple of stdev, or a keltner/donchian variant) that hasn't shown
-up in prior image-based reconstruction. When transcripts mention *any* of:
-"bands", "envelope", "standard deviation", "squeeze", "upper/lower band",
-"mean reversion to the band", "band walk" — log it here first, verbatim
-where possible (his exact wording on period/multiplier/timeframe matters
-more than paraphrase).
+**Status: substantially resolved — direct screenshot evidence obtained.**
+No transcript ever surfaced this (6 transcripts, all Husky, zero Jordan
+trading footage), but the user then supplied ~16 screenshots Jordan
+himself posted of his own tool under live iterative testing (`New test`,
+`one more test`, `test complete, full tp @C.OG`, `updated`, `another
+update`, `Full tp`, etc., spanning gold/MGC and NQ/MNQ, mostly on fast
+intraday charts — `MNQ1! · 1` and `MNQ1! · 15` labels visible — timestamped
+across a single day and again days later, consistent with rapid live
+iteration, not a one-off). These are call-outs to `@C.OG` (the group
+founder), i.e. Jordan reporting build/test progress on this tool directly
+to leadership.
 
-**Status: earlier hypothesis ruled out by the user — reopened.** Transcript
-1 had no literal "Bollinger"/"band"/"standard deviation" mention, so the
-range/volatility forecasting tool (see Theme Index) was floated as a
-possible match, since it's a pasted-indicator envelope drawn from
-high-to-low median / close median stats. **The user has since corrected
-this**: the group's range/volatility tool sets **fixed levels for the
-whole day** — effectively marking exhaustion points of that day's expected
-volatility, recomputed once per session. **Jordan's own posted band is
-different: dynamic and intraday, scalping-style** — i.e. it updates/moves
-*within* the session as price develops, not a static once-a-day envelope.
-That rules the forecasting tool out as the source of the screenshot band.
+**What the tool visibly is, read off the screenshots themselves:**
+- A **colored zone overlay** — green = price within the expected/normal
+  range, red/maroon = price beyond it (an exhaustion zone) — split by a
+  **horizontal boundary line**. Unlike a symmetric Bollinger Band, **the
+  red zone flips sides**: red sits *above* the green zone when the setup
+  is testing upside exhaustion, but *below* it when testing downside
+  exhaustion (see the flipped-layout screenshot vs. the earlier ones) —
+  i.e. it's directional/context-aware, not a fixed two-sided envelope.
+- A **live statistics panel** (visible in two screenshots, both on NQ):
+  a table headed `Session: <DAY>, August <D>` with rows **Live / Median /
+  75th Pct**, all expressed as **H-L range as a % of price** — e.g. "Live
+  0.87%, Median 1.7%, 75th Pct 2.1%" and later "Live 0.8%, Median 1.45%,
+  75th Pct 1.75%". This is **the same underlying statistic as Husky's
+  range/volatility forecasting tool** (median / 75th-percentile expected
+  range) — just re-rendered as a **continuously-updating live comparison**
+  instead of a fixed once-a-day line. This resolves the earlier confusion:
+  it's not a *different* concept from the forecasting tool, it's the
+  *same* statistical framework, personally rebuilt by Jordan to run live
+  on a scalping timeframe instead of being fixed at session open.
+- A **hover tooltip** on one screenshot reveals more precise fields: `H
+  +0.08%`, `H-L: 0.12%`, `Δmed -1.57%`, `Δ75p -1.97%` — confirming the
+  tool tracks the current bar's move, the running session H-L range, and
+  **explicit deltas from the median and 75th-percentile benchmarks** (how
+  far the current range is running below/above "normal"). This is a
+  genuinely reproducible spec if this repo wanted to rebuild it.
+- On-chart labels also include **"Close Med -0.7%"** and **"L -0.36%"** —
+  confirms a close-median concept (matching Husky's tool) plus a live
+  low-of-session % label, both rendered directly on the price chart, not
+  just in the side panel.
+- One later screenshot (`Ignoring the SL / the idea was right`) adds **two
+  blue curved lines** that hug price like a moving-average pair or a
+  basis+band-edge combination — the closest visual to a classic Bollinger
+  look seen so far, but **not yet identified**: could be a fast/slow MA
+  pair, could be one band edge plus its basis line. No period or type is
+  readable from the screenshot. **Flag this specifically for the next
+  round of material** — a transcript or clearer screenshot that names
+  what these two lines are would close this out completely.
+- A manually-drawn **diagonal dashed trend line** appears in several
+  shots, connecting a swing low to recent price — this looks like Jordan's
+  own manual annotation (trend context), not part of the indicator itself.
 
-So the target is now more specific: look for a chart tool that **recomputes
-continuously on a lower timeframe** (band walls move candle-to-candle or
-close-to-close, not fixed at session open) and is used for **scalping
-entries/exits intraday** — much closer to a textbook rolling Bollinger Band
-(N-period SMA ± k·stdev, recalculated every bar) than the daily
-expected-range tool. **Next transcripts should specifically be searched
-for**: a recording of Jordan trading (not the group's daily markup call),
-any mention of a band/channel that "walks" with price, mean reversion to a
-moving band edge, or band width/squeeze commentary on a fast (1-5m) chart.
+**Likely identity of this tool**: Husky mentions in transcript 1 ("there
+is a system based on the uh forecasting port uh forecasting tool coming
+out as well") and transcript 4 ("the forecasting tool system that the big
+man is releasing soon") that a *new, second group system* is being built
+on top of the range/volatility forecasting tool, distinct from the
+existing ENQ system. **Working hypothesis: this is that system**, and
+Jordan is one of the people building/testing it — which would also explain
+why it's dynamic/live and scalping-oriented (a deployable system needs
+live-updating levels, not levels fixed once at session open) and why nine
+`@C.OG`-tagged test posts show up in a short window (active development,
+reporting to the founder). Not confirmed, but consistent with everything
+seen so far.
 
-**Partial nuance from transcript 4:** the volatility/range forecasting tool
-isn't *entirely* static after all — it has two families of levels. **Close
-median / close 75th are fixed** all day (anchored to midnight open — think
-"candle body" of a daily candle: the open-to-close forecast). But
-**projected high / projected low are described as "more dynamic"** —
-recalculated off the currently-printed high/low of the day (think "wicks"
-of a daily candle: the full breadth of the day's range). So part of this
-tool does move intraday. That said, this still doesn't match the
-screenshot: it's a handful of discrete recalculating *lines*, not a
-continuously-updating shaded *band*, and it only shifts when a new
-session extreme prints, not every bar. Keeping this as a secondary,
-weaker candidate rather than promoting it — the dynamic/scalping band the
-user described sounds like a different, likely custom-built tool (worth
-remembering Jordan is described in transcript 4 as having built at least
-one custom indicator for Husky — "Jordan created me a nice little
-indicator" — so a self-built band tool used only by Jordan personally,
-never shown/described by others, is plausible and would explain why it
-hasn't surfaced in 6 transcripts of *other* members' markup calls).
+**What's still open**: the exact rule for which side gets colored red vs.
+green (is it based on current position within the session range, a
+directional bias input, or something else); the identity/parameters of
+the two blue lines; and whether "Live/Median/75th Pct" uses the same
+midnight-anchored session definition as Husky's tool or a different
+(possibly rolling, not session-anchored) window — worth checking given
+these examples are clearly intraday/live rather than fixed-at-open.
 
-**Confirmed: the presenter across transcripts 2-6 is Husky**, not Jordan —
-transcript 6 has a chat message read aloud referring to the host as
-"Husky" in the third person, and the host responds in kind ("Husky did not
-say it's financial advice"). Six transcripts in, all six have been Husky's
-induction/markup/AMA content; Jordan has only ever appeared as a chat
-participant. If the goal is specifically Jordan's own band tool, the
-transcripts most likely to surface it are ones where Jordan is presenting,
-not Husky's regular Tuesday/Thursday/Monday rotation.
+**Confirmed separately: the presenter across transcripts 2-6 is Husky**,
+not Jordan — transcript 6 has a chat message read aloud referring to the
+host as "Husky" in the third person, and the host responds in kind
+("Husky did not say it's financial advice"). All 6 transcripts were
+Husky's induction/markup/AMA content; this screenshot evidence is the
+first direct look at Jordan's own work.
 
 ---
 
@@ -105,6 +124,27 @@ not Husky's regular Tuesday/Thursday/Monday rotation.
 _Deduplicated ideas, updated as transcripts come in. Each entry: **what was
 said**, who said it, confidence (low/med/high — based on repetition +
 specificity, not correctness), and which videos support it._
+
+### Jordan's own live volatility-zone tool (in-development, tested on NQ/gold)
+**Speaker/source: Jordan directly** — the first entry in this file sourced
+from Jordan's own material rather than Husky's. Confidence: high on what's
+visibly true from the screenshots, open on mechanics not visible in them.
+See the Priority Watch section above for the full description — summarized
+here for the index: a **live-updating** colored zone (green = within
+expected range, red = beyond it, sides flip depending on which direction
+is being tested) driven by a **Live / Median / 75th-percentile H-L range
+%** statistics panel plus on-chart labels (`Close Med`, `L <pct>`) and
+tooltip deltas (`Δmed`, `Δ75p`). Same underlying statistical concept as
+Husky's range/volatility forecasting tool (median/75th-percentile expected
+range), but implemented to **recompute continuously on a fast intraday
+chart** (NQ/MNQ 1m and 15m charts seen; also tested on gold) rather than
+being fixed once at session open — this is very likely why it looked
+different enough from Husky's tool for the user to correct the earlier
+hypothesis. Tested iteratively across ~16 screenshots tagged to `@C.OG`
+(the group founder), consistent with active in-development status, and
+plausibly the "system based on the forecasting tool" Husky mentioned (in
+videos 1 and 4) as coming soon.
+**Source:** direct screenshots from Jordan, not a transcript.
 
 ### Dynamic structure-trailing stop (no fixed R/TP)
 **Speaker: Husky** — confirmed repeated as his standing personal method
@@ -749,6 +789,15 @@ _Ideas judged worth a real backtest, promoted from the Theme Index once
 they're concrete enough to test (specific indicator, parameters, entry/exit
 logic). Links to a script/dir once work starts._
 
+- **Jordan's live volatility-zone tool — top priority.** Partially
+  reproducible now: session H-L range as a % of price, compared live
+  against that session's historical median and 75th-percentile range
+  (`Δmed`, `Δ75p`), on a fast intraday timeframe. What's missing before
+  this is buildable: the exact rule for which side of price gets flagged
+  "exhaustion" (red) vs. "normal" (green), the session/window definition
+  the live stat uses if not midnight-anchored, and the identity of the two
+  blue MA-like lines seen in one screenshot. Next transcript/screenshot
+  batch should target closing these three gaps specifically.
 - **Dynamic structure-trailing stop vs. fixed-R exit.** Concrete and
   testable: on any existing entry model in this repo, A/B a "trail stop to
   last swing point once structure prints" exit against the current fixed-R
@@ -1082,3 +1131,34 @@ psychological discipline.
 (fade far extensions in ranging regimes, buy near-extension pullbacks in
 trending regimes) is now concrete enough to backtest as a single combined
 rule, not just the ADX filter in isolation.
+
+### Evidence Set A — Jordan's own screenshots (not a transcript)
+
+**Source note:** ~16 screenshots, not a video transcript — Jordan's own
+`New test` / `one more test` / `test complete` / `updated` posts, showing
+iterative live testing of his own tool on gold and NQ (MNQ futures),
+tagged `@C.OG` (the group founder) when reporting results. First direct
+look at Jordan's own material after 6 transcripts of Husky-only content.
+
+**New:** the full Bollinger-band-hypothesis resolution — see the rewritten
+Priority Watch section above and the new "Jordan's own live volatility-
+zone tool" Theme Index entry. In short: a live-updating colored
+exhaustion-zone overlay (green/red, sides flip by direction) driven by a
+Live/Median/75th-percentile session H-L range % panel, `Close Med` and `L
+<pct>` on-chart labels, and `Δmed`/`Δ75p` tooltip deltas — same
+statistical family as Husky's forecasting tool, rebuilt to run live on a
+fast intraday chart. Two unidentified blue MA-like lines appear in one
+later screenshot.
+
+**Repeats:** none — this is genuinely new material, the first from Jordan
+directly rather than Husky.
+
+**Bollinger/band mentions:** this *is* the band — substantially resolved,
+see Priority Watch. Not a classic SMA±stdev Bollinger; a percentile-range
+exhaustion-zone overlay instead.
+
+**Worth researching:** yes, now the top backlog item — see Research
+Backlog. Still need: the red/green side-assignment rule, the session
+window definition for the live stat, and identification of the two blue
+lines, ideally from a future transcript where Jordan explains the tool
+himself.
