@@ -512,10 +512,13 @@
   /* ── Sidebar (Phase 2c) — Market Tone gauge, Key Takeaways, Today At A
      Glance, Volatility Outlook, Quick Links. All built from data already
      computed elsewhere on this page (equitiesRisk/currencyStrength/rows) —
-     no new fetches, no invented numbers. Stacks below main content on
-     narrow viewports instead of squeezing into a column. ─────────────── */
+     no new fetches, no invented numbers. Stacks below main content only on
+     genuinely narrow viewports — the breakpoint is deliberately well below
+     Chrome mobile's ~980px "Desktop site" virtual viewport width, so
+     requesting desktop mode on a phone actually gets the 2-column layout
+     instead of landing right on the old 980px edge and still stacking. ── */
   .dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
-  @media(max-width:980px){
+  @media(max-width:720px){
     .dashgrid{grid-template-columns:1fr}
     .sidebar{position:static !important}
     /* Stacked full-width cards get a bigger gauge and a tighter 4-across
@@ -532,7 +535,7 @@
      small fixed 150px graphic in a much wider box — the svg's viewBox
      handles the internal scaling, so only the wrapper width + the
      percentage-positioned overlay elements need to track it. Bigger still
-     on the stacked mobile layout (see @media(max-width:980px) below). */
+     on the stacked mobile layout (see @media(max-width:720px) below). */
   .gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:0;width:100%}
   .gauge-svg-wrap{position:relative;width:100%;max-width:200px;aspect-ratio:150/90;margin:0 auto}
   .gauge-svg-wrap svg{display:block;width:100%;height:100%}
