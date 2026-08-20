@@ -87,7 +87,9 @@ function fmtSaved(inst) {
   // so the export now states the basis it used and how old that reading is. Refresh
   // with POST /api/oi/reanalyse?live=1.
   if (Number.isFinite(inst?.basis)) {
-    const ageH = Number.isFinite(inst?.savedAtMs) ? (Date.now() - inst.savedAtMs) / 3.6e6 : null;
+    // basisAtMs, not savedAtMs — the basis and the chain age independently.
+    const _bAt = Number.isFinite(inst?.basisAtMs) ? inst.basisAtMs : inst?.savedAtMs;
+    const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
     const age = ageH == null ? '' : ageH < 1 ? ` ${Math.round(ageH * 60)}m old`
       : ageH < 24 ? ` ${ageH.toFixed(1)}h old` : ` ${Math.round(ageH / 24)}d old`;
     const stale = ageH != null && ageH >= 4 ? ' STALE — re-basis before trading these' : '';

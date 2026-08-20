@@ -3184,7 +3184,8 @@ async function _serverSnapshotFor(name, sym) {
       if (o) {
         const gexv = o.exposures?.gex;
         const de = o.dayExpiry;
-        const ageH = Number.isFinite(o.savedAtMs) ? (Date.now() - o.savedAtMs) / 3.6e6 : null;
+        const _bAt = Number.isFinite(o.basisAtMs) ? o.basisAtMs : o.savedAtMs;   // basis ages separately from the chain
+        const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
         snap.oi = {
           maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall,
           pcRatio: o.pcRatio, gex: gexv,
@@ -13029,7 +13030,11 @@ app.post('/api/oi/reanalyse', async (req, res) => {
           dteRaw:     Number.isFinite(inst.dte)     ? inst.dte     : NaN,
           spotRaw:    Number.isFinite(inst.spot)    ? inst.spot    : NaN,
           futuresRaw: Number.isFinite(inst.futures) ? inst.futures : NaN,
-          manualFutures: Number.isFinite(inst.futures),   // pin the stored basis anchor
+          // PIN ONLY WHEN NOT RE-BASING. This was unconditional, so ?live=1 fetched a
+          // fresh paired quote and then pinned back to the stored futures anyway —
+          // the endpoint reported ok for all 11 pairs and moved nothing. Verified
+          // 2026-08-20: basis 0.00021 -> 0.00021, every level unchanged to 4dp.
+          manualFutures: !live && Number.isFinite(inst.futures),
           swapCP: undefined,   // use the inverted-pair default (flip ON) so re-analyse migrates old un-flipped 6J/6C/6S entries
 
           greekVol: inst.greekVolMode === 'flat' ? 'flat' : 'smile',
@@ -13360,7 +13365,8 @@ app.get('/api/oi-today', async (req, res) => {
       const gex = inst.exposures?.gex ?? 0;
       const pip = /JPY/.test(pair) ? 0.01 : /XAU/.test(pair) ? 0.1
         : /NAS|SPX|US30|US2000|DE30/.test(pair) ? 1 : 0.0001;
-      const ageH = Number.isFinite(inst.savedAtMs) ? (Date.now() - inst.savedAtMs) / 3.6e6 : null;
+      const _bAt = Number.isFinite(inst.basisAtMs) ? inst.basisAtMs : inst.savedAtMs;   // basis ages separately from the chain
+      const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
 
       pairs.push({
         pair, spot: inst.spot ?? null, dte: inst.dte ?? null,

@@ -2215,8 +2215,18 @@ export async function buildOIEntry({
     ivSavedAtMs = (sameSmile && Number.isFinite(priorEntry.ivSavedAtMs)) ? priorEntry.ivSavedAtMs : Date.now();
   }
 
+  // WHEN THE BASIS WAS TAKEN — a different question from when the CHAIN was pasted.
+  // savedAtMs dates the OI, which is legitimately yesterday's and stays that way
+  // through a re-analyse. The basis is the futures-vs-spot reading the strikes are
+  // converted with, it drifts intraday, and a re-basis refreshes it WITHOUT making
+  // the chain any newer. Sharing one timestamp made a freshly re-based entry still
+  // report its basis as hours old. Pinned re-analyses carry the prior stamp forward,
+  // because pinning is precisely the case where the basis did not move.
+  const basisAtMs = (manualFutures && Number.isFinite(priorEntry?.basisAtMs))
+    ? priorEntry.basisAtMs : Date.now();
+
   const inst = {
-    pair, spot, daySpot, daySpotAt, ivSavedAtMs, futures: futuresUsed, basis: basis || null,
+    pair, spot, daySpot, daySpotAt, ivSavedAtMs, basisAtMs, futures: futuresUsed, basis: basis || null,
     cpSwapped,       // inverted pairs only: were call/put labels flipped into pair terms?
     futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
     futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from
