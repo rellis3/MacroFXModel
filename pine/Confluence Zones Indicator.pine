@@ -21,7 +21,12 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //      • exp_move_hi/lo → SKY (option-implied ± range to expiry, EOD, dotted)
 //    OI wall thickness scales with strength tier (t1..t3).
 // 4. The gamma REGIME (PIN vs BREAKOUT) tints the chart
-//    background + shows a label (from net-GEX sign):
+//    background and shows a REGIME row in the table. It is
+//    resolved at CURRENT price from the gex-bands, not fixed
+//    at paste time, and names the price that would flip it.
+//    The floating label on the last bar is OFF by default —
+//    it overlaps the price action; the tint and table carry
+//    the same read without covering the chart.
 //      • PIN      → dealers long gamma, moves dampened,
 //                   price pulled to max pain, walls hold.
 //      • BREAKOUT → dealers short gamma, moves amplified,
@@ -149,8 +154,10 @@ oi_base_w   = input.int(2, "OI Base Line Width", minval=1, maxval=4, group="OI W
      tooltip="Walls with a higher strength tier (t2, t3) draw thicker than this base.")
 show_oi_lbl = input.bool(true, "Show OI Labels", group="OI Walls & Gamma")
 
-show_regime  = input.bool(true, "Show Gamma Regime Tint + Label", group="OI Walls & Gamma",
-     tooltip="Tints the background by the pasted gamma regime (from net-GEX sign): PIN = walls hold / pull to max pain; BREAKOUT = wall breaks run. GEX-sign read only (the fuller classifier's gravity weighting needs live ATR, not in the paste).")
+show_regime  = input.bool(true, "Show Gamma Regime Tint", group="OI Walls & Gamma",
+     tooltip="Tints the background by the gamma regime at CURRENT price (from the gex-bands when the paste carries them, else the exported net-GEX sign): PIN = walls hold / pull to max pain; BREAKOUT = wall breaks run.")
+show_reg_lbl = input.bool(false, "     └ …and the floating label on the last bar", group="OI Walls & Gamma",
+     tooltip="The regime label that hangs above the most recent candle. OFF by default because it is drawn at the current bar and overlaps the price action you are reading — the same information is in the tint and in the REGIME row of the summary table, neither of which covers the chart. Turn on if you want the flip prices called out on the chart itself.")
 regime_bands = input.bool(true, "Local GEX regime bands (price-zoned, not one tint)", group="OI Walls & Gamma",
      tooltip="When the paste carries a '· gex-bands' line, shade the regime by PRICE ZONE — the net-GEX sign is a whole-book average that hides short-gamma pockets. Long dealer gamma (PIN) below a zero-gamma crossing, short (BREAKOUT) above it, flipping at each crossing. Falls back to the single background tint when no band data is present.")
 col_pin_bg   = input.color(color.new(color.teal,   90), "PIN Tint",      group="OI Walls & Gamma")
@@ -705,7 +712,10 @@ if barstate.islast
     // Flags when the live read differs from the exported word, since that is precisely
     // the situation worth knowing about: the book has not changed, price has moved
     // across a gamma boundary since the paste.
-    if show_regime and show_oi and not na(liveRegime)
+    // Gated separately from the tint: the label is drawn AT the last bar, so it sits on
+    // top of the price action being read. The tint and the table row carry the same
+    // regime without covering anything, which is why this defaults off.
+    if show_regime and show_reg_lbl and show_oi and not na(liveRegime)
         regCol = liveRegime == "PIN" ? col_pain : col_call
         fBelow = f_nextFlipBelow(close)
         fAbove = f_nextFlipAbove(close)
