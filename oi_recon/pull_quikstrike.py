@@ -1137,6 +1137,38 @@ def pull_product(ctx, page, product: str | None, views: list,
     return results
 
 
+def _chain_normalised(tsv: str, title: str) -> str:
+    r"""Fold a captured chain onto the 14-column layout js/oi.js parses POSITIONALLY.
+
+    QuikStrike renders three volatility groups (Volatility, Basis Point, Black-
+    Scholes) where a manual copy-paste carries one, so the capture is 20 columns
+    wide and OPEN INTEREST lands at 16-19 instead of 10-13. Nothing errors:
+    parseIVSettlement reads strike, IV and prices correctly from the left of the
+    row and reads OI as ZERO - so charm and vanna sum to exactly 0 on every pair
+    while ivStrikes reports 31 and the smile looks fully populated. Measured
+    2026-08-20 across all 11 pairs: CEX +0, VEX +0, above a parsed 31-strike smile.
+
+    pull_product already guards the settles table this way ("17 columns expected");
+    the chain capture was added without the equivalent.
+
+    Keep the first 10 fields (call side, strike, put side, first vol group) and the
+    LAST 4 (the OI block). That is also correct for a 14-column row, so a layout
+    without the extra groups passes through untouched.
+
+    A TITLE LINE is prepended from the view heading - "EUR/USD (EUU|6E) EU3Q6
+    (2.14 DTE) vs 1.16225 - Settles". A manual paste carries it and the parser
+    reads DTE out of "(... DTE)"; the capture omitted it.
+    """
+    out = []
+    for r in tsv.split("\n"):
+        cells = r.split("\t")
+        if len(cells) > 14:
+            cells = cells[:10] + cells[-4:]
+        out.append("\t".join(cells))
+    body = "\n".join(out)
+    return (title + "\n" + body) if title else body
+
+
 def pull_chain(ctx, page, product: str, code: str) -> str | None:
     """PASS 2: the per-strike IV smile for ONE expiry -> <SYM>_rawIV.tsv.
 
@@ -1182,6 +1214,14 @@ def pull_chain(ctx, page, product: str, code: str) -> str | None:
     if not tsv or not why.startswith('strike ladder'):
         print(f'  chain    ! expected a strike ladder, got "{why}" - not writing')
         return None
+    # Fold to the 14-column layout the parser expects, and restore the title line.
+    # Without this the OI columns land past where js/oi.js looks and read as zero:
+    # a smile that parses perfectly and yields charm/vanna of exactly nothing.
+    wide = max((r.count('\t') + 1 for r in tsv.split('\n') if r.strip()), default=0)
+    tsv = _chain_normalised(tsv, _view_label(fr) or '')
+    if wide > 14:
+        print(f'  {"":<8}    normalised {wide} columns -> 14 (extra volatility '
+              'groups were shifting OPEN INTEREST out of the parser range)')
     fn = d / f'{safe_name(product)}_rawIV.tsv'
     _atomic(fn, tsv)
     print(f'  chain    -> {fn.name}  [{why}, expiry {code}]')
