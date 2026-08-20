@@ -38,11 +38,17 @@ OANDA (403 policy denial from the outbound proxy, confirmed not assumed).
 local parquet via `refresh_m1.py` first, reused not re-implemented. Without
 it, this reads the same static local snapshot as everything else.
 
-**Telegram alerts (`--telegram`, 2026-08-13, simplified 2026-08-14):** one
-alert per newly-confirmed motif, via `pylego.telegram` (a shared brick, not
-yet another copy of the send_telegram pattern duplicated across 7+ other
-bots) reading the shared dashboard `tg_config` (same bot/chat every other
-bot's alerts already use) through `pylego.kv.KvClient`. The alert shows the
+**Telegram alerts (`--telegram`, 2026-08-13, simplified 2026-08-14, fixed
+2026-08-19):** one alert per newly-confirmed motif, via `pylego.telegram`
+(a shared brick, not yet another copy of the send_telegram pattern
+duplicated across 7+ other bots) sent through the dashboard's `/api/telegram`
+proxy (`dashboard_telegram_configured`/`send_via_dashboard`), which uses
+the same shared bot/chat every other bot's alerts already use. NOT read
+directly via KV -- that key is deliberately outside the generic
+`/api/kv/get` whitelist (it's a raw bot token, and that endpoint is
+unauthenticated), which is why this used `pylego.kv.KvClient` + the raw
+token/chat_id until 2026-08-19: it silently never worked, since day one --
+see `pylego/telegram.py`'s own docstring for the full story. The alert shows the
 TRACKED frozen-grid entry/SL/TP (unchanged -- everything in
 README.md/LEGO_MODULES.md is judged against this, and it stays that way)
 alongside ONE "Combined" line -- the adaptive per-category ATR-scaled SL/TP
@@ -110,11 +116,10 @@ sys.path.insert(0, str(REPO_ROOT))
 from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
-from pylego.kv import KvClient  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
-from pylego.telegram import load_tg_config, send_telegram  # noqa: E402
+from pylego.telegram import dashboard_telegram_configured, send_via_dashboard  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
 
 # Frozen adaptive-sizing multipliers -- from the VALIDATED (sl_pctile=35,
@@ -552,17 +557,16 @@ def run(args: argparse.Namespace) -> None:
                 print(f"  {pair:<8} refresh failed ({e}) -- scanning against whatever data "
                       f"is already local for this pair")
 
-    tg_token, tg_chat_id = "", ""
+    tg_ready = False
     if args.telegram:
         if args.as_of:
             print("[telegram] --as-of is a replay/testing run -- not sending live alerts even "
                   "though --telegram was passed")
         else:
-            kv = KvClient(args.dashboard_url)
-            tg_token, tg_chat_id = load_tg_config(kv)
-            if not (tg_token and tg_chat_id):
-                print("[telegram] --telegram passed but no token/chat_id resolved (own config or "
-                      "shared tg_config) -- alerts will be skipped this run")
+            tg_ready = dashboard_telegram_configured(args.dashboard_url)
+            if not tg_ready:
+                print("[telegram] --telegram passed but the dashboard's shared Telegram config "
+                      "isn't set (Alerts modal) -- alerts will be skipped this run")
 
     log = load_log()
     new_signals, resolved_total, alerts_sent = 0, 0, 0
@@ -600,12 +604,12 @@ def run(args: argparse.Namespace) -> None:
                 print(f"  [new] {pair:<8} {t['n_touches']}-touch {'top' if t['is_top'] else 'bottom'} "
                       f"{t['direction']} @ {t['entry_price']:.5f}  sl={t['sl_price']:.5f} "
                       f"tp={t['tp_price']:.5f}  {t['entry_date']}")
-                if tg_token and tg_chat_id:
+                if tg_ready:
                     htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
                     confidence = _category_confidence(motifs, m.n_touches, m.is_top)
                     current_price = float(bars["close"].to_numpy()[-1])
                     text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price)
-                    if send_telegram(tg_token, tg_chat_id, text):
+                    if send_via_dashboard(args.dashboard_url, text):
                         alerts_sent += 1
                     else:
                         print(f"  [warn] Telegram alert failed to send for {pair}")
@@ -665,13 +669,11 @@ def main() -> None:
                         "loop itself going down after repeated failures, and recovering after.")
     args = p.parse_args()
     if args.heartbeat_alert is not None:
-        kv = KvClient(args.dashboard_url)
-        tg_token, tg_chat_id = load_tg_config(kv)
-        if tg_token and tg_chat_id:
-            ok = send_telegram(tg_token, tg_chat_id, args.heartbeat_alert)
+        if dashboard_telegram_configured(args.dashboard_url):
+            ok = send_via_dashboard(args.dashboard_url, args.heartbeat_alert)
             print(f"[heartbeat] alert {'sent' if ok else 'FAILED to send'}")
         else:
-            print("[heartbeat] no token/chat_id resolved -- alert skipped")
+            print("[heartbeat] dashboard's shared Telegram config isn't set -- alert skipped")
         return
     run(args)
 

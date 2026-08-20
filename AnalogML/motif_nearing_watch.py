@@ -58,9 +58,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from pylego.instruments import pip_size  # noqa: E402
-from pylego.kv import KvClient  # noqa: E402
 from pylego.quotes import QuoteFeed  # noqa: E402
-from pylego.telegram import load_tg_config, send_telegram  # noqa: E402
+from pylego.telegram import dashboard_telegram_configured, send_via_dashboard  # noqa: E402
 
 
 def load_state() -> list[dict]:
@@ -81,7 +80,7 @@ def load_state() -> list[dict]:
     return []
 
 
-def check_once(feed: QuoteFeed, tg_token: str, tg_chat_id: str, nearing_atr_mult: float) -> int:
+def check_once(feed: QuoteFeed, dashboard_url: str, nearing_atr_mult: float) -> int:
     """One poll: for every currently-forming, non-provisional, not-yet-
     alerted touch-run, fetch a live quote and check it against the level.
     Returns the number of alerts sent."""
@@ -112,7 +111,7 @@ def check_once(feed: QuoteFeed, tg_token: str, tg_chat_id: str, nearing_atr_mult
         if dist_pips > nearing_pips:
             continue
         live_state = {**state, "current_price": px, "dist_to_level_pips": round(dist_pips, 1)}
-        if send_telegram(tg_token, tg_chat_id, format_nearing_alert(pair, live_state)):
+        if send_via_dashboard(dashboard_url, format_nearing_alert(pair, live_state)):
             sent += 1
             print(f"  [nearing] {pair} {dist_pips:.1f}p from level -- alert sent")
         else:
@@ -135,10 +134,8 @@ def main() -> None:
     p.add_argument("--once", action="store_true", help="single check-and-exit, for testing")
     args = p.parse_args()
 
-    kv = KvClient(args.dashboard_url)
-    tg_token, tg_chat_id = load_tg_config(kv)
-    if not (tg_token and tg_chat_id):
-        print("[motif_nearing_watch] no token/chat_id resolved -- alerts will be skipped")
+    if not dashboard_telegram_configured(args.dashboard_url):
+        print("[motif_nearing_watch] dashboard's shared Telegram config isn't set -- alerts will be skipped")
 
     # QuoteFeed's own min_interval caps how often any ONE pair is actually
     # re-fetched over HTTP; half the poll period keeps quotes fresh without
@@ -146,7 +143,7 @@ def main() -> None:
     feed = QuoteFeed(args.dashboard_url, min_interval=max(5.0, args.poll_seconds / 2))
 
     if args.once:
-        sent = check_once(feed, tg_token, tg_chat_id, args.nearing_atr_mult)
+        sent = check_once(feed, args.dashboard_url, args.nearing_atr_mult)
         print(f"[motif_nearing_watch] one-shot check: {sent} alert(s) sent")
         return
 
@@ -154,7 +151,7 @@ def main() -> None:
           f"(nearing_atr_mult={args.nearing_atr_mult})")
     while True:
         try:
-            check_once(feed, tg_token, tg_chat_id, args.nearing_atr_mult)
+            check_once(feed, args.dashboard_url, args.nearing_atr_mult)
         except Exception as e:
             print(f"[motif_nearing_watch] check failed ({e}) -- will retry next poll")
         time.sleep(args.poll_seconds)
