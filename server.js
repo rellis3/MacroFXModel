@@ -45,6 +45,7 @@ import { deskSnapshot }                                              from './js/
 import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } from './js/hurstBench.js';
 import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
+import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -13612,6 +13613,53 @@ function _fmtSessionText(data) {
   }
   return lines.join('\n');
 }
+
+// ── Forecast ladder export (the collapsed "Forecast" family) ─────────────────
+// One route, three horizons. This is the ONLY place the Forecast text is built —
+// the page fetches it rather than rendering its own copy, which is what stops the
+// browser and the server from quietly disagreeing the way the old Export /
+// Calibrated / Export-v2 / Extended builders did.
+//   GET /api/vol-forecast/ladder/export?horizon=daily|weekly|monthly[&session=1]
+app.get('/api/vol-forecast/ladder/export', async (req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  const horizon = ['daily', 'weekly', 'monthly'].includes(String(req.query.horizon))
+    ? String(req.query.horizon) : 'daily';
+  try {
+    const has = Object.values(forecastState.latest.instruments ?? {}).some(f => f?.ladder);
+    if (!has) {
+      return res.status(202).type('text/plain')
+        .send('Ladder not present on the cached forecast — hit ↻ Refresh to recompute.');
+    }
+    let text = buildLadderExportText(forecastState.latest, horizon);
+    if (String(req.query.session) === '1') {
+      try {
+        const raw = await kv.get('vol_session_stats');
+        if (raw) text += buildSessionAddendum(JSON.parse(raw));
+      } catch { /* session block is an add-on — never fail the export for it */ }
+    }
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// JSON view of the same ladder, for the charts and any downstream consumer.
+app.get('/api/vol-forecast/ladder', (_req, res) => {
+  if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'not ready' });
+  const out = {};
+  for (const [name, f] of Object.entries(forecastState.latest.instruments ?? {})) {
+    if (!f?.ladder) continue;
+    out[name] = { daily: f.ladder, weekly: f.ladder_weekly, monthly: f.ladder_monthly, drift_d: f.drift_d ?? null };
+  }
+  res.json({
+    ok: true,
+    session_date: forecastState.latest.session_date,
+    session_label: forecastState.latest.session_label,
+    instruments: out,
+  });
+});
 
 // Plain-text forecast export — same format as the ⬇ Export button on the dashboard.
 app.get('/api/vol-forecast/export', (_req, res) => {

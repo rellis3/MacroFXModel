@@ -62,7 +62,28 @@ from forge.bars import load_m1, resample
 # (Feller 1951); P50/P75 are its median/75th-percentile multipliers on daily
 # sigma. Open-Close displacement is half-normal; HN_P50/HN_P75 are its
 # median/75th-percentile multipliers.
-FELLER = {"BM_P50": 1.572, "BM_P75": 2.049, "HN_P50": 0.7979, "HN_P75": 1.284}
+# The four original slots are the values this repo has always used, kept BIT-FOR-BIT
+# so the `feller` arm remains the same control it was in the first run. They are not
+# actually the quantiles they are named after. Verified by Monte Carlo (400k paths x
+# 4000 steps, Broadie-Glasserman-Kou continuity correction; E[R] reproduces the known
+# sqrt(8/pi)=1.5958 to 4 decimal places):
+#     true BM range quantiles      P50 1.5135  P75 1.8599  P90 2.2374
+#     BM_P50=1.572 actually sits at the 55th percentile, BM_P75=2.049 at the 84th
+#     true half-normal quantiles   P50 0.6745  P75 1.1503  P90 1.6449
+#     HN_P50=0.7979 is E|N| (the MEAN, 57th pct), HN_P75=1.284 sits at the 80th
+# So theory alone accounts for ~4% of the median band's width error and ~10% of the
+# 75th's — real but a small share of the 30-55% total, i.e. most of the gap is that
+# real ranges run narrower against sigma than driftless BM implies, not the constant.
+# The NEW slots below use the correct theoretical quantiles, and the `fit` arm
+# replaces all twelve with realized-fit multipliers — that is what production ships.
+FELLER = {
+    "BM_P50": 1.572, "BM_P75": 2.049, "BM_P90": 2.2374,
+    "HN_P50": 0.7979, "HN_P75": 1.284, "HN_P90": 1.6449,
+    # O-H / O-L: the running max of a driftless BM is half-normal (reflection
+    # principle), so the one-sided slots start from the half-normal quantiles.
+    "OH_P50": 0.6745, "OH_P75": 1.1503, "OH_P90": 1.6449,
+    "OL_P50": 0.6745, "OL_P75": 1.1503, "OL_P90": 1.6449,
+}
 SQRT252 = float(np.sqrt(252))
 
 
@@ -191,18 +212,30 @@ def predicted_quantiles(sigma_annual_pct: np.ndarray, width_mult: dict | None = 
     `js/cogReverseEngineer.js`'s reconstruction formula.
     """
     c = width_mult or FELLER
-    daily_sigma_pct = sigma_annual_pct / SQRT252
-    return {
-        "hl_p50": c["BM_P50"] * daily_sigma_pct, "hl_p75": c["BM_P75"] * daily_sigma_pct,
-        "oc_p50": c["HN_P50"] * daily_sigma_pct, "oc_p75": c["HN_P75"] * daily_sigma_pct,
-    }
+    d = sigma_annual_pct / SQRT252
+    out = {}
+    for slot, key in (("BM", "hl"), ("HN", "oc"), ("OH", "oh"), ("OL", "ol")):
+        for q in ("p50", "p75", "p90"):
+            name = f"{slot}_{q.upper()}"
+            if name in c:
+                out[f"{key}_{q}"] = c[name] * d
+    return out
 
 
 def realized_quantities(daily: pd.DataFrame) -> dict:
     """Actual daily High-Low and |Open-Close| as % of that day's open —
     what each `predicted_quantiles` line is trying to forecast."""
     o, h, l, c = (daily[col].to_numpy(dtype=float) for col in ("open", "high", "low", "close"))
-    return {"hl_pct": (h - l) / o * 100.0, "oc_pct": np.abs(c - o) / o * 100.0}
+    return {
+        "hl_pct": (h - l) / o * 100.0,
+        "oc_pct": np.abs(c - o) / o * 100.0,
+        # One-sided excursions from the open — the levels the forecaster draws as
+        # O-H / O-L and the ones that actually get faded. Measured separately (not
+        # inferred from O-C by the reflection principle) because real days have
+        # drift, so the up-excursion and down-excursion are NOT the same variable.
+        "oh_pct": (h - o) / o * 100.0,
+        "ol_pct": (o - l) / o * 100.0,
+    }
 
 
 def fit_width_multiplier(sigma_daily_pct: np.ndarray, realized_pct: np.ndarray,
@@ -240,9 +273,108 @@ def exceed_rate(actual: np.ndarray, predicted: np.ndarray) -> float:
     return float((actual[ok] > predicted[ok]).mean())
 
 
+# ── scheduled-event conditioning ───────────────────────────────────────────
+#
+# The single largest conditioning variable found in this system. Measured across
+# 52,587 OOS pair-days of this module's own output: a forecast calibrated to 50%
+# exceedance unconditionally runs at 40-45% on days with no US Major release and
+# 62-76% on event days — a ~30 percentage-point swing that no width constant can
+# absorb, because it is a property of the DAY, not of the instrument.
+#
+# Two things this deliberately does differently from the incumbent
+# `detectNewsMultiplier` in js/volForecast.js:
+#   * It is TWO-SIDED. Quiet days need ~0.90, and roughly half the calendar is
+#     quiet. The incumbent starts at 1.0 and can only ratchet up, so it has no way
+#     to express the most common case.
+#   * The generic bucket is not empty. ~22% of days carry a US Major release that
+#     is not CPI/NFP/FOMC (Retail Sales, Durable Goods, ISM, JOLTs, ...). Those run
+#     ~1.13 and the incumbent's seven regexes give them 1.00.
+#
+# Fit on TRAIN only and frozen, exactly like the width multipliers, and shrunk
+# toward 1.0 by sample size so a thin bucket cannot swing the forecast.
+EVENT_TAGS = ("FOMC", "NFP", "CPI", "other", "none")
+_EVENT_RANK = {"FOMC": 4, "NFP": 3, "CPI": 2, "other": 1}
+EVENT_SHRINK_K = 50          # a bucket with n=50 lands halfway between 1.0 and its raw fit
+
+
+def load_event_tags(csv_path: str = "calendar_events.csv", ccy: str = "USD") -> dict:
+    """date (YYYY-MM-DD) -> the highest-ranked scheduled event on that day.
+
+    Only `Major` impact rows count. A day with several releases takes the
+    highest-ranked one (FOMC > NFP > CPI > other) rather than compounding them —
+    the multiplier is a statement about the day, and the days that carry an FOMC
+    *and* a Retail Sales print are not measurably bigger than FOMC alone.
+    """
+    import csv as _csv
+    tags: dict[str, str] = {}
+    with open(csv_path, newline="", encoding="utf-8", errors="replace") as fh:
+        for row in _csv.DictReader(fh):
+            if row.get("impact") != "Major" or row.get("ccy") != ccy:
+                continue
+            ev = row.get("event") or ""
+            low = ev.lower()
+            if "fed press conference" in low or "fomc" in low or "interest rate decision" in low:
+                tag = "FOMC"
+            elif "payroll jobs growth" in low:
+                tag = "NFP"
+            elif "inflation rate" in low:
+                tag = "CPI"
+            else:
+                tag = "other"
+            d = row.get("date") or ""
+            if _EVENT_RANK[tag] > _EVENT_RANK.get(tags.get(d, ""), 0):
+                tags[d] = tag
+    return tags
+
+
+def tag_column(dates, tags: dict) -> np.ndarray:
+    """Event tag per row; 'none' for any date the calendar doesn't cover."""
+    idx = pd.DatetimeIndex(dates)
+    return np.array([tags.get(d.strftime("%Y-%m-%d"), "none") for d in idx], dtype=object)
+
+
+def fit_event_multipliers(frame: pd.DataFrame, estimator: str,
+                          shrink_k: int = EVENT_SHRINK_K) -> dict:
+    """Per-tag sigma multiplier fit on TRAIN: the median ratio of realized H-L to
+    the width-fitted H-L median for that bucket. Scaling sigma (rather than one
+    rung) is what the data supports — scaling by the p50 ratio lands p50 at 50.0%
+    and leaves p75 at 20-28% against its 25% target, i.e. event days are shifted
+    more than they are fattened.
+    """
+    if "event_tag" not in frame:
+        return {}
+    daily_sigma = frame[f"sigma_{estimator}"].to_numpy() / SQRT252
+    hl = frame["hl_pct"].to_numpy()
+    base = fit_width_multiplier(daily_sigma, hl, 0.50)
+    if not np.isfinite(base):
+        return {}
+    pred = base * daily_sigma
+    ratio = np.where(pred > 0, hl / pred, np.nan)
+    tagcol = frame["event_tag"].to_numpy()
+    out = {}
+    for tag in EVENT_TAGS:
+        sel = (tagcol == tag) & np.isfinite(ratio)
+        n = int(sel.sum())
+        if n < 10:
+            continue
+        raw = float(np.nanmedian(ratio[sel]))
+        # shrink toward 1.0 by sample size
+        out[tag] = 1.0 + (raw - 1.0) * n / (n + shrink_k)
+    return out
+
+
+def event_multiplier_vector(frame: pd.DataFrame, event_mult: dict) -> np.ndarray:
+    """Per-row sigma multiplier from a frozen event-multiplier map (1.0 where the
+    tag is unknown or wasn't fit)."""
+    if not event_mult or "event_tag" not in frame:
+        return np.ones(len(frame))
+    tagcol = frame["event_tag"].to_numpy()
+    return np.array([event_mult.get(t, 1.0) for t in tagcol], dtype=float)
+
+
 # ── panel + walk-forward: which estimator, which width source, wins OOS ────
 
-def build_forecast_frame(daily: pd.DataFrame) -> pd.DataFrame:
+def build_forecast_frame(daily: pd.DataFrame, event_tags: dict | None = None) -> pd.DataFrame:
     """One row per day: every estimator's FORECAST-READY sigma (`as_of_
     yesterday` applied uniformly) alongside that day's realized HL/OC.
     `ESTIMATORS["naive"]` sits in this same frame and competes in the same
@@ -251,9 +383,12 @@ def build_forecast_frame(daily: pd.DataFrame) -> pd.DataFrame:
     faster earns its keep OOS."""
     realized = realized_quantities(daily)
     out = pd.DataFrame({"date": daily.index, "hl_pct": realized["hl_pct"],
-                        "oc_pct": realized["oc_pct"]})
+                        "oc_pct": realized["oc_pct"], "oh_pct": realized["oh_pct"],
+                        "ol_pct": realized["ol_pct"]})
     for name, fn in ESTIMATORS.items():
         out[f"sigma_{name}"] = as_of_yesterday(fn(daily))
+    if event_tags:
+        out["event_tag"] = tag_column(out["date"], event_tags)
     return out.dropna(subset=["hl_pct", "oc_pct"]).reset_index(drop=True)
 
 
@@ -265,8 +400,15 @@ QUANTILE_TARGETS = (("hl_pct", "hl_p50", 0.50), ("hl_pct", "hl_p75", 0.75))
 # — folding a third and fourth target into the same score would let a spec
 # "win" by being mediocre at everything instead of good at the one thing
 # that matters most for sizing.
-ALL_TARGETS = (("hl_pct", "hl_p50", 0.50), ("hl_pct", "hl_p75", 0.75),
-              ("oc_pct", "oc_p50", 0.50), ("oc_pct", "oc_p75", 0.75))
+# Every rung is SCORED (so the frozen winner reports honest calibration for the
+# whole ladder); only QUANTILE_TARGETS above drives SELECTION. p90 and the one-sided
+# O-H / O-L rungs join as scored targets — the exhaustion levels the page actually
+# draws — without being allowed to sway which estimator wins.
+ALL_TARGETS = tuple(
+    (f"{q}_pct", f"{q}_{p}", tau)
+    for q in ("hl", "oc", "oh", "ol")
+    for p, tau in (("p50", 0.50), ("p75", 0.75), ("p90", 0.90))
+)
 
 
 def _fit_multiplier_set(frame: pd.DataFrame, estimator: str) -> dict:
@@ -274,19 +416,24 @@ def _fit_multiplier_set(frame: pd.DataFrame, estimator: str) -> dict:
     estimator — the "correct width" half of the repo's own prescription,
     calibrated to REALIZED range, never to COG's or Feller's constant."""
     daily_sigma = frame[f"sigma_{estimator}"].to_numpy() / SQRT252
-    return {
-        "BM_P50": fit_width_multiplier(daily_sigma, frame["hl_pct"].to_numpy(), 0.50),
-        "BM_P75": fit_width_multiplier(daily_sigma, frame["hl_pct"].to_numpy(), 0.75),
-        "HN_P50": fit_width_multiplier(daily_sigma, frame["oc_pct"].to_numpy(), 0.50),
-        "HN_P75": fit_width_multiplier(daily_sigma, frame["oc_pct"].to_numpy(), 0.75),
-    }
+    out = {}
+    for slot, col in (("BM", "hl_pct"), ("HN", "oc_pct"), ("OH", "oh_pct"), ("OL", "ol_pct")):
+        if col not in frame:
+            continue
+        actual = frame[col].to_numpy()
+        for q, tau in (("P50", 0.50), ("P75", 0.75), ("P90", 0.90)):
+            out[f"{slot}_{q}"] = fit_width_multiplier(daily_sigma, actual, tau)
+    return out
 
 
-def _score(frame: pd.DataFrame, estimator: str, width_mult: dict, min_n: int = 60) -> dict | None:
+def _score(frame: pd.DataFrame, estimator: str, width_mult: dict, min_n: int = 60,
+           sigma_mult: np.ndarray | None = None) -> dict | None:
     """Combined HL pinball loss (the selection score) + full per-target
     breakdown + exceed-rates, for one frozen (estimator, width_mult) spec on
     `frame`. Returns None if there isn't enough finite data to score."""
     sigma = frame[f"sigma_{estimator}"].to_numpy()
+    if sigma_mult is not None:
+        sigma = sigma * sigma_mult
     pred = predicted_quantiles(sigma, width_mult)
     ok = np.isfinite(sigma)
     n = int(ok.sum())
@@ -296,6 +443,8 @@ def _score(frame: pd.DataFrame, estimator: str, width_mult: dict, min_n: int = 6
     detail = {}
     hl_losses = []
     for col, key, tau in ALL_TARGETS:
+        if key not in pred or col not in frame:
+            continue          # rung this spec has no fitted multiplier for
         actual = frame[col].to_numpy()
         loss = pinball_loss(actual, pred[key], tau)
         detail[f"pinball_{key}"] = float(np.nanmean(loss[ok]))
@@ -319,6 +468,7 @@ class VolSpec:
     n_hypotheses: int
     train_stat: dict = field(default_factory=dict)
     fold: int = 0
+    event_mult: dict = field(default_factory=dict)
 
     def describe(self) -> str:
         src = "Feller theoretical constants" if self.width_source == "feller" else \
@@ -328,7 +478,7 @@ class VolSpec:
 
     def to_dict(self) -> dict:
         return {"estimator": self.estimator, "width_source": self.width_source,
-                "width_mult": self.width_mult, "fold": self.fold,
+                "width_mult": self.width_mult, "event_mult": self.event_mult, "fold": self.fold,
                 "trained_through": self.trained_through, "n_hypotheses": self.n_hypotheses,
                 "train_stat": self.train_stat, "human": self.describe()}
 
@@ -341,8 +491,11 @@ def design_vol(train: pd.DataFrame, estimators=tuple(ESTIMATORS)) -> VolSpec:
     for est in estimators:
         for src in WIDTH_SOURCES:
             mult = FELLER if src == "feller" else _fit_multiplier_set(train, est)
-            if any(not np.isfinite(v) for v in mult.values()):
+            # Only the SELECTION slots must be finite — a NaN in a scored-only rung
+            # (e.g. too few finite O-L observations) drops that rung, not the spec.
+            if any(not np.isfinite(mult.get(k, float("nan"))) for k in ("BM_P50", "BM_P75")):
                 continue
+            mult = {k: v for k, v in mult.items() if np.isfinite(v)}
             s = _score(train, est, mult)
             if s is None:
                 continue
@@ -352,13 +505,18 @@ def design_vol(train: pd.DataFrame, estimators=tuple(ESTIMATORS)) -> VolSpec:
         return VolSpec(estimators[0], "feller", FELLER, "", n_hyp,
                        train_stat={"combined_hl_pinball": float("nan"), "n": 0})
     best = min(candidates, key=lambda c: c["combined_hl_pinball"])
+    # The event layer is fit AFTER selection, on the winner only: it is a property
+    # of the calendar, not a competing hypothesis, so letting it into the selection
+    # grid would just multiply the hypothesis count without changing the ranking.
+    ev = fit_event_multipliers(train, best["estimator"])
     return VolSpec(best["estimator"], best["width_source"], best["width_mult"],
-                   str(train["date"].max()), n_hyp, train_stat=best)
+                   str(train["date"].max()), n_hyp, train_stat=best, event_mult=ev)
 
 
 def apply_vol_spec(spec: VolSpec, test: pd.DataFrame) -> dict | None:
     """The frozen spec's realized calibration on unseen data."""
-    return _score(test, spec.estimator, spec.width_mult)
+    return _score(test, spec.estimator, spec.width_mult,
+                  sigma_mult=event_multiplier_vector(test, spec.event_mult))
 
 
 def fold_bounds(dates: pd.Series, n_folds: int, min_train_frac: float = 0.4) -> list[tuple]:
@@ -425,7 +583,13 @@ def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
 # FX+gold-only universe in `xsect.discover_universe` only globs the one root,
 # so indices were silently invisible to `forge` until this was added.
 INDEX_DATA_ROOT = "portfolioBacktest/cache"
-INDEX_PAIRS = ("nq", "spx500", "de30", "uk100")
+INDEX_PAIRS = ("nq", "spx500", "de30", "uk100", "us30", "us2000")
+
+# The FX root also holds index M1 under SHORT aliases (dow=us30, spx=spx500, nq),
+# written in the RangeIndex+`time` layout. They duplicate `INDEX_PAIRS` under names
+# the forecaster doesn't use, so the index root's copies win and these are skipped —
+# otherwise the same instrument would be fit twice under two names.
+FX_ROOT_SKIP = frozenset({"dow", "spx", "nq", "gold.bak"})
 
 
 def discover_full_universe(fx_root: str = "VolRangeForecaster/data/m1",
@@ -439,7 +603,7 @@ def discover_full_universe(fx_root: str = "VolRangeForecaster/data/m1",
     the genuinely index-only names are added from the second root.
     """
     from pathlib import Path
-    universe = {p: fx_root for p in discover_universe_fx(fx_root)}
+    universe = {p: fx_root for p in discover_universe_fx(fx_root) if p not in FX_ROOT_SKIP}
     for p in INDEX_PAIRS:
         if (Path(index_root) / f"{p}_m1.parquet").exists():
             universe[p] = index_root
@@ -452,6 +616,140 @@ def discover_universe_fx(data_root: str = "VolRangeForecaster/data/m1") -> list[
     `xsect`'s cross-sectional machinery for something this small."""
     from pathlib import Path
     return sorted(p.stem.removesuffix("_m1") for p in Path(data_root).glob("*_m1.parquet"))
+
+
+# ── multi-horizon widths ───────────────────────────────────────────────────
+#
+# The weekly and monthly exports do NOT get their own volatility estimator. They
+# reuse the daily sigma scaled by sqrt-time, exactly as the page has always done
+# (weekly = daily x sqrt5, monthly = daily x sqrt20) — what gets refit per horizon
+# is the WIDTH, because sqrt-time scaling of sigma is not the same claim as
+# sqrt-time scaling of a RANGE quantile. Volatility mean-reverts inside a week, so
+# a week's range is reliably narrower than five independent days would imply, and
+# fitting the multiplier is what absorbs that.
+#
+# Sample sizes are honest here rather than inflated: WEEKLY uses non-overlapping
+# calendar weeks (~520 in ten years). MONTHLY uses OVERLAPPING 20-trading-day
+# windows, because non-overlapping months give only ~120 observations — far too few
+# for a stable p90. Overlapping windows leave the quantile estimate unbiased but
+# heavily autocorrelated, so the effective sample is much smaller than the raw
+# count; `n_effective` reports the non-overlapping equivalent, and the monthly rungs
+# should be read as the least certain part of the ladder.
+HORIZON_DAYS = {"weekly": 5, "monthly": 20}
+
+
+def horizon_windows(frame: pd.DataFrame, horizon: str, overlapping: bool | None = None):
+    """(sigma_forecast, realized dict) pairs for one horizon.
+
+    The sigma is the DAILY forecast-ready sigma at the window's first day, scaled by
+    sqrt(window length) — the identical quantity production will feed the ladder.
+    """
+    span = HORIZON_DAYS[horizon]
+    if overlapping is None:
+        overlapping = horizon == "monthly"
+    step = 1 if overlapping else span
+    return span, step
+
+
+def fit_horizon_widths(daily: pd.DataFrame, frame: pd.DataFrame, estimator: str,
+                       horizon: str, train_end=None) -> dict:
+    """Width multipliers for `horizon`, fit on rows strictly before `train_end`.
+
+    `daily` supplies the OHLC to aggregate into windows; `frame` supplies the
+    forecast-ready daily sigma per day (already `as_of_yesterday`-shifted).
+    """
+    span, step = horizon_windows(frame, horizon)
+    sig_col = f"sigma_{estimator}"
+    if sig_col not in frame:
+        return {}
+    dates = pd.DatetimeIndex(frame["date"])
+    sig = frame[sig_col].to_numpy() / SQRT252          # daily sigma, % of price
+    o = daily["open"].to_numpy(dtype=float)
+    h = daily["high"].to_numpy(dtype=float)
+    l = daily["low"].to_numpy(dtype=float)
+    c = daily["close"].to_numpy(dtype=float)
+    # frame rows are a subset of daily rows (dropna); align by date
+    pos = {d: i for i, d in enumerate(pd.DatetimeIndex(daily.index))}
+    idx = np.array([pos.get(d, -1) for d in dates])
+
+    rows = {"hl_pct": [], "oc_pct": [], "oh_pct": [], "ol_pct": [], "sig": []}
+    n = len(frame)
+    for start in range(0, n - span + 1, step):
+        i0 = idx[start]
+        i1 = idx[min(start + span - 1, n - 1)]
+        if i0 < 0 or i1 < i0:
+            continue
+        if train_end is not None and dates[start] >= train_end:
+            break
+        s = sig[start]
+        if not np.isfinite(s) or s <= 0:
+            continue
+        op = o[i0]
+        hi = h[i0:i1 + 1].max()
+        lo = l[i0:i1 + 1].min()
+        cl = c[i1]
+        if not np.isfinite(op) or op <= 0:
+            continue
+        rows["hl_pct"].append((hi - lo) / op * 100.0)
+        rows["oc_pct"].append(abs(cl - op) / op * 100.0)
+        rows["oh_pct"].append((hi - op) / op * 100.0)
+        rows["ol_pct"].append((op - lo) / op * 100.0)
+        rows["sig"].append(s * np.sqrt(span))          # sqrt-time scaled, as production does
+
+    sig_arr = np.asarray(rows["sig"], dtype=float)
+    if len(sig_arr) < 60:
+        return {}
+    out = {}
+    for col, slot in (("hl_pct", "BM"), ("oc_pct", "HN"), ("oh_pct", "OH"), ("ol_pct", "OL")):
+        actual = np.asarray(rows[col], dtype=float)
+        for q, tau in (("P50", 0.50), ("P75", 0.75), ("P90", 0.90)):
+            out[f"{slot}_{q}"] = fit_width_multiplier(sig_arr, actual, tau)
+    out["_n"] = int(len(sig_arr))
+    out["_n_effective"] = int(len(sig_arr) / (span if step == 1 else 1))
+    out["_overlapping"] = step == 1
+    return out
+
+
+def score_horizon(daily: pd.DataFrame, frame: pd.DataFrame, estimator: str, horizon: str,
+                  width: dict, test_start=None) -> dict:
+    """Exceedance of each horizon rung on rows at/after `test_start` — the OOS check
+    for a frozen horizon width set."""
+    span, step = horizon_windows(frame, horizon)
+    sig_col = f"sigma_{estimator}"
+    dates = pd.DatetimeIndex(frame["date"])
+    sig = frame[sig_col].to_numpy() / SQRT252
+    o = daily["open"].to_numpy(dtype=float); h = daily["high"].to_numpy(dtype=float)
+    l = daily["low"].to_numpy(dtype=float);  c = daily["close"].to_numpy(dtype=float)
+    pos = {d: i for i, d in enumerate(pd.DatetimeIndex(daily.index))}
+    idx = np.array([pos.get(d, -1) for d in dates])
+    hits = {}
+    n = len(frame)
+    for start in range(0, n - span + 1, step):
+        if test_start is not None and dates[start] < test_start:
+            continue
+        i0, i1 = idx[start], idx[min(start + span - 1, n - 1)]
+        if i0 < 0 or i1 < i0:
+            continue
+        s = sig[start]
+        if not np.isfinite(s) or s <= 0:
+            continue
+        op = o[i0]
+        real = {"BM": (h[i0:i1 + 1].max() - l[i0:i1 + 1].min()) / op * 100.0,
+                "HN": abs(c[i1] - op) / op * 100.0,
+                "OH": (h[i0:i1 + 1].max() - op) / op * 100.0,
+                "OL": (op - l[i0:i1 + 1].min()) / op * 100.0}
+        ss = s * np.sqrt(span)
+        for slot, actual in real.items():
+            for q in ("P50", "P75", "P90"):
+                mult = width.get(f"{slot}_{q}")
+                if mult is None or not np.isfinite(mult):
+                    continue
+                key = f"{slot}_{q}"
+                hits.setdefault(key, [0, 0])
+                hits[key][1] += 1
+                if actual > mult * ss:
+                    hits[key][0] += 1
+    return {k: round(v[0] / v[1], 4) for k, v in hits.items() if v[1]}
 
 
 # ── per-day OOS reconstruction — what actually gets exported for verification ─
@@ -475,17 +773,20 @@ def oos_predictions(frame: pd.DataFrame, n_folds: int = 6) -> pd.DataFrame:
         if len(train) < 200 or len(test) < 1:
             continue
         spec = design_vol(train)
-        sigma = test[f"sigma_{spec.estimator}"].to_numpy()
+        sigma = test[f"sigma_{spec.estimator}"].to_numpy() * event_multiplier_vector(test, spec.event_mult)
         pred = predicted_quantiles(sigma, spec.width_mult)
-        rows.append(pd.DataFrame({
+        cols = {
             "date": test["date"].to_numpy(), "fold": i,
             "estimator": spec.estimator, "width_source": spec.width_source,
             "sigma_annual_pct": sigma,
-            "hl_p50": pred["hl_p50"], "hl_p75": pred["hl_p75"],
-            "oc_p50": pred["oc_p50"], "oc_p75": pred["oc_p75"],
-            "realized_hl_pct": test["hl_pct"].to_numpy(),
-            "realized_oc_pct": test["oc_pct"].to_numpy(),
-        }))
+        }
+        if "event_tag" in test:
+            cols["event_tag"] = test["event_tag"].to_numpy()
+        cols.update({k: v for k, v in pred.items()})          # all twelve rungs
+        for q in ("hl", "oc", "oh", "ol"):
+            if f"{q}_pct" in test:
+                cols[f"realized_{q}_pct"] = test[f"{q}_pct"].to_numpy()
+        rows.append(pd.DataFrame(cols))
     if not rows:
         return pd.DataFrame()
     return pd.concat(rows, ignore_index=True).dropna(subset=["hl_p50"])

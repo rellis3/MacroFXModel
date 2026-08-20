@@ -20,7 +20,7 @@
  */
 
 import * as kv from '../kv.js';
-import { computeForecast, computeForecastFromRV, detectNewsMultiplier } from './volForecast.js';
+import { computeForecast, computeForecastFromRV, detectNewsMultiplier, detectEventTag} from './volForecast.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './econCalendar.js';
 import { harShadowFields, harIvShadowFields } from './forecastExport.js';
 import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
@@ -353,6 +353,11 @@ export async function runVolForecast(targetDate) {
 
   const events  = await fetchNewsEvents(target);
   const { mult: newsMult, label: newsLabel } = detectNewsMultiplier(events);
+  // The fitted ladder buckets the day rather than scaling by a one-sided multiplier
+  // (it has a real, sub-1.0 value for a day with no US Major release). Derived from
+  // the same event list, so the two conditioning paths can never disagree about
+  // WHICH events are on — only about how to price them.
+  const eventTag = detectEventTag(events);
 
   const sessionDate  = target.toISOString().split('T')[0];
   const sessionLabel = formatSessionLabel(target);
@@ -366,7 +371,7 @@ export async function runVolForecast(targetDate) {
     try {
       const ohlc = await fetchOHLC(cfg);
       forecastState.ohlcCache[cfg.name] = ohlc;
-      const f    = computeForecast(ohlc, cfg.assetClass, newsMult);
+      const f    = computeForecast(ohlc, cfg.assetClass, newsMult, { instrument: cfg.name, eventTag });
       if (HAR_SHADOW_ON) {
         // Shadow must never break the primary forecast: any HAR failure → null.
         try { f.har = harShadowFields(ohlc, cfg.assetClass, newsMult); }

@@ -709,29 +709,23 @@
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
-    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Bot → Original/COG Weekly → Original/COG Monthly. Bot draws the Volatility Bot's ACTUAL frozen plan lines (open + 8 levels from /api/volatility-bot/plan), anchored at the bot's own frozen open — so you see exactly what it trades and can confirm the levels don't move intraday. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
+    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Forecast → COG → Bot → Forecast/COG Weekly → Forecast/COG Monthly. Forecast draws the fitted ladder (O-H / O-L at p50/p75/p90, each meaning what it says); weekly and monthly use their OWN fitted widths, not √-scaled daily ones. Bot draws the Volatility Bot's ACTUAL frozen plan lines (open + 8 levels from /api/volatility-bot/plan), anchored at the bot's own frozen open — so you see exactly what it trades and can confirm the levels don't move intraday. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Forecast</button>
     <a class="v2-tool-btn" href="forecast-replay.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Replay chart — pick a pair + date range and see every session's forecast lines (H/C±/L median &amp; 75th) anchored on that day's open, vs the realized high/low, on one scrollable/zoomable chart.">📊 Replay</a>
     <a class="v2-tool-btn" href="forecast-reversion.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Reversion chart — arm each forecast line independently and see, session by session, the fade-back-to-the-inner-band trade every time price touches it: entry ▸ exit markers (win/loss/expired) plus a live per-line win/loss tally, for both the Original and COG calcs. Visual, in-sample — not evidence of edge.">📈 Reversion</a>
     <div class="v2-tool-sep"></div>
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
-        <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
-        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
-        <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
-        <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
-        <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
-        <button class="vf-exp-item" id="vfCalExtBtn"        onclick="closeExpDropdown();exportCalibratedExtended()" disabled>⬇ Extended (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
+        <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
+        <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day</span></button>
+        <button class="vf-exp-item" id="vfLadderMoBtn"   onclick="closeExpDropdown();exportLadder('monthly')"        disabled>⬇ Forecast Monthly <span style="font-size:9px;opacity:.55">20-day</span></button>
+        <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
-        <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"           disabled>⬇ Session</button>
-        <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                disabled>⬇ V+S</button>
-        <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
-        <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
-        <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"  disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
-        <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
-        <button class="vf-exp-item" id="vfCogSessBtn"       onclick="closeExpDropdown();exportCogSession()"        disabled>⬇ COG + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
-        <button class="vf-exp-item" id="vfCogWkBtn"         onclick="closeExpDropdown();exportCogWeekly()"         disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 / √20</span></button>
-        <button class="vf-exp-item" id="vfCogV2Btn"         onclick="closeExpDropdown();exportCogV2()"             disabled>⬇ COG v2 <span style="font-size:9px;opacity:.55">gold=HAR-IV</span></button>
+        <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
+        <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogPeriod('weekly')"      disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">5-day</span></button>
+        <button class="vf-exp-item" id="vfCogMoBtn"      onclick="closeExpDropdown();exportCogPeriod('monthly')"     disabled>⬇ COG Monthly <span style="font-size:9px;opacity:.55">20-day</span></button>
+        <div class="vf-exp-sep"></div>
+        <button class="vf-exp-item" id="vfCZExportBtn"   onclick="closeExpDropdown();exportConfluenceZones()"        disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1239,7 +1233,8 @@
         <tr><td>Gold (commodity)</td><td>Rogers-Satchell EWMA (λ=0.94) on daily OHLC. Handles trending markets without understating vol — unlike close-to-close estimators it doesn't subtract the directional component.</td></tr>
         <tr><td>Indices (NQ, SPX, DE30…)</td><td>GARCH(1,1): α=0.06, β=0.91, ω=4.76e-6 (~20% long-run floor). Responds quickly to vol spikes (α), mean-reverts over ~23 days (β), and can't collapse in quiet patches (ω floor).</td></tr>
         <tr><td>FX pairs</td><td>GARCH(1,1): same α/β, ω=3.60e-7 (~5% long-run floor). Lower floor reflects calmer FX baseline vs equity indices.</td></tr>
-        <tr><td>Range distribution</td><td>Brownian motion: H-L P50 = 1.572σ, P75 = 2.049σ. O-C / O-H / O-L are half-normal: P50 = 0.675σ, P75 = 1.150σ, and the ladder's "big day" P90 = 1.645σ (= Φ⁻¹(0.95), extended from the 75th so the per-asset correction carries through). Per-asset correction factors calibrated against reference system.</td></tr>
+        <tr><td>Range distribution</td><td><strong>Forecast family:</strong> nothing is assumed from theory. Each rung is a multiplier FIT to realized data — the quantile of (realized ÷ σ), fit walk-forward on train data only and frozen (<code>forge/vol.py</code> → <code>js/forecastLadderParams.js</code>). p50 / p75 / p90 mean the level is reached on 50% / 25% / 10% of periods; pooled out-of-sample across 32 instruments × 6 folds the whole ladder lands within 0.9pp of those targets. O-H and O-L are fit SEPARATELY from O-C rather than inferred by the reflection principle, so each instrument's structural asymmetry is kept (indices fall harder than they rise). σ itself comes from the per-instrument estimator the widths were fit against. <strong>COG family:</strong> unchanged — COG's own published constants (1.56 / 1.93 / 0.74 / 1.24), reproducing his line rather than targeting realized range.</td></tr>
+        <tr><td>Event conditioning</td><td>The Forecast family scales σ by the day's scheduled-release bucket — FOMC / NFP / CPI / other / none — fit per instrument. It is <strong>two-sided</strong>: a day with no US Major release sits near ×0.90 and is roughly half the calendar, which the old news multiplier could not express (it floored at 1.0). Unconditionally, a calibrated forecast runs 40-45% exceedance on quiet days and 62-76% on event days; the bucket multipliers close that ~30pp swing.</td></tr>
         <tr><td>Multi-day scaling</td><td>σ_N = σ_1 × √N (independent days). Not ×N — range partially cancels across days for a random walk.</td></tr>
       </table>
     </div>
@@ -1436,7 +1431,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfCogV2Btn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfLadderBtn','vfLadderWkBtn','vfLadderMoBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCogMoBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -2056,6 +2051,20 @@ function closeExpDropdown() {
 }
 document.addEventListener('click', closeExpDropdown);
 
+// ══════════════════════════════════════════════════════════════════════════════
+// RETIRED EXPORT BUILDERS — no longer reachable from the UI (2026-08-20).
+//
+// The dropdown collapsed to two families: Forecast (fitted ladder, daily/weekly/
+// monthly, served by /api/vol-forecast/ladder/export) and COG (unchanged). These
+// builders backed the old Export / Calibrated / Export v2 / Export HAR / Extended /
+// Extended (cal) / Session / V+S / Weekly / Weekly (cal) / COG+Session / COG v2
+// buttons and are now ORPHANED — each is referenced only by its own definition.
+//
+// Left in place rather than deleted on the same pass that changed what the page
+// shows, so any one of them can be re-wired in a single line if a number turns out
+// to be missed. Delete once the Forecast family has a few live sessions behind it.
+// ══════════════════════════════════════════════════════════════════════════════
+
 // ── Backtest-calibrated export ────────────────────────────────────────────────
 // Same structure as buildExportText, but the H-L bands are scaled by the
 // recalibration factors from the Vol Forecast Research Book (which found the raw
@@ -2200,10 +2209,14 @@ function _cogVol(name, f) {
   return g;
 }
 
-function buildCogExportText(data, { weekly = false } = {}) {
+function buildCogExportText(data, { weekly = false, period = null } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
-  const lines = [weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
+  const _title = !weekly ? '**VOL & RANGE FORECAST — COG**'
+    : period === 'monthly' ? '**VOL & RANGE FORECAST — COG MONTHLY (20-day)**'
+    : period === 'weekly'  ? '**VOL & RANGE FORECAST — COG WEEKLY (5-day)**'
+    : '**VOL & RANGE FORECAST — COG WEEKLY**';
+  const lines = [_title, `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
     const va = _cogVol(name, f);
@@ -2211,13 +2224,22 @@ function buildCogExportText(data, { weekly = false } = {}) {
     lines.push(div(name));
     lines.push(`Volatility (annualized) : ${va.toFixed(2)}%`);
     if (weekly) {
-      const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
-      lines.push('── 5-Day (Weekly)');
-      lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
-      lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
-      lines.push('── 20-Day (Monthly)');
-      lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
-      lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+      // `period` narrows the old both-blocks output to one horizon, so COG has a
+      // Weekly and a Monthly export mirroring the Forecast family. Omitted =
+      // both blocks, the historical behaviour.
+      const both = !period;
+      if (both || period === 'weekly') {
+        const w5 = _cogBands(va, Math.sqrt(5));
+        lines.push('── 5-Day (Weekly)');
+        lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
+        lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
+      }
+      if (both || period === 'monthly') {
+        const w20 = _cogBands(va, Math.sqrt(20));
+        lines.push('── 20-Day (Monthly)');
+        lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
+        lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+      }
     } else {
       const d = _cogBands(va, 1);
       lines.push(row('High to Low range', d.hl_median, d.hl_75));
@@ -2259,6 +2281,39 @@ function buildCogV2ExportText(data) {
   }
   return lines.join('\n');
 }
+// ── Forecast family export ────────────────────────────────────────────────────
+// Fetched from /api/vol-forecast/ladder/export rather than rebuilt here. The page
+// used to carry its own copy of every builder, which is exactly how the old
+// variants drifted apart from the server's — one source, one output.
+async function exportLadder(horizon = 'daily', withSession = false) {
+  const btnId = withSession ? 'vfLadderSessBtn'
+    : horizon === 'weekly' ? 'vfLadderWkBtn'
+    : horizon === 'monthly' ? 'vfLadderMoBtn' : 'vfLadderBtn';
+  const btn = document.getElementById(btnId);
+  const orig = btn.dataset.orig || btn.textContent;
+  btn.dataset.orig = orig; btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const qs = `horizon=${encodeURIComponent(horizon)}${withSession ? '&session=1' : ''}`;
+    const r = await fetch(`/api/vol-forecast/ladder/export?${qs}`);
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2600); return; }
+    btn.disabled = false;
+    const date = (currentForecast && currentForecast.session_date) || 'latest';
+    _emitCalibrated(btnId, text, `vol-forecast-${horizon}-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2600);
+  }
+}
+
+async function exportCogPeriod(period) {
+  if (!currentForecast) return;
+  await loadCogHv();
+  const btnId = period === 'monthly' ? 'vfCogMoBtn' : 'vfCogWkBtn';
+  const text = buildCogExportText(currentForecast, { weekly: true, period });
+  _emitCalibrated(btnId, text, `vol-forecast-cog-${period}-${currentForecast.session_date}.txt`);
+}
+
 async function exportCog() {
   if (!currentForecast) return;
   await loadCogHv();
@@ -3539,22 +3594,29 @@ const _d1Cache = {};
 // Unlike the live daily bands, they are point-in-time forecasts: σ is taken from the
 // forecast in effect as the period opened and held constant, so the envelope is issued
 // once (Monday / month start) and you watch price travel through it.
-const _LEVEL_MODES = ['original', 'cog', 'bot', 'original_weekly', 'cog_weekly', 'original_monthly', 'cog_monthly'];
+const _LEVEL_MODES = ['forecast', 'cog', 'bot', 'forecast_weekly', 'cog_weekly', 'forecast_monthly', 'cog_monthly'];
 const _MODE_LABEL  = {
-  original: 'Original', cog: 'COG', bot: 'Bot',
-  original_weekly: 'Original Weekly', cog_weekly: 'COG Weekly',
-  original_monthly: 'Original Monthly', cog_monthly: 'COG Monthly',
+  forecast: 'Forecast', cog: 'COG', bot: 'Bot',
+  forecast_weekly: 'Forecast Weekly', cog_weekly: 'COG Weekly',
+  forecast_monthly: 'Forecast Monthly', cog_monthly: 'COG Monthly',
 };
+// The stored preference may still name the pre-collapse modes; map them forward so a
+// returning browser doesn't silently fall back to daily.
+const _LEGACY_MODE = { original: 'forecast', original_weekly: 'forecast_weekly', original_monthly: 'forecast_monthly' };
 const _SQRT5 = Math.sqrt(5), _SQRT20 = Math.sqrt(20);
-let _levelMode = 'original';
-try { const _m = localStorage.getItem('vf_chart_level_mode'); if (_LEVEL_MODES.includes(_m)) _levelMode = _m; } catch (_) {}
+let _levelMode = 'forecast';
+try {
+  const _raw = localStorage.getItem('vf_chart_level_mode');
+  const _m = _LEGACY_MODE[_raw] ?? _raw;
+  if (_LEVEL_MODES.includes(_m)) _levelMode = _m;
+} catch (_) {}
 
 // Current-mode context: COG variant? weekly/monthly variant? the σ multiplier
 // (×√5 weekly, ×√20 monthly, ×1 daily), the candle granularity, the frozen-forecast
 // kind, and the display label.
 function _modeCtx() {
-  const weekly  = _levelMode === 'original_weekly'  || _levelMode === 'cog_weekly';
-  const monthly = _levelMode === 'original_monthly' || _levelMode === 'cog_monthly';
+  const weekly  = _levelMode === 'forecast_weekly'  || _levelMode === 'cog_weekly';
+  const monthly = _levelMode === 'forecast_monthly' || _levelMode === 'cog_monthly';
   const cog     = _levelMode.startsWith('cog');
   const bot     = _levelMode === 'bot';
   return {
@@ -3661,6 +3723,44 @@ function _bandInst(name, liveF) {
 // from vol_annual × COG constants (COG_C, defined in the export section); original mode
 // uses the forecast's own hl/oc fields. Weekly modes source the bands from the frozen
 // (Monday) forecast and scale ×√5.
+// The chart's forecast lines. In FORECAST mode these are the fitted ladder's rungs —
+// O-H / O-L at p50 / p75 / p90, each meaning what it says (reached on 50% / 25% / 10%
+// of sessions), plus the O-C displacement pair. In COG / BOT mode, and for any older
+// archived forecast with no ladder attached, it falls back to the legacy four.
+//
+// One thing deliberately changed: the legacy set drew open ± hl_median and called it
+// "O-H med". hl_median is a RANGE WIDTH, not a one-sided excursion — drawing it off
+// the open implies the whole day's range happening in one direction, which overstates
+// the level badly. The ladder has a real, separately fitted O-H / O-L, so the
+// mislabelled line goes away rather than being carried forward.
+function _forecastLineDefs(L, LS) {
+  const has = L && L.oh_p50 != null && L.ol_p50 != null;
+  if (!has) {
+    return [
+      { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
+      { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
+      { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
+      { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
+      { pct: L.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
+      { pct: L.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
+      { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
+      { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
+    ];
+  }
+  return [
+    { pct: L.oh_p50, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H p50', axis: true },
+    { pct: L.ol_p50, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L p50', axis: true },
+    { pct: L.oh_p75, side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H p75', axis: true },
+    { pct: L.ol_p75, side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L p75', axis: true },
+    { pct: L.oh_p90, side:  1, color: '#f59e0b', style: LS.Solid,       title: 'O-H p90', axis: true },
+    { pct: L.ol_p90, side: -1, color: '#f59e0b', style: LS.Solid,       title: 'O-L p90', axis: true },
+    { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C p50 ↑', axis: true },
+    { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C p50 ↓', axis: true },
+    { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C p75 ↑', axis: true },
+    { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C p75 ↓', axis: true },
+  ].filter(d => d.pct != null);
+}
+
 function _chartLevels(name, f) {
   const { cog, bot, mult } = _modeCtx();
   // BOT mode: draw the bot's ACTUAL frozen plan lines. The plan stores band FRACTIONS
@@ -3672,6 +3772,26 @@ function _chartLevels(name, f) {
     return { hl_median: null, hl_75: null, oc_median: null, oc_75: null, _botOpen: null };
   }
   const src = _bandInst(name, f);              // frozen Monday forecast for weekly, live for daily
+
+  // FORECAST mode: the fitted ladder, already built per horizon server-side — so the
+  // chart draws exactly the numbers the export prints, including the p90 rung and the
+  // separately-fitted O-H / O-L asymmetry. No √-scaling here: `ladder_weekly` and
+  // `ladder_monthly` carry their OWN fitted widths, which is the whole reason they
+  // exist (a week's range is narrower than five independent days imply).
+  if (!cog) {
+    const { weekly: wk, monthly: mo } = _modeCtx();
+    const lad = wk ? src?.ladder_weekly : mo ? src?.ladder_monthly : src?.ladder;
+    if (lad?.oh?.p50 != null) {
+      return {
+        hl_median: lad.hl?.p50 ?? null, hl_75: lad.hl?.p75 ?? null,
+        oc_median: lad.oc?.p50 ?? null, oc_75: lad.oc?.p75 ?? null,
+        oh_p50: lad.oh?.p50 ?? null, oh_p75: lad.oh?.p75 ?? null, oh_p90: lad.oh?.p90 ?? null,
+        ol_p50: lad.ol?.p50 ?? null, ol_p75: lad.ol?.p75 ?? null, ol_p90: lad.ol?.p90 ?? null,
+        _event: lad.event_tag, _eventMult: lad.event_mult,
+      };
+    }
+  }
+
   let base;
   if (cog && src?.vol_annual > 0) {
     const va = _cogVol(name, src);             // NQ → COG CC-HV; all other indices + fx + gold → platform σ
@@ -3692,7 +3812,7 @@ function _syncChartLevelBtn() {
   // back to the live forecast (so the bands aren't truly frozen this period).
   const live = kind && _frozen[kind].forecast && _frozen[kind].live;
   b.textContent = '📐 Chart: ' + _MODE_LABEL[_levelMode] + (live ? ' (live)' : '');
-  b.classList.toggle('active', _levelMode !== 'original');
+  b.classList.toggle('active', _levelMode !== 'forecast');
   b.classList.toggle('weekly', weekly || monthly);   // amber accent marks any frozen period mode
 }
 function _redrawCogCharts() {
@@ -3957,16 +4077,7 @@ async function loadM5Chart(name, f) {
       const LS = LightweightCharts.LineStyle;
       const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
       if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: hang lines off the bot's FROZEN open, not the chart's
-      const lineDefs = [
-        { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
-        { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
-        { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
-        { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
-        { pct: L.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
-        { pct: L.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
-        { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
-        { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
-      ];
+      const lineDefs = _forecastLineDefs(L, LS);
       // Dynamic H-L COMPLETION lines as first-class lineDefs (absolute `price`, not a
       // pct-of-open) so they get the same clickable legend row + pin toggle + hit chip
       // as the 8 forecast lines. Expected High = running Low + forecast H-L; expected
@@ -4299,16 +4410,7 @@ function _buildModalChart(name) {
   const LS = LightweightCharts.LineStyle;
   const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
   if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: anchor lines at the bot's FROZEN open
-  const lineDefs = [
-    { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
-    { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
-    { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
-    { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
-    { pct: L.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
-    { pct: L.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
-    { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
-    { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
-  ];
+  const lineDefs = _forecastLineDefs(L, LS);
   const levelPrices = lineDefs.filter(d => d.pct && anchorOpen).map(d => anchorOpen * (1 + d.side * d.pct / 100));
 
   const chart = LightweightCharts.createChart(body, {

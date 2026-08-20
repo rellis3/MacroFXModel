@@ -461,6 +461,54 @@ if _dayNew or barstate.isfirst
 // Single whole-chart tint — SUPPRESSED when local price-zoned bands are drawn instead
 // (they carry the same regime read, but resolved by price).
 useLocalBands = regime_bands and array.size(oiBandBnds) > 0
+
+// THE REGIME AT A PRICE, not the regime as of the paste. `oiRegime` is a single word
+// frozen at export time from the near-dated book's net-GEX sign; the bands carry where
+// that sign actually FLIPS along price. Those two can disagree while price sits near a
+// crossing — on NQ (2026-08-20) the table read PIN while spot was 39 points above the
+// only crossing, i.e. one ordinary move from BREAKOUT.
+//
+// The tint was already price-resolved via the band boxes. The summary table and the
+// label were not: both printed the frozen word, so the chart could shade one regime
+// while the table named the other. This resolves all three from the same source.
+//
+// Bands are ascending, each entry being the regime ABOVE that crossing, so walking up
+// and keeping the last crossing at or below `price` gives the band price is sitting in.
+f_regimeAt(price) =>
+    string r = oiBandBase
+    int n = array.size(oiBandBnds)
+    if n > 0 and not na(price)
+        for i = 0 to n - 1
+            if price >= array.get(oiBandBnds, i)
+                r := array.get(oiBandRegs, i)
+    r
+
+// The next crossing ABOVE and BELOW price — "PIN until 29511.76" is actionable in a way
+// that "PIN" alone is not. na when there is no crossing that side.
+f_nextFlipBelow(price) =>
+    float best = na
+    int n = array.size(oiBandBnds)
+    if n > 0 and not na(price)
+        for i = 0 to n - 1
+            b = array.get(oiBandBnds, i)
+            if b <= price
+                best := b
+    best
+
+f_nextFlipAbove(price) =>
+    float best = na
+    int n = array.size(oiBandBnds)
+    if n > 0 and not na(price)
+        for i = n - 1 to 0
+            b = array.get(oiBandBnds, i)
+            if b > price
+                best := b
+    best
+
+// What every regime display should use: the band at CURRENT price when bands exist,
+// falling back to the exported word when the paste predates gex-bands.
+liveRegime = useLocalBands ? f_regimeAt(close) : oiRegime
+
 regimeTint = (not show_regime or not show_oi or na(oiRegime) or useLocalBands) ? na :
      oiRegime == "PIN"      ? col_pin_bg :
      oiRegime == "BREAKOUT" ? col_break_bg : na
@@ -652,9 +700,26 @@ if barstate.islast
                 array.push(oiLabels, lb)
 
     // ── Gamma regime label ────────────────────────────────────────────────────
-    if show_regime and show_oi and not na(oiRegime)
-        regCol = oiRegime == "PIN" ? col_pain : col_call
-        regTxt = oiRegime == "PIN" ? "PIN — walls hold / pull to max pain" : "BREAKOUT — wall breaks tend to run"
+    // Uses the regime at CURRENT price (liveRegime), and names the crossing that would
+    // end it — "PIN until 29511.76 below" tells you what to watch; "PIN" alone does not.
+    // Flags when the live read differs from the exported word, since that is precisely
+    // the situation worth knowing about: the book has not changed, price has moved
+    // across a gamma boundary since the paste.
+    if show_regime and show_oi and not na(liveRegime)
+        regCol = liveRegime == "PIN" ? col_pain : col_call
+        fBelow = f_nextFlipBelow(close)
+        fAbove = f_nextFlipAbove(close)
+        string edge = na(fBelow) and na(fAbove) ? "" :
+             na(fBelow) ? "  (flips above " + str.tostring(fAbove) + ")" :
+             na(fAbove) ? "  (flips below " + str.tostring(fBelow) + ")" :
+             "  (flips " + str.tostring(fBelow) + " ↓ / " + str.tostring(fAbove) + " ↑)"
+        string drift = (not na(oiRegime) and liveRegime != oiRegime)
+             ? "  ⚠ was " + oiRegime + " at paste" : ""
+        regTxt = (liveRegime == "PIN" ? "PIN — walls hold / pull to max pain"
+             : "BREAKOUT — wall breaks tend to run") + edge + drift
+        regimeLbl := label.new(bar_index, high, regTxt,
+             style=label.style_label_down, yloc=yloc.abovebar,
+             color=color.new(regCol, 20), textcolor=color.white, size=size.normal)
         regimeLbl := label.new(bar_index, high, regTxt,
              style=label.style_label_down, yloc=yloc.abovebar,
              color=color.new(regCol, 20), textcolor=color.white, size=size.normal)
@@ -767,7 +832,9 @@ if show_table and barstate.islast
             if not req_anchor or str.contains(zTyp, "vol_m") or str.contains(zTyp, "vol_75")
                 nVisCZ += 1
     int nVisOI = show_oi ? array.size(oiPrices) : 0
-    bool hasRegime = show_regime and show_oi and not na(oiRegime)
+    // liveRegime, not oiRegime: a paste that carries bands but no regime word still has
+    // a resolvable regime at price, and the row should show it.
+    bool hasRegime = show_regime and show_oi and not na(liveRegime)
 
     int totalRows = nVisCZ + nVisOI + (hasRegime ? 1 : 0)
     if totalRows > 0
@@ -789,11 +856,21 @@ if show_table and barstate.islast
         //              FOLLOW a decisive break.
         if hasRegime
             row += 1
-            regCol  = oiRegime == "PIN" ? col_pain : col_call
-            regMean = oiRegime == "PIN" ? "walls hold · fade→max pain" : "breaks run · follow"
+            // Price-resolved, like the tint and the label — see f_regimeAt. The Dist
+            // column carries the crossing that would flip it, so the row answers
+            // "which regime, and how far from the other one".
+            regCol  = liveRegime == "PIN" ? col_pain : col_call
+            regMean = liveRegime == "PIN" ? "walls hold · fade→max pain" : "breaks run · follow"
+            fB = f_nextFlipBelow(close)
+            fA = f_nextFlipAbove(close)
+            string regEdge = na(fB) and na(fA) ? regMean :
+                 na(fB) ? regMean + " · flips ↑" + str.tostring(fA) :
+                 na(fA) ? regMean + " · flips ↓" + str.tostring(fB) :
+                 regMean + " · ↓" + str.tostring(fB) + " ↑" + str.tostring(fA)
+            string regWord = liveRegime + ((not na(oiRegime) and liveRegime != oiRegime) ? "*" : "")
             table.cell(czTable, 0, row, "REGIME", text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
-            table.cell(czTable, 1, row, oiRegime, text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
-            table.cell(czTable, 2, row, regMean,  text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
+            table.cell(czTable, 1, row, regWord, text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
+            table.cell(czTable, 2, row, regEdge, text_color=regCol, text_size=size.tiny, bgcolor=color.new(regCol, 80))
 
         // OI level rows
         if show_oi and array.size(oiPrices) > 0

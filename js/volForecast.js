@@ -36,6 +36,9 @@
  */
 
 import { COG_CONST } from './cogReverseEngineer.js';
+import { buildLadder, flattenLadder } from './forecastLadder.js';
+import { forecastSigma } from './forecastSigma.js';
+import { LADDER_PARAMS } from './forecastLadderParams.js';
 
 const TRADING_DAYS = 252;
 const EWMA_LAMBDA  = 0.94;
@@ -151,6 +154,35 @@ const NEWS_PATTERNS = [
   { re: /gross\s*domestic|gdp/i,                        mult: 1.05, label: 'GDP'       },
   { re: /producer\s*price|ppi/i,                        mult: 1.05, label: 'PPI'       },
 ];
+
+// ── Scheduled-event TAG (the ladder's conditioning input) ─────────────────────
+// The fitted ladder buckets a day as FOMC / NFP / CPI / other / none and carries a
+// per-bucket sigma multiplier — including a sub-1.0 one for `none`, which is about
+// half the calendar and which `detectNewsMultiplier` below structurally cannot
+// express (it floors at 1.0).
+//
+// CAVEAT worth knowing: the multipliers were fit against `calendar_events.csv`'s
+// "Major"/USD rows, while live tagging runs off the Finnhub feed's high-impact
+// flags. The two providers do not draw the "major" line in exactly the same place,
+// so the live mix of `other` vs `none` may not match the fit's. Sanity check to run
+// after a few weeks live: roughly half of days should tag `none` and ~22% `other`.
+export function detectEventTag(events = []) {
+  const usHigh = events.filter(e =>
+    e.country === 'US' && String(e.impact ?? '').toLowerCase() === 'high',
+  );
+  if (!usHigh.length) return 'none';
+  let best = 'other';
+  const rank = { FOMC: 4, NFP: 3, CPI: 2, other: 1 };
+  for (const ev of usHigh) {
+    const t = String(ev.event ?? '');
+    let tag = 'other';
+    if (/fomc|fed\s*chair|fed\s*press|federal\s*fund|interest\s*rate\s*decision|monetary\s*policy\s*testimony/i.test(t)) tag = 'FOMC';
+    else if (/non.?farm|nonfarm|payroll/i.test(t)) tag = 'NFP';
+    else if (/consumer\s*price|inflation\s*rate|cpi/i.test(t)) tag = 'CPI';
+    if (rank[tag] > rank[best]) best = tag;
+  }
+  return best;
+}
 
 export function detectNewsMultiplier(events = []) {
   const usHigh = events.filter(e =>
@@ -440,7 +472,7 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
  *                              sigmaFwd (and thus all HL/OC ranges) before correction.
  * @returns forecast object — all values are percentages
  */
-export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
+export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = {}) {
   const n = ohlc.length;
   if (n < 60) throw new Error(`Need ≥60 bars, got ${n}`);
 
@@ -495,7 +527,34 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const _d       = _driftD(ohlc, sigmaFwd);
   const r2v      = x => Math.round(x * 100) / 100;
 
+  // ── Fitted ladder (the "Forecast" export family) ────────────────────────────
+  // Additive: every incumbent field above is untouched, so the COG exports, the
+  // live volatility bot and every archived comparison keep reading exactly what
+  // they read before. The ladder is a SEPARATE calc with its own sigma — the
+  // estimator its widths were fit against (see js/forecastLadderParams.js) — which
+  // is why it cannot simply reuse `sigmaFwd` above.
+  const _instrument = opts.instrument ?? '';
+  const _eventTag   = opts.eventTag ?? 'none';
+  let _ladder = null, _ladderW = null, _ladderM = null;
+  try {
+    const _lp = LADDER_PARAMS.pairs?.[String(_instrument).toUpperCase()]
+             ?? LADDER_PARAMS.classDefaults?.[assetClass];
+    const _ls = forecastSigma(ohlc, _lp?.estimator ?? 'yz_30');
+    if (_ls > 0) {
+      const _mk = horizon => buildLadder(_ls, {
+        instrument: _instrument, assetClass, eventTag: _eventTag, horizon,
+      });
+      _ladder  = _mk('daily');
+      _ladderW = _mk('weekly');
+      _ladderM = _mk('monthly');
+    }
+  } catch { /* ladder is additive — never let it break the incumbent forecast */ }
+
   return Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
+    ladder:         _ladder,
+    ladder_weekly:  _ladderW,
+    ladder_monthly: _ladderM,
+    ladder_flat:    _ladder ? flattenLadder(_ladder) : null,
     yz_vol_annual:     r2s(yzPct     * Math.sqrt(TRADING_DAYS)),
     yz_hl_median:      r2s(BM_RANGE_P50 * yzPct),
     yz_oc_median:      r2s(HN_P50       * yzPct),

@@ -51,6 +51,13 @@ def load_m1(pair: str, root: str | Path = "VolRangeForecaster/data/m1") -> pd.Da
     duplicate timestamps dropped (broker feeds occasionally repeat a minute)."""
     path = Path(root) / f"{pair}_m1.parquet"
     df = pd.read_parquet(path)
+    # Some cached parquets were written with a RangeIndex and the timestamps left
+    # in a `time` COLUMN. Everything downstream (resample, the causal cutoffs) needs
+    # a DatetimeIndex, and silently proceeding on a RangeIndex produces a confusing
+    # failure far from the cause — promote it here instead.
+    if not isinstance(df.index, pd.DatetimeIndex) and "time" in df.columns:
+        df = df.set_index(pd.to_datetime(df["time"], utc=True)).drop(columns=["time"])
+        df.index.name = None
     df = df[~df.index.duplicated(keep="first")].sort_index()
     need = {"open", "high", "low", "close"}
     missing = need - set(df.columns)

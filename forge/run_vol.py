@@ -24,9 +24,9 @@ from forge.xsect import discover_universe
 
 
 def run_one(pair: str, years: float, folds: int, data_root: str,
-           day_start_hour: int, verbose: bool) -> dict:
+           day_start_hour: int, verbose: bool, event_tags: dict | None = None) -> dict:
     daily = V.load_daily(pair, data_root, day_start_hour, years)
-    frame = V.build_forecast_frame(daily)
+    frame = V.build_forecast_frame(daily, event_tags=event_tags)
     if verbose:
         print(f"[{pair}] {len(frame):,} daily bars, {frame['date'].min():%Y-%m-%d} → "
               f"{frame['date'].max():%Y-%m-%d}", flush=True)
@@ -70,14 +70,28 @@ def main(argv=None):
     ap.add_argument("--data-root", default="VolRangeForecaster/data/m1")
     ap.add_argument("--day-start-hour", type=int, default=0)
     ap.add_argument("--out", default="forge/out_vol")
+    ap.add_argument("--calendar", default="calendar_events.csv",
+                    help="scheduled-event CSV for the event multiplier layer; '' disables it")
     ap.add_argument("--verbose-pairs", default="gold",
                     help="comma-separated pairs to print fold-by-fold detail for")
     args = ap.parse_args(argv)
 
-    pairs = [p.strip() for p in args.pairs.split(",") if p.strip()] or discover_universe(args.data_root)
+    universe = V.discover_full_universe(args.data_root)
+    want = [p.strip() for p in args.pairs.split(",") if p.strip()]
+    if want:
+        universe = {p: r for p, r in universe.items() if p in want}
+    pairs = sorted(universe)
     verbose_set = {p.strip() for p in args.verbose_pairs.split(",") if p.strip()}
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    event_tags = None
+    if args.calendar:
+        try:
+            event_tags = V.load_event_tags(args.calendar)
+            print(f"[calendar] {len(event_tags)} tagged days from {args.calendar}", flush=True)
+        except OSError as e:
+            print(f"[calendar] unavailable ({e}) — running without the event layer", flush=True)
 
     print(f"[universe] {len(pairs)} instruments", flush=True)
     results = {}
@@ -85,8 +99,8 @@ def main(argv=None):
         v = pair in verbose_set
         if v:
             print(f"\n=== {pair} ===", flush=True)
-        results[pair] = run_one(pair, args.years, args.folds, args.data_root,
-                                args.day_start_hour, verbose=v)
+        results[pair] = run_one(pair, args.years, args.folds, universe[pair],
+                                args.day_start_hour, verbose=v, event_tags=event_tags)
         if not v:
             s = results[pair].get("summary")
             if s:
