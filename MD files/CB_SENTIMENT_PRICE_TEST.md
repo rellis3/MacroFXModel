@@ -190,3 +190,49 @@ Pre-Stage-3 checklist (from the design above): cross-check the historical
 date list against federalreserve.gov/monetarypolicy/fomccalendars.htm, and
 verify `fomcFetch.js`'s text extraction is tight on a couple of real pages
 (its own header flags that the extraction was built blind to the live DOM).
+
+---
+
+## Stage 2 run + Stage 3 results (run 2026-08-20, design frozen 2026-08-15)
+
+**Stage 2 ran on the deployed server via the fomc-sentiment.html backfill
+button: 84/84 statements captured and scored** (81 newly fetched, 0 missing;
+every meeting also carries an LLM score). The scores JSON is committed
+verbatim at `analysis/fomc_event_study/fomc_lexicon_scores.json`; the join
+code is `stage3_score_join.py`. Note: the fed.gov extraction-tightness
+spot-check and the calendar cross-check from the checklist above were NOT
+separately performed before this run — mitigations that stand in their
+place: every date passed the Stage-1 market-data spike check, all 84 URLs
+resolved (0 missing), and cell 2 below independently confirms the extracted
+text carries real signal. Face-validity of the series is also strong (2022
+cycle pegged max-hawkish, COVID 2020–21 strongly dovish, largest single
+Δ at the 2022-03-16 liftoff).
+
+**Cell 2 (concurrent validity): the scorers measure something real.**
+R0 ~ Δscore — lexicon: slope +0.0023, **t = 2.04**, corr 0.22 (N=81);
+LLM: slope +0.0028, **t = 2.63**, corr 0.28. A hawkish surprise vs the prior
+statement is visibly priced in the first 30 minutes, by both scorers. The
+instruments are valid; cell 1 is therefore a fair test, not void.
+(Scorer agreement on levels: corr(lexicon, LLM) = 0.46 — moderate; the
+known divergence is 2016–17, where legacy "accommodative" boilerplate drags
+the no-negation lexicon dovish while the LLM reads the hiking cycle.)
+
+**Cell 1 (REGISTERED, confirmatory): FAIL — clean null, banked.**
+R1 ~ Δscore (lexicon): slope **−0.0018, t = −0.75**, corr −0.08, N=81.
+Both halves negative and insignificant (2016–2020 t=−0.41; 2021–2026
+t=−0.59). Exploratory LLM scorer agrees: R1 ~ ΔllmScore t = 0.15.
+Descriptive R5 ~ Δscore: t=−0.21 — nothing at the weekly horizon either.
+
+**The complete story the three stages tell:** the statement's hawkish
+surprise IS priced — within 30 minutes (cell 2) — and NOTHING remains at the
+daily or weekly horizon (Stage 1 drift null + cell 1 null, two independent
+banked nulls agreeing). The market reads FOMC statements efficiently at
+every horizon this platform can trade.
+
+**Consequence per the frozen decision table (executed):** the CB sentiment
+engines are formally classed **context-only** — same class as yield-coupling
+("confirms, does not forecast"). Recorded in `BACKTEST_INDEX.md` Q13.
+Sentiment-alpha proposals are closed absent genuinely new data (e.g.
+intra-minute reaction trading, which this platform cannot execute). The
+dashboards, the macro-scorecard input, and the backfilled 2016→ history all
+remain — as context, which is what the evidence says they are.
