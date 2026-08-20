@@ -376,6 +376,18 @@ group's "additional materials" but wasn't itself transcribed here.
 on a low-volatility Monday, ~1.09% range, used simply to characterize how
 quiet the day had been rather than to enter/exit anything).
 
+**A second, companion indicator — yesterday's forecast values, for
+retrospective review (video 15, new):** Jordan built Husky a **second**
+tool alongside the live forecasting indicator, one that displays
+**yesterday's** median/75th-percentile/projected-high/low values rather
+than today's live ones — purpose-built for hindsight review of how the
+prior day's forecast actually played out against realized price, distinct
+from the forward-looking live tool used for same-day planning. Confirms
+Jordan's direct tooling involvement extends beyond the still-unresolved
+band screenshots (Priority Watch) to at least one plainly-described,
+non-mysterious utility indicator for the group.
+**Videos:** 1, 4, 5, 15.
+
 ### Range extension methodology (weekly + daily variants)
 **Speaker: Husky** (video 1) / **host of videos 2-3** (Tuesday weekly
 markup call — same schedule Husky described, consistent presenter across
@@ -441,7 +453,42 @@ difference." Worth recording as a **deliberately rejected variant** — a
 "use the post-window breakout extreme if it's more extreme than the
 in-window one" rule is a concrete, testable alternative anchor, explicitly
 flagged by the source as probably not worth the added discretion.
-**Videos:** 1, 3, 4, 6, 7.
+
+**Level validity windows — explicit expiry times, not "until it looks
+stale" (video 12, new):** daily (Asia-range) levels are valid **until 10pm
+the same day**; weekly (Monday-range) levels are valid **until 10pm
+Friday**. A concrete, previously-missing piece — turns "levels are fixed
+for the period" (already logged above) into an exact, implementable
+cutoff rather than an open-ended "don't redraw" rule. Paired with a
+**24-48hr cooldown** on a level that's already been tapped: once a level
+has been traded/reacted to, it's explicitly given a 24-48 hour rest before
+being treated as valid again, rather than re-trading the same level
+repeatedly in quick succession.
+
+**Weekly and daily treated as genuinely separate systems, not one method
+at two scales (video 12, new):** stop distances differ by convention, not
+just by volatility — weekly levels use a **~10-pip** stop-distance
+convention, daily levels a **~5-pip** one (EU examples), explicitly framed
+as "two separate systems" rather than the same rule just resized. Worth
+encoding as two distinct stop-distance defaults if reproducing both
+timeframes, not a single scaled parameter.
+
+**Extending the same methodology to monthly/quarterly ranges, wicks not
+bodies (video 12, new — self-described as off-curriculum: "not in the
+education, this is just something I look at sometimes"):** the identical
+range-extension mechanism (project multiples of a reference range's width
+beyond its edge) applied to a **higher-timeframe context view** — the
+**previous calendar month's range** and **previous quarter's range** —
+used purely as a slower-moving backdrop to sanity-check the daily/weekly
+levels against, not traded directly. Critically, this variant uses
+**wicks, not candle bodies**, for the anchor high/low — the opposite
+convention from the Asia/Monday version (which is explicit about
+closes-only, "wicks show rejection, not the true range"). Flagged
+in-transcript as a personal habit rather than something formally taught,
+making it the clearest genuine off-curriculum nugget in this batch — a
+distinct, testable variant: same formula, different timeframe, different
+anchor convention (wick hi/lo vs body hi/lo).
+**Videos:** 1, 3, 4, 6, 7, 12.
 
 ### Mean reversion across multiple timeframes, sparse levels, wait-to-invalidate entry style
 **Speaker: Husky**, personal execution style. Confidence: med.
@@ -452,7 +499,16 @@ limit orders left resting at pre-marked levels from the morning markup, no
 confirmation indicator required at entry; orders are pulled (not held) in
 two situations — (a) ahead of high-impact news (e.g. NFP), (b) when a large
 momentum candle is driving hard into the resting limit.
-**Videos:** 1.
+
+**News-avoidance window, a second concrete instance (video 15, new):**
+extends the "pull orders ahead of high-impact news" rule already logged
+(originally stated generically for NFP) with a second named example — an
+explicit **avoidance window around an ECB release**, resting orders pulled
+ahead of the scheduled announcement rather than left live through it.
+Confirms this is a general high-impact-calendar-event rule, not an
+NFP-specific one, but still no exact window width (minutes-before /
+minutes-after) given in either instance.
+**Videos:** 1, 15.
 
 ### VWAP used as context/frame, not as a level source
 **Speaker: Husky**. Confidence: low-med (explicitly says this isn't his
@@ -685,7 +741,18 @@ with the Asia range extensions, you've got this golden pocket... and yeah
 that looks really nice to me." Confirms the zone-construction pattern
 generalizes to however many of the group's tools happen to agree, not
 capped at two.
-**Videos:** 3, 7, 8.
+
+**Explicit rationale — zones exist because of spread, not just precision
+uncertainty (video 13, new):** a sharper statement of *why* a single-price
+line is wrong, not just imprecise: on the entry side, a resting order can
+be filled a pip or two either side of the marked price purely from spread,
+so the "level" was always a zone in execution terms even when drawn as a
+line. Reframes the zone-not-line rule from a discretion/precision
+convenience into a mechanical consequence of how limit fills actually
+work — relevant to backtest fidelity: a zero-spread exact-touch fill model
+understates real fill variance even before considering discretionary
+zone width.
+**Videos:** 3, 7, 8, 13.
 
 ### ADX-based regime filter (trend vs. mean-reversion switch)
 **Speaker: host of transcript 3**, floated as a suggestion to a struggling
@@ -757,9 +824,23 @@ drawn from is itself a large, higher-timeframe move (in the observed
 case, a multi-week high). Keep these two "0.5"s distinct when
 implementing: the range-midpoint 0.5 is reliably strong; the swing-Fib
 0.5 is normally weak and only conditionally promoted.
+
+**A fourth distinct use — midpoint as a continuation-pullback entry, not
+just a target/divider/reaction-zone (video 15, new):** where the prior
+three uses treat the midpoint as a TP target, a bias divider, or a
+standalone reaction zone, this is a genuinely separate application: when
+price is already trending in one direction and pulls back *to* the
+midpoint without breaking through it, that pullback itself is treated as
+a **continuation entry** in the original trend direction — i.e. midpoint-
+as-support/resistance-during-a-trend, structurally similar to the
+ADX-gated near-extension pullback-buy already logged (see "ADX-based
+regime filter"), but keyed off the range midpoint specifically rather
+than an extension multiple. Keep this fourth use distinct from the other
+three when cataloguing midpoint behavior — same level, four different
+jobs depending on context.
 **Videos:** 2 (close-median version), 3 (generalized to all level types),
 6 (midpoint-as-bias-divider), 8 (standalone strength + swing-Fib 0.5
-contrast).
+contrast), 15 (continuation-pullback entry).
 
 ### Spacing resting levels apart to avoid correlated stop-outs
 **Speaker: host of transcript 3/7 (Husky).** Confidence: low-med, but now
@@ -785,7 +866,16 @@ disfavored fallback, not a recommendation — the default answer to "too
 many close levels" is still to merge/reduce to one (see "Level-selection
 tie-break rules" and "Confluence clustering" above), this is only what to
 do if that reduction genuinely can't get below ~3 valid levels.
-**Videos:** 3, 7.
+
+**Second proportional-split variant — 2 levels, 50/50 (video 14, new):** the
+same fallback applied to a 2-level cluster instead of 3: risk split evenly
+50/50 across the two levels rather than the 1/3-each version already
+logged. Consistent with the underlying rule (combined risk across all
+resting levels in the cluster = the normal single-trade risk budget,
+divided evenly by level count) rather than a special 2-level case — worth
+implementing as `risk_per_level = daily_risk_budget / n_clustered_levels`
+generally, not two hardcoded fractions.
+**Videos:** 3, 7, 14.
 
 ### Explicit discretion/intuition callouts, separate from the systematic process
 **Speaker: host of transcript 3.** Confidence: n/a (meta-note, not a rule).
@@ -931,7 +1021,16 @@ trigger. Framed explicitly as a first, approachable step into the
 data-modeling material, and as one instance of a general pattern: pick a
 lagged macro series, regress it against the pair you trade, and use a
 statistically real relationship as a bias filter rather than a signal.
-**Videos:** 10.
+
+**Data source named explicitly (video 13, new):** the yield series for
+this recipe is pulled from **FRED** (Federal Reserve Economic Data) —
+confirms/pins down the actual data source for the cross-reference workflow
+described only generically before ("US bond yield," no source given).
+Directly actionable: this repo already fetches FRED data elsewhere
+(`FRED_KEY` is a listed env var per `MD files/CLAUDE.md`), so the
+described recipe is reproducible with an existing credential/data path,
+not a new integration.
+**Videos:** 10, 13.
 
 ### Sizing up/down by confluence count, not just volatility regime
 **Speaker: Husky.** Confidence: med — stated as a real, if informal,
@@ -979,7 +1078,17 @@ inflate the track record of "levels called in advance" — worth preserving
 as a marker of what NOT to do when reconstructing/evaluating this
 methodology from screenshots or logs (don't credit a level unless it was
 marked up before the reaction, not after).
-**Videos:** 8.
+
+**A second, parallel discipline for the same failure mode (video 15,
+new):** when reviewing hindsight examples of ATR-based stops, an explicit
+stated rule to always use a **consistent 15-minute ATR** read for every
+example under review, rather than picking whichever timeframe's ATR
+happens to make a given example look cleanest after the fact. Same
+underlying concern as the no-retroactive-level rule above (don't let
+outcome-knowledge silently bias a parameter choice), applied here to
+indicator-timeframe selection specifically, in a hindsight-analysis
+context rather than a level-marking one.
+**Videos:** 8, 15.
 
 ### Open interest — CME heatmap workflow and futures-to-spot conversion
 **Speaker: Husky**, walking through the group's basic OI workflow live
@@ -1008,7 +1117,20 @@ never as a signal).
 - Also names the paid/automated route (CME data → CSV → upload into the
   group's OI dashboard for computed put/call walls) as the faster
   alternative to this manual walkthrough.
-**Videos:** 10.
+
+**Mechanism behind why price stalls at OI concentration zones — dealer
+gamma-hedging (video 14, new):** explains *why* put/call walls work as
+levels, not just how to find them. Options market-makers who are net short
+options at a strike must hedge their resulting exposure by trading the
+underlying; as spot approaches a strike with heavy open interest, the
+dealer's required hedge flow (buying or selling the underlying to stay
+delta-neutral) itself pushes back against price, creating the stall/
+reaction effect. This is a genuine mechanical explanation (not folklore)
+for why call/put walls behave as S/R — worth keeping distinct from the
+"it's just a psychological round-number effect" family of explanations for
+other level types elsewhere in this file, since this one has an actual
+causal story (forced dealer flow) rather than just crowd behavior.
+**Videos:** 10, 14.
 
 ### ATR-based initial stop-loss sizing
 **Speaker: Husky.** Confidence: high — concrete formula, repeated across
@@ -1066,7 +1188,17 @@ than keep five potential levels." Repeated near-verbatim in video 6. The
 meta-point behind both: it is better to trade a randomly-chosen single
 level than to keep multiple valid levels and effectively over-trade — the
 selection method matters far less than the discipline of *reducing to one*.
-**Videos:** 4, 6.
+
+**Tie-break refinement — prefer "rounder" multiples over odd adjacent ones
+(video 14, new):** an additional, more specific tie-break preference than
+"tightest gap, then random": when two nearby multiples are otherwise
+equally valid, prefer the **rounder** one (e.g. 1.5 or 2.0) over an
+adjacent odd value (e.g. 1.25) — no deeper rationale given beyond
+readability/consistency of the level ladder. Doesn't override the
+1.25-excluded-on-daily-ranges rule already logged (that's a hard
+exclusion, not a tie-break), but adds a soft ordering preference among the
+levels that do remain eligible.
+**Videos:** 4, 6, 14.
 
 ### Rolling correlation analysis (not static correlation)
 **Speaker: Husky**, offered as a general research technique/exercise, not
@@ -1210,7 +1342,102 @@ perverse incentive** (deliberately losing to stay compliant) — worth
 remembering if this repo's tooling ever models prop-firm constraints.
 Extends the existing "prop-firm pacing discipline" entry above with two
 concrete failure-mode examples rather than just the general pacing advice.
-**Videos:** 6.
+
+**Third anecdote, live-during-the-call (video 12, new):** a real-time
+example of the discipline being tested in the moment rather than told as a
+past story — a trade moving against the presenter mid-session, narrated
+live along with the accompanying discomfort/temptation to intervene
+outside the system's own rules (move the stop, close early, etc.).
+Reinforces the same "execute the system, not the feeling" point with a
+live rather than retrospective example — no new rule, but a stronger,
+in-the-moment instance of an already-logged discipline.
+**Videos:** 6, 12.
+
+### MFE (Maximum Favorable Excursion) as a named analysis technique
+**Speaker: Husky.** Confidence: med — introduced by name as an analytical
+tool, explicitly not part of live execution.
+MFE — the maximum unrealized profit a trade reaches before its actual
+exit — is named and demonstrated as a **retrospective** analysis lens:
+looking back at closed trades to see how much more room was on the table
+versus where they were actually closed, used to evaluate exit quality
+(TP placement, trailing-stop tightness) after the fact. Explicitly **not**
+used as a live signal or a real-time target ("not something I'm using
+live"), purely a post-hoc diagnostic. Distinct from MAE (Maximum Adverse
+Excursion), which this repo already computes per-trade for the standard
+CSV export (`MD files/CLAUDE.md`'s "MAE must come from the real intra-
+trade path" rule) — MFE is the analogous "how much upside was left
+unclaimed" companion metric, not currently in that export schema.
+
+**Adjacent, explicitly-untested hypothesis stated by the source
+(video 13, new):** Husky floats, and explicitly flags as something he'd
+like to check but hasn't, whether **close-median entry quality differs
+between news days and non-news days** — the idea being that the close-
+median forecast (an expected-close estimate) may behave differently on
+days with scheduled high-impact news vs. quiet days, since news
+disproportionately drives the day's realized range/close relative to the
+forecast. Stated as an open question, not a claim — cheap to test given
+this repo already has both the forecasting-tool math and an economic-
+calendar/news feed.
+**Videos:** 13.
+
+### Prop Firm Toolkit — Monte Carlo pass-probability simulator
+**Speaker: Husky**, walking through a group-built tool live. Confidence:
+high on the mechanics as demonstrated, n/a on edge (it's a risk-planning
+tool, not a signal).
+A dashboard that runs **Monte Carlo simulation over a historical trade
+database** (presumably the group's own logged trades) to estimate the
+probability of passing a prop-firm evaluation under a specific set of
+rules — drawdown limits, profit target, time limit, and a specific
+firm's constraint structure. Ships with **presets for named prop firms**:
+**FTMO, The 5ers, Alpha Capital Group, Effective 5, Topstep, Lucid,
+Funded Next** — plus custom sliders for firms/rule-sets not in the preset
+list. Outputs pass-probability stats and (implied, not detailed) some
+distribution of simulated outcomes. Per this repo's own working rules
+(`MD files/CLAUDE.md`, "Don't let Monte Carlo stand in for OOS"):
+resampling from a strategy's own historical trade distribution is a
+legitimate **expectation-setting** tool for prop-firm-rule planning
+specifically — it says nothing about whether the underlying edge
+generalizes, and shouldn't be read as validation of the trades feeding
+it. Directly relevant if this repo's own tooling ever models prop-firm
+constraints (already flagged as a possible future direction by the
+"consistency rule" psychological entry above).
+**Videos:** 13.
+
+### Wick + engulfing-candle micro-confirmation entry technique
+**Speaker: Husky.** Confidence: med — a specific, named entry-trigger
+detail, not previously logged at this granularity.
+At a marked level/zone, rather than entering blind on touch, a specific
+lower-timeframe candle-pattern confirmation is described: a **wick
+rejection followed by an engulfing candle** in the trade direction —
+i.e. price wicks into the zone and rejects, then the *next* candle fully
+engulfs the prior one's range in the direction of the anticipated trade.
+This is more granular than the general "rejection candle back inside the
+zone" confirmation already logged under the ATR-band synthesis section —
+a concrete two-candle micro-pattern rather than a generic "some kind of
+rejection" requirement. Worth encoding precisely if backtesting
+confirmation-gated entries: candle 1 = wick beyond/into the level without
+a close beyond it, candle 2 = full-range engulfing of candle 1 in the
+trade direction.
+**Videos:** 14.
+
+### Portfolio-level worst-case simultaneous-loss check
+**Speaker: Husky.** Confidence: med-high — a specific, quotable risk
+discipline, described as something actually done, not just advised.
+A periodic sanity check across all currently-resting limit orders at
+once: "act as though every level is limit-ordered and you've lost internet
+connection" — i.e. assume every resting order fills and every stop is then
+hit with no ability to intervene, and sum the **worst-case simultaneous
+loss** across the entire book of open limits. Distinct from the
+already-logged "space levels apart" and "proportional risk-split" rules,
+which manage risk *within* a single cluster of nearby levels — this is a
+**portfolio-level** check across everything resting at once, regardless of
+how spread apart individual levels are, explicitly framed as a discipline
+for the no-monitoring/unattended-orders case (ties back to the earlier
+NFP-unattended-position anecdote under "Dynamic structure-trailing stop").
+Directly actionable as a pre-trade risk gate: `sum(risk_per_level for all
+resting orders) <= max_portfolio_risk`, evaluated before adding any new
+resting order, not just per-cluster.
+**Videos:** 15.
 
 ---
 
@@ -1324,6 +1551,47 @@ logic). Links to a script/dir once work starts._
   direct A/B on an existing ATR-stop entry model — does deliberately
   widening the stop to enclose the close-median level improve outcomes
   enough to justify the larger risk?
+- **Monthly/quarterly range-extension (wicks, not bodies) as a
+  higher-timeframe context filter.** The single most novel item from
+  transcripts 12-15: the same `level = range_edge ± (N−1) × range_width`
+  formula, applied to the previous calendar month's/quarter's wick
+  high-low, layered on top of the already-implementable daily/weekly
+  version — cheap to test as a "does this context flag correlate with
+  which daily/weekly levels actually hold" filter once the base formula
+  is built.
+- **Level validity-window cutoffs (10pm same-day for daily, 10pm Friday
+  for weekly) and the 24-48hr re-trade cooldown.** Directly implementable
+  as a hard time-based filter on any existing range-extension backtest —
+  cheap to test whether trades taken after the stated expiry window
+  perform worse than trades taken within it, and whether respecting the
+  cooldown (skip re-trading a level already touched in the last 24-48h)
+  changes results vs. ignoring it.
+- **Weekly (~10-pip) vs. daily (~5-pip) stop-distance convention as two
+  distinct defaults**, rather than one scaled parameter — testable as a
+  direct A/B against a single formula-derived (e.g. ATR-based) stop across
+  both timeframes.
+- **MFE-based exit-quality diagnostic.** Cheap to add to any existing
+  trade log in this repo (same intra-trade-path discipline as the
+  already-built MAE export) — compare realized exit vs. MFE to quantify
+  how much upside is being left on the table by the current exit rule.
+- **Close-median entry quality, news days vs. non-news days.** An open
+  question stated directly by the source — cheap to test given this repo
+  already has both the forecasting-tool math and news/calendar data.
+- **Wick + engulfing two-candle micro-confirmation entry.** A precise,
+  directly-codable confirmation filter (candle 1: wick into/beyond the
+  level without closing beyond it; candle 2: full-range engulf of candle 1
+  in the trade direction) — testable as a confirmation gate on any
+  existing level-touch entry model, comparable to the "reject vs. no
+  reject" gate already logged under the ATR-band synthesis.
+- **Portfolio-level worst-case simultaneous-loss cap.** Not a signal to
+  backtest, but a risk-gate worth building alongside any live/paper
+  deployment of the range-extension levels: sum worst-case loss across
+  all currently-resting orders and reject new orders that would breach a
+  portfolio-level cap, independent of per-cluster spacing/split rules.
+- **Dealer gamma-hedging as the causal mechanism behind OI concentration
+  levels.** Doesn't change the OI-level backtest itself, but explains why
+  it might have real (not folklore) predictive value — worth citing as
+  the working hypothesis if/when the OI put/call-wall idea gets tested.
 
 ---
 
@@ -1760,6 +2028,131 @@ heuristic (reconfirmed), explicit discretion callouts (new instance).
 ATR-stop-vs-close-median-coverage trade-off are both concrete, testable
 refinements to exit logic already partially built in this repo's range-
 extension backtests.
+
+### Transcript 12 — daily/weekly markup call, with a higher-timeframe
+context aside
+
+**Speaker note:** Husky. No Jordan trading footage; standard markup-call
+format matching earlier transcripts.
+
+**New:**
+- Level validity windows made explicit: daily levels valid until 10pm same
+  day, weekly until 10pm Friday, paired with a 24-48hr re-trade cooldown
+  on a level already tapped
+- Weekly (~10-pip) vs. daily (~5-pip) stop-distance framed as "two
+  separate systems," not one method scaled by timeframe
+- Standout new item, self-described as off-curriculum: extending the same
+  range-extension formula to the **previous month's and quarter's range**,
+  using **wicks** (not bodies, the opposite convention from the daily/
+  weekly version) as a slower-moving context backdrop
+- Third, live-during-the-call instance of the "execute the system, not
+  the feeling" discipline (a trade moving against the presenter, narrated
+  in real time)
+
+**Repeats (extended with new detail):** Range extension methodology
+(validity windows, monthly/quarterly wick variant), Psychological
+discipline (third anecdote).
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the monthly/quarterly wick-based extension is
+the most genuinely novel item in this batch and directly buildable with
+the same formula already implemented for the daily/weekly version.
+
+### Transcript 13 — markup call with toolkit walkthrough
+
+**Speaker note:** Husky. No Jordan trading footage.
+
+**New:**
+- Zone-not-line rationale sharpened: zones exist partly because of spread
+  itself (fills vary a pip or two around a "line" purely from execution),
+  not just discretionary imprecision
+- MFE (Maximum Favorable Excursion) introduced by name as a retrospective
+  exit-quality diagnostic, explicitly not a live signal
+- An explicitly-untested hypothesis stated directly by the source:
+  close-median entry quality on news days vs. non-news days
+- Prop Firm Toolkit walkthrough: Monte Carlo pass-probability simulation
+  over historical trades, presets for FTMO/The 5ers/Alpha Capital Group/
+  Effective 5/Topstep/Lucid/Funded Next, custom rule sliders
+- FRED confirmed as the data source for the yesterday's-yield-vs-today's-
+  price regression recipe from transcript 10
+
+**Repeats (extended with new detail):** Zone-based levels (spread
+rationale), EUR/USD regression filter recipe (FRED source confirmed).
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the news-day/non-news-day close-median split
+is a cheap, sharply falsifiable test; the Prop Firm Toolkit is a
+risk-planning tool (per this repo's own Monte-Carlo-isn't-OOS rule) rather
+than a source of edge.
+
+### Transcript 14 — markup call, options/OI focus, new instrument added
+
+**Speaker note:** Husky. No Jordan trading footage. USDJPY added as a
+markup instrument alongside the usual gold/EU/NAS set — noted for
+completeness, not treated as a new theme on its own.
+
+**New:**
+- Dealer gamma-hedging explained as the causal mechanism behind call/put
+  wall levels — market-makers' forced delta-hedging flow near a heavy-OI
+  strike is what produces the stall/reaction, not just crowd psychology
+- A second proportional-risk-split variant: 2 clustered levels, 50/50
+  split (vs. the existing 3-level, 0.33%-each example) — confirms the
+  underlying rule is `risk_per_level = budget / n_levels`, not two
+  hardcoded fractions
+- Tie-break refinement: prefer "rounder" multiples (1.5, 2.0) over
+  adjacent odd ones (1.25) when otherwise tied
+- Wick + engulfing-candle two-candle micro-confirmation entry technique,
+  more granular than the previously-logged generic "rejection candle"
+  confirmation
+- Reconfirmed level-flip-to-support-then-hold example, daily timeframe
+
+**Repeats (extended with new detail):** Open interest (gamma-hedging
+mechanism), Spacing resting levels (2-level split variant), Level-
+selection tie-break rules (rounder-multiple preference).
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the wick+engulfing confirmation pattern is
+concrete and directly codable as a confirmation gate on any level-touch
+entry model.
+
+### Transcript 15 — markup call, risk-management and hindsight-discipline
+focus
+
+**Speaker note:** Husky. No Jordan trading footage.
+
+**New:**
+- Portfolio-level worst-case simultaneous-loss check across all resting
+  limits at once ("act as though every level is limit-ordered and you've
+  lost internet connection") — distinct from the existing per-cluster
+  spacing/split rules
+- Explicit news-avoidance window around an ECB release — second concrete
+  instance of the high-impact-news order-pulling rule (first was NFP),
+  confirms it's general rather than NFP-specific
+- Confirms Jordan built Husky a **second** indicator, showing yesterday's
+  volatility-forecast values for retrospective review — distinct from the
+  live forward-looking forecasting tool
+- Reconfirmed: 1.25-multiple excluded on daily ranges
+- A fourth distinct use of the range midpoint: continuation-pullback entry
+  during an established trend, alongside the existing target/bias-divider/
+  standalone-strength uses
+- A second instance of the anti-hindsight-bias discipline: always use a
+  consistent 15-minute ATR when reviewing hindsight examples, rather than
+  picking whichever timeframe flatters a given example
+
+**Repeats (extended with new detail):** Mean reversion/sparse levels
+(second news-avoidance instance), Range/volatility forecasting tool
+(second, retrospective-review indicator), Range-extension multiples
+(1.25 exclusion reconfirmed), Levels are bidirectional (fourth midpoint
+use), Anti-hindsight-bias discipline (ATR-consistency instance).
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the portfolio-level worst-case check is a
+cheap, high-value risk-gate to add to any live/paper deployment
+regardless of which entry signal is used.
 
 ### Evidence Set A — Jordan's own screenshots (not a transcript)
 
