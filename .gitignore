@@ -117,3 +117,8 @@ volatilityExhaustion/_wt_bars.json
 volatilityExhaustion/_wt_js.json
 backtestSystem/mt5_history.json
 backtestSystem/killswitch_state.json
+
+# ForexFactory historical calendar (68MB, re-downloadable from the HF dataset —
+# see forge/ff_calendar.py for the URL and the date-repair it needs)
+data/calendar/
+forge/out_vol*/

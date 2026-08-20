@@ -32,7 +32,23 @@ CLASS_OF = {"GOLD": "commodity", "NQ": "index", "SPX500": "index", "DE30": "inde
 
 RUNGS = ("P50", "P75", "P90")
 SLOTS = (("hl", "BM"), ("oc", "HN"), ("oh", "OH"), ("ol", "OL"))
-EVENT_TAGS = ("FOMC", "NFP", "CPI", "other", "none")
+EVENT_TAGS = ("FOMC", "NFP", "CPI", "other", "high", "holiday", "none")
+
+# The fit's generic bucket was historically called `other` ("a significant scheduled
+# release that is not one of the three named US ones"); the live tagger calls the same
+# concept `high`, off the feed's own impact rating. Emit the fitted value under BOTH
+# keys so a tagger using either vocabulary resolves it — without this, a `high` day
+# finds no multiplier and silently gets x1.0, which is precisely the AUD failure this
+# work set out to fix.
+#
+# ASSUMPTION, stated because it is not validated: the multiplier was fit on days whose
+# significant release was a US one. Applying it to a day driven by an AU or JPY release
+# assumes a high-impact print in the pair's own currency widens it comparably. That is
+# plausible and clearly better than the x0.90 quiet-day discount those days get today,
+# but the historical calendar available for the fit (calendar_events.csv) carries only
+# USD/EUR/GBP, so it could not be measured. See forge/ff_calendar.py for the attempt
+# to fix that and MD files/VOL_LADDER_NOTES.md for why it did not ship.
+EVENT_ALIAS = {"other": "high"}
 
 
 def display_name(pair: str) -> str:
@@ -62,7 +78,13 @@ def pair_params(rec: dict) -> dict | None:
             width[key] = vals
     if "hl" not in width:
         return None
-    ev = {t: _round(v, 3) for t, v in (spec.get("event_mult") or {}).items() if t in EVENT_TAGS}
+    ev = {}
+    for t, v in (spec.get("event_mult") or {}).items():
+        if t not in EVENT_TAGS:
+            continue
+        ev[t] = _round(v, 3)
+        if t in EVENT_ALIAS:
+            ev[EVENT_ALIAS[t]] = _round(v, 3)
     oos = {k.replace("exceed_", ""): _round(v, 3)
            for k, v in last["oos"].items() if k.startswith("exceed_")}
 

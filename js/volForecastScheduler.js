@@ -20,7 +20,7 @@
  */
 
 import * as kv from '../kv.js';
-import { computeForecast, computeForecastFromRV, detectNewsMultiplier, detectEventTag} from './volForecast.js';
+import { computeForecast, computeForecastFromRV, detectNewsMultiplier, detectEventTagFor } from './volForecast.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './econCalendar.js';
 import { harShadowFields, harIvShadowFields } from './forecastExport.js';
 import { IV_INDEX_BY_INSTRUMENT } from './volForecastBench.js';
@@ -308,8 +308,11 @@ async function fetchNewsEvents(targetDate) {
   const d = targetDate.toISOString().split('T')[0];
   const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
   if (!res.ok) {
+    // NULL, not []. An empty array is a positive statement that the calendar was read
+    // and the day is clear, which the ladder prices at ~x0.90. A dead feed returning
+    // [] would apply that quiet-day discount to every instrument with no way to tell.
     console.error(`[NEWS-EVENTS] ${d}: calendar feed unavailable — ${res.error}`);
-    return [];
+    return null;
   }
   const events  = res.events.filter(e => (e.time || '').startsWith(d));
   const usEvents = events.filter(e => e.country === 'US');
@@ -352,12 +355,13 @@ export async function runVolForecast(targetDate) {
   const utcDow = target.getUTCDay();
 
   const events  = await fetchNewsEvents(target);
-  const { mult: newsMult, label: newsLabel } = detectNewsMultiplier(events);
+  const { mult: newsMult, label: newsLabel } = detectNewsMultiplier(events ?? []);
   // The fitted ladder buckets the day rather than scaling by a one-sided multiplier
   // (it has a real, sub-1.0 value for a day with no US Major release). Derived from
   // the same event list, so the two conditioning paths can never disagree about
   // WHICH events are on — only about how to price them.
-  const eventTag = detectEventTag(events);
+  // Tagged PER INSTRUMENT inside the loop below — an AUD pair is graded on AU
+  // releases as well as US ones.
 
   const sessionDate  = target.toISOString().split('T')[0];
   const sessionLabel = formatSessionLabel(target);
@@ -371,6 +375,7 @@ export async function runVolForecast(targetDate) {
     try {
       const ohlc = await fetchOHLC(cfg);
       forecastState.ohlcCache[cfg.name] = ohlc;
+      const eventTag = detectEventTagFor(events, cfg.name);
       const f    = computeForecast(ohlc, cfg.assetClass, newsMult, { instrument: cfg.name, eventTag });
       if (HAR_SHADOW_ON) {
         // Shadow must never break the primary forecast: any HAR failure → null.

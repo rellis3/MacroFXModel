@@ -19,13 +19,15 @@ from pathlib import Path
 
 import numpy as np
 
+from forge import ff_calendar as FF
 from forge import vol as V
 from forge.xsect import discover_universe
 
 
 def run_one(pair: str, years: float, folds: int, data_root: str,
-           day_start_hour: int, verbose: bool, event_tags: dict | None = None) -> dict:
-    daily = V.load_daily(pair, data_root, day_start_hour, years)
+           day_start_hour: int, verbose: bool, event_tags: dict | None = None,
+           end: str | None = None) -> dict:
+    daily = V.load_daily(pair, data_root, day_start_hour, years, end=end)
     frame = V.build_forecast_frame(daily, event_tags=event_tags)
     if verbose:
         print(f"[{pair}] {len(frame):,} daily bars, {frame['date'].min():%Y-%m-%d} → "
@@ -69,9 +71,12 @@ def main(argv=None):
     ap.add_argument("--folds", type=int, default=6)
     ap.add_argument("--data-root", default="VolRangeForecaster/data/m1")
     ap.add_argument("--day-start-hour", type=int, default=0)
+    ap.add_argument("--end", default="", help="truncate price data here (use the calendar's "
+                                              "last covered date when fitting the event layer)")
     ap.add_argument("--out", default="forge/out_vol")
-    ap.add_argument("--calendar", default="calendar_events.csv",
-                    help="scheduled-event CSV for the event multiplier layer; '' disables it")
+    ap.add_argument("--calendar", default="data/calendar/ff_calendar_2007_2025.csv",
+                    help="ForexFactory historical calendar (date-repaired by forge.ff_calendar); "
+                         "'' disables the event layer")
     ap.add_argument("--verbose-pairs", default="gold",
                     help="comma-separated pairs to print fold-by-fold detail for")
     args = ap.parse_args(argv)
@@ -85,11 +90,26 @@ def main(argv=None):
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    event_tags = None
-    if args.calendar:
+    # Tags are PER INSTRUMENT now: an AUD pair is graded on AU releases as well as US
+    # ones. The heavy parse happens once inside ff_calendar; the per-pair step is a
+    # currency filter.
+    ff_df = None
+    covered = None
+    legacy_tags = None
+    if args.calendar.endswith("calendar_events.csv"):
+        # Control arm: the pre-ForexFactory calendar, US-only, so a run can isolate
+        # "did the calendar change help?" from "did the data window change?".
+        legacy_tags = V.load_event_tags(args.calendar)
+        print(f"[calendar] LEGACY US-only source: {len(legacy_tags)} tagged days", flush=True)
+    elif args.calendar:
         try:
-            event_tags = V.load_event_tags(args.calendar)
-            print(f"[calendar] {len(event_tags)} tagged days from {args.calendar}", flush=True)
+            ff_df = FF.load_repaired(args.calendar)
+            covered = (ff_df["date"].min(), ff_df["date"].max())
+            audit = FF.validate(ff_df)
+            scored = audit[audit["n"] > 0]
+            print(f"[calendar] {len(ff_df):,} rows {covered[0]} -> {covered[1]} | "
+                  f"date audit mean {scored['before'].mean():.3f} -> {scored['after'].mean():.3f} "
+                  f"(share on the known release weekday)", flush=True)
         except OSError as e:
             print(f"[calendar] unavailable ({e}) — running without the event layer", flush=True)
 
@@ -99,8 +119,14 @@ def main(argv=None):
         v = pair in verbose_set
         if v:
             print(f"\n=== {pair} ===", flush=True)
+        tags = legacy_tags
+        if ff_df is not None:
+            inst = V.NAME_FOR_PAIR.get(pair, pair.upper())
+            tags = {"tags": FF.event_tags(ff_df, FF.instrument_currencies(inst)),
+                    "covered": covered}
         results[pair] = run_one(pair, args.years, args.folds, universe[pair],
-                                args.day_start_hour, verbose=v, event_tags=event_tags)
+                                args.day_start_hour, verbose=v, event_tags=tags,
+                                end=args.end or None)
         if not v:
             s = results[pair].get("summary")
             if s:

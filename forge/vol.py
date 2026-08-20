@@ -292,8 +292,28 @@ def exceed_rate(actual: np.ndarray, predicted: np.ndarray) -> float:
 #
 # Fit on TRAIN only and frozen, exactly like the width multipliers, and shrunk
 # toward 1.0 by sample size so a thin bucket cannot swing the forecast.
-EVENT_TAGS = ("FOMC", "NFP", "CPI", "other", "none")
-_EVENT_RANK = {"FOMC": 4, "NFP": 3, "CPI": 2, "other": 1}
+# Six buckets. The three named US releases move EVERY instrument, so they keep their
+# own; below them the day is graded by ForexFactory's own impact rating within the
+# instrument's OWN currencies — which is what fixes the AUD case, where two
+# high-impact AU releases were tagged quiet and DISCOUNTED because the tagger only
+# ever looked at USD.
+#
+# `none` means the calendar was read and the day is genuinely quiet. A date the
+# calendar does not COVER is not `none` — it is unknown, gets no tag, and is excluded
+# from the fit. Collapsing the two would pour real event days into the quiet bucket
+# and drag its multiplier toward 1.0, quietly destroying the effect being measured.
+EVENT_TAGS = ("FOMC", "NFP", "CPI", "high", "holiday", "none")
+_EVENT_RANK = {"FOMC": 6, "NFP": 5, "CPI": 4, "high": 3, "holiday": 2, "none": 1}
+# Safety rail. A fitted multiplier outside this range is not a market fact, it is a
+# bucket that has quietly become a proxy for something else — which is exactly what
+# happened when a `medium` bucket left `none` measuring public holidays and fitting
+# at 0.43. Clamping means the worst case is an under-correction, never a halved band.
+EVENT_MULT_CLAMP = (0.55, 1.60)
+# The floor is 0.55 rather than 0.80 only because `holiday` is now its own bucket: a
+# thin session genuinely runs at roughly half range, and clamping that to 0.80 would
+# under-correct a real effect. Before holidays were separated, the floor was doing
+# load-bearing work hiding a mis-specified bucket — which is not what a safety rail
+# is for.
 EVENT_SHRINK_K = 50          # a bucket with n=50 lands halfway between 1.0 and its raw fit
 
 
@@ -320,17 +340,29 @@ def load_event_tags(csv_path: str = "calendar_events.csv", ccy: str = "USD") -> 
             elif "inflation rate" in low:
                 tag = "CPI"
             else:
-                tag = "other"
+                # The legacy CSV's generic "Major" maps onto the same `high` bucket the
+                # ForexFactory arm uses, so a control run isolates the calendar SOURCE
+                # rather than confounding it with a taxonomy change.
+                tag = "high"
             d = row.get("date") or ""
             if _EVENT_RANK[tag] > _EVENT_RANK.get(tags.get(d, ""), 0):
                 tags[d] = tag
     return tags
 
 
-def tag_column(dates, tags: dict) -> np.ndarray:
-    """Event tag per row; 'none' for any date the calendar doesn't cover."""
+def tag_column(dates, tags: dict, covered: tuple | None = None) -> np.ndarray:
+    """Event tag per row. Dates OUTSIDE the calendar's coverage window get None (not
+    'none') so they can be excluded from the fit — see the EVENT_TAGS note above."""
     idx = pd.DatetimeIndex(dates)
-    return np.array([tags.get(d.strftime("%Y-%m-%d"), "none") for d in idx], dtype=object)
+    lo, hi = (pd.Timestamp(covered[0]), pd.Timestamp(covered[1])) if covered else (None, None)
+    out = []
+    for d in idx:
+        dd = pd.Timestamp(d).tz_localize(None) if pd.Timestamp(d).tzinfo else pd.Timestamp(d)
+        if lo is not None and (dd < lo or dd > hi):
+            out.append(None)
+        else:
+            out.append(tags.get(d.strftime("%Y-%m-%d"), "none"))
+    return np.array(out, dtype=object)
 
 
 def fit_event_multipliers(frame: pd.DataFrame, estimator: str,
@@ -353,13 +385,14 @@ def fit_event_multipliers(frame: pd.DataFrame, estimator: str,
     tagcol = frame["event_tag"].to_numpy()
     out = {}
     for tag in EVENT_TAGS:
-        sel = (tagcol == tag) & np.isfinite(ratio)
+        sel = (tagcol == tag) & np.isfinite(ratio)      # None-tagged rows match nothing
         n = int(sel.sum())
         if n < 10:
             continue
         raw = float(np.nanmedian(ratio[sel]))
-        # shrink toward 1.0 by sample size
-        out[tag] = 1.0 + (raw - 1.0) * n / (n + shrink_k)
+        # shrink toward 1.0 by sample size, then clamp
+        m = 1.0 + (raw - 1.0) * n / (n + shrink_k)
+        out[tag] = float(np.clip(m, *EVENT_MULT_CLAMP))
     return out
 
 
@@ -375,6 +408,7 @@ def event_multiplier_vector(frame: pd.DataFrame, event_mult: dict) -> np.ndarray
 # ── panel + walk-forward: which estimator, which width source, wins OOS ────
 
 def build_forecast_frame(daily: pd.DataFrame, event_tags: dict | None = None) -> pd.DataFrame:
+    # `event_tags` is either a plain {date: tag} map or {"tags": {...}, "covered": (lo, hi)}.
     """One row per day: every estimator's FORECAST-READY sigma (`as_of_
     yesterday` applied uniformly) alongside that day's realized HL/OC.
     `ESTIMATORS["naive"]` sits in this same frame and competes in the same
@@ -388,7 +422,9 @@ def build_forecast_frame(daily: pd.DataFrame, event_tags: dict | None = None) ->
     for name, fn in ESTIMATORS.items():
         out[f"sigma_{name}"] = as_of_yesterday(fn(daily))
     if event_tags:
-        out["event_tag"] = tag_column(out["date"], event_tags)
+        tags = event_tags.get("tags", event_tags) if isinstance(event_tags, dict) and "tags" in event_tags else event_tags
+        covered = event_tags.get("covered") if isinstance(event_tags, dict) else None
+        out["event_tag"] = tag_column(out["date"], tags, covered)
     return out.dropna(subset=["hl_pct", "oc_pct"]).reset_index(drop=True)
 
 
@@ -565,10 +601,18 @@ def walk_forward_vol(frame: pd.DataFrame, n_folds: int = 6, verbose: bool = True
 
 
 def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
-              day_start_hour: int = 0, years: float = 0) -> pd.DataFrame:
+              day_start_hour: int = 0, years: float = 0, end: str | None = None) -> pd.DataFrame:
     """Convenience loader matching the rest of `forge`'s data path: M1 ->
-    causal D1 OHLC for one instrument."""
+    causal D1 OHLC for one instrument.
+
+    `end` truncates the series. Its purpose is the event layer: the historical
+    calendar stops before the price data does, and scoring a fold whose test window
+    has NO calendar silently measures the forecast with the event multiplier switched
+    off — which looks like a calibration result and isn't one.
+    """
     m1 = load_m1(pair, data_root)
+    if end:
+        m1 = m1[m1.index <= pd.Timestamp(end, tz="UTC")]
     if years:
         cutoff = m1.index[-1] - pd.Timedelta(days=365.25 * years)
         m1 = m1[m1.index >= cutoff]
@@ -584,6 +628,12 @@ def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
 # so indices were silently invisible to `forge` until this was added.
 INDEX_DATA_ROOT = "portfolioBacktest/cache"
 INDEX_PAIRS = ("nq", "spx500", "de30", "uk100", "us30", "us2000")
+
+# forge pair key -> the name the live forecaster publishes it under. Needed here (not
+# just in the exporter) so the event layer can look up which CURRENCIES move a given
+# instrument while fitting.
+NAME_FOR_PAIR = {"gold": "GOLD", "nq": "NQ", "spx500": "SPX500", "de30": "DE30",
+                 "uk100": "UK100", "us30": "US30", "us2000": "US2000"}
 
 # The FX root also holds index M1 under SHORT aliases (dow=us30, spx=spx500, nq),
 # written in the RangeIndex+`time` layout. They duplicate `INDEX_PAIRS` under names

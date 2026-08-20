@@ -156,32 +156,84 @@ const NEWS_PATTERNS = [
 ];
 
 // ── Scheduled-event TAG (the ladder's conditioning input) ─────────────────────
-// The fitted ladder buckets a day as FOMC / NFP / CPI / other / none and carries a
-// per-bucket sigma multiplier — including a sub-1.0 one for `none`, which is about
-// half the calendar and which `detectNewsMultiplier` below structurally cannot
-// express (it floors at 1.0).
 //
-// CAVEAT worth knowing: the multipliers were fit against `calendar_events.csv`'s
-// "Major"/USD rows, while live tagging runs off the Finnhub feed's high-impact
-// flags. The two providers do not draw the "major" line in exactly the same place,
-// so the live mix of `other` vs `none` may not match the fit's. Sanity check to run
-// after a few weeks live: roughly half of days should tag `none` and ~22% `other`.
-export function detectEventTag(events = []) {
-  const usHigh = events.filter(e =>
-    e.country === 'US' && String(e.impact ?? '').toLowerCase() === 'high',
-  );
-  if (!usHigh.length) return 'none';
-  let best = 'other';
-  const rank = { FOMC: 4, NFP: 3, CPI: 2, other: 1 };
-  for (const ev of usHigh) {
-    const t = String(ev.event ?? '');
-    let tag = 'other';
-    if (/fomc|fed\s*chair|fed\s*press|federal\s*fund|interest\s*rate\s*decision|monetary\s*policy\s*testimony/i.test(t)) tag = 'FOMC';
-    else if (/non.?farm|nonfarm|payroll/i.test(t)) tag = 'NFP';
-    else if (/consumer\s*price|inflation\s*rate|cpi/i.test(t)) tag = 'CPI';
-    if (rank[tag] > rank[best]) best = tag;
+// Buckets match `forge/vol.py`'s EVENT_TAGS exactly, because the multipliers were fit
+// against them: FOMC > NFP > CPI > high > medium > none. The three named US releases
+// get their own buckets — they move every instrument, not just dollar pairs — and
+// below them the day is graded by the feed's own impact rating.
+//
+// PER INSTRUMENT, not US-only. The previous version looked at `country === 'US'` and
+// nothing else, so 2026-08-20 — two HIGH-impact AU releases (Employment Change,
+// Unemployment Rate), no US ones — tagged `none` and applied a ×0.90 QUIET-DAY
+// DISCOUNT to AUDUSD and AUDJPY on one of the biggest AUD days of the month. The
+// calendar feed had those events all along; today.html was already showing them.
+//
+// A null/undefined tag means "not known" and yields ×1.0 — never the quiet-day
+// discount. `none` is a positive statement that the calendar was read and the day is
+// clear; the two must not collapse (see detectEventTagFor's contract).
+const _CCY_COUNTRY = { USD: 'US', EUR: 'EU', GBP: 'GB', JPY: 'JP', AUD: 'AU',
+                       NZD: 'NZ', CAD: 'CA', CHF: 'CH' };
+
+// Instrument -> the currencies whose calendar moves it. Mirrors
+// forge/ff_calendar.py's INSTRUMENT_CCY; USD is in every set because a US macro shock
+// moves AUDJPY too, and the per-instrument fit decides how much.
+const _INSTRUMENT_CCY = {
+  GOLD: ['USD'], NQ: ['USD'], SPX500: ['USD'], US30: ['USD'], US2000: ['USD'],
+  DE30: ['EUR', 'USD'], UK100: ['GBP', 'USD'],
+};
+
+export function instrumentCurrencies(name) {
+  const n = String(name ?? '').toUpperCase();
+  if (_INSTRUMENT_CCY[n]) return _INSTRUMENT_CCY[n];
+  if (n.length === 6) return [...new Set([n.slice(0, 3), n.slice(3), 'USD'])];
+  return ['USD'];
+}
+
+// Buckets match forge/vol.py's EVENT_TAGS. There is deliberately no `medium`: fitting
+// one measured no effect (0.98-1.07) and, worse, it left `none` meaning "not even a
+// medium release", which turned out to be a HOLIDAY detector — 40% Mondays, top dates
+// Jan 1 / Dec 25 / Jul 4 — fitting at 0.43. Live, with a one-week feed fetched
+// intraday, a sparse response would then have halved every band on an ordinary day.
+const _EVENT_RANK = { FOMC: 6, NFP: 5, CPI: 4, high: 3, holiday: 2, none: 1 };
+const _RE_FOMC = /fomc statement|federal funds rate|fomc press conference|fomc economic projections/i;
+const _RE_NFP  = /non-farm employment change|non-farm payrolls/i;
+const _RE_CPI  = /^core cpi (m\/m|y\/y)|^cpi (m\/m|y\/y)/i;
+
+/**
+ * Tag one session for one instrument.
+ * @param {Array|null} events  the day's calendar rows, or null/undefined if the feed
+ *                             could not be read — which returns null, NOT 'none'.
+ */
+export function detectEventTagFor(events, instrument = '') {
+  if (!Array.isArray(events)) return null;          // feed unavailable -> no conditioning
+  const countries = new Set(instrumentCurrencies(instrument)
+    .map(c => _CCY_COUNTRY[c]).filter(Boolean));
+  let best = 'none';
+  for (const ev of events) {
+    if (!countries.has(String(ev.country ?? '').toUpperCase())) continue;
+    const impact = String(ev.impact ?? '').toLowerCase();
+    const title  = String(ev.event ?? '');
+    const isUS   = String(ev.country ?? '').toUpperCase() === 'US';
+    // `holiday` is a real bucket, not an absence of one: the feed marks bank holidays
+    // (impact 'holiday', or a "Bank Holiday" title), and a thin session runs at
+    // roughly half range. Leaving them inside `none` is what made the quiet-day
+    // multiplier fit at 0.43 and turned it into a holiday detector.
+    const isHoliday = impact === 'holiday' || /bank holiday/i.test(title);
+    let tag = impact === 'high' ? 'high' : isHoliday ? 'holiday' : 'none';
+    if (isUS && impact === 'high') {
+      if (_RE_FOMC.test(title))      tag = 'FOMC';
+      else if (_RE_NFP.test(title))  tag = 'NFP';
+      else if (_RE_CPI.test(title))  tag = 'CPI';
+    }
+    if (_EVENT_RANK[tag] > _EVENT_RANK[best]) best = tag;
   }
   return best;
+}
+
+// Back-compat shim: the old US-only signature, kept so any caller that hasn't been
+// moved to the per-instrument form still gets a sane answer.
+export function detectEventTag(events = []) {
+  return detectEventTagFor(events, 'EURUSD');
 }
 
 export function detectNewsMultiplier(events = []) {

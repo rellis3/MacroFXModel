@@ -53,6 +53,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.186,
         "CPI": 1.175,
         "other": 1.169,
+        "high": 1.169,
         "none": 0.916
       },
       "horizons": {
@@ -184,6 +185,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.021,
         "CPI": 1.143,
         "other": 1.117,
+        "high": 1.117,
         "none": 0.953
       },
       "horizons": {
@@ -316,6 +318,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.041,
         "CPI": 1.102,
         "other": 1.175,
+        "high": 1.175,
         "none": 0.9
       },
       "horizons": {
@@ -448,6 +451,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.074,
         "CPI": 1.165,
         "other": 1.116,
+        "high": 1.116,
         "none": 0.94
       },
       "horizons": {
@@ -580,6 +584,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.156,
         "CPI": 1.256,
         "other": 1.13,
+        "high": 1.13,
         "none": 0.902
       },
       "horizons": {
@@ -712,6 +717,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.152,
         "CPI": 1.085,
         "other": 1.16,
+        "high": 1.16,
         "none": 0.941
       },
       "horizons": {
@@ -844,6 +850,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.066,
         "CPI": 1.138,
         "other": 1.098,
+        "high": 1.098,
         "none": 0.941
       },
       "horizons": {
@@ -976,6 +983,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.003,
         "CPI": 1.006,
         "other": 1.053,
+        "high": 1.053,
         "none": 0.977
       },
       "horizons": {
@@ -1108,6 +1116,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.054,
         "CPI": 1.111,
         "other": 1.172,
+        "high": 1.172,
         "none": 0.92
       },
       "horizons": {
@@ -1240,6 +1249,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.216,
         "CPI": 1.084,
         "other": 1.147,
+        "high": 1.147,
         "none": 0.911
       },
       "horizons": {
@@ -1372,6 +1382,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.049,
         "CPI": 1.153,
         "other": 1.125,
+        "high": 1.125,
         "none": 0.953
       },
       "horizons": {
@@ -1504,6 +1515,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.066,
         "CPI": 1.089,
         "other": 1.113,
+        "high": 1.113,
         "none": 0.938
       },
       "horizons": {
@@ -1636,6 +1648,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.015,
         "CPI": 1.124,
         "other": 1.143,
+        "high": 1.143,
         "none": 0.927
       },
       "horizons": {
@@ -1768,6 +1781,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.042,
         "CPI": 1.174,
         "other": 1.108,
+        "high": 1.108,
         "none": 0.928
       },
       "horizons": {
@@ -1900,6 +1914,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.211,
         "CPI": 1.211,
         "other": 1.112,
+        "high": 1.112,
         "none": 0.901
       },
       "horizons": {
@@ -2032,6 +2047,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.064,
         "CPI": 1.156,
         "other": 1.133,
+        "high": 1.133,
         "none": 0.913
       },
       "horizons": {
@@ -2164,6 +2180,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.171,
         "CPI": 1.079,
         "other": 1.148,
+        "high": 1.148,
         "none": 0.924
       },
       "horizons": {
@@ -2296,6 +2313,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.05,
         "CPI": 1.168,
         "other": 1.157,
+        "high": 1.157,
         "none": 0.932
       },
       "horizons": {
@@ -2428,6 +2446,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.065,
         "CPI": 1.182,
         "other": 1.112,
+        "high": 1.112,
         "none": 0.908
       },
       "horizons": {
@@ -2560,6 +2579,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.034,
         "CPI": 1.121,
         "other": 1.124,
+        "high": 1.124,
         "none": 0.925
       },
       "horizons": {
@@ -2692,6 +2712,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.149,
         "CPI": 1.226,
         "other": 1.132,
+        "high": 1.132,
         "none": 0.909
       },
       "horizons": {
@@ -2824,6 +2845,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.212,
         "CPI": 1.128,
         "other": 1.119,
+        "high": 1.119,
         "none": 0.863
       },
       "horizons": {
@@ -2956,6 +2978,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.124,
         "CPI": 1.209,
         "other": 1.138,
+        "high": 1.138,
         "none": 0.914
       },
       "horizons": {
@@ -3088,6 +3111,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.042,
         "CPI": 1.126,
         "other": 1.166,
+        "high": 1.166,
         "none": 0.922
       },
       "horizons": {
@@ -3220,6 +3244,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.194,
         "CPI": 1.245,
         "other": 1.124,
+        "high": 1.124,
         "none": 0.909
       },
       "horizons": {
@@ -3352,6 +3377,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.195,
         "CPI": 1.197,
         "other": 1.172,
+        "high": 1.172,
         "none": 0.897
       },
       "horizons": {
@@ -3484,6 +3510,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.064,
         "CPI": 0.984,
         "other": 1.043,
+        "high": 1.043,
         "none": 0.981
       },
       "horizons": {
@@ -3616,6 +3643,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.191,
         "CPI": 1.2,
         "other": 1.113,
+        "high": 1.113,
         "none": 0.9
       },
       "horizons": {
@@ -3748,6 +3776,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.153,
         "CPI": 1.125,
         "other": 1.145,
+        "high": 1.145,
         "none": 0.897
       },
       "horizons": {
@@ -3880,6 +3909,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.188,
         "CPI": 1.213,
         "other": 1.152,
+        "high": 1.152,
         "none": 0.899
       },
       "horizons": {
@@ -4012,6 +4042,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.239,
         "CPI": 1.183,
         "other": 1.097,
+        "high": 1.097,
         "none": 0.912
       },
       "horizons": {
@@ -4144,6 +4175,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.244,
         "CPI": 1.166,
         "other": 1.13,
+        "high": 1.13,
         "none": 0.896
       },
       "horizons": {
@@ -4278,6 +4310,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.066,
         "CPI": 1.156,
         "other": 1.13,
+        "high": 1.13,
         "none": 0.92
       },
       "horizons": {
@@ -4361,6 +4394,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.139,
         "CPI": 1.161,
         "other": 1.125,
+        "high": 1.125,
         "none": 0.907
       },
       "horizons": {
@@ -4444,6 +4478,7 @@ export const LADDER_PARAMS = {
         "NFP": 1.212,
         "CPI": 1.128,
         "other": 1.119,
+        "high": 1.119,
         "none": 0.863
       },
       "horizons": {

@@ -153,3 +153,50 @@ test('Pine number extraction resolves the right rung on every row', () => {
     assert.ok(r.indexOf(String(q.p90)) > r.indexOf('75th'), `${label}: p90 must follow the 75th token`);
   }
 });
+
+// ── Event tagging ────────────────────────────────────────────────────────────
+import { detectEventTagFor, instrumentCurrencies } from './volForecast.js';
+
+test('a high-impact release in the pair OWN currency is not tagged quiet', () => {
+  // The live regression this exists for: 2026-08-20 carried two high-impact AU
+  // releases and no US ones. The US-only tagger called it `none` and applied the
+  // ~0.90 quiet-day discount, NARROWING AUD bands on a big AUD day.
+  const day = [
+    { country: 'AU', impact: 'high', event: 'Employment Change' },
+    { country: 'AU', impact: 'high', event: 'Unemployment Rate' },
+    { country: 'US', impact: 'medium', event: 'Unemployment Claims' },
+  ];
+  assert.equal(detectEventTagFor(day, 'AUDUSD'), 'high');
+  assert.equal(detectEventTagFor(day, 'AUDJPY'), 'high');
+  // A pair with no AUD leg sees only the US medium, which is not a bucket — `none`.
+  assert.equal(detectEventTagFor(day, 'EURUSD'), 'none');
+});
+
+test('an unreadable calendar yields null, never the quiet-day discount', () => {
+  // `[]` says "read it, nothing on" and earns the discount. `null` says "could not
+  // read it" and must not. Collapsing them silently narrows every band on the board
+  // whenever the feed is down.
+  assert.equal(detectEventTagFor(null, 'EURUSD'), null);
+  assert.equal(detectEventTagFor(undefined, 'EURUSD'), null);
+  assert.equal(detectEventTagFor([], 'EURUSD'), 'none');
+  const dead = buildLadder(0.006, { instrument: 'EURUSD', eventTag: null });
+  const quiet = buildLadder(0.006, { instrument: 'EURUSD', eventTag: 'none' });
+  assert.equal(dead.event_mult, 1, 'unknown calendar must not scale sigma');
+  assert.ok(quiet.event_mult < 1, 'a genuinely quiet day still gets its discount');
+});
+
+test('named US releases outrank a generic high, and rank order holds', () => {
+  const mk = (event, impact = 'high', country = 'US') => ({ country, impact, event });
+  assert.equal(detectEventTagFor([mk('Non-Farm Employment Change'), mk('ISM Manufacturing PMI')], 'EURUSD'), 'NFP');
+  assert.equal(detectEventTagFor([mk('CPI m/m'), mk('FOMC Statement')], 'EURUSD'), 'FOMC');
+  assert.equal(detectEventTagFor([mk('Core CPI m/m')], 'GOLD'), 'CPI');
+  assert.equal(detectEventTagFor([mk('Retail Sales m/m')], 'GOLD'), 'high');
+});
+
+test('instrument currency sets match the Python side', () => {
+  assert.deepEqual(instrumentCurrencies('AUDUSD').sort(), ['AUD', 'USD']);
+  assert.deepEqual(instrumentCurrencies('GBPJPY').sort(), ['GBP', 'JPY', 'USD']);
+  assert.deepEqual(instrumentCurrencies('GOLD'), ['USD']);
+  assert.deepEqual(instrumentCurrencies('DE30').sort(), ['EUR', 'USD']);
+  assert.deepEqual(instrumentCurrencies('UK100').sort(), ['GBP', 'USD']);
+});

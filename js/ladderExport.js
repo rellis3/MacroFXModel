@@ -73,9 +73,15 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
   // interpret the numbers.
   const first = Object.values(data?.instruments ?? {}).find(f => f?.[key]);
   if (first) {
-    const tag = first[key].event_tag ?? 'none';
+    const tag = first[key].event_tag;
     const mult = first[key].event_mult ?? 1;
-    const desc = tag === 'none' ? 'no US Major release' : tag;
+    // Three distinct states, and the difference matters: a clean calendar earns the
+    // quiet-day discount, an unreadable one must not.
+    const desc = tag == null ? 'calendar unavailable — no conditioning applied'
+               : tag === 'none' ? 'no scheduled release in this market'
+               : tag === 'holiday' ? 'bank holiday — thin session'
+               : tag === 'high' ? 'high-impact release'
+               : tag;
     lines.push(`Event bucket: ${desc} (σ ×${mult.toFixed(3)})`);
     if (first[key].width_source === 'sqrt-scaled') {
       lines.push('NOTE: √-time scaled widths — no fitted multiplier for this horizon.');
