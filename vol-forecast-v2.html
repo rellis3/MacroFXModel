@@ -3703,7 +3703,25 @@ function loadFrozen(kind) {
       }
       if (useDate) {
         const fc = await fetch(`/api/vol-forecast/archive/${useDate}`).then(r => r.json()).catch(() => null);
-        if (fc?.instruments) { st.forecast = fc; return fc; }
+        if (fc?.instruments) {
+          // Archived sessions predate the fitted ladder, so the chart would fall back
+          // to the legacy lines in Weekly/Monthly mode forever. Recompute the
+          // period-start ladder from bars and graft it on — same estimator, same
+          // widths, anchored at the period open. Silent if unavailable: the legacy
+          // fallback still draws, it just isn't the new calc.
+          try {
+            const fz = await fetch(`/api/vol-forecast/ladder/frozen?kind=${kind}`).then(r => r.json());
+            if (fz?.ok) {
+              for (const [name, l] of Object.entries(fz.instruments ?? {})) {
+                const inst = fc.instruments[name];
+                if (!inst) continue;
+                inst.ladder = l.daily; inst.ladder_weekly = l.weekly; inst.ladder_monthly = l.monthly;
+              }
+              fc._ladder_source = `frozen ${fz.period_start}`;
+            }
+          } catch (_) { /* legacy lines remain */ }
+          st.forecast = fc; return fc;
+        }
       }
     } catch (_) { /* fall through to live */ }
     st.live = true;                          // no archived period-start forecast → live fallback

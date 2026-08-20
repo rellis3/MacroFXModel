@@ -37,7 +37,10 @@ const HARIV_SHADOW_ON = process.env.VOL_FORECAST_HARIV !== '0';
 // ── Instrument definitions ────────────────────────────────────────────────────
 // oandaInstrument: Oanda v20 instrument name (primary data source)
 // ticker:          Yahoo Finance ticker (fallback when OANDA_KEY not set)
-const INSTRUMENTS = [
+// Exported so server routes that recompute a forecast (e.g. the frozen period-start
+// ladder) iterate the SAME list with the same asset classes, instead of keeping a
+// second copy that can drift.
+export const INSTRUMENTS = [
   { name: 'GOLD',   oandaInstrument: 'XAU_USD',    ticker: 'GLD',      assetClass: 'commodity' },
   // preferYahoo: Oanda NAS100_USD CFD closes at 22:00 UTC and prices differently
   // from CME NQ futures (RTH close 17:00 ET). Yahoo NQ=F uses CME settlement,
