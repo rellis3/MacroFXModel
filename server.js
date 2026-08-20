@@ -34,7 +34,7 @@ import { appendRows as vmAppendRows, readRange as vmReadRange, buildRow as vmBui
          resolveDue as vmResolveDue, scoreRows as vmScoreRows, logKey as vmLogKey } from './js/vumanchuLogger.js';
 import { renderVumanchuMtfPNG, renderVumanchuMtfSVG, vumanchuMtfData, vumanchuMtfCaption, TF_SECONDS as VM_TF_SECONDS, AGREE_MODES as VM_AGREE_MODES } from './js/vumanchuMtf.js';
 import { renderMtfStackPNG, mtfStackData, mtfStackCaption, SERIES_SOURCES as MTF_SERIES_SOURCES, MAX_TFS as MTF_MAX_TFS, MIN_BARS as MTF_STACK_MIN_BARS } from './js/mtfStack.js';
-import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache } from './js/volForecastScheduler.js';
+import { startVolForecastScheduler, forecastState, runVolForecast, getSessionStatus, ensureOhlcCache, INSTRUMENTS as VOL_INSTRUMENTS } from './js/volForecastScheduler.js';
 import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _computeForecast } from './js/volForecast.js';
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
@@ -46,6 +46,7 @@ import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } 
 import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
+import { rawDayDecision, mergeRawDay }                              from './js/oiRawArchive.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -8369,7 +8370,15 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
       if (d.date < from || d.date > to) continue;              // only compute dates in range
       const slice = dailyD1.slice(Math.max(0, i - 800), i);    // strictly before d, scheduler window
       if (slice.length < 60) continue;
-      let fc; try { fc = _computeForecast(slice, cls); } catch { continue; }
+      // `instrument:` selects the fitted ladder's per-instrument spec; eventTag is
+      // deliberately null (x1.0). The historical event record needed to condition a
+      // walk-forward backtest honestly does not exist for every currency, and
+      // silently tagging every past day "quiet" would apply a ~10% narrowing to the
+      // whole backtest — a fake edge for a fade study, since narrower bands are
+      // touched more often.
+      let fc;
+      try { fc = _computeForecast(slice, cls, 1.0, { instrument: pair || symbol, eventTag: null }); }
+      catch { continue; }
       // Bot σ — the SAME source the Volatility Bot uses (volSigmaSeries via nextSigma,
       // NOT _computeForecast, whose correction constants drift from the bot). Strictly
       // before d ⇒ no lookahead. Lets the reversion page draw the bot's actual lines
@@ -8381,6 +8390,11 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
         hl_median: fc.hl_median, hl_75: fc.hl_75,
         oc_median: fc.oc_median, oc_75: fc.oc_75, vol_annual: fc.vol_annual,
         bot_vol_annual: botVa,
+        // Fitted ladder, flattened to the {oh_p50, ol_p90, …} keys the reversion
+        // page's line set reads. Null on days the ladder could not be built, so the
+        // page can tell "no ladder" from "zero-width band".
+        ladder: fc.ladder_flat ?? null,
+        ladder_estimator: fc.ladder?.estimator ?? null,
       };
     }
     // For NQ, add the per-day close-to-close HV σ (London-aligned D1, window 30) that
@@ -12573,9 +12587,18 @@ async function _snapshotOIHistory(force = false) {
         // we don't need live, AND overwrite the paste-time spot/basis with intraday-drifted
         // values. So only (re)write when the ladder itself changed, keeping the FIRST-captured
         // spot/basis for the day (≈ paste time — what the historical ladder should be read against).
-        const _ladderKey = e => e ? `${e.rawOI} ${e.rawChg ?? ''} ${e.rawVol ?? ''}` : '';
-        if (_ladderKey(rawDay[pair]) !== _ladderKey(rawEntry)) {
-          rawDay[pair] = rawEntry;   // new ladder (new paste) → archive with its capture-time context
+        // The ladder alone is not the whole capture: the OI ladder and the IV boxes
+        // arrive from SEPARATE captures and the ladder normally lands first, so a
+        // ladder-only dedup archived the day without IV and then rejected every later
+        // run that HAD the IV as "unchanged". Observed 2026-08-20: the live store held
+        // rawIV + rawIVTerm for all 11 pairs while every archived day carried neither.
+        // Rules live in js/oiRawArchive.js (unit-tested) — the failure is silent and
+        // CME serves no history to backfill from, so it is worth a brick, not a
+        // one-liner. The intraday-drift guard it replaces now lives inside the brick
+        // (ladderKey), so a 15-min basis refresh still cannot rewrite the archive.
+        const _dec = rawDayDecision(rawDay[pair], rawEntry);
+        if (_dec.write) {
+          rawDay[pair] = mergeRawDay(rawDay[pair], rawEntry, _dec.ladderNew);
           rawChanged++;
         }
       }
@@ -13688,6 +13711,61 @@ app.get('/api/vol-forecast/ladder/export', async (req, res) => {
     res.type('text/plain').send(text);
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// ── Frozen period-start ladder (weekly / monthly chart modes) ────────────────
+// The chart's Weekly and Monthly modes hold the forecast that was in effect when the
+// period OPENED. They read it from the archive — and archived sessions predate the
+// ladder, so those two modes would sit on the legacy lines indefinitely rather than
+// showing the new calc.
+//
+// Rather than wait for archives to age in, recompute the period-start ladder from the
+// D1 bars: slice each instrument's history to bars STRICTLY BEFORE the period start
+// and build the ladder from that. Same bars, same estimator, same widths as the live
+// path — just anchored a few days back, which is exactly what "frozen" means here.
+//
+// Deliberately UNCONDITIONED on events (eventTag null -> x1.0). A weekly or monthly
+// envelope conditioned on one day's calendar would be claiming something it cannot
+// support, and the archive has no historical event record to do it properly.
+//   GET /api/vol-forecast/ladder/frozen?kind=weekly|monthly
+app.get('/api/vol-forecast/ladder/frozen', async (req, res) => {
+  const kind = req.query.kind === 'monthly' ? 'monthly' : 'weekly';
+  try {
+    if (!forecastState.ohlcCache || !Object.keys(forecastState.ohlcCache).length) {
+      try { await ensureOhlcCache(); } catch { /* reported below */ }
+    }
+    const cache = forecastState.ohlcCache ?? {};
+    if (!Object.keys(cache).length) {
+      return res.status(202).json({ ok: false, error: 'OHLC cache warming — try again shortly.' });
+    }
+
+    // London-day period start, matching vol-forecast-v2.html's `_periodStart`.
+    const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/London' }).format(new Date()).slice(0, 10);
+    let start;
+    if (kind === 'monthly') {
+      start = today.slice(0, 8) + '01';
+    } else {
+      const dt = new Date(today + 'T00:00:00Z');
+      const dow = dt.getUTCDay();                       // 0=Sun
+      dt.setUTCDate(dt.getUTCDate() - ((dow + 6) % 7)); // back to Monday
+      start = dt.toISOString().slice(0, 10);
+    }
+
+    const out = {};
+    for (const cfg of VOL_INSTRUMENTS) {
+      const bars = cache[cfg.name];
+      if (!Array.isArray(bars) || bars.length < 80) continue;
+      const prior = bars.filter(b => String(b.time ?? b.date ?? '').slice(0, 10) < start);
+      if (prior.length < 60) continue;
+      try {
+        const f = _computeForecast(prior, cfg.assetClass, 1.0, { instrument: cfg.name, eventTag: null });
+        if (f?.ladder) out[cfg.name] = { daily: f.ladder, weekly: f.ladder_weekly, monthly: f.ladder_monthly };
+      } catch { /* one instrument short of bars must not fail the whole response */ }
+    }
+    res.json({ ok: true, kind, period_start: start, instruments: out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
