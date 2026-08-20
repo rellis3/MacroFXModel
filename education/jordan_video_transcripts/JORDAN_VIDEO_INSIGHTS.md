@@ -34,135 +34,146 @@ stated it, not whether it works.
 
 ---
 
-## ⭐ Priority Watch: Bollinger-style band
+## ⭐ Priority Watch: Bollinger/SD-style dynamic band
 
-**Status: substantially resolved — direct screenshot evidence obtained.**
-No transcript ever surfaced this (6 transcripts, all Husky, zero Jordan
-trading footage), but the user then supplied ~16 screenshots Jordan
-himself posted of his own tool under live iterative testing (`New test`,
-`one more test`, `test complete, full tp @C.OG`, `updated`, `another
-update`, `Full tp`, etc., spanning gold/MGC and NQ/MNQ, mostly on fast
-intraday charts — `MNQ1! · 1` and `MNQ1! · 15` labels visible — timestamped
-across a single day and again days later, consistent with rapid live
-iteration, not a one-off). These are call-outs to `@C.OG` (the group
-founder), i.e. Jordan reporting build/test progress on this tool directly
-to leadership.
+**Status: open again — user explicitly ruled out the median/75th-percentile
+framing.** After the screenshot batch (Evidence Set A), this file initially
+concluded Jordan's colored zone *was* the same median/75th-percentile
+statistical family as Husky's daily forecasting tool, just re-rendered
+live. **The user has corrected this directly**: the group already has that
+daily forecasting/median/75th-percentile tool built (`education/
+jordan_impulse_range_backtest/` and related work in this repo) — it is a
+**once-per-day setup, fixed at session open**, and that is *not* what
+Jordan's band is. Jordan's band is **dynamically/continuously created**,
+i.e. it recalculates on every bar like a real rolling indicator (ATR bands
+/ Keltner channel / Bollinger Band), not something drawn once and left
+fixed for the session. The user isn't ruling out that *exhaustion* is part
+of what the band signals — just that it is not *daily exhaustion levels of
+the kind already built*.
 
-**What the tool visibly is, read off the screenshots themselves:**
-- A **colored zone overlay** — green = price within the expected/normal
-  range, red/maroon = price beyond it (an exhaustion zone) — split by a
-  **horizontal boundary line**. Unlike a symmetric Bollinger Band, **the
-  red zone flips sides**: red sits *above* the green zone when the setup
-  is testing upside exhaustion, but *below* it when testing downside
-  exhaustion (see the flipped-layout screenshot vs. the earlier ones) —
-  i.e. it's directional/context-aware, not a fixed two-sided envelope.
-- A **live statistics panel** (visible in two screenshots, both on NQ):
-  a table headed `Session: <DAY>, August <D>` with rows **Live / Median /
-  75th Pct**, all expressed as **H-L range as a % of price** — e.g. "Live
-  0.87%, Median 1.7%, 75th Pct 2.1%" and later "Live 0.8%, Median 1.45%,
-  75th Pct 1.75%". This is **the same underlying statistic as Husky's
-  range/volatility forecasting tool** (median / 75th-percentile expected
-  range) — just re-rendered as a **continuously-updating live comparison**
-  instead of a fixed once-a-day line. This resolves the earlier confusion:
-  it's not a *different* concept from the forecasting tool, it's the
-  *same* statistical framework, personally rebuilt by Jordan to run live
-  on a scalping timeframe instead of being fixed at session open.
-- A **hover tooltip** on one screenshot reveals more precise fields: `H
-  +0.08%`, `H-L: 0.12%`, `Δmed -1.57%`, `Δ75p -1.97%` — confirming the
-  tool tracks the current bar's move, the running session H-L range, and
-  **explicit deltas from the median and 75th-percentile benchmarks** (how
-  far the current range is running below/above "normal"). This is a
-  genuinely reproducible spec if this repo wanted to rebuild it.
-- On-chart labels also include **"Close Med -0.7%"** and **"L -0.36%"** —
-  confirms a close-median concept (matching Husky's tool) plus a live
-  low-of-session % label, both rendered directly on the price chart, not
-  just in the side panel.
-- One later screenshot (`Ignoring the SL / the idea was right`) adds **two
-  blue curved lines** that hug price like a moving-average pair or a
-  basis+band-edge combination — the closest visual to a classic Bollinger
-  look seen so far, but **not yet identified**: could be a fast/slow MA
-  pair, could be one band edge plus its basis line. No period or type is
-  readable from the screenshot. **Flag this specifically for the next
-  round of material** — a transcript or clearer screenshot that names
-  what these two lines are would close this out completely.
-- A manually-drawn **diagonal dashed trend line** appears in several
-  shots, connecting a swing low to recent price — this looks like Jordan's
-  own manual annotation (trend context), not part of the indicator itself.
+**Re-reading the screenshots under that correction:**
+- The **"Live / Median / 75th Pct" H-L-range-% panel** visible in two
+  screenshots is most likely a **separate reference/measurement tool** —
+  plausibly TradingView's built-in session price-range measuring tool, or
+  a read-out of the existing daily forecasting tool kept on-screen for
+  context — rather than the mechanism generating the colored zone itself.
+  Treat it as "what Jordan is comparing against," not "what the band is
+  computed from."
+- The **two blue curved lines** (seen clearly in one later screenshot,
+  `Ignoring the SL / the idea was right`) are now the more likely
+  candidate for the actual dynamic band — a moving basis line plus one
+  band edge, or an upper/lower band pair, recalculating bar-to-bar the way
+  a genuine ATR/Keltner/Bollinger construction would. Still unidentified
+  (period, type, multiplier all unreadable from the screenshot).
+- The **colored green/red rectangle** may be a **manually-drawn target/
+  projection zone** for that specific test (Jordan marking up "where I
+  expect this move to reach" using a rectangle tool) rather than the live
+  indicator itself — which would explain why it looks like a fixed box
+  within each screenshot's visible window instead of a continuously
+  curving band. This reframes the red-side-flip behavior too: it's
+  probably just "which side of the projected move is currently being
+  tested," redrawn per test, not a computed property of an indicator.
+- A manually-drawn **diagonal dashed trend line** also appears in several
+  shots — clearly Jordan's own annotation, not part of any indicator.
 
-**Likely identity of this tool**: Husky mentions in transcript 1 ("there
-is a system based on the uh forecasting port uh forecasting tool coming
-out as well") and transcript 4 ("the forecasting tool system that the big
-man is releasing soon") that a *new, second group system* is being built
-on top of the range/volatility forecasting tool, distinct from the
-existing ENQ system. **Working hypothesis: this is that system**, and
-Jordan is one of the people building/testing it — which would also explain
-why it's dynamic/live and scalping-oriented (a deployable system needs
-live-updating levels, not levels fixed once at session open) and why nine
-`@C.OG`-tagged test posts show up in a short window (active development,
-reporting to the founder). Not confirmed, but consistent with everything
-seen so far.
+**Working reframe**: Jordan's tool is very likely a genuine **rolling
+ATR/stdev-based channel** (basis MA/VWAP ± k×ATR or ±k×stdev, recalculated
+every bar), used on a fast intraday timeframe (NQ/MNQ 1m-15m seen) for
+scalping-style mean reversion, with manually-drawn rectangles used per-test
+to mark the projected target zone rather than the band itself. See the
+Synthesis section below for how to construct entry zones from this kind of
+band using only what's already validated in these transcripts.
 
-**What's still open**: the exact rule for which side gets colored red vs.
-green (is it based on current position within the session range, a
-directional bias input, or something else); the identity/parameters of
-the two blue lines; and whether "Live/Median/75th Pct" uses the same
-midnight-anchored session definition as Husky's tool or a different
-(possibly rolling, not session-anchored) window — worth checking given
-these examples are clearly intraday/live rather than fixed-at-open.
+**Still open**: what the two blue lines actually are (basis+edge? two
+edges? a moving average pair?); the ATR/stdev period and multiplier; and
+whether Jordan uses one band or a tiered set (like Bollinger's 1/2/3-sigma
+or the group's own 1.5/2/2.75 range-extension multiples applied to ATR
+instead of a fixed session range).
 
 **Confirmed separately: the presenter across transcripts 2-6 is Husky**,
 not Jordan — transcript 6 has a chat message read aloud referring to the
 host as "Husky" in the third person, and the host responds in kind
 ("Husky did not say it's financial advice"). All 6 transcripts were
-Husky's induction/markup/AMA content; this screenshot evidence is the
-first direct look at Jordan's own work.
+Husky's induction/markup/AMA content; the screenshot evidence (Evidence
+Set A) is still the only direct look at Jordan's own work.
 
-### Synthesis: building an intraday exhaustion signal from bands
+### Synthesis: defining entry zones from a rolling ATR/SD band
 
-Pulling together everything logged so far that bears on "use a
-Bollinger/SD-style band to spot intraday exhaustion," even though only
-Jordan's tool (Evidence Set A) is an actual live band:
+Reframed per the user's correction: this is about a genuinely **dynamic**
+band (recalculated every bar — ATR/Keltner/Bollinger-style), not the
+group's existing daily median/75th-percentile setup. The question that
+matters is **how to turn "price touched the band" into an actual entry
+zone**, not just an exhaustion observation. Combining what's already
+validated across these transcripts with standard practice for this class
+of indicator:
 
-- **Core mechanic candidate**: Jordan's live percentile-range band (see
-  the Theme Index entry) — session H-L range vs. its historical median/
-  75th-percentile, `Δmed`/`Δ75p` as the exhaustion signal, rather than a
-  Gaussian SMA±k·stdev. Husky's *static* version of the same statistic has
-  explicit transcript evidence of producing exhaustion reactions ("perfect
-  touch of the closed medium... ended up being the bottom of the day," see
-  the "Close median as a magnet" and "Range/volatility forecasting tool"
-  entries) — evidence the underlying stat works, not yet evidence the live
-  version does.
-- **Regime-gate the fade**: only trade a band touch as mean-reversion when
-  ADX (4H, ~30 threshold) is low/ranging; in a trending regime, the same
-  touch is better treated as a pullback-continuation entry, not a fade —
-  demonstrated live with range-extension levels in transcript 6, directly
-  transferable to a band context (see "ADX-based regime filter").
-- **Alternative/complementary band width**: ATR×1.5 (already the group's
-  stop-sizing convention, see "ATR-based initial stop-loss sizing") is a
-  cheaper width measure than the percentile-range stat and worth A/B-ing
-  against it.
-- **Don't fade blind into a clustering regime**: after a high-volatility
-  session, widen the exhaustion threshold or expect the band to be
-  *walked* rather than snap back — see "Session structure / volatility
-  persistence."
-- **A second centerline candidate**: VWAP, not just session-range
-  midpoint — Husky treats VWAP the same directional-bias way (above =
-  bullish, below = bearish, see "VWAP used as context/frame" and the
-  midpoint-as-bias-divider facet of "Levels are bidirectional").
-- **Confluence, not a standalone signal**: the repeated warning that most
-  of the chart touches *something* (fibs, VWAPs, previous highs/lows,
-  FVGs, order blocks — see "Level-selection tie-break rules") suggests a
-  raw band touch alone is likely noisy; pairing it with a golden-pocket or
-  close-median level, the way Husky does, is probably closer to how
-  exhaustion signals are meant to be used in this system.
-- **External vol-regime input**: VIX thresholds (illustrative, >15/>20 —
-  see "Cross-asset macro dashboard") could gate band width at a
-  market-wide level, on top of the per-instrument ADX/ATR gates above.
+**1. Band construction — pick a basis + a width, both already justified
+in this material:**
+- **Basis (centerline)**: an EMA/SMA, or **VWAP** — Husky already treats
+  VWAP as a directional divider the same way price-vs-basis is normally
+  read ("above VWAP we're bullish, below we're bearish," see "VWAP used as
+  context/frame" and the midpoint-as-bias-divider facet of "Levels are
+  bidirectional"). Worth testing both and comparing.
+- **Width**: **ATR × multiplier** is the cleanest fit — the group already
+  uses ATR-14 × 1.5 for stop sizing (see "ATR-based initial stop-loss
+  sizing"), so reusing ATR as the band's volatility unit keeps one
+  consistent volatility measure across the whole system instead of
+  introducing a second one (classic stdev) with no transcript support.
 
-**Still blocking a full build of Jordan's specific tool**: the red/green
-side-assignment rule and the identity of the two blue MA-like lines (see
-Priority Watch above) — everything else in this synthesis is buildable
-today from what's already logged.
+**2. Tiered zones, not one line — this repo already has the exact design
+pattern to copy:** the range-extension methodology already uses **multiple
+fixed multiples of a reference width** (1.25, 1.5, 2, 2.75, 3.5, 4.5 ×
+Asia/Monday range — see "Range-extension multiples") to create a ladder of
+levels rather than one line. The same pattern applies directly to an ATR
+band: e.g. **1.5×ATR = watch zone, 2.5×ATR = entry zone, 3.5×ATR =
+extreme/size-up zone**, all off the same basis line. This also satisfies
+the recurring "mark a zone, not a pixel-perfect price" rule (see
+"Zone-based levels, not single-price lines") — the **entry zone is the
+band between two multiples**, not the outer line itself.
+
+**3. Trigger inside the zone, don't just fade the touch:** nothing in
+these transcripts describes blind-fading a level — Husky's whole
+methodology is level-then-confirmation/confluence, and the "look for
+reasons *not* to trade" framing (see "Mean reversion... sparse levels")
+argues against treating every band touch as tradeable. A rejection candle
+back inside the zone, or confluence with an existing tool (golden pocket,
+range-extension level, VWAP) is more consistent with how every other level
+in this material gets used.
+
+**4. Regime-gate which way you trade the touch — this is the single
+strongest transferable rule in the whole file:** transcript 6 shows this
+exact switch live, just applied to range-extension levels instead of a
+band — with 4H ADX elevated (~30+, trending), the far level was *not*
+faded; instead a near level was bought as a pullback-continuation entry
+(see "ADX-based regime filter," the "concrete application" note). Applied
+to an ATR band: **ADX low → fade the outer band back toward basis; ADX
+high → treat a pullback to an inner band multiple as a continuation entry
+in the trend direction, not a reversal.** This turns "touched the band" +
+"regime" into a genuine entry-direction decision, not just a level.
+
+**5. Don't fade blind after a high-vol session:** volatility clustering
+(see "Session structure / volatility persistence") means a wide-ATR
+session is more likely to keep producing wide moves — either require a
+further multiple (e.g. demand 3.5×ATR instead of 2.5×ATR) or skip fading
+entirely after an unusually high-ATR prior session, mirroring how Husky
+explicitly picks a *further-away* range-extension level after a
+high-volatility day rather than the near one.
+
+**6. Stops and exits, already fully specified elsewhere in this file:**
+initial stop = ATR-based (extend the existing 1.5×ATR-14 convention,
+placed just beyond the touched band multiple); once price reverts and
+prints a swing point in your favor, switch to the **structure-trailing
+stop** (see "Dynamic structure-trailing stop") instead of a fixed target —
+consistent with "limit the downside, don't limit the upside" appearing
+independently in three transcripts.
+
+**What's still missing to fully match Jordan's specific tool**: whether he
+uses one band or a tiered set like the ladder above; the actual ATR/stdev
+period and multiplier; what the two blue lines are; and the exact
+regime/trigger logic he uses for the touch itself. Everything above is a
+buildable, testable starting point using only what's already validated in
+this material — it doesn't require identifying Jordan's exact tool to be
+worth backtesting on its own.
 
 ---
 
@@ -172,25 +183,26 @@ _Deduplicated ideas, updated as transcripts come in. Each entry: **what was
 said**, who said it, confidence (low/med/high — based on repetition +
 specificity, not correctness), and which videos support it._
 
-### Jordan's own live volatility-zone tool (in-development, tested on NQ/gold)
+### Jordan's own dynamic band tool (in-development, tested on NQ/gold)
 **Speaker/source: Jordan directly** — the first entry in this file sourced
-from Jordan's own material rather than Husky's. Confidence: high on what's
-visibly true from the screenshots, open on mechanics not visible in them.
-See the Priority Watch section above for the full description — summarized
-here for the index: a **live-updating** colored zone (green = within
-expected range, red = beyond it, sides flip depending on which direction
-is being tested) driven by a **Live / Median / 75th-percentile H-L range
-%** statistics panel plus on-chart labels (`Close Med`, `L <pct>`) and
-tooltip deltas (`Δmed`, `Δ75p`). Same underlying statistical concept as
-Husky's range/volatility forecasting tool (median/75th-percentile expected
-range), but implemented to **recompute continuously on a fast intraday
-chart** (NQ/MNQ 1m and 15m charts seen; also tested on gold) rather than
-being fixed once at session open — this is very likely why it looked
-different enough from Husky's tool for the user to correct the earlier
-hypothesis. Tested iteratively across ~16 screenshots tagged to `@C.OG`
-(the group founder), consistent with active in-development status, and
-plausibly the "system based on the forecasting tool" Husky mentioned (in
-videos 1 and 4) as coming soon.
+from Jordan's own material rather than Husky's. Confidence: med — visibly
+real from the screenshots, but the user has corrected the initial read of
+what it's built from (see Priority Watch above for the full, current
+reasoning; this entry is kept short and points there rather than
+duplicating it).
+A **dynamically/continuously recalculated band** — the user is explicit
+this is *not* the group's existing daily median/75th-percentile forecast
+tool (fixed once at session open), which this repo already has built.
+Tested iteratively on fast intraday charts (NQ/MNQ 1m and 15m seen; also
+gold) across ~16 screenshots tagged to `@C.OG` (the group founder),
+consistent with active in-development status. Visible chart elements: a
+green/red colored zone (likely a per-test manual projection rectangle, not
+necessarily the indicator itself — see Priority Watch), two unidentified
+blue curved lines (the more likely candidate for the actual live band),
+and a `Live/Median/75th Pct` H-L-range-% panel that may be a separate
+reference tool rather than the band's source. Plausibly the "system based
+on the forecasting tool" Husky mentioned (videos 1 and 4) as coming soon,
+though that's now less certain given the corrected read.
 **Source:** direct screenshots from Jordan, not a transcript.
 
 ### Dynamic structure-trailing stop (no fixed R/TP)
@@ -836,15 +848,16 @@ _Ideas judged worth a real backtest, promoted from the Theme Index once
 they're concrete enough to test (specific indicator, parameters, entry/exit
 logic). Links to a script/dir once work starts._
 
-- **Jordan's live volatility-zone tool — top priority.** Partially
-  reproducible now: session H-L range as a % of price, compared live
-  against that session's historical median and 75th-percentile range
-  (`Δmed`, `Δ75p`), on a fast intraday timeframe. What's missing before
-  this is buildable: the exact rule for which side of price gets flagged
-  "exhaustion" (red) vs. "normal" (green), the session/window definition
-  the live stat uses if not midnight-anchored, and the identity of the two
-  blue MA-like lines seen in one screenshot. Next transcript/screenshot
-  batch should target closing these three gaps specifically.
+- **Rolling ATR/SD band entry-zone framework — top priority.** See the
+  "Synthesis: defining entry zones from a rolling ATR/SD band" section
+  above (under Priority Watch) for the full buildable spec: ATR-multiplier
+  band off an EMA or VWAP basis, tiered zones (mirroring the existing
+  1.5/2/2.75 range-extension-multiple pattern), ADX-gated fade-vs-
+  continuation logic, and ATR-based stop + structure-trailing exit. This
+  doesn't require identifying Jordan's exact tool to be worth backtesting
+  on its own. Separately, still open on Jordan's *specific* tool: what the
+  two blue lines are, the actual period/multiplier, and whether the
+  colored rectangle is the live band or a per-test manual projection.
 - **Dynamic structure-trailing stop vs. fixed-R exit.** Concrete and
   testable: on any existing entry model in this repo, A/B a "trail stop to
   last swing point once structure prints" exit against the current fixed-R
@@ -1187,25 +1200,28 @@ iterative live testing of his own tool on gold and NQ (MNQ futures),
 tagged `@C.OG` (the group founder) when reporting results. First direct
 look at Jordan's own material after 6 transcripts of Husky-only content.
 
-**New:** the full Bollinger-band-hypothesis resolution — see the rewritten
-Priority Watch section above and the new "Jordan's own live volatility-
-zone tool" Theme Index entry. In short: a live-updating colored
-exhaustion-zone overlay (green/red, sides flip by direction) driven by a
-Live/Median/75th-percentile session H-L range % panel, `Close Med` and `L
-<pct>` on-chart labels, and `Δmed`/`Δ75p` tooltip deltas — same
-statistical family as Husky's forecasting tool, rebuilt to run live on a
-fast intraday chart. Two unidentified blue MA-like lines appear in one
-later screenshot.
+**New:** first direct visual of Jordan's own dynamic band tool — see the
+Priority Watch section above (revised after user correction) and the
+"Jordan's own dynamic band tool" Theme Index entry. Visible elements: a
+green/red colored zone (may be a manually-drawn per-test projection rather
+than the live indicator), two unidentified blue curved lines (more likely
+candidate for the actual band), and a `Live/Median/75th Pct` H-L-range-%
+panel (may be a separate reference tool). **Initially misread as the same
+median/75th-percentile statistic as Husky's existing daily forecasting
+tool — the user corrected this**: it's a genuinely dynamic/continuously
+recalculated band (ATR/Keltner/Bollinger-style), not that tool re-rendered
+live. See the "Synthesis: defining entry zones from a rolling ATR/SD band"
+section for the resulting buildable framework.
 
 **Repeats:** none — this is genuinely new material, the first from Jordan
 directly rather than Husky.
 
-**Bollinger/band mentions:** this *is* the band — substantially resolved,
-see Priority Watch. Not a classic SMA±stdev Bollinger; a percentile-range
-exhaustion-zone overlay instead.
+**Bollinger/band mentions:** this *is* the band, but the mechanism is
+still not fully identified — see Priority Watch for the current (corrected)
+reasoning.
 
-**Worth researching:** yes, now the top backlog item — see Research
-Backlog. Still need: the red/green side-assignment rule, the session
-window definition for the live stat, and identification of the two blue
-lines, ideally from a future transcript where Jordan explains the tool
-himself.
+**Worth researching:** yes — the ATR/SD-band entry-zone synthesis is now
+the top backlog item and is buildable/testable independent of pinning down
+Jordan's exact tool. Still want, ideally from future material: what the
+two blue lines are, the actual period/multiplier, and whether the colored
+zone is the live band or a manual per-test annotation.
