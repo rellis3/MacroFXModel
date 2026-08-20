@@ -465,9 +465,16 @@
      from for the full direction. ────────────────────────────────────────── */
   .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
   @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,1fr)} }
-  .statcard{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  .statcard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:13px 15px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
-  .statcard .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+  .statcard .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding-right:74px}
+  /* Rate stat-card pip (10Y / 2Y / 2s10s) — a tiny segmented control tucked
+     in the card's top-right corner instead of growing a 5th stat card. */
+  .stat-tabs{position:absolute;top:11px;right:12px;display:flex;gap:2px}
+  .stat-tab{background:var(--card2);border:1px solid var(--border);color:var(--text3);border-radius:5px;
+    padding:2px 6px;font-size:9px;font-weight:800;letter-spacing:.02em;cursor:pointer;line-height:1.3}
+  .stat-tab.on{background:var(--blue-bg);border-color:rgba(79,125,240,.4);color:var(--blue)}
+  .stat-tab:hover:not(.on){color:var(--text2);border-color:var(--text3)}
   .statcard .row1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
   .statcard .big{font-size:21px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
   .statcard .sdelta{font-size:11px;font-weight:800;padding:2px 6px;border-radius:6px;white-space:nowrap}
@@ -1004,22 +1011,59 @@ function sparklinePoints(vals, w = 200, h = 36) {
   const step = w / (clean.length - 1);
   return clean.map((v, i) => `${(i * step).toFixed(1)},${(h - (v - lo) / span * h).toFixed(1)}`).join(' ');
 }
-function statCardHtml(lbl, big, deltaTxt, deltaUp, sparkVals, sparkUp, wkTxt, wkUp) {
+function statCardHtml(lbl, big, deltaTxt, deltaUp, sparkVals, sparkUp, wkTxt, wkUp, tabsHtml) {
   const pts = sparklinePoints(sparkVals);
   return `<div class="statcard">
+    ${tabsHtml ?? ''}
     <div class="lbl">${lbl}</div>
     <div class="row1"><span class="big">${big}</span>${deltaTxt != null ? `<span class="sdelta ${deltaUp ? 'up' : 'dn'}">${deltaTxt}</span>` : ''}</div>
     ${pts ? `<svg class="spark" viewBox="0 0 200 36" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${sparkUp ? 'var(--bull)' : 'var(--bear)'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '<div class="spark"></div>'}
     ${wkTxt != null ? `<div class="swk">1W <b class="${wkUp ? 'up' : 'dn'}">${wkTxt}</b></div>` : ''}
   </div>`;
 }
+// Rate stat-card pip — 10Y / 2Y / 2s10s share one card slot so the top row
+// doesn't grow a 5th card just for the curve; state persists across reloads.
+let rateStatTab = (() => { try { return localStorage.getItem('rateStatTab') || 'us10y'; } catch (e) { return 'us10y'; } })();
+function setRateStatTab(id) {
+  rateStatTab = id;
+  try { localStorage.setItem('rateStatTab', id); } catch (e) {}
+  renderStatRow();
+}
+function rateStatTabsHtml() {
+  const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s']];
+  return `<div class="stat-tabs">${tabs.map(([id, lbl]) =>
+    `<button class="stat-tab${rateStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setRateStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
+}
 function renderStatRow() {
   const el = $('statRow');
-  const us10y = fred?.us10y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
+  const us10y = fred?.us10y, us2y = fred?.us2y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
   if (!us10y?.value && !dxy?.value && !vix?.value && !wti) { el.style.display = 'none'; return; }
   const cards = [];
 
-  if (us10y?.value != null) {
+  if (rateStatTab === 'us2y' && us2y?.value != null) {
+    const dBps = us2y.prev != null ? (us2y.value - us2y.prev) * 100 : null;
+    const hist = (fredHist?.us2y ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wkBps = wkAgo != null ? (us2y.value - wkAgo) * 100 : null;
+    cards.push(statCardHtml('US 2Y Yield', `${us2y.value.toFixed(2)}%`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      hist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  } else if (rateStatTab === 'spread' && us10y?.value != null && us2y?.value != null) {
+    const spreadBps = (us10y.value - us2y.value) * 100;
+    const dBps = (us10y.prev != null && us2y.prev != null) ? spreadBps - (us10y.prev - us2y.prev) * 100 : null;
+    const h10 = (fredHist?.us10y ?? []).map(p => p.value), h2 = (fredHist?.us2y ?? []).map(p => p.value);
+    const n = Math.min(h10.length, h2.length);
+    const spreadHist = n ? h10.slice(-n).map((v, i) => (v - h2.slice(-n)[i]) * 100) : [];
+    const wkAgo = spreadHist.length >= 6 ? spreadHist[spreadHist.length - 6] : null;
+    const wkBps = wkAgo != null ? spreadBps - wkAgo : null;
+    cards.push(statCardHtml('2s10s Spread', `${spreadBps >= 0 ? '+' : ''}${spreadBps.toFixed(0)} bps`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      spreadHist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  } else if (us10y?.value != null) {
     const dBps = us10y.prev != null ? (us10y.value - us10y.prev) * 100 : null;
     const hist = (fredHist?.us10y ?? []).map(p => p.value);
     const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
@@ -1027,7 +1071,8 @@ function renderStatRow() {
     cards.push(statCardHtml('US 10Y Yield', `${us10y.value.toFixed(2)}%`,
       dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
       hist, wkBps == null || wkBps >= 0,
-      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0));
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
   }
 
   if (dxy?.value != null) {
@@ -4009,7 +4054,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
