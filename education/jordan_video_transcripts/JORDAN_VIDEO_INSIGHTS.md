@@ -48,24 +48,29 @@ up in prior image-based reconstruction. When transcripts mention *any* of:
 where possible (his exact wording on period/multiplier/timeframe matters
 more than paraphrase).
 
-**Status: leading hypothesis, not confirmed.** Transcript 1 has no literal
-mention of "Bollinger"/"band"/"standard deviation", but it does describe a
-tool that's structurally the same job: the **range/volatility forecasting
-tool** (see Theme Index) — a pasted indicator script that draws expected-move
-levels per asset from **high-to-low median** and **close median** stats,
-explicitly framed as an envelope of expected movement rather than a
-directional S/R line. That matches the screenshot closely: a shaded
-green/red zone (inside vs. outside expected range) around a horizontal
-break level, drawn by an indicator script — not one of the VuManChu panes
-already mapped elsewhere in this repo. Median-range-based rather than
-classic rolling-stdev, but functionally an envelope band either way.
+**Status: earlier hypothesis ruled out by the user — reopened.** Transcript
+1 had no literal "Bollinger"/"band"/"standard deviation" mention, so the
+range/volatility forecasting tool (see Theme Index) was floated as a
+possible match, since it's a pasted-indicator envelope drawn from
+high-to-low median / close median stats. **The user has since corrected
+this**: the group's range/volatility tool sets **fixed levels for the
+whole day** — effectively marking exhaustion points of that day's expected
+volatility, recomputed once per session. **Jordan's own posted band is
+different: dynamic and intraday, scalping-style** — i.e. it updates/moves
+*within* the session as price develops, not a static once-a-day envelope.
+That rules the forecasting tool out as the source of the screenshot band.
 
-**Working theory: the screenshot band = this tool, not a separate classic
-Bollinger indicator.** Needs confirming — watch for the tool's actual
-construction (lookback/period, session vs. rolling anchor, whether it's
-median-based or stdev-based under the hood) in future transcripts,
-especially anything referencing the "additional materials" walkthrough
-video Husky mentions.
+So the target is now more specific: look for a chart tool that **recomputes
+continuously on a lower timeframe** (band walls move candle-to-candle or
+close-to-close, not fixed at session open) and is used for **scalping
+entries/exits intraday** — much closer to a textbook rolling Bollinger Band
+(N-period SMA ± k·stdev, recalculated every bar) than the daily
+expected-range tool. Neither transcript so far has covered this — both
+have been the daily/weekly markup format, not Jordan's own live scalping
+footage. **Next transcripts should specifically be searched for**: a
+recording of Jordan trading (not the group's daily markup call), any
+mention of a band/channel that "walks" with price, mean reversion to a
+moving band edge, or band width/squeeze commentary on a fast (1-5m) chart.
 
 ---
 
@@ -185,7 +190,114 @@ session tends to be followed by continued large moves through the rest of
 the day (not guaranteed). Implies session range/timing could be used as a
 same-day forward-looking feature, separate from the fixed daily/weekly
 range-extension levels above.
-**Videos:** 1.
+**Videos:** 1, 2 (repeated — used explicitly in v2 to justify picking a
+*further-away* level: "given yesterday's volatility... we see volatility
+clustering, so if we have high volatility we're likely to see further high
+volatility... it feels better to predict we'll see more of that and go for
+a level that's a little further away." First time the persistence idea is
+tied to a concrete level-selection rule, not just a general observation.)
+
+### Level-flip-and-retest after an impulse move
+**Speaker: host of transcript 2** (live weekly/daily markup call — format
+matches what transcript 1 described as Husky's Tuesday/Thursday routine;
+not confirmed by name in this transcript, and Jordan is again a chat
+participant being addressed, not the presenter). Confidence: med.
+"A big impulse move through a level often can flip the level, and you can
+look for continuation on the retest of that level." Classic broken-level
+role-reversal, but stated as a specific rule-of-thumb applied to their own
+range-extension levels (a level that gets blown through decisively becomes
+support/resistance in the new direction; wait for price to come back and
+retest it as an entry, not enter on the initial break).
+**Videos:** 2.
+
+### Range-extension multiples off the Asia session range
+**Speaker: host of transcript 2.** Confidence: high (stated with specific
+numbers, repeated as a personal preference).
+The daily range-extension levels aren't just Fib-style ratios — they're
+literal **multiples of the Asia session's own range, projected beyond it**:
+"two is a 100% extension away from the Asia range — if you copied and
+pasted this Asia range and then put it below, that's going to be the
+level." Named multiples in use: **1.5, 2, 2.75** (host says 1.5 and 2 are
+personal favorites). Golden pocket (Fib 0.618–0.65) is used as separate
+confluence, pulled from a 1H-context Fibonacci retracement, cross-checked
+against these extension levels to narrow down which one(s) to keep — the
+process explicitly discards levels that cluster too close together ("we
+don't want three levels, especially not that close together"), aiming for
+1-2 final levels per side.
+**Videos:** 2. Relevant to the Asia-range work already noted for
+`education/jordan_impulse_range_backtest/` — check for overlap/consistency
+with the extension ratios already tested there before adding these.
+
+### Close median as a magnet / "predicted close" level
+**Speaker: host of transcript 2.** Confidence: med.
+The close-median level from the volatility/range tool is explicitly framed
+as "where we predict price to close at the end of the day" — so an entry
+level positioned *beyond* the close median (i.e., price would have to
+revert back through the close median to reach a typical/expected close) is
+called out as attractive, since reversion to a session's expected close is
+a plausible, testable pull independent of the specific S/R level chosen.
+**Videos:** 2.
+
+### Volatility overlay used as a filter, not a crutch
+**Speaker: host of transcript 2.** Confidence: med.
+Deliberate workflow discipline: turn the volatility/range overlay ON only
+long enough to find/confirm candidate levels, then turn it OFF and use it
+"as confluence when needed" for the rest of the session rather than leaving
+it visible — stated reason is to avoid over-relying on it as the sole
+source of levels. Relevant less as a signal and more as a note on how
+discretion is deliberately bounded in their process.
+**Videos:** 2.
+
+### VWAP session-transition reversion (London → New York)
+**Speaker: host of transcript 2**, describing their own preference (calls
+VWAP "one of the few technical indicators I am actually a fan of").
+Confidence: med — stated as a personal pattern, not the group system, but
+specific and repeatable.
+After a decent directional move during the **London session**, look for
+price to move back toward VWAP as the market transitions into the
+**first 3-4 hours of New York**. Also demonstrated live on a 3-minute
+chart: price crossing above/below VWAP and repeatedly "tapping" it —
+implying VWAP acts as a magnet/pivot on lower timeframes intraday, distinct
+from the VuManChu Cipher B "VWAP" (wt1-wt2) already modeled in
+`vumanchuLab/`. This is a literal price-vs-session-VWAP read.
+**Videos:** 2 (new — session-transition-specific version of the general
+"VWAP as context" theme from video 1).
+
+### Prop-firm account pacing discipline (avoid tilt after passing a phase)
+**Speaker: host of transcript 2.** Confidence: med — stated as personal
+practice/advice, not a hard rule.
+After passing a prop-firm evaluation phase (or the funded phase), wait a
+couple of days before trading the next phase / the live funded account.
+Rationale: excitement/urgency right after passing raises the odds of
+revenge-trading a loss ("I've lost my first trade, let me win one now...
+before you know it you might eat yourself"). A psychological/risk
+discipline point rather than a chart rule, but relevant to any
+paper-trading-to-live deployment protocol this repo might formalize.
+**Videos:** 2.
+
+### Cross-asset macro dashboard — yields, yield spread, VIX
+**Speaker: host of transcript 2**, extends the "money flows where it's
+treated best" framework from video 1 with concrete instruments. Confidence:
+high (specific, demonstrated live on TradingView).
+- **US10Y − EU10Y yield spread**, watched as a single chart/series (not two
+  separate yield lines) — rising spread = more flow toward USD/US bonds,
+  falling spread = flow rotating toward EUR/EU bonds; explicitly the *rate
+  of change* of the spread is the tradeable signal, not its level.
+- **Gold vs. yields**: reinforced as generally inverse (gold pays no yield,
+  so rising "safe" yields competes with it for allocation).
+- **VIX** as a directly tradable volatility instrument (not available on
+  most prop firms, but on most live accounts) — can be used as a pure
+  volatility-magnitude bet uncorrelated to direction (e.g. long VIX into a
+  scheduled event like FOMC). Also floated as a **potential leading
+  indicator**: shown spiking ~20 minutes before FOMC in the live example,
+  i.e. positioning/hedging ahead of an event may show up in VIX before the
+  event itself. ATR namechecked as the already-used stop-sizing analog to
+  VIX's broader-market volatility read.
+- **"Fund bias"** — a named process/tool used by "Max" that aggregates this
+  cross-asset macro reading into a single bias, mentioned but not detailed.
+  Flag for a future transcript: worth understanding its actual inputs if it
+  comes up again.
+**Videos:** 2.
 
 ---
 
@@ -208,6 +320,17 @@ logic). Links to a script/dir once work starts._
   conservative)** are numbers, not a discoverable entry signal (the gates
   themselves are black-box) — not backtestable as a strategy, but worth
   keeping as a reference risk-sizing convention if useful elsewhere.
+- **VWAP reversion, London → New York transition.** Concrete and testable:
+  after a directional London-session move, measure how often/how far price
+  reverts toward session VWAP in the first 3-4 hours of New York. Cheap to
+  test against existing OHLC data, no new indicator needed.
+- **Asia-range extension multiples (1.5, 2, 2.75) as level generator.**
+  Check first against whatever `education/jordan_impulse_range_backtest/`
+  already tests — if the ratios there differ from 1.5/2/2.75, that's worth
+  reconciling before building a second version of the same idea.
+- **Level-flip-and-retest after impulse break.** Testable as a standalone
+  rule: does a decisively broken range-extension/weekly level perform
+  better as a retest entry than as a breakout entry?
 
 ---
 
@@ -267,3 +390,44 @@ concrete, cheapest-to-test idea here (pure exit-logic change, plug into an
 existing entry model). The macro spread/flow framework is more of a
 feature-engineering direction (yield spread deltas as a regime/bias input)
 than a standalone testable rule yet.
+
+### Transcript 2 — live weekly/daily markup call (host not confirmed by
+name; format matches transcript 1's described Tuesday/Thursday routine)
+
+**Speaker note:** Jordan appears only as a chat participant this time too
+(asked about his prop-firm account, a risk interview, etc.) — still not
+Jordan's own trading footage. **User correction incorporated:** the daily
+volatility/range tool covered here is confirmed NOT the source of Jordan's
+band screenshot — see revised Priority Watch section above.
+
+**New:**
+- Level-flip-and-retest after an impulse move through a level
+- Asia-range extension multiples (1.5, 2, 2.75) as the actual level
+  generator, with golden-pocket Fib confluence used to narrow candidates
+- Close median framed as "predicted close" — a magnet/reversion target
+- Deliberate workflow discipline: volatility overlay ON only to find
+  levels, then OFF for the rest of the session
+- VWAP reversion specifically at the London→New York session transition,
+  plus live example of price "tapping" VWAP repeatedly on a 3-minute chart
+- Prop-firm pacing discipline: wait a couple of days after passing a phase
+  before trading the next one, to avoid post-pass tilt
+- Cross-asset macro dashboard made concrete: US10Y-EU10Y spread as a single
+  series (rate-of-change is the signal), VIX as both a tradable volatility
+  instrument and a possible leading indicator (spiked ~20min pre-FOMC in
+  the live example), "fund bias" named as Max's aggregating tool (undetailed)
+
+**Repeats (already in Theme Index, new detail added):**
+- Session volatility persistence — now tied to a concrete rule (pick a
+  further-away level after a high-volatility day)
+- VWAP as context — this video adds the specific London→NY reversion
+  pattern on top of the general "VWAP frames the session" point from video 1
+
+**Bollinger/band mentions:** none directly, but this transcript is what
+prompted the user to correct the Priority Watch hypothesis — the daily
+range/volatility tool discussed here is now understood to be a *different*
+tool from whatever Jordan's own band screenshot shows.
+
+**Worth researching:** yes — the VWAP London→NY reversion pattern and the
+Asia-range extension multiples are both concrete and cheap to backtest
+against existing data. The level-flip-and-retest rule is a good candidate
+to test against the existing range-extension backtests already in the repo.
