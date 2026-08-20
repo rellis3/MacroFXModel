@@ -2015,6 +2015,23 @@ export async function buildOIEntry({
         const sig = Number.isFinite(nearLeg.sigma) && nearLeg.sigma > 0 ? nearLeg.sigma : atmFor(nearLeg.dte);
         dayExpiry = computeExpiryLevels(nearLeg.strikes, nearLeg.calls, nearLeg.puts, spot, pair,
           { dte: nearLeg.dte, minOI, numLevels, sigmaFn: sig > 0 ? () => sig : null });
+        // MAX PAIN MUST SEE THE WHOLE CHAIN. oiMatrixExpiryLegs drops strikes whose
+        // call+put OI is under minOI — right for WALL selection (a wall has to be
+        // significant) and wrong for max pain, which sums the pain of every open
+        // contract. Dropping the small strikes tilts the pain curve and moves the
+        // minimum by a strike, so this expiry's max pain disagreed with the same
+        // expiry's entry in perExpiry (which computes on the unfiltered column):
+        // NQ 1DTE read 29515.55 here and 29525.55 there on 2026-08-20, and BOTH were
+        // exported as "max_pain 1dte" — ten points apart on the one expiry that
+        // actually pins. Recompute from the unfiltered leg so the two agree.
+        if (dayExpiry) {
+          const legsAll = oiMatrixExpiryLegs(rawOI, { basis, inverted: futuresIsInverted(pair), minOI: 0 });
+          const allLeg = (legsAll || []).find(l => l.dte === nearLeg.dte);
+          if (allLeg && allLeg.strikes.length >= 2) {
+            const mpAll = oiCalcMaxPain(allLeg.strikes, allLeg.calls, allLeg.puts);
+            if (Number.isFinite(mpAll)) dayExpiry.maxPain = mpAll;
+          }
+        }
       }
     } else {
       dayExpiryReason = legs && legs.length === 1 ? 'only one expiry column parsed (not a multi-expiry paste)'

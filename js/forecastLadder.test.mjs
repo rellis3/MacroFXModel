@@ -112,3 +112,44 @@ test('flattenLadder exposes all twelve rungs', () => {
   const flat = flattenLadder(buildLadder(SIGMA, { instrument: 'GOLD' }));
   assert.equal(Object.keys(flat).length, 12);
 });
+
+// ── Export contract with the Pine consumers ──────────────────────────────────
+// `pine/cog_volatility_v3_sessions.pine` and friends parse the export by grepping
+// literal tokens and then pulling numbers by position. That makes the export text a
+// PUBLIC INTERFACE, not a display string: renaming a row breaks every pasted chart
+// silently — the line stops matching, or the 75th resolves to na and vanishes.
+// This test is that contract, written as the Pine parser sees it.
+import { buildLadderExportText } from './ladderExport.js';
+
+const _firstNumAfter = (s, k) => { const i = s.indexOf(k); if (i < 0) return null; const m = s.slice(i + k.length).match(/-?\d+\.?\d*/); return m ? +m[0] : null; };
+const _lastNumBefore = (s, k) => { const i = s.indexOf(k); if (i < 0) return null; const m = [...s.slice(0, i).matchAll(/-?\d+\.?\d*/g)]; return m.length ? +m[m.length - 1][0] : null; };
+
+function _fixture() {
+  const L = buildLadder(0.006, { instrument: 'EURUSD', eventTag: 'none' });
+  return { session_label: 'Test session', instruments: { EURUSD: { ...L, vol_annual: L.vol_annual, ladder: L, drift_d: 0.29 } } };
+}
+
+test('export keeps the row tokens the Pine indicators grep for', () => {
+  const txt = buildLadderExportText(_fixture(), 'daily');
+  for (const token of ['High to Low range', 'Open to Close move',
+                       'Open High (upside)', 'Open Low  (downside)', 'Drift (d=μ/σ)']) {
+    assert.ok(txt.includes(token), `export lost the "${token}" row — Pine consumers will not match it`);
+  }
+});
+
+test('Pine number extraction resolves the right rung on every row', () => {
+  const data = _fixture();
+  const L = data.instruments.EURUSD.ladder;
+  const txt = buildLadderExportText(data, 'daily');
+  const row = label => txt.split('\n').find(r => r.startsWith(label));
+  for (const [label, q] of [['High to Low range', L.hl], ['Open to Close move', L.oc],
+                            ['Open High (upside)', L.oh], ['Open Low  (downside)', L.ol]]) {
+    const r = row(label);
+    assert.ok(r, `missing row ${label}`);
+    // median = first number after ": "; 75th = last number BEFORE the "75th" token.
+    assert.equal(_firstNumAfter(r, ': '), q.p50, `${label}: median mis-parses`);
+    assert.equal(_lastNumBefore(r, '75th'), q.p75, `${label}: 75th mis-parses`);
+    // p90 must sit AFTER the 75th token so the old parser cannot see it.
+    assert.ok(r.indexOf(String(q.p90)) > r.indexOf('75th'), `${label}: p90 must follow the 75th token`);
+  }
+});

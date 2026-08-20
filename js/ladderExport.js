@@ -19,11 +19,21 @@ const LW = 30;
 const _div = n => { const pre = `──── ${n} `; return pre + '─'.repeat(Math.max(0, LW - pre.length)); };
 const _pc = x => (typeof x === 'number' && Number.isFinite(x) ? x.toFixed(2) : '—');
 
-const QTY_LABEL = {
-  hl: 'H-L range',
-  oc: 'O-C move',
-  oh: 'O-H (high from open)',
-  ol: 'O-L (low from open)',
+// Row labels are the LEGACY ones, deliberately. `pine/cog_volatility_v3_sessions.pine`
+// (and the other Pine consumers) parse this text by grepping literal tokens —
+// "RANGE" / "MOVE" / "OPEN HIGH" / "OPEN LOW" / "DRIFT" to find the row, then
+// `f_firstNumAfter(row, ": ")` for the median and `f_lastNumBefore(row, "75th")` for
+// the 75th. Renaming the rows to "H-L range … p50 · p75" silently breaks every
+// pasted indicator: the row stops matching, or the 75th resolves to na.
+//
+// So the p90 rung is APPENDED after the "75th" token, where the old parser cannot
+// see it and does not need to. Existing indicators keep working untouched and simply
+// start drawing better-calibrated numbers; a new indicator version can pick up p90.
+const QTY_ROW = {
+  hl: { label: 'High to Low range', p75Word: '75th Percentile' },
+  oc: { label: 'Open to Close move', p75Word: '75th Percentile' },
+  oh: { label: 'Open High (upside)', p75Word: '75th' },
+  ol: { label: 'Open Low  (downside)', p75Word: '75th' },
 };
 
 const HORIZON_TITLE = {
@@ -32,13 +42,13 @@ const HORIZON_TITLE = {
   monthly: 'VOL & RANGE FORECAST — MONTHLY (20-day)',
 };
 
-// One instrument's rungs. Every line reads "p50 · p75 · p90" in the same order so
-// the eye can scan down a column, and the rung NAMES are printed rather than
-// implied — the whole point of the rebuild is that a rung means what it says.
-function _rungRow(label, q) {
-  if (!q) return null;
-  const cells = RUNGS.map(r => `${_pc(q[r])}% ${r}`).join(' · ');
-  return `${label.padEnd(22)}: ${cells}`;
+// `<label> : <p50>% median · <p75>% <75th-word> · <p90>% 90th`
+function _rungRow(key, q) {
+  if (!q || q.p50 == null) return null;
+  const cfg = QTY_ROW[key];
+  let row = `${cfg.label.padEnd(24)}: ${_pc(q.p50)}% median · ${_pc(q.p75)}% ${cfg.p75Word}`;
+  if (q.p90 != null) row += ` · ${_pc(q.p90)}% 90th`;
+  return row;
 }
 
 /**
@@ -77,9 +87,9 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
     const L = f?.[key];
     if (!L || !(L.vol_annual > 0)) continue;
     lines.push(_div(name));
-    lines.push(`Volatility (annualized): ${_pc(L.vol_annual)}%`);
+    lines.push(`Volatility (annualized) : ${_pc(L.vol_annual)}%`);
     for (const q of ['hl', 'oc', 'oh', 'ol']) {
-      const row = _rungRow(QTY_LABEL[q], L[q]);
+      const row = _rungRow(q, L[q]);
       if (row) lines.push(row);
     }
     // Drift is REPORTED, not applied. The fitted O-H / O-L carry each instrument's
@@ -87,10 +97,14 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
     // different thing from today's trailing drift — the old v2 lines tilted by the
     // latter. Keeping the read visible means nothing is lost while drift
     // conditioning is still an open fit.
-    if (includeDrift && Number.isFinite(f.drift_d) && Math.abs(f.drift_d) > 0.05) {
+    if (includeDrift && Number.isFinite(f.drift_d)) {
       const d = f.drift_d;
-      lines.push(`Drift read            : d=${d >= 0 ? '+' : ''}${d.toFixed(2)} `
-               + `(${d > 0 ? 'mild bullish' : 'mild bearish'} — reported, not applied)`);
+      const lbl = Math.abs(d) < 0.1 ? 'Neutral' : d > 0 ? 'Mild bullish' : 'Mild bearish';
+      // Same "Drift (d=μ/σ)" token the indicator greps for. Reported, not applied —
+      // the fitted O-H / O-L carry each instrument's STRUCTURAL asymmetry, which is a
+      // different thing from today's trailing drift. Conditioning the rungs on d is
+      // an open fit (measured: a 14.5pp swing in O-H p50 across drift terciles).
+      lines.push(`Drift (d=μ/σ)           : ${d >= 0 ? '+' : ''}${d.toFixed(3)}  →  ${lbl}`);
     }
     lines.push('');
   }
