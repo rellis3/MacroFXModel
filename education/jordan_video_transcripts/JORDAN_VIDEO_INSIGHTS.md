@@ -400,7 +400,22 @@ fills in exact reproducible detail):**
   **current Monday vs. previous Monday**, each midnight-to-midnight
   (reconfirmed video 6). Can technically be done "anytime after midnight
   Monday" — done Tuesday morning by habit/cadence, not necessity.
-**Videos:** 1, 3, 4, 6.
+
+**Edge case explicitly considered, then rejected for simplicity (video 7,
+new):** when price runs hard immediately *after* the Asia window closes
+(a strong breakout in the first hour or so post-Asia), there's a live case
+for anchoring the range to that post-Asia extreme instead of the high/low
+that actually fell *inside* the 00:00-06:00 window — "if you see a run up
+or a run down straight outside of Asia, have a look at potentially using
+that high." Demonstrated live, then explicitly declined: "for the sake of
+this and simply following the simplest version of this and trying to
+remove as much discretion as possible, I'm just going to use the high
+inside the range... over time it's not going to make a whole load of
+difference." Worth recording as a **deliberately rejected variant** — a
+"use the post-window breakout extreme if it's more extreme than the
+in-window one" rule is a concrete, testable alternative anchor, explicitly
+flagged by the source as probably not worth the added discretion.
+**Videos:** 1, 3, 4, 6, 7.
 
 ### Mean reversion across multiple timeframes, sparse levels, wait-to-invalidate entry style
 **Speaker: Husky**, personal execution style. Confidence: med.
@@ -589,7 +604,8 @@ keeping distinct if more of J's approach shows up later.
 **Videos:** 3, 4, 6.
 
 ### Zone-based levels, not single-price lines
-**Speaker: host of transcript 3.** Confidence: med.
+**Speaker: host of transcript 3/7 (Husky).** Confidence: med, now with a
+concrete construction recipe rather than just the general principle.
 When a level is imprecise (e.g. sits between the top of a golden pocket and
 a nearby extension level), mark it as a **price zone** rather than a single
 line — explicit reasoning: "you wouldn't want to necessarily miss out on
@@ -597,7 +613,19 @@ the right idea just because you were waiting for pixel-perfect entry of
 the line." Practical for backtesting: entry/exit logic built purely on
 exact price-touch will systematically miss trades this system would take;
 a tolerance band per level may be closer to the real rule.
-**Videos:** 3.
+
+**Concrete zone recipe, video 7 (new): entry at close median, stop beyond
+the nearest range-extension level.** Rather than a zone built from two
+range-extension levels, this example builds one from **two different
+tools**: "you've got potential entry at close median and a potential stop
+loss above this daily range level... this here is going to be quite a nice
+zone." I.e. the volatility/forecasting tool's close-median line marks the
+entry edge of the zone, and a separately-derived range-extension level
+just beyond it marks the stop edge — the zone's *width* is the gap between
+one tool's output and another's, not a tolerance band around a single
+level. A second, reusable construction pattern alongside "zone between two
+extension multiples" already logged elsewhere.
+**Videos:** 3, 7.
 
 ### ADX-based regime filter (trend vs. mean-reversion switch)
 **Speaker: host of transcript 3**, floated as a suggestion to a struggling
@@ -652,14 +680,30 @@ as support without even being traded).
 6 (midpoint-as-bias-divider).
 
 ### Spacing resting levels apart to avoid correlated stop-outs
-**Speaker: host of transcript 3.** Confidence: low-med, single mention but
-a clear risk-management rationale.
+**Speaker: host of transcript 3/7 (Husky).** Confidence: low-med, but now
+with a concrete numeric example backing it up.
 When keeping two candidate levels on the same side (e.g. two sell zones
 above price), deliberately keep them a "decent enough distance apart" so
 that a single sharp move can't fill/invalidate both simultaneously —
 explicit reasoning is avoiding a scenario where both resting orders get
 taken out together by one spike.
-**Videos:** 3.
+
+**If you don't/can't space them — proportional risk split (video 7,
+new):** explicitly framed as an edge case, not the recommended approach.
+When 3 valid levels cluster close together (gold's 1.5/2/2.5 extensions on
+a strong trend day, all within the $5 threshold's near-miss zone) and none
+get merged out, the stated alternative to picking just one is to size each
+individually so the **combined** risk across all three still equals the
+normal single-trade risk budget — e.g. 1% max daily risk ÷ 3 levels =
+0.33% each. Explicitly called "not the best way of doing things," and the
+failure mode is spelled out: on a genuinely strong trending day price can
+blow through all three in sequence, which "is not going to be much fun for
+anybody" even with the reduced per-level size. Logged as a real but
+disfavored fallback, not a recommendation — the default answer to "too
+many close levels" is still to merge/reduce to one (see "Level-selection
+tie-break rules" and "Confluence clustering" above), this is only what to
+do if that reduction genuinely can't get below ~3 valid levels.
+**Videos:** 3, 7.
 
 ### Explicit discretion/intuition callouts, separate from the systematic process
 **Speaker: host of transcript 3.** Confidence: n/a (meta-note, not a rule).
@@ -1287,6 +1331,56 @@ psychological discipline.
 (fade far extensions in ranging regimes, buy near-extension pullbacks in
 trending regimes) is now concrete enough to backtest as a single combined
 rule, not just the ADX filter in isolation.
+
+### Transcript 7 — Thursday daily markup (gold, EU, NAS), reviewing
+Tuesday's weekly levels first
+
+**Speaker note:** Husky. Explicitly ties this session to the weekly one
+("today will be a little bit different but also very similar to what we
+did on Tuesday... this is the stuff that's actually taught in the
+education inside the Discord") — direct confirmation this is straight
+official curriculum (cross-checked separately against
+`education/range-extension-levels-notes.md`, which matches almost
+word-for-word: midnight-6am Asia window, candle-body-only, "Asian Range by
+Nico[948]" indicator, 5-minute chart, 2-pip alignment tolerance). No Jordan
+trading footage; Jordan referenced once (re-requesting his indicator access
+code for the group).
+
+**New:**
+- Edge case explicitly considered and rejected: anchoring to a strong
+  post-Asia breakout extreme instead of the in-window high/low, declined
+  for simplicity/discretion-removal
+- Proportional risk-split fallback for 3+ clustered levels that can't be
+  reduced to one (e.g. 0.33% risk each across 3 gold levels within a 1%
+  daily cap) — explicitly framed as a disfavored edge case, not the default
+- Concrete "two-tool" zone recipe: entry at the volatility tool's close
+  median, stop beyond the nearest range-extension level — building a zone
+  from two different tools' outputs, not just a tolerance band around one
+  level
+- A soft validity signal for levels: a sharp reaction *near but not
+  exactly at* a level (price reverses just before touching it) is flagged
+  as "reconsider this level," though in the observed case a later retest
+  did react as expected
+- EUR/USD stop-distance data point: even for a 5-pip-stop setup, Husky
+  says he'd "probably go 7.5 or 10" — a concrete pip range distinct from
+  the ATR-based sizing already logged
+- A tidy self-summary worth quoting directly: "these are the only three
+  things I do... mark up the levels, get a bit of volatility context using
+  the forecasting tool... [and check] a fib retracement" for confluence —
+  matches the full stack already logged elsewhere in this file, useful as
+  a single citable confirmation of the complete process
+
+**Repeats (extended with new detail):** Range extension methodology
+(post-Asia-breakout edge case), Zone-based levels (two-tool zone recipe),
+Spacing resting levels (proportional risk-split fallback), Close median as
+a magnet (used as the entry edge of a two-tool zone).
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** the two-tool zone recipe (close median entry / range-
+extension-level stop) is the most concrete new item — directly testable as
+an entry/stop pairing rule using data this repo already has for both the
+range-extension and volatility-forecast pieces.
 
 ### Evidence Set A — Jordan's own screenshots (not a transcript)
 
