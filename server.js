@@ -3167,7 +3167,40 @@ async function _serverSnapshotFor(name, sym) {
     volRegime: fc?.vol_pct != null ? (fc.vol_pct >= 80 ? 'ELEVATED' : fc.vol_pct <= 20 ? 'COMPRESSED' : 'NORMAL') : undefined,
     atrPct: fc?.vol_pct, priceVsAsia: session?.bias_detail,
   };
-  try { const oiRaw = await kv.get('oi_store'); if (oiRaw) { const od = JSON.parse(oiRaw); const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym]; if (o) snap.oi = { maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall, pcRatio: o.pcRatio, gex: o.exposures?.gex }; } } catch {}
+  // OI for the AI's oiRead. The headline three (max pain / call wall / put wall) name
+  // levels; these say which of them is actually in play today:
+  //   • dayMaxPain — max pain pins in the final ~48h and is weak at 5+ DTE, so the
+  //     NEAR-dated one is the tradeable magnet. The whole-book maxPain above can be
+  //     weeks out and was the only one the model ever saw.
+  //   • regime + flip — PIN means fade walls back toward max pain, BREAKOUT means a
+  //     decisive break tends to run. Same levels, opposite instruction.
+  //   • basisAgeH — every price here is `strike − basis`, and the basis drifts
+  //     intraday; without it the model cannot know the prices may have moved under it.
+  try {
+    const oiRaw = await kv.get('oi_store');
+    if (oiRaw) {
+      const od = JSON.parse(oiRaw);
+      const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym];
+      if (o) {
+        const gexv = o.exposures?.gex;
+        const de = o.dayExpiry;
+        const ageH = Number.isFinite(o.savedAtMs) ? (Date.now() - o.savedAtMs) / 3.6e6 : null;
+        snap.oi = {
+          maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall,
+          pcRatio: o.pcRatio, gex: gexv,
+          regime: gexv > 0 ? 'PIN' : gexv < 0 ? 'BREAKOUT' : null,
+          dte: o.dte ?? null,
+          dayDte: de?.dte ?? null, dayMaxPain: de?.maxPain ?? null,
+          dayCallWall: de?.callWall ?? null, dayPutWall: de?.putWall ?? null,
+          gammaFlip: o.gammaFlip ?? null,
+          gexFlip: Array.isArray(o.gexFlips) && o.gexFlips.length ? o.gexFlips[0].price : null,
+          basis: Number.isFinite(o.basis) ? +(+o.basis).toFixed(5) : null,
+          basisAgeH: ageH == null ? null : +ageH.toFixed(1),
+          basisStale: ageH != null && ageH >= 4,
+        };
+      }
+    }
+  } catch {}
   // Macro Scorecard (11-dim fundamentals, both legs) — same block the manual
   // Analyse path gets via _injectServerContext, added here too so the
   // scheduled/auto-run analyses aren't thinner than the manual ones.

@@ -935,6 +935,10 @@ let openDrawerCcy = null; // which ccy's drawer is currently open — guards the
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
+let oiToday = null;      // /api/oi-today — EVERY OI level with its readings (expectation, gamma
+                         // heat, calibrated P(touch), tier, DTE) + the basis and its age. oiStore
+                         // alone carries only the three headline strikes, which is enough to NAME
+                         // a level and not enough to say anything about it.
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
 let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
 let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
@@ -1164,12 +1168,13 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc, msc, cq] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
     jget('/api/cot-extremes').catch(() => null),
     jget('/api/kv/get?key=oi_store').catch(() => null),
+    jget('/api/oi-today').catch(() => null),   // server-side Monte-Carlo, cached 5min
     jget('/api/vol-forecast/weekly').catch(() => null),
     jget('/api/hedge-alerts').catch(() => null),
     jget('/api/risk-flags').catch(() => null),
@@ -1184,6 +1189,9 @@ async function loadGate() {
   if (ss?.instruments) sessionStats = ss;
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
+  // Keyed by pair for O(1) lookup from oiFor(); null when the endpoint is cold or
+  // OANDA is unavailable, and every consumer degrades to the headline-only view.
+  if (oiT?.ok && Array.isArray(oiT.pairs)) oiToday = Object.fromEntries(oiT.pairs.map(p => [p.pair, p]));
   if (oh?.ok && oh.pairs) oiHistory = oh.pairs;
   if (wk?.ok && wk.instruments) weekly = wk;
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
@@ -2820,7 +2828,15 @@ function oiFor(name, sym) {
     const hk = Object.keys(oiHistory).find(k => normK(k) === normK(lvlKey(name, sym)) || normK(k) === normK(sym) || normK(k) === normK(sym.replace('_', '/')));
     if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, confirm: oiHistory[hk].confirm, stability: oiHistory[hk].stability };
   }
-  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change,
+  // The enriched view, when /api/oi-today answered. `today.levels` carries every level
+  // with its own expectation, gamma heat and calibrated P(touch); `basisAgeH` says how
+  // old the futures-vs-spot reading behind every one of those prices is.
+  const norm2 = s2 => String(s2).toLowerCase().replace(/[/_]/g, '');
+  const today = oiToday
+    ? (oiToday[lvlKey(name, sym)] ?? oiToday[sym] ?? oiToday[sym.replace('_', '/')]
+       ?? Object.values(oiToday).find(x => norm2(x.pair) === norm2(sym)) ?? null)
+    : null;
+  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change, today,
     maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
     callWallOI: inst.callWallOI, putWallOI: inst.putWallOI, pcRatio: inst.pcRatio };
 }
@@ -4158,6 +4174,21 @@ function storyOptions(r) {
   if (!o) return null;
   const dp = r.d.dp;
   const bits = [];
+  // Per-level readings from /api/oi-today, matched by price. A level's name says WHERE
+  // it is; these say whether price is likely to get there (calibrated P(touch)), how
+  // much dealer gamma sits on it (heat), and which way the regime leans there
+  // (expectation). Absent when the endpoint is cold — every use below degrades quietly.
+  const lv = o.today?.levels || [];
+  const readAt = (price, type) => {
+    if (!Number.isFinite(price) || !lv.length) return '';
+    const hit = lv.find(x => x.type === type && Math.abs(x.price - price) < Math.pow(10, -dp) / 2)
+             || lv.find(x => Math.abs(x.price - price) < Math.pow(10, -dp) / 2);
+    if (!hit) return '';
+    const parts = [];
+    if (hit.touch) parts.push(`<b>${hit.touch}</b>`);
+    if (hit.heat && hit.heat !== 'cold') parts.push(hit.heat);
+    return parts.length ? ` <span class="muted" title="Calibrated probability of price touching this level within ~4h, and the dealer-gamma heat at that strike.">[${parts.join(' · ')}]</span>` : '';
+  };
   // Wall strength (3× rule) badge — strong walls are the high-probability ones.
   const cwW = (o.inst?.callWalls || []).find(w => w.strike === o.callWall);
   const pwW = (o.inst?.putWalls || []).find(w => w.strike === o.putWall);
@@ -4165,9 +4196,9 @@ function storyOptions(r) {
   const tierTag = t => t === 'strong' ? ' <span class="chip" style="font-size:9px;color:var(--green)">3×+ strong</span>' : t === 'moderate' ? ' <span class="chip" style="font-size:9px">2× mod</span>' : '';
   // Fresh vs stale: today's volume at the wall vs its resting OI (new money vs old).
   const freshTag = f => f?.tag === 'fresh' ? ' <span class="chip" style="font-size:9px;color:var(--amber)">fresh</span>' : f?.tag === 'stale' ? ' <span class="muted" style="font-size:9px">stale</span>' : '';
-  if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
-  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}${freshTag(cwW?.fresh)}`);
-  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}${freshTag(pwW?.fresh)}`);
+  if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)${readAt(o.maxPain, 'max_pain')}`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}${freshTag(cwW?.fresh)}${readAt(o.callWall, 'call_wall')}`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}${freshTag(pwW?.fresh)}${readAt(o.putWall, 'put_wall')}`);
   const vf = o.inst?.volFlow;
   if (vf && vf.volPcRatio != null) bits.push(`<span class="${vf.divergence ? '' : 'muted'}">flow P/C ${vf.volPcRatio} vs OI ${vf.oiPcRatio}${vf.divergence ? ` <b>(today ${vf.volPcRatio > vf.oiPcRatio ? 'leaning puts' : 'leaning calls'})</b>` : ''}</span>`);
   if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
@@ -4204,7 +4235,17 @@ function storyOptions(r) {
   // Prominent mis-scale/stale banner — a bad paste is flagged, not silently shown.
   const warn = o.inst?.dataWarning
     ? `<div style="color:var(--red);font-weight:600;font-size:11px;margin-bottom:3px">⚠ OI data looks mis-scaled: ${o.inst.dataWarning}</div>` : '';
-  return `${warn}${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
+  // BASIS AGE, because it silently invalidates every price above. Each level is
+  // `strike − basis`, so the whole set shifts one-for-one with a number nothing on this
+  // card showed: EUR/USD measured +0.00021 at 08:39 and +0.00066 by mid-afternoon, 4.5
+  // pips on every line, from an OI ladder that had not changed at all. A stale basis is
+  // NOT the same as stale OI — the chain really is yesterday's and that is fine; the
+  // futures-vs-spot reading behind the conversion is what goes off.
+  const bAge = o.today?.basisAgeH;
+  const basisWarn = (o.today?.basisStale && Number.isFinite(bAge))
+    ? ` <span class="chip" style="font-size:9px;color:var(--amber)" title="Every level here is strike minus basis, and this basis was captured ${bAge}h ago. The basis drifts intraday, so these prices have drifted with it. Re-basis on the OI Analytics page to refresh.">basis ${bAge}h old</span>`
+    : '';
+  return `${warn}${bits.join(' · ')}${reg}.${age}${basisWarn}${oiChangeLine(o, dp)}`;
 }
 
 // Day-over-day OI dynamics line — what MOVED vs the prior paste (walls firming /
