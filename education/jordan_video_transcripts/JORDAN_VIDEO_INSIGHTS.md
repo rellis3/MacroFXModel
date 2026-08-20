@@ -36,76 +36,88 @@ stated it, not whether it works.
 
 ## ⭐ Priority Watch: Bollinger/SD-style dynamic band
 
-**Status: open again — user explicitly ruled out the median/75th-percentile
-framing.** After the screenshot batch (Evidence Set A), this file initially
-concluded Jordan's colored zone *was* the same median/75th-percentile
-statistical family as Husky's daily forecasting tool, just re-rendered
-live. **The user has corrected this directly**: the group already has that
-daily forecasting/median/75th-percentile tool built (`education/
-jordan_impulse_range_backtest/` and related work in this repo) — it is a
-**once-per-day setup, fixed at session open**, and that is *not* what
-Jordan's band is. Jordan's band is **dynamically/continuously created**,
-i.e. it recalculates on every bar like a real rolling indicator (ATR bands
-/ Keltner channel / Bollinger Band), not something drawn once and left
-fixed for the session. The user isn't ruling out that *exhaustion* is part
-of what the band signals — just that it is not *daily exhaustion levels of
-the kind already built*.
+**Status: superseded by an existing, more precise finding already in this
+repo — read before building anything new.**
+`education/jordan_impulse_range_backtest/RESULTS.md` turns out to already
+be a formalisation of **these exact same screenshots** (same 13-14 Aug 2026
+dates, same `@C.OG` tags, same gold/NQ instruments) — this wasn't cross-
+checked against Evidence Set A until now, which was a miss. Its re-read is
+better-supported than the ATR/Bollinger-band hypothesis this section spent
+several rounds developing:
 
-**Re-reading the screenshots under that correction:**
-- The **"Live / Median / 75th Pct" H-L-range-% panel** visible in two
-  screenshots is most likely a **separate reference/measurement tool** —
-  plausibly TradingView's built-in session price-range measuring tool, or
-  a read-out of the existing daily forecasting tool kept on-screen for
-  context — rather than the mechanism generating the colored zone itself.
-  Treat it as "what Jordan is comparing against," not "what the band is
-  computed from."
-- The **two blue curved lines** (seen clearly in one later screenshot,
-  `Ignoring the SL / the idea was right`) are now the more likely
-  candidate for the actual dynamic band — a moving basis line plus one
-  band edge, or an upper/lower band pair, recalculating bar-to-bar the way
-  a genuine ATR/Keltner/Bollinger construction would. Still unidentified
-  (period, type, multiplier all unreadable from the screenshot).
-- The **colored green/red rectangle** may be a **manually-drawn target/
-  projection zone** for that specific test (Jordan marking up "where I
-  expect this move to reach" using a rectangle tool) rather than the live
-  indicator itself — which would explain why it looks like a fixed box
-  within each screenshot's visible window instead of a continuously
-  curving band. This reframes the red-side-flip behavior too: it's
-  probably just "which side of the projected move is currently being
-  tested," redrawn per test, not a computed property of an indicator.
-- A manually-drawn **diagonal dashed trend line** also appears in several
-  shots — clearly Jordan's own annotation, not part of any indicator.
+**The colored rectangle is almost certainly TradingView's built-in
+Long/Short Position drawing tool, not an indicator at all.** That tool
+draws exactly this shape when you place it manually on a chart: a
+boundary line at your entry, a green zone toward your target, a red zone
+toward your stop, and it auto-labels the %/points distance (this is what
+the `(0.44%) 1,910` annotation on one screenshot is — the tool's own stop-
+distance readout, not a coincidental match to the ENQ system's 0.44%
+figure this file speculated about earlier). Read this way, everything
+about the screenshots resolves cleanly:
+- **Why the red side "flips"**: it's just long vs. short — red sits above
+  entry when the box marks a short's stop, below when it marks a long's.
+  Not a computed property of any indicator, just which side of a manual
+  box you drew.
+- **Why it looks like a fixed rectangle instead of a curving band**: it
+  *is* fixed — it's a manual annotation for one specific planned trade,
+  redrawn fresh for each `New test`/`updated`/`another update` post, not a
+  continuously-repainting indicator.
+- **`if only the order was placed earlier`**: reads naturally as Jordan
+  narrating a manual entry marker that missed the ideal fill, not
+  commentary on an indicator value.
+- The **two blue curved lines** and the **Live/Median/75th Pct panel**
+  remain separate, real chart elements (probably a moving-average pair and
+  a volatility-reference tool respectively) — just not the source of the
+  colored zone, which this file had been trying to explain them as.
 
-**Working reframe**: Jordan's tool is very likely a genuine **rolling
-ATR/stdev-based channel** (basis MA/VWAP ± k×ATR or ±k×stdev, recalculated
-every bar), used on a fast intraday timeframe (NQ/MNQ 1m-15m seen) for
-scalping-style mean reversion, with manually-drawn rectangles used per-test
-to mark the projected target zone rather than the band itself. See the
-Synthesis section below for how to construct entry zones from this kind of
-band using only what's already validated in these transcripts.
+**RESULTS.md's mechanised version of the visible pattern** — impulsive
+swing leg (≥2.5×ATR) → EMA(9/21) cross agreeing with the impulse direction
+→ a session-range-exhaustion percentile gate → pullback entry inside the
+leg's 38.2-61.8% retracement, traded **in the impulse's own direction**
+(continuation-on-pullback, not a fade) — was run honestly (real costs, no
+lookahead, true 60/40 IS/OOS split) against **10.4 years of M1 data on
+both instruments**: **null on every variant tried.** Gold Sharpe −5.99
+(full), NQ-proxy −2.49; every follow-up refinement tested (a dynamic MAE
+stop, multi-trade-per-day, a session/time-of-day split, a liquidity-sweep
+filter, a VWAP-anchored entry band, and flipping the range-exhaustion gate
+to require an *already-stretched* day) either did nothing or improved
+things without ever crossing into positive Sharpe — best case NQ at
+−0.10/PF 0.961, still a loser. Full detail, every number, and the
+reproduce commands are in that file — don't re-derive any of this, read it.
 
-**Still open**: what the two blue lines actually are (basis+edge? two
-edges? a moving average pair?); the ATR/stdev period and multiplier; and
-whether Jordan uses one band or a tiered set (like Bollinger's 1/2/3-sigma
-or the group's own 1.5/2/2.75 range-extension multiples applied to ATR
-instead of a fixed session range).
+**What this means for "how do we find entry zones with ATR bands"**: the
+specific, honestly-tested mechanisation of what's visible in these
+screenshots has **no edge**, repeatedly, across a decade of data. That
+doesn't forbid trying a genuinely different mechanism (see the Synthesis
+below, kept but reframed) — but it does mean the premise "there's a real
+dynamic band tool here worth reverse-engineering" is now the *weaker* of
+two readings, not the stronger one. Per this repo's own working rules
+(`MD files/CLAUDE.md`): state which of "built / works / has edge" is being
+claimed, name the existing null as the benchmark to beat, and don't
+prejudge a *new* mechanism's chances just because an *adjacent* one failed
+— but don't build the new one without saying this out loud first either.
 
 **Confirmed separately: the presenter across transcripts 2-6 is Husky**,
 not Jordan — transcript 6 has a chat message read aloud referring to the
 host as "Husky" in the third person, and the host responds in kind
 ("Husky did not say it's financial advice"). All 6 transcripts were
 Husky's induction/markup/AMA content; the screenshot evidence (Evidence
-Set A) is still the only direct look at Jordan's own work.
+Set A) is still the only direct look at Jordan's own work, now understood
+as manual trade-planning annotations rather than a novel indicator.
 
-### Synthesis: defining entry zones from a rolling ATR/SD band
+### Synthesis: defining entry zones from a rolling ATR/SD band (kept as a
+genuinely distinct idea, not a re-run of the RESULTS.md rule)
 
-Reframed per the user's correction: this is about a genuinely **dynamic**
-band (recalculated every bar — ATR/Keltner/Bollinger-style), not the
-group's existing daily median/75th-percentile setup. The question that
-matters is **how to turn "price touched the band" into an actual entry
-zone**, not just an exhaustion observation. Combining what's already
-validated across these transcripts with standard practice for this class
-of indicator:
+**Read the box above first.** This section predates the RESULTS.md
+cross-check and was built on the (now weaker) assumption that Jordan's
+screenshots show a real dynamic indicator. It's kept here because a tiered
+ATR-band entry-zone mechanism is **mechanically different** from the
+already-tested impulse+EMA+range-exhaustion+pullback rule — different
+enough that the existing null doesn't settle it — but it should be framed
+honestly as "a different idea to test," not as "reverse-engineering
+Jordan's tool," since that tool most likely doesn't exist as a computed
+indicator. Combining what's already validated across these transcripts
+with standard practice for this class of indicator:
 
 **1. Band construction — pick a basis + a width, both already justified
 in this material:**
@@ -183,13 +195,17 @@ _Deduplicated ideas, updated as transcripts come in. Each entry: **what was
 said**, who said it, confidence (low/med/high — based on repetition +
 specificity, not correctness), and which videos support it._
 
-### Jordan's own dynamic band tool (in-development, tested on NQ/gold)
+### Jordan's screenshot test posts — most likely manual trade markup, not a live indicator
 **Speaker/source: Jordan directly** — the first entry in this file sourced
 from Jordan's own material rather than Husky's. Confidence: med — visibly
-real from the screenshots, but the user has corrected the initial read of
-what it's built from (see Priority Watch above for the full, current
-reasoning; this entry is kept short and points there rather than
-duplicating it).
+real from the screenshots, but **now most likely explained without a
+custom band tool at all** — see the rewritten Priority Watch section above
+for the full reasoning (`education/jordan_impulse_range_backtest/
+RESULTS.md` already formalised and null-tested the visible pattern from
+these same screenshots; the colored rectangle is almost certainly
+TradingView's Long/Short Position drawing tool, a manual per-trade
+annotation, not a computed indicator). This entry is kept short and points
+there rather than duplicating it.
 A **dynamically/continuously recalculated band** — the user is explicit
 this is *not* the group's existing daily median/75th-percentile forecast
 tool (fixed once at session open), which this repo already has built.
