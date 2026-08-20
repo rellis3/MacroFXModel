@@ -129,17 +129,15 @@
     </div>
     <label>Calc</label>
     <div class="seg" id="calc">
-      <button data-c="original" class="on">Original</button>
+      <button data-c="ladder" class="on" title="The fitted ladder — p50/p75/p90 on O-H, O-L and O-C, with widths fit to realized range walk-forward (forge/vol.py) rather than a textbook constant times a hand-tuned correction. Each rung means what it says: p50 is reached on ~50% of sessions, p75 on ~25%, p90 on ~10%. O-H and O-L are fit SEPARATELY, so each instrument's structural asymmetry is kept.">Ladder</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
-      <button data-c="cogv2" title="COG for fx/indices, but GOLD uses HAR-IV σ (GVZ) + the forecaster's per-asset bands. HAR-IV σ is level-calibrated to the forecaster mean (strips the implied-vol risk premium that over-widened the raw bands), keeping HAR-IV's day-to-day variation. Needs the per-day hariv_annual enrichment (FRED GVZ); falls back to COG for gold if unavailable.">COG v2</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
     <span class="seg" id="calcCompare">
-      <button data-cc="original" title="Overlay Original's lines">+Orig</button>
+      <button data-cc="ladder" title="Overlay the fitted ladder's lines">+Ladder</button>
       <button data-cc="cog" title="Overlay COG's lines">+COG</button>
       <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
-      <button data-cc="cogv2" title="Overlay COG v2's lines (gold=HAR-IV)">+COGv2</button>
     </span>
     <div class="seg" id="touch">
       <button data-t="markers" title="Mark with a coloured dot where price first reached each armed level that day">● Markers</button>
@@ -255,7 +253,7 @@
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=6';
+import { LADDER_LINES, FITTED_LINES, linesFor, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=7';
 import { computeWaveTrend } from './js/vumanchuCore.js?v=1';
 import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
@@ -298,15 +296,14 @@ function unitFor(name) {
 
 // COG's reverse-engineered constants — identical to forecast-replay / vol-forecast-v2.
 const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
-// COG-v2 gold constants = forecaster per-asset (commodity) calibration, NO COG
-// widening: BM/HN × commodity corr (js/volBacktestEngine.js): 1.572×0.898, 2.049×0.914,
-// 0.6745×1.144, 1.1503×1.092. Paired with the per-day HAR-IV σ (f.hariv_annual).
-const GOLD_C = { hl50: 1.412, hl75: 1.873, oc50: 0.772, oc75: 1.256 };
 const COG_SQRT252 = Math.sqrt(252);
 const _REPLAY_CCHV = new Set(['nq']);
 const $ = id => document.getElementById(id);
-function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'original'; }
-function calcLabel() { const m = calcMode(); return m === 'cogv2' ? 'COG v2' : m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Original'; }
+function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'ladder'; }
+function calcLabel() { const m = calcMode(); return m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Ladder'; }
+// The armable line set follows the CALC: the fitted ladder has ten lines (three rungs
+// a side on the excursion, two on the close), COG/Bot geometry has the legacy eight.
+function activeLines() { return calcMode() === 'ladder' ? FITTED_LINES : LADDER_LINES; }
 function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
 function setStatus(t) { $('status').textContent = t; }
@@ -319,15 +316,6 @@ function bandsFor(f, mode) {
   if (!f) return null;
   mode = mode || calcMode();
   const name = ($('pair').value || '').toLowerCase();
-  // COG v2: gold → HAR-IV σ (f.hariv_annual) × the forecaster's calibrated (non-COG)
-  // constants; fx/indices (and gold when HAR-IV is unavailable) → fall through to COG.
-  if (mode === 'cogv2') {
-    if (name === 'gold' && f.hariv_annual > 0) {
-      const s = f.hariv_annual / COG_SQRT252;
-      return { hl_median: GOLD_C.hl50 * s, hl_75: GOLD_C.hl75 * s, oc_median: GOLD_C.oc50 * s, oc_75: GOLD_C.oc75 * s };
-    }
-    mode = 'cog';
-  }
   // COG geometry for both COG and BOT — they differ only in the σ SOURCE:
   //   COG = the vol-forecast σ (f.vol_annual, with correction constants)
   //   BOT = the bot's σ (f.bot_vol_annual = volSigmaSeries, no corrections)
@@ -342,12 +330,19 @@ function bandsFor(f, mode) {
     const s = va / COG_SQRT252;
     return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
+  // Ladder: the per-day fitted rungs, served by /api/vol-forecast/backtest-range.
+  // hl_* are carried alongside so anything still keyed on the old names (the Budget
+  // style's expected-range denominator) keeps working on the same day object.
+  if (mode === 'ladder') {
+    if (!f.ladder || f.ladder.oh_p50 == null) return null;
+    return { ...f.ladder, hl_median: f.hl_median, hl_75: f.hl_75 };
+  }
   return { hl_median: f.hl_median, hl_75: f.hl_75, oc_median: f.oc_median, oc_75: f.oc_75 };
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
-const CALC_TAG = { original: 'Orig', cog: 'COG', bot: 'Bot', cogv2: 'COGv2' };
+const state = { armed: new Set(FITTED_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
+const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot' };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
@@ -367,6 +362,27 @@ let days = [];        // [{ date, open, high, low, close, tStart, tEnd, bars:[],
 let touchMarkers = false, touchedOnly = false;   // Markers / Touched-only overlay toggles (view-only)
 let dpr = window.devicePixelRatio || 1;
 
+// Build (or rebuild) the arm chips for the active calc's line set.
+function buildChips() {
+  const wrap = $('chips');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const lines = activeLines();
+  state.armed = new Set(lines.map(l => l.key));
+  for (const L of lines) {
+    const c = document.createElement('span');
+    c.className = 'chip on'; c.dataset.key = L.key;
+    const style = L.dash[1] === 0 ? 'solid' : L.dash[0] > 3 ? 'dashed' : 'dotted';
+    c.innerHTML = `<i style="border-top-style:${style};border-top-color:${L.color}"></i>${L.label}`;
+    c.addEventListener('click', () => {
+      if (state.armed.has(L.key)) state.armed.delete(L.key); else state.armed.add(L.key);
+      c.classList.toggle('on', state.armed.has(L.key));
+      recomputeAndDraw();
+    });
+    wrap.appendChild(c);
+  }
+}
+
 // ── UI setup ─────────────────────────────────────────────────────────────────
 (function initUI() {
   const sel = $('pair');
@@ -378,21 +394,14 @@ let dpr = window.devicePixelRatio || 1;
   $('to').value   = iso(now);
   $('from').value = iso(new Date(now.getTime() - 14 * 864e5));
 
-  // Per-line arm chips
-  const wrap = $('chips');
-  for (const L of LADDER_LINES) {
-    const c = document.createElement('span');
-    c.className = 'chip on'; c.dataset.key = L.key;
-    c.innerHTML = `<i style="border-top-style:${L.dash[0] > 3 ? 'dashed' : 'dotted'};border-top-color:${L.color}"></i>${L.label}`;
-    c.addEventListener('click', () => {
-      if (state.armed.has(L.key)) state.armed.delete(L.key); else state.armed.add(L.key);
-      c.classList.toggle('on', state.armed.has(L.key));
-      recomputeAndDraw();
-    });
-    wrap.appendChild(c);
-  }
+  // Per-line arm chips. Rebuilt whenever the Calc changes, because the two
+  // geometries do not share a line set — the fitted ladder has O-H/O-L at three
+  // rungs a side, COG/Bot have the legacy H/L/C at two. Arming state is re-seeded to
+  // "all on" on a switch rather than carried across: the keys do not correspond, and
+  // silently keeping a stale set would leave lines armed that no longer exist.
+  buildChips();
   const setAll = on => {
-    state.armed = new Set(on ? LADDER_LINES.map(l => l.key) : []);
+    state.armed = new Set(on ? activeLines().map(l => l.key) : []);
     wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', state.armed.has(c.dataset.key)));
     recomputeAndDraw();
   };
@@ -406,7 +415,9 @@ let dpr = window.devicePixelRatio || 1;
   // Calc toggle changes the bands → recompute trades + redraw (no candle refetch).
   $('calc').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
+    const before = calcMode();
     $('calc').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (calcMode() !== before) buildChips();      // line sets differ between calcs
     recomputeAndDraw();
     if (days.length) updateStatus();
   });
@@ -491,7 +502,17 @@ function updateStatus() {
   if (!_meta) return;
   const calc = calcLabel();
   const srcLbl = _meta.src === 'backtest' ? 'Backtest' : 'Archive';
-  setStatus(`${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${srcLbl} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`);
+  let msg = `${_meta.name.toUpperCase()} · ${_meta.gran} · ${calc} · ${srcLbl} · ${_meta.candles} candles · ${_meta.sessions} sessions (${_meta.withFc} with forecast)`;
+  // The ladder is computed per day by the Backtest source. Archived sessions predate
+  // it, so Archive + Ladder draws nothing — say so, rather than showing an empty
+  // chart that looks like "no touches" instead of "no data".
+  if (calcMode() === 'ladder') {
+    const withLad = days.filter(d => d.f?.ladder?.oh_p50 != null).length;
+    if (!withLad) msg += ' · ⚠ no ladder on these days — switch Source to Backtest';
+    else if (withLad < _meta.withFc) msg += ` · ${withLad}/${_meta.withFc} days have a ladder`;
+    else { const est = days.find(d => d.f?.ladder_estimator)?.f.ladder_estimator; if (est) msg += ` · σ=${est}`; }
+  }
+  setStatus(msg);
 }
 
 function ensureChart(name) {
@@ -765,7 +786,7 @@ function computeTrades() {
     // price (bandsFor → calc-mode aware), so it stays correct when the calc flips.
     // Recomputed here (with trades) rather than every frame.
     d.touch = {};
-    if (bands) for (const L of LADDER_LINES) {
+    if (bands) for (const L of activeLines()) {
       const pct = bands[L.band];
       if (!(pct > 0)) continue;
       const price = d.open * (1 + L.side * pct / 100);
@@ -835,7 +856,7 @@ function drawOverlay() {
     const drawForecastLines = (mode, compareMode) => {
       const bands = bandsFor(d.f, mode);
       if (!bands) return;
-      for (const L of LADDER_LINES) {
+      for (const L of activeLines()) {
         if (!state.armed.has(L.key)) continue;
         const pct = bands[L.band];
         if (pct == null || !(pct > 0)) continue;
@@ -966,7 +987,7 @@ function renderStats() {
   const all = days.flatMap(d => d.trades);
   const { byKey, total } = tallyTrades(all);
   const calc = calcLabel();
-  const rows = LADDER_LINES.map(L => {
+  const rows = activeLines().map(L => {
     const s = byKey[L.key];
     const armed = state.armed.has(L.key);
     if (!s) {

@@ -49,6 +49,39 @@ export const LADDER_LINES = [
   { key: 'L_p75',  band: 'hl_75',     side: -1, tier: 'p75', label: 'L p75',  color: '#ef4444', dash: [2, 4] },
 ];
 
+// ── The FITTED ladder's lines (the "Ladder" calc) ────────────────────────────
+//
+// Two differences from the legacy eight above, both of which change what is being
+// tested rather than just how it looks:
+//
+//   1. O-H / O-L replace H / L. The legacy `H med` line is `open + hl_median` — the
+//      full day RANGE projected one-sided, which overstates a one-way excursion
+//      badly. The fitted ladder has a real, separately-fit O-H and O-L, so the line
+//      being faded is the one whose exceedance rate is actually 50 / 25 / 10%.
+//   2. A p90 rung exists. On the old geometry the outermost armable line was a
+//      mislabelled 75th; the exhaustion trade lives further out than that.
+//
+// Ten lines: three rungs a side on the excursion, two a side on the close.
+export const FITTED_LINES = [
+  { key: 'OH_p50', band: 'oh_p50', side:  1, tier: 'med', label: 'O-H p50', color: '#34d399', dash: [7, 4] },
+  { key: 'OH_p75', band: 'oh_p75', side:  1, tier: 'p75', label: 'O-H p75', color: '#10b981', dash: [2, 4] },
+  { key: 'OH_p90', band: 'oh_p90', side:  1, tier: 'p90', label: 'O-H p90', color: '#f59e0b', dash: [1, 0] },
+  { key: 'Cp_p50', band: 'oc_p50', side:  1, tier: 'med', label: 'C+ p50',  color: '#60a5fa', dash: [7, 4] },
+  { key: 'Cp_p75', band: 'oc_p75', side:  1, tier: 'p75', label: 'C+ p75',  color: '#3b82f6', dash: [2, 4] },
+  { key: 'Cm_p50', band: 'oc_p50', side: -1, tier: 'med', label: 'C- p50',  color: '#fbbf24', dash: [7, 4] },
+  { key: 'Cm_p75', band: 'oc_p75', side: -1, tier: 'p75', label: 'C- p75',  color: '#f59e0b', dash: [2, 4] },
+  { key: 'OL_p50', band: 'ol_p50', side: -1, tier: 'med', label: 'O-L p50', color: '#f87171', dash: [7, 4] },
+  { key: 'OL_p75', band: 'ol_p75', side: -1, tier: 'p75', label: 'O-L p75', color: '#ef4444', dash: [2, 4] },
+  { key: 'OL_p90', band: 'ol_p90', side: -1, tier: 'p90', label: 'O-L p90', color: '#fb923c', dash: [1, 0] },
+];
+
+// Which set a bands object implies. Keyed off the presence of a fitted rung rather
+// than a mode string, so the brick stays calc-agnostic — the page can hand it either
+// geometry and the mechanic is identical, which is the whole point of comparing them.
+export function linesFor(pcts) {
+  return pcts && pcts.oh_p50 != null ? FITTED_LINES : LADDER_LINES;
+}
+
 // Trading-style selector — how each armed line is traded on a touch:
 //   • fade_all           — every line is a FADE (revert one band inward). The
 //                          original behaviour.
@@ -67,10 +100,10 @@ export const STYLES = {
 // the open itself for the innermost). Percentages are in PERCENT (e.g. 0.45 =
 // 0.45%). Lines whose band pct is missing/non-positive are dropped. Returns
 // { open, lines:[{...LINE, pct, price, target}], byKey } or null if degenerate.
-export function ladderLevels(open, pcts) {
+export function ladderLevels(open, pcts, lines_ = null) {
   if (!(open > 0) || !pcts) return null;
   const lines = [];
-  for (const L of LADDER_LINES) {
+  for (const L of (lines_ ?? linesFor(pcts))) {
     const pct = pcts[L.band];
     if (pct == null || !(pct > 0)) continue;
     lines.push({ ...L, pct, price: open * (1 + L.side * pct / 100) });
@@ -115,7 +148,7 @@ export function firstTouchIdx(bars, price, side) {
 
 export function reversionTrades(open, bars, pcts, opts = {}) {
   const { armed = null, costPct = 0, style = 'fade_all', sltp = null, forwardBars = null, decideAction = null } = opts;
-  const lad = ladderLevels(open, pcts);
+  const lad = ladderLevels(open, pcts, opts.lines ?? null);
   if (!lad || !bars || !bars.length) return [];
   const styleDef = STYLES[style] || STYLES.fade_all;
   // SL/TP mode:

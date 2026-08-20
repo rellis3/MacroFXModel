@@ -5,7 +5,7 @@
 //
 //   node js/reversionLadder.test.mjs
 
-import { ladderLevels, reversionTrades, tallyTrades, LADDER_LINES, STYLES, firstTouchIdx } from './reversionLadder.js';
+import { ladderLevels, reversionTrades, tallyTrades, LADDER_LINES, FITTED_LINES, linesFor, STYLES, firstTouchIdx } from './reversionLadder.js';
 
 let failures = 0;
 const ok   = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -224,5 +224,60 @@ const allTouch = reversionTrades(OPEN, mkBars([
 ok('armed=null fires all 8 lines', new Set(allTouch.map(x => x.key)).size === 8, `got ${allTouch.length}`);
 ok('LADDER_LINES has 8 entries', LADDER_LINES.length === 8);
 
-console.log(failures ? `\n${failures} FAILED` : '\nAll reversion-ladder tests passed');
+
+// ── The FITTED ladder's line set (the "Ladder" calc on forecast-reversion) ───
+console.log('');
+console.log('[fitted ladder]');
+const FITTED = { oh_p50: 0.25, oh_p75: 0.50, oh_p90: 0.78,
+                 ol_p50: 0.24, ol_p75: 0.50, ol_p90: 0.80,
+                 oc_p50: 0.24, oc_p75: 0.49 };
+
+// Calc-agnostic dispatch: the brick picks its line set off the BANDS, never off a
+// mode string, so both geometries run the identical mechanic and stay comparable.
+ok('linesFor picks the fitted set from fitted bands', linesFor(FITTED) === FITTED_LINES);
+ok('linesFor falls back to the legacy set', linesFor(PCTS) === LADDER_LINES && linesFor(null) === LADDER_LINES);
+
+const fl = ladderLevels(OPEN, FITTED);
+ok('fitted ladder builds all 10 lines', fl.lines.length === 10, `got ${fl.lines.length}`);
+ok('p90 rungs exist both sides', !!fl.byKey.OH_p90 && !!fl.byKey.OL_p90);
+
+// The target chain is what actually gets traded — a mis-sort would silently aim at
+// the wrong band and change every number on the page.
+const up = fl.lines.filter(l => l.side === 1).sort((a, b) => a.pct - b.pct);
+ok('innermost up line reverts to the open', near(up[0].target, OPEN));
+let chained = true, ordered = true;
+for (let i = 1; i < up.length; i++) {
+  if (!near(up[i].target, up[i - 1].price)) chained = false;
+  if (!(up[i].price > up[i - 1].price)) ordered = false;
+}
+ok('each up line targets the band inside it', chained);
+ok('up lines are ordered outward', ordered);
+ok('outermost up line has no outer target', up[up.length - 1].outerTarget === null);
+
+// Asymmetry is the property the separate O-H / O-L fit exists to keep; a mirroring
+// bug would erase it while leaving everything else looking correct.
+const asym = ladderLevels(100, { ...FITTED, oh_p90: 0.50, ol_p90: 1.50 });
+ok('O-H/O-L use their own percentages, not a mirror',
+   near(asym.byKey.OH_p90.price, 100.50) && near(asym.byKey.OL_p90.price, 98.50));
+
+ok('a missing ladder yields null, not zero-width lines',
+   ladderLevels(100, { oh_p50: null }) === null && ladderLevels(100, null) === null);
+
+// End to end: a day that runs up through two rungs then falls back through the open.
+const fbars = mkBars([[100, 100.1, 99.95, 100.05], [100.05, 100.30, 100.0, 100.25],
+                      [100.25, 100.60, 100.2, 100.55], [100.55, 100.6, 100.1, 100.15],
+                      [100.15, 100.2, 99.7, 99.75], [99.75, 99.9, 99.6, 99.85]]);
+const fres = reversionTrades(OPEN, fbars, FITTED, { lines: FITTED_LINES, style: 'fade_all' });
+ok('reversionTrades runs the fitted set', Array.isArray(fres));
+ok('it produced trades off the fitted rungs', fres.length > 0, `${fres.length} trades`);
+ok('every trade maps to a fitted line',
+   fres.every(t => FITTED_LINES.some(l => l.key === t.key)),
+   fres.map(t => t.key).join(','));
+// Passing the WRONG line set must not silently produce legacy-keyed trades from
+// fitted bands — that mismatch is how a comparison quietly stops comparing.
+ok('legacy lines find nothing in fitted bands',
+   reversionTrades(OPEN, fbars, FITTED, { lines: LADDER_LINES }).length === 0);
+
+console.log('');
+console.log(failures ? `${failures} FAILED` : 'All reversion-ladder tests passed');
 process.exit(failures ? 1 : 0);
