@@ -127,6 +127,8 @@ import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/i
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
+import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
+import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill)
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
@@ -13245,6 +13247,121 @@ app.get('/api/range-line-bot/oi-audit', async (req, res) => {
 // ConfluenceBot reads this each state refresh to add OI as a scored confluence
 // source (put/call walls, max pain, HVL, gamma flip). No date needed — the bot
 // scores against "today's OI as it stands now".
+// ── OI FOR today.html — the levels WITH their readings, per pair ──────────────
+// today.html already knew about OI, but only the three headline strikes (max pain,
+// call wall, put wall) via oiFor(). That is enough to name a level and not enough to
+// say anything about it: no per-level heat, hold score or P(touch). So the cards, the
+// table and the AI text could say "call wall at 1.1698" but never "56% chance of a
+// touch inside the hour, hold score 65" — the readings existed and simply had no route
+// to the page.
+//
+// One endpoint rather than today.html calling /api/oi-reachability eleven times: the
+// Monte-Carlo is ~1s per pair, so a page load would spend eleven seconds re-deriving
+// numbers that change on a 5-minute timescale. Cached accordingly.
+//
+// Shape is deliberately flat and self-describing, because the AI prompt consumes it
+// verbatim: every level carries its own price, type, distance and readings, so the
+// prompt needs no lookup table and cannot mis-pair a reading with a level.
+const _OI_TODAY_TTL = 5 * 60_000;
+let _oiTodayCache = { at: 0, key: '', payload: null };
+
+app.get('/api/oi-today', async (req, res) => {
+  try {
+    const wantReach = String(req.query.reach || '1') !== '0';
+    const ck = wantReach ? 'reach' : 'plain';
+    if (_oiTodayCache.payload && _oiTodayCache.key === ck
+        && Date.now() - _oiTodayCache.at < _OI_TODAY_TTL) {
+      return res.json({ ..._oiTodayCache.payload, cached: true });
+    }
+
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+
+    // P(touch) per pair, same path the zones export uses. Fail-safe: any pair that
+    // errors simply has no touch labels — a missing probability is honest, a wrong
+    // one is not.
+    const OA = { 'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
+      'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
+      'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD' };
+    const oB = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const H = 48;   // 4h — the calibrated horizon
+    const reachFor = async (pair, levels) => {
+      const osym = OA[pair];
+      if (!osym || !process.env.OANDA_KEY || !levels.length) return null;
+      try {
+        const cr = await fetch(`${oB}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+          { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+        if (!cr.ok) return null;
+        const cj = await cr.json();
+        const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
+          time: Math.floor(new Date(c.time).getTime() / 1000),
+          open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+        if (bars.length < 400) return null;
+        const ctx = _fpBuildCtx(bars, {});
+        const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300 });
+        const m = {};
+        for (const r of rows) {
+          const lab = _oiReachLabel(r, 5);
+          if (lab) m[r.price.toFixed(6)] = { label: lab, pct: Math.round((r.calibrated ?? 0) * 100) };
+        }
+        return m;
+      } catch { return null; }
+    };
+
+    const pairs = [];
+    const names = Object.keys(store || {});
+    const reaches = wantReach
+      ? Object.fromEntries(await Promise.all(names.map(async p =>
+          [p, await reachFor(p, oiStoreToLevels(store[p]) || [])])))
+      : {};
+
+    for (const pair of names) {
+      const inst = store[pair];
+      if (!inst || typeof inst !== 'object') continue;
+      const levels = oiStoreToLevels(inst) || [];
+      const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
+      const heat = gp.length ? levelHeat(gp, levels) : [];
+      const rp = reaches[pair] || null;
+      const gex = inst.exposures?.gex ?? 0;
+      const pip = /JPY/.test(pair) ? 0.01 : /XAU/.test(pair) ? 0.1
+        : /NAS|SPX|US30|US2000|DE30/.test(pair) ? 1 : 0.0001;
+      const ageH = Number.isFinite(inst.savedAtMs) ? (Date.now() - inst.savedAtMs) / 3.6e6 : null;
+
+      pairs.push({
+        pair, spot: inst.spot ?? null, dte: inst.dte ?? null,
+        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : null,
+        maxPain: inst.maxPain ?? null, callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,
+        pcRatio: inst.pcRatio ?? null,
+        // The basis and its age travel WITH the levels: every price below is
+        // `strike - basis`, so a reader that cannot see how old the basis is cannot
+        // judge how far off the levels may have drifted.
+        basis: Number.isFinite(inst.basis) ? +(+inst.basis).toFixed(5) : null,
+        basisAgeH: ageH == null ? null : +ageH.toFixed(1),
+        basisStale: ageH != null && ageH >= 4,
+        savedAt: inst.savedAt ?? null,
+        levels: levels.map((l, i) => {
+          const ex = levelExpectation(l, { spot: inst.spot, gexFlips: inst.gexFlips,
+            gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
+          const t = rp ? rp[l.price.toFixed(6)] : null;
+          return {
+            price: l.price, type: l.type, tier: l.tier ?? null, dte: l.dte ?? null,
+            distPips: Number.isFinite(inst.spot) ? +((l.price - inst.spot) / pip).toFixed(1) : null,
+            expect: ex ? ex.mid : null, tag: ex ? ex.tag : null,
+            heat: heat[i]?.heatBucket || null,
+            touch: t ? t.label : null, touchPct: t ? t.pct : null,
+          };
+        }),
+      });
+    }
+
+    const payload = { ok: true, at: new Date().toISOString(), reach: wantReach,
+                      count: pairs.length, pairs };
+    _oiTodayCache = { at: Date.now(), key: ck, payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/oi-levels', async (_req, res) => {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
