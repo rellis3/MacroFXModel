@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
-import { gammaFlip } from './gammaFlow.js';
+import { gammaFlip, distanceToFlip } from './gammaFlow.js';
 import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
 import { fullBookGex } from './fullBookGex.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
@@ -1378,6 +1378,69 @@ export function oiRegimeBands(inst, { lo, hi } = {}) {
   }
   bands.push({ lo: cur, hi, regime });
   return bands;
+}
+
+// Single-band regime read AT spot's current price — same rigorous crossings as
+// oiRegimeBands (no second definition), collapsed to "which band is spot in right
+// now" plus the signed distance to the nearest crossing. For callers that want one
+// answer instead of the full band list (decisionCore's OI_FEATURES, the daily
+// archival snapshot). Distance is recomputed against inst.spot rather than trusting
+// a stored distPct, since distPct on `gexFlips` is anchored to whatever spot was
+// current when the crossings were scanned and goes stale as spot moves. Pure.
+export function oiRegimeAtSpot(inst) {
+  const spot = Number.isFinite(inst?.spot) ? inst.spot : null;
+  if (!spot) return null;
+  const bands = oiRegimeBands(inst);
+  if (!bands.length) return null;
+  const band = bands.find(b => spot >= b.lo && spot <= b.hi) ?? bands[bands.length - 1];
+  const flips = (Array.isArray(inst.gexFlips) ? inst.gexFlips : []).filter(f => Number.isFinite(f?.price));
+  let distToFlipPct = null;
+  if (flips.length) {
+    const nearest = flips.reduce((m, f) => (Math.abs(f.price - spot) < Math.abs(m.price - spot) ? f : m));
+    distToFlipPct = +(((nearest.price / spot) - 1) * 100).toFixed(3);
+  }
+  return { regime: band.regime, distToFlipPct };
+}
+
+// Shapes ANY OI-summary-like object — the live `oi_store` `inst`, or an archived
+// `oi_history[pair][date]` entry (`_oiHistorySummary` in server.js was built to use
+// the same field names on purpose) — into the canonical oiCtx shape
+// `buildSnapshot`/`decisionCore.OI_FEATURES` expect. One definition so the live TDE
+// path (`_tdeOiContext`) and the offline backfill/fit path (`oiContextByDate` below)
+// read OI identically instead of two hand-rolled extractions drifting apart. Pure.
+export function oiCtxFrom(entry) {
+  if (!entry || typeof entry !== 'object' || !Number.isFinite(entry.spot)) return null;
+  const flips = Array.isArray(entry.gexFlips) ? entry.gexFlips.filter(f => Number.isFinite(f?.price)) : [];
+  const flipPrice = flips.length
+    ? flips.reduce((m, f) => (Math.abs(f.price - entry.spot) < Math.abs(m.price - entry.spot) ? f : m)).price
+    : (Number.isFinite(entry.gammaFlip) ? entry.gammaFlip : null);
+  if (!Number.isFinite(flipPrice)) return null;
+  const dist = distanceToFlip(entry.spot, flipPrice);
+  if (!dist) return null;
+  const walls = [
+    ...(Array.isArray(entry.callWalls) ? entry.callWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'call' })),
+    ...(Array.isArray(entry.putWalls) ? entry.putWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'put' })),
+  ];
+  return {
+    spot: entry.spot, flip: flipPrice, side: dist.side, near: dist.near, pctToFlip: dist.pct,
+    regime: entry.regime ?? oiRegimeAtSpot(entry)?.regime ?? null,
+    walls, pcRatio: Number.isFinite(entry.pcRatio) ? entry.pcRatio : null,
+    asOf: entry.asOf ?? entry.updatedAt ?? entry.savedAtMs ?? null,
+  };
+}
+
+// Maps one pair's archived `oi_history[pair] = {date: summary}` into `{date: oiCtx}`
+// for backfill/fit's per-date `contextByDate[date].oi` socket — the direct sibling of
+// macroCore's `macroContextByDate`. A date can only resolve once the archive first
+// captured these fields (the archival schema change), same as any other forward-only
+// history; earlier days come back oi:null, same as a pre-archive live snapshot. Pure.
+export function oiContextByDate(oiHistoryForPair) {
+  const out = {};
+  for (const [date, entry] of Object.entries(oiHistoryForPair || {})) {
+    const ctx = oiCtxFrom(entry);
+    if (ctx) out[date] = ctx;
+  }
+  return out;
 }
 
 export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
