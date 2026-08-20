@@ -469,7 +469,8 @@ def _prior_strikes(product: str | None, box: str) -> tuple[int, str]:
     return best
 
 
-def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500):
+def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500,
+                  want_min: int = 0):
     """Read the table repeatedly until two consecutive reads agree.
 
     THE FAILURE THIS FIXES. On 2026-08-02 the S&P capture came back with 76 rows
@@ -486,8 +487,15 @@ def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500):
     for _ in range(tries):
         tsv, score, why = _best_table(frame, ctx)
         n = shape(tsv or '')['rows']
-        if tsv and n == prev_n and n > 0:
-            return tsv, score, why, True            # two reads agree
+        # AGREEING IS NOT THE SAME AS FINISHED. SPX plateaued at 52 strikes on
+        # 2026-08-20 - two reads 1.5s apart matched exactly, so this returned
+        # "stable" for a ladder that stopped just above spot (range 1-7805 against
+        # 0-10800 the day before). When the caller knows roughly how big the table
+        # SHOULD be, a short read is treated as still-rendering and polled again
+        # rather than accepted because it briefly stopped growing.
+        enough = want_min <= 0 or shape(tsv or '')['strikes'] >= want_min
+        if tsv and n == prev_n and n > 0 and enough:
+            return tsv, score, why, True            # two reads agree, and it is full-size
         prev, prev_n = tsv, n
         try:
             page.wait_for_timeout(gap_ms)
@@ -894,10 +902,24 @@ def _open_product(ctx, page, product: str | None):
         # never fired - the run refused 11 times instead of recovering once. So an
         # expired session is detected HERE, where the evidence is, and retried.
         expired = 'problem loading this content' in (head or '').lower()
-        if (expired or want.lower() not in (head or '').lower()) and src == 'cached':
-            print(f'  [pull] cached session looks {"expired" if expired else "wrong"}'
-                  ' - re-minting and retrying once')
-            fresh = _mint_tool_url(ctx, page)
+        # RETRY WHETHER OR NOT THE SESSION WAS CACHED. This was gated on
+        # src == 'cached', on the assumption that a header mismatch meant a stale
+        # session. It does not: on 2026-08-20 a FRESHLY MINTED session loaded
+        # without "S&P 500" in the header, was refused on first look with no
+        # retry, and lost all four views - while phase 2 opened the same product
+        # successfully seconds later. The page simply had not finished rendering
+        # the product. A wrong header is worth one more look however the session
+        # was obtained; re-mint only when the cached one is the suspect, since
+        # minting again straight after minting buys nothing.
+        if expired or want.lower() not in (head or '').lower():
+            if src == 'cached':
+                print(f'  [pull] cached session looks {"expired" if expired else "wrong"}'
+                      ' - re-minting and retrying once')
+                fresh = _mint_tool_url(ctx, page)
+            else:
+                print('  [pull] header did not name the product yet '
+                      '- reloading once before refusing')
+                fresh = minted
             if fresh:
                 _cache_url(fresh)
                 target = _with_pid(fresh, ent['pid'], ent.get('pf')) if ent else fresh
@@ -1006,9 +1028,19 @@ def pull_product(ctx, page, product: str | None, views: list,
         # off it, and all three heatmap views captured the SAME settlements table
         # - three byte-identical files under three names. A wrong-view capture is
         # complete, well-formed and wrong, so shape is checked against the view.
-        tsv, n, why, stable = _stable_table(fr, ctx, page)
+        # Target size from the previous capture, so a half-rendered ladder is
+        # polled through instead of accepted the moment it pauses. Matrix views
+        # only: the per-expiry settles table has no strike ladder to measure.
+        want_min = 0
+        if key in ('oi', 'chg', 'vol'):
+            _pn, _pd = _prior_strikes(product, box)
+            if _pn >= 40:
+                want_min = int(_pn * 0.5)
+        tsv, n, why, stable = _stable_table(fr, ctx, page, tries=8, gap_ms=2500,
+                                            want_min=want_min)
         if not stable:
-            print(f'  {key:<8} ! table never stopped growing - refusing a mid-render read')
+            print(f'  {key:<8} ! table never settled at full size '
+                  f'(wanted >={want_min} strikes) - refusing a mid-render read')
             continue
         want_kind = 'expiry table' if key == 'settles' else 'strike ladder'
         if tsv and not why.startswith(want_kind):
@@ -1041,6 +1073,27 @@ def pull_product(ctx, page, product: str | None, views: list,
             print(f'  {key:<8} ! IDENTICAL to the {seen_tables[h]} capture - the view '
                   'did not actually change. Refusing to write a duplicate.')
             continue
+        # DAY-OVER-DAY SIZE GUARD - BEFORE THE WRITE, like every other refusal
+        # here. _stable_table catches a table still GROWING; it cannot catch one
+        # that plateaus half-rendered. On 2026-08-20 SPX returned 52 strikes
+        # against 508 and 501 on the two prior captures - two reads 1.5s apart
+        # both said 52, every shape check passed, and the sweep reported 44/44 OK
+        # for a book missing 90% of its strikes. Option books do not shrink
+        # sixfold overnight, so the previous capture is the yardstick.
+        #
+        # Refusing beats writing a smaller file: a missing rawOI makes ingest skip
+        # that product loudly, whereas a truncated one silently moves the walls and
+        # max pain the OI bot trades and looks entirely reasonable doing it.
+        # 50% with a 40-strike floor, so genuinely small books (US30's term OI is
+        # ~11) and first-ever captures are never gated.
+        n_pre = shape(tsv)['strikes']
+        prior_n, prior_day = _prior_strikes(product, box)
+        if key in ('oi', 'chg', 'vol') and prior_n >= 40 and n_pre < prior_n * 0.5:
+            print(f'  {key:<8} ! {n_pre} strikes vs {prior_n} on {prior_day} '
+                  f'({n_pre / prior_n:.0%}) - a book does not halve overnight.')
+            print(f'  {"":<8}   Reading it as a half-rendered table and REFUSING '
+                  f'to write {box}.')
+            continue
         seen_tables[h] = key
         fn = d / f'{safe_name(product or "current")}_{box}.tsv'
         _atomic(fn, tsv)
@@ -1061,22 +1114,6 @@ def pull_product(ctx, page, product: str | None, views: list,
         if key in ('oi', 'chg', 'vol') and n_str in (10, 15, 25, 50):
             print(f'  {"":<8}    ! exactly {n_str} strikes - that is a WINDOW size, '
                   'not a full ladder. Set Strikes to (All).')
-        # DAY-OVER-DAY SIZE GUARD. _stable_table catches a table still GROWING;
-        # it cannot catch one that plateaus half-rendered, and on 2026-08-20 SPX
-        # returned 52 strikes against 508 and 501 on the two prior captures. Two
-        # reads 1.5s apart both said 52, every shape check passed, and the sweep
-        # reported 44/44 OK - a book missing 90% of its strikes, ingested live.
-        # Option books do not shrink sixfold overnight, so the previous capture is
-        # the yardstick. Refuse rather than write: a missing rawOI skips the
-        # product loudly, whereas a truncated one moves the walls and max pain the
-        # bots trade, and looks entirely reasonable doing it.
-        prior_n, prior_day = _prior_strikes(product, box)
-        if key in ('oi', 'chg', 'vol') and prior_n >= 40 and n_str < prior_n * 0.5:
-            print(f'  {"":<8}    ! {n_str} strikes vs {prior_n} on {prior_day} '
-                  f'({n_str / prior_n:.0%}) - a book does not halve overnight.')
-            print(f'  {"":<8}      Reading it as a half-rendered table and REFUSING '
-                  f'to write {box}.')
-            continue
         widest = max((r.count('\t') + 1 for r in tsv.split('\n') if r.strip()), default=0)
         if key == 'settles' and widest > 17:
             print(f'  {"":<8}    ! {widest} columns, expected 17 - extra volatility '
