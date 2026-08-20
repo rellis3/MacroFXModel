@@ -310,7 +310,33 @@ cautionary anecdote: a position was once left running unattended through
 an NFP release (an alert was set but news timing was forgotten), and it
 worked out — but explicitly flagged as risky, not a recommendation, since
 slippage through news could just as easily blow through the stop.
-**Videos:** 1, 6.
+
+**Video 11, hybrid variant (new) — partial at the original target, then
+keep trailing the remainder:** the fullest worked example yet, live on a
+weekly-level trade. On reaching the original weekly target (where a
+scalping approach would just exit), take a **partial** there instead of
+closing fully, then **keep trailing the stop under new 15m higher-lows
+for the remaining size**, past the original target — "instead of taking a
+short position [at target], what I would do is leave this running and
+just keep doing the same thing, but take an extra partial at that level."
+Demonstrated over a multi-day hold (level hit Wednesday morning, ridden to
+Friday), with the explicit psychological note that this is "far longer
+than most people currently would be staying in a trade" and stressful in
+the moment when price pulls back through the original level before
+continuing.
+
+**Explicit style-dependency (video 11, new):** partials-at-1:1 vs.
+full-structure-trailing isn't framed as one being better — it's tied to
+*what kind of signal you're managing*: "there's definitely merit in
+[partials at 1:1]... but it's also more applicable to scalping style
+trading, where very quickly a winning trade happens very quickly or you
+lose very quickly. With these [weekly range-extension levels], they take
+a long time to develop properly." I.e. fast/scalp signals → take partials
+early; slow/swing signals (the weekly levels specifically) → prefer full
+trailing. Directly answered "no" to "is trailing better than partials" —
+"nothing's better than anything else until you've fully tested it for the
+way that you trade."
+**Videos:** 1, 6, 11.
 
 ### Range/volatility forecasting tool — expected-move framing, not direction
 **Speaker: Husky**, describing a group-wide tool (posted nightly for the
@@ -545,7 +571,28 @@ levels to narrow down which to keep. Levels that cluster too close together
 are explicitly discarded/merged (see confluence-clustering entry below),
 aiming for roughly 1-3 final levels per side, and it's stated as fine to
 end up with **zero** levels on a side rather than force one.
-**Videos:** 2, 3. Relevant to the Asia-range work already noted for
+
+**Exclusion rule, video 8 (new): don't use the 1.25 multiple on daily
+(Asia) ranges — fine on weekly (Monday) ranges.** Explicit and specific:
+"I did say the other day don't use 1.25 on Asia ranges... it's
+temperamental definitely. You can use it on the weekly levels fine, but
+on the daily range is probably [best to] stay away. It's not a big enough
+extension outside the range really." A concrete, timeframe-conditional
+exclusion of one specific multiple, not a general rule — worth encoding
+exactly if reproducing the level ladder (drop 1.25 from the daily/Asia
+grid, keep it for weekly/Monday).
+
+**Inside-range levels are also valid, conditionally (video 8, new):**
+the framework's examples emphasize *outside*-range extensions ("the ones
+outside the range... are the nicer to look at"), but Husky explicitly
+notes exceptions: "not everything has to be outside the range either...
+when we've had a big move up like this, if we see a revisit of the range,
+we could well go off one of these levels that are inside the range" —
+i.e. the inside-range quarter-levels (0.25/0.5/0.75, already in the
+official grid) become live candidates specifically as a pullback/
+retracement zone *after* a large move has already carried price outside
+and away from the range, not as a default source of levels.
+**Videos:** 2, 3, 8. Relevant to the Asia-range work already noted for
 `education/jordan_impulse_range_backtest/` — check for overlap/consistency
 with the extension ratios already tested there before adding these; the
 formula above is concrete enough to implement directly.
@@ -557,10 +604,14 @@ rule.
 When multiple candidate levels (from range extensions, fibs, and the daily
 volatility overlay) land close together, they're treated as **confluent
 and merged into one** rather than kept as separate levels. Default
-thresholds given (video 3, 4, 6):
+thresholds given (video 3, 4, 6, 11):
 - **Gold:** $5 (daily), $7.5 (weekly)
 - **EU:** 2 pips (daily), ~3-3.5 pips (weekly — stated as both "3" and
   "3.5" across videos 4 and 6, treat as approximate)
+- **NAS/Nasdaq (video 11, new — first number given for this instrument):**
+  20-30 points, for weekly levels (asked directly: "what's the max gap on
+  the levels for Nasdaq?" — "look between 20 and 30 points"). No separate
+  daily-NAS number given yet.
 
 **Adaptive tightening (video 6, new):** when a strong trending move causes
 *every* candidate level to cluster within the default threshold (i.e. the
@@ -574,7 +625,7 @@ level count returns to ~1-3* — a fixed-percentage-of-price threshold might
 approximate this better than a fixed-dollar one, but an explicitly
 adaptive/count-targeting threshold might be the more faithful
 reproduction.
-**Videos:** 3, 4, 6.
+**Videos:** 3, 4, 6, 11.
 
 ### Swing high/low selection heuristic for Fibonacci anchors ("blur your eyes")
 **Speaker: host of transcript 3.** Confidence: med — a discretion-control
@@ -625,7 +676,16 @@ just beyond it marks the stop edge — the zone's *width* is the gap between
 one tool's output and another's, not a tolerance band around a single
 level. A second, reusable construction pattern alongside "zone between two
 extension multiples" already logged elsewhere.
-**Videos:** 3, 7.
+
+**Three-way version, video 8 (new):** the same recipe extended with a
+third input — close median (entry edge) + range-extension level (far
+edge) + a golden pocket pulled from a Fib retracement, all overlapping in
+one area: "you've got the closed median, you've got this confluent level
+with the Asia range extensions, you've got this golden pocket... and yeah
+that looks really nice to me." Confirms the zone-construction pattern
+generalizes to however many of the group's tools happen to agree, not
+capped at two.
+**Videos:** 3, 7, 8.
 
 ### ADX-based regime filter (trend vs. mean-reversion switch)
 **Speaker: host of transcript 3**, floated as a suggestion to a struggling
@@ -676,8 +736,30 @@ the week, if below it, we're bearish." A third distinct use of the same
 midpoint level (target / bias-divider / observed reaction zone — also
 separately noted in video 6 as coinciding with a golden pocket and holding
 as support without even being traded).
+
+**Explicit standalone-strength claim, video 8 (new):** "the midpoint of
+Asia is always going to be quite strong... even potentially on its own.
+But when we've got it lined up with a level from the previous Asia range,
+extra strong." States a graded-strength model directly: midpoint alone >
+nothing, midpoint + cross-session confluence > midpoint alone — worth
+testing as a graded (not binary) confluence effect rather than treating
+all confluence as equally weighted.
+
+**Contrast: a plain Fib 0.5 retracement is normally deprioritized, unless
+the underlying swing is large (video 8, new) — do not confuse with the
+range/Monday-range midpoint above, a different level.** "I know we're not
+too keen on 0.5s [meaning: the 0.5 Fibonacci retracement level, pulled
+from a swing high/low, distinct from the Asia/Monday-range midpoint].
+However, when it's a big move down like this on the hourly timeframe,
+it's going to have some significance" — i.e. the *generic* Fib 0.5 is
+usually skipped as weak confluence, but is upgraded when the swing it's
+drawn from is itself a large, higher-timeframe move (in the observed
+case, a multi-week high). Keep these two "0.5"s distinct when
+implementing: the range-midpoint 0.5 is reliably strong; the swing-Fib
+0.5 is normally weak and only conditionally promoted.
 **Videos:** 2 (close-median version), 3 (generalized to all level types),
-6 (midpoint-as-bias-divider).
+6 (midpoint-as-bias-divider), 8 (standalone strength + swing-Fib 0.5
+contrast).
 
 ### Spacing resting levels apart to avoid correlated stop-outs
 **Speaker: host of transcript 3/7 (Husky).** Confidence: low-med, but now
@@ -805,7 +887,128 @@ the *shape* of the rule, not validated numbers):**
 - **GVZ** (gold-specific VIX equivalent) name-checked but explicitly
   passed over in favor of plain VIX, since VIX reflects broader
   market-wide positioning rather than gold-specific.
-**Videos:** 2, 5.
+
+**VIX spike → gold spike, explicitly flagged as unverified by the source
+himself (video 10, new):** a different VIX claim from the regime-filter
+thresholds above — a co-movement/leading-indicator hypothesis, given as
+a teaching example with an unusually direct disclaimer attached: "when we
+see a spike in VIX, typically we see a spike in gold. That's not tested,
+I don't know if it's true, just to provide an example." Log as an
+explicitly-unvalidated hypothesis, not a stated finding — but concrete
+and cheap to check (VIX vs. gold same-day/next-day co-movement) given
+this repo already has VIX and gold data.
+**Videos:** 2, 5, 10.
+
+### Yield spread indicator — deprecated, 24h-lag volatility (not direction) tool
+**Speaker: Husky.** Confidence: med — described once, explicitly as a
+retired tool, no parameters beyond what's stated here.
+A now-retired group tool that **forward-projects yesterday's US-EU 10Y
+bond yield spread onto today** (i.e. a straight 24-hour lag/carry-forward
+of the spread value) — used specifically for **volatility predictability**,
+in the same family as the deprecated "bars pattern"/Asia-extension tool
+(see that entry), not for direction. Explicitly superseded: "we did have
+like a yield spread indicator... they're much better at like, yeah, that
+volatility predictability" — referring to the current volatility/range
+forecasting tool as the replacement. Concrete and cheap to test on its
+own terms: does yesterday's US10Y-EU10Y spread (or its day-over-day
+change) have any relationship to today's realized range, independent of
+whether the group's specific implementation ever worked?
+**Videos:** 10.
+
+### EUR/USD regression filter recipe (yesterday's US yield → today's price)
+**Speaker: Husky**, given as a concrete worked example of how to take a
+macro idea from "hunch" to "testable," not a stated personal system.
+Confidence: med — a specific, reproducible recipe, but explicitly
+illustrative rather than a claimed result.
+Two columns: US bond yield (lagged one day) and EUR/USD price (same day,
+shifted so yesterday's yield lines up with today's price) — run a simple
+linear regression (explicitly "can be done in Excel"). If the fit says
+"yesterday's US yields rising typically means a fall in EUR/USD today,"
+use that as a **directional filter layered on top of existing technical
+entries** — e.g. only take EUR/USD longs, or size up longs specifically,
+on days the regression's implied bias agrees — not as a standalone entry
+trigger. Framed explicitly as a first, approachable step into the
+data-modeling material, and as one instance of a general pattern: pick a
+lagged macro series, regress it against the pair you trade, and use a
+statistically real relationship as a bias filter rather than a signal.
+**Videos:** 10.
+
+### Sizing up/down by confluence count, not just volatility regime
+**Speaker: Husky.** Confidence: med — stated as a real, if informal,
+practice, not swept under a fixed formula.
+Extends the (curriculum-taught) vol-adjusted position sizing with a
+second, independent sizing lever: "on occasions it can be sensible to
+size up when you've got that extra confidence [i.e. a level with more
+confluence sources]... or size down even if there's any particular
+reason why we might be less confident in a level." Distinct from ATR/vol-
+regime-based sizing (official curriculum, `VOLATILITY_INTELLIGENCE_
+NOTES.md` Lesson 5) — this is conviction/confluence-count as a second,
+separate sizing input, paired with an honest self-aware caveat about
+recency bias/overfitting risk from doing this ad hoc ("is my system
+performing well, or did I just get lucky on one trade where I sized up").
+**Videos:** 10.
+
+### Range-extension levels as expectation-context for other signals, not just standalone entries
+**Speaker: Husky.** Confidence: med, a meta-framing point rather than a
+new level or number.
+Explicitly separate use case for the range-extension markup: even if you
+don't trade off it directly, it's useful as **context that adjusts
+confidence in a different signal**. Worked example: rather than expecting
+an exact-to-the-pip reversal at the volatility tool's close median, "there's
+also a chance that we push past close median before reversing because
+we've got this really nice [range-extension] level above" — the nearby
+extension level *widens the expected reaction zone* around the close
+median rather than being a separate trade itself. Relevant to
+"if you're trying to build a system... around the volatility forecast,
+it's still useful to find these [range-extension] levels" — i.e. the two
+tools are meant to inform each other's confidence, not just be composed
+into a single zone (see the "two-tool zone" facet of "Zone-based levels"
+above, which is the entry-construction version of this same idea).
+**Videos:** 8.
+
+### Anti-hindsight-bias discipline: don't retroactively mark a level that only reacted after the fact
+**Speaker: Husky.** Confidence: n/a (meta-discipline, not a rule to
+backtest) — pairs with the existing "explicit discretion/intuition
+callouts" entry as a second honesty-preserving habit.
+After watching price react almost perfectly at an unmarked level (close
+median + a 2x extension aligning, "about as good as it gets for a
+level"), explicitly declines to add it to the chart after the fact:
+"I won't mark that as a level on the chart because hindsight and all
+that." A concrete instance of refusing to let outcome knowledge retroactively
+inflate the track record of "levels called in advance" — worth preserving
+as a marker of what NOT to do when reconstructing/evaluating this
+methodology from screenshots or logs (don't credit a level unless it was
+marked up before the reaction, not after).
+**Videos:** 8.
+
+### Open interest — CME heatmap workflow and futures-to-spot conversion
+**Speaker: Husky**, walking through the group's basic OI workflow live
+(distinct from, and more introductory than, whatever
+`education/open-interest-course-notes.md` covers in depth — check that
+file for overlap before treating this as the full picture).
+Confidence: med-high on the mechanics as demonstrated, low on whether any
+of it is validated as edge (explicitly framed as "additional confluence,"
+never as a signal).
+- Free CME Group account → open interest heat map → select product →
+  pick the **contract closest to expiry** (always the leftmost column).
+- Two views: **OI change** (build-up/decline over a recent window) vs.
+  **full OI** (absolute accumulated open interest) — the full-OI view is
+  called out as often clearer for spotting genuinely large concentration
+  zones ("4300, clear bulk of open interest there").
+- **Conversion step, easy to miss:** heatmap strike levels are **futures
+  prices, not spot** — find the matching futures contract on TradingView,
+  diff it against spot (e.g. gold's OANDA XAUUSD), and apply that
+  difference to the strike level before using it on a spot/CFD chart.
+- **Usage pattern**: mark zones of heavy OI concentration as confluence;
+  once price breaks through such a zone "with considerable volume and
+  momentum," the *next* concentration zone becomes a plausible target —
+  i.e. OI concentration doubles as both an obstacle (S/R) and, once
+  cleared, a magnet (target), the same bidirectional framing already
+  logged for range-extension levels.
+- Also names the paid/automated route (CME data → CSV → upload into the
+  group's OI dashboard for computed put/call walls) as the faster
+  alternative to this manual walkthrough.
+**Videos:** 10.
 
 ### ATR-based initial stop-loss sizing
 **Speaker: Husky.** Confidence: high — concrete formula, repeated across
@@ -819,7 +1022,31 @@ stop: the *rule* (multiplier) stays constant, but the resulting stop
 distance automatically widens/tightens with current volatility. Explicitly
 recommended over ad hoc stop placement precisely because "predicting
 volatility is a lot easier than predicting direction."
-**Videos:** 4, 6.
+
+**Full worked numeric example, video 11 (new):** on EU, 15m ATR read live
+at 0.00043; ×1.5 = 0.000645 ⇒ a ~6.4 pip stop distance for that specific
+level. Demonstrates the formula isn't just described but actually
+practiced bar-by-bar with a calculator.
+
+**Session-timing caveat on the ATR read itself (video 11, new):** "there
+is a slight caveat to doing this at this time in the morning because
+coming out of Asia, [ranges] are typically smaller than they are during
+London and New York" — i.e. an ATR sampled right after the Asia session
+can understate the volatility the trade will actually be held through,
+though judged a small effect once a 1.5x multiplier is applied. Relevant
+to reproduction: an ATR-stop backtest should consider whether/how much
+this session-timing bias in the realized-vol estimate matters.
+
+**Trade-off: tighter ATR stop vs. widening to cover a nearby close-median
+level (video 11, new):** when the ATR-based stop doesn't reach far enough
+to enclose a nearby close-median level, framed as an explicit two-option
+choice — keep the tighter ATR stop as-is ("if that's your system... you
+need to be doing the same thing every time"), or deliberately widen the
+stop to cover the close-median level, "giving the trade a little bit more
+room to breathe" at the cost of a wider risk. Not resolved either way;
+logged as a concrete, testable stop-placement variant (ATR-only vs.
+ATR-widened-to-enclose-close-median).
+**Videos:** 4, 6, 11.
 
 ### Level-selection tie-break rules (tightest gap, then random)
 **Speaker: Husky.** Confidence: med-high — stated as explicit, repeated
@@ -947,7 +1174,22 @@ reversal "at this exact time" that doesn't materialize), and it's
 confusing/was dropped from current education material entirely in favor
 of the volatility/range forecasting tool. Logged here mainly so it isn't
 independently reinvented later — the group already tried and shelved it.
-**Videos:** 5.
+
+**Second, independent description, video 10 (new) — likely the same tool,
+extra detail:** described again without the "bars pattern" name, as a
+tool that would "extend the way that price moved during Asia onto the
+rest of the trading day" to "give us quite an accurate prediction for
+when price might move up or when price might move down with more
+volatility" — a member/handle called **"NMA"** is credited as being
+associated with it ("I know NMA was around for this"). Explicitly
+confirmed retired for the same reason given elsewhere: "no longer part of
+the education because the volatility forecast tool is much, much better."
+Treat as the same deprecated concept as the video-5 description, now with
+a name to search for if more material surfaces, and a second, independent
+tool named alongside it as *also* retired for the same reason — a **yield
+spread indicator** (see its own new entry below) — both superseded
+specifically by the current volatility/range forecasting tool.
+**Videos:** 5, 10.
 
 ### Psychological/discipline discipline: forget the money, follow the system through drawdown
 **Speaker: Husky**, general advice reinforced with two of his own
@@ -1063,6 +1305,25 @@ logic). Links to a script/dir once work starts._
   correlations, and whether it would surface something like the gold/yield
   decoupling period described in transcript 5 — if not, this is a cheap
   extension rather than new infrastructure.
+- **Yield spread (US10Y-EU10Y) as a next-day volatility predictor.** The
+  deprecated "yield spread indicator" claimed a 24h-lagged relationship
+  between the spread and realized range, not direction — cheap to test
+  independent of whether the group's own implementation ever worked, using
+  data this repo already has.
+- **EUR/USD lag-1 regression filter** (yesterday's US 10Y yield vs. today's
+  EUR/USD return) as a directional bias gate on an existing entry model —
+  the exact recipe given is a single lag-1 OLS regression, about as cheap
+  as a backtest gets.
+- **VIX-gold same/next-day co-movement**, explicitly flagged unverified by
+  the source — cheap to check given this repo already has both series.
+- **1.25 range-extension multiple: daily vs. weekly performance split.**
+  If the range-extension formula gets implemented, this is a specific,
+  falsifiable claim to check first: does the 1.25 level perform worse on
+  daily (Asia) ranges than on weekly (Monday) ranges, as claimed?
+- **ATR-widened-to-cover-close-median vs. ATR-only stop placement.** A
+  direct A/B on an existing ATR-stop entry model — does deliberately
+  widening the stop to enclose the close-median level improve outcomes
+  enough to justify the larger risk?
 
 ---
 
@@ -1381,6 +1642,124 @@ a magnet (used as the entry edge of a two-tool zone).
 extension-level stop) is the most concrete new item — directly testable as
 an entry/stop pairing rule using data this repo already has for both the
 range-extension and volatility-forecast pieces.
+
+### Transcript 8 — Thursday daily markup continued (gold, EU, NAS), after
+a stream restart
+
+**Speaker note:** Husky, continuing the same Thursday session as
+transcript 7 after technical difficulties (restarted stream). No Jordan
+trading footage.
+
+**New:**
+- Exclusion rule: don't use the 1.25 extension multiple on daily/Asia
+  ranges (fine on weekly/Monday ranges) — "temperamental," not a big
+  enough extension on the daily scale
+- Inside-range levels (0.25/0.5/0.75) become valid candidates specifically
+  as a pullback zone after a large move has already carried price outside
+  the range — not a default source of levels
+- Range-extension levels used as expectation-context for a *different*
+  signal (the volatility tool's close median), widening the expected
+  reaction zone rather than being traded standalone
+- Explicit standalone-strength claim for the Asia/Monday-range midpoint,
+  graded weaker/stronger with vs. without cross-session confluence
+- Contrast surfaced: the range-midpoint 0.5 is reliably strong; a generic
+  swing-Fib 0.5 retracement is normally deprioritized unless drawn from an
+  unusually large/significant underlying move — two different "0.5"s
+- Anti-hindsight-bias discipline: explicitly declines to mark a level on
+  the chart after watching it react perfectly, specifically because it
+  wasn't called in advance
+- Three-way zone construction (close median + range-extension level +
+  golden pocket all overlapping), generalizing the two-tool zone recipe
+  from transcript 7
+
+**Repeats (extended with new detail):** Range-extension multiples,
+Zone-based levels, Levels are bidirectional/midpoint.
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the 1.25-multiple daily/weekly split is a
+small, sharply falsifiable claim, cheap to check first if implementing
+the range-extension formula.
+
+### Transcript 10 — Monday evening induction/AMA (education overview +
+open interest walkthrough)
+
+**Speaker note:** Husky, a broader induction-style session (not a markup
+call) — walks through the group's education structure, the "Welcome to
+the Turning Point" material (matches transcript 1's content closely, same
+core philosophy), and a live CME open-interest heatmap demo. Jordan not
+present as a participant this time.
+
+**New:**
+- Yield spread indicator (deprecated): 24h-lagged US-EU 10Y spread used
+  for volatility predictability, superseded by the current forecasting
+  tool — same retirement reason given for the Asia-extension "bars
+  pattern" tool, which gets a second description here crediting a member
+  "NMA"
+- EUR/USD lag-1 regression recipe: yesterday's US yield vs. today's price,
+  simple OLS (Excel-doable), used as a directional filter on existing
+  technical entries, not a standalone trigger
+- VIX spike → gold spike, given as a teaching example and explicitly
+  flagged by Husky himself as untested ("I don't know if it's true")
+- Sizing up/down by confluence count specifically, as a second lever
+  alongside (curriculum) vol-regime-based sizing
+- CME open-interest heatmap workflow: contract-closest-to-expiry
+  selection, OI-change vs. full-OI views, and the easy-to-miss
+  futures-to-spot price conversion step; OI concentration zones framed as
+  bidirectional (obstacle before the break, target after)
+- Confirms a "full system" release is planned around the forecasting tool
+  to support an upcoming "prop firm toolkit" (Monte Carlo-based rule
+  modeling for prop-firm constraints) — corroborates, doesn't newly
+  establish, the "system coming soon" hypothesis already logged
+
+**Repeats:** the bulk of the philosophy/structure content matches
+transcript 1's induction almost exactly (same "Welcome to the Turning
+Point" framing, same phase 1-4 structure) — not re-logged.
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** the yield-spread and EUR/USD regression items are
+both cheap, concrete backtests; the VIX-gold claim is cheap to check and
+explicitly invited by the source's own disclaimer.
+
+### Transcript 11 — Tuesday weekly markup (gold, EU, NAS) with Jordan
+present, most detailed execution walkthrough yet
+
+**Speaker note:** Husky presenting; Jordan participates in chat
+throughout (jokes about "full porting" weekly levels, requests a live
+buy-position example). Still no Jordan trading footage, but the most
+extensive look yet at Husky's actual trade-management mechanics on a
+single worked example.
+
+**New:**
+- Full numeric ATR-stop worked example (EU, 15m ATR × 1.5 live-calculated
+  to a ~6.4 pip stop), plus a session-timing caveat that ATR read just
+  after Asia close may understate true range
+- Explicit stop-placement trade-off: keep the tighter ATR-only stop, or
+  widen it to enclose a nearby close-median level for "more room to
+  breathe" — logged as an open, testable choice
+- Fullest structure-trailing-stop example yet: partial at the original
+  target, then continue trailing the remainder under new 15m higher-lows
+  past it — a hybrid not previously logged this precisely
+- Explicit style-dependency: partials suit fast/scalp signals, full
+  trailing suits slow/swing signals like the weekly range-extension
+  levels specifically
+- NAS weekly confluence threshold given for the first time: 20-30 points
+- Discretion note: when tied between two valid levels, a stated pull
+  toward the larger/more-stretched extension ("bigger pullback... feels
+  better") — explicitly discretionary, not a rule
+
+**Repeats (extended with new detail):** Dynamic structure-trailing stop
+(major new detail), ATR-based initial stop-loss sizing (major new
+detail), confluence-clustering threshold (NAS number), swing-selection
+heuristic (reconfirmed), explicit discretion callouts (new instance).
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the partial-then-trail hybrid exit and the
+ATR-stop-vs-close-median-coverage trade-off are both concrete, testable
+refinements to exit logic already partially built in this repo's range-
+extension backtests.
 
 ### Evidence Set A — Jordan's own screenshots (not a transcript)
 
