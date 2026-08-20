@@ -65,12 +65,38 @@ continuously on a lower timeframe** (band walls move candle-to-candle or
 close-to-close, not fixed at session open) and is used for **scalping
 entries/exits intraday** — much closer to a textbook rolling Bollinger Band
 (N-period SMA ± k·stdev, recalculated every bar) than the daily
-expected-range tool. Neither transcript so far has covered this — both
-have been the daily/weekly markup format, not Jordan's own live scalping
-footage. **Next transcripts should specifically be searched for**: a
-recording of Jordan trading (not the group's daily markup call), any
-mention of a band/channel that "walks" with price, mean reversion to a
+expected-range tool. **Next transcripts should specifically be searched
+for**: a recording of Jordan trading (not the group's daily markup call),
+any mention of a band/channel that "walks" with price, mean reversion to a
 moving band edge, or band width/squeeze commentary on a fast (1-5m) chart.
+
+**Partial nuance from transcript 4:** the volatility/range forecasting tool
+isn't *entirely* static after all — it has two families of levels. **Close
+median / close 75th are fixed** all day (anchored to midnight open — think
+"candle body" of a daily candle: the open-to-close forecast). But
+**projected high / projected low are described as "more dynamic"** —
+recalculated off the currently-printed high/low of the day (think "wicks"
+of a daily candle: the full breadth of the day's range). So part of this
+tool does move intraday. That said, this still doesn't match the
+screenshot: it's a handful of discrete recalculating *lines*, not a
+continuously-updating shaded *band*, and it only shifts when a new
+session extreme prints, not every bar. Keeping this as a secondary,
+weaker candidate rather than promoting it — the dynamic/scalping band the
+user described sounds like a different, likely custom-built tool (worth
+remembering Jordan is described in transcript 4 as having built at least
+one custom indicator for Husky — "Jordan created me a nice little
+indicator" — so a self-built band tool used only by Jordan personally,
+never shown/described by others, is plausible and would explain why it
+hasn't surfaced in 6 transcripts of *other* members' markup calls).
+
+**Confirmed: the presenter across transcripts 2-6 is Husky**, not Jordan —
+transcript 6 has a chat message read aloud referring to the host as
+"Husky" in the third person, and the host responds in kind ("Husky did not
+say it's financial advice"). Six transcripts in, all six have been Husky's
+induction/markup/AMA content; Jordan has only ever appeared as a chat
+participant. If the goal is specifically Jordan's own band tool, the
+transcripts most likely to surface it are ones where Jordan is presenting,
+not Husky's regular Tuesday/Thursday/Monday rotation.
 
 ---
 
@@ -81,8 +107,8 @@ said**, who said it, confidence (low/med/high — based on repetition +
 specificity, not correctness), and which videos support it._
 
 ### Dynamic structure-trailing stop (no fixed R/TP)
-**Speaker: Husky** (his own personal method, explicitly not "the system").
-Confidence: med.
+**Speaker: Husky** — confirmed repeated as his standing personal method
+across multiple videos, not a one-off. Confidence: med-high.
 Don't set a fixed take-profit or fixed risk:reward. After entry, leave the
 stop where it is until price prints a swing point in your favor (e.g. on a
 buy: a higher-low), then move the stop to just under that new swing low.
@@ -91,21 +117,53 @@ in your favor, upside is never capped. Rationale given: "the market doesn't
 know where you got in, doesn't know where your stop is, doesn't care" —
 fixed-R exits are arbitrary relative to actual market structure. Worked
 timeframe example given: 15m chart.
-**Videos:** 1.
+
+**Video 6, reconfirmed with more detail:** explicitly paired with the
+ATR-based initial stop (see that entry) — "limiting the downside... via
+the trailing stop, but I'm not limiting the upside." Also comes with a
+cautionary anecdote: a position was once left running unattended through
+an NFP release (an alert was set but news timing was forgotten), and it
+worked out — but explicitly flagged as risky, not a recommendation, since
+slippage through news could just as easily blow through the stop.
+**Videos:** 1, 6.
 
 ### Range/volatility forecasting tool — expected-move framing, not direction
 **Speaker: Husky**, describing a group-wide tool (posted nightly for the
-next day). Confidence: high (core, repeatedly emphasized).
-Levels are generated from a fixed set of statistics — "high-to-low median"
-and "close median" are the two named so far — pasted into an indicator that
-marks them on the chart per-asset (gold, EURUSD, NQ named). The point isn't
-"magic support/resistance," it's reframing a trading day in terms of
-*expected movement/volatility* rather than a directional guess. Levels are
-fixed once drawn for the day — not redrawn when a new high/low forms
-(explicitly called out as removing emotion/discretion). A walkthrough video
-of this tool exists in the group's "additional materials" but wasn't
-itself transcribed here.
-**Videos:** 1.
+next day, ~11pm, in the "forecasting tool case study" thread). Confidence:
+high (core, repeatedly emphasized).
+Levels are generated from statistics pasted into an indicator (access-code
+gated, rotates periodically) that marks them on the chart per-asset (gold,
+EURUSD, NQ named). The point isn't "magic support/resistance," it's
+reframing a trading day in terms of *expected movement/volatility* rather
+than a directional guess.
+
+**Full breakdown of the five levels (video 4, new — this fills in what was
+previously just "high-to-low median" / "close median"):**
+- **Close median** and **close 75th (percentile)** — the **open-to-close**
+  forecast: where price is expected to *close* by end of day, on a median
+  day vs. a more-volatile (75th percentile) day. **Fixed all day**,
+  anchored to the **midnight open** (same midnight anchor as the Asia
+  range, and for the same reason — negate the opening gap). Mental model
+  given: "think of that as the candle body" of a daily candle.
+- **Projected high (median / 75th)** and **projected low** — the **full
+  range** forecast (the day's expected high/low extremes), i.e. "the
+  wicks" of a daily candle. **These are more dynamic**: the projected high
+  is described as based on the *currently printed low* of the day (and
+  vice versa) — so as a new session extreme prints, the opposite-side
+  projection can shift, unlike the close levels. See the revised Priority
+  Watch note above for why this still doesn't look like the screenshot
+  band.
+
+Explicitly used for **exhaustion/reversal reads** ("perfect reaction from
+a close median"), and as **extra confluence** layered on top of range
+extensions (a range-extension level that also lines up with a close-median
+level is stronger) — but deliberately *not* used as the primary level
+source, since "range extensions in themselves are a really useful tool and
+can be used by themselves." A walkthrough video of this tool exists in the
+group's "additional materials" but wasn't itself transcribed here.
+**Videos:** 1, 4, 5 (5 shows it live: gold sat inside the close-median band
+on a low-volatility Monday, ~1.09% range, used simply to characterize how
+quiet the day had been rather than to enter/exit anything).
 
 ### Range extension methodology (weekly + daily variants)
 **Speaker: Husky** (video 1) / **host of videos 2-3** (Tuesday weekly
@@ -135,7 +193,29 @@ forecasting tool (the "high-to-low median" / "close median" one) is used
 **only for daily levels** — explicitly *not* applied to weekly range
 extensions, since "they're only valid till the end of the day." Keep that
 distinction if trying to reproduce both processes.
-**Videos:** 1, 3.
+
+**Full mechanical spec, from video 4's from-scratch walkthrough (new,
+fills in exact reproducible detail):**
+- Asia range defined as **midnight to 6:00am London time**, on the
+  **5-minute chart**, using a named TradingView indicator ("Asian Range by
+  Nico1948") to auto-draw it.
+- Anchor point = **candle body** high/low within the range, never wicks
+  ("the wick shows where price was rejected, so it's not the true range" —
+  video 6).
+- The Fibonacci tool is heavily reconfigured to output fixed extension
+  ratios (not real Fib values) — settings are described as saved as a
+  reusable chart template ("the Mr. C one").
+- **Draw direction is irrelevant** for this fixed-range use (unlike a
+  normal Fib retracement, which is directional low→high or high→low) —
+  demonstrated explicitly in video 6: drawing the same range in either
+  direction produces identical extension levels. A "magnet" tool exists to
+  snap the anchor exactly to candle-body edges but isn't considered
+  important on higher timeframes (video 6).
+- Weekly variant: candle bodies on the **15-minute chart**, range =
+  **current Monday vs. previous Monday**, each midnight-to-midnight
+  (reconfirmed video 6). Can technically be done "anytime after midnight
+  Monday" — done Tuesday morning by habit/cadence, not necessity.
+**Videos:** 1, 3, 4, 6.
 
 ### Mean reversion across multiple timeframes, sparse levels, wait-to-invalidate entry style
 **Speaker: Husky**, personal execution style. Confidence: med.
@@ -198,7 +278,23 @@ reading one chart in isolation. Liquidity is reframed as "the free
 movement of cash inside big banks/institutions" (capacity/need to
 sell-one-thing-to-buy-another), not just a stop-hunt zone above/below a
 candle.
-**Videos:** 1.
+
+**Carry trade, concrete example (video 5, new):** USD/JPY specifically —
+borrow cheap yen (low JPY rates), buy higher-yielding USD assets (bonds).
+The **US-JPY rate spread** is described as "a clear driver of the pricing
+we see in USD/JPY" (shown as a spread series correlated with the pair's
+price). Unwind risk: a sharp JPY strengthening move rapidly erodes the
+carry's benefit, so this is not risk-free despite looking like one on
+paper.
+
+**Regime-conditional gold bias tied to rate *direction*, not level (video
+5, new, stated as a direct "if X then system does Y" example):** "if rates
+are rising, it's probably a good idea to look at my system being short
+gold; if rates are falling, it's probably a good idea for my system to be
+long gold." Distinct from the spread-level framework above — this is
+specifically about the *direction of change* in rates as a regime input
+for a gold system's bias.
+**Videos:** 1, 5.
 
 ### Session structure / volatility persistence
 **Speaker: Husky**, general framework point. Confidence: med.
@@ -255,16 +351,30 @@ with the extension ratios already tested there before adding these; the
 formula above is concrete enough to implement directly.
 
 ### Confluence clustering / merge-nearby-levels threshold
-**Speaker: host of transcript 3.** Confidence: med (one concrete number
-given, likely instrument-specific rather than universal).
+**Speaker: Husky.** Confidence: high now — multiple concrete numbers given
+across instruments and timeframes, plus an explicit adaptive-tightening
+rule.
 When multiple candidate levels (from range extensions, fibs, and the daily
 volatility overlay) land close together, they're treated as **confluent
-and merged into one** rather than kept as separate levels — stated
-threshold for gold: **$5**. No EU/NQ-specific number given yet, so this
-likely scales with instrument/price (a fixed-dollar threshold on gold ≈
-~0.1% of price at ~$4,100-4,500 — worth checking whether other instruments
-use a similar *percentage* rather than the same dollar amount).
-**Videos:** 3.
+and merged into one** rather than kept as separate levels. Default
+thresholds given (video 3, 4, 6):
+- **Gold:** $5 (daily), $7.5 (weekly)
+- **EU:** 2 pips (daily), ~3-3.5 pips (weekly — stated as both "3" and
+  "3.5" across videos 4 and 6, treat as approximate)
+
+**Adaptive tightening (video 6, new):** when a strong trending move causes
+*every* candidate level to cluster within the default threshold (i.e. the
+threshold stops discriminating anything), the threshold is manually
+tightened on the spot — demonstrated live cutting gold's weekly threshold
+from $7.5 down to $3 specifically because "every level's going to be a
+level if we do that... we don't want that... you lose the power of
+confluence" if it stays loose. Implies the real rule isn't a fixed
+dollar/pip constant but something like *keep tightening until the
+level count returns to ~1-3* — a fixed-percentage-of-price threshold might
+approximate this better than a fixed-dollar one, but an explicitly
+adaptive/count-targeting threshold might be the more faithful
+reproduction.
+**Videos:** 3, 4, 6.
 
 ### Swing high/low selection heuristic for Fibonacci anchors ("blur your eyes")
 **Speaker: host of transcript 3.** Confidence: med — a discretion-control
@@ -280,7 +390,18 @@ detection needs to run on a meaningfully higher timeframe than the entry
 timeframe (1H swings feeding 5m/15m levels, 4H swings feeding weekly
 levels) rather than the lowest-timeframe pivot detector, or it will surface
 too many candidate anchors.
-**Videos:** 3.
+
+**Video 6, reconfirmed verbatim** ("blur your eyes, what's jumping out to
+you when you zoom out as a key swing low and a key swing high") — same
+rule, same wording, second independent instance. Also explicit that this
+Fib pull happens **only once** per markup: "the minute you [try more
+highs/lows] I feel like I'm entering territory where eventually something's
+going to line up" — and separately, in video 4, an aside that another
+member ("J") does deliberately try multiple highs/lows to find a lining-up
+golden pocket/786 combo, which Husky says "there is merit in" but doesn't
+do himself — a real methodological difference between members worth
+keeping distinct if more of J's approach shows up later.
+**Videos:** 3, 4, 6.
 
 ### Zone-based levels, not single-price lines
 **Speaker: host of transcript 3.** Confidence: med.
@@ -308,7 +429,19 @@ places** (`regime_classifier_mtf.py`, `js/regime-v2.js`, `pine/hmm-v2-regime.pin
 etc.) — worth checking whether any existing regime classifier already uses
 something close to this exact threshold/timeframe before building a new
 one.
-**Videos:** 3.
+
+**Concrete application, video 6 (new):** demonstrated live, not just
+described. With gold's 4H ADX elevated (above ~30, trending), Husky
+explicitly **skips marking a far-extension sell/fade level** ("not the
+worst thing in the world to not have any sell levels today... mean
+reversion works better in ranging markets, we're not in a ranging market
+at the minute") and instead picks a **near/low-multiple extension (1.5)
+as a pullback-buy-into-the-trend entry**, i.e. using the same range-
+extension level set but switching from fading the far edge to buying a
+shallow pullback, conditioned on the ADX regime read. This is the first
+time the ADX filter is shown actually changing which level gets selected
+and how it's traded, not just discussed as an idea.
+**Videos:** 3, 6.
 
 ### Levels are bidirectional — entries AND take-profit targets
 **Speaker: host of transcript 3.** Confidence: med, extends the "close
@@ -320,7 +453,18 @@ target for a position already open in that direction. Demonstrated live:
 NQ closing almost exactly on the close-median level after an up move —
 "if you were long on NAS yesterday... and closed out around here, you
 wouldn't be disappointed."
-**Videos:** 2 (close-median version), 3 (generalized to all level types).
+
+**Midpoint as a directional-bias divider (video 6, new facet):** the 0.5
+(midpoint) of the weekly/Monday range isn't just a TP target — it's also
+used as a simple bias split, explicitly compared to VWAP: "it's kind of
+like how people use VWAP a little bit... if we're above VWAP, we're
+bullish, if below, bearish... if we're above the 0.5, we're bullish for
+the week, if below it, we're bearish." A third distinct use of the same
+midpoint level (target / bias-divider / observed reaction zone — also
+separately noted in video 6 as coinciding with a golden pocket and holding
+as support without even being traded).
+**Videos:** 2 (close-median version), 3 (generalized to all level types),
+6 (midpoint-as-bias-divider).
 
 ### Spacing resting levels apart to avoid correlated stop-outs
 **Speaker: host of transcript 3.** Confidence: low-med, single mention but
@@ -412,7 +556,190 @@ high (specific, demonstrated live on TradingView).
   cross-asset macro reading into a single bias, mentioned but not detailed.
   Flag for a future transcript: worth understanding its actual inputs if it
   comes up again.
-**Videos:** 2.
+
+**VIX as a regime filter, with illustrative thresholds (video 5, new —
+explicitly caveated as "just pulling this out of a hat," i.e. examples of
+the *shape* of the rule, not validated numbers):**
+- VIX **above ~15** → high-vol regime → widen stops, reduce position size;
+  VIX **below ~15** → calmer regime → tighten stops, can size up slightly.
+- Separately, VIX **above ~20** floated as "heavy volatility priced in" →
+  used as a supporting condition for a **long-gold bias** (uncertainty →
+  safe-haven demand) — note this directly conflicts with the "gold hasn't
+  been acting as a safe haven lately" observation made in the same video
+  (see the flight-to-safety-regime-shift point below), so treat as a
+  normal-times heuristic, not a current one.
+- **Hedging use**: theoretically going long VIX to hedge an existing
+  directional position against a volatility spike around a scheduled event
+  (FOMC, NFP, geopolitical headline risk) — caveated that most prop firms
+  don't offer VIX as a tradable instrument, though "more brokers than
+  you'd imagine" do.
+- **GVZ** (gold-specific VIX equivalent) name-checked but explicitly
+  passed over in favor of plain VIX, since VIX reflects broader
+  market-wide positioning rather than gold-specific.
+**Videos:** 2, 5.
+
+### ATR-based initial stop-loss sizing
+**Speaker: Husky.** Confidence: high — concrete formula, repeated across
+videos, explicitly paired with the structure-trailing-stop as "initial
+placement, then trail."
+Stop-loss distance = **ATR × multiplier**, example multiplier given as
+**1.5x**. ATR = average true range over ~14 candles on whatever chart
+timeframe is being traded — "measures the average size of the last like 14
+candles." Framed as the systematic alternative to a fixed-pip/fixed-dollar
+stop: the *rule* (multiplier) stays constant, but the resulting stop
+distance automatically widens/tightens with current volatility. Explicitly
+recommended over ad hoc stop placement precisely because "predicting
+volatility is a lot easier than predicting direction."
+**Videos:** 4, 6.
+
+### Level-selection tie-break rules (tightest gap, then random)
+**Speaker: Husky.** Confidence: med-high — stated as explicit, repeated
+process steps for the "which of these valid levels do I actually keep"
+problem, distinct from the swing-selection ("blur your eyes") heuristic
+above, which is about choosing Fib anchors, not about picking among
+already-valid range-extension levels.
+When multiple range-extension levels remain valid (i.e. none get merged by
+the confluence-clustering threshold) and no further Fib/golden-pocket
+confluence discriminates between them: (1) prefer the level with the
+**tightest gap** between its two source points (current-range extension
+vs. previous-range extension, or current-week vs. previous-week) — treated
+as the "cleanest" signal; (2) if still tied or nothing stands out, the
+explicit fallback is genuinely random selection — "close your eyes and
+stick your finger on the screen... it's a million times better to do that
+than keep five potential levels." Repeated near-verbatim in video 6. The
+meta-point behind both: it is better to trade a randomly-chosen single
+level than to keep multiple valid levels and effectively over-trade — the
+selection method matters far less than the discipline of *reducing to one*.
+**Videos:** 4, 6.
+
+### Rolling correlation analysis (not static correlation)
+**Speaker: Husky**, offered as a general research technique/exercise, not
+a fixed rule. Confidence: med — a methodology recommendation rather than a
+stated parameter.
+Compute correlation between asset pairs (e.g. gold vs. 10Y yields, gold vs.
+inflation expectations) over a **rolling window**, not a single fixed-period
+number, specifically to see how the relationship's *strength* changes over
+time, including "what's closely coupled right now." Suggested as something
+straightforward to build with AI assistance and visualize on a dashboard
+(what's gold tracking closest over the last week vs. longer term). Directly
+motivated by an observed regime change: gold and yields are normally
+strongly inversely correlated, but were observed **decoupling** in the
+live example (gold rallying while yields also recovered) — used as the
+worked example of why a single static correlation number would mislead.
+**This repo already has `correlations.html`** — worth checking whether it
+computes rolling (vs. point-in-time) correlation, and whether gold/yield
+decoupling periods are visible in it.
+**Videos:** 5.
+
+### Cross-asset move attribution (differencing against a dollar proxy)
+**Speaker: Husky**, demonstrated live, not stated as a named rule.
+Confidence: med.
+To determine *why* an asset moved (e.g. is a gold rally "genuine gold
+strength" or just "a weak dollar"), compare its move against a proxy for
+the other side of the equation at the same time — here, EURUSD as a dollar
+proxy. If gold rallies while EURUSD is flat, the move is attributed to
+gold-specific demand rather than broad USD weakness (since a weak-dollar
+move would be expected to lift EURUSD too). A simple differencing
+heuristic — could be formalized as comparing simultaneous returns across
+gold / a USD proxy / yields to attribute a move to one driver vs. another,
+rather than reading gold's chart in isolation.
+**Videos:** 5.
+
+### Macro transmission hierarchy — signal-to-noise cascade by asset class
+**Speaker: Husky**, presenting the group's core "Lesson 2" macro education
+content (not personal opinion — read through live, described as
+foundational curriculum). Confidence: high (structured, named framework).
+Policy shocks (rate decisions, central bank guidance) propagate through
+markets in a hierarchy, over increasing timescales and with decreasing
+signal-to-noise from top to bottom:
+1. **Bond markets** react within hours — highest signal-to-noise, "most
+   likely to be true."
+2. **G10 FX** adjusts over days to weeks.
+3. **Equities** reprice over weeks.
+4. **Credit spreads** widen/tighten over months — most lagged, noisiest.
+Individual stocks are described as the hardest tier to draw conclusions
+from — "all the information we want to look at is [higher up the
+hierarchy]." Explicit implication for system design: build around
+bonds/G10 FX (best signal) rather than equities/individual names, and
+expect a *lag* between a bond-market reaction and the equivalent FX/equity
+move. Tied to the recurring explanation for why lower-frequency,
+macro-aligned traders reportedly outperform high-frequency chart-only
+traders — they're positioned with the slower-moving, higher-signal
+picture rather than reacting to noise.
+**Videos:** 5. **Testable framing**: does a same-day bond-yield move (or
+yield-spread move) lead a same-pair FX move by a measurable number of
+days? This is close to being a direct lead-lag backtest.
+
+### COT positioning as a crowding/contrarian signal
+**Speaker: Husky.** Confidence: med — single concrete example, but a named,
+publicly available dataset (Commitment of Traders reports).
+Cited as an explanation (after the fact) for a gold reversal: even while
+gold price had been falling for an extended period, COT data showed large
+speculative/"big money" long positioning remained **overcrowded**
+(persistently heavily long) throughout the decline — used to argue the
+eventual sharp reversal upward was consistent with that positioning
+extreme rather than a surprise. Framed as one more cross-asset input
+(alongside yields, VIX, correlations) rather than a primary signal.
+**Videos:** 6.
+
+### "Gold is one of the worst assets to build a quant system around"
+**Speaker: Husky, attributing the claim to "Mr. C" (the group founder /
+C.org)**, and endorsing it from his own experience. Confidence: high as a
+stated group-level belief, not a numeric rule.
+Reasoning given: gold's price action is dominated by episodic "flight to
+safety" dynamics that are comparatively hard to model/predict (illustrated
+by the video 5 observation that gold recently *didn't* rally on major
+geopolitical risk headlines, breaking the usual safe-haven pattern),
+whereas FX pairs are more tractable because they're driven by the
+comparatively more mechanical rate/spread framework covered throughout
+these transcripts. Direct quote-adjacent: "from a system-building
+perspective, gold is one of the worst assets to look at... EU is arguably
+a much better asset to be trading range extensions on." Stated as
+something most members (including Husky himself) learn the hard way,
+since gold is the asset people gravitate to first out of familiarity.
+**Relevant to this repo directly**: it already covers 24+ FX pairs plus
+gold — this is a signal from inside the source material itself that
+systematic-methodology replication (range extensions, ADX regime, etc.)
+should be validated on FX pairs first/primarily, with gold treated as the
+harder, lower-priority case rather than the default.
+**Videos:** 6.
+
+### Bars pattern — explicitly deprecated, visualization only
+**Speaker: Husky.** Confidence: n/a (explicitly a *rejected* idea — logged
+as a negative finding, not a candidate).
+An older tool: draw a normalized line tracing price action over a defined
+window (e.g. the Asia session), then slide/overlay that same shape onto
+later windows (London, New York, next day) to visually compare whether
+similar volatility "shapes" recur (e.g. "moved down, found a bottom,
+moved up" repeating across sessions). **Explicitly no longer used for
+entries or exits** — the group moved away from it because pattern timing
+"doesn't work like that" precisely (too easy to convince yourself of a
+reversal "at this exact time" that doesn't materialize), and it's
+confusing/was dropped from current education material entirely in favor
+of the volatility/range forecasting tool. Logged here mainly so it isn't
+independently reinvented later — the group already tried and shelved it.
+**Videos:** 5.
+
+### Psychological/discipline discipline: forget the money, follow the system through drawdown
+**Speaker: Husky**, general advice reinforced with two of his own
+cautionary anecdotes. Confidence: n/a (meta-note, not a chart rule, but
+directly actionable as an operating discipline for any live deployment).
+Core advice: treat account balance/drawdown as irrelevant to execution —
+"know what your system is and execute it" — because both fear-driven
+under-trading during drawdown and urgency-driven over-trading near a
+target/payout lead to abandoning the system exactly when discipline
+matters most. Two anecdotes: (1) revenge-traded and blew a prop-firm
+challenge **$100 away from passing**, entering an oversized position "it
+only needs to move 10 cents" that immediately reversed; (2) under a
+prop-firm "consistency rule," deliberately tried to **lose a trade on
+purpose** to avoid one day's P&L skewing the consistency ratio too far —
+and found it surprisingly hard to lose intentionally, making things worse.
+Notable secondary point: a **consistency rule itself can create a
+perverse incentive** (deliberately losing to stay compliant) — worth
+remembering if this repo's tooling ever models prop-firm constraints.
+Extends the existing "prop-firm pacing discipline" entry above with two
+concrete failure-mode examples rather than just the general pacing advice.
+**Videos:** 6.
 
 ---
 
@@ -459,11 +786,34 @@ logic). Links to a script/dir once work starts._
   plumbing (`regime_classifier_mtf.py`, `js/regime-v2.js`,
   `pine/hmm-v2-regime.pine`) — check whether an existing classifier already
   captures this threshold/timeframe combo before adding a new one.
-- **Confluence-clustering threshold ($5 on gold).** Worth checking whether
-  a fixed-percentage threshold (rather than fixed-dollar) reproduces the
-  same clustering behavior across gold/EU/NQ — cheap to test once the
-  range-extension formula above is implemented, since it's just a
-  post-processing merge step on the generated level list.
+- **Confluence-clustering threshold ($5/$7.5 gold, 2/3.5 pips EU, and an
+  adaptive-tightening variant).** Worth checking whether a fixed-percentage
+  threshold (rather than fixed-dollar/pip) reproduces the same clustering
+  behavior across gold/EU/NQ, and separately whether a count-targeting
+  adaptive threshold (tighten until ~1-3 levels remain) beats a fixed
+  constant — cheap to test once the range-extension formula above is
+  implemented, since it's just a post-processing merge step on the
+  generated level list.
+- **ATR-based stop sizing (1.5x ATR-14).** Directly implementable, cheap
+  to test as a stop-placement rule against whatever fixed-pip/fixed-%
+  stops existing backtests use today.
+- **Gold directional bias conditioned on rate *direction*** (short-bias
+  when rates rising, long-bias when rates falling) — testable as a simple
+  regime feature (sign of the recent change in a reference yield) gating
+  an existing gold entry model's direction.
+- **Bond/yield-spread → FX lead-lag hypothesis.** The macro transmission
+  hierarchy claims bonds react within hours, FX over days-to-weeks — this
+  is close to a direct, cheap backtest: does a yield or yield-spread move
+  on day T predict a same-pair FX move over the following days?
+- **COT positioning extremes as a contrarian/crowding signal.** COT data
+  is public and downloadable; worth checking whether extreme positioning
+  (e.g. large-spec long/short percentile) has historically preceded
+  reversals in gold or the FX pairs this repo already covers.
+- **Rolling correlation dashboard.** Check `correlations.html` in this
+  repo for whether it already computes rolling (not just point-in-time)
+  correlations, and whether it would surface something like the gold/yield
+  decoupling period described in transcript 5 — if not, this is a cheap
+  extension rather than new infrastructure.
 
 ---
 
@@ -607,3 +957,128 @@ range-extension formula (now fully specified, should be checked against
 what `jordan_impulse_range_backtest/` already implements), the ADX regime
 filter (repo already has ADX code to check against), and the
 confluence-clustering threshold.
+
+### Transcript 4 — from-scratch range-extension walkthrough for brand-new
+members (EU markup)
+
+**Speaker note:** Husky (self-referenced elsewhere; consistent presenter).
+Jordan mentioned once in passing (his message-cadence access-code joke) —
+not present as a participant this time. Still no Jordan trading footage.
+
+**New:**
+- Full reproducible mechanics of the Asia-range extension method: midnight
+  London to 6am, 5-min chart, candle-body anchors, named indicator
+  ("Asian Range by Nico1948"), draw-direction irrelevant
+- Full breakdown of the volatility/range tool's 5 levels: close
+  median/75th (fixed, midnight-anchored, "candle body") vs. projected
+  high/low median/75th (dynamic, based on currently-printed extreme,
+  "wicks") — see revised Priority Watch note
+- Explicit list of confluence types warned against overusing: fibs, VWAPs,
+  previous closes/opens/highs/lows, fair value gaps, order blocks —
+  "very limited areas on the chart that don't have one of those things"
+- ATR-based stop sizing formalized: 1.5x ATR-14 example
+- Tie-break rule for picking among multiple valid levels: tightest gap
+  first, then literally random ("close your eyes, point at the screen")
+- A named member ("J") is described as using a different, more iterative
+  Fib-anchor-searching approach than Husky's single-pass method — flagged
+  as a real methodological difference to watch for if J's own content
+  ever gets transcribed
+
+**Repeats (extended with new detail):** Range extension methodology
+(full mechanical spec), Range/volatility forecasting tool (full 5-level
+breakdown), swing-selection heuristic (J's contrasting approach noted)
+
+**Bollinger/band mentions:** none. But this transcript is the source of
+the "projected high/projected low are dynamic" nuance — see the revised
+Priority Watch section; still not a match, but the closest thing found so
+far to something that moves intraday.
+
+**Worth researching:** yes — ATR stop sizing and the tie-break rules are
+both cheap, mechanical, and directly implementable.
+
+### Transcript 5 — Monday "ask me anything" (mostly macro education, some
+technical)
+
+**Speaker note:** Husky. Jordan not present. This is the least
+technical-markup-heavy transcript so far — mostly a live read-through of
+the group's core macro curriculum ("Lesson 2: understanding what moves the
+markets") plus some ad hoc TradingView demonstrations.
+
+**New:**
+- Rolling correlation analysis as a research technique (vs. static
+  correlation) — repo already has `correlations.html`, worth checking
+- Cross-asset move attribution: differencing an asset's move against a
+  dollar proxy (EURUSD) to determine if a gold move is gold-specific or
+  dollar-driven
+- Macro transmission hierarchy: bonds (hours) → G10 FX (days-weeks) →
+  equities (weeks) → credit (months), with signal-to-noise decreasing down
+  that list — a near-direct lead-lag backtest candidate
+- Carry trade mechanics for USD/JPY, tied to the US-JPY rate spread as "a
+  clear driver" of the pair's price
+- Regime-conditional gold bias tied to rate *direction* (not just spread
+  level): rates rising → short-gold bias, rates falling → long-gold bias
+- VIX as a regime filter with illustrative (explicitly unvalidated)
+  thresholds for position sizing/stop width, plus a hedging use case and a
+  pass on GVZ in favor of plain VIX
+- "Gold hasn't been acting as a safe haven lately" — a live example of a
+  correlation/regime breaking down, used to motivate the rolling-
+  correlation point above
+- Bars pattern tool — explicitly deprecated, logged as a rejected idea so
+  it isn't reinvented
+- Look-ahead bias (a member's own system had it) vs. overfitting (more
+  common in human/manual backtesting) called out as a distinct pair of
+  failure modes worth keeping separate
+
+**Repeats:** VIX as tradable/leading indicator (video 2) — extended with
+regime-filter thresholds and hedging use. Macro/flow framework (video 1)
+— extended with carry trade and rate-direction gold bias.
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the bond→FX lead-lag hypothesis from the
+transmission hierarchy is the most novel/testable item here and is close
+to a direct backtest with data this repo likely already has.
+
+### Transcript 6 — Tuesday weekly markup (gold, EU), second full example
+after transcript 3
+
+**Speaker note:** Husky — **confirmed by name** this time (a chat message
+referring to him in the third person is read aloud and responded to in
+kind). Jordan present as a participant only (his account-risk comment
+prompts general "forget about the money" advice). Still no Jordan trading
+footage across 6 transcripts.
+
+**New:**
+- Adaptive confluence-threshold tightening when a trending move causes
+  every level to cluster (demonstrated live, gold weekly threshold cut
+  from $7.5 to $3)
+- Midpoint (0.5) used as a VWAP-style bullish/bearish bias divider, a
+  third distinct use alongside TP-target and observed-reaction-zone
+- ADX regime filter shown actually changing level selection: skips a
+  far-extension sell/fade in a trending (high-ADX) regime, picks a
+  near-extension (1.5) pullback-buy instead
+- COT positioning cited as an after-the-fact explanation for a gold
+  reversal (persistent large-spec long crowding through the decline)
+- "Gold is one of the worst assets to build a system around" (attributed
+  to the group founder), FX preferred for systematic work — directly
+  relevant to prioritizing this repo's existing FX-pair coverage over gold
+  when replicating this methodology
+- Two discipline anecdotes: revenge-traded a challenge $100 from passing;
+  deliberately tried (and failed) to lose a trade to satisfy a prop-firm
+  consistency rule — the latter flags consistency rules as a possible
+  source of perverse incentives
+- Reconfirms: draw-direction irrelevance for the Fib-extension tool, the
+  "blur your eyes" swing heuristic (near-verbatim), and structure-trailing
+  stop paired explicitly with ATR-based initial sizing
+
+**Repeats (extended with new detail):** Dynamic structure-trailing stop,
+range extension methodology, swing-selection heuristic, ADX regime filter,
+levels-are-bidirectional, confluence-clustering threshold, prop-firm
+psychological discipline.
+
+**Bollinger/band mentions:** none.
+
+**Worth researching:** yes — the ADX-conditioned level-selection switch
+(fade far extensions in ranging regimes, buy near-extension pullbacks in
+trending regimes) is now concrete enough to backtest as a single combined
+rule, not just the ADX filter in isolation.
