@@ -347,6 +347,24 @@ console.log('[Vanna + charm conditioners — treat the greeks as theory says]');
   ok('charm firing → max-pain reversion size boosted + noted', mpC.sizeFactor > mp0.sizeFactor && /charm firing/.test(mpC.rationale), `${mpC.sizeFactor}>${mp0.sizeFactor}`);
 }
 
+console.log('[Local-regime gate — judge a wall by the gamma band AT ITS OWN PRICE]');
+{
+  // Net GEX +5000 at spot → PIN (fade both walls). But the gamma flip sits at 4250: below it
+  // long-gamma (PIN), above it short-gamma (BREAKOUT). So the 4300 call wall lives in a
+  // short-gamma band — fading it is the wrong side; the 4100 put wall is in the PIN band.
+  const inst = { ...base, exposures: { gex: 5000 }, refMove: { move: 150 },
+    gexFlips: [{ price: 4250, dir: 'long->short' }] };
+  const off = buildOIZones(inst, 4200, cfg);
+  const on = buildOIZones(inst, 4200, { ...cfg, localRegime: true });
+  const sellOff = off.find(x => x.side === 'sell' && x.level === 4300);
+  const sellOn = on.find(x => x.side === 'sell' && x.level === 4300);
+  const buyOn = on.find(x => x.side === 'buy' && x.level === 4100);
+  ok('flag OFF → gexFlips ignored, size unchanged (zero behaviour change)', sellOff && !/short-gamma|local .* confirmed/.test(sellOff.rationale));
+  ok('fade of a wall in a short-gamma band → size trimmed ~0.5×', sellOn && Math.abs(sellOn.sizeFactor - sellOff.sizeFactor * 0.5) < 0.01, `${sellOff.sizeFactor}→${sellOn.sizeFactor}`);
+  ok('mismatch is annotated', sellOn && /short-gamma zone \(may break, not hold\)/.test(sellOn.rationale), sellOn?.rationale);
+  ok('fade of a wall in the PIN band → confirmed, NOT trimmed', buyOn && /local pin confirmed/.test(buyOn.rationale) && !/size down/.test(buyOn.rationale));
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));

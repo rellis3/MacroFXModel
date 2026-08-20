@@ -24,6 +24,7 @@
  */
 
 import { oiPriceConfirmation } from './oiConfluence.js';
+import { oiRegimeBands } from './oi.js';
 
 const _TIER_RANK = { weak: 1, moderate: 2, strong: 3 };
 const _rank = t => _TIER_RANK[t] || 0;
@@ -141,10 +142,31 @@ export function buildOIZones(inst, price, cfg = {}) {
     charmActive = false,           // charm firing near expiry → amplify the max-pain PIN (Mode C): charm
                                    // flows pin price toward strikes as time decays into expiry/the close.
     charmBoost = 1.2,
+    localRegime = false,           // OFF by default. The net-GEX regime is evaluated AT SPOT, so it's the
+                                   // right read for where price IS — but the bot trades WALLS that can sit
+                                   // in a DIFFERENT gamma band (the regime flips at each gamma crossing).
+                                   // Fading a wall that lives in a short-gamma band (it may BREAK not hold),
+                                   // or following a break INTO a long-gamma band (dealers dampen it), is the
+                                   // wrong side. When on, gate each fade/break zone by the LOCAL regime at
+                                   // the wall (from oiRegimeBands) and trim size on a mismatch. Live-trading
+                                   // change — kept behind a flag for forward-testing before default-on.
+    localRegimeTrim = 0.5,         // size haircut for a wall whose local band contradicts its fade/follow mode
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
   const regime = gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL';
+  // Local gamma regime along price (from the zero-gamma crossings), so a wall can be judged
+  // by the regime AT ITS OWN PRICE, not just the net sign at spot. Null unless the flag is on
+  // and the inst carries gexFlips — degrades to the net-GEX regime (current behaviour) otherwise.
+  const _rmWin = (Number.isFinite(refMove) && refMove > 0) ? refMove
+               : (Number.isFinite(inst.refMove?.move) && inst.refMove.move > 0) ? inst.refMove.move
+               : (Number.isFinite(price) ? price * 0.02 : 0);
+  const _bands = (localRegime && _rmWin > 0) ? oiRegimeBands(inst, { lo: price - 4 * _rmWin, hi: price + 4 * _rmWin }) : null;
+  const _regimeAtPrice = (p) => {
+    if (!Array.isArray(_bands) || !Number.isFinite(p)) return null;
+    const b = _bands.find(bd => p >= bd.lo && p <= bd.hi);
+    return (b && b.regime !== 'neutral') ? b.regime : null;   // 'pin' | 'breakout' | null
+  };
   const maxPain = Number.isFinite(inst.maxPain) ? inst.maxPain : null;
   const conc = inst.concentration?.read || null;
   const buf = slBufferPips * pip;
@@ -307,6 +329,19 @@ export function buildOIZones(inst, price, cfg = {}) {
     if (reach) {
       rationale = `${rationale} · ⚠ ${reach} — unlikely to fill by expiry`;
       sizeFactor = +(sizeFactor * reachTrim).toFixed(2);
+    }
+    // Local-regime gate: a FADE wants its wall in a PIN (long-gamma) band; a BREAK wants a
+    // BREAKOUT (short-gamma) band. The net-GEX regime is at spot, but the wall may sit past a
+    // gamma crossing — so judge the wall by the band AT ITS OWN PRICE and trim on a mismatch.
+    if (_bands && (z.mode === 'fade' || z.mode === 'break')) {
+      const rg = _regimeAtPrice(z.level);
+      const wants = z.mode === 'fade' ? 'pin' : 'breakout';
+      if (rg && rg !== wants) {
+        sizeFactor = +(sizeFactor * localRegimeTrim).toFixed(2);
+        rationale = `${rationale} · ⚠ wall in ${rg === 'breakout' ? 'short-gamma zone (may break, not hold)' : 'long-gamma zone (break may be dampened)'} → size down`;
+      } else if (rg) {
+        rationale = `${rationale} · local ${rg} confirmed`;
+      }
     }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null, rationale, regime });
