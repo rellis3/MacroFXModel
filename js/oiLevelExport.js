@@ -322,7 +322,20 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       for (const c of emit) {
         const k = `${c.type}@${c.price.toFixed(dp)}`;
         if (seen.has(k)) continue; seen.add(k);
-        lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}`);
+        // P(touch) ON THESE LINES TOO. They used to be emitted bare — type + DTE and
+        // nothing else — while the primary/day levels carried the full token set. Since
+        // both passes can produce a line at the SAME price, the chart showed one
+        // annotated and one blank a few pixels apart, and ~2/3 of all exported lines had
+        // no P(touch) at all. It reads as "this level has no reading" when the truth is
+        // "this line was drawn by the other code path".
+        //
+        // Expectation and heat stay '-': both need that expiry's own gamma profile, and
+        // perExpiry carries only the headline strikes. P(touch) needs neither — it is a
+        // property of the PRICE and today's volatility, so it is as valid here as
+        // anywhere. Placeholders keep the segment indexes stable for the Pine parser.
+        const t2 = rp ? (rp[c.price.toFixed(6)] || '') : '';
+        const tail = t2 ? ` . - . - . ${t2}` : '';
+        lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}${tail}`);
       }
     }
     lines.push('');
