@@ -161,18 +161,6 @@
   .nev-result{margin-top:8px;font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
   .nev-result b{color:var(--text)}
 
-  /* ── Morning gate: calendar timeline ────────────────────── */
-  .gate{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 14px;
-        margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .gate .glbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
-  .gev{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);
-       border-radius:6px;padding:3px 9px;font-size:11.5px;white-space:nowrap}
-  .gev .t{font-weight:700;font-variant-numeric:tabular-nums}
-  .gev.hi{border-color:rgba(210,153,34,.5)} .gev.hi .t{color:var(--amber)}
-  .gev.past{opacity:.42}
-  .gev.next{border-color:rgba(210,153,34,.9);background:var(--amber-bg)}
-  .gev .cd{font-size:10px;color:var(--amber);font-weight:700}
-
   /* ── Filter / sort row ──────────────────────────────────── */
   .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .fchip{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:14px;
@@ -526,7 +514,7 @@
     .gauge-svg-wrap{max-width:260px}
     .gauge-score{font-size:32px}
     .gauge-scale{max-width:228px;font-size:10.5px}
-    .glance-grid{grid-template-columns:repeat(4,1fr)}
+    .glance-grid{grid-template-columns:repeat(3,1fr)}
   }
   .sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:14px}
   .side-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
@@ -557,19 +545,53 @@
   .glance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .glance-cell .gv{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
   .glance-cell .gl{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+  .mood-line{display:flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:700;justify-content:center;margin-top:8px;flex-wrap:wrap}
+  .mood-line .mood-detail{font-size:10px;font-weight:600;color:var(--text3);white-space:normal;text-align:center;flex-basis:100%}
+  /* Today's Calendar — moved off the main column's #gate chip strip. */
+  .cal-row{display:flex;align-items:baseline;gap:8px;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--border)}
+  .cal-row:last-child{border-bottom:none}
+  .cal-row.past{opacity:.5}
+  .cal-row .cal-t{font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;flex-shrink:0}
+  .cal-row .cal-ev{color:var(--text2);flex:1;line-height:1.35}
+  .cal-row .cal-ev b{color:var(--text)}
+  .cal-row .cal-cd{font-size:10px;font-weight:700;color:var(--amber);flex-shrink:0}
+  .cal-watch{font-size:10.5px;color:var(--text3);line-height:1.5}
+  .cal-watch b{color:var(--text2)}
+  .sess-timeline{display:flex;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .sess-seg{flex:1;text-align:center;font-size:9.5px;font-weight:700;letter-spacing:.03em;color:var(--text3);
+    background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 2px;cursor:help}
+  .sess-seg.best{background:var(--blue-bg);color:var(--blue);border-color:rgba(79,125,240,.4)}
+  .sess-seg.now{outline:2px solid var(--amber);outline-offset:1px;color:var(--text)}
+  /* Risk State — moved off the main column's #riskflags chip strip. */
+  .rs-level{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;margin-bottom:9px}
+  .rs-level .rs-badge{padding:2px 9px;border-radius:11px;font-size:10.5px;letter-spacing:.03em}
+  .rs-level .rs-badge.calm{background:var(--bull-bg);color:var(--bull)}
+  .rs-level .rs-badge.caution{background:var(--amber-bg);color:var(--amber)}
+  .rs-level .rs-badge.off{background:var(--bear-bg);color:var(--bear)}
+  .rs-flag{display:flex;align-items:baseline;gap:7px;font-size:11px;color:var(--text2);padding:3px 0;cursor:help}
+  .rs-flag.on{color:var(--text)} .rs-flag.on .rs-ic{color:var(--amber)}
+  .rs-flag .rs-ic{width:12px;flex-shrink:0;color:var(--text3)}
+  .rs-iv{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:4px 0;margin-top:4px;border-top:1px solid var(--border);cursor:help}
+  .rs-iv b{color:var(--text);font-variant-numeric:tabular-nums}
   .volout-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)}
   .volout-row:last-child{border-bottom:none}
   .volout-row b{color:var(--text);font-variant-numeric:tabular-nums}
   /* Rates & Curve Moves — arrow+value rows, moved off the main column's old
-     dense inline-wrapped text stream (#macroMoved) into the sidebar. */
-  .move-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border);gap:8px}
+     dense inline-wrapped text stream (#macroMoved) into the sidebar. Each row
+     shows 1d AND 5d side by side (not just 1d) so a same-day move reads in
+     the context of the week, not in isolation — a ⟲ flags when they disagree. */
+  .move-row{padding:6px 0;border-bottom:1px solid var(--border);cursor:help}
   .move-row:last-child{border-bottom:none}
-  .move-row .mv-lbl{color:var(--text3);flex-shrink:0}
-  .move-row .mv-val{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;cursor:help}
-  .move-row .mv-arrow{font-size:9.5px;margin:0 1px}
+  .move-row .mv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;margin-bottom:2px}
+  .move-row .mv-lbl{color:var(--text3)}
+  .move-row .mv-now{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+  .move-row .mv-deltas{display:flex;gap:14px}
+  .move-row .mv-d{display:flex;align-items:baseline;gap:4px;font-size:10.5px;color:var(--text3)}
+  .move-row .mv-d i{font-style:normal}
+  .move-row .mv-arrow{font-weight:700;font-variant-numeric:tabular-nums;font-size:10.5px}
   .move-row .mv-arrow.up{color:var(--bull)} .move-row .mv-arrow.dn{color:var(--bear)}
   .move-row .mv-arrow.flat{color:var(--text3)} .move-row .mv-arrow.neu{color:var(--text2)}
-  .move-row .mv-d1{font-size:10.5px;font-weight:600;color:var(--text2)}
+  .move-row .mv-blip{margin-left:2px;color:var(--amber);font-size:10.5px;cursor:help}
   .qtile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .qtile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:inherit;border:1px solid var(--border);
     border-radius:10px;padding:10px 11px;cursor:pointer;transition:border-color .12s,background .12s}
@@ -617,13 +639,7 @@
 
       <div class="macro" id="macro" style="display:none"></div>
 
-      <div class="summary" id="summary"></div>
-
-      <div class="gate" id="gate" style="display:none"></div>
-
-      <div class="gate" id="riskflags" style="display:none"></div>
-
-      <div class="qstrip" id="whenWatch" style="display:none"></div>
+      <div class="summary" id="summary" style="display:none"></div>
 
       <div class="news" id="newsPlay" style="display:none"></div>
 
@@ -1142,28 +1158,27 @@ async function loadGate() {
 // ── Cross-asset risk flags + implied vol strip ───────────────────────────────
 // Condition readings, not signals: how hostile is the whole tape today, and
 // what the options market (EVZ/GVZ) is paying vs our realized σ.
+// Lives in the sidebar's "Risk State" card (#riskList) — moved off the main
+// column's #riskflags chip strip into a compact level badge + checklist.
 function renderRiskFlags() {
-  const el = $('riskflags');
-  if (!riskFlags?.flags) { el.style.display = 'none'; return; }
+  const el = $('riskList');
+  if (!el) return;
+  if (!riskFlags?.flags) { el.innerHTML = '<div class="muted">No risk-flag data yet.</div>'; return; }
   const lvl = riskFlags.level;
-  const lvlChip = lvl === 'RISK_OFF'
-    ? `<span class="gev hi" style="border-color:rgba(220,80,80,.7)"><b style="color:var(--red,#e06c75)">RISK-OFF</b> ${riskFlags.active}/${riskFlags.available} flags</span>`
-    : lvl === 'CAUTION'
-    ? `<span class="gev hi"><b style="color:var(--amber)">CAUTION</b> ${riskFlags.active}/${riskFlags.available} flags</span>`
-    : `<span class="gev"><b style="color:var(--green,#7ec699)">CALM</b> ${riskFlags.active}/${riskFlags.available} flags</span>`;
-  const flagChips = riskFlags.flags.filter(f => f.on != null).map(f =>
-    `<span class="gev ${f.on ? 'hi' : ''}" style="${f.on ? '' : 'opacity:.45'}" title="${f.detail}${f.on ? '' : ' — not flagging'}">${f.on ? '⚠' : '·'} ${f.label}</span>`).join('');
-  // Implied vol chips — only the two instruments with a real CBOE index.
-  const ivChip = (sid, label, fcName) => {
+  const badgeCls = lvl === 'RISK_OFF' ? 'off' : lvl === 'CAUTION' ? 'caution' : 'calm';
+  const badgeTxt = lvl === 'RISK_OFF' ? 'RISK-OFF' : lvl === 'CAUTION' ? 'CAUTION' : 'CALM';
+  const levelHtml = `<div class="rs-level" title="${esc0(riskFlags.note ?? '')}"><span class="rs-badge ${badgeCls}">${badgeTxt}</span><span class="muted">${riskFlags.active}/${riskFlags.available} flags active</span></div>`;
+  const flagRows = riskFlags.flags.filter(f => f.on != null).map(f =>
+    `<div class="rs-flag ${f.on ? 'on' : ''}" title="${esc0(f.detail)}${f.on ? '' : ' — not flagging'}"><span class="rs-ic">${f.on ? '⚠' : '·'}</span><span>${esc0(f.label)}</span></div>`).join('');
+  // Implied vol rows — only the two instruments with a real CBOE index.
+  const ivRow = (sid, label, fcName) => {
     const iv = cvol?.levels?.[sid], pc = cvol?.pct?.[sid];
     if (iv == null) return '';
     const rlz = forecast?.instruments?.[fcName]?.vol_annual;
-    const cmp = rlz != null ? (iv >= rlz ? ` · IV>${rlz.toFixed(1)}% rlzd (options paying up)` : ` · IV<${rlz.toFixed(1)}% rlzd (options cheap)`) : '';
-    return `<span class="gev" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast.">${label} IV <b>${iv}</b> P${pc != null ? Math.round(pc) : '?'}${cmp}</span>`;
+    const cmp = rlz != null ? (iv >= rlz ? 'options paying up' : 'options cheap') : '';
+    return `<div class="rs-iv" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast."><span>${esc0(label)} IV</span><b>${iv} · P${pc != null ? Math.round(pc) : '?'}${cmp ? ` · ${cmp}` : ''}</b></div>`;
   };
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="glbl" title="${riskFlags.note ?? ''}">Risk state</span>` +
-    lvlChip + flagChips + ivChip('EVZCLS', 'EUR', 'EURUSD') + ivChip('GVZCLS', 'Gold', 'GOLD');
+  el.innerHTML = levelHtml + flagRows + ivRow('EVZCLS', 'EUR', 'EURUSD') + ivRow('GVZCLS', 'Gold', 'GOLD');
 }
 
 // ── What moved — per-series macro change (today / 1w / 1m) ────────────────────
@@ -1178,18 +1193,29 @@ function renderMacroMoved() {
   const el = $('moveList');
   if (!el) return;
   if (!macroMoved?.length) { el.innerHTML = '<div class="muted">No macro-change data yet.</div>'; return; }
+  const dCls = (v, spread) => v == null || v === 0 ? 'flat' : (spread ? (v > 0 ? 'dn' : 'up') : 'neu');
+  const dArrow = v => v == null ? '–' : v > 0 ? '▲' : v < 0 ? '▼' : '–';
+  const dTxt = v => v != null ? `${v > 0 ? '+' : ''}${v}` : '–';
   el.innerHTML = macroMoved.map(r => {
     const spread = r.kind === 'spread';
     const d1 = r.deltas?.[1], d5 = r.deltas?.[5], d20 = r.deltas?.[20];
-    const arrow = d1 == null ? '–' : d1 > 0 ? '▲' : d1 < 0 ? '▼' : '–';
-    const cls = d1 == null || d1 === 0 ? 'flat' : (spread ? (d1 > 0 ? 'dn' : 'up') : 'neu');
     const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
       : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
       : r.kind === 'curve' ? `${Math.round(r.last)}bps`
       : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
-    const d1Txt = d1 != null ? `${d1 > 0 ? '+' : ''}${d1}${r.unit}` : '';
-    const title = `${r.label}: now ${lastFmt}.${d1 != null ? ` 1d ${d1 > 0 ? '+' : ''}${d1}${r.unit}` : ''}${d5 != null ? ` · 5d ${d5 > 0 ? '+' : ''}${d5}${r.unit}` : ''}${d20 != null ? ` · 20d ${d20 > 0 ? '+' : ''}${d20}${r.unit}` : ''}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
-    return `<div class="move-row"><span class="mv-lbl">${esc0(r.label)}</span><span class="mv-val" title="${title}">${lastFmt} <span class="mv-arrow ${cls}">${arrow}</span><span class="mv-d1">${esc0(d1Txt)}</span></span></div>`;
+    // Flag when today's move runs counter to the week's — a same-day arrow
+    // can read as a bigger deal than it is if it's actually just a blip
+    // inside a larger multi-day move the other way (or vice versa).
+    const diverges = d1 != null && d5 != null && d1 !== 0 && d5 !== 0 && Math.sign(d1) !== Math.sign(d5);
+    const blip = diverges ? `<span class="mv-blip" title="Today's move (${dTxt(d1)}${r.unit}) runs against the week's direction (${dTxt(d5)}${r.unit}) — could be a blip inside the larger move, not a reversal of it.">⟲</span>` : '';
+    const title = `${r.label}: now ${lastFmt}.${d1 != null ? ` 1d ${dTxt(d1)}${r.unit}` : ''}${d5 != null ? ` · 5d ${dTxt(d5)}${r.unit}` : ''}${d20 != null ? ` · 20d ${dTxt(d20)}${r.unit}` : ''}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
+    return `<div class="move-row" title="${title}">
+      <div class="mv-top"><span class="mv-lbl">${esc0(r.label)}</span><span class="mv-now">${lastFmt}</span></div>
+      <div class="mv-deltas">
+        <span class="mv-d"><i>1d</i><b class="mv-arrow ${dCls(d1, spread)}">${dArrow(d1)} ${esc0(dTxt(d1))}${r.unit}</b>${blip}</span>
+        <span class="mv-d"><i>5d</i><b class="mv-arrow ${dCls(d5, spread)}">${dArrow(d5)} ${esc0(dTxt(d5))}${r.unit}</b></span>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -1394,8 +1420,12 @@ function riskLight() {
     detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · DXY ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}` : ''}` };
 }
 
+// Lives in the sidebar's "Today's Calendar" card (#calList) — moved off the
+// main column's #gate chip strip into a compact row list with a flag icon
+// per event and a live countdown badge on the next release.
 function renderGate() {
-  const el = $('gate');
+  const el = $('calList');
+  if (!el) return;
   const todayStr = new Date().toISOString().slice(0, 10);
   const evs = (events ?? [])
     .filter(e => (e.time ?? '').startsWith(todayStr) && GATE_COUNTRIES.has(e.country))
@@ -1403,20 +1433,20 @@ function renderGate() {
     .sort((a, b) => a.ts - b.ts);
   const his = evs.filter(e => (e.impact ?? '').toLowerCase() === 'high');
   const medCount = evs.filter(e => (e.impact ?? '').toLowerCase() === 'medium').length;
-  if (!his.length && !medCount) { el.style.display = 'none'; return; }
+  if (!his.length && !medCount) { el.innerHTML = '<div class="muted">No high/medium-impact releases today.</div>'; return; }
   const now = Date.now();
   const nextIdx = his.findIndex(e => e.ts > now);
   const hh = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="glbl">Today's calendar</span>` +
-    his.map((e, i) => {
-      const mins = Math.round((e.ts - now) / 60000);
-      const cls = e.ts < now ? 'gev hi past' : i === nextIdx ? 'gev hi next' : 'gev hi';
-      return `<span class="${cls}" title="${e.event}${e.estimate != null ? ` · est ${e.estimate}` : ''}${e.prev != null ? ` · prev ${e.prev}` : ''}">
-        <span class="t">${hh(e.ts)}</span> ${e.country} · ${e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event}
-        ${i === nextIdx && mins < 600 ? `<span class="cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : ''}</span>`;
-    }).join('') +
-    (medCount ? `<span class="gev" style="opacity:.6">+${medCount} medium</span>` : '');
+  el.innerHTML = his.map((e, i) => {
+    const mins = Math.round((e.ts - now) / 60000);
+    const cls = e.ts < now ? 'cal-row past' : '';
+    const cd = i === nextIdx && mins < 600 ? `<span class="cal-cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : '';
+    return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · est ${esc0(e.estimate)}` : ''}${e.prev != null ? ` · prev ${esc0(e.prev)}` : ''}">
+      <span class="cal-t">${hh(e.ts)}</span>
+      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}</span>
+      ${cd}
+    </div>`;
+  }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '');
 }
 
 // ══ Daily-check zoom levels ══════════════════════════════════════════════════
@@ -1493,9 +1523,13 @@ function renderWeekly() {
 const _LDN_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
 function londonHour() { return parseInt(_LDN_FMT.format(new Date()), 10); }
 function currentSession() { const h = londonHour(); return h < 6 ? 'Asia' : h < 8 ? 'pre-London' : h < 13 ? 'London' : h < 21 ? 'US' : 'after-hours'; }
+// Appends into the sidebar's "Today's Calendar" card (#calWatch), below the
+// event rows — a 3-segment session timeline (which one historically carries
+// the most range, which one you're in right now) instead of prose alone.
 function renderWhenToWatch() {
-  const el = $('whenWatch');
-  if (!sessionStats?.instruments) { el.style.display = 'none'; return; }
+  const el = $('calWatch');
+  if (!el) return;
+  if (!sessionStats?.instruments) { el.innerHTML = ''; return; }
   // which session historically carries the most range, tallied across pairs
   const tally = { asia: 0, london: 0, ny: 0 };
   let n = 0;
@@ -1504,7 +1538,7 @@ function renderWhenToWatch() {
     if (cand.length < 2) continue;
     cand.sort((a, b) => b[1] - a[1]); tally[cand[0][0]]++; n++;
   }
-  if (!n) { el.style.display = 'none'; return; }
+  if (!n) { el.innerHTML = ''; return; }
   const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
   const bestTxt = best === 'asia' ? 'the Asia session (roughly midnight–6am UK)' : best === 'london' ? 'the London morning (roughly 8am–1pm UK)' : 'the US session / London-NY overlap (roughly 1pm–5pm UK)';
   const sess = currentSession();
@@ -1520,8 +1554,10 @@ function renderWhenToWatch() {
     const am = hrs.filter(h => h < 12).length, pm = hrs.length - am;
     newsTxt = ` Today's news lands mostly in the <b>${pm > am ? 'afternoon' : 'morning'}</b> (UK).`;
   }
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="qk">When to watch</span><span class="qv">Most pairs make their biggest moves in <b>${bestTxt}</b>. Right now it's <b>${sessTxt}</b>.${newsTxt}</span>`;
+  const isNow = seg => (seg === 'asia' && sess === 'Asia') || (seg === 'london' && (sess === 'London' || sess === 'pre-London')) || (seg === 'ny' && sess === 'US');
+  const seg = (key, label) => `<div class="sess-seg${best === key ? ' best' : ''}${isNow(key) ? ' now' : ''}" title="${label}${best === key ? ' — historically the biggest-range session' : ''}${isNow(key) ? ' — happening now' : ''}">${label}</div>`;
+  el.innerHTML = `<div class="sess-timeline">${seg('asia', 'Asia')}${seg('london', 'London')}${seg('ny', 'US')}</div>` +
+    `<div class="cal-watch">Biggest moves usually happen in <b>${bestTxt}</b>. Right now it's <b>${sessTxt}</b>.${newsTxt}</div>`;
 }
 
 // ── ZOOM: concentration — today's themes & crowded trades ────────────────────
@@ -3124,7 +3160,7 @@ function scorecardHtml(rs) {
 // Volatility Outlook, Quick Links. Every number here is recomputed from the
 // same pure functions (equitiesRisk/currencyStrength/nextHighImpact) the main
 // column already calls — no new fetches, no invented scores.
-function marketToneGaugeHtml(risk, cs, usTen, wti) {
+function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   // Semi-circle gauge: needle + a 0-100 score, both from risk.equity (indices
   // breadth, -1..+1) — the same input equitiesRisk() already uses for its
   // RISK-ON/OFF verdict, just rescaled for display.
@@ -3160,6 +3196,7 @@ function marketToneGaugeHtml(risk, cs, usTen, wti) {
     </div>
     <div class="gauge-scale"><span>0</span><span>100</span></div>
     <div class="gauge-tone ${toneCls}">${esc0(risk.tone)}</div>
+    ${mood ? `<div class="mood-line" style="color:${mood.color}">${mood.icon} ${esc0(mood.label)}<span class="mood-detail">${esc0(mood.detail)}</span></div>` : ''}
     ${rows.length ? `<div class="gauge-sub">${rows.map(([k, v, cls2]) => `<div class="gs-row"><span>${esc0(k)}</span><b class="gs-val ${cls2}">${esc0(v)}</b></div>`).join('')}</div>` : ''}
   </div>`;
 }
@@ -3176,7 +3213,9 @@ function renderSidebar() {
   const trending = rs.filter(r => r.trending);
   const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
   const nearLevel = rs.filter(r => r.isProx).length;
-  const hotSetups = rs.filter(r => (r.used ?? 0) >= 0.8 || r.d.news_flag).length;
+  const rangeConsumed = rs.filter(r => (r.used ?? 0) >= 0.8).length;
+  const hiVol = rs.filter(r => (r.d.vol_pct ?? 0) >= 80).length;
+  const mood = riskLight();
 
   // Key Takeaways — short, scannable version of the same reads Market Read
   // states in full sentences below. Each carries an icon+color matching the
@@ -3195,7 +3234,7 @@ function renderSidebar() {
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
 
   el.innerHTML = `
-    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti)}</div>
+    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
 
     <div class="side-card"><h3>Rates &amp; Curve Moves</h3><div id="moveList"><div class="muted">Loading…</div></div></div>
 
@@ -3208,9 +3247,15 @@ function renderSidebar() {
         <div class="glance-cell"><div class="gv">${trending.length}/${rs.length}</div><div class="gl">Trending</div></div>
         <div class="glance-cell"><div class="gv">${risk.chips.length ? `${risk.up}/${risk.chips.length}` : '–'}</div><div class="gl">Indices Bid</div></div>
         <div class="glance-cell"><div class="gv">${nearLevel}</div><div class="gl">Near A Level</div></div>
-        <div class="glance-cell"><div class="gv">${hotSetups}</div><div class="gl">Hot Setups</div></div>
+        <div class="glance-cell"><div class="gv">${rangeConsumed}</div><div class="gl">Range Consumed</div></div>
+        <div class="glance-cell"><div class="gv">${hiVol}</div><div class="gl">Elevated Vol</div></div>
+        <div class="glance-cell"><div class="gv">${brief.news_flag ? '⚠' : '—'}</div><div class="gl">Event Risk</div></div>
       </div>
     </div>
+
+    <div class="side-card"><h3>Today's Calendar</h3><div id="calList"><div class="muted">Loading…</div></div><div id="calWatch"></div></div>
+
+    <div class="side-card"><h3>Risk State</h3><div id="riskList"><div class="muted">Loading…</div></div></div>
 
     <div class="side-card"><h3>Volatility Outlook</h3>
       <div class="volout-row"><span>VIX</span><b>${risk.vix != null ? fmtN(risk.vix, 1) : '–'}${risk.vix != null ? (risk.vix > 20 ? ' (jittery)' : ' (calm)') : ''}</b></div>
@@ -3236,6 +3281,8 @@ function render() {
   renderMarketRead();
   renderSidebar();
   renderMacroMoved();
+  renderGate();
+  renderRiskFlags();
   renderSinceYesterday();
   renderWeekly();
   renderConcentration();
