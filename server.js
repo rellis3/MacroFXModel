@@ -13042,6 +13042,13 @@ app.post('/api/oi/reanalyse', async (req, res) => {
           minOI:     Number.isFinite(inst.minOI)     ? inst.minOI     : 20,
           priorEntry: inst,          // preserve the per-expiry history
           skipLiveQuote: !live,      // pinned unless ?live=1
+          // baseUrl IS REQUIRED FOR ?live=1 TO DO ANYTHING. fetchPairedQuote builds
+          // `${baseUrl}/api/futures-quote`, and with baseUrl empty that is a RELATIVE
+          // url — fine in a browser, a throw in Node. The throw was caught, the quote
+          // came back null, and the resolver fell through to the stored futures. So a
+          // re-basis fetched nothing, re-derived off the old basis, and reported ok for
+          // all 11 pairs. Point it at our own listener.
+          baseUrl: `http://127.0.0.1:${PORT}`,
         });
         if (r?.error) { errors.push({ pair, error: r.error }); continue; }
         // The OI chain is as old as the original paste — keep its staleness honest.
