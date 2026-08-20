@@ -560,6 +560,16 @@
   .volout-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)}
   .volout-row:last-child{border-bottom:none}
   .volout-row b{color:var(--text);font-variant-numeric:tabular-nums}
+  /* Rates & Curve Moves — arrow+value rows, moved off the main column's old
+     dense inline-wrapped text stream (#macroMoved) into the sidebar. */
+  .move-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border);gap:8px}
+  .move-row:last-child{border-bottom:none}
+  .move-row .mv-lbl{color:var(--text3);flex-shrink:0}
+  .move-row .mv-val{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;cursor:help}
+  .move-row .mv-arrow{font-size:9.5px;margin:0 1px}
+  .move-row .mv-arrow.up{color:var(--bull)} .move-row .mv-arrow.dn{color:var(--bear)}
+  .move-row .mv-arrow.flat{color:var(--text3)} .move-row .mv-arrow.neu{color:var(--text2)}
+  .move-row .mv-d1{font-size:10.5px;font-weight:600;color:var(--text2)}
   .qtile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .qtile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:inherit;border:1px solid var(--border);
     border-radius:10px;padding:10px 11px;cursor:pointer;transition:border-color .12s,background .12s}
@@ -612,8 +622,6 @@
       <div class="gate" id="gate" style="display:none"></div>
 
       <div class="gate" id="riskflags" style="display:none"></div>
-
-      <div class="gate" id="macroMoved" style="display:none"></div>
 
       <div class="qstrip" id="whenWatch" style="display:none"></div>
 
@@ -1161,32 +1169,28 @@ function renderRiskFlags() {
 // ── What moved — per-series macro change (today / 1w / 1m) ────────────────────
 // Directional deltas on the tracked macro series so you can see what's SHIFTING,
 // not just today's level. Fed to the AI briefs too (same /api/macro-changes).
+// Lives in the sidebar (#moveList) as a compact arrow+value row list instead of
+// a dense inline-wrapped text stream in the main column — same data, easier to
+// scan. Colour is only applied to credit spreads (widening/tightening has an
+// unambiguous risk-off/risk-on read); rate/curve/flow arrows stay neutral,
+// since "up" isn't inherently bullish or bearish for those on its own.
 function renderMacroMoved() {
-  const el = $('macroMoved');
-  if (!macroMoved?.length) { el.style.display = 'none'; return; }
-  const win = { 1: '1d', 5: '5d', 20: '20d' };
-  // Colour by TODAY's move; for credit spreads, widening (up) is the risk-off tint.
-  const tint = (v, spread) => v == null || v === 0 ? 'var(--text3,#64748b)'
-    : (spread ? (v > 0 ? 'var(--red,#e06c75)' : 'var(--green,#7ec699)')
-             : (v > 0 ? 'var(--text,#e2e8f0)' : 'var(--text,#e2e8f0)'));
-  const chips = macroMoved.map(r => {
+  const el = $('moveList');
+  if (!el) return;
+  if (!macroMoved?.length) { el.innerHTML = '<div class="muted">No macro-change data yet.</div>'; return; }
+  el.innerHTML = macroMoved.map(r => {
     const spread = r.kind === 'spread';
-    const d1 = r.deltas?.[1];
-    const arrow = d1 == null ? '' : d1 > 0 ? '↑' : d1 < 0 ? '↓' : '→';
-    const parts = [1, 5, 20].map(n => {
-      const v = r.deltas?.[n];
-      if (v == null) return '';
-      return `<span style="color:${tint(v, spread)}">${win[n]} ${v > 0 ? '+' : ''}${v}${r.unit}</span>`;
-    }).filter(Boolean).join(' · ');
+    const d1 = r.deltas?.[1], d5 = r.deltas?.[5], d20 = r.deltas?.[20];
+    const arrow = d1 == null ? '–' : d1 > 0 ? '▲' : d1 < 0 ? '▼' : '–';
+    const cls = d1 == null || d1 === 0 ? 'flat' : (spread ? (d1 > 0 ? 'dn' : 'up') : 'neu');
     const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
       : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
       : r.kind === 'curve' ? `${Math.round(r.last)}bps`
       : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
-    const title = `${r.label}: now ${lastFmt}. Change vs prior day / week / month.${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
-    return `<span class="gev" title="${title}"><b>${r.label}</b> ${lastFmt} <span style="color:${tint(d1, spread)}">${arrow}</span> <span style="opacity:.8">${parts}</span>${r.note ? ` <i style="opacity:.7">${r.note}</i>` : ''}</span>`;
+    const d1Txt = d1 != null ? `${d1 > 0 ? '+' : ''}${d1}${r.unit}` : '';
+    const title = `${r.label}: now ${lastFmt}.${d1 != null ? ` 1d ${d1 > 0 ? '+' : ''}${d1}${r.unit}` : ''}${d5 != null ? ` · 5d ${d5 > 0 ? '+' : ''}${d5}${r.unit}` : ''}${d20 != null ? ` · 20d ${d20 > 0 ? '+' : ''}${d20}${r.unit}` : ''}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
+    return `<div class="move-row"><span class="mv-lbl">${esc0(r.label)}</span><span class="mv-val" title="${title}">${lastFmt} <span class="mv-arrow ${cls}">${arrow}</span><span class="mv-d1">${esc0(d1Txt)}</span></span></div>`;
   }).join('');
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="glbl" title="Day-over-day / 1-week / 1-month change on the macro series we track. What's shifting, not just the level.">What moved</span>` + chips;
 }
 
 // ── Credit gate — corporate-spread risk appetite, the market's early warning ──
@@ -3193,6 +3197,8 @@ function renderSidebar() {
   el.innerHTML = `
     <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti)}</div>
 
+    <div class="side-card"><h3>Rates &amp; Curve Moves</h3><div id="moveList"><div class="muted">Loading…</div></div></div>
+
     <div class="side-card"><h3>Key Takeaways</h3>
       <div class="takeaway-list">${takeaways.length ? takeaways.map(([ic, cls, t]) => `<div class="takeaway"><span class="tic ${cls}">${ic}</span><span>${t}</span></div>`).join('') : '<div class="muted">Not enough live data yet.</div>'}</div>
     </div>
@@ -3229,6 +3235,7 @@ function render() {
   renderStatRow();
   renderMarketRead();
   renderSidebar();
+  renderMacroMoved();
   renderSinceYesterday();
   renderWeekly();
   renderConcentration();
