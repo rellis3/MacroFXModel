@@ -443,6 +443,32 @@ def _best_table(frame, ctx=None):
     return best, best_s, best_why
 
 
+def _prior_strikes(product: str | None, box: str) -> tuple[int, str]:
+    """Strike count of the most recent EARLIER capture of this product+view.
+    -> (strikes, 'YYYY-MM-DD'), or (0, '') when there is no history.
+
+    The books we pull are stable in size day to day: SPX sat at 508 and 501
+    strikes on 11 and 19 August. A capture that suddenly returns a fraction of
+    that has not found a smaller book - it has read a half-rendered table.
+    """
+    d = outdir('quikstrike')
+    root, today = d.parent.parent, d.parent.name
+    best = (0, '')
+    try:
+        days = sorted((x for x in root.iterdir() if x.is_dir() and x.name < today),
+                      key=lambda x: x.name, reverse=True)
+    except OSError:
+        return best
+    for day in days[:5]:                              # a week is plenty of history
+        f = day / 'quikstrike' / f'{safe_name(product or "current")}_{box}.tsv'
+        if f.exists():
+            try:
+                return shape(f.read_text(encoding='utf-8'))['strikes'], day.name
+            except OSError:
+                continue
+    return best
+
+
 def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500):
     """Read the table repeatedly until two consecutive reads agree.
 
@@ -1035,6 +1061,22 @@ def pull_product(ctx, page, product: str | None, views: list,
         if key in ('oi', 'chg', 'vol') and n_str in (10, 15, 25, 50):
             print(f'  {"":<8}    ! exactly {n_str} strikes - that is a WINDOW size, '
                   'not a full ladder. Set Strikes to (All).')
+        # DAY-OVER-DAY SIZE GUARD. _stable_table catches a table still GROWING;
+        # it cannot catch one that plateaus half-rendered, and on 2026-08-20 SPX
+        # returned 52 strikes against 508 and 501 on the two prior captures. Two
+        # reads 1.5s apart both said 52, every shape check passed, and the sweep
+        # reported 44/44 OK - a book missing 90% of its strikes, ingested live.
+        # Option books do not shrink sixfold overnight, so the previous capture is
+        # the yardstick. Refuse rather than write: a missing rawOI skips the
+        # product loudly, whereas a truncated one moves the walls and max pain the
+        # bots trade, and looks entirely reasonable doing it.
+        prior_n, prior_day = _prior_strikes(product, box)
+        if key in ('oi', 'chg', 'vol') and prior_n >= 40 and n_str < prior_n * 0.5:
+            print(f'  {"":<8}    ! {n_str} strikes vs {prior_n} on {prior_day} '
+                  f'({n_str / prior_n:.0%}) - a book does not halve overnight.')
+            print(f'  {"":<8}      Reading it as a half-rendered table and REFUSING '
+                  f'to write {box}.')
+            continue
         widest = max((r.count('\t') + 1 for r in tsv.split('\n') if r.strip()), default=0)
         if key == 'settles' and widest > 17:
             print(f'  {"":<8}    ! {widest} columns, expected 17 - extra volatility '
