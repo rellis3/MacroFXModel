@@ -25,8 +25,14 @@ system already in this repo:
 - `vumanchuLab/jordan_rule.py`, `vumanchuLab/FINDINGS.md` — VuManChu Cipher B
   ("yellow line" = wt1-wt2) multi-timeframe alignment work
 - `education/jordan_impulse_range_backtest/` — impulse range, VWAP entry
-  band, liquidity sweep filter, MAE dynamic stop
+  band, liquidity sweep filter, MAE dynamic stop, and (critically) the
+  re-read of these same screenshots as TradingView's Long/Short Position
+  drawing tool rather than a computed indicator — read this before treating
+  anything about "Jordan's band" as an open indicator-identification question
 - `education/jordan_trade_geometry/` — trade geometry + VuManChu gate
+- `education/jordan_atr_band_backtest/` — the rolling ATR-band mean-
+  reversion idea from this file's own Synthesis section, built and tested
+  (null, see Research Backlog)
 
 Nothing below is confirmed or backtested by default — this is a capture
 layer for hypotheses. "Confidence" is about how clearly/repeatedly Jordan
@@ -864,16 +870,26 @@ _Ideas judged worth a real backtest, promoted from the Theme Index once
 they're concrete enough to test (specific indicator, parameters, entry/exit
 logic). Links to a script/dir once work starts._
 
-- **Rolling ATR/SD band entry-zone framework — top priority.** See the
-  "Synthesis: defining entry zones from a rolling ATR/SD band" section
-  above (under Priority Watch) for the full buildable spec: ATR-multiplier
-  band off an EMA or VWAP basis, tiered zones (mirroring the existing
-  1.5/2/2.75 range-extension-multiple pattern), ADX-gated fade-vs-
-  continuation logic, and ATR-based stop + structure-trailing exit. This
-  doesn't require identifying Jordan's exact tool to be worth backtesting
-  on its own. Separately, still open on Jordan's *specific* tool: what the
-  two blue lines are, the actual period/multiplier, and whether the
-  colored rectangle is the live band or a per-test manual projection.
+- **Rolling ATR/SD band entry-zone framework — BUILT AND TESTED, null.**
+  See `education/jordan_atr_band_backtest/RESULTS.md` and
+  `js/atrBandEntryV1Engine.js`. EMA(20) basis ± ATR(14) band, ADX(4H)
+  regime-gated fade with confirmation, tested on 10.4 years of gold + NQ-
+  proxy M1 data: null at baseline (gold Sharpe −4.84, NQ −2.67, both
+  OOS-consistent). The ADX gate does real, monotonic work (unlike the
+  sibling engine's range-exhaustion gate) — tightening it and widening the
+  zone improves both instruments consistently, best *sample-valid* setting
+  (zone=3.5×ATR, ADX<15, n=128/132 OOS) reaches gold −1.55/NQ −0.37 Sharpe,
+  still losers, neither crossing into positive Sharpe. A real bug (ADX
+  warmup starved by a too-short per-day context window, silently zero
+  trades) was caught and fixed before trusting this result — see that
+  file's Known Limitations. Follow-ups not yet tried: VWAP as basis instead
+  of EMA, a fixed-RR target instead of basis-reversion, and the
+  continuation-in-trend variant (buy a near-band pullback when ADX is high,
+  instead of skipping the day) that transcript 6 describes the group
+  actually using. Separately, still open on Jordan's *specific* screenshot
+  tool (now understood as likely manual trade markup, not a live indicator
+  — see the rewritten Priority Watch section): what the two blue lines are
+  and the actual period/multiplier, if it exists as a real indicator at all.
 - **Dynamic structure-trailing stop vs. fixed-R exit.** Concrete and
   testable: on any existing entry model in this repo, A/B a "trail stop to
   last swing point once structure prints" exit against the current fixed-R
