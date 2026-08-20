@@ -22,6 +22,8 @@
     <span>Prereqs: MDPs, Value Functions &amp; the Bellman Equation</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -87,6 +89,11 @@
     </p>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine guessing how a road trip will go. Waiting for the whole trip to finish before learning anything is Monte Carlo — accurate, but slow, and one weird detour can throw the whole lesson off. Temporal-difference learning is like updating your guess after every single mile, using your best current guess about the rest of the trip — quicker feedback, even though that guess about "the rest of the trip" is itself still a work in progress.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 02</span></div>
   <h2>The math, step by step</h2>
   <p>
@@ -118,6 +125,12 @@
     it fast but noisy — the exact same speed-versus-stability trade a
     learning rate makes in any gradient-based estimation procedure.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The TD error is just "how surprised was I?" You thought a state was worth some amount; you take one step, get a real reward, and update your guess about what's next — and if that combination doesn't match what you originally expected, that gap is the TD error. The learning rate α decides how much you let one single surprise change your mind — a small α means "adjust a little, stay cautious," a big α means "believe this one data point a lot."</p>
+  </div>
+
   <p>
     Compare this explicitly against the alternative: a <strong>Monte Carlo</strong>
     update would instead wait for the entire episode to finish, compute the
@@ -179,6 +192,12 @@
     while following another is the textbook definition of
     <strong>off-policy</strong> learning.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a mouse in a maze that sometimes wanders down a random tunnel just to see what's there, instead of always taking the path it currently thinks is fastest. Q-learning is like the mouse keeping a private notebook that always assumes "if I were being smart, I'd take the best-known path from here" — even on the runs where it actually wandered off to explore. It learns the value of the smart, no-detours path while its real feet keep occasionally wandering.</p>
+  </div>
+
   <p>
     <strong>SARSA — the on-policy sibling, briefly.</strong> Change exactly
     one thing in the update — replace the \(\max\) over next actions with
@@ -203,6 +222,11 @@
     naturally accounts for the ongoing cost of the exploration it's actually
     doing.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>SARSA is the same mouse, but its notebook is more honest: it only ever writes down the value of whatever tunnel it genuinely just ran down next, wandering included. So if the mouse's exploring habit occasionally sends it down a dangerous tunnel, SARSA's numbers reflect that real risk, while Q-learning's numbers pretend the mouse always takes the best tunnel from here on — even though, in real life, it doesn't.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -381,6 +405,11 @@
       the standard fix, using two separately updated estimators to decouple
       the action-selection max from the action-value estimate being used.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>If you ask five noisy weather apps for tomorrow's temperature and then trust whichever one gave the highest number, you'll tend to end up too optimistic — not because any one app is lying, but because picking the max of several guesses systematically favors whichever one happened to overshoot. Q-learning does exactly that every update, picking the max over its own still-noisy value estimates, which is why its scores tend to run a little too high, especially early on.</p>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -484,5 +513,28 @@
     <a href="policy-gradients-actor-critic.html">Policy Gradients &amp; Actor-Critic Methods →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

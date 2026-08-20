@@ -3996,12 +3996,25 @@ const OI_DEFAULTS = {
   reactAtLevels: false, reactMinTier: 'moderate', reactBreakoutTrim: 0.6,
   requireEstablished: false, avoidLiquidating: true, maxZonesPerSide: 4,
   secondaryTrim: 0.6, reachMult: 1.0, reachTrim: 0.7, maxReachPips: 0,   // PIN nearest-primary + reachability gate
+  persistenceWeight: 0.1, persistentDTE: 5,                              // across-expiry durability rank/size
+  pathBlockCheck: true, blockMinTier: 'moderate', blockTrim: 0.9,        // nearer-wall-in-the-path flag/trim
+  fallbackTpR: 0, fxFallbackTpR: 2.0,                                    // measured-move TP for wall-less trades
+  vannaBoost: 1.15, vannaTrim: 0.85, charmBoost: 1.2,                    // greek conditioners
   fx_enabled: false, fx_pairs: [],
+  // strategy — 2026-08 quant-review additions (see MD files/OI_BOT_QUANT_REVIEW_2026-08.md)
+  slBufferRefFrac: 0.10, breakRefFrac: 0.15, extendedRefFrac: 0.25,   // distances = max(pips, frac × refMove)
+  minRR: 0.8, gexNeutralBand: 0.25, convictionSizing: true, holdScore: true,
+  subTierTrade: false, subTierSize: 0.4, minZoneSpacing: 0.05, volMagnetMinShare: 0.25,
+  reactNodes: { walls: 1.0, gammaFlip: 0.8, gexFlip: 0.8, vannaFlip: 0.6, volMagnets: 0.6 },
   // execution (the bot)
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
   touch_tol_pips: 2, max_spread_pips: null, tick_secs: 3, status_secs: 30, plan_secs: 600,
   stack_guard: true, stack_guard_pips: 10,   // refuse a 2nd same-dir entry within N pips of an open one (one bet, not two)
   enabled_pairs: [], broker_symbols: {},
+  // execution — 2026-08 additions
+  max_open_risk_pct: 2.0, max_group_positions: { index: 2 }, plan_max_age_hours: 24,
+  break_hold_ticks: 2, approach_trim: 0.7, scale_out: false, be_at_tp1: true,
+  max_hold_hours: { fade: 48, break: 24, maxpain: 24, react: 24},   // per-mode time exits (0 = off)
   // telegram entry alerts (blank token/chat → shared tg_config)
   tg_enabled: false, tg_token: '', tg_chat_id: '',
 };
@@ -4028,6 +4041,43 @@ function renderOiForm() {
   set('oi_break_pips', _oiCfg.breakPips ?? OI_DEFAULTS.breakPips);
   set('oi_near_expiry_dte', _oiCfg.nearExpiryDTE ?? OI_DEFAULTS.nearExpiryDTE);
   set('oi_extended_pips', _oiCfg.extendedPips ?? OI_DEFAULTS.extendedPips);
+  set('oi_sl_buffer_ref_frac', _oiCfg.slBufferRefFrac ?? OI_DEFAULTS.slBufferRefFrac);
+  set('oi_break_ref_frac', _oiCfg.breakRefFrac ?? OI_DEFAULTS.breakRefFrac);
+  set('oi_extended_ref_frac', _oiCfg.extendedRefFrac ?? OI_DEFAULTS.extendedRefFrac);
+  set('oi_min_rr', _oiCfg.minRR ?? OI_DEFAULTS.minRR);
+  set('oi_gex_neutral_band', _oiCfg.gexNeutralBand ?? OI_DEFAULTS.gexNeutralBand);
+  chk('oi_conviction_sizing', _oiCfg.convictionSizing ?? true);
+  chk('oi_hold_score', _oiCfg.holdScore ?? true);
+  set('oi_min_zone_spacing', _oiCfg.minZoneSpacing ?? OI_DEFAULTS.minZoneSpacing);
+  chk('oi_sub_tier_trade', _oiCfg.subTierTrade ?? false);
+  set('oi_sub_tier_size', _oiCfg.subTierSize ?? OI_DEFAULTS.subTierSize);
+  set('oi_vol_magnet_min_share', _oiCfg.volMagnetMinShare ?? OI_DEFAULTS.volMagnetMinShare);
+  const rw = { ...OI_DEFAULTS.reactNodes, ...(_oiCfg.reactNodes || {}) };
+  set('oi_rw_walls', rw.walls); set('oi_rw_gamma', rw.gammaFlip); set('oi_rw_gex', rw.gexFlip);
+  set('oi_rw_vanna', rw.vannaFlip); set('oi_rw_vol', rw.volMagnets);
+  set('oi_secondary_trim', _oiCfg.secondaryTrim ?? OI_DEFAULTS.secondaryTrim);
+  set('oi_reach_mult', _oiCfg.reachMult ?? OI_DEFAULTS.reachMult);
+  set('oi_reach_trim', _oiCfg.reachTrim ?? OI_DEFAULTS.reachTrim);
+  set('oi_max_reach_pips', _oiCfg.maxReachPips ?? OI_DEFAULTS.maxReachPips);
+  set('oi_persistence_weight', _oiCfg.persistenceWeight ?? OI_DEFAULTS.persistenceWeight);
+  set('oi_persistent_dte', _oiCfg.persistentDTE ?? OI_DEFAULTS.persistentDTE);
+  chk('oi_path_block_check', _oiCfg.pathBlockCheck ?? true);
+  set('oi_block_min_tier', _oiCfg.blockMinTier ?? OI_DEFAULTS.blockMinTier);
+  set('oi_block_trim', _oiCfg.blockTrim ?? OI_DEFAULTS.blockTrim);
+  set('oi_fallback_tp_r', _oiCfg.fallbackTpR ?? OI_DEFAULTS.fallbackTpR);
+  set('oi_fx_fallback_tp_r', _oiCfg.fxFallbackTpR ?? OI_DEFAULTS.fxFallbackTpR);
+  set('oi_vanna_boost', _oiCfg.vannaBoost ?? OI_DEFAULTS.vannaBoost);
+  set('oi_vanna_trim', _oiCfg.vannaTrim ?? OI_DEFAULTS.vannaTrim);
+  set('oi_charm_boost', _oiCfg.charmBoost ?? OI_DEFAULTS.charmBoost);
+  const mh = { ...OI_DEFAULTS.max_hold_hours, ...(_oiCfg.max_hold_hours || {}) };
+  set('oi_mh_fade', mh.fade); set('oi_mh_break', mh.break); set('oi_mh_maxpain', mh.maxpain); set('oi_mh_react', mh.react);
+  set('oi_max_open_risk_pct', _oiCfg.max_open_risk_pct ?? OI_DEFAULTS.max_open_risk_pct);
+  set('oi_group_index_cap', (_oiCfg.max_group_positions || {}).index ?? 0);
+  set('oi_plan_max_age_hours', _oiCfg.plan_max_age_hours ?? OI_DEFAULTS.plan_max_age_hours);
+  set('oi_break_hold_ticks', _oiCfg.break_hold_ticks ?? OI_DEFAULTS.break_hold_ticks);
+  set('oi_approach_trim', _oiCfg.approach_trim ?? OI_DEFAULTS.approach_trim);
+  chk('oi_scale_out', _oiCfg.scale_out ?? false);
+  chk('oi_be_at_tp1', _oiCfg.be_at_tp1 ?? true);
   chk('oi_paper_mode', _oiCfg.paper_mode ?? true);
   chk('oi_kill_switch', _oiCfg.kill_switch);
   set('oi_risk_pct', _oiCfg.risk_pct ?? OI_DEFAULTS.risk_pct);
@@ -4067,6 +4117,52 @@ function readOiForm() {
   _oiCfg.breakPips = num('oi_break_pips', OI_DEFAULTS.breakPips);
   _oiCfg.nearExpiryDTE = Math.round(num('oi_near_expiry_dte', OI_DEFAULTS.nearExpiryDTE));
   _oiCfg.extendedPips = num('oi_extended_pips', OI_DEFAULTS.extendedPips);
+  _oiCfg.slBufferRefFrac = num('oi_sl_buffer_ref_frac', OI_DEFAULTS.slBufferRefFrac);
+  _oiCfg.breakRefFrac = num('oi_break_ref_frac', OI_DEFAULTS.breakRefFrac);
+  _oiCfg.extendedRefFrac = num('oi_extended_ref_frac', OI_DEFAULTS.extendedRefFrac);
+  _oiCfg.minRR = num('oi_min_rr', OI_DEFAULTS.minRR);
+  _oiCfg.gexNeutralBand = num('oi_gex_neutral_band', OI_DEFAULTS.gexNeutralBand);
+  _oiCfg.convictionSizing = !!document.getElementById('oi_conviction_sizing')?.checked;
+  _oiCfg.holdScore = !!document.getElementById('oi_hold_score')?.checked;
+  _oiCfg.minZoneSpacing = num('oi_min_zone_spacing', OI_DEFAULTS.minZoneSpacing);
+  _oiCfg.subTierTrade = !!document.getElementById('oi_sub_tier_trade')?.checked;
+  _oiCfg.subTierSize = num('oi_sub_tier_size', OI_DEFAULTS.subTierSize);
+  _oiCfg.volMagnetMinShare = num('oi_vol_magnet_min_share', OI_DEFAULTS.volMagnetMinShare);
+  _oiCfg.reactNodes = {
+    walls: num('oi_rw_walls', OI_DEFAULTS.reactNodes.walls),
+    gammaFlip: num('oi_rw_gamma', OI_DEFAULTS.reactNodes.gammaFlip),
+    gexFlip: num('oi_rw_gex', OI_DEFAULTS.reactNodes.gexFlip),
+    vannaFlip: num('oi_rw_vanna', OI_DEFAULTS.reactNodes.vannaFlip),
+    volMagnets: num('oi_rw_vol', OI_DEFAULTS.reactNodes.volMagnets),
+  };
+  _oiCfg.secondaryTrim = num('oi_secondary_trim', OI_DEFAULTS.secondaryTrim);
+  _oiCfg.reachMult = num('oi_reach_mult', OI_DEFAULTS.reachMult);
+  _oiCfg.reachTrim = num('oi_reach_trim', OI_DEFAULTS.reachTrim);
+  _oiCfg.maxReachPips = num('oi_max_reach_pips', OI_DEFAULTS.maxReachPips);
+  _oiCfg.persistenceWeight = num('oi_persistence_weight', OI_DEFAULTS.persistenceWeight);
+  _oiCfg.persistentDTE = Math.round(num('oi_persistent_dte', OI_DEFAULTS.persistentDTE));
+  _oiCfg.pathBlockCheck = !!document.getElementById('oi_path_block_check')?.checked;
+  _oiCfg.blockMinTier = document.getElementById('oi_block_min_tier')?.value || OI_DEFAULTS.blockMinTier;
+  _oiCfg.blockTrim = num('oi_block_trim', OI_DEFAULTS.blockTrim);
+  _oiCfg.fallbackTpR = num('oi_fallback_tp_r', OI_DEFAULTS.fallbackTpR);
+  _oiCfg.fxFallbackTpR = num('oi_fx_fallback_tp_r', OI_DEFAULTS.fxFallbackTpR);
+  _oiCfg.vannaBoost = num('oi_vanna_boost', OI_DEFAULTS.vannaBoost);
+  _oiCfg.vannaTrim = num('oi_vanna_trim', OI_DEFAULTS.vannaTrim);
+  _oiCfg.charmBoost = num('oi_charm_boost', OI_DEFAULTS.charmBoost);
+  _oiCfg.max_hold_hours = {
+    fade: num('oi_mh_fade', OI_DEFAULTS.max_hold_hours.fade),
+    break: num('oi_mh_break', OI_DEFAULTS.max_hold_hours.break),
+    maxpain: num('oi_mh_maxpain', OI_DEFAULTS.max_hold_hours.maxpain),
+    react: num('oi_mh_react', OI_DEFAULTS.max_hold_hours.react),
+  };
+  _oiCfg.max_open_risk_pct = num('oi_max_open_risk_pct', OI_DEFAULTS.max_open_risk_pct);
+  const _gidx = Math.round(num('oi_group_index_cap', 0));
+  _oiCfg.max_group_positions = _gidx > 0 ? { index: _gidx } : {};
+  _oiCfg.plan_max_age_hours = num('oi_plan_max_age_hours', OI_DEFAULTS.plan_max_age_hours);
+  _oiCfg.break_hold_ticks = Math.round(num('oi_break_hold_ticks', OI_DEFAULTS.break_hold_ticks));
+  _oiCfg.approach_trim = num('oi_approach_trim', OI_DEFAULTS.approach_trim);
+  _oiCfg.scale_out = !!document.getElementById('oi_scale_out')?.checked;
+  _oiCfg.be_at_tp1 = !!document.getElementById('oi_be_at_tp1')?.checked;
   _oiCfg.paper_mode = !!document.getElementById('oi_paper_mode')?.checked;
   _oiCfg.kill_switch = !!document.getElementById('oi_kill_switch')?.checked;
   _oiCfg.risk_pct = num('oi_risk_pct', OI_DEFAULTS.risk_pct);

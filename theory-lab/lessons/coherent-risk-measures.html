@@ -22,6 +22,8 @@
     <span>Prereqs: none required, though familiarity with a normal/loss distribution helps</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -96,6 +98,12 @@
   question: <em>where</em> is the bad-outcome cutoff. It says nothing about how bad things get once
   you're past that cutoff.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>VaR is like a weather forecast that only tells you "there's a 5% chance it rains harder than this." It draws one line and says "most days you'll be fine relative to this line." It never tells you whether, on that unlucky 5% day, you get a light drizzle past the line or a full-blown flood — it's completely silent about everything past the cutoff it names.</p>
+  </div>
+
   <div class="tl-math">\[ \text{CVaR}_p(L) = E[\, L \mid L > \text{VaR}_p(L) \,] \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c2"><code>E[·]</code><span>the average, not just a single cutoff</span></div>
@@ -106,6 +114,11 @@
   also called <strong>Expected Shortfall (ES)</strong> — the two names refer to the same quantity in the
   continuous-distribution case this lesson uses throughout.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>CVaR answers the question the weather forecast skipped: "okay, on the days it does rain harder than that line — on average, how bad does it actually get?" Instead of one dry sentence about a cutoff, it gives you the average severity of every bad day, which is a much more honest picture of what "bad" actually means here.</p>
+  </div>
 
   <h3>The four Artzner-Delbaen-Eber-Heath coherence axioms</h3>
   <p>
@@ -162,6 +175,12 @@
       </div>
     </div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The four axioms are really just four common-sense rules for a fair risk scoreboard. A position that literally can never lose more than another shouldn't be scored as riskier (monotonicity). Two positions put together shouldn't score as riskier than adding up their separate scores (sub-additivity). Doubling a bet should double its score, nothing fancier (positive homogeneity). And bolting on a guaranteed extra loss with zero uncertainty should just add that exact amount to the score, no surprises (translation invariance). A "coherent" measure is simply one that never breaks any of these obviously reasonable rules.</p>
+  </div>
+
   <div class="tl-symbols">
     <table>
       <tr><td>\(L, L_1, L_2\)</td><td>Random variables representing losses (positive = you lost money) for a position or portfolio.</td></tr>
@@ -199,6 +218,11 @@
   object to optimize directly (a point developed further by Rockafellar &amp; Uryasev's linear-programming
   formulation of CVaR minimization — see Further Reading).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two friends each individually have only a small chance of catching a cold this week, so on their own, neither one looks "risky" by a simple cutoff rule. But the chance that at least one of the two catches a cold is bigger than either friend's own chance alone — and VaR, which only ever looks at one cutoff point, gets caught off guard by that combined possibility. CVaR doesn't have this blind spot because it's already averaging over every bad outcome, including the ones where both friends get sick together.</p>
+  </div>
 
   <div class="tl-solid red">
     <strong>The single most important fact in this lesson:</strong> VaR is not sub-additive.
@@ -468,5 +492,28 @@
     <a href="tail-risk-hedging-convexity.html">Tail Risk Hedging &amp; Portfolio Convexity →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

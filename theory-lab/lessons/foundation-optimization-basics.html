@@ -22,6 +22,8 @@
     <span>Prereqs: Partial Derivatives &amp; Multivariable Calculus</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -147,6 +149,11 @@
     does not, by itself, tell you which kind of candidate you've found.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine walking up a hill with your eyes closed. As long as you can still feel the ground tilting upward under your feet, you know you haven't reached the top yet. The very top is the one spot where the ground feels completely flat in every direction — that flatness is exactly what the first-order condition is checking for.</p>
+  </div>
+
   <h3>The second-order condition: telling a minimum from a maximum from a saddle</h3>
   <p>
     For a single-variable function, the <strong>second derivative</strong>
@@ -180,6 +187,11 @@
     convex function, any stationary point found is guaranteed to be the true
     global minimum, not just a local one.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Flat ground can mean three different things: the top of a hill (a maximum), the bottom of a valley (a minimum), or the middle of a mountain pass that dips down one way and rises up the other, like a horse saddle. The second derivative is what tells these apart — it checks which way the ground curves right where you're standing.</p>
+  </div>
 
   <h3>Constrained optimization: the Lagrangian</h3>
   <p>
@@ -237,6 +249,11 @@
     improve \(f\) — meaning the point couldn't have been optimal yet.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you can only walk along a fence, not anywhere on the hill you want. The best spot along that fence is the place where walking further in either direction doesn't get you any higher — even though hopping over the fence might. At that exact spot, the "uphill" direction of the hill and the direction the fence runs point along the very same line.</p>
+  </div>
+
   <div class="tl-formula-parts">
     <div class="tl-fp blue">
       <div class="tl-fp-term">f(x)</div>
@@ -274,6 +291,11 @@
     multipliers, they are the same parallel-gradients logic, extended to
     handle constraints that don't have to bind exactly.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Sometimes a rule isn't "you must walk exactly on this line" but "you're allowed to be anywhere up to this limit" — like a height limit on an amusement park ride. Sometimes you bump right up against that limit, and sometimes the best spot doesn't even come close to it. KKT conditions are just the rules for figuring out which of those two cases you're in.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(f(x)\)</td><td>The objective function — the thing being maximized or minimized.</td></tr>
@@ -587,5 +609,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

@@ -29,6 +29,8 @@
     <span>Prereqs: Correlation &amp; Linear Regression primer; Extreme Value Theory helpful</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -140,6 +142,11 @@
     describe.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A single correlation number is like asking "on a typical day, do these two things move together?" — it's an average over every day, calm and stormy alike. But two pairs can give the exact same average answer while behaving completely differently on the worst days: one pair might stay only loosely linked even during a crash, while the other suddenly moves almost in lockstep. The average number can't tell you which one you're looking at — you have to look specifically at what happens on the bad days.</p>
+  </div>
+
   <h3>Step 2 — Sklar's theorem: separating the marginals from the dependence</h3>
   <p>
     The foundational result here, due to Abe Sklar (1959), states that
@@ -200,6 +207,11 @@
     Neither piece alone gets you there.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Sklar's theorem says you can always split "how these two things behave together" into two totally separate questions: "what does each one look like on its own" and "how are the two linked." That's genuinely useful, because it means you can mix and match — describe each series honestly on its own (including its own scary, fat-tailed bad days), and separately describe how tightly linked the two are, without one choice forcing your hand on the other.</p>
+  </div>
+
   <h3>Step 3 — the Gaussian copula: symmetric, no extra tail dependence</h3>
   <p>
     The simplest and by far most widely used copula is the <strong>Gaussian
@@ -233,6 +245,11 @@
     often does.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Gaussian copula is the "everything's a normal bell curve" assumption applied to how two things are linked, not just to each one individually. It's the mathematically convenient default — easy to compute, familiar, works fine most of the time — but it quietly assumes that no matter how extreme things get, the two variables never become <em>more</em> tightly linked than their everyday correlation would suggest. That assumption turns out to be the exact spot where real markets tend to disagree with the model.</p>
+  </div>
+
   <h3>Step 4 — tail dependence, defined precisely</h3>
   <p>
     Before introducing an alternative, it's worth stating exactly what "tail
@@ -258,6 +275,11 @@
     correlation coefficient cannot see: two dependence structures can have
     identical overall correlation and completely different \(\lambda_L\).
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Tail dependence answers a very specific question: "given that thing A just had one of its worst days ever, what are the odds thing B also just had one of its worst days?" If the answer stays essentially zero no matter how extreme "worst day" gets, the two are tail-independent. If the answer stays meaningfully high — say, 50 or 60 out of 100 times — the two tend to crash together, and knowing one crashed is a real warning sign about the other.</p>
+  </div>
 
   <h3>Step 5 — a tail-dependent alternative: the Clayton copula</h3>
   <p>
@@ -293,6 +315,11 @@
     family built to represent exactly that pattern rather than needing an ad
     hoc fix.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of two people tied together with a bungee cord that only tightens when both are falling, but stays loose when both are climbing. That's the Clayton copula: it builds in extra togetherness specifically on the downside — crashing together — without assuming the same extra togetherness on the upside. That lopsided shape matches something real about markets: panics tend to spread and synchronize, while rallies usually don't synchronize nearly as tightly.</p>
+  </div>
 
   <div class="tl-icard-grid">
     <div class="tl-icard">
@@ -796,5 +823,28 @@
     <a href="sharpe-family-deflated.html">Sharpe Ratio Family &amp; Deflated Sharpe →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -98,6 +100,11 @@
   carry the accumulated effect of many splits and dividend payments between then and now.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a pizza that gets cut into more slices, but the pizza itself doesn't get any bigger or smaller. A stock split is exactly that — more shares, each worth less, but the total value someone owns doesn't change. Back-adjustment just relabels all the old prices in "today's slice size" so the history reads as one smooth line instead of a fake cliff-drop the day the pizza got recut.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Futures rolls: back-adjustment ("Panama method") vs. ratio-adjustment</h2>
   <p>
@@ -136,6 +143,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture two relay racers handing off a baton. If they hand it off at slightly different heights, you can either shift the whole first runner's path up or down so the handoff looks seamless (that's back-adjustment — the actual gaps between the first runner's own steps stay the same size), or you can stretch or shrink the first runner's whole path proportionally so the handoff still looks seamless a different way (that's ratio-adjustment). Either trick removes the awkward jump at the handoff — they just preserve a different thing about the runner's original path.</p>
+  </div>
+
   <div class="tl-solid red">
     <strong>The trap:</strong> a back-adjusted ("Panama method") series can drift to unusual levels far
     enough in the past — for a long enough history of a contract that has rolled many times, the
@@ -149,6 +161,11 @@
     instead. Neither method is free; both are well-documented, standard practitioner tools, and the choice
     between them has to match what the downstream calculation actually needs (percentage returns, or
     consistent dollar/point-based P&amp;L).
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you keep shifting old measurements by the same fixed amount every time you get a new, slightly different ruler, eventually — far enough back — those old measurements can end up reading as a negative number, even though nothing was ever actually "negative" in real life. That's the warning sign that the relabeling trick has been stretched too far back to still make sense as an actual price.</p>
   </div>
 
   <div class="tl-symbols">
@@ -229,6 +246,11 @@
     "breakout" pattern disappears entirely — it was never a market phenomenon, it was an artifact of
     stitching two different contracts together without correcting for the price gap between them.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>It's like being impressed that a runner sprints super fast every quarter mile — except it turns out the racecourse itself has a downhill ramp built in at each quarter-mile mark, and you're measuring the ramp, not the runner. The "signal" only looked real because the data had an artificial jump baked in on a predictable schedule; fix the data, and the fake speed boost disappears.</p>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -344,5 +366,28 @@
     <a href="point-in-time-data-survivorship-bias.html">Point-in-Time Data &amp; Survivorship Bias →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

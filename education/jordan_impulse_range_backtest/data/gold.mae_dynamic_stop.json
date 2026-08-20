@@ -1,0 +1,362 @@
+{
+  "pair": "gold",
+  "baseline": {
+    "trades": 3156,
+    "tradesPerYr": 305.8,
+    "winRate": 24.1,
+    "profitFactor": 0.357,
+    "expectancy": -0.0209,
+    "sharpe": -5.987,
+    "sharpeSE": 0.32,
+    "minTrackYears": null,
+    "maxDD": -67.252,
+    "totalPnl": -66.101,
+    "skew": 3.138,
+    "excessKurt": 50.782,
+    "var95": -0.0848,
+    "cvar95": -0.1317,
+    "totalR": -9905.51
+  },
+  "phase1": {
+    "thresholds": {
+      "1": {
+        "winners": {
+          "pctReached": 0,
+          "medianBars": null,
+          "n": 0
+        },
+        "losers": {
+          "pctReached": 99.4,
+          "medianBars": 1,
+          "n": 2093
+        }
+      },
+      "0.25": {
+        "winners": {
+          "pctReached": 57.8,
+          "medianBars": 0,
+          "n": 598
+        },
+        "losers": {
+          "pctReached": 99.6,
+          "medianBars": 0,
+          "n": 2098
+        }
+      },
+      "0.5": {
+        "winners": {
+          "pctReached": 35.4,
+          "medianBars": 0,
+          "n": 366
+        },
+        "losers": {
+          "pctReached": 99.5,
+          "medianBars": 0,
+          "n": 2096
+        }
+      },
+      "0.75": {
+        "winners": {
+          "pctReached": 16.1,
+          "medianBars": 1,
+          "n": 166
+        },
+        "losers": {
+          "pctReached": 99.5,
+          "medianBars": 1,
+          "n": 2096
+        }
+      }
+    },
+    "winnersN": 1034,
+    "lossesN": 2106
+  },
+  "grid": [
+    {
+      "fracEarly": 1,
+      "kBars": 5,
+      "winRate": 24.1,
+      "sharpe": -5.987,
+      "profitFactor": 0.357,
+      "totalR": -9968.6,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 0,
+      "losersSaved": 719
+    },
+    {
+      "fracEarly": 0.8,
+      "kBars": 5,
+      "winRate": 21.9,
+      "sharpe": -6.093,
+      "profitFactor": 0.347,
+      "totalR": -9894.96,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 91,
+      "losersSaved": 1626
+    },
+    {
+      "fracEarly": 0.8,
+      "kBars": 10,
+      "winRate": 21.3,
+      "sharpe": -6.262,
+      "profitFactor": 0.336,
+      "totalR": -9906.69,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 109,
+      "losersSaved": 1816
+    },
+    {
+      "fracEarly": 0.8,
+      "kBars": 20,
+      "winRate": 21.1,
+      "sharpe": -6.318,
+      "profitFactor": 0.334,
+      "totalR": -9902.76,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 117,
+      "losersSaved": 1939
+    },
+    {
+      "fracEarly": 0.65,
+      "kBars": 5,
+      "winRate": 19.5,
+      "sharpe": -6.37,
+      "profitFactor": 0.325,
+      "totalR": -9857.29,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 188,
+      "losersSaved": 1712
+    },
+    {
+      "fracEarly": 0.8,
+      "kBars": 30,
+      "winRate": 21,
+      "sharpe": -6.429,
+      "profitFactor": 0.329,
+      "totalR": -9899.98,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 120,
+      "losersSaved": 1990
+    },
+    {
+      "fracEarly": 0.8,
+      "kBars": 60,
+      "winRate": 20.8,
+      "sharpe": -6.469,
+      "profitFactor": 0.327,
+      "totalR": -9904.91,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 126,
+      "losersSaved": 2043
+    },
+    {
+      "fracEarly": 0.65,
+      "kBars": 10,
+      "winRate": 18.8,
+      "sharpe": -6.536,
+      "profitFactor": 0.315,
+      "totalR": -9854.37,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 209,
+      "losersSaved": 1877
+    },
+    {
+      "fracEarly": 0.5,
+      "kBars": 5,
+      "winRate": 16,
+      "sharpe": -7.292,
+      "profitFactor": 0.273,
+      "totalR": -9845.16,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 317,
+      "losersSaved": 1794
+    },
+    {
+      "fracEarly": 0.65,
+      "kBars": 20,
+      "winRate": 18.4,
+      "sharpe": -7.362,
+      "profitFactor": 0.296,
+      "totalR": -9851.95,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 222,
+      "losersSaved": 1977
+    },
+    {
+      "fracEarly": 0.5,
+      "kBars": 10,
+      "winRate": 15.2,
+      "sharpe": -7.422,
+      "profitFactor": 0.266,
+      "totalR": -9836.14,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 341,
+      "losersSaved": 1928
+    },
+    {
+      "fracEarly": 0.65,
+      "kBars": 30,
+      "winRate": 18.3,
+      "sharpe": -7.493,
+      "profitFactor": 0.295,
+      "totalR": -9848.77,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 226,
+      "losersSaved": 2013
+    },
+    {
+      "fracEarly": 0.65,
+      "kBars": 60,
+      "winRate": 18.2,
+      "sharpe": -7.5,
+      "profitFactor": 0.295,
+      "totalR": -9842.72,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 229,
+      "losersSaved": 2049
+    },
+    {
+      "fracEarly": 0.35,
+      "kBars": 5,
+      "winRate": 12.3,
+      "sharpe": -8.181,
+      "profitFactor": 0.227,
+      "totalR": -9779.08,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 459,
+      "losersSaved": 1896
+    },
+    {
+      "fracEarly": 0.25,
+      "kBars": 5,
+      "winRate": 10,
+      "sharpe": -8.575,
+      "profitFactor": 0.203,
+      "totalR": -9726.49,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 557,
+      "losersSaved": 1939
+    },
+    {
+      "fracEarly": 0.5,
+      "kBars": 20,
+      "winRate": 14.8,
+      "sharpe": -8.653,
+      "profitFactor": 0.243,
+      "totalR": -9831.08,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 355,
+      "losersSaved": 2005
+    },
+    {
+      "fracEarly": 0.5,
+      "kBars": 30,
+      "winRate": 14.7,
+      "sharpe": -8.947,
+      "profitFactor": 0.241,
+      "totalR": -9831.34,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 361,
+      "losersSaved": 2027
+    },
+    {
+      "fracEarly": 0.5,
+      "kBars": 60,
+      "winRate": 14.6,
+      "sharpe": -9.121,
+      "profitFactor": 0.238,
+      "totalR": -9826.93,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 364,
+      "losersSaved": 2052
+    },
+    {
+      "fracEarly": 0.35,
+      "kBars": 10,
+      "winRate": 11.7,
+      "sharpe": -9.498,
+      "profitFactor": 0.208,
+      "totalR": -9764.18,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 477,
+      "losersSaved": 1984
+    },
+    {
+      "fracEarly": 0.35,
+      "kBars": 20,
+      "winRate": 11.4,
+      "sharpe": -10.269,
+      "profitFactor": 0.204,
+      "totalR": -9755.79,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 486,
+      "losersSaved": 2030
+    },
+    {
+      "fracEarly": 0.25,
+      "kBars": 10,
+      "winRate": 9.3,
+      "sharpe": -10.328,
+      "profitFactor": 0.181,
+      "totalR": -9718.99,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 577,
+      "losersSaved": 2009
+    },
+    {
+      "fracEarly": 0.35,
+      "kBars": 30,
+      "winRate": 11.2,
+      "sharpe": -10.497,
+      "profitFactor": 0.198,
+      "totalR": -9767.8,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 495,
+      "losersSaved": 2038
+    },
+    {
+      "fracEarly": 0.35,
+      "kBars": 60,
+      "winRate": 11.1,
+      "sharpe": -10.792,
+      "profitFactor": 0.193,
+      "totalR": -9767.62,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 499,
+      "losersSaved": 2053
+    },
+    {
+      "fracEarly": 0.25,
+      "kBars": 20,
+      "winRate": 9,
+      "sharpe": -11.359,
+      "profitFactor": 0.175,
+      "totalR": -9718.98,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 588,
+      "losersSaved": 2038
+    },
+    {
+      "fracEarly": 0.25,
+      "kBars": 30,
+      "winRate": 8.9,
+      "sharpe": -11.467,
+      "profitFactor": 0.172,
+      "totalR": -9725.73,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 592,
+      "losersSaved": 2041
+    },
+    {
+      "fracEarly": 0.25,
+      "kBars": 60,
+      "winRate": 8.7,
+      "sharpe": -11.895,
+      "profitFactor": 0.166,
+      "totalR": -9724.25,
+      "totalRBaseline": -9905.51,
+      "winnersCutShort": 597,
+      "losersSaved": 2054
+    }
+  ]
+}

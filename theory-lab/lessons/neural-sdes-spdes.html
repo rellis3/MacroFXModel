@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Neural SDEs &amp; Neural SPDEs</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Stochastic Differential Equations · SDEs 5 of 5</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 7 of 7</div>
   <h1 class="tl-title">Neural SDEs &amp; Neural SPDEs</h1>
   <p class="tl-dek">Every model in this sequence hand-specifies μ and σ — a drift and a diffusion someone wrote down because it seemed to describe the world. The last step this curriculum's SDE thread can take: what if a neural network learns μ and σ instead?</p>
   <div class="tl-meta">
@@ -22,6 +22,8 @@
     <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Numerical Schemes: Euler-Maruyama &amp; Milstein</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -111,6 +113,11 @@
     rather than a single generated image.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Every model so far in this sequence had a human write down the exact formula for the drift and the wobble. A neural SDE keeps the same skeleton but hands those two jobs to a neural network instead, letting it learn whatever shape best matches real data — the same way an image classifier learns what makes a cat look like a cat, except here it's learning what makes a price path look like a real price path.</p>
+  </div>
+
   <h3>2. Training: why naive backpropagation is expensive, and the adjoint fix</h3>
   <p>
     Training any neural network means computing the gradient of a loss
@@ -152,6 +159,11 @@
     <tr><td>Generator / discriminator</td><td>The two-network structure Kidger et al. (2021) use to train a neural SDE: the SDE itself generates simulated paths, and a separate discriminator network is trained to distinguish them from real data.</td></tr>
   </table></div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Training the ordinary way means remembering every single step of a long simulated walk so you can retrace it backward later — expensive if the walk has thousands of steps. The adjoint trick instead solves a separate "replay" equation that runs backward on its own, recovering the information you need without ever having kept the full walk in memory. It's the difference between saving a video of the whole trip versus having a rule that can reconstruct where you were at any moment, computed fresh.</p>
+  </div>
+
   <h3>3. Neural SPDEs: the field-valued generalization</h3>
   <p>
     A neural SDE learns the dynamics of a finite-dimensional state \(X_t \in
@@ -184,6 +196,11 @@
     a natural question worth knowing about is different from framing it as
     something ready to build.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A neural SDE learns how one wiggly number, or a short list of them, behaves over time. A neural SPDE stretches that same idea to learn how an entire wiggly surface — like every point of an option's implied-volatility surface, all at once — behaves over time, without a human first deciding what shape that surface's motion should take.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Neural SDE training loop, sketched as an architecture diagram</div>
@@ -400,9 +417,32 @@
   </details>
 
   <div class="tl-footer-nav">
-    <a href="short-rate-models-vasicek-cir-hull-white.html">← Short-Rate Models: Vasicek, CIR &amp; Hull-White</a>
+    <a href="stochastic-pdes.html">← Stochastic PDEs</a>
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

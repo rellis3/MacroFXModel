@@ -1,7 +1,7 @@
 import { S } from './state.js';
 import { kvGet, kvSet } from './utils.js';
 import { wallStrengthTier, oiSkew, oiConcentration, clusterStrikes, wallFreshness, volumePCRatio } from './oiConfluence.js';
-import { gammaFlip } from './gammaFlow.js';
+import { gammaFlip, distanceToFlip } from './gammaFlow.js';
 import { charmVannaExposure, gexFlipPrice, gexFlipCrossings } from './gammaGreeks.js';
 import { fullBookGex } from './fullBookGex.js';
 import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
@@ -1380,6 +1380,69 @@ export function oiRegimeBands(inst, { lo, hi } = {}) {
   return bands;
 }
 
+// Single-band regime read AT spot's current price — same rigorous crossings as
+// oiRegimeBands (no second definition), collapsed to "which band is spot in right
+// now" plus the signed distance to the nearest crossing. For callers that want one
+// answer instead of the full band list (decisionCore's OI_FEATURES, the daily
+// archival snapshot). Distance is recomputed against inst.spot rather than trusting
+// a stored distPct, since distPct on `gexFlips` is anchored to whatever spot was
+// current when the crossings were scanned and goes stale as spot moves. Pure.
+export function oiRegimeAtSpot(inst) {
+  const spot = Number.isFinite(inst?.spot) ? inst.spot : null;
+  if (!spot) return null;
+  const bands = oiRegimeBands(inst);
+  if (!bands.length) return null;
+  const band = bands.find(b => spot >= b.lo && spot <= b.hi) ?? bands[bands.length - 1];
+  const flips = (Array.isArray(inst.gexFlips) ? inst.gexFlips : []).filter(f => Number.isFinite(f?.price));
+  let distToFlipPct = null;
+  if (flips.length) {
+    const nearest = flips.reduce((m, f) => (Math.abs(f.price - spot) < Math.abs(m.price - spot) ? f : m));
+    distToFlipPct = +(((nearest.price / spot) - 1) * 100).toFixed(3);
+  }
+  return { regime: band.regime, distToFlipPct };
+}
+
+// Shapes ANY OI-summary-like object — the live `oi_store` `inst`, or an archived
+// `oi_history[pair][date]` entry (`_oiHistorySummary` in server.js was built to use
+// the same field names on purpose) — into the canonical oiCtx shape
+// `buildSnapshot`/`decisionCore.OI_FEATURES` expect. One definition so the live TDE
+// path (`_tdeOiContext`) and the offline backfill/fit path (`oiContextByDate` below)
+// read OI identically instead of two hand-rolled extractions drifting apart. Pure.
+export function oiCtxFrom(entry) {
+  if (!entry || typeof entry !== 'object' || !Number.isFinite(entry.spot)) return null;
+  const flips = Array.isArray(entry.gexFlips) ? entry.gexFlips.filter(f => Number.isFinite(f?.price)) : [];
+  const flipPrice = flips.length
+    ? flips.reduce((m, f) => (Math.abs(f.price - entry.spot) < Math.abs(m.price - entry.spot) ? f : m)).price
+    : (Number.isFinite(entry.gammaFlip) ? entry.gammaFlip : null);
+  if (!Number.isFinite(flipPrice)) return null;
+  const dist = distanceToFlip(entry.spot, flipPrice);
+  if (!dist) return null;
+  const walls = [
+    ...(Array.isArray(entry.callWalls) ? entry.callWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'call' })),
+    ...(Array.isArray(entry.putWalls) ? entry.putWalls : []).filter(w => Number.isFinite(w?.strike)).map(w => ({ price: w.strike, type: 'put' })),
+  ];
+  return {
+    spot: entry.spot, flip: flipPrice, side: dist.side, near: dist.near, pctToFlip: dist.pct,
+    regime: entry.regime ?? oiRegimeAtSpot(entry)?.regime ?? null,
+    walls, pcRatio: Number.isFinite(entry.pcRatio) ? entry.pcRatio : null,
+    asOf: entry.asOf ?? entry.updatedAt ?? entry.savedAtMs ?? null,
+  };
+}
+
+// Maps one pair's archived `oi_history[pair] = {date: summary}` into `{date: oiCtx}`
+// for backfill/fit's per-date `contextByDate[date].oi` socket — the direct sibling of
+// macroCore's `macroContextByDate`. A date can only resolve once the archive first
+// captured these fields (the archival schema change), same as any other forward-only
+// history; earlier days come back oi:null, same as a pre-archive live snapshot. Pure.
+export function oiContextByDate(oiHistoryForPair) {
+  const out = {};
+  for (const [date, entry] of Object.entries(oiHistoryForPair || {})) {
+    const ctx = oiCtxFrom(entry);
+    if (ctx) out[date] = ctx;
+  }
+  return out;
+}
+
 export function oiCalcExposures(strikes, calls, puts, spot, pair, T = OI_GREEK_T, sigmaFn = null) {
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
   if (!spot || spot <= 0) return { gex: 0, dex: 0 };
@@ -1952,6 +2015,23 @@ export async function buildOIEntry({
         const sig = Number.isFinite(nearLeg.sigma) && nearLeg.sigma > 0 ? nearLeg.sigma : atmFor(nearLeg.dte);
         dayExpiry = computeExpiryLevels(nearLeg.strikes, nearLeg.calls, nearLeg.puts, spot, pair,
           { dte: nearLeg.dte, minOI, numLevels, sigmaFn: sig > 0 ? () => sig : null });
+        // MAX PAIN MUST SEE THE WHOLE CHAIN. oiMatrixExpiryLegs drops strikes whose
+        // call+put OI is under minOI — right for WALL selection (a wall has to be
+        // significant) and wrong for max pain, which sums the pain of every open
+        // contract. Dropping the small strikes tilts the pain curve and moves the
+        // minimum by a strike, so this expiry's max pain disagreed with the same
+        // expiry's entry in perExpiry (which computes on the unfiltered column):
+        // NQ 1DTE read 29515.55 here and 29525.55 there on 2026-08-20, and BOTH were
+        // exported as "max_pain 1dte" — ten points apart on the one expiry that
+        // actually pins. Recompute from the unfiltered leg so the two agree.
+        if (dayExpiry) {
+          const legsAll = oiMatrixExpiryLegs(rawOI, { basis, inverted: futuresIsInverted(pair), minOI: 0 });
+          const allLeg = (legsAll || []).find(l => l.dte === nearLeg.dte);
+          if (allLeg && allLeg.strikes.length >= 2) {
+            const mpAll = oiCalcMaxPain(allLeg.strikes, allLeg.calls, allLeg.puts);
+            if (Number.isFinite(mpAll)) dayExpiry.maxPain = mpAll;
+          }
+        }
       }
     } else {
       dayExpiryReason = legs && legs.length === 1 ? 'only one expiry column parsed (not a multi-expiry paste)'
@@ -2135,8 +2215,18 @@ export async function buildOIEntry({
     ivSavedAtMs = (sameSmile && Number.isFinite(priorEntry.ivSavedAtMs)) ? priorEntry.ivSavedAtMs : Date.now();
   }
 
+  // WHEN THE BASIS WAS TAKEN — a different question from when the CHAIN was pasted.
+  // savedAtMs dates the OI, which is legitimately yesterday's and stays that way
+  // through a re-analyse. The basis is the futures-vs-spot reading the strikes are
+  // converted with, it drifts intraday, and a re-basis refreshes it WITHOUT making
+  // the chain any newer. Sharing one timestamp made a freshly re-based entry still
+  // report its basis as hours old. Pinned re-analyses carry the prior stamp forward,
+  // because pinning is precisely the case where the basis did not move.
+  const basisAtMs = (manualFutures && Number.isFinite(priorEntry?.basisAtMs))
+    ? priorEntry.basisAtMs : Date.now();
+
   const inst = {
-    pair, spot, daySpot, daySpotAt, ivSavedAtMs, futures: futuresUsed, basis: basis || null,
+    pair, spot, daySpot, daySpotAt, ivSavedAtMs, basisAtMs, futures: futuresUsed, basis: basis || null,
     cpSwapped,       // inverted pairs only: were call/put labels flipped into pair terms?
     futuresSource,   // 'manual' | 'live-yahoo' | 'live-cfd-proxy' | 'iv-title-live' | 'heatmap-header-settle' | 'field'
     futuresSymbol,   // e.g. GC=F / 6E=F — WHICH contract the price came from

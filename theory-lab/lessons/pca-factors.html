@@ -22,6 +22,8 @@
     <span>Prereqs: Cointegration &amp; Statistical Arbitrage</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -151,6 +153,11 @@
     <em>after</em> you have that grid, not a replacement for it.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Covariance is a simple two-step check repeated every day: was pair A above or below its own normal that day, and was pair B above or below its own normal that same day? If they're usually both above-normal together (or both below-normal together), covariance comes out positive — they're moving as a team. If one's up exactly when the other is down, covariance comes out negative — they're pulling in opposite directions.</p>
+  </div>
+
   <h3>Step 2 — what an eigenvector and eigenvalue actually are</h3>
   <p>
     This is the one piece of linear algebra this lesson needs, and it's worth
@@ -217,6 +224,11 @@
     captures.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the covariance matrix as a machine that grabs any arrow and yanks it around. Almost any arrow you feed it gets bent to point somewhere new. But there are a couple of special arrows that the machine only stretches or shrinks — it never bends them off their own line. Those special arrows are eigenvectors, and how much they got stretched is the eigenvalue — the bigger the stretch, the more that direction matters.</p>
+  </div>
+
   <h3>Step 3 — principal components, ranked by eigenvalue</h3>
   <p>
     Each eigenvector \(v_i\) of \(\Sigma\), paired with its eigenvalue
@@ -239,6 +251,11 @@
     that eigenvector) is called its <strong>PC1 score</strong>; it is a single
     number that stands in for "how much did the common factor move today."
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once you've found all those special stretch-only arrows, you line them up from "stretched the most" to "stretched the least." The one stretched the most (PC1) is the single direction that captures the biggest chunk of how the whole basket actually moves — like finding the one camera angle that shows the most action, then the next-best angle perpendicular to it, and so on.</p>
+  </div>
 
   <h3>Step 4 — explained variance ratio</h3>
   <p>
@@ -266,6 +283,11 @@
     what moves in this basket is one thing."
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you add up how much every special direction got stretched, that total is the whole basket's total wobble. Explained variance ratio just asks what fraction of that total wobble belongs to one particular direction — if PC1's share is 72%, that means almost three-quarters of everything moving in the basket, on any given day, boils down to one shared story.</p>
+  </div>
+
   <h3>Step 5 — loadings</h3>
   <p>
     An eigenvector \(v_i\) is itself a list of \(N\) numbers — one per
@@ -276,6 +298,12 @@
     A loading close to zero means that instrument barely participates in this
     component; a large-magnitude loading means it's a dominant contributor.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A loading is just "how much does this one instrument show up in this particular shared story." If EURUSD has a big loading on PC1 and some obscure pair has a loading near zero, it means EURUSD is a starring character in whatever PC1 represents, while that other pair is basically an extra who barely appears in that scene at all.</p>
+  </div>
+
   <div class="tl-symbols"><table>
     <tr><td>\(R\)</td><td>The \(T \times N\) return matrix — \(T\) days of history down the rows, \(N\) instruments across the columns. The raw data everything below is computed from.</td></tr>
     <tr><td>\(\Sigma\)</td><td>(capital sigma) The \(N \times N\) covariance matrix (or correlation matrix, its rescaled cousin) built from \(R\) — entry \((i,j)\) is the covariance between instrument \(i\)'s and instrument \(j\)'s returns.</td></tr>
@@ -751,5 +779,28 @@
     <a href="black-scholes.html">Black-Scholes-Merton Option Pricing →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

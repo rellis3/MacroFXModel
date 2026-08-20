@@ -123,6 +123,7 @@
   <div class="spacer"></div>
   <span class="stamp" id="lastCheck"></span>
   <button class="hbtn primary" id="fetchBtn" onclick="fetchNow()">⟳ Fetch now</button>
+  <button class="hbtn" id="backfillBtn" onclick="backfillNow()" title="Fetch + lexicon-score every scheduled statement 2016→today, and LLM-analyse any meeting without an analysis. Idempotent — existing captures are never overwritten. Stage 2 of CB_SENTIMENT_PRICE_TEST.">⏬ Backfill 2016→</button>
   <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
   <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
   <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
@@ -136,6 +137,8 @@
   <a class="hbtn" href="real-yield.html">Real Yield</a>
   <a class="hbtn" href="ppi.html">PPI</a>
   <a class="hbtn" href="macro-scorecard.html">Macro Scorecard</a>
+  <a class="hbtn" href="yield-curve.html">Yield Curve</a>
+  <a class="hbtn" href="consumer-confidence.html">Consumer Confidence</a>
   <a class="hbtn" href="today.html">Daily Brief</a>
   <a class="hbtn" href="index.html">Dashboard</a>
 </div>
@@ -354,6 +357,46 @@ async function fetchNow() {
     $('lastCheck').textContent = 'Could not reach the server: ' + e.message;
   } finally {
     btn.disabled = false; btn.innerHTML = '⟳ Fetch now';
+  }
+}
+
+// Historical backfill (Stage 2 of MD files/CB_SENTIMENT_PRICE_TEST.md) —
+// same kick-and-poll shape as fetchNow, but the job is much longer (~80
+// fed.gov fetches at 1.2s spacing + optional LLM reads ≈ 3-5 min), so this
+// polls the dedicated /api/fomc-backfill/status heartbeat for up to ~10 min
+// and streams its phase line into the header stamp. Idempotent server-side:
+// re-clicking never refetches or overwrites an existing capture.
+async function backfillNow() {
+  if (!confirm('Backfill every scheduled FOMC statement 2016→today?\n\n' +
+    '• fetches + lexicon-scores any statement not yet captured (~3-5 min)\n' +
+    '• runs the LLM engine on any meeting with no analysis yet (uses API credit)\n' +
+    '• never overwrites an existing capture or analysis')) return;
+  const btn = $('backfillBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Backfilling…';
+  try {
+    const kick = await jget('/api/fomc-backfill/run?llm=1', { method: 'POST' });
+    if (kick.alreadyRunning) $('lastCheck').textContent = 'A backfill is already running…';
+    let last = null;
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      const st = await jget('/api/fomc-backfill/status');
+      last = st.last;
+      if (last) $('lastCheck').textContent = `Backfill: ${last.phase}${last.log?.length ? ' · ' + last.log[last.log.length - 1] : ''}`;
+      if (!st.running) break;
+    }
+    const scores = await jget('/api/fomc-backfill/scores');
+    if (scores.ok) {
+      $('lastCheck').textContent = `Backfill done: ${scores.captured}/${scores.total} statements scored (${scores.lexicon})` +
+        (last?.log?.length ? ' · ' + last.log[last.log.length - 1] : '');
+    } else if (last) {
+      $('lastCheck').textContent = `Backfill: ${last.phase} · no scores written — see status log`;
+    }
+    meetingData = {};
+    await loadCalendar();
+  } catch (e) {
+    $('lastCheck').textContent = 'Backfill failed to start: ' + e.message;
+  } finally {
+    btn.disabled = false; btn.innerHTML = '⏬ Backfill 2016→';
   }
 }
 

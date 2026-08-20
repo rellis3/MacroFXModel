@@ -22,6 +22,8 @@
     <span>Prereqs: Black-Scholes-Merton Option Pricing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -167,6 +169,11 @@
     <div class="tl-eq-chip c4"><code>× (S × 0.01)</code><span>rescales from "per $1" to "per 1%"</span></div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>GEX just asks: "if this stock moves 1%, how many dollars' worth of stock will dealers be forced to buy or sell to stay hedged?" Gamma alone tells you how fast a dealer's hedge has to change; multiplying it out by how many contracts exist and how big the stock's price is turns that into a real dollar number you can compare across strikes and across entirely different stocks.</p>
+  </div>
+
   <h3>Why calls and puts carry the same gamma</h3>
   <p>
     A genuinely useful fact falls straight out of put-call parity, the
@@ -200,6 +207,11 @@
     interest), never by whether the contract happens to be a call or a put.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A call and a put at the same strike need the exact same amount of re-hedging effort as price moves — that part is fixed by math, no exceptions. What actually decides whether that hedging pushes price up or down is simply whether the dealer bought or sold the option in the first place, the same way it matters whether you're the person who owes money or the person who's owed it, regardless of what the debt is called.</p>
+  </div>
+
   <h3>The dealer's sign — an assumption, not an observation</h3>
   <p>
     Any long option position (call or put) has positive gamma. A dealer who
@@ -228,6 +240,12 @@
     disagree on the sign of individual strikes even while agreeing on the
     raw open interest.
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Knowing how many raincoats were sold in a town tells you nothing about who's wearing them versus who's giving them away as gifts. Open interest is the same: it counts contracts outstanding, not who's on the buying end and who's on the selling end. "Dealers are net short" is everyone's best guess about who's on which side, not something you can actually read off the raw count.</p>
+  </div>
+
   <p>
     Writing the sign explicitly, let \(s_k \in \{-1, +1\}\) denote the
     assumed sign of the dealer's net position at strike \(k\) (\(-1\) for
@@ -307,6 +325,11 @@
     to the price move — selling into strength, buying into weakness. It
     dampens the move — stabilizing, mean-reverting flow.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a dealer standing on a see-saw, forced to keep re-balancing it every time price shifts. If they're "short gamma," they have to keep piling weight onto whichever side is already going down — making the see-saw swing harder and faster, like adding fuel to a fire. If they're "long gamma," they do the opposite: they pull weight off the side that's dropping, which calms the see-saw back toward level. Same see-saw, opposite instincts, depending on which side of the trade the dealer is on.</p>
+  </div>
 
   <div class="tl-compare">
     <div class="tl-compare-card amber">
@@ -784,6 +807,29 @@
   buildCurve();
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

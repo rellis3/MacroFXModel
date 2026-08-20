@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Bayesian Statistics Extensions / Hierarchical Bayesian Models &amp; Partial Pooling</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Bayesian Extensions 3 of 3</div>
+  <div class="tl-kicker">Bayesian Extensions 3 of 4</div>
   <h1 class="tl-title">Hierarchical Bayesian Models &amp; Partial Pooling</h1>
   <p class="tl-dek">Five strategies, five trade counts, five noisy Sharpe estimates — should the one with 6 lucky-looking trades really be trusted as much as the one with 400? Partial pooling is the principled answer between "trust every estimate fully" and "ignore the differences entirely."</p>
   <div class="tl-meta">
@@ -22,6 +22,8 @@
     <span>Prereqs: Conjugate Priors &amp; Bayesian Updating in Practice</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -150,6 +152,12 @@
     except the "prior" is now the shared hyper-distribution instead of a
     hand-picked belief:
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>"Hierarchical" just means there are two layers of randomness stacked on top of each other, like a company's org chart. At the bottom, each employee's daily output wobbles around their own personal average — that's the observation level. One level up, those personal averages themselves aren't totally random either; they cluster around a company-wide average, because everyone works under similar conditions. Estimating a group's true number well means using information from both layers — its own track record, and what "typical" looks like across the whole group.</p>
+  </div>
+
   <div class="tl-math">\[ \hat\theta_j = B_j\,\bar{y}_j + (1-B_j)\,\mu, \qquad B_j = \frac{\tau^2}{\tau^2 + \sigma^2/n_j} \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c3"><code>Bⱼ</code><span>the shrinkage weight — how much group j's own data is trusted, between 0 and 1</span></div>
@@ -192,6 +200,11 @@
     endpoints, not separate, unrelated ideas.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>\(B_j\) is a trust dial between 0 and 1, one per group. Turn it all the way to 0 and you're saying "ignore this group's own data completely, just use the overall average" (complete pooling). Turn it all the way to 1 and you're saying "trust this group's own number completely, the overall average tells me nothing extra" (no pooling). The formula sets that dial automatically based on how much real data the group actually has — a small sample gets a dial stuck near 0, a big sample gets a dial that swings toward 1.</p>
+  </div>
+
   <div class="tl-solid green">
     <strong>The James-Stein connection:</strong> James &amp; Stein (1961)
     proved something genuinely surprising — when estimating three or more
@@ -203,6 +216,11 @@
     related in reality — it's a mathematical fact about how squared-error
     loss behaves in three-or-more dimensions at once, popularized by Efron
     &amp; Morris's "Stein's Paradox" using baseball batting averages.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The strange part of James-Stein is this: even if you're simultaneously guessing three totally unrelated things — say a friend's height, a stranger's favorite number, and the temperature in a city you've never visited — you can still get a better <em>combined</em> score, on average, by nudging all three of your noisy guesses slightly toward each other's overall average, instead of trusting each individual guess fully on its own. It sounds like it shouldn't work because the three things have nothing to do with each other, but it's a proven mathematical fact once you're scored on total error across three or more estimates at once, not each one separately.</p>
   </div>
 
   <div class="tl-symbols">
@@ -492,7 +510,7 @@
 
   <div class="tl-footer-nav">
     <a href="mcmc-metropolis-gibbs.html">← MCMC: Metropolis-Hastings &amp; Gibbs Sampling</a>
-    <a href="../hub.html">Theory Lab hub</a>
+    <a href="hamiltonian-monte-carlo-nuts.html">Hamiltonian Monte Carlo &amp; NUTS →</a>
   </div>
 </div>
 <script>
@@ -533,6 +551,29 @@
 
   nSlider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

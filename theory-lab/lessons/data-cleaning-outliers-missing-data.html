@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -121,6 +123,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of four different ways a phone call can go wrong. A fat-finger print is like someone shouting a completely wrong number once, then correcting themselves right away. A stale quote is like the line staying connected but the other person going silent while you keep hearing "still there, still there." A halt is like the call genuinely dropping for a real reason — no fake fixing needed, just an honest gap. And duplicate/out-of-order timestamps are like getting the same voicemail twice, or hearing the end of a sentence before the beginning. Each one needs its own kind of fix, not one universal patch.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>Standard detection approaches</h2>
   <p>
@@ -160,6 +167,11 @@
     <div class="tl-eq-chip c1"><code>x_i</code><span>the value (price, return) being checked at position \(i\)</span></div>
     <div class="tl-eq-chip c2"><code>median(x)</code><span>the rolling median, computed using only data up to \(i\)</span></div>
     <div class="tl-eq-chip c3"><code>MAD</code><span>a robust, outlier-resistant measure of spread — barely moved by the extreme values it's meant to catch</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine your class's average test score, then one kid scores a 1,000,000 by mistake. That single number wrecks the "average" — it drags it wildly upward, so the average itself stops being a useful yardstick for spotting weird scores. The median (the middle score when everyone's lined up in order) barely budges no matter how crazy that one number is, which is exactly why it's a much safer ruler to measure "how far off is this new value" against.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -209,6 +221,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If a page is torn out of a diary, you have three honest choices: assume nothing happened that day and copy yesterday's entry (forward-fill), guess a smooth, plausible middle-ground entry that gently bridges yesterday to tomorrow (interpolation), or just admit the page is missing and skip it when telling the story (flagging and excluding). None of these recovers what actually happened — they're just different ways of being honest, or dishonest, about a gap you can't actually fill with the truth.</p>
+  </div>
+
   <div class="tl-solid red">
     <strong>The trap:</strong> cleaning a series using statistics computed over the <em>whole</em> sample
     — "remove any point more than 5 standard deviations from the full-sample mean" — is itself a
@@ -222,6 +239,11 @@
     lessons: both are instances of the identical underlying discipline (never let time index \(i\)'s
     computation see data from \(> i\)) applied to two different stages of the same pipeline — cleaning
     the raw series here, versus building a feature from an already-clean series there.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>It's like grading a student's answer on question 3 of a test by comparing it to the answer key for the whole test — including questions they haven't reached yet. That's cheating, even if the grader didn't mean to cheat. A live data-cleaning system, ticking along in real time, can only ever compare "right now" to what already happened — never to next week's data — so any cleaning rule that peeks at the future is a rule nobody running the system live could ever actually follow.</p>
   </div>
 
   <div class="tl-symbols">
@@ -450,5 +472,28 @@
     <a href="corporate-actions-series-continuity.html">Corporate Actions &amp; Series Continuity →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

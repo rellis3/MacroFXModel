@@ -22,6 +22,8 @@
     <span>Prereqs: Graph Theory Fundamentals &amp; Centrality Measures</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -143,6 +145,11 @@
     machinery below to behave the way graph theory expects.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Correlation says "how alike," but a distance needs to say "how far apart" — and those point in opposite directions. Two instruments moving in perfect lockstep should be zero distance apart, not the maximum. Mantegna's formula just flips the direction: identical behavior becomes distance zero, and the more oppositely two things move, the further apart the formula puts them.</p>
+  </div>
+
   <h3>Step 2 — the distance matrix becomes a complete graph</h3>
   <p>
     Compute \(d_{ij}\) for every pair of \(N\) instruments and the result is
@@ -156,6 +163,11 @@
     structure. The next step's job is pruning it down to what actually
     matters.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once you've computed how far apart every single pair is, you technically have a map connecting everyone to everyone — but a map with every possible road drawn on it is just a mess of crossed lines, not something a person can actually read. The next step is figuring out which handful of roads you truly need.</p>
+  </div>
 
   <h3>Step 3 — the Minimum Spanning Tree</h3>
   <p>
@@ -191,6 +203,11 @@
     optimization: unlike most greedy heuristics, greedy is provably optimal
     here.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A minimum spanning tree is the cheapest possible set of roads that still lets you drive from any town to any other, with zero wasted loops. Kruskal's way of building it is simple: always grab the cheapest road left on the list, unless it would just create a loop between towns you can already reach each other from — in which case skip it and move to the next cheapest.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(\rho_{ij}\)</td><td>The Pearson correlation coefficient between instruments \(i\) and \(j\), in \([-1,1]\).</td></tr>
@@ -533,5 +550,28 @@
     <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

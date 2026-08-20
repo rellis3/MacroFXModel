@@ -709,28 +709,23 @@
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
-    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Original → COG → Bot → Original/COG Weekly → Original/COG Monthly. Bot draws the Volatility Bot's ACTUAL frozen plan lines (open + 8 levels from /api/volatility-bot/plan), anchored at the bot's own frozen open — so you see exactly what it trades and can confirm the levels don't move intraday. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Original</button>
+    <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Forecast → COG → Bot → Forecast/COG Weekly → Forecast/COG Monthly. Forecast draws the fitted ladder (O-H / O-L at p50/p75/p90, each meaning what it says); weekly and monthly use their OWN fitted widths, not √-scaled daily ones. Bot draws the Volatility Bot's ACTUAL frozen plan lines (open + 8 levels from /api/volatility-bot/plan), anchored at the bot's own frozen open — so you see exactly what it trades and can confirm the levels don't move intraday. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Forecast</button>
     <a class="v2-tool-btn" href="forecast-replay.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Replay chart — pick a pair + date range and see every session's forecast lines (H/C±/L median &amp; 75th) anchored on that day's open, vs the realized high/low, on one scrollable/zoomable chart.">📊 Replay</a>
     <a class="v2-tool-btn" href="forecast-reversion.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Reversion chart — arm each forecast line independently and see, session by session, the fade-back-to-the-inner-band trade every time price touches it: entry ▸ exit markers (win/loss/expired) plus a live per-line win/loss tally, for both the Original and COG calcs. Visual, in-sample — not evidence of edge.">📈 Reversion</a>
     <div class="v2-tool-sep"></div>
     <div class="vf-exp-dd" id="vfExpDropdown">
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
-        <button class="vf-exp-item" id="vfExportBtn"        onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export</button>
-        <button class="vf-exp-item" id="vfCalibratedBtn"    onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
-        <button class="vf-exp-item" id="vfExportV2Btn"      onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">+OH/OL bias</span></button>
-        <button class="vf-exp-item" id="vfExportHarBtn"     onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">shadow σ</span></button>
-        <button class="vf-exp-item" id="vfExtendedBtn"      onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended</button>
-        <button class="vf-exp-item" id="vfCalExtBtn"        onclick="closeExpDropdown();exportCalibratedExtended()" disabled>⬇ Extended (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
+        <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
+        <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day</span></button>
+        <button class="vf-exp-item" id="vfLadderMoBtn"   onclick="closeExpDropdown();exportLadder('monthly')"        disabled>⬇ Forecast Monthly <span style="font-size:9px;opacity:.55">20-day</span></button>
+        <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
-        <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"           disabled>⬇ Session</button>
-        <button class="vf-exp-item" id="vfV3ExportBtn"      onclick="closeExpDropdown();exportV3()"                disabled>⬇ V+S</button>
-        <button class="vf-exp-item" id="vfCZExportBtn"      onclick="closeExpDropdown();exportConfluenceZones()"   disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
-        <button class="vf-exp-item" id="vfWeeklyExportBtn"  onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly</button>
-        <button class="vf-exp-item" id="vfCalWkBtn"         onclick="closeExpDropdown();exportCalibratedWeekly()"  disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
-        <button class="vf-exp-item" id="vfCogBtn"           onclick="closeExpDropdown();exportCog()"               disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
-        <button class="vf-exp-item" id="vfCogSessBtn"       onclick="closeExpDropdown();exportCogSession()"        disabled>⬇ COG + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
-        <button class="vf-exp-item" id="vfCogWkBtn"         onclick="closeExpDropdown();exportCogWeekly()"         disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 / √20</span></button>
+        <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
+        <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogPeriod('weekly')"      disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">5-day</span></button>
+        <button class="vf-exp-item" id="vfCogMoBtn"      onclick="closeExpDropdown();exportCogPeriod('monthly')"     disabled>⬇ COG Monthly <span style="font-size:9px;opacity:.55">20-day</span></button>
+        <div class="vf-exp-sep"></div>
+        <button class="vf-exp-item" id="vfCZExportBtn"   onclick="closeExpDropdown();exportConfluenceZones()"        disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1052,14 +1047,14 @@
           <thead>
             <tr style="color:var(--text2)">
               <th rowspan="2" style="text-align:left;padding:3px 8px;vertical-align:bottom;border-bottom:2px solid var(--border)">Instrument</th>
-              <th colspan="11" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">Ann Vol %</th>
-              <th colspan="11" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">HL Median %</th>
-              <th colspan="11" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">OC Median %</th>
+              <th colspan="14" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">Ann Vol %</th>
+              <th colspan="14" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">HL Median %</th>
+              <th colspan="14" style="padding:3px 8px;text-align:center;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">OC Median %</th>
             </tr>
             <tr style="border-bottom:2px solid var(--border);color:var(--text3)">
-              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th>
-              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th>
-              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th>
+              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th><th style="padding:3px 8px;color:var(--accent,#7dd3fc)" title="Walk-forward-selected estimator, width calibrated to REALIZED range (forge/vol.py) — a research/experimental column, not the live production forecast">Forge</th><th style="padding:3px 8px;color:var(--accent,#7dd3fc)">Δ Forge</th><th style="padding:3px 8px" title="What ACTUALLY happened that day — the number every other column here is trying to predict">Realized</th>
+              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th><th style="padding:3px 8px;color:var(--accent,#7dd3fc)" title="Walk-forward-selected estimator, width calibrated to REALIZED range (forge/vol.py)">Forge</th><th style="padding:3px 8px;color:var(--accent,#7dd3fc)">Δ Forge</th><th style="padding:3px 8px" title="What ACTUALLY happened that day">Realized</th>
+              <th style="padding:3px 8px;border-left:1px solid var(--border)">Old</th><th style="padding:3px 8px">YZ</th><th style="padding:3px 8px">HV20</th><th style="padding:3px 8px">EWMA</th><th style="padding:3px 8px">Ref</th><th style="padding:3px 8px">Δ Old</th><th style="padding:3px 8px">Δ YZ</th><th style="padding:3px 8px">Δ HV20</th><th style="padding:3px 8px">Δ EWMA</th><th style="padding:3px 8px">New</th><th style="padding:3px 8px">Δ New</th><th style="padding:3px 8px;color:var(--accent,#7dd3fc)" title="Walk-forward-selected estimator, width calibrated to REALIZED range (forge/vol.py)">Forge</th><th style="padding:3px 8px;color:var(--accent,#7dd3fc)">Δ Forge</th><th style="padding:3px 8px" title="What ACTUALLY happened that day">Realized</th>
             </tr>
           </thead>
           <tbody id="vfRefCmpBody"></tbody>
@@ -1238,7 +1233,8 @@
         <tr><td>Gold (commodity)</td><td>Rogers-Satchell EWMA (λ=0.94) on daily OHLC. Handles trending markets without understating vol — unlike close-to-close estimators it doesn't subtract the directional component.</td></tr>
         <tr><td>Indices (NQ, SPX, DE30…)</td><td>GARCH(1,1): α=0.06, β=0.91, ω=4.76e-6 (~20% long-run floor). Responds quickly to vol spikes (α), mean-reverts over ~23 days (β), and can't collapse in quiet patches (ω floor).</td></tr>
         <tr><td>FX pairs</td><td>GARCH(1,1): same α/β, ω=3.60e-7 (~5% long-run floor). Lower floor reflects calmer FX baseline vs equity indices.</td></tr>
-        <tr><td>Range distribution</td><td>Brownian motion: H-L P50 = 1.572σ, P75 = 2.049σ. O-C / O-H / O-L are half-normal: P50 = 0.675σ, P75 = 1.150σ, and the ladder's "big day" P90 = 1.645σ (= Φ⁻¹(0.95), extended from the 75th so the per-asset correction carries through). Per-asset correction factors calibrated against reference system.</td></tr>
+        <tr><td>Range distribution</td><td><strong>Forecast family:</strong> nothing is assumed from theory. Each rung is a multiplier FIT to realized data — the quantile of (realized ÷ σ), fit walk-forward on train data only and frozen (<code>forge/vol.py</code> → <code>js/forecastLadderParams.js</code>). p50 / p75 / p90 mean the level is reached on 50% / 25% / 10% of periods; pooled out-of-sample across 32 instruments × 6 folds the whole ladder lands within 0.9pp of those targets. O-H and O-L are fit SEPARATELY from O-C rather than inferred by the reflection principle, so each instrument's structural asymmetry is kept (indices fall harder than they rise). σ itself comes from the per-instrument estimator the widths were fit against. <strong>COG family:</strong> unchanged — COG's own published constants (1.56 / 1.93 / 0.74 / 1.24), reproducing his line rather than targeting realized range.</td></tr>
+        <tr><td>Event conditioning</td><td>The Forecast family scales σ by the day's scheduled-release bucket — FOMC / NFP / CPI / other / none — fit per instrument. It is <strong>two-sided</strong>: a day with no US Major release sits near ×0.90 and is roughly half the calendar, which the old news multiplier could not express (it floored at 1.0). Unconditionally, a calibrated forecast runs 40-45% exceedance on quiet days and 62-76% on event days; the bucket multipliers close that ~30pp swing.</td></tr>
         <tr><td>Multi-day scaling</td><td>σ_N = σ_1 × √N (independent days). Not ×N — range partially cancels across days for a random walk.</td></tr>
       </table>
     </div>
@@ -1435,7 +1431,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfExportBtn','vfCalibratedBtn','vfCogBtn','vfCogWkBtn','vfExportV2Btn','vfExtendedBtn','vfCalExtBtn','vfWeeklyExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfLadderBtn','vfLadderWkBtn','vfLadderMoBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCogMoBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -1525,16 +1521,10 @@ function loadSession(date) {
 }
 
 // ── triggerRefresh ────────────────────────────────────────────────────────────
-function triggerRefresh() {
-  const btn = document.getElementById('vfRefreshBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '↻ Refreshing…';
-  }
-
-  const date = viewingDate || null;
-
-  Promise.all([
+// Re-fetch the (already computed) forecast + session for `date` and re-render.
+// This does NOT recompute server-side — see triggerRefresh for that.
+function _reloadForecastView(date) {
+  return Promise.all([
     fetch(date ? `/api/vol-forecast?date=${date}` : '/api/vol-forecast').then(r => r.json()),
     fetch(date ? `/api/vol-forecast/session?date=${date}` : '/api/vol-forecast/session').then(r => r.json())
   ])
@@ -1554,16 +1544,41 @@ function triggerRefresh() {
     if (levelsViewActive) renderLevelsTable();
     renderCurrencyStrength(currentWeekly);
     // renderV2Grid already calls loadAllM5Charts — no duplicate call needed
-  })
-  .catch(err => {
-    console.error('triggerRefresh error:', err);
-  })
-  .finally(() => {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '↻ Refresh';
-    }
+    return forecast;
   });
+}
+
+// Refresh = actually RECOMPUTE the live session server-side (runVolForecast →
+// attaches HAR-IV/COG-v2 σ), then poll until computed_at advances, then render.
+// Historical views can't be recomputed via this endpoint, so they just re-fetch.
+async function triggerRefresh() {
+  const btn = document.getElementById('vfRefreshBtn');
+  const setBtn = (t, dis) => { if (btn) { btn.textContent = t; btn.disabled = dis; } };
+  const date = viewingDate || null;
+
+  setBtn('↻ Refreshing…', true);
+  try {
+    if (date) { await _reloadForecastView(date); return; }   // historical: view-only reload
+
+    const prevAt = liveForecast?.computed_at || null;
+    try { await fetch('/api/vol-forecast/refresh', { method: 'POST' }); }
+    catch (e) { console.warn('refresh POST failed, falling back to reload:', e); }
+
+    // Poll for the recompute to land (runVolForecast is fire-and-forget, ~30–60s).
+    let landed = false;
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      let fc; try { fc = await fetch('/api/vol-forecast').then(r => r.json()); } catch { continue; }
+      if (fc?.computed_at && fc.computed_at !== prevAt) { landed = true; break; }
+      setBtn(`↻ Recomputing… ${(i + 1) * 3}s`, true);
+    }
+    await _reloadForecastView(null);
+    if (!landed) console.warn('triggerRefresh: computed_at did not advance within poll window');
+  } catch (err) {
+    console.error('triggerRefresh error:', err);
+  } finally {
+    setBtn('↻ Refresh', false);
+  }
 }
 
 // ── loadSessionStats ──────────────────────────────────────────────────────────
@@ -2036,6 +2051,20 @@ function closeExpDropdown() {
 }
 document.addEventListener('click', closeExpDropdown);
 
+// ══════════════════════════════════════════════════════════════════════════════
+// RETIRED EXPORT BUILDERS — no longer reachable from the UI (2026-08-20).
+//
+// The dropdown collapsed to two families: Forecast (fitted ladder, daily/weekly/
+// monthly, served by /api/vol-forecast/ladder/export) and COG (unchanged). These
+// builders backed the old Export / Calibrated / Export v2 / Export HAR / Extended /
+// Extended (cal) / Session / V+S / Weekly / Weekly (cal) / COG+Session / COG v2
+// buttons and are now ORPHANED — each is referenced only by its own definition.
+//
+// Left in place rather than deleted on the same pass that changed what the page
+// shows, so any one of them can be re-wired in a single line if a number turns out
+// to be missed. Delete once the Forecast family has a few live sessions behind it.
+// ══════════════════════════════════════════════════════════════════════════════
+
 // ── Backtest-calibrated export ────────────────────────────────────────────────
 // Same structure as buildExportText, but the H-L bands are scaled by the
 // recalibration factors from the Vol Forecast Research Book (which found the raw
@@ -2180,10 +2209,14 @@ function _cogVol(name, f) {
   return g;
 }
 
-function buildCogExportText(data, { weekly = false } = {}) {
+function buildCogExportText(data, { weekly = false, period = null } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
-  const lines = [weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**', `**For session: ${data.session_label}**`, ''];
+  const _title = !weekly ? '**VOL & RANGE FORECAST — COG**'
+    : period === 'monthly' ? '**VOL & RANGE FORECAST — COG MONTHLY (20-day)**'
+    : period === 'weekly'  ? '**VOL & RANGE FORECAST — COG WEEKLY (5-day)**'
+    : '**VOL & RANGE FORECAST — COG WEEKLY**';
+  const lines = [_title, `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
     const va = _cogVol(name, f);
@@ -2191,13 +2224,22 @@ function buildCogExportText(data, { weekly = false } = {}) {
     lines.push(div(name));
     lines.push(`Volatility (annualized) : ${va.toFixed(2)}%`);
     if (weekly) {
-      const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
-      lines.push('── 5-Day (Weekly)');
-      lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
-      lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
-      lines.push('── 20-Day (Monthly)');
-      lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
-      lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+      // `period` narrows the old both-blocks output to one horizon, so COG has a
+      // Weekly and a Monthly export mirroring the Forecast family. Omitted =
+      // both blocks, the historical behaviour.
+      const both = !period;
+      if (both || period === 'weekly') {
+        const w5 = _cogBands(va, Math.sqrt(5));
+        lines.push('── 5-Day (Weekly)');
+        lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
+        lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
+      }
+      if (both || period === 'monthly') {
+        const w20 = _cogBands(va, Math.sqrt(20));
+        lines.push('── 20-Day (Monthly)');
+        lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
+        lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+      }
     } else {
       const d = _cogBands(va, 1);
       lines.push(row('High to Low range', d.hl_median, d.hl_75));
@@ -2207,10 +2249,80 @@ function buildCogExportText(data, { weekly = false } = {}) {
   }
   return lines.join('\n');
 }
+// COG v2 — COG for fx & indices, but gold uses the HAR-IV σ + forecaster (non-COG-
+// widened) bands (f.harIv, attached server-side). Falls back to COG for gold if the
+// HAR-IV shadow is unavailable (no FRED_KEY / insufficient IV history).
+function buildCogV2ExportText(data) {
+  const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
+  const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
+  const lines = ['**VOL & RANGE FORECAST — COG v2 (gold=HAR-IV)**', `**For session: ${data.session_label}**`, ''];
+  for (const [name, f] of Object.entries(data.instruments ?? {})) {
+    if (!(f?.vol_annual > 0)) continue;
+    let vol, hlMed, hl75, ocMed, oc75, tag = '';
+    if (name === 'GOLD' && f.harIv) {                 // gold leg: HAR-IV σ, forecaster bands
+      const h = f.harIv; vol = h.vol_annual; hlMed = h.hl_median; hl75 = h.hl_75; ocMed = h.oc_median; oc75 = h.oc_75;
+      tag = `  (σ=HAR-IV${h.iv_index ? ' ' + h.iv_index : ''})`;
+    } else {                                          // fx & indices: COG, unchanged
+      const va = _cogVol(name, f); if (!(va > 0)) continue;
+      const d = _cogBands(va, 1); vol = va; hlMed = d.hl_median; hl75 = d.hl_75; ocMed = d.oc_median; oc75 = d.oc_75;
+      // Make the fallback VISIBLE, with the server-side reason if we have it
+      // (meta.hariv_diag: no_fred_key / fetch_failed / shadow_null / ok-but-stale).
+      if (name === 'GOLD') {
+        const why = data.meta?.hariv_diag?.GOLD;
+        tag = why ? `  (HAR-IV → COG fallback — ${why})`
+                  : '  (HAR-IV unavailable → COG fallback — hit ↻ Refresh)';
+      }
+    }
+    lines.push(div(name));
+    lines.push(`Volatility (annualized) : ${vol.toFixed(2)}%${tag}`);
+    lines.push(row('High to Low range', hlMed, hl75));
+    lines.push(row('Open to Close move', ocMed, oc75));
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+// ── Forecast family export ────────────────────────────────────────────────────
+// Fetched from /api/vol-forecast/ladder/export rather than rebuilt here. The page
+// used to carry its own copy of every builder, which is exactly how the old
+// variants drifted apart from the server's — one source, one output.
+async function exportLadder(horizon = 'daily', withSession = false) {
+  const btnId = withSession ? 'vfLadderSessBtn'
+    : horizon === 'weekly' ? 'vfLadderWkBtn'
+    : horizon === 'monthly' ? 'vfLadderMoBtn' : 'vfLadderBtn';
+  const btn = document.getElementById(btnId);
+  const orig = btn.dataset.orig || btn.textContent;
+  btn.dataset.orig = orig; btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const qs = `horizon=${encodeURIComponent(horizon)}${withSession ? '&session=1' : ''}`;
+    const r = await fetch(`/api/vol-forecast/ladder/export?${qs}`);
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2600); return; }
+    btn.disabled = false;
+    const date = (currentForecast && currentForecast.session_date) || 'latest';
+    _emitCalibrated(btnId, text, `vol-forecast-${horizon}-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2600);
+  }
+}
+
+async function exportCogPeriod(period) {
+  if (!currentForecast) return;
+  await loadCogHv();
+  const btnId = period === 'monthly' ? 'vfCogMoBtn' : 'vfCogWkBtn';
+  const text = buildCogExportText(currentForecast, { weekly: true, period });
+  _emitCalibrated(btnId, text, `vol-forecast-cog-${period}-${currentForecast.session_date}.txt`);
+}
+
 async function exportCog() {
   if (!currentForecast) return;
   await loadCogHv();
   _emitCalibrated('vfCogBtn', buildCogExportText(currentForecast, { weekly: false }), `vol-forecast-cog-${currentForecast.session_date}.txt`);
+}
+async function exportCogV2() {
+  if (!currentForecast) return;
+  await loadCogHv();
+  _emitCalibrated('vfCogV2Btn', buildCogV2ExportText(currentForecast), `vol-forecast-cogv2-${currentForecast.session_date}.txt`);
 }
 async function exportCogWeekly() {
   if (!currentForecast) return;
@@ -2424,7 +2536,7 @@ async function exportConfluenceZones() {
   const orig = btn.textContent;
   btn.textContent = '⏳ Computing…'; btn.disabled = true;
   try {
-    const res = await fetch('/api/vol-forecast/zones');
+    const res = await fetch('/api/vol-forecast/zones?reach=1');
     // 202 (still warming) is a 2xx, so res.ok is true — treat anything but 200 as
     // not-ready and surface the message instead of copying it to the clipboard.
     if (res.status !== 200) { const t = await res.text(); throw new Error(t.slice(0, 120)); }
@@ -3327,13 +3439,47 @@ async function compareRefData() {
   if (!date) { status.textContent='⚠ Select a date first'; return; }
   btn.disabled=true; btn.textContent='Loading…';
   try {
-    const j=await fetch(`/api/vol-forecast/compare/${date}`).then(r=>r.json());
+    // Forge's export is a SEPARATE, independent read (a static walk-forward
+    // snapshot, not the live KV this main compare fetch reads) — its own
+    // failure (no export yet, or the date falls outside the exported OOS
+    // window) must never block rendering the Old/YZ/HV20/EWMA/Ref/New
+    // columns, so it's fetched in parallel and allowed to come back empty.
+    const [j, fg] = await Promise.all([
+      fetch(`/api/vol-forecast/compare/${date}`).then(r=>r.json()),
+      fetch(`/api/vol-forecast/compare-forge/${date}`).then(r=>r.json()).catch(()=>({ok:false})),
+    ]);
     if (!j.ok) { status.style.color='var(--red)'; status.textContent=`⚠ ${j.error}`; wrap.style.display='none'; return; }
+    const forgeRows = fg.ok ? fg.rows : {};
     const gc=v=>{ if(v==null)return''; const a=Math.abs(v); if(a<=3)return'style="color:var(--green)"'; if(a<=8)return'style="color:var(--amber)"'; return'style="color:var(--red)"'; };
     const fmt=v=>v!=null?v.toFixed(2):'—', fmtG=v=>v!=null?(v>0?'+':'')+v.toFixed(1)+'%':'—';
+    // Forge's delta vs Ref, computed client-side in the SAME (ref÷ours−1)×100
+    // convention as every other Δ column — the server's `gaps` object only
+    // covers the estimators it itself computes, so this one metric is
+    // derived here rather than asking the server to know about forge.
+    const gapClient=(ours,refs)=> (ours!=null && refs!=null) ? Math.round((refs/ours-1)*1000)/10 : null;
     const bL='border-left:1px solid var(--border);';
-    const rows=j.rows.map(r=>{ const o=r.our,rf=r.ref,g=r.gaps; const c=(s,v)=>`<td style="padding:3px 4px;text-align:center;${s}">${v}</td>`,cL=v=>c(bL,v),cd=v=>c('',v),cg=gval=>`<td style="padding:3px 4px;text-align:center" ${g?gc(g[gval]??null):''}>  ${g?fmtG(g[gval]??null):'—'}</td>`; return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:3px 8px;font-weight:600;color:var(--text2)">${r.name}</td>${cL(o?fmt(o.legacy_vol):'—')}${cd(o?fmt(o.yz_vol):'—')}${cd(o?fmt(o.hv_vol):'—')}${cd(o?fmt(o.ewma_vol):'—')}${cd(rf?fmt(rf.vol):'—')}${cg('legacy_vol')}${cg('yz_vol')}${cg('hv_vol')}${cg('ewma_vol')}${cd(o?fmt(o.vol):'—')}${cg('vol')}${cL(o?fmt(o.legacy_hl):'—')}${cd(o?fmt(o.yz_hl):'—')}${cd(o?fmt(o.hv_hl):'—')}${cd(o?fmt(o.ewma_hl):'—')}${cd(rf?fmt(rf.hl_med):'—')}${cg('legacy_hl')}${cg('yz_hl')}${cg('hv_hl')}${cg('ewma_hl')}${cd(o?fmt(o.hl_med):'—')}${cg('hl_med')}${cL(o?fmt(o.legacy_oc):'—')}${cd(o?fmt(o.yz_oc):'—')}${cd(o?fmt(o.hv_oc):'—')}${cd(o?fmt(o.ewma_oc):'—')}${cd(rf?fmt(rf.oc_med):'—')}${cg('legacy_oc')}${cg('yz_oc')}${cg('hv_oc')}${cg('ewma_oc')}${cd(o?fmt(o.oc_med):'—')}${cg('oc_med')}</tr>`; });
-    body.innerHTML=rows.join(''); wrap.style.display=''; status.style.color='var(--green)'; status.textContent=`✓ ${date} — ${j.rows.filter(r=>r.gaps).length} instruments matched`;
+    const rows=j.rows.map(r=>{
+      const o=r.our,rf=r.ref,g=r.gaps;
+      const fr=forgeRows[(r.name||'').toLowerCase()] ?? null;
+      const c=(s,v)=>`<td style="padding:3px 4px;text-align:center;${s}">${v}</td>`,cL=v=>c(bL,v),cd=v=>c('',v),cg=gval=>`<td style="padding:3px 4px;text-align:center" ${g?gc(g[gval]??null):''}>  ${g?fmtG(g[gval]??null):'—'}</td>`;
+      const cForge=v=>`<td style="padding:3px 4px;text-align:center;color:var(--accent,#7dd3fc)" title="${fr?fr.forge_estimator:''}">${v}</td>`;
+      // `refVal` must be the ref number for THIS SPECIFIC metric (vol / hl_med
+      // / oc_med) — passed explicitly at each call site below, not guessed.
+      const cForgeGap=(oursVal,refVal)=>{ const gv=gapClient(oursVal, refVal); return `<td style="padding:3px 4px;text-align:center;color:var(--accent,#7dd3fc)" ${gc(gv)}>${fmtG(gv)}</td>`; };
+      const cRealized=v=>`<td style="padding:3px 4px;text-align:center;color:var(--text3)">${v}</td>`;
+      return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:3px 8px;font-weight:600;color:var(--text2)">${r.name}</td>`
+        + `${cL(o?fmt(o.legacy_vol):'—')}${cd(o?fmt(o.yz_vol):'—')}${cd(o?fmt(o.hv_vol):'—')}${cd(o?fmt(o.ewma_vol):'—')}${cd(rf?fmt(rf.vol):'—')}${cg('legacy_vol')}${cg('yz_vol')}${cg('hv_vol')}${cg('ewma_vol')}${cd(o?fmt(o.vol):'—')}${cg('vol')}`
+        + `${cForge(fr?fmt(fr.forge_vol):'—')}${cForgeGap(fr?fr.forge_vol:null, rf?rf.vol:null)}${cRealized('—')}`
+        + `${cL(o?fmt(o.legacy_hl):'—')}${cd(o?fmt(o.yz_hl):'—')}${cd(o?fmt(o.hv_hl):'—')}${cd(o?fmt(o.ewma_hl):'—')}${cd(rf?fmt(rf.hl_med):'—')}${cg('legacy_hl')}${cg('yz_hl')}${cg('hv_hl')}${cg('ewma_hl')}${cd(o?fmt(o.hl_med):'—')}${cg('hl_med')}`
+        + `${cForge(fr?fmt(fr.forge_hl):'—')}${cForgeGap(fr?fr.forge_hl:null, rf?rf.hl_med:null)}${cRealized(fr?fmt(fr.realized_hl):'—')}`
+        + `${cL(o?fmt(o.legacy_oc):'—')}${cd(o?fmt(o.yz_oc):'—')}${cd(o?fmt(o.hv_oc):'—')}${cd(o?fmt(o.ewma_oc):'—')}${cd(rf?fmt(rf.oc_med):'—')}${cg('legacy_oc')}${cg('yz_oc')}${cg('hv_oc')}${cg('ewma_oc')}${cd(o?fmt(o.oc_med):'—')}${cg('oc_med')}`
+        + `${cForge(fr?fmt(fr.forge_oc):'—')}${cForgeGap(fr?fr.forge_oc:null, rf?rf.oc_med:null)}${cRealized(fr?fmt(fr.realized_oc):'—')}`
+        + `</tr>`;
+    });
+    const nForge = j.rows.filter(r=>forgeRows[(r.name||'').toLowerCase()]).length;
+    body.innerHTML=rows.join(''); wrap.style.display=''; status.style.color='var(--green)';
+    status.textContent=`✓ ${date} — ${j.rows.filter(r=>r.gaps).length} instruments matched`
+      + (fg.ok ? ` · ${nForge} with a Forge OOS forecast` : ' · Forge export not available for this date');
   } catch(e) { status.style.color='var(--red)'; status.textContent=`Error: ${e.message}`; }
   finally { btn.disabled=false; btn.textContent='⇄ Compare'; }
 }
@@ -3448,22 +3594,29 @@ const _d1Cache = {};
 // Unlike the live daily bands, they are point-in-time forecasts: σ is taken from the
 // forecast in effect as the period opened and held constant, so the envelope is issued
 // once (Monday / month start) and you watch price travel through it.
-const _LEVEL_MODES = ['original', 'cog', 'bot', 'original_weekly', 'cog_weekly', 'original_monthly', 'cog_monthly'];
+const _LEVEL_MODES = ['forecast', 'cog', 'bot', 'forecast_weekly', 'cog_weekly', 'forecast_monthly', 'cog_monthly'];
 const _MODE_LABEL  = {
-  original: 'Original', cog: 'COG', bot: 'Bot',
-  original_weekly: 'Original Weekly', cog_weekly: 'COG Weekly',
-  original_monthly: 'Original Monthly', cog_monthly: 'COG Monthly',
+  forecast: 'Forecast', cog: 'COG', bot: 'Bot',
+  forecast_weekly: 'Forecast Weekly', cog_weekly: 'COG Weekly',
+  forecast_monthly: 'Forecast Monthly', cog_monthly: 'COG Monthly',
 };
+// The stored preference may still name the pre-collapse modes; map them forward so a
+// returning browser doesn't silently fall back to daily.
+const _LEGACY_MODE = { original: 'forecast', original_weekly: 'forecast_weekly', original_monthly: 'forecast_monthly' };
 const _SQRT5 = Math.sqrt(5), _SQRT20 = Math.sqrt(20);
-let _levelMode = 'original';
-try { const _m = localStorage.getItem('vf_chart_level_mode'); if (_LEVEL_MODES.includes(_m)) _levelMode = _m; } catch (_) {}
+let _levelMode = 'forecast';
+try {
+  const _raw = localStorage.getItem('vf_chart_level_mode');
+  const _m = _LEGACY_MODE[_raw] ?? _raw;
+  if (_LEVEL_MODES.includes(_m)) _levelMode = _m;
+} catch (_) {}
 
 // Current-mode context: COG variant? weekly/monthly variant? the σ multiplier
 // (×√5 weekly, ×√20 monthly, ×1 daily), the candle granularity, the frozen-forecast
 // kind, and the display label.
 function _modeCtx() {
-  const weekly  = _levelMode === 'original_weekly'  || _levelMode === 'cog_weekly';
-  const monthly = _levelMode === 'original_monthly' || _levelMode === 'cog_monthly';
+  const weekly  = _levelMode === 'forecast_weekly'  || _levelMode === 'cog_weekly';
+  const monthly = _levelMode === 'forecast_monthly' || _levelMode === 'cog_monthly';
   const cog     = _levelMode.startsWith('cog');
   const bot     = _levelMode === 'bot';
   return {
@@ -3570,6 +3723,44 @@ function _bandInst(name, liveF) {
 // from vol_annual × COG constants (COG_C, defined in the export section); original mode
 // uses the forecast's own hl/oc fields. Weekly modes source the bands from the frozen
 // (Monday) forecast and scale ×√5.
+// The chart's forecast lines. In FORECAST mode these are the fitted ladder's rungs —
+// O-H / O-L at p50 / p75 / p90, each meaning what it says (reached on 50% / 25% / 10%
+// of sessions), plus the O-C displacement pair. In COG / BOT mode, and for any older
+// archived forecast with no ladder attached, it falls back to the legacy four.
+//
+// One thing deliberately changed: the legacy set drew open ± hl_median and called it
+// "O-H med". hl_median is a RANGE WIDTH, not a one-sided excursion — drawing it off
+// the open implies the whole day's range happening in one direction, which overstates
+// the level badly. The ladder has a real, separately fitted O-H / O-L, so the
+// mislabelled line goes away rather than being carried forward.
+function _forecastLineDefs(L, LS) {
+  const has = L && L.oh_p50 != null && L.ol_p50 != null;
+  if (!has) {
+    return [
+      { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
+      { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
+      { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
+      { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
+      { pct: L.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
+      { pct: L.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
+      { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
+      { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
+    ];
+  }
+  return [
+    { pct: L.oh_p50, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H p50', axis: true },
+    { pct: L.ol_p50, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L p50', axis: true },
+    { pct: L.oh_p75, side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H p75', axis: true },
+    { pct: L.ol_p75, side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L p75', axis: true },
+    { pct: L.oh_p90, side:  1, color: '#f59e0b', style: LS.Solid,       title: 'O-H p90', axis: true },
+    { pct: L.ol_p90, side: -1, color: '#f59e0b', style: LS.Solid,       title: 'O-L p90', axis: true },
+    { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C p50 ↑', axis: true },
+    { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C p50 ↓', axis: true },
+    { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C p75 ↑', axis: true },
+    { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C p75 ↓', axis: true },
+  ].filter(d => d.pct != null);
+}
+
 function _chartLevels(name, f) {
   const { cog, bot, mult } = _modeCtx();
   // BOT mode: draw the bot's ACTUAL frozen plan lines. The plan stores band FRACTIONS
@@ -3581,6 +3772,26 @@ function _chartLevels(name, f) {
     return { hl_median: null, hl_75: null, oc_median: null, oc_75: null, _botOpen: null };
   }
   const src = _bandInst(name, f);              // frozen Monday forecast for weekly, live for daily
+
+  // FORECAST mode: the fitted ladder, already built per horizon server-side — so the
+  // chart draws exactly the numbers the export prints, including the p90 rung and the
+  // separately-fitted O-H / O-L asymmetry. No √-scaling here: `ladder_weekly` and
+  // `ladder_monthly` carry their OWN fitted widths, which is the whole reason they
+  // exist (a week's range is narrower than five independent days imply).
+  if (!cog) {
+    const { weekly: wk, monthly: mo } = _modeCtx();
+    const lad = wk ? src?.ladder_weekly : mo ? src?.ladder_monthly : src?.ladder;
+    if (lad?.oh?.p50 != null) {
+      return {
+        hl_median: lad.hl?.p50 ?? null, hl_75: lad.hl?.p75 ?? null,
+        oc_median: lad.oc?.p50 ?? null, oc_75: lad.oc?.p75 ?? null,
+        oh_p50: lad.oh?.p50 ?? null, oh_p75: lad.oh?.p75 ?? null, oh_p90: lad.oh?.p90 ?? null,
+        ol_p50: lad.ol?.p50 ?? null, ol_p75: lad.ol?.p75 ?? null, ol_p90: lad.ol?.p90 ?? null,
+        _event: lad.event_tag, _eventMult: lad.event_mult,
+      };
+    }
+  }
+
   let base;
   if (cog && src?.vol_annual > 0) {
     const va = _cogVol(name, src);             // NQ → COG CC-HV; all other indices + fx + gold → platform σ
@@ -3601,7 +3812,7 @@ function _syncChartLevelBtn() {
   // back to the live forecast (so the bands aren't truly frozen this period).
   const live = kind && _frozen[kind].forecast && _frozen[kind].live;
   b.textContent = '📐 Chart: ' + _MODE_LABEL[_levelMode] + (live ? ' (live)' : '');
-  b.classList.toggle('active', _levelMode !== 'original');
+  b.classList.toggle('active', _levelMode !== 'forecast');
   b.classList.toggle('weekly', weekly || monthly);   // amber accent marks any frozen period mode
 }
 function _redrawCogCharts() {
@@ -3866,16 +4077,7 @@ async function loadM5Chart(name, f) {
       const LS = LightweightCharts.LineStyle;
       const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
       if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: hang lines off the bot's FROZEN open, not the chart's
-      const lineDefs = [
-        { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
-        { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
-        { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
-        { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
-        { pct: L.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
-        { pct: L.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
-        { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
-        { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
-      ];
+      const lineDefs = _forecastLineDefs(L, LS);
       // Dynamic H-L COMPLETION lines as first-class lineDefs (absolute `price`, not a
       // pct-of-open) so they get the same clickable legend row + pin toggle + hit chip
       // as the 8 forecast lines. Expected High = running Low + forecast H-L; expected
@@ -4208,16 +4410,7 @@ function _buildModalChart(name) {
   const LS = LightweightCharts.LineStyle;
   const L = _chartLevels(name, f);   // original / COG / BOT levels per the top-bar toggle
   if (L._botOpen > 0) anchorOpen = L._botOpen;   // BOT mode: anchor lines at the bot's FROZEN open
-  const lineDefs = [
-    { pct: L.hl_median, side:  1, color: '#06b6d4', style: LS.Dotted,      title: 'O-H med',   axis: true },
-    { pct: L.hl_median, side: -1, color: '#06b6d4', style: LS.Dotted,      title: 'O-L med',   axis: true },
-    { pct: L.oc_75,     side:  1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↑', axis: true },
-    { pct: L.oc_75,     side: -1, color: '#ec4899', style: LS.LargeDashed, title: 'O-C 75% ↓', axis: true },
-    { pct: L.hl_75,     side:  1, color: '#3b82f6', style: LS.Dashed,      title: 'O-H 75%',   axis: true },
-    { pct: L.hl_75,     side: -1, color: '#3b82f6', style: LS.Dashed,      title: 'O-L 75%',   axis: true },
-    { pct: L.oc_median, side:  1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↑', axis: true },
-    { pct: L.oc_median, side: -1, color: '#f472b6', style: LS.Dotted,      title: 'O-C med ↓', axis: true },
-  ];
+  const lineDefs = _forecastLineDefs(L, LS);
   const levelPrices = lineDefs.filter(d => d.pct && anchorOpen).map(d => anchorOpen * (1 + d.side * d.pct / 100));
 
   const chart = LightweightCharts.createChart(body, {

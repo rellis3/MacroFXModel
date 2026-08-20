@@ -270,6 +270,15 @@ Apply these to any new signal, Python throwaway or JS engine alike.
   secondary link index. New user-facing features/links belong on **`index.html`**
   (and the specific page they extend, e.g. the vol-bot lives on `bot-config.html`),
   **not** on `hub.html`. Do not add things to `hub.html` unless explicitly asked.
+- **`hub.html` is NOT the site's real navigation hub, despite an earlier session
+  declaring it that.** `today.html`'s 🗺 **Site Map** (and 🔌 API Map) — powered by
+  `js/siteApiMap.js`, reference doc `MD files/SITE_MAP.md` — is the actual,
+  actively-used shortcut hub for discovering every page on the site (searchable,
+  grouped, kept current). When registering a new page for discoverability, add it
+  to `js/siteApiMap.js`'s `#smBody` (pick the right group, e.g. `WIP —
+  Work in Progress`) **and** the matching row in `SITE_MAP.md` — not `hub.html`.
+  Verify by opening the target page directly (`file://` works — the Site Map
+  modal is static content, no server needed) and confirming the entry renders.
 - **Data**: OANDA D1 via `fetchD1` (needs `OANDA_KEY`); M1 via `loadM1ForPair`
   (R2 / parquet / Drive). OANDA is reachable in Railway, not in the sandbox
   (expect 403 locally — that's environment, not a bug).
@@ -481,5 +490,84 @@ Report the green honestly and the red honestly.
 ## Git / workflow
 
 - Develop on a feature branch; never commit straight to `main`.
-- One logical change per PR; open as **draft**; link new tools from `hub.html`.
+- One logical change per PR; open as **draft**; register new tools in
+  `today.html`'s Site Map (`js/siteApiMap.js` + `SITE_MAP.md`) — **not**
+  `hub.html`, see the house-conventions note above.
 - Keep commits scoped and messages descriptive.
+
+## Live deployment
+
+Production runs on Railway at **https://macrofxmodel-production.up.railway.app**
+— this is where `OANDA_KEY`/live OANDA and Yahoo Finance fetches actually work.
+Sandboxed dev sessions get 403 from both (an egress policy on the sandbox, not a
+data-availability issue — see `js/tradeLabDataSource.js`'s header for a worked
+example), so anything that depends on live/recent data (a window past the R2
+archive's last sync, a CDN-hosted chart lib, etc.) can only be verified for real
+on this URL, not from here. When a task needs that check, ask the owner to
+confirm the Railway deploy has picked up the latest `main` (Railway redeploys on
+push, but there can be a lag) before treating a live-path test as conclusive.
+
+### Build: Dockerfile, not Nixpacks (2026-08-17)
+
+This service builds from the root **`Dockerfile`** (`railway.json`'s
+`build.builder` is `"DOCKERFILE"`), not Railway's Nixpacks/Railpack
+auto-detection. Do not delete the `Dockerfile`, revert `railway.json`'s
+builder back to `"nixpacks"`/`"RAILPACK"`, or add a `nixpacks.toml` —
+Nixpacks silently built this repo as **Node-only** (it doesn't
+auto-combine multiple self-detected providers when both `package.json`
+and root `requirements.txt` are present), so every Python bot
+(`RegimeV2`, `bot/main.py`, `Gold/main.py`, everything under `AnalogML/`,
+`levelEngine/live_watch.py`, `SessionResearch`) silently never ran on
+Railway — `python`/`python3` simply wasn't on PATH. An explicit
+`nixpacks.toml` multi-provider fix was tried first and broke `npm ci`
+outright (reverted in PR #1270); the Dockerfile replaced it with an
+explicit, auditable build instead of another guess at Nixpacks config.
+
+The Dockerfile installs Python from the **root** `requirements.txt` only
+— verified sufficient for every Railway-launched script's actual
+top-level imports (checked via AST parsing, not assumption). Per-directory
+`requirements.txt` files are deliberately NOT installed:
+`Gold/requirements.txt`'s `MetaTrader5` entry has no Linux wheel (Windows
+DLL dependency), and every importer of it already guards with
+`try/except ImportError` for a paper-mode fallback, so installing it
+would only add a Linux-only build failure for zero runtime benefit. If a
+bot's dependencies change, update the root `requirements.txt`, not a
+per-directory one, or the Dockerfile won't pick it up.
+
+The `apt-get install` line also includes **`python-is-python3`** —
+without it, Debian's `python3`/`python3-pip` packages install fine but do
+NOT create a bare `python` symlink, and `start.sh` launches every bot via
+plain `python`, not `python3`. Don't remove this package unless every
+`python` call in `start.sh`/the AnalogML loop scripts is also changed to
+`python3` (there's no reason to — this is the standard Debian/Ubuntu
+package for exactly this situation).
+
+**Every deploy wipes local disk — anything a bot needs to survive a
+redeploy must live in R2, not just local disk.** This bit AnalogML twice
+in one day: first the trade log/state (already R2-backed, see
+`motif_track.py`'s `load_log`/`save_log`/`save_state`), then
+`refresh_m1.py`'s M1 parquet cache (`VolRangeForecaster/data/m1/`,
+gitignored) — a fresh container had no local data to diff against, so
+every redeploy silently re-triggered a full 5-year-per-pair OANDA
+backfill (hours) instead of a normal incremental top-up. Fixed by
+mirroring that cache to R2 too (`analogml/m1/{pair}_m1.parquet`, via the
+shared `pylego/r2.py` brick — see its own docstring). If you add a new
+bot that caches anything to local disk between runs, assume that cache is
+gone on the next deploy unless you've explicitly R2-backed it the same
+way.
+
+**Known, not-yet-fixed bug:** `server.js`'s `_resolvePython()` (used by
+SessionResearch's native scheduling and the vol-backtest routes) hardcodes
+`/usr/local/bin/python3` as its first candidate and returns it
+unconditionally — the `execFile(..., callback)` version check it runs is
+async and its result is never awaited before the function returns, so the
+"check" does nothing. Now that Python actually installs via `apt-get`
+(see above), the real binary lives at `/usr/bin/python3`, not
+`/usr/local/bin/python3`, so every SessionResearch tick fails with `spawn
+/usr/local/bin/python3 ENOENT`. Simplest real fix: just return `'python3'`
+(bare, no path) and let `execFile`/`spawn`'s own `PATH` lookup resolve
+it — same as every bot in `start.sh` already relies on `python-is-python3`
+for. Left unfixed as of 2026-08-17 to avoid piling more unverified `server.js`
+changes onto an already-long incident; low risk to production alerts
+(AnalogML's own bots don't go through this resolver) but breaks
+SessionResearch's dashboard predictions.

@@ -22,6 +22,8 @@
     <span>Prereqs: Bayesian Inference &amp; Updating</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -139,6 +141,11 @@
     for this particular likelihood (Binomial).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A conjugate prior is a shortcut: pick the right kind of starting guess, and updating it after new evidence becomes plain addition instead of a whole fresh calculation. For Beta-Binomial, picture \(\alpha\) as a jar already holding some pretend "yes" tokens and \(\beta\) as a jar holding some pretend "no" tokens, from before you saw any real data. Every real success or failure you observe, you just drop one more matching token into the right jar — the new totals are your new belief, no rebuilding required.</p>
+  </div>
+
   <div class="tl-formula-parts">
     <div class="tl-fp green">
       <div class="tl-fp-term">α</div>
@@ -189,6 +196,11 @@
     shows happening live.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two things happen together as more days come in: your best guess drifts toward whatever the real data is actually showing, and you get more confident in that guess (the curve gets taller and skinnier). It's like guessing a new coworker's age — with zero information your guess might be spread thinly across 25 to 45, but after a few conversations you both narrow in on a number and feel a lot surer of it, even if your central guess only moves a little.</p>
+  </div>
+
   <h3>Normal-Normal conjugacy (known variance)</h3>
   <p>
     The same idea applies to an unknown <em>mean</em> instead of an unknown
@@ -223,6 +235,12 @@
     (lower-variance) source automatically gets more weight without you having
     to decide that by hand.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Precision is just "how sure am I," turned into a number — the more sure you are, the bigger the number. If two friends both guess how many jellybeans are in a jar, and one of them is a jar-guessing expert (very precise) while the other is just eyeballing it (not very precise), the sensible combined guess should lean much more heavily toward the expert's number. Precision-weighted averaging does exactly that automatically: the more confident source gets more say, without anyone having to decide that by hand.</p>
+  </div>
+
   <p>
     A quick numeric check: suppose a prior belief about a strategy's true
     daily drift is \(\mu_0=0\%\) with \(\sigma_0=0.5\%\) (so
@@ -604,6 +622,29 @@
 
   nSlider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

@@ -22,6 +22,8 @@
     <span>Prereqs: Bond Pricing &amp; Yield to Maturity (Duration &amp; Convexity helpful but not required)</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -122,6 +124,11 @@
     what the number represents and what it's being used for.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A par rate is like the average price of a whole grocery basket; a spot rate is the price tag on one single item inside it; a forward rate is what today's shelf prices already tell you an item will probably cost you next month, worked out by comparing prices for different-length "subscriptions." Mixing these up — using the basket's average price to figure out what one item alone costs — is exactly the mistake bootstrapping exists to prevent.</p>
+  </div>
+
   <h3>The bootstrapping algorithm</h3>
   <p>
     Bootstrapping recovers the true per-maturity zero rates from a set of
@@ -164,6 +171,11 @@
     one unknown, at every stage: that's precisely what makes each individual
     solve as simple as Lesson 1's single-bond YTM problem, even though the
     curve being built up is genuinely multi-point.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Bootstrapping works like paying off a group dinner bill one course at a time. First you figure out exactly what the appetizer cost (the shortest bond — easy, only one cash flow). Once you know that, you can subtract it from the total bill and see exactly what the main course must have cost (the next bond). Keep doing that, course by course, and you eventually know the true price of every single item, even though you only ever saw combined totals.</p>
   </div>
 
   <h3>Forward rates — what the zero curve implies about future rates</h3>
@@ -231,6 +243,11 @@
     are entirely <em>derived</em> from the zero curve you already
     bootstrapped, via pure algebra.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A forward rate is the interest rate today's market is quietly implying for a loan that hasn't started yet. It's like a moving company today quoting you a locked-in price for moving your stuff next year — not because they're psychic about next year's gas prices, but because today's one-year and two-year prices, put together, only make sense if that's the rate for the second year.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(z_t\)</td><td>The spot (zero) rate for a single cash flow at maturity \(t\) — the "true," per-maturity discount rate.</td></tr>
@@ -579,5 +596,28 @@
     <a href="nelson-siegel-svensson.html">Nelson-Siegel-Svensson →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

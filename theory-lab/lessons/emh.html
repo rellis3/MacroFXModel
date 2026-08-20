@@ -22,6 +22,8 @@
     <span>Prereqs: none — start here</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -233,6 +235,11 @@
   the popular, slightly stronger shorthand for it.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A market being a "martingale" just means your best guess for tomorrow's price is today's price — not because nothing will happen, but because you have no way to know yet which direction the next surprise will push it. It's like a coin that's landed heads ten times in a row: the honest guess for the next flip is still 50/50, because the coin has no memory, even though the running tally of heads keeps climbing around.</p>
+  </div>
+
   <p>
   Why does this matter for trading? Because it has a sharp, checkable implication for
   <strong>autocorrelation</strong> — whether today's price change helps predict tomorrow's. Define
@@ -257,6 +264,11 @@
   and it's the mathematical core of the "weak form" described below.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Autocorrelation is just asking "does knowing yesterday's move help you guess today's move at all?" If a market is efficient, the honest answer is no — yesterday's up day tells you nothing useful about whether today will be up or down, the same way knowing a fair coin landed heads yesterday tells you nothing about today's flip.</p>
+  </div>
+
   <h3>The three forms of EMH</h3>
   <p>
   Eugene Fama's original 1970 formulation split the hypothesis into three nested forms, distinguished
@@ -279,6 +291,11 @@
       <h4>Strong form</h4>
       <p>Current prices reflect <em>all</em> information, public <em>and private</em>. If true, even corporate insiders trading on undisclosed information could not systematically outperform. Essentially never taken as literally true — well-documented profitable insider trading shows private information has value the market hasn't priced in. Included mainly as the logical extreme, and the reason insider-trading law exists at all.</p>
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of it as three levels of a game being "unbeatable." Weak form says you can't win using only the scoreboard from past games. Semi-strong says you can't win even if you also read every public news report about the players. Strong form says you couldn't win even with secret information nobody else has — which is basically nobody's serious real-world claim, since insider trading really does make money, which is exactly why it's illegal.</p>
   </div>
 
   <h3>The joint-hypothesis problem</h3>
@@ -312,6 +329,11 @@
   reluctant to declare "EMH is false" from a single anomaly: the anomaly might just mean the pricing
   model used to define "normal" was wrong, and a better model would swallow it.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine checking whether a bathroom scale is accurate, but the only way to test it is against a second scale that might itself be off. If the two disagree, you can't tell which one is wrong — maybe the first, maybe the second, maybe both a little. Testing "is the market efficient" has the same problem: you can only test it against a pricing model that might itself be wrong, so a surprising result never proves the market messed up — it might just mean your ruler was bent.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -391,6 +413,10 @@
       genuine, priced risk (equity risk premium, carry, illiquidity) are entirely consistent with
       efficient markets — that's compensation for risk, not a free lunch. Confusing "EMH forbids all
       profitable strategies" with what it actually claims is one of the most common misreadings.
+      <div class="tl-eli5">
+        <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+        <p>EMH doesn't say nobody can ever make money — it says nobody can make money for free, with zero risk attached. Getting paid extra for driving a truck full of fireworks isn't "beating the system," it's fair payment for taking on real danger other drivers won't. A lot of trading profit works the same way: it's the market paying you to hold a risk most other people don't want, not a secret trick.</p>
+      </div>
       </li>
       <li>
       <strong>Treating a single backtest anomaly as falsification.</strong> Because of the
@@ -529,5 +555,28 @@
     <a href="bayesian-inference.html">Bayesian Inference &amp; Updating →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

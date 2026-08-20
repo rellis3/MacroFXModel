@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a>, <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -90,6 +92,11 @@
     shape.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A plain sine wave never stops — it goes on forever in both directions, humming the same note eternally. A wavelet is more like a single short "boing" — a small ripple that rises and falls and then dies back down to nothing. Because it's short and localized, you can slide it along a signal and stretch or squeeze it, checking "does a ripple like this, at this size, show up right around here?" — a question a never-ending sine wave simply can't ask.</p>
+  </div>
+
   <h3>2. The continuous wavelet transform</h3>
   <div class="tl-math">
     \[ W(a,b) \;=\; \frac{1}{\sqrt{a}} \int_{-\infty}^{\infty} x(t)\, \psi^*\!\left(\frac{t-b}{a}\right) dt \]
@@ -115,6 +122,11 @@
     periodogram, except now it shows how the frequency content itself evolves over the sample instead of collapsing
     it into one static plot.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of scale as "how zoomed out you are" — a big, stretched-out wavelet catches slow, sweeping patterns, while a small, squeezed one catches fast, jittery ones. Time-shift is just "where along the series you're currently looking." Sliding a wavelet of a chosen size across the whole series and recording how well it matches at every point produces a map — the scalogram — showing which sizes of pattern showed up, and exactly when.</p>
+  </div>
 
   <div class="tl-formula-parts">
     <div class="tl-fp blue"><div class="tl-fp-term">a</div><div class="tl-fp-name">Scale</div><div class="tl-fp-desc">Inverse frequency — how stretched the wavelet is; large a = slow oscillation</div></div>
@@ -151,6 +163,11 @@
     trades time resolution against frequency resolution in a way suited (or not) to the specific feature being
     hunted for, exactly the kind of honest, stated trade-off this lesson's pitfalls section returns to below.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You can't have a wavelet that's both perfectly good at saying "exactly this instant" and perfectly good at saying "exactly this frequency" — pinning down one blurs the other, the same trade-off behind the Heisenberg uncertainty principle in physics. A wavelet shaped like a sharp step (Haar) is great at catching the precise moment something jumps; a wavelet shaped like a smooth, tapering wiggle (Morlet) is great at telling nearby frequencies apart. Picking one is picking which kind of blurriness you're willing to accept.</p>
+  </div>
 
   <div class="tl-solid blue">
     <strong>The one-sentence version:</strong> Fourier asks "which frequencies, averaged over the whole series" and
@@ -206,6 +223,11 @@
       visible as a shift in <em>where</em> the energy sits along the time axis, exactly the information a
       non-stationary series needs and a single periodogram cannot supply.
     </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine reading a room's temperature every hour for a day and one single hour spiked far above every other reading. A Fourier transform of that day would tell you "there was some unusual high-frequency energy somewhere" but not when. A wavelet transform, built to compare each pair of neighboring hours, flags exactly the one pair where the numbers suddenly stopped matching — pinpointing precisely which hour the spike happened in.</p>
   </div>
 
   <div class="tl-box example">
@@ -416,5 +438,28 @@
     <a href="trend-cycle-filters.html">Trend/Cycle Filters →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

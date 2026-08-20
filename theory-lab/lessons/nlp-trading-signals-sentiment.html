@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deep Learning &amp; Modern ML for Trading / NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Deep Learning &amp; Modern ML for Trading · Lesson 6 of 6 (final)</div>
+  <h1 class="tl-title">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</h1>
+  <p class="tl-dek">Central bank statements, headlines, and earnings calls carry information in text, not just numbers — this lesson is the computational formalization of the hawkish/dovish reading a human analyst already does by eye.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="central-bank-policy.html">Central Bank Policy</a> for the qualitative hawkish/dovish vocabulary this lesson formalizes; <a href="taylor-rule.html">The Taylor Rule</a> helpful for the quantitative reaction-function view</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><a href="central-bank-policy.html">Central Bank Policy</a> already builds the qualitative vocabulary — hawkish, dovish, hedged, data-dependent — a human analyst uses to read a statement. This lesson asks how a model reads the same text and turns it into a number.</li>
+      <li><strong>Word2Vec</strong> (Mikolov, Chen, Corrado &amp; Dean, 2013) represents words as dense vectors positioned so words used in similar contexts end up close together in vector space, trained via <strong>skip-gram</strong> (predict surrounding context words from a target word) or <strong>CBOW</strong> (predict a target word from its surrounding context).</li>
+      <li><strong>BERT</strong> (Devlin, Chang, Lee &amp; Toutanova, 2019) reads a whole sentence bidirectionally at once via the transformer architecture, producing context-aware representations rather than one fixed vector per word regardless of context.</li>
+      <li><strong>FinBERT</strong> (Araci, 2019) is BERT further trained on financial text specifically, producing a sentiment score (e.g. hawkish/dovish, or positive/negative/neutral) directly from raw text — the direct computational analogue of a human analyst's read.</li>
+      <li>A FinBERT-style sentiment score, tracked across successive central bank meetings, could serve as one additional input alongside the dot-plot reading in <a href="central-bank-policy.html">Central Bank Policy</a> and the Taylor Rule's formal reaction function in <a href="taylor-rule.html">The Taylor Rule</a> — a sketch, not a claim this has been built or validated here.</li>
+      <li><strong>Mandatory honest framing:</strong> sentiment scores are noisy, can misread sarcasm and hedged language, and are not calibrated probabilities of anything real-world. This is a widely-used real industry technique — explicitly not a claim it is validated for any specific use in this repo.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="central-bank-policy.html">Central Bank Policy</a> spends an entire lesson on vocabulary precisely
+  because a central bank's real signal lives in language, not just in the headline rate decision: whether
+  guidance is "firm" or "data-dependent," whether a hold reads as a hawkish surprise, whether the committee's
+  tone shifted from the previous statement even though the rate itself didn't move. A trained human reader
+  picks all of this up by eye, fluently, from the words themselves. Central bank statements are only one
+  example of a much broader category — news headlines, earnings-call transcripts, analyst notes, and social
+  media all carry information in raw text that a purely numeric feed (the policy rate, the reported EPS number)
+  does not capture on its own. This lesson is about the machinery that lets a model do computationally what
+  that human reader already does qualitatively: turn text into a number a trading system can actually consume.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>From "read it and get a feeling" to "read it and get a number"</h3>
+    <p>
+    An experienced FX analyst reading a Fed statement doesn't consciously diagram every sentence — they get a
+    fast, holistic impression: "this reads more hawkish than last time," or "that hedge phrase wasn't in the
+    previous statement." The whole arc of this lesson is turning that impression into an explicit, reproducible
+    computation. First, teach a model what individual words mean by how they're typically used (word
+    embeddings). Then, teach a model to read a whole sentence at once, the way a human does, rather than word
+    by word in isolation (transformers, BERT). Finally, specialize that reading skill specifically for finance,
+    where "asset" doesn't mean the same thing as in general English, and where "the committee remains attentive
+    to inflation risks" is a loaded, specific phrase, not a bland aside (FinBERT). Each step is closer to the
+    fluent, context-aware read a human analyst does automatically.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <h3>Word embeddings — Word2Vec</h3>
+  <p>
+  Tomas Mikolov, Kai Chen, Greg Corrado &amp; Jeffrey Dean introduced Word2Vec in "Efficient Estimation of Word
+  Representations in Vector Space," arXiv:1301.3781, 2013 (cited in full below). The core idea, stated
+  precisely: represent every word in a vocabulary as a dense vector of real numbers — typically a few hundred
+  dimensions, far smaller than the vocabulary size — positioned in that vector space so that words used in
+  <strong>similar contexts</strong> end up <strong>close together</strong>. "Hike" and "raise" end up near each
+  other in the resulting space not because anyone hand-labeled them as synonyms, but because they tend to
+  appear surrounded by similar neighboring words across a large corpus of real text.
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">one-hot word</div><div class="tl-fp-name">Where it starts</div><div class="tl-fp-desc">A sparse, meaningless vector — a 1 in one position, 0 everywhere else, with no notion of similarity between words</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">dense embedding vector</div><div class="tl-fp-name">Where it ends up</div><div class="tl-fp-desc">A few hundred real-valued numbers, learned so that nearby vectors correspond to words used in similar contexts</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">distance in vector space</div><div class="tl-fp-name">What it buys</div><div class="tl-fp-desc">A now-computable notion of "how similar are these two words," derived purely from usage patterns</div></div>
+  </div>
+  <p>
+  Word2Vec learns these vectors via one of two closely related, conceptually simple training objectives, both
+  trained on nothing but raw, unlabeled text:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Skip-gram</h4>
+      <p>
+      Given one target word, predict the words that surround it in a small context window. Fed the target word
+      "hawkish," the model is trained to assign higher probability to context words like "tighten," "rates,"
+      and "inflation" than to unrelated words — and it's this repeated prediction task, over millions of
+      sentences, that forces the model to place "hawkish" near other words that share its typical company.
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>CBOW (Continuous Bag of Words)</h4>
+      <p>
+      The mirror image: given the surrounding context words, predict the single target word in the middle.
+      Fed the context "the committee remains ___ about inflation risks," the model learns to assign higher
+      probability to words like "attentive" or "concerned" than to words that would never plausibly fill that
+      slot — again, purely from how often each candidate word actually appears in that surrounding company
+      across the training corpus.
+      </p>
+    </div>
+  </div>
+  <p>
+  Neither objective ever sees a hand-labeled definition of any word — the entire representation is learned
+  purely from statistical co-occurrence patterns in raw text. A useful, well-known consequence: the geometry
+  of the resulting vector space captures relationships as well as similarity — the classic illustrative example
+  is that the vector arithmetic \(\text{vec(king)} - \text{vec(man)} + \text{vec(woman)}\) lands close to
+  \(\text{vec(queen)}\), because the learned space encodes the "royal" and "gender" relationships as roughly
+  consistent directions.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine you'd never heard the word "hawkish" before, but you read a thousand sentences that use it, and every single time it shows up near words like "raise," "tighten," and "inflation." Even without anyone ever defining "hawkish" for you directly, you'd eventually guess it means something to do with tightening policy — just from noticing its company. Word2Vec does exactly that trick automatically, at huge scale, and instead of a fuzzy guess it produces an actual list of numbers (a vector) that captures "the company this word tends to keep."</p>
+  </div>
+
+  <h3>Transformer-based sentiment — BERT and FinBERT</h3>
+  <p>
+  Word2Vec has a real limitation: it assigns exactly <em>one</em> fixed vector to each word, regardless of
+  context — "hold" gets the same vector whether it means "the committee will hold rates steady" or "hold my
+  coffee." Jacob Devlin, Ming-Wei Chang, Kenton Lee &amp; Kristina Toutanova's BERT — "BERT: Pre-training of
+  Deep Bidirectional Transformers for Language Understanding," NAACL 2019 (cited in full below) — fixes exactly
+  this by reading an entire sentence <strong>bidirectionally</strong> at once, using the transformer
+  architecture's attention mechanism to let every word's representation be informed by every other word in the
+  sentence, both before and after it, simultaneously. The output is a <strong>context-aware</strong>
+  representation: the same word "hold" gets a different vector depending on the sentence it actually appears
+  in, because the surrounding words are folded directly into how it's represented.
+  </p>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>bidirectional</code><span>every word's representation is built using both the words before it and the words after it, at the same time — not read strictly left-to-right</span></div>
+    <div class="tl-eq-chip c2"><code>attention</code><span>the transformer mechanism that lets the model weigh how much each other word in the sentence should influence a given word's representation</span></div>
+    <div class="tl-eq-chip c3"><code>pre-training</code><span>BERT is first trained on a huge, general corpus (masked word prediction, sentence-pair prediction) before ever seeing a finance-specific example</span></div>
+  </div>
+  <p>
+  BERT itself is trained on general text — Wikipedia, books — and knows nothing finance-specific out of the
+  box. Dogu Araci's FinBERT — "FinBERT: Financial Sentiment Analysis with Pre-trained Language Models,"
+  arXiv:1908.10063, 2019 (cited in full below) — is stated plainly here: <strong>FinBERT is BERT, further
+  trained on financial text specifically</strong>. Starting from BERT's general-language pre-training, FinBERT
+  is fine-tuned on finance-domain text and labeled financial-sentiment examples, so it learns the
+  finance-specific meaning of vocabulary that general BERT would read differently — "bearish," "guidance cut,"
+  "beat estimates" carry precise financial connotations a general-purpose model wasn't specifically trained to
+  weight correctly. The output of this fine-tuned model, run on a piece of financial text, is a sentiment score
+  directly from raw text — for example a probability distribution over positive/negative/neutral, or, framed
+  for a central-bank-statement use case, a hawkish/dovish score — produced end-to-end without a human ever
+  hand-scoring that specific sentence.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Word2Vec is like a dictionary that gives every word exactly one fixed definition card, no matter which sentence it shows up in. BERT is more like a person who reads the <em>whole</em> sentence before deciding what any one word in it really means — "hold" in "the Fed will hold rates" gets read completely differently from "hold" in "hold the door." FinBERT is that same whole-sentence reader, except it's spent extra time specifically studying financial documents, so it knows that "the committee remains attentive to inflation risks" is a loaded, specific phrase in a Fed statement — not a bland, throwaway sentence the way a general reader might mistake it for.</p>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>Word embedding</td><td>A dense, real-valued vector representing a word, positioned so that words used in similar contexts sit close together.</td></tr>
+      <tr><td>Skip-gram</td><td>Word2Vec's training objective: predict the surrounding context words given one target word.</td></tr>
+      <tr><td>CBOW</td><td>Word2Vec's other training objective: predict the target word given its surrounding context words (mirror image of skip-gram).</td></tr>
+      <tr><td>Transformer / attention</td><td>The architecture underlying BERT that lets every word's representation be informed by every other word in the sentence at once.</td></tr>
+      <tr><td>Bidirectional</td><td>Reading context from both before and after a word simultaneously, rather than strictly left-to-right.</td></tr>
+      <tr><td>Pre-training / fine-tuning</td><td>Training first on a large general corpus (pre-training), then further training on a narrower, domain-specific dataset (fine-tuning) — how FinBERT is built from BERT.</td></tr>
+      <tr><td>Sentiment score</td><td>The model's numeric output on a piece of text — e.g. positive/negative/neutral probabilities, or a hawkish/dovish score.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A word's context builds its meaning: neighbors of "hawkish" and "dovish" in embedding space</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-dimensional scatter plot representing word embeddings. A cluster of words including hawkish, tighten, raise, and inflation sit close together on the right side. A separate cluster including dovish, ease, cut, and stimulus sit close together on the left side. The two clusters are far apart from each other, illustrating that words used in similar contexts end up near each other in the learned vector space.">
+      <rect x="20" y="20" width="600" height="255" style="fill:none;stroke:var(--border)"/>
+      <line x1="320" y1="20" x2="320" y2="275" style="stroke:var(--border);stroke-width:1;stroke-dasharray:3,3"/>
+
+      <circle cx="140" cy="90" r="5" style="fill:var(--blue)"/>
+      <text x="150" y="86" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">dovish</text>
+      <circle cx="110" cy="130" r="4" style="fill:var(--blue)"/>
+      <text x="120" y="127" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">ease</text>
+      <circle cx="165" cy="150" r="4" style="fill:var(--blue)"/>
+      <text x="175" y="147" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">cut</text>
+      <circle cx="95" cy="190" r="4" style="fill:var(--blue)"/>
+      <text x="105" y="187" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">stimulus</text>
+      <circle cx="150" cy="205" r="4" style="fill:var(--blue)"/>
+      <text x="160" y="202" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:10px">accommodative</text>
+
+      <circle cx="480" cy="95" r="5" style="fill:var(--red)"/>
+      <text x="490" y="91" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:11px;font-weight:600">hawkish</text>
+      <circle cx="510" cy="135" r="4" style="fill:var(--red)"/>
+      <text x="520" y="132" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">tighten</text>
+      <circle cx="455" cy="155" r="4" style="fill:var(--red)"/>
+      <text x="465" y="152" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">raise</text>
+      <circle cx="500" cy="190" r="4" style="fill:var(--red)"/>
+      <text x="510" y="187" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">inflation risk</text>
+      <circle cx="450" cy="205" r="4" style="fill:var(--red)"/>
+      <text x="460" y="202" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px">restrictive</text>
+
+      <text x="230" y="250" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">dovish neighborhood</text>
+      <text x="410" y="250" text-anchor="middle" style="fill:var(--text3);font-family:'DM Mono',monospace;font-size:10px">hawkish neighborhood</text>
+    </svg>
+    <div class="tl-chart-caption">
+    An illustrative sketch, not fitted to any real corpus. Words that tend to appear in similar company —
+    "hawkish," "tighten," "raise," "inflation risk" — end up close together in the learned vector space, while
+    the dovish-leaning vocabulary forms its own separate neighborhood. No one hand-labels these clusters; they
+    fall out of the skip-gram/CBOW training objective run over a large body of raw text.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Conceptual worked example</div>
+    <h3>Tracking a FinBERT-style score across three FOMC statements</h3>
+    <p>
+    Take three consecutive, illustrative central bank statement excerpts and sketch what a FinBERT-style
+    hawkish/dovish score, on a −1 (fully dovish) to +1 (fully hawkish) scale, might assign to each — a
+    conceptual illustration of the mechanism, not a real backtest of actual FOMC language:
+    </p>
+    <div class="tl-math">
+      \[
+      \begin{array}{l|l|c}
+      \text{Meeting} & \text{Excerpt (illustrative)} & \text{Score} \\ \hline
+      t{-}2 & \text{"inflation has moderated, labor market remains solid"} & +0.10 \\
+      t{-}1 & \text{"the committee remains highly attentive to inflation risks"} & +0.55 \\
+      t & \text{"further tightening will depend on incoming data"} & +0.35
+      \end{array}
+      \]
+    </div>
+    <p>
+    Reading the trend the way an analyst would read a series of dot-plot medians: the jump from \(t{-}2\) to
+    \(t{-}1\) (\(+0.10 \to +0.55\)) is a meaningful hawkish shift in tone — the phrase "highly attentive to
+    inflation risks" is a well-known hedge phrase that reads more hawkish than a simple "inflation has
+    moderated." The move to \(t\) (\(+0.55 \to +0.35\)) is a partial dovish retreat, but the language is
+    explicitly conditional ("will depend on incoming data") — exactly the kind of data-dependent hedge language
+    <a href="central-bank-policy.html">Central Bank Policy</a> already identifies as a tell for internal
+    committee disagreement. The score's <em>trajectory</em> across meetings, not any single reading in
+    isolation, is what would carry the more useful information.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>Sentiment as one additional input alongside the dot plot and the Taylor Rule</h3>
+    <p>
+    Consider a monitoring workflow that already tracks two inputs covered elsewhere in this curriculum: the
+    Fed's dot-plot median (from <a href="central-bank-policy.html">Central Bank Policy</a>) and the gap between
+    the actual policy rate and what the Taylor Rule's formula, \(i = r^{*}+\pi+a(\pi-\pi^{*})+b(y-y^{*})\),
+    mechanically implies (from <a href="taylor-rule.html">The Taylor Rule</a>). A FinBERT-style sentiment score,
+    computed on the full text of each statement and tracked meeting-over-meeting, could sit alongside those two
+    as a <em>third</em> input — one that captures information the dot plot and the Taylor Rule structurally
+    cannot, because both of those are built from numbers, while a genuine tone shift in the statement's language
+    (the "highly attentive to inflation risks" hedge above) can appear before it shows up in either the dots or
+    the Taylor Rule gap.
+    </p>
+    <p>
+    What this scenario deliberately does <em>not</em> claim: that such a pipeline has been built, backtested,
+    or shown to add predictive value over the dot plot and Taylor Rule inputs alone, anywhere in this repo.
+    It is presented purely to illustrate where a text-derived score would slot into an existing, already-covered
+    analytical picture — a sketch of the mechanism, not a validated addition to it.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Worth remembering:</strong> a sentiment score is noisy. Models can misread sarcasm, miss a hedge
+    phrase's real weight, or be thrown off by context the training data never covered — a "not unreasonable"
+    can register very differently from a genuinely neutral statement depending on subtleties a model may or
+    may not catch. A sentiment score is <strong>not</strong> a calibrated probability of anything real-world
+    happening next. This is a real, widely-used industry technique across trading desks and research shops —
+    that is explicitly not the same claim as it being validated for any specific use in this repo.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  In practice, text-derived sentiment rarely stands alone as a signal; it's typically one feature among many
+  feeding a broader model, precisely because of the noise problem named above — a single sentiment score from
+  a single document is a weak, high-variance read, but averaged and tracked across many documents (many
+  headlines about the same event, many analyst notes on the same earnings call, successive statements from
+  the same committee) the noise partially cancels and the trend becomes more informative than any single
+  reading. Desks that use this kind of signal typically validate it the same way any other candidate feature
+  gets validated — checking whether it adds information beyond what's already captured by numeric data, over
+  a genuinely out-of-sample period, rather than trusting a sentiment score simply because it comes from a
+  sophisticated-sounding model.
+  </p>
+  <p>
+  Word embeddings and full transformer models also serve as building blocks well beyond a single sentiment
+  score: a Word2Vec-style embedding of financial vocabulary can feed a downstream classifier or clustering
+  step, and a fine-tuned BERT/FinBERT model's intermediate representations (not just its final sentiment
+  output) can be used as engineered features in their own right — the sentiment score is the most legible,
+  headline-friendly output of this machinery, but not the only useful one.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Word2Vec — the vocabulary layer</h4>
+      <p>Dense vectors from raw text, no labels needed; the foundation everything context-aware builds on top of.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔁</div>
+      <h4>BERT — context-aware reading</h4>
+      <p>Bidirectional attention lets the same word mean different things in different sentences, unlike a fixed embedding.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🏦</div>
+      <h4>FinBERT — the domain specialist</h4>
+      <p>BERT fine-tuned on financial text specifically, so financial vocabulary is weighted the way it's actually used in finance.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📉</div>
+      <h4>Trend over single reading</h4>
+      <p>Averaging across many documents and tracking the trajectory over time is far more robust than trusting any one document's score.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where NLP sentiment gets over-trusted</h3>
+    <ul>
+      <li><strong>Trusting a single document's score.</strong> One headline, one paragraph is a high-variance, noisy read — the trend across many documents or many meetings is far more informative than any single sentiment reading.</li>
+      <li><strong>Missing sarcasm, negation, and hedged language.</strong> "Not unreasonable to expect inflation to moderate" and "reasonable to expect inflation to moderate" can be read very differently by a model than by a careful human reader — models can and do get subtle negation and hedging wrong.</li>
+      <li><strong>Reading a sentiment score as a calibrated probability.</strong> A FinBERT output like "0.72 hawkish" is not a 72% chance that policy tightens — it is a model's internal confidence measure, useful for relative comparison across documents, not a real-world probability.</li>
+      <li><strong>Applying a general-purpose sentiment model to finance-specific text.</strong> Without FinBERT-style fine-tuning, a general sentiment model can badly misread finance vocabulary — "aggressive growth," "bearish," and "beat expectations" carry meanings a general-English model was never specifically trained to weight correctly.</li>
+      <li><strong>Assuming the technique's popularity is evidence of validated edge here.</strong> NLP sentiment scoring is genuinely widely used across the industry — that fact says nothing about whether any specific pipeline built on it has been backtested or shown to add value in this repo.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson formalizes computationally what Central Bank Policy teaches qualitatively.</strong> Hawkish/dovish reading by eye becomes a reproducible, text-in-number-out computation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Word2Vec (Mikolov et al., 2013) places similar-context words close together</strong> in vector space, learned via skip-gram (predict context from target) or CBOW (predict target from context) — no labels needed.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BERT (Devlin et al., 2019) reads bidirectionally,</strong> giving the same word different representations depending on its actual sentence — a real advance over Word2Vec's one-fixed-vector-per-word limitation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>FinBERT (Araci, 2019) is BERT further trained on financial text,</strong> producing a sentiment score directly from raw text — the direct computational analogue of an analyst's hawkish/dovish read.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A sentiment score is noisy and not a calibrated probability.</strong> Sarcasm, negation, and hedged language can all be misread; a single document's score should never be trusted in isolation.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Widely-used in industry ≠ validated in this repo.</strong> This is real, real-world technique — explicitly not a claim that any sentiment pipeline built on it has been tested or shown to add value here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. State Word2Vec's core idea in one sentence, and name its two training objectives.</summary>
+    <div class="tl-answer">
+    Represent words as dense vectors positioned so that words used in similar contexts end up close together
+    in vector space. The two training objectives are skip-gram (predict the surrounding context words given
+    one target word) and CBOW, Continuous Bag of Words (predict the target word given its surrounding context
+    words) — mirror images of the same underlying co-occurrence signal.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What specific limitation of Word2Vec does BERT's bidirectional, context-aware design fix?</summary>
+    <div class="tl-answer">
+    Word2Vec assigns exactly one fixed vector to each word regardless of the sentence it appears in — "hold"
+    gets the same representation whether it means "the Fed will hold rates" or "hold my coffee." BERT reads
+    an entire sentence bidirectionally via attention, so every word's representation is built using both the
+    words before and after it, letting the same word receive a different, context-appropriate representation
+    depending on the actual sentence it's used in.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What exactly is FinBERT, relative to BERT?</summary>
+    <div class="tl-answer">
+    FinBERT is BERT further trained (fine-tuned) on financial text specifically. It starts from BERT's general
+    pre-training on broad text like Wikipedia and books, then continues training on finance-domain text and
+    labeled financial-sentiment examples, so it learns the finance-specific meaning of vocabulary — like
+    "bearish," "guidance cut," or "beat estimates" — that a general-purpose BERT model was never specifically
+    trained to weight correctly.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does the lesson insist a sentiment score is not a calibrated probability, even when a model outputs something that looks like one (e.g. "0.72 hawkish")?</summary>
+    <div class="tl-answer">
+    A number like 0.72 coming out of a FinBERT-style classifier is the model's internal confidence measure
+    given its training and architecture — useful for relatively ranking or comparing documents against each
+    other — but it is not a real-world probability that, say, the central bank tightens policy with 72% odds.
+    Treating it as a calibrated real-world probability confuses a model's internal output scale with an
+    actual, validated forecast of what will happen.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does the lesson recommend tracking a sentiment score's trend across many documents or meetings, rather than trusting a single reading?</summary>
+    <div class="tl-answer">
+    A single document's sentiment score is a high-variance, noisy read — one model misreading one hedge phrase
+    or one instance of sarcasm can swing the number meaningfully. Averaging across many documents about the
+    same event, or tracking the trajectory across successive meetings, lets much of that per-document noise
+    partially cancel out, so the trend becomes a more informative signal than any single isolated reading.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Tomas Mikolov, Kai Chen, Greg Corrado &amp; Jeffrey Dean, <em>"Efficient Estimation of Word Representations in Vector Space,"</em> arXiv:1301.3781, 2013 — the original Word2Vec paper, introducing the skip-gram and CBOW objectives covered in this lesson.</li>
+    <li>Jacob Devlin, Ming-Wei Chang, Kenton Lee &amp; Kristina Toutanova, <em>"BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding,"</em> Proceedings of NAACL-HLT 2019 — the original BERT paper, introducing the bidirectional transformer pre-training approach this lesson describes.</li>
+    <li>Dogu Araci, <em>"FinBERT: Financial Sentiment Analysis with Pre-trained Language Models,"</em> arXiv:1908.10063, 2019 — the original FinBERT paper, fine-tuning BERT specifically for financial sentiment classification.</li>
+    <li>See <a href="central-bank-policy.html">Central Bank Policy</a> for the qualitative hawkish/dovish vocabulary this lesson formalizes computationally.</li>
+    <li>See <a href="taylor-rule.html">The Taylor Rule</a> for the formal, numeric reaction-function view a text-derived sentiment score could sit alongside.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="anomaly-detection-isolation-autoencoders.html">← Anomaly Detection: Isolation Forests &amp; Autoencoders</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp, stack_conflict  # noqa: E402
+from oi_bot.engine import OISession, zone_id, should_fire, make_spec, _tp, stack_conflict, position_mode  # noqa: E402
 
 fails = 0
 def ok(name, cond, extra=""):
@@ -65,11 +65,46 @@ specs = sm.decide(4258)
 ok("maxpain fires on the next live tick", any(x["zone_id"] == "maxpain_sell_4200" for x in specs))
 ok("maxpain spec carries SL + TP toward pin", specs and specs[0]["sl"] == 4310 and specs[0]["tp"] == 4200)
 
+print("[position_mode — a live position's mode from its own comment tag]")
+ok("fade parsed from the dedup tag", position_mode("OI [fade_sell_4300]") == "fade")
+ok("runner suffix stripped", position_mode("OI [break_buy_4300~r]") == "break")
+ok("maxpain + react recognised", position_mode("[maxpain_sell_4200]") == "maxpain" and position_mode("[react_buy_4210]") == "react")
+ok("unknown tag → None (never guess a mode)", position_mode("OI [garbage]") is None)
+ok("no tag / empty / None → None", position_mode("Vol L1 fade") is None and position_mode("") is None and position_mode(None) is None)
+
+print("[maxpain fire-time revalidation — minDist re-checks the extension live]")
+MP2 = {**MAXPAIN, "minDist": 30}
+sm2 = OISession("gold", 4260, [MP2])
+ok("still extended (45 >= 30) → fires", any(x["zone_id"] == "maxpain_sell_4200" for x in sm2.decide(4245)))
+sm3 = OISession("gold", 4260, [MP2])
+ok("price already back at the pin (10 < 30) → does NOT fire", sm3.decide(4210) == [])
+ok("wrong side of the pin → does NOT fire (a sell must be ABOVE it)", sm3.decide(4180) == [])
+ok("fires once the extension returns", any(x["zone_id"] == "maxpain_sell_4200" for x in sm3.decide(4250)))
+ok("no minDist on the zone → old fire-immediately behaviour", any(OISession("gold", 4260, [MAXPAIN]).decide(4205)))
+
+print("[break dwell — a wick through the trigger is not a decisive break]")
+sd = OISession("gold", 4200, [BUY_BREAK])
+ok("1st tick past the trigger (confirm=2) → no fire yet", sd.decide(4321, break_confirm=2) == [])
+ok("wick back inside resets the streak", sd.decide(4310, break_confirm=2) == [] and sd.streak["break_buy_4300"] == 0)
+sd.decide(4321, break_confirm=2)
+ok("2nd consecutive tick past it → fires", any(x["zone_id"] == "break_buy_4300" for x in sd.decide(4322, break_confirm=2)))
+ok("fades are NOT dwell-gated (touch = the trade)", any(OISession("gold", 4200, [SELL_FADE]).decide(4300, break_confirm=3)))
+ok("confirm=0 → old first-touch behaviour", any(OISession("gold", 4200, [BUY_BREAK]).decide(4321, break_confirm=0)))
+
+print("[touch counting — rising edges, for the hold-score calibration]")
+st = OISession("gold", 4200, [SELL_FADE])
+st.decide(4300); st.decide(4310); st.decide(4200); st.decide(4300)
+ok("two separate visits to the wall = 2 touches (not 3 ticks)", st.touches.get("fade_sell_4300") == 2, str(st.touches))
+
 print("[spec shape]")
 spec = make_spec("gold", SELL_FADE)
 ok("dir_up False for a sell", spec["dir_up"] is False)
 ok("size_factor carried through", spec["size_factor"] == 1.8)
 ok("rationale + regime carried (for the comment/audit)", spec["rationale"] == "PIN call wall" and spec["regime"] == "PIN")
+ok("tp2 rides the spec (scale-out runner target)", spec["tp2"] == 4100)
+spec2 = make_spec("gold", {**SELL_FADE, "hold": 0.72, "holdParts": {"gex": 0.9}, "conviction": 1.3})
+ok("hold score + components + conviction ride the spec (calibration features)",
+   spec2["hold"] == 0.72 and spec2["hold_parts"] == {"gex": 0.9} and spec2["conviction"] == 1.3)
 
 print("[guards]")
 ok("px None → no fire", OISession("gold", 4200, [SELL_FADE]).decide(None) == [])

@@ -193,12 +193,17 @@ tr.dim td{opacity:.42}
       <button class="btn" id="expBtn">⬇ Export lines</button>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Export the lines in raw CME/COMEX futures price terms instead of OANDA spot — to overlay on a futures chart. Adds the basis back. Default: spot."><input type="checkbox" id="futTerms" style="cursor:pointer"> futures terms</label>
       <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);cursor:pointer" title="Draw EVERY expiry's max-pain and call/put wall as lines (DTE-tagged, far ones faded), not just the primary + day set. For seeing the whole term structure on the chart."><input type="checkbox" id="allExp" style="cursor:pointer"> all expiries</label>
-      <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis.">↻ Re-analyse all</button>
+      <button class="btn" id="reanBtn" title="Re-derive every pair's levels from the OI data already stored (adds the day-expiry / latest compute) — no re-paste. Pinned to the saved basis, so LEVELS DO NOT MOVE: use Re-basis for that.">↻ Re-analyse all</button>
+      <button class="btn" id="rebasisBtn" title="Re-fetch the live futures+spot pair and rebuild every level off the CURRENT basis. Every level is strike − basis, and the basis drifts intraday (measured 2.1 → 6.6 pips in one session), so levels built at 00:36 are wrong by mid-morning. This moves them. Also re-plans the OI bot's zones, same as Re-analyse.">⟳ Re-basis (live)</button>
       <button class="btn" id="reload">Reload</button>
       <a class="btn" href="cot-extremes.html" style="text-decoration:none">COT positioning</a>
       <a class="btn" href="index.html" style="text-decoration:none">Dashboard</a>
     </div>
   </div>
+
+  <!-- OI-bot hold-score calibration state (collecting → what happens & why · active
+       → fitted weights auto-applied). The "don't forget the calibration" strip. -->
+  <div id="calibBanner" style="display:none;margin:8px 0;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.5"></div>
 
   <div class="rail" id="rail"></div>
   <div id="pxWrap"><h3><span class="grow">Price with OI levels</span></h3><div id="ctlHost"></div><div id="pxChartWrap"><div id="pxChart"></div><div id="pxBands"></div><div id="pxMsg"></div></div></div>
@@ -960,21 +965,25 @@ function diagBar(e){
 }
 
 function levelStrip(e){
+  // 5th field = HELP glossary key → renders the same "?" explainer chip the panels use,
+  // right on the cards you actually look at (positive/negative GEX, the flips, charm/vanna).
   const rows=[
-    ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI'],
-    ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI'],
-    ['max pain',  e.maxPain,  'var(--pain)', 'expiry magnet'],
-    ['gamma flip',e.gammaFlip,'var(--vol)',  'profile crossing'],
-    ['GEX flip',  e.gexFlip,  'var(--gam)',  'total GEX = 0'],
-    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)','∂Δ/∂time'],
-    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)','∂Δ/∂vol'],
-    ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':''],
-    ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):''],
+    ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI', 'callwall'],
+    ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI', 'putwall'],
+    ['max pain',  e.maxPain,  'var(--pain)', 'expiry magnet', 'maxpain'],
+    ['gamma flip',e.gammaFlip,'var(--vol)',  'profile crossing', 'gflip'],
+    ['GEX flip',  e.gexFlip,  'var(--gam)',  'total GEX = 0', 'gexflip'],
+    // charm/vanna are blank without a per-strike IV smile — say WHY on the card
+    // instead of a bare "—" next to a greek symbol (the #1 "is it broken?" question).
+    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)', e.greeksFlow?'∂Δ/∂time':'needs IV smile', 'charm'],
+    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)',  e.greeksFlow?'∂Δ/∂vol':'needs IV smile', 'vanna'],
+    ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':'', 'expmove'],
+    ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):'', 'expmove'],
   ];
-  return `<div class="levels">${rows.map(([k,v,c,n])=>{
+  return `<div class="levels">${rows.map(([k,v,c,n,hk])=>{
     const sv=show(v,e), d=Number.isFinite(v)&&Number.isFinite(e.spot)?((v-e.spot)/pip(SYM)):NaN;
     return `<div class="lv" style="border-top-color:${Number.isFinite(sv)?c:'transparent'}">
-      <div class="k">${k}</div>
+      <div class="k">${k}${hk?h(hk):''}</div>
       <div class="v" style="color:${Number.isFinite(sv)?c:'var(--tx3)'}">${Number.isFinite(sv)?fx(sv,SYM):'—'}</div>
       <div class="f">${Number.isFinite(v)?(SPOTADJ?'fut '+fx(v+(e.basis||0),SYM):'spot '+fx(v,SYM)):''}</div>
       <div class="d">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p · ':''}${n||''}</div></div>`;
@@ -1106,20 +1115,34 @@ document.getElementById('unitBtn').onclick=()=>{SPOTADJ=!SPOTADJ;render();};
 document.getElementById('sortBtn').onclick=()=>{SORT=(SORT==='strength')?'proximity':'strength';render();};
 document.getElementById('reload').onclick=()=>boot();
 // Re-derive every stored pair's levels from the OI already in KV (adds day-expiry / latest
-// compute) via the headless re-analyse endpoint — no re-paste. Pinned to the saved basis;
-// then reload so the fresh levels show.
-document.getElementById('reanBtn').onclick=async()=>{
-  const b=document.getElementById('reanBtn'); const was=b.textContent; b.disabled=true; b.textContent='re-analysing…';
-  try{
-    const r=await fetch('/api/oi/reanalyse',{method:'POST'});
-    const j=await r.json();
-    if(!j.ok) throw new Error(j.error||'failed');
-    const withDay=(j.reanalysed||[]).filter(x=>x.dayExpiry!=null).length;
-    b.textContent=`✓ ${j.count} pairs · ${withDay} with day levels`;
+// compute) via the headless re-analyse endpoint — no re-paste.
+//
+// TWO BUTTONS, BECAUSE THEY DO DIFFERENT THINGS and one of them looks like it should do
+// both. "Re-analyse" is PINNED to the saved futures/spot, so it enriches the entry and the
+// level prices come back identical — deliberate, because the OI chain really is yesterday's
+// and a re-analyse should not make stale data look fresh. But the BASIS is a separate
+// question from the CHAIN: every level is `strike − basis`, and the basis drifts intraday
+// (EUR/USD measured +0.00021 at 08:39, +0.00066 by mid-afternoon — 4.5 pips on every line).
+// So "Re-basis" re-fetches the live futures+spot pair and rebuilds off the current one.
+// Both write oi_store and re-plan the OI bot's zones; only the second moves the prices.
+async function _oiRerun(btnId, live) {
+  const b = document.getElementById(btnId); const was = b.textContent;
+  b.disabled = true; b.textContent = live ? 're-basing…' : 're-analysing…';
+  try {
+    const r = await fetch('/api/oi/reanalyse' + (live ? '?live=1' : ''), { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'failed');
+    const withDay = (j.reanalysed || []).filter(x => x.dayExpiry != null).length;
+    b.textContent = live ? `✓ ${j.count} pairs re-based` : `✓ ${j.count} pairs · ${withDay} with day levels`;
     await boot();
-    setTimeout(()=>{ b.textContent=was; b.disabled=false; }, 3500);
-  }catch(err){ b.textContent='failed: '+err.message; b.disabled=false; setTimeout(()=>{ b.textContent=was; }, 4000); }
-};
+    setTimeout(() => { b.textContent = was; b.disabled = false; }, 3500);
+  } catch (err) {
+    b.textContent = 'failed: ' + err.message; b.disabled = false;
+    setTimeout(() => { b.textContent = was; }, 4000);
+  }
+}
+document.getElementById('reanBtn').onclick = () => _oiRerun('reanBtn', false);
+document.getElementById('rebasisBtn').onclick = () => _oiRerun('rebasisBtn', true);
 document.getElementById('zoom').addEventListener('click',ev=>{ if(ev.target.id==='zoom') closeZoom(); });
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape') closeZoom(); });
 
@@ -1159,6 +1182,30 @@ async function boot(){
   }catch(err){ document.getElementById('sub').textContent='load failed: '+err.message; }
 }
 boot();
+
+// ── OI-bot hold-score calibration banner ─────────────────────────────────────
+// The hold-score's component weights (per-strike GEX · OI flow · persistence ·
+// wall multiple) start as theory priors and can ONLY be calibrated by the forward
+// test (no historical OI exists). This strip keeps that impossible to forget:
+// collecting → progress + what happens at the threshold and why; active → the
+// fitted weights are already auto-applied to the bot's plan producer.
+(async function(){
+  const el = document.getElementById('calibBanner'); if(!el) return;
+  try{
+    const r = await fetch('/api/oi-bot/hold-calibration');
+    const j = await r.json();
+    if(!j || !j.status) return;
+    const active = j.status === 'active';
+    el.style.display = 'block';
+    el.style.background = active ? 'rgba(38,166,154,.10)' : 'rgba(244,196,48,.08)';
+    el.style.border = `1px solid ${active ? 'rgba(38,166,154,.35)' : 'rgba(244,196,48,.30)'}`;
+    const n = j.n || 0, need = j.needed || 30, pct = Math.min(100, Math.round(n / need * 100));
+    const bar = `<span style="display:inline-block;vertical-align:middle;width:110px;height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin:0 8px;overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:${active?'#26a69a':'#f4c430'}"></span></span>`;
+    el.innerHTML = active
+      ? `<b style="color:#26a69a">🧪 OI-bot hold-score calibration ACTIVE (${n} trades)</b><br>${j.explain || ''}`
+      : `<b style="color:#f4c430">🧪 OI-bot hold-score calibration: collecting ${n}/${need}</b>${bar}<br>${j.explain || ''}`;
+  }catch(e){ /* banner is best-effort */ }
+})();
 
 </script>
 </body>

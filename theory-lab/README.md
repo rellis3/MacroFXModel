@@ -3,16 +3,23 @@
 A from-scratch, math-explained curriculum in the quantitative concepts behind
 this repo's FX/macro research — 34 numbered theory lessons, a 5-lesson
 Foundation Mathematics tier for readers starting from GCSE-level maths, 8
-background primers, and fifteen further categories spanning fixed income,
+background primers, and eighteen further categories spanning fixed income,
 numerical methods, market microstructure, options Greeks, Bayesian/state-space
 extensions, information theory, signal processing, graph theory, reinforcement
 learning, risk management, portfolio construction, research methodology,
-stochastic differential equations, and institutional data engineering.
-Covers everything from algebra and Euler's formula to the Heston model,
-Random Matrix Theory, Merton's continuous-time portfolio problem,
-Nelson-Siegel yield curves, dealer gamma exposure, MCMC, DebtRank, the
-Bellman equation, Neural SDEs, and the data-pipeline mechanics underneath
-all of it.
+stochastic differential equations (including SPDEs and the Fokker-Planck
+equation), institutional data engineering, tree-based/ensemble machine
+learning, collateral/funding market structure, and deep learning/modern ML for
+trading. Covers everything from algebra and Euler's formula to the Heston
+model, Random Matrix Theory, Merton's continuous-time portfolio problem,
+Nelson-Siegel yield curves, dealer gamma exposure, MCMC, DebtRank, the Bellman
+equation, Neural SDEs, the HJM/Musiela forward-curve SPDE, gradient boosting,
+rehypothecation, LSTMs and Transformers, and the data-pipeline mechanics
+underneath all of it.
+
+Every lesson also carries an **Explain Like I'm 5** toggle (off by default) —
+a purely additive plain-language pass alongside the full technical content,
+never a replacement for it.
 
 Every card on the hub carries a **Beginner/Intermediate/Advanced** difficulty
 pill (`.tl-pill.tl-diff-pill`), and a filter bar at the top of the page
@@ -97,8 +104,10 @@ markup, the house content order, and a verification checklist.
 - **10 · Fixed Income Mathematics** (5) — bond pricing & YTM, duration &
   convexity, bootstrapping the yield curve, Nelson-Siegel & Svensson curve
   fitting, swap curves & OIS discounting.
-- **11 · Numerical Methods** (4) — Newton-Raphson & gradient descent, convex
-  optimization, linear & quadratic programming, numerical integration.
+- **11 · Numerical Methods** (5) — Newton-Raphson & gradient descent, convex
+  optimization, linear & quadratic programming, numerical integration, FFT
+  option pricing (Carr-Madan — pricing a whole strike strip in one FFT call
+  via a model's characteristic function, cross-linking Heston).
 - **12 · Market Microstructure** (5) — Kyle's Lambda & Glosten-Milgrom
   (promoted out of category 9 into its own category), limit order books &
   queue dynamics, market impact models & Almgren-Chriss, order flow
@@ -112,14 +121,17 @@ markup, the house content order, and a verification checklist.
   exist in `lessons/` and are cross-linked from within these two, but are
   deliberately not surfaced as their own hub cards, to keep this category's
   footprint on the curriculum map to the two core lessons.
-- **14 · Bayesian Statistics Extensions** (3) — conjugate priors & Bayesian
+- **14 · Bayesian Statistics Extensions** (4) — conjugate priors & Bayesian
   updating, MCMC (Metropolis-Hastings & Gibbs sampling), hierarchical models
-  & partial pooling. Direct sequels to Foundations & Epistemics' Bayesian
-  inference lesson.
-- **15 · State Space Models Extensions** (3) — the particle filter
+  & partial pooling, Hamiltonian Monte Carlo & NUTS (the gradient-informed
+  sampler behind Stan/PyMC — makes the hierarchical models practical to fit
+  at scale). Direct sequels to Foundations & Epistemics' Bayesian inference
+  lesson.
+- **15 · State Space Models Extensions** (4) — the particle filter
   (sequential Monte Carlo), the Kalman smoother & extended/unscented Kalman
-  filters, regime-switching state space models (Kim's filter). Direct
-  sequels to the Kalman filter and Hidden Markov Model lessons.
+  filters, regime-switching state space models (Kim's filter), change-point
+  detection (CUSUM, Bayesian Online Changepoint Detection). Direct sequels
+  to the Kalman filter and Hidden Markov Model lessons.
 - **16 · Information Theory** (3) — entropy/KL divergence/mutual information,
   transfer entropy & information-theoretic causality, minimum description
   length & information criteria (rederives BIC from coding theory).
@@ -129,12 +141,17 @@ markup, the house content order, and a verification checklist.
 - **18 · Graph Theory & Networks** (3) — graph fundamentals & centrality
   measures, correlation networks & minimum spanning trees, systemic risk &
   financial contagion networks (DebtRank).
-- **19 · Reinforcement Learning** (3) — MDPs/value functions/the Bellman
+- **19 · Reinforcement Learning** (4) — MDPs/value functions/the Bellman
   equation, Q-learning & temporal-difference methods, policy gradients &
-  actor-critic methods.
-- **20 · Risk Management Deep Dive** (3) — coherent risk measures (VaR/CVaR
+  actor-critic methods, Deep Q-Networks (swapping the Q-table for a neural
+  function approximator, plus the replay-buffer/target-network tricks that
+  make that substitution stable).
+- **20 · Risk Management Deep Dive** (5) — coherent risk measures (VaR/CVaR
   & the Artzner axioms), tail risk hedging & portfolio convexity, stress
-  testing/scenario analysis/reverse stress tests.
+  testing/scenario analysis/reverse stress tests, the Cornish-Fisher
+  expansion (skew/kurtosis-adjusted VaR, with its own non-monotonicity
+  pitfall), quantile regression (the conditional alternative to the same
+  VaR question).
 - **21 · Advanced Portfolio Construction** (4) — risk parity & equal risk
   contribution, Hierarchical Risk Parity, factor-based portfolio
   construction, active portfolio management (Information Ratio, the
@@ -144,9 +161,15 @@ markup, the house content order, and a verification checklist.
 - **22 · Quantitative Research Process** (2) — the research pipeline
   (hypothesis to honest backtest), feature engineering/leakage/
   reproducibility. The methodology layer underneath every other category.
-- **23 · Stochastic Differential Equations** (5) — existence & uniqueness of
+- **23 · Stochastic Differential Equations** (7) — existence & uniqueness of
   SDE solutions, numerical schemes (Euler-Maruyama & Milstein), multivariate
-  & correlated SDEs, short-rate models (Vasicek/CIR/Hull-White), Neural
+  & correlated SDEs, short-rate models (Vasicek/CIR/Hull-White), the
+  Fokker-Planck equation (the forward Kolmogorov PDE a process's own
+  density satisfies — Itô's Lemma's mirror-image question, and the
+  forward/backward contrast underneath Black-Scholes), Stochastic PDEs
+  (the HJM/Musiela SPDE for the whole forward curve — generalizing the
+  short-rate models to the full infinite-dimensional curve dynamic — and
+  the Zakai equation the particle/Kalman filters approximate), Neural
   SDEs & Neural SPDEs (explicitly flagged as unvalidated research
   machinery, not built or tested in this repo).
 - **24 · Institutional Data Engineering** (5) — the raw-feed-to-trading-ready
@@ -156,6 +179,27 @@ markup, the house content order, and a verification checklist.
   futures-roll series continuity, point-in-time data & survivorship bias,
   and data architecture (storage, versioning, lineage). The first category
   focused on data infrastructure/process rather than math theory.
+- **25 · Tree-Based & Ensemble Machine Learning** (2) — decision trees &
+  Random Forests (bagging, feature importance), gradient boosting (the
+  sequential residual-fitting algorithm behind XGBoost/LightGBM/CatBoost),
+  with a mandatory honest framing that being the dominant method on tabular
+  data says nothing about any specific FX/macro feature set having edge.
+- **26 · Collateral, Funding & Rehypothecation** (2) — collateral, margin &
+  repo markets (initial/variation margin, haircuts, the repo mechanism
+  underneath SOFR), rehypothecation & collateral chains (the Lehman/LBIE
+  case, SEC Rule 15c3-3 vs. UK practice, and collateral re-use chains as a
+  real-world instance of the contagion-network framework already built).
+- **27 · Deep Learning & Modern ML for Trading** (6) — recurrent networks
+  (LSTM/GRU, and why plain RNNs forget), attention & Transformers for time
+  series, regularized regression (LASSO/Ridge/Elastic Net and the
+  diamond-vs-circle constraint geometry behind LASSO's exact zeroing),
+  clustering for market structure (k-means & hierarchical clustering,
+  cross-linked to this curriculum's own Hierarchical Risk Parity lesson as
+  the same technique applied narrowly), anomaly detection (Isolation Forests
+  & autoencoders for bad ticks and structural breaks), and NLP for trading
+  signals (word embeddings, FinBERT-style sentiment, and the lag/lookahead
+  traps in backtesting text-derived features). Every lesson carries the same
+  honest "method, not strategy" framing as categories 25-26.
 
 Nothing in this folder is a trading signal. A lesson explaining a technique
 well is not evidence the technique works here — per `CLAUDE.md`'s Lego
@@ -170,21 +214,26 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 103 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 121 lesson files (5 Foundation Mathematics + 8
                         primers/foundations + 34 numbered theory lessons +
-                        5 Fixed Income Mathematics + 4 Numerical Methods +
-                        4 further Market Microstructure lessons alongside
-                        the pre-existing one + 2 The Greeks lessons + 3
-                        Greeks deep-dive lessons not listed on hub.html +
-                        31 "wave 2" lessons across 10 further categories:
-                        Bayesian Statistics Extensions (3), State Space
-                        Models Extensions (3), Information Theory (3),
-                        Signal Processing (3), Graph Theory & Networks (3),
-                        Reinforcement Learning (3), Risk Management Deep
-                        Dive (3), Advanced Portfolio Construction (3),
-                        Quantitative Research Process (2), and Stochastic
-                        Differential Equations (5) + 1 further Advanced
-                        Portfolio Construction lesson (Active Portfolio
-                        Management) + 5 Institutional Data Engineering
-                        lessons (category 24))
+                        5 Fixed Income Mathematics + 5 Numerical Methods
+                        (incl. FFT option pricing) + 4 further Market
+                        Microstructure lessons alongside the pre-existing
+                        one + 2 The Greeks lessons + 3 Greeks deep-dive
+                        lessons not listed on hub.html + the wave-2/wave-3
+                        categories: Bayesian Statistics Extensions (4),
+                        State Space Models Extensions (4), Information
+                        Theory (3), Signal Processing (3), Graph Theory &
+                        Networks (3), Reinforcement Learning (4, incl. Deep
+                        Q-Networks), Risk Management Deep Dive (5), Advanced
+                        Portfolio Construction (4), Quantitative Research
+                        Process (2), Stochastic Differential Equations (7,
+                        incl. Fokker-Planck and Stochastic PDEs),
+                        Institutional Data Engineering (5), Tree-Based &
+                        Ensemble Machine Learning (2), Collateral/Funding/
+                        Rehypothecation (2), and Deep Learning & Modern ML
+                        for Trading (6, incl. LSTM/GRU, Transformers,
+                        LASSO/Ridge, clustering, anomaly detection, and NLP
+                        sentiment) + every lesson now carries an Explain
+                        Like I'm 5 toggle)
 ```

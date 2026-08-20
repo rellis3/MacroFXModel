@@ -49,7 +49,7 @@
 <body>
 
 <h1>🎯 Trade Decision Engine <span class="badge" id="modelBadge">model …</span><span class="badge warn" id="calBadge" style="display:none">UNCALIBRATED PRIOR</span></h1>
-<div class="sub">Per-event go/skip scorer: a bot sees price entering a zone, fires one <code>POST /api/trade-decision/decide</code>, and gets probability + direction + size in milliseconds. Slow loop maintains per-pair feature snapshots; fast loop is a pure dot-product. Design: <code>Trade_Decision_Engine/ARCHITECTURE.md</code></div>
+<div class="sub">Per-event go/skip scorer: a bot sees price entering a zone, fires one <code>POST /api/trade-decision/decide</code>, and gets probability + direction + size in milliseconds. Slow loop maintains per-pair feature snapshots; fast loop is a pure dot-product. Design: <code>Trade_Decision_Engine/ARCHITECTURE.md</code> · Live ticking version: <a href="continuation-fade-ticker.html">continuation-fade-ticker.html</a></div>
 
 <div class="card">
   <h2>How to use</h2>
@@ -291,6 +291,13 @@ async function doDecide() {
     if ($('ownLevel').checked) body.own_level = true;
     const r = await api('/api/trade-decision/decide', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
     if (r.error) { $('decErr').textContent = r.error; return; }
+    // per-request, not the static pair-agnostic /health badge — this pair may be
+    // on a different live model than whatever /health reported at page load
+    // (decisionCore.js's defaultModelFor is per-pair since modelV1 shipped).
+    if (r.model_version) {
+      $('modelBadge').textContent = 'model ' + r.model_version;
+      $('calBadge').style.display = r.calibrated ? 'none' : 'inline-block';
+    }
     $('decOut').style.display = 'block';
     const go = r.decision === 'go';
     $('decBig').textContent = go ? '✓ GO' : '✗ SKIP';

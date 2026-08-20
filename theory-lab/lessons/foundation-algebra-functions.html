@@ -22,6 +22,8 @@
     <span>Prereqs: none</span>
   </div>
 
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -131,6 +133,11 @@
     outside in.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a seesaw sitting perfectly level. If you take a brick off one side, it tips — unless you take the exact same brick off the other side too. That's the whole rule. "Solving for x" just means removing stuff from both sides, evenly, until x is the only thing left sitting on its own.</p>
+  </div>
+
   <div class="tl-compare">
     <div class="tl-compare-card blue">
       <h4>Linear equation</h4>
@@ -167,6 +174,12 @@
     convention) fixes that and is a genuine function.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A function is a vending machine. You press "3", it always gives you back exactly one thing — say, 9 (because this machine squares whatever number you press). It's not asking you a question you need to answer; it's just sitting there, ready to spit out an output the moment you feed it an input.</p>
+    <p>And a machine that sometimes gives you two different snacks for the same button press is broken — that's why \(y^2=x\) doesn't count as a real function, but \(y=\sqrt{x}\) does.</p>
+  </div>
+
   <h3>Domain and range</h3>
   <p>
     The <strong>domain</strong> of a function is every input it's allowed to
@@ -193,6 +206,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Domain is "what's this machine allowed to eat." Some machines break if you feed them the wrong thing — try to divide by zero and the whole thing jams. Range is "what can this machine actually spit out." A machine that squares numbers can never spit out a negative one, no matter what you feed it — that's just not a shape the output can take.</p>
+  </div>
+
   <h3>Linear, quadratic, and polynomial functions</h3>
   <p>
     A <strong>linear</strong> function has the form \(y = mx + c\): a constant
@@ -210,6 +228,12 @@
     <div class="tl-eq-chip c2"><code>c</code><span>the intercept — where the line crosses \(x=0\)</span></div>
     <div class="tl-eq-chip c4"><code>Δy/Δx</code><span>"change in y over change in x" — slope computed from any two points on the line</span></div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A straight line is just "start somewhere, then go up (or down) by the same amount every single step." \(c\) is where you start, at \(x=0\). \(m\) is the step size — how much \(y\) changes each time \(x\) moves by 1. That step size never changes, and that's the entire definition of "linear."</p>
+  </div>
+
   <p>
     A <strong>quadratic</strong> function, \(y = ax^2+bx+c\), has a squared
     term, so its graph is a curve (a parabola), not a straight line — its
@@ -219,6 +243,11 @@
     degree-1 polynomial, a quadratic is degree-2, and so on to any higher
     power.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A quadratic is what happens the moment the step size stops being constant — it grows (or shrinks) as \(x\) moves, which is exactly why the graph bends instead of staying straight. "Polynomial" is just the family name for any formula built from \(x\), \(x^2\), \(x^3\)... added together. "Degree" simply means the highest power in the mix — \(x\) alone is degree 1, \(x^2\) is degree 2, and so on.</p>
+  </div>
 
   <h3>Reading a graph: slope, intercept, concavity</h3>
   <p>
@@ -257,6 +286,11 @@
     its core, to this same picture: is the curve bending up, or down?
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Slope is just "how steep is this hill, and which way does it go" — uphill is positive, downhill is negative, flat ground is zero. Concavity is whether the hill is shaped like a bowl (curves up, would hold water if it rained) or a dome (curves down, water rolls straight off). That's genuinely the whole idea — "convexity," which shows up a lot later in this course wearing fancier clothes, is this exact same bowl-vs-dome picture.</p>
+  </div>
+
   <h3>Function composition</h3>
   <p>
     <strong>Composition</strong> chains two functions together: feed an input
@@ -282,6 +316,11 @@
     variable, several layers deep.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Composition is an assembly line: your input goes through one machine first, and whatever comes out the other end gets fed straight into a second machine. \(f(g(x))\) means "run it through \(g\) first, then run that result through \(f\)" — always start with the machine closest to \(x\), like unwrapping a present starting with the innermost layer of paper.</p>
+  </div>
+
   <h3>Inverse functions</h3>
   <p>
     The <strong>inverse</strong> of a function \(f\), written \(f^{-1}\), is the
@@ -306,6 +345,11 @@
     Rearranging an equation and finding an inverse function are, underneath
     the notation, literally the same algebraic move.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An inverse is the "undo" button. If a machine turns 4 into 11, its inverse machine turns 11 back into 4. Finding an inverse is just figuring out, one step at a time, how to walk the original machine's steps backward — the exact same "undo it in reverse order" idea as rearranging an equation, just wearing different notation.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(x, y\)</td><td>Generic variables — an input (\(x\)) and an output or dependent quantity (\(y\)).</td></tr>
@@ -377,6 +421,10 @@
           <h4>Undo the power with a root</h4>
           <p>Raising both sides to the power \(1/n\) is the inverse operation of raising to the power \(n\) — it "undoes" the exponent, the same way dividing undoes multiplying:</p>
           <div class="tl-math">\[ \left(\frac{FV}{P}\right)^{1/n} = 1+r \]</div>
+          <div class="tl-eli5">
+            <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+            <p>Raising something to the power \(1/n\) is just a fancier way of saying "take the \(n\)th root." You already know one version of this trick: a square root (\(x^{1/2}\)) undoes squaring. This step is the exact same undo-move, just stretched to work on any power, not only squaring.</p>
+          </div>
         </div>
       </div>
       <div class="tl-step">
@@ -416,6 +464,12 @@
       <div class="tl-fp amber"><div class="tl-fp-term">leverage</div><div class="tl-fp-name">Multiplier</div><div class="tl-fp-desc">e.g. 30:1 — how many units of exposure per unit of equity</div></div>
       <div class="tl-fp purple"><div class="tl-fp-term">price</div><div class="tl-fp-name">Instrument price</div><div class="tl-fp-desc">Converts a notional dollar exposure into a unit count</div></div>
     </div>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Leverage means a broker lets you control more money than you actually put up. "20:1 leverage" means for every \$1 of your own cash, you're allowed to control \$20 worth of whatever you're trading. So the question below is really just: "I want to control \$12,000 worth, and I'm allowed to multiply my own money by 20 — how much of my own money do I actually need?" That's \$12,000 ÷ 20.</p>
+    </div>
+
     <p>
       Say a trader wants exactly 10,000 units of exposure to an instrument
       trading at \$1.20, using 20:1 leverage. How much equity is required?
@@ -604,6 +658,28 @@
   update();
 })();
 </script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>
-</content>

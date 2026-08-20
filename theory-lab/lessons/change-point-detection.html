@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Change-Point Detection — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / State Space Models Extensions / Change-Point Detection</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">State Space Extensions 4 of 4</div>
+  <h1 class="tl-title">Change-Point Detection</h1>
+  <p class="tl-dek">A narrower question than the full regime models before it: not "which regime, at every point in history," just "has something changed, and roughly when" — answered as new data arrives, not by modeling every regime's dynamics at once.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Hidden Markov Models &amp; Regime Detection, Regime-Switching State Space Models</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>CUSUM</strong> (Page, 1954) is a running total: \(S_t = \max(0,\, S_{t-1} + (x_t - \mu_0 - k))\),
+        flagging a change the moment \(S_t\) crosses a threshold \(h\) — one accumulator, one alarm.</li>
+      <li>Two knobs, one tradeoff: the allowance \(k\) (how much deviation is tolerated before it accumulates) and
+        the threshold \(h\) (how much accumulated evidence triggers an alarm). Smaller \(k\)/\(h\) catches smaller,
+        faster shifts but raises false alarms; larger \(k\)/\(h\) is more conservative but slower to react.</li>
+      <li>The worked example's mean shifts at \(t=8\); \(S_t\) doesn't cross \(h=3.5\) until \(t=9\) — a one-step
+        detection delay, not a flaw, the honest cost of the tradeoff above.</li>
+      <li><strong>Bayesian Online Changepoint Detection</strong> (Adams &amp; MacKay, 2007) replaces the single
+        running number with a full posterior over the <em>run length</em> \(r_t\) — how long it's been since the
+        last changepoint — updated at every new observation via a predictive likelihood and a hazard rate \(H\). A
+        constant \(H\) implies an exponential (geometric, in discrete time) prior on the gap between changepoints.</li>
+      <li>Both tools answer a narrower, more operational question than the two lessons before this one: they ask
+        "has a change occurred, and roughly when," typically as a real-time monitor — not "what are all the regimes
+        and their transition probabilities," which is what the Hidden Markov Model and regime-switching state-space
+        lessons build in full.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The two lessons immediately before this one both build a <em>generative</em> model of the entire regime
+    structure. The Hidden Markov Model lesson infers a full transition matrix \(A\) between \(N\) discrete regimes,
+    and produces filtered or smoothed regime probabilities at <em>every</em> point in the series. The
+    regime-switching state-space lesson fuses that same discrete regime with a continuous Kalman state, at the cost
+    of Kim's filter's approximate collapse just to keep the computation tractable. Both are answering "what is the
+    complete regime picture, past and present" — a rich but heavy question.
+  </p>
+  <p>
+    A large share of real monitoring problems never need that much. A trading desk watching a strategy's rolling
+    P&amp;L, a risk system watching a spread's realized volatility, an execution algorithm watching fill quality — all
+    of these usually just need to know: <strong>has something changed recently, and if so, roughly when did it
+    start?</strong> That's a strictly narrower question than "model every regime and every transition probability
+    forever." <strong>Change-point detection</strong> answers exactly that narrower question, typically as a
+    real-time monitoring tool rather than a full generative model of the whole series — and because the question is
+    narrower, the tools that answer it can be far lighter than a full HMM or a Kim's-filter fusion. This lesson
+    covers the two classical answers: <strong>CUSUM</strong>, a decades-old sequential test built for exactly this,
+    and <strong>Bayesian Online Changepoint Detection (BOCPD)</strong>, a more modern, fully probabilistic version of
+    the same idea.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A tripwire, not a weather model</h3>
+    <p>
+      The Hidden Markov Model lesson's guessing game asks "which of these known regimes am I in, right now, and how
+      confident am I, at every single step of history?" Change-point detection asks something much blunter: "keep a
+      running tally of how surprising the data has looked lately, relative to what I expected before — and tell me
+      the moment that tally gets too large to be a coincidence." CUSUM is the simplest version of that tally: add up
+      how much each new point exceeds what's tolerable, but reset the running total to zero the instant it would go
+      negative, so only a <em>sustained</em> run of surprising values can ever build up enough to trip the alarm. A
+      single outlier can't trigger it; a genuine, sustained shift eventually will. BOCPD keeps the same spirit but
+      replaces the single running number with a full distribution over "how long has it been since the last change,"
+      updated fresh with every new data point — a probabilistic tripwire instead of a hard one.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <h3>CUSUM — Page's cumulative sum control chart</h3>
+  <p>
+    CUSUM was introduced by E. S. Page in "Continuous Inspection Schemes" (Biometrika, 1954, cited below) as a
+    sequential test for detecting a shift in a process's mean, originally built for industrial quality control — is
+    the machine still producing parts at the target mean, or has something drifted? Let \(x_t\) be the observed
+    value at time \(t\), and \(\mu_0\) the in-control (pre-shift) mean the process is expected to sit at. Page's
+    one-sided upper CUSUM statistic is:
+  </p>
+  <div class="tl-math">\[
+    S_t = \max\bigl(0,\; S_{t-1} + (x_t - \mu_0 - k)\bigr), \qquad S_0 = 0
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S_t</code><span>the running accumulated statistic at time t — never allowed to go below zero</span></div>
+    <div class="tl-eq-chip c2"><code>x_t</code><span>the observed value at time t</span></div>
+    <div class="tl-eq-chip c3"><code>μ_0</code><span>the in-control (pre-shift) mean — the baseline the process is expected to sit at</span></div>
+    <div class="tl-eq-chip c4"><code>k</code><span>the allowance (slack) — how much of each deviation from μ_0 is forgiven before it starts accumulating</span></div>
+  </div>
+  <p>
+    A detected change is flagged the first time \(S_t\) exceeds a decision threshold \(h\). The formula's three
+    moving pieces, read as one mechanism:
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">x_t − μ_0 − k</div><div class="tl-fp-name">This step's evidence</div><div class="tl-fp-desc">How far above the allowance the newest point sits — negative for a typical in-control point, positive once the mean has genuinely moved up</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">S_{t-1} + (…)</div><div class="tl-fp-name">Accumulate it</div><div class="tl-fp-desc">Add this step's evidence onto everything accumulated so far — sustained small deviations build up even if no single point is extreme</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">max(0, ·)</div><div class="tl-fp-name">The floor</div><div class="tl-fp-desc">Reset to zero whenever the running total would go negative — an ordinary in-control run can never carry a "credit" toward a false alarm</div></div>
+  </div>
+  <p>
+    The two tunable parameters trade off directly against each other, and neither can be shrunk toward zero for
+    free:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Small k, small h</h4>
+      <p>
+        Less allowance is forgiven per step and less evidence is needed to trip the alarm, so genuine shifts —
+        especially small ones — are caught faster. The cost: ordinary noise accumulates more easily too, so false
+        alarms happen more often. This setting is "twitchy."
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Large k, large h</h4>
+      <p>
+        More deviation is tolerated per step and more accumulated evidence is required before flagging, so false
+        alarms on ordinary noise are rare. The cost: a genuine shift takes longer to accumulate enough evidence to
+        cross the threshold — real changes are detected later. This setting is "conservative."
+      </p>
+    </div>
+  </div>
+  <p>
+    There is no parameter-free way out of this: every choice of \(k\) and \(h\) sits somewhere on the same
+    false-alarm-rate-versus-detection-delay curve, and picking a point on it is a genuine, unavoidable decision, not
+    a bug to engineer away.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a jar you drop a coin into every time something seems a little off, but you empty the jar back to zero the moment things look fine again. One weird day never fills the jar — it gets emptied right back out. Only a genuine run of "off" days keeps piling coins in without a reset, and you sound the alarm once the jar gets heavy enough. A stingier jar (small k, small h) sounds the alarm sooner but also empties less easily on noise; a more forgiving jar (large k, large h) is calmer but slower to notice a real problem.</p>
+  </div>
+
+  <h3>Bayesian Online Changepoint Detection (BOCPD)</h3>
+  <p>
+    Adams &amp; MacKay, "Bayesian Online Changepoint Detection" (arXiv:0710.3742, 2007, cited below), reframes the
+    same underlying question in fully Bayesian terms. Instead of one running number, BOCPD maintains a probability
+    distribution over the <strong>run length</strong> \(r_t\) — how many steps it has been since the last
+    changepoint — and updates that entire distribution online, one new observation at a time. Where CUSUM asks "has
+    the accumulated evidence crossed a line," BOCPD asks "given everything seen so far, what is the full posterior
+    probability that the last change happened exactly \(r\) steps ago, for every possible \(r\)?"
+  </p>
+  <p>
+    The update at each new observation \(x_t\) combines two ingredients: how well the new point fits what's been
+    seen since each hypothesized run began, and a prior belief about how often changes happen at all:
+  </p>
+  <div class="tl-math">\[
+    P(r_t,\, x_{1:t}) = \sum_{r_{t-1}} P(r_t \mid r_{t-1})\; P\bigl(x_t \mid r_{t-1},\, x_t^{(r)}\bigr)\; P(r_{t-1},\, x_{1:t-1})
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r_t, r_{t-1}</code><span>the run length now and at the previous step — elapsed time since the last hypothesized changepoint</span></div>
+    <div class="tl-eq-chip c2"><code>P(x_t | r_{t-1}, x_t^{(r)})</code><span>the predictive probability of the new observation, under the sufficient statistics x_t^(r) accumulated during the current run</span></div>
+    <div class="tl-eq-chip c3"><code>P(r_t | r_{t-1})</code><span>the hazard-based transition: does the run continue (r_t = r_{t-1}+1) or does a changepoint reset it (r_t = 0)?</span></div>
+  </div>
+  <p>
+    The hazard rate \(H\) sets exactly that transition — the prior probability, at any given step, that a
+    changepoint occurs right now:
+  </p>
+  <div class="tl-math">\[
+    P(r_t = 0 \mid r_{t-1}) = H, \qquad\qquad P(r_t = r_{t-1}+1 \mid r_{t-1}) = 1 - H
+  \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>H</code><span>the hazard rate — the constant, memoryless prior probability of a changepoint occurring at any single step, independent of how long the current run has already lasted</span></div>
+  </div>
+  <p>
+    Because \(H\) is held constant — the odds of a change happening right now don't depend on how long it's been
+    since the last one — this hazard function implies an <strong>exponential prior on the time between
+    changepoints</strong> (its exact discrete-time analogue is the geometric distribution, \(P(\text{gap}=g) =
+    H(1-H)^{g-1}\)): the same memorylessness property that gives a constant-rate Poisson process exponentially
+    distributed waiting times. That's a clean, citable modeling fact, and it's also a real assumption — it says
+    changepoints are no more or less likely just because it's "been a while," which may or may not match how change
+    actually arrives in the series being monitored.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A constant hazard rate is like a coin that has no memory of its past flips: even if it's landed heads ten times in a row, the next flip is still exactly a 50/50 shot, not "due" for tails. Applied here, it means BOCPD assumes a change is exactly as likely to happen tomorrow whether the current calm stretch has lasted 3 days or 300 — no sense of "it's been quiet for a while, so a change feels overdue." That's a clean assumption to work with, but it's worth noticing it's an assumption, not a fact about how change actually behaves in the real world.</p>
+  </div>
+
+  <p>
+    Normalizing the joint distribution above by the evidence \(P(x_{1:t})\) yields the actual object BOCPD reports:
+    \(P(r_t \mid x_{1:t})\), the full posterior distribution over "how long since the last change," updated fresh
+    after every single observation. This is the central contrast with CUSUM worth holding onto: <strong>CUSUM is a
+    simple threshold test on one accumulated number</strong> — it either has or hasn't crossed \(h\). <strong>BOCPD
+    produces a complete, principled posterior</strong> over exactly when the last change most likely happened,
+    including its own uncertainty about that estimate — richer, but requiring a model of what "normal" data looks
+    like within a run (the predictive term above), not just a mean and an allowance.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of one tripwire that's either sprung or not, imagine keeping a running list of hunches: "maybe the change happened 1 step ago... maybe 5 steps ago... maybe 20 steps ago," each hunch with its own probability attached, and updating every single hunch's odds the instant a new data point arrives. That whole live-updating list of hunches is the run-length posterior — it never has to commit to one hard answer, it just keeps track of how plausible each possible answer currently is.</p>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(x_t\)</td><td>The observed value at time \(t\) — the series being monitored for a change.</td></tr>
+      <tr><td>\(\mu_0\)</td><td>The in-control (pre-shift) mean — the baseline CUSUM measures deviations against.</td></tr>
+      <tr><td>\(S_t\)</td><td>CUSUM's running accumulated statistic — never negative, resets to 0 whenever it would otherwise dip below.</td></tr>
+      <tr><td>\(k\)</td><td>The allowance (slack) — how much deviation from \(\mu_0\) is tolerated per step before it starts accumulating.</td></tr>
+      <tr><td>\(h\)</td><td>The decision threshold — a change is flagged the first time \(S_t\) exceeds this.</td></tr>
+      <tr><td>\(r_t\)</td><td>BOCPD's run length at time \(t\) — how many steps have elapsed since the most recent changepoint.</td></tr>
+      <tr><td>\(x_t^{(r)}\)</td><td>The sufficient statistics accumulated from the data observed since the current run of length \(r\) began.</td></tr>
+      <tr><td>\(H\)</td><td>The hazard rate — the constant prior probability of a changepoint occurring at any given step.</td></tr>
+      <tr><td>\(P(r_t \mid x_{1:t})\)</td><td>BOCPD's output — the full posterior distribution over the run length, given all data seen so far.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A synthetic mean shift at t = 8, and the CUSUM statistic climbing to cross its threshold one step later</div>
+    <svg viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two stacked panels. Top: a synthetic series hovering near zero for seven points, then jumping to hover near three from t=8 onward, with a dashed red line marking the true changepoint at t=8. Bottom: the CUSUM statistic S_t staying at zero through t=7, then climbing steadily from t=8, crossing the dashed amber threshold line h=3.5 at t=9, one step after the true change.">
+      <text x="320" y="14" text-anchor="middle" font-size="12" fill="var(--text2)">Panel A — raw series x_t (mean shifts from 0 to ~3.1 at t = 8)</text>
+      <line x1="396" y1="20" x2="396" y2="300" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4 3"/>
+      <text x="400" y="24" font-size="10" fill="var(--red)">true changepoint (t=8)</text>
+      <line x1="55" y1="108" x2="595" y2="108" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>
+      <text x="58" y="121" font-size="10" fill="var(--text3)">μ₀ = 0</text>
+      <polyline points="60,103.6 108,114.6 156,97 204,110.2 252,101.4 300,112.4 348,105.8" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+      <polyline points="348,105.8 396,37.6" style="fill:none;stroke:var(--blue);stroke-width:2;stroke-dasharray:2 2"/>
+      <polyline points="396,37.6 444,46.4 492,31 540,39.8 588,44.2" style="fill:none;stroke:var(--red);stroke-width:2"/>
+      <circle cx="60" cy="103.6" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="108" cy="114.6" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="156" cy="97" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="204" cy="110.2" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="252" cy="101.4" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="300" cy="112.4" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="348" cy="105.8" r="3.5" style="fill:var(--blue)"/>
+      <circle cx="396" cy="37.6" r="3.5" style="fill:var(--red)"/>
+      <circle cx="444" cy="46.4" r="3.5" style="fill:var(--red)"/>
+      <circle cx="492" cy="31" r="3.5" style="fill:var(--red)"/>
+      <circle cx="540" cy="39.8" r="3.5" style="fill:var(--red)"/>
+      <circle cx="588" cy="44.2" r="3.5" style="fill:var(--red)"/>
+
+      <text x="320" y="154" text-anchor="middle" font-size="12" fill="var(--text2)">Panel B — CUSUM statistic S_t (allowance k = 1.0)</text>
+      <line x1="396" y1="160" x2="396" y2="300" style="stroke:var(--red);stroke-width:1.5;stroke-dasharray:4 3"/>
+      <line x1="55" y1="261.8" x2="595" y2="261.8" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4 3"/>
+      <text x="58" y="257" font-size="10" fill="var(--amber)">h = 3.5 (threshold)</text>
+      <polyline points="60,300 108,300 156,300 204,300 252,300 300,300 348,300 396,276 444,256.4 492,229.1 540,206.2 588,185.5" style="fill:none;stroke:var(--purple);stroke-width:2"/>
+      <circle cx="60" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="108" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="156" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="204" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="252" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="300" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="348" cy="300" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="396" cy="276" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="444" cy="256.4" r="5.5" style="fill:var(--red);stroke:var(--red)"/>
+      <text x="450" y="252" font-size="10" fill="var(--red)">flagged at t=9</text>
+      <circle cx="492" cy="229.1" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="540" cy="206.2" r="3.5" style="fill:var(--purple)"/>
+      <circle cx="588" cy="185.5" r="3.5" style="fill:var(--purple)"/>
+
+      <text x="60" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=1</text>
+      <text x="204" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=4</text>
+      <text x="396" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=8</text>
+      <text x="444" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=9</text>
+      <text x="588" y="317" text-anchor="middle" font-size="9" fill="var(--text3)">t=12</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Panel A, pre-shift points</span>
+      <span><i style="background:var(--red)"></i>Panel A post-shift / Panel B flagged point</span>
+      <span><i style="background:var(--purple)"></i>Panel B, S_t below threshold</span>
+      <span><i style="background:var(--amber)"></i>threshold h</span>
+    </div>
+    <div class="tl-chart-caption">
+      The mean genuinely shifts at \(t=8\) (dashed red line, both panels). \(S_t\) stays pinned at 0 through
+      \(t=7\) because every pre-shift deviation is fully absorbed by the allowance \(k=1.0\) and floored back to
+      zero. From \(t=8\) it climbs every step, crossing the threshold \(h=3.5\) at \(t=9\) — one step after the
+      true change, the concrete detection delay this pair of \((k,h)\) buys.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Walking S_t step by step through the shift at t = 8</h3>
+    <p>
+      Take \(\mu_0 = 0\), allowance \(k = 1.0\), threshold \(h = 3.5\), and the twelve observations plotted above —
+      hovering near 0 for the first seven steps, then jumping to hover near 3.1 from \(t=8\) onward:
+    </p>
+    <div class="tl-math">\[
+      \begin{array}{c|cccccccccccc}
+      t          & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 \\ \hline
+      x_t        & 0.2 & -0.3 & 0.5 & -0.1 & 0.3 & -0.2 & 0.1 & 3.2 & 2.8 & 3.5 & 3.1 & 2.9 \\
+      x_t-\mu_0-k & -0.8 & -1.3 & -0.5 & -1.1 & -0.7 & -1.2 & -0.9 & 2.2 & 1.8 & 2.5 & 2.1 & 1.9 \\
+      S_t        & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 2.2 & \mathbf{4.0} & 6.5 & 8.6 & 10.5
+      \end{array}
+    \]</div>
+    <p>
+      Through \(t=7\), every observation sits below the allowance-adjusted line (\(x_t - \mu_0 - k\) is negative
+      every time), so \(S_t\) floors back to zero at each step — this is CUSUM correctly ignoring ordinary
+      pre-shift noise, exactly as designed. At \(t=8\) the mean has genuinely moved: \(x_8-\mu_0-k=2.2\) is
+      positive, and \(S_8=\max(0,0+2.2)=2.2\) starts accumulating. It keeps growing every step after — \(S_9 =
+      2.2+1.8=4.0\), the first value to exceed \(h=3.5\) — so the change is flagged at \(t=9\), one step after the
+      true changepoint at \(t=8\). That one-step lag is not a bug in the arithmetic; it is the honest detection
+      delay this specific \((k,h)\) pair buys in exchange for not tripping on the pre-shift noise.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A monitor flagging a strategy's rolling P&amp;L statistics</h3>
+    <p>
+      Consider a monitoring system tracking a running strategy's daily P&amp;L, watching for a shift in its rolling
+      mean relative to its historical baseline — the kind of tripwire that sits quietly in the background rather
+      than a full regime model rerun every morning. A CUSUM on daily P&amp;L (or on a normalized version of it, e.g.
+      P&amp;L divided by a rolling volatility estimate) would accumulate evidence of a sustained shift and raise a flag
+      once \(S_t\) crosses \(h\) — cheap to compute, easy to explain to a risk committee, and immune to single bad
+      (or good) days by construction. What it would <em>not</em> do on its own is tell anyone <em>why</em> the shift
+      happened: whether the market's genuine regime changed underneath the strategy (in which case the Hidden Markov
+      Model or regime-switching lessons' machinery is the right next step to characterize the new regime) or the
+      flag is a false alarm from an unlucky run of correlated days (in which case a wider \(h\) or a BOCPD posterior
+      that stays diffuse across several plausible run lengths would have said so). This is presented purely as an
+      illustration of what the tool is <em>for</em> — it is explicitly not a claim that this monitor has been built,
+      backtested, or shown to add value over simply eyeballing a rolling P&amp;L chart in this repo.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    CUSUM's roots are in industrial statistical process control — is a production line still centered on target —
+    and that same "is this process still behaving" framing carries over cleanly to monitoring a live trading system:
+    a strategy's realized Sharpe, a hedge ratio's residuals, a spread's realized volatility, or fill-quality metrics
+    on an execution algorithm are all series a CUSUM-style tripwire can watch cheaply and continuously, without
+    needing a full model of every possible regime. Because it's just a running sum and a comparison against a fixed
+    threshold, it costs almost nothing to compute per step and is trivial to explain to a non-technical stakeholder:
+    "the accumulated evidence crossed the line."
+  </p>
+  <p>
+    BOCPD is reached for when the single threshold-crossing answer isn't enough — when what's actually wanted is a
+    calibrated sense of <em>how confident</em> the system is that a change happened and roughly when, especially
+    when that posterior needs to feed into a downstream decision (e.g. how much to discount older data when
+    re-estimating a model's parameters, weighting recent observations more heavily the more likely a recent
+    changepoint looks). Because it maintains a full distribution rather than one number, it naturally handles the
+    case where the evidence is genuinely ambiguous — the posterior simply stays spread across several plausible run
+    lengths instead of being forced into a hard yes/no call the way a CUSUM threshold is.
+  </p>
+  <p>
+    Both tools deliberately stop short of the two lessons before this one. Neither CUSUM nor BOCPD tries to say
+    "and here is the full model of every regime the process can be in, with a transition matrix between all of
+    them" — that richer question is exactly what the Hidden Markov Model and regime-switching state-space lessons
+    take on, at real added cost (parameter count, computational tractability, or both). Change-point detection is
+    the right tool when the actual question is narrower and more operational: not "characterize the whole regime
+    structure," just "tell me if and roughly when things changed."
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where change-point detection gets over-trusted</h3>
+    <p>
+      <strong>Ignoring the false-alarm/detection-delay tradeoff.</strong> There is no parameter-free choice of
+      \(k\) and \(h\) (or, for BOCPD, the hazard rate \(H\)) — tightening either to catch smaller or faster shifts
+      mechanically raises the false-alarm rate on ordinary noise, and loosening either to cut false alarms
+      mechanically slows real detections. The worked example's one-step lag between the true changepoint (\(t=8\))
+      and the flagged step (\(t=9\)) is that tradeoff made concrete, not an implementation flaw to be tuned away for
+      free.
+    </p>
+    <p>
+      <strong>Treating a detected changepoint as certain.</strong> A CUSUM crossing \(h\) is a threshold event, not
+      a probability — it says the accumulated evidence exceeded a chosen bar, not "there is a 99% chance a change
+      occurred here." BOCPD is more honest about this by construction, since it reports a full posterior rather than
+      a binary flag, but that posterior is still a model output conditioned on the assumed hazard rate and predictive
+      model — both of which can be wrong. Especially for BOCPD, read the run-length posterior as a probabilistic
+      call the underlying model is making, not a fact about the world.
+    </p>
+    <p>
+      <strong>A constant hazard rate is an assumption, not a law.</strong> BOCPD's constant \(H\) implies an
+      exponential prior on the gap between changepoints — memoryless, meaning a change is exactly as likely on any
+      given step regardless of how long the current run has lasted. If changes in the actual series being monitored
+      tend to cluster, or become more likely the longer a stable period has run, a constant-hazard BOCPD is quietly
+      mis-specified in a way that will bias its run-length posterior.
+    </p>
+    <p>
+      <strong>Confusing "detects a change" with "explains a change."</strong> Neither tool says anything about
+      <em>why</em> a shift happened, or what the new regime actually looks like going forward — that's exactly the
+      gap the Hidden Markov Model and regime-switching state-space lessons' fuller machinery is built to fill, once
+      a change-point monitor has flagged that it's worth looking.
+    </p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Worth remembering:</strong> CUSUM and BOCPD trade the Hidden Markov Model and regime-switching
+    lessons' full generative regime picture for a much lighter, narrower, real-time question. That's a genuine
+    strength for live monitoring, not a lesser version of the same thing — but it means neither tool ever tells you
+    what the new regime actually is, only that something changed and roughly when.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CUSUM (Page, 1954) is one running accumulator and one threshold.</strong> \(S_t = \max(0, S_{t-1} + (x_t - \mu_0 - k))\), flagging a change the moment \(S_t\) exceeds \(h\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>k and h trade off directly</strong> — smaller values catch smaller/faster shifts at the cost of more false alarms; larger values are more conservative but slower to detect a real change. There is no free lunch on this curve.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BOCPD (Adams &amp; MacKay, 2007) replaces the single number with a full posterior</strong> over the run length \(r_t\), updated online via a predictive likelihood and a hazard rate \(H\) — a constant \(H\) implies an exponential (geometric) prior on the gap between changepoints.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The central contrast of this lesson:</strong> change-point detection asks a narrower, operational question — has a change occurred, and roughly when — as opposed to the Hidden Markov Model and regime-switching state-space lessons' fuller job of modeling every regime and every transition probability throughout history.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A detected changepoint is a model output, not a certainty.</strong> CUSUM's threshold crossing is a binary call at a chosen bar; BOCPD's posterior is only as honest as its assumed hazard rate and predictive model — both should be treated as probabilistic, especially BOCPD's run-length estimate.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only.</strong> Nothing here — CUSUM, BOCPD, or the P&amp;L-monitor scenario — is built, tested, or validated anywhere in this repo. Explaining the mechanism is not a claim that either tool has been shown to add value here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Write Page's CUSUM formula from memory and name both of its tunable parameters.</summary>
+    <div class="tl-answer">
+      \(S_t = \max(0, S_{t-1} + (x_t - \mu_0 - k))\), flagging a change once \(S_t\) exceeds a threshold \(h\). The
+      two tunable parameters are the allowance \(k\) (how much deviation from \(\mu_0\) is tolerated before it
+      starts accumulating) and the threshold \(h\) (how much accumulated evidence triggers the alarm).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the worked example, why does S_t stay at exactly zero for every step from t=1 through t=7?</summary>
+    <div class="tl-answer">
+      Because every one of those observations, once the allowance \(k=1.0\) is subtracted, produces a negative
+      value (\(x_t - \mu_0 - k < 0\) for all of them) — adding a negative number to \(S_{t-1}=0\) would take the
+      running total below zero, and the \(\max(0, \cdot)\) floor resets it back to exactly zero at every one of
+      those steps. This is CUSUM correctly absorbing ordinary in-control noise without ever starting to accumulate.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does the worked example's flag come at t=9 rather than exactly at t=8, the true changepoint?</summary>
+    <div class="tl-answer">
+      The mean genuinely shifts at \(t=8\), and \(S_8\) does start accumulating that step (\(S_8=2.2\)), but that
+      single step's evidence isn't yet enough to cross \(h=3.5\) on its own. Only after a second post-shift
+      observation adds more evidence does the running total (\(S_9=4.0\)) exceed the threshold. This one-step gap
+      is the concrete detection delay bought by choosing this particular \((k,h)\) pair, not an error.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What does BOCPD's run length r_t represent, and how does its output differ fundamentally from CUSUM's?</summary>
+    <div class="tl-answer">
+      \(r_t\) is how many steps have elapsed since the most recent changepoint. BOCPD's output is a full posterior
+      probability distribution \(P(r_t \mid x_{1:t})\) over every possible value of \(r_t\), updated after each new
+      observation — a genuine probability distribution over "when did the last change happen." CUSUM, in contrast,
+      is a single accumulated number compared against one fixed threshold: a binary crossed/not-crossed test, not a
+      distribution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why does a constant hazard rate H imply an exponential prior on the time between changepoints?</summary>
+    <div class="tl-answer">
+      A constant \(H\) means the probability of a changepoint occurring at any given step doesn't depend on how long
+      the current run has already lasted — the process is memoryless. That exact memorylessness property is what
+      characterizes the exponential distribution in continuous time (and its discrete-time analogue, the geometric
+      distribution): the same reasoning that gives a constant-rate Poisson process exponentially distributed
+      waiting times between events.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. How does this lesson's scope differ from the Hidden Markov Model and regime-switching state-space lessons, in one sentence?</summary>
+    <div class="tl-answer">
+      Those two lessons build a full generative model of every regime and every transition probability between all
+      of them, producing filtered or smoothed regime probabilities throughout the entire history; change-point
+      detection asks the narrower, more operational question of whether a change has occurred and roughly when,
+      typically as a real-time monitoring tool rather than a complete model of the whole series.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>E. S. Page, <em>"Continuous Inspection Schemes,"</em> Biometrika, Vol. 41, No. 1/2, 1954 — the original paper
+      introducing the CUSUM control chart covered in this lesson.</li>
+    <li>Ryan Prescott Adams &amp; David J. C. MacKay, <em>"Bayesian Online Changepoint Detection,"</em> arXiv:0710.3742,
+      2007 — the original BOCPD paper, deriving the run-length posterior recursion and the hazard-rate framing
+      covered in this lesson.</li>
+    <li>See <a href="hidden-markov-models.html">Hidden Markov Models &amp; Regime Detection</a> for the full
+      discrete-regime generative model this lesson's narrower question is contrasted against.</li>
+    <li>See <a href="regime-switching-state-space.html">Regime-Switching State Space Models</a> for the fused
+      discrete-regime/continuous-state generative model and Kim's filter, the heavier machinery this lesson's
+      change-point tools deliberately avoid needing.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="regime-switching-state-space.html">← Regime-Switching State Space Models</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

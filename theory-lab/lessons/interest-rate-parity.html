@@ -22,6 +22,8 @@
     <span>Prereqs: Time Value of Money</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -202,6 +204,12 @@
     at \(T\). That's exactly the question the next section asks, and it's
     where things stop being an identity.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine two ways to turn $1 into more money a year from now: keep it in a US savings account, or swap it into euros, put it in a European savings account, and pre-book today the exchange rate you'll swap it back at. If those two routes ever paid different amounts, a bank could borrow on the cheap route and invest on the rich one, pocketing free money with zero risk — so banks do exactly that until the two routes pay the same. The forward rate isn't a guess about the future; it's just whatever number makes both routes tie.</p>
+  </div>
+
   <p>
     In practice, CIP holds to within a sliver of a basis point in liquid G10
     pairs during normal market conditions — deviations are bounded almost
@@ -264,6 +272,11 @@
     to be checked against data.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>UIP asks a totally different question: what if you don't lock in that exchange rate at all — you just hold the higher-paying currency and hope? The theory says the extra interest you earn should get canceled out, on average, by that currency losing value by about the same amount. Nobody can force this to be true the way a bank can force the forward rate to line up — it's a prediction about how currencies actually behave, and it can simply turn out wrong.</p>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
@@ -325,6 +338,11 @@
   below — the interest-rate pickup has not been fully offset by depreciation,
   sometimes not offset at all.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Fama basically ran the experiment UIP predicts and checked the scorecard. If UIP were right, currencies paying higher interest should reliably lose value by about that much extra interest — a clean trade-off, no free lunch. Instead he found the opposite tendency: the higher-paying currency tended to hold its value or even gain. That's a real, repeated pattern in the data, not a one-off fluke — and it's the reason "borrow cheap, hold the higher-yielder" has historically been a profitable-looking trade rather than a wash.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">The forward premium puzzle — predicted vs. observed</div>
@@ -443,6 +461,11 @@
       changed was the market's tolerance for holding the funding-currency
       short, all at once.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Picture picking up spare change off the sidewalk every single day for two years, then one day stepping in front of a bus. The carry trade often looks exactly like that: small, steady gains that quietly add up for a long time, funded by taking on the risk of one sudden, sharp loss that can erase years of those small gains in about ten trading days. The daily interest pickup wasn't the whole story — it was the reward for being willing to stand in the road.</p>
+    </div>
     <div class="tl-solid amber">
       <strong>The trap:</strong> reading the calm-market carry pickup as free money.
       Nothing about the interest-rate differential changed on 31 July 2024 —
@@ -533,6 +556,11 @@
       be read with real caution about what didn't happen to be in the
       window.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Imagine a driver who buys expensive insurance every year for the small chance of a bad crash. If you only watch five years and no crash happens, they look like they wasted money on insurance — but they weren't wrong, the crash just didn't happen to occur in the years you were watching. Currency data has the same trap: a rare devaluation the market was rightly bracing for might just not show up in whatever historical window you happen to be studying, making the currency look like it "beat expectations" when really the sample got lucky.</p>
+    </div>
     <p>
       <strong>Ignoring transaction costs and tenor mismatches when computing
       "the differential."</strong> A back-of-envelope carry calculation using
@@ -678,5 +706,28 @@
     <a href="purchasing-power-parity.html">Purchasing Power Parity →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

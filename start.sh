@@ -28,4 +28,22 @@ restart_bot "gold-bot" \
 restart_bot "pattern-live-bot" \
     env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app node PatternBot/pattern_live_bot.mjs &
 
+restart_bot "level-touch-bot" \
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python levelEngine/live_watch.py &
+
+restart_bot "analogml-paper-track" \
+    bash AnalogML/paper_track_loop.sh &
+
+restart_bot "analogml-motif-track" \
+    bash AnalogML/motif_track_loop.sh &
+
+restart_bot "analogml-nearing-watch" \
+    env DASHBOARD_URL=https://macrofxmodel-production.up.railway.app python AnalogML/motif_nearing_watch.py &
+
+# SessionResearch's live/full-study refresh runs as native setInterval timers
+# inside server.js itself (see the "SessionResearch: native in-process
+# scheduling" block there) rather than a bash-loop restart_bot entry here —
+# it still shells out to the same Python engine, just scheduled by the node
+# process directly instead of a separate supervised loop script.
+
 exec node server.js

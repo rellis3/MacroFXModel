@@ -22,6 +22,8 @@
     <span>Prereqs: Algebra &amp; Functions Refresher</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -137,6 +139,11 @@
     \[ \tan\theta = \frac{\sin\theta}{\cos\theta} \]
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine walking around the rim of a merry-go-round that's exactly 1 step across the middle. At every spot you stand, sine tells you how high up you are, and cosine tells you how far sideways you are from the center. Walk all the way around and you land back where you started — and it works exactly the same way every single lap. Tangent is just sine divided by cosine — it tells you how tilted the line from the middle out to you would be.</p>
+  </div>
+
   <h3>Radians vs. degrees</h3>
   <p>
     Degrees split a full circle into 360 arbitrary pieces (a convention
@@ -161,6 +168,11 @@
     degrees into those formulas silently gives a wrong answer, so the habit of
     converting first is worth building now.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Degrees chop a circle into 360 make-believe slices, like cutting a pizza into a lot of skinny pieces for no special reason. Radians measure the circle a more honest way — by how far you actually walked along its edge. Walking all the way around a circle is always exactly \(2\pi\) radians, no matter how big or small the circle is.</p>
+  </div>
 
   <h3>Periodicity — why cycles use sine and cosine</h3>
   <p>
@@ -205,6 +217,11 @@
     increasing, and grows faster and faster as \(x\) increases.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a piggy bank that grows a tiny bit bigger every single second, nonstop, instead of getting a lump of allowance once a week. \(e^x\) is the number you'd end up with after growing that way for a while — always getting bigger, never stopping, and never once dropping below zero.</p>
+  </div>
+
   <h3>The natural logarithm, \(\ln x\), and the log rules</h3>
   <p>
     The <strong>natural logarithm</strong> \(\ln x\) is defined as the inverse
@@ -234,6 +251,11 @@
     exponents. Taking \(\ln\) of both sides of that fact is exactly the
     product rule above.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If \(e^x\) means "how big something gets after growing for x amount of time," then \(\ln x\) asks the same question backwards: "how long did this take to grow this big?" The log rules are just a shortcut — instead of multiplying two growing things together, you can add up how long each one grew.</p>
+  </div>
 
   <h3>Continuous compounding — deriving \(e^{rt}\)</h3>
   <p>
@@ -265,6 +287,11 @@
     at rate \(r\) for time \(t\), with compounding happening every infinitesimal
     instant rather than at discrete intervals" actually means, spelled out.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a piggy bank that adds a tiny bit of extra money every single instant, with absolutely no breaks — not once a year, not once a day, but constantly. \(e^{rt}\) is exactly how much money you'd end up with if that piggy bank never, ever stopped adding.</p>
+  </div>
 
   <h3>Log-returns vs. simple returns, and why log-returns add</h3>
   <p>
@@ -304,6 +331,11 @@
     distinction — this lesson is the algebraic reason that distinction exists
     in the first place.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Say you grow a plant for two weeks. If you use regular percentages, you can't just add week 1's growth and week 2's growth to get the right two-week total — it doesn't work that way once things are compounding. But if you use log-returns instead, you really can just add them up, like stacking two Lego bricks, and you get exactly the right total every time.</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(\theta\)</td><td>(theta) An angle, typically measured in radians in this lesson.</td></tr>
@@ -606,6 +638,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

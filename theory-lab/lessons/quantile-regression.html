@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantile Regression — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Risk Management Deep Dive / Quantile Regression</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Risk Deep Dive 5 of 5</div>
+  <h1 class="tl-title">Quantile Regression</h1>
+  <p class="tl-dek">OLS answers "what's the average outcome given these conditions?" Risk questions ask "what's the bad outcome given these conditions?" — a different question that needs a different loss function, not just a different confidence level.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explains a conditional-quantile estimation technique; not built or used anywhere in this repo</span>
+    <span>~14 min read</span>
+    <span>Prereqs: <a href="regression-diagnostics.html">Regression Diagnostics</a> (OLS mechanics assumed) and <a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> (the contrasting static approach to the same question)</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Ordinary least squares fits the <strong>conditional mean</strong>, \(E[Y\mid X]\) — the single fitted line that minimizes squared error. It has nothing to say about the 5th-percentile outcome given \(X\), only the average one.</li>
+      <li>Quantile regression (Koenker &amp; Bassett, 1978) replaces squared-error loss with the asymmetric <strong>pinball loss</strong> \(\rho_\tau(u) = u(\tau - \mathbb{1}\{u<0\})\), and minimizing its expectation over \(q\) provably recovers the <strong>conditional \(\tau\)-th quantile</strong> of \(Y\) given \(X\), not the mean.</li>
+      <li>Fitting at \(\tau=0.05\) directly models the conditional 5th-percentile return given predictors — a direct route to a conditional VaR that <a href="cornish-fisher-expansion.html">Cornish-Fisher</a> cannot offer, because CF only ever adjusts the unconditional distribution's own skew and kurtosis.</li>
+      <li><strong>The central contrast:</strong> Cornish-Fisher is a <em>static</em> adjustment — same correction every day, driven by the unconditional sample skew/kurtosis. Quantile regression is <em>conditional</em> — the fitted quantile moves with the predictors, directly capturing changing risk conditions (e.g. today's realized volatility) that a static moment-based correction cannot see.</li>
+      <li>The worked toy example below fits real quantile regression lines at \(\tau=0.1\) and \(\tau=0.9\) alongside an OLS mean line on the same heteroskedastic scatter — the two quantile lines have genuinely different slopes than the mean line and visibly fan apart as the spread widens, exactly what a single mean-regression line can't show.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="regression-diagnostics.html">Regression Diagnostics</a> starts from a fact worth repeating here:
+  ordinary least squares gives a point estimate \(\hat\beta\) obtained purely by minimizing the sum of
+  squared residuals, with no distributional assumption required for that minimization itself. What that
+  lesson doesn't dwell on — because it's answering a different question — is <em>what</em>, exactly, OLS's
+  fitted line represents. The answer is the <strong>conditional mean</strong>: \(\hat{y} = x^\top\hat\beta\)
+  is an estimate of \(E[Y\mid X=x]\), the average value of \(Y\) you'd expect given \(X\). That's the right
+  quantity for a huge range of questions — "what's the expected return," "what's the expected hedge ratio."
+  It is exactly the <em>wrong</em> quantity for a risk question. "What's the 5th-percentile return given
+  today's volatility regime" is not a question about the average outcome at all; it's a question about one
+  specific tail quantile of the conditional distribution, and squared-error loss was never built to answer
+  it. Quantile regression exists because the fix isn't a different confidence interval bolted onto the mean
+  — it's a different loss function that targets the quantile directly.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Punishing a guess unevenly is what makes it aim for something other than the middle</h3>
+    <p>
+    Imagine you have to guess a number, and you're told the penalty for guessing <em>too low</em> is nineteen
+    times worse than the penalty for guessing <em>too high</em>. What number should you guess? Not the
+    average of the possible outcomes — because the penalty isn't symmetric around the average, the
+    penalty-minimizing guess shifts upward, toward a number high enough that you're "too low" only rarely.
+    Push that logic all the way through and the guess that minimizes your expected penalty turns out to be a
+    specific point: the value below which only 5% of the actual outcomes fall — the 95th percentile.
+    Ordinary least squares is the special, perfectly symmetric case of this story: guessing too high and
+    guessing too low are penalized identically (squared error doesn't care about direction), and the
+    penalty-minimizing guess under that symmetric penalty is the plain average. Quantile regression is
+    exactly the asymmetric version of the same story, generalized to a full regression: instead of a flat
+    penalty split 50/50 between over- and under-guessing, you choose a split — say 5% versus 95% — and the
+    fitted line that minimizes that lopsided penalty is no longer the conditional mean, it's a specific
+    conditional quantile. Nothing about the mechanics of "fit a line that minimizes total penalty" changed;
+    only the shape of the penalty did, and that shape alone is what determines whether you're targeting the
+    middle of the distribution or one of its edges.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>The pinball (check) loss function</h3>
+  <p>
+  Fix a target quantile level \(\tau \in (0,1)\) (e.g. \(\tau=0.05\) for the 5th percentile). For a candidate
+  predicted value \(q\) and an actual outcome \(Y\), define the residual \(u = Y - q\) and the pinball loss:
+  </p>
+  <div class="tl-math">\[ \rho_\tau(u) = u\big(\tau - \mathbb{1}\{u < 0\}\big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>u</code><span>the residual, Y − q (actual minus predicted)</span></div>
+    <div class="tl-eq-chip c2"><code>τ</code><span>the target quantile level, e.g. 0.05</span></div>
+    <div class="tl-eq-chip c3"><code>𝟙{u&lt;0}</code><span>1 if the prediction overshot (q&gt;Y), else 0</span></div>
+  </div>
+  <p>
+  Unpacked, this is two different linear penalties depending on which side the error falls on:
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">u ≥ 0 → τ·u</div><div class="tl-fp-name">Under-prediction</div><div class="tl-fp-desc">Actual exceeded the guess (q too low) — penalized at weight τ</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">u &lt; 0 → (1−τ)·|u|</div><div class="tl-fp-name">Over-prediction</div><div class="tl-fp-desc">Actual fell short of the guess (q too high) — penalized at weight 1−τ</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">τ = 0.5</div><div class="tl-fp-name">The symmetric special case</div><div class="tl-fp-desc">Both sides weighted equally at 0.5 — this recovers median regression</div></div>
+  </div>
+  <p>
+  For a small \(\tau\) like 0.05, over-prediction is penalized nineteen times more heavily than
+  under-prediction (\(0.95\) vs. \(0.05\)). That lopsidedness is deliberate and is the entire mechanism —
+  it's what pulls the loss-minimizing \(q\) down toward the low tail of the distribution rather than sitting
+  at the center.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Pinball loss is a penalty that's deliberately unfair on purpose. If you're trying to guess the 5th-percentile mark, guessing too high (saying "it won't get that bad") gets punished way harder than guessing too low (being overly cautious). Because the punishment is so lopsided, the smartest strategy shifts away from your normal best-guess average and creeps down toward the pessimistic, cautious end — exactly where a 5th-percentile answer should live.</p>
+  </div>
+
+  <h3>Why minimizing expected pinball loss recovers exactly the τ-th quantile</h3>
+  <p>
+  Let \(F\) be the cumulative distribution function of \(Y\). Consider choosing the single number \(q\) that
+  minimizes \(E[\rho_\tau(Y-q)]\) — the same kind of first-order argument that shows the mean minimizes
+  expected squared error, applied to this different, asymmetric loss instead.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Split the expectation at q</h4>
+        <p>Separate the expectation into the "over" region (\(Y \ge q\)) and the "under" region (\(Y < q\)):</p>
+        <div class="tl-math">\[ E[\rho_\tau(Y-q)] = \tau\, E\big[(Y-q)\mathbb{1}\{Y\ge q\}\big] + (1-\tau)\, E\big[(q-Y)\mathbb{1}\{Y< q\}\big] \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Differentiate with respect to q</h4>
+        <p>Each term's derivative with respect to \(q\) comes from how the boundary of its indicator region moves as \(q\) moves, giving:</p>
+        <div class="tl-math">\[ \frac{d}{dq}E[\rho_\tau(Y-q)] = -\tau\big(1-F(q)\big) + (1-\tau)F(q) \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Set the derivative to zero and simplify</h4>
+        <div class="tl-math">\[ -\tau + \tau F(q) + F(q) - \tau F(q) = 0 \ \implies\ F(q) = \tau \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Read off the result</h4>
+        <p>
+        The loss-minimizing \(q\) satisfies \(F(q)=\tau\), i.e. \(q = F^{-1}(\tau)\) — by definition, exactly
+        the \(\tau\)-th quantile of \(Y\). Nothing about \(F\) besides this one equation was used. The
+        asymmetric weights \(\tau\) and \(1-\tau\) are precisely what make the balance point land at the
+        \(\tau\)-quantile instead of the mean (\(\tau=0.5\) gives \(F(q)=0.5\), the median — the symmetric
+        special case).
+        </p>
+      </div>
+    </div>
+  </div>
+  <p>
+  <strong>Linear quantile regression</strong> applies this same loss conditionally: instead of a single
+  unconditional \(q\), fit \(q_\tau(x) = x^\top\beta_\tau\) by choosing \(\beta_\tau\) to minimize the sample
+  average of \(\rho_\tau(y_i - x_i^\top\beta_\tau)\) across observations. This is a linear program (the
+  pinball loss is piecewise-linear in \(\beta_\tau\)), solvable exactly with standard linear-programming
+  methods — the same Koenker &amp; Bassett (1978) result, extended from a single number to a full regression
+  line.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Ordinary regression draws one line that tries to run right through the middle of all the dots. Quantile regression instead draws a line that tries to have only 5% of the dots below it (for τ=0.05) or only 10% below it (for τ=0.1) — a line that hugs the bottom edge of the scatter instead of its center, using that same lopsided penalty from before to decide exactly where "the edge" should sit.</p>
+  </div>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(Y\)</td><td>The response variable whose conditional quantile is being modeled.</td></tr>
+      <tr><td>\(X\)</td><td>The predictor(s)/covariates the quantile is conditioned on.</td></tr>
+      <tr><td>\(\tau\)</td><td>The target quantile level, \(\tau\in(0,1)\) — e.g. 0.05 for the 5th percentile.</td></tr>
+      <tr><td>\(q\)</td><td>A candidate predicted value; \(u=Y-q\) is the residual against it.</td></tr>
+      <tr><td>\(\rho_\tau(u)\)</td><td>The pinball (check) loss — asymmetric, weight \(\tau\) on under-prediction, \(1-\tau\) on over-prediction.</td></tr>
+      <tr><td>\(F(\cdot)\)</td><td>The cumulative distribution function of \(Y\) (or of \(Y\mid X\) in the conditional case).</td></tr>
+      <tr><td>\(\beta_\tau\)</td><td>The fitted linear quantile-regression coefficients for level \(\tau\) — one full coefficient vector per \(\tau\), generally different from \(\beta_{OLS}\).</td></tr>
+      <tr><td>\(q_\tau(x)=x^\top\beta_\tau\)</td><td>The fitted conditional \(\tau\)-quantile of \(Y\) given \(X=x\).</td></tr>
+    </table>
+  </div>
+
+  <h3>The central contrast: static adjustment vs. conditional, predictor-driven quantile</h3>
+  <p>
+  <a href="cornish-fisher-expansion.html">Cornish-Fisher</a> and quantile regression both target the same
+  underlying question — "what's the bad-outcome threshold?" — from structurally different directions.
+  Cornish-Fisher starts from a single fitted Gaussian VaR and nudges the quantile using the
+  <em>unconditional</em> sample skewness and kurtosis: the same correction applies on every single day,
+  regardless of what's happening in the market right now, because \(S\) and \(K\) are properties of the
+  whole historical sample. Quantile regression instead fits \(q_\tau(x) = x^\top\beta_\tau\) directly against
+  live predictors \(x\) — so the fitted quantile <em>moves</em> as \(x\) moves, capturing changing risk
+  conditions (e.g. today's realized volatility, a regime indicator, a macro surprise) in a way a static,
+  once-computed moment-based correction structurally cannot.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Cornish-Fisher is like a single umbrella-size recommendation printed once a year based on the average rainy season — you use the same umbrella every single day regardless of today's actual forecast. Quantile regression is like checking today's specific weather conditions and picking an umbrella size that adjusts on the spot — bigger on the days that actually look stormy, smaller on the days that look calm, instead of one fixed size forced onto every day alike.</p>
+  </div>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>Cornish-Fisher — static distributional adjustment</h4>
+      <p>
+      Corrects the Gaussian quantile using the return series's own unconditional skewness \(S\) and excess
+      kurtosis \(K\). One adjustment, computed once from history, applied identically regardless of today's
+      conditions. Cheap, and a drop-in change to an existing Gaussian VaR formula — but blind to anything
+      that shifts risk day-to-day.
+      </p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>Quantile regression — conditional, predictor-driven</h4>
+      <p>
+      Fits the \(\tau\)-quantile directly as a function of live predictors, \(q_\tau(x)=x^\top\beta_\tau\).
+      The estimated quantile shifts with \(x\) — a period of elevated realized volatility can push the fitted
+      5th-percentile return further out automatically, without anyone re-estimating a moment by hand. Costs
+      more to build and validate (a real regression, with its own overfitting risk) than a two-number
+      moment adjustment.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Toy dataset: OLS conditional-mean line vs. quantile-regression lines at τ=0.1 and τ=0.9</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of 40 synthetic points with heteroskedastic noise increasing along the x axis. Three fitted lines are shown: a grey ordinary least squares mean line, a blue quantile regression line at tau equals zero point one running below and shallower than the mean line, and an amber quantile regression line at tau equals zero point nine running above and steeper than the mean line. The gap between the blue and amber lines is small on the left side of the chart and visibly widens on the right side, showing the growing spread that a single mean regression line cannot capture.">
+      <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--border);stroke-width:1"></line>
+      <line x1="60" y1="260" x2="60" y2="30" style="stroke:var(--border);stroke-width:1"></line>
+      <text x="60" y="278" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">0</text>
+      <text x="269.5" y="278" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">4</text>
+      <text x="479.0" y="278" text-anchor="middle" style="font:10px 'DM Mono',monospace;fill:var(--text3)">8</text>
+      <text x="620" y="278" text-anchor="middle" style="font:10px 'DM Sans',sans-serif;fill:var(--text3)">X</text>
+      <text x="48" y="264" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">0</text>
+      <text x="48" y="149" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">10</text>
+      <text x="48" y="34" text-anchor="end" style="font:10px 'DM Mono',monospace;fill:var(--text3)">20</text>
+      <circle cx="133.0" cy="207.3" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="142.4" cy="205.5" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="156.8" cy="210.9" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="172.8" cy="197.7" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="173.6" cy="198.5" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="185.1" cy="193.6" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="201.7" cy="180.9" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="204.2" cy="187.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="219.3" cy="176.6" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="219.5" cy="183.7" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="266.0" cy="165.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="279.5" cy="155.5" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="287.0" cy="184.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="287.2" cy="167.0" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="319.3" cy="159.4" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="321.4" cy="161.5" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="324.7" cy="154.5" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="332.4" cy="121.6" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="333.7" cy="161.8" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="336.6" cy="129.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="373.8" cy="165.9" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="410.2" cy="128.7" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="415.9" cy="116.3" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="428.1" cy="103.0" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="434.4" cy="98.0" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="441.1" cy="93.7" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="463.5" cy="112.3" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="469.8" cy="113.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="471.2" cy="81.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="477.3" cy="104.2" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="479.3" cy="129.9" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="483.0" cy="125.4" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="500.3" cy="115.3" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="502.6" cy="78.6" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="517.1" cy="82.7" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="533.4" cy="62.5" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="549.3" cy="87.7" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="568.5" cy="65.0" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="570.0" cy="51.1" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <circle cx="572.3" cy="77.2" r="3.2" style="fill:var(--text2);opacity:0.8"></circle>
+      <line x1="75.7" y1="230.0" x2="599.5" y2="61.6" style="stroke:var(--text2);stroke-width:2.5"></line>
+      <line x1="75.7" y1="232.2" x2="599.5" y2="94.9" style="stroke:var(--blue);stroke-width:2.5"></line>
+      <line x1="75.7" y1="226.7" x2="599.5" y2="36.0" style="stroke:var(--amber);stroke-width:2.5"></line>
+      <text x="440" y="70" style="font:600 11px 'DM Sans',sans-serif;fill:var(--text2)">OLS mean (slope 1.464)</text>
+      <text x="380" y="185" style="font:600 11px 'DM Sans',sans-serif;fill:var(--blue)">τ=0.1 (slope 1.194)</text>
+      <text x="420" y="42" style="font:600 11px 'DM Sans',sans-serif;fill:var(--amber)">τ=0.9 (slope 1.658)</text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text2)"></i>OLS — conditional mean</span>
+      <span><i style="background:var(--blue)"></i>Quantile regression, τ=0.1</span>
+      <span><i style="background:var(--amber)"></i>Quantile regression, τ=0.9</span>
+    </div>
+    <div class="tl-chart-caption">
+    All three lines are fit on the exact same 40 synthetic points (noise deliberately built to widen with
+    X). The τ=0.1 and τ=0.9 lines have genuinely different slopes than the OLS mean line and visibly fan
+    apart moving right — a single mean-regression line has no way to show that the spread of outcomes is
+    itself changing with X.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Fitting OLS and two quantile regressions on the same toy dataset</h3>
+    <p>
+    40 synthetic \((x_i,y_i)\) points were generated with \(x\) spread over roughly 1 to 10 and
+    \(y = 2 + 1.5x + \varepsilon\), where the noise \(\varepsilon\)'s scale grows with \(x\) — a
+    deliberately heteroskedastic toy dataset. OLS was fit by minimizing squared error in closed form;
+    both quantile regressions were fit by solving the linear program that minimizes the sample average of
+    \(\rho_\tau(y_i - \beta_0-\beta_1 x_i)\) exactly, at \(\tau=0.1\) and \(\tau=0.9\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The three fitted lines</h4>
+          <p>
+          OLS (conditional mean): \(\hat{y} = 2.172 + 1.464x\). Quantile regression, \(\tau=0.1\):
+          \(\hat{q}_{0.1}(x) = 2.062 + 1.194x\). Quantile regression, \(\tau=0.9\):
+          \(\hat{q}_{0.9}(x) = 2.395 + 1.658x\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The spread at the low end of X</h4>
+          <p>
+          At \(x=1\): OLS predicts \(3.64\), \(\tau=0.1\) predicts \(3.26\), \(\tau=0.9\) predicts
+          \(4.05\) — an 80%-interval width of about \(0.80\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The spread at the high end of X</h4>
+          <p>
+          At \(x=10\): OLS predicts \(16.81\), \(\tau=0.1\) predicts \(14.00\), \(\tau=0.9\) predicts
+          \(18.98\) — an 80%-interval width of about \(4.97\), roughly six times wider.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="tl-solid blue">
+    <strong>The width of the \(\tau=0.1\)–\(\tau=0.9\) band grew from about 0.80 at x=1 to about 4.97 at
+    x=10 — a direct, quantitative read on how the conditional spread changes with X.</strong> The single
+    OLS mean line cannot express this at all: it reports one number, the expected value, at every x, with
+    no information about how much that expectation should be trusted to hold.
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A conditional VaR that moves with the volatility regime, instead of a fixed moment-based adjustment</h3>
+    <p>
+    A risk desk currently reports a daily VaR using a Cornish-Fisher adjustment built from the FX pair's
+    full-sample skewness and kurtosis — one fixed correction, applied identically whether today is a quiet
+    range-bound session or a day sitting inside an elevated-volatility cluster. A quant on the desk instead
+    fits a quantile regression of next-day return on today's realized volatility and a short-horizon
+    momentum indicator, at \(\tau=0.05\). On an ordinary, low-volatility day, the fitted 5th-percentile
+    line sits close to what the Cornish-Fisher number already implied — but during a volatility cluster,
+    where today's realized vol is itself elevated, the quantile regression's fitted \(q_{0.05}(x)\)
+    widens automatically, because the fitted coefficient on realized volatility pulls the tail quantile
+    further out exactly when the predictor says conditions have changed. The Cornish-Fisher number, by
+    construction, cannot do this — it only updates when someone re-estimates the sample's unconditional
+    skew and kurtosis, typically on a slow, periodic basis, not day-to-day as conditions actually shift.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <ul>
+    <li>
+    <strong>Directly modeling conditional VaR.</strong> Fitting \(q_\tau(x)\) at, say, \(\tau=0.01\) or
+    \(\tau=0.05\) against relevant predictors is a standard way to build a VaR estimate that responds to
+    current conditions instead of relying on a fixed unconditional distribution shape.
+    </li>
+    <li>
+    <strong>A full set of τ values traces out a conditional distribution shape.</strong> Fitting the same
+    predictors at many \(\tau\) values (e.g. 0.05, 0.25, 0.5, 0.75, 0.95) builds up a picture of the entire
+    conditional distribution's shape — including how its spread and asymmetry themselves change with the
+    predictors — without ever assuming a specific parametric family for that distribution.
+    </li>
+    <li>
+    <strong>Widely used outside finance too.</strong> Quantile regression is standard in econometrics,
+    epidemiology, and ecology for exactly the same reason it matters here: whenever the relationship of
+    interest isn't well summarized by a single average effect, because the spread or shape of the outcome
+    changes across the predictor range.
+    </li>
+    <li>
+    <strong>Complements, rather than replaces, mean-based modeling.</strong> A desk reporting both an OLS
+    conditional-mean forecast and a quantile-regression-based conditional tail estimate gets two
+    genuinely different pieces of information from the same predictors — the expected outcome, and
+    separately, how bad the outcome could plausibly get.
+    </li>
+  </ul>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where quantile regression gets over-trusted</h3>
+    <ul>
+      <li>
+      <strong>Quantile crossing.</strong> Because each \(\tau\) is fit as its own separate linear program,
+      nothing in the basic method guarantees that \(\hat{q}_{0.1}(x) < \hat{q}_{0.5}(x) < \hat{q}_{0.9}(x)\)
+      holds at every \(x\) — for some predictor values, especially near the edges of the observed data,
+      the fitted lines for different \(\tau\) can actually cross, implying the nonsensical claim that a
+      higher quantile predicts a lower value than a lower one. This is the direct structural cousin of
+      Cornish-Fisher's own non-monotonicity failure: a real, documented limitation of the basic method, not
+      an edge case to ignore. Various extensions (e.g. imposing monotonicity constraints directly in the
+      fit) address it, but the basic linear quantile regression described here doesn't guarantee it on its
+      own.
+
+      <div class="tl-eli5">
+        <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+        <p>Imagine drawing three separate lines for "typically bad," "typical," and "typically great," each one fit completely independently. Nothing forces them to stay in the sensible order — occasionally, at the edges, the "typically bad" line can accidentally cross above the "typical" line, which would nonsensically claim a worse-case outcome is now higher than an average one. It's an honest side effect of fitting each line separately rather than as one coordinated system.</p>
+      </div>
+      </li>
+      <li>
+      <strong>Extreme τ needs data in the tail to fit well.</strong> A quantile regression at \(\tau=0.01\)
+      is, by definition, being pinned down mostly by the small fraction of observations near that extreme
+      tail — a modest sample can leave that specific fitted line poorly determined even when the median
+      (\(\tau=0.5\)) line is estimated comfortably from the same data.
+      </li>
+      <li>
+      <strong>A linear conditional-quantile model is still a linear model.</strong> Quantile regression
+      changes the loss function, not the assumption that the quantile is a linear function of the
+      predictors — a genuinely nonlinear relationship between predictors and the tail quantile will be
+      misfit by a linear quantile regression just as a nonlinear conditional mean would be misfit by OLS.
+      </li>
+      <li>
+      <strong>More predictors, more overfitting surface.</strong> Unlike Cornish-Fisher's two-number
+      moment adjustment, quantile regression is a real regression with real overfitting risk — more
+      predictors and a small sample can produce a fitted tail quantile that looks sharp in-sample and
+      degrades out-of-sample, the same validation discipline any regression needs.
+      </li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>OLS fits the conditional mean; quantile regression fits a conditional quantile.</strong> The asymmetric pinball loss ρ_τ, not squared error, is what makes the loss-minimizing fit land on a specific quantile instead of the average.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The derivation is clean: minimizing E[ρ_τ(Y−q)] over q gives F(q)=τ exactly.</strong> The asymmetric τ vs. 1−τ weighting is the entire mechanism — no distributional assumption needed.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cornish-Fisher is static; quantile regression is conditional.</strong> This is the lesson's central contrast — a CF adjustment is fixed from unconditional S and K, while a quantile-regression quantile moves with live predictors like today's realized volatility.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The toy example shows it concretely.</strong> The τ=0.1–τ=0.9 band width grew roughly sixfold from x=1 to x=10 — information a single OLS mean line structurally cannot carry.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Quantile crossing is a real limitation, not an edge case.</strong> Separately-fit quantile lines aren't guaranteed to stay correctly ordered at every predictor value — the direct structural cousin of Cornish-Fisher's own non-monotonicity problem.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique and its worked toy example precisely; it is not a claim that quantile regression is fitted or used anywhere in this project.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What quantity does OLS estimate, and what quantity does quantile regression at τ=0.05 estimate — in your own words?</summary>
+    <div class="tl-answer">
+    OLS estimates the conditional mean, \(E[Y\mid X]\) — the average outcome given the predictors.
+    Quantile regression at \(\tau=0.05\) estimates the conditional 5th-percentile of \(Y\) given \(X\) — the
+    outcome level below which only 5% of the conditional distribution falls, a genuinely different quantity
+    from the average.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the pinball loss ρ_τ(u) = u(τ − 𝟙{u&lt;0}), what happens to the relative penalty on over- vs. under-prediction as τ gets small (e.g. τ=0.05)?</summary>
+    <div class="tl-answer">
+    Under-prediction (the actual value exceeds the guess) is penalized at weight τ, which shrinks toward
+    zero as τ→0. Over-prediction (the guess exceeds the actual value) is penalized at weight 1−τ, which
+    grows toward 1. So for a small τ, over-predicting is punished far more heavily than under-predicting —
+    at τ=0.05, nineteen times more heavily — which pulls the loss-minimizing prediction down toward the
+    low tail of the distribution.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Walk through, in words, why setting the derivative of E[ρ_τ(Y−q)] to zero produces F(q)=τ.</summary>
+    <div class="tl-answer">
+    Splitting the expectation into the region where Y≥q (weighted τ) and Y&lt;q (weighted 1−τ) and
+    differentiating with respect to q gives −τ(1−F(q)) + (1−τ)F(q). Expanding and simplifying, the τ·F(q)
+    terms cancel, leaving −τ + F(q) = 0, i.e. F(q) = τ. Because F is the CDF, the q satisfying F(q)=τ is by
+    definition the τ-th quantile — so the asymmetric weighting directly forces the loss-minimizing q to be
+    that specific quantile rather than the mean.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. State the lesson's central contrast between Cornish-Fisher and quantile regression in one or two sentences.</summary>
+    <div class="tl-answer">
+    Cornish-Fisher is a static adjustment: it corrects a Gaussian quantile using the unconditional sample
+    skewness and kurtosis of the whole historical return series, applying the identical correction
+    regardless of today's conditions. Quantile regression is conditional: it fits the target quantile as a
+    function of live predictors, so the estimated quantile moves as those predictors move, directly
+    capturing changing risk conditions that a static, once-computed moment adjustment cannot see.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked toy example, why does the gap between the τ=0.1 and τ=0.9 lines widen from x=1 to x=10, and why can't the OLS line show this?</summary>
+    <div class="tl-answer">
+    The synthetic data was built with noise whose scale grows with x (deliberate heteroskedasticity), so
+    the true conditional spread of Y genuinely widens as x increases — and each quantile regression line
+    is fit to track its own specific quantile of that widening spread, so the τ=0.1 and τ=0.9 lines
+    separate as x grows. OLS fits a single conditional-mean line and reports only one number (the average)
+    at every x — it has no mechanism to represent how much spread surrounds that average, since squared-error
+    loss never distinguishes "the spread was wide" from "the spread was narrow but the mean guess was off."
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What is quantile crossing, and why is it described in this lesson as the structural cousin of Cornish-Fisher's non-monotonicity problem?</summary>
+    <div class="tl-answer">
+    Quantile crossing is when separately-fit quantile regression lines for different τ levels cross at some
+    predictor value, implying a higher quantile predicts a lower value than a lower quantile does at that
+    same x — a violation of what a valid quantile function must satisfy. It parallels Cornish-Fisher's
+    non-monotonicity failure because both are cases where a technique meant to describe an ordered quantile
+    structure can, under real conditions (extreme τ separation here, extreme skew/kurtosis there), produce
+    an output that is no longer validly ordered — a genuine limitation of the basic method in both cases,
+    not a hypothetical concern.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Roger Koenker and Gilbert Bassett Jr., "Regression Quantiles," <em>Econometrica</em>, Vol. 46, No. 1, January 1978, pp. 33–50 — the foundational paper introducing the pinball loss and proving that minimizing it recovers conditional quantiles, the source this lesson's derivation is built on.</li>
+    <li>Roger Koenker, <em>Quantile Regression</em>, Econometric Society Monographs, Cambridge University Press, 2005 — the standard full-length reference covering estimation, inference, and the quantile-crossing problem in depth.</li>
+    <li>See also <a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> for the static, moment-based alternative to the same underlying VaR question, and <a href="regression-diagnostics.html">Regression Diagnostics</a> for the OLS mechanics and residual-validity checks this lesson contrasts against.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="cornish-fisher-expansion.html">← Cornish-Fisher Expansion</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

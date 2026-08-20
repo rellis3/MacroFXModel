@@ -2222,7 +2222,7 @@ async function exportConfluenceZones() {
   const orig = btn.textContent;
   btn.textContent = '⏳ Computing…'; btn.disabled = true;
   try {
-    const res = await fetch('/api/vol-forecast/zones');
+    const res = await fetch('/api/vol-forecast/zones?reach=1');
     if (!res.ok) { const t = await res.text(); throw new Error(t.slice(0, 120)); }
     const text = await res.text();
     await navigator.clipboard.writeText(text).catch(() => {

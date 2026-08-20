@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Boosting — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Tree-Based &amp; Ensemble Machine Learning / Gradient Boosting</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Tree-Based &amp; Ensemble ML 2 of 2</div>
+  <h1 class="tl-title">Gradient Boosting</h1>
+  <p class="tl-dek">Instead of averaging many independent trees, build them one at a time, each one trained specifically to correct what the ensemble so far still gets wrong — the dominant technique on structured, tabular data, and a method whose strength is not, by itself, evidence about any specific FX or macro feature set.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~17 min read</span>
+    <span>Prereqs: <a href="decision-trees-random-forests.html">Decision Trees &amp; Random Forests</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Random forests average many <strong>independent</strong> trees trained in parallel (bagging). Gradient boosting instead builds trees <strong>sequentially</strong>: each new tree is fit specifically to correct the current ensemble's errors.</li>
+      <li>The general update is \(F_m(x) = F_{m-1}(x) + \nu\cdot h_m(x)\), where \(h_m\) is a new tree fit to approximate the <strong>negative gradient</strong> of the loss with respect to the ensemble's current predictions, and \(\nu\) (shrinkage) controls how much each new tree is allowed to contribute (Friedman, 2001).</li>
+      <li>For squared-error loss, the negative gradient is literally the residual, \(y_i - F_{m-1}(x_i)\) — stated explicitly, this is the intuitive special case: each new tree is quite literally fit to what's still left over.</li>
+      <li>Production implementations — XGBoost (Chen &amp; Guestrin, 2016), LightGBM, CatBoost — add regularization terms that penalize tree complexity directly in the objective, efficient handling of missing values, and histogram-based split-finding for speed, without changing the core sequential-correction idea.</li>
+      <li><strong>Mandatory honest framing:</strong> gradient-boosted trees are genuinely, consistently the strongest general-purpose method on structured/tabular prediction problems — that is a statement about the method. It says nothing about whether any specific set of FX or macro features handed to it contains real, out-of-sample-validated trading edge, and a model this flexible makes leakage-free, honest out-of-sample testing more important, not less, because it can fit noise very convincingly.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="decision-trees-random-forests.html">Decision Trees &amp; Random
+    Forests</a> closed on a specific limitation: averaging \(B\) trees'
+    predictions converges to a variance floor of \(\rho\sigma^2\), set by how
+    correlated the trees are — a purely parallel, "grow many independent
+    guesses and vote" strategy. Gradient boosting takes the opposite
+    structural approach. Rather than making each tree as independent from
+    the others as possible, it makes each tree <strong>deliberately
+    dependent</strong> on all the ones before it: tree 2 is built to fix
+    what tree 1 got wrong, tree 3 fixes what trees 1 and 2 together still get
+    wrong, and so on. Where a forest reduces variance by averaging away
+    independent noise, boosting reduces both bias and variance by
+    directly, iteratively chasing down the ensemble's remaining error —
+    a different mechanism aimed at the same underlying goal of a model that
+    predicts well on data it hasn't seen.
+  </p>
+  <p>
+    This sequential-correction idea is also why gradient boosting is the
+    dominant technique on structured/tabular data across real-world machine
+    learning competitions and production systems — a genuinely well-evidenced
+    claim about the method, developed at length in the mandatory honest
+    framing box below, and one this lesson is careful never to let bleed into
+    a claim about any particular trading application of it.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A committee of specialists, each hired to fix the last one's mistakes</h3>
+    <p>
+      Picture estimating a house's price. The first, crude estimator just
+      guesses the average price of every house in the dataset — wrong for
+      almost every individual house, but a reasonable starting point. The
+      second estimator doesn't try to predict the price from scratch; it
+      only looks at <em>how wrong</em> the first guess was for each house —
+      too low here, too high there — and tries to predict <em>that error</em>.
+      Add the second estimator's correction to the first guess and the
+      combined estimate is better. The third estimator repeats the trick:
+      it looks only at whatever error is still left after the first two,
+      and tries to predict that. Keep hiring new specialists, each one
+      focused purely on the leftover mistake of everyone hired before them,
+      and the combined committee's estimate keeps improving — not because
+      any single specialist is a great forecaster on their own, but because
+      each one is solving a narrower, easier problem: "what did everyone
+      before me still get wrong?"
+    </p>
+    <p>
+      That is gradient boosting exactly: each new tree isn't trained on the
+      original target \(y\) at all — it's trained on the current ensemble's
+      leftover error, and its correction is added to the running total, a
+      little at a time, controlled by a shrinkage rate so no single new tree
+      is allowed to overcorrect and swing the whole committee's estimate too
+      far in one step.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>The general algorithm (Friedman, 2001).</strong> Gradient boosting
+    builds an additive model \(F_M(x) = \sum_{m=0}^{M} \nu\, h_m(x)\)
+    (with \(h_0\) initialized to a constant) by fitting each new piece
+    \(h_m\) sequentially, in the direction that most reduces a chosen loss
+    function \(L(y, F(x))\):
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Initialize with a constant</h4>
+        <div class="tl-math">\[ F_0(x) = \arg\min_{\gamma} \sum_{i=1}^{N} L(y_i, \gamma) \]</div>
+        <p>For squared-error loss this is simply the training mean, \(\bar{y}\) — the same crude "average guess" starting point from the intuition box.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Compute the pseudo-residuals</h4>
+        <div class="tl-math">\[ r_{im} = -\left[\frac{\partial L(y_i, F(x_i))}{\partial F(x_i)}\right]_{F=F_{m-1}} \]</div>
+        <p>For every training point, this is the <strong>negative gradient</strong> of the loss with respect to the ensemble's current prediction — the direction, per point, that would most reduce that point's loss if the prediction nudged that way.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Fit a new tree to those pseudo-residuals</h4>
+        <p>Train a fresh regression tree \(h_m(x)\) — using exactly the recursive binary splitting from the previous lesson — with the pseudo-residuals \(r_{im}\) as its regression target, not the original \(y_i\).</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Add the new tree's correction, shrunk by ν</h4>
+        <div class="tl-math">\[ F_m(x) = F_{m-1}(x) + \nu \cdot h_m(x) \]</div>
+        <p>Repeat steps 2–4 for \(m=1,\dots,M\) rounds. The final model is \(F_M(x)\).</p>
+      </div>
+    </div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">F_{m-1}(x)</div>
+      <div class="tl-fp-name">The ensemble so far</div>
+      <div class="tl-fp-desc">Everything built in the previous m-1 rounds, combined</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">h_m(x)</div>
+      <div class="tl-fp-name">This round's correction</div>
+      <div class="tl-fp-desc">A fresh tree fit to the negative gradient — what's still wrong right now</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">ν</div>
+      <div class="tl-fp-name">The shrinkage rate</div>
+      <div class="tl-fp-desc">How much of h_m's correction is actually applied — typically small (0.01–0.3)</div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Gradient boosting is like a team of tutors working on the same struggling student, one after another. The first tutor takes a rough first pass. The second tutor doesn't start over — they only look at whatever the first tutor's student is still getting wrong, and focus entirely on fixing that. The third tutor only looks at whatever's still wrong after tutors one and two. Each tutor's job gets narrower and more specific, but the student keeps improving with every tutor added, because nobody is wasting effort re-teaching what's already been fixed.</p>
+  </div>
+
+  <p>
+    <strong>The squared-error special case, made explicit.</strong> Take
+    \(L(y,F) = \frac{1}{2}(y-F)^2\). Its derivative with respect to \(F\) is
+    \(\partial L/\partial F = -(y-F) = F - y\), so the negative gradient is:
+  </p>
+  <div class="tl-math">\[ r_{im} = -\Big[F_{m-1}(x_i) - y_i\Big] = y_i - F_{m-1}(x_i) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r_im</code><span>the pseudo-residual this round — for squared-error loss, literally the ordinary residual</span></div>
+    <div class="tl-eq-chip c2"><code>y_i</code><span>the true target for training point i</span></div>
+    <div class="tl-eq-chip c3"><code>F_{m-1}(x_i)</code><span>the ensemble's current prediction for point i, before this round's tree</span></div>
+  </div>
+  <p>
+    In other words: for the most common loss function, "fit a tree to the
+    negative gradient" reduces exactly to "fit a tree to the ordinary
+    residual" — the intuitive committee-of-specialists story from above,
+    made precise. The general gradient formulation exists because the same
+    machinery extends cleanly to other losses (log-loss for classification,
+    Huber loss for robustness to outliers, quantile loss for predicting a
+    specific percentile) — each just swaps in a different derivative for
+    step 2, with steps 1, 3, and 4 completely unchanged.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A "residual" is just what's left over — the part of the answer still wrong after your best guess so far. If you guess a house is worth $300,000 and it's really worth $340,000, your residual is $40,000: the exact gap the next tutor should focus on closing. Fitting a tree to the residual literally means training it to predict that gap, not the original house price all over again.</p>
+  </div>
+
+  <p>
+    <strong>Why the shrinkage rate \(\nu\) matters.</strong> Setting
+    \(\nu=1\) would let each new tree fully correct the current residual in
+    one step — fast, but prone to fitting each round's tree too eagerly to
+    that round's specific noise. A small \(\nu\) (commonly 0.01–0.3) forces
+    many more rounds \(M\) to reach the same overall fit, but each individual
+    step is more conservative, which empirically produces better-generalizing
+    models — the direct boosting analogue of the previous lesson's "many
+    trees, none of them trusted too much on their own" theme, achieved here
+    through small sequential steps rather than through averaging.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Shrinkage is like taking small, careful corrective steps instead of one huge overcorrection. If a recipe tastes slightly bland, you add a pinch of salt, taste again, then decide on the next pinch — rather than dumping in a whole spoonful based on one taste test. Each small correction is safer because it doesn't overreact to that one moment's specific impression; many small pinches, tasted and adjusted along the way, get you to a better final dish than one big confident guess.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(F_m(x)\)</td><td>The ensemble's prediction after \(m\) boosting rounds.</td></tr>
+    <tr><td>\(h_m(x)\)</td><td>The new tree fit during round \(m\), trained on the current pseudo-residuals.</td></tr>
+    <tr><td>\(r_{im}\)</td><td>The pseudo-residual for point \(i\) at round \(m\) — the negative gradient of the loss.</td></tr>
+    <tr><td>\(\nu\)</td><td>(nu) The shrinkage / learning rate — how much of each round's correction is actually applied.</td></tr>
+    <tr><td>\(L(y,F)\)</td><td>The loss function being minimized — squared error, log-loss, etc.</td></tr>
+    <tr><td>\(M\)</td><td>Total number of boosting rounds (trees) in the final ensemble.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Bagging (parallel, independent) versus boosting (sequential, corrective)</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram contrasting bagging and boosting. Top half: bagging trains three trees in parallel, each on its own independent bootstrap sample of the same original data, then averages their outputs. Bottom half: boosting trains three trees in sequence, where each tree is fit to the residual error left by the combined ensemble before it, and each tree's contribution is added, shrunk by nu, to a running total.">
+      <text x="20" y="26" fill="var(--blue)" font-size="13" font-family="'DM Mono',monospace" font-weight="600">Bagging — parallel, independent</text>
+      <rect x="20" y="40" width="90" height="30" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="65" y="59" text-anchor="middle" fill="var(--text)" font-size="10" font-family="'DM Mono',monospace">data</text>
+      <line x1="110" y1="55" x2="150" y2="30" style="stroke:var(--border2)"/>
+      <line x1="110" y1="55" x2="150" y2="55" style="stroke:var(--border2)"/>
+      <line x1="110" y1="55" x2="150" y2="80" style="stroke:var(--border2)"/>
+      <rect x="150" y="16" width="80" height="26" rx="5" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="190" y="34" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Mono',monospace">tree 1 (boot)</text>
+      <rect x="150" y="42" width="80" height="26" rx="5" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="190" y="60" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Mono',monospace">tree 2 (boot)</text>
+      <rect x="150" y="68" width="80" height="26" rx="5" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="190" y="86" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Mono',monospace">tree 3 (boot)</text>
+      <line x1="230" y1="29" x2="290" y2="55" style="stroke:var(--border2)"/>
+      <line x1="230" y1="55" x2="290" y2="55" style="stroke:var(--border2)"/>
+      <line x1="230" y1="81" x2="290" y2="55" style="stroke:var(--border2)"/>
+      <rect x="290" y="40" width="90" height="30" rx="6" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="335" y="59" text-anchor="middle" fill="var(--green)" font-size="10" font-family="'DM Mono',monospace">average</text>
+      <text x="440" y="59" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">all 3 trees trained at once, same original data</text>
+
+      <line x1="20" y1="120" x2="620" y2="120" style="stroke:var(--border);stroke-dasharray:3,3"/>
+
+      <text x="20" y="146" fill="var(--purple)" font-size="13" font-family="'DM Mono',monospace" font-weight="600">Boosting — sequential, corrective</text>
+      <rect x="20" y="160" width="70" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="55" y="179" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Mono',monospace">F₀ = ȳ</text>
+      <line x1="90" y1="175" x2="130" y2="175" style="stroke:var(--border2)"/>
+      <rect x="130" y="160" width="80" height="30" rx="6" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="170" y="179" text-anchor="middle" fill="var(--amber)" font-size="9" font-family="'DM Mono',monospace">h₁(resid₀)</text>
+      <line x1="210" y1="175" x2="250" y2="175" style="stroke:var(--border2)"/>
+      <text x="230" y="168" text-anchor="middle" fill="var(--text3)" font-size="8" font-family="'DM Mono',monospace">+ν·h₁</text>
+      <rect x="250" y="160" width="60" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="280" y="179" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Mono',monospace">F₁</text>
+      <line x1="310" y1="175" x2="350" y2="175" style="stroke:var(--border2)"/>
+      <rect x="350" y="160" width="80" height="30" rx="6" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <text x="390" y="179" text-anchor="middle" fill="var(--amber)" font-size="9" font-family="'DM Mono',monospace">h₂(resid₁)</text>
+      <line x1="430" y1="175" x2="470" y2="175" style="stroke:var(--border2)"/>
+      <text x="450" y="168" text-anchor="middle" fill="var(--text3)" font-size="8" font-family="'DM Mono',monospace">+ν·h₂</text>
+      <rect x="470" y="160" width="60" height="30" rx="6" style="fill:var(--s2);stroke:var(--border2)"/>
+      <text x="500" y="179" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="'DM Mono',monospace">F₂</text>
+      <line x1="530" y1="175" x2="555" y2="175" style="stroke:var(--border2)"/>
+      <text x="580" y="179" text-anchor="middle" fill="var(--text3)" font-size="12" font-family="'DM Mono',monospace">…</text>
+      <text x="330" y="216" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">each tree fit only to the previous round's leftover error, added back in shrunk by ν</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Bagging's three trees never see each other's output — they're trained
+      in parallel on independent resamples and combined only at the end.
+      Boosting's trees form a strict chain: tree 2 cannot be trained until
+      tree 1's residual exists, because tree 2's entire training target
+      <em>is</em> that residual.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One full boosting round, by hand, on 5 points</h3>
+    <p>
+      Five training points with targets \(y = [3, 5, 6, 9, 12]\) at
+      \(x=1,2,3,4,5\), squared-error loss, shrinkage \(\nu = 0.5\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Initialize F₀ as the mean</h4>
+          <div class="tl-math">\[ F_0 = \bar{y} = \frac{3+5+6+9+12}{5} = 7 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Compute round-1 pseudo-residuals (= y − F₀, for squared error)</h4>
+          <div class="tl-symbols"><table>
+            <tr><td>x</td><td>1&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;&nbsp;5</td></tr>
+            <tr><td>y</td><td>3&nbsp;&nbsp;&nbsp;&nbsp;5&nbsp;&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;&nbsp;9&nbsp;&nbsp;&nbsp;&nbsp;12</td></tr>
+            <tr><td>r₀ = y − F₀</td><td>−4&nbsp;&nbsp;&nbsp;−2&nbsp;&nbsp;&nbsp;−1&nbsp;&nbsp;&nbsp;+2&nbsp;&nbsp;&nbsp;+5</td></tr>
+          </table></div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Fit a depth-1 tree h₁ to the pseudo-residuals</h4>
+          <p>
+            The best single split for these residuals is \(x \le 3\) versus
+            \(x>3\): left leaf mean \(=\frac{-4-2-1}{3}=-2.333\), right leaf
+            mean \(=\frac{2+5}{2}=3.5\).
+          </p>
+          <div class="tl-math">\[ h_1(x) = \begin{cases} -2.333 & x\le 3 \\ 3.5 & x>3 \end{cases} \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Update: F₁(x) = F₀ + ν·h₁(x), with ν = 0.5</h4>
+          <div class="tl-math">\[ F_1(x\le3) = 7 + 0.5(-2.333) = 5.833, \qquad F_1(x>3) = 7 + 0.5(3.5) = 8.75 \]</div>
+        </div>
+      </div>
+    </div>
+    <p>New residuals after this one round, \(r_1 = y - F_1\):</p>
+    <div class="tl-symbols"><table>
+      <tr><td>x</td><td>1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;5</td></tr>
+      <tr><td>F₁</td><td>5.833&nbsp;&nbsp;5.833&nbsp;&nbsp;5.833&nbsp;&nbsp;8.75&nbsp;&nbsp;8.75</td></tr>
+      <tr><td>r₁ = y − F₁</td><td>−2.833&nbsp;&nbsp;−0.833&nbsp;&nbsp;+0.167&nbsp;&nbsp;+0.25&nbsp;&nbsp;+3.25</td></tr>
+    </table></div>
+    <p>
+      Sum of absolute residuals went from \(|{-4}|+|{-2}|+|{-1}|+|2|+|5| = 14\)
+      before this round to \(2.833+0.833+0.167+0.25+3.25 = 7.333\) after just
+      one round — roughly halved. A second round would fit a new tree
+      \(h_2\) to <em>these</em> residuals \(r_1\) and shrink the leftover
+      error further, exactly the same four steps repeated, continuing to
+      chip away at whatever's still unexplained.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Total leftover error shrinking across boosting rounds</div>
+    <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing the sum of absolute residuals dropping from 14.0 before boosting, to 7.3 after round 1, computed exactly from the worked example, with a dashed illustrative continuation showing further rounds continuing to shrink the remaining error toward zero.">
+      <line x1="60" y1="20" x2="60" y2="200" style="stroke:var(--border)"/>
+      <line x1="60" y1="200" x2="600" y2="200" style="stroke:var(--border)"/>
+      <text x="330" y="225" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">boosting round</text>
+      <text x="26" y="110" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace" transform="rotate(-90 26 110)">Σ|residual|</text>
+
+      <rect x="95" y="30" width="60" height="170" style="fill:var(--red)" opacity="0.85"/>
+      <text x="125" y="24" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">14.0</text>
+      <text x="125" y="216" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">round 0</text>
+
+      <rect x="215" y="111" width="60" height="89" style="fill:var(--amber)" opacity="0.9"/>
+      <text x="245" y="105" text-anchor="middle" fill="var(--text)" font-size="11" font-family="'DM Mono',monospace">7.3</text>
+      <text x="245" y="216" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">round 1</text>
+
+      <rect x="335" y="152" width="60" height="48" style="fill:var(--green);opacity:0.55;stroke:var(--green);stroke-dasharray:3,3"/>
+      <text x="365" y="146" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">~3.8</text>
+      <text x="365" y="216" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">round 2*</text>
+
+      <rect x="455" y="178" width="60" height="22" style="fill:var(--green);opacity:0.35;stroke:var(--green);stroke-dasharray:3,3"/>
+      <text x="485" y="172" text-anchor="middle" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">~2*</text>
+      <text x="485" y="216" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">round 3*</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Rounds 0 and 1 are the exact figures computed in the worked example
+      above. Rounds 2–3 (marked *, dashed) are an illustrative continuation
+      only — showing the expected direction of further shrinkage, not
+      figures from an actual continued computation.
+    </div>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Gradient-boosted trees are the dominant, most consistently-winning
+    technique on structured/tabular data</strong> across real-world machine
+    learning competitions and production systems — that is genuinely
+    well-evidenced as a statement about the <em>method</em>. It says nothing,
+    on its own, about whether any specific set of features fed into it in an
+    FX or macro context would produce real, out-of-sample-validated trading
+    edge. A method's general strength across thousands of unrelated tabular
+    problems does not transfer as a claim about any one specific feature
+    set's predictive power in one specific market — that is a completely
+    separate question, answered only by honest out-of-sample testing on that
+    exact feature set, with realistic costs. Because gradient boosting is
+    flexible enough to fit noise very convincingly, rigorous, leakage-free
+    out-of-sample validation (see <a href="research-pipeline-hypothesis-to-backtest.html">The
+    Research Pipeline: Hypothesis to Honest Backtest</a>) becomes <strong>more</strong>
+    important with a model this powerful, not less.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Being told "this is the best-selling, most versatile kitchen knife in the world" tells you the knife is genuinely great — but it tells you nothing about whether it's the right tool for the specific recipe you're making tonight. Gradient boosting being the best general-purpose method for tabular data is the "great knife" claim. Whether it actually finds something real and tradeable in a specific set of FX features is a completely separate question that has to be tested on its own, every single time.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Almost nobody implements the raw Friedman (2001) algorithm from scratch
+    today; three production libraries dominate real-world use, all built on
+    the same sequential-correction core above, with different practical
+    additions:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌲</div>
+      <h4>XGBoost</h4>
+      <p>
+        Chen &amp; Guestrin (2016). Adds an explicit regularization term to
+        the objective that penalizes tree complexity directly (number of
+        leaves, leaf weight magnitudes) — a genuine complexity penalty built
+        into training itself, alongside shrinkage. Also popularized efficient
+        handling of missing values (learning a default split direction for
+        them automatically) and approximate, histogram-based split-finding
+        for speed on large datasets.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🍃</div>
+      <h4>LightGBM</h4>
+      <p>
+        Grows trees leaf-wise (expanding whichever leaf reduces loss most)
+        rather than level-wise, and uses histogram-based split-finding
+        aggressively for speed on very large or high-dimensional datasets —
+        often noticeably faster to train than XGBoost with comparable
+        accuracy, at the cost of leaf-wise growth being slightly more prone
+        to overfitting on small datasets without careful depth control.
+      </p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🐱</div>
+      <h4>CatBoost</h4>
+      <p>
+        Built around native, statistically careful handling of categorical
+        features (avoiding the target leakage that naive target-encoding of
+        categoricals can introduce), and an ordering scheme intended to
+        reduce a specific form of bias from re-using the same data across
+        boosting rounds.
+      </p>
+    </div>
+  </div>
+  <p>
+    All three sit on top of the identical two ideas from this lesson — a
+    score-function-style corrective step (fit to the loss's negative
+    gradient) and a shrinkage rate — without changing that core mechanism.
+    The practical additions above are about training efficiently and
+    handling messy real-world tabular data well, not about a different
+    underlying algorithm.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where gradient boosting quietly goes wrong</h3>
+    <p>
+      <strong>Too many rounds with too little shrinkage overfits, just like
+      an unconstrained single tree.</strong> Because each round strictly
+      reduces training loss, boosting for enough rounds \(M\) with a large
+      enough \(\nu\) can drive training error toward zero exactly the same
+      way a single unconstrained tree can — early stopping on a genuine
+      validation set (not the training loss curve) is standard practice, not
+      optional.
+    </p>
+    <p>
+      <strong>A powerful method fitting noise looks identical to it fitting
+      signal, from the training curve alone.</strong> This is the direct
+      practical consequence of the mandatory honest framing above: a
+      falling training loss, or even a falling loss on a validation split
+      that leaked information from the training period (a look-ahead feature,
+      a target-encoded categorical fit on the full dataset before splitting),
+      will look exactly like real generalization until it's tested on data
+      genuinely held out in time.
+    </p>
+    <p>
+      <strong>Feature importance from a boosted ensemble inherits the same
+      MDI-vs-permutation caveat as forests.</strong> A gradient-boosted
+      ensemble's built-in importance scores are computed the same way as a
+      forest's (gain per split, summed across trees) and carry the identical
+      bias toward high-cardinality/continuous features discussed in the
+      previous lesson — the fix (prefer permutation importance, or a proper
+      held-out validation check) is unchanged.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Boosting builds trees sequentially, each one correcting the ensemble's current error</strong> — the structural opposite of a forest's independent, parallel trees.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(F_m(x) = F_{m-1}(x) + \nu\cdot h_m(x)\), where \(h_m\) is fit to the negative gradient of the loss.</strong> For squared error, that negative gradient is literally the residual — the intuitive special case.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The shrinkage rate \(\nu\) trades more boosting rounds for a more conservative, better-generalizing step each round.</strong> \(\nu=1\) lets a single tree overcorrect to that round's specific noise.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>XGBoost, LightGBM, and CatBoost</strong> are the real, dominant production implementations — regularization, histogram-based splitting, and careful categorical handling on top of the same sequential-correction core, not a different algorithm.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Being the strongest general-purpose method on tabular data is not evidence any specific FX/macro feature set fed into it has real edge.</strong> Those are two entirely different claims — state which one is meant, every time this method is proposed for a real strategy.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This exact flexibility is what makes leakage-free, honest out-of-sample validation more important, not less.</strong> A model this powerful fits noise very convincingly — a falling training or leaked-validation loss looks identical to real generalization until tested on genuinely held-out data.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the core structural difference between how a random forest and a gradient-boosted ensemble are trained?</summary>
+    <div class="tl-answer">
+      A random forest trains \(B\) trees independently and in parallel, each
+      on its own bootstrap resample, and combines them only at the end by
+      averaging (or majority vote) — no tree depends on any other. Gradient
+      boosting trains trees strictly sequentially: each new tree \(h_m\) is
+      fit to the current ensemble's pseudo-residuals, which only exist once
+      every previous tree has already been trained and added in, so each
+      tree is deliberately dependent on all the ones before it.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. In the update \(F_m(x) = F_{m-1}(x) + \nu \cdot h_m(x)\), what is \(h_m\) actually fit to, in general, and what does it reduce to for squared-error loss?</summary>
+    <div class="tl-answer">
+      In general, \(h_m\) is a new regression tree fit to the negative
+      gradient of the loss function with respect to the ensemble's current
+      predictions, \(r_{im} = -[\partial L(y_i,F(x_i))/\partial F(x_i)]_{F=F_{m-1}}\).
+      For squared-error loss, \(L=\frac{1}{2}(y-F)^2\), this negative gradient
+      works out to exactly \(y_i - F_{m-1}(x_i)\) — the ordinary residual —
+      so \(h_m\) is literally fit to what's left over after the ensemble so
+      far.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does the shrinkage rate ν control, and what happens if it's set to 1?</summary>
+    <div class="tl-answer">
+      \(\nu\) controls how much of each new tree's correction is actually
+      applied to the running ensemble each round — a small \(\nu\) (commonly
+      0.01–0.3) means many more rounds are needed to reach the same overall
+      fit, but each individual step is more conservative. Setting \(\nu=1\)
+      lets each new tree fully apply its correction in one step, which tends
+      to let that tree overfit to that specific round's residual noise rather
+      than capturing a pattern that generalizes.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Name one specific practical addition each of XGBoost, LightGBM, and CatBoost bring on top of the core Friedman (2001) algorithm.</summary>
+    <div class="tl-answer">
+      XGBoost adds an explicit regularization term penalizing tree
+      complexity directly in the training objective, plus efficient built-in
+      missing-value handling. LightGBM grows trees leaf-wise instead of
+      level-wise and leans heavily on histogram-based split-finding for
+      training speed on large datasets. CatBoost focuses on statistically
+      careful native handling of categorical features, avoiding the target
+      leakage that naive target-encoding can introduce. All three keep the
+      same sequential negative-gradient-fitting core unchanged.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A gradient-boosted model achieves an excellent, steadily falling loss on a validation split built from FX/macro features. Why is this not, by itself, evidence of real trading edge?</summary>
+    <div class="tl-answer">
+      Gradient boosting is powerful and flexible enough to fit noise very
+      convincingly, and a validation split that leaked any information from
+      the training period — a look-ahead feature, target-encoding fit before
+      the split, or any other leakage — will produce a falling validation
+      loss that looks identical to genuine generalization. The method's
+      general strength across tabular problems everywhere is a statement
+      about the method; whether this specific feature set on this specific
+      market has real, persistent predictive power is a separate question,
+      answered only by leakage-free out-of-sample testing with realistic
+      costs on data genuinely held out in time.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Jerome H. Friedman, <em>"Greedy Function Approximation: A Gradient Boosting Machine"</em>, Annals of Statistics, 29(5), 2001 — the foundational gradient boosting paper: the general algorithm, the negative-gradient/pseudo-residual framing, and shrinkage.</li>
+    <li>Tianqi Chen and Carlos Guestrin, <em>"XGBoost: A Scalable Tree Boosting System"</em>, Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD), 2016 — the XGBoost paper: regularized objective, missing-value handling, and system-level speed optimizations.</li>
+    <li>Guolin Ke, Qi Meng, Thomas Finley, et al., <em>"LightGBM: A Highly Efficient Gradient Boosting Decision Tree"</em>, NeurIPS, 2017 — the LightGBM paper: leaf-wise growth and histogram-based split-finding.</li>
+    <li>Liudmila Prokhorenkova, Gleb Gusev, Aleksandr Vorobev, Anna Veronika Dorogush, and Andrey Gulin, <em>"CatBoost: Unbiased Boosting with Categorical Features"</em>, NeurIPS, 2018 — the CatBoost paper: ordered boosting and native categorical feature handling.</li>
+    <li>Trevor Hastie, Robert Tibshirani, and Jerome Friedman, <em>The Elements of Statistical Learning</em> (2nd ed.), Springer, 2009 — Chapter 10 covers boosting and gradient boosting machines with the same notation used in this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="decision-trees-random-forests.html">← Decision Trees &amp; Random Forests</a>
+    <a href="../hub.html">Theory Lab hub</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

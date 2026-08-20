@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -93,6 +95,11 @@
     not a measurement.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Only the total (the tide-plus-waves reading you actually see) is ever measured directly — nobody gets to see "just the tide" or "just the waves" on their own to check an answer against. Every trend/cycle filter is really just a rule for guessing how to split that one number back into two, and different rules guess differently — there's no scorecard for which guess was exactly right, because the true split was never observed in the first place.</p>
+  </div>
+
   <h3>2. The Hodrick-Prescott filter</h3>
   <p>
     The HP filter (Hodrick &amp; Prescott, developed in a 1980 working paper, published 1997) defines the trend
@@ -118,6 +125,12 @@
     <div class="tl-fp amber"><div class="tl-fp-term">λ = 1600</div><div class="tl-fp-name">Standard quarterly convention</div><div class="tl-fp-desc">Hodrick &amp; Prescott's original choice, calibrated for quarterly U.S. business-cycle data</div></div>
     <div class="tl-fp purple"><div class="tl-fp-term">λ → ∞</div><div class="tl-fp-name">Maximum smoothing</div><div class="tl-fp-desc">Curvature must be exactly zero everywhere; the trend collapses to a single straight line (linear trend)</div></div>
   </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of λ as a dial on how stubbornly straight you insist the trend line has to be. Turn it all the way down and the "trend" just becomes the raw, wiggly data itself — no smoothing at all. Turn it all the way up and the trend gets forced into one perfectly straight line, ignoring every wiggle in the actual data. λ = 1600 is a specific, standard middle setting that's been the default for quarterly economic data for decades.</p>
+  </div>
+
   <p>
     \(\lambda = 1600\) is the number virtually every textbook and paper quotes, and it is specific to
     <strong>quarterly</strong> observations — it is not a universal constant. A common, real mistake is reusing
@@ -170,6 +183,11 @@
     as ground truth about "the" output gap.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The HP filter looks both backward and forward in time to smooth out today's trend estimate. That works great in the middle of a long dataset, where there's plenty of "forward" data to look at — but right at the very newest data point, there's no future to look at yet, so the filter has to guess with only half the information it normally uses. That's exactly why the most recent reading is the least trustworthy one, and why it tends to get revised later once more data arrives.</p>
+  </div>
+
   <h3>4. Butterworth and Baxter-King — band-pass alternatives</h3>
   <p>
     Both HP's flaws are part of the motivation for a different family of filter, defined directly in the frequency
@@ -199,6 +217,11 @@
     band's boundaries as an assumption up front, and (for Baxter-King specifically) losing usable observations at the
     edges of the sample instead of Hamilton's end-point bias.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of separating "smooth" from "wiggly" the way HP does, a band-pass filter is more like a radio tuner: you tell it exactly which range of cycle lengths counts as "the cycle" — say, patterns that repeat every 6 to 32 quarters — and it keeps only that range, filtering out anything faster or slower, the same way tuning a radio keeps one station and mutes the static around it.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -556,6 +579,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

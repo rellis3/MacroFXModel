@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -186,6 +187,27 @@ def _cached_url() -> str | None:
 def _cache_url(url: str) -> None:
     try:
         QS_SESSION.write_text(json.dumps({'url': url}, indent=2))
+    except OSError:
+        pass
+
+
+def _drop_cached_session() -> None:
+    """Forget the cached tool URL so the next pull MINTS a fresh session.
+
+    This is the only known way to clear a selected expiry. QuikStrike keeps the
+    selection in the session behind insid/qsid, and it survives a page.goto: after
+    pass 2 chose WE3Q6, every subsequent pull came back scoped to that expiry -
+
+        settles ! wrong view: expected a expiry table, got "strike ladder"
+        oi      -> EUR_USD_rawOI.tsv  [strike ladder]      <- ONE expiry's strikes
+
+    and the OI matrix half of that is silent, because a single-expiry ladder is
+    still a strike ladder. Minting a new session restored the unscoped view
+    immediately (verified 2026-08-19), so pass 2 pays for one extra wrapper load
+    rather than leaving the tool in a state that quietly narrows the next capture.
+    """
+    try:
+        QS_SESSION.unlink(missing_ok=True)
     except OSError:
         pass
 
@@ -421,7 +443,34 @@ def _best_table(frame, ctx=None):
     return best, best_s, best_why
 
 
-def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500):
+def _prior_strikes(product: str | None, box: str) -> tuple[int, str]:
+    """Strike count of the most recent EARLIER capture of this product+view.
+    -> (strikes, 'YYYY-MM-DD'), or (0, '') when there is no history.
+
+    The books we pull are stable in size day to day: SPX sat at 508 and 501
+    strikes on 11 and 19 August. A capture that suddenly returns a fraction of
+    that has not found a smaller book - it has read a half-rendered table.
+    """
+    d = outdir('quikstrike')
+    root, today = d.parent.parent, d.parent.name
+    best = (0, '')
+    try:
+        days = sorted((x for x in root.iterdir() if x.is_dir() and x.name < today),
+                      key=lambda x: x.name, reverse=True)
+    except OSError:
+        return best
+    for day in days[:5]:                              # a week is plenty of history
+        f = day / 'quikstrike' / f'{safe_name(product or "current")}_{box}.tsv'
+        if f.exists():
+            try:
+                return shape(f.read_text(encoding='utf-8'))['strikes'], day.name
+            except OSError:
+                continue
+    return best
+
+
+def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500,
+                  want_min: int = 0):
     """Read the table repeatedly until two consecutive reads agree.
 
     THE FAILURE THIS FIXES. On 2026-08-02 the S&P capture came back with 76 rows
@@ -438,8 +487,15 @@ def _stable_table(frame, ctx, page, tries: int = 5, gap_ms: int = 1500):
     for _ in range(tries):
         tsv, score, why = _best_table(frame, ctx)
         n = shape(tsv or '')['rows']
-        if tsv and n == prev_n and n > 0:
-            return tsv, score, why, True            # two reads agree
+        # AGREEING IS NOT THE SAME AS FINISHED. SPX plateaued at 52 strikes on
+        # 2026-08-20 - two reads 1.5s apart matched exactly, so this returned
+        # "stable" for a ladder that stopped just above spot (range 1-7805 against
+        # 0-10800 the day before). When the caller knows roughly how big the table
+        # SHOULD be, a short read is treated as still-rendering and polled again
+        # rather than accepted because it briefly stopped growing.
+        enough = want_min <= 0 or shape(tsv or '')['strikes'] >= want_min
+        if tsv and n == prev_n and n > 0 and enough:
+            return tsv, score, why, True            # two reads agree, and it is full-size
         prev, prev_n = tsv, n
         try:
             page.wait_for_timeout(gap_ms)
@@ -577,7 +633,7 @@ def _view_title_ok(frame, key: str) -> bool:
     return False
 
 
-def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
+def _ensure_view(ctx, page, fr, key: str, tries: int = 2):
     """Click a view and WAIT until its own toolbar appears; retry if it doesn't.
 
     A single click was not enough: the session restores the last view, and on
@@ -586,7 +642,29 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
     strike selector offering '(All)' for the matrix views, the report selector
     offering 'Standard' for settlements - so we wait for evidence the view
     actually changed rather than for a fixed delay.
+
+    THE LABEL DECIDES; THE MARKER ONLY HURRIES US ALONG. Requiring both cost 11
+    tables a night for most of Aug 2026: the settles view logged
+    `marker 'Standard'=False, label='S&P 500 (ES|ES) Settles'` and was abandoned
+    three times per product - the page was loaded and correct, and we threw it
+    away because a dropdown had not populated. `_view_label` reads the tool's own
+    view heading and has been hardened twice (once for reading the nav instead of
+    the page, once for gold's multi-span heading); it is the better evidence.
+
+    Discarding the marker entirely is still not safe on its own, but it does not
+    have to be: `pull_product` independently checks the captured table's SHAPE
+    against the view ('expiry table' vs 'strike ladder') and refuses to write one
+    view's table under another's name. That check is what actually caught gold,
+    and it is untouched here. So: wait for the marker, and if it never comes but
+    the heading says we are in the right place, proceed and let shape arbitrate.
     """
+    # TWO ATTEMPTS, NOT THREE. Measured over a full sweep on 2026-08-19: 21 failed
+    # attempts, of which only 3 were followed by a successful retry - the other 18
+    # ran the loop out and were rescued by pull_product's reload instead. Each
+    # attempt costs ~47s (a click, a settle, and a 24s poll), so the third was
+    # about six minutes of an 81-minute run spent re-clicking something that had
+    # already proved it would not move. Two keeps the retry that does sometimes
+    # work; the reload handles the rest, and it handled 6 of 6.
     ids, text, _ = VIEWS[key]
     marker = 'Standard' if key == 'settles' else '(All)'
     for attempt in range(tries):
@@ -594,16 +672,94 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 3):
             return fr, False
         _settle(fr, page, 2500)
         fr = _wait_for_tool(ctx, page, 20) or fr
+        title_ok = False
         for _ in range(12):                              # up to ~24s for the postback
-            if _has_option(fr, marker) and _view_title_ok(fr, key):
+            title_ok = _view_title_ok(fr, key)
+            if title_ok and _has_option(fr, marker):
                 return fr, True
             page.wait_for_timeout(2000)
             fr = _qs_frame(ctx) or fr
+        title_ok = title_ok or _view_title_ok(fr, key)
+        if title_ok:
+            print(f'  {key:<8}   marker {marker!r} never appeared, but the heading says '
+                  f'{_view_label(fr)!r} - proceeding on the heading (shape is still checked)')
+            return fr, True
         # Say WHAT was on screen, not just that it wasn't right. Four rounds were
         # lost this session to "did not switch" messages that named no evidence.
         print(f'  {key:<8}   view did not switch (attempt {attempt + 1}/{tries}) '
               f'- marker {marker!r}={_has_option(fr, marker)}, '
               f'label={_view_label(fr)!r}')
+    return fr, False
+
+
+def _expiry_tabs(frame) -> list:
+    """The expiry tab strip on the Settles view -> [{id, code, title}].
+
+    Each tab carries its metadata in a title attribute:
+
+        Contract: EU3Q6 (Aug 2026) Expiration: 21/08/2026 (2.14 DTE) Future: 6EU6
+
+    so the CODE is read rather than inferred from the tab's visible text (which is
+    whatever the ddlLabels selector is set to - Symbol, DTE, Exp Date ... - and is
+    therefore not a stable handle).
+    """
+    try:
+        rows = frame.evaluate(r"""() => Array.from(
+            document.querySelectorAll('a[id*="lbExpirationTab"]'))
+            .filter(a => !!(a.offsetParent))
+            .map(a => ({ id: a.id, title: (a.getAttribute('title')||'').replace(/\s+/g,' ').trim() }))""")
+    except Exception:                                    # noqa: BLE001
+        return []
+    out = []
+    for r in rows or []:
+        m = re.search(r'Contract:\s*([A-Z0-9]{3,6})\b', r.get('title') or '')
+        if m:
+            out.append({'id': r['id'], 'code': m.group(1), 'title': r['title']})
+    return out
+
+
+def _select_expiry(ctx, page, fr, code: str):
+    """Click the expiry tab for `code` and PROVE the view followed. -> (fr, ok).
+
+    The Settles view renders the per-EXPIRY term table until an expiry is chosen,
+    and the per-STRIKE smile once one is. So the chain capture is this click - no
+    separate tool page, despite 'Settlement Prices' sitting unclickable in the nav.
+
+    THE PROOF IS THE POINT. A smile from the wrong expiry is worse than no smile:
+    charm, vanna and skew would be computed confidently against a surface that
+    belongs to another date, and every downstream number would look reasonable.
+    So the view heading - which becomes e.g.
+
+        EUR/USD (EUU|6E) EU3Q6 (2.14 DTE) vs 1.16225 (+0.0034) - Settles
+
+    must contain the code we asked for, or this returns False and the caller
+    writes nothing. Never 'close enough', never the tab that happened to be open.
+    """
+    tabs = _expiry_tabs(fr)
+    if not tabs:
+        print(f'  chain      no expiry tabs on this view - cannot select {code}')
+        return fr, False
+    hit = next((t for t in tabs if t['code'].upper() == code.upper()), None)
+    if not hit:
+        have = ', '.join(t['code'] for t in tabs[:12])
+        print(f'  chain      {code} is not offered here. Tabs: {have}'
+              f'{" ..." if len(tabs) > 12 else ""}')
+        return fr, False
+    try:
+        fr.locator(f"a[id='{hit['id']}']").first.click(timeout=20_000)
+    except Exception as e:                               # noqa: BLE001
+        print(f'  chain    ! could not click the {code} tab: {type(e).__name__}')
+        return fr, False
+    _settle(fr, page, 4000)
+    fr = _wait_for_tool(ctx, page, 25) or fr
+    for _ in range(10):
+        lab = _view_label(fr) or ''
+        if code.upper() in lab.upper():
+            return fr, True
+        page.wait_for_timeout(2000)
+        fr = _qs_frame(ctx) or fr
+    print(f'  chain    ! asked for {code} but the heading says {_view_label(fr)!r} '
+          f'- refusing to write a smile whose expiry is unconfirmed')
     return fr, False
 
 
@@ -667,17 +823,19 @@ def mode_pull(product: str | None, views: list, headless: bool, all_strikes: boo
             pass
 
 
-def pull_product(ctx, page, product: str | None, views: list,
-                 all_strikes: bool = True) -> dict:
-    """One product, on an EXISTING browser context. Returns {box: path|None}.
+def _open_product(ctx, page, product: str | None):
+    """Load the tool on `product` and CONFIRM it. -> frame, or None.
 
-    Split out of mode_pull so a scheduled sweep can drive every product through
-    a single session instead of launching (and re-minting) a browser per product.
-    Never raises: a scheduled run must not lose nine products because the tenth
-    misbehaved.
+    Extracted from pull_product so pass 2 can reach a product on its own instead
+    of inheriting whatever pass 1 happened to leave loaded. That inheritance is
+    what forced the per-product session mint, and eleven mints in a row is what
+    QuikStrike refused (see run_sweep's --chain note).
+
+    Everything here is load-and-verify, not capture: session (cached, re-minting
+    on expiry), direct pid navigation, and the header check that refuses a
+    mispaired pid rather than writing a valid-looking table of the wrong
+    instrument.
     """
-    d = outdir('quikstrike')
-    results: dict = {}
     # Cached session first (no wrapper load at all), minting only if it fails.
     minted = _cached_url()
     src = 'cached'
@@ -686,7 +844,7 @@ def pull_product(ctx, page, product: str | None, views: list,
         src = 'minted'
     if not minted:
         print('[pull] could not reach the QuikStrike tool - is the session logged in?')
-        return results
+        return None
     print(f'[pull] session ({src}): {minted[:80]}')
 
     # DIRECT NAVIGATION, no iframe and no product popup. pid identifies the
@@ -702,7 +860,7 @@ def pull_product(ctx, page, product: str | None, views: list,
         page.goto(target, wait_until='domcontentloaded', timeout=90_000)
     except Exception as e:                               # noqa: BLE001
         print(f'[pull] navigation failed: {type(e).__name__}')
-        return results
+        return None
     _settle(None, page, 4000)
     fr = _wait_for_tool(ctx, page, 30)
     if not fr and src == 'cached':
@@ -721,7 +879,7 @@ def pull_product(ctx, page, product: str | None, views: list,
     if not fr:
         print('[pull] tool did not finish loading')
         _dump_frame(page.main_frame, 'main document')
-        return results
+        return None
     if minted:
         _cache_url(minted)
     print(f'[pull] tool ready{" (pid " + str(ent["pid"]) + ")" if ent else ""}')
@@ -744,10 +902,24 @@ def pull_product(ctx, page, product: str | None, views: list,
         # never fired - the run refused 11 times instead of recovering once. So an
         # expired session is detected HERE, where the evidence is, and retried.
         expired = 'problem loading this content' in (head or '').lower()
-        if (expired or want.lower() not in (head or '').lower()) and src == 'cached':
-            print(f'  [pull] cached session looks {"expired" if expired else "wrong"}'
-                  ' - re-minting and retrying once')
-            fresh = _mint_tool_url(ctx, page)
+        # RETRY WHETHER OR NOT THE SESSION WAS CACHED. This was gated on
+        # src == 'cached', on the assumption that a header mismatch meant a stale
+        # session. It does not: on 2026-08-20 a FRESHLY MINTED session loaded
+        # without "S&P 500" in the header, was refused on first look with no
+        # retry, and lost all four views - while phase 2 opened the same product
+        # successfully seconds later. The page simply had not finished rendering
+        # the product. A wrong header is worth one more look however the session
+        # was obtained; re-mint only when the cached one is the suspect, since
+        # minting again straight after minting buys nothing.
+        if expired or want.lower() not in (head or '').lower():
+            if src == 'cached':
+                print(f'  [pull] cached session looks {"expired" if expired else "wrong"}'
+                      ' - re-minting and retrying once')
+                fresh = _mint_tool_url(ctx, page)
+            else:
+                print('  [pull] header did not name the product yet '
+                      '- reloading once before refusing')
+                fresh = minted
             if fresh:
                 _cache_url(fresh)
                 target = _with_pid(fresh, ent['pid'], ent.get('pf')) if ent else fresh
@@ -765,8 +937,31 @@ def pull_product(ctx, page, product: str | None, views: list,
             print(f'    header says: {" | ".join(first[:3])[:120]}')
             print(f'    pid={ent["pid"]} pf={ent.get("pf")} may be mispaired - '
                   f'run --learn-pid --product "{product}" to record the real one.')
-            return results
+            return None
         print(f'[pull] product confirmed: "{want}" present in header')
+
+    return fr
+
+
+def pull_product(ctx, page, product: str | None, views: list,
+                 all_strikes: bool = True) -> dict:
+    """One product's matrix views, on an EXISTING browser context.
+    Returns {box: path|None}.
+
+    Split out of mode_pull so a scheduled sweep can drive every product through
+    a single session instead of launching (and re-minting) a browser per product.
+    Never raises: a scheduled run must not lose nine products because the tenth
+    misbehaved.
+
+    PASS 1 ONLY - it must never select an expiry. Selecting one scopes the whole
+    tool, and the OI matrix would then be captured as a single expiry's strikes
+    while still looking like a valid ladder. The smile lives in pull_chain.
+    """
+    d = outdir('quikstrike')
+    results: dict = {}
+    fr = _open_product(ctx, page, product)
+    if not fr:
+        return results
 
     written = []
     seen_tables: dict = {}          # content hash -> which view produced it
@@ -775,6 +970,25 @@ def pull_product(ctx, page, product: str | None, views: list,
         fr, switched = _ensure_view(ctx, page, fr, key)
         if switched:
             print(f'  {key:<8} view    -> "{_view_label(fr)}"')
+        if not switched:
+            # RELOAD AND RETRY ONCE before giving up. Nav clicks between the
+            # Settles view and the matrices no-op in both directions: the sweep
+            # already orders settles first because switching TO it from a 482x43
+            # matrix timed out, and on 2026-08-19 the reverse leg failed too -
+            # settles captured cleanly, then 'oi' reported
+            #
+            #   view did not switch (3/3) - label='S&P 500 (ES|ES) Settles'
+            #
+            # three times, and the sweep lost 24 of 44 tables to it. A fresh load
+            # lands on the OI heatmap by default, so re-navigating resets the view
+            # instead of trying to click off a stuck one. Once only - a second
+            # failure is a real failure, and retry loops are how a broken night
+            # turns into an hour of nothing.
+            print(f'  {key:<8}   nav no-opped - reloading the product and retrying once')
+            fr2 = _open_product(ctx, page, product)
+            if fr2:
+                fr = fr2
+                fr, switched = _ensure_view(ctx, page, fr, key)
         if not switched:
             print(f'  {key:<8} ! could not switch to this view - skipping it')
             _dump_frame(fr, f'what the frame actually contains ({key})')
@@ -814,9 +1028,19 @@ def pull_product(ctx, page, product: str | None, views: list,
         # off it, and all three heatmap views captured the SAME settlements table
         # - three byte-identical files under three names. A wrong-view capture is
         # complete, well-formed and wrong, so shape is checked against the view.
-        tsv, n, why, stable = _stable_table(fr, ctx, page)
+        # Target size from the previous capture, so a half-rendered ladder is
+        # polled through instead of accepted the moment it pauses. Matrix views
+        # only: the per-expiry settles table has no strike ladder to measure.
+        want_min = 0
+        if key in ('oi', 'chg', 'vol'):
+            _pn, _pd = _prior_strikes(product, box)
+            if _pn >= 40:
+                want_min = int(_pn * 0.5)
+        tsv, n, why, stable = _stable_table(fr, ctx, page, tries=8, gap_ms=2500,
+                                            want_min=want_min)
         if not stable:
-            print(f'  {key:<8} ! table never stopped growing - refusing a mid-render read')
+            print(f'  {key:<8} ! table never settled at full size '
+                  f'(wanted >={want_min} strikes) - refusing a mid-render read')
             continue
         want_kind = 'expiry table' if key == 'settles' else 'strike ladder'
         if tsv and not why.startswith(want_kind):
@@ -848,6 +1072,27 @@ def pull_product(ctx, page, product: str | None, views: list,
         if h in seen_tables and has_data:
             print(f'  {key:<8} ! IDENTICAL to the {seen_tables[h]} capture - the view '
                   'did not actually change. Refusing to write a duplicate.')
+            continue
+        # DAY-OVER-DAY SIZE GUARD - BEFORE THE WRITE, like every other refusal
+        # here. _stable_table catches a table still GROWING; it cannot catch one
+        # that plateaus half-rendered. On 2026-08-20 SPX returned 52 strikes
+        # against 508 and 501 on the two prior captures - two reads 1.5s apart
+        # both said 52, every shape check passed, and the sweep reported 44/44 OK
+        # for a book missing 90% of its strikes. Option books do not shrink
+        # sixfold overnight, so the previous capture is the yardstick.
+        #
+        # Refusing beats writing a smaller file: a missing rawOI makes ingest skip
+        # that product loudly, whereas a truncated one silently moves the walls and
+        # max pain the OI bot trades and looks entirely reasonable doing it.
+        # 50% with a 40-strike floor, so genuinely small books (US30's term OI is
+        # ~11) and first-ever captures are never gated.
+        n_pre = shape(tsv)['strikes']
+        prior_n, prior_day = _prior_strikes(product, box)
+        if key in ('oi', 'chg', 'vol') and prior_n >= 40 and n_pre < prior_n * 0.5:
+            print(f'  {key:<8} ! {n_pre} strikes vs {prior_n} on {prior_day} '
+                  f'({n_pre / prior_n:.0%}) - a book does not halve overnight.')
+            print(f'  {"":<8}   Reading it as a half-rendered table and REFUSING '
+                  f'to write {box}.')
             continue
         seen_tables[h] = key
         fn = d / f'{safe_name(product or "current")}_{box}.tsv'
@@ -890,6 +1135,98 @@ def pull_product(ctx, page, product: str | None, views: list,
     for f in written:
         results[f.name] = str(f)
     return results
+
+
+def _chain_normalised(tsv: str, title: str) -> str:
+    r"""Fold a captured chain onto the 14-column layout js/oi.js parses POSITIONALLY.
+
+    QuikStrike renders three volatility groups (Volatility, Basis Point, Black-
+    Scholes) where a manual copy-paste carries one, so the capture is 20 columns
+    wide and OPEN INTEREST lands at 16-19 instead of 10-13. Nothing errors:
+    parseIVSettlement reads strike, IV and prices correctly from the left of the
+    row and reads OI as ZERO - so charm and vanna sum to exactly 0 on every pair
+    while ivStrikes reports 31 and the smile looks fully populated. Measured
+    2026-08-20 across all 11 pairs: CEX +0, VEX +0, above a parsed 31-strike smile.
+
+    pull_product already guards the settles table this way ("17 columns expected");
+    the chain capture was added without the equivalent.
+
+    Keep the first 10 fields (call side, strike, put side, first vol group) and the
+    LAST 4 (the OI block). That is also correct for a 14-column row, so a layout
+    without the extra groups passes through untouched.
+
+    A TITLE LINE is prepended from the view heading - "EUR/USD (EUU|6E) EU3Q6
+    (2.14 DTE) vs 1.16225 - Settles". A manual paste carries it and the parser
+    reads DTE out of "(... DTE)"; the capture omitted it.
+    """
+    out = []
+    for r in tsv.split("\n"):
+        cells = r.split("\t")
+        if len(cells) > 14:
+            cells = cells[:10] + cells[-4:]
+        out.append("\t".join(cells))
+    body = "\n".join(out)
+    return (title + "\n" + body) if title else body
+
+
+def pull_chain(ctx, page, product: str, code: str) -> str | None:
+    """PASS 2: the per-strike IV smile for ONE expiry -> <SYM>_rawIV.tsv.
+
+    Charm, vanna and skew need a per-STRIKE chain, and the four matrix views do
+    not carry one. This is the same Settles view pass 1 already visits, with an
+    expiry tab selected: choosing an expiry swaps the per-expiry term table for
+    that expiry's strike ladder. (Confirmed 2026-08-19 - the 'Settlement Prices'
+    entry in the nav is a different, unclickable tool and is NOT this.)
+
+    `code` comes from resolve_smile.mjs, which imports js/oi.js so the expiry
+    decision cannot drift from the one the dashboard makes. Two passes, not a
+    blanket grab of every DTE: only one chain is wanted, and which one is a
+    question only the OI matrix can answer.
+
+    Returns the written path, or None. None is a normal outcome - no smile is a
+    feature that is simply absent, whereas the WRONG expiry's smile is silent
+    corruption of every greek downstream. Nothing is written unless the view
+    heading names the expiry we asked for.
+    """
+    d = outdir('quikstrike')
+    # Navigate to the product ourselves rather than inheriting whatever is loaded.
+    # This is what lets phase 2 run as its own sweep, so the session only has to
+    # be dropped ONCE at the end instead of after every product.
+    fr = _open_product(ctx, page, product)
+    if not fr:
+        print('  chain    ! could not open the product')
+        return None
+    fr, ok = _ensure_view(ctx, page, fr, 'settles')
+    if not ok:
+        print('  chain    ! could not reach the Settles view')
+        return None
+    fr, ok = _select_expiry(ctx, page, fr, code)
+    if not ok:
+        return None
+
+    tsv, n, why, stable = _stable_table(fr, ctx, page)
+    if not stable:
+        print('  chain    ! table never stopped growing - refusing a mid-render read')
+        return None
+    # The term table and the smile are BOTH on this view; only the shape tells
+    # them apart. Writing a term table as rawIV would hand js/oi.js an expiry
+    # ladder where it expects strikes.
+    if not tsv or not why.startswith('strike ladder'):
+        print(f'  chain    ! expected a strike ladder, got "{why}" - not writing')
+        return None
+    # Fold to the 14-column layout the parser expects, and restore the title line.
+    # Without this the OI columns land past where js/oi.js looks and read as zero:
+    # a smile that parses perfectly and yields charm/vanna of exactly nothing.
+    wide = max((r.count('\t') + 1 for r in tsv.split('\n') if r.strip()), default=0)
+    tsv = _chain_normalised(tsv, _view_label(fr) or '')
+    if wide > 14:
+        print(f'  {"":<8}    normalised {wide} columns -> 14 (extra volatility '
+              'groups were shifting OPEN INTEREST out of the parser range)')
+    fn = d / f'{safe_name(product)}_rawIV.tsv'
+    _atomic(fn, tsv)
+    print(f'  chain    -> {fn.name}  [{why}, expiry {code}]')
+    print(f'  {"":<8}    {shape_line(shape(tsv))}  {grade_line(grade(tsv))}')
+    return str(fn)
 
 
 def mode_settings(product: str | None, view: str, headless: bool) -> None:

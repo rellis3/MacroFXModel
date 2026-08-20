@@ -1,0 +1,61 @@
+{
+  "pair": "nq",
+  "results": [
+    {
+      "maxTradesPerDay": 1,
+      "nTrades": 3149,
+      "daysWithExtra": 0,
+      "winRate": 32.3,
+      "sharpe": -2.486,
+      "profitFactor": 0.642,
+      "oosSharpe": -2.629,
+      "oosTrades": 1260,
+      "extrasCount": 0,
+      "extrasWinRate": null,
+      "extrasSharpe": null,
+      "ms": 4157
+    },
+    {
+      "maxTradesPerDay": 2,
+      "nTrades": 6205,
+      "daysWithExtra": 3056,
+      "winRate": 31.5,
+      "sharpe": -4.025,
+      "profitFactor": 0.608,
+      "oosSharpe": -3.842,
+      "oosTrades": 2483,
+      "extrasCount": 3056,
+      "extrasWinRate": 30.6,
+      "extrasSharpe": -3.317,
+      "ms": 6417
+    },
+    {
+      "maxTradesPerDay": 3,
+      "nTrades": 9150,
+      "daysWithExtra": 3056,
+      "winRate": 30.9,
+      "sharpe": -5.31,
+      "profitFactor": 0.586,
+      "oosSharpe": -4.994,
+      "oosTrades": 3661,
+      "extrasCount": 6001,
+      "extrasWinRate": 30.2,
+      "extrasSharpe": -4.884,
+      "ms": 9643
+    },
+    {
+      "maxTradesPerDay": 5,
+      "nTrades": 14750,
+      "daysWithExtra": 3056,
+      "winRate": 30.2,
+      "sharpe": -7.027,
+      "profitFactor": 0.574,
+      "oosSharpe": -6.977,
+      "oosTrades": 5902,
+      "extrasCount": 11601,
+      "extrasWinRate": 29.6,
+      "extrasSharpe": -6.748,
+      "ms": 11834
+    }
+  ]
+}

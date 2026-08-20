@@ -98,6 +98,14 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .empty{color:var(--tx3);padding:36px 18px;text-align:center;font-size:14px;line-height:1.7}
 .note{color:var(--tx2);font-size:13px;line-height:1.66;margin-top:13px;
   border-left:2px solid var(--line2);padding-left:13px}
+/* Kicker: an always-visible one-line "what am I looking at" line at the TOP of a panel
+   whose neighbour looks similar (crowding-alert-style badges) but checks something
+   different — a hover tooltip alone didn't prevent that exact confusion before
+   (Pair Lab, the US/USD ticker mix-up), so this repeats the distinction where it's
+   impossible to miss, not just on hover. */
+.kicker{color:var(--tx2);font-size:12.5px;line-height:1.5;margin-bottom:14px;
+  padding-bottom:12px;border-bottom:1px solid var(--line)}
+.kicker b{color:var(--acc)}
 
 #zoom{display:none;position:fixed;inset:0;background:rgba(4,6,9,.94);z-index:200;padding:34px;overflow:auto}
 #zoom.open{display:block}
@@ -149,6 +157,12 @@ const pctOf = x => BASIS==='share' ? (x.specSharePct ?? x.specPct) : x.specPct;
 const zOf   = x => BASIS==='share' ? (x.specShareZ  ?? x.specZ)   : x.specZ;
 const colFor = p => p==null ? 'var(--tx3)' : p>=90 ? 'var(--long)' : p<=10 ? 'var(--short)'
               : p>=70 ? 'rgba(232,97,95,.65)' : p<=30 ? 'rgba(70,184,122,.65)' : 'var(--tx3)';
+const stat = (lbl, val, clr) => '<div class="pa-stat"><div class="pa-lbl">'+lbl+'</div><div class="pa-val" style="color:'+clr+'">'+val+'</div></div>';
+// Display-only override: the 30Y T-BOND ticker is 'US' (CFTC's own symbol), which reads as
+// an obvious abbreviation for the US Dollar right next to Pair Lab's derived 'USD' currency
+// card — two unrelated instruments with near-identical labels. `pick()`/the API still use
+// the real 'US' ticker; this only changes what's drawn on screen.
+const dispSym = x => x.sym === 'US' ? 'US30Y' : x.sym;
 
 const HELP = {
   what:['What COT is','A weekly CFTC report of who holds what in the futures market, split by trader type. It shows <b>positioning</b> — who is already committed — not price.','Read it as crowding: when one side is historically stretched, the fuel for further moves that way is thin and an unwind can be violent. It is not a timing tool.'],
@@ -163,8 +177,13 @@ const HELP = {
   group:['By asset class','Median crowding percentile per group. This is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch.'],
   scatter:['Specs vs commercials','Each dot is one market: speculative crowding across, commercial crowding up.','They should sit near a downward diagonal, because commercials take the other side. A market well <b>off</b> that line means the usual mirror has broken — worth a look, not a signal.'],
   hist:['200-week history','Net positioning over time, with the current reading marked.','A percentile means little without the shape behind it: the 90th after a steady climb is a different situation from the 90th after a spike.'],
-  extreme:['Crowded trades','Markets at or beyond the 90th / 10th percentile of their own 200-week range.','These are where an unwind has the most fuel. Which way it breaks is not something this data tells you.'],
-  paira:['Extreme crowding alerts','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short).','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
+  paira:['Reinforcing FX pairs','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short) — TWO DIFFERENT currencies\' specs compared to each other.','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
+  flow:['Positioning flow','The crowding percentile is a level — where positioning sits right now. This is the week-over-week change instead: who added or reduced the most, ranked by size relative to open interest.','A market extending an already-stretched position and one paring back from it look identical on the percentile alone but mean very different things going forward.'],
+  evrisk:['Event-risk overlay','Cross-references currently-crowded markets (90th/10th percentile+) against the live economic calendar for their own currency — FOMC, ECB, NFP and similar high/medium-impact releases in the next 3 days.','A stretched position walking into a scheduled catalyst is exposed to a fast move — this flags the exposure, not which way the release breaks. Scoped to FX plus the three Treasury tenors (all USD); other groups aren\'t mapped to a single country\'s calendar cleanly enough to include here.'],
+  persist:['Extreme persistence','How many of the most recent weeks were also a 90th/10th-percentile extreme at the time — each ranked only against its own trailing up-to-156-week window, the same rolling method used for today\'s reading.','A percentile alone can\'t tell a freshly-hit extreme from one that has held for months. Needs at least 52 weeks of trailing history behind a week before ranking it, same floor as the main reading — a market too new to satisfy that just stops the count rather than guessing.'],
+  confl:['Confluence','Flags a market where speculators are at a 90th/10th-percentile extreme AND commercials are independently at the opposite extreme, at the same time.','This is the textbook COT contrarian setup — commercials normally sit roughly opposite specs anyway (see the scatter panel), so both hitting their own extreme at once is the strongest version of a "crowded, low-fuel, exposed-to-reversal" read this data can give. Still not a timing signal — it says the setup is textbook, not that it resolves now.'],
+  digest:['At a glance','For every currently-crowded market, checks whether commercials confirm it (Confluence) and whether this week\'s flow is still building the same way (Positioning Flow), and counts how many of those independent reads currently agree.','Not a new calculation — every fact shown is already on a panel below this one. This just answers "do the reads on this market agree or fight each other" without averaging that answer away. Never blends across DIFFERENT markets into one board-wide call; each market keeps its own count.'],
+  oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -211,7 +230,7 @@ const FX_PAIRS = [
 ];
 
 // 'long'/'short' at the existing 90th/10th percentile extreme threshold (same
-// cutoff as extremes()/colFor() elsewhere on this page); null = not stretched.
+// cutoff as colFor() elsewhere on this page); null = not stretched.
 const crowdState = x => { const p = pctOf(x); return p==null ? null : p>=90?'long':p<=10?'short':null; };
 
 // ── derived USD crowding read ──────────────────────────────────────────────
@@ -292,14 +311,14 @@ function usdDerivedReading(){
 // crowded, called out as a text annotation underneath rather than requiring both
 // at once just to show anything.
 function crowdingCards(big){
+  const kicker = '<div class="kicker">Compares <b>two different currencies\'</b> speculative positioning against each other on a real FX cross (e.g. EUR vs AUD, on EURAUD). For one market\'s specs checked against its <b>own</b> commercials instead, see Confluence below.</div>';
   if (usdDerived === null) loadUsdMirror();   // fire-and-forget; re-renders itself when ready
   const usd = usdDerivedReading();
   const list = (DATA.instruments||[]).filter(x => x.group === 'fx' && crowdState(x));
   if (usd && crowdState(usd)) list.push(usd);
-  if (!list.length) return '<div class="empty">No currency is currently at a 90th/10th-percentile crowding extreme — nothing stretched enough to flag right now.</div>';
+  if (!list.length) return kicker + '<div class="empty">No currency is currently at a 90th/10th-percentile crowding extreme — nothing stretched enough to flag right now.</div>';
   list.sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)));
 
-  const stat = (lbl, val, clr) => `<div class="pa-stat"><div class="pa-lbl">${lbl}</div><div class="pa-val" style="color:${clr}">${val}</div></div>`;
   const cardsHtml = list.map(x => {
     const st = crowdState(x), clr = st === 'long' ? 'var(--long)' : 'var(--short)';
     const label = st === 'long' ? '&#9888; OVERCROWDED LONG' : '&#9661; HEAVILY SHORT';
@@ -339,15 +358,360 @@ function crowdingCards(big){
       : usdDerived
         ? ' USD (derived mirror of the other 7 majors) isn\'t currently at a crowding extreme, so it has no card above — this feed still has no direct CFTC USD-index future to track directly either way.'
         : ' USD\'s derived mirror read couldn\'t be built (not enough overlapping history across the other 7 majors right now) — this feed has no direct CFTC USD-index future as a fallback.';
-  return `<div class="pa-grid">${cardsHtml}</div>`
+  return kicker + `<div class="pa-grid">${cardsHtml}</div>`
     + `<div class="note">${comboLine} This is a crowding read, not a trade signal — it says the fuel for more of the same is thin, not which way or when it unwinds. It has not been backtested; treat it as context to combine with price and your own risk process, not a rule to act on alone.${usdNote}</div>`;
+}
+
+// ── positioning flow: week-over-week change, ranked by size ────────────────
+// The crowding percentile is a LEVEL — where positioning sits right now. It says
+// nothing about which way it's moving. A market building further into an already
+// stretched read is a different situation from one already unwinding from it, and
+// that's invisible unless you already know to click into its 200-week history.
+// Ranked on `specShareChg` — this week's OI-normalised net share minus last
+// week's, in percentage points — not the raw contract count CFTC reports
+// (`weeklyChg`, still shown alongside for reference). A 20K-contract move means
+// very different things in a 300K-OI market and a 5M-OI one, and normalising by
+// this week's OI-normalised share (rather than dividing the raw change by only
+// today's open interest) is the reference-spec definition of positioning flow.
+function flow(big){
+  const rows = (DATA.instruments||[])
+    .filter(x => Number.isFinite(x.specShareChg))
+    .map(x => ({ ...x, wkPct: x.specShareChg }))
+    .sort((a,b) => Math.abs(b.wkPct) - Math.abs(a.wkPct))
+    .slice(0, big ? 30 : 16);
+  if (!rows.length) return '<div class="empty">No weekly-change data available.</div>';
+  // "Extending" = this week's flow pushed further the same way as the existing net
+  // share (getting MORE crowded); "paring" = it moved back toward flat (getting
+  // LESS crowded). Both specShareChg and specShare already carry the JPY/CAD/CHF
+  // sign flip, so this compares cleanly without any extra sign handling.
+  const traj = x => {
+    if (!x.wkPct || x.specShare == null) return null;
+    const dir = x.specShare >= 0 ? 'long' : 'short';
+    return (Math.sign(x.wkPct) === Math.sign(x.specShare) ? 'extending ' : 'paring ') + dir;
+  };
+  return '<table><thead><tr><th>Market</th><th>Pct'+h('pct')+'</th><th>Wk chg</th><th>Net % OI (Δ this wk)</th><th style="text-align:left">Trajectory</th></tr></thead><tbody>'
+    + rows.map(x => {
+        const t = traj(x), p = pctOf(x), sh = x.specShare;
+        const tClr = t == null ? 'var(--tx3)' : t.startsWith('extending') ? 'var(--warn)' : 'var(--ok)';
+        return '<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(dispSym(x))+'</td>'
+          + '<td style="color:'+colFor(p)+'">'+(p??'—')+'</td>'
+          + '<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td>'
+          + '<td style="color:'+(sh>0?'var(--long)':sh<0?'var(--short)':'var(--tx3)')+'">'+(sh!=null?sgn(sh)+sh+'%':'—')
+          +   ' <span class="muted" style="color:'+(x.wkPct>0?'var(--long)':x.wkPct<0?'var(--short)':'var(--tx3)')+'">('+sgn(x.wkPct)+x.wkPct+'%)</span></td>'
+          + '<td class="muted" style="text-align:left">'+(t??'—')+'</td></tr>';
+      }).join('')
+    + '</tbody></table><div class="note">Ranked by this week\'s change in the OI-normalised net share (the number in parens) — the biggest movers, not just the most crowded levels. The number before it is <b>where positioning sits right now</b> (net as % of open interest), so you can see the level a move is coming from, not just the size of the move. "Wk chg" is CFTC\'s own raw contract-count change, for reference. <b>Extending</b> = still building the same way (more crowded); <b>paring</b> = moving back toward flat (less crowded). Click a row for its 200-week history.</div>';
+}
+
+// ── event-risk overlay: crowded positions walking into a known catalyst ─────
+// Cross-references currently-extreme markets against the live economic calendar
+// already used elsewhere in this app (/api/events — Finnhub, next 3 days),
+// flagging when a stretched position is heading into a high/medium-impact release
+// for its own currency. Country→currency mapping mirrors today.html's CC_TO_CCY
+// exactly, so both pages read the calendar the same way. Scoped to FX (direct
+// match) plus the three Treasury tenors (all USD) — nothing else, because gold's
+// or an equity index's link to any one country's calendar is too indirect to
+// assert as a clean mapping here.
+const CC_TO_CCY = { US:'USD', EU:'EUR', DE:'EUR', FR:'EUR', IT:'EUR', ES:'EUR', GB:'GBP', UK:'GBP', JP:'JPY', CH:'CHF', AU:'AUD', CA:'CAD', NZ:'NZD' };
+let EVENTS = null;   // null = not yet requested; 'loading'; array; or false = failed
+
+async function loadEvents(){
+  if (EVENTS !== null) return;
+  EVENTS = 'loading';
+  try {
+    const r = await fetch('/api/events', { cache: 'no-store' });
+    const j = await r.json();
+    EVENTS = Array.isArray(j) ? j : (Array.isArray(j?.events) ? j.events : false);
+  } catch(e) { EVENTS = false; }
+  render();
+}
+
+const ccyOf = x => x.group === 'fx' ? x.sym : (['TU','TY','US'].includes(x.sym) ? 'USD' : null);
+
+function eventRisk(big){
+  if (EVENTS === null) { loadEvents(); return '<div class="empty">Loading the economic calendar…</div>'; }
+  if (EVENTS === 'loading') return '<div class="empty">Loading the economic calendar…</div>';
+  if (EVENTS === false) return '<div class="empty">Could not load the economic calendar.</div>';
+
+  const now = Date.now();
+  const upcoming = EVENTS
+    .map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
+    .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
+    .sort((a,b) => a.ms - b.ms);
+
+  const rows = (DATA.instruments||[]).map(x => {
+    const p = pctOf(x), ccy = ccyOf(x);
+    if (p == null || !(p>=90 || p<=10) || !ccy) return null;
+    const nextEvt = upcoming.find(e => e.ccy === ccy);
+    if (!nextEvt) return null;
+    const hrs = (nextEvt.ms - now) / 3600000;
+    return { x, p, dir: p>=90?'CROWDED LONG':'CROWDED SHORT', nextEvt, hrs,
+      when: hrs < 24 ? Math.round(hrs)+'h' : Math.round(hrs/24)+'d' };
+  }).filter(Boolean).sort((a,b) => a.hrs-b.hrs);
+
+  if (!rows.length) return '<div class="empty">No currently-crowded market has a high/medium-impact release for its own currency in the next 3 days.</div>';
+
+  return '<table><thead><tr><th>Market</th><th>Positioning</th><th style="text-align:left">Next event</th><th>In</th><th>Impact</th></tr></thead><tbody>'
+    + rows.map(r => '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
+      + '<td style="color:'+colFor(r.p)+'"><b>'+r.dir+'</b></td>'
+      + '<td class="muted" style="text-align:left">'+esc(r.nextEvt.event||'')+'</td>'
+      + '<td>'+r.when+'</td>'
+      + '<td style="color:'+((r.nextEvt.impact||'').toLowerCase()==='high'?'var(--warn)':'var(--tx3)')+'">'+esc(r.nextEvt.impact||'')+'</td></tr>').join('')
+    + '</tbody></table><div class="note">A crowded position walking into a scheduled release for its own currency is exposed to a fast, catalyst-driven move — not necessarily in either direction. This is an <b>attention</b> flag, not a call on which way the release breaks.</div>';
+}
+
+// ── digest: roll the granular panels up into one glance-able summary ────────
+// Not a new read — every fact in a row here is already computed by the
+// Reinforcing FX Pairs / Confluence / Flow panels below; this just puts them
+// side by side per market so you don't have to cross-reference three panels
+// yourself. Deliberately per-MARKET, never blended ACROSS markets into one
+// board-wide call — that's the exact thing removed in Pair Lab. Where the
+// reads disagree, that disagreement is named, not averaged away.
+function digest(big){
+  const cOf = x => BASIS==='share' ? (x.commSharePct ?? x.commPct) : x.commPct;
+  const list = (DATA.instruments||[]).filter(x => { const p = pctOf(x); return p != null && (p >= 90 || p <= 10); });
+  if (!list.length) return '<div class="empty">Nothing at a 90th/10th percentile extreme right now — no market has enough of a read to summarise.</div>';
+
+  if (EVENTS === null) loadEvents();   // fire-and-forget, same shared state as the event-risk panel
+  const now = Date.now();
+  const upcoming = (EVENTS && EVENTS !== 'loading' && EVENTS !== false)
+    ? EVENTS.map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
+        .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
+        .sort((a,b) => a.ms - b.ms)
+    : [];
+
+  const rows = list.map(x => {
+    const p = pctOf(x), wantLong = p >= 90, c = cOf(x);
+    const checks = [{ label: 'Spec crowding', agree: true, txt: (wantLong?'CROWDED LONG':'CROWDED SHORT')+' ('+p+'th pct)' }];
+    if (c != null) {
+      const confirms = wantLong ? c <= 10 : c >= 90;
+      checks.push({ label: 'Commercials', agree: confirms,
+        txt: confirms ? 'confluence — also at the opposite extreme ('+c+'th pct)' : 'don\'t confirm ('+c+'th pct — not at the opposite extreme)' });
+    }
+    if (Number.isFinite(x.specShareChg) && x.specShare != null && x.specShareChg !== 0) {
+      const extending = Math.sign(x.specShareChg) === Math.sign(x.specShare);
+      checks.push({ label: 'This week\'s flow', agree: extending,
+        txt: extending ? 'still extending (getting more crowded)' : 'paring back (unwinding, not extending)' });
+    }
+    const agreeCount = checks.filter(k => k.agree).length;
+    const ccy = ccyOf(x), nextEvt = ccy ? upcoming.find(e => e.ccy === ccy) : null;
+    return { x, p, wantLong, checks, agreeCount, total: checks.length, nextEvt };
+  }).sort((a,b) => (b.agreeCount/b.total) - (a.agreeCount/a.total));
+
+  const cardsHtml = rows.map(r => {
+    const clr = colFor(r.p);
+    const chips = r.checks.map(k => '<span class="pill" style="color:'+(k.agree?'var(--ok)':'var(--warn)')+'">'+(k.agree?'&#10003;':'&#10007;')+' '+esc(k.label)+': '+esc(k.txt)+'</span>').join(' ');
+    const evtChip = r.nextEvt ? ' <span class="pill" style="color:var(--warn)">&#9200; '+esc(r.nextEvt.event)+' ('+esc(r.nextEvt.impact)+')</span>' : '';
+    return '<div class="pa-card" style="margin-bottom:10px;cursor:pointer" onclick="pick(\''+esc(r.x.sym)+'\')">'
+      + '<div class="pa-head"><span class="pa-pair">'+esc(dispSym(r.x))+'</span>'
+      + '<span class="pa-badge" style="color:'+(r.agreeCount===r.total?clr:'var(--warn)')+'">'+r.agreeCount+' of '+r.total+' agree</span></div>'
+      + '<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+chips+evtChip+'</div></div>';
+  }).join('');
+
+  return '<div class="kicker">Every line below is already computed by the Reinforcing FX Pairs, Confluence, and Positioning Flow panels — this just lines them up per market instead of asking you to cross-reference three panels yourself. Still not a trade signal: a high agreement count means the reads reinforce each other, not that a move is coming.</div>'
+    + cardsHtml
+    + '<div class="note">Full agreement means every available read currently reinforces the same crowding direction — the cleanest version of this data\'s read. A lower count names exactly where they disagree (e.g. crowded on level but already unwinding on flow) rather than hiding it in one blended number. Click a card for its 200-week history.</div>';
+}
+
+// ── extreme persistence: how established is the crowd, not just how crowded ──
+// A market that just touched a 90th-percentile extreme this week and one that has
+// sat there for months are both "90th percentile" — identical on every panel above.
+// Counts how many of the most recent weeks were ALSO an extreme at the time,
+// each ranked only against the up-to-156 weeks trailing IT (never later weeks it
+// couldn't have known about) — a true rolling percentile walked backward, the
+// same method the backend uses for today's own reading (COT_LIMIT/COT_MIN_HISTORY
+// above), not a fixed reference set. Reuses the HIST cache pick() already
+// populates, so clicking a market elsewhere never re-fetches it here.
+async function loadHistFor(sym){
+  if (HIST[sym] !== undefined) return;
+  HIST[sym] = 'loading';
+  try {
+    const r = await fetch('/api/cot-extremes?history=' + encodeURIComponent(sym), { cache: 'no-store' });
+    const j = await r.json();
+    HIST[sym] = (j && j.ok && j.history && j.history.sym === sym) ? j.history : null;
+  } catch (e) { HIST[sym] = null; }
+  render();
+}
+
+const PERSIST_WINDOW = 156, PERSIST_MIN_HISTORY = 52;
+function extremeStreak(hd, wantLong){
+  const vals = (hd.specShare || []).filter(v => Number.isFinite(v));
+  if (vals.length < PERSIST_MIN_HISTORY + 1) return null;
+  let streak = 0;
+  for (let i = vals.length - 1; i >= 1; i--) {
+    const hist = vals.slice(Math.max(0, i - PERSIST_WINDOW), i);   // trailing window ending just before week i
+    if (hist.length < PERSIST_MIN_HISTORY) break;
+    const p = pctRankCalc(hist, vals[i]);
+    if (!(wantLong ? p >= 90 : p <= 10)) break;
+    streak++;
+  }
+  return streak;
+}
+
+function persistence(big){
+  const extremeList = (DATA.instruments || []).filter(x => { const p = pctOf(x); return p != null && (p >= 90 || p <= 10); });
+  if (!extremeList.length) return '<div class="empty">Nothing at a 90th/10th percentile extreme right now.</div>';
+  extremeList.forEach(x => loadHistFor(x.sym));
+
+  const rows = extremeList.map(x => {
+    const p = pctOf(x), wantLong = p >= 90, hd = HIST[x.sym];
+    if (hd === undefined || hd === 'loading') return { x, p, wantLong, streak: null, state: 'loading' };
+    if (!hd) return { x, p, wantLong, streak: null, state: 'unavailable' };
+    return { x, p, wantLong, streak: extremeStreak(hd, wantLong), state: 'ok' };
+  }).sort((a,b) => (b.streak ?? -1) - (a.streak ?? -1));
+
+  return '<table><thead><tr><th>Market</th><th>Positioning</th><th>Weeks in this extreme</th></tr></thead><tbody>'
+    + rows.map(r => {
+        const clr = colFor(r.p);
+        const wkTxt = r.state === 'loading' ? '<span class="muted">loading…</span>'
+          : r.state === 'unavailable' ? '<span class="muted">—</span>'
+          : r.streak == null ? '<span class="muted">—</span>'
+          : '<b>' + r.streak + '</b>' + (r.streak === 1 ? ' wk (fresh)' : ' wks');
+        return '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
+          + '<td style="color:'+clr+'"><b>'+(r.wantLong?'CROWDED LONG':'CROWDED SHORT')+'</b></td>'
+          + '<td>'+wkTxt+'</td></tr>';
+      }).join('')
+    + '</tbody></table><div class="note">Both ends are worth noting for different reasons: a long-running extreme means the crowd has had a long time to prove itself right; a freshly-hit one (1 week) means it just arrived and hasn\'t been tested. Rolling calculation — see the panel help for how it\'s done.</div>';
+}
+
+// ── confluence: specs AND commercials independently at opposite extremes, ───
+// on the SAME market — the textbook COT contrarian setup. Different from the
+// "Extreme crowding alerts" panel above, which checks two DIFFERENT FX legs'
+// SPEC readings against each other; this checks one market's spec reading
+// against its OWN commercial reading, and applies board-wide, not just FX.
+function confluence(big){
+  const kicker = '<div class="kicker">Compares <b>one market\'s</b> speculators against its <b>own</b> commercials — not two different currencies against each other (that\'s the Reinforcing FX Pairs panel above). Applies to every market on the board, not just FX.</div>';
+  const cOf = x => BASIS==='share' ? (x.commSharePct ?? x.commPct) : x.commPct;
+  const rows = (DATA.instruments||[]).map(x => {
+    const p = pctOf(x), c = cOf(x);
+    if (p == null || c == null) return null;
+    if (p >= 90 && c <= 10) return { x, p, c, dir: 'long' };
+    if (p <= 10 && c >= 90) return { x, p, c, dir: 'short' };
+    return null;
+  }).filter(Boolean).sort((a,b) => (Math.abs(50-b.p)+Math.abs(50-b.c)) - (Math.abs(50-a.p)+Math.abs(50-a.c)));
+
+  if (!rows.length) return kicker + '<div class="empty">No market currently has specs AND commercials independently at opposite 90th/10th-percentile extremes — the classic confluence setup isn\'t present on the board right now.</div>';
+
+  return kicker + '<table><thead><tr><th>Market</th><th style="text-align:left">Specs</th><th style="text-align:left">Commercials</th></tr></thead><tbody>'
+    + rows.map(r => '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
+      + '<td style="text-align:left;color:'+colFor(r.p)+'"><b>'+(r.dir==='long'?'CROWDED LONG':'CROWDED SHORT')+'</b> ('+r.p+'th)</td>'
+      + '<td style="text-align:left;color:'+colFor(r.c)+'"><b>'+(r.dir==='long'?'CROWDED SHORT':'CROWDED LONG')+'</b> ('+r.c+'th)</td></tr>').join('')
+    + '</tbody></table><div class="note">The classic COT contrarian setup: speculators stretched one way, and commercials — who normally take the other side of specs anyway — independently confirming it by sitting at their own opposite extreme too. It doesn\'t call which way or when it turns; it flags where a reversal setup is most textbook right now.</div>';
+}
+
+// ── COT vs options positioning: two separate datasets, read side by side ────
+// oi-dashboard.html's data (/api/oi-store) is dealer OPTIONS open interest / gamma —
+// a different market from the futures positioning COT tracks, populated by a manual
+// CME chain paste per pair, so its age matters. Deliberately NOT blended into one
+// verdict — same lesson as Pair Lab: two independent facts shown together, judged by
+// the reader, not folded into a score.
+let OISTORE = null;   // null = not requested; 'loading'; object; or false = failed
+
+async function loadOiStore(){
+  if (OISTORE !== null) return;
+  OISTORE = 'loading';
+  try {
+    let r = await fetch('/api/oi-store', { cache: 'no-store' });
+    if (!r.ok) r = await fetch('/api/kv/get?key=oi_store', { cache: 'no-store' });
+    const j = await r.json();
+    OISTORE = (j && typeof j === 'object') ? (j.data || j.value || {}) : false;
+  } catch (e) { OISTORE = false; }
+  render();
+}
+
+// Pairs like XAU/USD are priced legs, not currencies — map onto the nearest COT
+// instrument this feed actually tracks. USD uses the same derived mirror as
+// elsewhere on this page.
+const OI_LEG_TO_COT = { XAU:'GOLD', XAG:'SILVER' };
+function legCotRead(leg){
+  const sym = OI_LEG_TO_COT[leg] || leg;
+  if (sym === 'USD') { if (usdDerived === null) loadUsdMirror(); return usdDerivedReading(); }
+  return (DATA.instruments || []).find(x => x.sym === sym) || null;
+}
+
+function oiCrossCheck(big){
+  if (OISTORE === null) { loadOiStore(); return '<div class="empty">Loading options positioning…</div>'; }
+  if (OISTORE === 'loading') return '<div class="empty">Loading options positioning…</div>';
+  if (OISTORE === false) return '<div class="empty">Could not load options positioning.</div>';
+
+  const nearestWall = (walls, spot) => {
+    const valid = (walls || []).filter(w => Number.isFinite(w.strike));
+    if (!valid.length || !Number.isFinite(spot)) return null;
+    return valid.reduce((best, w) => Math.abs(w.strike - spot) < Math.abs(best.strike - spot) ? w : best);
+  };
+  const legBadge = x => !x ? '<span class="muted">—</span>'
+    : '<span style="color:'+colFor(pctOf(x))+'">'+esc(dispSym(x))+' '+(pctOf(x) ?? '—')+'</span>';
+  const distPct = (strike, spot) => (((strike - spot) / spot) * 100).toFixed(2) + '%';
+
+  const rows = Object.keys(OISTORE).map(pair => {
+    const e = OISTORE[pair];
+    if (!e || !Number.isFinite(e.spot)) return null;
+    const [base, quote] = pair.split('/');
+    return { pair, A: legCotRead(base), B: legCotRead(quote),
+      put: nearestWall(e.putWalls, e.spot), call: nearestWall(e.callWalls, e.spot),
+      spot: e.spot, ageH: e.savedAtMs ? (Date.now() - e.savedAtMs) / 36e5 : null };
+  }).filter(Boolean);
+
+  if (!rows.length) return '<div class="empty">No options positioning saved yet — paste a CME chain on the <a href="oi-dashboard.html">OI Analytics</a> page first.</div>';
+
+  // Plain-English breakdown of each row's actual numbers, not just a glossary of the
+  // column headers — written for someone new to COT/options, so it spells out what
+  // "crowded", "put wall" and "stale" concretely mean for THIS pair's numbers rather
+  // than assuming the reader already knows.
+  const legPhrase = x => {
+    if (!x) return 'no COT data for this leg';
+    const p = pctOf(x);
+    if (p == null) return esc(dispSym(x))+' has no current COT reading';
+    const word = p>=90 ? 'crowded <b>LONG</b> — speculators are stretched net long, a one-sided bet that\'s already mostly been made, leaving less fresh buying to push it further'
+      : p<=10 ? 'crowded <b>SHORT</b> — speculators are stretched net short, a one-sided bet that\'s already mostly been made, leaving less fresh selling to push it further'
+      : p>=70 ? 'leaning long, but not stretched enough to call it crowded'
+      : p<=30 ? 'leaning short, but not stretched enough to call it crowded'
+      : 'roughly neutral — no strong lean either way right now';
+    return '<b>'+esc(dispSym(x))+'</b> is '+word+' ('+p+'th percentile of its own 200-week range — 90+ or 10- is what counts as crowded on this page)';
+  };
+  const wallPhrase = (w, spot, kind) => {
+    if (!w) return 'no '+kind+' wall was found in the saved options data for this pair';
+    const side = kind === 'put' ? 'below' : 'above';
+    const role = kind === 'put'
+      ? 'a put wall often acts like a <b>floor</b>: it\'s the strike where the most put open interest sits, so dealers who sold those puts tend to buy as price nears it (they\'re hedging their own risk), which can slow or stall a decline — not guarantee one'
+      : 'a call wall often acts like a <b>ceiling</b>: it\'s the strike where the most call open interest sits, so dealers who sold those calls tend to sell as price nears it, which can slow or stall a rally — not guarantee one';
+    return 'the nearest <b>'+kind+' wall</b> sits at <b>'+w.strike+'</b>, '+distPct(w.strike,spot)+' '+side+' spot — '+role;
+  };
+  const explainers = rows.map(r => {
+    const stale = r.ageH != null && r.ageH > 36
+      ? ' This options data is '+Math.round(r.ageH)+'h old — stale enough that these wall levels may have already shifted since it was pasted, so treat them as a rough guide rather than current.'
+      : '';
+    return '<div class="note" style="margin-top:14px">'
+      + '<b>'+esc(r.pair)+'</b> — ' + legPhrase(r.A) + '. ' + legPhrase(r.B) + '. '
+      + 'On the options side, ' + wallPhrase(r.put, r.spot, 'put') + '. And ' + wallPhrase(r.call, r.spot, 'call') + '.'
+      + stale + '</div>';
+  }).join('');
+
+  return '<table><thead><tr><th>Pair</th><th style="text-align:left">COT (base / quote)</th>'
+    + '<th style="text-align:left">Put wall (support)</th><th style="text-align:left">Call wall (resistance)</th><th>Options data age</th></tr></thead><tbody>'
+    + rows.map(r => {
+        const ageTxt = r.ageH == null ? '—' : r.ageH < 1 ? Math.round(r.ageH*60)+'m' : Math.round(r.ageH)+'h';
+        const ageClr = r.ageH == null ? 'var(--tx3)' : r.ageH > 36 ? 'var(--warn)' : 'var(--tx3)';
+        return '<tr><td>'+esc(r.pair)+'</td>'
+          + '<td style="text-align:left">'+legBadge(r.A)+' / '+legBadge(r.B)+'</td>'
+          + '<td class="muted" style="text-align:left">'+(r.put ? r.put.strike+' ('+distPct(r.put.strike,r.spot)+')' : '—')+'</td>'
+          + '<td class="muted" style="text-align:left">'+(r.call ? r.call.strike+' ('+distPct(r.call.strike,r.spot)+')' : '—')+'</td>'
+          + '<td style="color:'+ageClr+'">'+ageTxt+'</td></tr>';
+      }).join('')
+    + '</tbody></table><div class="note">COT is weekly <b>futures</b> positioning (who\'s already committed); the walls are dealer <b>options</b> open interest (where hedging flow may cluster) — two separate markets, shown side by side rather than combined. A currency crowded on COT sitting right under a heavy wall is worth noting, not automatically anything.</div>'
+    + explainers;
 }
 
 // ── crowding leaderboard: every market ranked, both directions on one axis ──
 function leaderboard(big){
   const rows = (DATA.instruments||[]).filter(x=>pctOf(x)!=null).sort((a,b)=>pctOf(b)-pctOf(a));
   if(!rows.length) return '<div class="empty">No instruments.</div>';
-  const W=1000, rh=big?24:17, H=rows.length*rh+8, MID=W*0.42, SPAN=W*0.48;
+  // LM/RM reserve room for the symbol name and the value label so both stay inside the
+  // viewBox — MID=42%/SPAN=48% of the FULL width put names at a negative x-coordinate,
+  // which is legal SVG (overflow:visible on the <svg>) but got clipped by the panel's own
+  // overflow:hidden, silently dropping every label.
+  const W=1000, rh=big?24:17, H=rows.length*rh+8, LM=95, RM=45;
+  const MID=LM+(W-LM-RM)/2, SPAN=(W-LM-RM)/2-18;
   let s='<svg viewBox="0 0 '+W+' '+(H+20)+'">';
   s+='<line class="axis" x1="'+MID+'" y1="0" x2="'+MID+'" y2="'+H+'"/>';
   [10,30,70,90].forEach(p=>{ const x=MID+((p-50)/50)*SPAN;
@@ -357,7 +721,7 @@ function leaderboard(big){
     const p=pctOf(x), y=i*rh+3, bh=rh-4, w=((p-50)/50)*SPAN;
     s+='<rect x="'+(w>=0?MID:MID+w)+'" y="'+y+'" width="'+(Math.abs(w)||1)+'" height="'+bh
       +'" fill="'+colFor(p)+'" opacity=".85" rx="1"/>';
-    s+='<text class="lbl" x="'+(MID-SPAN-6)+'" y="'+(y+bh-2)+'" text-anchor="end" style="fill:var(--tx);font-size:'+(big?12:10.5)+'px">'+esc(x.sym)+'</text>';
+    s+='<text class="lbl" x="'+(MID-SPAN-6)+'" y="'+(y+bh-2)+'" text-anchor="end" style="fill:var(--tx);font-size:'+(big?12:10.5)+'px">'+esc(dispSym(x))+'</text>';
     s+='<text class="lbl" x="'+(w>=0?MID+w+6:MID+w-6)+'" y="'+(y+bh-2)+'" text-anchor="'+(w>=0?'start':'end')+'" style="font-size:'+(big?12:10.5)+'px">'+p+'</text>';
   });
   s+='<text class="lbl" x="'+(MID-SPAN)+'" y="'+(H+14)+'" style="fill:var(--short)">&#9664; crowded SHORT</text>'
@@ -380,20 +744,6 @@ function groups(big){
     + '</tbody></table>';
 }
 
-function extremes(big){
-  const list=(DATA.instruments||[]).filter(x=>pctOf(x)!=null && (pctOf(x)>=90||pctOf(x)<=10))
-    .sort((a,b)=>Math.abs(50-pctOf(b))-Math.abs(50-pctOf(a)));
-  if(!list.length) return '<div class="empty">Nothing at the 90th / 10th percentile — no crowded trades on the board right now.</div>';
-  return '<table><thead><tr><th>Market</th><th>Pct</th><th>Z</th><th>Net</th><th>% of OI</th><th>Wk chg</th></tr></thead><tbody>'
-    + list.map(x=>'<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(x.sym)
-      +'<span class="pill" style="color:'+colFor(pctOf(x))+'">'+(pctOf(x)>=90?'long':'short')+'</span></td>'
-      +'<td style="color:'+colFor(pctOf(x))+'"><b>'+pctOf(x)+'</b></td>'
-      +'<td class="muted">'+(zOf(x)??'—')+'</td><td>'+fN(x.specNet)+'</td>'
-      +'<td class="muted">'+(x.specShare!=null?x.specShare+'%':'—')+'</td>'
-      +'<td style="color:'+(x.weeklyChg>0?'var(--long)':x.weeklyChg<0?'var(--short)':'var(--tx3)')+'">'+sgn(x.weeklyChg)+fN(x.weeklyChg)+'</td></tr>').join('')
-    + '</tbody></table><div class="note">Click any row to load its 200-week history.</div>';
-}
-
 function scatter(big){
   const cOf = x => BASIS==='share' ? (x.commSharePct ?? x.commPct) : x.commPct;
   const list=(DATA.instruments||[]).filter(x=>pctOf(x)!=null && cOf(x)!=null);
@@ -407,7 +757,7 @@ function scatter(big){
   list.forEach(x=>{
     s+='<circle cx="'+X(pctOf(x))+'" cy="'+Y(cOf(x))+'" r="'+(big?6:4.5)+'" fill="'+colFor(pctOf(x))+'" opacity=".8"/>';
     if(big||Math.abs(50-pctOf(x))>=35)
-      s+='<text class="lbl" x="'+(X(pctOf(x))+7)+'" y="'+(Y(cOf(x))+4)+'" style="font-size:'+(big?11:9.5)+'px">'+esc(x.sym)+'</text>';
+      s+='<text class="lbl" x="'+(X(pctOf(x))+7)+'" y="'+(Y(cOf(x))+4)+'" style="font-size:'+(big?11:9.5)+'px">'+esc(dispSym(x))+'</text>';
   });
   s+='<text class="lbl" x="'+(W/2)+'" y="'+(H-P+28)+'" text-anchor="middle">speculative crowding percentile &rarr;</text>'
     +'<text class="lbl" x="'+P+'" y="'+(P-14)+'">commercial percentile &uarr;</text></svg>';
@@ -451,7 +801,7 @@ function allTable(){
     +'<th>OI</th><th>OI pct'+h('oi')+'</th><th>Wk chg'+h('wk')+'</th><th>L/S'+h('gross')+'</th></tr></thead><tbody>'
     + rows.map(x=>{const p=pctOf(x);
       return '<tr class="clk '+(SEL===x.sym?'sel':'')+'" onclick="pick(\''+esc(x.sym)+'\')">'
-        +'<td>'+esc(x.sym)+'</td><td class="muted">'+esc(x.group)+'</td>'
+        +'<td>'+esc(dispSym(x))+'</td><td class="muted">'+esc(x.group)+'</td>'
         +'<td style="color:'+colFor(p)+'"><b>'+(p??'—')+'</b></td><td class="muted">'+(zOf(x)??'—')+'</td>'
         +'<td>'+fN(x.specNet)+'</td><td class="muted">'+(x.specShare!=null?x.specShare+'%':'—')+'</td>'
         +'<td class="muted">'+(cOf(x)??'—')+'</td>'
@@ -470,7 +820,7 @@ function disagree(){
   if(!rows.length) return '<div class="empty">The OI-normalised percentiles are not in this payload yet —'
     +' they appear after the next COT refresh. Until then the ranking falls back to raw contracts.</div>';
   return '<table><thead><tr><th>Market</th><th>% of OI rank</th><th>Raw rank</th><th>Gap</th><th>OI pct</th></tr></thead><tbody>'
-    + rows.map(x=>'<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(x.sym)+'</td><td><b>'+x.specSharePct+'</b></td>'
+    + rows.map(x=>'<tr class="clk" onclick="pick(\''+esc(x.sym)+'\')"><td>'+esc(dispSym(x))+'</td><td><b>'+x.specSharePct+'</b></td>'
       +'<td class="muted">'+x.specPct+'</td>'
       +'<td style="color:'+(x.gap>=20?'var(--warn)':'var(--tx3)')+'">'+x.gap+'</td>'
       +'<td class="muted">'+(x.oiPct??'—')+'</td></tr>').join('')
@@ -509,13 +859,18 @@ function render(){
     +'. Positioning changes inside that gap and you cannot see it, so treat every number here as a '
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
   document.getElementById('main').innerHTML='<div class="grid">'
-    + panel('c12','alerts','Extreme crowding alerts','paira',crowdingCards,true)
+    + panel('c12','digest','At a glance — how many reads agree, per market','digest',digest,true)
+    + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
+    + panel('c12','confl','Confluence (specs vs. commercials, same market)','confl',confluence,true)
+    + panel('c7','evr','Event-risk overlay','evrisk',eventRisk,true)
+    + panel('c5','flow','Positioning flow — week over week','flow',flow,true)
+    + panel('c5','persist','Extreme persistence','persist',persistence,true)
+    + panel('c7','oix','COT vs options positioning','oixchk',oiCrossCheck,true)
     + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
-    + panel('c5','ext','Crowded trades','extreme',extremes,true)
-    + panel('c7','scat','Specs vs commercials','scatter',scatter)
     + panel('c5','grp','By asset class','group',groups,true)
-    + panel('c7','hist','200-week history'+(SEL?' — '+esc(SEL):''),'hist',history)
+    + panel('c7','scat','Specs vs commercials','scatter',scatter)
     + panel('c5','dis','Where the two rankings disagree','basis',disagree,true)
+    + panel('c12','hist','200-week history'+(SEL?' — '+esc(SEL==='US'?'US30Y':SEL):''),'hist',history)
     + panel('c12','all','All markets','spec',allTable,true)
     + '</div>';
 }

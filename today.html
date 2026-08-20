@@ -7,11 +7,33 @@
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root{
-    --bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --bg:#0d1117;--bg-rgb:13,17,23;--card:#161b22;--card2:#1c2330;--border:#30363d;--border-rgb:48,54,61;--border2:#1c2230;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
     --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
     --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);
     --blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
+    /* js/commandHub.js (shared with index.html/indexv2.html) styles itself with
+       --s1/--s2 — mirror this page's --card/--card2 so the nav bar and its
+       dropdowns/modal pick up the light/dark toggle. NOTE: this must be a
+       literal duplicate of --card/--card2 in EACH block below, not a
+       `var(--card)` alias declared once at :root — a custom property's var()
+       references resolve using the value at its OWN declaration point, so an
+       alias declared only at :root keeps resolving against :root's (dark)
+       --card forever, never the body.light override (confirmed empirically:
+       Chromium computed #s1 as the dark hex even with body.light active). */
+    --s1:#161b22;--s2:#1c2330;
+  }
+  /* Light theme — same variable names, override on <body class="light">. Kept
+     dark as the default (unchanged for anyone not touching the toggle); values
+     reuse index.html's already-designed light palette (css/index.css) rather
+     than inventing a second one. */
+  body.light{
+    --bg:#f4f6fb;--bg-rgb:244,246,251;--card:#ffffff;--card2:#eef1f7;--border:#d8dee8;--border-rgb:216,222,232;--border2:#c9d1de;
+    --text:#0d1520;--text2:#4b5a6e;--text3:#7c8aa0;
+    --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
+    --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);
+    --blue-bg:rgba(24,71,194,.10);--neu-bg:rgba(75,90,110,.08);
+    --s1:#ffffff;--s2:#eef1f7;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
@@ -19,7 +41,7 @@
   button{font-family:inherit;cursor:pointer}
 
   /* ── Header ─────────────────────────────────────────────── */
-  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(var(--bg-rgb),.94);backdrop-filter:blur(8px);
        border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
   .hdr h1{font-size:17px;font-weight:700;letter-spacing:.01em}
   .hdr .sess{font-size:12px;color:var(--text2)}
@@ -139,18 +161,6 @@
   .nev-result{margin-top:8px;font-size:12px;padding:6px 10px;border-radius:6px;background:var(--card2);border:1px solid var(--border)}
   .nev-result b{color:var(--text)}
 
-  /* ── Morning gate: calendar timeline ────────────────────── */
-  .gate{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 14px;
-        margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .gate .glbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
-  .gev{display:inline-flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);
-       border-radius:6px;padding:3px 9px;font-size:11.5px;white-space:nowrap}
-  .gev .t{font-weight:700;font-variant-numeric:tabular-nums}
-  .gev.hi{border-color:rgba(210,153,34,.5)} .gev.hi .t{color:var(--amber)}
-  .gev.past{opacity:.42}
-  .gev.next{border-color:rgba(210,153,34,.9);background:var(--amber-bg)}
-  .gev .cd{font-size:10px;color:var(--amber);font-weight:700}
-
   /* ── Filter / sort row ──────────────────────────────────── */
   .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
   .fchip{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:14px;
@@ -166,13 +176,16 @@
 
   /* ── Cards grid ─────────────────────────────────────────── */
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
-  .pcard{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;
-         cursor:pointer;transition:border-color .15s}
+  .pcard{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border);
+         border-radius:12px;padding:13px 15px 13px 13px;cursor:pointer;transition:border-color .15s}
   .pcard:hover{border-color:var(--text3)}
+  .pcard.dir-up{border-left-color:var(--bull)}
+  .pcard.dir-dn{border-left-color:var(--bear)}
   .pcard.hot{border-color:rgba(210,153,34,.55)}
+  .pcard.hot.dir-up,.pcard.hot.dir-dn{border-left-color:rgba(210,153,34,.55)}
   .pc-top{display:flex;align-items:baseline;gap:9px;margin-bottom:7px;flex-wrap:wrap}
-  .pc-name{font-size:15.5px;font-weight:700}
-  .pc-price{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text2)}
+  .pc-name{font-size:13.5px;font-weight:700;color:var(--text2);letter-spacing:.01em}
+  .pc-price{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text)}
   .pc-top .push{margin-left:auto;display:flex;gap:5px}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
         font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
@@ -184,6 +197,7 @@
   .chip.dim{background:var(--neu-bg);color:var(--text3);font-weight:600}
   .pc-bias{font-size:11.5px;color:var(--text2);margin-bottom:8px;min-height:17px}
   .pc-bias b{color:var(--text)}
+  .pc-shape{display:flex;align-items:center;gap:7px;margin-bottom:8px}
 
   /* proximity flash (zoom 3) */
   @keyframes proxpulse{0%,100%{border-color:rgba(210,153,34,.9)}50%{border-color:rgba(210,153,34,.35)}}
@@ -248,15 +262,15 @@
   #drNews .nimpact{font-size:11px;color:var(--text2);padding:3px 6px 7px 62px;line-height:1.45}
   #drNews .nimpact b.pos{color:var(--bull)} #drNews .nimpact b.neg{color:var(--bear)}
 
-  /* Morning Brief — the top-down macro front page */
-  .mbrief{background:linear-gradient(180deg,rgba(79,125,240,.08),var(--card));border:1px solid var(--border);
-          border-radius:14px;padding:16px 20px;margin-bottom:16px}
+  /* Morning Brief — the top-down macro front page (AI-hero treatment) */
+  .mbrief{background:linear-gradient(135deg,rgba(79,125,240,.10),var(--card) 55%);border:1px solid var(--border);
+          border-left:3px solid var(--blue);border-radius:14px;padding:18px 22px;margin-bottom:16px}
   .mbrief .mb-hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px}
   .mbrief .mb-eyebrow{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--blue);text-transform:uppercase}
   .mbrief .mb-btn{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:3px 11px;font-size:11px;font-weight:600;cursor:pointer}
   .mbrief .mb-btn:disabled{opacity:.55}
-  .mbrief .mb-head{font-size:17px;font-weight:700;line-height:1.4;margin:2px 0 10px}
-  .mbrief .mb-theme{font-size:13.5px;color:var(--text2);line-height:1.55;margin-bottom:12px}
+  .mbrief .mb-head{font-size:18px;font-weight:700;line-height:1.4;margin:2px 0 10px}
+  .mbrief .mb-theme{font-size:14px;color:var(--text);line-height:1.6;margin-bottom:14px;padding-left:12px;border-left:2px solid var(--border)}
   .mbrief .mb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-bottom:12px}
   .mbrief .mb-cell{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:9px 12px}
   .mbrief .mb-cl{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--text3);text-transform:uppercase;margin-bottom:3px}
@@ -302,6 +316,16 @@
   .ai-dl.pos{color:var(--bull)} .ai-dl.neg{color:var(--bear)}
   .ai-do{display:inline-block;font-size:11px;padding:3px 9px;border-radius:6px;margin:0 5px 5px 0;line-height:1.35}
   .ai-do.pos{background:var(--bull-bg);color:var(--bull)} .ai-do.neg{background:var(--bear-bg);color:var(--bear)}
+  /* Trade of the Day — the closing structured ask, styled like the Decision
+     Engine's .decide-out card so it reads as "one more actionable box", not
+     a headline claim. Always carries the same AI-opinion caveat as the rest
+     of this section. */
+  .ai-trade{margin-top:12px;padding:11px 13px;border-radius:8px;background:var(--card2);border:1px solid var(--border)}
+  .ai-trade-hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .ai-trade-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:9px}
+  .ai-trade-kv .k{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .ai-trade-kv .v{font-size:14px;font-weight:700;margin-top:1px}
+  .ai-trade-rationale{font-size:12px;color:var(--text2);line-height:1.5;margin-top:9px}
 
   /* Level ladder */
   .ladder{margin:14px 0 8px;font-variant-numeric:tabular-nums}
@@ -325,8 +349,30 @@
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
   th{color:var(--text3);text-align:left;font-weight:600;padding:7px 9px;border-bottom:1px solid var(--border);
      font-size:10px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;white-space:nowrap}
-  td{padding:6px 9px;border-bottom:1px solid rgba(48,54,61,.5);white-space:nowrap}
+  td{padding:6px 9px;border-bottom:1px solid rgba(var(--border-rgb),.5);white-space:nowrap}
   tr.trow{cursor:pointer} tr.trow:hover{background:var(--card2)}
+
+  /* ── Scorecard view — glanceable Instrument Snapshot table (Phase 2f) ────
+     Every column is a value already computed elsewhere on this page
+     (pairSignal, pairSignalComposite's agree/total, real forecast levels) —
+     just laid out as a scannable row instead of a dense card. ──────────── */
+  .sview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
+  .sview table{font-size:12.5px}
+  .sview td{white-space:normal;vertical-align:top;padding:9px}
+  .sc-inst{display:flex;align-items:center;gap:8px}
+  .sc-inst .sc-ic{font-size:16px}
+  .sc-inst .sc-name{font-weight:700;color:var(--text)}
+  .sc-inst .sc-sub{font-size:10px;color:var(--text3)}
+  .sc-pill{display:inline-block;padding:2.5px 9px;border-radius:12px;font-size:10.5px;font-weight:800;letter-spacing:.02em}
+  .sc-pill.bull{background:var(--bull-bg);color:var(--bull)} .sc-pill.bear{background:var(--bear-bg);color:var(--bear)} .sc-pill.neu{background:var(--neu-bg);color:var(--text2)}
+  .sc-score{font-weight:800;font-variant-numeric:tabular-nums}
+  .sc-score.bull{color:var(--bull)} .sc-score.bear{color:var(--bear)} .sc-score.neu{color:var(--text2)}
+  .sc-drivers{color:var(--text2);font-size:11.5px;line-height:1.4}
+  .sc-dots{display:flex;gap:3px}
+  .sc-dots i{width:7px;height:7px;border-radius:50%;background:var(--border);display:inline-block}
+  .sc-dots i.on{background:var(--blue)}
+  .sc-level{font-weight:600;font-variant-numeric:tabular-nums}
+  .sc-level-note{color:var(--text3);font-size:10.5px;margin-top:2px}
 
   /* ── Detail drawer ──────────────────────────────────────── */
   .ovl{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:none}
@@ -343,6 +389,21 @@
             border-radius:6px;padding:4px 12px;font-size:13px}
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
+  /* AI Analysis — the drawer's hero section (already first in DOM order; this
+     is the visual half of "front and centre" — same accent treatment as the
+     Morning Brief hero card, so it reads as the primary section at a glance
+     instead of an equal-weight box next to Bot Level Book / Rates Context. */
+  #drAnalysisSec{border-left:3px solid var(--blue);background:linear-gradient(135deg,rgba(79,125,240,.08),var(--card) 55%);padding:16px 18px}
+  #drAnalysisSec h3{color:var(--blue);font-size:11.5px}
+  /* Concertina: .dr-sec-h is the clickable label (title + chevron only) — action
+     buttons stay siblings inside <h3>, outside this span, so they don't toggle
+     the section when clicked. Collapsed state hides .dr-sec-body and is per
+     section-key in localStorage, shared across every pair (not per-pair). */
+  .dr-sec-h{cursor:pointer}
+  .dr-sec-h:hover{color:var(--text2)}
+  .dr-chevron{display:inline-block;width:11px;color:var(--text3)}
+  .dr-sec.dr-collapsed h3{margin-bottom:0}
+  .dr-sec.dr-collapsed .dr-sec-body{display:none}
 
   /* ── Currency drawer ─────────────────────────────────────── */
   .ccy-explain{font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:10px}
@@ -397,9 +458,164 @@
   .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:6px}
   .legend i{display:inline-block;width:14px;height:0;border-top:2px dashed;margin-right:4px;vertical-align:middle}
   @media(max-width:640px){ .grid{grid-template-columns:1fr} .lrow .hit{display:none} }
+
+  /* ── Graphical reskin (Phase 1) — reuses the existing --bull/--bear/--amber/
+     --blue/--text/--card tokens above, so it works in both dark and light
+     with zero new color definitions. See the design mockup this was built
+     from for the full direction. ────────────────────────────────────────── */
+  .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,1fr)} }
+  .statcard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:13px 15px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .statcard .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding-right:74px}
+  /* Rate stat-card pip (10Y / 2Y / 2s10s) — a tiny segmented control tucked
+     in the card's top-right corner instead of growing a 5th stat card. */
+  .stat-tabs{position:absolute;top:11px;right:12px;display:flex;gap:2px}
+  .stat-tab{background:var(--card2);border:1px solid var(--border);color:var(--text3);border-radius:5px;
+    padding:2px 6px;font-size:9px;font-weight:800;letter-spacing:.02em;cursor:pointer;line-height:1.3}
+  .stat-tab.on{background:var(--blue-bg);border-color:rgba(79,125,240,.4);color:var(--blue)}
+  .stat-tab:hover:not(.on){color:var(--text2);border-color:var(--text3)}
+  .statcard .row1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .statcard .big{font-size:21px;font-weight:800;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .statcard .sdelta{font-size:11px;font-weight:800;padding:2px 6px;border-radius:6px;white-space:nowrap}
+  .statcard .sdelta.up{color:var(--bull);background:var(--bull-bg)}
+  .statcard .sdelta.dn{color:var(--bear);background:var(--bear-bg)}
+  .statcard .spark{height:30px;margin:1px 0 0}
+  .statcard .swk{font-size:10.5px;color:var(--text3);font-weight:600}
+  .statcard .swk b.up{color:var(--bull)} .statcard .swk b.dn{color:var(--bear)}
+
+  /* Collapse/expand — applied to any card-style section via secChev()/secBody() */
+  .sec-hd-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .sec-hd-row .sec-title{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;flex:1}
+  .sec-chevbtn{width:22px;height:22px;border-radius:6px;border:1px solid transparent;
+    background:none;display:inline-flex;align-items:center;justify-content:center;color:var(--text3);
+    cursor:pointer;flex-shrink:0;vertical-align:middle}
+  .sec-chevbtn:hover{background:var(--card2);color:var(--text2);border-color:var(--border)}
+  .sec-chev{width:13px;height:13px;transition:transform .15s ease}
+  .sec-chev.sec-closed{transform:rotate(-90deg)}
+  .sec-body.sec-hidden{display:none}
+
+  /* AI-hero narrative card (headline + tight narrative + meter row) */
+  .hero-meter-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:11px 13px;margin:10px 0 4px;
+    background:var(--card2);border:1px solid var(--border);border-radius:9px}
+  .hero-meter{display:flex;align-items:center;gap:7px}
+  .hero-meter .mk{font-size:9.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+  .hero-meter-bar{width:52px;height:6px;border-radius:4px;background:var(--border);overflow:hidden}
+  .hero-meter-bar i{display:block;height:100%;background:var(--amber);border-radius:4px}
+  .hero-meter .mv{font-size:11px;font-weight:800}
+
+  /* ── Sidebar (Phase 2c) — Market Tone gauge, Key Takeaways, Today At A
+     Glance, Volatility Outlook, Quick Links. All built from data already
+     computed elsewhere on this page (equitiesRisk/currencyStrength/rows) —
+     no new fetches, no invented numbers. Stacks below main content only on
+     genuinely narrow viewports — the breakpoint is deliberately well below
+     Chrome mobile's ~980px "Desktop site" virtual viewport width, so
+     requesting desktop mode on a phone actually gets the 2-column layout
+     instead of landing right on the old 980px edge and still stacking. ── */
+  .dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+  @media(max-width:720px){
+    .dashgrid{grid-template-columns:1fr}
+    .sidebar{position:static !important}
+    /* Stacked full-width cards get a bigger gauge and a tighter 4-across
+       glance row instead of just inheriting the narrow-column sizing. */
+    .gauge-svg-wrap{max-width:260px}
+    .gauge-score{font-size:32px}
+    .gauge-scale{max-width:228px;font-size:10.5px}
+    .glance-grid{grid-template-columns:repeat(3,1fr)}
+  }
+  .sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:14px}
+  .side-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+  .side-card h3{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:11px}
+  /* Gauge scales to fill its card (up to 260px) instead of sitting as a
+     small fixed 150px graphic in a much wider box — the svg's viewBox
+     handles the internal scaling, so only the wrapper width + the
+     percentage-positioned overlay elements need to track it. Bigger still
+     on the stacked mobile layout (see @media(max-width:720px) below). */
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:0;width:100%}
+  .gauge-svg-wrap{position:relative;width:100%;max-width:200px;aspect-ratio:150/90;margin:0 auto}
+  .gauge-svg-wrap svg{display:block;width:100%;height:100%}
+  .gauge-score{position:absolute;left:0;right:0;top:42%;text-align:center;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+  .gauge-score.on{color:var(--bull)} .gauge-score.off{color:var(--bear)} .gauge-score.mix{color:var(--amber)}
+  .gauge-scale{display:flex;justify-content:space-between;width:88%;max-width:176px;margin-top:2px;font-size:9px;color:var(--text3);font-weight:600}
+  .gauge-tone{font-size:12px;font-weight:800;letter-spacing:.04em;margin-top:5px}
+  .gauge-tone.on{color:var(--bull)} .gauge-tone.off{color:var(--bear)} .gauge-tone.mix{color:var(--amber)}
+  .gauge-sub{font-size:10.5px;color:var(--text3);text-align:center;line-height:1.4;margin-top:8px}
+  .gauge-sub .gs-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+  .gs-val{font-weight:700;font-size:11px}
+  .gs-val.on{color:var(--bull)} .gs-val.off{color:var(--bear)} .gs-val.mix{color:var(--amber)}
+  .takeaway-list{display:flex;flex-direction:column;gap:10px}
+  .takeaway{display:flex;gap:9px;font-size:12px;line-height:1.5;color:var(--text2);align-items:flex-start}
+  .takeaway .tic{flex-shrink:0;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px}
+  .takeaway .tic.bull{background:var(--bull-bg)} .takeaway .tic.blue{background:var(--blue-bg)}
+  .takeaway .tic.purple{background:rgba(167,139,250,.16)} .takeaway .tic.amber{background:var(--amber-bg)}
+  .takeaway b{color:var(--text)}
+  .glance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .glance-cell .gv{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+  .glance-cell .gl{font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+  .mood-line{display:flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:700;justify-content:center;margin-top:8px;flex-wrap:wrap}
+  .mood-line .mood-detail{font-size:10px;font-weight:600;color:var(--text3);white-space:normal;text-align:center;flex-basis:100%}
+  /* Today's Calendar — moved off the main column's #gate chip strip. */
+  .cal-row{display:flex;align-items:baseline;gap:8px;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--border)}
+  .cal-row:last-child{border-bottom:none}
+  .cal-row.past{opacity:.5}
+  .cal-row .cal-t{font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;flex-shrink:0}
+  .cal-row .cal-ev{color:var(--text2);flex:1;line-height:1.35}
+  .cal-row .cal-ev b{color:var(--text)}
+  .cal-row .cal-cd{font-size:10px;font-weight:700;color:var(--amber);flex-shrink:0}
+  .cal-watch{font-size:10.5px;color:var(--text3);line-height:1.5}
+  .cal-watch b{color:var(--text2)}
+  .sess-timeline{display:flex;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .sess-seg{flex:1;text-align:center;font-size:9.5px;font-weight:700;letter-spacing:.03em;color:var(--text3);
+    background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 2px;cursor:help}
+  .sess-seg.best{background:var(--blue-bg);color:var(--blue);border-color:rgba(79,125,240,.4)}
+  .sess-seg.now{outline:2px solid var(--amber);outline-offset:1px;color:var(--text)}
+  /* Risk State — moved off the main column's #riskflags chip strip. */
+  .rs-level{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;margin-bottom:9px}
+  .rs-level .rs-badge{padding:2px 9px;border-radius:11px;font-size:10.5px;letter-spacing:.03em}
+  .rs-level .rs-badge.calm{background:var(--bull-bg);color:var(--bull)}
+  .rs-level .rs-badge.caution{background:var(--amber-bg);color:var(--amber)}
+  .rs-level .rs-badge.off{background:var(--bear-bg);color:var(--bear)}
+  .rs-flag{display:flex;align-items:baseline;gap:7px;font-size:11px;color:var(--text2);padding:3px 0;cursor:help}
+  .rs-flag.on{color:var(--text)} .rs-flag.on .rs-ic{color:var(--amber)}
+  .rs-flag .rs-ic{width:12px;flex-shrink:0;color:var(--text3)}
+  .rs-iv{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:4px 0;margin-top:4px;border-top:1px solid var(--border);cursor:help}
+  .rs-iv b{color:var(--text);font-variant-numeric:tabular-nums}
+  .volout-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)}
+  .volout-row:last-child{border-bottom:none}
+  .volout-row b{color:var(--text);font-variant-numeric:tabular-nums}
+  /* Rates & Curve Moves — arrow+value rows, moved off the main column's old
+     dense inline-wrapped text stream (#macroMoved) into the sidebar. Each row
+     shows 1d AND 5d side by side (not just 1d) so a same-day move reads in
+     the context of the week, not in isolation — a ⟲ flags when they disagree. */
+  .move-row{padding:6px 0;border-bottom:1px solid var(--border);cursor:help}
+  .move-row:last-child{border-bottom:none}
+  .move-row .mv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;margin-bottom:2px}
+  .move-row .mv-lbl{color:var(--text3)}
+  .move-row .mv-now{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+  .move-row .mv-deltas{display:flex;gap:14px}
+  .move-row .mv-d{display:flex;align-items:baseline;gap:4px;font-size:10.5px;color:var(--text3)}
+  .move-row .mv-d i{font-style:normal}
+  .move-row .mv-arrow{font-weight:700;font-variant-numeric:tabular-nums;font-size:10.5px}
+  .move-row .mv-arrow.up{color:var(--bull)} .move-row .mv-arrow.dn{color:var(--bear)}
+  .move-row .mv-arrow.flat{color:var(--text3)} .move-row .mv-arrow.neu{color:var(--text2)}
+  .move-row .mv-blip{margin-left:2px;color:var(--amber);font-size:10.5px;cursor:help}
+  .qtile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .qtile{display:flex;flex-direction:column;gap:2px;text-decoration:none;color:inherit;border:1px solid var(--border);
+    border-radius:10px;padding:10px 11px;cursor:pointer;transition:border-color .12s,background .12s}
+  .qtile:hover{border-color:var(--text3);background:var(--card2)}
+  .qtile .qt-ic{font-size:15px;margin-bottom:2px}
+  .qtile .qt-t{font-size:11px;font-weight:700;color:var(--text);line-height:1.3}
+  .qtile .qt-s{font-size:9.5px;color:var(--text3);line-height:1.3}
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('macrofx_theme')==='light')document.body.classList.add('light');}catch(e){}</script>
+
+<!-- ── Command Hub ────────────────────────────────────────────────────────── -->
+<div id="commandHub"></div>
+<script src="js/commandHub.js"></script>
+<script src="js/scratchpad.js"></script>
+<script src="js/siteApiMap.js"></script>
 
 <div class="hdr">
   <h1>☀️ Daily Trading Brief</h1>
@@ -408,70 +624,57 @@
   <span class="spacer"></span>
   <span class="stamp" id="hdrStamp"></span>
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
+  <button class="hbtn" onclick="openSiteMap()" title="Site map — all pages with descriptions">🗺 Site Map</button>
+  <button class="hbtn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it">🔌 API Map</button>
+  <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
   <a class="hbtn" href="index.html">Dashboard</a>
-  <a class="hbtn" href="fomc-sentiment.html">FOMC Sentiment</a>
-  <a class="hbtn" href="ecb-sentiment.html">ECB Sentiment</a>
-  <a class="hbtn" href="labor-market.html">Labor Market</a>
-  <a class="hbtn" href="boe-sentiment.html">BoE Sentiment</a>
-  <a class="hbtn" href="boj-sentiment.html">BoJ Sentiment</a>
-  <a class="hbtn" href="beige-book.html">Beige Book</a>
-  <a class="hbtn" href="cpi.html">CPI / Inflation</a>
-  <a class="hbtn" href="gdp.html">GDP / Growth</a>
-  <a class="hbtn" href="ism.html">Business Activity</a>
-  <a class="hbtn" href="retail-sales.html">Retail Sales</a>
-  <a class="hbtn" href="trade-balance.html">Trade Balance</a>
-  <a class="hbtn" href="real-yield.html">Real Yield</a>
-  <a class="hbtn" href="ppi.html">PPI</a>
-  <a class="hbtn" href="macro-scorecard.html">Macro Scorecard</a>
-  <a class="hbtn" href="vol-forecast-v2.html">Vol Forecast v2</a>
-  <a class="hbtn" href="rate-matrix.html">Rate Matrix</a>
-  <a class="hbtn" href="trade-decision-engine.html">Decision Engine</a>
 </div>
 
 <div class="wrap">
-  <div class="mbrief" id="mbrief" style="display:none"></div>
+  <div class="statrow" id="statRow" style="display:none"></div>
 
-  <div class="qstrip delta" id="sinceYday" style="display:none"></div>
+  <div class="dashgrid">
+    <div class="main-col">
+      <div class="mbrief" id="mbrief" style="display:none"></div>
 
-  <div class="mread" id="mread" style="display:none"></div>
+      <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
-  <div class="qstrip" id="weekCtx" style="display:none"></div>
-  <div class="qstrip" id="concentration" style="display:none"></div>
+      <div class="mread" id="mread" style="display:none"></div>
 
-  <div class="macro" id="macro" style="display:none"></div>
+      <div class="qstrip" id="weekCtx" style="display:none"></div>
+      <div class="qstrip" id="concentration" style="display:none"></div>
 
-  <div class="summary" id="summary"></div>
+      <div class="macro" id="macro" style="display:none"></div>
 
-  <div class="gate" id="gate" style="display:none"></div>
+      <div class="summary" id="summary" style="display:none"></div>
 
-  <div class="gate" id="riskflags" style="display:none"></div>
+      <div class="news" id="newsPlay" style="display:none"></div>
 
-  <div class="gate" id="macroMoved" style="display:none"></div>
+      <div class="ctl">
+        <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
+        <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
+        <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
+        <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
+        <span class="lbl" style="margin-left:8px">Sort</span>
+        <select id="sortSel" onchange="render()">
+          <option value="attention">Attention (hot first)</option>
+          <option value="used">Range used</option>
+          <option value="vol">Vol percentile</option>
+          <option value="trend">Trending first</option>
+          <option value="name">Name</option>
+        </select>
+        <button class="fchip" id="viewBtn" onclick="toggleView()" style="margin-left:auto">☰ Table view</button>
+      </div>
 
-  <div class="qstrip" id="whenWatch" style="display:none"></div>
+      <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
+      <div class="tview" id="tview"></div>
+      <div class="sview" id="sview" style="display:none"></div>
 
-  <div class="news" id="newsPlay" style="display:none"></div>
+      <div class="muted" style="margin-top:14px" id="footNote"></div>
+    </div>
 
-  <div class="ctl">
-    <button class="fchip on" data-f="all" onclick="setFilter('all')">All</button>
-    <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
-    <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
-    <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
-    <span class="lbl" style="margin-left:8px">Sort</span>
-    <select id="sortSel" onchange="render()">
-      <option value="attention">Attention (hot first)</option>
-      <option value="used">Range used</option>
-      <option value="vol">Vol percentile</option>
-      <option value="trend">Trending first</option>
-      <option value="name">Name</option>
-    </select>
-    <button class="fchip" id="viewBtn" onclick="toggleView()" style="margin-left:auto">☰ Table view</button>
+    <div class="sidebar" id="sidebarCol"></div>
   </div>
-
-  <div class="grid" id="grid"><div class="muted">Loading forecast…</div></div>
-  <div class="tview" id="tview"></div>
-
-  <div class="muted" style="margin-top:14px" id="footNote"></div>
 </div>
 
 <!-- Detail drawer -->
@@ -484,95 +687,117 @@
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
   </div>
 
-  <div class="dr-sec" id="drThesisSec" style="display:none">
-    <h3 class="help" title="The working trade idea for this pair, and — from every signal we compute — what BACKS it versus what ARGUES AGAINST it. A consistency check to frame the trade, not a prediction. Read down: thesis → what supports → what challenges → then the levels below.">The trade thesis — what supports it, what challenges it</h3>
-    <div id="drThesis"></div>
+  <!-- Headline: the plain-English translation of every signal on this pair —
+       the thing worth seeing before anything else. -->
+  <div class="dr-sec" id="drAnalysisSec" data-seckey="analysis" style="display:none">
+    <h3 class="help" title="A full fundamental read of this pair, generated by AI from the macro, yield, options, positioning and event data. AI OPINION — a reasoned synthesis, NOT a backtested signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Full analysis</span> <span class="chip warn" style="font-size:9px">AI · not backtested</span> <button id="drAnalyseBtn" class="ai-btn" onclick="analysePair()">🧠 Analyse</button> <span id="drAnalysisToggle" class="ai-toggle"></span></h3>
+    <div class="dr-sec-body"><div id="drAnalysis"></div></div>
   </div>
 
-  <div class="dr-sec">
-    <h3>The story</h3>
-    <div class="story" id="drStory"><span class="muted">loading…</span></div>
+  <div class="dr-sec" id="drThesisSec" data-seckey="thesis" style="display:none">
+    <h3 class="help" title="The working trade idea for this pair, and — from every signal we compute — what BACKS it versus what ARGUES AGAINST it. A consistency check to frame the trade, not a prediction. Read down: thesis → what supports → what challenges → then the levels below."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>The trade thesis — what supports it, what challenges it</span></h3>
+    <div class="dr-sec-body"><div id="drThesis"></div></div>
   </div>
 
-  <div class="dr-sec" id="drConeSec" style="display:none">
-    <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal.">Volatility cone — is vol building or cooling?</h3>
-    <div id="drCone"></div>
+  <div class="dr-sec" id="drStorySec" data-seckey="story">
+    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>The story</span></h3>
+    <div class="dr-sec-body"><div class="story" id="drStory"><span class="muted">loading…</span></div></div>
   </div>
 
-  <div class="dr-sec" id="drPathSec" style="display:none">
-    <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip.">📐 Forecast Path — calibrated 4h claims</h3>
-    <div id="drPath"></div>
-  </div>
-
-  <div class="dr-sec" id="drAnalysisSec" style="display:none">
-    <h3 class="help" title="A full fundamental read of this pair, generated by AI from the macro, yield, options, positioning and event data. AI OPINION — a reasoned synthesis, NOT a backtested signal.">Full analysis <span class="chip warn" style="font-size:9px">AI · not backtested</span> <button id="drAnalyseBtn" class="ai-btn" onclick="analysePair()">🧠 Analyse</button> <span id="drAnalysisToggle" class="ai-toggle"></span></h3>
-    <div id="drAnalysis"></div>
-  </div>
-
-  <div class="dr-sec" id="drNewsSec" style="display:none">
-    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out.">Today's news for this pair</h3>
-    <div id="drNews"></div>
-  </div>
-
-  <div class="dr-sec" id="drCorrSec" style="display:none">
-    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair.">Correlations, hedges &amp; beta</h3>
-    <div id="drCorr"><span class="muted">loading…</span></div>
-  </div>
-
-  <div class="dr-sec" id="drRatesSec" style="display:none">
-    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction.">Rates context (yield spread)</h3>
-    <div id="drRates"><span class="muted">loading…</span></div>
-  </div>
-
-  <div class="dr-sec">
-    <h3>Today vs forecast — M5 <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
-    <div id="drChart"></div>
-    <div class="legend">
-      <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
-      <span><i style="border-color:#4f7df0"></i>O-H / O-L 75th</span>
-      <span><i style="border-color:#fbbf24"></i>day high / low</span>
-      <span><i style="border-color:#e6edf3;border-top-style:solid"></i>price</span>
+  <!-- Edge cluster: the actual decision/level outputs, grouped together instead
+       of scattered — Decision Engine + Line Fade default open, Bot Level Book
+       default collapsed (unvalidated star heuristic — kept on the page, minimised). -->
+  <div class="dr-sec" id="drTdeSec" data-seckey="tde">
+    <h3 class="help" title="A model that scores a trade at a level: given where price is, it says go or skip, how likely it is to work, and how big to go. Click a zone below then 'Decide' to try it. Honest ceiling: OOS calibration collapses to one ~55%-realized bucket — it barely separates good setups from bad ones. The one part of this research that DID show a real, OOS, cross-pair-consistent edge (fading WITH the prevailing USD trend, not against it) isn't wired into the score below — see the USD-trend banner on the Continuation vs Fade page for that piece.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Decision Engine snapshot</span>
+      <span class="chip warn" title="Honest health warning: this model's numbers are a hand-set starting guess, NOT yet proven on real outcomes. Treat it as a second opinion, not gospel.">UNCALIBRATED PRIOR</span>
+    </h3>
+    <div class="dr-sec-body">
+      <div class="muted" style="font-size:11px;margin-bottom:6px">The one validated finding from this research — fade <b>with</b> the prevailing USD trend, not against it — isn't in the score below yet. See <a href="continuation-fade-ticker.html" target="_blank">Continuation vs Fade</a> for that filter live.</div>
+      <div class="kv" id="drTdeKv"><span class="muted">loading…</span></div>
+      <div style="max-height:220px;overflow-y:auto;margin-top:10px">
+        <table id="drZones" style="display:none">
+          <thead><tr><th>Zone</th><th>Dist</th><th>Confluence</th><th>Sources</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="decide-out" id="decideOut">
+        <span class="big" id="decideBig"></span>
+        <span class="muted" id="decideMeta" style="margin-left:10px"></span>
+        <ul class="factors" id="decideFactors"></ul>
+      </div>
+      <div class="err" id="drTdeErr" style="margin-top:6px"></div>
     </div>
   </div>
 
-  <div class="dr-sec" id="drHitsSec" style="display:none">
+  <div class="dr-sec" id="drHitsSec" data-seckey="hits" style="display:none">
     <h3 class="help" title="For each forecast line (O-H/O-L median & 75th), how far price fades back from the line and how often it blows straight through — split by which tap it is (1st / 2nd / 3rd+). A rising blow-through% by the 3rd tap means the line has stopped holding: fade the 1st touch, stand aside by the 3rd.">
-      Line fade by hit <span class="muted" id="drHitsNote"></span>
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Line fade by hit</span> <span class="muted" id="drHitsNote"></span>
       <span style="float:right;font-weight:400;font-size:12px">
         <button class="hits-tgl" id="drHitsDaily" onclick="setHitsHorizon('daily')">Daily</button><button class="hits-tgl" id="drHitsWeekly" onclick="setHitsHorizon('weekly')">Weekly</button>
-        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:#0d1117;color:#e6edf3;border:1px solid #30363d;border-radius:5px;padding:2px 4px"></select>
+        <select id="drHitsRegime" onchange="renderDrawerHits()" style="margin-left:8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 4px"></select>
       </span>
     </h3>
-    <div id="drHits"><span class="muted">loading…</span></div>
-    <div class="muted" id="drHitsTakeaway" style="margin-top:6px"></div>
+    <div class="dr-sec-body">
+      <div id="drHits"><span class="muted">loading…</span></div>
+      <div class="muted" id="drHitsTakeaway" style="margin-top:6px"></div>
+    </div>
   </div>
 
-  <div class="dr-sec">
-    <h3 class="help" title="A model that scores a trade at a level: given where price is, it says go or skip, how likely it is to work, and how big to go. Click a zone below then 'Decide' to try it.">Decision Engine snapshot <span class="chip warn" title="Honest health warning: this model's numbers are a hand-set starting guess, NOT yet proven on real outcomes. Treat it as a second opinion, not gospel.">UNCALIBRATED PRIOR</span></h3>
-    <div class="kv" id="drTdeKv"><span class="muted">loading…</span></div>
-    <div style="max-height:220px;overflow-y:auto;margin-top:10px">
-      <table id="drZones" style="display:none">
-        <thead><tr><th>Zone</th><th>Dist</th><th>Confluence</th><th>Sources</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
+  <div class="dr-sec" id="drLevelsSec" data-seckey="levels">
+    <h3 class="help" title="The live bot's own price-level book, star-rated by structural confluence (tight fib, cross-session agreement, density, pivot match). Hand-set additive rating — NOT fitted, and not yet checked against real outcomes (a falsification tool exists — rank-ic.html's 'Live entry scores' — but no recorded verdict yet). Treat stars as 'more structural agreement here', not 'proven higher win rate'.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Bot level book (stars)</span>
+      <span class="chip warn" style="font-size:9px">unvalidated heuristic</span>
+    </h3>
+    <div class="dr-sec-body">
+      <div style="max-height:240px;overflow-y:auto">
+        <table id="drLevels" style="display:none">
+          <thead><tr><th>Price</th><th>Dir</th><th>Stars</th><th>Tags</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted" id="drLevelsNote"></div>
     </div>
-    <div class="decide-out" id="decideOut">
-      <span class="big" id="decideBig"></span>
-      <span class="muted" id="decideMeta" style="margin-left:10px"></span>
-      <ul class="factors" id="decideFactors"></ul>
-    </div>
-    <div class="err" id="drTdeErr" style="margin-top:6px"></div>
   </div>
 
-  <div class="dr-sec">
-    <h3>Bot level book (stars)</h3>
-    <div style="max-height:240px;overflow-y:auto">
-      <table id="drLevels" style="display:none">
-        <thead><tr><th>Price</th><th>Dir</th><th>Stars</th><th>Tags</th></tr></thead>
-        <tbody></tbody>
-      </table>
+  <div class="dr-sec" id="drChartSec" data-seckey="chart">
+    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
+    <div class="dr-sec-body">
+      <div id="drChart"></div>
+      <div class="legend">
+        <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
+        <span><i style="border-color:#4f7df0"></i>O-H / O-L 75th</span>
+        <span><i style="border-color:#fbbf24"></i>day high / low</span>
+        <span><i style="border-color:var(--text);border-top-style:solid"></i>price</span>
+      </div>
     </div>
-    <div class="muted" id="drLevelsNote"></div>
+  </div>
+
+  <!-- Context cluster: real content, open by default, but not the headline. -->
+  <div class="dr-sec" id="drRatesSec" data-seckey="rates" style="display:none">
+    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Rates context (yield spread)</span></h3>
+    <div class="dr-sec-body"><div id="drRates"><span class="muted">loading…</span></div></div>
+  </div>
+
+  <div class="dr-sec" id="drConeSec" data-seckey="cone" style="display:none">
+    <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Volatility cone — is vol building or cooling?</span></h3>
+    <div class="dr-sec-body"><div id="drCone"></div></div>
+  </div>
+
+  <div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
+    <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
+    <div class="dr-sec-body"><div id="drPath"></div></div>
+  </div>
+
+  <!-- Secondary: default collapsed — lower-signal-per-scroll-inch than everything above. -->
+  <div class="dr-sec" id="drNewsSec" data-seckey="news" style="display:none">
+    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today's news for this pair</span></h3>
+    <div class="dr-sec-body"><div id="drNews"></div></div>
+  </div>
+
+  <div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
+    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Correlations, hedges &amp; beta</span></h3>
+    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
   </div>
 </div>
 
@@ -591,6 +816,35 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const fmtN = (v, dp) => v == null ? '–' : Number(v).toFixed(dp);
+// Reads a theme variable's CURRENT value (light or dark, whichever body.light
+// says right now) — for the one place CSS can't reach: colors baked into the
+// Lightweight Charts canvas at creation time (textColor, grid lines).
+const _cssVar = name => getComputedStyle(document.body).getPropertyValue(name).trim();
+
+// Theme toggle. The class itself is applied as early as possible (a tiny
+// inline script right after <body>, before this file even loads) so there's
+// no flash of the wrong theme on page load — this just handles the click.
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  try { localStorage.setItem('macrofx_theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  const btn = $('themeToggleBtn');
+  if (btn) btn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+  // Chart colors are baked into the canvas at creation time (LWC has no CSS
+  // hook) — re-tint whatever's open right now instead of waiting for the
+  // next drawer open to pick up the new palette.
+  if (drChart) {
+    try {
+      drChart.applyOptions({
+        layout: { textColor: _cssVar('--text2') },
+        grid: { vertLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` }, horzLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` } },
+      });
+    } catch (e) {}
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = $('themeToggleBtn');
+  if (btn) btn.textContent = document.body.classList.contains('light') ? '🌙 Dark' : '☀️ Light';
+});
 
 // Map daily-brief instrument NAME → TDE pair key + /api/levels key + display label
 const META = {
@@ -668,6 +922,8 @@ function pairImpactLine(e, name) {
 let brief = null;        // /api/daily-brief
 let session = null;      // /api/vol-forecast/session (live range used, bias)
 let forecast = null;     // /api/vol-forecast (oc/vov extras)
+let analogml = null;     // /api/analogml/motif-state — live N-touches-of-a-level structural motif diagnostic per pair (research, not a validated signal — see AnalogML/README.md). Replaces the retired k-NN shape-match diagnostic (banked null 2026-08-12).
+let sessionResearch = null; // /api/session-research/summary — 10-year Asia/London/overlap/NY session-handoff, day-flow, walk-forward-model, and impulse-reversal research per pair (validated with a circular-shift null + pooled FDR correction; research context, NOT a live signal — see SessionResearch/README.md).
 let events = null;       // /api/events — today's economic calendar (zoom 0)
 let fred = null;         // /api/fred — VIX/HY/DXY risk state (zoom 0)
 let sessionStats = null; // /api/session-stats — typical Asia/London/NY ranges (story)
@@ -679,13 +935,206 @@ let openDrawerCcy = null; // which ccy's drawer is currently open — guards the
 let weekly = null;       // /api/vol-forecast/weekly — week-to-date range consumption
 let oiStore = null;      // KV oi_store — CME options OI per pair (manual, stale-prone)
 let oiHistory = null;    // /api/oi-history — per-pair day-over-day deltas (walls firming/fading, flow)
+let oiToday = null;      // /api/oi-today — EVERY OI level with its readings (expectation, gamma
+                         // heat, calibrated P(touch), tier, DTE) + the basis and its age. oiStore
+                         // alone carries only the three headline strikes, which is enough to NAME
+                         // a level and not enough to say anything about it.
 let hedgeAlerts = null;  // /api/hedge-alerts — last rolling corr + betas (dollar/rates/risk)
+let ism = null;          // /api/ism — growth-surprise proxy per currency (js/ismEngine.js: real composite for USD only; the other 7 are an OECD business-confidence proxy, explicitly NOT official PMI — see that file's header)
+let gpr = null;          // /api/gpr — Geopolitical Risk Index (Caldara & Iacoviello), global/currency-agnostic backdrop read; the one series here NOT on FRED (js/gprEngine.js)
 let macroMoved = null;   // /api/macro-changes — per-series 1d/5d/20d change rows (what moved)
 let riskFlags = null;    // /api/risk-flags — cross-asset risk-flag composite (zoom 0)
 let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percentiles
+let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
+let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
+// MVE fair-value context (6 supported instruments only, /api/mve/:sym).
+// This project's OWN backtest found the underlying signal null-to-negative
+// for NQ and weak/null for the FX legs (js/mve/*, MARKET_VALUATION_ENGINE.md)
+// — kept as a clearly-labeled READ-ONLY context chip, same posture the
+// codebase already takes on it everywhere else. Deliberately NEVER folded
+// into pairSignalComposite/pairComposite's agree/total count — that would
+// quietly inflate "signals agreeing" with one this project already knows
+// doesn't work.
+const MVE_SYM = { GOLD: 'XAUUSD', EURUSD: 'EURUSD', GBPUSD: 'GBPUSD', USDJPY: 'USDJPY', AUDUSD: 'AUDUSD', NQ: 'NQ' };
+let mveData = {};
+async function loadMve() {
+  const entries = await Promise.all(Object.entries(MVE_SYM).map(async ([name, sym]) => {
+    try { const r = await jget(`/api/mve/${sym}`); return [name, r?.ok ? r : null]; } catch (e) { return [name, null]; }
+  }));
+  mveData = Object.fromEntries(entries);
+}
+function mveChip(r) {
+  const v = mveData[r.name];
+  if (!v || v.signal == null || v.signal === 'none') return '';
+  const z = v.mispricing?.z;
+  const cls = v.signal === 'cheap' ? 'bull' : 'bear';
+  return `<span class="chip ${cls}" title="Macro fair-value read (this pair's own rate-differential/real-yield drivers) — ${z != null ? `${Math.abs(z).toFixed(1)}σ ` : ''}${v.signal} vs its modeled fair value, confidence ${v.confidence != null ? Math.round(v.confidence * 100) + '%' : '—'}. This project's OWN backtest found this signal tested null-to-negative — shown as read-only context, not a lean.">◆ MVE ${v.signal}${z != null ? ` ${z > 0 ? '+' : ''}${z.toFixed(1)}σ` : ''}</span>`;
+}
+// ── Commodity driver chip (WTI crude → CAD only) ─────────────────────────────
+// Oil is CAD's most established commodity-currency link. AUD's traditional
+// driver is iron ore and NZD's is dairy (GDT auction prices) — neither is
+// anywhere in this repo's data, so those are deliberately left unbuilt rather
+// than forced onto a weak platinum/gold stand-in (see the gap-audit that
+// scoped this — a genuinely new data source, not a quick win). One boot-time
+// fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
+// oil is context here, not a tradeable card, so it doesn't need to tick live.
+let commodityDrivers = null;
+async function loadCommodityDrivers() {
+  try {
+    const [q, oh] = await Promise.all([
+      jget('/api/quote?symbol=WTICO_USD'),
+      jget('/api/ohlc?symbol=WTICO_USD'),
+    ]);
+    const prevClose = oh?.values?.at(-1)?.close;
+    const wkAgoPrice = oh?.values?.at(-6)?.close ?? null;   // ~5 trading days back
+    if (q?.price != null && prevClose) {
+      const hist = (oh.values ?? []).slice(-15).map(v => v.close);
+      hist.push(q.price);   // append today's live price so the sparkline reflects the current tick
+      commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist } };
+    }
+  } catch (e) {}
+}
+function commodityChip(r) {
+  const wti = commodityDrivers?.wti;
+  if (!wti || !PAIR_CCY[r.name]?.includes('CAD')) return '';
+  const up = wti.pct > 0.15, dn = wti.pct < -0.15;
+  if (!up && !dn) return '';
+  const cls = up ? 'bull' : 'bear';
+  return `<span class="chip ${cls}" title="WTI crude ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% vs yesterday's close ($${wti.prevClose.toFixed(2)} → $${wti.price.toFixed(2)}). Oil is CAD's most established commodity driver — context, not a rule; this pair's own technicals/COT/macro/carry still lead.">🛢 WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}% (CAD ${up ? 'tailwind' : 'headwind'})</span>`;
+}
+
+// ── Top stat-card row (US 10Y / DXY / VIX / Oil) — every input here was
+// already loaded elsewhere on this page (fred, fredHist, commodityDrivers);
+// this is pure render-layer work, no new fetches beyond the FREDHIST_KEYS
+// 'dxy' addition and loadCommodityDrivers()'s existing history capture.
+function sparklinePoints(vals, w = 200, h = 36) {
+  const clean = (vals ?? []).filter(Number.isFinite);
+  if (clean.length < 2) return null;
+  const lo = Math.min(...clean), hi = Math.max(...clean);
+  const span = hi - lo || Math.abs(lo) * 0.001 || 1;
+  const step = w / (clean.length - 1);
+  return clean.map((v, i) => `${(i * step).toFixed(1)},${(h - (v - lo) / span * h).toFixed(1)}`).join(' ');
+}
+function statCardHtml(lbl, big, deltaTxt, deltaUp, sparkVals, sparkUp, wkTxt, wkUp, tabsHtml) {
+  const pts = sparklinePoints(sparkVals);
+  return `<div class="statcard">
+    ${tabsHtml ?? ''}
+    <div class="lbl">${lbl}</div>
+    <div class="row1"><span class="big">${big}</span>${deltaTxt != null ? `<span class="sdelta ${deltaUp ? 'up' : 'dn'}">${deltaTxt}</span>` : ''}</div>
+    ${pts ? `<svg class="spark" viewBox="0 0 200 36" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${sparkUp ? 'var(--bull)' : 'var(--bear)'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>` : '<div class="spark"></div>'}
+    ${wkTxt != null ? `<div class="swk">1W <b class="${wkUp ? 'up' : 'dn'}">${wkTxt}</b></div>` : ''}
+  </div>`;
+}
+// Rate stat-card pip — 10Y / 2Y / 2s10s share one card slot so the top row
+// doesn't grow a 5th card just for the curve; state persists across reloads.
+let rateStatTab = (() => { try { return localStorage.getItem('rateStatTab') || 'us10y'; } catch (e) { return 'us10y'; } })();
+function setRateStatTab(id) {
+  rateStatTab = id;
+  try { localStorage.setItem('rateStatTab', id); } catch (e) {}
+  renderStatRow();
+}
+function rateStatTabsHtml() {
+  const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s']];
+  return `<div class="stat-tabs">${tabs.map(([id, lbl]) =>
+    `<button class="stat-tab${rateStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setRateStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
+}
+function renderStatRow() {
+  const el = $('statRow');
+  const us10y = fred?.us10y, us2y = fred?.us2y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
+  if (!us10y?.value && !dxy?.value && !vix?.value && !wti) { el.style.display = 'none'; return; }
+  const cards = [];
+
+  if (rateStatTab === 'us2y' && us2y?.value != null) {
+    const dBps = us2y.prev != null ? (us2y.value - us2y.prev) * 100 : null;
+    const hist = (fredHist?.us2y ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wkBps = wkAgo != null ? (us2y.value - wkAgo) * 100 : null;
+    cards.push(statCardHtml('US 2Y Yield', `${us2y.value.toFixed(2)}%`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      hist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  } else if (rateStatTab === 'spread' && us10y?.value != null && us2y?.value != null) {
+    const spreadBps = (us10y.value - us2y.value) * 100;
+    const dBps = (us10y.prev != null && us2y.prev != null) ? spreadBps - (us10y.prev - us2y.prev) * 100 : null;
+    const h10 = (fredHist?.us10y ?? []).map(p => p.value), h2 = (fredHist?.us2y ?? []).map(p => p.value);
+    const n = Math.min(h10.length, h2.length);
+    const spreadHist = n ? h10.slice(-n).map((v, i) => (v - h2.slice(-n)[i]) * 100) : [];
+    const wkAgo = spreadHist.length >= 6 ? spreadHist[spreadHist.length - 6] : null;
+    const wkBps = wkAgo != null ? spreadBps - wkAgo : null;
+    cards.push(statCardHtml('2s10s Spread', `${spreadBps >= 0 ? '+' : ''}${spreadBps.toFixed(0)} bps`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      spreadHist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  } else if (us10y?.value != null) {
+    const dBps = us10y.prev != null ? (us10y.value - us10y.prev) * 100 : null;
+    const hist = (fredHist?.us10y ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wkBps = wkAgo != null ? (us10y.value - wkAgo) * 100 : null;
+    cards.push(statCardHtml('US 10Y Yield', `${us10y.value.toFixed(2)}%`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      hist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  }
+
+  if (dxy?.value != null) {
+    const dPct = dxy.prev != null ? (dxy.value - dxy.prev) / dxy.prev * 100 : null;
+    const hist = (fredHist?.dxy ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wkPct = wkAgo != null ? (dxy.value - wkAgo) / wkAgo * 100 : null;
+    cards.push(statCardHtml('DXY Index', dxy.value.toFixed(2),
+      dPct != null ? `${dPct >= 0 ? '+' : ''}${dPct.toFixed(2)}%` : null, dPct == null || dPct >= 0,
+      hist, wkPct == null || wkPct >= 0,
+      wkPct != null ? `${wkPct >= 0 ? '+' : ''}${wkPct.toFixed(2)}%` : null, wkPct == null || wkPct >= 0));
+  }
+
+  if (vix?.value != null) {
+    const d = vix.prev != null ? (vix.value - vix.prev) : null;
+    const hist = (fredHist?.vix ?? []).map(p => p.value);
+    const wkAgo = hist.length >= 6 ? hist[hist.length - 6] : null;
+    const wk = wkAgo != null ? (vix.value - wkAgo) : null;
+    cards.push(statCardHtml('VIX Index', vix.value.toFixed(2),
+      d != null ? `${d >= 0 ? '+' : ''}${d.toFixed(2)}` : null, d == null || d >= 0,
+      hist, wk == null || wk >= 0,
+      wk != null ? `${wk >= 0 ? '+' : ''}${wk.toFixed(2)}` : null, wk == null || wk >= 0));
+  }
+
+  if (wti) {
+    const wkPct = wti.wkAgoPrice ? (wti.price - wti.wkAgoPrice) / wti.wkAgoPrice * 100 : null;
+    cards.push(statCardHtml('Oil (WTI)', `$${wti.price.toFixed(2)}`,
+      `${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(2)}`, wti.pct >= 0,
+      wti.hist, wkPct == null || wkPct >= 0,
+      wkPct != null ? `${wkPct >= 0 ? '+' : ''}${wkPct.toFixed(2)}%` : null, wkPct == null || wkPct >= 0));
+  }
+
+  el.style.display = cards.length ? 'grid' : 'none';
+  el.innerHTML = cards.join('');
+}
+// ── SessionResearch chip: 10-year Asia/London/overlap/NY session-handoff research ──
+// Deliberately shows only TIMELESS structural findings (range persistence,
+// validated spike-reversal boundaries) here, never the today_outlook numbers —
+// those are computed from this sandbox's frozen data snapshot (see
+// SessionResearch/README.md's OANDA-refresh caveat) and would read as a live
+// call on a live dashboard if surfaced on the card itself. The AI analysis
+// drawer DOES include today_outlook, with that caveat spelled out inline.
+function sessionResearchChip(r) {
+  const sr = sessionResearch?.[r.name.toLowerCase()];
+  if (!sr) return '';
+  const rh = sr.range_handoff;
+  const spikes = Object.entries(sr.spike_reversal || {}).filter(([, v]) => v.bh_pass);
+  if (!rh && !spikes.length) return '';
+  const parts = [];
+  if (rh) parts.push(`range persists ${rh.strongest_pair} (ρ ${rh.strongest_rho})`);
+  if (spikes.length) parts.push(`${spikes.length} pre-open spike-reversal boundar${spikes.length === 1 ? 'y' : 'ies'} validated (${spikes.map(([b]) => b).join(', ')})`);
+  const title = `Session research (10-year backtest for this pair — every finding survived a circular-shift null + pooled FDR correction; research context, NOT a live signal): ${parts.join('; ')}. Direction does not reliably carry from one session to the next for this pair. Full detail in the AI analysis drawer; methodology in SessionResearch/README.md.`;
+  return `<span class="chip neu" title="${title}">◷ session research</span>`;
+}
+
 const aiCache = {};      // per-pair cached AI TLDR, lazily fetched in the drawer
 let filter = 'all';
-let tableMode = false;
+let viewMode = 'card';   // 'card' | 'table' | 'scorecard' — cycled by toggleView()
 
 async function jget(url) {
   const r = await fetch(url);
@@ -695,12 +1144,16 @@ async function jget(url) {
 
 async function loadAll(manual) {
   try {
-    const [b, s, f] = await Promise.all([
+    const [b, s, f, a, sr] = await Promise.all([
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
+      jget('/api/analogml/motif-state').catch(() => null),
+      jget('/api/session-research/summary').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
+    analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
+    sessionResearch = sr?.ok ? Object.fromEntries((sr.pairs ?? []).map(p => [p.pair, p])) : null;
     if (!b?.ok) {
       $('grid').innerHTML = `<div class="err">Daily brief unavailable: ${b?.error ?? 'no data'} — the forecast may still be computing, or OANDA/R2 keys are missing in this environment.</div>`;
       return;
@@ -715,90 +1168,108 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, wk, ha, rf, cv, oh, mc] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
     jget('/api/cot-extremes').catch(() => null),
     jget('/api/kv/get?key=oi_store').catch(() => null),
+    jget('/api/oi-today').catch(() => null),   // server-side Monte-Carlo, cached 5min
     jget('/api/vol-forecast/weekly').catch(() => null),
     jget('/api/hedge-alerts').catch(() => null),
     jget('/api/risk-flags').catch(() => null),
     jget('/api/cvol').catch(() => null),
     jget('/api/oi-history').catch(() => null),
     jget('/api/macro-changes').catch(() => null),
+    jget('/api/macro-scorecard').catch(() => null),
+    jget('/api/credit-quality').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
   if (ss?.instruments) sessionStats = ss;
   if (ct?.instruments) cot = Object.fromEntries(ct.instruments.map(i => [i.sym, i]));
   if (oi && !oi.miss) oiStore = oi.data ?? oi;
+  // Keyed by pair for O(1) lookup from oiFor(); null when the endpoint is cold or
+  // OANDA is unavailable, and every consumer degrades to the headline-only view.
+  if (oiT?.ok && Array.isArray(oiT.pairs)) oiToday = Object.fromEntries(oiT.pairs.map(p => [p.pair, p]));
   if (oh?.ok && oh.pairs) oiHistory = oh.pairs;
   if (wk?.ok && wk.instruments) weekly = wk;
   if (ha?.last_corr || ha?.last_betas) hedgeAlerts = ha;
   if (rf?.ok) riskFlags = rf;
   if (cv?.ok) cvol = cv;
   if (mc?.ok && mc.rows) macroMoved = mc.rows;
+  if (msc?.ok) macroScorecard = msc;
+  if (cq?.ok) creditQuality = cq;
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
+  loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
+  jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
+  loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
+  jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   renderGate(); renderRiskFlags(); renderMacroMoved(); renderNewsPlay(); renderSummary(); render();
 }
 
 // ── Cross-asset risk flags + implied vol strip ───────────────────────────────
 // Condition readings, not signals: how hostile is the whole tape today, and
 // what the options market (EVZ/GVZ) is paying vs our realized σ.
+// Lives in the sidebar's "Risk State" card (#riskList) — moved off the main
+// column's #riskflags chip strip into a compact level badge + checklist.
 function renderRiskFlags() {
-  const el = $('riskflags');
-  if (!riskFlags?.flags) { el.style.display = 'none'; return; }
+  const el = $('riskList');
+  if (!el) return;
+  if (!riskFlags?.flags) { el.innerHTML = '<div class="muted">No risk-flag data yet.</div>'; return; }
   const lvl = riskFlags.level;
-  const lvlChip = lvl === 'RISK_OFF'
-    ? `<span class="gev hi" style="border-color:rgba(220,80,80,.7)"><b style="color:var(--red,#e06c75)">RISK-OFF</b> ${riskFlags.active}/${riskFlags.available} flags</span>`
-    : lvl === 'CAUTION'
-    ? `<span class="gev hi"><b style="color:var(--amber)">CAUTION</b> ${riskFlags.active}/${riskFlags.available} flags</span>`
-    : `<span class="gev"><b style="color:var(--green,#7ec699)">CALM</b> ${riskFlags.active}/${riskFlags.available} flags</span>`;
-  const flagChips = riskFlags.flags.filter(f => f.on != null).map(f =>
-    `<span class="gev ${f.on ? 'hi' : ''}" style="${f.on ? '' : 'opacity:.45'}" title="${f.detail}${f.on ? '' : ' — not flagging'}">${f.on ? '⚠' : '·'} ${f.label}</span>`).join('');
-  // Implied vol chips — only the two instruments with a real CBOE index.
-  const ivChip = (sid, label, fcName) => {
+  const badgeCls = lvl === 'RISK_OFF' ? 'off' : lvl === 'CAUTION' ? 'caution' : 'calm';
+  const badgeTxt = lvl === 'RISK_OFF' ? 'RISK-OFF' : lvl === 'CAUTION' ? 'CAUTION' : 'CALM';
+  const levelHtml = `<div class="rs-level" title="${esc0(riskFlags.note ?? '')}"><span class="rs-badge ${badgeCls}">${badgeTxt}</span><span class="muted">${riskFlags.active}/${riskFlags.available} flags active</span></div>`;
+  const flagRows = riskFlags.flags.filter(f => f.on != null).map(f =>
+    `<div class="rs-flag ${f.on ? 'on' : ''}" title="${esc0(f.detail)}${f.on ? '' : ' — not flagging'}"><span class="rs-ic">${f.on ? '⚠' : '·'}</span><span>${esc0(f.label)}</span></div>`).join('');
+  // Implied vol rows — only the two instruments with a real CBOE index.
+  const ivRow = (sid, label, fcName) => {
     const iv = cvol?.levels?.[sid], pc = cvol?.pct?.[sid];
     if (iv == null) return '';
     const rlz = forecast?.instruments?.[fcName]?.vol_annual;
-    const cmp = rlz != null ? (iv >= rlz ? ` · IV>${rlz.toFixed(1)}% rlzd (options paying up)` : ` · IV<${rlz.toFixed(1)}% rlzd (options cheap)`) : '';
-    return `<span class="gev" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast.">${label} IV <b>${iv}</b> P${pc != null ? Math.round(pc) : '?'}${cmp}</span>`;
+    const cmp = rlz != null ? (iv >= rlz ? 'options paying up' : 'options cheap') : '';
+    return `<div class="rs-iv" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast."><span>${esc0(label)} IV</span><b>${iv} · P${pc != null ? Math.round(pc) : '?'}${cmp ? ` · ${cmp}` : ''}</b></div>`;
   };
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="glbl" title="${riskFlags.note ?? ''}">Risk state</span>` +
-    lvlChip + flagChips + ivChip('EVZCLS', 'EUR', 'EURUSD') + ivChip('GVZCLS', 'Gold', 'GOLD');
+  el.innerHTML = levelHtml + flagRows + ivRow('EVZCLS', 'EUR', 'EURUSD') + ivRow('GVZCLS', 'Gold', 'GOLD');
 }
 
 // ── What moved — per-series macro change (today / 1w / 1m) ────────────────────
 // Directional deltas on the tracked macro series so you can see what's SHIFTING,
 // not just today's level. Fed to the AI briefs too (same /api/macro-changes).
+// Lives in the sidebar (#moveList) as a compact arrow+value row list instead of
+// a dense inline-wrapped text stream in the main column — same data, easier to
+// scan. Colour is only applied to credit spreads (widening/tightening has an
+// unambiguous risk-off/risk-on read); rate/curve/flow arrows stay neutral,
+// since "up" isn't inherently bullish or bearish for those on its own.
 function renderMacroMoved() {
-  const el = $('macroMoved');
-  if (!macroMoved?.length) { el.style.display = 'none'; return; }
-  const win = { 1: '1d', 5: '5d', 20: '20d' };
-  // Colour by TODAY's move; for credit spreads, widening (up) is the risk-off tint.
-  const tint = (v, spread) => v == null || v === 0 ? 'var(--text3,#64748b)'
-    : (spread ? (v > 0 ? 'var(--red,#e06c75)' : 'var(--green,#7ec699)')
-             : (v > 0 ? 'var(--text,#e2e8f0)' : 'var(--text,#e2e8f0)'));
-  const chips = macroMoved.map(r => {
+  const el = $('moveList');
+  if (!el) return;
+  if (!macroMoved?.length) { el.innerHTML = '<div class="muted">No macro-change data yet.</div>'; return; }
+  const dCls = (v, spread) => v == null || v === 0 ? 'flat' : (spread ? (v > 0 ? 'dn' : 'up') : 'neu');
+  const dArrow = v => v == null ? '–' : v > 0 ? '▲' : v < 0 ? '▼' : '–';
+  const dTxt = v => v != null ? `${v > 0 ? '+' : ''}${v}` : '–';
+  el.innerHTML = macroMoved.map(r => {
     const spread = r.kind === 'spread';
-    const d1 = r.deltas?.[1];
-    const arrow = d1 == null ? '' : d1 > 0 ? '↑' : d1 < 0 ? '↓' : '→';
-    const parts = [1, 5, 20].map(n => {
-      const v = r.deltas?.[n];
-      if (v == null) return '';
-      return `<span style="color:${tint(v, spread)}">${win[n]} ${v > 0 ? '+' : ''}${v}${r.unit}</span>`;
-    }).filter(Boolean).join(' · ');
+    const d1 = r.deltas?.[1], d5 = r.deltas?.[5], d20 = r.deltas?.[20];
     const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
       : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
       : r.kind === 'curve' ? `${Math.round(r.last)}bps`
       : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
-    const title = `${r.label}: now ${lastFmt}. Change vs prior day / week / month.${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
-    return `<span class="gev" title="${title}"><b>${r.label}</b> ${lastFmt} <span style="color:${tint(d1, spread)}">${arrow}</span> <span style="opacity:.8">${parts}</span>${r.note ? ` <i style="opacity:.7">${r.note}</i>` : ''}</span>`;
+    // Flag when today's move runs counter to the week's — a same-day arrow
+    // can read as a bigger deal than it is if it's actually just a blip
+    // inside a larger multi-day move the other way (or vice versa).
+    const diverges = d1 != null && d5 != null && d1 !== 0 && d5 !== 0 && Math.sign(d1) !== Math.sign(d5);
+    const blip = diverges ? `<span class="mv-blip" title="Today's move (${dTxt(d1)}${r.unit}) runs against the week's direction (${dTxt(d5)}${r.unit}) — could be a blip inside the larger move, not a reversal of it.">⟲</span>` : '';
+    const title = `${r.label}: now ${lastFmt}.${d1 != null ? ` 1d ${dTxt(d1)}${r.unit}` : ''}${d5 != null ? ` · 5d ${dTxt(d5)}${r.unit}` : ''}${d20 != null ? ` · 20d ${dTxt(d20)}${r.unit}` : ''}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
+    return `<div class="move-row" title="${title}">
+      <div class="mv-top"><span class="mv-lbl">${esc0(r.label)}</span><span class="mv-now">${lastFmt}</span></div>
+      <div class="mv-deltas">
+        <span class="mv-d"><i>1d</i><b class="mv-arrow ${dCls(d1, spread)}">${dArrow(d1)} ${esc0(dTxt(d1))}${r.unit}</b>${blip}</span>
+        <span class="mv-d"><i>5d</i><b class="mv-arrow ${dCls(d5, spread)}">${dArrow(d5)} ${esc0(dTxt(d5))}${r.unit}</b></span>
+      </div>
+    </div>`;
   }).join('');
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="glbl" title="Day-over-day / 1-week / 1-month change on the macro series we track. What's shifting, not just the level.">What moved</span>` + chips;
 }
 
 // ── Credit gate — corporate-spread risk appetite, the market's early warning ──
@@ -818,6 +1289,32 @@ function creditGate() {
     accel: f.accel, daysInRegime: f.daysInRegime, aboveAvg: f.aboveAvg,
     qNow: f.quality, qDir: f.qualityDir, wideningBps: f.wideningBps,
     widening: f.widening, gate: f.gate, cls: f.cls, stressedLvl: f.stressedLvl };
+}
+
+// ── Liquidity Gate — Fed/ECB/BoJ balance-sheet momentum vs VIX ──────────────
+// Delegates to the shared brick js/liquidityGateEngine.js (loaded as a
+// module → window.liquidityGateBrick, same pattern as window.creditBrick).
+// The Fed leg nets WALCL−TGA−RRP directly (all USD, safe to net); ECB and
+// BoJ are scored independently in their own currency and combined by SIGN
+// AGREEMENT via the shared pairCompositeEngine brick, never summed
+// cross-currency — see liquidityGateEngine.js's header for why (the
+// existing dormant COG Liquidity Gate tried netting USD+EUR+JPY directly
+// and is flagged with an unresolved units bug). Context, not a backtested
+// rule — same posture as the credit gate above.
+function liquidityGateRead() {
+  if (!fredHist || !window.liquidityGateBrick || !window.pairCompositeBrick) return null;
+  const L = window.liquidityGateBrick;
+  const fed = L.fedNetLiquidityLeg(fredHist.walcl, fredHist.tga, fredHist.rrp);
+  const ecb = L.cbLiquidityLeg(fredHist.ecb_assets);
+  const boj = L.cbLiquidityLeg(fredHist.boj_assets);
+  const comp = window.pairCompositeBrick.pairComposite({
+    fed: { score: fed.score, label: 'Fed (WALCL−TGA−RRP)' },
+    ecb: { score: ecb.score, label: 'ECB balance sheet' },
+    boj: { score: boj.score, label: 'BoJ balance sheet' },
+  });
+  if (comp.score == null) return null;
+  const vixNote = L.liquidityVixNote(comp.score, fred?.vix?.value, fred?.vix?.prev);
+  return { ...comp, fed, ecb, boj, vixNote };
 }
 
 // ── Today's news playbook — what happens if it beats / matches / misses ──────
@@ -976,8 +1473,12 @@ function riskLight() {
     detail: `VIX ${fmtN(vix, 1)}${d(vix, fred?.vix?.prev)} · HY ${fmtN(hy, 2)}${d(hy, fred?.hy?.prev)}${fred?.dxy?.value != null ? ` · DXY ${fmtN(fred.dxy.value, 1)}${d(fred.dxy.value, fred.dxy.prev)}` : ''}` };
 }
 
+// Lives in the sidebar's "Today's Calendar" card (#calList) — moved off the
+// main column's #gate chip strip into a compact row list with a flag icon
+// per event and a live countdown badge on the next release.
 function renderGate() {
-  const el = $('gate');
+  const el = $('calList');
+  if (!el) return;
   const todayStr = new Date().toISOString().slice(0, 10);
   const evs = (events ?? [])
     .filter(e => (e.time ?? '').startsWith(todayStr) && GATE_COUNTRIES.has(e.country))
@@ -985,20 +1486,20 @@ function renderGate() {
     .sort((a, b) => a.ts - b.ts);
   const his = evs.filter(e => (e.impact ?? '').toLowerCase() === 'high');
   const medCount = evs.filter(e => (e.impact ?? '').toLowerCase() === 'medium').length;
-  if (!his.length && !medCount) { el.style.display = 'none'; return; }
+  if (!his.length && !medCount) { el.innerHTML = '<div class="muted">No high/medium-impact releases today.</div>'; return; }
   const now = Date.now();
   const nextIdx = his.findIndex(e => e.ts > now);
   const hh = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="glbl">Today's calendar</span>` +
-    his.map((e, i) => {
-      const mins = Math.round((e.ts - now) / 60000);
-      const cls = e.ts < now ? 'gev hi past' : i === nextIdx ? 'gev hi next' : 'gev hi';
-      return `<span class="${cls}" title="${e.event}${e.estimate != null ? ` · est ${e.estimate}` : ''}${e.prev != null ? ` · prev ${e.prev}` : ''}">
-        <span class="t">${hh(e.ts)}</span> ${e.country} · ${e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event}
-        ${i === nextIdx && mins < 600 ? `<span class="cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : ''}</span>`;
-    }).join('') +
-    (medCount ? `<span class="gev" style="opacity:.6">+${medCount} medium</span>` : '');
+  el.innerHTML = his.map((e, i) => {
+    const mins = Math.round((e.ts - now) / 60000);
+    const cls = e.ts < now ? 'cal-row past' : '';
+    const cd = i === nextIdx && mins < 600 ? `<span class="cal-cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : '';
+    return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · est ${esc0(e.estimate)}` : ''}${e.prev != null ? ` · prev ${esc0(e.prev)}` : ''}">
+      <span class="cal-t">${hh(e.ts)}</span>
+      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}</span>
+      ${cd}
+    </div>`;
+  }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '');
 }
 
 // ══ Daily-check zoom levels ══════════════════════════════════════════════════
@@ -1075,9 +1576,13 @@ function renderWeekly() {
 const _LDN_FMT = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false });
 function londonHour() { return parseInt(_LDN_FMT.format(new Date()), 10); }
 function currentSession() { const h = londonHour(); return h < 6 ? 'Asia' : h < 8 ? 'pre-London' : h < 13 ? 'London' : h < 21 ? 'US' : 'after-hours'; }
+// Appends into the sidebar's "Today's Calendar" card (#calWatch), below the
+// event rows — a 3-segment session timeline (which one historically carries
+// the most range, which one you're in right now) instead of prose alone.
 function renderWhenToWatch() {
-  const el = $('whenWatch');
-  if (!sessionStats?.instruments) { el.style.display = 'none'; return; }
+  const el = $('calWatch');
+  if (!el) return;
+  if (!sessionStats?.instruments) { el.innerHTML = ''; return; }
   // which session historically carries the most range, tallied across pairs
   const tally = { asia: 0, london: 0, ny: 0 };
   let n = 0;
@@ -1086,7 +1591,7 @@ function renderWhenToWatch() {
     if (cand.length < 2) continue;
     cand.sort((a, b) => b[1] - a[1]); tally[cand[0][0]]++; n++;
   }
-  if (!n) { el.style.display = 'none'; return; }
+  if (!n) { el.innerHTML = ''; return; }
   const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
   const bestTxt = best === 'asia' ? 'the Asia session (roughly midnight–6am UK)' : best === 'london' ? 'the London morning (roughly 8am–1pm UK)' : 'the US session / London-NY overlap (roughly 1pm–5pm UK)';
   const sess = currentSession();
@@ -1102,8 +1607,10 @@ function renderWhenToWatch() {
     const am = hrs.filter(h => h < 12).length, pm = hrs.length - am;
     newsTxt = ` Today's news lands mostly in the <b>${pm > am ? 'afternoon' : 'morning'}</b> (UK).`;
   }
-  el.style.display = 'flex';
-  el.innerHTML = `<span class="qk">When to watch</span><span class="qv">Most pairs make their biggest moves in <b>${bestTxt}</b>. Right now it's <b>${sessTxt}</b>.${newsTxt}</span>`;
+  const isNow = seg => (seg === 'asia' && sess === 'Asia') || (seg === 'london' && (sess === 'London' || sess === 'pre-London')) || (seg === 'ny' && sess === 'US');
+  const seg = (key, label) => `<div class="sess-seg${best === key ? ' best' : ''}${isNow(key) ? ' now' : ''}" title="${label}${best === key ? ' — historically the biggest-range session' : ''}${isNow(key) ? ' — happening now' : ''}">${label}</div>`;
+  el.innerHTML = `<div class="sess-timeline">${seg('asia', 'Asia')}${seg('london', 'London')}${seg('ny', 'US')}</div>` +
+    `<div class="cal-watch">Biggest moves usually happen in <b>${bestTxt}</b>. Right now it's <b>${sessTxt}</b>.${newsTxt}</div>`;
 }
 
 // ── ZOOM: concentration — today's themes & crowded trades ────────────────────
@@ -1186,6 +1693,24 @@ function currencyStrength(rs) {
   return out;
 }
 
+// Growth-surprise strength per currency, from js/ismEngine.js's `activity`
+// score (already loaded via /api/ism at boot — see loadAll()). Shown paired
+// with the FX-strength bars above so you can see whether price already
+// reflects the growth data or is lagging it. USD's score is a real composite
+// (industrial production + regional Fed surveys); the other 7 currencies are
+// an OECD business-confidence proxy — NOT official PMI (ismEngine.js header).
+function growthSurpriseRows() {
+  if (!ism?.byCcy) return [];
+  const out = [];
+  for (const c of CCY_ORDER) {
+    const a = ism.byCcy[c]?.activity;
+    if (a == null) continue;
+    out.push({ ccy: c, score: a });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out;
+}
+
 // Equities breadth + risk-on/off verdict (spans the indices).
 function equitiesRisk(rs) {
   const idx = rs.filter(r => r.d.ac === 'index');
@@ -1199,6 +1724,27 @@ function equitiesRisk(rs) {
   const goldRow = rs.find(r => r.name === 'GOLD');
   const goldSig = goldRow ? pairSignalGold(goldRow) : null;
   const vix = fred?.vix?.value ?? null, hy = fred?.hy?.value ?? null;
+  const vix3m = fred?.vix3m?.value ?? null;   // VIX term structure — contango (calm) vs backwardated (near-term fear), already loaded via /api/fred
+  // Real 10Y TIPS yield (DFII10) — a genuine FRED read, not derived. Rising real
+  // yields are typically a headwind for risk assets/gold; falling is supportive.
+  // Breakeven (T10YIE) shown alongside as inflation-expectation context. Both
+  // already loaded via /api/fred, just not previously surfaced on this page.
+  const realYield = fred?.tips?.value != null
+    ? { level: fred.tips.value, prev: fred.tips.prev ?? null, bei: fred?.bei?.value ?? null }
+    : null;
+  // Geopolitical Risk (Caldara & Iacoviello) — genuinely global, currency-
+  // agnostic backdrop, not derived from anything else already on this page.
+  // Already loaded via /api/gpr at boot (see loadAll()); gpr.z is a rolling
+  // z-score of the 30d-smoothed level vs its own trailing 2yr history.
+  // The source only republishes this file WEEKLY (Mondays, per the site's
+  // own note — shifts a day around federal holidays), so >~10 days since
+  // asOfDate means at least one weekly update was likely missed — a real
+  // "the pull may be broken" signal, not just an old-but-fine date.
+  let gprRead = gpr?.z != null ? gpr : null;
+  if (gprRead?.asOfDate) {
+    const daysStale = Math.floor((Date.now() - new Date(gprRead.asOfDate + 'T00:00:00Z').getTime()) / 86_400_000);
+    gprRead = { ...gprRead, daysStale, stale: daysStale > 10 };
+  }
   // Haven demand: JPY/CHF strong + gold bid; risk appetite: indices bid, vol low.
   const cs = currencyStrength(rs);
   const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
@@ -1206,6 +1752,24 @@ function equitiesRisk(rs) {
   const equity = idx.length ? (up - dn) / idx.length : 0;
   // Credit is a leading risk gate — widening/accelerating = stress ahead; tightening = all-clear.
   const cg = creditGate();
+  // Credit persistence (HMM) — is the current widening/tightening regime likely
+  // to continue, via js/creditHmm.js's creditRegime() — a principled
+  // self-transition-probability read, not a hand-drawn day-count. Built and
+  // tested but never wired to any live page (LEGO_MODULES.md flagged it
+  // "intended: today.html credit persistence term 🔲") — fredHist.hy is
+  // already loaded eagerly at boot (see getFredHist() in loadAll()).
+  if (cg && fredHist?.hy?.length >= 20 && window.creditHmmBrick) {
+    try {
+      const diffs = [];
+      for (let i = 1; i < fredHist.hy.length; i++) diffs.push(fredHist.hy[i].value - fredHist.hy[i - 1].value);
+      const reg = window.creditHmmBrick.creditRegime(diffs);
+      if (reg) {
+        cg.persistProb = Math.round(reg.persistence * 100);
+        cg.persistState = reg.curState;   // 'calm' | 'stress'
+        cg.expectedRemaining = Math.round(reg.expectedRemaining);
+      }
+    } catch (e) {}
+  }
   const creditStress = cg ? (cg.gate === 'RISK-OFF' ? 1 : cg.gate === 'CAUTION' ? 0.5 : 0) : 0;
   const creditEase   = cg && cg.gate === 'RISK-ON' ? 1 : 0;
   let tone, cls;
@@ -1214,7 +1778,19 @@ function equitiesRisk(rs) {
   else if (equity >= 0.34 && haven < 0.1 && !volStress && creditStress === 0) { tone = 'RISK-ON'; cls = 'on'; }
   else if (creditStress >= 1 && equity < 0.34) { tone = 'CAUTION (credit widening)'; cls = 'mix'; }
   else { tone = 'MIXED / two-way'; cls = 'mix'; }
-  return { chips, up, dn, tone, cls, goldSig, vix, hy, equity, haven, credit: cg };
+  // Liquidity Gate is reported alongside the verdict, not folded into tone/cls —
+  // it's a newer, unvalidated context read (see liquidityGateRead's own header);
+  // the existing RISK-ON/OFF classification stays driven by the evidenced inputs
+  // above (equity breadth, haven flows, credit spreads, VIX/HY levels).
+  const liquidity = liquidityGateRead();
+  // Credit quality spread (Baa10Y−Aaa10Y, z-scored) — a different axis than
+  // the HY-OAS-LEVEL credit line above (junk-bond spreads): this is
+  // investment-grade credit-curve SHAPE, from js/creditStressCore.js's
+  // buildCsi via /api/credit-quality (lightweight, FRED-only — see
+  // server.js's own note on why it doesn't reuse the heavy /api/credit-stress
+  // backtest endpoint). Also just reported, not folded into tone/cls.
+  const creditQ = creditQuality?.quality != null ? { z: creditQuality.quality, date: creditQuality.latestDate } : null;
+  return { chips, up, dn, tone, cls, goldSig, vix, vix3m, hy, equity, haven, credit: cg, liquidity, creditQ, realYield, gpr: gprRead };
 }
 function pairSignalGold(r) {
   const g = r.d.regime;
@@ -1222,6 +1798,33 @@ function pairSignalGold(r) {
   if (/bull/i.test(r.s?.bias_detail ?? '')) return 0.4;
   if (/bear/i.test(r.s?.bias_detail ?? '')) return -0.4;
   return 0;
+}
+
+// ── Generic collapse/expand for card-style sections ──────────────────────
+// State lives here (a Set, mirrored to localStorage), not in the DOM — a
+// section stays collapsed across both the periodic re-render (every data
+// refresh calls render() and rebuilds the innerHTML from scratch) and across
+// page loads. toggleSection() does an immediate DOM class flip for snappy
+// feedback AND updates the Set, so the next full re-render's secBody() call
+// picks up the same state instead of silently re-expanding everything.
+let collapsedSections;
+try { collapsedSections = new Set(JSON.parse(localStorage.getItem('collapsedSections') || '[]')); }
+catch (e) { collapsedSections = new Set(); }
+function toggleSection(id) {
+  if (collapsedSections.has(id)) collapsedSections.delete(id); else collapsedSections.add(id);
+  try { localStorage.setItem('collapsedSections', JSON.stringify([...collapsedSections])); } catch (e) {}
+  const body = document.querySelector(`.sec-body[data-sec="${id}"]`);
+  const chev = document.querySelector(`.sec-chev[data-sec="${id}"]`);
+  if (body) body.classList.toggle('sec-hidden', collapsedSections.has(id));
+  if (chev) chev.classList.toggle('sec-closed', collapsedSections.has(id));
+}
+function secChev(id) {
+  const closed = collapsedSections.has(id);
+  return `<button class="sec-chevbtn" onclick="toggleSection('${id}')" title="Show/hide this section"><svg class="sec-chev${closed ? ' sec-closed' : ''}" data-sec="${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`;
+}
+function secBody(id, bodyHtml) {
+  const closed = collapsedSections.has(id);
+  return `<div class="sec-body${closed ? ' sec-hidden' : ''}" data-sec="${id}">${bodyHtml}</div>`;
 }
 
 function renderMarketRead() {
@@ -1298,6 +1901,21 @@ function renderMarketRead() {
       <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)}</span></div>`;
   }).join('');
 
+  // ── Growth-surprise bars (paired under FX strength — same bar language) ──
+  const gs = growthSurpriseRows();
+  const gsMaxAbs = gs.length ? Math.max(0.25, ...gs.map(c => Math.abs(c.score))) : 1;
+  const gsBarsHtml = gs.map((c, i) => {
+    const pct = Math.min(50, 50 * Math.abs(c.score) / gsMaxAbs);
+    const cls = i === 0 ? 'top' : i === gs.length - 1 ? 'bot' : '';
+    const bar = c.score >= 0
+      ? `<div class="barp" style="width:${pct}%"></div>`
+      : `<div class="barn" style="width:${pct}%"></div>`;
+    return `<div class="csrow ${cls}" title="${c.ccy} growth-surprise ${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)} — ${c.ccy === 'USD' ? 'industrial production + regional Fed surveys' : 'OECD business-confidence proxy, NOT official PMI'}">
+      <span class="ccy">${c.ccy}</span>
+      <span class="track"><span class="mid"></span>${bar}</span>
+      <span class="val">${c.score >= 0 ? '+' : ''}${c.score.toFixed(2)}</span></div>`;
+  }).join('');
+
   // ── Equities & risk strip ──
   const eqChips = risk.chips.map(c =>
     `<span class="eqchip ${c.dir === 'up' ? 'up' : c.dir === 'down' ? 'dn' : 'flat'}">${c.name} ${c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '·'}</span>`).join('');
@@ -1310,6 +1928,8 @@ function renderMarketRead() {
 
   el.style.display = 'block';
   el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">Market Read</span>${secChev('mread')}</div>
+    ${secBody('mread', `
     <div class="mread-verdict">${verdictSentence}</div>
     <div class="mread-bottom"><span class="bl-k">Bottom line</span> ${bottom}</div>
     <div class="mread-precise">${breadthSentence}</div>
@@ -1317,13 +1937,18 @@ function renderMarketRead() {
       <div>
         <div class="mread-h">Who's being bought (top) vs sold (bottom)</div>
         ${barsHtml}
+        ${gs.length ? `<div class="mread-h" style="margin-top:10px">Growth surprise by currency <span class="muted" style="font-weight:400">(not official PMI)</span></div>${gsBarsHtml}` : ''}
       </div>
       <div>
         <div class="mread-h">Stocks &amp; the market mood</div>
         <div class="eqgrid">${eqChips}${goldChip}</div>
         <div class="riskverdict">Mood: <b class="tone ${risk.cls}" style="font-weight:800">${riskPlain(risk.cls)}</b>
-          ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}</span>` : ''}</div>
-        ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
+          ${risk.vix != null ? `<span class="muted"> · fear gauge (VIX) ${fmtN(risk.vix, 1)}${risk.vix > 20 ? ' — jittery' : ' — calm'}${risk.vix3m != null ? ` · 3m ${fmtN(risk.vix3m, 1)} (${risk.vix > risk.vix3m ? 'backwardated — near-term fear' : 'contango — normal'})` : ''}</span>` : ''}</div>
+        ${risk.credit ? `<div class="riskverdict" style="margin-top:3px" title="Corporate bond spreads lead equity stress. Widening = warning for stocks; tightening = supportive. Persistence % (when shown) is a 2-state HMM's self-transition probability on daily HY-OAS changes — the odds the current regime continues, not a prediction of direction.">Credit: <b class="tone ${risk.credit.cls}" style="font-weight:800">${risk.credit.widening > 0 ? 'widening' : risk.credit.widening < 0 ? 'tightening' : 'steady'}</b><span class="muted"> · HY ${risk.credit.hyBps}bps${risk.credit.pct != null ? ` (P${risk.credit.pct})` : ''}${risk.credit.d5 != null ? ` · ${risk.credit.d5 >= 0 ? '+' : ''}${risk.credit.d5}bps/wk` : ''}${risk.credit.persistProb != null ? ` · ${risk.credit.persistProb}% likely to persist` : ''} — ${risk.credit.widening > 0 ? 'headwind for stocks' : risk.credit.widening < 0 ? 'supportive' : 'neutral'}</span></div>` : ''}
+        ${risk.liquidity ? `<div class="riskverdict" style="margin-top:3px" title="Fed (WALCL−TGA−RRP) nets directly (all USD); ECB/BoJ balance sheets are scored independently in their own currency and combined by sign agreement, never summed cross-currency. ${risk.liquidity.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ')}. Context, not a backtested rule — see how many of the 3 central banks agree, not just the composite number.">Liquidity: <b class="tone ${risk.liquidity.direction === 'LONG' ? 'on' : risk.liquidity.direction === 'SHORT' ? 'off' : 'mix'}" style="font-weight:800">${risk.liquidity.direction === 'LONG' ? 'expanding' : risk.liquidity.direction === 'SHORT' ? 'contracting' : 'mixed'}</b><span class="muted"> · ${risk.liquidity.agree}/${risk.liquidity.total} central banks agree${risk.liquidity.vixNote && risk.liquidity.vixNote.read !== 'flat' ? ` · ${risk.liquidity.vixNote.read === 'diverging' ? 'diverging from VIX — worth watching' : 'confirmed by VIX'}` : ''}</span></div>` : ''}
+        ${risk.creditQ ? `<div class="riskverdict" style="margin-top:3px" title="Baa10Y−Aaa10Y investment-grade quality spread, z-scored against its own history — a different axis than the HY-level Credit line above (junk-bond spreads). Widening = investors demanding more premium for lower-quality investment-grade debt, an early credit-curve-shape tell. Context, not a backtested rule.">Credit quality (Baa−Aaa): <b class="tone ${risk.creditQ.z > 0.5 ? 'off' : risk.creditQ.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.creditQ.z > 0.5 ? 'widening' : risk.creditQ.z < -0.5 ? 'tightening' : 'steady'}</b><span class="muted"> · z ${risk.creditQ.z >= 0 ? '+' : ''}${risk.creditQ.z}</span></div>` : ''}
+        ${risk.realYield ? `<div class="riskverdict" style="margin-top:3px" title="10Y TIPS yield (DFII10) — the market's own real, inflation-adjusted rate; a direct FRED read, not derived. Rising real yields are typically a headwind for risk assets/gold; falling is supportive. Breakeven inflation (10Y, T10YIE) shown alongside as inflation-expectation context. Context, not a backtested rule.">Real yield (10Y TIPS): <b class="tone ${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'off' : risk.realYield.level < risk.realYield.prev ? 'on' : 'mix') : 'mix'}" style="font-weight:800">${risk.realYield.prev != null ? (risk.realYield.level > risk.realYield.prev ? 'rising' : risk.realYield.level < risk.realYield.prev ? 'falling' : 'flat') : 'steady'}</b><span class="muted"> · ${fmtN(risk.realYield.level, 2)}%${risk.realYield.bei != null ? ` · breakeven ${fmtN(risk.realYield.bei, 2)}%` : ''}</span></div>` : ''}
+        ${risk.gpr ? `<div class="riskverdict" style="margin-top:3px" title="Caldara &amp; Iacoviello's Geopolitical Risk Index (Federal Reserve Board) — counts geopolitical-tension language across 10 major newspapers. The source republishes this file weekly (Mondays), not daily, so freshness is checked against that cadence, not a daily one. Shown as a 30-day smoothed level, z-scored against its own trailing 2-year history. Genuinely global and currency-agnostic — not derived from anything else on this page. Context, not a backtested rule.">Geopolitical risk: ${risk.gpr.stale ? `<b class="tone off" style="font-weight:800">⚠ stale</b><span class="muted"> · last update ${risk.gpr.asOfDate} (${risk.gpr.daysStale}d ago) — the weekly pull may have failed, check /api/gpr/refresh-status</span>` : `<b class="tone ${risk.gpr.z > 0.75 ? 'off' : risk.gpr.z < -0.5 ? 'on' : 'mix'}" style="font-weight:800">${risk.gpr.z > 0.75 ? 'elevated' : risk.gpr.z < -0.5 ? 'subdued' : 'normal'}</b><span class="muted"> · z ${risk.gpr.z >= 0 ? '+' : ''}${risk.gpr.z} · ${risk.gpr.trend}${risk.gpr.asOfDate ? ` · as of ${risk.gpr.asOfDate}` : ''}</span>`}</div>` : ''}
       </div>
     </div>
     <div class="mread-watch">
@@ -1331,7 +1956,7 @@ function renderMarketRead() {
       ${nextEv ? `<span>${nextEv}</span>` : '<span class="muted">no high-impact event imminent</span>'}
       <span class="wk" style="margin-left:6px">Hottest</span>
       <span>${hotHtml || '—'}</span>
-    </div>`;
+    </div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
@@ -1360,6 +1985,41 @@ const CCY_BUCKET_NOTE = {
   risk: 'Risk/carry currency — tends to firm when risk appetite improves and funds reach for yield.',
   neutral: 'Sits more neutral to the risk-on/risk-off swing than the havens or the carry currencies.',
 };
+// Non-currency instruments that show up in the correlation/hedge panel (metals,
+// indices, oil) — same 3-bucket idea as CCY_BUCKET above (not a second scheme),
+// extended with 'commodity' for the pure commodity legs it has no use for.
+const INSTR_BUCKET = {
+  XAUUSD: 'haven', XAGUSD: 'commodity', XPTUSD: 'commodity', XCUUSD: 'commodity',
+  WTICO_USD: 'commodity', BCO_USD: 'commodity',
+  NAS100_USD: 'risk', SPX500_USD: 'risk', US30_USD: 'risk', US2000_USD: 'risk',
+  USDCNH: 'risk', USDZAR: 'risk',
+};
+// A short, honest "why" for a correlation/hedge chip — rule-based off the SAME
+// haven/risk/commodity bucket classification already shown on the currency
+// drawer, not a fabricated per-pair story. Returns null (caller shows an
+// "empirical only" fallback) when no structural rule actually fires, rather
+// than forcing an explanation that isn't there.
+function explainRelationship(aKey, bKey) {
+  const bucketOf = c => CCY_BUCKET[c] ?? INSTR_BUCKET[c] ?? null;
+  const legsOf = key => {
+    if (CCY_BUCKET[key] !== undefined) return [key];                 // bare currency code
+    if (PAIR_CCY[key]) return PAIR_CCY[key];                          // known FX pair
+    const m = /^([A-Z]{3})([A-Z]{3})$/.exec(key);
+    if (m && CCY_BUCKET[m[1]] !== undefined && CCY_BUCKET[m[2]] !== undefined) return [m[1], m[2]];
+    return [key];                                                     // metal/index/cross — one "leg"
+  };
+  const la = legsOf(aKey), lb = legsOf(bKey);
+  const shared = la.length > 1 && lb.length > 1 ? la.find(x => lb.includes(x)) : null;
+  if (shared) return `Both trade against ${ccyFull(shared)} — its strength or weakness pushes both the same way.`;
+  const ba = la.map(bucketOf).filter(Boolean), bb = lb.map(bucketOf).filter(Boolean);
+  if (ba.some(x => x === 'haven') && bb.some(x => x === 'risk') || ba.some(x => x === 'risk') && bb.some(x => x === 'haven'))
+    return 'One side sits in the traditional-haven bucket, the other in risk/carry — they naturally sit on opposite sides of the risk-on/risk-off swing.';
+  const common = ba.find(x => bb.includes(x));
+  if (common === 'haven') return 'Both are classed as traditional havens — they tend to move together on broad risk-off swings.';
+  if (common === 'risk') return 'Both are risk/carry-sensitive — they tend to move together when risk appetite shifts.';
+  if (common === 'commodity') return 'Both are commodity-linked — global growth and demand swings tend to move them together.';
+  return null;
+}
 
 // Turn a raw [-1,+1] conviction score into a plain bullish/bearish read instead of
 // a bare decimal. Thresholds reuse the ones already established in renderMarketRead's
@@ -1505,6 +2165,38 @@ function closeCcyDrawer() {
   openDrawerCcy = null;
 }
 
+// Fundamentals section for the currency drawer — the real per-dimension
+// Macro Scorecard read for this specific currency (js/macroScorecardEngine.js),
+// distinct from the "Today's flow" section above which is pure price/technical.
+const CCY_DIM_LABEL = {
+  cbSentiment: 'Central-bank sentiment', cpi: 'CPI / Inflation', gdp: 'GDP / Growth',
+  ism: 'Business Activity', laborMarket: 'Labor Market', retailSales: 'Retail Sales',
+  tradeBalance: 'Trade Balance', realYield: 'Real Yield', yieldCurve: 'Yield Curve', consumerConfidence: 'Consumer Confidence', ppi: 'PPI',
+};
+const CCY_DIM_PAGE = { USD: 'fomc-sentiment.html', EUR: 'ecb-sentiment.html', GBP: 'boe-sentiment.html', JPY: 'boj-sentiment.html' };
+function ccyDimHref(dim, ccy) {
+  if (dim === 'cbSentiment') return CCY_DIM_PAGE[ccy] || 'macro-scorecard.html';
+  return { cpi: 'cpi.html', gdp: 'gdp.html', ism: 'ism.html', laborMarket: 'labor-market.html',
+    retailSales: 'retail-sales.html', tradeBalance: 'trade-balance.html', realYield: 'real-yield.html', yieldCurve: 'yield-curve.html', consumerConfidence: 'consumer-confidence.html', ppi: 'ppi.html' }[dim] || 'macro-scorecard.html';
+}
+function fundamentalsHtml(ccy) {
+  const row = macroScorecard?.ranked?.find(r => r.ccy === ccy) ?? (macroScorecard?.uncovered?.includes(ccy) ? { ccy, composite: null, coverage: [], dims: {} } : null);
+  if (!row) return `<div class="muted">No Macro Scorecard data yet — visit the <a href="macro-scorecard.html">Macro Scorecard</a> and click Refresh.</div>`;
+  const dims = row.dims ?? {};
+  const dimRows = Object.keys(CCY_DIM_LABEL).map(dim => {
+    const v = dims[dim];
+    if (v === undefined) return ''; // this currency has no such dimension at all (e.g. AUD has no cbSentiment)
+    const cls = v == null ? 'neu' : (v >= 0 ? 'bull' : 'bear');
+    const valTxt = v == null ? '<span class="muted">no data</span>' : (v > 0 ? `+${v}` : `${v}`);
+    return `<div class="ccy-legrow"><a class="lp" href="${ccyDimHref(dim, ccy)}" style="color:inherit">${CCY_DIM_LABEL[dim]}</a><span class="lv ${cls}">${valTxt}</span></div>`;
+  }).join('');
+  const chipCls = row.composite == null ? 'neu' : row.composite > 0.25 ? 'bull' : row.composite < -0.25 ? 'bear' : 'neu';
+  const chipWord = row.composite == null ? 'No coverage yet' : row.composite > 0.25 ? 'Fundamentally strong' : row.composite < -0.25 ? 'Fundamentally weak' : 'Fundamentally neutral';
+  return `
+    <div style="margin-bottom:8px"><span class="chip ${chipCls}">${chipWord}${row.composite != null ? ` · ${row.composite > 0 ? '+' : ''}${row.composite}` : ''}</span></div>
+    <div class="ccy-explain">Averages whatever's covered across ${row.coverage.length} of 11 real economic dimensions (missing data is left out, not treated as neutral) — the same read as the <a href="macro-scorecard.html">Macro Scorecard</a>, unlike "Today's flow" above which is price/positioning, not fundamentals.</div>
+    <div class="ccy-legs" style="margin-top:8px">${dimRows || '<div class="muted">No dimensions covered yet.</div>'}</div>`;
+}
 function openCcyDrawer(ccy) {
   openDrawerCcy = ccy;
   const det = currencyDetail(ccy);
@@ -1582,7 +2274,43 @@ function openCcyDrawer(ccy) {
     carryHtml += `<div class="ccy-explain" style="margin-top:8px">Near-term (policy-adjacent) rate: <b>${sr.yield.toFixed(2)}%</b>${sr.dir ? `, currently <b>${sr.dir}</b>` : ''} — ranked <b>#${sr.rank} of ${sr.of}</b>. The 10Y above is the market's long-run view; this is what's happening at the short end right now, which matters most when the two diverge (e.g. a central bank cutting while long yields stay anchored).</div>`;
   }
 
+  // Composite: the same four sections below (technical/COT/carry/fundamentals),
+  // combined via the shared pairCompositeEngine brick into one read — this is
+  // what "everything already built here, together" looks like for one
+  // currency. Context, not a backtested rule, same as every leg it draws from.
+  let compositeHtml = '';
+  if (window.pairCompositeBrick) {
+    const cotScore = det.cot
+      ? (det.cot.z != null
+          ? Math.max(-1, Math.min(1, det.cot.z / 4))
+          : Math.max(-1, Math.min(1, ((det.cot.specNet ?? 0) >= 0 ? 1 : -1) * (det.cot.pct ?? 0) / 30))
+        )
+      : null;
+    const mrow = macroScorecard?.ranked?.find(x => x.ccy === ccy);
+    const macroScoreCcy = mrow?.composite ?? null;
+    const carryScoreCcy = (det.carry && det.carry.of > 1)
+      ? +(1 - 2 * (det.carry.rank - 1) / (det.carry.of - 1)).toFixed(2)
+      : null;
+    const comp = window.pairCompositeBrick.pairComposite({
+      technical: { score: det.score, label: "Today's flow" },
+      cot: { score: cotScore, label: 'Positioning (COT)' },
+      macro: { score: macroScoreCcy, label: 'Fundamentals' },
+      carry: { score: carryScoreCcy, label: 'Carry (10Y rank)' },
+    });
+    if (comp.score != null && comp.total >= 2) {
+      const cls = comp.direction === 'LONG' ? 'bull' : comp.direction === 'SHORT' ? 'bear' : 'neu';
+      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${l.score}</span></div>`).join('');
+      compositeHtml = `
+    <div class="dr-sec">
+      <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Arithmetic agreement across signals this dashboard already builds — not a backtested rule, and not a substitute for reading the sections themselves.">Composite (all of the above, combined)</h3>
+      <div style="margin-bottom:8px"><span class="chip ${cls}">${comp.direction} ${ccy} · ${comp.agree}/${comp.total} agree</span></div>
+      <div class="ccy-legs">${legRows}</div>
+    </div>`;
+    }
+  }
+
   $('ccyBody').innerHTML = `
+    ${compositeHtml}
     <div class="dr-sec">
       <h3 class="help" title="Blend of each pair's structural HMM trend regime and today's live session bias, averaged across every pair ${ccy} appears in. This is what's moving TODAY, not a fundamental view.">Today's flow (technical)</h3>
       <div style="margin-bottom:8px"><span class="chip ${scoreRead.cls}">${scoreRead.arrow} ${scoreRead.word}${scoreRead.mag !== 'no edge' ? ` · ${scoreRead.mag}` : ''}</span></div>
@@ -1597,6 +2325,10 @@ function openCcyDrawer(ccy) {
     <div class="dr-sec">
       <h3 class="help" title="10-year government bond yield — the classic carry-trade input. Not the policy rate itself, and not a timing signal on its own.">Rate & carry</h3>
       ${carryHtml}
+    </div>
+    <div class="dr-sec">
+      <h3 class="help" title="This currency's composite across up to 11 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI and central-bank tone. Refreshed on each source engine's own daily schedule, not live.">Fundamentals (Macro Scorecard)</h3>
+      ${fundamentalsHtml(ccy)}
     </div>
     <div class="dr-sec">
       <h3>Risk-sentiment bucket</h3>
@@ -1796,6 +2528,25 @@ function buildMacro() {
     }
   }
 
+  // 8) The Macro Scorecard — everything above is rates/risk-mood proxies (VIX,
+  // yield gaps, TIPS). This is the real thing: each currency's ACTUAL scored
+  // inflation/growth/labor-market/business-activity/retail-sales/trade-balance/
+  // real-yield/PPI/central-bank-tone data, averaged into one composite and
+  // ranked (js/macroScorecardEngine.js, same read as macro-scorecard.html).
+  // Kept as its own thread rather than rewritten into the hand-tuned "what this
+  // means for you" bullets below, which cover AUD+NZD combined and don't carry
+  // real fundamental evidence — this is additive, not a replacement.
+  if (macroScorecard?.ranked?.length) {
+    const rows = macroScorecard.ranked
+      .map(r => `<b>${r.ccy}</b> ${r.composite > 0 ? '+' : ''}${r.composite} <span class="muted">(${r.coverage.length}/11)</span>`)
+      .join(' &nbsp;·&nbsp; ');
+    const body = `Beyond rates and risk mood, this project scores each currency across up to 11 real economic dimensions — inflation, growth, labor market, business activity, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD) and central-bank tone — and ranks them strongest to weakest:<br><div style="margin-top:6px;font-size:12px;line-height:1.8">${rows}</div>`;
+    const so = macroScorecard.pair
+      ? `The clearest fundamental read today: this favours <b>${macroScorecard.pair.long}</b> over <b>${macroScorecard.pair.short}</b> (composite gap ${macroScorecard.pair.gap}).`
+      : `No standout pairing today — composite scores are bunched too close together to lean hard either way on fundamentals alone.`;
+    threads.push({ ic: '🏆', t: 'The Macro Scorecard — full fundamental ranking', body, so: so + ` <a href="macro-scorecard.html" style="font-size:11px">See the full per-currency breakdown →</a>` });
+  }
+
   // Per-currency "what this means for you"
   const usd = has('us10y') ? v('us10y') : null;
   const gap = k => (usd != null && v(k) != null) ? (usd - v(k)) : null;
@@ -1891,6 +2642,75 @@ async function pollPrices() {
   } catch (e) {}
 }
 
+// ── Live price stream (SSE) — ALL instruments over ONE connection ───────────
+// Same /api/oanda_stream mechanism index.html/js/main.js already uses for its
+// single active pair — but today.html shows ~26 instruments at once, so this
+// opens ONE EventSource for the whole symbol list (OANDA's stream endpoint
+// natively takes a comma-separated instruments= param) rather than one stream
+// per pair, which would risk the same per-account connection-limit problem
+// js/main.js's background-stream code explicitly avoids. pollPrices() above
+// (30s REST poll) stays on as a fallback for when SSE can't connect (no
+// OANDA key locally, network hiccup, etc.) — it's cheap and harmless either way.
+let _todaySse = null;
+let _todaySseTimer = null;
+let _todaySseDelay = 3000;
+const TODAY_SSE_MAX_DELAY = 30_000;
+let _lastSseRender = 0;
+const TODAY_SSE_RENDER_MS = 3000;   // throttle full re-render, not every tick
+
+function startLivePriceStream() {
+  if (_todaySseTimer) { clearTimeout(_todaySseTimer); _todaySseTimer = null; }
+  if (_todaySse) { try { _todaySse.close(); } catch (e) {} _todaySse = null; }
+  const syms = [...new Set(Object.values(brief?.instruments ?? {}).map(d => d.sym).filter(Boolean))];
+  if (!syms.length) return;
+  _todaySseDelay = 3000;
+  _openTodaySse(syms);
+}
+
+function _openTodaySse(syms) {
+  try {
+    const src = new EventSource(`/api/oanda_stream?symbol=${encodeURIComponent(syms.join(','))}`);
+    src.onmessage = evt => {
+      try {
+        const d = JSON.parse(evt.data);
+        if (d.price == null || !d.instrument) return;
+        _todaySseDelay = 3000;
+        if (!livePrices) livePrices = {};
+        livePrices[d.instrument] = { price: d.price };
+        let changed = false;
+        for (const inst of Object.values(brief?.instruments ?? {})) {
+          if (inst.sym !== d.instrument) continue;
+          if (inst.current_price !== d.price) { inst.current_price = d.price; changed = true; }
+        }
+        const now = Date.now();
+        if (changed && now - _lastSseRender >= TODAY_SSE_RENDER_MS) {
+          _lastSseRender = now;
+          renderSummary(); render();
+        }
+      } catch (e) {}
+    };
+    src.onerror = () => {
+      try { src.close(); } catch (e) {}
+      if (_todaySse !== src) return;
+      _todaySse = null;
+      _todaySseDelay = Math.min(_todaySseDelay * 2, TODAY_SSE_MAX_DELAY);
+      _todaySseTimer = setTimeout(() => { _todaySseTimer = null; _openTodaySse(syms); }, _todaySseDelay);
+    };
+    _todaySse = src;
+  } catch (e) {
+    _todaySseDelay = Math.min(_todaySseDelay * 2, TODAY_SSE_MAX_DELAY);
+    _todaySseTimer = setTimeout(() => { _todaySseTimer = null; _openTodaySse(syms); }, _todaySseDelay);
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (!_todaySse || _todaySse.readyState === EventSource.CLOSED)) {
+    _todaySseDelay = 3000;
+    if (_todaySseTimer) { clearTimeout(_todaySseTimer); _todaySseTimer = null; }
+    startLivePriceStream();
+  }
+});
+
 // nearest ladder level: { tag, pips } or null
 function nearestLevel(d) {
   const px = d.current_price;
@@ -1918,16 +2738,76 @@ const COT_MAP = {
 };
 function cotFor(name) {
   const m = COT_MAP[name];
-  if (!m || !cot?.[m.sym]) return null;
-  const c = cot[m.sym];
-  const specNet = c.specNet ?? 0;
-  const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
-  const oi = c.openInterest ?? 0;
-  const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
-  const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
-  return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
-    pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
-    pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null };
+  if (m && cot?.[m.sym]) {
+    const c = cot[m.sym];
+    const specNet = c.specNet ?? 0;
+    const pairNet = m.flip ? -specNet : specNet;           // net in the PAIR's direction
+    const oi = c.openInterest ?? 0;
+    const crowd = oi > 0 ? Math.abs(specNet) / oi * 100 : (c.crowdingPct ?? 0);
+    const level = crowd >= 20 ? 'EXTREME' : crowd >= 10 ? 'ELEVATED' : null;
+    const zClip = Math.max(-1, Math.min(1, (c.specZ ?? 0) / 4));
+    return { dir: pairNet > 0 ? 'long' : pairNet < 0 ? 'short' : 'flat', crowd, level,
+      pct: oi > 0 ? Math.abs(specNet) / oi * 100 : null, z: c.specZ ?? null,
+      pctile: c.specPct ?? null, wkChg: c.weeklyChg ?? null, reportDate: c.reportDate ?? null,
+      bias: m.flip ? -zClip : zClip, derived: false };
+  }
+  // Crosses (no direct CFTC contract, e.g. GBPJPY) get no entry in COT_MAP —
+  // derive a read from BOTH legs' own positioning instead, via the shared
+  // pairCompositeEngine brick (js/pairCompositeEngine.js, loaded as a module
+  // below and exposed on window — same "shared brick, imported not copied"
+  // pattern as window.creditBrick). Same reinforcing-extreme logic
+  // cot-extremes.html's crowding combos already use, just generalized to
+  // every tracked cross, not only the ones that happen to clear 90/10 both
+  // ways.
+  const cc = PAIR_CCY[name];
+  if (!cc || !window.pairCompositeBrick || !cot) return null;
+  const [base, quote] = cc;
+  const r = window.pairCompositeBrick.cotPairBias(base, quote, cot);
+  if (r.score == null) return null;
+  const level = r.extreme ? 'EXTREME' : (Math.abs(r.score) >= 0.5 ? 'ELEVATED' : null);
+  const crowd = Math.abs(r.score) * 100;
+  return { dir: r.score > 0 ? 'long' : r.score < 0 ? 'short' : 'flat', crowd, level,
+    pct: crowd, z: null, pctile: null, wkChg: null, reportDate: null,
+    bias: r.score, derived: true, baseRead: r.base, quoteRead: r.quote };
+}
+
+// ── Composite signal: technical + positioning + fundamentals + carry, one ──
+// call per pair — the stuff this dashboard already builds separately (each
+// still shown in its own card/section), just combined via the shared
+// pairCompositeEngine brick so "what do the things I've already built say,
+// together" is answerable at a glance instead of requiring four separate
+// looks. Context, not a backtested rule — same posture as every leg it
+// draws from.
+function pairSignalComposite(r) {
+  if (!window.pairCompositeBrick) return null;
+  const cc = PAIR_CCY[r.name];
+  if (!cc) return null;
+  const [base, quote] = cc;
+  const macroScore = (() => {
+    if (!macroScorecard?.ranked) return null;
+    const b = macroScorecard.ranked.find(x => x.ccy === base);
+    const q = macroScorecard.ranked.find(x => x.ccy === quote);
+    if (!b || !q) return null;
+    return Math.max(-1, Math.min(1, (b.composite - q.composite) / 2));
+  })();
+  const carryScore = (() => {
+    const bfk = CCY_FRED10Y[base], qfk = CCY_FRED10Y[quote];
+    if (!bfk || !qfk || fred?.[bfk]?.value == null || fred?.[qfk]?.value == null) return null;
+    return Math.max(-1, Math.min(1, (fred[bfk].value - fred[qfk].value) / 3));
+  })();
+  return window.pairCompositeBrick.pairComposite({
+    technical: { score: pairSignal(r), label: "Today's flow (technical)" },
+    cot: { score: r.ct?.bias ?? null, label: 'Positioning (COT)' },
+    macro: { score: macroScore, label: 'Fundamentals (Macro Scorecard)' },
+    carry: { score: carryScore, label: 'Carry (10Y yield)' },
+  });
+}
+function compositeChip(r) {
+  const c = pairSignalComposite(r);
+  if (!c || c.score == null || c.total < 2) return '';
+  const cls = c.direction === 'LONG' ? 'bull' : c.direction === 'SHORT' ? 'bear' : 'neu';
+  const legTxt = c.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`).join(' · ');
+  return `<span class="chip ${cls}" title="Averages whatever's covered of technical/positioning/fundamentals/carry — ${c.agree}/${c.total} agree in direction. ${legTxt}. This is arithmetic agreement across signals this dashboard already builds, not a backtested rule.">⚖ ${c.direction} ${c.agree}/${c.total}</span>`;
 }
 
 // ── OI (manual CME paste, KV oi_store) — walls, max pain, PIN/BREAKOUT ────────
@@ -1948,7 +2828,15 @@ function oiFor(name, sym) {
     const hk = Object.keys(oiHistory).find(k => normK(k) === normK(lvlKey(name, sym)) || normK(k) === normK(sym) || normK(k) === normK(sym.replace('_', '/')));
     if (hk && oiHistory[hk]?.deltas) change = { ...oiHistory[hk].deltas, fromDate: oiHistory[hk].prevDate, toDate: oiHistory[hk].curDate, classify: oiHistory[hk].classify, confirm: oiHistory[hk].confirm, stability: oiHistory[hk].stability };
   }
-  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change,
+  // The enriched view, when /api/oi-today answered. `today.levels` carries every level
+  // with its own expectation, gamma heat and calibrated P(touch); `basisAgeH` says how
+  // old the futures-vs-spot reading behind every one of those prices is.
+  const norm2 = s2 => String(s2).toLowerCase().replace(/[/_]/g, '');
+  const today = oiToday
+    ? (oiToday[lvlKey(name, sym)] ?? oiToday[sym] ?? oiToday[sym.replace('_', '/')]
+       ?? Object.values(oiToday).find(x => norm2(x.pair) === norm2(sym)) ?? null)
+    : null;
+  return { inst, ageH, stale: ageH > OI_FRESH_H, gex, regime, change, today,
     maxPain: inst.maxPain, callWall: inst.callWall, putWall: inst.putWall,
     callWallOI: inst.callWallOI, putWallOI: inst.putWallOI, pcRatio: inst.pcRatio };
 }
@@ -2177,6 +3065,43 @@ function ladderHtml(r) {
   }).join('') + `</div>`;
 }
 
+// ── Structural motif diagnostic (AnalogML/motif_track.py — research, not a
+// validated signal; see AnalogML/README.md for the honest read on it).
+// Replaces the retired k-NN shape-match diagnostic (that method banked null
+// 2026-08-12 — see LEGO_MODULES.md). This shows whichever N-touches-of-a-
+// level pattern is CURRENTLY forming for the pair (2-3 touches found, no
+// breakout confirmed yet), how far price is from the level, and the
+// historical played-out-rate/PF for that exact category — a real,
+// already-measured aggregate, never a fabricated per-instance probability.
+function analogFmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch (e) { return iso; }
+}
+function analogShapeHtml(name) {
+  const a = analogml?.[name.toLowerCase()];
+  if (!a) return '';
+  const isTop = a.kind === 'top';
+  const kindIcon = isTop ? '⌒' : '⌣';
+  const expectedCls = isTop ? 'bear' : 'bull';
+  const c = a.confidence;
+  const title = `Structural motif diagnostic (research, NOT a validated signal — see AnalogML/README.md): `
+    + `a ${a.n_touches}-touch ${a.kind} is currently forming — last touch ${analogFmtDate(a.touch_dates[a.touch_dates.length - 1])}`
+    + (a.provisional ? `, still PROVISIONAL (not yet confirmable as a genuine pivot)` : '') + `. `
+    + `Price is ${a.dist_to_level_pips.toFixed(0)}p from the ${isTop ? 'support' : 'resistance'} that would confirm the textbook reversal, `
+    + `${a.dist_to_touch_level_pips.toFixed(0)}p from the touch level itself (a break there is the failure case). `
+    + (c ? `Historically, ${a.n_touches}-touch ${a.kind}s on this pair played out as the textbook reversal ${(c.played_out_rate * 100).toFixed(0)}% of the time `
+          + `(n=${c.n_samples}, PF ${c.profit_factor.toFixed(2)}, avg ${c.avg_r.toFixed(3)}R).`
+       : `Not enough historical samples of this exact category on this pair yet for a confidence read.`);
+  return `<div class="pc-shape help" title="${title}" style="flex-direction:column;align-items:stretch;gap:4px">
+    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+      <span class="chip ${expectedCls}" style="font-size:10px">${kindIcon} ${a.n_touches}-touch ${a.kind}${a.provisional ? ' · pending' : ''}</span>
+      <span style="font-size:10px;color:var(--text3,#8892a6)">${a.dist_to_level_pips.toFixed(0)}p from level</span>
+      ${c ? `<span style="font-size:10px;color:var(--text3,#8892a6)">${(c.played_out_rate * 100).toFixed(0)}% historical, n=${c.n_samples}</span>` : ''}
+    </div>
+  </div>`;
+}
+
 function cardHtml(r) {
   const d = r.d;
   const volPct = d.vol_pct;
@@ -2189,13 +3114,18 @@ function cardHtml(r) {
     : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th in its 5-day window vs ${volPct}th over the last year. Moves may get bigger from here; size and stops should respect that.">σ↑ building</span>`
     : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. A compression stretch; ranges may run smaller than the year suggests.">σ↓ cooling</span>`
     : '';
-  return `<div class="pcard ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
+  // Directional accent on the card's left edge — same bull/bear read biasLine() already
+  // shows in words, just made scannable at a glance across a grid of 20+ cards.
+  const biasTxt = r.s?.bias_detail ?? r.s?.bias ?? '';
+  const dirCls = /bull/i.test(biasTxt) ? 'dir-up' : /bear/i.test(biasTxt) ? 'dir-dn' : '';
+  return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market. Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}</div>
+    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}</div>
+    ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
     <div class="pc-foot">
@@ -2230,20 +3160,206 @@ function tableHtml(rs) {
     <tbody>${rs.map(row).join('')}</tbody></table>`;
 }
 
+// ── Scorecard view (Phase 2f) — the mockup's "Instrument Snapshot" table:
+// glanceable bias/score/drivers/conviction/level-to-watch per instrument.
+// Every column reuses a value this page already computes elsewhere (pairSignal,
+// pairSignalComposite's agree/total, real forecast levels) — nothing new is
+// invented here, just laid out as a scannable row instead of a dense card.
+const SC_CCY_FLAG = { USD: '🇺🇸', EUR: '🇪🇺', GBP: '🇬🇧', JPY: '🇯🇵', CHF: '🇨🇭', AUD: '🇦🇺', CAD: '🇨🇦', NZD: '🇳🇿' };
+function scDots(agree, total) {
+  if (agree == null || !total) return '<span class="muted">–</span>';
+  let dots = '';
+  for (let i = 0; i < total; i++) dots += `<i class="${i < agree ? 'on' : ''}"></i>`;
+  return `<span class="sc-dots" title="${agree}/${total} of this dashboard's own signals (technical/positioning/fundamentals/carry) agree in direction — arithmetic agreement, not a backtested rule.">${dots}</span>`;
+}
+function scorecardHtml(rs) {
+  const row = r => {
+    const d = r.d;
+    const score = pairSignal(r);
+    const biasLbl = score == null ? 'NEUTRAL' : score > 0.12 ? 'BULLISH' : score < -0.12 ? 'BEARISH' : 'NEUTRAL';
+    const biasCls = biasLbl === 'BULLISH' ? 'bull' : biasLbl === 'BEARISH' ? 'bear' : 'neu';
+    const icon = d.ac === 'commodity' ? '🥇' : d.ac === 'index' ? '📈' : (SC_CCY_FLAG[PAIR_CCY[r.name]?.[0]] ?? '💱');
+
+    const drivers = [];
+    if (d.regime?.label === 'TREND') drivers.push(`${d.regime.trend_dir === 'up' ? 'Uptrend' : 'Downtrend'} ${d.regime.trend_prob}%`);
+    else if (d.regime?.label === 'RANGE') drivers.push(`Ranging ${d.regime.range_prob}%`);
+    if (r.ct?.level === 'EXTREME') drivers.push(`COT ${r.ct.dir} extreme`);
+    const wti = commodityDrivers?.wti;
+    if (wti && PAIR_CCY[r.name]?.includes('CAD') && Math.abs(wti.pct) > 0.15) drivers.push(`WTI ${wti.pct >= 0 ? '+' : ''}${wti.pct.toFixed(1)}%`);
+    const coneGap = (d.cone_5d != null && d.vol_pct != null) ? d.cone_5d - d.vol_pct : null;
+    if (coneGap != null && coneGap >= 15) drivers.push('Vol building');
+    else if (coneGap != null && coneGap <= -15) drivers.push('Vol cooling');
+    if (d.news_flag) drivers.push(`⚠ ${d.news_flag}`);
+    const driverTxt = drivers.length ? drivers.slice(0, 3).join(', ') : 'No standout driver today';
+
+    const ohMed = d.levels?.oh_med?.price, olMed = d.levels?.ol_med?.price;
+    const oh75 = d.levels?.oh_75?.price, ol75 = d.levels?.ol_75?.price;
+    const levelTxt = (olMed != null && ohMed != null) ? `${fmtN(olMed, d.dp)} / ${fmtN(ohMed, d.dp)}` : '–';
+    let levelNote = '';
+    if (biasLbl === 'BEARISH' && olMed != null) levelNote = `Below ${fmtN(olMed, d.dp)}${ol75 != null ? ` targets ${fmtN(ol75, d.dp)}` : ''}`;
+    else if (biasLbl === 'BULLISH' && ohMed != null) levelNote = `Above ${fmtN(ohMed, d.dp)}${oh75 != null ? ` targets ${fmtN(oh75, d.dp)}` : ''}`;
+    else if (olMed != null && ohMed != null) levelNote = `Range bound ${fmtN(olMed, d.dp)}–${fmtN(ohMed, d.dp)}`;
+
+    const comp = pairSignalComposite(r);
+
+    return `<tr class="trow" onclick="openDrawer('${r.name}')">
+      <td><div class="sc-inst"><span class="sc-ic">${icon}</span><div><div class="sc-name">${dispName(r.name)}</div><div class="sc-sub">${esc0(d.sym ?? '')}</div></div></div></td>
+      <td><span class="sc-pill ${biasCls}">${biasLbl}</span></td>
+      <td><span class="sc-score ${biasCls}">${score != null ? (score >= 0 ? '+' : '') + score.toFixed(2) : '–'}</span></td>
+      <td><span class="sc-drivers">${esc0(driverTxt)}</span></td>
+      <td>${comp && comp.total >= 2 ? scDots(comp.agree, comp.total) : '<span class="muted">–</span>'}</td>
+      <td><div class="sc-level">${levelTxt}</div>${levelNote ? `<div class="sc-level-note">${esc0(levelNote)}</div>` : ''}</td>
+    </tr>`;
+  };
+  return `<table>
+    <thead><tr><th>Instrument</th><th>Bias</th><th>Score</th><th>Key Drivers</th><th>Conviction</th><th>Level To Watch</th></tr></thead>
+    <tbody>${rs.map(row).join('')}</tbody></table>
+    <div class="muted" style="padding:8px 9px 4px">Scores: -1.00 (strong bearish) to +1.00 (strong bullish) — today's session flow. Conviction dots: how many of this dashboard's own signals (technical/positioning/fundamentals/carry) agree in direction, not a backtested win rate.</div>`;
+}
+
+// ── Sidebar (Phase 2c) — Market Tone gauge, Key Takeaways, Today At A Glance,
+// Volatility Outlook, Quick Links. Every number here is recomputed from the
+// same pure functions (equitiesRisk/currencyStrength/nextHighImpact) the main
+// column already calls — no new fetches, no invented scores.
+function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
+  // Semi-circle gauge: needle + a 0-100 score, both from risk.equity (indices
+  // breadth, -1..+1) — the same input equitiesRisk() already uses for its
+  // RISK-ON/OFF verdict, just rescaled for display.
+  const eq = Math.max(-1, Math.min(1, risk.equity ?? 0));
+  const score = Math.round((eq + 1) / 2 * 100);
+  const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
+  const cx = 75, cy = 72, r = 58;
+  const rad = (deg) => (deg - 180) * Math.PI / 180;
+  const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
+  const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
+  const toneCls = risk.cls === 'on' ? 'on' : risk.cls === 'off' ? 'off' : 'mix';
+
+  // Real-data rows below the gauge — same convention as the mockup's list,
+  // but every value is read off data already computed elsewhere on this page.
+  const rows = [];
+  if (risk.credit?.gate) rows.push(['Credit Spreads', risk.credit.widening ? 'Widening' : 'Tightening', risk.credit.widening ? 'off' : 'on']);
+  if (risk.vix != null) rows.push(['Equity Vol (VIX)', risk.vix > 20 ? 'Elevated' : 'Low', risk.vix > 20 ? 'off' : 'on']);
+  const usd = cs.find(c => c.ccy === 'USD');
+  if (usd) rows.push(['USD Trend', usd.score > 0.05 ? 'Strengthening' : usd.score < -0.05 ? 'Weakening' : 'Flat', usd.score > 0.05 ? 'on' : usd.score < -0.05 ? 'off' : 'mix']);
+  if (usTen?.value != null && usTen.prev != null) rows.push(['Rate Trend (10Y)', usTen.value > usTen.prev ? 'Rising' : usTen.value < usTen.prev ? 'Falling' : 'Flat', 'mix']);
+  if (wti?.pct != null) rows.push(['Oil Trend (WTI)', wti.pct > 0.15 ? 'Firming' : wti.pct < -0.15 ? 'Slightly Weak' : 'Flat', wti.pct > 0.15 ? 'on' : wti.pct < -0.15 ? 'off' : 'mix']);
+
+  return `<div class="gauge-wrap">
+    <div class="gauge-svg-wrap">
+      <svg width="150" height="90" viewBox="0 0 150 90">
+        <path d="M 17 72 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bear)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+        <path d="M 41 27 A 58 58 0 0 1 109 27" fill="none" stroke="var(--amber)" stroke-width="10" opacity=".55"/>
+        <path d="M 109 27 A 58 58 0 0 1 133 72" fill="none" stroke="var(--bull)" stroke-width="10" stroke-linecap="round" opacity=".55"/>
+        <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="var(--text)" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="${cx}" cy="${cy}" r="4.5" fill="var(--text)"/>
+      </svg>
+      <div class="gauge-score ${toneCls}">${score}</div>
+    </div>
+    <div class="gauge-scale"><span>0</span><span>100</span></div>
+    <div class="gauge-tone ${toneCls}">${esc0(risk.tone)}</div>
+    ${mood ? `<div class="mood-line" style="color:${mood.color}">${mood.icon} ${esc0(mood.label)}<span class="mood-detail">${esc0(mood.detail)}</span></div>` : ''}
+    ${rows.length ? `<div class="gauge-sub">${rows.map(([k, v, cls2]) => `<div class="gs-row"><span>${esc0(k)}</span><b class="gs-val ${cls2}">${esc0(v)}</b></div>`).join('')}</div>` : ''}
+  </div>`;
+}
+function esc0(s) { return (s ?? '').toString().replace(/</g, '&lt;'); }
+function renderSidebar() {
+  const el = $('sidebarCol');
+  if (!el) return;
+  if (!brief?.instruments) { el.innerHTML = ''; return; }
+  const rs = allRows();
+  if (rs.length < 4) { el.innerHTML = ''; return; }
+  const risk = equitiesRisk(rs);
+  const cs = currencyStrength(rs);
+  const strongest = cs[0], weakest = cs[cs.length - 1];
+  const trending = rs.filter(r => r.trending);
+  const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
+  const nearLevel = rs.filter(r => r.isProx).length;
+  const rangeConsumed = rs.filter(r => (r.used ?? 0) >= 0.8).length;
+  const hiVol = rs.filter(r => (r.d.vol_pct ?? 0) >= 80).length;
+  const mood = riskLight();
+
+  // Key Takeaways — short, scannable version of the same reads Market Read
+  // states in full sentences below. Each carries an icon+color matching the
+  // kind of read it is (direction, attention, risk, data-health, timing).
+  const takeaways = [];
+  if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
+    takeaways.push(['📈', 'bull', `<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest today.`]);
+  }
+  if (hot[0]) {
+    const h = hot[0];
+    takeaways.push(['📊', 'blue', `<b>${dispName(h.name)}</b> is today's most-watched pair${h.isProx ? ' — right at a key level' : h.ct?.level === 'EXTREME' ? ' — COT positioning is stretched' : ''}.`]);
+  }
+  if (risk.credit?.gate) takeaways.push(['🛡', 'purple', `Credit gate reads <b>${esc0(risk.credit.gate)}</b>${risk.credit.wideningBps != null ? ` (${risk.credit.wideningBps > 0 ? '+' : ''}${risk.credit.wideningBps}bps)` : ''}.`]);
+  if (risk.gpr?.stale) takeaways.push(['⚑', 'amber', `Geopolitical Risk data hasn't refreshed in ${risk.gpr.daysStale}+ days — the weekly pull may be behind.`]);
+  const nextEv = nextHighImpact();
+  if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
+
+  el.innerHTML = `
+    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
+
+    <div class="side-card"><h3>Rates &amp; Curve Moves</h3><div id="moveList"><div class="muted">Loading…</div></div></div>
+
+    <div class="side-card"><h3>Key Takeaways</h3>
+      <div class="takeaway-list">${takeaways.length ? takeaways.map(([ic, cls, t]) => `<div class="takeaway"><span class="tic ${cls}">${ic}</span><span>${t}</span></div>`).join('') : '<div class="muted">Not enough live data yet.</div>'}</div>
+    </div>
+
+    <div class="side-card"><h3>Today At A Glance</h3>
+      <div class="glance-grid">
+        <div class="glance-cell"><div class="gv">${trending.length}/${rs.length}</div><div class="gl">Trending</div></div>
+        <div class="glance-cell"><div class="gv">${risk.chips.length ? `${risk.up}/${risk.chips.length}` : '–'}</div><div class="gl">Indices Bid</div></div>
+        <div class="glance-cell"><div class="gv">${nearLevel}</div><div class="gl">Near A Level</div></div>
+        <div class="glance-cell"><div class="gv">${rangeConsumed}</div><div class="gl">Range Consumed</div></div>
+        <div class="glance-cell"><div class="gv">${hiVol}</div><div class="gl">Elevated Vol</div></div>
+        <div class="glance-cell"><div class="gv">${brief.news_flag ? '⚠' : '—'}</div><div class="gl">Event Risk</div></div>
+      </div>
+    </div>
+
+    <div class="side-card"><h3>Today's Calendar</h3><div id="calList"><div class="muted">Loading…</div></div><div id="calWatch"></div></div>
+
+    <div class="side-card"><h3>Risk State</h3><div id="riskList"><div class="muted">Loading…</div></div></div>
+
+    <div class="side-card"><h3>Volatility Outlook</h3>
+      <div class="volout-row"><span>VIX</span><b>${risk.vix != null ? fmtN(risk.vix, 1) : '–'}${risk.vix != null ? (risk.vix > 20 ? ' (jittery)' : ' (calm)') : ''}</b></div>
+      ${risk.vix != null && risk.vix3m != null ? `<div class="volout-row"><span>Term structure</span><b>${risk.vix > risk.vix3m ? 'Backwardated' : 'Contango'}</b></div>` : ''}
+      <div class="volout-row"><span>σ building</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) >= 15).length} pairs</b></div>
+      <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
+    </div>
+
+    <div class="side-card"><h3>Quick Links</h3>
+      <div class="qtile-grid">
+        <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
+        <a class="qtile" href="cot-extremes.html"><span class="qt-ic">🎯</span><span class="qt-t">COT Extremes</span><span class="qt-s">Crowded positioning</span></a>
+        <a class="qtile" href="credit-leadlag.html"><span class="qt-ic">📈</span><span class="qt-t">Credit Lead-Lag</span><span class="qt-s">Is the gate proven?</span></a>
+        <a class="qtile" href="continuation-fade-ticker.html"><span class="qt-ic">🔁</span><span class="qt-t">Continuation vs Fade</span><span class="qt-s">USD-trend filter</span></a>
+        <a class="qtile" href="brief-config.html"><span class="qt-ic">⚙</span><span class="qt-t">Brief Config</span><span class="qt-s">Auto-generation setup</span></a>
+        <div class="qtile" onclick="openSiteMap()"><span class="qt-ic">🗺</span><span class="qt-t">Full Site Map</span><span class="qt-s">Every page, explained</span></div>
+      </div>
+    </div>`;
+}
+
 function render() {
+  renderStatRow();
   renderMarketRead();
+  renderSidebar();
+  renderMacroMoved();
+  renderGate();
+  renderRiskFlags();
   renderSinceYesterday();
   renderWeekly();
   renderConcentration();
   renderWhenToWatch();
   renderMacro();
   const rs = sortRows(rows());
-  if (tableMode) {
-    $('grid').style.display = 'none';
+  $('grid').style.display = 'none';
+  $('tview').style.display = 'none';
+  $('sview').style.display = 'none';
+  if (viewMode === 'table') {
     $('tview').style.display = 'block';
     $('tview').innerHTML = tableHtml(rs);
+  } else if (viewMode === 'scorecard') {
+    $('sview').style.display = 'block';
+    $('sview').innerHTML = scorecardHtml(rs);
   } else {
-    $('tview').style.display = 'none';
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
@@ -2255,13 +3371,51 @@ function setFilter(f) {
   document.querySelectorAll('.fchip[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f));
   renderSummary(); render();
 }
+const VIEW_CYCLE = { card: 'table', table: 'scorecard', scorecard: 'card' };
+const VIEW_BTN_LABEL = { card: '☰ Table view', table: '📊 Scorecard view', scorecard: '▦ Card view' };
 function toggleView() {
-  tableMode = !tableMode;
-  $('viewBtn').textContent = tableMode ? '▦ Card view' : '☰ Table view';
+  viewMode = VIEW_CYCLE[viewMode];
+  $('viewBtn').textContent = VIEW_BTN_LABEL[viewMode];
   render();
 }
 
-// ── Detail drawer ─────────────────────────────────────────────────────────────
+// ── Detail drawer — concertina sections ───────────────────────────────────────
+// Collapsed/expanded state is keyed by section, NOT by pair — collapse
+// "Correlations" once and it stays collapsed on every pair you open next,
+// same session or a week from now (persisted in localStorage).
+const DR_SEC_DEFAULTS = { // true = open by default; anything not listed defaults open
+  analysis: true,  // Full analysis — the plain-English translation, now the headline section
+  thesis: true, story: true, tde: true, hits: true,
+  levels: false,   // Bot Level Book — unvalidated star heuristic, minimised
+  chart: true, rates: true, cone: true, path: true,
+  news: false, corr: false,
+};
+function drSecState() {
+  try { return JSON.parse(localStorage.getItem('dr_sec_collapsed') || '{}'); } catch { return {}; }
+}
+function toggleDrSec(labelEl) {
+  const sec = labelEl.closest('.dr-sec');
+  if (!sec) return;
+  const key = sec.dataset.seckey;
+  const collapsed = !sec.classList.contains('dr-collapsed');
+  sec.classList.toggle('dr-collapsed', collapsed);
+  const chev = labelEl.querySelector('.dr-chevron');
+  if (chev) chev.textContent = collapsed ? '▸' : '▾';
+  if (key) { const st = drSecState(); st[key] = collapsed; try { localStorage.setItem('dr_sec_collapsed', JSON.stringify(st)); } catch {} }
+}
+// Re-applied every drawer open — cheap (a dozen class toggles), and covers the
+// case where a section's display:none/data toggle happens between opens.
+function applyDrSecStates() {
+  const st = drSecState();
+  document.querySelectorAll('#drawer .dr-sec[data-seckey]').forEach(sec => {
+    const key = sec.dataset.seckey;
+    const collapsed = key in st ? st[key] : (DR_SEC_DEFAULTS[key] === false);
+    sec.classList.toggle('dr-collapsed', collapsed);
+    const chev = sec.querySelector(':scope > h3 .dr-chevron');
+    if (chev) chev.textContent = collapsed ? '▸' : '▾';
+  });
+}
+
 let drChart = null, drSeries = null, drName = null;
 
 function closeDrawer() {
@@ -2295,6 +3449,7 @@ async function openDrawer(name) {
   }
   $('ovl').classList.add('open');
   $('drawer').classList.add('open');
+  applyDrSecStates();
   $('decideOut').style.display = 'none';
   $('drTdeErr').textContent = '';
   $('drChart').innerHTML = '<div class="muted" style="padding:20px">loading candles…</div>';
@@ -2728,17 +3883,43 @@ function loadDrawerCorr(name) {
   partners.sort((a, b) => b.v - a.v);
   const withIt = partners.filter(p => p.v >= 0.3).slice(0, 3);
   const against = partners.filter(p => p.v <= -0.3).slice(-3).reverse();
-  const chip = (p, cls) => `<span class="corrchip ${cls}" title="10-day rolling correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — moves ${p.v >= 0 ? 'WITH' : 'OPPOSITE'} ${dispCorr(p.other)}.">${dispCorr(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
+  const whyText = w => w ? ` Why: ${w}` : ' Why: empirical only — no single structural driver identified over this window.';
+  const chip = (p, cls, otherKey) => `<span class="corrchip ${cls}" title="10-day rolling correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — moves ${p.v >= 0 ? 'WITH' : 'OPPOSITE'} ${dispCorr(p.other)}.${whyText(explainRelationship(key, otherKey))}">${dispCorr(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
   const bLine = betas ? [
     betas.dxy != null ? `<b>${betas.dxy >= 0 ? '+' : ''}${betas.dxy.toFixed(2)}β</b> to the US dollar` : null,
     betas.rates != null ? `<b>${betas.rates >= 0 ? '+' : ''}${betas.rates.toFixed(2)}β</b> to rates` : null,
     betas.vix != null ? `<b>${betas.vix >= 0 ? '+' : ''}${betas.vix.toFixed(2)}β</b> to risk (VIX)` : null,
   ].filter(Boolean).join(' · ') : '';
+
+  // COT positioning correlation — a DIFFERENT relationship from the price
+  // correlation above: not "do these move together", but "do speculators
+  // build/reduce these currencies' positions together" (week-over-week change
+  // in OI-normalised spec share, correlated across the CFTC-tracked majors).
+  // Only meaningful for the currency LEG(S) of this instrument that actually
+  // have a CFTC contract — USD itself doesn't (see cotFor()'s derived-USD
+  // note elsewhere in this file), so USD-anchored pairs show just one leg.
+  const cc = ha.last_cot_corr ?? {};
+  const legs = (PAIR_CCY[name] || []).filter(c => c !== 'USD');
+  const cotPartners = [];
+  for (const leg of legs) {
+    for (const [k, v] of Object.entries(cc)) {
+      const [a, b] = k.split('_');
+      const other = a === leg ? b : (b === leg ? a : null);
+      if (other != null) cotPartners.push({ leg, other, v });
+    }
+  }
+  cotPartners.sort((a, b) => b.v - a.v);
+  const cotWith = cotPartners.filter(p => p.v >= 0.3).slice(0, 3);
+  const cotAgainst = cotPartners.filter(p => p.v <= -0.3).slice(-3).reverse();
+  const cotChip = (p, cls) => `<span class="corrchip ${cls}" title="${ccyFull(p.leg)} and ${ccyFull(p.other)} speculative positioning, week-over-week change in OI-normalised spec share, correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — funds have been ${p.v >= 0 ? 'building/reducing these two together' : 'moving these two in opposite directions'}.${whyText(explainRelationship(p.leg, p.other))}">${ccyFull(p.leg)}↔${ccyFull(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
+
   box.innerHTML =
-    (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos')).join(' ')}</div>` : '') +
-    (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg')).join(' ')}</div>` : '') +
+    (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos', p.other)).join(' ')}</div>` : '') +
+    (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg', p.other)).join(' ')}</div>` : '') +
     (bLine ? `<div class="corrline"><span class="clbl help" title="Sensitivity (regression beta) of this market to each driver over the window. |β|>1 means it amplifies that driver; sign shows direction. What actually pushes this pair around.">Driven by</span> <span class="muted">${bLine}</span></div>` : '') +
-    `<div class="muted" style="font-size:10px;margin-top:6px">10-day rolling window${ha.generated ? ` · built ${new Date(ha.generated).toLocaleDateString('en-GB')}` : ''} · context only, not a signal.</div>`;
+    (cotWith.length ? `<div class="corrline"><span class="clbl help" title="Speculators (CFTC weekly) have been building or reducing these currencies' positions TOGETHER — a positioning relationship, separate from whether the PRICES move together above.">Positioned together</span> ${cotWith.map(p => cotChip(p, 'pos')).join(' ')}</div>` : '') +
+    (cotAgainst.length ? `<div class="corrline"><span class="clbl help" title="Speculators have been moving these currencies' positions in OPPOSITE directions — one being built while the other is reduced.">Positioned apart</span> ${cotAgainst.map(p => cotChip(p, 'neg')).join(' ')}</div>` : '') +
+    `<div class="muted" style="font-size:10px;margin-top:6px">10-day rolling price window${ha.generated ? ` · built ${new Date(ha.generated).toLocaleDateString('en-GB')}` : ''}${ha.cot_corr_generated ? ` · COT positioning corr built ${new Date(ha.cot_corr_generated).toLocaleDateString('en-GB')}` : ''} · context only, not a signal.</div>`;
   sec.style.display = 'block';
 }
 
@@ -2805,15 +3986,23 @@ async function loadDrawerChart(r, barsP) {
   drChart = LightweightCharts.createChart($('drChart'), {
     autoSize: true,   // track the container (wider modal + the taller/shorter toggle)
     width: $('drChart').clientWidth || 700, height: _drChartTall ? 580 : 300,
-    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9da7b3', fontSize: 10 },
-    grid: { vertLines: { color: 'rgba(48,54,61,.35)' }, horzLines: { color: 'rgba(48,54,61,.35)' } },
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: _cssVar('--text2'), fontSize: 10 },
+    grid: { vertLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` }, horzLines: { color: `rgba(${_cssVar('--border-rgb')},.35)` } },
     // Free movement like TradingView: edges NOT fixed, trailing space so the last
     // candle isn't jammed under the axis labels, full scroll/zoom/pinch enabled.
     timeScale: { timeVisible: true, secondsVisible: false, rightOffset: 10, barSpacing: 7 },
-    rightPriceScale: { scaleMargins: { top: 0.10, bottom: 0.10 } },
+    rightPriceScale: { scaleMargins: { top: 0.10, bottom: 0.10 }, autoScale: true },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-    handleScale:  { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+    // vertTouchDrag ON: a one-finger vertical drag anywhere on the pane pans/
+    // rescales the visible price range. Was OFF, which — combined with pinch
+    // only zooming the TIME axis in this library, never price — left touch
+    // users with literally no way to change the vertical range: horizontal
+    // pan/pinch worked, price was stuck wherever autoscale put it. The price
+    // axis strip itself is also drag-to-rescale (axisPressedMouseMove.price),
+    // but that's a ~30px touch target on a phone — vertTouchDrag is the
+    // actually-usable mobile gesture for the same result.
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale:  { axisPressedMouseMove: { time: true, price: true }, mouseWheel: true, pinch: true },
   });
   drSeries = drChart.addCandlestickSeries({
     upColor: '#10b981', downColor: '#f97316',
@@ -2845,6 +4034,14 @@ function padDrawerRange() {
   const N = _drBarCount, shown = Math.min(N, 80), pad = Math.round(shown / 3);
   try { drChart.timeScale().setVisibleLogicalRange({ from: N - shown, to: N + pad }); } catch { try { drChart.timeScale().fitContent(); } catch {} }
 }
+// Manual vertTouchDrag/axis-drag zoom can leave the chart in an odd state
+// (price range collapsed, wrong pan position) with no obvious way back on
+// touch — one tap returns to the normal auto-fit view.
+function resetDrawerChartZoom() {
+  if (!drChart) return;
+  try { drChart.priceScale('right').applyOptions({ autoScale: true }); } catch {}
+  padDrawerRange();
+}
 // Taller / shorter chart toggle (persists across drawer opens, like vol-forecast-v2).
 let _drChartTall = false;
 function resizeDrawerChart() {
@@ -2873,7 +4070,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,hy';
+const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,vix,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
@@ -2977,6 +4174,21 @@ function storyOptions(r) {
   if (!o) return null;
   const dp = r.d.dp;
   const bits = [];
+  // Per-level readings from /api/oi-today, matched by price. A level's name says WHERE
+  // it is; these say whether price is likely to get there (calibrated P(touch)), how
+  // much dealer gamma sits on it (heat), and which way the regime leans there
+  // (expectation). Absent when the endpoint is cold — every use below degrades quietly.
+  const lv = o.today?.levels || [];
+  const readAt = (price, type) => {
+    if (!Number.isFinite(price) || !lv.length) return '';
+    const hit = lv.find(x => x.type === type && Math.abs(x.price - price) < Math.pow(10, -dp) / 2)
+             || lv.find(x => Math.abs(x.price - price) < Math.pow(10, -dp) / 2);
+    if (!hit) return '';
+    const parts = [];
+    if (hit.touch) parts.push(`<b>${hit.touch}</b>`);
+    if (hit.heat && hit.heat !== 'cold') parts.push(hit.heat);
+    return parts.length ? ` <span class="muted" title="Calibrated probability of price touching this level within ~4h, and the dealer-gamma heat at that strike.">[${parts.join(' · ')}]</span>` : '';
+  };
   // Wall strength (3× rule) badge — strong walls are the high-probability ones.
   const cwW = (o.inst?.callWalls || []).find(w => w.strike === o.callWall);
   const pwW = (o.inst?.putWalls || []).find(w => w.strike === o.putWall);
@@ -2984,9 +4196,9 @@ function storyOptions(r) {
   const tierTag = t => t === 'strong' ? ' <span class="chip" style="font-size:9px;color:var(--green)">3×+ strong</span>' : t === 'moderate' ? ' <span class="chip" style="font-size:9px">2× mod</span>' : '';
   // Fresh vs stale: today's volume at the wall vs its resting OI (new money vs old).
   const freshTag = f => f?.tag === 'fresh' ? ' <span class="chip" style="font-size:9px;color:var(--amber)">fresh</span>' : f?.tag === 'stale' ? ' <span class="muted" style="font-size:9px">stale</span>' : '';
-  if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)`);
-  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}${freshTag(cwW?.fresh)}`);
-  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}${freshTag(pwW?.fresh)}`);
+  if (o.maxPain) bits.push(`max pain <b>${fmtN(o.maxPain, dp)}</b> (magnet)${readAt(o.maxPain, 'max_pain')}`);
+  if (o.callWall) bits.push(`call wall ${fmtN(o.callWall, dp)} (cap${o.callWallOI ? `, ${(o.callWallOI / 1000).toFixed(0)}k` : ''})${tierTag(cwTier)}${freshTag(cwW?.fresh)}${readAt(o.callWall, 'call_wall')}`);
+  if (o.putWall) bits.push(`put wall ${fmtN(o.putWall, dp)} (floor${o.putWallOI ? `, ${(o.putWallOI / 1000).toFixed(0)}k` : ''})${tierTag(pwTier)}${freshTag(pwW?.fresh)}${readAt(o.putWall, 'put_wall')}`);
   const vf = o.inst?.volFlow;
   if (vf && vf.volPcRatio != null) bits.push(`<span class="${vf.divergence ? '' : 'muted'}">flow P/C ${vf.volPcRatio} vs OI ${vf.oiPcRatio}${vf.divergence ? ` <b>(today ${vf.volPcRatio > vf.oiPcRatio ? 'leaning puts' : 'leaning calls'})</b>` : ''}</span>`);
   if (o.inst?.skew?.read && o.inst.skew.read !== 'balanced') bits.push(`<span class="muted">${o.inst.skew.read}</span>`);
@@ -3023,7 +4235,17 @@ function storyOptions(r) {
   // Prominent mis-scale/stale banner — a bad paste is flagged, not silently shown.
   const warn = o.inst?.dataWarning
     ? `<div style="color:var(--red);font-weight:600;font-size:11px;margin-bottom:3px">⚠ OI data looks mis-scaled: ${o.inst.dataWarning}</div>` : '';
-  return `${warn}${bits.join(' · ')}${reg}.${age}${oiChangeLine(o, dp)}`;
+  // BASIS AGE, because it silently invalidates every price above. Each level is
+  // `strike − basis`, so the whole set shifts one-for-one with a number nothing on this
+  // card showed: EUR/USD measured +0.00021 at 08:39 and +0.00066 by mid-afternoon, 4.5
+  // pips on every line, from an OI ladder that had not changed at all. A stale basis is
+  // NOT the same as stale OI — the chain really is yesterday's and that is fine; the
+  // futures-vs-spot reading behind the conversion is what goes off.
+  const bAge = o.today?.basisAgeH;
+  const basisWarn = (o.today?.basisStale && Number.isFinite(bAge))
+    ? ` <span class="chip" style="font-size:9px;color:var(--amber)" title="Every level here is strike minus basis, and this basis was captured ${bAge}h ago. The basis drifts intraday, so these prices have drifted with it. Re-basis on the OI Analytics page to refresh.">basis ${bAge}h old</span>`
+    : '';
+  return `${warn}${bits.join(' · ')}${reg}.${age}${basisWarn}${oiChangeLine(o, dp)}`;
 }
 
 // Day-over-day OI dynamics line — what MOVED vs the prior paste (walls firming /
@@ -3112,8 +4334,30 @@ async function loadDrawerAnalysis(r) {
   // The flowing "brief" is the PRIMARY read (newspaper style); the field-by-field
   // reads are optional detail, hidden behind a toggle so the story reads first.
   const brief = a.brief ? `<div class="ai-brief">${esc(a.brief).split(/\n\s*\n|\n/).map(p => p.trim()).filter(Boolean).map(p => `<p>${p}</p>`).join('')}</div>` : '';
+  // Trade of the Day — the closing structured ask (server.js buildAnalysisPrompt
+  // rule 18). Shown at the same "always visible" level as the brief, not buried
+  // behind the detail toggle, since this is the one field meant to be actionable
+  // at a glance — but every path through it still carries the same "AI opinion,
+  // not backtested" framing as the rest of the section.
+  const tod = a.tradeOfDay;
+  let tradeCard = '';
+  if (tod && /^(LONG|SHORT)$/i.test(tod.direction ?? '') && tod.entry) {
+    const dirCls = /LONG/i.test(tod.direction) ? 'bull' : 'bear';
+    tradeCard = `<div class="ai-trade">
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(tod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Trade of the day${tod.confidence ? ` · ${esc(tod.confidence)} confidence` : ''}</span></div>
+      <div class="ai-trade-kv">
+        <div><div class="k">Entry</div><div class="v">${esc(tod.entry)}</div></div>
+        <div><div class="k">Stop</div><div class="v">${esc(tod.stopLoss) || '—'}</div></div>
+        <div><div class="k">Target</div><div class="v">${esc(tod.takeProfit) || '—'}</div></div>
+        <div><div class="k">R:R</div><div class="v">${esc(tod.riskReward) || '—'}</div></div>
+      </div>
+      ${tod.rationale ? `<div class="ai-trade-rationale">${esc(tod.rationale)}</div>` : ''}
+    </div>`;
+  } else if (tod && tod.rationale) {
+    tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
+  }
   const detail = `${reads}${framework}${dodont}${risks}${levels}`;
-  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}` +
+  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${tradeCard}` +
     (detail ? `<div class="ai-body" style="display:none;margin-top:10px">${detail}</div>` : '') + age;
   const body = box.querySelector('.ai-body');
   if (body) {
@@ -3161,13 +4405,116 @@ function assembleSnapshot(r) {
     dataWarning: oi.inst?.dataWarning ?? null,   // mis-scaled/stale flag → the AI down-weights it
     volFlow: oi.inst?.volFlow ?? null,           // today's volume P/C flow vs resting OI P/C
     expiries: Object.entries(oi.inst?.expiries || {}).map(([label, e]) => ({ label, dte: e.dte, maxPain: e.maxPain, callWall: e.callWall, putWall: e.putWall })).sort((a, b) => (a.dte ?? 999) - (b.dte ?? 999)).slice(0, 4) };
-  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data
-  const ct = cotFor(r.name), rawCot = cot?.[COT_MAP[r.name]?.sym];
-  if (ct && rawCot) {
-    const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
-    s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
-      levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
-    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}`;
+  // COT positioning (the shape the prompt reads) — real spec/leveraged-fund data.
+  // `ct` alone is enough now: cotFor() already branches direct-major vs derived
+  // cross internally. Previously this required `rawCot` too (only ever set for
+  // the 7 direct-vs-USD majors), which silently dropped the derived read for
+  // every one of the 19 crosses even though cotFor() already computed it.
+  const ct = cotFor(r.name);
+  if (ct) {
+    const rawCot = cot?.[COT_MAP[r.name]?.sym];
+    if (rawCot) {
+      const flip = COT_MAP[r.name]?.flip, net = flip ? -(rawCot.specNet ?? 0) : (rawCot.specNet ?? 0);
+      s.cot = { reportDate: ct.reportDate, openInterest: rawCot.openInterest, levNet: net,
+        levNetChg: ct.wkChg, levPct: ct.pctile, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined };
+    } else if (ct.derived) {
+      // Cross pair — no single CFTC contract for it; derived from both legs'
+      // own positioning (js/pairCompositeEngine.js's cotPairBias).
+      s.cot = { derived: true, crowdingPct: ct.crowd != null ? +ct.crowd.toFixed(1) : undefined,
+        baseLeg: ct.baseRead, quoteLeg: ct.quoteRead };
+    }
+    s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}${ct.derived ? ' — derived from both legs, no direct CFTC contract for this cross' : ''}`;
+  }
+  // Macro Scorecard (11-dim fundamentals, both legs) — previously never
+  // reached the AI prompt at all.
+  const cc = PAIR_CCY[r.name];
+  if (cc && macroScorecard?.ranked) {
+    const [base, quote] = cc;
+    const b = macroScorecard.ranked.find(x => x.ccy === base);
+    const q = macroScorecard.ranked.find(x => x.ccy === quote);
+    if (b || q) {
+      s.macroScorecard = {
+        [base]: b ? { composite: b.composite, coverage: b.coverage, dims: b.dims } : null,
+        [quote]: q ? { composite: q.composite, coverage: q.coverage, dims: q.dims } : null,
+      };
+    }
+  }
+  // Composite signal (js/pairCompositeEngine.js) — same read as the card's
+  // ⚖ chip, fed to the AI as one more labeled input, not asked to replace its reasoning.
+  const comp = pairSignalComposite(r);
+  if (comp?.score != null) {
+    s.pairComposite = { score: comp.score, direction: comp.direction, agree: comp.agree, total: comp.total,
+      legs: comp.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
+  }
+  // Board-wide gates (Liquidity, Credit — HY level + quality spread) — same
+  // reads the Market Read risk verdict already shows, previously never
+  // reached the AI prompt despite being visible on the page for every pair.
+  const lg = liquidityGateRead();
+  if (lg?.score != null) {
+    s.liquidityGate = { score: lg.score, direction: lg.direction, agree: lg.agree, total: lg.total,
+      legs: lg.legs.map(l => `${l.label}: ${l.score > 0 ? '+' : ''}${l.score}`) };
+  }
+  const boardCredit = creditGate();
+  if (boardCredit) s.creditGateBoard = { gate: boardCredit.gate, widening: boardCredit.widening, hyBps: boardCredit.hyBps, d5: boardCredit.d5 };
+  if (creditQuality?.quality != null) s.creditQualitySpread = { z: creditQuality.quality, date: creditQuality.latestDate };
+  // Geopolitical Risk (Caldara & Iacoviello) — genuinely global, currency-
+  // agnostic backdrop; same read the Market Read risk verdict shows.
+  if (gpr?.z != null) s.gpr = { z: gpr.z, trend: gpr.trend, level: gpr.level, asOfDate: gpr.asOfDate };
+  // Structural motif (AnalogML) — research, NOT a validated signal (the
+  // retired k-NN "lean" version banked null; this replacement diagnostic
+  // reports a pattern + its historical base rate, not a directional call).
+  const motif = analogml?.[r.name.toLowerCase()];
+  if (motif) {
+    s.analogMotif = { kind: motif.kind, nTouches: motif.n_touches, provisional: motif.provisional,
+      distToLevelPips: motif.dist_to_level_pips, playedOutRate: motif.confidence?.played_out_rate ?? null,
+      nSamples: motif.confidence?.n_samples ?? null, profitFactor: motif.confidence?.profit_factor ?? null };
+  }
+  // SessionResearch — 10-year Asia/London/overlap/NY session-handoff, day-flow,
+  // walk-forward-model, and impulse-reversal research for THIS pair, distilled
+  // by SessionResearch/dashboard_export.py. Every number here already survived
+  // a circular-shift null + pooled FDR correction (SessionResearch/README.md);
+  // this snapshot only reduces field names/shape, it doesn't re-derive anything.
+  const sr = sessionResearch?.[r.name.toLowerCase()];
+  if (sr) {
+    s.sessionResearch = {
+      dataThrough: sr.data_through, nHypotheses: sr.n_hypotheses_pooled, nBhPass: sr.n_bh_pass,
+      rangeHandoff: sr.range_handoff
+        ? { strongestPair: sr.range_handoff.strongest_pair, strongestRho: sr.range_handoff.strongest_rho } : null,
+      directionHandoff: { nTested: sr.direction_handoff.n_tested, anySignificant: sr.direction_handoff.any_significant },
+      spikeReversal: Object.entries(sr.spike_reversal || {}).filter(([, v]) => v.bh_pass)
+        .map(([boundary, v]) => ({ boundary, reversalRateSpike: v.reversal_rate_spike, reversalRateNonspike: v.reversal_rate_nonspike })),
+      impulse: sr.impulse?.symmetry_30min ? { symmetry: {
+        winRateLow: sr.impulse.symmetry_30min.win_rate_low, winRateHigh: sr.impulse.symmetry_30min.win_rate_high,
+        bhPass: sr.impulse.symmetry_30min.bh_pass } } : null,
+      todayOutlookIsLive: !!sr.today_outlook_is_live,
+      liveStatus: sr.live_status ?? null,
+      todayOutlook: (sr.today_outlook || []).map(o => ({
+        day: o.day, checkpoint: o.checkpoint, modelRangeAtr: o.model_range_atr, persistenceRangeAtr: o.persistence_range_atr,
+        modelPUp: o.model_p_up,
+        directionEdge: o.direction_reliability?.acc_model != null
+          && o.direction_reliability.acc_model > o.direction_reliability.acc_persistence + 0.01
+          && o.direction_reliability.p_vs_persistence < 0.10,
+      })),
+    };
+  }
+  // COT positioning correlation — do this pair's OWN legs' speculative
+  // positioning move with/against other currencies (a different relationship
+  // than price correlation, and different from the pair's own crowding level
+  // above). USD has no CFTC contract, so USD-anchored pairs surface only
+  // their non-USD leg.
+  const ccLegs = (PAIR_CCY[r.name] || []).filter(c => c !== 'USD');
+  const cotCorrRaw = hedgeAlerts?.last_cot_corr ?? {};
+  const cotCorr = [];
+  for (const leg of ccLegs) {
+    for (const [k, v] of Object.entries(cotCorrRaw)) {
+      const [a, b] = k.split('_');
+      const other = a === leg ? b : (b === leg ? a : null);
+      if (other != null && Math.abs(v) >= 0.3) cotCorr.push({ leg, other, v, dir: v >= 0 ? 'with' : 'against' });
+    }
+  }
+  if (cotCorr.length) {
+    cotCorr.sort((a, b) => Math.abs(b.v) - Math.abs(a.v));
+    s.cotCorrelation = cotCorr.slice(0, 4);
   }
   // Event risk for THIS pair — the calendar filtered to its own economies
   const evs = pairEvents(r.name).filter(e => e.ms >= Date.now() - 20 * 60000);
@@ -3184,6 +4531,16 @@ async function analysePair() {
   const btn = $('drAnalyseBtn'), box = $('drAnalysis'), sec = $('drAnalysisSec');
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Analysing…';
   sec.style.display = 'block';
+  // The section defaults to collapsed (accordion) — "Analyse" is the manual
+  // action that's supposed to reveal it, so force it open here. Without this
+  // the analysis generates fine but stays invisible behind the collapsed body.
+  sec.classList.remove('dr-collapsed');
+  const chev = sec.querySelector(':scope > h3 .dr-chevron');
+  if (chev) chev.textContent = '▾';
+  if (sec.dataset.seckey) {
+    const st = drSecState(); st[sec.dataset.seckey] = false;
+    try { localStorage.setItem('dr_sec_collapsed', JSON.stringify(st)); } catch {}
+  }
   box.innerHTML = '<span class="muted">Generating a full fundamental read — ~15s…</span>';
   try {
     const snapshot = assembleSnapshot(r);
@@ -3381,22 +4738,51 @@ function renderMorningBrief(r) {
   const esc = s => (s ?? '').toString().replace(/</g, '&lt;');
   const gen = `<a class="mb-btn" href="brief-config.html" style="text-decoration:none" title="Turn on auto-generation and pick which pairs auto-analyse each morning">⚙ Auto</a><button class="mb-btn" id="mbBtn" onclick="generateMorningBrief()">↻ Generate</button>`;
   if (!r || !r.ok || !r.analysis) {
-    el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}</div>` +
-      `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`;
+    el.innerHTML = `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${gen}${secChev('mbrief')}</div>` +
+      secBody('mbrief', `<div class="mb-theme">No brief generated yet — hit <b>Generate</b> for today's top-down macro read (the market backdrop → the dollar → the FX complex), grounded in the data + real headlines. Runs on Railway (needs ANT_KEY).</div>`);
     el.style.display = 'block'; return;
   }
   const a = r.analysis;
   const regChip = /RISK-ON/i.test(a.regime) ? 'range' : /RISK-OFF/i.test(a.regime) ? 'bear' : 'neu';
   const aCls = l => /BULL/i.test(l) ? 'up' : /BEAR/i.test(l) ? 'dn' : 'nu';
   const cell = (lbl, v) => v ? `<div class="mb-cell"><div class="mb-cl">${lbl}</div><div class="mb-cv">${esc(v)}</div></div>` : '';
+  const btod = a.boardTradeOfDay;
+  let boardTrade = '';
+  if (btod && /^(LONG|SHORT)$/i.test(btod.direction ?? '') && btod.pair) {
+    const dirCls = /LONG/i.test(btod.direction) ? 'bull' : 'bear';
+    boardTrade = `<div class="ai-trade" style="margin-top:0;margin-bottom:12px">
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(btod.pair)} ${esc(btod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Board trade of the day${btod.confidence ? ` · ${esc(btod.confidence)} confidence` : ''}</span></div>
+      ${btod.rationale ? `<div class="ai-trade-rationale">${esc(btod.rationale)}</div>` : ''}
+    </div>`;
+  } else if (btod && btod.rationale) {
+    boardTrade = `<div class="ai-trade" style="margin-top:0;margin-bottom:12px"><div class="ai-trade-hd"><span class="chip neu">NO STANDOUT PAIR</span><span class="muted" style="font-size:10.5px">Board trade of the day</span></div><div class="ai-trade-rationale">${esc(btod.rationale)}</div></div>`;
+  }
+  // Meter row — only genuinely real numbers here, no fabricated conviction/edge scores:
+  // headline count (grounding depth) and the AI's own stated board-trade confidence (categorical, real).
+  const meters = [];
+  if (r.headlineCount != null) {
+    const pct = Math.max(6, Math.min(100, Math.round(r.headlineCount / 30 * 100)));
+    meters.push(`<div class="hero-meter"><span class="mk">Data Coverage</span><div class="hero-meter-bar"><i style="width:${pct}%;background:var(--blue)"></i></div><span class="mv">${r.headlineCount} headlines</span></div>`);
+  }
+  if (btod?.confidence && /^(LOW|MEDIUM|HIGH)$/i.test(btod.confidence)) {
+    const pct = { LOW: 33, MEDIUM: 66, HIGH: 100 }[btod.confidence.toUpperCase()];
+    const dirCol = /LONG/i.test(btod.direction ?? '') ? 'var(--bull)' : /SHORT/i.test(btod.direction ?? '') ? 'var(--bear)' : 'var(--amber)';
+    meters.push(`<div class="hero-meter"><span class="mk">Trade Confidence</span><div class="hero-meter-bar"><i style="width:${pct}%;background:${dirCol}"></i></div><span class="mv">${esc(btod.confidence).toUpperCase()}</span></div>`);
+  }
+  const meterRow = meters.length ? `<div class="hero-meter-row">${meters.join('')}</div>` : '';
   el.innerHTML =
-    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}</div>` +
-    (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
-    (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
-    `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
-    (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
-    (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
-    `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`;
+    `<div class="mb-hd"><span class="mb-eyebrow">🗞 Morning Brief</span>${a.regime ? `<span class="chip ${regChip}">${esc(a.regime)}</span>` : ''}<span class="chip warn" style="font-size:9px">AI · grounded, not backtested</span>${gen}${secChev('mbrief')}</div>` +
+    secBody('mbrief',
+      (a.headline ? `<div class="mb-head">${esc(a.headline)}</div>` : '') +
+      (a.theme ? `<div class="mb-theme">${esc(a.theme)}</div>` : '') +
+      meterRow +
+      `<div class="mb-grid">${cell('The dollar', a.dollar)}${cell('Rates & curve', a.rates)}${cell('Risk mood', a.risk)}${cell('The FX complex', a.complex)}</div>` +
+      (a.byAsset?.length ? `<div class="mb-assets">${a.byAsset.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.asset)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+      (a.pairsOutlook?.length ? `<div class="mb-cl" style="margin-bottom:5px">Instrument-by-instrument read</div><div class="mb-assets">${a.pairsOutlook.map(x => `<span class="mb-a ${aCls(x.lean)}"><b>${esc(x.pair)} ${esc(x.lean)}</b> <span class="mb-an">${esc(x.note)}</span></span>`).join('')}</div>` : '') +
+      boardTrade +
+      (a.watch?.length ? `<div class="mb-watch"><b>Watch:</b> ${a.watch.map(esc).join(' · ')}</div>` : '') +
+      `<div class="mb-foot">${r.generatedAt ? `Generated ${new Date(r.generatedAt).toLocaleString()} · ` : ''}${r.headlineCount != null ? `${r.headlineCount} live headlines · ` : ''}AI grounded in macro data + Yahoo headlines — not a backtested signal.</div>`
+    );
   el.style.display = 'block';
 }
 async function generateMorningBrief() {
@@ -3414,11 +4800,11 @@ async function generateMorningBrief() {
 }
 
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
-loadAll().then(() => { pollPrices(); });
+loadAll().then(() => { pollPrices(); startLivePriceStream(); });
 loadGate();
 loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
-setInterval(pollPrices, 30_000);               // proximity watch, every 30s
+setInterval(pollPrices, 30_000);               // REST fallback, in case SSE can't connect
 setInterval(() => { renderGate(); renderNewsPlay(); }, 60_000);  // tick countdowns / released-event updates
 setInterval(async () => {           // live session + brief refresh (prices/regime move)
   try {
@@ -3438,6 +4824,34 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as CreditCore from './js/creditCore.js';
   window.creditBrick = CreditCore;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the pair-composite brick (js/pairCompositeEngine.js) —
+     combines technical/COT/macro/carry legs this page already computes into
+     one per-pair read, shared with indexv2.html's drill view. -->
+<script type="module">
+  import * as PairComposite from './js/pairCompositeEngine.js';
+  window.pairCompositeBrick = PairComposite;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the liquidity-gate brick (js/liquidityGateEngine.js) —
+     Fed/ECB/BoJ balance-sheet momentum, combined via the pair-composite
+     brick above (loaded first, so it's already on window by the time this
+     one's render() retriggers). -->
+<script type="module">
+  import * as LiquidityGate from './js/liquidityGateEngine.js';
+  window.liquidityGateBrick = LiquidityGate;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Same pattern for the credit-persistence brick (js/creditHmm.js) — a
+     principled self-transition-probability read for "is the current credit
+     widening/tightening regime likely to continue", instead of a hand-drawn
+     day-count. Built and tested but never wired to any live page before
+     (LEGO_MODULES.md flagged it "intended: today.html credit persistence
+     term 🔲"). -->
+<script type="module">
+  import * as CreditHmm from './js/creditHmm.js';
+  window.creditHmmBrick = CreditHmm;
   try { window.render?.(); } catch (e) {}
 </script>
 </body>

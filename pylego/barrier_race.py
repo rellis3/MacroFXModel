@@ -58,13 +58,24 @@ class BarrierResult:
 
 
 def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
-                 cmax, cmin, last_close: float, tp_r: float):
+                 cmax, cmin, last_close: float, tp_r: float,
+                 pessimistic_ties: bool = False):
     """Resolve ONE forward path: which barrier is touched first. Returns
     (outcome, exit_off, exit_price, r) where outcome ∈ {'tp','sl','timeout'},
     exit_off is the 0-based bar offset from entry, and r EXCLUDES cost. Shared
     by race_grid (which only tallies outcome + r) and race_trades (which keeps
     exit_off/price) — one walker, so the aggregate stats and the per-trade audit
-    can never disagree (the whole reason barrier_race exists — see module head)."""
+    can never disagree (the whole reason barrier_race exists — see module head).
+
+    `pessimistic_ties` controls the case where BOTH barriers are first touched
+    inside the SAME bar, where the bar's OHLC cannot say which came first.
+    Default False keeps the historical behaviour (target wins) so existing
+    studies are unchanged; True resolves the ambiguity as a stop, which is the
+    conservative reading and the one a study should use when its stops are
+    tight relative to bar range — at a 1:1 barrier with a sub-ATR stop the
+    same-bar case is common and awarding all of it to the target is a real,
+    one-directional optimism. Callers that care should pass True explicitly.
+    """
     if direction > 0:
         tp_price, sl_price = entry_price + tp_dist, entry_price - sl
         tp_arr = np.flatnonzero(cmax >= tp_price)
@@ -75,7 +86,8 @@ def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
         sl_arr = np.flatnonzero(cmax >= sl_price)
     tp_i = int(tp_arr[0]) if tp_arr.size else None
     sl_i = int(sl_arr[0]) if sl_arr.size else None
-    if tp_i is not None and (sl_i is None or tp_i <= sl_i):
+    tp_wins_tie = tp_i is not None and sl_i is not None and tp_i == sl_i and not pessimistic_ties
+    if tp_i is not None and (sl_i is None or tp_i < sl_i or tp_wins_tie):
         return 'tp', tp_i, tp_price, tp_r
     if sl_i is not None:
         return 'sl', sl_i, sl_price, -1.0
@@ -85,7 +97,7 @@ def _first_touch(entry_price: float, direction: int, sl: float, tp_dist: float,
 
 def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float,
                 max_bars_ahead: int, cost_price: float = 0.0,
-                min_bars_ahead: int = 10) -> list[dict]:
+                min_bars_ahead: int = 10, pessimistic_ties: bool = False) -> list[dict]:
     """Per-trade sibling of `race_grid` for a SINGLE (sl, tp_r) cell: one record
     per entry with its resolved exit, so a viewer can draw each trade on the real
     candles. Same first-touch walker (`_first_touch`) — no second copy.
@@ -110,13 +122,36 @@ def race_trades(bars: pd.DataFrame, entries: list[Entry], sl: float, tp_r: float
         last_close = float(close[end_pos - 1])
         entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
         outcome, off, exit_price, r = _first_touch(entry_price, e.direction, sl, tp_dist,
-                                                    cmax, cmin, last_close, tp_r)
+                                                    cmax, cmin, last_close, tp_r,
+                                                    pessimistic_ties)
         out.append({
             'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
             'exit_idx': idx + off, 'exit_price': float(exit_price), 'outcome': outcome,
             'r': float(r - (cost_price / sl if sl > 0 else 0.0)), 'bars_held': off,
         })
     return out
+
+
+def mae_from_path(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
+                  entry_price: float, sl_price: float) -> tuple[float, float]:
+    """MAE from the REAL bar path between entry and exit (inclusive) — low-vs-
+    entry for longs, high-vs-entry for shorts, never approximated from the
+    close-to-close return (CLAUDE.md's backtest discipline). Capped at
+    `sl_price`: `race_trades`' fixed-barrier walker closes a position exactly
+    when the SL level is first touched, so it never experiences adverse
+    movement beyond that even if the exit bar's own high/low range overshoots
+    it — an uncapped MAE would overstate real risk. Returns (mae_r, mae_pct).
+    Was duplicated once already (`AnalogML/backtest_export.py`'s original
+    `compute_mae`) before this second consumer (`motif_backtest_export.py`)
+    made it a real shared brick — pulled out here rather than copied again."""
+    highs = bars["high"].to_numpy()[idx:exit_idx + 1]
+    lows = bars["low"].to_numpy()[idx:exit_idx + 1]
+    if direction > 0:
+        mae_price = entry_price - float(lows.min())
+    else:
+        mae_price = float(highs.max()) - entry_price
+    mae_price = min(max(mae_price, 0.0), sl_price)
+    return mae_price / sl_price, mae_price / entry_price * 100.0
 
 
 def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
@@ -193,6 +228,91 @@ def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
                 avg_r=float(np.mean(outcomes_r)),
             ))
     return results
+
+
+@dataclass
+class VariableEntry:
+    """Like `Entry`, but carries its OWN sl/tp_dist instead of racing through
+    a shared grid cell -- for a signal whose risk is sized PER-TRADE (e.g.
+    from that trade's own category's historical MAE/MFE distribution,
+    scaled to that trade's own entry-time volatility), not one frozen
+    sl-pips/tp-r pair applied to every entry. Reuses `_first_touch`, the
+    same walker every other barrier-race function uses -- no second copy."""
+    idx: int
+    direction: int
+    sl: float
+    tp_dist: float
+    entry_price: float | None = None
+
+
+def race_trades_variable(bars: pd.DataFrame, entries: list[VariableEntry], max_bars_ahead: int,
+                         cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[dict]:
+    """Per-trade race where EACH entry supplies its own (sl, tp_dist),
+    instead of every entry sharing one (sl, tp_r) grid cell like
+    `race_trades`/`race_grid`. Same `_first_touch` walker, same return shape
+    as `race_trades` (idx, direction, entry_price, exit_idx, exit_price,
+    outcome, r, bars_held) plus the sl/tp_dist actually used, for the audit
+    trail. Entries with sl<=0 (e.g. a category with no historical MAE data
+    yet) are skipped, not defaulted to a fabricated stop."""
+    high = bars['high'].to_numpy(); low = bars['low'].to_numpy()
+    close = bars['close'].to_numpy(); opens = bars['open'].to_numpy()
+    n_bars = len(bars)
+    out: list[dict] = []
+    for e in entries:
+        idx = e.idx
+        if idx >= n_bars or e.sl <= 0:
+            continue
+        end_pos = min(idx + max_bars_ahead, n_bars)
+        if end_pos - idx < min_bars_ahead:
+            continue
+        cmax = np.maximum.accumulate(high[idx:end_pos])
+        cmin = np.minimum.accumulate(low[idx:end_pos])
+        last_close = float(close[end_pos - 1])
+        entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
+        tp_r = e.tp_dist / e.sl
+        outcome, off, exit_price, r = _first_touch(entry_price, e.direction, e.sl, e.tp_dist,
+                                                    cmax, cmin, last_close, tp_r)
+        out.append({
+            'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
+            'exit_idx': idx + off, 'exit_price': float(exit_price), 'outcome': outcome,
+            'r': float(r - (cost_price / e.sl if e.sl > 0 else 0.0)), 'bars_held': off,
+            'sl': e.sl, 'tp_dist': e.tp_dist,
+        })
+    return out
+
+
+def excursion(bars: pd.DataFrame, entries: list[Entry], max_bars_ahead: int,
+             min_bars_ahead: int = 1) -> list[dict]:
+    """Raw max-adverse / max-favourable excursion over the FULL
+    max_bars_ahead window, with NO stop/target constraint -- this is not a
+    graded trade outcome, it's the raw material for building a historical
+    MAE/MFE distribution that a caller then uses to size a stop/target
+    (e.g. `AnalogML/motif_adaptive.py`'s per-category percentile sizing).
+    mae/mfe are non-negative price distances. Skips entries without
+    `min_bars_ahead` runway, same convention as every other race_* fn."""
+    high = bars['high'].to_numpy(); low = bars['low'].to_numpy()
+    opens = bars['open'].to_numpy()
+    n_bars = len(bars)
+    out: list[dict] = []
+    for e in entries:
+        idx = e.idx
+        if idx >= n_bars:
+            continue
+        end_pos = min(idx + max_bars_ahead, n_bars)
+        if end_pos - idx < min_bars_ahead:
+            continue
+        entry_price = e.entry_price if e.entry_price is not None else float(opens[idx])
+        window_high = float(np.max(high[idx:end_pos]))
+        window_low = float(np.min(low[idx:end_pos]))
+        if e.direction > 0:
+            mfe = max(0.0, window_high - entry_price)
+            mae = max(0.0, entry_price - window_low)
+        else:
+            mfe = max(0.0, entry_price - window_low)
+            mae = max(0.0, window_high - entry_price)
+        out.append({'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
+                    'mae': mae, 'mfe': mfe, 'bars': end_pos - idx})
+    return out
 
 
 @dataclass

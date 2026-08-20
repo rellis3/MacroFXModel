@@ -22,6 +22,8 @@
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Extreme Value Theory helpful</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -248,6 +250,11 @@
     noise that's running the whole time regardless (\(\sigma\,dW_t\)).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The jump term is a second, separate coin flip layered on top of the usual price wiggling. Most instants, nothing happens — it just contributes zero. But every so often, a "jump alarm" goes off (how often is λ), and when it does, the price jolts by some random amount (how big and which direction is μ_J and σ_J). It's not one process pretending to be two things — it's genuinely two independent sources of randomness added together.</p>
+  </div>
+
   <h3>Why this produces fat tails</h3>
   <p>
     Under plain Black-Scholes, log-returns over any fixed interval are exactly
@@ -274,6 +281,11 @@
     produce leptokurtic returns while pure GBM cannot, by construction, produce
     anything but a normal one.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine most days are calm and cluster tightly around "nothing much happened" — that makes the middle of the distribution taller and narrower than a plain bell curve. But every once in a while a jump day throws a return way out past where a normal bell curve would ever expect one — that's what puffs up the tails. Tall skinny middle plus fat tails is the signature of "usually calm, occasionally violent," which is exactly what real markets look like and a plain bell curve can't describe.</p>
+  </div>
 
   <h3>Why this produces the volatility smile</h3>
   <p>
@@ -306,6 +318,11 @@
     jump-diffusion (or similar fat-tailed) reality being forced through a
     Black-Scholes-shaped pricing formula.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Far-out-of-the-money options are basically bets on a genuine surprise — the kind of move that only a jump, not ordinary wiggling, can produce. Plain Black-Scholes doesn't believe surprises like that can really happen, so it prices those bets too cheap. The market knows better and charges more for them anyway — and the only way to force the flat-Black-Scholes formula to spit out that higher, more honest price is to feed it an inflated volatility number. That inflation, visible as a "smile" when you plot it across strikes, is really the market quietly pricing in jump risk the formula itself doesn't know about.</p>
+  </div>
 
   <h3>The pricing formula, conceptually</h3>
   <p>
@@ -346,6 +363,11 @@
     scenarios matter most: far out-of-the-money strikes, which is the smile
     again from a different angle.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of one price, imagine averaging together a whole set of "what if" prices: what would this option be worth if zero jumps happen, what if exactly one jump happens, what if two happen, and so on — each "what if" weighted by how likely that many jumps actually is. Add them all up and you get the Merton price. Because it's honestly paying for jump scenarios that plain Black-Scholes pretends can't happen, it always comes out at least as expensive.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -716,6 +738,29 @@
 
     btn.addEventListener('click', triggerJump);
   })();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
 </script>
 </body>
 </html>

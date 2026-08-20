@@ -61,6 +61,15 @@ console.log('[tradeBalanceScore — rounds long floating-point tails]');
   ok('latestValue rounds to 2dp', r.latestValue === -764.72, r.latestValue);
 }
 
+console.log('[tradeBalanceScore — score field itself is rounded, not just latestValue]');
+{
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`m${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('m19', 1.03);
+  const r = tradeBalanceScore(m);
+  ok('score has no floating-point tail', r.score === +r.score.toFixed(2), r.score);
+}
+
 console.log('[TRADE_BALANCE_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => TRADE_BALANCE_UNIVERSE[c]));

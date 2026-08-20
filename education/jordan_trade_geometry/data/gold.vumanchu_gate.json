@@ -1,0 +1,91 @@
+{
+  "pair": "gold",
+  "resampleMin": 5,
+  "lookbackBars": 80,
+  "confirmBars": 3,
+  "naive": {
+    "baseline": {
+      "n": 64995,
+      "continuedFrac": 0.4798
+    },
+    "byNSignals": [
+      {
+        "nSignals": 0,
+        "n": 48685,
+        "continuedFrac": 0.422
+      },
+      {
+        "nSignals": 1,
+        "n": 13516,
+        "continuedFrac": 0.6124
+      },
+      {
+        "nSignals": 2,
+        "n": 2748,
+        "continuedFrac": 0.8443
+      },
+      {
+        "nSignals": 3,
+        "n": 46,
+        "continuedFrac": 0.8696
+      }
+    ],
+    "byIndividualSignal": {
+      "hiddenDivergence": {
+        "n": 3174,
+        "continuedFrac": 0.4726
+      },
+      "moneyFlowFading": {
+        "n": 8164,
+        "continuedFrac": 0.5647
+      },
+      "vwapAgrees": {
+        "n": 7812,
+        "continuedFrac": 0.8867
+      }
+    }
+  },
+  "corrected": {
+    "baseline": {
+      "n": 27276,
+      "continuedFrac": 0.9041
+    },
+    "byNSignals": [
+      {
+        "nSignals": 0,
+        "n": 4803,
+        "continuedFrac": 0.8728
+      },
+      {
+        "nSignals": 1,
+        "n": 15134,
+        "continuedFrac": 0.9197
+      },
+      {
+        "nSignals": 2,
+        "n": 7252,
+        "continuedFrac": 0.8916
+      },
+      {
+        "nSignals": 3,
+        "n": 87,
+        "continuedFrac": 0.9425
+      }
+    ],
+    "byIndividualSignal": {
+      "hiddenDivergence": {
+        "n": 840,
+        "continuedFrac": 0.9369
+      },
+      "moneyFlowFading": {
+        "n": 7742,
+        "continuedFrac": 0.8782
+      },
+      "vwapAgrees": {
+        "n": 21317,
+        "continuedFrac": 0.9153
+      }
+    }
+  },
+  "correctedDroppedForEarlyResolution": 37719
+}

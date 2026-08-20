@@ -8,7 +8,9 @@
       "Bash(node --input-type=module)",
       "Bash(git commit -m ' *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\relli\\\\OneDrive\\\\Documents\\\\Programming\\\\Trading\\\\v2 trading model\\\\MacroFXModel\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(python3 AnalogML/fix_r2_corruption_20260816.py)",
+      "Bash(python3 AnalogML/purge_corrupt_m1_cache_20260818.py)"
     ]
   },
   "hooks": {

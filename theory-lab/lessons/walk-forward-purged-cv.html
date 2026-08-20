@@ -22,6 +22,8 @@
     <span>Prereqs: Multiple Testing &amp; the Look-Elsewhere Effect</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -198,6 +200,11 @@
   cross-validate in the first place.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Normal cross-validation is like shuffling a deck of index cards before splitting them into piles — that's fine when each card is totally unrelated to its neighbors. But daily market data is more like a flip-book, where each page is almost a copy of the page before it. Shuffle a flip-book and hand someone random pages to "test" on while training on the rest, and they'll often be tested on a page that looks almost identical to one they already studied — not because they're smart, but because you shuffled something that was never really independent to begin with.</p>
+  </div>
+
   <h3>Walk-forward validation: train on the past, test on the strict future</h3>
   <p>
   The fix replaces random fold assignment with <strong>chronological</strong> fold assignment. Define
@@ -220,6 +227,11 @@
   rule applied not just within a single feature calculation, but to the entire train/evaluate
   cycle — the model itself never has access to a boundary it hasn't crossed yet.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Walk-forward validation is simply testing a model the same honest way a real weather forecaster works: learn from everything up through today, make a call about tomorrow, then once tomorrow actually happens, add it to what you know and make a call about the next day. You never get to peek ahead — the training set only ever grows into days that have already occurred by the time you're being graded on them.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -278,6 +290,11 @@
     information into training — the leak lives in the window, not the index.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a "no peeking" rule for a quiz where you're only forbidden from opening tomorrow's newspaper — but your study notes from yesterday happen to already summarize what's in it, because you wrote them using a several-day average that quietly reaches into tomorrow. You never touched the newspaper directly, so the rule looks respected, but the answer leaked in anyway through the notes. A rolling feature or a forward-looking label works the same way — it can smuggle test-period information across a perfectly clean-looking date.</p>
+  </div>
+
   <h3>Purging: removing the contaminated training rows</h3>
   <p>
   <strong>Purging</strong> (the term and the formal treatment are Marcos López de Prado's, in
@@ -315,6 +332,11 @@
   exactly which row indices must be dropped, rather than relying on "the split date looks clean."
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Purging is just going back and physically throwing out any training flashcard whose notes reach into the material you're about to be quizzed on — even if the flashcard's own date says it belongs in the "study" pile. You can compute exactly which flashcards those are, ahead of time, from how far back or forward their notes reach, so there's no guessing about which ones to pull.</p>
+  </div>
+
   <h3>Embargo: a buffer for residual serial correlation</h3>
   <p>
   Purging removes every row with an <em>explicit</em>, window-length-computable overlap. But real
@@ -338,6 +360,11 @@
   <em>lower bound</em> on how much needs to be removed, not a provably complete one, given that real
   return series are correlated in ways a fixed window length only approximately describes.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Embargo is an extra "just to be safe" waiting period after the purge, the same way you might wait a bit longer than the recipe says before eating something out of the oven — the timer told you it should be done, but ovens don't behave with perfect precision, and a little extra margin costs almost nothing while protecting against the case where the timer alone wasn't quite enough.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -524,7 +551,7 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Random k-fold CV is mechanically broken for time series.</strong> Shuffling can put day \(i+1\) in training while day \(i\) is the test row — literal lookahead, not a subtle statistical nuance.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation trains strictly on the past.</strong> \(\text{Train}_k=\{i:i<T_k\}\), \(\text{Test}_k=\{i:T_k\le i<T_k+h\}\) — the same "no lookahead" rule this project's own house rule states, applied to the whole train/evaluate cycle.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation trains strictly on the past.</strong> \(\text{Train}_k=\{i:i < T_k\}\), \(\text{Test}_k=\{i:T_k\le i < T_k+h\}\) — the same "no lookahead" rule this project's own house rule states, applied to the whole train/evaluate cycle.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A clean split date alone still leaks.</strong> Rolling feature/label windows straddling the boundary can carry test-period information into training even when every index technically respects the split.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Purging removes the mechanically computable overlap.</strong> Any training row whose combined feature+label window touches the test interval is dropped — exact, checkable, not eyeballed.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Embargo buffers what purging can't formula-ize.</strong> Real serial correlation runs beyond any window length — embargo is a deliberate, conservative extra margin on top of the mechanical purge.</span></div>
@@ -628,5 +655,28 @@
     <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

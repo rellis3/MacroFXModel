@@ -22,6 +22,8 @@
     <span>Prereqs: None required — the Taylor Rule lesson helpful for the formal reaction-function view</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -115,6 +117,11 @@
     specific instrument, forecast, or communication choice that expresses one of these two underlying
     leanings.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Hawkish and dovish are just two different worries a central bank can have. A hawk is worried prices are climbing too fast and wants to slow things down, even if that costs some jobs. A dove is worried people are losing jobs and wants to help the economy along, even if that lets prices creep up a bit. Nearly every piece of jargon in this lesson is just a more specific way of saying "leaning hawk" or "leaning dove."</p>
+  </div>
 
   <h3>What the bank does to rates</h3>
   <div class="tl-icard-grid">
@@ -324,6 +331,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Usually a central bank has one dial that moves two needles in opposite directions on their own — raise rates and both inflation and job growth tend to cool together, so there's just one clear choice to make. Stagflation breaks that pattern: prices are climbing AND people are losing jobs at the same time, so raising rates fixes one problem while making the other worse, and there's no setting on the one dial that fixes both at once. That's why it splits the committee instead of producing a clean, confident decision.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Three worked scenarios</h2>
   <p>
@@ -441,6 +453,12 @@
     tracking what's priced into rate futures and OIS curves ahead of a meeting as they spend on the meeting
     itself — the decision only matters relative to that baseline.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a class already expects tomorrow's quiz to be hard, so when it's merely hard, nobody's shocked and nobody reacts. But if the class expected an easy quiz and it turns out hard, that mismatch is what actually causes a reaction. Markets work the same way with rate decisions — they've usually already "studied" for what they expect, so it's the gap between what was expected and what actually happened, not the decision on its own, that moves prices.</p>
+  </div>
+
   <p>
     A second practical habit: read the dot plot as a <em>distribution</em> of current individual opinion, not
     a promise about the future path. Each dot is one participant's own best guess, updated fresh every
@@ -450,6 +468,11 @@
     spread wide?) is often more informative than the median alone — a tight cluster signals real consensus; a
     wide spread signals the kind of internal disagreement the stagflation scenario above produces.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The dot plot is like asking everyone on a committee to individually guess a number on a sticky note, then pinning them all to a board. The middle guess gets all the headlines, but it's worth glancing at the whole board — if all the sticky notes are bunched close together, the group actually agrees. If they're scattered all over, the "average" guess is hiding real disagreement underneath it.</p>
+  </div>
   <p>
     Two related tools round out the practical picture. <strong>Jawboning</strong> — moving expectations
     through speeches and interviews alone, without any actual policy action — is how officials manage
@@ -594,5 +617,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

@@ -22,6 +22,8 @@
     <span>Prereqs: Kelly Criterion &amp; Position Sizing</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -123,6 +125,12 @@
     \(\gamma\) close to \(0\) means it's almost entirely short-sighted,
     caring only about the very next reward.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The discount factor is just "how patient am I." Imagine someone offers you a dollar today or a dollar next year — most people would rather have it today, so that future dollar gets shrunk down a bit when you're deciding how much it's really worth to you right now. \(\gamma\) close to 1 is a very patient decision-maker who barely shrinks the future at all; \(\gamma\) close to 0 is someone who basically only cares about what happens in the next few seconds.</p>
+  </div>
+
   <p>
     <strong>The value function — defining "how good is this state."</strong>
     Fix a policy \(\pi\) (a rule for choosing actions, possibly randomized).
@@ -144,6 +152,11 @@
     performs on an entire sequence of compounding bets: reduce a whole future
     to one number you can actually maximize.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The value of a state is just "if I add up every paycheck I'll ever get from being here, shrinking each future one a bit for how far away it is, what's the grand total worth today?" It's a single number that stands in for an entire, never-ending future — so instead of arguing about a whole complicated story, you can just compare two numbers and pick the bigger one.</p>
+  </div>
 
   <p>
     <strong>Deriving the Bellman equation — the recursive shortcut.</strong>
@@ -200,6 +213,11 @@
     equation opens for the next lesson.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Bellman equation just says: "how good is right now" equals "what I get right now" plus "a slightly shrunk version of how good tomorrow is." That's it — you never need to trace the entire rest of your life out to infinity, because tomorrow's value already has the whole rest of the future baked into it. You only ever have to look one step ahead.</p>
+  </div>
+
   <p>
     <strong>The Bellman optimality equation.</strong> Everything above assumed
     a fixed policy \(\pi\) and asked "how good is it?" The more useful
@@ -220,6 +238,12 @@
     self-referential in exactly the same recursive way as before: \(V^*\)
     appears on both sides, one step apart.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Evaluating a policy asks "how well would this specific fixed habit do, on average, given all the different things it might randomly choose?" Optimality instead asks "forget any one fixed habit — what's the best score possible if I always pick whichever move is actually best at each moment?" Swapping "average over what I might do" for "just take the best option" is the entire difference between grading a strategy and searching for the best one.</p>
+  </div>
+
   <p>
     <strong>The action-value function \(Q^*(s,a)\).</strong> It's often more
     useful to score a specific action directly, rather than only scoring
@@ -239,6 +263,11 @@
     Q-learning's update rule is built from directly — the subject of the next
     lesson.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>\(V^*(s)\) grades a whole situation ("how good is being at this crossroads"), while \(Q^*(s,a)\) grades one specific choice from that situation ("how good is turning left, specifically, from this crossroads, if I play my best from there on"). Knowing the score for every individual option is more directly useful than knowing only the situation's overall score, because it tells you exactly which move to make, not just how happy to be.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">A tiny 3-state trading MDP: Flat / Long / Short, with actions and rewards</div>
@@ -545,5 +574,28 @@
     <a href="q-learning-temporal-difference.html">Q-Learning &amp; Temporal-Difference Methods →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

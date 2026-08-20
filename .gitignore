@@ -1,7 +1,12 @@
 node_modules/
 /data/
+education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 VolRangeForecaster/data/m1/
+AnalogML/data/m1/
+SessionResearch/out/*/session_table.json
+SessionResearch/out/*/day_checkpoints.json
+SessionResearch/out/*/impulse_events.json
 VolRangeForecaster/data/cog-threshold/
 VolRangeForecaster/data/cog-v2/
 .env
@@ -112,3 +117,8 @@ volatilityExhaustion/_wt_bars.json
 volatilityExhaustion/_wt_js.json
 backtestSystem/mt5_history.json
 backtestSystem/killswitch_state.json
+
+# ForexFactory historical calendar (68MB, re-downloadable from the HF dataset —
+# see forge/ff_calendar.py for the URL and the date-repair it needs)
+data/calendar/
+forge/out_vol*/

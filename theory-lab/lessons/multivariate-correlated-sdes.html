@@ -13,7 +13,7 @@
 <div id="page">
   <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Stochastic Differential Equations / Multivariate &amp; Correlated SDEs</div>
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
-  <div class="tl-kicker">Stochastic Differential Equations · SDEs 3 of 5</div>
+  <div class="tl-kicker">Stochastic Differential Equations · SDEs 3 of 7</div>
   <h1 class="tl-title">Multivariate &amp; Correlated SDEs</h1>
   <p class="tl-dek">Every SDE in this curriculum so far has followed one process driven by one source of randomness. Real portfolios never do — an FX book holds pairs that share a currency leg, a rates desk holds a whole curve, an equity book holds names that move together in a selloff. This lesson builds the general machinery for many correlated processes at once.</p>
   <div class="tl-meta">
@@ -22,6 +22,8 @@
     <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Numerical Schemes: Euler-Maruyama &amp; Milstein</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -110,6 +112,11 @@
     mixing) — bundling both into one clean object.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of \(W_t\)'s independent components as separate, untouched dice rolls — nobody has rigged them to agree with each other. All the "agreement" between different processes gets built afterward, by mixing those independent rolls together with a recipe (the matrix \(\Sigma\)). Keeping the raw randomness independent and doing all the correlating in one clean mixing step is just tidier than trying to make the dice themselves secretly cooperate.</p>
+  </div>
+
   <h3>2. Where the covariance comes from</h3>
   <p>
     Apply the same \((dW_t)(dW_t)^T \to I\,dt\) rule that underlies Itô's
@@ -134,6 +141,11 @@
     simplest useful form \(L\) — that produces it. That inversion is exactly
     what Cholesky decomposition is for.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>\(\Sigma\Sigma^T\) is a one-step lookup: hand it the mixing recipe \(\Sigma\), and it tells you the resulting covariance for free — like knowing exactly how two paint colors will blend once you know how much of each you poured in. The much harder, more common question in practice runs backward: you already know the blended color you want (a target correlation from market data) and need to work out how much of each raw color to pour. That backward question is exactly what Cholesky decomposition answers.</p>
+  </div>
 
   <h3>3. The Cholesky recipe</h3>
   <p>
@@ -184,6 +196,11 @@
     <tr><td>\(dW_{\text{correlated}} = L\,dW_{\text{independent}}\)</td><td>The actual shocks used in the simulation — correlated exactly as the target \(\rho\) specifies, by construction of \(L\).</td></tr>
     <tr><td>\(\Sigma\Sigma^T\)</td><td>The instantaneous covariance matrix of the vector process \(X_t\) — the multivariate generalization of a single process's \(\sigma^2\).</td></tr>
   </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Cholesky decomposition is a recipe card: given the correlation you want between two things, it tells you exactly how much of the first independent random ingredient to also mix into the second one. Use \(\rho\) parts of the first independent shock plus \(\sqrt{1-\rho^2}\) parts of a fresh independent shock, and the result comes out correlated by exactly \(\rho\) — no more, no less, guaranteed by the algebra rather than by trial and error.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Two Cholesky-correlated GBM paths (ρ = 0.6), one simulated realization</div>
@@ -245,6 +262,11 @@
       exactly" is a very common (and usually harmless) first reaction to
       running this kind of simulation with too few paths.
     </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Ask 50 random strangers whether two coins landed the same way and you'll get a noisy, wobbly estimate of how "linked" the coins really are. Ask 100,000 strangers and the noise mostly washes out, leaving something very close to the true answer. Realized correlation from a small number of simulated paths is exactly this — a noisy poll, not a wrong answer — and it only settles down once you run enough paths.</p>
   </div>
 
   <div class="tl-chart">
@@ -418,5 +440,28 @@
     <a href="short-rate-models-vasicek-cir-hull-white.html">Short-Rate Models: Vasicek, CIR &amp; Hull-White →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

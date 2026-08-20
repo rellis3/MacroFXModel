@@ -1,0 +1,1366 @@
+[
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "close_dn_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 55.5,
+    "oos_wr": 58.4,
+    "is_net_r": 0.081,
+    "oos_net_r": 0.139,
+    "is_n": 398,
+    "oos_n": 474,
+    "new_vs_unconditioned": false,
+    "folds_passed": 4,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 129,
+        "net_r": 0.007,
+        "passed": true
+      },
+      {
+        "n": 163,
+        "net_r": 0.139,
+        "passed": true
+      },
+      {
+        "n": 183,
+        "net_r": 0.165,
+        "passed": true
+      },
+      {
+        "n": 158,
+        "net_r": 0.11,
+        "passed": true
+      }
+    ],
+    "n_decided": 633,
+    "win_count": 361,
+    "breakeven": 0.514,
+    "p_value": 0.002560024863623049,
+    "significant": false,
+    "survives_all_folds": true
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_dn_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 55.4,
+    "oos_wr": 56.9,
+    "is_net_r": 0.066,
+    "oos_net_r": 0.106,
+    "is_n": 432,
+    "oos_n": 466,
+    "new_vs_unconditioned": false,
+    "folds_passed": 4,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 155,
+        "net_r": 0.084,
+        "passed": true
+      },
+      {
+        "n": 170,
+        "net_r": 0.05,
+        "passed": true
+      },
+      {
+        "n": 175,
+        "net_r": 0.136,
+        "passed": true
+      },
+      {
+        "n": 180,
+        "net_r": 0.076,
+        "passed": true
+      }
+    ],
+    "n_decided": 680,
+    "win_count": 382,
+    "breakeven": 0.5185,
+    "p_value": 0.013123933988889357,
+    "significant": false,
+    "survives_all_folds": true
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_up_75",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 55.9,
+    "oos_wr": 59.5,
+    "is_net_r": 0.073,
+    "oos_net_r": 0.156,
+    "is_n": 238,
+    "oos_n": 266,
+    "new_vs_unconditioned": false,
+    "folds_passed": 4,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 83,
+        "net_r": 0.078,
+        "passed": true
+      },
+      {
+        "n": 78,
+        "net_r": 0.068,
+        "passed": true
+      },
+      {
+        "n": 84,
+        "net_r": 0.278,
+        "passed": true
+      },
+      {
+        "n": 84,
+        "net_r": 0.034,
+        "passed": true
+      }
+    ],
+    "n_decided": 329,
+    "win_count": 190,
+    "breakeven": 0.52,
+    "p_value": 0.020843523886698963,
+    "significant": false,
+    "survives_all_folds": true
+  },
+  {
+    "instrument": "gold",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "low",
+    "side": "fade",
+    "is_wr": 63.8,
+    "oos_wr": 65.2,
+    "is_net_r": 0.163,
+    "oos_net_r": 0.207,
+    "is_n": 73,
+    "oos_n": 57,
+    "new_vs_unconditioned": true,
+    "folds_passed": 4,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 34,
+        "net_r": 0.174,
+        "passed": true
+      },
+      {
+        "n": 35,
+        "net_r": 0.153,
+        "passed": true
+      },
+      {
+        "n": 23,
+        "net_r": 0.105,
+        "passed": true
+      },
+      {
+        "n": 23,
+        "net_r": 0.309,
+        "passed": true
+      }
+    ],
+    "n_decided": 115,
+    "win_count": 74,
+    "breakeven": 0.553,
+    "p_value": 0.030776086374857552,
+    "significant": false,
+    "survives_all_folds": true
+  },
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "close_up_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 53.5,
+    "oos_wr": 55.4,
+    "is_net_r": 0.041,
+    "oos_net_r": 0.081,
+    "is_n": 428,
+    "oos_n": 470,
+    "new_vs_unconditioned": false,
+    "folds_passed": 4,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 95,
+        "net_r": 0.084,
+        "passed": true
+      },
+      {
+        "n": 121,
+        "net_r": 0.015,
+        "passed": true
+      },
+      {
+        "n": 151,
+        "net_r": 0.113,
+        "passed": true
+      },
+      {
+        "n": 124,
+        "net_r": 0.035,
+        "passed": true
+      }
+    ],
+    "n_decided": 491,
+    "win_count": 268,
+    "breakeven": 0.514,
+    "p_value": 0.08591367037396297,
+    "significant": false,
+    "survives_all_folds": true
+  },
+  {
+    "instrument": "cadjpy",
+    "calc": "cog",
+    "level": "close_dn_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 57.5,
+    "oos_wr": 60.5,
+    "is_net_r": 0.009,
+    "oos_net_r": 0.073,
+    "is_n": 511,
+    "oos_n": 493,
+    "new_vs_unconditioned": true,
+    "folds_passed": 4,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 155,
+        "net_r": 0.003,
+        "passed": true
+      },
+      {
+        "n": 164,
+        "net_r": 0.008,
+        "passed": true
+      },
+      {
+        "n": 162,
+        "net_r": 0.083,
+        "passed": true
+      },
+      {
+        "n": 151,
+        "net_r": 0.071,
+        "passed": true
+      }
+    ],
+    "n_decided": 632,
+    "win_count": 373,
+    "breakeven": 0.5695,
+    "p_value": 0.15616468970593803,
+    "significant": false,
+    "survives_all_folds": true
+  },
+  {
+    "instrument": "eurusd",
+    "calc": "cog",
+    "level": "close_up_med",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 57.7,
+    "oos_wr": 66.7,
+    "is_net_r": 0.064,
+    "oos_net_r": 0.247,
+    "is_n": 98,
+    "oos_n": 113,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 32,
+        "net_r": -0.142,
+        "passed": false
+      },
+      {
+        "n": 46,
+        "net_r": 0.207,
+        "passed": true
+      },
+      {
+        "n": 50,
+        "net_r": 0.234,
+        "passed": true
+      },
+      {
+        "n": 37,
+        "net_r": 0.263,
+        "passed": true
+      }
+    ],
+    "n_decided": 165,
+    "win_count": 103,
+    "breakeven": 0.544,
+    "p_value": 0.02267832170885525,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "eurusd",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 60.0,
+    "oos_wr": 66.7,
+    "is_net_r": 0.104,
+    "oos_net_r": 0.245,
+    "is_n": 50,
+    "oos_n": 57,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 16,
+        "net_r": 0.172,
+        "passed": true
+      },
+      {
+        "n": 24,
+        "net_r": 0.059,
+        "passed": true
+      },
+      {
+        "n": 30,
+        "net_r": 0.447,
+        "passed": true
+      },
+      {
+        "n": 21,
+        "net_r": -0.043,
+        "passed": false
+      }
+    ],
+    "n_decided": 91,
+    "win_count": 58,
+    "breakeven": 0.5455,
+    "p_value": 0.04815066643755445,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 56.7,
+    "oos_wr": 65.7,
+    "is_net_r": 0.088,
+    "oos_net_r": 0.282,
+    "is_n": 38,
+    "oos_n": 39,
+    "new_vs_unconditioned": false,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 15,
+        "net_r": -0.123,
+        "passed": false
+      },
+      {
+        "n": 15,
+        "net_r": 0.299,
+        "passed": true
+      },
+      {
+        "n": 17,
+        "net_r": 0.147,
+        "passed": true
+      },
+      {
+        "n": 18,
+        "net_r": 0.409,
+        "passed": true
+      }
+    ],
+    "n_decided": 65,
+    "win_count": 40,
+    "breakeven": 0.519,
+    "p_value": 0.075678231716992,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_up_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 53.8,
+    "oos_wr": 55.7,
+    "is_net_r": 0.032,
+    "oos_net_r": 0.081,
+    "is_n": 490,
+    "oos_n": 484,
+    "new_vs_unconditioned": false,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 134,
+        "net_r": 0.067,
+        "passed": true
+      },
+      {
+        "n": 116,
+        "net_r": 0.0,
+        "passed": false
+      },
+      {
+        "n": 162,
+        "net_r": 0.055,
+        "passed": true
+      },
+      {
+        "n": 133,
+        "net_r": 0.106,
+        "passed": true
+      }
+    ],
+    "n_decided": 545,
+    "win_count": 299,
+    "breakeven": 0.519,
+    "p_value": 0.08981669164952817,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "close_up_75",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 58.6,
+    "oos_wr": 53.7,
+    "is_net_r": 0.146,
+    "oos_net_r": 0.047,
+    "is_n": 162,
+    "oos_n": 203,
+    "new_vs_unconditioned": false,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 30,
+        "net_r": 0.236,
+        "passed": true
+      },
+      {
+        "n": 57,
+        "net_r": 0.099,
+        "passed": true
+      },
+      {
+        "n": 66,
+        "net_r": 0.156,
+        "passed": true
+      },
+      {
+        "n": 55,
+        "net_r": -0.084,
+        "passed": false
+      }
+    ],
+    "n_decided": 208,
+    "win_count": 116,
+    "breakeven": 0.5135,
+    "p_value": 0.11384986762019114,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "usdjpy",
+    "calc": "cog",
+    "level": "close_up_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 63.6,
+    "oos_wr": 58.3,
+    "is_net_r": 0.178,
+    "oos_net_r": 0.095,
+    "is_n": 56,
+    "oos_n": 49,
+    "new_vs_unconditioned": false,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 20,
+        "net_r": 0.022,
+        "passed": true
+      },
+      {
+        "n": 24,
+        "net_r": 0.308,
+        "passed": true
+      },
+      {
+        "n": 18,
+        "net_r": 0.37,
+        "passed": true
+      },
+      {
+        "n": 18,
+        "net_r": -0.179,
+        "passed": false
+      }
+    ],
+    "n_decided": 80,
+    "win_count": 49,
+    "breakeven": 0.542,
+    "p_value": 0.1240731244246801,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_up_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 66.7,
+    "oos_wr": 53.8,
+    "is_net_r": 0.283,
+    "oos_net_r": 0.041,
+    "is_n": 48,
+    "oos_n": 35,
+    "new_vs_unconditioned": false,
+    "folds_passed": 1,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 16,
+        "net_r": 0.438,
+        "passed": true
+      },
+      {
+        "n": 14,
+        "net_r": 0.105,
+        "passed": false
+      },
+      {
+        "n": 14,
+        "net_r": 0.253,
+        "passed": false
+      },
+      {
+        "n": 12,
+        "net_r": -0.207,
+        "passed": false
+      }
+    ],
+    "n_decided": 56,
+    "win_count": 34,
+    "breakeven": 0.522,
+    "p_value": 0.12654717175186822,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 56.2,
+    "oos_wr": 53.3,
+    "is_net_r": 0.081,
+    "oos_net_r": 0.032,
+    "is_n": 250,
+    "oos_n": 279,
+    "new_vs_unconditioned": false,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 100,
+        "net_r": 0.027,
+        "passed": true
+      },
+      {
+        "n": 119,
+        "net_r": 0.127,
+        "passed": true
+      },
+      {
+        "n": 114,
+        "net_r": -0.031,
+        "passed": false
+      },
+      {
+        "n": 113,
+        "net_r": 0.096,
+        "passed": true
+      }
+    ],
+    "n_decided": 446,
+    "win_count": 244,
+    "breakeven": 0.519,
+    "p_value": 0.12715107283724866,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "audjpy",
+    "calc": "original",
+    "level": "close_dn_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 59.6,
+    "oos_wr": 56.4,
+    "is_net_r": 0.079,
+    "oos_net_r": 0.019,
+    "is_n": 424,
+    "oos_n": 435,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 122,
+        "net_r": 0.072,
+        "passed": true
+      },
+      {
+        "n": 123,
+        "net_r": 0.087,
+        "passed": true
+      },
+      {
+        "n": 142,
+        "net_r": 0.051,
+        "passed": true
+      },
+      {
+        "n": 147,
+        "net_r": -0.012,
+        "passed": false
+      }
+    ],
+    "n_decided": 534,
+    "win_count": 309,
+    "breakeven": 0.5555,
+    "p_value": 0.15074777157045452,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "eurjpy",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 58.9,
+    "oos_wr": 65.4,
+    "is_net_r": 0.038,
+    "oos_net_r": 0.183,
+    "is_n": 67,
+    "oos_n": 60,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 26,
+        "net_r": 0.34,
+        "passed": true
+      },
+      {
+        "n": 30,
+        "net_r": -0.222,
+        "passed": false
+      },
+      {
+        "n": 29,
+        "net_r": 0.194,
+        "passed": true
+      },
+      {
+        "n": 23,
+        "net_r": 0.169,
+        "passed": true
+      }
+    ],
+    "n_decided": 108,
+    "win_count": 67,
+    "breakeven": 0.5665,
+    "p_value": 0.1508072067630943,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "audjpy",
+    "calc": "cog",
+    "level": "close_up_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 65.0,
+    "oos_wr": 61.5,
+    "is_net_r": 0.186,
+    "oos_net_r": 0.128,
+    "is_n": 38,
+    "oos_n": 37,
+    "new_vs_unconditioned": true,
+    "folds_passed": 1,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 6,
+        "net_r": 0.219,
+        "passed": false
+      },
+      {
+        "n": 14,
+        "net_r": 0.172,
+        "passed": false
+      },
+      {
+        "n": 15,
+        "net_r": 0.109,
+        "passed": true
+      },
+      {
+        "n": 11,
+        "net_r": 0.155,
+        "passed": false
+      }
+    ],
+    "n_decided": 46,
+    "win_count": 29,
+    "breakeven": 0.554,
+    "p_value": 0.18588946851443605,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "eurjpy",
+    "calc": "original",
+    "level": "proj_H_med",
+    "bucket": "high",
+    "side": "fade",
+    "is_wr": 61.1,
+    "oos_wr": 61.1,
+    "is_net_r": 0.092,
+    "oos_net_r": 0.089,
+    "is_n": 43,
+    "oos_n": 50,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 17,
+        "net_r": -0.179,
+        "passed": false
+      },
+      {
+        "n": 19,
+        "net_r": 0.334,
+        "passed": true
+      },
+      {
+        "n": 19,
+        "net_r": 0.238,
+        "passed": true
+      },
+      {
+        "n": 17,
+        "net_r": -0.076,
+        "passed": false
+      }
+    ],
+    "n_decided": 72,
+    "win_count": 44,
+    "breakeven": 0.566,
+    "p_value": 0.25786351031241095,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "usdjpy",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 58.4,
+    "oos_wr": 54.3,
+    "is_net_r": 0.07,
+    "oos_net_r": 0.007,
+    "is_n": 235,
+    "oos_n": 235,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 78,
+        "net_r": 0.026,
+        "passed": true
+      },
+      {
+        "n": 95,
+        "net_r": 0.107,
+        "passed": true
+      },
+      {
+        "n": 89,
+        "net_r": -0.055,
+        "passed": false
+      },
+      {
+        "n": 95,
+        "net_r": 0.065,
+        "passed": true
+      }
+    ],
+    "n_decided": 357,
+    "win_count": 201,
+    "breakeven": 0.5445,
+    "p_value": 0.2582666538235436,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "gbpusd",
+    "calc": "cog",
+    "level": "close_up_med",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 55.4,
+    "oos_wr": 59.3,
+    "is_net_r": 0.024,
+    "oos_net_r": 0.088,
+    "is_n": 107,
+    "oos_n": 112,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 34,
+        "net_r": 0.093,
+        "passed": true
+      },
+      {
+        "n": 40,
+        "net_r": -0.035,
+        "passed": false
+      },
+      {
+        "n": 47,
+        "net_r": 0.229,
+        "passed": true
+      },
+      {
+        "n": 34,
+        "net_r": -0.107,
+        "passed": false
+      }
+    ],
+    "n_decided": 155,
+    "win_count": 89,
+    "breakeven": 0.5455,
+    "p_value": 0.2626767549206726,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nzdusd",
+    "calc": "cog",
+    "level": "close_up_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 56.1,
+    "oos_wr": 56.2,
+    "is_net_r": 0.023,
+    "oos_net_r": 0.029,
+    "is_n": 528,
+    "oos_n": 519,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 160,
+        "net_r": 0.045,
+        "passed": true
+      },
+      {
+        "n": 120,
+        "net_r": -0.006,
+        "passed": false
+      },
+      {
+        "n": 148,
+        "net_r": 0.062,
+        "passed": true
+      },
+      {
+        "n": 128,
+        "net_r": -0.01,
+        "passed": false
+      }
+    ],
+    "n_decided": 556,
+    "win_count": 312,
+    "breakeven": 0.548,
+    "p_value": 0.28112457933069895,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "cog",
+    "level": "proj_H_med",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 53.9,
+    "oos_wr": 52.8,
+    "is_net_r": 0.035,
+    "oos_net_r": 0.021,
+    "is_n": 337,
+    "oos_n": 392,
+    "new_vs_unconditioned": false,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 126,
+        "net_r": 0.042,
+        "passed": true
+      },
+      {
+        "n": 115,
+        "net_r": 0.028,
+        "passed": true
+      },
+      {
+        "n": 143,
+        "net_r": 0.072,
+        "passed": true
+      },
+      {
+        "n": 128,
+        "net_r": -0.037,
+        "passed": false
+      }
+    ],
+    "n_decided": 512,
+    "win_count": 273,
+    "breakeven": 0.5195,
+    "p_value": 0.2823314070043305,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "audjpy",
+    "calc": "original",
+    "level": "close_up_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 58.0,
+    "oos_wr": 56.2,
+    "is_net_r": 0.044,
+    "oos_net_r": 0.014,
+    "is_n": 411,
+    "oos_n": 440,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 108,
+        "net_r": 0.035,
+        "passed": true
+      },
+      {
+        "n": 116,
+        "net_r": 0.053,
+        "passed": true
+      },
+      {
+        "n": 101,
+        "net_r": -0.053,
+        "passed": false
+      },
+      {
+        "n": 100,
+        "net_r": 0.082,
+        "passed": true
+      }
+    ],
+    "n_decided": 425,
+    "win_count": 243,
+    "breakeven": 0.557,
+    "p_value": 0.28685703363607173,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "chfjpy",
+    "calc": "cog",
+    "level": "close_up_75",
+    "bucket": "low",
+    "side": "fade",
+    "is_wr": 63.0,
+    "oos_wr": 62.5,
+    "is_net_r": 0.068,
+    "oos_net_r": 0.082,
+    "is_n": 35,
+    "oos_n": 45,
+    "new_vs_unconditioned": true,
+    "folds_passed": 1,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 13,
+        "net_r": -0.071,
+        "passed": false
+      },
+      {
+        "n": 14,
+        "net_r": 0.197,
+        "passed": false
+      },
+      {
+        "n": 16,
+        "net_r": -0.05,
+        "passed": false
+      },
+      {
+        "n": 16,
+        "net_r": 0.213,
+        "passed": true
+      }
+    ],
+    "n_decided": 59,
+    "win_count": 37,
+    "breakeven": 0.5895,
+    "p_value": 0.32700417981576946,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "gbpjpy",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 60.0,
+    "oos_wr": 58.7,
+    "is_net_r": 0.067,
+    "oos_net_r": 0.032,
+    "is_n": 64,
+    "oos_n": 58,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 22,
+        "net_r": 0.156,
+        "passed": true
+      },
+      {
+        "n": 23,
+        "net_r": -0.017,
+        "passed": false
+      },
+      {
+        "n": 23,
+        "net_r": -0.086,
+        "passed": false
+      },
+      {
+        "n": 23,
+        "net_r": 0.151,
+        "passed": true
+      }
+    ],
+    "n_decided": 91,
+    "win_count": 54,
+    "breakeven": 0.5685,
+    "p_value": 0.35591654891852187,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "audusd",
+    "calc": "original",
+    "level": "close_up_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 54.8,
+    "oos_wr": 55.7,
+    "is_net_r": 0.004,
+    "oos_net_r": 0.033,
+    "is_n": 464,
+    "oos_n": 442,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 168,
+        "net_r": -0.006,
+        "passed": false
+      },
+      {
+        "n": 133,
+        "net_r": 0.017,
+        "passed": true
+      },
+      {
+        "n": 108,
+        "net_r": -0.037,
+        "passed": false
+      },
+      {
+        "n": 111,
+        "net_r": 0.101,
+        "passed": true
+      }
+    ],
+    "n_decided": 520,
+    "win_count": 287,
+    "breakeven": 0.544,
+    "p_value": 0.3754231128299404,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "gbpusd",
+    "calc": "cog",
+    "level": "proj_L_75",
+    "bucket": "mid",
+    "side": "fade",
+    "is_wr": 55.0,
+    "oos_wr": 55.7,
+    "is_net_r": 0.015,
+    "oos_net_r": 0.017,
+    "is_n": 186,
+    "oos_n": 204,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 66,
+        "net_r": 0.008,
+        "passed": true
+      },
+      {
+        "n": 85,
+        "net_r": 0.021,
+        "passed": true
+      },
+      {
+        "n": 83,
+        "net_r": 0.044,
+        "passed": true
+      },
+      {
+        "n": 84,
+        "net_r": -0.011,
+        "passed": false
+      }
+    ],
+    "n_decided": 318,
+    "win_count": 176,
+    "breakeven": 0.5455,
+    "p_value": 0.4101901776756127,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nq",
+    "calc": "original",
+    "level": "proj_H_75",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 51.7,
+    "oos_wr": 52.7,
+    "is_net_r": 0.012,
+    "oos_net_r": 0.029,
+    "is_n": 100,
+    "oos_n": 134,
+    "new_vs_unconditioned": true,
+    "folds_passed": 1,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 12,
+        "net_r": 0.141,
+        "passed": false
+      },
+      {
+        "n": 46,
+        "net_r": -0.022,
+        "passed": false
+      },
+      {
+        "n": 57,
+        "net_r": -0.007,
+        "passed": false
+      },
+      {
+        "n": 34,
+        "net_r": 0.09,
+        "passed": true
+      }
+    ],
+    "n_decided": 149,
+    "win_count": 78,
+    "breakeven": 0.5125,
+    "p_value": 0.42635156689154446,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "eurjpy",
+    "calc": "cog",
+    "level": "close_up_med",
+    "bucket": "mid",
+    "side": "follow",
+    "is_wr": 57.1,
+    "oos_wr": 58.1,
+    "is_net_r": 0.007,
+    "oos_net_r": 0.04,
+    "is_n": 98,
+    "oos_n": 98,
+    "new_vs_unconditioned": true,
+    "folds_passed": 3,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 30,
+        "net_r": 0.082,
+        "passed": true
+      },
+      {
+        "n": 40,
+        "net_r": -0.05,
+        "passed": false
+      },
+      {
+        "n": 31,
+        "net_r": 0.037,
+        "passed": true
+      },
+      {
+        "n": 31,
+        "net_r": 0.043,
+        "passed": true
+      }
+    ],
+    "n_decided": 132,
+    "win_count": 76,
+    "breakeven": 0.5645,
+    "p_value": 0.43277922181498646,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nzdusd",
+    "calc": "original",
+    "level": "close_up_med",
+    "bucket": "low",
+    "side": "follow",
+    "is_wr": 55.5,
+    "oos_wr": 55.0,
+    "is_net_r": 0.01,
+    "oos_net_r": 0.006,
+    "is_n": 443,
+    "oos_n": 443,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 120,
+        "net_r": 0.042,
+        "passed": true
+      },
+      {
+        "n": 109,
+        "net_r": -0.025,
+        "passed": false
+      },
+      {
+        "n": 114,
+        "net_r": -0.015,
+        "passed": false
+      },
+      {
+        "n": 115,
+        "net_r": 0.027,
+        "passed": true
+      }
+    ],
+    "n_decided": 458,
+    "win_count": 253,
+    "breakeven": 0.5485,
+    "p_value": 0.45250868977600034,
+    "significant": false,
+    "survives_all_folds": false
+  },
+  {
+    "instrument": "nzdusd",
+    "calc": "cog",
+    "level": "close_dn_75",
+    "bucket": "low",
+    "side": "fade",
+    "is_wr": 55.3,
+    "oos_wr": 55.3,
+    "is_net_r": 0.002,
+    "oos_net_r": 0.009,
+    "is_n": 54,
+    "oos_n": 63,
+    "new_vs_unconditioned": true,
+    "folds_passed": 2,
+    "n_folds": 4,
+    "fold_detail": [
+      {
+        "n": 17,
+        "net_r": -0.152,
+        "passed": false
+      },
+      {
+        "n": 21,
+        "net_r": 0.127,
+        "passed": true
+      },
+      {
+        "n": 20,
+        "net_r": 0.212,
+        "passed": true
+      },
+      {
+        "n": 27,
+        "net_r": -0.142,
+        "passed": false
+      }
+    ],
+    "n_decided": 85,
+    "win_count": 47,
+    "breakeven": 0.55,
+    "p_value": 0.5231627881715315,
+    "significant": false,
+    "survives_all_folds": false
+  }
+]

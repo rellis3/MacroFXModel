@@ -22,6 +22,8 @@
     <span>Prereqs: Correlation &amp; Linear Regression primer</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -129,6 +131,11 @@
     to below.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Stationary just means "behaves the same way no matter when you look at it." Picture a bouncy ball dropped in the same spot every day — it always settles around the same height, bounces about the same amount, and how today's bounce relates to yesterday's is always about the same story, whether you check on a Monday or a Friday. A series that keeps drifting to new heights, or gets wilder and calmer at random over the years, is the opposite — the rules of the game are quietly changing underneath you.</p>
+  </div>
+
   <p><strong>2. Two processes already in this Theory Lab, reframed as
   stationary vs. not.</strong> The Ornstein-Uhlenbeck (OU) lesson's process
   and the pure random walk covered in the Cointegration lesson are the
@@ -150,6 +157,11 @@
   the first. The ACF and PACF below are the tools that let you check which
   world a given series is actually in, rather than assuming it.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a dog on a stretchy leash tied to a post versus a dog that's wandered off with no leash at all. The leashed dog can roam a bit, but it always gets pulled back toward the post — that's a stationary process, with a home base it keeps returning to. The unleashed dog just keeps wandering farther and farther away, with nowhere it's likely to circle back to — that's the random walk, and it's exactly why it has no fixed "normal level" to measure distance from.</p>
+  </div>
 
   <p><strong>3. The autocorrelation function (ACF).</strong> For a
   (assumed-stationary) series \(X_t\), the ACF at lag \(k\) is simply the
@@ -189,6 +201,12 @@
     <strong>correlogram</strong>, and its shape is genuinely diagnostic
     rather than decorative:
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The ACF just answers "how much does today's value look like the value from a few days ago" — for every possible number of days back you might ask about. It bundles together everything that could connect the two: today looking like yesterday, which looked like the day before, and so on, all chained together, without trying to tell those pieces apart.</p>
+  </div>
+
   <ul>
     <li><strong>White noise</strong> (no memory at all — each value is an
     independent draw) produces a correlogram that's near zero at every lag
@@ -236,6 +254,11 @@
   told you."
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If yesterday tells you a lot about today, and the day before yesterday mostly just tells you about yesterday, then the day before yesterday isn't really giving you anything new once you already know yesterday. The PACF is the tool that checks exactly that — it only counts a day from further back as "informative" if it tells you something you couldn't already guess from the closer days in between.</p>
+  </div>
+
   <p><strong>5. The Box-Jenkins identification rule — why the contrast
   matters.</strong> This is the payoff of defining both functions rather than
   just one: for a genuine <strong>AR(\(p\))</strong> process (today's value
@@ -270,6 +293,11 @@
     starting point for choosing an ARIMA model's \((p,q)\) before ever
     running a fit.)
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture dropping a pebble in a pond. The ripple (the ACF) keeps spreading outward, getting fainter and fainter, but never really stops all at once — it fades away slowly. But if you ask "did the pebble itself splash again a moment ago" (the PACF), the answer is a clean yes right after the drop, and then a flat no forever after — the single splash is the whole cause, even though its ripple keeps echoing outward for a while.</p>
+  </div>
 
   <div class="tl-solid blue">
     <strong>The signature to memorize:</strong> ACF decays, PACF cuts off —
@@ -651,5 +679,28 @@
     <a href="time-value-of-money.html">Time Value of Money →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

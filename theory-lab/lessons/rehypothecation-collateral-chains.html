@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rehypothecation &amp; Collateral Chains — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Collateral, Funding &amp; Rehypothecation / Rehypothecation &amp; Collateral Chains</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Collateral, Funding &amp; Rehypothecation 2 of 2</div>
+  <h1 class="tl-title">Rehypothecation &amp; Collateral Chains</h1>
+  <p class="tl-dek">Once collateral has been posted, what is the party holding it actually allowed to do with it? The answer varies by jurisdiction, it varies a great deal, and one specific gap in that answer became one of the most consequential client-asset-protection failures of the 2008 crisis.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — institutional market-structure and regulatory background, not a claim about anything built or traded in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Rehypothecation</strong>: when a broker/dealer holding collateral posted by a client (e.g. as margin for a leveraged position) is permitted to <em>re-use</em> that same collateral for its own purposes — re-pledging it to another counterparty, or lending it out — rather than simply holding it segregated on the client's behalf.</li>
+      <li><strong>Lehman Brothers, 2008</strong> is the widely-cited case that crystallized this risk: Lehman Brothers International (Europe) operated under UK law's historically more permissive rehypothecation rules, and client assets that had been rehypothecated became tied up in the administration that followed Lehman's collapse — a real, significant client-asset-protection failure that prompted lasting regulatory scrutiny.</li>
+      <li><strong>SEC Rule 15c3-3</strong> caps a U.S. broker-dealer's ability to rehypothecate customer securities at roughly <strong>140% of the customer's debit balance</strong> — a real, quantified regulatory limit, in genuine contrast to the more permissive UK-law practice that applied to Lehman's European entity at the time.</li>
+      <li>A <strong>collateral chain</strong>: the same physical piece of collateral can be re-pledged down a chain of counterparties (A → B → C → D…), each re-use adding a new claim referencing the same underlying asset and, with it, hidden interconnectedness that amplifies contagion if any single link defaults.</li>
+      <li>A real collateral re-use chain is a literal, concrete instance of the exposure network <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a> formalizes — its DebtRank distress-propagation algorithm is directly analogous to what happens when one link in a re-use chain fails.</li>
+      <li>Stated plainly: this is institutional market-structure and regulatory knowledge relevant to understanding counterparty and systemic risk — not a trading signal, and not a claim about anything built in this repo.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> covered how collateral
+  gets posted, discounted by a haircut, and lent out through the repo market. This lesson asks the question
+  that comes right after: once a broker or dealer is actually holding a client's collateral, what is it legally
+  permitted to <em>do</em> with it? The honest answer is: it depends heavily on jurisdiction, on the specific
+  client agreement, and on a regulatory line that turned out to matter enormously in 2008. Understanding
+  rehypothecation is understanding a genuine source of hidden leverage and hidden interconnectedness in the
+  financial system — the same piece of collateral can end up backing more than one obligation at once, and the
+  chain of counterparties created by that re-use is a real network with real contagion dynamics, which is why
+  this lesson leans directly on <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion
+  Networks</a>'s framework for reasoning about exactly that kind of network.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>One book, lent out three times</h3>
+    <p>
+    You lend a friend a book. A straightforward, segregated arrangement would mean your friend simply holds
+    that book for you — it's still yours, they're just keeping it safe. Rehypothecation is different: imagine
+    your friend is <em>permitted</em>, under the terms you agreed to, to lend your book onward to someone else
+    of their choosing — maybe to raise a favor, maybe as collateral for something they need. That second person,
+    if their own arrangement allows it, could lend the same book onward again, to a third person. There is still
+    only one physical book. But now there are three separate promises stacked on top of it: you're owed the book
+    back by your friend, your friend is owed it back by the second person, and the second person is owed it back
+    by the third. If the third person can't produce the book when asked — they lost it, they're in some kind of
+    trouble — the disruption doesn't stay contained to that one relationship. It ripples backward through every
+    link in the chain, because every one of those promises depended on the book actually still being there. That
+    is exactly what a collateral chain is, at institutional scale, with securities instead of a book, and real
+    money riding on every link.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Defining rehypothecation precisely</h2>
+  <p>
+  <strong>Rehypothecation</strong> occurs when a broker/dealer that has received collateral from a client — most
+  commonly securities posted as margin for a leveraged position, such as in a prime brokerage relationship — is
+  permitted, under the terms of their agreement and the rules of the governing jurisdiction, to re-use that same
+  collateral for its own purposes. "Its own purposes" typically means one of two things: re-pledging the
+  collateral onward to one of the broker's own counterparties or lenders (for example, to raise the broker's own
+  funding via repo, exactly the mechanism covered in the previous lesson), or lending the securities out directly
+  to a third party (securities lending). Either way, the defining feature is the same: the collateral stops
+  being merely <em>held</em> for the client and starts being <em>used</em> by the broker.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Segregated custody</h4>
+      <p>
+      The client's collateral is held in an account solely for that client's benefit, untouched by the broker's
+      own funding, lending, or trading activity. If the broker fails, the client's segregated assets are, in
+      principle, straightforwardly identifiable and returnable — they were never anyone else's to begin with.
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Rehypothecated collateral</h4>
+      <p>
+      The client's collateral has been re-pledged onward or lent out by the broker, subject to whatever
+      contractual and regulatory limits apply. If the broker fails while that collateral is out in the world
+      being used by someone else, getting it back — or getting equivalent value back — is no longer a simple
+      matter of pointing to a segregated account. It depends on exactly who has it, under what claim, and how
+      the broker's insolvency process treats client property.
+      </p>
+    </div>
+  </div>
+  <p>
+  Why would a broker want to do this at all? Re-pledging client collateral is a genuine source of funding — it
+  lets the broker raise cash or borrow securities elsewhere using assets it already has on hand from clients,
+  which is typically cheaper and more efficient than sourcing that same funding independently. That's a
+  real, ordinary commercial motivation, not an exotic one — which is precisely why the practice is widespread
+  and legal, within limits, rather than being some kind of edge-case abuse.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Segregated custody is like a coat check that hangs your coat on a labeled hook and gives it back to you, untouched, at the end of the night. Rehypothecation is like a coat check that's allowed to lend your coat to another customer for a few hours while you're inside, as long as they get it back to the hook before you ask for it. Most of the time nobody notices the difference — until the coat check itself runs into trouble, and suddenly it matters a great deal whether your specific coat was ever actually "just sitting on the hook" or was out being used by somebody else.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The Lehman Brothers case, 2008</h2>
+  <p>
+  Lehman Brothers International (Europe) — "LBIE," the London-based European broker-dealer arm of the Lehman
+  Brothers group — operated under UK law, whose rules governing rehypothecation of client assets were, at the
+  time, historically more permissive than the comparable rules in the United States. Standard prime brokerage
+  agreements under that regime commonly allowed the broker to rehypothecate a broad scope of client collateral,
+  with clients contractually consenting to that use as part of doing business with the firm.
+  </p>
+  <p>
+  When Lehman Brothers Holdings filed for Chapter 11 bankruptcy protection in the United States in September
+  2008, LBIE separately entered administration under UK insolvency law. A portion of client assets that had
+  been rehypothecated under those UK-law provisions became tied up in the ensuing administration process —
+  clients who believed they were dealing with a broker holding their collateral found themselves, instead, as
+  general creditors in a lengthy administration, waiting to find out what they would actually get back and
+  when. This is a real, significant, and widely documented client-asset-protection failure, and it prompted
+  lasting regulatory scrutiny of rehypothecation practices, custody arrangements, and prime-brokerage
+  client-asset protection more broadly, across multiple jurisdictions, in the years that followed.
+  </p>
+  <div class="tl-solid amber">
+    <strong>Stated carefully:</strong> this lesson deliberately does not attempt to reconstruct precise dollar
+    figures, account-by-account details, or the exact legal outcome for any specific client of LBIE's
+    administration — those details are complex, disputed in places, and were resolved over a period of years
+    through litigation and the administration process itself. What matters here, and what is genuinely and
+    widely documented, is the structural fact: LBIE's rehypothecation exposure under the then-prevailing UK
+    regime is <em>the</em> widely-cited case that crystallized rehypothecation risk for regulators and market
+    participants — not a numbers-precise case study, but the real episode that made an abstract risk concrete.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine dropping your bike off at a bike shop for storage, under rules that let the shop lend it out to other customers. Then the shop suddenly goes out of business. You didn't do anything wrong, and you thought your bike was just sitting there — but now you're standing in line with everyone else the shop owes money to, waiting to find out if, or when, you get your actual bike back. That's roughly what happened to clients whose collateral had been rehypothecated when Lehman's European arm collapsed.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>SEC Rule 15c3-3 vs. the more permissive UK-law practice</h2>
+  <p>
+  The United States has a specific, quantified statutory limit on rehypothecation that the UK regime, as
+  applied to LBIE, did not have an equivalent of at the time — a genuine, real regulatory-arbitrage gap between
+  the two jurisdictions' client-asset-protection regimes.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>SEC Rule 15c3-3 (U.S.) — the Customer Protection Rule</h4>
+      <p>
+      Limits a U.S. broker-dealer's ability to use (rehypothecate) customer margin securities to satisfy the
+      broker-dealer's own obligations, capping it at roughly <strong>140% of the customer's aggregate debit
+      balance</strong> — the amount the customer actually owes the broker, such as an outstanding margin loan
+      balance. In practical terms: a broker can only rehypothecate collateral tied directly to what a customer
+      actually owes it, not the full value of everything the customer has posted. Client securities in excess
+      of that limit must be kept in a segregated customer-reserve arrangement, not used by the broker.
+      </p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>UK-law practice at the time (as applied to LBIE)</h4>
+      <p>
+      Historically permitted broader rehypothecation of client assets under standard prime brokerage
+      agreements, with clients able to contractually consent to broader use of their posted collateral, without
+      an equivalent statutory percentage cap tied directly to a customer debit balance the way Rule 15c3-3
+      imposes in the U.S. This is a genuine, documented jurisdictional gap — not a matter of one regime simply
+      enforcing its own rules less strictly, but a real structural difference in what the rules themselves
+      permitted.
+      </p>
+    </div>
+  </div>
+  <p>
+  That gap is a real regulatory-arbitrage point: a global prime brokerage relationship could, depending on
+  which legal entity and jurisdiction it was booked through, be subject to materially different limits on how
+  much of a client's own collateral the broker was permitted to use for its own purposes — a structural
+  difference that mattered enormously once LBIE actually failed.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of it like two different neighborhoods with two different rules about how many times a landlord can re-rent out a spare room you're already renting. One neighborhood says "you can only sublet up to a set, fairly small amount tied to what your tenant already owes you." The other neighborhood, at the time, had no such limit written into the rulebook at all — the landlord and tenant could agree to almost anything. Same basic activity, very different amount of protection depending on which neighborhood's rules applied.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Collateral chains and the re-use multiplier</h2>
+  <p>
+  Where rehypothecation is permitted, it doesn't have to stop after one step. A single piece of collateral
+  posted by its original owner can, where legally permitted at each link, be re-pledged again and again down a
+  <strong>collateral chain</strong>: the original owner posts to a broker, who rehypothecates it onward to one
+  of its own funding counterparties, who — if its own agreements permit — can re-pledge the same collateral
+  onward yet again, and so on. Each additional link does not create a second physical asset; it creates an
+  additional <em>claim</em> referencing the same underlying security. This concept has a name in the academic
+  and policy literature: <strong>collateral velocity</strong>, or the collateral re-use multiplier — roughly,
+  the ratio of total collateral-secured exposure created across a chain to the size of the original collateral
+  pool that seeded it (see Manmohan Singh's IMF work in Further Reading, below).
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One $10 million security, three separate claims</h3>
+    <p>
+    A hedge fund (A) posts $10,000,000 of securities as margin to its prime broker (B). B, permitted to
+    rehypothecate under its client agreement, re-pledges the same $10,000,000 of securities to a repo
+    counterparty (C) to raise its own funding. C, in turn — subject to its own agreement's rehypothecation
+    rights — re-pledges that same collateral onward again to a fourth counterparty (D).
+    </p>
+    <p>
+    There is still exactly one $10,000,000 pool of physical securities. But there are now three separate,
+    stacked obligations referencing it: A has a claim on B for the return of its collateral, B has a claim on C,
+    and C has a claim on D. Schematically, the same $10 million has been "used" three times across the chain —
+    a collateral velocity, or re-use multiplier, of roughly 3× for this simple four-party chain. A longer chain,
+    or a chain running through multiple assets simultaneously, can produce a materially higher multiplier across
+    a market than the size of the original collateral pool alone would suggest.
+    </p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A four-link collateral chain: one asset, three stacked re-pledges</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of a collateral chain. Hedge fund A posts ten million dollars of securities to prime broker B. B rehypothecates the same securities to counterparty C. C re-pledges the same securities again to counterparty D. A caption below notes there is one physical asset but three separate stacked claims across the chain.">
+      <circle cx="80" cy="120" r="38" style="fill:var(--blue);opacity:.2;stroke:var(--blue);stroke-width:2"/>
+      <text x="80" y="115" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">A</text>
+      <text x="80" y="132" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">hedge fund</text>
+
+      <circle cx="240" cy="120" r="38" style="fill:var(--green);opacity:.2;stroke:var(--green);stroke-width:2"/>
+      <text x="240" y="115" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">B</text>
+      <text x="240" y="132" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">prime broker</text>
+
+      <circle cx="400" cy="120" r="38" style="fill:var(--amber);opacity:.2;stroke:var(--amber);stroke-width:2"/>
+      <text x="400" y="115" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">C</text>
+      <text x="400" y="132" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">funding counterparty</text>
+
+      <circle cx="560" cy="120" r="38" style="fill:var(--red);opacity:.2;stroke:var(--red);stroke-width:2"/>
+      <text x="560" y="115" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:700">D</text>
+      <text x="560" y="132" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:8.5px">fourth counterparty</text>
+
+      <line x1="118" y1="120" x2="202" y2="120" style="stroke:var(--text3);stroke-width:1.6" marker-end="url(#carrow)"/>
+      <text x="160" y="105" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9px">posts $10M collateral</text>
+
+      <line x1="278" y1="120" x2="362" y2="120" style="stroke:var(--text3);stroke-width:1.6" marker-end="url(#carrow)"/>
+      <text x="320" y="105" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9px">rehypothecates same $10M</text>
+
+      <line x1="438" y1="120" x2="522" y2="120" style="stroke:var(--text3);stroke-width:1.6" marker-end="url(#carrow)"/>
+      <text x="480" y="105" text-anchor="middle" style="fill:var(--text2);font-family:'DM Mono',monospace;font-size:9px">re-pledges same $10M</text>
+
+      <path d="M 80,158 C 80,220 560,220 560,158" style="fill:none;stroke:var(--red);stroke-width:1.4;stroke-dasharray:4,3"/>
+      <text x="320" y="240" text-anchor="middle" style="fill:var(--red);font-family:'DM Mono',monospace;font-size:10px;font-weight:600">one physical asset — three separate, stacked claims (A→B, B→C, C→D)</text>
+
+      <defs>
+        <marker id="carrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--text3)"/></marker>
+      </defs>
+    </svg>
+    <div class="tl-chart-caption">
+    The same $10,000,000 of securities is referenced by three separate obligations down the chain. If C, in the
+    middle, defaults or is unable to return the collateral it re-pledged to D, the disruption hits both
+    directions at once — B (who is owed by C) and D (who was relying on C's pledge) — not just a single
+    bilateral relationship.
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture one $20 bill getting passed between four friends as an "IOU chip" — friend 1 hands it to friend 2 as a promise, friend 2 hands the same bill to friend 3 as their own promise, and so on. There's still only one $20 bill in the world, but now four people are all quietly counting on it existing and being handed back when asked. If the bill gets lost partway down the chain, everyone downstream of that point suddenly has a promise nobody can actually keep.</p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>The direct tie to <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion
+    Networks</a>:</strong> a real-world collateral re-use chain like the one above is a literal instance of the
+    exposure network that lesson's DebtRank framework formalizes. Each link — A's claim on B, B's claim on C,
+    C's claim on D — is exactly the kind of directed, capital-relevant exposure that DebtRank's iterative
+    distress-propagation rule is built to trace through. If counterparty C in the chain above defaulted, it
+    would simultaneously be unable to return the collateral it owes upward to B <em>and</em> unable to make good
+    on the pledge it made downward to D — a shock propagating in both directions along the very same chain of
+    obligations, which is precisely the mechanism that lesson's worked four-bank DebtRank example quantifies in
+    the abstract. Reading that lesson after this one turns its distress-propagation math from an abstract
+    network exercise into a concrete description of exactly this kind of collateral-chain failure.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  <strong>Negotiating rehypothecation limits.</strong> Prime brokerage agreements specify a broker's
+  rehypothecation rights explicitly — sophisticated clients, particularly after 2008, routinely negotiate
+  explicit caps on how much of their collateral can be rehypothecated, rather than accepting a broker's
+  standard, maximally permissive terms by default.
+  </p>
+  <p>
+  <strong>Diversifying prime brokers.</strong> A documented shift in industry practice following the LBIE
+  experience: many hedge funds and other leveraged clients now deliberately spread their prime brokerage
+  relationships across multiple brokers, rather than concentrating all of their collateral and financing
+  arrangements with a single firm — directly reducing the damage any one broker's failure or administration
+  could do to the client.
+  </p>
+  <p>
+  <strong>Tri-party and third-party custody arrangements.</strong> Where a client wants stronger protection than
+  a standard rehypothecation-permitting prime brokerage agreement offers, collateral can instead be held with
+  an independent third-party custodian under a tri-party arrangement, structurally limiting the broker's ability
+  to re-use it at all.
+  </p>
+  <p>
+  <strong>Regulators tracking collateral velocity.</strong> Post-crisis, international bodies including the
+  Financial Stability Board studied rehypothecation and collateral re-use explicitly as part of the broader
+  "shadow banking" reform agenda — treating the interconnectedness a collateral chain creates as a genuine
+  systemic-risk monitoring concern in its own right, not merely a bilateral client-protection issue.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A named scenario</div>
+    <h3>A hedge fund negotiating prime brokerage terms after 2008</h3>
+    <p>
+    Consider a mid-sized hedge fund setting up a new prime brokerage relationship. Informed by the LBIE
+    episode and the SEC Rule 15c3-3 contrast above, the fund's operations and legal teams push for two concrete
+    protections during negotiation: first, an explicit cap on how much of the fund's posted collateral the
+    broker may rehypothecate, tighter than whatever the broker's standard agreement or local regulatory maximum
+    would otherwise permit; second, a decision to split the fund's total financing and custody needs across two
+    or three prime brokers in different legal entities, rather than concentrating everything with one firm. Both
+    decisions trade some operational simplicity and possibly some financing cost for a meaningful reduction in
+    how exposed the fund would be if any single broker entered administration and its rehypothecated collateral
+    became tied up in that process — exactly the risk the LBIE case made concrete for the whole industry.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where rehypothecation and collateral chains are commonly misunderstood</h3>
+    <ul>
+      <li><strong>Assuming "my collateral is in my account" means it hasn't been rehypothecated.</strong> A client agreement can legally permit rehypothecation while the client's account statement still shows the position — segregation and rehypothecation are a matter of legal rights, not of what's visible on a statement.</li>
+      <li><strong>Assuming a home-jurisdiction regulatory cap protects assets held at a foreign affiliate.</strong> The exact gap that mattered for LBIE — a US-domiciled fund's assets, held through a UK-regulated entity, were subject to UK rules, not US Rule 15c3-3.</li>
+      <li><strong>Treating each link in a collateral chain as if it referenced a distinct asset.</strong> It's the same underlying security referenced by multiple stacked claims, not multiple copies of it — a common and consequential misconception.</li>
+      <li><strong>Underestimating how a single default propagates in both directions along a chain.</strong> A failure in the middle of a chain disrupts both the party it owed collateral back to and the party it had re-pledged onward to, simultaneously — not a single, isolated bilateral loss.</li>
+      <li><strong>Assuming rehypothecation itself is illegitimate or unusual.</strong> It's a widespread, legal, and commercially ordinary practice within whatever limits apply — the risk is in the scale, the jurisdictional gaps, and the hidden interconnectedness it can create, not in the existence of the practice itself.</li>
+    </ul>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>Said plainly:</strong> this lesson is institutional market-structure and regulatory knowledge —
+    useful for understanding counterparty risk, custody risk, and systemic interconnectedness in the financial
+    system. It is not a trading signal, it does not describe anything built, tested, or traded in this repo, and
+    it should not be read as implying otherwise.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Rehypothecation is the re-use of client collateral by the broker holding it</strong> — re-pledging it onward or lending it out — rather than simply holding it segregated on the client's behalf.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The Lehman Brothers International (Europe) case is the widely-cited episode that crystallized this risk.</strong> Client assets rehypothecated under the UK's then more-permissive rules became tied up in LBIE's administration — a real, significant client-asset-protection failure, not a hypothetical one.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SEC Rule 15c3-3 caps U.S. rehypothecation at roughly 140% of a customer's debit balance</strong> — a genuine, quantified regulatory limit that the UK-law practice applied to LBIE did not have an equivalent of at the time.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A collateral chain stacks multiple claims on one physical asset.</strong> Each re-pledge down the chain (A→B→C→D…) creates a new obligation referencing the same underlying collateral — the collateral-velocity/re-use-multiplier concept.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A collateral re-use chain is a literal exposure network</strong> — the exact kind of directed, capital-relevant structure that <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a>'s DebtRank algorithm is built to propagate distress through.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional/regulatory background, not a trading signal.</strong> Stated plainly, not softened — nothing here is a claim about anything built or traded in this repo.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What precisely distinguishes rehypothecation from a broker simply holding a client's collateral in segregated custody?</summary>
+    <div class="tl-answer">
+    In segregated custody, the broker holds the client's collateral solely for that client's benefit and does
+    not use it for the broker's own purposes. Rehypothecation is when the broker is permitted, under the
+    governing agreement and jurisdiction's rules, to re-use that same collateral — re-pledging it to one of its
+    own counterparties or lenders, or lending it out — rather than simply holding it. The collateral stops being
+    merely held and starts being actively used by the broker for its own funding or lending activity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What specific, real regulatory gap did the Lehman Brothers International (Europe) case expose?</summary>
+    <div class="tl-answer">
+    LBIE operated under UK law, whose rules governing rehypothecation of client assets were, at the time,
+    historically more permissive than comparable U.S. rules — standard prime brokerage agreements allowed
+    broader rehypothecation of client collateral than the equivalent U.S. framework (SEC Rule 15c3-3) permits.
+    When LBIE entered administration following Lehman Brothers' 2008 bankruptcy, client assets that had been
+    rehypothecated under those UK-law provisions became tied up in the administration process — exposing a real
+    jurisdictional gap in client-asset protection that prompted lasting regulatory scrutiny.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What does SEC Rule 15c3-3's "140% of debit balance" limit actually restrict?</summary>
+    <div class="tl-answer">
+    It caps how much of a U.S. customer's margin securities a broker-dealer may rehypothecate (use to satisfy
+    its own obligations) at roughly 140% of that customer's aggregate debit balance — the amount the customer
+    actually owes the broker, such as an outstanding margin loan. It ties the broker's permitted rehypothecation
+    directly to what the customer owes, rather than allowing rehypothecation of the full value of everything the
+    customer has posted; excess client securities beyond that limit must be held in a segregated customer
+    reserve, not used by the broker.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why does the same $10,000,000 of securities create three separate claims rather than three separate assets?</summary>
+    <div class="tl-answer">
+    Rehypothecation doesn't duplicate the physical asset — there is still only one $10,000,000 pool of
+    securities. What multiplies is the number of contractual claims referencing that same pool: the hedge fund's
+    claim on its prime broker for the return of its collateral, the prime broker's claim on the counterparty it
+    rehypothecated to, and that counterparty's claim on whoever it re-pledged to next. Each link in the chain
+    adds a stacked obligation on top of the same underlying asset — the "collateral velocity" or re-use
+    multiplier concept — not a new physical security.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. How is a collateral re-use chain a literal instance of the network Systemic Risk &amp; Financial Contagion Networks describes?</summary>
+    <div class="tl-answer">
+    That lesson's DebtRank framework models a network of directed, capital-weighted exposures between
+    institutions and asks how far distress propagates if one node defaults. A collateral chain (A→B→C→D…) is
+    exactly this kind of network in concrete form: each link is a real, directed claim, and if one counterparty
+    in the middle of the chain defaults or cannot return collateral, the disruption propagates in both
+    directions along the chain simultaneously — to whoever it owed collateral back to, and to whoever was
+    relying on the collateral it had re-pledged onward. It's not an analogy stretched to fit; a real collateral
+    re-use chain is a direct, literal example of the exposure network that lesson's algorithm is built to
+    analyze.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Manmohan Singh, "Velocity of Pledged Collateral: Analysis and Implications," IMF Working Paper WP/11/256, 2011 — the primary source for the collateral velocity / re-use multiplier concept used above.</li>
+    <li>Manmohan Singh, "Collateral, Netting and Systemic Risk in the OTC Derivatives Market," IMF Working Paper WP/10/99, 2010 — a related IMF study on collateral reuse and its systemic implications.</li>
+    <li>U.S. Securities and Exchange Commission, Rule 15c3-3 under the Securities Exchange Act of 1934 (17 CFR § 240.15c3-3), the "Customer Protection Rule" — the primary regulatory text establishing the U.S. rehypothecation limit discussed above.</li>
+    <li>Financial Stability Board, "Strengthening Oversight and Regulation of Shadow Banking," policy framework documents on securities lending and repos, 2013 — the post-crisis international regulatory work addressing rehypothecation and collateral re-use as a systemic-risk topic.</li>
+    <li>Reporting and analysis of the Lehman Brothers International (Europe) administration and its treatment of client assets, including materials published by PricewaterhouseCoopers (PwC) as LBIE's administrators — general references on the widely documented episode discussed above; this lesson deliberately avoids citing precise, unverified figures from that record.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="collateral-margin-repo-markets.html">← Collateral, Margin &amp; Repo Markets</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Q-Networks &amp; Function Approximation — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Reinforcement Learning / Deep Q-Networks &amp; Function Approximation</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Reinforcement Learning 4 of 4</div>
+  <h1 class="tl-title">Deep Q-Networks &amp; Function Approximation</h1>
+  <p class="tl-dek">What happens when the Q-table gets too big to write down — replacing it with a neural network that generalizes, and the two tricks that keep that replacement from destabilizing the very learning process it's supposed to speed up.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Q-Learning &amp; Temporal-Difference Methods</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The <a href="q-learning-temporal-difference.html">Q-learning lesson</a>'s worked example stored a literal number for every \((s,a)\) pair in a Q-table — infeasible the moment the state space is continuous or built from more than a handful of features. A <strong>deep Q-network</strong> replaces the table with a parameterized function \(Q(s,a;\theta)\), a neural network, that <em>generalizes</em> across similar states instead of needing every one visited individually.</li>
+      <li>DQN (Mnih et al., <em>Nature</em>, 2015) made this stable with two specific tricks, each solving a real, named problem: <strong>experience replay</strong> (breaks the harmful correlation between consecutive training samples) and a <strong>target network</strong> (stops the training target from shifting under the network's own feet every single gradient step).</li>
+      <li>The DQN loss: \(L(\theta) = E\big[(r+\gamma\max_{a'}Q(s',a';\theta^-)-Q(s,a;\theta))^2\big]\) — the same Q-learning TD target from the previous lesson, now a squared error a network is trained on by gradient descent, with \(\theta^-\) explicitly a separate, frozen, periodically-updated set of parameters from \(\theta\).</li>
+      <li>DQN is a <strong>value-based</strong> deep RL method — it still needs \(\max_{a'}\) over actions, which is exactly why <a href="policy-gradients-actor-critic.html">policy gradients and actor-critic methods</a> exist as the policy-based alternative for a continuous action space like a position size, where that max becomes a nested optimization problem all over again.</li>
+      <li>Worked example: a tiny 6-transition replay buffer, a random mini-batch drawn from it, and a target-network-vs-online-network computation done side by side with toy numbers.</li>
+      <li><strong>Mandatory honest framing:</strong> DQN is genuinely impressive on well-defined games with a dense, clear reward (its original Atari benchmark) — but swapping a table for a neural function approximator adds complexity and removes interpretability, which makes a poorly specified reward or an unrealistic simulated environment an even bigger risk here than in tabular Q-learning, not a smaller one.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="q-learning-temporal-difference.html">previous lesson</a>'s
+    worked example learned \(Q(\text{Long},\text{Hold})\) by repeatedly
+    updating one entry of a table — three states, a handful of actions,
+    every \((s,a)\) pair small enough to write on a page. That table
+    approach is not an approximation of Q-learning; it <em>is</em>
+    tabular Q-learning, and its convergence guarantee explicitly assumes
+    every state-action pair can be visited, stored, and updated
+    individually, infinitely often.
+  </p>
+  <p>
+    That assumption collapses the moment the state isn't three discrete
+    labels but a vector of real-valued market features — recent returns,
+    a handful of technical indicators, cross-asset signals, whatever a
+    realistic state representation actually needs. Even a modest state
+    built from thirty continuous features has, for practical purposes,
+    infinitely many distinct states: no two trading days ever produce
+    <em>exactly</em> the same feature vector, so a table indexed by exact
+    state would never see the same row twice and would learn nothing.
+    This lesson exists entirely to fix that one limitation — nothing else
+    about Q-learning's update rule changes.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Throw away the table, train a guesser instead</h3>
+    <p>
+      Q-learning kept a giant lookup table of every situation it had ever
+      seen, with one stored number per situation-and-action pair. A deep
+      Q-network throws the table away and trains a neural network to
+      <em>guess</em> the right number instead — so it can handle
+      situations it has never seen exactly before, as long as they're
+      similar to ones it has. A table has no opinion about a state it has
+      never visited; a trained network does, because it learned a smooth,
+      generalizing function rather than memorizing isolated rows.
+    </p>
+    <p>
+      That generalization is the entire value proposition, and it's also
+      exactly where the honesty has to start: a network that generalizes
+      well genuinely helps in unfamiliar-but-similar states, but a network
+      that generalizes <em>badly</em> — confidently guessing a wrong
+      number for a state that isn't actually similar to what it trained
+      on — is a failure mode a table can never produce, because a table
+      simply has no answer at all for an unvisited state instead of a
+      wrong, overconfident one.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to memorize the price of every single house that has ever existed, one by one, so you know exactly what any house is worth. That's the Q-table — it works, but only for houses you've literally seen before. Now imagine instead learning general rules like "bigger houses cost more, houses near good schools cost more" — that's the neural network. It can guess a fair price for a brand-new house it's never seen, as long as it's roughly similar to houses it has learned from. The table can't do that at all; it just shrugs at anything new.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    <strong>Function approximation — same target, different container for
+    the estimate.</strong> Recall Q-learning's tabular update from the
+    previous lesson:
+  </p>
+  <div class="tl-math">\[ Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\,r + \gamma \max_{a'} Q(s',a') - Q(s,a)\,\Big] \]</div>
+  <p>
+    Every term on the right still means exactly what it meant before. What
+    changes is what \(Q(s,a)\) <em>is</em>. Instead of a table cell that
+    gets directly overwritten, define \(Q(s,a;\theta)\) — a neural network
+    that takes a state (and, in one common architecture, outputs a value
+    for every action at once) and is parameterized by weights \(\theta\).
+    There is no table cell to update anymore, so "update \(Q(s,a)\)"
+    becomes "take a gradient step on \(\theta\) that nudges the network's
+    output for \((s,a)\) toward the same TD target as before":
+  </p>
+  <div class="tl-math">\[ L(\theta) = E\Big[\big(\,\underbrace{r+\gamma\max_{a'}Q(s',a';\theta^-)}_{\text{target}} - Q(s,a;\theta)\,\big)^2\Big] \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Q(s,a;θ)</code><span>the network's current output for (s,a) — plays the exact role a table cell played before</span></div>
+    <div class="tl-eq-chip c3"><code>r+γ max Q(s',a';θ⁻)</code><span>the TD target — identical in form to the tabular version, but evaluated by a separate network with parameters θ⁻</span></div>
+    <div class="tl-eq-chip c4"><code>θ⁻</code><span>(theta minus) the target network's parameters — a frozen, periodically-updated copy of θ, deliberately distinct from the θ being trained right now</span></div>
+    <div class="tl-eq-chip c2"><code>L(θ)</code><span>a plain squared error between the network's current guess and the TD target, trained by ordinary gradient descent on θ</span></div>
+  </div>
+  <p>
+    Squaring the TD error and calling it a loss is what turns "nudge a
+    table cell by \(\alpha\) times the error" into "take a gradient step
+    on a neural network's weights" — the derivative of \((\text{target} -
+    Q(s,a;\theta))^2\) with respect to \(\theta\) produces an update that,
+    for a table-shaped network with one weight per \((s,a)\) cell, reduces
+    <em>exactly</em> to the tabular Q-learning update above. Function
+    approximation isn't a different algorithm bolted onto Q-learning; it's
+    the same update rule, generalized to work when the thing being updated
+    is a network's weights instead of a table's cells.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before, "learning" meant erasing one number in a notebook and writing a slightly better one in its place. Now "learning" means slightly adjusting thousands of dials inside a network so that, next time, it guesses a slightly better number for this situation — and, because the dials are shared across many situations, adjusting them for one situation quietly improves the guesses for similar situations too. That sharing is exactly what a notebook full of separate numbers could never do.</p>
+  </div>
+
+  <p>
+    <strong>Why this needs two specific stabilization tricks, not just a
+    network swapped in.</strong> Training a neural network on TD targets
+    the naive way — sample transitions in the order the agent experiences
+    them, compute the target with the same network being updated — turns
+    out to be badly unstable in practice. Two problems, each with a name
+    and a specific fix, are why DQN (Mnih et al., <em>Nature</em>, 2015)
+    needed more than "put a network where the table used to be."
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Problem 1</div>
+      <div class="tl-fp-name">Correlated samples</div>
+      <div class="tl-fp-desc">Consecutive states in a trajectory are highly similar; training on them in strict sequence biases the network toward whatever it just saw</div>
+    </div>
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">Fix</div>
+      <div class="tl-fp-name">Experience replay</div>
+      <div class="tl-fp-desc">Store transitions in a buffer, train on a random sample from it instead of the live stream</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Problem 2</div>
+      <div class="tl-fp-name">A moving target</div>
+      <div class="tl-fp-desc">The same weights being updated also generate the target they're trained toward — the target shifts every single gradient step</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">Fix</div>
+      <div class="tl-fp-name">Target network</div>
+      <div class="tl-fp-desc">Freeze a separate copy of the network for computing targets, sync it only every N steps</div>
+    </div>
+  </div>
+
+  <h3>Trick 1 — experience replay</h3>
+  <p>
+    An agent interacting with an environment generates a stream of
+    transitions \((s,a,r,s')\) in temporal order — and consecutive states
+    in that stream are usually very similar to each other (a market state
+    one tick later looks almost identical to the state before it). Feeding
+    a neural network a training batch drawn straight from that stream, in
+    that order, means every batch is dominated by whatever narrow region
+    of the state space the agent happens to be passing through right now
+    — the exact opposite of the independent, identically-distributed data
+    that gradient-based training assumes and needs to behave well. The
+    network ends up overfitting to whatever it just experienced and can
+    forget or destabilize what it learned from earlier, differently-shaped
+    experience.
+  </p>
+  <p>
+    <strong>Experience replay</strong> fixes this directly: store every
+    observed transition \((s,a,r,s')\) in a fixed-size buffer as it
+    happens, and instead of training on the newest transition, train on a
+    <em>randomly sampled mini-batch</em> drawn from the whole buffer.
+    Random sampling breaks the temporal correlation between consecutive
+    training examples — a single training batch now mixes transitions
+    from many different points in the agent's history, closer to the
+    independent-samples assumption gradient descent is built around, and
+    it also lets each real transition be reused for multiple gradient
+    updates instead of being seen once and discarded.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Experience replay is like studying flashcards in random order instead of in the order you first saw them. If you always study a deck front-to-back, you start half-remembering the <em>sequence</em> instead of actually learning each card on its own — you're subtly cheating by using "what came right before this one" as a hint. Shuffling the deck before every study session forces you to actually learn each card independently. A replay buffer does the same shuffling for a network's training data.</p>
+  </div>
+
+  <h3>Trick 2 — the target network</h3>
+  <p>
+    Look again at the DQN loss above: it uses \(Q(s',a';\theta^-)\) inside
+    the target, not \(Q(s',a';\theta)\). If the target used the exact same
+    \(\theta\) currently being trained, then every gradient step that
+    changes \(\theta\) to make \(Q(s,a;\theta)\) closer to the target
+    would <em>simultaneously</em> change what that target itself equals —
+    the network would be chasing a goal that moves every time it takes a
+    step toward it. This is a genuine instability, not a minor
+    inefficiency: gradient descent on a target that shifts under its own
+    updates has no guarantee of settling anywhere, and in practice tends
+    to oscillate or diverge.
+  </p>
+  <p>
+    <strong>The target network</strong> fixes this by maintaining a
+    <em>second</em>, separate copy of the network — same architecture,
+    its own frozen set of weights \(\theta^-\) — used <em>only</em> to
+    compute the target side of the loss. \(\theta^-\) is copied from
+    \(\theta\) only periodically (e.g. every \(N\) gradient steps, or via
+    a slow exponential blend in some variants), not on every update. For
+    any stretch of \(N\) steps in between syncs, the target the online
+    network is being trained toward is genuinely fixed — the goalposts
+    stay put long enough for the online network's weights to actually
+    converge toward them, rather than chasing a target that recomputes
+    itself after every single step.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A target network is like refusing to move the goalposts mid-game. Imagine trying to improve your free-throw aim, but the hoop teleports two feet to the left every single time you release the ball — you'd never actually get better, because the thing you're aiming at keeps changing in response to your own last shot. A target network says: fine, we'll only move the hoop every so often — say, once every 100 shots — not on every single kick or throw. That gives you a stable target long enough to actually learn to hit it.</p>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>Notice the trade this makes.</strong> The target network is
+    deliberately a little bit stale — for up to \(N\) steps, it's using
+    old weights that the online network has already moved past. That
+    staleness is not a bug being tolerated; it's the entire mechanism.
+    Trading a small amount of target staleness for a large amount of
+    training stability is a genuinely good deal in practice, but it does
+    mean the online network is always, by construction, chasing a target
+    that lags slightly behind its own current best estimate.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Symbols used on this page</h2>
+  <div class="tl-symbols"><table>
+    <tr><td>\(Q(s,a;\theta)\)</td><td>The online network — outputs an estimated action-value, parameterized by the weights \(\theta\) currently being trained.</td></tr>
+    <tr><td>\(\theta\)</td><td>The online network's parameters — updated by gradient descent every training step.</td></tr>
+    <tr><td>\(\theta^-\)</td><td>(theta minus) The target network's parameters — a frozen copy of \(\theta\), synced only every \(N\) steps, used only to compute the TD target.</td></tr>
+    <tr><td>\(L(\theta)\)</td><td>The DQN loss — the squared TD error, averaged over a randomly sampled mini-batch from the replay buffer.</td></tr>
+    <tr><td>replay buffer</td><td>A fixed-size store of past \((s,a,r,s')\) transitions, sampled from randomly to build each training batch.</td></tr>
+    <tr><td>\(N\)</td><td>The number of gradient steps between target-network syncs — a tunable stability/freshness trade-off.</td></tr>
+    <tr><td>\(\max_{a'}Q(s',a';\theta^-)\)</td><td>The bootstrap term — best-case value of the next state, evaluated by the frozen target network, not the online one.</td></tr>
+  </table></div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Replay buffer feeding random mini-batches to the online network, versus the periodically-synced target network</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing an agent's stream of transitions flowing into a replay buffer, a random mini-batch sampled from that buffer feeding the online network for gradient updates, and a target network that only receives a periodic weight copy from the online network every N steps rather than being trained directly.">
+      <text x="60" y="26" fill="var(--text3)" font-size="11" font-family="'DM Mono',monospace">agent's experience stream</text>
+      <rect x="20" y="36" width="46" height="26" rx="4" style="fill:none;stroke:var(--text3)"/>
+      <rect x="74" y="36" width="46" height="26" rx="4" style="fill:none;stroke:var(--text3)"/>
+      <rect x="128" y="36" width="46" height="26" rx="4" style="fill:none;stroke:var(--text3)"/>
+      <text x="43" y="53" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">t</text>
+      <text x="97" y="53" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">t+1</text>
+      <text x="151" y="53" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">t+2</text>
+      <path d="M174,49 L210,49" style="stroke:var(--text3);stroke-width:1.5;marker-end:url(#dqn-arrow)"/>
+
+      <rect x="215" y="20" width="150" height="64" rx="6" style="fill:none;stroke:var(--blue);stroke-width:1.5"/>
+      <text x="290" y="40" text-anchor="middle" fill="var(--blue)" font-size="11" font-family="'DM Sans',sans-serif" font-weight="600">Replay buffer</text>
+      <text x="290" y="58" text-anchor="middle" fill="var(--text3)" font-size="9.5" font-family="'DM Mono',monospace">(s,a,r,s') stored</text>
+      <text x="290" y="72" text-anchor="middle" fill="var(--text3)" font-size="9.5" font-family="'DM Mono',monospace">in arrival order</text>
+
+      <path d="M290,84 L290,120" style="stroke:var(--amber);stroke-width:1.5;marker-end:url(#dqn-arrow-amber)"/>
+      <text x="300" y="106" fill="var(--amber)" font-size="9.5" font-family="'DM Mono',monospace">random sample</text>
+
+      <rect x="180" y="122" width="220" height="30" rx="5" style="fill:none;stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <text x="290" y="141" text-anchor="middle" fill="var(--amber)" font-size="10" font-family="'DM Mono',monospace">mini-batch: shuffled, uncorrelated</text>
+
+      <path d="M290,152 L290,182" style="stroke:var(--text3);stroke-width:1.5;marker-end:url(#dqn-arrow)"/>
+
+      <rect x="185" y="184" width="210" height="52" rx="6" style="fill:none;stroke:var(--green);stroke-width:2"/>
+      <text x="290" y="205" text-anchor="middle" fill="var(--green)" font-size="12" font-family="'DM Sans',sans-serif" font-weight="700">Online network Q(s,a;θ)</text>
+      <text x="290" y="222" text-anchor="middle" fill="var(--text3)" font-size="9.5" font-family="'DM Mono',monospace">trained every step, gradient on θ</text>
+
+      <rect x="440" y="184" width="180" height="52" rx="6" style="fill:none;stroke:var(--purple);stroke-width:2"/>
+      <text x="530" y="205" text-anchor="middle" fill="var(--purple)" font-size="12" font-family="'DM Sans',sans-serif" font-weight="700">Target network Q(s',a';θ⁻)</text>
+      <text x="530" y="222" text-anchor="middle" fill="var(--text3)" font-size="9.5" font-family="'DM Mono',monospace">frozen between syncs</text>
+
+      <path d="M395,210 L435,210" style="stroke:var(--text3);stroke-width:1.5;stroke-dasharray:2,2;marker-end:url(#dqn-arrow)"/>
+      <text x="415" y="200" text-anchor="middle" fill="var(--text3)" font-size="8.5" font-family="'DM Mono',monospace">computes target</text>
+
+      <path d="M530,184 C530,150 400,150 300,152" style="stroke:var(--purple);stroke-width:1.5;stroke-dasharray:5,3;fill:none;marker-end:url(#dqn-arrow-purple)"/>
+      <text x="470" y="160" text-anchor="middle" fill="var(--purple)" font-size="9.5" font-family="'DM Mono',monospace">copy θ → θ⁻ every N steps</text>
+
+      <text x="320" y="270" text-anchor="middle" fill="var(--text3)" font-size="10.5" font-family="'DM Mono',monospace">L(θ) = E[(r + γ·max Q(s',a';θ⁻) − Q(s,a;θ))²]</text>
+      <text x="320" y="290" text-anchor="middle" fill="var(--text3)" font-size="10" font-family="'DM Mono',monospace">only θ is updated by this gradient — θ⁻ moves only on sync</text>
+
+      <defs>
+        <marker id="dqn-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" style="fill:var(--text3)"/></marker>
+        <marker id="dqn-arrow-amber" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" style="fill:var(--amber)"/></marker>
+        <marker id="dqn-arrow-purple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" style="fill:var(--purple)"/></marker>
+      </defs>
+    </svg>
+    <div class="tl-chart-caption">
+      The replay buffer decorrelates training data by random sampling; the
+      target network decorrelates the training <em>target</em> from the
+      weights currently being updated, by only ever copying \(\theta\)
+      into \(\theta^-\) on a slow, periodic schedule. Both fixes attack the
+      same underlying problem — the naive training loop feeding itself
+      data and targets that shift under its own updates — from two
+      different angles.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 6-transition replay buffer, one random mini-batch, and a target-vs-online comparison</h3>
+    <p>
+      Suppose the replay buffer currently holds exactly six stored
+      transitions, numbered in the order they arrived (transition 6 is the
+      most recent):
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The buffer's contents</h4>
+          <p>
+            <code>#1 (s₁,a,+0.2,s₂)</code>, <code>#2 (s₂,a,-0.1,s₃)</code>,
+            <code>#3 (s₃,b,+0.4,s₄)</code>, <code>#4 (s₄,a,+0.1,s₅)</code>,
+            <code>#5 (s₅,b,-0.3,s₆)</code>, <code>#6 (s₆,a,+0.5,s₇)</code>.
+            Notice #1 through #6 arrived in strict temporal order —
+            training on them in that order would mean every early batch is
+            dominated by whatever the agent happened to be doing at the
+            very start.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Draw a random mini-batch of size 3</h4>
+          <p>
+            A uniform random draw (independent of arrival order) pulls,
+            say, <code>{#5, #1, #4}</code> — an old transition, the
+            oldest one in the buffer, and a middle one, mixed together in
+            a single training batch. This is the entire mechanism of
+            experience replay: nothing more sophisticated than "sample
+            uniformly at random instead of sequentially."
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Compute one target using #4, with toy Q-values</h4>
+          <p>
+            Take transition <code>#4 (s₄,a,+0.1,s₅)</code>, \(\gamma=0.9\).
+            Suppose the frozen <strong>target network</strong> currently
+            outputs \(Q(s_5,\text{Hold};\theta^-)=2.0\) and
+            \(Q(s_5,\text{Close};\theta^-)=1.2\), so
+            \(\max_{a'}Q(s_5,a';\theta^-)=2.0\):
+          </p>
+          <div class="tl-math">\[ \text{target} = 0.1 + 0.9(2.0) = 1.9 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Compare against the online network's current guess</h4>
+          <p>
+            Suppose the <strong>online network</strong> — a different,
+            currently-being-trained set of weights — outputs
+            \(Q(s_4,a;\theta)=1.6\) for the same transition's actual
+            state-action pair. The squared error contributed by this one
+            transition is:
+          </p>
+          <div class="tl-math">\[ (1.9 - 1.6)^2 = 0.09 \]</div>
+          <p>
+            Gradient descent nudges \(\theta\) to shrink that 0.09 — but
+            crucially, the 1.9 target used \(\theta^-\), not \(\theta\).
+            If instead the target had used the online network's own
+            current guess for \(s_5\) (which will itself change the moment
+            this gradient step runs), the number 1.9 would already be
+            stale before the update even finished — precisely the
+            moving-target problem the frozen \(\theta^-\) exists to avoid.
+            \(\theta^-\) will eventually be updated to match \(\theta\),
+            but only at the next scheduled sync, not on this step.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A state built from dozens of market features, where a table was never an option</h3>
+    <p>
+      Picture a state vector built from thirty-odd continuous inputs —
+      recent realized volatility across a few lookback windows, a handful
+      of momentum and mean-reversion signals, a cross-asset correlation
+      reading, time-of-day and session flags. There is no meaningful way
+      to enumerate "every state" the way the previous lesson's 3-state
+      flat/long/short MDP did — the state space is effectively continuous,
+      and a Q-table indexed by exact feature values would need to see
+      each near-unique combination individually before offering any
+      opinion about it at all. A deep Q-network, trained on transitions
+      sampled from a replay buffer with a target network stabilizing the
+      targets, can instead learn a smooth \(Q(s,a;\theta)\) that
+      generalizes: a market state it has never seen in exactly this
+      combination before still gets a reasonable estimate, as long as it
+      resembles states the network trained on. Whether that resemblance
+      is actually meaningful, and whether the reward and environment used
+      to train it were realistic, is a separate question — addressed
+      directly below.
+    </p>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>DQN and its descendants are genuinely impressive on well-defined
+    games with a clear, dense reward signal — that is a fact about Atari,
+    not a fact transferable to markets by default.</strong> This category's
+    honest framing from the <a href="policy-gradients-actor-critic.html">policy
+    gradients lesson</a> applies here without softening: reinforcement
+    learning is a general-purpose optimizer, not a trading strategy, and it
+    will faithfully optimize whatever reward and simulated environment it's
+    handed — a poorly specified reward function, or an unrealistic backtest
+    environment with no market impact and any form of look-ahead, will
+    "solve" beautifully and still fail live. If anything, that risk is
+    <em>larger</em> here than in the tabular Q-learning case, not smaller:
+    a neural function approximator adds real complexity (millions of
+    weights instead of a handful of table entries) and removes
+    interpretability (a table cell's value can be inspected directly; a
+    trained network's generalization behavior on an unseen state usually
+    can't be, short of extensive separate testing). More moving parts and
+    less visibility into what the model actually learned is a strictly
+    worse starting position for trusting a "solved" simulated result, not
+    a better one.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    DQN is squarely a <strong>value-based</strong> method — it still
+    computes \(\max_{a'}Q(s',a';\theta^-)\) at every target, exactly like
+    tabular Q-learning did, just with a network standing in for the table.
+    That \(\max\) is trivial to compute over a small, discrete action set
+    (a handful of network outputs, one per action, take the largest), which
+    is precisely the setting DQN was built for and excels in. The
+    <a href="policy-gradients-actor-critic.html">policy gradients and
+    actor-critic lesson</a> in this sequence exists because that same
+    \(\max_{a'}\) becomes awkward again the moment the action space is
+    continuous — position size, not a menu of discrete choices — where
+    "maximize over every possible action" is no longer a simple lookup
+    across a handful of outputs but its own nested optimization problem at
+    every single decision step. Policy-based methods sidestep that by
+    parameterizing and directly optimizing the policy instead of the
+    action-value function, which is exactly the motivating problem that
+    lesson opens with. In practice, value-based deep RL (DQN and its
+    descendants like Double DQN, Dueling DQN, and Rainbow) and policy-based
+    deep RL (REINFORCE, actor-critic, PPO) aren't rival final answers so
+    much as two different tools suited to two different action-space
+    shapes — discrete-and-small favors value-based, continuous favors
+    policy-based, and the choice between this lesson and the previous one
+    is largely that shape question, not a claim that one approach is
+    generally superior.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where DQN quietly goes wrong</h3>
+    <p>
+      <strong>Skipping the target network "because it trains faster."</strong>
+      It's tempting to sync \(\theta^-=\theta\) every single step to use
+      the freshest possible target — but that removes the entire fix and
+      reintroduces the moving-target instability the target network exists
+      to prevent. The staleness is the mechanism, not overhead to be
+      minimized away.
+    </p>
+    <p>
+      <strong>A replay buffer that's too small, or sampled non-uniformly
+      without accounting for it.</strong> A buffer that only holds the
+      last few hundred transitions doesn't actually decorrelate much —
+      it's still dominated by recent, similar experience. Prioritized
+      replay (sampling "surprising," high-TD-error transitions more often)
+      is a real and useful refinement, but it changes the sampling
+      distribution in a way that needs its own correction (importance
+      weighting) to stay unbiased — naively oversampling without that
+      correction reintroduces a different kind of bias than the one replay
+      was built to remove.
+    </p>
+    <p>
+      <strong>Inheriting Q-learning's overestimation bias, now harder to
+      see.</strong> The <a href="q-learning-temporal-difference.html">previous
+      lesson</a> noted that \(\max\) over noisy estimates is itself
+      upward-biased. That bias doesn't go away with a network in place of a
+      table — Double DQN exists specifically to decouple action selection
+      from action evaluation here too — and it's harder to notice, because
+      a network's output doesn't come with the same easy inspectability a
+      table cell's stored number does.
+    </p>
+    <p>
+      <strong>Treating a high simulated reward as validation.</strong> A
+      DQN that achieves a high score against a backtest environment has
+      proven only that it optimized that specific reward inside that
+      specific simulator — exactly the caution stated in the honest
+      framing above, and it does not become less true because the
+      optimizer used a neural network instead of a table.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Q-table is infeasible once the state space is continuous or high-dimensional.</strong> \(Q(s,a;\theta)\), a neural network, replaces the table and generalizes across similar states instead of requiring every one to be visited individually.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Experience replay breaks the correlation between consecutive training samples</strong> by storing transitions in a buffer and training on a randomly sampled mini-batch rather than the live, temporally-correlated stream.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The target network stops the training target from moving under the network's own updates,</strong> by computing it with a separate, frozen \(\theta^-\) that's synced to \(\theta\) only every N steps.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(L(\theta)=E[(r+\gamma\max_{a'}Q(s',a';\theta^-)-Q(s,a;\theta))^2]\) is the same TD target from tabular Q-learning,</strong> now trained as a squared-error loss by gradient descent instead of a direct table overwrite.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DQN is value-based and still needs \(\max_{a'}\);</strong> policy gradient and actor-critic methods are the policy-based alternative for continuous action spaces, where that max stops being a simple lookup.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A neural function approximator makes the "it's just an optimizer, not a strategy" caution bigger, not smaller.</strong> More complexity and less interpretability than a Q-table means a poorly specified reward or an unrealistic simulated environment is an even easier way for a DQN to "solve" a backtest and still fail live.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does tabular Q-learning's convergence guarantee break down for a state built from dozens of continuous market features?</summary>
+    <div class="tl-answer">
+      Tabular Q-learning's guarantee requires every distinct state-action
+      pair to be visited (in principle) infinitely often, so its table
+      entry can be learned individually. With a state built from many
+      continuous features, essentially no two observed states are ever
+      exactly identical, so a table indexed by exact state would almost
+      never see the same row twice — it would need infinitely many table
+      entries and could never learn a useful value for most of them. A
+      function approximator sidesteps this by generalizing across similar
+      states rather than requiring exact repeats.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What specific problem does experience replay solve, and how does random sampling from a buffer fix it?</summary>
+    <div class="tl-answer">
+      It solves the problem of correlated training data: consecutive
+      states in an agent's trajectory are highly similar, so training in
+      strict temporal order biases the network toward whatever narrow
+      region of the state space it's currently passing through, violating
+      the roughly-independent-samples assumption gradient-based training
+      relies on. Storing transitions in a buffer and sampling a random
+      mini-batch from across the whole buffer mixes experience from many
+      different points in the agent's history into each training batch,
+      breaking that temporal correlation.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the DQN loss, why does the target use θ⁻ (the target network) instead of θ (the online network being trained)?</summary>
+    <div class="tl-answer">
+      If the target used the same θ currently being updated, then every
+      gradient step that changed θ to move Q(s,a;θ) closer to the target
+      would simultaneously change what that target itself equals — the
+      network would be chasing a target that shifts under its own updates,
+      a genuine instability with no guarantee of settling anywhere. Using
+      a separate, frozen θ⁻ — synced to θ only every N steps — keeps the
+      target fixed for stretches long enough for the online network to
+      actually converge toward it before the goalposts move again.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is DQN described as "value-based," and what problem does that create for a continuous action space like position size — which lesson addresses the fix?</summary>
+    <div class="tl-answer">
+      DQN still computes max_a' Q(s',a';θ⁻) at every target, exactly like
+      tabular Q-learning — it estimates action values and acts (or
+      bootstraps) by taking the best one, which is what makes it
+      value-based. That max is a trivial lookup over a small discrete
+      action set, but becomes its own nested optimization problem for a
+      continuous action space, since there's no finite list of actions to
+      scan. The Policy Gradients & Actor-Critic Methods lesson addresses
+      this by directly parameterizing and optimizing a policy instead,
+      never needing to compute that max at all.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A DQN trained on a backtest environment achieves a very high cumulative reward. Why is that not, by itself, evidence of real trading edge — and does using a neural network instead of a Q-table make this concern larger or smaller?</summary>
+    <div class="tl-answer">
+      A high reward only proves the optimizer did its job faithfully
+      against the specific reward function and environment model it was
+      given — it says nothing about whether that reward was well-specified
+      (e.g. penalizing tail risk) or whether the environment was realistic
+      (transaction costs, market impact, no look-ahead). Swapping a
+      Q-table for a neural network makes this concern larger, not smaller:
+      the network adds real complexity and reduces interpretability
+      relative to a table whose cells can be inspected directly, so a
+      poorly specified reward or an unrealistic simulator is, if anything,
+      easier to "solve" beautifully in-sample without it being obvious
+      from the model's structure that anything is wrong.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A. Rusu, Joel Veness, Marc G. Bellemare, Alex Graves, Martin Riedmiller, Andreas K. Fidjeland, Georg Ostrovski, Stig Petersen, Charles Beattie, Amir Sadik, Ioannis Antonoglou, Helen King, Dharshan Kumaran, Daan Wierstra, Shane Legg, and Demis Hassabis, <em>"Human-level control through deep reinforcement learning"</em>, Nature, 2015 — the original Deep Q-Network paper, introducing experience replay and the target network together and validating the combination on Atari 2600 games.</li>
+    <li>Hado van Hasselt, Arthur Guez, and David Silver, <em>"Deep Reinforcement Learning with Double Q-learning"</em>, AAAI, 2016 — extends van Hasselt's tabular Double Q-learning fix (referenced in the previous lesson's pitfalls) to the deep function-approximation setting used here.</li>
+    <li>Tom Schaul, John Quan, Ioannis Antonoglou, and David Silver, <em>"Prioritized Experience Replay"</em>, ICLR, 2016 — refines the uniform-random replay buffer sampling described in this lesson's worked example, sampling higher-TD-error transitions more often (with an importance-weighting correction).</li>
+    <li><a href="q-learning-temporal-difference.html">Q-Learning &amp; Temporal-Difference Methods</a> — the tabular Q-learning update this lesson generalizes; read first if the TD target or the off-policy \(\max_{a'}\) term feels unfamiliar.</li>
+    <li><a href="policy-gradients-actor-critic.html">Policy Gradients &amp; Actor-Critic Methods</a> — the policy-based alternative for continuous action spaces, where DQN's \(\max_{a'}\) step stops being a simple lookup.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="policy-gradients-actor-critic.html">← Policy Gradients &amp; Actor-Critic Methods</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

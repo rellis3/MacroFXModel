@@ -35,6 +35,7 @@
 import { oiStoreToLevels } from './oiConfluence.js';
 import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
+import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
 import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands } from './oi.js';
 
@@ -78,6 +79,22 @@ function fmtSaved(inst) {
   const bits = [];
   if (inst?.savedAt) bits.push(`saved ${inst.savedAt}`);
   if (Number.isFinite(inst?.spot)) bits.push(`spot ${inst.spot}`);
+  // THE BASIS, AND HOW OLD IT IS. Every level here is `strike - basis`, so the whole
+  // ladder shifts one-for-one with this number — and it moves intraday. Measured
+  // 2026-08-20 on EUR/USD: +0.00021 at 08:39, +0.00066 by mid-afternoon. Four and a
+  // half pips of silent drift on every line, from a figure nothing on the page showed.
+  // The course notes are blunt about it ("a stale basis puts levels 10-20 pips off"),
+  // so the export now states the basis it used and how old that reading is. Refresh
+  // with POST /api/oi/reanalyse?live=1.
+  if (Number.isFinite(inst?.basis)) {
+    // basisAtMs, not savedAtMs — the basis and the chain age independently.
+    const _bAt = Number.isFinite(inst?.basisAtMs) ? inst.basisAtMs : inst?.savedAtMs;
+    const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
+    const age = ageH == null ? '' : ageH < 1 ? ` ${Math.round(ageH * 60)}m old`
+      : ageH < 24 ? ` ${ageH.toFixed(1)}h old` : ` ${Math.round(ageH / 24)}d old`;
+    const stale = ageH != null && ageH >= 4 ? ' STALE — re-basis before trading these' : '';
+    bits.push(`basis ${inst.basis >= 0 ? '+' : ''}${(+inst.basis).toFixed(5)}${age}${stale}`);
+  }
   if (Number.isFinite(inst?.dte)) bits.push(`DTE ${inst.dte}`);
   // Inverted pairs can be exported under either call/put reading — say which, or a
   // red 'call wall' below spot looks like a bug rather than a deliberate setting.
@@ -143,6 +160,8 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
            + ' · Pin (sticks here) · Edge (changes here) · far = beyond ~2.5x expected move');
   lines.push('  Reject vs Break is decided by the zone: calm = hedging fights the move so levels'
            + ' hold; jumpy = hedging feeds the move so the same level gives way.');
+  lines.push('  hNN on a wall = HOLD score 0-100 (react-vs-blow-through: per-strike dealer GEX'
+           + ' · persistence · wall multiple) — high tends to hold, low tends to give way.');
   lines.push('');
 
   const entries = Object.entries(store || {});
@@ -255,15 +274,28 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       const note  = ex ? ex.mid : '';
       const heat  = heatOf.get(l) || '';
       const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
-      // Touch (index 3) needs a heat placeholder ('-') so its position is stable when
-      // heat is absent; trailing-absent segments are dropped, so a line with no heat and
-      // no touch is byte-identical to before.
-      let suffix = '';
-      if (note) {
-        if (touch)     suffix = ` . ${note} . ${heat || '-'} . ${touch}`;
-        else if (heat) suffix = ` . ${note} . ${heat}`;
-        else           suffix = ` . ${note}`;
+      // HOLD score (walls only): the react-vs-blow-through read the bot sizes fades
+      // by, exported as a compact `hNN` token so the chart shows the SAME strength
+      // read the bot trades. Computed off the level's own expiry book (day levels →
+      // day gexProfile), from per-strike GEX + persistence + multiple (the OI-flow
+      // component needs day-over-day history the paste doesn't carry → renormalised
+      // out). Blank for non-walls and when no component has data.
+      let hold = '';
+      if (l.type === 'call_wall' || l.type === 'put_wall') {
+        const src = isDay(l) ? dayEx : inst;
+        const walls = l.type === 'call_wall' ? (src?.callWalls || []) : (src?.putWalls || []);
+        const w = walls.find(w => Number.isFinite(w?.strike) && Math.abs(w.strike - l.price) <= Math.max(1e-6, Math.abs(l.price) * 1e-7));
+        const hs = w ? wallHoldScore(w, l.type === 'call_wall' ? 'call' : 'put',
+          { gexProfile: isDay(l) ? dayGP : gexProfile }) : null;
+        if (hs) hold = `h${Math.round(hs.score * 100)}`;
       }
+      // Ordered ' . ' segments the Pine parser reads by index — (1) expectation,
+      // (2) heat, (3) P(touch), (4) hold. '-' holds an absent slot so later indexes
+      // stay stable; trailing-absent segments are dropped, so a line with none of
+      // them is byte-identical to before.
+      const segs = [note || '-', heat || '-', touch || '-', hold || '-'];
+      while (segs.length && segs[segs.length - 1] === '-') segs.pop();
+      const suffix = segs.length ? ` . ${segs.join(' . ')}` : '';
       lines.push(`OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
       drawn.add(`${l.type}@${l.price.toFixed(dp)}`);
     }
@@ -283,9 +315,19 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       const cands = [];
       for (const e of inst.perExpiry) {
         if (!Number.isFinite(e.dte)) continue;
-        for (const [v, t] of [[e.maxPain, 'max_pain'], [e.callWall, 'call_wall'], [e.putWall, 'put_wall']]) {
-          if (Number.isFinite(v) && !drawn.has(`${t}@${v.toFixed(dp)}`)) cands.push({ price: v, type: t, dte: e.dte });
-        }
+      // MAX PAIN IS TIME-BOUND, WALLS ARE PRICE-BOUND. The band filter below asks "can
+      // price reach this level today", which is the right question for a wall: a wall
+      // matters because price arrives at it. It is the WRONG question for max pain,
+      // whose pull comes from time to expiry, not distance — a 20DTE max pain sitting
+      // inside today's range exerts no pin today, and gold was exporting a dozen of
+      // them. So max pain from OTHER expiries is capped by DTE before the band filter
+      // ever sees it. The primary and day expiries are drawn in full above regardless,
+      // so the near-dated max pain that actually pins is never dropped.
+      const MAXPAIN_MAX_DTE = 7;
+      for (const [v, t] of [[e.maxPain, 'max_pain'], [e.callWall, 'call_wall'], [e.putWall, 'put_wall']]) {
+        if (t === 'max_pain' && !allExpiry && e.dte > MAXPAIN_MAX_DTE) continue;
+        if (Number.isFinite(v) && !drawn.has(`${t}@${v.toFixed(dp)}`)) cands.push({ price: v, type: t, dte: e.dte });
+      }
       }
       let emit = cands;
       if (!allExpiry && bandFrac) {
@@ -296,7 +338,20 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       for (const c of emit) {
         const k = `${c.type}@${c.price.toFixed(dp)}`;
         if (seen.has(k)) continue; seen.add(k);
-        lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}`);
+        // P(touch) ON THESE LINES TOO. They used to be emitted bare — type + DTE and
+        // nothing else — while the primary/day levels carried the full token set. Since
+        // both passes can produce a line at the SAME price, the chart showed one
+        // annotated and one blank a few pixels apart, and ~2/3 of all exported lines had
+        // no P(touch) at all. It reads as "this level has no reading" when the truth is
+        // "this line was drawn by the other code path".
+        //
+        // Expectation and heat stay '-': both need that expiry's own gamma profile, and
+        // perExpiry carries only the headline strikes. P(touch) needs neither — it is a
+        // property of the PRICE and today's volatility, so it is as valid here as
+        // anywhere. Placeholders keep the segment indexes stable for the Pine parser.
+        const t2 = rp ? (rp[c.price.toFixed(6)] || '') : '';
+        const tail = t2 ? ` . - . - . ${t2}` : '';
+        lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}${tail}`);
       }
     }
     lines.push('');

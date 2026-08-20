@@ -22,6 +22,8 @@
     <span>Prereqs: none</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -173,6 +175,11 @@
     always.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A matrix is like a recipe card that tells you exactly what to do with a pair of numbers to make a new pair of numbers. You take the input's two numbers, follow the recipe (multiply and add in a fixed pattern), and out comes a brand-new pair — a new arrow that usually points a different way and is a different length than the one you started with.</p>
+  </div>
+
   <h3>Matrix-matrix multiplication: chaining two machines</h3>
   <p>
     If \(A\) is one transformation and \(B\) is another, applying \(B\) first
@@ -221,6 +228,11 @@
     \(AI = IA = A\) for any matrix \(A\). It is the matrix equivalent of the
     number 1, and it shows up below as the tool for isolating eigenvalues.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Chaining two matrices together is like lining up two toy machines end to end, so whatever pops out of the first one drops straight into the second. But the order matters — squish-then-twist is not the same as twist-then-squish, even with the exact same two machines. The identity matrix is the one machine that's really just an empty tube: whatever goes in comes out exactly the same, untouched.</p>
+  </div>
 
   <h3>Eigenvectors and eigenvalues, built geometrically</h3>
   <p>
@@ -277,6 +289,11 @@
     to map that space back into itself.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a room full of arrows pointing every which way, and a machine that grabs every single one and moves it. Almost all of them get swung around to point somewhere new. But one or two special arrows just get longer or shorter — they never get swung to a new direction, only stretched or shrunk along the same line they were already on. Those special arrows are eigenvectors, and how much they got stretched is their eigenvalue.</p>
+  </div>
+
   <h3>Solving for eigenvalues: the characteristic equation</h3>
   <p>
     \(Av = \lambda v\) can be rewritten with everything on one side. Since
@@ -329,6 +346,11 @@
     to get the matching eigenvector. The full arithmetic, with real numbers
     instead of letters, is worked end to end in the box below.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Finding the eigenvalues is like a puzzle: keep subtracting some unknown number off the matrix's diagonal until the machine stops swinging things around normally and instead squashes one whole direction completely flat, like a pancake. The special number that makes it go flat is an eigenvalue — and there's a plain equation (the characteristic equation) that tells you exactly which numbers those are, without any guessing.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">A unit circle of vectors, and where a matrix sends every one of them</div>
@@ -471,6 +493,11 @@
       out perpendicular to each other with no extra assumption required — it's
       inherited directly from this fact.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>A symmetric matrix is one that looks exactly the same if you flip it across its own diagonal, like folding a square napkin along the corner. For those matrices, the two special stretch-only directions always end up pointing exactly perpendicular to each other, like the corner of a book — that's not a coincidence of these particular numbers, it's a rule that's always true for this kind of matrix, and it's exactly the kind of matrix a set of returns' covariances always makes.</p>
+    </div>
   </div>
 
   <div class="tl-box scenario">
@@ -756,5 +783,28 @@
     <a href="calculus-for-finance.html">Calculus for Finance &#8594;</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

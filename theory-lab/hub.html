@@ -402,9 +402,14 @@
         <p>Why real portfolio construction needs a QP solver the moment box constraints show up, not just the closed-form Markowitz formula.</p>
       </a>
       <a class="tl-card" href="lessons/numerical-integration.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Numerical Methods 4 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Numerical Methods 4</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Numerical Integration</h3>
         <p>Trapezoidal and Simpson's rule vs. Monte Carlo — and why simulation wins the moment a payoff depends on many underlyings.</p>
+      </a>
+      <a class="tl-card" href="lessons/fft-option-pricing-carr-madan.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Numerical Methods 5 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>FFT Option Pricing (Carr-Madan)</h3>
+        <p>Pricing a whole strip of strikes in one FFT call instead of one numerical integration per strike — the standard calibration workhorse for Heston-style models.</p>
       </a>
     </div>
   </div>
@@ -473,9 +478,14 @@
         <p>Sampling a posterior that has no closed form — the acceptance ratio, detailed balance, and the diagnostics that tell you the chain actually mixed.</p>
       </a>
       <a class="tl-card" href="lessons/hierarchical-bayesian-models.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Bayesian Extensions 3 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Bayesian Extensions 3</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Hierarchical Bayesian Models &amp; Partial Pooling</h3>
         <p>The principled middle ground between trusting every noisy small-sample estimate fully and ignoring group differences entirely.</p>
+      </a>
+      <a class="tl-card" href="lessons/hamiltonian-monte-carlo-nuts.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Bayesian Extensions 4 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Hamiltonian Monte Carlo &amp; NUTS</h3>
+        <p>Gradient-informed sampling instead of a blind random walk — and the default sampler behind Stan and PyMC.</p>
       </a>
     </div>
   </div>
@@ -495,9 +505,14 @@
         <p>A backward pass that sharpens every past estimate using the whole dataset, plus two ways to handle genuine nonlinearity.</p>
       </a>
       <a class="tl-card" href="lessons/regime-switching-state-space.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">State Space Extensions 3 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">State Space Extensions 3</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
         <h3>Regime-Switching State Space Models</h3>
         <p>Fusing the HMM's discrete hidden regime with the Kalman filter's continuous hidden state, via Kim's collapsing filter.</p>
+      </a>
+      <a class="tl-card" href="lessons/change-point-detection.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">State Space Extensions 4 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Change-Point Detection</h3>
+        <p>CUSUM and Bayesian Online Changepoint Detection — the narrower, real-time question of whether and when a change occurred.</p>
       </a>
     </div>
   </div>
@@ -583,9 +598,14 @@
         <p>Learning the Bellman equation's values from raw experience, one step at a time, without knowing the environment's transition probabilities.</p>
       </a>
       <a class="tl-card" href="lessons/policy-gradients-actor-critic.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Reinforcement Learning 3 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Reinforcement Learning 3</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Policy Gradients &amp; Actor-Critic Methods</h3>
         <p>Optimizing a policy directly, including a continuous one like a position size — and why a powerful optimizer says nothing about what it's optimizing.</p>
+      </a>
+      <a class="tl-card" href="lessons/deep-q-networks.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Reinforcement Learning 4 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Deep Q-Networks: Function Approximation for Value Learning</h3>
+        <p>Swapping Q-learning's lookup table for a neural network so it scales past toy state spaces — and the instability tricks (replay, target networks) that make it actually converge.</p>
       </a>
     </div>
   </div>
@@ -605,9 +625,19 @@
         <p>Why a portfolio's payoff shape, not just its expected return, decides whether it bleeds slowly or blows up.</p>
       </a>
       <a class="tl-card" href="lessons/stress-testing-scenario-analysis.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">Risk Deep Dive 3 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">Risk Deep Dive 3</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</h3>
         <p>Historical replay, Monte Carlo stress, and solving backward from an unacceptable loss to find hidden concentration.</p>
+      </a>
+      <a class="tl-card" href="lessons/cornish-fisher-expansion.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Risk Deep Dive 4</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Cornish-Fisher Expansion</h3>
+        <p>Adjusting Gaussian VaR for real skew and kurtosis — and the known non-monotonicity trap in the fix itself.</p>
+      </a>
+      <a class="tl-card" href="lessons/quantile-regression.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Risk Deep Dive 5 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Quantile Regression</h3>
+        <p>Modeling the conditional 5th-percentile outcome directly, instead of adjusting the unconditional distribution's mean.</p>
       </a>
     </div>
   </div>
@@ -680,8 +710,18 @@
         <h3>Short-Rate Models: Vasicek, CIR &amp; Hull-White</h3>
         <p>Three interest-rate models, each fixing a specific flaw in the one before it — a direct, named application of the SDE machinery just built.</p>
       </a>
+      <a class="tl-card" href="lessons/fokker-planck-equation.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">SDEs 5</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>The Fokker-Planck Equation</h3>
+        <p>The PDE a process's own probability density satisfies — Itô's Lemma's mirror-image question, and the forward/backward contrast underneath Black-Scholes.</p>
+      </a>
+      <a class="tl-card" href="lessons/stochastic-pdes.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">SDEs 6</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Stochastic PDEs</h3>
+        <p>What happens when the thing evolving randomly is a whole curve or field — the HJM/Musiela forward-curve SPDE and the Zakai filtering equation.</p>
+      </a>
       <a class="tl-card" href="lessons/neural-sdes-spdes.html">
-        <div class="tl-card-toprow"><div class="tl-card-num">SDEs 5 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <div class="tl-card-toprow"><div class="tl-card-num">SDEs 7 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
         <h3>Neural SDEs &amp; Neural SPDEs</h3>
         <p>What if a neural network learns the drift and diffusion instead of a human hand-specifying them — current research, explicitly not built or validated here.</p>
       </a>
@@ -716,6 +756,77 @@
         <div class="tl-card-toprow"><div class="tl-card-num">Institutional Data Engineering 5 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
         <h3>Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</h3>
         <p>Why a pipeline bug and genuine strategy decay can look statistically identical from the equity curve alone — and why versioned data lineage is the only way to tell them apart.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat" data-level="intermediate">
+    <h2>25 · Tree-Based &amp; Ensemble Machine Learning</h2>
+    <div class="tl-cat-sub">The dominant technique on structured/tabular data — decision trees, and the two ways to combine many of them (bagging vs. sequential boosting) into a far stronger predictor than any single tree.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/decision-trees-random-forests.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Tree-Based &amp; Ensemble ML 1</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Decision Trees &amp; Random Forests</h3>
+        <p>Why one deep tree overfits badly, and how averaging many decorrelated bootstrap-trained trees fixes it without much cost to bias.</p>
+      </a>
+      <a class="tl-card" href="lessons/gradient-boosting.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Tree-Based &amp; Ensemble ML 2 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Gradient Boosting</h3>
+        <p>Building trees sequentially to correct the ensemble's own residual error — XGBoost, LightGBM, CatBoost, and why being a strong method isn't a claim about any specific feature set.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat" data-level="intermediate">
+    <h2>26 · Collateral, Funding &amp; Rehypothecation</h2>
+    <div class="tl-cat-sub">Institutional market-structure knowledge underneath every leveraged position — how collateral, margin, and repo markets actually work, and the real regulatory-arbitrage and contagion risks that collateral re-use creates.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/collateral-margin-repo-markets.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Collateral, Funding &amp; Rehypothecation 1</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Collateral, Margin &amp; Repo Markets</h3>
+        <p>Initial vs. variation margin, haircuts, and the repo mechanism underneath SOFR itself.</p>
+      </a>
+      <a class="tl-card" href="lessons/rehypothecation-collateral-chains.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Collateral, Funding &amp; Rehypothecation 2 (final)</div><span class="tl-pill blue tl-diff-pill">Intermediate</span></div>
+        <h3>Rehypothecation &amp; Collateral Chains</h3>
+        <p>The Lehman case, the US/UK regulatory gap, and why a collateral re-use chain is a real-world instance of the same contagion network already built in this curriculum.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="tl-cat" data-level="advanced">
+    <h2>27 · Deep Learning &amp; Modern ML for Trading</h2>
+    <div class="tl-cat-sub">The neural-network and modern-ML machinery behind current systematic research — sequence models, attention, regularized linear methods, unsupervised structure discovery, anomaly detection, and text-derived signals — taught as methods to understand, not strategies with an edge.</div>
+    <div class="tl-grid">
+      <a class="tl-card" href="lessons/recurrent-networks-lstm-gru.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 1</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Recurrent Networks for Sequential Data: LSTM &amp; GRU</h3>
+        <p>Why plain RNNs forget (the vanishing-gradient problem) and how gated memory cells let a network carry information across long stretches of a price or macro series.</p>
+      </a>
+      <a class="tl-card" href="lessons/attention-transformers-time-series.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 2</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Attention &amp; Transformers for Time Series</h3>
+        <p>Letting a model weigh every past time step directly instead of compressing history into one recurrent state — and the temporal-fusion architectures built on it.</p>
+      </a>
+      <a class="tl-card" href="lessons/regularized-regression-lasso-ridge.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 3</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Regularized Regression: LASSO &amp; Ridge</h3>
+        <p>Why shrinking coefficients toward zero can beat plain OLS when predictors are numerous or collinear — and why LASSO's diamond-shaped constraint zeroes coefficients outright while Ridge's circle only shrinks them.</p>
+      </a>
+      <a class="tl-card" href="lessons/clustering-market-structure.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 4</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Clustering for Market Structure: k-Means &amp; Hierarchical Clustering</h3>
+        <p>Discovering regime and instrument groupings without labels — and how this is the same machinery already used, applied narrowly, inside this curriculum's Hierarchical Risk Parity lesson.</p>
+      </a>
+      <a class="tl-card" href="lessons/anomaly-detection-isolation-autoencoders.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 5</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>Anomaly Detection: Isolation Forests &amp; Autoencoders</h3>
+        <p>Flagging bad ticks, fat-finger prints, and structural breaks by how easily a point isolates from the rest of the data, or how badly a compressed reconstruction of it fails.</p>
+      </a>
+      <a class="tl-card" href="lessons/nlp-trading-signals-sentiment.html">
+        <div class="tl-card-toprow"><div class="tl-card-num">Deep Learning &amp; Modern ML 6 (final)</div><span class="tl-pill amber tl-diff-pill">Advanced</span></div>
+        <h3>NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</h3>
+        <p>Turning central-bank statements and news into numeric features — word embeddings, transformer-based sentiment models, and the very real lag/lookahead traps in backtesting them.</p>
       </a>
     </div>
   </div>

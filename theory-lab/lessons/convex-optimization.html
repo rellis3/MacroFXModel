@@ -22,6 +22,8 @@
     <span>Prereqs: Newton-Raphson &amp; Gradient Descent</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -140,6 +142,11 @@
     minimizer, if one exists, is unique.)
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Pick any two points on the curve and draw a straight line connecting them. A convex function's actual curve never pokes up above that straight line anywhere in between — it always stays at or below it. That's the entire definition, dressed up in symbols: a bowl shape never bulges above its own chords.</p>
+  </div>
+
   <h3>The Hessian test — checking convexity with calculus</h3>
   <p>
     Checking the chord inequality directly for every pair of points is
@@ -181,6 +188,11 @@
     positive.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Checking whether a curve bulges above every possible chord you could draw would take forever. The Hessian test is a shortcut: just check whether the function is curving upward (or staying flat) in every direction, at every point. If it never curves the wrong way anywhere, it's guaranteed to be a bowl, not an egg carton.</p>
+  </div>
+
   <h3>Why convexity guarantees local optimum = global optimum</h3>
   <p>
     Here is the single most important practical fact in this lesson, and the
@@ -217,6 +229,11 @@
     was missing at the end of the previous lesson.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In a real bowl, there's only ever one bottom — so the moment a marble stops rolling, you know it's found the true lowest point, no need to go check anywhere else. That's exactly what convexity guarantees mathematically: find any spot where the slope is zero, and you've automatically found the best possible answer, not just a locally comfortable one.</p>
+  </div>
+
   <h3>Markowitz mean-variance is a convex quadratic program</h3>
   <p>
     Portfolio variance, from the Markowitz framework covered elsewhere in this
@@ -240,6 +257,11 @@
     has found the genuine global minimum-variance portfolio, not a merely
     locally comfortable one.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A portfolio's risk (variance) is always shaped like a bowl, never an egg carton, because variance itself can never be negative in any combination of assets — a basic fact of how risk is measured, not an assumption someone had to add. That's why finding the lowest-risk portfolio is a reliable, always-solvable calculation, not a hopeful search.</p>
+  </div>
 
   <h3>The Lagrangian and the KKT conditions</h3>
   <p>
@@ -314,6 +336,11 @@
     <em>which</em> constraints are the ones actually shaping the answer.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The KKT conditions are just a checklist for confirming a candidate answer is really the best one: does it actually satisfy every rule (feasibility)? Is nothing being rewarded for breaking a rule (dual feasibility)? And for each rule, is it either being pushed right up against its limit, or not mattering at all (complementary slackness)? If every box on the checklist ticks, for a convex problem, you've found the true best answer — guaranteed.</p>
+  </div>
+
   <h3>Where convexity breaks — the cardinality constraint</h3>
   <p>
     Real portfolio construction very often wants a rule like "hold at most 10
@@ -343,6 +370,11 @@
     idea behind LASSO regression), or mixed-integer programming solvers that
     can handle the discreteness directly but scale far worse and offer weaker
     optimality guarantees than a convex QP solver ever needs.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Telling a portfolio "hold at most 10 names" sounds like a small, harmless rule, but it secretly breaks the nice bowl shape the whole problem relied on. Now the allowed answers live in a bunch of separate little patches (one patch per possible group of 10 names) rather than one smooth connected shape, so there's no longer a guarantee that the best-looking local answer is actually the best one overall.</p>
   </div>
 
   <div class="tl-symbols"><table>
@@ -750,6 +782,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

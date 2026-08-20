@@ -1,0 +1,863 @@
+{
+  "pwh_oos": {
+    "trades": 506,
+    "days": 299,
+    "mean_r": 0.18483866075581085,
+    "se": 0.08997150799740565,
+    "t": 2.0544132789364906,
+    "mean_excess": 0.17369534496267097,
+    "se_excess": 0.08943378531147333,
+    "t_excess": 1.9421669826200216,
+    "total_r": 93.52836234244029,
+    "win_rate": 0.38735177865612647
+  },
+  "pwh_folds": [
+    {
+      "fold": 0,
+      "train_end": "2020-06-05 14:24:00+00:00",
+      "test_end": "2021-06-05 18:00:00+00:00",
+      "train_events": 335604,
+      "test_events": 87924,
+      "n_hypotheses": 84,
+      "n_cells_selected": 5,
+      "train_best_t": 3.160405239323875,
+      "oos_trades": 92,
+      "oos_mean_r": 0.4424690664322264,
+      "oos_mean_excess": 0.3957716873168587,
+      "oos_total_r": 40.70715411176483,
+      "oos_win_rate": 0.42391304347826086
+    },
+    {
+      "fold": 1,
+      "train_end": "2021-06-05 18:00:00+00:00",
+      "test_end": "2022-06-05 21:36:00+00:00",
+      "train_events": 423528,
+      "test_events": 87864,
+      "n_hypotheses": 144,
+      "n_cells_selected": 5,
+      "train_best_t": 3.6156261222446813,
+      "oos_trades": 106,
+      "oos_mean_r": 0.10553430701789934,
+      "oos_mean_excess": 0.10123021788634362,
+      "oos_total_r": 11.18663654389733,
+      "oos_win_rate": 0.33962264150943394
+    },
+    {
+      "fold": 2,
+      "train_end": "2022-06-05 21:36:00+00:00",
+      "test_end": "2023-06-06 01:12:00+00:00",
+      "train_events": 511392,
+      "test_events": 88818,
+      "n_hypotheses": 204,
+      "n_cells_selected": 5,
+      "train_best_t": 3.9741062254798063,
+      "oos_trades": 102,
+      "oos_mean_r": -0.19340961288783187,
+      "oos_mean_excess": -0.09301761301212771,
+      "oos_total_r": -19.72778051455885,
+      "oos_win_rate": 0.2549019607843137
+    },
+    {
+      "fold": 3,
+      "train_end": "2023-06-06 01:12:00+00:00",
+      "test_end": "2024-06-05 04:48:00+00:00",
+      "train_events": 600210,
+      "test_events": 86112,
+      "n_hypotheses": 240,
+      "n_cells_selected": 5,
+      "train_best_t": 3.6514609391394193,
+      "oos_trades": 71,
+      "oos_mean_r": 0.1849605826257778,
+      "oos_mean_excess": 0.19454954007655095,
+      "oos_total_r": 13.132201366430223,
+      "oos_win_rate": 0.4647887323943662
+    },
+    {
+      "fold": 4,
+      "train_end": "2024-06-05 04:48:00+00:00",
+      "test_end": "2025-06-05 08:24:00+00:00",
+      "train_events": 686322,
+      "test_events": 88554,
+      "n_hypotheses": 288,
+      "n_cells_selected": 5,
+      "train_best_t": 3.7858201898781267,
+      "oos_trades": 61,
+      "oos_mean_r": 0.3949002244192159,
+      "oos_mean_excess": 0.28197337841282644,
+      "oos_total_r": 24.08891368957217,
+      "oos_win_rate": 0.47540983606557374
+    },
+    {
+      "fold": 5,
+      "train_end": "2025-06-05 08:24:00+00:00",
+      "test_end": "2026-06-05 12:00:00+00:00",
+      "train_events": 774876,
+      "test_events": 93834,
+      "n_hypotheses": 396,
+      "n_cells_selected": 5,
+      "train_best_t": 4.004092820687327,
+      "oos_trades": 74,
+      "oos_mean_r": 0.3262329343964133,
+      "oos_mean_excess": 0.25976823406253474,
+      "oos_total_r": 24.141237145334586,
+      "oos_win_rate": 0.44594594594594594
+    }
+  ],
+  "pwh_specs": [
+    {
+      "trained_through": "2020-06-05 12:00:00+00:00",
+      "fold": 0,
+      "n_hypotheses": 84,
+      "cuts": {
+        "atr_pct": [
+          0.844368873774755,
+          0.9485897179435887
+        ],
+        "wick_beyond_atr": [
+          -0.39461615645743564,
+          -0.09337966413895273
+        ],
+        "day_range_atr": [
+          1.0884474913958873,
+          1.7319561617090231
+        ],
+        "pos_in_day_range": [
+          0.3537284894837738,
+          0.6839762611275914
+        ],
+        "dist_dopen_atr": [
+          -0.29495420421663004,
+          0.28213922460554164
+        ]
+      },
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "trend",
+          "split_value": "range",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 106,
+          "n_days": 85,
+          "mean_r": 0.6115507278533377,
+          "t": 2.99064549096091,
+          "p": 0.0007877492209582698,
+          "lift": 0.6462645372919195,
+          "t_lift": 3.160405239323875,
+          "win_rate": 0.42452830188679247
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "trend",
+          "split_value": "range",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 106,
+          "n_days": 85,
+          "mean_r": 0.4417394070986206,
+          "t": 2.789364348249023,
+          "p": 0.0008736661853073244,
+          "lift": 0.49570383105505045,
+          "t_lift": 3.130122808642064,
+          "win_rate": 0.5094339622641509
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 231,
+          "n_days": 181,
+          "mean_r": 0.4040055343862406,
+          "t": 2.8740332602560237,
+          "p": 0.0009012453679645567,
+          "lift": 0.43871934382482225,
+          "t_lift": 3.120981963739109,
+          "win_rate": 0.3722943722943723
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 127,
+          "n_days": 114,
+          "mean_r": 0.5524433440917632,
+          "t": 2.9268199172254845,
+          "p": 0.0009331207947924961,
+          "lift": 0.5871571535303449,
+          "t_lift": 3.1107321137506263,
+          "win_rate": 0.4094488188976378
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 127,
+          "n_days": 114,
+          "mean_r": 0.3792149976350703,
+          "t": 2.6505310335759256,
+          "p": 0.0012320457372854334,
+          "lift": 0.43317942159150014,
+          "t_lift": 3.0277164858855192,
+          "win_rate": 0.4881889763779528
+        }
+      ],
+      "meta": {
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), trend=range | stop 0.75\u00d7ATR, target 3.0R | train n=106, mean +0.612R, t=2.99",
+        "LONG on touch of pwh from below (resistance test), trend=range | stop 0.75\u00d7ATR, target 2.0R | train n=106, mean +0.442R, t=2.79",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 3.0R | train n=231, mean +0.404R, t=2.87",
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 3.0R | train n=127, mean +0.552R, t=2.93",
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 2.0R | train n=127, mean +0.379R, t=2.65"
+      ]
+    },
+    {
+      "trained_through": "2021-06-04 12:00:00+00:00",
+      "fold": 1,
+      "n_hypotheses": 144,
+      "cuts": {
+        "atr_pct": [
+          0.7769553910782157,
+          0.9033806761352271
+        ],
+        "wick_beyond_atr": [
+          -0.3962283527017791,
+          -0.09361220398228824
+        ],
+        "day_range_atr": [
+          1.0959644336862333,
+          1.7473665504851206
+        ],
+        "pos_in_day_range": [
+          0.3535372490148305,
+          0.6840996586038974
+        ],
+        "dist_dopen_atr": [
+          -0.29371393343351215,
+          0.2850443353234143
+        ]
+      },
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 160,
+          "n_days": 145,
+          "mean_r": 0.4224887288073843,
+          "t": 3.3231456173703093,
+          "p": 0.00014981127682198772,
+          "lift": 0.45967329154800207,
+          "t_lift": 3.6156261222446813,
+          "win_rate": 0.5
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 289,
+          "n_days": 229,
+          "mean_r": 0.43124656929798555,
+          "t": 3.3925631998217254,
+          "p": 0.0002241364559549952,
+          "lift": 0.4461620439044933,
+          "t_lift": 3.509901386048428,
+          "win_rate": 0.3771626297577855
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 160,
+          "n_days": 145,
+          "mean_r": 0.5724887288073843,
+          "t": 3.400301259027114,
+          "p": 0.00024251368441892233,
+          "lift": 0.5874042034138921,
+          "t_lift": 3.488891836503023,
+          "win_rate": 0.4125
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 289,
+          "n_days": 229,
+          "mean_r": 0.29283826479971575,
+          "t": 2.968796811072804,
+          "p": 0.00041026589227815234,
+          "lift": 0.3300228275403335,
+          "t_lift": 3.345774223368923,
+          "win_rate": 0.45674740484429066
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "touch_n",
+          "split_value": "1",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 180,
+          "n_days": 150,
+          "mean_r": 0.5220992627762127,
+          "t": 3.251560111117311,
+          "p": 0.0004122271129888612,
+          "lift": 0.5370147373827204,
+          "t_lift": 3.3444515701303295,
+          "win_rate": 0.4
+        }
+      ],
+      "meta": {
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 2.0R | train n=160, mean +0.422R, t=3.32",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 3.0R | train n=289, mean +0.431R, t=3.39",
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 3.0R | train n=160, mean +0.572R, t=3.40",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 2.0R | train n=289, mean +0.293R, t=2.97",
+        "LONG on touch of pwh from below (resistance test), touch_n=1 | stop 0.75\u00d7ATR, target 3.0R | train n=180, mean +0.522R, t=3.25"
+      ]
+    },
+    {
+      "trained_through": "2022-06-05 20:00:00+00:00",
+      "fold": 2,
+      "n_hypotheses": 204,
+      "cuts": {
+        "atr_pct": [
+          0.6003200640128026,
+          0.8607721544308862
+        ],
+        "wick_beyond_atr": [
+          -0.3972676737631162,
+          -0.09466986341952534
+        ],
+        "day_range_atr": [
+          1.0912409219108634,
+          1.749135757650162
+        ],
+        "pos_in_day_range": [
+          0.3466647204787565,
+          0.6856476856476915
+        ],
+        "dist_dopen_atr": [
+          -0.29436547040270516,
+          0.29524966501213556
+        ]
+      },
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 192,
+          "n_days": 176,
+          "mean_r": 0.426050188646281,
+          "t": 3.6937577617030564,
+          "p": 3.532201574018514e-05,
+          "lift": 0.4583865040151884,
+          "t_lift": 3.9741062254798063,
+          "win_rate": 0.5
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 349,
+          "n_days": 274,
+          "mean_r": 0.29314401416250035,
+          "t": 3.2692674189476794,
+          "p": 0.00014176780715802217,
+          "lift": 0.3254803295314077,
+          "t_lift": 3.629895837666759,
+          "win_rate": 0.45558739255014324
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 349,
+          "n_days": 274,
+          "mean_r": 0.4048918651653657,
+          "t": 3.486103972317557,
+          "p": 0.00018091607532117076,
+          "lift": 0.41422510200424295,
+          "t_lift": 3.566462796037816,
+          "win_rate": 0.36962750716332377
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 3.0,
+          "direction": 1,
+          "n": 192,
+          "n_days": 176,
+          "mean_r": 0.5302168553129477,
+          "t": 3.4786901672856487,
+          "p": 0.00020012080936880356,
+          "lift": 0.539550092151825,
+          "t_lift": 3.5399244318983563,
+          "win_rate": 0.4010416666666667
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "touch_n",
+          "split_value": "1",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 214,
+          "n_days": 178,
+          "mean_r": 0.35568204705070533,
+          "t": 3.146744315766221,
+          "p": 0.00029866265983855683,
+          "lift": 0.3880183624196127,
+          "t_lift": 3.4328259929936,
+          "win_rate": 0.4766355140186916
+        }
+      ],
+      "meta": {
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 2.0R | train n=192, mean +0.426R, t=3.69",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 2.0R | train n=349, mean +0.293R, t=3.27",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 3.0R | train n=349, mean +0.405R, t=3.49",
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 3.0R | train n=192, mean +0.530R, t=3.48",
+        "LONG on touch of pwh from below (resistance test), touch_n=1 | stop 0.75\u00d7ATR, target 2.0R | train n=214, mean +0.356R, t=3.15"
+      ]
+    },
+    {
+      "trained_through": "2023-06-06 00:00:00+00:00",
+      "fold": 3,
+      "n_hypotheses": 240,
+      "cuts": {
+        "atr_pct": [
+          0.5367073414682937,
+          0.8067613522704541
+        ],
+        "wick_beyond_atr": [
+          -0.4007217788709547,
+          -0.09605284963739591
+        ],
+        "day_range_atr": [
+          1.092283959510332,
+          1.7552364036325216
+        ],
+        "pos_in_day_range": [
+          0.3421768707482447,
+          0.6788432593913806
+        ],
+        "dist_dopen_atr": [
+          -0.2977920003117705,
+          0.29524966501213556
+        ]
+      },
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "trend",
+          "split_value": "range",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 178,
+          "n_days": 145,
+          "mean_r": 0.4118544282166628,
+          "t": 3.322126161266448,
+          "p": 0.0001303763812459099,
+          "lift": 0.4526830963792911,
+          "t_lift": 3.6514609391394193,
+          "win_rate": 0.4943820224719101
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 227,
+          "n_days": 210,
+          "mean_r": 0.33108993541733767,
+          "t": 3.1416304153876076,
+          "p": 0.00020853225475020697,
+          "lift": 0.371918603579966,
+          "t_lift": 3.529043537921214,
+          "win_rate": 0.4669603524229075
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "touch_n",
+          "split_value": "1",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 247,
+          "n_days": 208,
+          "mean_r": 0.3140924035961919,
+          "t": 3.007683035892651,
+          "p": 0.00033859682452563796,
+          "lift": 0.3549210717588202,
+          "t_lift": 3.398649806196027,
+          "win_rate": 0.46153846153846156
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 408,
+          "n_days": 324,
+          "mean_r": 0.2391036071268244,
+          "t": 2.9020303623023667,
+          "p": 0.0003399322185546976,
+          "lift": 0.27993227528945275,
+          "t_lift": 3.3975730104627035,
+          "win_rate": 0.4362745098039216
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "trend",
+          "split_value": "range",
+          "sl_atr": 0.75,
+          "tp_r": 1.0,
+          "direction": 1,
+          "n": 178,
+          "n_days": 145,
+          "mean_r": 0.1871353270930673,
+          "t": 2.463666009178942,
+          "p": 0.0006090142040346389,
+          "lift": 0.2456958433025878,
+          "t_lift": 3.234624414021536,
+          "win_rate": 0.6292134831460674
+        }
+      ],
+      "meta": {
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), trend=range | stop 0.75\u00d7ATR, target 2.0R | train n=178, mean +0.412R, t=3.32",
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 2.0R | train n=227, mean +0.331R, t=3.14",
+        "LONG on touch of pwh from below (resistance test), touch_n=1 | stop 0.75\u00d7ATR, target 2.0R | train n=247, mean +0.314R, t=3.01",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 2.0R | train n=408, mean +0.239R, t=2.90",
+        "LONG on touch of pwh from below (resistance test), trend=range | stop 0.75\u00d7ATR, target 1.0R | train n=178, mean +0.187R, t=2.46"
+      ]
+    },
+    {
+      "trained_through": "2024-06-05 04:00:00+00:00",
+      "fold": 4,
+      "n_hypotheses": 288,
+      "cuts": {
+        "atr_pct": [
+          0.48269653930786155,
+          0.7889577915583117
+        ],
+        "wick_beyond_atr": [
+          -0.4029821421006038,
+          -0.09653129463327285
+        ],
+        "day_range_atr": [
+          1.0884456099938487,
+          1.7516572363181249
+        ],
+        "pos_in_day_range": [
+          0.3431111111111157,
+          0.6807114122380215
+        ],
+        "dist_dopen_atr": [
+          -0.28899222255189866,
+          0.29725608167022594
+        ]
+      },
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 254,
+          "n_days": 236,
+          "mean_r": 0.33716814002800216,
+          "t": 3.41648281402981,
+          "p": 7.660121366002893e-05,
+          "lift": 0.37361755389486595,
+          "t_lift": 3.7858201898781267,
+          "win_rate": 0.468503937007874
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "wick_t",
+          "split_value": "mid",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 130,
+          "n_days": 121,
+          "mean_r": 0.4520478797406097,
+          "t": 3.340245376144062,
+          "p": 0.00015334941358296057,
+          "lift": 0.4884972936074735,
+          "t_lift": 3.6095752228006033,
+          "win_rate": 0.5076923076923077
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 465,
+          "n_days": 371,
+          "mean_r": 0.23541299561385062,
+          "t": 3.0675278964190715,
+          "p": 0.00019819270886439806,
+          "lift": 0.2718624094807144,
+          "t_lift": 3.542478710214121,
+          "win_rate": 0.4344086021505376
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "touch_n",
+          "split_value": "1",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 281,
+          "n_days": 238,
+          "mean_r": 0.3085179695234117,
+          "t": 3.1657735035600822,
+          "p": 0.00020022331374048983,
+          "lift": 0.3449673833902755,
+          "t_lift": 3.539789282343614,
+          "win_rate": 0.45907473309608543
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "trend",
+          "split_value": "range",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 201,
+          "n_days": 165,
+          "mean_r": 0.36320697387545486,
+          "t": 3.1523886207625824,
+          "p": 0.0002614480918135228,
+          "lift": 0.39965638774231865,
+          "t_lift": 3.4687446540219216,
+          "win_rate": 0.47761194029850745
+        }
+      ],
+      "meta": {
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 2.0R | train n=254, mean +0.337R, t=3.42",
+        "LONG on touch of pwh from below (resistance test), wick_t=mid | stop 0.75\u00d7ATR, target 2.0R | train n=130, mean +0.452R, t=3.34",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 2.0R | train n=465, mean +0.235R, t=3.07",
+        "LONG on touch of pwh from below (resistance test), touch_n=1 | stop 0.75\u00d7ATR, target 2.0R | train n=281, mean +0.309R, t=3.17",
+        "LONG on touch of pwh from below (resistance test), trend=range | stop 0.75\u00d7ATR, target 2.0R | train n=201, mean +0.363R, t=3.15"
+      ]
+    },
+    {
+      "trained_through": "2025-06-05 08:00:00+00:00",
+      "fold": 5,
+      "n_hypotheses": 396,
+      "cuts": {
+        "atr_pct": [
+          0.5367073414682937,
+          0.8389677935587118
+        ],
+        "wick_beyond_atr": [
+          -0.40362882344577394,
+          -0.09651721869834692
+        ],
+        "day_range_atr": [
+          1.100623479953308,
+          1.7677137440233714
+        ],
+        "pos_in_day_range": [
+          0.35043352601156685,
+          0.6877113866967319
+        ],
+        "dist_dopen_atr": [
+          -0.28553169606813716,
+          0.3157225871213039
+        ]
+      },
+      "cells": [
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "trend",
+          "split_value": "range",
+          "sl_atr": 1.5,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 229,
+          "n_days": 189,
+          "mean_r": 0.5194686927413109,
+          "t": 4.6528860095179585,
+          "p": 3.112795948803379e-05,
+          "lift": 0.44703456283314436,
+          "t_lift": 4.004092820687327,
+          "win_rate": 0.519650655021834
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "conf_t",
+          "split_value": "dense",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 287,
+          "n_days": 265,
+          "mean_r": 0.34678418016764023,
+          "t": 3.7070771048375124,
+          "p": 4.534650648182495e-05,
+          "lift": 0.3661626493713372,
+          "t_lift": 3.914230382351777,
+          "win_rate": 0.47038327526132406
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "wick_t",
+          "split_value": "mid",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 155,
+          "n_days": 145,
+          "mean_r": 0.46442200231694925,
+          "t": 3.741587836887996,
+          "p": 4.8553441528756056e-05,
+          "lift": 0.4838004715206462,
+          "t_lift": 3.8977093046658693,
+          "win_rate": 0.5096774193548387
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "none",
+          "split_value": "all",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 532,
+          "n_days": 430,
+          "mean_r": 0.25624874086323335,
+          "t": 3.5765988409973914,
+          "p": 5.976834957365593e-05,
+          "lift": 0.2756272100669303,
+          "t_lift": 3.8470743573287605,
+          "win_rate": 0.4398496240601504
+        },
+        {
+          "key": "pwh",
+          "side": -1,
+          "split": "touch_n",
+          "split_value": "1",
+          "sl_atr": 0.75,
+          "tp_r": 2.0,
+          "direction": 1,
+          "n": 327,
+          "n_days": 282,
+          "mean_r": 0.3217231845721687,
+          "t": 3.604487854446736,
+          "p": 6.629477704027743e-05,
+          "lift": 0.34110165377586565,
+          "t_lift": 3.8215982780408027,
+          "win_rate": 0.4617737003058104
+        }
+      ],
+      "meta": {
+        "select_stat": "t_lift"
+      },
+      "human": [
+        "LONG on touch of pwh from below (resistance test), trend=range | stop 1.5\u00d7ATR, target 2.0R | train n=229, mean +0.519R, t=4.65",
+        "LONG on touch of pwh from below (resistance test), conf_t=dense | stop 0.75\u00d7ATR, target 2.0R | train n=287, mean +0.347R, t=3.71",
+        "LONG on touch of pwh from below (resistance test), wick_t=mid | stop 0.75\u00d7ATR, target 2.0R | train n=155, mean +0.464R, t=3.74",
+        "LONG on touch of pwh from below (resistance test) | stop 0.75\u00d7ATR, target 2.0R | train n=532, mean +0.256R, t=3.58",
+        "LONG on touch of pwh from below (resistance test), touch_n=1 | stop 0.75\u00d7ATR, target 2.0R | train n=327, mean +0.322R, t=3.60"
+      ]
+    }
+  ],
+  "pwh_null_oos": [
+    {
+      "trades": 0
+    },
+    {
+      "trades": 0
+    },
+    {
+      "trades": 0
+    }
+  ]
+}

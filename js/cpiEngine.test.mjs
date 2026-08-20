@@ -81,6 +81,25 @@ console.log('[levelVsTargetScore — rounds long floating-point tails on pre-com
   ok('latestYoy rounds to 2dp', r.latestYoy === 2.94, r.latestYoy);
 }
 
+console.log('[levelVsTargetScore / trendScore — score field itself is rounded, not just latestYoy]');
+{
+  // levelVsTargetScore has its OWN inline clip((yoy-target)/band), a
+  // second unrounded path separate from zToScore — (2.94-2.0)/4.0 leaves
+  // a float tail same as z/2.5 does.
+  const m = new Map([['2024-01-01', 2.94]]);
+  const meta = { series: 'x', isIndex: false };
+  const level = levelVsTargetScore(m, meta);
+  ok('levelVsTargetScore.score has no floating-point tail', level.score === +level.score.toFixed(2), level.score);
+}
+{
+  const m = new Map();
+  for (let i = 0; i < 19; i++) m.set(`d${String(i).padStart(2, '0')}`, i % 2 === 0 ? 1.05 : 0.95);
+  m.set('d19', 1.03);
+  const meta = { series: 'x', isIndex: false };
+  const trend = trendScore(m, meta);
+  ok('trendScore.score has no floating-point tail', trend.score === +trend.score.toFixed(2), trend.score);
+}
+
 console.log('[CPI_UNIVERSE sanity]');
 {
   ok('covers all 8 currencies', ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD'].every(c => CPI_UNIVERSE[c]));

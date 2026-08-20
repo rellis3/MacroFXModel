@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily Trading Brief V2 — Pair Detail Modal</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#f3f6fb}
+#frame{border:0;width:100%;height:100%;display:block}
+#status{position:fixed;right:12px;bottom:12px;z-index:9999;background:rgba(255,255,255,.96);color:#64748b;border:1px solid #dbe3ee;border-radius:8px;padding:6px 9px;font:11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 4px 16px rgba(15,23,42,.10)}
+</style>
+</head>
+<body>
+<iframe id="frame" src="today.html" title="Daily Trading Brief V2"></iframe>
+<div id="status">PAIR DETAIL · presentation layer</div>
+<script>
+(function(){
+  const frame=document.getElementById('frame');
+
+  frame.addEventListener('load',()=>{
+    try{
+      const d=frame.contentDocument, h=d.head, b=d.body;
+      if(!d||!b)return;
+
+      const css=d.createElement('style');
+      css.id='pair-detail-redesign';
+      css.textContent=`
+/* ============================================================
+   MACROFX PAIR DETAIL — LIGHT MODAL REDESIGN
+   Presentation layer only. Existing data/API/JS is untouched.
+   ============================================================ */
+:root{
+  --pd-bg:#f4f7fb;
+  --pd-surface:#ffffff;
+  --pd-surface-2:#f8fafc;
+  --pd-border:#dce4ef;
+  --pd-border-2:#e8edf4;
+  --pd-text:#172033;
+  --pd-muted:#667085;
+  --pd-blue:#2563eb;
+  --pd-blue-soft:#eff6ff;
+  --pd-green:#059669;
+  --pd-green-soft:#ecfdf5;
+  --pd-red:#dc2626;
+  --pd-red-soft:#fef2f2;
+  --pd-amber:#d97706;
+  --pd-amber-soft:#fff7ed;
+  --pd-shadow:0 24px 70px rgba(15,23,42,.22);
+}
+
+/* Keep the existing page/data intact. Only presentation changes. */
+body{
+  background:var(--pd-bg)!important;
+  color:var(--pd-text)!important;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+}
+
+/* Pair detail overlay / drawer becomes a proper centred workspace. */
+.drawer{
+  position:fixed!important;
+  inset:4vh 2vw 4vh 2vw!important;
+  width:auto!important;
+  max-width:1280px!important;
+  height:auto!important;
+  max-height:92vh!important;
+  margin:auto!important;
+  background:rgba(255,255,255,.985)!important;
+  color:var(--pd-text)!important;
+  border:1px solid #d7e0ec!important;
+  border-radius:18px!important;
+  box-shadow:var(--pd-shadow)!important;
+  overflow:auto!important;
+  z-index:10000!important;
+}
+
+/* Existing backdrop, if present. */
+.drawer-backdrop,.backdrop,.overlay{
+  background:rgba(15,23,42,.42)!important;
+  backdrop-filter:blur(5px)!important;
+  -webkit-backdrop-filter:blur(5px)!important;
+}
+
+/* Sticky modal header so the instrument identity remains visible. */
+.dhead{
+  position:sticky!important;
+  top:0!important;
+  z-index:20!important;
+  min-height:64px!important;
+  padding:12px 18px!important;
+  margin:0!important;
+  background:rgba(255,255,255,.97)!important;
+  border-bottom:1px solid var(--pd-border)!important;
+  backdrop-filter:blur(10px)!important;
+}
+
+.dhead h1,.dhead h2,.dhead .title{
+  color:var(--pd-text)!important;
+  letter-spacing:-.02em!important;
+}
+
+/* Make the existing close control feel like a modal control. */
+.drawer button,.drawer .close{
+  border-radius:8px!important;
+}
+
+/* General modal content spacing. */
+.drawer .body,.drawer .content,.drawer .dbody{
+  padding:14px 18px 20px!important;
+}
+
+/* Existing detail sections become consistent cards. */
+.drawer section,
+.drawer .panel,
+.drawer .card,
+.drawer .box,
+.drawer .block,
+.drawer .analysis,
+.drawer .thesis,
+.drawer .story,
+.drawer .forecast,
+.drawer .correlations,
+.drawer .news,
+.drawer .macro,
+.drawer [class*="section"]{
+  background:var(--pd-surface)!important;
+  border:1px solid var(--pd-border-2)!important;
+  border-radius:12px!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.03)!important;
+}
+
+/* Section headings — compact, uppercase, dashboard-like. */
+.drawer .hd,
+.drawer .section-hd,
+.drawer .panel-hd,
+.drawer .title-row,
+.drawer [class*="-hd"]{
+  color:#334155!important;
+  letter-spacing:.07em!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  text-transform:uppercase!important;
+}
+
+/* Make important numerical values pop. */
+.drawer strong,.drawer b{color:#172033}
+.drawer .good,.drawer .bull,.drawer .long,.drawer .positive{color:var(--pd-green)!important}
+.drawer .bad,.drawer .bear,.drawer .short,.drawer .negative{color:var(--pd-red)!important}
+.drawer .warn,.drawer .amber{color:var(--pd-amber)!important}
+
+/* Pills / states. */
+.drawer .pill,.drawer .state,.drawer .badge,.drawer .tag{
+  border-radius:999px!important;
+  font-weight:750!important;
+}
+
+/* Tables become cleaner and easier to scan. */
+.drawer table{
+  width:100%!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  font-size:11px!important;
+}
+.drawer th{
+  color:#667085!important;
+  background:#f8fafc!important;
+  font-size:9px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.06em!important;
+}
+.drawer td,.drawer th{
+  border-bottom:1px solid #edf1f6!important;
+  padding:8px 9px!important;
+}
+.drawer tr:last-child td{border-bottom:0!important}
+
+/* Forecast / TradingView-style chart blocks get breathing room. */
+.drawer canvas,.drawer svg{max-width:100%}
+.drawer .chart,.drawer .chart-wrap,.drawer [class*="chart"]{
+  border-radius:10px!important;
+}
+
+/* Decision engine = explicit decision workspace. */
+.drawer [class*="decision"],
+.drawer [id*="decision"]{
+  border-color:#bfdbfe!important;
+  background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)!important;
+}
+
+/* Trade thesis / fighting evidence should be visually obvious. */
+.drawer [class*="challenge"],
+.drawer [class*="risk"]{
+  border-radius:8px!important;
+}
+
+/* Give the main detail content a two-column dashboard feel where the
+   existing layout supports it, without changing the underlying DOM. */
+.drawer .grid,.drawer .columns,.drawer .detail-grid{
+  gap:12px!important;
+}
+
+/* Avoid the old overly-flat full-width look. */
+.drawer hr{border:0!important;border-top:1px solid #e8edf4!important;margin:12px 0!important}
+
+/* Small footer/disclaimer. */
+.drawer .foot,.drawer footer,.drawer .disclaimer{
+  color:#7a8699!important;
+  font-size:10px!important;
+}
+
+/* Mobile: modal becomes almost full screen, while retaining rounded edges. */
+@media(max-width:760px){
+  .drawer{
+    inset:1.5vh 2vw 1.5vh 2vw!important;
+    max-height:97vh!important;
+    border-radius:14px!important;
+  }
+  .dhead{padding:10px 12px!important}
+  .drawer .body,.drawer .content,.drawer .dbody{padding:10px 11px 14px!important}
+  .drawer section,.drawer .panel,.drawer .card,.drawer .box,.drawer .block{border-radius:10px!important}
+  .drawer table{font-size:10px!important}
+  .drawer td,.drawer th{padding:6px!important}
+}
+`;
+      h.appendChild(css);
+
+      /* Add a subtle modal orientation line without changing any data. */
+      if(!d.getElementById('pair-detail-orientation')){
+        const bar=d.createElement('div');
+        bar.id='pair-detail-orientation';
+        bar.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:10001;background:rgba(255,255,255,.94);border:1px solid #dce4ef;border-radius:999px;padding:5px 10px;color:#64748b;font:10px Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 6px 20px rgba(15,23,42,.12);pointer-events:none;';
+        bar.textContent='PAIR DETAIL · Context → Evidence → Forecast → Decision → Trigger';
+        d.body.appendChild(bar);
+      }
+
+      document.getElementById('status').textContent='PAIR DETAIL · existing endpoints preserved';
+      setTimeout(()=>document.getElementById('status').style.display='none',3000);
+    }catch(e){
+      document.getElementById('status').textContent='PAIR DETAIL · same-origin styling unavailable';
+      console.error(e);
+    }
+  });
+})();
+</script>
+</body>
+</html>

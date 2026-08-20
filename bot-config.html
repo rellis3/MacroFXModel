@@ -493,6 +493,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="nqqmr" onclick="switchTab('nqqmr')" style="color:#f59e0b" id="nqTabBtn">🎯 QMR Indices</button>
     <button class="tab-btn" data-tab="liquiditygate" onclick="switchTab('liquiditygate')" style="color:#22d3ee" id="lgTabBtn">💧 Liquidity Gate</button>
     <button class="tab-btn" data-tab="positions" onclick="switchTab('positions')" style="color:#10b981" id="posTabBtn">📊 Positions</button>
+    <button class="tab-btn" data-tab="analogml" onclick="switchTab('analogml')" style="color:#a78bfa" id="amlTabBtn">🔮 AnalogML</button>
   </div>
 
   <!-- ═══════════════════════ TAB: TELEGRAM BOT ═══════════════════════ -->
@@ -538,6 +539,28 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
       <div style="font-size:11px;color:var(--text3);margin-top:4px;text-align:center">
         Clears any active DD lockout — bot picks up on next loop
       </div>
+    </div>
+
+    <!-- OANDA M1 Data Fetch -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Fetch OANDA M1 Data</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        Pulls years of M1 candles from OANDA and uploads to R2 — runs
+        server-side on this Railway service (has live OANDA access), so it
+        works from any browser with no local Python needed. Wraps
+        scripts/fetch_m1_oanda.py.
+      </div>
+      <div id="oandaFetchPairs" style="display:flex;flex-wrap:wrap;gap:5px 14px;margin-bottom:10px;font-size:12px">
+        Loading instruments…
+      </div>
+      <div class="form-row">
+        <span class="form-lbl">Years of history</span>
+        <input type="number" id="oandaFetchYears" min="1" max="10" value="5" style="width:70px">
+      </div>
+      <button id="oandaFetchBtn" class="unlock-btn" style="margin-top:8px" onclick="runOandaFetch()">
+        Run Fetch
+      </button>
+      <div id="oandaFetchStatus" style="font-size:11px;color:var(--text3);margin-top:8px;white-space:pre-wrap;max-height:180px;overflow-y:auto"></div>
     </div>
 
     <!-- Bot Mode -->
@@ -4033,6 +4056,56 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <div class="form-row"><span class="form-lbl">Break distance (pips) <small>decisive move past a wall (BREAKOUT entry)</small></span><input type="number" id="oi_break_pips" min="1" max="500" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Near-expiry DTE <small>max-pain reversion window</small></span><input type="number" id="oi_near_expiry_dte" min="0" max="10" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Extended (pips) <small>distance from pin that counts as "extended"</small></span><input type="number" id="oi_extended_pips" min="1" max="1000" step="1" style="width:80px"></div>
+        <div style="margin-top:10px;margin-bottom:4px;font-size:11px;color:#4dd0e1;text-transform:uppercase;letter-spacing:.06em">Distances — refMove scaling <small style="color:var(--text3);text-transform:none;letter-spacing:0">(2026-08)</small></div>
+        <div class="bot-banner-sub" style="margin-bottom:6px">Pip counts don't scale across the universe (pip = 1.0 on gold AND every index → 15 pips is 0.03% of Dow but 0.63% of Russell). Effective distance = <b>max(pips, fraction × the instrument's reference move)</b> — pips above stay as the floor. 0 = pips only.</div>
+        <div class="form-row"><span class="form-lbl">SL buffer (× refMove)</span><input type="number" id="oi_sl_buffer_ref_frac" min="0" max="2" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Break distance (× refMove)</span><input type="number" id="oi_break_ref_frac" min="0" max="2" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Extended (× refMove)</span><input type="number" id="oi_extended_ref_frac" min="0" max="2" step="0.01" style="width:80px"></div>
+        <div style="margin-top:10px;margin-bottom:4px;font-size:11px;color:#4dd0e1;text-transform:uppercase;letter-spacing:.06em">Regime &amp; quality gates <small style="color:var(--text3);text-transform:none;letter-spacing:0">(2026-08)</small></div>
+        <div class="form-row"><span class="form-lbl">Min reward:risk <small>drop (or ladder-promote past) a TP1 closer than this × the stop — a 0.2R fade was previously full size. 0 = off</small></span><input type="number" id="oi_min_rr" min="0" max="5" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">GEX neutral band <small>|GEX| below this × its trailing 20d median → NEUTRAL (sign-flip noise ≠ a regime). Needs OI history; 0 = off</small></span><input type="number" id="oi_gex_neutral_band" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Conviction sizing <small>scale size with |GEX|/median (0.5–1.2×) — a barely-positive book fades at half size</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_conviction_sizing"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Hold score <small>per-wall react-vs-blow-through read (per-strike GEX · OI flow · persistence · multiple) — sizes fades; auto-calibrates from the forward test</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_hold_score"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Zone spacing (× refMove) <small>same-side zones closer than this collapse to the higher-conviction one. 0 = off</small></span><input type="number" id="oi_min_zone_spacing" min="0" max="1" step="0.01" style="width:80px"></div>
+        <div style="margin-top:10px;margin-bottom:4px;font-size:11px;color:#4dd0e1;text-transform:uppercase;letter-spacing:.06em">Smaller levels &amp; node weights <small style="color:var(--text3);text-transform:none;letter-spacing:0">(2026-08)</small></div>
+        <div class="form-row"><span class="form-lbl">Trade sub-tier walls <small>walls BELOW min strength trade SMALL — but only with confluence (volume magnet / flip / multi-expiry persistence agreeing)</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_sub_tier_trade"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Sub-tier size <small>size multiplier for those confluence zones</small></span><input type="number" id="oi_sub_tier_size" min="0.05" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Vol-magnet min share <small>a magnet needs ≥ this share of the strongest magnet's volume to count as a node</small></span><input type="number" id="oi_vol_magnet_min_share" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">React node weights <small>size multiplier per node TYPE for react entries (0 = that type never enters; it still serves as a TP node). Walls are defended inventory; magnets are one day's flow; flips have nothing defending them.</small></span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text3)">
+            wall <input type="number" id="oi_rw_walls" min="0" max="2" step="0.1" style="width:52px">
+            γflip <input type="number" id="oi_rw_gamma" min="0" max="2" step="0.1" style="width:52px">
+            gex <input type="number" id="oi_rw_gex" min="0" max="2" step="0.1" style="width:52px">
+            vanna <input type="number" id="oi_rw_vanna" min="0" max="2" step="0.1" style="width:52px">
+            vol <input type="number" id="oi_rw_vol" min="0" max="2" step="0.1" style="width:52px">
+          </span></div>
+        <div style="margin-top:10px;margin-bottom:4px;font-size:11px;color:#4dd0e1;text-transform:uppercase;letter-spacing:.06em">Advanced <small style="color:var(--text3);text-transform:none;letter-spacing:0">(previously KV-only — defaults are sensible; change deliberately)</small></div>
+        <div class="form-row"><span class="form-lbl">Secondary fade trim <small>PIN: further walls beyond the nearest are sized ×this</small></span><input type="number" id="oi_secondary_trim" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Reach multiple <small>an entry beyond this × the implied move is flagged unlikely-to-fill</small></span><input type="number" id="oi_reach_mult" min="0.1" max="5" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Reach trim <small>size haircut for an entry beyond the reach horizon</small></span><input type="number" id="oi_reach_trim" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Reach cap (pips) <small>fallback when no IV/refMove was pasted (0 = off)</small></span><input type="number" id="oi_max_reach_pips" min="0" max="5000" step="10" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Persistence weight <small>rank/size boost per extra expiry a wall lives in (0 = ignore durability)</small></span><input type="number" id="oi_persistence_weight" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Durable at (expiries) <small>a wall in ≥ this many expiries gets the ×1.15 durability size bump</small></span><input type="number" id="oi_persistent_dte" min="1" max="30" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Path-block check <small>flag + trim when a nearer wall sits between spot and a zone's entry</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_path_block_check"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Path-block min tier <small>a path wall must be ≥ this tier to count as a blocker</small></span>
+          <select id="oi_block_min_tier" style="width:180px;text-align:left">
+            <option value="strong">strong only (≥3×)</option>
+            <option value="moderate">moderate+ (≥2×) — default</option>
+            <option value="weak">weak+ (≥1.5×)</option>
+          </select></div>
+        <div class="form-row"><span class="form-lbl">Path-block trim <small>entry-size haircut when a blocking wall is in the path</small></span><input type="number" id="oi_block_trim" min="0" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Fallback TP (R) — gold/indices <small>measured-move TP for a wall-less trade; 0 = leave SL-only</small></span><input type="number" id="oi_fallback_tp_r" min="0" max="10" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Fallback TP (R) — FX <small>same for FX (partial CME OI often has no next wall ahead)</small></span><input type="number" id="oi_fx_fallback_tp_r" min="0" max="10" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Vanna boost / trim <small>size × when a firing vanna state aligns with / against the trade's mode</small></span>
+          <span style="display:flex;gap:6px;align-items:center;font-size:10px;color:var(--text3)">
+            boost <input type="number" id="oi_vanna_boost" min="1" max="2" step="0.05" style="width:60px">
+            trim <input type="number" id="oi_vanna_trim" min="0" max="1" step="0.05" style="width:60px">
+          </span></div>
+        <div class="form-row"><span class="form-lbl">Charm boost <small>max-pain reversion size × when charm is firing near expiry</small></span><input type="number" id="oi_charm_boost" min="1" max="2" step="0.05" style="width:80px"></div>
       </div>
 
       <!-- ── Execution (the bot) ──────────────────────────────────────────── -->
@@ -4050,6 +4123,23 @@ python oi_bot/oi_bot.py --live --url &lt;dashboard-url&gt;</pre>
           <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_stack_guard"> on</label></div>
         <div class="form-row"><span class="form-lbl">Stack guard distance (pips) <small>an open same-dir position within this many pips blocks the new entry (it defers, doesn't burn)</small></span><input type="number" id="oi_stack_guard_pips" min="0" max="500" step="1" style="width:80px"></div>
         <div class="form-row"><span class="form-lbl">Max spread (pips) <small>live entry guard</small></span><input type="number" id="oi_max_spread_pips" min="0.1" max="100" step="0.1" style="width:80px"></div>
+        <div style="margin-top:10px;margin-bottom:4px;font-size:11px;color:#4dd0e1;text-transform:uppercase;letter-spacing:.06em">Risk budget &amp; entry quality <small style="color:var(--text3);text-transform:none;letter-spacing:0">(2026-08)</small></div>
+        <div class="form-row"><span class="form-lbl">Max open risk % <small>total risk-to-SL across this bot's book — per-trade risk is Risk% × sizeFactor, so max-open alone allowed &gt;10% against a 3% daily DD. Defers, doesn't burn. 0 = off</small></span><input type="number" id="oi_max_open_risk_pct" min="0" max="20" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Index group cap <small>max same-direction INDEX positions (NQ/SPX/Dow/RUT are one macro bet in stress). 0 = off</small></span><input type="number" id="oi_group_index_cap" min="0" max="10" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max plan age (hours) <small>refuse NEW entries on a stale plan (fail-closed — the plan IS the strategy; brackets keep running). 0 = off</small></span><input type="number" id="oi_plan_max_age_hours" min="0" max="168" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Break hold (ticks) <small>a break must hold its trigger this many consecutive ticks — one wick through the level is not a decisive break. 0 = first touch</small></span><input type="number" id="oi_break_hold_ticks" min="0" max="20" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Fast-approach trim <small>a fast impulse into a level tends to consume it — trim fades entered on a fast approach (move &gt; ½ refMove in ~2 min). 1 = no trim</small></span><input type="number" id="oi_approach_trim" min="0.1" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Scale out TP1/TP2 <small>split the entry: half banks at TP1, a runner rides to TP2 (TP2 was previously published but never traded)</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_scale_out"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Break-even at TP1 <small>move the runner's stop to entry once the TP1 leg banks</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="oi_be_at_tp1"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Time exits (hours) <small>close a position at market once its mode's mechanism has expired — the pin/charm pull is a ≤2-DTE effect and a faded wall's book rolls off. Per mode; 0 = never time-close that mode.</small></span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--text3)">
+            fade <input type="number" id="oi_mh_fade" min="0" max="720" step="1" style="width:56px">
+            break <input type="number" id="oi_mh_break" min="0" max="720" step="1" style="width:56px">
+            maxpain <input type="number" id="oi_mh_maxpain" min="0" max="720" step="1" style="width:56px">
+            react <input type="number" id="oi_mh_react" min="0" max="720" step="1" style="width:56px">
+          </span></div>
         <div class="form-row"><span class="form-lbl">Instruments override <small>blank = every plan instrument</small></span><input type="text" id="oi_enabled_pairs" placeholder="gold, nq, us30" style="width:200px;text-align:left"></div>
         <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
         <div class="form-row"><span class="form-lbl">Price tick <small>local watch + touch</small></span><input type="number" id="oi_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
@@ -4881,6 +4971,70 @@ python YieldSpreadBot/yield_spread_bot.py --live --url &lt;dashboard-url&gt;</pr
     </div><!-- /posMacroEqView -->
 
   </div><!-- /tab-positions -->
+
+  <!-- ═══════════════════════ TAB: ANALOGML PAPER TRADING ═══════════════════════ -->
+  <div class="tab-pane" id="tab-analogml">
+
+    <div class="bot-banner" style="background:#1e1a3a;border:1px solid #6d28d9">
+      <div class="bot-banner-icon">🔮</div>
+      <div>
+        <div class="bot-banner-title" style="color:#a78bfa">AnalogML — Structural Motif Paper Trading</div>
+        <div class="bot-banner-sub">N-touches-of-a-level detection (double/triple top/bottom) · paper trades only, no live orders yet · <code>AnalogML/motif_track.py</code>, run hourly on Railway · frozen params: pivot_n=5, SL 20p, TP 1.5R</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:11.5px;color:var(--text3);line-height:1.55">
+        <b style="color:var(--text2)">What this is:</b> every hour the bot scans all 26 pairs for a fresh confirmed
+        touch-motif breakout and logs it below as a paper trade — no real orders are placed. This replaced the
+        original shape-matching (k-NN) signal, which banked a null result on 2026-08-12 after a bug fix — see the
+        honest read in <a href="AnalogML/README.md" style="color:#a78bfa">AnalogML/README.md</a>. First full-universe
+        read: 20/26 pairs PF&gt;1.0, IS PF=1.18 → OOS PF=1.16 (minimal decay) — encouraging but still not portfolio-
+        validated. If this holds up, this tab is where it graduates to a real bot.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="pos-header">
+        <div>
+          <div class="card-title">Paper Trades</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">From <code>AnalogML/motif_track.py</code>, refreshed hourly on Railway.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="pos-summary" id="amlSummary"></div>
+          <button class="btn-save" style="padding:6px 14px;font-size:12px" onclick="loadAnalogMLTab()">↺ Refresh</button>
+        </div>
+      </div>
+
+      <div class="pos-subtabs" style="margin-bottom:12px">
+        <button class="pos-subtab active" id="amlSubOpen" onclick="switchAmlSubTab('open')">Open Trades</button>
+        <button class="pos-subtab" id="amlSubClosed" onclick="switchAmlSubTab('closed')">Closed Trades</button>
+      </div>
+
+      <div id="amlOpenView">
+        <div class="pos-table-wrap">
+          <table class="pos-table">
+            <thead>
+              <tr><th>Pair</th><th>Pattern</th><th>Dir</th><th>Entry</th><th>SL</th><th>TP</th><th>Opened</th></tr>
+            </thead>
+            <tbody id="amlOpenBody"><tr><td colspan="7" class="pos-empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="amlClosedView" style="display:none">
+        <div class="pos-table-wrap">
+          <table class="pos-table">
+            <thead>
+              <tr><th>Pair</th><th>Pattern</th><th>Dir</th><th>Entry</th><th>Exit</th><th>Outcome</th><th>R</th><th>Opened</th><th>Closed</th></tr>
+            </thead>
+            <tbody id="amlClosedBody"><tr><td colspan="9" class="pos-empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-analogml -->
 
   <!-- ═══════════════════════ TAB: HEDGE BOT ═══════════════════════ -->
   <div class="tab-pane" id="tab-hedgebot">
@@ -7133,6 +7287,93 @@ async function loadPositionsTab() {
 
 window.loadPositionsTab = loadPositionsTab;
 
+// ── AnalogML paper-trading tab ──────────────────────────────────────────────
+// Read-only view of AnalogML/motif_track.py's forward-tracking log, served by
+// server.js's GET /api/analogml/motif-trades (disk-first, R2 fallback — same
+// as the Positions tab's KV reads, just a single fixed JSON file instead of
+// per-bot status keys since motif_track.py owns the whole log itself). This
+// tracks the structural motif signal — the original k-NN shape-match signal
+// (paper_trades.json / /api/analogml/paper-trades) banked null 2026-08-12
+// and is no longer shown live here; its historical log is still on disk/R2
+// for the record, just not surfaced on this tab.
+function _amlFmtDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/London', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }); }
+  catch (e) { return iso; }
+}
+function _amlOutcomeChip(status) {
+  const cls = status === 'tp' ? 'bt-pnl-pos' : (status === 'sl' || status === 'timeout') ? 'bt-pnl-neg' : '';
+  const label = status === 'tp' ? 'TP' : status === 'sl' ? 'SL' : status === 'timeout' ? 'TIMEOUT' : status;
+  return `<span class="${cls}">${label}</span>`;
+}
+function _amlPatternLabel(t) {
+  if (t.n_touches == null) return '—';
+  return `${t.n_touches}-touch ${t.is_top ? 'top' : 'bottom'}`;
+}
+async function loadAnalogMLTab() {
+  const openBody = document.getElementById('amlOpenBody');
+  const closedBody = document.getElementById('amlClosedBody');
+  if (!openBody) return;
+  const data = await fetch('/api/analogml/motif-trades').then(r => r.ok ? r.json() : null).catch(() => null);
+  const trades = data?.ok ? (data.trades || []) : [];
+  const open = trades.filter(t => t.status === 'open').sort((a,b) => (b.logged_at||'').localeCompare(a.logged_at||''));
+  const closed = trades.filter(t => t.status !== 'open').sort((a,b) => (b.resolved_at||'').localeCompare(a.resolved_at||''));
+
+  const summaryEl = document.getElementById('amlSummary');
+  if (summaryEl) {
+    if (!data) {
+      summaryEl.innerHTML = `<div class="pos-summary-item" style="color:var(--text3)">No data yet — run AnalogML/motif_track.py</div>`;
+    } else {
+      const withR = closed.filter(t => t.r != null);
+      const wins = withR.filter(t => t.r > 0).length;
+      const avgR = withR.length ? (withR.reduce((s,t) => s + t.r, 0) / withR.length) : null;
+      summaryEl.innerHTML = [
+        `<div class="pos-summary-item">Open <span>${open.length}</span></div>`,
+        `<div class="pos-summary-item">Closed <span>${closed.length}</span></div>`,
+        withR.length ? `<div class="pos-summary-item">Win rate <span>${(100*wins/withR.length).toFixed(0)}%</span></div>` : '',
+        avgR != null ? `<div class="pos-summary-item">Avg R <span>${avgR.toFixed(3)}</span></div>` : '',
+      ].join('');
+    }
+  }
+
+  openBody.innerHTML = open.length ? open.map(t => `
+    <tr>
+      <td>${(t.pair||'').toUpperCase()}</td>
+      <td>${_amlPatternLabel(t)}</td>
+      <td class="${t.direction==='BUY'?'bt-pnl-pos':'bt-pnl-neg'}">${t.direction||'—'}</td>
+      <td>${t.entry_price ?? '—'}</td>
+      <td>${t.sl_price ?? '—'}</td>
+      <td>${t.tp_price ?? '—'}</td>
+      <td>${_amlFmtDate(t.entry_date)}</td>
+    </tr>`).join('') : `<tr><td colspan="7" class="pos-empty">No open paper trades${data?'':' — no data yet'}</td></tr>`;
+
+  closedBody.innerHTML = closed.length ? closed.map(t => `
+    <tr>
+      <td>${(t.pair||'').toUpperCase()}</td>
+      <td>${_amlPatternLabel(t)}</td>
+      <td class="${t.direction==='BUY'?'bt-pnl-pos':'bt-pnl-neg'}">${t.direction||'—'}</td>
+      <td>${t.entry_price ?? '—'}</td>
+      <td>${t.exit_price ?? '—'}</td>
+      <td>${_amlOutcomeChip(t.status)}</td>
+      <td class="${t.r>0?'bt-pnl-pos':t.r<0?'bt-pnl-neg':''}">${t.r != null ? t.r.toFixed(3) : '—'}</td>
+      <td>${_amlFmtDate(t.entry_date)}</td>
+      <td>${_amlFmtDate(t.exit_date)}</td>
+    </tr>`).join('') : `<tr><td colspan="9" class="pos-empty">No closed paper trades yet</td></tr>`;
+}
+window.loadAnalogMLTab = loadAnalogMLTab;
+
+function switchAmlSubTab(which) {
+  document.getElementById('amlSubOpen')?.classList.toggle('active', which === 'open');
+  document.getElementById('amlSubClosed')?.classList.toggle('active', which === 'closed');
+  document.getElementById('amlOpenView').style.display = which === 'open' ? '' : 'none';
+  document.getElementById('amlClosedView').style.display = which === 'closed' ? '' : 'none';
+}
+window.switchAmlSubTab = switchAmlSubTab;
+
+document.querySelector('.tab-btn[data-tab="analogml"]')?.addEventListener('click', () => {
+  loadAnalogMLTab();
+});
+
 document.querySelector('.tab-btn[data-tab="positions"]')?.addEventListener('click', () => {
   // Restore last sub-tab
   const lastSub = (() => { try { return localStorage.getItem('posSubTab') || 'live'; } catch(e) { return 'live'; } })();
@@ -8446,6 +8687,85 @@ document.addEventListener('click', e => {
   tip.style.left = Math.max(8, left) + 'px';
   tip.style.top  = Math.max(8, top)  + 'px';
 });
+
+// ── OANDA M1 Data Fetch ──────────────────────────────────────────────────────
+// Default-checked: the instruments with no M1 data yet as of when this was
+// wired up (silver, oil). Everything else is available but opt-in so a
+// click doesn't accidentally re-fetch years of data that's already cached.
+const OANDA_FETCH_DEFAULT_CHECKED = ['silver', 'oil'];
+
+async function loadOandaInstruments() {
+  const box = document.getElementById('oandaFetchPairs');
+  try {
+    const r = await fetch('/api/oanda-fetch/instruments');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'failed to list instruments');
+    box.innerHTML = Object.entries(d.instruments).map(([key, info]) => `
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+        <input type="checkbox" value="${key}" ${OANDA_FETCH_DEFAULT_CHECKED.includes(key) ? 'checked' : ''}>
+        <span>${info.desc} <span style="color:var(--text3)">(${key})</span></span>
+      </label>`).join('');
+  } catch (e) {
+    box.textContent = 'Could not load instrument list: ' + e.message;
+  }
+}
+loadOandaInstruments();
+
+async function runOandaFetch() {
+  const btn    = document.getElementById('oandaFetchBtn');
+  const status = document.getElementById('oandaFetchStatus');
+  const pairs  = Array.from(document.querySelectorAll('#oandaFetchPairs input:checked')).map(el => el.value);
+  const years  = document.getElementById('oandaFetchYears').value || '5';
+
+  if (!pairs.length) { status.textContent = 'Pick at least one instrument.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  status.textContent = `Starting fetch — ${pairs.join(', ')} (${years}yr)…`;
+
+  let start;
+  try {
+    const r = await fetch('/api/oanda-fetch/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pairs, years }),
+    });
+    try { start = await r.json(); } catch { start = { ok: false, error: `HTTP ${r.status} — non-JSON (are you logged in?)` }; }
+  } catch (e) {
+    start = { ok: false, error: e.message };
+  }
+  if (!start.ok || !start.jobId) {
+    status.textContent = 'Error: ' + (start.error || JSON.stringify(start));
+    btn.disabled = false; btn.textContent = 'Run Fetch';
+    return;
+  }
+
+  const { jobId } = start;
+  while (true) {
+    await new Promise(r => setTimeout(r, 3000));
+    let d;
+    try {
+      const r = await fetch(`/api/oanda-fetch/status/${jobId}`);
+      try { d = await r.json(); } catch { d = { ok: false, status: 'error', error: `HTTP ${r.status}` }; }
+    } catch (e) {
+      d = { ok: false, status: 'error', error: e.message };
+    }
+
+    const tail = (d.log || []).slice(-25).join('\n');
+    if (d.status === 'done') {
+      status.textContent = `Done ✓ (${d.elapsed}s)\n` + tail;
+      break;
+    }
+    if (d.status === 'error' || !d.ok) {
+      status.textContent = `Error: ${d.error || JSON.stringify(d)}\n` + tail;
+      break;
+    }
+    status.textContent = `Running… ${d.elapsed}s\n` + tail;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Run Fetch';
+}
+window.runOandaFetch = runOandaFetch;
 </script>
 </body>
 </html>

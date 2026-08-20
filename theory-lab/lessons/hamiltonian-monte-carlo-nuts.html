@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hamiltonian Monte Carlo &amp; NUTS — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Bayesian Statistics Extensions / Hamiltonian Monte Carlo &amp; NUTS</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Bayesian Extensions 4 of 4</div>
+  <h1 class="tl-title">Hamiltonian Monte Carlo &amp; NUTS</h1>
+  <p class="tl-dek">Plain Metropolis-Hastings explores a posterior by stumbling around blindly. Hamiltonian Monte Carlo gives the sampler momentum and a gradient to roll downhill with — and NUTS removes the one dial that made HMC itself hard to drive.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here, not a claim this repo has built or validated it</span>
+    <span>~18 min read</span>
+    <span>Prereqs: MCMC: Metropolis-Hastings &amp; Gibbs Sampling</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>The problem:</strong> random-walk Metropolis (previous lesson) proposes moves with no information about the target's shape, so in high dimensions or with correlated parameters it mixes slowly — successive samples are highly autocorrelated, and it takes many more iterations to get the equivalent of a handful of truly independent draws.</li>
+      <li><strong>Hamiltonian Monte Carlo (HMC)</strong> augments the parameter \(\theta\) with an auxiliary momentum variable \(p\), defines a Hamiltonian \(H(\theta,p) = U(\theta) + \tfrac12 p^\top M^{-1}p\) (potential energy from the negative log-posterior, plus kinetic energy from the momentum), and simulates that physical system with the <strong>leapfrog integrator</strong> before accepting or rejecting the whole trajectory in one Metropolis step.</li>
+      <li>Because each proposal follows the gradient of the log-posterior instead of wandering blindly, HMC can propose a move far from the current point while still keeping a high acceptance rate — dramatically less autocorrelation per unit of computation than random-walk Metropolis.</li>
+      <li><strong>NUTS (No-U-Turn Sampler)</strong> removes HMC's own hardest tuning knob — the trajectory length \(L\) — by adaptively growing the simulated path via recursive doubling and stopping automatically the moment the trajectory starts to double back on itself (a "U-turn"). It is the default sampler in Stan and PyMC, not a niche technique.</li>
+      <li>The <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a> lesson's correlated, funnel-shaped group/hyperparameter posteriors are exactly the geometry where plain Metropolis-Hastings and Gibbs sampling crawl — and exactly where HMC/NUTS's gradient-informed steps make fitting such models practical at real scale.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="mcmc-metropolis-gibbs.html">MCMC: Metropolis-Hastings &amp;
+    Gibbs Sampling</a> lesson showed how to sample from a posterior that has
+    no closed form: propose a candidate move, accept it with a probability
+    built from the target's density ratio, repeat. That machinery works — the
+    worked example there walked five explicit steps of a random-walk chain by
+    hand — but it has a structural weakness baked into how the proposal
+    itself is generated. A random-walk proposal (a Normal jitter centered at
+    the current point) uses <em>zero</em> information about which direction
+    the target distribution actually extends in. It doesn't know the target
+    is a long, narrow ridge rather than a round blob; it doesn't know two
+    parameters are highly correlated so that only diagonal moves are
+    plausible at all. It just jitters, checks the ratio, and often rejects.
+  </p>
+  <p>
+    In a single dimension with a roughly symmetric target, that blindness
+    barely matters — the double-well example in the previous lesson mixed
+    fine in five steps. But real posteriors are rarely one dimension. Once a
+    model has ten, fifty, or a hundred correlated parameters — exactly the
+    situation a <a href="hierarchical-bayesian-models.html">hierarchical
+    model</a>'s group means and hyperparameters create — a random walk has to
+    take a very short, cautious step in every direction at once to keep its
+    acceptance rate from collapsing to near zero, and short steps mean the
+    chain covers ground achingly slowly. <strong>Hamiltonian Monte Carlo</strong>
+    fixes this by using something random-walk Metropolis never touches: the
+    <em>gradient</em> of the log-posterior, which is available for free
+    whenever the log-posterior is differentiable. The gradient says, at every
+    point, exactly which direction is uphill and by how much — and HMC uses
+    it to propose long, efficient moves that still land somewhere plausible.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A blind stumble versus a ball rolling downhill</h3>
+    <p>
+      A random-walk sampler explores a landscape by stumbling around
+      blindly — propose a random nearby step, check if it's plausible, maybe
+      take it, maybe not, repeat thousands of times. It never looks before it
+      leaps. HMC explores the same landscape more like a ball given a push
+      and let roll, using the terrain's own slope (the gradient) to carry it
+      efficiently across long stretches of ground in a single, physically
+      simulated trajectory. Give the ball a random push (a random momentum
+      draw), let it roll for a while following the landscape's curvature, and
+      the point where it ends up is usually a genuinely new, plausible
+      location — not a half-step from where it started. The landscape here is
+      built upside-down on purpose: the posterior's <em>peaks</em> (high
+      probability) become the landscape's <em>valleys</em> (low potential
+      energy), so a ball naturally settles into and lingers around exactly
+      the regions a sampler should be spending most of its time in.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>Augmenting θ with momentum</h3>
+  <p>
+    HMC starts by introducing an auxiliary variable \(p\) — a
+    <strong>momentum</strong> vector of the same dimension as \(\theta\),
+    with no meaning in the original problem; it exists purely as a
+    computational device. Define the negative log-posterior as a
+    <strong>potential energy</strong>, \(U(\theta) = -\log \pi(\theta)\)
+    (where \(\pi(\theta)\) is the target density, the same role
+    \(p(\theta)\) played in the previous lesson — high posterior probability
+    means <em>low</em> potential energy, the bottom of a valley). Give the
+    momentum a <strong>kinetic energy</strong> term, \(\tfrac12
+    p^\top M^{-1}p\), borrowed directly from classical mechanics, where
+    \(M\) is a symmetric positive-definite <strong>mass matrix</strong> — a
+    tuning parameter, often just a diagonal matrix of per-parameter scales.
+    Together they define the <strong>Hamiltonian</strong>:
+  </p>
+  <div class="tl-math">\[ H(\theta,p) = U(\theta) + \frac12\, p^\top M^{-1} p \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>U(θ) = −log π(θ)</code><span>potential energy — low where the posterior is high-probability, high where it's implausible</span></div>
+    <div class="tl-eq-chip c2"><code>½ pᵀM⁻¹p</code><span>kinetic energy — how much "speed" the momentum carries, scaled by the mass matrix M</span></div>
+  </div>
+  <p>
+    At the start of each HMC iteration, a fresh momentum is drawn
+    \(p \sim N(0, M)\) — independent of the current \(\theta\) — then the
+    pair \((\theta,p)\) is evolved forward in fictitious time by simulating
+    Hamilton's equations of motion, exactly as a physical system with this
+    energy function would evolve. Because total energy \(H\) is conserved
+    under exact Hamiltonian dynamics, a trajectory that starts in a
+    high-probability (low-\(U\)) region tends to stay in physically
+    reasonable territory throughout — it can trade potential energy for
+    kinetic energy and back, sweeping across the landscape rather than
+    inching along it.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a marble rolling around inside a bowl-shaped valley, where the valley's low point is the posterior's most plausible spot. Give the marble a random flick (that's the momentum), and it rolls off using its own speed plus the pull of the slope beneath it — trading height (potential energy) for speed (kinetic energy) back and forth as it goes, the same way a real marble would. Because it's actually rolling along the terrain instead of hopping randomly, it can sweep a long way across the bowl in one smooth motion instead of inching along one blind little hop at a time.</p>
+  </div>
+
+  <h3>Simulating the dynamics: the leapfrog integrator</h3>
+  <p>
+    Hamilton's equations can't be solved exactly for anything but the
+    simplest targets, so HMC simulates them numerically with the
+    <strong>leapfrog integrator</strong> — a discretization chosen
+    specifically because it is <em>reversible</em> and <em>volume-preserving</em>,
+    two properties the accept/reject step below depends on. Given a step
+    size \(\varepsilon\), one leapfrog step from \((\theta_t,p_t)\) to
+    \((\theta_{t+\varepsilon},p_{t+\varepsilon})\) is three half/full updates:
+  </p>
+  <div class="tl-math">
+    \[
+    \begin{aligned}
+    p_{t+\varepsilon/2} &amp;= p_t - \frac{\varepsilon}{2}\,\nabla U(\theta_t) \\
+    \theta_{t+\varepsilon} &amp;= \theta_t + \varepsilon\, M^{-1} p_{t+\varepsilon/2} \\
+    p_{t+\varepsilon} &amp;= p_{t+\varepsilon/2} - \frac{\varepsilon}{2}\,\nabla U(\theta_{t+\varepsilon})
+    \end{aligned}
+    \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>∇U(θ)</code><span>the gradient of the potential energy — the same quantity as the gradient of the negative log-posterior</span></div>
+    <div class="tl-eq-chip c3"><code>ε</code><span>the step size — how far one leapfrog step advances the simulated dynamics</span></div>
+    <div class="tl-eq-chip c2"><code>M⁻¹p</code><span>velocity — momentum converted to a rate of change in θ via the mass matrix</span></div>
+  </div>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">p ← p − (ε/2)∇U(θ)</div>
+      <div class="tl-fp-name">Half-step momentum kick</div>
+      <div class="tl-fp-desc">Nudge momentum downhill using the gradient at the current position</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">θ ← θ + εM⁻¹p</div>
+      <div class="tl-fp-name">Full-step position move</div>
+      <div class="tl-fp-desc">Move the position using the half-updated momentum as velocity</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">p ← p − (ε/2)∇U(θ)</div>
+      <div class="tl-fp-name">Second half-step momentum kick</div>
+      <div class="tl-fp-desc">Nudge momentum again using the gradient at the new position</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">(θ*, p*)</div>
+      <div class="tl-fp-name">Repeat L times</div>
+      <div class="tl-fp-desc">Chain L leapfrog steps together into one proposed trajectory endpoint</div>
+    </div>
+  </div>
+
+  <p>
+    One leapfrog step alone is a small, cheap move; the actual HMC proposal
+    chains \(L\) of these steps together, so the momentum drawn at the start
+    carries the trajectory across a long, connected path through parameter
+    space before the final state \((\theta^*, p^*)\) is proposed. This is the
+    mechanical source of HMC's efficiency: a single proposal is not one small
+    jitter but the endpoint of a whole simulated journey shaped by the
+    posterior's own gradient the entire way.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The leapfrog integrator is just a way of simulating that rolling marble in tiny, careful increments a computer can actually compute: nudge its speed a little based on the slope, move it forward using that speed, then nudge its speed again based on the new slope — over and over. Doing it in this particular back-and-forth "half nudge, move, half nudge" rhythm (rather than any simpler order) is what keeps the simulation well-behaved and reversible, like a flipbook where playing the pages backward retraces the exact same path forward.</p>
+  </div>
+
+  <h3>The Metropolis correction</h3>
+  <p>
+    Leapfrog is a numerical approximation, not an exact solution to
+    Hamilton's equations, so it doesn't conserve \(H\) perfectly — small
+    discretization error accumulates over \(L\) steps. HMC corrects for this
+    exactly the way the previous lesson's Metropolis-Hastings step corrects
+    an imperfect proposal: treat the whole leapfrog trajectory as one
+    proposal, and accept the endpoint with probability
+  </p>
+  <div class="tl-math">\[ \alpha = \min\!\Big(1,\ \exp\big(H(\theta_t,p_t) - H(\theta^*,p^*)\big)\Big) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>H(θₜ,pₜ)</code><span>total energy at the trajectory's start</span></div>
+    <div class="tl-eq-chip c1"><code>H(θ*,p*)</code><span>total energy at the trajectory's end, after L leapfrog steps</span></div>
+  </div>
+  <p>
+    If leapfrog conserved energy exactly, \(H(\theta_t,p_t)=H(\theta^*,p^*)\)
+    always and \(\alpha=1\) every time — every proposal would be accepted.
+    Because leapfrog only conserves \(H\) <em>approximately</em>, \(\alpha\)
+    sits close to but not always exactly at 1 in practice, and this single
+    Metropolis correction — leapfrog's reversibility and volume preservation
+    are exactly what make this correction valid at all — is what makes the
+    whole simulated trajectory a mathematically exact sample from the target
+    distribution regardless of any numerical integration error, in the same
+    detailed-balance sense the previous lesson derived for a simple proposal.
+    If accepted, the chain moves to \(\theta^*\) (the momentum \(p^*\) is then
+    discarded and redrawn fresh next iteration); if rejected, the chain stays
+    at \(\theta_t\), exactly as in plain Metropolis-Hastings.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Because the marble simulation is only approximate, not perfect physics, it can drift slightly off the energy it should have conserved — like a video game marble that loses or gains a tiny bit of extra "oomph" from rounding errors. So at the end of the whole rolling journey, HMC does one honesty check: compare the energy at the start to the energy at the end, and accept the marble's final resting spot with a probability that reflects how much energy leaked. A near-perfect roll gets accepted almost every time; a roll that leaked a lot of energy is more likely to be rejected and redone.</p>
+  </div>
+
+  <p>
+    <strong>Why this beats a random walk.</strong> A random-walk Metropolis
+    proposal is one small, direction-blind jitter, so keeping the acceptance
+    rate reasonable in high dimensions forces the step size down until moves
+    are tiny — the chain covers little net distance per accepted proposal,
+    and successive samples stay highly correlated. HMC's proposal is instead
+    the endpoint of a whole gradient-informed trajectory: every leapfrog step
+    along the way is pulled by \(\nabla U\) toward higher posterior density
+    and away from implausible territory, so the trajectory can travel
+    <em>far</em> from its starting point while still landing somewhere the
+    Metropolis correction is likely to accept. More distance covered per
+    proposal, at a comparably high acceptance rate, means far less
+    autocorrelation between successive samples for the same computational
+    budget — which is precisely the failure mode Section 01 named as the
+    motivating problem.
+  </p>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">Random-walk Metropolis vs. Hamiltonian trajectory on the same 2-D target</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two paths overlaid on the same elongated, correlated 2-D contour density: a jittery, short-stepped random-walk Metropolis path that barely covers ground, and a smooth, long-stepped Hamiltonian Monte Carlo path that sweeps efficiently along the ridge of the density">
+      <ellipse cx="320" cy="150" rx="230" ry="45" transform="rotate(-22 320 150)" style="fill:none;stroke:var(--border);stroke-width:1" />
+      <ellipse cx="320" cy="150" rx="170" ry="32" transform="rotate(-22 320 150)" style="fill:none;stroke:var(--border);stroke-width:1" />
+      <ellipse cx="320" cy="150" rx="105" ry="19" transform="rotate(-22 320 150)" style="fill:none;stroke:var(--border);stroke-width:1" />
+      <ellipse cx="320" cy="150" rx="45" ry="8" transform="rotate(-22 320 150)" style="fill:var(--surface2);stroke:var(--border);stroke-width:1" />
+      <text x="320" y="270" fill="var(--text3)" font-size="11" text-anchor="middle">contour lines of a correlated, ridge-shaped target density</text>
+
+      <path d="M 210,175 L 216,171 L 209,167 L 214,161 L 205,163 L 210,157 L 202,158 L 206,151 L 199,154 L 203,147 L 197,150 L 201,143 L 195,146"
+            style="fill:none;stroke:var(--red);stroke-width:1.6" />
+      <circle cx="210" cy="175" r="3" style="fill:var(--red)" />
+      <text x="180" y="192" fill="var(--red)" font-size="11" font-weight="600">random-walk Metropolis</text>
+      <text x="180" y="205" fill="var(--text3)" font-size="10">short, jittery, correlated steps</text>
+
+      <path d="M 230,190 C 270,185 300,175 340,155 C 380,135 410,130 460,118"
+            style="fill:none;stroke:var(--blue);stroke-width:2.2" stroke-linecap="round" />
+      <circle cx="230" cy="190" r="3.5" style="fill:var(--blue)" />
+      <circle cx="460" cy="118" r="3.5" style="fill:var(--blue)" />
+      <text x="330" y="105" fill="var(--blue)" font-size="11" font-weight="600" text-anchor="middle">Hamiltonian trajectory (one proposal)</text>
+      <text x="330" y="118" fill="var(--text3)" font-size="10" text-anchor="middle">smooth, gradient-following, long single step</text>
+    </svg>
+    <div class="tl-chart-caption">
+      The random-walk chain (red) stumbles through a dozen tiny accept/reject
+      steps and barely leaves its starting corner of the ridge — direction
+      blind, it can't tell the density is elongated. The Hamiltonian
+      trajectory (blue) is <em>one single proposal</em>: a whole leapfrog
+      path that follows the ridge's own curvature, covering a comparable or
+      greater distance in one accept/reject decision. This is the concrete
+      shape of "gradient-informed" — the trajectory bends to follow the
+      target instead of ignoring it.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One leapfrog trajectory on a 1-D standard Normal target, by hand</h3>
+    <p>
+      Target: \(\pi(\theta) = N(0,1)\), so \(U(\theta) = -\log\pi(\theta) =
+      \tfrac12\theta^2 + \text{const}\) and \(\nabla U(\theta) = \theta\) — about
+      as simple a target as exists, chosen so every number below can be
+      checked by hand. Take mass \(M=1\) (so \(M^{-1}p=p\)), step size
+      \(\varepsilon=0.3\), and \(L=3\) leapfrog steps. Start at
+      \(\theta_0=1.0\) with a drawn momentum \(p_0=0.5\).
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Initial half-step kick</h4>
+          <p>
+            \(p_{0.15} = p_0 - \tfrac{\varepsilon}{2}\nabla U(\theta_0) = 0.5
+            - 0.15(1.0) = 0.35\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Leapfrog step 1 of 3</h4>
+          <p>
+            Position: \(\theta_1 = \theta_0 + \varepsilon\, p_{0.15} = 1.0 +
+            0.3(0.35) = 1.105\). Full momentum kick using the new position's
+            gradient: \(p_1 = p_{0.15} - \tfrac{\varepsilon}{2}\nabla U(\theta_1)
+            = 0.35 - 0.15(1.105) = 0.1843\) (this full kick folds the
+            trailing half-step of one iteration into the leading half-step of
+            the next).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Leapfrog step 2 of 3</h4>
+          <p>
+            \(\theta_2 = 1.105 + 0.3(0.1843) = 1.1603\). \(p_2 = 0.1843 -
+            0.15(1.1603) = 0.0102\).
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Leapfrog step 3 of 3, then final half-step</h4>
+          <p>
+            \(\theta_3 = 1.1603 + 0.3(0.0102) = 1.1634\). Final half-kick:
+            \(p_3 = 0.0102 - 0.15(1.1634) = -0.1643\). Proposal:
+            \((\theta^*,p^*) = (1.1634,\ -0.1643)\) — notice the momentum has
+            flipped sign, which is exactly what "rolling up one side of a
+            valley and starting to fall back" looks like.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">5</div>
+        <div class="tl-step-body">
+          <h4>Metropolis accept/reject on H</h4>
+          <p>
+            \(H(\theta_0,p_0) = \tfrac12(1.0)^2+\tfrac12(0.5)^2 = 0.5+0.125 =
+            0.625\). \(H(\theta^*,p^*) = \tfrac12(1.1634)^2+\tfrac12(-0.1643)^2
+            = 0.6767+0.0135=0.6902\). \(\alpha=\min(1,\exp(0.625-0.6902)) =
+            \min(1,\exp(-0.0652))=\min(1,0.9369)=0.9369\) — a high acceptance
+            probability despite \(\theta\) moving from \(1.0\) to \(1.16\), a
+            move roughly \(0.55\varepsilon\)-widths per step, covering more
+            ground per proposal than a comparably-accepted single random-walk
+            jitter typically would. The tiny gap between \(H\) at the start
+            and end (0.625 vs. 0.6902) is exactly the leapfrog discretization
+            error the Metropolis step exists to correct for.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>NUTS: removing HMC's hardest dial</h2>
+  <p>
+    HMC as described above still has a real practical problem: someone has to
+    choose the trajectory length \(L\) (equivalently, \(L\varepsilon\), the
+    total simulated time). Get it wrong in either direction and HMC's
+    advantage partly evaporates:
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>L too short</h4>
+      <p>
+        The trajectory barely gets going before the leapfrog loop ends — the
+        proposal ends up close to the starting point, which is exactly the
+        small-step, high-autocorrelation behavior HMC was supposed to fix.
+        Gradient information is available but wasted.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>L too long</h4>
+      <p>
+        The trajectory can loop back on itself — like a ball that rolls up
+        one side of a bowl, back down, and up the other side — spending
+        leapfrog steps (each one a real gradient evaluation, real
+        computation) retracing ground it already effectively sampled,
+        without moving the proposal meaningfully farther from the start.
+      </p>
+    </div>
+  </div>
+
+  <p>
+    Worse, the "right" \(L\) isn't a fixed number — it depends on the local
+    curvature of the target, which can vary across the parameter space (the
+    <a href="hierarchical-bayesian-models.html">hierarchical model</a>
+    funnel geometry discussed below is a textbook case: a good \(L\) near the
+    funnel's narrow neck is wrong for its wide mouth). Hand-tuning a single,
+    fixed \(L\) that works everywhere is often impossible.
+  </p>
+  <p>
+    The <strong>No-U-Turn Sampler (NUTS)</strong> removes \(L\) as a
+    parameter to hand-tune at all. Instead of simulating a fixed number of
+    leapfrog steps, NUTS grows the trajectory adaptively: starting from the
+    current point, it extends the path outward — forward and backward in
+    simulated time — doubling its length repeatedly, building a tree of
+    candidate states. After each doubling, it checks a simple geometric
+    condition: has the trajectory started turning back toward where it began?
+    Concretely, this is detected by checking whether the momentum at the
+    trajectory's current endpoints still points <em>away</em> from the
+    trajectory's start, versus back toward it — a dot-product test between
+    the direction the path has traveled and its current momentum. The moment
+    that check flags a "U-turn," NUTS stops extending in that direction and
+    selects a proposal from among the states already generated along the
+    path (weighted so the overall procedure still samples exactly from the
+    target — this multinomial-selection detail is what the original NUTS
+    paper spends most of its length proving is correct; this lesson states
+    the stopping criterion conceptually rather than re-deriving that proof).
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of a human guessing "roll the marble for exactly 7 seconds" (too short wastes the roll, too long and it doubles back on itself), NUTS just lets the marble keep rolling, checking after every doubling of the distance: "is this thing starting to curl back toward where it began?" The instant it detects that curling-back motion — a U-turn — it stops right there and picks a good resting spot from the path already rolled. No one has to guess the right rolling time in advance; the marble's own path tells NUTS when to stop.</p>
+  </div>
+
+  <p>
+    The practical result: NUTS runs roughly as long as it needs to and no
+    longer, in every direction and at every point in parameter space, without
+    a human ever choosing \(L\). A step size \(\varepsilon\) is still needed
+    (see the pitfalls below), but NUTS conventionally tunes even that
+    automatically during an initial adaptation phase, targeting a specified
+    acceptance rate. This combination — gradient-informed trajectories with
+    an automatically chosen length — is precisely why <strong>NUTS is the
+    default sampler in modern probabilistic programming languages, including
+    Stan and PyMC</strong>: it is a genuinely load-bearing, widely used
+    real-world default, not a niche research technique.
+  </p>
+
+  <div class="tl-symbols">
+    <table>
+      <tr><td>\(\theta\)</td><td>The parameter being sampled — the same role as in the previous lesson's Metropolis-Hastings chain.</td></tr>
+      <tr><td>\(p\)</td><td>The auxiliary momentum variable — invented purely to drive the dynamics, discarded and redrawn every iteration.</td></tr>
+      <tr><td>\(U(\theta)\)</td><td>Potential energy, \(-\log\pi(\theta)\) — low where the posterior is high-probability.</td></tr>
+      <tr><td>\(M\)</td><td>The mass matrix — a tuning parameter controlling how momentum converts into movement in each direction.</td></tr>
+      <tr><td>\(H(\theta,p)\)</td><td>The Hamiltonian — total energy, potential plus kinetic, approximately conserved along a trajectory.</td></tr>
+      <tr><td>\(\nabla U(\theta)\)</td><td>The gradient of the potential energy — the direction and steepness of "downhill," used to steer the trajectory.</td></tr>
+      <tr><td>\(\varepsilon\)</td><td>The leapfrog step size — how far one discretized step advances the simulated dynamics.</td></tr>
+      <tr><td>\(L\)</td><td>Trajectory length in HMC — the number of leapfrog steps chained into one proposal; NUTS replaces choosing this by hand.</td></tr>
+      <tr><td>U-turn</td><td>NUTS's stopping condition — the point where a growing trajectory's momentum starts pointing back toward its own starting point.</td></tr>
+    </table>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world scenario</div>
+    <h3>A researcher's hierarchical model that Gibbs sampling couldn't touch</h3>
+    <p>
+      Recall the <a href="hierarchical-bayesian-models.html">Hierarchical
+      Bayesian Models</a> lesson's setup: several groups, each with its own
+      parameter \(\theta_j\), all drawn from a shared hyper-distribution
+      \(\theta_j \sim N(\mu,\tau^2)\). Suppose a researcher tries to fit this
+      with a Gibbs sampler, cycling through each \(\theta_j\)'s full
+      conditional and then \(\tau^2\)'s full conditional in turn. In practice,
+      this posterior often has a <strong>funnel shape</strong>: when \(\tau^2\)
+      (the between-group variance) is small, the plausible range for every
+      \(\theta_j\) is extremely narrow and tightly tied to \(\tau^2\)'s own
+      value; when \(\tau^2\) is larger, the \(\theta_j\)'s plausible range
+      widens out considerably. That's a strong, curved correlation between a
+      group-level parameter and its own hyperparameter — precisely the
+      geometry a coordinate-at-a-time sampler like Gibbs struggles with,
+      because updating \(\tau^2\) and \(\theta_j\) separately, one at a time,
+      can barely move through the funnel's narrow neck at all. The
+      researcher's chain sits for thousands of iterations, R̂ never settling
+      near 1, effective sample size crawling upward one digit at a time —
+      practically unusable for anything requiring real inference. Switching
+      to NUTS, which sees the same funnel through its gradient and can
+      propose trajectories that follow the neck's own curvature instead of
+      hitting it edge-on, reaches a usable effective sample size in a small
+      fraction of the iterations the Gibbs sampler needed. This describes the
+      mechanics of why NUTS is reached for on this class of problem, not a
+      claim that this specific hierarchical model has been built, fit, or
+      benchmarked anywhere in this repo.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    In modern applied Bayesian workflows, HMC is rarely run "by hand" with a
+    fixed, manually chosen \(L\) — NUTS has effectively replaced that
+    variant. What practitioners actually tune and check:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎚️</div>
+      <h4>Step size ε, via dual averaging</h4>
+      <p>Both Stan and PyMC run an automatic adaptation phase that adjusts ε to hit a target acceptance rate (commonly around 0.8) before the real sampling begins — a practitioner rarely sets ε by hand, but understanding what it's doing matters for diagnosing a slow or broken run.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚖️</div>
+      <h4>Mass matrix M, adapted from early draws</h4>
+      <p>A diagonal (or full) mass matrix is typically estimated from the sample covariance of an initial adaptation window, so momentum "weighs" each parameter roughly in proportion to how that parameter's posterior is actually scaled and correlated.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🚩</div>
+      <h4>Divergent transitions</h4>
+      <p>When the leapfrog integrator's energy error blows up mid-trajectory (usually from a region of very sharp curvature, like a hierarchical funnel's neck), the sampler flags a "divergence" — a direct, per-iteration diagnostic that plain Metropolis-Hastings and Gibbs have no equivalent of.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📉</div>
+      <h4>The same convergence checks still apply</h4>
+      <p>Trace plots, R̂, and effective sample size — all introduced in the previous lesson — are still exactly how a NUTS chain's output gets diagnosed; NUTS changes how proposals are generated, not what "trustworthy chain" means.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where HMC and NUTS quietly go wrong</h3>
+    <p>
+      <strong>Step size ε mistuned in either direction.</strong> Too small,
+      and each leapfrog step barely advances the trajectory — NUTS ends up
+      needing far more steps (and gradient evaluations) per doubling to reach
+      the same U-turn, wasting computation exactly the way a too-small
+      random-walk step wastes iterations. Too large, and the leapfrog
+      discretization error per step grows, energy is no longer even
+      approximately conserved, the Metropolis acceptance probability
+      collapses, and the sampler either rejects almost everything or — worse —
+      silently reports "divergent transitions," a sign the simulated
+      trajectory has become numerically unreliable rather than merely
+      inefficient.
+    </p>
+    <p>
+      <strong>The mass matrix needs rough calibration to the target's actual
+      curvature.</strong> A mass matrix that's badly mismatched to how the
+      posterior is actually scaled — treating a parameter that varies over
+      thousands of units the same as one that varies over hundredths — sends
+      the momentum "flying" disproportionately in the badly-scaled
+      dimension, degrading the trajectory quality even though the gradient
+      itself is exact. This is precisely why adaptive mass-matrix estimation
+      during warm-up exists, rather than leaving \(M\) fixed at the identity.
+    </p>
+    <p>
+      <strong>Requiring a differentiable log-posterior.</strong> HMC and NUTS
+      both need \(\nabla U(\theta)\) to exist and be computable — a
+      discrete-parameter model, or a likelihood with a hard threshold/kink,
+      doesn't fit this machinery directly and needs a different sampler (or a
+      reformulation) instead. This is a real applicability boundary, not a
+      minor footnote.
+    </p>
+    <p>
+      <strong>Mistaking "NUTS ran without error" for "the posterior is
+      correct."</strong> Exactly the previous lesson's pitfall carries over
+      unchanged: divergences, R̂, and effective sample size are diagnostics
+      that reduce risk, not proof the model itself is well-specified or that
+      whatever the posterior is being used for has any predictive value.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Random-walk Metropolis is blind to the target's shape.</strong> That's the precise reason it mixes slowly in high dimensions or under correlated parameters — high autocorrelation between successive samples, needing many more iterations for the same effective information.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>HMC uses the gradient of the log-posterior to propose long, informed trajectories</strong> via the leapfrog integrator, then corrects for the integrator's small energy error with one Metropolis accept/reject step on the whole trajectory — exactly the same accept/reject logic as plain Metropolis-Hastings, applied once per trajectory instead of once per tiny jitter.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>NUTS removes HMC's hardest tuning knob (trajectory length L)</strong> by growing the trajectory adaptively and stopping at a detected U-turn — this is why it, not plain fixed-L HMC, became the default in Stan and PyMC.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hierarchical models' funnel-shaped, correlated posteriors are exactly where this matters most</strong> — the geometry plain Metropolis-Hastings/Gibbs sampling struggles with is the geometry HMC/NUTS's gradient-informed steps are built to handle.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Step size and the mass matrix are still real tuning surfaces,</strong> even though NUTS automates trajectory length — a mistuned ε or a badly scaled M degrades performance in concrete, diagnosable ways (divergences, low acceptance).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This lesson explains a sampling algorithm, not a trading signal.</strong> HMC/NUTS is a way to draw from a posterior that's hard for simpler samplers to reach — whatever model it's applied to still has to earn its keep OOS, exactly like every other idea in this curriculum.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why does random-walk Metropolis mix slowly in high dimensions, specifically?</summary>
+    <div class="tl-answer">
+      Because its proposal distribution uses no information about the
+      target's shape — it jitters in a random direction regardless of how
+      the posterior is actually oriented or correlated. To keep the
+      acceptance rate from collapsing as dimensionality (or correlation
+      between parameters) grows, the step size has to shrink, so each
+      accepted move covers very little ground. The result is high
+      autocorrelation between successive samples: many iterations are needed
+      to obtain the equivalent of a handful of genuinely independent draws.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What do the potential energy U(θ) and kinetic energy ½pᵀM⁻¹p represent in HMC, and why is a peak of the posterior a "valley" of U?</summary>
+    <div class="tl-answer">
+      U(θ) = −log π(θ) is the potential energy: it is defined as the
+      negative log-posterior, so wherever the posterior density π(θ) is
+      high, log π(θ) is large and −log π(θ) is small — a posterior peak
+      becomes a low point (a valley) of U, the same way a ball naturally
+      settles into a valley. The kinetic energy ½pᵀM⁻¹p represents the
+      "speed" carried by the auxiliary momentum variable p, scaled by the
+      mass matrix M, exactly as kinetic energy works in physics.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the leapfrog integrator, why are the momentum updates "half-steps" but the position update a "full step"?</summary>
+    <div class="tl-answer">
+      The half-step/full-step/half-step pattern is what makes leapfrog a
+      symmetric, time-reversible, volume-preserving discretization of
+      Hamilton's equations — properties the trajectory's Metropolis
+      correction depends on for the resulting samples to be exactly from the
+      target distribution. Splitting the momentum kick into two half-steps
+      (one using the gradient at the start position, one using the gradient
+      at the end position) around a single full position update is the
+      specific structure that achieves this, rather than an arbitrary choice.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does HMC's Metropolis acceptance probability use exp(H(θₜ,pₜ) − H(θ*,p*)) instead of a posterior-density ratio like plain Metropolis-Hastings?</summary>
+    <div class="tl-answer">
+      Because HMC's proposal is the whole (θ,p) pair after simulating the
+      Hamiltonian dynamics, and H already combines the negative
+      log-posterior with the momentum's kinetic energy into one quantity
+      that Hamiltonian dynamics approximately conserves. If leapfrog
+      conserved H exactly, the two H values would always be equal and every
+      proposal would be accepted; the exp(ΔH) term measures exactly how much
+      numerical (leapfrog discretization) error crept into that
+      conservation over the trajectory, and corrects for it — playing the
+      same structural role as the p(θ')/p(θ) ratio in plain
+      Metropolis-Hastings, just expressed in energy terms.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What specific problem does NUTS solve that plain (fixed-L) HMC does not, and how does it detect when to stop growing a trajectory?</summary>
+    <div class="tl-answer">
+      Plain HMC requires choosing the trajectory length L (or equivalently
+      Lε) by hand — too short wastes the gradient-informed advantage, too
+      long wastes computation looping back over ground already covered, and
+      the right value can vary across the parameter space. NUTS removes this
+      by growing the simulated trajectory adaptively via recursive doubling
+      and stopping the moment the trajectory's momentum starts pointing back
+      toward its own starting point — a "U-turn" — rather than requiring a
+      fixed number of steps to be chosen in advance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why are hierarchical models' funnel-shaped posteriors specifically hard for Gibbs sampling, and specifically well-suited to HMC/NUTS?</summary>
+    <div class="tl-answer">
+      A hierarchical model's between-group variance τ² and its group-level
+      parameters θⱼ are strongly, non-linearly correlated: when τ² is small
+      the plausible range of every θⱼ narrows sharply around it, and when τ²
+      is larger that range widens. Gibbs sampling updates one parameter at a
+      time holding the others fixed, which makes it very hard to move
+      through this narrow, curved "funnel" neck — each coordinate-wise
+      update is nearly stuck given the others' current values. HMC/NUTS
+      instead uses the gradient of the full joint log-posterior, so a single
+      trajectory can follow the funnel's curved geometry directly rather
+      than hitting its narrow neck edge-on one coordinate at a time.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Radford M. Neal, <em>"MCMC Using Hamiltonian Dynamics"</em>, in the Handbook of Markov Chain Monte Carlo, Chapman &amp; Hall/CRC, 2011 — the standard, comprehensive reference for Hamiltonian Monte Carlo: the physical motivation, the leapfrog integrator, and why the Metropolis correction on the full trajectory is exact.</li>
+    <li>Matthew D. Hoffman &amp; Andrew Gelman, <em>"The No-U-Turn Sampler: Adaptively Setting Path Lengths in Hamiltonian Monte Carlo"</em>, Journal of Machine Learning Research, 2014 — introduces NUTS, the recursive-doubling trajectory-building procedure, the U-turn stopping criterion, and dual-averaging step-size adaptation.</li>
+    <li><a href="mcmc-metropolis-gibbs.html">MCMC: Metropolis-Hastings &amp; Gibbs Sampling</a> — this lesson's direct prerequisite: the random-walk proposal, the detailed-balance argument, and the convergence diagnostics (trace plots, burn-in, ESS, R̂) that still apply unchanged to an HMC/NUTS chain's output.</li>
+    <li><a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models &amp; Partial Pooling</a> — the funnel-shaped, correlated group/hyperparameter posteriors this lesson's scenario is built around, and the class of model HMC/NUTS makes practical to fit at real scale.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="hierarchical-bayesian-models.html">← Hierarchical Bayesian Models &amp; Partial Pooling</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

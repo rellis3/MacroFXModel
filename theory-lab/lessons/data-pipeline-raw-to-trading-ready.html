@@ -22,6 +22,8 @@
     <span>Prereqs: none — this is the entry lesson for the category</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -161,6 +163,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a raw data feed like a delivery of groceries dumped straight off the truck. First you write down exactly what arrived, unopened (ingestion). Then you check nothing's obviously wrong — no torn bags, no missing items (validation). Then you actually wash, trim, and fix anything bad (cleaning). Then you cut everything into the same standard sizes so recipes work the same way every time (normalization). Then you put it away somewhere organized, not just piled on the counter (storage). And finally, when someone asks "what did we have in the fridge on Tuesday," you answer using only what was actually in the fridge on Tuesday — not something you bought yesterday (point-in-time serving).</p>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The six-stage pipeline, and which later lesson zooms into each stage</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flow diagram of six sequential stages: Ingestion, Validation, Cleaning, Normalization, Storage, and Point-in-time serving, connected left to right and wrapping to a second row, with the later stages labeled to indicate which dedicated lesson in this category covers them in depth.">
@@ -253,6 +260,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A "bar" is just one snapshot of price activity — like one photo in a flipbook. The question is what triggers the camera to click. Time bars click the shutter every fixed number of minutes, no matter what's happening. Tick bars click after a fixed number of trades occur. Volume bars click once a fixed amount of stuff has traded. Dollar bars click once a fixed amount of money has traded. Same underlying action, four different rules for when to take the next picture.</p>
+  </div>
+
   <p>
   <strong>Time bars are the default almost everyone starts with</strong> — they're the most intuitive
   and the easiest to build from a raw feed. They also have a specific, well-documented statistical
@@ -271,6 +283,11 @@
   feeding them time-bar returns is quietly handing them a worse-behaved input than the same underlying
   data would have produced sampled a different way.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine counting how many people walk into a store by checking the door every 5 minutes, no matter what. On a slow Tuesday morning, those 5-minute checks are basically fine. But during a Black Friday doorbuster rush, hundreds of people might pile through in those same 5 minutes — your once-every-5-minutes counting method can't tell the difference between "quiet" and "mobbed," because it's watching the clock instead of watching the door. Volume and dollar bars watch the door instead — they take a new snapshot every time a fixed amount of actual activity has happened, so a rush gets counted properly as a rush.</p>
+  </div>
 
   <div class="tl-solid amber">
     <strong>The trap:</strong> time bars are not "wrong," and most of the industry still runs on them for
@@ -338,6 +355,11 @@
     problem, and bar choice is one of the first places to check before adding more complexity to the model
     itself.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>The team kept trying to fix their model, but the model wasn't actually broken — the ruler they were measuring with was. Once they switched to a ruler (dollar bars) that stretched and shrank with how busy the market actually was, instead of a ruler that just marked off equal chunks of time, the same model suddenly measured things much more sensibly. Sometimes the fix isn't a smarter model — it's a fairer way of chopping up the data you feed it.</p>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -451,5 +473,28 @@
     <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

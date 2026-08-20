@@ -22,6 +22,8 @@
     <span>Prereqs: Kalman Filter &amp; Adaptive Relationships, The Particle Filter</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -162,6 +164,11 @@
       the end of Day 1; both require Day 2's observation, which is exactly why a smoothed estimate must
       never be treated as something a live system could have produced at the time.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Think of writing a diary entry about yesterday versus rereading it a week later once you know how the week actually turned out. The smoother gain \(C_t\) is basically "how much should I revise yesterday's entry now that I know what happened after it?" If yesterday's guess was shaky (high uncertainty) and the days right after turned out to be very informative, you revise a lot. If yesterday's guess was already solid, there's not much left to correct.</p>
+    </div>
   </div>
 
   <div class="tl-chart interactive">
@@ -243,6 +250,11 @@
     bends away from its tangent line faster than the current uncertainty band is narrow.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine trying to predict a hilly hiking trail using only a ruler laid flat against the ground exactly where you're standing. Right at your feet, the ruler matches the trail perfectly. A few steps ahead, though, the trail curves away from that flat ruler — maybe it climbs a hill the ruler has no idea is coming. The EKF is exactly that ruler: it re-lays itself fresh at every single step (so it's never wildly wrong for long), but it can still misjudge how steep the trail gets between one step and the next, especially on a sharply curving stretch.</p>
+  </div>
+
   <h3>Part C — the Unscented Kalman Filter: sample the true curve instead of linearizing it</h3>
   <p>
     The UKF keeps the same predict/update skeleton but replaces the Taylor-expansion step entirely. Instead
@@ -287,6 +299,11 @@
     more accurate than the EKF whenever the nonlinearity is strong enough that a single tangent line
     stops being a good local stand-in.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of trusting one ruler laid down at your feet, send out three actual scouts to walk the real trail — one right where you're standing, one a bit ahead, one a bit behind — and let each one report exactly what they found, hills and all, with no ruler involved. Then average their honest reports to build your overall picture. It costs a bit more legwork than reading one ruler, but nobody had to pretend the trail was flat anywhere.</p>
+  </div>
 
   <div class="tl-symbols">
     <table>
@@ -682,6 +699,29 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
 })();
 </script>
 </body>

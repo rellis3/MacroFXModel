@@ -177,7 +177,8 @@ t('formatAlert embeds the dispersion block and keeps the no-direction disclaimer
   });
   assert.ok(txt.includes('Daily dispersion'));
   assert.ok(txt.includes('Expansion regime'));
-  assert.ok(txt.includes('not direction'), 'disclaimer clarifies regime ≠ direction');
+  assert.ok(txt.includes('Informational') && txt.includes('thin'),
+    'disclaimer keeps the honest thin-edge framing');
 });
 
 console.log(`\nvolLevelAlertCore: ${passed} tests passed`);

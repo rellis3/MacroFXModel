@@ -85,6 +85,11 @@ const _CF_EXACT = new Set([
                             // built on it (brief oiChange / oiStability / flip-drift, /api/oi-history).
                             // `_snapshotOIHistory` now writes only when the summary actually CHANGED
                             // (~1-2/day on paste, not 48/day on its 30-min timer) to stay quota-cheap.
+  // NOTE: superseded 2026-08-20 by the per-day `oi_raw_YYYY-MM-DD` keys (routed by
+  // prefix below). Kept allowlisted so any value already written stays readable.
+  // The single-key design measured 330KB/day across 11 pairs against a 365-day
+  // retention, i.e. ~117MB in one value — past CF KV's 25MB ceiling at ~77 days,
+  // and it would have failed silently with no signal until a restore came back short.
   'oi_history_raw',         // ~90-day archive of the FULL per-strike ladder (rawOI/rawChg/rawVol +
                             // spot/basis context) per pair per day — side-by-side with the lean
                             // oi_history summary. The strike-over-time map + early wall-building
@@ -168,6 +173,8 @@ const _CF_EXACT = new Set([
   'oi_bot_credentials',         // OI bot MT5 credentials — must survive redeploys
   'oi_bot_zones',               // OI bot daily zone plan (per-instrument regime-switch trades) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
+  'oi_hold_calibration',        // OI hold-score calibration (collecting/active + fitted weights) — derived from oi_bot_trade_log but persisted so the plan producer/banner never see a blank right after a redeploy
+  'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need
   // NOTE: oi_bot_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as range_line_bot_status / volatility_bot_status).
@@ -196,6 +203,28 @@ const _CF_EXACT = new Set([
   'cog_shadow_log',
   'nav_layout',             // index.html command-hub custom category/order — user drag-drop, must survive redeploys and sync across devices
   'scratchpad_notes',       // index.html scratchpad modal — free-text personal notes, must survive redeploys and sync across devices
+  // Numeric-composition engines (CPI/GDP/ISM/labor market/retail sales/
+  // trade balance/real yield/PPI) — same "Confluence bot config forgotten
+  // on every deployment" bug class documented above: these were missing
+  // from this allowlist, so every FRED refresh silently landed in the
+  // ephemeral file store and was wiped on the next Railway redeploy —
+  // surfaced live as "cpi/gdp/etc all show no data, they had data last
+  // night" (2026-08-08, right after a redeploy). Each is a daily-gated,
+  // FRED-quota-costing fetch across up to 8 currencies, not a cheap
+  // recompute — worth persisting. The Macro Scorecard has no KV of its
+  // own (pure live aggregation over these) so nothing to add for it
+  // directly, but it's silently empty too until these actually persist.
+  'cpi_v1', 'gdp_v1', 'ism_v1', 'labor_market_v1', 'retail_sales_v1',
+  'trade_balance_v1', 'real_yield_v1', 'ppi_v1', 'yield_curve_v1',
+  'consumer_confidence_v1', 'credit_quality_v1', 'gpr_v1',
+  // level_engine_bot's enable toggle lives in 'caps' (levelEngineBotEnabled),
+  // already persistent below via 'caps' — no separate key needed for it.
+  'level_engine_fwd_log',     // levelEngine/live_watch.py forward-track log: NQ level-touch alerts + their
+                              // resolved continuation/reversion/no_react outcomes — same "cannot be
+                              // rebuilt" class as fwd_fade_log/cone_fwd_log. This IS the live validation
+                              // record for the two candidates robustness_check.py/confluence_velocity.py
+                              // found but couldn't fully confirm retrospectively; losing it on a redeploy
+                              // would silently reset that forward test to zero.
 ]);
 function isCfKey(key) {
   // kv_probe_* are throwaway keys the /api/kv-health round-trip writes to TEST the
@@ -243,6 +272,9 @@ function isCfKey(key) {
   if (key.startsWith('boj_')) return true;
   // beigebook_* — same reasoning as fomc_/ecb_/boe_/boj_ above.
   if (key.startsWith('beigebook_')) return true;
+  // oi_raw_YYYY-MM-DD - the per-day raw OI capture (ladder + IV boxes). One key per
+  // day so no single value approaches CF KV's 25MB ceiling; see _snapshotOIHistory.
+  if (key.startsWith('oi_raw_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
@@ -289,7 +321,7 @@ async function cfFetch(method, key, body, opts) {
   if (method === 'PUT') init.body = body;
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    const r = await fetch(url, init);
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
     if (r.status === 429) {
       const delay = Math.min(1_000 * 2 ** attempt, 8_000);
       console.warn(`[KV] CF rate limited (${method} ${key}), retry in ${delay} ms`);

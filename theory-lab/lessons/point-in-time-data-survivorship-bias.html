@@ -22,6 +22,8 @@
     <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -119,6 +121,11 @@
     </div>
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a school report card system that keeps every version of your grade forever — the first grade the teacher gave, and every correction after that, each one stamped with the date it happened — instead of just erasing the old grade and writing the new one over it. If someone later asks "what grade did you actually have on report-card day," the system can answer honestly, because it never threw away the original. That's what "point-in-time" data means: never overwrite the past, and always know exactly when a number actually became known, not just what period it was describing.</p>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">A macro release's timeline: reference period, publication dates, and revisions, all distinct</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline diagram showing a March GDP figure. The reference period (March) ends on March 31. A preliminary estimate is published on April 28, nearly a month later. A first revision is published May 26 with a different value. A final revision is published June 25 with yet another value. A backtest querying data as of April 15 must return no value at all, since nothing had been published yet at that date.">
@@ -192,6 +199,11 @@
   a real, quantified magnitude.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine judging how good a school is by only interviewing the students who are still enrolled — never the ones who dropped out. The kids you can actually interview will, on average, look pretty successful, because struggling students are exactly the ones most likely to have already left. You'd walk away thinking the school is amazing, when really you just never talked to the people it failed. A database that only includes "what's still around today" makes the exact same mistake with funds, companies, or currencies that quietly disappeared along the way.</p>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
@@ -214,6 +226,11 @@
     of two — not because any single number in the survivors-only database is wrong, but because the
     dataset silently excluded exactly the worst-performing fifth of the original universe.
     </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>If you only average the test scores of the students who didn't fail out of the class, of course the average looks great — you quietly threw away every low score before you ever hit "calculate." The 9% isn't a lie about the 80 funds that made it, it's just the wrong question answered confidently — it silently swapped "how did every fund that started out actually do" for "how did the ones that happened to survive do," and those are very different questions with very different honest answers.</p>
+    </div>
   </div>
 
   <div class="tl-box scenario">
@@ -368,5 +385,28 @@
     <a href="data-architecture-storage-versioning.html">Data Architecture for Systematic Trading →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

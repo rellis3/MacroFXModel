@@ -22,6 +22,8 @@
     <span>Prereqs: Principal Component Analysis &amp; Factor Regimes, Linear Algebra &amp; Matrices</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -141,6 +143,11 @@
     flipping a coin 20 times.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Take 30 people who have never met and ask each pair "did you happen to wear the same color shirt more often than not this month?" With only a month of data, some pairs will look coincidentally matched just by luck — not because they coordinated, but because a small sample of days always throws up some accidental patterns. Build a "who matches whom" grid out of those coincidences and it won't look perfectly random either — it'll show fake clusters, purely from having too few days to average the coincidences away.</p>
+  </div>
+
   <h3>Step 3 — the Marchenko-Pastur law</h3>
   <p>
     Marchenko and Pastur (1967) proved something remarkable about exactly
@@ -223,6 +230,11 @@
     unrecoverable directions).
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Marchenko-Pastur law is the precise "how much wobble is normal" answer to the coin-flip question — not just "there will be some spread," but the exact lowest and highest values pure luck could plausibly produce, given how many things you're comparing versus how many days you watched them for. Anything inside that range is a shrug ("could easily be nothing"); anything clearly outside it is a real signal ("that's too big to be luck").</p>
+  </div>
+
   <div class="tl-solid blue">
     <strong>The insight:</strong> it's not \(N\) alone, and not \(T\) alone —
     only their ratio \(q=N/T\) determines the noise band's width. A basket of
@@ -256,6 +268,11 @@
     components the PCA lesson was already more cautious about — are exactly
     the ones most likely to land inside it.</li>
   </ul>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once you know the "how much wobble is normal" range, checking a real eigenvalue against it is just a sorting question: does this number sit comfortably inside the range luck alone could produce, or does it stick out way past it? An eigenvalue deep inside the range hasn't been proven fake — it's just that this amount of data can't tell it apart from fake. An eigenvalue way outside the range has cleared that bar and earned the label "probably real."</p>
+  </div>
 
   <div class="tl-symbols"><table>
     <tr><td>\(N\)</td><td>Number of instruments in the basket — the number of rows/columns of the correlation matrix, and the number of eigenvalues it has.</td></tr>
@@ -414,6 +431,11 @@
     cleaning is a real, well-established extension worth knowing exists, not
     something built or claimed here.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of eigenvalue cleaning like averaging out the static on an old radio recording while leaving the actual music untouched: everything that's indistinguishable from background hiss gets smoothed into one flat, honest "this part is just noise" value, while anything that's clearly a real note (an eigenvalue far outside the band) is kept exactly as recorded. The result is a "cleaner" correlation matrix that no longer pretends the static contains a hidden melody.</p>
+  </div>
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -641,5 +663,28 @@
     <a href="fractional-brownian-motion.html">Fractional Brownian Motion →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

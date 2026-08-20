@@ -15,12 +15,22 @@
 
 import { selectStrategy } from '../js/forecastCore.js';
 import { MODEL_V0 } from './modelV0.js';
+import { MODEL_V1 } from './modelV1.js';
 import { newsGate, pairCurrencies, DEFAULT_NEWS_CFG } from './newsGate.js';
 
 export const DECIDE_DEFAULTS = {
   maxStalenessMs: 15 * 60_000,  // live snapshots older than this fail closed
   maxDistSigma: 0.35,           // a zone farther than this from price ≠ a touch
 };
+
+// modelV1 is a re-fit of v0's own feature set (Brier 0.2724→0.2469, OOS,
+// FIT_FINDINGS.md) — a calibration win, not a selectivity win. It is fit ONLY
+// on the 6 FX majors below; gold/indices/JPY crosses stay on the hand-set v0
+// prior until they get their own fit (modelV1.js's own header warning).
+// opts.model still overrides this for callers that want a specific model
+// (ablation tooling, tests).
+const MODEL_V1_PAIRS = new Set(MODEL_V1.fit.pairs);
+const defaultModelFor = pair => MODEL_V1_PAIRS.has(pair) ? MODEL_V1 : MODEL_V0;
 
 // ── Macro alignment (the TDE-side half of the macro contract) ────────────────
 // The snapshot carries a direction-agnostic macro context (regime + the pair's
@@ -56,6 +66,14 @@ export const INTRADAY_FEATURES = [
 // (and that fit is where the reversion→continuation lesson finally pays off).
 export const HTF_FEATURES = ['htf_align'];
 
+// WaveTrend MTF-STRETCH — the Phase-11 validated directional gate: at a level touch,
+// is WaveTrend OB/OS-stretched (M15+H1 zone agreement, wt1 ±53) in the fade direction?
+// Standalone it lifts the median fade win-rate 50%→62% OOS but is sub-cost as a trade;
+// here it enters the fit as a candidate SELECTION feature. Zero-weighted in v0 like every
+// other candidate — the fit decides any live weight. Fed via intraday.wtStretchDir
+// (+1 = overbought, −1 = oversold, 0 = mid), computed causally at the touch.
+export const WT_FEATURES = ['wt_stretch_fade'];
+
 // CREDIT — corporate-spread (HY OAS) risk-appetite candidate features. The thesis
 // (credit widening leads equity vol / risk-off) is being falsified separately in
 // credit-leadlag.html; here the features are LOGGED-BUT-INERT (no v0 weight, like
@@ -63,6 +81,24 @@ export const HTF_FEATURES = ['htf_align'];
 // All 0 when the snapshot has no credit context, so pre-credit rows are unchanged.
 // They only become live via a promoted fit — never a hand-set weight (§7c #3).
 export const CREDIT_FEATURES = ['credit_widening', 'credit_stress', 'credit_fade_in_stress'];
+
+// GAMMA/OI — dealer positioning candidates, off the existing gamma-flow bricks
+// (js/gammaFlow.js: gammaFlip + distanceToFlip) that already document the
+// fade/follow read but were never wired to a live feature. Above the flip =
+// dealers net long gamma = hedging DAMPENS moves (pin risk, favors fade);
+// below = net short gamma = hedging AMPLIFIES moves (favors follow/continuation).
+// wall_* additionally requires the zone sit near a call/put wall (the magnet a
+// pin needs, or the level a short-gamma break accelerates through). LOGGED-BUT-
+// INERT like every candidate above — 0 with no OI context, no v0 weight.
+export const OI_FEATURES = ['gamma_pin_fade', 'gamma_accel_follow', 'wall_pin_fade', 'wall_break_follow'];
+
+// LIQUIDITY SWEEP — did today's price already pierce THIS zone and fail (or
+// hold)? Bar-close read off featureState.computeZoneSweep (OANDA gives no tick/
+// volume data, so "wick beyond the level, close back inside" is the honest
+// substitute for a true stop-hunt detector). Zero when the snapshot carries no
+// sweep read for the hit zone (most touches — this only fires when today's
+// price has already tested the level once). LOGGED-BUT-INERT, same as above.
+export const SWEEP_FEATURES = ['sweep_reject_fade', 'sweep_continue_follow'];
 
 // → +1 aligned / 0 neutral / −1 opposed
 export function macroState(riskSens, regime, direction) {
@@ -91,15 +127,26 @@ export function sessionPhaseUTC(ms) {
 //                  backfill: exact per-touch state on the request)
 //   asia/monday ladder — the range-line bot's lines, visible only once their
 //                  formation window has closed (the analyser's validFrom gate)
-// Zone styling per ladder key. asiaAlign carries count 2 — a today-line and a
-// yesterday-line agreeing within the 2-pip rule IS two sources of confluence —
-// and tight alignment (≤10% of the threshold / same fib) gets a score bump.
+//
+// Deliberately NOT a zone source: the raw, unconfluenced ladder grid (every fib
+// rung of today's Asia/Monday range, and yesterday's, on their own — the Pine
+// indicator's "All Levels" mode). Only CONFLUENCE — today's ladder line agreeing
+// with yesterday's (asiaAlign) or this week's Monday agreeing with last week's
+// (mondayAlign) within the 2-pip rule — earns a zone. That's the Pine script's
+// "Strong Levels" tier (confluence-only), not "All Levels" (everything): a raw,
+// unconfirmed rung is noise, not a level. computeSessionLadders still computes
+// the raw grid (asia/monday/prevAsia) — it's the input alignLines() matches
+// against — it's just never turned into a standalone zone here.
+//
+// mondayAlign is weighted ABOVE asiaAlign (2.6 vs 2.0 base): a weekly level
+// agreeing with LAST week is a rarer, higher-conviction confirmation than a
+// daily one agreeing with yesterday, and reacts more (a full week of price
+// action revisiting the same level, not just one session). Tight alignment
+// (≤10% of the threshold / same fib) adds the same +0.4 bump to both — the
+// tightness bonus is about precision of the match, not which timeframe it's on.
 export const LADDER_ZONE_STYLE = {
-  asia:        { source: 'asia_ladder',       score: 1.2, count: 1 },
-  monday:      { source: 'monday_ladder',     score: 1.2, count: 1 },
-  prevAsia:    { source: 'prev_asia_ladder',  score: 1.0, count: 1 },
   asiaAlign:   { source: 'asia_prev_align',   score: 2.0, count: 2 },
-  mondayAlign: { source: 'monday_prev_align', score: 2.0, count: 2 },
+  mondayAlign: { source: 'monday_prev_align', score: 2.6, count: 2 },
 };
 
 export function dynamicZones(snapshot, intra, nowSec) {
@@ -120,8 +167,8 @@ export function dynamicZones(snapshot, intra, nowSec) {
   // Consolidate COINCIDENT dynamic levels (within ~2 pips — the alignment
   // threshold, deliberately much tighter than the zone tolerance so adjacent
   // ladder rungs never chain-merge): one representative per SOURCE (a grid
-  // cannot confirm itself), and an asia_prev_align member SUBSUMES its
-  // constituent asia/prev lines — its count 2 already represents them.
+  // cannot confirm itself) — e.g. session_hilo landing on the same price as
+  // asiaAlign/mondayAlign combines into one stronger zone instead of two.
   const epsAbs = snapshot.meta?.tolPips > 0 ? 2 * (snapshot.meta.tolAbs / snapshot.meta.tolPips) : 0;
   if (!(epsAbs > 0) || out.length < 2) return out;
   out.sort((a, b) => a.price - b.price);
@@ -134,8 +181,6 @@ export function dynamicZones(snapshot, intra, nowSec) {
       const src = z.sources[0];
       if (!bySource.has(src) || z.score > bySource.get(src).score) bySource.set(src, z);
     }
-    if (bySource.has('asia_prev_align')) { bySource.delete('asia_ladder'); bySource.delete('prev_asia_ladder'); }
-    if (bySource.has('monday_prev_align')) bySource.delete('monday_ladder');
     const reps = [...bySource.values()];
     const base = reps.reduce((a, b) => (b.score > a.score ? b : a));
     merged.push(reps.length === 1 ? base : {
@@ -198,6 +243,31 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
   const trendy = regime === 'BULL' || regime === 'BEAR';
   const isFade = action === 'fade';
 
+  // Gamma/OI positioning at this zone (see OI_FEATURES above for the mechanism).
+  // gammaLong (dealers net long gamma, above the flip) → dampening/pinning, a
+  // fade tailwind. gammaShort (below the flip) → amplifying, a follow tailwind.
+  const oi = snapshot.oi;
+  const gammaLong = oi?.side === 'positive';
+  const gammaShort = oi?.side === 'negative';
+  // nearest OI wall to the ZONE (not to spot) — a pin needs a magnet, a break
+  // needs a level to clear. Doesn't distinguish call vs put wall mechanics
+  // (both treated as "a wall"); a real refinement, not attempted in this pass.
+  const nearestWallDistSigma = (() => {
+    if (!oi?.walls?.length || !(sigmaAbs > 0)) return null;
+    let best = Infinity;
+    for (const w of oi.walls) { const d = Math.abs(w.price - zone.price) / sigmaAbs; if (d < best) best = d; }
+    return best;
+  })();
+
+  // Liquidity sweep at this zone (see SWEEP_FEATURES above). A fade wants the
+  // sweep on the side being faded AND rejected; a follow wants the sweep in
+  // the breakout direction AND still holding (not rejected).
+  const sweep = zone.sweep;
+  const sweepFadeMatch = sweep && sweep.rejected &&
+    ((direction === 'short' && sweep.direction === 'up') || (direction === 'long' && sweep.direction === 'down'));
+  const sweepFollowMatch = sweep && !sweep.rejected &&
+    ((direction === 'long' && sweep.direction === 'up') || (direction === 'short' && sweep.direction === 'down'));
+
   const features = {
     fade_range_regime:     isFade && regime === 'RANGE' ? 1 : 0,
     follow_trend_regime:  !isFade && trendy && T >= 0.55 ? 1 : 0,
@@ -231,11 +301,27 @@ export function buildEventFeatures(snapshot, request, zoneHit, nowMs, softNewsSo
     intraday_range_exhausted_fade:    isFade && rangeUsed != null ? clamp01((rangeUsed - 1.0) / 0.5) : 0,
     intraday_fade_too_early:          isFade && rangeUsed != null ? clamp01((0.4 - rangeUsed) / 0.4) : 0,
     intraday_vwap_stretch_fade:       isFade && intra ? clamp01((Math.abs(intra.vwapDistSigma ?? 0) - 0.5) / 1.0) : 0,
+    // WaveTrend MTF-stretch aligned with the fade (Phase-11 validated gate): 1 when
+    // fading an up-line that is overbought-stretched, or a down-line oversold-stretched.
+    wt_stretch_fade:  isFade && ((zoneAbove && (intra?.wtStretchDir ?? 0) > 0) || (!zoneAbove && (intra?.wtStretchDir ?? 0) < 0)) ? 1 : 0,
     // CREDIT (zero-weighted in v0 — see CREDIT_FEATURES): all 0 when no credit
     // context, so pre-credit rows are unchanged. Fit decides any live weight.
     credit_widening:        snapshot.credit && snapshot.credit.widening > 0 ? clamp01((snapshot.credit.wideningBps ?? 0) / 40) : 0,
     credit_stress:          snapshot.credit && Number.isFinite(snapshot.credit.stressProb) ? clamp01(snapshot.credit.stressProb) : 0,
     credit_fade_in_stress:  isFade && snapshot.credit && Number.isFinite(snapshot.credit.stressProb) ? clamp01(snapshot.credit.stressProb) : 0,
+    // GAMMA/OI (zero-weighted in v0 — see OI_FEATURES): all 0 with no OI context
+    // for this instrument, so pre-OI rows are unchanged. `near` (one push from
+    // flipping) discounts the read rather than zeroing it — still the current
+    // regime, just a shakier one.
+    gamma_pin_fade:     isFade && gammaLong ? (oi.near ? 0.6 : 1) : 0,
+    gamma_accel_follow: !isFade && gammaShort ? (oi.near ? 0.6 : 1) : 0,
+    wall_pin_fade:       isFade && gammaLong && nearestWallDistSigma != null ? clamp01((0.35 - nearestWallDistSigma) / 0.35) : 0,
+    wall_break_follow:  !isFade && gammaShort && nearestWallDistSigma != null ? clamp01((0.35 - nearestWallDistSigma) / 0.35) : 0,
+    // LIQUIDITY SWEEP (zero-weighted in v0 — see SWEEP_FEATURES): 0 unless
+    // today's price already tested this exact zone once (most touches are the
+    // first test — that's expected, not a data gap).
+    sweep_reject_fade:     isFade && sweepFadeMatch ? clamp01(sweep.extensionSigma / 0.5) : 0,
+    sweep_continue_follow: !isFade && sweepFollowMatch ? clamp01(sweep.extensionSigma / 0.5) : 0,
   };
 
   return { features, meta: { action, direction, stretch: +stretch.toFixed(3), phase, zoneAbove, intraday: intra ? { rangeUsed, posInRange: intra.posInRange ?? null, vwapDistSigma: intra.vwapDistSigma ?? null, source: request.intraday ? 'request' : 'snapshot' } : null } };
@@ -259,12 +345,13 @@ export function scoreLogistic(features, model) {
 // ── The decision (the whole fast loop) ───────────────────────────────────────
 export function decide(snapshot, request = {}, opts = {}) {
   const t0 = Date.now();
-  const model = opts.model ?? MODEL_V0;
+  const pair = request.pair ?? snapshot?.pair ?? null;
+  const model = opts.model ?? defaultModelFor(pair);
   const cfg = { ...DECIDE_DEFAULTS, ...opts };
   const nowMs = opts.nowMs ?? Date.now();
 
   const base = {
-    ok: true, pair: request.pair ?? snapshot?.pair ?? null,
+    ok: true, pair,
     model_version: model.version, calibrated: model.calibrated === true,
     mode: snapshot?.mode ?? null,
   };

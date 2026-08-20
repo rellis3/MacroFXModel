@@ -35,6 +35,11 @@
  *   Correction factors reset to 1.0 (previous corrections calibrated for GARCH/RS-EWMA)
  */
 
+import { COG_CONST } from './cogReverseEngineer.js';
+import { buildLadder, flattenLadder } from './forecastLadder.js';
+import { forecastSigma } from './forecastSigma.js';
+import { LADDER_PARAMS } from './forecastLadderParams.js';
+
 const TRADING_DAYS = 252;
 const EWMA_LAMBDA  = 0.94;
 
@@ -149,6 +154,87 @@ const NEWS_PATTERNS = [
   { re: /gross\s*domestic|gdp/i,                        mult: 1.05, label: 'GDP'       },
   { re: /producer\s*price|ppi/i,                        mult: 1.05, label: 'PPI'       },
 ];
+
+// ── Scheduled-event TAG (the ladder's conditioning input) ─────────────────────
+//
+// Buckets match `forge/vol.py`'s EVENT_TAGS exactly, because the multipliers were fit
+// against them: FOMC > NFP > CPI > high > medium > none. The three named US releases
+// get their own buckets — they move every instrument, not just dollar pairs — and
+// below them the day is graded by the feed's own impact rating.
+//
+// PER INSTRUMENT, not US-only. The previous version looked at `country === 'US'` and
+// nothing else, so 2026-08-20 — two HIGH-impact AU releases (Employment Change,
+// Unemployment Rate), no US ones — tagged `none` and applied a ×0.90 QUIET-DAY
+// DISCOUNT to AUDUSD and AUDJPY on one of the biggest AUD days of the month. The
+// calendar feed had those events all along; today.html was already showing them.
+//
+// A null/undefined tag means "not known" and yields ×1.0 — never the quiet-day
+// discount. `none` is a positive statement that the calendar was read and the day is
+// clear; the two must not collapse (see detectEventTagFor's contract).
+const _CCY_COUNTRY = { USD: 'US', EUR: 'EU', GBP: 'GB', JPY: 'JP', AUD: 'AU',
+                       NZD: 'NZ', CAD: 'CA', CHF: 'CH' };
+
+// Instrument -> the currencies whose calendar moves it. Mirrors
+// forge/ff_calendar.py's INSTRUMENT_CCY; USD is in every set because a US macro shock
+// moves AUDJPY too, and the per-instrument fit decides how much.
+const _INSTRUMENT_CCY = {
+  GOLD: ['USD'], NQ: ['USD'], SPX500: ['USD'], US30: ['USD'], US2000: ['USD'],
+  DE30: ['EUR', 'USD'], UK100: ['GBP', 'USD'],
+};
+
+export function instrumentCurrencies(name) {
+  const n = String(name ?? '').toUpperCase();
+  if (_INSTRUMENT_CCY[n]) return _INSTRUMENT_CCY[n];
+  if (n.length === 6) return [...new Set([n.slice(0, 3), n.slice(3), 'USD'])];
+  return ['USD'];
+}
+
+// Buckets match forge/vol.py's EVENT_TAGS. There is deliberately no `medium`: fitting
+// one measured no effect (0.98-1.07) and, worse, it left `none` meaning "not even a
+// medium release", which turned out to be a HOLIDAY detector — 40% Mondays, top dates
+// Jan 1 / Dec 25 / Jul 4 — fitting at 0.43. Live, with a one-week feed fetched
+// intraday, a sparse response would then have halved every band on an ordinary day.
+const _EVENT_RANK = { FOMC: 6, NFP: 5, CPI: 4, high: 3, holiday: 2, none: 1 };
+const _RE_FOMC = /fomc statement|federal funds rate|fomc press conference|fomc economic projections/i;
+const _RE_NFP  = /non-farm employment change|non-farm payrolls/i;
+const _RE_CPI  = /^core cpi (m\/m|y\/y)|^cpi (m\/m|y\/y)/i;
+
+/**
+ * Tag one session for one instrument.
+ * @param {Array|null} events  the day's calendar rows, or null/undefined if the feed
+ *                             could not be read — which returns null, NOT 'none'.
+ */
+export function detectEventTagFor(events, instrument = '') {
+  if (!Array.isArray(events)) return null;          // feed unavailable -> no conditioning
+  const countries = new Set(instrumentCurrencies(instrument)
+    .map(c => _CCY_COUNTRY[c]).filter(Boolean));
+  let best = 'none';
+  for (const ev of events) {
+    if (!countries.has(String(ev.country ?? '').toUpperCase())) continue;
+    const impact = String(ev.impact ?? '').toLowerCase();
+    const title  = String(ev.event ?? '');
+    const isUS   = String(ev.country ?? '').toUpperCase() === 'US';
+    // `holiday` is a real bucket, not an absence of one: the feed marks bank holidays
+    // (impact 'holiday', or a "Bank Holiday" title), and a thin session runs at
+    // roughly half range. Leaving them inside `none` is what made the quiet-day
+    // multiplier fit at 0.43 and turned it into a holiday detector.
+    const isHoliday = impact === 'holiday' || /bank holiday/i.test(title);
+    let tag = impact === 'high' ? 'high' : isHoliday ? 'holiday' : 'none';
+    if (isUS && impact === 'high') {
+      if (_RE_FOMC.test(title))      tag = 'FOMC';
+      else if (_RE_NFP.test(title))  tag = 'NFP';
+      else if (_RE_CPI.test(title))  tag = 'CPI';
+    }
+    if (_EVENT_RANK[tag] > _EVENT_RANK[best]) best = tag;
+  }
+  return best;
+}
+
+// Back-compat shim: the old US-only signature, kept so any caller that hasn't been
+// moved to the per-instrument form still gets a sane answer.
+export function detectEventTag(events = []) {
+  return detectEventTagFor(events, 'EURUSD');
+}
 
 export function detectNewsMultiplier(events = []) {
   const usHigh = events.filter(e =>
@@ -340,8 +426,16 @@ export function _driftD(ohlc, sigmaFwd, win = 14) {
 }
 
 // ── Shared output builder ─────────────────────────────────────────────────────
+// Band constants: COG (js/cogBands.js's COG_CONST), uniform across asset classes —
+// standardized 2026-08-17, replacing the prior per-asset-corrected Feller/BM set,
+// so the daily-brief ladder a trader reads on today.html matches the wider COG
+// geometry the volatility bot already trades on (see CLAUDE.md "Band lines: COG
+// is the default"). assetClass still selects the σ ESTIMATOR (YZ/GARCH) above —
+// only the range-CONSTANT step changes here. `p`/ASSET_PARAMS' hl_*_corr/oc_*_corr
+// fields are now unused by this function (COG applies no per-asset correction);
+// they remain live for the assetClass σ-estimator branch in computeForecast() and
+// for the v2 drift-adjusted fields below, which are untouched by this migration.
 export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
-  const p           = ASSET_PARAMS[assetClass] ?? ASSET_PARAMS.fx;
   const sigmaFwdPct = sigmaFwd * 100;
   const volAnnual   = sigmaFwdPct * Math.sqrt(TRADING_DAYS);
 
@@ -377,8 +471,11 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
   // O-H and O-L have the same distribution as O-C by the BM reflection principle:
   // max(B_t, t∈[0,T]) ~ |B_T|, so median/75th are identical to the O-C values.
   // They are kept as explicit named fields for API clarity.
-  const oc_med = HN_P50 * p.oc_50_corr * sigmaFwdPct;
-  const oc_75v = HN_P75 * p.oc_75_corr * sigmaFwdPct;
+  // COG's constants are uniform (no per-asset-class correction — see cogBands.js).
+  const hl_med = COG_CONST.BM_P50 * sigmaFwdPct;
+  const hl_75v = COG_CONST.BM_P75 * sigmaFwdPct;
+  const oc_med = COG_CONST.HN_P50 * sigmaFwdPct;
+  const oc_75v = COG_CONST.HN_P75 * sigmaFwdPct;
 
   return {
     vol_annual: r2(volAnnual),
@@ -388,12 +485,12 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
     cone_63d,
     vol_vov,
     vol_vov_label,
-    hl_median:  r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct),
-    hl_75:      r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct),
-    hl_5d:      r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt5),
-    hl_5d_75:   r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * sqrt5),
-    hl_20d:     r2(BM_RANGE_P50 * p.hl_50_corr * sigmaFwdPct * sqrt20),
-    hl_20d_75:  r2(BM_RANGE_P75 * p.hl_75_corr * sigmaFwdPct * sqrt20),
+    hl_median:  r2(hl_med),
+    hl_75:      r2(hl_75v),
+    hl_5d:      r2(hl_med * sqrt5),
+    hl_5d_75:   r2(hl_75v * sqrt5),
+    hl_20d:     r2(hl_med * sqrt20),
+    hl_20d_75:  r2(hl_75v * sqrt20),
     oc_median:  r2(oc_med),
     oc_75:      r2(oc_75v),
     oc_5d:      r2(oc_med * sqrt5),
@@ -427,7 +524,7 @@ export function _buildOutput(volSeries, sigmaFwd, assetClass, newsMult) {
  *                              sigmaFwd (and thus all HL/OC ranges) before correction.
  * @returns forecast object — all values are percentages
  */
-export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
+export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = {}) {
   const n = ohlc.length;
   if (n < 60) throw new Error(`Need ≥60 bars, got ${n}`);
 
@@ -482,7 +579,34 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0) {
   const _d       = _driftD(ohlc, sigmaFwd);
   const r2v      = x => Math.round(x * 100) / 100;
 
+  // ── Fitted ladder (the "Forecast" export family) ────────────────────────────
+  // Additive: every incumbent field above is untouched, so the COG exports, the
+  // live volatility bot and every archived comparison keep reading exactly what
+  // they read before. The ladder is a SEPARATE calc with its own sigma — the
+  // estimator its widths were fit against (see js/forecastLadderParams.js) — which
+  // is why it cannot simply reuse `sigmaFwd` above.
+  const _instrument = opts.instrument ?? '';
+  const _eventTag   = opts.eventTag ?? 'none';
+  let _ladder = null, _ladderW = null, _ladderM = null;
+  try {
+    const _lp = LADDER_PARAMS.pairs?.[String(_instrument).toUpperCase()]
+             ?? LADDER_PARAMS.classDefaults?.[assetClass];
+    const _ls = forecastSigma(ohlc, _lp?.estimator ?? 'yz_30');
+    if (_ls > 0) {
+      const _mk = horizon => buildLadder(_ls, {
+        instrument: _instrument, assetClass, eventTag: _eventTag, horizon,
+      });
+      _ladder  = _mk('daily');
+      _ladderW = _mk('weekly');
+      _ladderM = _mk('monthly');
+    }
+  } catch { /* ladder is additive — never let it break the incumbent forecast */ }
+
   return Object.assign(_buildOutput(volSeries, sigmaFwd, assetClass, newsMult), {
+    ladder:         _ladder,
+    ladder_weekly:  _ladderW,
+    ladder_monthly: _ladderM,
+    ladder_flat:    _ladder ? flattenLadder(_ladder) : null,
     yz_vol_annual:     r2s(yzPct     * Math.sqrt(TRADING_DAYS)),
     yz_hl_median:      r2s(BM_RANGE_P50 * yzPct),
     yz_oc_median:      r2s(HN_P50       * yzPct),

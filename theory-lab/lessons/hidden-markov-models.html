@@ -22,6 +22,8 @@
     <span>Prereqs: GARCH &amp; Volatility Clustering, Bayesian Inference</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -117,6 +119,11 @@
   econometric Markov-switching models referenced at the end of this lesson.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The Markov property just means "only today matters for guessing tomorrow — you don't need to know the whole backstory." It's like guessing tomorrow's weather from today's weather alone, without needing to know what the weather was doing last week. It's not perfectly true of real markets, but it's a simplification that makes the math solvable, the same trade-off every model in this curriculum makes somewhere.</p>
+  </div>
+
   <h3>Layer 2 — the transition matrix</h3>
   <p>
   If there are \(N\) possible states, the full set of one-step transition probabilities is captured
@@ -148,6 +155,11 @@
   0.5 (for a 2-state chain) means the state is nearly random from one step to the next, with almost no
   persistence at all.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The transition matrix is just a table of odds: "if I'm in this mood today, how likely am I to still be in it tomorrow, versus switching to the other mood?" The numbers on the diagonal (stay-put odds) tell you how sticky each mood is — close to 1 means once you're in that mood, you tend to stay there a while; close to 50/50 means the mood is basically a coin flip every single day.</p>
+  </div>
 
   <h3>Layer 3 — hidden states and emission distributions</h3>
   <p>
@@ -210,6 +222,11 @@
   and everything you'll fit from data — flows from these three pieces.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You can't see the hidden state directly — you only see the clues it leaves behind. The emission distribution just says "here's what a typical day looks like when the market is secretly in this regime" — trending days might typically drift up gently with low noise, choppy days might typically sit flat with more noise. Seeing a particular day's return is like seeing a stranger's coat: it's a hint about the hidden weather, not proof of it.</p>
+  </div>
+
   <h3>The three canonical HMM problems</h3>
   <p>
   Given this setup, essentially all practical use of HMMs reduces to one of three questions, each with
@@ -253,7 +270,6 @@
     <strong>Baum-Welch algorithm</strong>, a special case of the more general
     <strong>Expectation-Maximization (EM)</strong> algorithm. Conceptually, without deriving the full
     update equations, Baum-Welch works by iterating two steps until the parameters stop changing much:
-    </p>
     <ol style="margin-top:0.5em;">
       <li><strong>E-step ("guess the states"):</strong> given the <em>current</em> guess of \(A\) and
       the emission parameters, use the forward algorithm (and a companion "backward" pass) to compute,
@@ -263,7 +279,6 @@
       re-estimate \(A\) and each state's \((\mu_k, \sigma_k^2)\) the way you'd estimate any weighted
       mean/variance/transition-frequency, treating the E-step's probabilities as weights.</li>
     </ol>
-    <p>
     Repeat E-step, then M-step, then E-step again, and so on. Each full cycle is guaranteed to never
     decrease the likelihood of the observed data under the model (it converges to at least a local
     maximum, not necessarily the global one — a genuine practical caveat, which is why real
@@ -273,6 +288,11 @@
     recognizing the pattern beyond just HMMs.
     </li>
   </ul>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Three different questions, three different tools. "How believable is this whole story overall?" — that's evaluation. "What's the single most likely thing that actually happened, day by day?" — that's decoding. "I don't even know the rules of this game yet — can you figure them out just by watching?" — that's learning, and it works by alternating best guesses: guess the hidden days, then refit the rules to match those guesses, then guess again with the better rules, over and over until it stops improving.</p>
+  </div>
 
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
@@ -614,5 +634,28 @@
     <a href="kalman-filter.html">Kalman Filter &amp; Adaptive Relationships →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

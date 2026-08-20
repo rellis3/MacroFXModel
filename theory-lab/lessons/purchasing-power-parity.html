@@ -22,6 +22,8 @@
     <span>Prereqs: Interest Rate Parity</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
 <div class="tl-tldr">
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
@@ -116,6 +118,11 @@
   rather than something you'd expect to hold to the decimal in real data.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Absolute PPP says: take everything an average family buys in a year, add up the price in dollars, add up the same shopping list's price in another currency converted to dollars — those two totals should match. In real life they almost never do, mostly because a haircut in Tokyo can't be shipped to New York to undercut the local price the way a shirt can, and different countries fill their shopping carts with different things to begin with.</p>
+  </div>
+
   <h3>Relative PPP — the version that's actually useful</h3>
   <p>
   Because absolute PPP requires measuring identical baskets in identical proportions across countries
@@ -172,6 +179,11 @@
   price levels across two different consumption baskets simply isn't.
   </p>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Relative PPP gives up on matching the exact prices and just asks about the direction of travel: if one country's prices are rising faster than another's, that country's currency should lose value roughly in step, so nothing gets systematically more or less competitive over time. It's less strict than absolute PPP, and that's exactly why it holds up better — it only needs the two countries' inflation rates and the currency's move to roughly track each other, not their whole price lists to ever have matched in the first place.</p>
+  </div>
+
   <h3>The real exchange rate</h3>
   <p>
   PPP's most useful practical construct is the <strong>real exchange rate</strong> — the nominal rate
@@ -198,6 +210,11 @@
   foreigners on a PPP basis); "undervalued" means the opposite. Nothing about this says anything about
   <em>when</em> reversion happens — that's the subject of the chart and the trading-scenario box below.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The real exchange rate is a "cheap-o-meter" for a currency — it strips out the part of a currency's move that's just catching up with inflation, and leaves behind whatever's left over. If that leftover number is way above where it usually sits, the currency looks pricey; way below, it looks cheap. It's a gauge for whether something looks out of whack, not a promise about when — or even whether — it snaps back.</p>
+  </div>
 
   <div class="tl-chart">
     <div class="tl-chart-label">Stylized real exchange rate vs. PPP fair value, 24-year horizon</div>
@@ -265,6 +282,11 @@
   multi-year half-life. That slowness is the central empirical fact this lesson is built around: PPP
   is a real, long-run regularity and a hopeless short-run clock, simultaneously.
   </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>"Half-life" here means: if a currency is 20% too cheap today, how long, on average, before that gap shrinks to 10%? The surprising finding is that the answer is years — often three to five of them — not weeks or months. It's like a helium balloon that's supposed to drift back down eventually, but drifts so slowly you'd need to check on it every few months just to notice it's moved at all.</p>
+  </div>
 
   <div class="tl-solid red">
     <strong>The trap:</strong> PPP deviations can widen before they narrow. Nothing in the literature
@@ -336,6 +358,10 @@
       wages in the productive tradeable sector pull up wages, and therefore prices, in the
       non-tradeable sector too). A currency that looks "PPP-rich" may partly just reflect this
       structural effect rather than a temporary mispricing that will revert.
+      <div class="tl-eli5">
+        <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+        <p>Richer countries tend to have pricier haircuts and restaurant meals, and that's not a currency being overvalued — it's because workers there are more productive at the stuff that can be exported, which pulls wages, and therefore local service prices, up across the whole economy. A currency that looks "expensive" on a simple PPP check might just be reflecting genuinely higher local wages, not a bubble waiting to pop.</p>
+      </div>
       </li>
       <li>
       <strong>Forgetting that PPP deviations can widen, not just narrow.</strong> Mean reversion over
@@ -459,5 +485,28 @@
     <a href="taylor-rule.html">The Taylor Rule →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

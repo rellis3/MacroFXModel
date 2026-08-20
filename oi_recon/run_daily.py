@@ -1,9 +1,16 @@
-"""THE one command. Capture -> build -> log -> compare -> verdict.
+"""THE one command. Capture -> smile -> build -> log -> compare -> verdict.
 
   python run_daily.py                 capture + build + compare, writes NO KV
   python run_daily.py --write         publish (target decided by the OI modal toggle)
   python run_daily.py --write --live  force the REAL key oi_store, ignoring the toggle
   python run_daily.py --skip-sweep    reuse today's captures, just rebuild + compare
+  python run_daily.py --write --no-chain    four views only, skip the IV smile
+
+CAPTURE IS TWO PHASES. Phase 1 pulls the four matrix views for every product;
+phase 2 then revisits each product, selects the expiry the walls sit on, and
+captures that expiry's per-strike chain (-> charm/vanna/skew). They are separate
+sweeps rather than interleaved because selecting an expiry scopes the whole tool
+and only a fresh session clears it - see run_sweep.py --chain.
 
 Runs the stages that were separate commands, and ends with one verdict a human
 (or a scheduler) can act on without reading the scrollback:
@@ -139,6 +146,19 @@ def main() -> None:
     ap.add_argument('--live', action='store_true',
                     help='force oi_store, overriding the oi_auto_target toggle (one-off runs)')
     ap.add_argument('--skip-sweep', action='store_true', help='reuse today\'s captures')
+    # The per-strike IV smile (-> charm/vanna/skew) is ON, as a SECOND PHASE.
+    #
+    # The first attempt interleaved it per product and had to drop the session
+    # after each one (the only way to clear a selected expiry). QuikStrike served
+    # about five mints and then refused, taking the matrices with it:
+    # 20/44 tables on 2026-08-19. Phase 2 now runs as its own sweep after every
+    # four-view capture is done, so it costs ONE mint per night.
+    #
+    # Ordering matters beyond politeness: phase 1 must never see a scoped view,
+    # because a single-expiry OI ladder still looks like a valid ladder and would
+    # be written as the full book.
+    ap.add_argument('--no-chain', action='store_true',
+                    help='skip phase 2 (the per-strike IV smile / charm / vanna)')
     ap.add_argument('--headless', action='store_true', help='off-screen browser')
     ap.add_argument('--dir', help="capture dir to use (default: today's)")
     a = ap.parse_args()
@@ -157,7 +177,9 @@ def main() -> None:
         if not n:
             failed.append('capture')
     else:
-        cmd = [PY, 'run_sweep.py'] + (['--headless'] if a.headless else [])
+        cmd = ([PY, 'run_sweep.py']
+               + (['--headless'] if a.headless else [])
+               + ([] if a.no_chain else ['--chain']))
         rc, out = run(cmd, 'capture')
         stages['capture'] = grab(out, 'tables captured') or 'no summary line'
         if rc:

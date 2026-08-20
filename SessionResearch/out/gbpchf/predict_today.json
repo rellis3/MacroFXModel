@@ -1,0 +1,80 @@
+[
+  {
+    "day": "2026-05-21",
+    "checkpoint": "post_asia",
+    "range_so_far_atr": 0.30086242847924105,
+    "net_so_far_atr": 0.04860085383126913,
+    "model_range_atr": 0.9362711958317651,
+    "persistence_range_atr": 1.0047861505333808,
+    "model_p_up": 0.4718401197624696,
+    "persistence_call_up": true,
+    "range_reliability": {
+      "mae_model": 0.3202157395733294,
+      "mae_climatology": 0.3281344804795282,
+      "mae_persistence": 0.3214619726096148,
+      "p_vs_persistence": 0.1464360347548078,
+      "p_vs_null": 0.275
+    },
+    "direction_reliability": {
+      "acc_model": 0.5055060304142632,
+      "acc_climatology": 0.49868904037755635,
+      "acc_persistence": 0.48295752490823285,
+      "p_vs_persistence": 0.1997566018223574,
+      "p_vs_null": 0.3875
+    },
+    "actual_range_atr": 0.6248681206876505,
+    "actual_up": false
+  },
+  {
+    "day": "2026-05-21",
+    "checkpoint": "post_london",
+    "range_so_far_atr": 0.4489793163458779,
+    "net_so_far_atr": 0.11340199227290991,
+    "model_range_atr": 0.6644963479291593,
+    "persistence_range_atr": 0.6726910575188944,
+    "model_p_up": 0.5226179558480732,
+    "persistence_call_up": true,
+    "range_reliability": {
+      "mae_model": 0.22858373808777496,
+      "mae_climatology": 0.2399011508097597,
+      "mae_persistence": 0.22915605253844057,
+      "p_vs_persistence": 0.6821504098466532,
+      "p_vs_null": 0.15
+    },
+    "direction_reliability": {
+      "acc_model": 0.48293963254593175,
+      "acc_climatology": 0.49553805774278215,
+      "acc_persistence": 0.48661417322834644,
+      "p_vs_persistence": 0.8477882544842357,
+      "p_vs_null": 0.68125
+    },
+    "actual_range_atr": 0.6248681206876505,
+    "actual_up": false
+  },
+  {
+    "day": "2026-05-21",
+    "checkpoint": "post_overlap",
+    "range_so_far_atr": 0.5785815932292623,
+    "net_so_far_atr": 0.15737419335836592,
+    "model_range_atr": 0.31987014337520636,
+    "persistence_range_atr": 0.34715692947184595,
+    "model_p_up": 0.5217854988860611,
+    "persistence_call_up": true,
+    "range_reliability": {
+      "mae_model": 0.13368843575191136,
+      "mae_climatology": 0.14090470709351705,
+      "mae_persistence": 0.13490901449728318,
+      "p_vs_persistence": 0.04681230240767832,
+      "p_vs_null": 0.2375
+    },
+    "direction_reliability": {
+      "acc_model": 0.5099894847528917,
+      "acc_climatology": 0.5099894847528917,
+      "acc_persistence": 0.4852786540483701,
+      "p_vs_persistence": 0.14914266917866065,
+      "p_vs_null": 0.325
+    },
+    "actual_range_atr": 0.46749392732928463,
+    "actual_up": false
+  }
+]

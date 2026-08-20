@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFT Option Pricing (Carr-Madan) — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Numerical Methods / FFT Option Pricing (Carr-Madan)</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Numerical Methods 5 of 5</div>
+  <h1 class="tl-title">FFT Option Pricing (Carr-Madan)</h1>
+  <p class="tl-dek">Once a model hands you a characteristic function — Heston's does — pricing one option at a time by numerical integration works fine, until you need a whole strike curve, over and over, inside a calibration loop. Carr-Madan's 1999 trick prices the entire strip in a single FFT call.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~16 min read</span>
+    <span>Prereqs: Numerical Integration, The Heston Model, Fourier Analysis &amp; the Frequency Domain</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>When a model has a known closed-form <strong>characteristic function</strong> \(\varphi_T(u)\) — Heston does — pricing one option at one strike via direct numerical integration works, but pricing a whole strike curve means repeating that integration once per strike, which gets slow fast inside a calibration loop that reprices the whole curve at every candidate parameter set.</li>
+      <li><strong>Carr &amp; Madan (1999)</strong> found a way to price an entire strip of strikes in a single Fast Fourier Transform call instead of one integration per strike — the standard practitioner technique wherever a tractable characteristic function exists.</li>
+      <li>The trick: the raw call price isn't square-integrable near the money, which blocks a clean Fourier transform. Damping it with \(e^{\alpha k}\) fixes that, and the damped price's transform \(\psi_T(v)\) has a clean closed form directly in terms of \(\varphi_T\).</li>
+      <li>Inverting that transform is exactly the shape a discretized FFT computes efficiently — one \(O(N\log N)\) call returns prices at a whole grid of \(N\) log-strikes \(k\) at once, instead of \(N\) separate numerical integrations.</li>
+      <li>The damping factor \(\alpha\) and the FFT's strike-spacing/grid-spacing pair are not free — there's a real, tunable trade-off between them (a discrete-FFT uncertainty-principle-style constraint), not a derivation this lesson works through in full.</li>
+      <li>This is a real, load-bearing computational tool used daily wherever a model has a tractable characteristic function (stochastic-volatility, jump-diffusion) — and it flatly does not apply to models without one, where Monte Carlo or a PDE solve are the fallback instead.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="heston-model.html">Heston Model</a> lesson ended with a specific,
+    deliberately unresolved loose end: Heston's option prices come from a
+    <strong>semi-closed-form solution</strong> built from the model's
+    characteristic function, evaluated by numerically integrating that
+    characteristic function rather than by a simple algebraic formula. The
+    <a href="numerical-integration.html">Numerical Integration</a> lesson
+    already covers exactly this use case in its "how practitioners actually
+    use this" section: a characteristic-function-based pricing formula
+    reduces option pricing to a one-dimensional integral, routinely evaluated
+    with Simpson's rule or a specialized quadrature rule — low-dimensional,
+    smooth, and exactly where deterministic quadrature is the right tool.
+  </p>
+  <p>
+    That is a complete, honest answer for pricing <em>one</em> option at
+    <em>one</em> strike. But calibrating a stochastic-volatility model to an
+    observed volatility smile is a fundamentally different computational
+    problem: it means repricing the <em>entire</em> observed strike curve —
+    every quoted strike, at a given expiry — not once, but at every candidate
+    parameter set a numerical optimizer tries on its way to a fit. If pricing
+    one strike takes one numerical integration, pricing a 50-strike curve
+    takes 50 of them, and a calibration routine that tries a few hundred
+    parameter combinations before converging is now doing tens of thousands
+    of one-dimensional integrations just to fit one expiry, on one day, for
+    one underlying. That's the gap this lesson fills: Peter Carr and Dilip
+    Madan's 1999 paper, "Option valuation using the fast Fourier transform,"
+    found a way to price an <em>entire strip</em> of strikes in a single
+    Fast Fourier Transform call — turning what would be \(N\) separate
+    numerical integrations into one \(O(N\log N)\) computation covering the
+    whole grid at once.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🌊</div>
+      <h4>The Heston Model (previous category)</h4>
+      <p>Heston supplies the closed-form characteristic function \(\varphi_T(u)\) this lesson's method operates on — this lesson doesn't re-derive Heston's SDEs, it picks up exactly where that lesson's "semi-closed-form" pricing formula left off.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📡</div>
+      <h4>Fourier Analysis &amp; the Frequency Domain</h4>
+      <p>The Fourier-transform machinery — what a transform is, how a damped/decaying function gets a clean transform, why an FFT computes a discretized transform in \(O(N\log N)\) — is built there in full; this lesson reuses it rather than re-explaining it.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧮</div>
+      <h4>Numerical Integration (previous lesson)</h4>
+      <p>Direct one-strike-at-a-time numerical integration of a characteristic-function pricing formula is the baseline this lesson's cost comparison is measured against — the worked example below makes that comparison concrete.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Why price a curve one point at a time when a single machine can stamp out the whole thing at once?</h3>
+    <p>
+      Imagine needing 200 vanilla call prices, one for every strike on an
+      observed option chain, from a model like Heston. The direct approach
+      is straightforward: for each strike, set up a numerical integral
+      involving the characteristic function, evaluate it, get one price,
+      move to the next strike. That's 200 separate integrations — correct,
+      but repetitive, and it gets repeated again at the next candidate
+      parameter set a calibration routine tries, and the next, and the
+      next, potentially thousands of times over a single overnight
+      calibration run.
+    </p>
+    <p>
+      Carr-Madan's insight is that the 200 numbers being computed aren't
+      really 200 independent problems — they're 200 samples of one
+      underlying function (the option price as a function of strike), and
+      that function has a clean relationship to the characteristic function
+      in the <em>frequency domain</em>. Once a problem is framed that way,
+      the Fast Fourier Transform — a single, highly optimized algorithm for
+      converting between a function and its frequency-domain
+      representation — can produce all 200 (or 2,000, or 200,000) prices in
+      one shot, for roughly the cost of one or two of the original
+      one-at-a-time integrations. Nothing about any individual option's
+      price changes; what changes is doing the whole curve's worth of work
+      together instead of strike by strike.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three pieces, in the order Carr &amp; Madan (1999) build them: (1) why the
+    raw call price resists a clean Fourier transform and the damping fix;
+    (2) the transform of the damped price, stated as the published result;
+    (3) inverting that transform to recover the price, and why that inversion
+    is exactly the shape an FFT computes efficiently.
+  </p>
+
+  <h3>1. The problem: the raw call price isn't square-integrable</h3>
+  <p>
+    Write the call price as a function of log-strike \(k = \ln K\), holding
+    maturity \(T\) fixed: \(C_T(k)\). A Fourier transform needs its input
+    function to decay — informally, to not carry infinite total "energy" — for
+    the transform integral to converge cleanly. As \(k \to -\infty\) (strike
+    toward zero), a call's price approaches the discounted forward price
+    itself rather than decaying to zero — it stays large, not small. That
+    means \(C_T(k)\), taken as-is, is <strong>not square-integrable</strong>:
+    directly Fourier-transforming the raw call price runs into a divergence
+    problem near the money, before any FFT machinery can even be applied.
+  </p>
+  <p>
+    Carr &amp; Madan's fix is to stop transforming the raw price and instead
+    transform a <strong>damped</strong> version of it — multiply by a decaying
+    exponential in \(k\) so the result actually vanishes at both extremes:
+  </p>
+  <div class="tl-math">
+    \[ c_T(k) \;=\; e^{\alpha k}\,C_T(k) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>C_T(k)</code><span>the true call price at log-strike k, maturity T</span></div>
+    <div class="tl-eq-chip c2"><code>α &gt; 0</code><span>the damping factor — a positive constant chosen to make c_T(k) well-behaved</span></div>
+    <div class="tl-eq-chip c3"><code>c_T(k)</code><span>the damped call price — this, not the raw price, is what actually gets Fourier-transformed</span></div>
+  </div>
+  <p>
+    The role of \(\alpha\) is purely technical, not economic: it doesn't
+    change what a call is worth, it's a mathematical device that pulls the
+    price down toward zero fast enough, on both tails of \(k\), for the
+    Fourier transform to exist and converge. Recovering the true price at the
+    end just means undoing the damping — multiplying back by \(e^{-\alpha k}\)
+    — which is exactly what the inversion formula in step 3 does.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A mathematical tool called the Fourier transform only works cleanly on functions that eventually fade down to zero — but a call option's price near a very low strike doesn't fade to zero, it stays stubbornly large. Carr and Madan's fix is a trick borrowed from calculus: multiply the price by a shrinking factor first, so the result actually does fade to zero at the edges, do the math on that shrunk version, then multiply back to undo the shrinking at the very end.</p>
+  </div>
+
+  <h3>2. The transform of the damped price — the published Carr-Madan result</h3>
+  <p>
+    This is the paper's central contribution, stated here as the correctly
+    cited published result rather than re-derived line by line — the same
+    house convention this curriculum uses for other closed forms (see the
+    Black-Scholes Delta/Gamma results elsewhere in this curriculum, or
+    Heston's own semi-closed-form pricing formula, stated rather than
+    re-derived in the previous lesson). Carr &amp; Madan (1999) show the
+    Fourier transform of the damped call price, \(\psi_T(v)\), has a clean
+    closed form directly in terms of the model's characteristic function
+    \(\varphi_T\):
+  </p>
+  <div class="tl-math">
+    \[ \psi_T(v) \;=\; \frac{e^{-rT}\,\varphi_T\!\big(v-(\alpha+1)i\big)}{\alpha^2 + \alpha - v^2 + i(2\alpha+1)v} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">φ_T(v−(α+1)i)</div>
+      <div class="tl-fp-name">The model's characteristic function</div>
+      <div class="tl-fp-desc">Evaluated at a shifted, complex argument — this is the one place the specific model (Heston, or any other with a known φ_T) enters the formula</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">e^(−rT)</div>
+      <div class="tl-fp-name">Discounting</div>
+      <div class="tl-fp-desc">Brings the risk-neutral expected payoff back to a present value, the same discounting role it plays throughout option pricing</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">α²+α−v²+i(2α+1)v</div>
+      <div class="tl-fp-name">The damping denominator</div>
+      <div class="tl-fp-desc">Falls out of transforming the damped price analytically — a fixed function of α and the transform variable v, the same for every model</div>
+    </div>
+  </div>
+  <p>
+    Every piece of the formula's role, in plain language: the numerator's
+    characteristic function is where the specific model being priced —
+    Heston, or any other model with a known, tractable \(\varphi_T\) —
+    enters the picture; everything else in the formula is generic machinery
+    that doesn't change from model to model. The damping factor \(\alpha\)
+    appears throughout the denominator and inside the characteristic
+    function's shifted argument — it's what made this closed form possible
+    to derive at all, by fixing the square-integrability problem from step 1
+    before the transform was ever taken.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once the price is "shrunk" the right way, there turns out to be a clean, one-line formula connecting it to the model's characteristic function (a mathematical fingerprint of the model). Only one piece of that formula actually depends on which pricing model you're using — everything else in it is the same generic machinery no matter what model you plug in.</p>
+  </div>
+
+  <h3>3. Recovering the price: the inversion, and why it's FFT-shaped</h3>
+  <p>
+    Having the damped price's transform \(\psi_T(v)\) in hand, the price
+    itself comes back by inverting the Fourier transform — integrating
+    \(\psi_T\) back against the complex exponential, then undoing the damping
+    with \(e^{-\alpha k}\):
+  </p>
+  <div class="tl-math">
+    \[ C_T(k) \;=\; \frac{e^{-\alpha k}}{\pi} \int_0^{\infty} e^{-ivk}\,\psi_T(v)\,dv \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>e^(−αk)</code><span>undoes the damping applied in step 1 — recovers the true, undamped call price</span></div>
+    <div class="tl-eq-chip c2"><code>e^(−ivk)</code><span>the same Fourier inversion kernel from the Fourier Analysis lesson, packaging a cosine and sine via Euler's identity</span></div>
+    <div class="tl-eq-chip c3"><code>∫₀^∞ ... dv</code><span>integrating over the transform variable v recovers the function of k it came from — standard Fourier inversion</span></div>
+  </div>
+  <p>
+    On its own, this single integral is no faster to evaluate at one strike
+    \(k\) than the direct numerical-integration approach from the
+    <a href="numerical-integration.html">Numerical Integration</a> lesson —
+    it's still a 1D integral, evaluated with Simpson's rule or similar. The
+    payoff shows up the moment prices are needed at a whole <strong>grid</strong>
+    of log-strikes \(k\) at once, which is exactly the calibration situation
+    from Section 01. Discretize the integral over \(v\) on an evenly-spaced
+    grid, and this inversion becomes precisely a <strong>discrete Fourier
+    transform</strong> — the exact object the Fourier Analysis lesson builds
+    from its definition, \(X(f) = \sum_t x_t e^{-i2\pi ft}\) — evaluated
+    simultaneously at every grid point in \(k\) that the discretization
+    implies. That is exactly the computation the Fast Fourier Transform
+    algorithm is built to perform efficiently: instead of \(N\) separate
+    evaluations of the integral (one per strike, \(O(N)\) total integrations,
+    each with its own internal cost), a single FFT call computes the whole
+    length-\(N\) grid of prices in \(O(N\log N)\) time total. The whole
+    strike-pricing problem has been reshaped, via the damping-and-transform
+    construction above, into precisely the shape the FFT algorithm was
+    built to exploit.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Instead of solving one option price at a time — 200 separate little calculations for 200 strikes — Carr and Madan noticed those 200 numbers are really just 200 samples of one connected curve. The Fast Fourier Transform is a single, extremely efficient machine for computing an entire curve's worth of samples at once, so instead of running 200 small calculations, you run one big, fast one that spits out all 200 answers together.</p>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The Carr-Madan pipeline: one characteristic function in, a whole strike grid of prices out</div>
+    <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A four-stage flow diagram: characteristic function phi_T of u, feeding into the damped transform psi_T of v, feeding into a single FFT call, feeding into a whole grid of call prices across many strikes at once.">
+      <defs>
+        <marker id="cm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" style="fill:var(--text3)"/>
+        </marker>
+      </defs>
+      <rect x="15" y="60" width="130" height="80" rx="6" style="fill:none;stroke:var(--blue);stroke-width:2"/>
+      <text x="80" y="92" text-anchor="middle" font-size="12" fill="var(--blue)" font-family="'DM Mono',monospace">φ_T(u)</text>
+      <text x="80" y="110" text-anchor="middle" font-size="10" fill="var(--text3)">characteristic</text>
+      <text x="80" y="122" text-anchor="middle" font-size="10" fill="var(--text3)">function (Heston)</text>
+
+      <line x1="145" y1="100" x2="185" y2="100" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#cm-arrow)"/>
+
+      <rect x="185" y="60" width="130" height="80" rx="6" style="fill:none;stroke:var(--amber);stroke-width:2"/>
+      <text x="250" y="92" text-anchor="middle" font-size="12" fill="var(--amber)" font-family="'DM Mono',monospace">ψ_T(v)</text>
+      <text x="250" y="110" text-anchor="middle" font-size="10" fill="var(--text3)">damped transform</text>
+      <text x="250" y="122" text-anchor="middle" font-size="10" fill="var(--text3)">(the α trick)</text>
+
+      <line x1="315" y1="100" x2="355" y2="100" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#cm-arrow)"/>
+
+      <rect x="355" y="60" width="110" height="80" rx="6" style="fill:none;stroke:var(--green);stroke-width:2"/>
+      <text x="410" y="92" text-anchor="middle" font-size="12" fill="var(--green)" font-family="'DM Mono',monospace">FFT</text>
+      <text x="410" y="110" text-anchor="middle" font-size="10" fill="var(--text3)">one O(N log N)</text>
+      <text x="410" y="122" text-anchor="middle" font-size="10" fill="var(--text3)">call</text>
+
+      <line x1="465" y1="100" x2="505" y2="100" style="stroke:var(--text3);stroke-width:1.5" marker-end="url(#cm-arrow)"/>
+
+      <rect x="505" y="50" width="120" height="100" rx="6" style="fill:none;stroke:var(--purple);stroke-width:2"/>
+      <text x="565" y="85" text-anchor="middle" font-size="12" fill="var(--purple)" font-family="'DM Mono',monospace">C_T(k₁..k_N)</text>
+      <text x="565" y="103" text-anchor="middle" font-size="10" fill="var(--text3)">whole grid of</text>
+      <text x="565" y="115" text-anchor="middle" font-size="10" fill="var(--text3)">strike prices,</text>
+      <text x="565" y="127" text-anchor="middle" font-size="10" fill="var(--text3)">all at once</text>
+
+      <text x="325" y="30" text-anchor="middle" font-size="10" fill="var(--text3)">(damping fixes square-integrability, Section 02.1)</text>
+      <text x="410" y="175" text-anchor="middle" font-size="10" fill="var(--text3)">vs. N separate 1D numerical integrations, one per strike</text>
+    </svg>
+    <div class="tl-chart-caption">
+      Each stage's role: the characteristic function is the one model-specific
+      input; damping (\(\alpha\)) makes it Fourier-transformable at all;
+      \(\psi_T(v)\) is that clean closed-form transform; and a single FFT call
+      inverts it across an entire discretized grid of log-strikes \(k\) at
+      once, rather than repeating a one-dimensional numerical integration once
+      per strike.
+    </div>
+  </div>
+
+  <h3>The practical discretization trade-off</h3>
+  <p>
+    Turning the continuous inversion integral into something an actual FFT
+    call can execute means choosing a discretization: a spacing \(\eta\)
+    between grid points in the integration (frequency) variable \(v\), and a
+    corresponding spacing \(\lambda\) between the resulting log-strikes \(k\)
+    the FFT hands back. Those two spacings are not independent choices — the
+    FFT's discrete structure ties them together in a fixed relationship
+    (\(N\eta\lambda = 2\pi\), the number of grid points \(N\) linking both
+    sides), so picking one effectively pins down the other for a given
+    \(N\). That is a real trade-off, structurally the same kind of
+    uncertainty-principle-flavored tension that shows up whenever a discrete
+    Fourier transform is involved (the same finite-sample-window resolution
+    trade-off touched on in the Fourier Analysis lesson's spectral-leakage
+    discussion, here applied to strike/frequency spacing instead of
+    time/frequency spacing): a finer grid of strikes (smaller \(\lambda\>,
+    more strikes packed into the output) forces a <em>wider</em> range of
+    frequencies \(v\) to be integrated over (a larger \(N\eta\)), and vice
+    versa. Getting this pairing right — fine enough strike resolution
+    without needing an unreasonably wide, expensive frequency range — is a
+    genuine, practical tuning step in any real implementation, not a detail
+    that can be waved away; this lesson states that the trade-off exists and
+    must be tuned, without working through the full numerical-analysis
+    derivation of the optimal \(\eta\)/\(\lambda\) pairing.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Getting finer detail on the strike prices you care about forces you to cover a wider range of the "frequency" ingredient going into the calculation, and vice versa — you can't get one for free without paying for the other. It's the same kind of trade-off as trying to get a sharper zoomed-in photo: more detail in one place usually costs you something else, like needing a wider shot to make the zoom work.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(K\), \(k=\ln K\)</td><td>The option's strike price, and its natural logarithm — Carr-Madan works in log-strike space throughout.</td></tr>
+    <tr><td>\(T\)</td><td>Time to maturity.</td></tr>
+    <tr><td>\(C_T(k)\)</td><td>The true (undamped) European call price as a function of log-strike, at maturity T.</td></tr>
+    <tr><td>\(\alpha\)</td><td>(alpha) The damping factor, \(\alpha&gt;0\) — a tuning constant chosen to make the damped call price square-integrable and its Fourier transform well-behaved; a purely technical device, not an economic quantity.</td></tr>
+    <tr><td>\(c_T(k)=e^{\alpha k}C_T(k)\)</td><td>The damped call price — the function actually Fourier-transformed, in place of the raw price.</td></tr>
+    <tr><td>\(\varphi_T(u)\)</td><td>The model's characteristic function, \(E[e^{iu\ln S_T}]\) — the closed-form input this whole method requires (see The Heston Model for a worked example of where one comes from).</td></tr>
+    <tr><td>\(\psi_T(v)\)</td><td>The Fourier transform of the damped call price — Carr &amp; Madan's published closed form, stated in Section 02.2.</td></tr>
+    <tr><td>\(r\)</td><td>The risk-free discount rate.</td></tr>
+    <tr><td>\(i\)</td><td>The imaginary unit, \(\sqrt{-1}\) — same role as throughout the Fourier Analysis lesson.</td></tr>
+    <tr><td>\(v\)</td><td>The Fourier transform variable being integrated over during inversion — analogous to the frequency variable \(f\) in the Fourier Analysis lesson.</td></tr>
+    <tr><td>\(N\)</td><td>The number of grid points the FFT operates on — equivalently, the number of strikes priced in one call.</td></tr>
+    <tr><td>\(\eta,\ \lambda\)</td><td>The grid spacing in the integration (frequency) variable and in log-strike space, respectively — linked by the FFT's discrete structure, the source of the resolution/range trade-off discussed above.</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>200 strikes, the direct way versus the Carr-Madan way</h3>
+    <p>
+      Suppose a desk needs Heston-model prices for 200 strikes at a single
+      expiry — a realistic size for a liquid single-name or FX option chain
+      — and this needs to happen repeatedly inside a calibration loop that
+      tries, say, 500 candidate parameter sets before converging.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The direct, one-strike-at-a-time route</h4>
+          <p>
+            Per the <a href="numerical-integration.html">Numerical
+            Integration</a> lesson, each strike's price requires its own
+            one-dimensional numerical integration of the characteristic
+            function (Simpson's rule or similar). 200 strikes means 200
+            separate integrations per parameter set; 500 parameter sets in
+            the calibration loop means <strong>100,000</strong> total
+            one-dimensional numerical integrations, each with its own
+            function-evaluation cost, before the calibration finishes.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The Carr-Madan FFT route</h4>
+          <p>
+            One FFT call, with \(N\) chosen comfortably larger than 200 (FFT
+            sizes are typically powers of two, so \(N=4096\) or similar is
+            routine even for 200 strikes of interest — the extra grid points
+            outside the strikes actually needed are simply discarded), prices
+            the <em>entire</em> strike grid for one parameter set at once, in
+            \(O(N\log N)\) operations. Across the same 500-parameter-set
+            calibration loop, that's <strong>500</strong> FFT calls total —
+            not 500 times 200.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The comparison</h4>
+          <p>
+            100,000 separate numerical integrations versus 500 FFT calls is
+            already a 200x reduction in the number of pricing operations run
+            — exactly the strike count, since that's precisely the dimension
+            Carr-Madan collapses from "one integration per strike" down to
+            "one FFT call covers every strike." The per-call cost of an FFT
+            (\(O(N\log N)\)) is itself cheap relative to \(N\) separate
+            integrations (\(O(N)\) integrations, each carrying its own
+            non-trivial constant cost) — so the practical speedup compounds
+            on top of the 200x reduction in call count, which is exactly why
+            Carr-Madan is standard wherever a full-curve, repeated-reprice
+            workload like calibration is involved, and far less necessary for
+            pricing a single option at a single strike one time.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>An overnight Heston calibration run — the difference between feasible and infeasible</h3>
+    <p>
+      A quant on a volatility desk needs to recalibrate Heston's five
+      parameters — \(\kappa\), \(\theta\), \(\xi\), \(\rho\), \(v_0\), per the
+      <a href="heston-model.html">Heston Model</a> lesson's notation — against
+      that morning's observed implied-volatility surface: a full grid of
+      strikes across several expiries, easily a few hundred quoted option
+      prices in total. The calibration optimizer needs to try thousands of
+      candidate parameter combinations, at each one repricing the
+      <em>entire</em> observed surface and comparing it to market quotes,
+      before the search converges to a fit good enough to trade off of before
+      the market opens.
+    </p>
+    <p>
+      Pricing that full surface one strike, one integration at a time, at
+      each of thousands of candidate parameter sets, is the kind of workload
+      that can push an overnight calibration run from a routine batch job
+      into something that simply doesn't finish before the desk needs the
+      result. Carr-Madan's FFT approach reprices the entire strike grid, for
+      a given expiry and parameter set, in a single call — collapsing the
+      per-parameter-set cost from "one integration per strike" down to "one
+      FFT, covering every strike, per expiry." That difference is exactly
+      what separates a calibration run that reliably finishes overnight from
+      one that doesn't converge in time to be useful — the FFT step itself
+      isn't a new pricing model or a new source of edge, it's the piece of
+      infrastructure that makes running the existing model's calibration at
+      the required scale and speed practically possible at all.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Carr-Madan's FFT method is the standard, workhorse technique wherever a
+    model supplies a tractable characteristic function and the task requires
+    pricing many strikes fast and repeatedly — this is not a research
+    curiosity or an academic footnote, it is a real, load-bearing
+    computational tool used daily on real trading desks. Its natural habitat
+    is exactly the calibration workflow described above: fitting a
+    stochastic-volatility model like Heston, or a jump-diffusion model like
+    Merton's or Bates' (the Heston-plus-jumps extension named in the Heston
+    lesson), to an observed implied-volatility surface, where the optimizer's
+    inner loop needs a full-curve reprice at every candidate parameter set
+    and doing that with 200 separate one-dimensional integrations per
+    iteration would be prohibitively slow. Any affine or exponential-Lévy
+    model with a known characteristic function — a broad and practically
+    important class covering most of the tractable option-pricing models
+    used in production — is a candidate for this same treatment.
+  </p>
+  <p>
+    The honest boundary is just as important as the capability: this method
+    is <strong>not</strong> a universal option-pricing speedup, and it does
+    nothing for a model that lacks a closed-form characteristic function in
+    the first place. Models without one — many local-volatility
+    specifications, most models where the underlying's terminal distribution
+    has no tractable analytic form — simply have no \(\varphi_T\) to feed into
+    the Carr-Madan machinery, and fall back to the tools the
+    <a href="numerical-integration.html">Numerical Integration</a> lesson
+    covers for genuinely hard cases: Monte Carlo simulation, or a full
+    partial-differential-equation solve. Carr-Madan is a targeted fix for a
+    specific bottleneck — many-strikes, many-reprices, given a tractable
+    \(\varphi_T\) — not a general acceleration of option pricing as a whole.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Treating the damping factor and grid spacing as free, harmless
+      choices.</strong> \(\alpha\) has to be large enough to make the damped
+      price genuinely square-integrable and avoid numerical instability in
+      the transform, but too large a value can itself introduce numerical
+      problems in a different direction (large \(\alpha\) can make the
+      characteristic function's shifted argument behave badly for some
+      models). Combined with the \(\eta\)/\(\lambda\) resolution-versus-range
+      trade-off from Section 02, getting a Carr-Madan implementation to
+      produce accurate prices across the whole strike range it's asked for is
+      a genuine tuning exercise, not a plug-and-play default that works
+      identically for every model and every strike range.
+    </p>
+    <p>
+      <strong>This only works when a closed-form characteristic function
+      exists — it's not a universal option-pricing speedup.</strong> The
+      entire method is built on having \(\varphi_T(u)\) in closed form to
+      plug into \(\psi_T(v)\); a model without one has nothing for the
+      Carr-Madan machinery to operate on, and reaching for "just use FFT
+      pricing" as a generic acceleration technique for a model that lacks a
+      tractable characteristic function is a category error, not a
+      workaround.
+    </p>
+    <p>
+      <strong>A fast, wide-strike-grid calibration is still curve-fitting,
+      the same caveat the Heston lesson already flags.</strong> Carr-Madan
+      makes the calibration <em>loop</em> fast; it says nothing about whether
+      the resulting fitted parameters generalize out-of-sample or represent
+      a real trading edge, any more than a slow calibration would. Speed is
+      an infrastructure improvement, not evidence the fitted model is
+      correct or tradable.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Carr-Madan prices a whole strike strip in one FFT call, not one strike at a time.</strong> Given a model's characteristic function \(\varphi_T(u)\), it collapses N separate numerical integrations into a single O(N log N) computation.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The trick is damping the call price first.</strong> The raw call price isn't square-integrable near the money; \(c_T(k)=e^{\alpha k}C_T(k)\) fixes that, and its transform \(\psi_T(v)\) has a clean closed form in terms of \(\varphi_T\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Inverting ψ_T(v) on a discretized grid is exactly FFT-shaped.</strong> That's the whole reason the speedup exists — the math was built specifically to land in the form an FFT algorithm computes efficiently.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The damping factor α and the strike/frequency grid spacing trade off against each other.</strong> Finer strike resolution forces a wider frequency-integration range — a real tuning step, not a free parameter.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is a real, load-bearing production technique — not a curiosity.</strong> It's the standard method wherever a tractable characteristic function needs fast, whole-curve calibration: stochastic-volatility and jump-diffusion models specifically.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It only applies when a closed-form characteristic function exists.</strong> No φ_T, no Carr-Madan speedup — Monte Carlo or a PDE solve are the fallback for models without one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fast calibration is not validated calibration.</strong> Speeding up the reprice loop says nothing about whether the resulting fitted parameters generalize out-of-sample — the same caveat the Heston lesson already raises about a good smile fit.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why can't the raw call price C_T(k) simply be Fourier-transformed directly, and what fixes that?</summary>
+    <div class="tl-answer">
+      As log-strike \(k \to -\infty\) (strike toward zero), the call price
+      approaches the discounted forward price rather than decaying to zero —
+      it stays large instead of shrinking, so \(C_T(k)\) is not
+      square-integrable and its Fourier transform integral does not converge
+      cleanly. Carr &amp; Madan's fix is to transform a damped version instead,
+      \(c_T(k)=e^{\alpha k}C_T(k)\) for a positive damping factor \(\alpha\),
+      which decays fast enough on both tails for the transform to exist; the
+      true price is recovered afterward by multiplying back by
+      \(e^{-\alpha k}\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Where does the specific option-pricing model (e.g. Heston) actually enter the Carr-Madan formula for ψ_T(v)?</summary>
+    <div class="tl-answer">
+      Entirely through the characteristic function \(\varphi_T\), evaluated
+      at the shifted complex argument \(v-(\alpha+1)i\) in the numerator.
+      Every other piece of \(\psi_T(v)\) — the discounting term \(e^{-rT}\)
+      and the denominator \(\alpha^2+\alpha-v^2+i(2\alpha+1)v\) — is generic
+      machinery that stays the same regardless of which model supplied
+      \(\varphi_T\). Swap in a different model's characteristic function (a
+      different jump-diffusion or stochastic-volatility specification, say)
+      and the rest of the Carr-Madan pipeline is unchanged.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does discretizing the inversion integral over v turn the problem into something an FFT can compute efficiently?</summary>
+    <div class="tl-answer">
+      Once the integration variable v is put on an evenly-spaced discrete
+      grid, the inversion integral becomes structurally identical to a
+      discrete Fourier transform — the same summation-of-complex-exponentials
+      form covered in the Fourier Analysis lesson — evaluated simultaneously
+      at every grid point in log-strike k that the discretization implies.
+      The Fast Fourier Transform algorithm is built specifically to compute
+      exactly that kind of discrete transform, across an entire grid at
+      once, in O(N log N) time rather than evaluating each grid point's
+      integral separately.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Roughly how does the operation count compare between pricing 200 strikes with 500 calibration iterations via direct numerical integration versus via Carr-Madan's FFT?</summary>
+    <div class="tl-answer">
+      Direct integration needs one 1D numerical integration per strike per
+      parameter set: 200 strikes × 500 iterations = 100,000 separate
+      integrations. Carr-Madan needs one FFT call per parameter set, since a
+      single call prices the entire strike grid at once: 500 FFT calls
+      total, each O(N log N) rather than O(N) separate integrations. That's
+      roughly a 200x reduction in the number of pricing operations run — the
+      exact factor is the strike count, since that's precisely the dimension
+      Carr-Madan collapses into a single call.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A quant wants to use Carr-Madan's FFT method to speed up pricing under a local-volatility model that has no known closed-form characteristic function. Does this work?</summary>
+    <div class="tl-answer">
+      No. The entire Carr-Madan construction is built on having a closed-form
+      characteristic function \(\varphi_T(u)\) to plug into \(\psi_T(v)\) —
+      without one, there is nothing for the damping-and-transform machinery
+      to operate on. A model lacking a tractable characteristic function
+      needs a different tool entirely: Monte Carlo simulation or a
+      partial-differential-equation solve, the same fallbacks the Numerical
+      Integration lesson names for genuinely hard pricing problems. Carr-Madan
+      is a targeted fix for a specific bottleneck (many strikes, many
+      reprices, given a tractable φ_T), not a general-purpose acceleration
+      that applies to every pricing model.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Peter Carr &amp; Dilip Madan, "Option valuation using the fast Fourier transform," <em>Journal of Computational Finance</em>, 2(4), 1999 — the original paper and the primary source for this entire lesson: the damped-price construction, the closed form for \(\psi_T(v)\), and the FFT-based inversion.</li>
+    <li>See <a href="heston-model.html">The Heston Model</a> in this Theory Lab for the closed-form characteristic function this lesson's method operates on, and for the "semi-closed-form" pricing formula this lesson picks up where that one left off.</li>
+    <li>See <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a> in this Theory Lab for the Fourier-transform and discrete-Fourier-transform machinery this lesson builds on rather than re-deriving — the definition of \(X(f)\), Euler's identity, and why an FFT computes a discretized transform efficiently.</li>
+    <li>See <a href="numerical-integration.html">Numerical Integration</a>, the previous lesson in this category, for the one-strike-at-a-time deterministic-quadrature baseline this lesson's cost comparison is measured against, and for when Monte Carlo or a PDE solve are the right fallback instead.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="numerical-integration.html">← Numerical Integration</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

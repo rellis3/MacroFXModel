@@ -16,7 +16,7 @@ import { fileURLToPath }   from 'url';
 import fs                  from 'fs';
 import crypto               from 'crypto';
 import { createInterface as rlCreateInterface } from 'readline';
-import { execFile, spawn } from 'child_process';
+import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker            from './_worker.js';
@@ -39,12 +39,13 @@ import { yangZhangVolSeries, hv20Series, ewmaVolSeries, computeForecast as _comp
 import { getSessionStats, computeSessionStats, isSessionStatsComputing } from './js/sessionStats.js';
 import { computeHitRates, isHitRatesComputing, HR_INSTRUMENTS } from './js/hitRateBackfill.js';
 import { runFullBacktest, INSTRUMENTS as BT_INSTRUMENTS }            from './js/volBacktestEngine.js';
-import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries }   from './js/volForecastBench.js';
+import { runBench as runVolBench, sigmaSeriesForExport, benchCtx, realizedVarSeries as _realizedVarSeries, IV_INDEX_BY_INSTRUMENT as _IV_INDEX, ivVarSeries as _ivVarSeries, harIvForecastNext as _harIvForecastNext }   from './js/volForecastBench.js';
 import { coverageFromBars }                                          from './js/forecastCoverage.js';
 import { deskSnapshot }                                              from './js/analyticsDesk.js';
 import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } from './js/hurstBench.js';
 import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
+import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
 import { runRankICSuite, RANKIC_INSTRUMENTS }                       from './js/rankICEngine.js';
@@ -76,14 +77,19 @@ import { fetchLaborData, laborMarketScore, LABOR_UNIVERSE, UNEMPLOYMENT_UNIT_LAB
 import { fetchCpiData, cpiScore, CPI_UNIVERSE } from './js/cpiEngine.js';
 import { fetchGdpData, gdpScore, GDP_UNIVERSE } from './js/gdpEngine.js';
 import { fetchIsmData, ismScore, ISM_UNIVERSE } from './js/ismEngine.js';
+import { gprScore as _gprScore } from './js/gprEngine.js';
 import { fetchRetailSalesData, retailSalesCompositeScore, RETAIL_SALES_UNIVERSE } from './js/retailSalesEngine.js';
 import { fetchTradeBalanceData, tradeBalanceScore, TRADE_BALANCE_UNIVERSE } from './js/tradeBalanceEngine.js';
 import { fetchRealYieldData, realYieldScore, REAL_YIELD_UNIVERSE } from './js/realYieldEngine.js';
 import { fetchPpiData, ppiCompositeScore, PPI_UNIVERSE } from './js/ppiEngine.js';
 import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomPair } from './js/macroScorecardEngine.js';
+import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
+import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
 import { FOMC_MEETINGS, pendingAsOf as fomcPendingAsOf } from './js/fomcCalendar.js';
 import { FETCHERS as FOMC_FETCHERS, extractVote as fomcExtractVote } from './js/fomcFetch.js';
 import { wordDiff as fomcWordDiff, diffToPromptLines as fomcDiffToPromptLines, diffTables as fomcDiffTables } from './js/fomcDiff.js';
+import { allMeetings as fomcAllMeetings, previousMeetingDate as fomcPreviousMeetingDate } from './js/fomcHistory.js';
+import { score as cbLexiconScore, LEXICON_VERSION as CB_LEXICON_VERSION } from './js/cbLexicon.js';
 import { ECB_MEETINGS, pendingAsOf as ecbPendingAsOf } from './js/ecbCalendar.js';
 import { FETCHERS as ECB_FETCHERS, PRESS_RSS_URL as ECB_PRESS_RSS_URL, yymmdd as ecbYymmdd } from './js/ecbFetch.js';
 import { parseRssItems as ecbParseRssItems } from './js/cbIndexFetch.js';
@@ -106,10 +112,15 @@ import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
+import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
+import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
+import { runImpulseEmaRange } from './js/impulseEmaRangeV1Engine.js';
+import { runLiveValidation } from './js/liveValidationCore.js';
 import { OANDA_INSTRUMENT_MAP, clampToNow, fetchIntradayOnce, fetchIntraday } from './js/oandaIntraday.js';
 import { parquetRead as gliParquetRead, parquetMetadataAsync as gliParquetMeta } from 'hyparquet';
 import { runFullAsiaRangeBacktest, runAsiaRangeBacktest, ASIA_INSTRUMENTS } from './js/asiaRangeEngine.js';
 import { runRangeExtBacktest, summarizeRangeExt, RANGE_EXT_INSTRUMENTS } from './js/rangeExtEngine.js';
+import { runOvernightHoldBacktest, DEFAULT_RULESET as OH_DEFAULT_RULESET, DEFAULT_ACCOUNT_SIZE as OH_DEFAULT_ACCOUNT_SIZE } from './js/overnightHoldEngine.js';
 import { bucketM1IntoSessions as _bucketM1IntoSessions } from './js/forecastAnalyser.js';
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
 import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngine.js';
@@ -117,8 +128,10 @@ import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/i
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
+import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
+import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill)
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -126,7 +139,7 @@ import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flatt
 import { refreshAllPairsV2, checkV2AlertsNow, loadV2Creds, sendV2Test, _setPolicyCache as _setV2PolicyCache } from './levelsV2Engine.js';
 import { ledgerStats as ledgerStatsV2, refitFromLedger as refitFromLedgerV2 } from './js/entryLedgerV2.js';
 import { DEFAULT_V2_ALERT_CFG } from './js/alertV2Core.js';
-import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext } from './js/volLevelAlertCore.js';
+import { evaluatePair as evaluateVolLevelPair, ALERT_LEVEL_KEYS as VOL_LEVEL_KEYS, dispersionContext as volDispersionContext, wtZone as volWtZone } from './js/volLevelAlertCore.js';
 import { confluenceForPair, mergeConfluence } from './js/confluenceTest.js';
 import { runRangeFibBacktest, RANGE_FIB_INSTRUMENTS, FIB_LEVELS as RANGE_FIB_LEVELS } from './js/rangeFibEngine.js';
 import { CONFLUENCE_MODULES } from './js/confluenceModules.js';
@@ -536,6 +549,9 @@ const DEFAULT_CFG = {
   vuManChuChart: true,  // attach the rendered WaveTrend pane as a photo after each alert
                         // (ignored when vuManChu is 'off' — see sendVumanchuChart)
   regimeChangeAlerts: true, // send Telegram when live 1m HMM regime changes
+  // Per-sender Telegram master switches — see TG_SENDERS / tgOn() below. Empty
+  // default = everything on; only the senders you explicitly switch off appear.
+  tgMaster:    {},
 };
 
 // ── In-memory monitoring state ────────────────────────────────────────────────
@@ -556,6 +572,8 @@ const state = {
   hmm5mTrainedParams:  null, // Baum-Welch learned parameters loaded from KV
   hmm5mMacroContext:   null, // FRED macro overlay loaded from KV
   hmm5mTrainStatus:    {},   // per-pair training progress { sym: { status, iterations, nBars } }
+  regimeHistBuf:       { v1: {}, v2: {} }, // in-memory regime-history ring buffer, auto-recorded
+                             // off the live 5m HMM loops — see recordRegimeSnapshot()/flushRegimeHistory()
   levelsLoadedDate:    null, // 'YYYY-MM-DD' London date of last daily levels load
   cfg:                 null,
   tg:                  null,
@@ -701,6 +719,41 @@ async function fetchPriceFallback(sym, base, auth, now) {
 function fetchPrice(sym) {
   // After fetchAllPrices() runs, cache is always fresh — just read it
   return state.prices[sym]?.price ?? null;
+}
+
+// Live tick for a single instrument, independent of monitorTick (which only
+// calls fetchAllPrices when the Telegram alert loop is configured+enabled —
+// no bot config, no price cache). Throttled off the SAME state.prices cache
+// so a fast poller (the zone-duel ticker) and the alert loop never fight:
+// whichever asked most recently wins, everyone else reads it for free.
+const ZONE_DUEL_TICK_MS = 2500;
+async function tickPrice(displaySym, oandaSym) {
+  const cached = state.prices[displaySym];
+  if (cached && Date.now() - cached.at < ZONE_DUEL_TICK_MS) return cached.price;
+  if (!process.env.OANDA_KEY) return cached?.price ?? null;
+  const base = (process.env.OANDA_ENV || 'live') === 'practice'
+    ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const auth = { Authorization: `Bearer ${process.env.OANDA_KEY}` };
+  try {
+    if (process.env.OANDA_ACCOUNT_ID) {
+      const r = await fetch(
+        `${base}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(oandaSym)}`,
+        { headers: auth, signal: AbortSignal.timeout(6_000) });
+      if (r.ok) {
+        const d = await r.json();
+        const p = d.prices?.[0];
+        if (p?.bids?.[0] && p?.asks?.[0]) {
+          const price = (+p.bids[0].price + +p.asks[0].price) / 2;
+          state.prices[displaySym] = { price, at: Date.now() };
+          return price;
+        }
+      }
+    }
+    await fetchPriceFallback(displaySym, base, auth, Date.now());  // M1-candle fallback (existing helper)
+    return state.prices[displaySym]?.price ?? (cached?.price ?? null);
+  } catch {
+    return cached?.price ?? null;
+  }
 }
 
 async function fetchDailyCandles(sym, count = 60) {
@@ -856,6 +909,56 @@ function _regime(closes) {
   return 'RANGE';
 }
 
+// ── COT positioning correlation (currency vs currency) ──────────────────────
+// A DIFFERENT relationship from the price-return correlation above: not "do
+// these move together", but "do speculators build/reduce these two
+// currencies' positions together" — reuses the CFTC weekly series the
+// cot-extremes engine already fetches and caches (cot_series_v2, written by
+// _worker.js every time /api/cot-extremes recomputes, ~weekly since COT
+// releases Fridays), so this needs no new data source. Correlates WEEK-OVER-
+// WEEK CHANGES in each currency's OI-normalised spec share (not the levels —
+// same reasoning as _logRets above: levels trend, changes don't, and a
+// levels-correlation would overstate the relationship).
+const COT_CCY_GROUP = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'MXN'];
+
+async function computeCotCorrelations() {
+  let raw;
+  try { raw = await kv.get('cot_series_v2'); } catch { return null; }
+  if (!raw) return null;
+  let series;
+  try { series = JSON.parse(raw)?.series; } catch { return null; }
+  if (!series) return null;
+
+  // Week-over-week delta of specShare, keyed by report date so mismatched
+  // currencies (a late/missing report for one) align correctly instead of
+  // silently pairing the wrong weeks against each other.
+  const deltasByCcy = {};
+  for (const ccy of COT_CCY_GROUP) {
+    const s = series[ccy];
+    if (!s?.dates?.length || !s?.specShare?.length) continue;
+    const m = new Map();
+    for (let i = 1; i < s.dates.length; i++) {
+      const a = s.specShare[i - 1], b = s.specShare[i];
+      if (a == null || b == null || s.dates[i] == null) continue;
+      m.set(s.dates[i], b - a);
+    }
+    if (m.size >= 10) deltasByCcy[ccy] = m;
+  }
+
+  const ccys = Object.keys(deltasByCcy).sort();
+  const corr = {};
+  for (let i = 0; i < ccys.length; i++) {
+    for (let j = i + 1; j < ccys.length; j++) {
+      const ma = deltasByCcy[ccys[i]], mb = deltasByCcy[ccys[j]];
+      const xs = [], ys = [];
+      for (const [date, va] of ma) { const vb = mb.get(date); if (vb != null) { xs.push(va); ys.push(vb); } }
+      const c = _pearson(xs, ys);
+      if (c !== null) corr[`${ccys[i]}_${ccys[j]}`] = +c.toFixed(4);
+    }
+  }
+  return { generated: new Date().toISOString(), currencies: ccys, corr };
+}
+
 async function buildCorrHistoryJS() {
   if (corrRunning) { console.log('[CORR] Already running — skipped'); return; }
   corrRunning = true;
@@ -967,9 +1070,13 @@ async function buildCorrHistoryJS() {
       }
     }
 
+    corrProgress = { pct: 90, msg: 'Correlating COT positioning…', step: 'cot', error: null };
+    const cotCorr = await computeCotCorrelations().catch(e => { console.warn('[CORR] COT correlation skipped:', e.message); return null; });
+
     const output = { generated:new Date().toISOString(), years:CORR_YEARS,
       window_bars:CORR_WINDOW, step_bars:CORR_STEP, pairs:availPairs,
-      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr };
+      records, regime_stats:regimeStats, avg_corr:avgCorr, regime_corr:regimeCorr,
+      cot_corr: cotCorr?.corr ?? {}, cot_corr_generated: cotCorr?.generated ?? null };
 
     corrProgress = { pct: 95, msg: 'Saving history file…', step: 'save', error: null };
     fs.mkdirSync(path.dirname(CORR_HISTORY_PATH), { recursive: true });
@@ -994,7 +1101,8 @@ async function buildCorrHistoryJS() {
         corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
       }
       const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2 };
+        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2,
+        last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
       await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
     } catch (kvErr) {
@@ -1126,7 +1234,9 @@ async function computeHedgeSignals(force = false) {
       try { sigData = JSON.parse(fs.readFileSync(HEDGE_SIGNALS_PATH, 'utf8')); } catch {}
     }
 
-    const tgRaw = await kv.get('hedge_signal_tg');
+    // Master switch mutes the Telegram push only — signals are still computed,
+    // scored and written to HEDGE_SIGNALS_PATH so the page stays live.
+    const tgRaw = tgOn('hedgeSignals') ? await kv.get('hedge_signal_tg') : null;
     const tgCfg = tgRaw ? JSON.parse(tgRaw) : null;
     const now   = new Date().toISOString();
     sigData.last_run = now;
@@ -1435,6 +1545,37 @@ async function buildBetaEstimates() {
   } finally {
     _betaRunning = false;
   }
+}
+
+// ── Telegram master switches ─────────────────────────────────────────────────
+// One on/off per Telegram SENDER, set in index.html's ⚙ Alerts modal and stored
+// in ai_alert_cfg.tgMaster (reloaded with the rest of the config every 60 s).
+//
+// This is an override that sits ON TOP of each sender's own config, never under
+// it: senders that own an `enabled` flag elsewhere (levels-v2, vol-levels,
+// surprise, hedge) still honour it — a master switch can only SILENCE, never
+// turn something on. It exists because "turn this off" was spread across eight
+// separate KV keys with three different spellings of the gate, so muting one
+// thing meant knowing which page happened to own it.
+//
+// An unknown/missing name reads as ON, so adding a sender here never leaves it
+// silently muted by an older saved config that predates it.
+const TG_SENDERS = {
+  levelProximity:    'Level proximity (main monitor)',
+  regimeChange:      'Live 5m HMM regime change',
+  creditFlip:        'Credit gate regime flip',
+  vumanchuHeartbeat: 'VuManChu logger daily heartbeat',
+  oiSweep:           'OI nightly scraper failure',
+  qmrIndices:        'SPX/DOW/DAX QMR gates',
+  cogShadow:         'COG shadow gates',
+  levelsV2:          'Telegram-v2 zone alerts',
+  volLevels:         'Vol-forecast level proximity',
+  surprise:          'Forecast-path surprise pings',
+  hedgeSignals:      'Hedge pair signals',
+};
+
+function tgOn(sender) {
+  return state.cfg?.tgMaster?.[sender] !== false;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1833,6 +1974,7 @@ async function monitorTick() {
     }
 
     if (!state.cfg?.enabled || state.cfg?.serverEnabled === false || !state.tg?.token || !state.tg?.chatId) return;
+    if (!tgOn('levelProximity')) return;
 
     // Do-not-disturb: skip if today (UTC) is not in the active days list
     {
@@ -2003,6 +2145,35 @@ function _forecastKeyForPair(pair) {
   return forecastState.latest?.instruments?.[key] ? key : null;
 }
 
+// Split a display pair ("EUR/USD", "GBP/JPY") or underscore symbol ("GBP_JPY")
+// into [base, quote] IFF both sides are one of the 8 currencies the Macro
+// Scorecard covers — null for gold/indices/anything else, so callers can
+// gate on it cleanly.
+const _KNOWN_CCY = new Set(['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']);
+function _ccyPairFrom(str) {
+  const parts = String(str || '').split(/[/_]/);
+  if (parts.length !== 2) return null;
+  const [base, quote] = parts;
+  return (_KNOWN_CCY.has(base) && _KNOWN_CCY.has(quote)) ? [base, quote] : null;
+}
+// The AI-analysis prompt previously had ZERO Macro Scorecard content of any
+// kind (confirmed by review — buildAnalysisPrompt never referenced it). This
+// pulls both legs' full 11-dimension breakdown (not just the blended
+// composite) so the AI can see e.g. "GBP yieldCurve +0.4, consumerConfidence
+// -0.2" individually, not just one averaged number.
+async function _macroScorecardBlockFor(base, quote) {
+  try {
+    const sc = await _buildMacroScorecard();
+    const b = sc.ranked.find(r => r.ccy === base) ?? null;
+    const q = sc.ranked.find(r => r.ccy === quote) ?? null;
+    if (!b && !q) return null;
+    return {
+      [base]: b ? { composite: b.composite, coverage: b.coverage, dims: b.dims } : null,
+      [quote]: q ? { composite: q.composite, coverage: q.coverage, dims: q.dims } : null,
+    };
+  } catch { return null; }
+}
+
 // Enrich a client snapshot with server-known context before prompting: the vol
 // cone (already computed per instrument by the forecast producer), EVZ/GVZ
 // implied vol for the two instruments that have a real CBOE index, and the
@@ -2014,6 +2185,13 @@ async function _injectServerContext(pair, s) {
   // Macro deltas (what moved 1d/5d/20d) — shared with the morning brief so the
   // per-pair read can anchor on shifts ("10Y +6bps today"), not just levels.
   if (!s.macroChanges) { try { const mc = await _loadMacroChanges(); if (mc?.text) s.macroChanges = mc.text; } catch { /* prompt tolerates absence */ } }
+
+  // Macro Scorecard (11-dim fundamentals, both legs) — previously never
+  // reached this prompt at all.
+  if (!s.macroScorecard) {
+    const cc = _ccyPairFrom(pair);
+    if (cc) { const block = await _macroScorecardBlockFor(cc[0], cc[1]); if (block) s.macroScorecard = block; }
+  }
 
   if (fc && !s.volCone) {
     s.volCone = {
@@ -2157,6 +2335,23 @@ async function _injectServerContext(pair, s) {
 }
 
 function buildAnalysisPrompt(pair, s) {
+  // Precomputed OUTSIDE the big template literal below on purpose: this text has its own
+  // nested conditionals (live vs. replay vs. unavailable), and nesting that directly inside
+  // the prompt's single giant template literal previously broke the outer/inner backtick
+  // boundary (a real bug caught by node --check, not a style preference).
+  const srOutlook = (() => {
+    const o = s.sessionResearch?.todayOutlook;
+    const status = s.sessionResearch?.liveStatus;
+    if (!o || !o.length) {
+      return `  Not available (SessionResearch/dashboard_export.py not yet run for this pair${status ? `; live status: ${status}` : ''})`;
+    }
+    const header = s.sessionResearch.todayOutlookIsLive
+      ? `LIVE applied prediction, as of right now (${o[0].day}, checkpoint ${o[0].checkpoint} — genuinely today, computed from today's actual session data so far):`
+      : `Most recent applied checkpoints (from ${o[0].day} — a REPLAY of the dataset's most recent day, NOT today; live prediction unavailable right now${status ? ` [${status}]` : ''}, showing a worked historical example instead):`;
+    const lines = o.map(x => `  ${x.checkpoint}: remaining range model ${x.modelRangeAtr.toFixed(2)}×ATR (persistence ${x.persistenceRangeAtr.toFixed(2)}×ATR); direction ${(x.modelPUp * 100).toFixed(0)}% prob. up — ${x.directionEdge ? 'weak validated edge' : 'NO VALIDATED EDGE, treat as noise'}`);
+    return `${header}\n${lines.join('\n')}`;
+  })();
+
   return `You are a professional FX/futures desk analyst. Analyse the following real-time dashboard snapshot for ${pair} and produce a structured trading intelligence brief. Be direct, specific, and actionable. Think like a prop trader who needs to make a decision in the next 30 minutes.
 
 === DASHBOARD SNAPSHOT: ${pair} ===
@@ -2295,6 +2490,31 @@ ${s.cotMarket ? `CROSS-MARKET POSITIONING (${s.cotMarket.n} instruments, report 
 Extremes: ${s.cotMarket.extremes.length ? s.cotMarket.extremes.map(e => `${e.sym} ${e.pct}th (${e.side})`).join('  ·  ') : 'none at the 10th/90th percentile'}
 By group (median crowding percentile): ${s.cotMarket.byGroup.map(g => `${g.group} ${g.medPct ?? 'N/A'}`).join('  ·  ')}` : ''}
 
+MACRO SCORECARD (11-dimension real-economy composite per currency — CPI, GDP, business activity, labor market, retail sales, trade balance, real yield, yield curve, consumer confidence, PPI (USD only), central-bank tone — whatever's actually covered for that currency, averaged; missing dims are left out, not treated as neutral)
+${s.macroScorecard ? Object.entries(s.macroScorecard).map(([ccy, row]) => row
+    ? `${ccy}: composite ${row.composite != null ? (row.composite >= 0 ? '+' : '') + row.composite : 'N/A'} (${row.coverage.length}/11 dims covered)${Object.entries(row.dims || {}).filter(([, v]) => v != null).map(([k, v]) => `  ${k} ${v >= 0 ? '+' : ''}${v}`).join('')}`
+    : `${ccy}: no coverage yet`).join('\n') : '  Not available'}
+
+COMPOSITE SIGNAL (this dashboard's own combined read — averages whichever of technical regime, COT positioning, the Macro Scorecard, and carry are covered for this pair into one direction; arithmetic agreement across already-built signals, NOT a backtested rule — weight it as one more input, not a verdict)
+${s.pairComposite ? `${s.pairComposite.direction} — ${s.pairComposite.agree}/${s.pairComposite.total} legs agree (score ${s.pairComposite.score >= 0 ? '+' : ''}${s.pairComposite.score})
+Legs: ${(s.pairComposite.legs || []).join('  ·  ')}` : '  Not available'}
+
+LIQUIDITY GATE (board-wide, not pair-specific — Fed/ECB/BoJ balance-sheet momentum vs VIX; context, NOT a backtested rule)
+${s.liquidityGate ? `${s.liquidityGate.direction} — ${s.liquidityGate.agree}/${s.liquidityGate.total} central banks agree (score ${s.liquidityGate.score >= 0 ? '+' : ''}${s.liquidityGate.score}). ${(s.liquidityGate.legs || []).join('  ·  ')}` : '  Not available'}
+
+CREDIT (board-wide, not pair-specific — two DIFFERENT axes: HY level = junk-bond stress/risk appetite; quality spread = investment-grade credit-curve shape, an earlier and separate tell. Both context, NOT backtested rules)
+${s.creditGateBoard ? `HY level: ${s.creditGateBoard.gate} (${s.creditGateBoard.widening > 0 ? 'widening' : s.creditGateBoard.widening < 0 ? 'tightening' : 'steady'}, ${s.creditGateBoard.hyBps}bps${s.creditGateBoard.d5 != null ? `, ${s.creditGateBoard.d5 >= 0 ? '+' : ''}${s.creditGateBoard.d5}bps/wk` : ''})` : '  HY level not available'}
+${s.creditQualitySpread ? `Quality spread (Baa−Aaa): z ${s.creditQualitySpread.z >= 0 ? '+' : ''}${s.creditQualitySpread.z}` : '  Quality spread not available'}
+
+GEOPOLITICAL RISK (board-wide, not pair-specific — Caldara & Iacoviello's Geopolitical Risk Index, Federal Reserve Board; genuinely global newspaper-based measure, not derived from anything else here. Context, NOT a backtested rule)
+${s.gpr ? `${s.gpr.z > 0.75 ? 'Elevated' : s.gpr.z < -0.5 ? 'Subdued' : 'Normal'} — z ${s.gpr.z >= 0 ? '+' : ''}${s.gpr.z}, ${s.gpr.trend}, 30d-smoothed level ${s.gpr.level} (as of ${s.gpr.asOfDate})` : '  Not available'}
+
+STRUCTURAL MOTIF (AnalogML — research, explicitly NOT a validated trading signal; a chart-pattern diagnostic, not a directional call)
+${s.analogMotif ? `${s.analogMotif.nTouches}-touch ${s.analogMotif.kind}${s.analogMotif.provisional ? ' (still provisional, not yet confirmable)' : ''} — price ${s.analogMotif.distToLevelPips != null ? s.analogMotif.distToLevelPips.toFixed(0) : '?'}p from the level that would confirm the textbook reversal.${s.analogMotif.playedOutRate != null ? ` Historically this exact category played out as the textbook reversal ${(s.analogMotif.playedOutRate * 100).toFixed(0)}% of the time (n=${s.analogMotif.nSamples}${s.analogMotif.profitFactor != null ? `, PF ${s.analogMotif.profitFactor.toFixed(2)}` : ''}).` : ' Not enough historical samples of this exact category yet for a confidence read.'}` : '  No motif currently forming'}
+
+COT POSITIONING CORRELATION (do THIS PAIR'S OWN currency legs' speculative positioning move with/against other currencies week-over-week — a positioning relationship, separate from price correlation and separate from this pair's own crowding level above)
+${s.cotCorrelation && s.cotCorrelation.length ? s.cotCorrelation.map(c => `${c.leg} positioned ${c.dir} ${c.other} (${c.v >= 0 ? '+' : ''}${c.v.toFixed(2)})`).join('  ·  ') : '  Not available'}
+
 HIGH CONFLUENCE ENTRIES (from multi-layer scanner)
 ${s.topEntries && s.topEntries.length > 0
   ? s.topEntries.map(e => `  ${e.stars}* ${e.direction.toUpperCase()} @ ${e.price}  Tags: ${e.tags}  SL: ${e.sl} (${e.slPips}p)  TP: ${e.tp} (${e.tpNote}${e.tpCapped ? ' - vol capped' : ''}, ${e.tpPips}p)  R:R 1:${e.rr}  Size: ${e.size}%`).join('\n')
@@ -2303,6 +2523,14 @@ ${s.topEntries && s.topEntries.length > 0
 SESSION INTELLIGENCE
 Current session: ${s.session?.name ?? 'N/A'}  |  London time: ${s.session?.londonTime ?? 'N/A'}  |  Confidence multiplier: ${s.session?.confidence ?? 'N/A'}x
 Context: ${s.session?.desc ?? 'N/A'}
+
+SESSION RESEARCH (10-year Asia/London/overlap/NY backtest for THIS pair specifically — every finding below survived a circular-shift null AND a pooled Benjamini-Hochberg FDR correction across everything tested; research context, NOT a live signal. Full methodology: SessionResearch/README.md)
+${s.sessionResearch ? `Data through ${s.sessionResearch.dataThrough}  |  ${s.sessionResearch.nBhPass}/${s.sessionResearch.nHypotheses} tested relationships survive multiple-testing correction for this pair.
+Range persistence: ${s.sessionResearch.rangeHandoff ? `validated — ${s.sessionResearch.rangeHandoff.strongestPair} carries the strongest handoff (ρ ${s.sessionResearch.rangeHandoff.strongestRho}); a wide/quiet session tends to be followed by another wide/quiet one.` : 'no validated session-to-session range persistence for this pair.'}
+Direction handoff: does NOT reliably carry from one session to the next (${s.sessionResearch.directionHandoff.nTested} handoffs tested, ${s.sessionResearch.directionHandoff.anySignificant ? 'weak signal in some' : 'none significant'}) — a session closing up/down is close to a coin flip for the next session's direction. Do not lean on session-to-session momentum for this pair.
+${s.sessionResearch.spikeReversal.length ? `Pre-open spike → reversal (validated): ${s.sessionResearch.spikeReversal.map(v => `${v.boundary} open (spike reverses ${(v.reversalRateSpike * 100).toFixed(0)}% vs ordinary ${(v.reversalRateNonspike * 100).toFixed(0)}%)`).join('; ')} — a sharp move right before that session's open tends to partially reverse.` : 'No validated pre-open spike-reversal effect for this pair.'}
+${s.sessionResearch.impulse ? `Impulse reversal (scalping, M5): impulsive swing pivots beat grind pivots on win-rate${s.sessionResearch.impulse.symmetry ? ` (low-side/high-side symmetry at 30min: ${(s.sessionResearch.impulse.symmetry.winRateLow * 100).toFixed(0)}% vs ${(s.sessionResearch.impulse.symmetry.winRateHigh * 100).toFixed(0)}%${s.sessionResearch.impulse.symmetry.bhPass ? ', a real asymmetry' : ', not distinguishable'})` : ''} — small edge, not a standalone signal.` : ''}
+${srOutlook}` : '  Not available (SessionResearch/dashboard_export.py not yet run for this pair)'}
 
 VOLATILITY IMPULSE (5-bar momentum)
 ${s.volImpulse ? `Bias: ${s.volImpulse.bias.toUpperCase()}  |  Last 5 bars avg TR vs prior 5: ${s.volImpulse.pct >= 0 ? '+' : ''}${s.volImpulse.pct.toFixed(1)}%
@@ -2380,13 +2608,14 @@ Rules for your response:
 15. MATCH TONE TO CONVICTION. If the read is a positioning lean rather than a high-conviction, well-evidenced setup, say so plainly ("this is a lean, not a high-conviction trade") and keep convictionScore consistent with it. Don't dress a weak, single-signal idea in confident prose.
 16. NUMBER DELIVERY — speak numbers like a trader, not a spreadsheet. In the PROSE, round prices the way you'd say them aloud ("1.1430", "just under 1.1450", "around 29,500") — reserve full precision (1.14298, 1.14508) for the exact entry/stop/target in keyLevels and tradingFramework, where it's actionable. Never quote pointless precision in prose ("0.27% of typical daily range", "114.3×") — say "almost none of the day's range left" instead. A number earns its place only if it changes the decision.
 17. LEAD WITH WHAT DRIVES THE DECISION — don't stack every metric. Pick the ONE or TWO signals that actually make the trade (here it's usually the level + the one evidenced signal) and build around them. Secondary readings get a clause, not a sentence each. If two signals conflict, resolve it for the reader in plain words ("so despite the breakout flag, the near-term odds still favour the fade") — don't just list both and leave them hanging.
+18. CLOSING TASK — TRADE OF THE DAY. As your final step, using everything above, decide whether there is ONE concrete trade worth proposing right now. If yes: fill tradeOfDay with direction ("LONG" or "SHORT"), and entry/stopLoss/takeProfit as REAL levels — reuse a level you already named elsewhere in your response, or one present in the snapshot (a keyLevel, OI wall, pivot, fib, range edge, or retail cluster) — never a fabricated round number (same rule as #14, applied here too). riskReward is the resulting R multiple as a string (e.g. "1:2.1"). confidence is HIGH/MEDIUM/LOW and must be consistent with convictionScore, not more confident than the rest of your read. rationale is ONE sentence citing the 1-2 strongest pieces of evidence behind it — no new claims not already grounded above. If the evidence is thin, conflicting, or nothing here clears a reasonable bar for an actual trade, set direction to "NONE", leave entry/stopLoss/takeProfit as empty strings, and use rationale to say briefly why there's no trade today (e.g. "levels are stacked against each other and vol is too compressed to size a stop") — do not force a trade that isn't there just to fill the field.
 
 Respond with a single valid JSON object. No markdown. No text outside the JSON. Field string values 1-2 sentences max EXCEPT "brief" which is 3-5 short paragraphs. Max 3 items per arrays.
 convictionScore MUST be an integer from 0 to 10 only (0=no conviction, 5=moderate, 10=maximum). Do not use any other scale.
 tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newlines with \\n):
 "[PAIR] [BIAS] [SCORE]/10 | [REGIME]\\n[1-2 sentence market read]\\nWatch: [up to 3 key levels with price and type]\\nDo: [specific action]. Avoid: [what to avoid]. Risk: [main risk or event]"
 
-{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":""}`;
+{"brief":"","overallBias":"LONG|SHORT|NEUTRAL","conviction":"HIGH|MEDIUM|LOW","convictionScore":5,"headline":"","regime":{"label":"TRENDING|RANGING|BREAKOUT RISK|MEAN-REVERSION|CHOPPY","detail":""},"macroRead":"","yieldCurveRead":"","oiRead":"","garchRead":"","armaRead":"","spreadSignalRead":"","cotRead":"","sessionRead":"","dollarRegimeRead":"","eventRiskRead":"","surpriseRead":"","volConeRead":"","impliedVolRead":"","riskFlagsRead":"","keyLevels":[{"price":"","type":"CALL WALL|PUT WALL|MAX PAIN|GAMMA FLIP|FIB CONFLUENCE|PIVOT|RANGE HIGH|RANGE LOW","significance":""}],"tradingFramework":"","goodToDoNow":["",""],"avoidNow":["",""],"breakoutTrigger":"","reversionTrigger":"","cleanBreakPotential":"LOW|MEDIUM|HIGH","cleanBreakRationale":"","sentimentPositioning":"","reflexivity":"","riskWarnings":["",""],"tldr":"","tradeOfDay":{"direction":"LONG|SHORT|NONE","entry":"","stopLoss":"","takeProfit":"","riskReward":"","confidence":"HIGH|MEDIUM|LOW","rationale":""}}`;
 }
 
 // ── Express app ───────────────────────────────────────────────────────────────
@@ -2443,6 +2672,18 @@ app.get('/api/levels', (_req, res) => {
 });
 
 // Manual levels reload — pull latest KV data into memory immediately
+// Sender registry + live switch state for the ⚙ Alerts modal. Served from
+// TG_SENDERS so the client never hardcodes the list — a sender added there shows
+// up as a new row on the next page load rather than being invisibly unmanaged.
+app.get('/api/telegram/senders', (_req, res) => {
+  res.json({
+    ok: true,
+    senders: Object.entries(TG_SENDERS).map(([key, label]) => ({
+      key, label, on: tgOn(key),
+    })),
+  });
+});
+
 app.post('/api/telegram/test-server', async (_req, res) => {
   if (!state.tg?.token || !state.tg?.chatId) {
     return res.json({ ok: false, error: 'Telegram not configured on server' });
@@ -2733,7 +2974,18 @@ async function _buildMorningBrief() {
   // project's own composite scores instead of flying blind on them.
   const scorecard = await _buildMacroScorecard().catch(() => null);
   const scorecardLines = scorecard?.ranked?.length
-    ? scorecard.ranked.map((r, i) => `${i + 1}. ${r.ccy} ${r.composite > 0 ? '+' : ''}${r.composite} (${r.coverage.length}/9 dims covered: ${r.coverage.join(', ')})`).join('\n')
+    ? scorecard.ranked.map((r, i) => {
+        // Yield curve and consumer confidence are folded into the composite
+        // like every other dim, but their raw value was previously invisible
+        // to the model — only the dim NAME showed up in coverage.join(), never
+        // the actual slope/inversion or confidence reading. Surface both
+        // explicitly since they're the newest, otherwise-invisible additions.
+        const extra = [];
+        if (r.dims?.yieldCurve != null) extra.push(`curve ${r.dims.yieldCurve >= 0 ? '+' : ''}${r.dims.yieldCurve}`);
+        if (r.dims?.consumerConfidence != null) extra.push(`confidence ${r.dims.consumerConfidence >= 0 ? '+' : ''}${r.dims.consumerConfidence}`);
+        const extraTxt = extra.length ? `  [${extra.join(', ')}]` : '';
+        return `${i + 1}. ${r.ccy} ${r.composite > 0 ? '+' : ''}${r.composite} (${r.coverage.length}/11 dims covered: ${r.coverage.join(', ')})${extraTxt}`;
+      }).join('\n')
       + (scorecard.pair ? `\nStrongest-vs-weakest pairing: ${scorecard.pair.long} vs ${scorecard.pair.short} (composite gap ${scorecard.pair.gap})` : '\nNo confident strongest-vs-weakest pairing — composite spreads are too tight today.')
     : null;
   const events = await _fetchTodayEvents().catch(() => []);
@@ -2756,7 +3008,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 ${macro}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
-${scorecardLines ? `\n=== MACRO SCORECARD — this project's own cross-engine composite ranking, strongest to weakest (each currency's score averages whatever of central-bank sentiment/CPI/GDP/business-activity/labor-market/retail-sales/trade-balance/real-yield/PPI is currently covered for it, each already on a -1..+1 scale) ===\n${scorecardLines}\nUse this to ground the dollar/FX-complex section in this project's OWN scoring, not just generic yield/DXY levels — e.g. if USD ranks near the top with wide coverage, that's a real evidenced reason to lean dollar-supportive, not just a vibe. Don't overstate a thin-coverage score (few dims covered) with the same confidence as a well-covered one — say so if leaning on a partial read.` : ''}
+${scorecardLines ? `\n=== MACRO SCORECARD — this project's own cross-engine composite ranking, strongest to weakest (each currency's score averages whatever of central-bank sentiment/CPI/GDP/business-activity/labor-market/retail-sales/trade-balance/real-yield/yield-curve/consumer-confidence/PPI(USD) is currently covered for it, up to 11 dims, each already on a -1..+1 scale — bracketed [curve/confidence] figures below are those two dims' raw reading, not folded blindly into the average) ===\n${scorecardLines}\nUse this to ground the dollar/FX-complex section in this project's OWN scoring, not just generic yield/DXY levels — e.g. if USD ranks near the top with wide coverage, that's a real evidenced reason to lean dollar-supportive, not just a vibe. A curve reading near 0 or negative means the curve is flat/inverted for that currency — worth naming directly if it's driving the score. Don't overstate a thin-coverage score (few dims covered) with the same confidence as a well-covered one — say so if leaning on a partial read.` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
@@ -2771,11 +3023,13 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
+Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data) — if nothing clearly stands out, say so honestly and return "pair":null rather than forcing a pick.
+
 Respond with ONLY valid JSON, no markdown:
-{"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"tldr":"one-line bottom line"}`;
+{"headline":"one-sentence front-page read, plain-English so-what first","regime":"RISK-ON|RISK-OFF|MIXED|TRANSITION","theme":"2-3 plain-spoken sentences on what's driving markets today, jargon glossed","dollar":"1-2 sentences on the USD","rates":"1-2 sentences on yields/curve","risk":"1-2 sentences on the risk mood (VIX/credit)","complex":"1-2 sentences: what it means for the FX majors + gold/indices","watch":["1-3 things to watch"],"byAsset":[{"asset":"USD|EUR|JPY|GBP|Gold|Stocks|Oil","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line"}],"pairsOutlook":[{"pair":"EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|XAUUSD|NAS100|SPX500|WTI","lean":"BULLISH|BEARISH|NEUTRAL","note":"one line citing the data behind it"}],"boardTradeOfDay":{"pair":"one of the eleven instruments above, or null if nothing clears the bar","direction":"LONG|SHORT","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing specific data points, or why nothing clears the bar"},"tldr":"one-line bottom line"}`;
   const antRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 3800, system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim in the provided data/headlines; never invent events or figures.', messages: [{ role: 'user', content: prompt }] }),
   });
   if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 200)}`);
   const antData = await antRes.json();
@@ -2913,7 +3167,48 @@ async function _serverSnapshotFor(name, sym) {
     volRegime: fc?.vol_pct != null ? (fc.vol_pct >= 80 ? 'ELEVATED' : fc.vol_pct <= 20 ? 'COMPRESSED' : 'NORMAL') : undefined,
     atrPct: fc?.vol_pct, priceVsAsia: session?.bias_detail,
   };
-  try { const oiRaw = await kv.get('oi_store'); if (oiRaw) { const od = JSON.parse(oiRaw); const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym]; if (o) snap.oi = { maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall, pcRatio: o.pcRatio, gex: o.exposures?.gex }; } } catch {}
+  // OI for the AI's oiRead. The headline three (max pain / call wall / put wall) name
+  // levels; these say which of them is actually in play today:
+  //   • dayMaxPain — max pain pins in the final ~48h and is weak at 5+ DTE, so the
+  //     NEAR-dated one is the tradeable magnet. The whole-book maxPain above can be
+  //     weeks out and was the only one the model ever saw.
+  //   • regime + flip — PIN means fade walls back toward max pain, BREAKOUT means a
+  //     decisive break tends to run. Same levels, opposite instruction.
+  //   • basisAgeH — every price here is `strike − basis`, and the basis drifts
+  //     intraday; without it the model cannot know the prices may have moved under it.
+  try {
+    const oiRaw = await kv.get('oi_store');
+    if (oiRaw) {
+      const od = JSON.parse(oiRaw);
+      const o = od.data?.[sym.replace('_', '/')] ?? od.data?.[sym];
+      if (o) {
+        const gexv = o.exposures?.gex;
+        const de = o.dayExpiry;
+        const _bAt = Number.isFinite(o.basisAtMs) ? o.basisAtMs : o.savedAtMs;   // basis ages separately from the chain
+        const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
+        snap.oi = {
+          maxPain: o.maxPain, callWall: o.callWall, putWall: o.putWall,
+          pcRatio: o.pcRatio, gex: gexv,
+          regime: gexv > 0 ? 'PIN' : gexv < 0 ? 'BREAKOUT' : null,
+          dte: o.dte ?? null,
+          dayDte: de?.dte ?? null, dayMaxPain: de?.maxPain ?? null,
+          dayCallWall: de?.callWall ?? null, dayPutWall: de?.putWall ?? null,
+          gammaFlip: o.gammaFlip ?? null,
+          gexFlip: Array.isArray(o.gexFlips) && o.gexFlips.length ? o.gexFlips[0].price : null,
+          basis: Number.isFinite(o.basis) ? +(+o.basis).toFixed(5) : null,
+          basisAgeH: ageH == null ? null : +ageH.toFixed(1),
+          basisStale: ageH != null && ageH >= 4,
+        };
+      }
+    }
+  } catch {}
+  // Macro Scorecard (11-dim fundamentals, both legs) — same block the manual
+  // Analyse path gets via _injectServerContext, added here too so the
+  // scheduled/auto-run analyses aren't thinner than the manual ones.
+  try {
+    const cc = _ccyPairFrom(sym);
+    if (cc) { const block = await _macroScorecardBlockFor(cc[0], cc[1]); if (block) snap.macroScorecard = block; }
+  } catch {}
   // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
   try {
     const cotRaw = await kv.get('cot_extremes_v2');
@@ -3064,8 +3359,10 @@ function _fomcReadingGuidance(kind) {
   return '';
 }
 function _fomcPrevMeetingDate(meetingDate) {
-  const idx = FOMC_MEETINGS.findIndex(m => m.date === meetingDate);
-  return idx > 0 ? FOMC_MEETINGS[idx - 1].date : null;
+  // Merged historical+live lookup (js/fomcHistory.js), so the first meeting
+  // on the live calendar — and any backfilled 2016-2025 meeting — still diffs
+  // against its true predecessor instead of getting no diff block at all.
+  return fomcPreviousMeetingDate(meetingDate);
 }
 async function _fomcGetRaw(kind, date) {
   const raw = await kv.get(`fomc_raw_${kind}_${date}`);
@@ -3249,6 +3546,122 @@ app.get('/api/fomc/fetch-status', async (_req, res) => {
 // same running-guard as the manual trigger so the two can never overlap and
 // race on the same KV writes.
 setInterval(() => { _fomcRunCheck('poll'); }, 30 * 60_000);
+
+// ── FOMC Statement Backfill — Stage 2 of MD files/CB_SENTIMENT_PRICE_TEST.md ──
+// Backfills every scheduled FOMC statement 2016→today (js/fomcHistory.js —
+// dates validated by the Stage-1 vol-spike join proof), then scores each one
+// with the frozen cbLexicon (Scorer A, confirmatory, hindsight-free) and —
+// only with ?llm=1 and ANT_KEY — runs the standard LLM engine over meetings
+// with no analysis yet (Scorer B, exploratory; the pre-registration explains
+// why B alone can never pass Stage 3). Raw captures are idempotent: an
+// existing fomc_raw_statement_<date> is never refetched or overwritten, so
+// live point-in-time captures are untouchable by this job.
+//
+// Results land in ONE KV key for the Stage-3 join:
+//   fomc_lexicon_scores = { generatedAt, lexicon, total, captured, meetings:
+//     [{ date, sep, hawk, dove, score, dScore, llmScore, dLlmScore, missing }] }
+// Fire-and-forget + poll (same reason as /api/fomc/fetch-now): 80 sequential
+// fed.gov fetches outlive any reverse-proxy timeout. ~1.2s politeness delay
+// between network fetches; already-captured statements cost no fetch at all.
+const _FOMC_BACKFILL_LOG_KV = 'fomc_backfill_log';
+let _fomcBackfillRunning = false;
+
+async function _fomcBackfillJob(withLlm) {
+  const meetings = fomcAllMeetings().filter(m => Date.parse(m.date) <= Date.now());
+  const log = [];
+  const heartbeat = async phase => kv.put(_FOMC_BACKFILL_LOG_KV, JSON.stringify({
+    at: new Date().toISOString(), phase, total: meetings.length, log: log.slice(-30),
+  })).catch(() => {});
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Phase 1 — ensure raw capture + lexicon score, oldest first.
+  const rows = [];
+  let fetched = 0, missing = 0;
+  for (const m of meetings) {
+    let raw = await _fomcGetRaw('statement', m.date);
+    if (!raw) {
+      try {
+        const r = await FOMC_FETCHERS.statement(m.date);
+        if (r.ok) {
+          raw = { text: r.text, url: r.url, tables: null, fetchedAt: new Date().toISOString() };
+          await kv.put(`fomc_raw_statement_${m.date}`, JSON.stringify(raw));
+          fetched++;
+        } else {
+          log.push(`${m.date} ✗ ${r.notYetPublished ? '404 (no statement page)' : r.error || r.status}`);
+        }
+      } catch (e) { log.push(`${m.date} ✗ ${e.message}`); }
+      await sleep(1200); // politeness: only after an actual network fetch
+    }
+    if (!raw?.text) { missing++; rows.push({ date: m.date, sep: m.sep, missing: true }); continue; }
+    const lex = cbLexiconScore(raw.text);
+    rows.push({ date: m.date, sep: m.sep, hawk: lex.hawk, dove: lex.dove, score: lex.score, sourceUrl: raw.url });
+    if (rows.length % 10 === 0) await heartbeat(`capture+lexicon ${rows.length}/${meetings.length}`);
+  }
+  log.push(`phase 1 done: ${rows.length - missing}/${meetings.length} scored (${fetched} newly fetched, ${missing} missing)`);
+  await heartbeat('phase 1 done');
+
+  // Phase 2 (opt-in) — LLM analysis for meetings that have none. The engine
+  // writes fomc_latest as a side effect; snapshot and restore it so a
+  // historical backfill can never repoint the dashboard at a 2016 meeting.
+  if (withLlm && process.env.ANT_KEY) {
+    const latestSnapshot = await kv.get('fomc_latest').catch(() => null);
+    let built = 0, failed = 0;
+    for (const row of rows) {
+      if (row.missing) continue;
+      const existing = await kv.get(`fomc_analysis_statement_${row.date}`).catch(() => null);
+      if (existing) continue;
+      try { await _buildFomcAnalysis('statement', row.date); built++; }
+      catch (e) { failed++; log.push(`${row.date} llm ✗ ${e.message}`); }
+      await sleep(500);
+      if ((built + failed) % 10 === 0) await heartbeat(`llm ${built + failed} built/failed`);
+    }
+    if (latestSnapshot) await kv.put('fomc_latest', latestSnapshot).catch(() => {});
+    log.push(`phase 2 done: ${built} LLM analyses built, ${failed} failed`);
+  } else if (withLlm) {
+    log.push('phase 2 skipped: ANT_KEY not configured');
+  }
+
+  // Attach LLM scores (from any analysis, pre-existing or just built) and
+  // both scorers' meeting-over-meeting deltas vs the previous SCORED meeting.
+  for (const row of rows) {
+    if (row.missing) continue;
+    const rawA = await kv.get(`fomc_analysis_statement_${row.date}`).catch(() => null);
+    if (rawA) { try { row.llmScore = JSON.parse(rawA).analysis?.hawkishScore ?? null; } catch { row.llmScore = null; } }
+  }
+  let prevLex = null, prevLlm = null;
+  for (const row of rows) {
+    if (row.missing) continue;
+    row.dScore = prevLex == null ? null : +(row.score - prevLex).toFixed(4);
+    row.dLlmScore = (prevLlm == null || row.llmScore == null) ? null : +(row.llmScore - prevLlm).toFixed(4);
+    prevLex = row.score;
+    if (row.llmScore != null) prevLlm = row.llmScore;
+  }
+
+  await kv.put('fomc_lexicon_scores', JSON.stringify({
+    generatedAt: new Date().toISOString(), lexicon: CB_LEXICON_VERSION,
+    total: meetings.length, captured: rows.filter(r => !r.missing).length, meetings: rows,
+  }));
+  await heartbeat('done');
+  console.log(`[fomc-backfill] ${log.join(' · ')}`);
+}
+
+app.post('/api/fomc-backfill/run', (req, res) => {
+  if (_fomcBackfillRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _fomcBackfillRunning = true;
+  const withLlm = req.query.llm === '1';
+  _fomcBackfillJob(withLlm).catch(e => console.error('[fomc-backfill]', e.message))
+    .finally(() => { _fomcBackfillRunning = false; });
+  res.json({ ok: true, started: true, withLlm });
+});
+app.get('/api/fomc-backfill/status', async (_req, res) => {
+  const raw = await kv.get(_FOMC_BACKFILL_LOG_KV).catch(() => null);
+  res.json({ ok: true, running: _fomcBackfillRunning, last: raw ? JSON.parse(raw) : null });
+});
+app.get('/api/fomc-backfill/scores', async (_req, res) => {
+  const raw = await kv.get('fomc_lexicon_scores').catch(() => null);
+  if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/fomc-backfill/run first' });
+  res.json({ ok: true, ...JSON.parse(raw) });
+});
 
 // ── ECB Sentiment Engine ───────────────────────────────────────────────────────
 // Same shape as the FOMC engine (calendar-driven fetch → diff vs previous →
@@ -4227,6 +4640,83 @@ setInterval(() => {
   _buildIsmScores().catch(() => {}).finally(() => { _ismRunning = false; });
 }, 20 * 60_000);
 
+// ── Geopolitical Risk Index (Caldara & Iacoviello, Fed Board) — see js/gprEngine.js ──
+// The ONE macro series on this dashboard that isn't on FRED — a genuinely
+// global, currency-agnostic backdrop read (counts geopolitical-tension
+// language across 10 major newspapers). The underlying series has a daily
+// date index, but the SOURCE FILE itself is only republished weekly, every
+// Monday (confirmed on the site directly — shifts a day around federal
+// holidays), not daily — checking once/day still correctly catches each
+// week's update the same day it lands, just costs nothing on the 6 days it
+// doesn't change. today.html's Market Read line flags >~10 days since the
+// latest date as likely-stale (a missed weekly update), not a bug. Source is
+// a raw .xls download, not a JSON API, hence the xlsx dependency — parsing
+// it needs the `xlsx` package's own patched CDN build (the npm-registry
+// copy has an unpatched high-severity prototype-pollution advisory), which
+// isn't reachable from every build environment. Rather than pin it in
+// package.json (a lockfile entry for a CDN tarball a build can't always
+// resolve breaks `npm ci` for the WHOLE app, not just this one widget —
+// exactly what took production down after this engine first landed), it's
+// an optional peer dependency: install it yourself (`npm install xlsx@https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz`)
+// in an environment that can reach the CDN if you want this feature live;
+// without it, GPR just reports "unavailable" and everything else runs fine.
+const _GPR_KV = 'gpr_v1';
+const GPR_DAILY_URL = 'https://www.matteoiacoviello.com/gpr_files/data_gpr_daily_recent.xls';
+async function _buildGprScore() {
+  let XLSX;
+  try {
+    XLSX = await import('xlsx');
+  } catch {
+    throw new Error('GPR: xlsx package not installed (optional dependency — see comment above _buildGprScore)');
+  }
+  const r = await fetch(GPR_DAILY_URL, { signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`GPR fetch failed (${r.status})`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const raw = XLSX.utils.sheet_to_json(sheet, { raw: true });
+  // Confirmed columns (real file, 2026-08): DAY ('YYYYMMDD' string), GPRD_MA30
+  // (the smoothed level this engine uses — see gprEngine.js header for why).
+  const rows = raw
+    .filter(row => row.DAY && Number.isFinite(row.GPRD_MA30))
+    .map(row => {
+      const s = String(row.DAY);
+      return { date: `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`, gprdMa30: row.GPRD_MA30 };
+    });
+  const score = _gprScore(rows);
+  if (!score) throw new Error('GPR: not enough clean history after parsing');
+  const payload = { ...score, generatedAt: new Date().toISOString() };
+  await kv.put(_GPR_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/gpr', async (_req, res) => {
+  try {
+    const raw = await kv.get(_GPR_KV);
+    if (!raw) return res.json({ ok: false, error: 'No geopolitical-risk data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _gprRunning = false;
+app.post('/api/gpr/refresh', (_req, res) => {
+  if (_gprRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _gprRunning = true;
+  _buildGprScore().catch(() => {}).finally(() => { _gprRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/gpr/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_GPR_KV).catch(() => null);
+  res.json({ ok: true, running: _gprRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _gprLastRun = null;
+setInterval(() => {
+  if (_gprRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_gprLastRun === today) return;
+  _gprLastRun = today;
+  _gprRunning = true;
+  _buildGprScore().catch(() => {}).finally(() => { _gprRunning = false; });
+}, 20 * 60_000);
+
 // ── Retail Sales Numeric-Composition Engine (see js/retailSalesEngine.js) ──
 // Same shape again: pure numeric score from FRED series, not a text-reading
 // engine. USD is monthly ($-level headline + ex-autos); the other 7
@@ -4435,6 +4925,109 @@ setInterval(() => {
   _buildPpiScores().catch(() => {}).finally(() => { _ppiRunning = false; });
 }, 20 * 60_000);
 
+// ── Yield Curve Engine (see js/yieldCurveEngine.js) ─────────────────────────
+// Entirely derived — no new data source, both legs are series already
+// confirmed and in production use (short/long rates econTrendEngine.js's
+// ECON_UNIVERSE already fetches, and the same long-yield IDs Real Yield's
+// y10 leg already uses). Same daily-gate refresh pattern as every other
+// engine here.
+const _YIELD_CURVE_KV = 'yield_curve_v1';
+async function _buildYieldCurveScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(YIELD_CURVE_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchYieldCurveData(ccy, fredKey);
+      byCcy[ccy] = yieldCurveScore(data.long, data.short);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_YIELD_CURVE_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/yield-curve', async (_req, res) => {
+  try {
+    const raw = await kv.get(_YIELD_CURVE_KV);
+    if (!raw) return res.json({ ok: false, error: 'No yield curve data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _yieldCurveRunning = false;
+app.post('/api/yield-curve/refresh', (_req, res) => {
+  if (_yieldCurveRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _yieldCurveRunning = true;
+  _buildYieldCurveScores().catch(() => {}).finally(() => { _yieldCurveRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/yield-curve/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_YIELD_CURVE_KV).catch(() => null);
+  res.json({ ok: true, running: _yieldCurveRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _yieldCurveLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _yieldCurveRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_yieldCurveLastRun === today) return;
+  _yieldCurveLastRun = today;
+  _yieldCurveRunning = true;
+  _buildYieldCurveScores().catch(() => {}).finally(() => { _yieldCurveRunning = false; });
+}, 20 * 60_000);
+
+// ── Consumer Confidence Engine (see js/consumerConfidenceEngine.js) ─────────
+// Demand-side mirror of the ISM/business-confidence engine — one series per
+// currency (Michigan for USD, OECD CSCICP02 family for the other 6; CAD
+// excluded, confirmed no live series at the source). Same daily-gated
+// refresh pattern as every other engine here.
+const _CONSUMER_CONFIDENCE_KV = 'consumer_confidence_v1';
+async function _buildConsumerConfidenceScores() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const byCcy = {}, availability = {};
+  await Promise.all(Object.keys(CONFIDENCE_UNIVERSE).map(async ccy => {
+    try {
+      const { data, availability: avail } = await fetchConsumerConfidenceData(ccy, fredKey);
+      byCcy[ccy] = consumerConfidenceCompositeScore(ccy, data);
+      availability[ccy] = avail;
+    } catch (e) {
+      availability[ccy] = [{ error: e.message }];
+    }
+  }));
+  const payload = { byCcy, availability, generatedAt: new Date().toISOString() };
+  await kv.put(_CONSUMER_CONFIDENCE_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/consumer-confidence', async (_req, res) => {
+  try {
+    const raw = await kv.get(_CONSUMER_CONFIDENCE_KV);
+    if (!raw) return res.json({ ok: false, error: 'No consumer confidence data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _consumerConfidenceRunning = false;
+app.post('/api/consumer-confidence/refresh', (_req, res) => {
+  if (_consumerConfidenceRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _consumerConfidenceRunning = true;
+  _buildConsumerConfidenceScores().catch(() => {}).finally(() => { _consumerConfidenceRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/consumer-confidence/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null);
+  res.json({ ok: true, running: _consumerConfidenceRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _consumerConfidenceLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _consumerConfidenceRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_consumerConfidenceLastRun === today) return;
+  _consumerConfidenceLastRun = today;
+  _consumerConfidenceRunning = true;
+  _buildConsumerConfidenceScores().catch(() => {}).finally(() => { _consumerConfidenceRunning = false; });
+}, 20 * 60_000);
+
 // ── Macro Scorecard (see js/macroScorecardEngine.js) ────────────────────────
 // The one place that reads across EVERY other engine's already-cached KV
 // and combines them into a single ranked per-currency view — no new
@@ -4467,7 +5060,7 @@ async function _loadCbSentiment() {
   return out;
 }
 async function _buildMacroScorecard() {
-  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, cbSentiment] = await Promise.all([
+  const [cpiRaw, gdpRaw, ismRaw, laborRaw, retailRaw, tradeRaw, realYieldRaw, ppiRaw, yieldCurveRaw, confidenceRaw, cbSentiment] = await Promise.all([
     kv.get(_CPI_KV).catch(() => null),
     kv.get(_GDP_KV).catch(() => null),
     kv.get(_ISM_KV).catch(() => null),
@@ -4476,6 +5069,8 @@ async function _buildMacroScorecard() {
     kv.get(_TRADE_BALANCE_KV).catch(() => null),
     kv.get(_REAL_YIELD_KV).catch(() => null),
     kv.get(_PPI_KV).catch(() => null),
+    kv.get(_YIELD_CURVE_KV).catch(() => null),
+    kv.get(_CONSUMER_CONFIDENCE_KV).catch(() => null),
     _loadCbSentiment(),
   ]);
   const cpi = cpiRaw ? JSON.parse(cpiRaw).byCcy : {};
@@ -4486,6 +5081,8 @@ async function _buildMacroScorecard() {
   const trade = tradeRaw ? JSON.parse(tradeRaw).byCcy : {};
   const realYield = realYieldRaw ? JSON.parse(realYieldRaw).byCcy : {};
   const ppi = ppiRaw ? JSON.parse(ppiRaw).byCcy : {};
+  const yieldCurve = yieldCurveRaw ? JSON.parse(yieldCurveRaw).byCcy : {};
+  const confidence = confidenceRaw ? JSON.parse(confidenceRaw).byCcy : {};
 
   const byCcyDims = {};
   for (const ccy of ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD']) {
@@ -4498,6 +5095,8 @@ async function _buildMacroScorecard() {
       retailSales: retail[ccy]?.spending ?? null,
       tradeBalance: trade[ccy]?.score ?? null,
       realYield: realYield[ccy]?.score ?? null,
+      yieldCurve: yieldCurve[ccy]?.score ?? null,
+      consumerConfidence: confidence[ccy]?.confidence ?? null,
       ...(ccy === 'USD' ? { ppi: ppi[ccy]?.pressure ?? null } : {}),
     };
   }
@@ -5598,6 +6197,58 @@ function forwardFillAlign(dateIndex, sparseMap) {
   });
 }
 
+// Enrich reversion `days` with a per-day HAR-IV σ (`hariv_annual`) for instruments
+// that have a listed IV index (gold→GVZ) — the COG-v2 gold σ, walked forward per day
+// (no lookahead: each day fits harIvForecastNext on the D1 slice strictly before it +
+// the GVZ series aligned to those dates). Lets forecast-reversion draw the COG-v2 gold
+// lines historically. Best-effort: no IV index / no FRED_KEY / fetch fail → left unset
+// (client falls back to COG), so Original/COG/Bot always render. `bars` = the same
+// sorted D1 history the bot_vol_annual enrichment already fetched; `byDate` its index.
+//
+// LEVEL CALIBRATION: implied vol (GVZ) carries a variance-risk-premium, so raw HAR-IV σ
+// is biased HIGH vs realized — over-widening the bands (the GOLD_C constants are fit to
+// the forecaster's realized-scale σ). We rescale so HAR-IV's MEAN matches the forecaster
+// σ over this window, keeping HAR-IV's day-to-day VARIATION (its real edge) but removing
+// the level bias. Only `hariv_annual` (read solely by the reversion COG-v2 branch) is
+// affected — COG / Original / Bot are untouched. VOL_FORECAST_HARIV_RAW=1 disables the
+// rescale to inspect the raw (pre-calibration) lines.
+async function _attachHarIvSigma(days, bars, byDate, pair) {
+  const code = _IV_INDEX[String(pair).toUpperCase()];
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!code || !fredKey || !bars?.length) return;
+  let gvz;
+  try { gvz = await fetchFredSeries(code, bars[0].date, fredKey); } catch { return; }
+  if (!gvz || gvz.size < 60) return;
+
+  // Pass 1: raw annualized HAR-IV σ per day (√(var × 252) — harIvForecastNext returns a
+  // daily VARIANCE; var × √252 would under-scale ~60×).
+  const raw = {};
+  for (const d of Object.keys(days)) {
+    const idx = byDate.get(d);
+    if (idx == null || idx < 60) continue;
+    const slice = bars.slice(Math.max(0, idx - 800), idx);
+    if (slice.length < 60) continue;
+    try {
+      const ivPct = forwardFillAlign(slice.map(b => b.date), gvz);
+      const varDaily = _harIvForecastNext(_realizedVarSeries(slice, 'gk'), _ivVarSeries(ivPct));
+      if (varDaily > 0) raw[d] = Math.sqrt(varDaily * 252) * 100;
+    } catch { /* per-day HAR-IV is optional enrichment — leave unset */ }
+  }
+
+  // Level-calibration factor = mean(forecaster σ) / mean(raw HAR-IV σ) over days with both.
+  let sHar = 0, sFc = 0, n = 0;
+  for (const d of Object.keys(raw)) {
+    const fc = days[d]?.vol_annual;
+    if (fc > 0) { sHar += raw[d]; sFc += fc; n++; }
+  }
+  const useRaw = process.env.VOL_FORECAST_HARIV_RAW === '1';
+  const scale  = (!useRaw && n >= 20 && sHar > 0) ? (sFc / sHar) : 1;
+  if (scale !== 1) console.log(`[REVERSION] ${pair} HAR-IV level-cal ×${scale.toFixed(3)} (n=${n}, mean raw ${(sHar / n).toFixed(1)}% → fc ${(sFc / n).toFixed(1)}%)`);
+
+  // Pass 2: write the (level-calibrated) σ — the only field the COG-v2 branch reads.
+  for (const d of Object.keys(raw)) days[d].hariv_annual = +(raw[d] * scale).toFixed(2);
+}
+
 // Daily Treasury General Account balance from Treasury's Daily Treasury
 // Statement (Table I — Operating Cash Balance), via the public Fiscal Data
 // API. This is the genuinely-daily counterpart to FRED's WTREGEN (weekly).
@@ -5947,6 +6598,175 @@ app.get('/api/macro-equity-backtest/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Overnight Hold vs Buy & Hold backtest (education/buy-and-hold-notes.md) ──
+// POST /api/overnight-hold-v1/run        → { ok, jobId }
+// GET  /api/overnight-hold-v1/status/:id → { ok, status, ...result }
+// M1 data via loadM1ForPair (R2 → local disk → Drive, same as every other M1
+// engine). The engine itself (js/overnightHoldEngine.js) is pure — this route
+// is only the IO + job-lifecycle wiring, same async-job Map pattern as
+// macro-equity-backtest above.
+const ohJobs = new Map();
+
+function _purgeStaleOhJobs() {
+  const cutoff = Date.now() - 90 * 60_000; // keep for 90 min
+  for (const [id, job] of ohJobs) if (job.startedAt < cutoff) ohJobs.delete(id);
+}
+
+// Cache the loaded M1 packed data per instrument (90MB+ each) so the
+// dashboard's click-to-inspect trade chart doesn't re-fetch the whole file
+// from R2 on every click — reused by both /run and the /m1 zoom endpoint below.
+const ohM1Cache = new Map(); // key -> { packed, fetchedAt }
+const OH_M1_CACHE_TTL = 60 * 60_000; // 60 min
+
+async function ohGetCachedM1(key) {
+  const hit = ohM1Cache.get(key);
+  if (hit && Date.now() - hit.fetchedAt < OH_M1_CACHE_TTL) return hit.packed;
+  const packed = await loadM1ForPair(key);
+  ohM1Cache.set(key, { packed, fetchedAt: Date.now() });
+  return packed;
+}
+
+app.post('/api/overnight-hold-v1/run', express.json({ limit: '256kb' }), (req, res) => {
+  const body = req.body ?? {};
+  const instruments = Array.isArray(body.instruments) && body.instruments.length
+    ? body.instruments.filter(k => k === 'gold' || k === 'nq')
+    : ['gold', 'nq'];
+  if (!instruments.length) {
+    return res.status(400).json({ ok: false, error: 'instruments must include "gold" and/or "nq"' });
+  }
+
+  const numOr = (v, d) => (v != null && v !== '' && Number.isFinite(parseFloat(v)) ? parseFloat(v) : d);
+  const ruleset = {
+    dailyLossLimitPct:      numOr(body.dailyLossLimitPct,      OH_DEFAULT_RULESET.dailyLossLimitPct),
+    maxDrawdownStaticPct:   numOr(body.maxDrawdownStaticPct,   OH_DEFAULT_RULESET.maxDrawdownStaticPct),
+    maxDrawdownTrailingPct: numOr(body.maxDrawdownTrailingPct, OH_DEFAULT_RULESET.maxDrawdownTrailingPct),
+    ddMode:                 (body.ddMode === 'static' || body.ddMode === 'trailing') ? body.ddMode : OH_DEFAULT_RULESET.ddMode,
+    profitTargetPct:        numOr(body.profitTargetPct,        OH_DEFAULT_RULESET.profitTargetPct),
+    profitTargetDays:       numOr(body.profitTargetDays,       OH_DEFAULT_RULESET.profitTargetDays),
+    consistencyCapPct:      numOr(body.consistencyCapPct,      OH_DEFAULT_RULESET.consistencyCapPct),
+  };
+  // A real trade-construction RULE ("never enter on this weekday"), not a
+  // cost knob — flows into buildOvernightTrades so it affects every
+  // downstream number (Sharpe, drawdown, rule-check, cost sweep), not just
+  // total return. Array of 0=Sun..6=Sat; anything else is dropped rather
+  // than silently coerced.
+  const skipWeekdays = Array.isArray(body.skipWeekdays)
+    ? [...new Set(body.skipWeekdays.map(v => parseInt(v, 10)).filter(v => Number.isInteger(v) && v >= 0 && v <= 6))]
+    : [];
+  // Candidate exit times for the hold-duration sweep ("does holding later
+  // than 14:30 UK, up to London close, change the result?") — opt-in, only
+  // runs (rescanning M1 per candidate) when the caller actually sends this.
+  // Validated 'HH:MM' 24h format; anything malformed is dropped rather than
+  // silently coerced.
+  const exitTimes = Array.isArray(body.exitTimes)
+    ? [...new Set(body.exitTimes.filter(v => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v)))]
+    : undefined;
+
+  const opts = {
+    ruleset,
+    accountSize:       numOr(body.accountSize, OH_DEFAULT_ACCOUNT_SIZE),
+    notionalPerTrade:  numOr(body.notionalPerTrade, numOr(body.accountSize, OH_DEFAULT_ACCOUNT_SIZE)),
+    tripleSwapDow:     body.tripleSwapDow != null ? parseInt(body.tripleSwapDow, 10) : undefined,
+    skipWeekdays,
+    exitTimes: exitTimes && exitTimes.length ? exitTimes : undefined,
+    financingBpsPerNight: {
+      nq:   numOr(body.financingBpsNq, undefined),
+      gold: numOr(body.financingBpsGold, undefined),
+    },
+    // Real-broker overrides, keyed by asset CLASS (commodity=gold, index=nq)
+    // to match applyCosts' lookup — not the instrument key. Lets a user plug
+    // their actual spread/slippage in instead of the engine's illustrative
+    // defaults (see js/overnightHoldEngine.js header for why those defaults
+    // were chosen and why they should be calibrated before trusting a verdict).
+    costPct: {
+      commodity: numOr(body.spreadPctGold, undefined),
+      index:     numOr(body.spreadPctNq, undefined),
+    },
+    slipPct: {
+      commodity: numOr(body.slipPctGold, undefined),
+      index:     numOr(body.slipPctNq, undefined),
+    },
+  };
+  // Drop undefined overrides so the engine's own defaults apply.
+  if (opts.financingBpsPerNight.nq === undefined) delete opts.financingBpsPerNight.nq;
+  if (opts.financingBpsPerNight.gold === undefined) delete opts.financingBpsPerNight.gold;
+  if (!Object.keys(opts.financingBpsPerNight).length) delete opts.financingBpsPerNight;
+  if (opts.costPct.commodity === undefined) delete opts.costPct.commodity;
+  if (opts.costPct.index === undefined) delete opts.costPct.index;
+  if (!Object.keys(opts.costPct).length) delete opts.costPct;
+  if (opts.slipPct.commodity === undefined) delete opts.slipPct.commodity;
+  if (opts.slipPct.index === undefined) delete opts.slipPct.index;
+  if (!Object.keys(opts.slipPct).length) delete opts.slipPct;
+  if (opts.tripleSwapDow === undefined || Number.isNaN(opts.tripleSwapDow)) delete opts.tripleSwapDow;
+
+  const jobId = `oh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleOhJobs();
+  ohJobs.set(jobId, { status: 'running', startedAt, phase: 'Loading M1 data…' });
+
+  (async () => {
+    try {
+      const m1ByInstrument = {};
+      for (const key of instruments) {
+        ohJobs.get(jobId).phase = `Loading M1 for ${key}…`;
+        m1ByInstrument[key] = await ohGetCachedM1(key);
+        if (!m1ByInstrument[key]?.n) {
+          console.warn(`[overnight-hold] no M1 data found for ${key} (R2/disk/Drive all missed)`);
+        }
+      }
+      ohJobs.get(jobId).phase = 'Running pipeline (session windows, costs, metrics, rule check)…';
+      const result = runOvernightHoldBacktest(m1ByInstrument, opts);
+      ohJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, data: result, runAt: new Date().toISOString() } });
+      console.log(`[overnight-hold] job ${jobId} done (${Math.round((Date.now() - startedAt) / 1000)}s)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.error('[overnight-hold] error:', msg, e?.stack ?? '');
+      ohJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/overnight-hold-v1/status/:jobId', (req, res) => {
+  const job = ohJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running',
+      elapsed: Math.round((Date.now() - job.startedAt) / 1000),
+      phase: job.phase ?? 'Running…' });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// GET /api/overnight-hold-v1/m1/:instrument?from=EPOCH&to=EPOCH → { ok, bars }
+// M1 slice for the dashboard's click-to-inspect single-trade chart — served
+// from the same cache /run populates (ohGetCachedM1), so it's a re-fetch only
+// on the very first request after the cache TTL expires. Capped to 7 days per
+// request so a typo in from/to can't try to serialize the whole 10-year file.
+app.get('/api/overnight-hold-v1/m1/:instrument', async (req, res) => {
+  const key = req.params.instrument;
+  if (key !== 'gold' && key !== 'nq') {
+    return res.status(400).json({ ok: false, error: 'instrument must be "gold" or "nq"' });
+  }
+  const from = parseInt(req.query.from, 10);
+  const to = parseInt(req.query.to, 10);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+    return res.status(400).json({ ok: false, error: 'from/to (epoch seconds) required, to > from' });
+  }
+  if (to - from > 7 * 86400) {
+    return res.status(400).json({ ok: false, error: 'window too large — max 7 days per request' });
+  }
+  try {
+    const packed = await ohGetCachedM1(key);
+    if (!packed?.n) return res.status(404).json({ ok: false, error: 'no M1 data available for this instrument' });
+    res.json({ ok: true, bars: extractBars(packed, from, to) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
 });
 
 // ── Global Liquidity real-data backtest (runs on Railway: FRED_KEY + R2 FX) ────
@@ -6419,6 +7239,194 @@ app.get('/api/vumanchu/chart', async (req, res) => {
     return res.send(data);
   } catch (err) {
     console.error('[vumanchu/chart]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// ── Trade Lab — visual research page backend ──────────────────────────────────
+// GET  /api/trade-lab/candles?instrument=gold|nq&from=<iso>&to=<iso>[&tf=1]
+//   Serves real M1 bars for the requested window, stitching the frozen R2
+//   archive with a LIVE OANDA (then Yahoo) fetch for anything the archive
+//   doesn't reach yet — see js/tradeLabDataSource.js. Optionally resamples to
+//   `tf` minutes. Live fetch failures are reported in the response, never
+//   silently swallowed (`liveStatus`/`liveError`).
+app.get('/api/trade-lab/candles', async (req, res) => {
+  try {
+    const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+    if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const fromSec = Math.floor(new Date(String(req.query.from || '')).getTime() / 1000);
+    const toSec = Math.floor(new Date(String(req.query.to || '')).getTime() / 1000);
+    if (!Number.isFinite(fromSec) || !Number.isFinite(toSec) || toSec <= fromSec) {
+      return res.status(400).json({ error: 'from/to must be valid ISO timestamps with to > from' });
+    }
+    if (toSec - fromSec > 45 * 86400) return res.status(400).json({ error: 'window too large (max 45 days) — the trade lab is for zoomed-in trade review, not full-history backtesting' });
+
+    const tfMin = Math.max(1, Math.min(60, Number(req.query.tf) || 1));
+    const { bars, source, archiveTo, liveStatus, liveError } = await loadTradeLabBars(instrument, fromSec, toSec);
+    const outBars = tfMin === 1 ? bars : _resampleTo(bars, tfMin);
+    res.json({
+      instrument, tf: tfMin, from: fromSec, to: toSec,
+      source, archiveTo, liveStatus, liveError,
+      bars: outBars,
+    });
+  } catch (err) {
+    console.error('[trade-lab/candles]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/trade-lab/geometry?instrument=gold|nq
+//   Serves the precomputed full-10-year-archive geometry summary (unsupervised
+//   k-means clusters, size-vs-retrace buckets, EMA-agreement stats — see
+//   education/jordan_trade_geometry/RESULTS.md for how these were produced).
+//   Static file read, cached in memory — this is context for the research
+//   panel, not recomputed per request.
+const _tradeLabGeomCache = new Map();
+app.get('/api/trade-lab/geometry', (req, res) => {
+  const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+  if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+  try {
+    if (!_tradeLabGeomCache.has(instrument)) {
+      const p = path.join(__dirname, 'education', 'jordan_trade_geometry', 'data', `${instrument}.geometry.json`);
+      _tradeLabGeomCache.set(instrument, JSON.parse(fs.readFileSync(p, 'utf8')));
+    }
+    res.json(_tradeLabGeomCache.get(instrument));
+  } catch (err) {
+    res.status(404).json({ error: `geometry summary not found for ${instrument}: ${err.message}` });
+  }
+});
+
+// POST /api/trade-lab/geometry-window — body: { instrument, from, to, tf? }
+//   Runs the SAME impulse/retracement detector (js/impulseRetracementGeometry.js)
+//   on just the requested window's bars, so the chart can overlay real detected
+//   impulses + their turning points directly on whatever's currently loaded —
+//   a small, bounded computation (a window of weeks, not the 10y archive), so
+//   this is a plain synchronous request, not the async-job pattern.
+app.post('/api/trade-lab/geometry-window', express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    const { instrument, from, to, tf = 1 } = req.body ?? {};
+    const key = instrument === 'nq' ? 'nq' : instrument === 'gold' ? 'gold' : null;
+    if (!key) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const fromSec = Math.floor(new Date(String(from)).getTime() / 1000);
+    const toSec = Math.floor(new Date(String(to)).getTime() / 1000);
+    if (!Number.isFinite(fromSec) || !Number.isFinite(toSec) || toSec <= fromSec) {
+      return res.status(400).json({ error: 'from/to must be valid ISO timestamps with to > from' });
+    }
+    const { bars, source, liveStatus, liveError } = await loadTradeLabBars(key, fromSec, toSec);
+    const tfMin = Math.max(1, Math.min(60, Number(tf) || 1));
+    const workBars = tfMin === 1 ? bars : _resampleTo(bars, tfMin);
+    const occurrences = findImpulseRetracements(workBars, {});
+    res.json({ instrument: key, tf: tfMin, source, liveStatus, liveError, nBars: workBars.length, occurrences });
+  } catch (err) {
+    console.error('[trade-lab/geometry-window]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/trade-lab/similar-trades?instrument=gold|nq&dir=up|down[&refSize=3.4][&outcome=continued][&limit=24][&sort=recent|closest]
+//   Scans the FULL 10-year archive once (cached in memory per instrument —
+//   ~65k occurrences at M5, ~200ms to compute, see js/impulseRetracementGeometry.js)
+//   and returns the trades matching the CURRENT one's shape (same direction,
+//   closest impulse size) so the page can browse other real historical
+//   examples that look like it — not just the one window currently loaded.
+const _tradeLabArchiveOccCache = new Map();   // instrument -> Promise<Occurrence[]>
+async function _archiveOccurrences(instrument) {
+  if (!_tradeLabArchiveOccCache.has(instrument)) {
+    _tradeLabArchiveOccCache.set(instrument, (async () => {
+      const packed = await loadFullArchivePacked(instrument);
+      if (!packed || !packed.n) return [];
+      const bars = plResampleBars(packed, 5);   // M5 — matches education/jordan_trade_geometry's own analysis
+      return findImpulseRetracements(bars, {});
+    })());
+  }
+  return _tradeLabArchiveOccCache.get(instrument);
+}
+app.get('/api/trade-lab/similar-trades', async (req, res) => {
+  try {
+    const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+    if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const dir = req.query.dir === 'down' ? 'down' : req.query.dir === 'up' ? 'up' : null;
+    if (!dir) return res.status(400).json({ error: 'dir must be up|down' });
+    const outcome = ['continued', 'invalidated', 'timeout', 'any'].includes(req.query.outcome) ? req.query.outcome : 'continued';
+    const refSize = Number(req.query.refSize);
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 24));
+    const sort = req.query.sort === 'recent' ? 'recent' : 'closest';
+
+    const all = await _archiveOccurrences(instrument);
+    let matches = all.filter(o => o.dir === dir && (outcome === 'any' || o.outcome === outcome));
+    if (sort === 'closest' && Number.isFinite(refSize)) {
+      matches = matches.slice().sort((a, b) => Math.abs(a.legAtrMult - refSize) - Math.abs(b.legAtrMult - refSize));
+    } else {
+      matches = matches.slice().sort((a, b) => b.time - a.time);   // most recent first
+    }
+    res.json({
+      instrument, dir, outcome, refSize: Number.isFinite(refSize) ? refSize : null, total: matches.length,
+      trades: matches.slice(0, limit).map(o => ({
+        aTime: o.aTime, bTime: o.bTime, turnTime: o.turnTime,
+        aPrice: o.aPrice, bPrice: o.bPrice, dir: o.dir,
+        legAtrMult: +o.legAtrMult.toFixed(3), retraceFrac: +o.retraceFrac.toFixed(4),
+        outcome: o.outcome, emaAgreeAtTurn: o.emaAgreeAtTurn,
+      })),
+    });
+  } catch (err) {
+    console.error('[trade-lab/similar-trades]', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/trade-lab/strategy-trades?instrument=gold|nq[&outcome=win|loss|all][&limit=20][&offset=0][&sort=recent|oldest]
+//   Every trade the MECHANISED continuation rule (js/impulseEmaRangeV1Engine.js
+//   — impulse detected, EMA agrees, retracement band entry, structural stop,
+//   fixed RR target) would have taken across the full 10-year archive. This is
+//   "assume the rule is correct, show me everywhere it would have fired" —
+//   the honest backtest already ran (education/jordan_impulse_range_backtest/
+//   RESULTS.md — net negative, Sharpe -5.99/-2.49) — this endpoint is the
+//   visual/browsing companion to that, not a claim the rule is profitable.
+//   Cached in memory per instrument (the engine takes a few seconds to run
+//   over 10 years of M1 — too slow to redo per request).
+const _tradeLabStrategyCache = new Map();   // instrument -> Promise<trades[]>
+async function _strategyTrades(instrument) {
+  if (!_tradeLabStrategyCache.has(instrument)) {
+    _tradeLabStrategyCache.set(instrument, (async () => {
+      const packed = await loadFullArchivePacked(instrument);
+      if (!packed || !packed.n) return [];
+      const { trades } = runImpulseEmaRange(packed, { instrument });
+      // entryFrac: where the entry sits between the leg's origin and extreme —
+      // the same retraceFrac measure used everywhere else on this page, plus a
+      // one-line "which Fib zone" description for the trade list.
+      return trades.map(t => {
+        const span = t.legExtreme - t.legOrigin;
+        const entryFrac = span !== 0 ? Math.abs(t.legExtreme - t.entry) / Math.abs(span) : null;
+        const pct = entryFrac != null ? Math.round(entryFrac * 100) : null;
+        const fibText = pct == null ? 'n/a'
+          : pct <= 45 ? `near the 38.2% retracement (${pct}%)`
+          : pct <= 70 ? `near the 61.8% golden-pocket retracement (${pct}%)`
+          : `deep, near the 88.6% retracement (${pct}%)`;
+        return { ...t, entryFrac: entryFrac != null ? +entryFrac.toFixed(4) : null, fibText };
+      });
+    })());
+  }
+  return _tradeLabStrategyCache.get(instrument);
+}
+app.get('/api/trade-lab/strategy-trades', async (req, res) => {
+  try {
+    const instrument = req.query.instrument === 'nq' ? 'nq' : req.query.instrument === 'gold' ? 'gold' : null;
+    if (!instrument) return res.status(400).json({ error: 'instrument must be gold|nq' });
+    const outcomeFilter = ['win', 'loss', 'all'].includes(req.query.outcome) ? req.query.outcome : 'all';
+    const sort = req.query.sort === 'oldest' ? 'oldest' : 'recent';
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 20));
+    const offset = Math.max(0, Number(req.query.offset) || 0);
+
+    const all = await _strategyTrades(instrument);
+    let filtered = outcomeFilter === 'all' ? all : all.filter(t => t.outcome === outcomeFilter);
+    filtered = sort === 'oldest' ? filtered : filtered.slice().reverse();
+    res.json({
+      instrument, outcomeFilter, sort, total: filtered.length,
+      winRate: all.length ? +(all.filter(t => t.outcome === 'win').length / all.length * 100).toFixed(1) : null,
+      trades: filtered.slice(offset, offset + limit),
+    });
+  } catch (err) {
+    console.error('[trade-lab/strategy-trades]', err.message);
     res.status(502).json({ error: err.message });
   }
 });
@@ -6911,12 +7919,37 @@ app.get('/api/vumanchu/log', async (req, res) => {
 // ── the cron: log a read per instrument, then resolve what is due ────────────
 const VM_LOG_MIN = Math.max(5, +(process.env.VM_LOG_MIN || 15));   // cadence, minutes
 let _vmLogBusy = false;
+let _vmLogBusySince = 0;
+// A wedged network call (no timeout) could otherwise leave _vmLogBusy stuck
+// true forever, silently skipping every future tick with nothing logged —
+// treat a lock held longer than 3 cadences as abandoned and reclaim it.
+const VM_LOG_STALE_MS = VM_LOG_MIN * 3 * 60_000;
+
+// Ticks unconditionally, before any bail-out — proof the timer itself is
+// firing, independent of whether a cycle goes on to log anything else. The
+// /health route surfaces this directly so a wedged or unscheduled timer is
+// visible without depending on Railway log search finding the right lines.
+let _vmLogTicks = 0;
+let _vmLogLastTickAt = 0;
+// The outcome of the last completed cycle — what it attempted vs actually
+// got/wrote, and any error — so /health can answer "why did it write
+// nothing" without depending on Railway's log viewer (which has repeatedly
+// shown gaps/gone stale during this investigation).
+let _vmLogLastResult = null;
 
 async function _vmLogCycle() {
-  if (_vmLogBusy || !process.env.OANDA_KEY) return;
+  _vmLogTicks++;
+  _vmLogLastTickAt = Date.now();
+  if (_vmLogBusy) {
+    if (Date.now() - _vmLogBusySince < VM_LOG_STALE_MS) return;
+    console.error('[vmlog] stale lock reclaimed (previous cycle never completed)');
+  }
+  if (!process.env.OANDA_KEY) { console.warn('[vmlog] skipped: OANDA_KEY not set'); return; }
   const known = _vmTableInstruments();
-  if (!known.length) return;
+  if (!known.length) { console.warn('[vmlog] skipped: state table empty/unloaded'); return; }
   _vmLogBusy = true;
+  _vmLogBusySince = Date.now();
+  const result = { at: 0, attempted: known.length, gotRows: 0, appended: 0, resolved: 0, error: null };
   try {
     const rows = [];
     const BATCH = 6;
@@ -6934,7 +7967,9 @@ async function _vmLogCycle() {
       }
       }));
     }
+    result.gotRows = rows.length;
     const w = await vmAppendRows(kv, rows);
+    result.appended = w.added;
 
     // Resolve anything whose horizon has elapsed. The longest horizon is 1440m,
     // so a row needs a full day plus weekend slack before it can finish — look
@@ -6977,12 +8012,16 @@ async function _vmLogCycle() {
       const after = group.filter(r => r.resolved).length;
       if (after > before) { await kv.put(key, JSON.stringify(group)); resolved += after - before; }
     }
+    result.resolved = resolved;
     if (w.added || resolved) {
       console.log(`[vmlog] logged ${w.added} read(s), resolved ${resolved}`);
     }
   } catch (e) {
     console.error('[vmlog]', e.message);
+    result.error = e.message;
   } finally {
+    result.at = Date.now();
+    _vmLogLastResult = result;
     _vmLogBusy = false;
   }
 }
@@ -7036,6 +8075,13 @@ app.get('/api/vumanchu/health', async (req, res) => {
       enabled: process.env.VM_LOG_ENABLED !== '0',
       lastWriteUtc: lastWrite ? new Date(lastWrite * 1000).toISOString() : null,
       minutesSinceLastWrite: minsSince,
+      cycleDiag: {
+        ticks: _vmLogTicks,
+        lastTickUtc: _vmLogLastTickAt ? new Date(_vmLogLastTickAt).toISOString() : null,
+        minutesSinceLastTick: _vmLogLastTickAt ? Math.round((Date.now() - _vmLogLastTickAt) / 60_000) : null,
+        busy: _vmLogBusy,
+        lastResult: _vmLogLastResult,
+      },
       last24h: {
         logged: today.length,
         resolved: today.filter(r => r.resolved).length,
@@ -7060,6 +8106,7 @@ let _vmHeartbeatSentOn = null;
 async function _vmHeartbeat() {
   const tok = state.tg?.token, cid = state.tg?.chatId;
   if (!tok || !cid) return;
+  if (!tgOn('vumanchuHeartbeat')) return;
   try {
     const rows = await vmReadRange(kv, 7);
     const now = Math.floor(Date.now() / 1000);
@@ -7270,6 +8317,7 @@ app.get('/api/vol-forecast/archive/range', async (req, res) => {
             if (bs > 0) days[d].bot_vol_annual = +(bs * Math.sqrt(252) * 100).toFixed(2);
           } catch { /* bot σ is optional enrichment — leave unset for this date */ }
         }
+        await _attachHarIvSigma(days, dailyD1.bars, byDate, pair);   // COG-v2 gold σ (HAR-IV/GVZ)
       } catch (_) { /* unknown pair / OANDA unreachable — Original/COG still work */ }
     }
     res.json({ ok: true, pair, from, to, days });
@@ -7368,6 +8416,9 @@ app.get('/api/vol-forecast/backtest-range', async (req, res) => {
         }
       } catch (_) { /* CC-HV is optional enrichment — platform vol_annual remains the fallback */ }
     }
+    // COG-v2 gold σ (HAR-IV/GVZ), walk-forward per day — reuse the D1 bars we already have.
+    try { await _attachHarIvSigma(days, dailyD1, new Map(dailyD1.map((b, i) => [b.date, i])), pair); }
+    catch (_) { /* optional — Original/COG/Bot still render */ }
     const result = { ok: true, pair: pair || symbol, cls, from, to, days, generated: true };
     _m5SrvCache.set(cacheKey, { data: result, ts: Date.now() });
     capMap(_m5SrvCache, CACHE_MAX_SERIES);
@@ -7966,6 +9017,54 @@ app.get('/api/credit-stress', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── Credit Quality Spread (Baa10Y − Aaa10Y) — see js/creditStressCore.js ────
+// Reuses buildCsiInputs/buildCsi (already imported above for /api/credit-stress)
+// WITHOUT that route's OANDA-dependent trend-basket backtest — this is a pure
+// FRED read (the quality-spread z-score only), cheap enough for the same
+// daily-gated-poll pattern every other numeric engine here uses, instead of
+// the heavy 1h-cached backtest endpoint. A different axis than the existing
+// HY-OAS-LEVEL credit gate (js/macro.js's T4 / today.html's creditGate()) —
+// this is credit-curve SHAPE (investment-grade quality dispersion), not
+// duplicated anywhere else in the codebase.
+const _CREDIT_QUALITY_KV = 'credit_quality_v1';
+async function _buildCreditQualityRead() {
+  const fredKey = process.env.FRED_KEY;
+  if (!fredKey) throw new Error('FRED_KEY not configured');
+  const { components } = await buildCsiInputs(fredKey, '2004-01-01');
+  const csi = buildCsi(components, { zWindow: CSI_DEFAULTS.zWindow });
+  const latest = csi.series.at(-1);
+  const payload = { quality: csi.componentZ?.quality ?? null, latestDate: latest?.d ?? null, generatedAt: new Date().toISOString() };
+  await kv.put(_CREDIT_QUALITY_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/credit-quality', async (_req, res) => {
+  try {
+    const raw = await kv.get(_CREDIT_QUALITY_KV);
+    if (!raw) return res.json({ ok: false, error: 'No data yet — click Refresh.' });
+    res.json({ ok: true, ...JSON.parse(raw) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+let _creditQualityRunning = false;
+app.post('/api/credit-quality/refresh', (_req, res) => {
+  if (_creditQualityRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _creditQualityRunning = true;
+  _buildCreditQualityRead().catch(() => {}).finally(() => { _creditQualityRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/credit-quality/refresh-status', async (_req, res) => {
+  const raw = await kv.get(_CREDIT_QUALITY_KV).catch(() => null);
+  res.json({ ok: true, running: _creditQualityRunning, last: raw ? JSON.parse(raw) : null });
+});
+let _creditQualityLastRun = null;
+setInterval(() => {
+  if (!process.env.FRED_KEY || _creditQualityRunning) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (_creditQualityLastRun === today) return;
+  _creditQualityLastRun = today;
+  _creditQualityRunning = true;
+  _buildCreditQualityRead().catch(() => {}).finally(() => { _creditQualityRunning = false; });
+}, 20 * 60_000);
 
 // ── /api/fx-carry — the HONEST FX carry factor ───────────────────────────────
 // Long high-rate currencies, short low-rate ones vs USD, inverse-vol sized,
@@ -11219,11 +12318,23 @@ async function _oiAccumulateTradeLog() {
     const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    // Zone features the bot stamped at entry (hold score + components, mode, regime,
+    // approach read…) keyed by zone_id, each carrying its ticket. Joined onto the log
+    // row so the hold-score CALIBRATION can learn from resolved outcomes.
+    const feats = status?.zone_features || {};
+    const featByTicket = new Map(Object.entries(feats)
+      .filter(([, f]) => f && f.ticket != null).map(([zid, f]) => [f.ticket, { zone_id: zid, ...f }]));
     let added = 0;
     for (const c of closed) {
       const id = c.position_id ?? c.ticket;
       if (id == null || seen.has(id)) continue;
       seen.add(id);
+      // Match by ticket first; fall back to the "[zone_id]" dedup tag in the comment.
+      let f = featByTicket.get(id) ?? featByTicket.get(c.ticket) ?? null;
+      if (!f && c.comment) {
+        const m = String(c.comment).match(/\[([^\]]+)\]/);
+        if (m && feats[m[1]]) f = { zone_id: m[1], ...feats[m[1]] };
+      }
       log.push({
         position_id: id, symbol: c.symbol, direction: c.direction,
         key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
@@ -11231,6 +12342,7 @@ async function _oiAccumulateTradeLog() {
         reason: c.reason, time_open: c.time_open, time_close: c.time_close,
         mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
         date: _rlSessionDate(c.time_open),
+        zone_id: f?.zone_id ?? null, features: f ?? null,
       });
       added++;
     }
@@ -11353,6 +12465,11 @@ app.post('/api/range-line-bot/oi/sync', async (_req, res) => {
 function _oiHistorySummary(inst) {
   if (!inst || typeof inst !== 'object') return null;
   const topN = (arr) => (Array.isArray(arr) ? arr.slice(0, 8).map(w => ({ strike: w.strike, oi: w.oi, chg: w.chg ?? null, tier: w.tier ?? null })) : []);
+  // Canonical pin/breakout regime (oiRegimeAtSpot, js/oi.js) — the price-window-aware
+  // read off the rigorous gexFlips crossings, not the whole-book GEX sign. Archived so a
+  // pin-vs-acceleration backtest is possible later; CME serves no OI history, so a day
+  // this isn't captured is a day of regime history that can never be recovered.
+  const regimeAt = _oiRegimeAtSpot(inst);
   return {
     spot: inst.spot ?? null, maxPain: inst.maxPain ?? null,
     callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,
@@ -11362,6 +12479,17 @@ function _oiHistorySummary(inst) {
     totalCallChg: inst.totalCallChg ?? null, totalPutChg: inst.totalPutChg ?? null,
     gex: inst.exposures?.gex ?? null, dex: inst.exposures?.dex ?? null,
     gammaFlip: inst.gammaFlip ?? null,   // archived so flip-drift (day-over-day) can be read back
+    // gexFlips trimmed to {price, dir} only — distPct is spot-relative and goes stale;
+    // re-derive distance against whatever spot a later reader cares about.
+    gexFlips: Array.isArray(inst.gexFlips)
+      ? inst.gexFlips.filter(f => Number.isFinite(f?.price)).map(f => ({ price: f.price, dir: f.dir ?? null }))
+      : null,
+    regime: regimeAt?.regime ?? null, distToFlipPct: regimeAt?.distToFlipPct ?? null,
+    // Minimal near-vs-far tenor split: was today's regime driven by near-dated (0DTE/weekly)
+    // OI or the far monthly book? Full per-expiry detail stays out of the archive on purpose —
+    // oi_history_raw is the irreplaceable-capture key, this is the lean day-over-day summary.
+    dayExpiryDTE: inst.dayExpiry?.dte ?? null, dayExpiryGex: inst.dayExpiry?.exposures?.gex ?? null,
+    primaryDTE: inst.dte ?? null, primaryGex: inst.exposures?.gex ?? null,
     hadChangeData: !!(inst.rawChg && String(inst.rawChg).trim()),
     savedAtMs: inst.savedAtMs ?? null,
   };
@@ -11381,11 +12509,18 @@ function _oiHistoryRaw(inst) {
     rawOI,
     rawChg: inst.rawChg && String(inst.rawChg).trim() ? inst.rawChg : null,
     rawVol: inst.rawVol && String(inst.rawVol).trim() ? inst.rawVol : null,
+    // The IV boxes are what make this a REPLAYABLE capture rather than an OI ladder.
+    // Without them a restored day has walls and max pain but no smile, so no charm,
+    // vanna, skew or expected-move band - the analytics page would render half a
+    // day. They were omitted when only OI was pasted by hand; the sweep now captures
+    // both nightly, so archive both.
+    rawIV: inst.rawIV && String(inst.rawIV).trim() ? inst.rawIV : null,
+    rawIVTerm: inst.rawIVTerm && String(inst.rawIVTerm).trim() ? inst.rawIVTerm : null,
     spot: inst.spot ?? null, futures: inst.futures ?? null, basis: inst.basis ?? null,
     dte: inst.dte ?? null, savedAtMs: inst.savedAtMs ?? null,
   };
 }
-const _OI_RAW_KEEP_DAYS = 90;   // the raw ladder is the irreplaceable capture — keep a longer window than the summary
+const _OI_RAW_KEEP_DAYS = 365;   // the raw ladder is the irreplaceable capture — keep a longer window than the summary. CME serves no history, so a regime backtest wants years, not months, once it starts accumulating; KV storage cost is the only real constraint here.
 
 // Returns { n, wrote, day }. `force` makes the manual endpoint write even when nothing
 // changed, so a user-triggered archive is never a no-op that reports zero. Writes BOTH the
@@ -11399,8 +12534,17 @@ async function _snapshotOIHistory(force = false) {
     const day = _rlSessionDate(null);
     const histRaw = await kv.get('oi_history').catch(() => null);
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
-    const rawHistRaw = await kv.get('oi_history_raw').catch(() => null);
-    const rawHist = rawHistRaw ? (JSON.parse(rawHistRaw).data ?? JSON.parse(rawHistRaw)) : {};
+    // ONE KEY PER DAY (`oi_raw_YYYY-MM-DD`), not one key for all of history.
+    // The old `oi_history_raw` accumulated every pair x every day into a single
+    // value and kept 365 days. Measured 2026-08-20: 330KB/day across 11 pairs, so
+    // that value would pass Cloudflare KV's 25MB per-value ceiling at ~77 days and
+    // start failing silently — with no signal until a restore came back short.
+    // Per-day keys are ~330KB each, so retention becomes a storage question rather
+    // than a cliff, and a date view fetches exactly the one day it wants instead of
+    // downloading a year to read Tuesday.
+    const rawDayKey = `oi_raw_${day}`;
+    const rawDayRaw = await kv.get(rawDayKey).catch(() => null);
+    const rawDay = rawDayRaw ? (JSON.parse(rawDayRaw).data ?? JSON.parse(rawDayRaw)) : {};
     let n = 0, changed = 0, rawChanged = 0;
     for (const [pair, inst] of Object.entries(store)) {
       const summary = _oiHistorySummary(inst);
@@ -11414,7 +12558,7 @@ async function _snapshotOIHistory(force = false) {
         hist[pair][day] = summary;                                 // overwrite today (tracks the latest morning paste)
         if (JSON.stringify(summary) !== before) changed++;
         const dates = Object.keys(hist[pair]).sort();
-        const trim = dates.slice(0, Math.max(0, dates.length - 60));            // keep ~60 days
+        const trim = dates.slice(0, Math.max(0, dates.length - 365));           // keep ~1yr — see _OI_RAW_KEEP_DAYS note above
         for (const d of trim) delete hist[pair][d];
         if (trim.length) changed++;                                // a trim is a real change too
         n++;
@@ -11422,7 +12566,7 @@ async function _snapshotOIHistory(force = false) {
       // Raw ladder, its own key, same dedup + date-keyed archive (yesterday's slot untouched).
       const rawEntry = _oiHistoryRaw(inst);
       if (rawEntry) {
-        rawHist[pair] = rawHist[pair] || {};
+
         // Dedup on the LADDER ONLY (rawOI/rawChg/rawVol). The ~15-min basis control drifts
         // spot/basis all day, but the per-strike ladder changes just once — the daily paste.
         // Comparing the whole entry would rewrite the archive ~48×/day to freshen spot context
@@ -11430,14 +12574,10 @@ async function _snapshotOIHistory(force = false) {
         // values. So only (re)write when the ladder itself changed, keeping the FIRST-captured
         // spot/basis for the day (≈ paste time — what the historical ladder should be read against).
         const _ladderKey = e => e ? `${e.rawOI} ${e.rawChg ?? ''} ${e.rawVol ?? ''}` : '';
-        if (_ladderKey(rawHist[pair][day]) !== _ladderKey(rawEntry)) {
-          rawHist[pair][day] = rawEntry;   // new ladder (new paste) → archive with its capture-time context
+        if (_ladderKey(rawDay[pair]) !== _ladderKey(rawEntry)) {
+          rawDay[pair] = rawEntry;   // new ladder (new paste) → archive with its capture-time context
           rawChanged++;
         }
-        const rDates = Object.keys(rawHist[pair]).sort();
-        const rTrim = rDates.slice(0, Math.max(0, rDates.length - _OI_RAW_KEEP_DAYS));
-        for (const d of rTrim) delete rawHist[pair][d];
-        if (rTrim.length) rawChanged++;
       }
     }
     if (!n) return { n: 0, wrote: false, day };
@@ -11445,7 +12585,7 @@ async function _snapshotOIHistory(force = false) {
     // Nothing new — don't spend a KV write (unless the user explicitly forced one). The two
     // keys write independently so a summary-only change doesn't rewrite the bigger raw blob.
     if (changed || force) { await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() })); wrote = true; }
-    if (rawChanged || force) { await kv.put('oi_history_raw', JSON.stringify({ data: rawHist, timestamp: Date.now() })); wrote = true; }
+    if (rawChanged || force) { await kv.put(rawDayKey, JSON.stringify({ data: rawDay, timestamp: Date.now() })); wrote = true; }
     if (wrote) console.log(`[oi-history] archived ${n} pair(s), ${changed} summary / ${rawChanged} raw changed → ${day}`);
     return { n, wrote, day, changed, rawChanged };
   } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }
@@ -11488,7 +12628,7 @@ app.get('/api/oi-history', async (req, res) => {
     const pk = Object.keys(hist).find(k => k === key || norm(k) === norm(key));
     const perPair = pk ? hist[pk] : {};
     const dates = Object.keys(perPair).sort();
-    const limit = Math.min(60, parseInt(req.query.limit) || 30);
+    const limit = Math.min(400, parseInt(req.query.limit) || 30);   // cap raised alongside the 365-day retention bump — was capped below the archive's own window
     const recent = dates.slice(-limit).map(d => ({ date: d, ...perPair[d] }));
     const { curDate, prevDate, deltas } = latestDelta(perPair);
     res.json({ ok: true, pair: pk || key, dates, history: recent, deltas, curDate, prevDate });
@@ -11558,6 +12698,19 @@ const OI_BOT_CFG_DEFAULTS = {
                                      // partial-OI wall) a measured-move TP at this R-multiple of the
                                      // stop, so FX OI trades are never SL-only. 0 = leave SL-only.
   fallbackTpR: 0,                    // same for gold+indices (default off — they usually have a wall ahead)
+  // ── 2026-08 quant-review additions (MD files/OI_BOT_QUANT_REVIEW_2026-08.md) ──
+  slBufferRefFrac: 0.10,             // structural distances = max(pips × pip, frac × refMove) — pip
+  breakRefFrac: 0.15,                //   counts don't scale across a universe where pip=1.0 means
+  extendedRefFrac: 0.25,             //   0.03% of spot on Dow but 0.63% on Russell
+  minRR: 0.8,                        // minimum TP1 reward:risk (ladder promotes TP2, else zone dropped; 0 = off)
+  gexNeutralBand: 0.25,              // |gex| < band × trailing median |gex| → NEUTRAL (regime sign not trusted)
+  convictionSizing: true,            // scale zone size with |gex|/median (clamped 0.5–1.2)
+  subTierTrade: false,               // walls below minTier trade SMALL with confluence (magnet/flip/persistence)
+  subTierSize: 0.4,
+  minZoneSpacing: 0.05,              // same-side zones within this × refMove collapse to one
+  reactNodes: null,                  // per-type react-entry weights {walls,gammaFlip,gexFlip,vannaFlip,volMagnets}
+  volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
+  holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
 };
 function _oiBotStabilityChange(hist, key) {
   const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
@@ -11571,15 +12724,36 @@ function _oiBotStabilityChange(hist, key) {
     ? oiWallStability(dates.slice(-20).map(dt => perPair[dt]), spot * 0.002) : null;
   return { stability, change: dl ? classifyOIChange(dl) : null };
 }
+// Trailing median |netGEX| for a pair from the oi_history archive (last ~20 dated
+// summaries). Anchors the planner's GEX neutral band + conviction sizing — the raw
+// sign of net GEX flips on noise around zero; the median gives "is today's |GEX|
+// big FOR THIS BOOK". null when history is too thin (< 5 days) — band stays off.
+function _oiGexMedianAbs(hist, key) {
+  const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+  if (!pk) return null;
+  const vals = Object.keys(hist[pk]).sort().slice(-20)
+    .map(d => hist[pk][d]?.gex).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
+  if (vals.length < 5) return null;
+  const mid = Math.floor(vals.length / 2);
+  return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+}
 async function _refreshOIBotZones() {
   try {
-    const [oiRaw, cfgRaw, histRaw] = await Promise.all([
+    const [oiRaw, cfgRaw, histRaw, calibRaw] = await Promise.all([
       kv.get('oi_store').catch(() => null), kv.get('oi_bot_config').catch(() => null), kv.get('oi_history').catch(() => null),
+      kv.get('oi_hold_calibration').catch(() => null),
     ]);
     if (!oiRaw) return 0;
     const store = JSON.parse(oiRaw).data ?? JSON.parse(oiRaw);
     const cfg = { ...OI_BOT_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    // Hold-score calibration: once the forward-test has resolved enough wall touches,
+    // the fitted component weights auto-apply here — no config change needed
+    // (the "seamless" half of the calibration story; the analytics-page banner is
+    // the "don't forget" half). Until then holdWeights stays null → theory priors.
+    const _calib = calibRaw ? (JSON.parse(calibRaw).data ?? JSON.parse(calibRaw)) : null;
+    const holdWeights = (_calib && _calib.status === 'active' && _calib.weights) ? _calib.weights : null;
     const universe = new Set([...OI_BOT_UNIVERSE, ...(cfg.fx_enabled ? (cfg.fx_pairs || []) : [])]);
     const instruments = {};
     const skipped = {};                                          // pasted into the analyser but NOT traded — with the reason why
@@ -11640,7 +12814,10 @@ async function _refreshOIBotZones() {
       const gammaFlow = { flip: flip ?? null, dist, drift, rolloff };
 
       const _vn = inst.greeksFlow?.vanna;
+      const gexMedianAbs = _oiGexMedianAbs(hist, key);
+      const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
       const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
+        gexMedianAbs, holdWeights, collectDrops: droppedZones,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
         expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
         refMove: inst.refMove?.move ?? null,
@@ -11659,7 +12836,7 @@ async function _refreshOIBotZones() {
       // strong walls / walls out of range) — so a blank plan is legibly intentional.
       let diag = null;
       if (!stale && zones.length === 0) {
-        try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip }); } catch { diag = null; }
+        try { diag = explainNoZones(tradeInst, inst.spot, { ...cfg, pip, gexMedianAbs }); } catch { diag = null; }
       }
       // Far/primary expiry kept as context on the plan (the user still wants to SEE the
       // 14-day book) — it just isn't what the bot trades.
@@ -11667,8 +12844,16 @@ async function _refreshOIBotZones() {
       const farExpiry = dayEx ? { dte: inst.dte ?? null, maxPain: inst.maxPain ?? null,
         regime: farGex > 0 ? 'PIN' : farGex < 0 ? 'BREAKOUT' : 'NEUTRAL',
         callWall: inst.callWall ?? null, putWall: inst.putWall ?? null } : null;
+      // Regime here must MATCH the planner's (neutral band included) — a slice that
+      // says PIN while the planner sat out on low conviction would read as broken.
+      const _conv = gexMedianAbs ? +(Math.abs(gex) / gexMedianAbs).toFixed(2) : null;
+      const _banded = _conv != null && (cfg.gexNeutralBand ?? 0) > 0 && _conv < cfg.gexNeutralBand;
       instruments[key] = { spot: inst.spot ?? null, maxPain: tradeInst.maxPain ?? null, dte: tradeInst.dte ?? null,
-        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL', zones, zoneCount: zones.length, stale, diag,
+        regime: _banded ? 'NEUTRAL' : gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : 'NEUTRAL',
+        zones, zoneCount: zones.length, stale, diag,
+        droppedZones: droppedZones.length ? droppedZones : null,   // minRR/spacing drops — legible blanks
+        conviction: _conv,                                         // |gex| vs the trailing median (null = no history)
+        refMove: inst.refMove?.move ?? null,                       // shipped for the executor's approach-velocity read
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
@@ -11683,6 +12868,88 @@ async function _refreshOIBotZones() {
 }
 setInterval(_refreshOIBotZones, 10 * 60_000);
 setTimeout(_refreshOIBotZones, 60_000);
+
+// ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
+// The hold-score component weights (per-strike GEX, OI flow, persistence, wall
+// multiple) start as theory priors — they CANNOT be calibrated from theory alone
+// because we hold no historical OI. The forward test is the calibrator: every
+// filled zone carries its feature stamp into oi_bot_trade_log (see
+// _oiAccumulateTradeLog), and once ≥ OI_HOLD_CALIB_MIN resolved wall trades have
+// accumulated, this job fits component weights from realized outcomes and writes
+// them to `oi_hold_calibration` — which the plan producer reads automatically on
+// its next refresh. Nothing to remember, nothing to configure: while collecting,
+// the status (with n/needed + what will happen and why) drives the banner on the
+// zones/dashboard pages; when active, the fitted weights just apply.
+const OI_HOLD_CALIB_MIN = 30;      // resolved wall-zone trades needed before fitting
+async function _refreshOIHoldCalibration() {
+  try {
+    const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    // Wall-zone trades with a stamped hold score and a resolved P&L. Breaks are
+    // excluded: hold sizes FADES (a break trades the wall failing — mixing the two
+    // outcomes would teach the fitter backwards).
+    const rows = log.filter(t => t?.features && Number.isFinite(t.features.hold)
+      && Number.isFinite(t.profit) && (t.features.mode === 'fade' || t.features.mode === 'react'));
+    const n = rows.length;
+    const base = { n, needed: OI_HOLD_CALIB_MIN, updatedAt: new Date().toISOString() };
+    if (n < OI_HOLD_CALIB_MIN) {
+      await kv.put('oi_hold_calibration', JSON.stringify({ data: { ...base, status: 'collecting',
+        explain: `Collecting the forward-test: ${n}/${OI_HOLD_CALIB_MIN} resolved wall-fade trades with hold-score `
+          + `features. At ${OI_HOLD_CALIB_MIN}, component weights (per-strike GEX · OI flow · persistence · wall `
+          + `multiple) are fitted from realized win/loss outcomes and auto-applied to the plan producer — sizing `
+          + `then leans on what actually predicted react-vs-blow-through, not the theory priors. Nothing to do: `
+          + `keep the paper bot running and keep pasting daily OI.` }, timestamp: Date.now() }));
+      return { status: 'collecting', n };
+    }
+    // Per-component separation: win rate above vs below that component's median.
+    // A component that separates winners from losers earns weight; one that doesn't
+    // drops toward zero. Deliberately simple + inspectable (n is small; a logistic
+    // fit on 30 rows would be noise dressed as precision).
+    const comps = ['gex', 'flow', 'persistence', 'mult'];
+    const componentStats = {}, rawW = {};
+    for (const c of comps) {
+      const have = rows.filter(r => Number.isFinite(r.features.holdParts?.[c]));
+      if (have.length < 10) { componentStats[c] = { n: have.length, note: 'too few rows — prior kept' }; continue; }
+      const vals = have.map(r => r.features.holdParts[c]).sort((a, b) => a - b);
+      const med = vals[Math.floor(vals.length / 2)];
+      const hi = have.filter(r => r.features.holdParts[c] >= med), lo = have.filter(r => r.features.holdParts[c] < med);
+      const wr = a => a.length ? a.filter(r => r.profit > 0).length / a.length : 0;
+      const sep = wr(hi) - wr(lo);
+      componentStats[c] = { n: have.length, winHi: +wr(hi).toFixed(2), winLo: +wr(lo).toFixed(2), separation: +sep.toFixed(2) };
+      rawW[c] = Math.max(0, sep);
+    }
+    const sum = Object.values(rawW).reduce((a, b) => a + b, 0);
+    const weights = sum > 0
+      ? Object.fromEntries(Object.entries(rawW).map(([k, v]) => [k, +(v / sum).toFixed(2)]))
+      : null;   // nothing separates yet → producer keeps the theory priors
+    // Overall sanity read: win rate by hold tercile — the banner's one-line proof
+    // (or refutation) that the score means something.
+    const byHold = rows.slice().sort((a, b) => a.features.hold - b.features.hold);
+    const terc = i => byHold.slice(Math.floor(i * n / 3), Math.floor((i + 1) * n / 3));
+    const terciles = [0, 1, 2].map(i => { const t = terc(i); return { n: t.length,
+      winRate: +(t.filter(r => r.profit > 0).length / Math.max(1, t.length)).toFixed(2) }; });
+    await kv.put('oi_hold_calibration', JSON.stringify({ data: { ...base, status: 'active', weights,
+      componentStats, terciles,
+      explain: weights
+        ? `Calibration ACTIVE on ${n} resolved wall trades: hold-score weights fitted from realized outcomes `
+          + `(${Object.entries(weights).map(([k, v]) => `${k} ${v}`).join(' · ')}) and auto-applied to the plan `
+          + `producer. Win rate by hold tercile: ${terciles.map(t => `${Math.round(t.winRate * 100)}%`).join(' / ')} `
+          + `(low→high) — rising terciles mean the score is predictive; flat means keep collecting.`
+        : `${n} trades resolved but no component separates winners from losers yet — theory priors kept. `
+          + `This updates automatically as more trades resolve.` }, timestamp: Date.now() }));
+    return { status: 'active', n };
+  } catch (e) { console.error('[oi-hold-calib] refresh failed:', e.message); return { status: 'error', error: e.message }; }
+}
+setInterval(_refreshOIHoldCalibration, 6 * 60 * 60_000);   // the log grows a few rows a day — 6h is plenty
+setTimeout(_refreshOIHoldCalibration, 70_000);
+
+app.get('/api/oi-bot/hold-calibration', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_hold_calibration').catch(() => null);
+    if (!raw) { const r = await _refreshOIHoldCalibration(); return res.json({ ok: true, ...(r || {}), status: r?.status ?? 'collecting' }); }
+    res.json({ ok: true, ...(JSON.parse(raw).data ?? JSON.parse(raw)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // LIVE BASIS CONTROL (COG, 2026-08): the futures→spot basis is usually ~2 pips stable, but
 // on some days (rate surprises, futures roll/expiry — and amplified on the inverted 6J/6C/6S
@@ -11763,7 +13030,11 @@ app.post('/api/oi/reanalyse', async (req, res) => {
           dteRaw:     Number.isFinite(inst.dte)     ? inst.dte     : NaN,
           spotRaw:    Number.isFinite(inst.spot)    ? inst.spot    : NaN,
           futuresRaw: Number.isFinite(inst.futures) ? inst.futures : NaN,
-          manualFutures: Number.isFinite(inst.futures),   // pin the stored basis anchor
+          // PIN ONLY WHEN NOT RE-BASING. This was unconditional, so ?live=1 fetched a
+          // fresh paired quote and then pinned back to the stored futures anyway —
+          // the endpoint reported ok for all 11 pairs and moved nothing. Verified
+          // 2026-08-20: basis 0.00021 -> 0.00021, every level unchanged to 4dp.
+          manualFutures: !live && Number.isFinite(inst.futures),
           swapCP: undefined,   // use the inverted-pair default (flip ON) so re-analyse migrates old un-flipped 6J/6C/6S entries
 
           greekVol: inst.greekVolMode === 'flat' ? 'flat' : 'smile',
@@ -11771,6 +13042,13 @@ app.post('/api/oi/reanalyse', async (req, res) => {
           minOI:     Number.isFinite(inst.minOI)     ? inst.minOI     : 20,
           priorEntry: inst,          // preserve the per-expiry history
           skipLiveQuote: !live,      // pinned unless ?live=1
+          // baseUrl IS REQUIRED FOR ?live=1 TO DO ANYTHING. fetchPairedQuote builds
+          // `${baseUrl}/api/futures-quote`, and with baseUrl empty that is a RELATIVE
+          // url — fine in a browser, a throw in Node. The throw was caught, the quote
+          // came back null, and the resolver fell through to the stored futures. So a
+          // re-basis fetched nothing, re-derived off the old basis, and reported ok for
+          // all 11 pairs. Point it at our own listener.
+          baseUrl: `http://127.0.0.1:${PORT}`,
         });
         if (r?.error) { errors.push({ pair, error: r.error }); continue; }
         // The OI chain is as old as the original paste — keep its staleness honest.
@@ -12015,6 +13293,122 @@ app.get('/api/range-line-bot/oi-audit', async (req, res) => {
 // ConfluenceBot reads this each state refresh to add OI as a scored confluence
 // source (put/call walls, max pain, HVL, gamma flip). No date needed — the bot
 // scores against "today's OI as it stands now".
+// ── OI FOR today.html — the levels WITH their readings, per pair ──────────────
+// today.html already knew about OI, but only the three headline strikes (max pain,
+// call wall, put wall) via oiFor(). That is enough to name a level and not enough to
+// say anything about it: no per-level heat, hold score or P(touch). So the cards, the
+// table and the AI text could say "call wall at 1.1698" but never "56% chance of a
+// touch inside the hour, hold score 65" — the readings existed and simply had no route
+// to the page.
+//
+// One endpoint rather than today.html calling /api/oi-reachability eleven times: the
+// Monte-Carlo is ~1s per pair, so a page load would spend eleven seconds re-deriving
+// numbers that change on a 5-minute timescale. Cached accordingly.
+//
+// Shape is deliberately flat and self-describing, because the AI prompt consumes it
+// verbatim: every level carries its own price, type, distance and readings, so the
+// prompt needs no lookup table and cannot mis-pair a reading with a level.
+const _OI_TODAY_TTL = 5 * 60_000;
+let _oiTodayCache = { at: 0, key: '', payload: null };
+
+app.get('/api/oi-today', async (req, res) => {
+  try {
+    const wantReach = String(req.query.reach || '1') !== '0';
+    const ck = wantReach ? 'reach' : 'plain';
+    if (_oiTodayCache.payload && _oiTodayCache.key === ck
+        && Date.now() - _oiTodayCache.at < _OI_TODAY_TTL) {
+      return res.json({ ..._oiTodayCache.payload, cached: true });
+    }
+
+    const raw = await kv.get('oi_store').catch(() => null);
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+
+    // P(touch) per pair, same path the zones export uses. Fail-safe: any pair that
+    // errors simply has no touch labels — a missing probability is honest, a wrong
+    // one is not.
+    const OA = { 'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
+      'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
+      'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD' };
+    const oB = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const H = 48;   // 4h — the calibrated horizon
+    const reachFor = async (pair, levels) => {
+      const osym = OA[pair];
+      if (!osym || !process.env.OANDA_KEY || !levels.length) return null;
+      try {
+        const cr = await fetch(`${oB}/v3/instruments/${encodeURIComponent(osym)}/candles?granularity=M5&count=2000&price=M`,
+          { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(12_000) });
+        if (!cr.ok) return null;
+        const cj = await cr.json();
+        const bars = (cj.candles || []).filter(c => c.complete && c.mid).map(c => ({
+          time: Math.floor(new Date(c.time).getTime() / 1000),
+          open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+        if (bars.length < 400) return null;
+        const ctx = _fpBuildCtx(bars, {});
+        const rows = _oiWallReach(ctx, bars.length, levels.map(l => ({ price: l.price, type: l.type })), H, { nPaths: 300 });
+        const m = {};
+        for (const r of rows) {
+          const lab = _oiReachLabel(r, 5);
+          if (lab) m[r.price.toFixed(6)] = { label: lab, pct: Math.round((r.calibrated ?? 0) * 100) };
+        }
+        return m;
+      } catch { return null; }
+    };
+
+    const pairs = [];
+    const names = Object.keys(store || {});
+    const reaches = wantReach
+      ? Object.fromEntries(await Promise.all(names.map(async p =>
+          [p, await reachFor(p, oiStoreToLevels(store[p]) || [])])))
+      : {};
+
+    for (const pair of names) {
+      const inst = store[pair];
+      if (!inst || typeof inst !== 'object') continue;
+      const levels = oiStoreToLevels(inst) || [];
+      const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
+      const heat = gp.length ? levelHeat(gp, levels) : [];
+      const rp = reaches[pair] || null;
+      const gex = inst.exposures?.gex ?? 0;
+      const pip = /JPY/.test(pair) ? 0.01 : /XAU/.test(pair) ? 0.1
+        : /NAS|SPX|US30|US2000|DE30/.test(pair) ? 1 : 0.0001;
+      const _bAt = Number.isFinite(inst.basisAtMs) ? inst.basisAtMs : inst.savedAtMs;   // basis ages separately from the chain
+      const ageH = Number.isFinite(_bAt) ? (Date.now() - _bAt) / 3.6e6 : null;
+
+      pairs.push({
+        pair, spot: inst.spot ?? null, dte: inst.dte ?? null,
+        regime: gex > 0 ? 'PIN' : gex < 0 ? 'BREAKOUT' : null,
+        maxPain: inst.maxPain ?? null, callWall: inst.callWall ?? null, putWall: inst.putWall ?? null,
+        pcRatio: inst.pcRatio ?? null,
+        // The basis and its age travel WITH the levels: every price below is
+        // `strike - basis`, so a reader that cannot see how old the basis is cannot
+        // judge how far off the levels may have drifted.
+        basis: Number.isFinite(inst.basis) ? +(+inst.basis).toFixed(5) : null,
+        basisAgeH: ageH == null ? null : +ageH.toFixed(1),
+        basisStale: ageH != null && ageH >= 4,
+        savedAt: inst.savedAt ?? null,
+        levels: levels.map((l, i) => {
+          const ex = levelExpectation(l, { spot: inst.spot, gexFlips: inst.gexFlips,
+            gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
+          const t = rp ? rp[l.price.toFixed(6)] : null;
+          return {
+            price: l.price, type: l.type, tier: l.tier ?? null, dte: l.dte ?? null,
+            distPips: Number.isFinite(inst.spot) ? +((l.price - inst.spot) / pip).toFixed(1) : null,
+            expect: ex ? ex.mid : null, tag: ex ? ex.tag : null,
+            heat: heat[i]?.heatBucket || null,
+            touch: t ? t.label : null, touchPct: t ? t.pct : null,
+          };
+        }),
+      });
+    }
+
+    const payload = { ok: true, at: new Date().toISOString(), reach: wantReach,
+                      count: pairs.length, pairs };
+    _oiTodayCache = { at: Date.now(), key: ck, payload };
+    res.json(payload);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/oi-levels', async (_req, res) => {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
@@ -12116,7 +13510,7 @@ app.post('/api/oi/sweep-alert', async (req, res) => {
     // Only shout on failure. A nightly "it worked" for a fortnight trains you to
     // ignore the one that matters.
     let notified = false;
-    if (!ok && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false) {
+    if (!ok && state.tg?.token && state.tg?.chatId && state.cfg?.serverEnabled !== false && tgOn('oiSweep')) {
       notified = await sendTelegram(state.tg.token, state.tg.chatId,
         `⚠️ <b>Nightly OI sweep FAILED</b>\n<code>${detail || 'no detail'}</code>\n\nTarget: ${target || 'unknown'}\nLevels for today were not captured. CME serves no history, so this day cannot be recovered.`,
       ).catch(() => false);
@@ -12265,6 +13659,53 @@ function _fmtSessionText(data) {
   }
   return lines.join('\n');
 }
+
+// ── Forecast ladder export (the collapsed "Forecast" family) ─────────────────
+// One route, three horizons. This is the ONLY place the Forecast text is built —
+// the page fetches it rather than rendering its own copy, which is what stops the
+// browser and the server from quietly disagreeing the way the old Export /
+// Calibrated / Export-v2 / Extended builders did.
+//   GET /api/vol-forecast/ladder/export?horizon=daily|weekly|monthly[&session=1]
+app.get('/api/vol-forecast/ladder/export', async (req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  const horizon = ['daily', 'weekly', 'monthly'].includes(String(req.query.horizon))
+    ? String(req.query.horizon) : 'daily';
+  try {
+    const has = Object.values(forecastState.latest.instruments ?? {}).some(f => f?.ladder);
+    if (!has) {
+      return res.status(202).type('text/plain')
+        .send('Ladder not present on the cached forecast — hit ↻ Refresh to recompute.');
+    }
+    let text = buildLadderExportText(forecastState.latest, horizon);
+    if (String(req.query.session) === '1') {
+      try {
+        const raw = await kv.get('vol_session_stats');
+        if (raw) text += buildSessionAddendum(JSON.parse(raw));
+      } catch { /* session block is an add-on — never fail the export for it */ }
+    }
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// JSON view of the same ladder, for the charts and any downstream consumer.
+app.get('/api/vol-forecast/ladder', (_req, res) => {
+  if (!forecastState.latest) return res.status(202).json({ ok: false, error: 'not ready' });
+  const out = {};
+  for (const [name, f] of Object.entries(forecastState.latest.instruments ?? {})) {
+    if (!f?.ladder) continue;
+    out[name] = { daily: f.ladder, weekly: f.ladder_weekly, monthly: f.ladder_monthly, drift_d: f.drift_d ?? null };
+  }
+  res.json({
+    ok: true,
+    session_date: forecastState.latest.session_date,
+    session_label: forecastState.latest.session_label,
+    instruments: out,
+  });
+});
 
 // Plain-text forecast export — same format as the ⬇ Export button on the dashboard.
 app.get('/api/vol-forecast/export', (_req, res) => {
@@ -13049,6 +14490,59 @@ app.get('/api/vol-forecast/compare/:date', async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// Forge estimator comparison — a WALK-FORWARD OOS volatility forecast, read
+// from a static file `forge/` exports offline (see `forge/export_vol_compare.
+// py` and `forge/vol.py`'s module docstring for the estimator + methodology).
+// Deliberately separate from `/api/vol-forecast/compare/:date` above — that
+// endpoint reads live KV populated by the running scheduler; this one reads
+// a committed JSON snapshot and touches none of that endpoint's state, so a
+// bug or a stale export here cannot affect the live-KV-backed comparison.
+// GET /api/vol-forecast/compare-forge/:date
+const _FORGE_VOL_PATH = path.join(__dirname, 'forge', 'out_vol', 'compare_export.json');
+let _forgeVolCache = null, _forgeVolCacheAt = 0;
+function _loadForgeVolCompare() {
+  if (_forgeVolCache && Date.now() - _forgeVolCacheAt < 300_000) return _forgeVolCache;
+  try { _forgeVolCache = JSON.parse(fs.readFileSync(_FORGE_VOL_PATH, 'utf8')); _forgeVolCacheAt = Date.now(); }
+  catch { _forgeVolCache = null; }
+  return _forgeVolCache;
+}
+app.get('/api/vol-forecast/compare-forge/:date', (req, res) => {
+  const date = req.params.date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const day = all[date];
+  if (!day) return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${date} (outside the exported walk-forward window, or the export needs refreshing)` });
+  res.json({ ok: true, date, rows: day });
+});
+
+// Forge comparison, ONE pair across a date RANGE — the day-by-day "how did it
+// cope over multiple days" view `compare-forge/:date` can't answer (it's a
+// single-date lookup). Same static export, same zero-risk-to-live-KV
+// separation as the endpoint above; just a different slice of the same file.
+// GET /api/vol-forecast/compare-forge/range?pair=gold&from=2024-01-01&to=2024-06-01
+app.get('/api/vol-forecast/compare-forge/range', (req, res) => {
+  const pair = String(req.query.pair || '').toLowerCase();
+  const from = String(req.query.from || '');
+  const to = String(req.query.to || '');
+  if (!pair) return res.status(400).json({ ok: false, error: 'pair is required' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return res.status(400).json({ ok: false, error: 'from/to must be YYYY-MM-DD' });
+  }
+  const all = _loadForgeVolCompare();
+  if (!all) return res.status(404).json({ ok: false, error: 'forge vol-compare export not found — run `python -m forge.export_vol_compare`' });
+  const rows = [];
+  for (const date of Object.keys(all).sort()) {
+    if (date < from || date > to) continue;
+    const v = all[date]?.[pair];
+    if (v) rows.push({ date, ...v });
+  }
+  if (!rows.length) {
+    return res.status(404).json({ ok: false, error: `No forge OOS forecast for ${pair} in [${from}, ${to}]` });
+  }
+  res.json({ ok: true, pair, from, to, rows });
 });
 
 // Session audit — retrieve a saved end-of-day session snapshot from KV.
@@ -13864,7 +15358,13 @@ const _execFileAsync   = promisify(execFile);
 const BT_DATA_DIR      = path.join(__dirname, 'VolRangeForecaster', 'data');
 const BT_PYTHON_SCRIPT = path.join(__dirname, 'VolRangeForecaster', 'vol_backtest.py');
 
-// Resolve Python binary once at startup — tries env var, then common paths
+// Resolve Python binary once at startup — tries env var, then common paths.
+// Must use execFileSync here: execFile() is async and returns before it can
+// ever fail, so a try/catch around it never catches anything — every
+// candidate silently "succeeds" and this always returned the first one
+// (/usr/local/bin/python3) whether or not it actually existed. That's the
+// literal cause of "spawn /usr/local/bin/python3 ENOENT" on Debian, which
+// installs to /usr/bin/python3 instead.
 function _resolvePython() {
   if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
   const candidates = [
@@ -13873,7 +15373,7 @@ function _resolvePython() {
     'python3', 'python',
   ];
   for (const c of candidates) {
-    try { execFile(c, ['--version'], (_e, _o, _err) => {}); return c; } catch {}
+    try { execFileSync(c, ['--version'], { stdio: 'ignore' }); return c; } catch {}
   }
   return 'python3';
 }
@@ -14396,6 +15896,116 @@ app.get('/api/vol-backtest/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
+// ── OANDA M1 Data Fetch API ────────────────────────────────────────────────
+// Triggers scripts/fetch_m1_oanda.py server-side. This Railway service has
+// real OANDA network access (the live bots trade off it) — a sandboxed dev
+// environment typically doesn't — so this lets the M1 universe be widened
+// from bot-config.html in a browser, without anyone needing a local Python
+// setup. Same async-job-queue shape as /api/vol-backtest/run. Gated with
+// requireAuth explicitly (unlike most /api/* routes — see the note above
+// app.use(requireAuth) further down) because it spawns a real subprocess
+// that makes external network calls and writes to disk.
+const OANDA_FETCH_SCRIPT = path.join(__dirname, 'scripts', 'fetch_m1_oanda.py');
+const oandaFetchJobs = new Map();
+let _oandaFetchRunning = false;
+let _oandaInstrumentCache = null;
+
+function _purgeStaleOandaFetchJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of oandaFetchJobs) if (job.startedAt < cutoff) oandaFetchJobs.delete(id);
+}
+
+// INSTRUMENTS lives in fetch_m1_oanda.py (the single source of truth for
+// oanda-symbol/asset-class mapping) — ask the script for it via --list
+// rather than keeping a second copy here that could drift.
+function _oandaInstruments() {
+  return new Promise((resolve, reject) => {
+    if (_oandaInstrumentCache) return resolve(_oandaInstrumentCache);
+    execFile(BT_PYTHON, [OANDA_FETCH_SCRIPT, '--list'], { timeout: 15_000 }, (err, stdout) => {
+      if (err) return reject(err);
+      try { _oandaInstrumentCache = JSON.parse(stdout); resolve(_oandaInstrumentCache); }
+      catch (e) { reject(e); }
+    });
+  });
+}
+
+app.get('/api/oanda-fetch/instruments', requireAuth, async (req, res) => {
+  try {
+    res.json({ ok: true, instruments: await _oandaInstruments() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/oanda-fetch/run', requireAuth, async (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch from Oanda' });
+  }
+  if (_oandaFetchRunning) {
+    return res.status(409).json({ ok: false, error: 'A fetch is already running — wait for it to finish' });
+  }
+
+  let instruments;
+  try {
+    instruments = await _oandaInstruments();
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: `Could not list instruments: ${e.message}` });
+  }
+
+  const { pairs = [], years = 5 } = req.body || {};
+  const selected = (Array.isArray(pairs) ? pairs : []).map(p => String(p).toLowerCase());
+  const unknown  = selected.filter(p => !instruments[p]);
+  if (!selected.length) return res.status(400).json({ ok: false, error: 'No pairs selected' });
+  if (unknown.length) {
+    return res.status(400).json({ ok: false, error: `Unknown instrument key(s): ${unknown.join(', ')}` });
+  }
+  const yearsNum = Math.max(1, Math.min(10, parseInt(years, 10) || 5));
+
+  const jobId     = `oanda_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleOandaFetchJobs();
+  _oandaFetchRunning = true;
+  oandaFetchJobs.set(jobId, { status: 'running', startedAt, log: [], pairs: selected, years: yearsNum });
+
+  const args  = [OANDA_FETCH_SCRIPT, ...selected, '--years', String(yearsNum)];
+  const child = spawn(BT_PYTHON, args, { cwd: __dirname, env: process.env });
+
+  const appendLog = (chunk) => {
+    const job = oandaFetchJobs.get(jobId);
+    if (!job) return;
+    const lines = chunk.toString('utf8').split(/\r?\n/).filter(Boolean);
+    job.log.push(...lines);
+    if (job.log.length > 500) job.log.splice(0, job.log.length - 500);
+  };
+  child.stdout.on('data', appendLog);
+  child.stderr.on('data', appendLog);
+
+  child.on('close', (code) => {
+    _oandaFetchRunning = false;
+    const job = oandaFetchJobs.get(jobId);
+    if (!job) return;
+    if (code === 0) oandaFetchJobs.set(jobId, { ...job, status: 'done', exitCode: code });
+    else oandaFetchJobs.set(jobId, { ...job, status: 'error', exitCode: code,
+                                     error: `fetch_m1_oanda.py exited with code ${code}` });
+  });
+  child.on('error', (e) => {
+    _oandaFetchRunning = false;
+    const job = oandaFetchJobs.get(jobId);
+    if (job) oandaFetchJobs.set(jobId, { ...job, status: 'error', error: e.message });
+  });
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/oanda-fetch/status/:jobId', requireAuth, (req, res) => {
+  const job = oandaFetchJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed, log: job.log });
+  if (job.status === 'done')    return res.json({ ok: true, status: 'done', elapsed, log: job.log });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, elapsed, log: job.log });
+});
+
 // ── Honest Forecast Harness ─────────────────────────────────────────────────
 // Re-tests the daily vol/range forecast under honest fills + costs + a true
 // IS/OOS split, and compares fade vs follow vs regime-gated entry at the
@@ -14457,6 +16067,55 @@ app.get('/api/honest-forecast/status/:jobId', (req, res) => {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Live Validation Harness ──────────────────────────────────────────────
+// Runs js/liveValidationCore.js's runLiveValidation (also used by
+// education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs
+// — one shared core, per Lego Principle 1) against real OANDA M1 data.
+// Only reachable on Railway (or anywhere OANDA_KEY actually resolves) —
+// sandboxed dev sessions 403. Same async-job pattern as /api/honest-forecast/*.
+const lvJobs = new Map();
+function _purgeStaleLvJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of lvJobs) if (job.startedAt < cutoff) lvJobs.delete(id);
+}
+
+app.post('/api/live-validation/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch live OANDA data' });
+  }
+  const pair = req.body?.pair === 'nq' ? 'nq' : req.body?.pair === 'gold' ? 'gold' : null;
+  if (!pair) return res.status(400).json({ ok: false, error: 'pair must be gold|nq' });
+
+  const jobId = `lv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleLvJobs();
+  lvJobs.set(jobId, { status: 'running', startedAt, log: [] });
+
+  (async () => {
+    try {
+      const job = lvJobs.get(jobId);
+      const result = await runLiveValidation(pair, { onLog: msg => job.log.push(msg) });
+      lvJobs.set(jobId, { status: 'done', result, startedAt, log: job.log });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[live-validation/run]', msg, e?.stack ?? '');
+      lvJobs.set(jobId, { status: 'error', error: msg, startedAt, log: lvJobs.get(jobId)?.log ?? [] });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/live-validation/status/:jobId', (req, res) => {
+  const job = lvJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000), log: job.log });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', result: job.result, log: job.log });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
@@ -14979,6 +16638,22 @@ function _purgeStaleVfbJobs() {
   for (const [id, job] of vfbJobs) if (job.startedAt < cutoff) vfbJobs.delete(id);
 }
 
+// Per-instrument listed IV index (GVZ/VXN/OVX/EVZ…) → per-bar daily variance,
+// aligned to the D1 bar dates (forward-filled over gaps), for the HAR-IV estimator.
+// Returns null when the instrument has no index / no FRED_KEY / fetch fails, so the
+// bench simply runs without HAR-IV for that instrument (graceful, no throw).
+async function _ivVarForBars(instName, bars) {
+  const code = _IV_INDEX[String(instName).toUpperCase()];
+  const fredKey = process.env.FRED_KEY || process.env.FRED_API_KEY;
+  if (!code || !fredKey || !bars?.length) return { ivVar: null, code: code || null };
+  try {
+    const map = await fetchFredSeries(code, bars[0].date, fredKey);
+    if (!map || map.size < 60) return { ivVar: null, code };
+    const ivPct = forwardFillAlign(bars.map(b => b.date), map);   // annualised IV %, per bar
+    return { ivVar: _ivVarSeries(ivPct), code };
+  } catch { return { ivVar: null, code }; }
+}
+
 app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) {
     return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
@@ -15005,13 +16680,20 @@ app.post('/api/vol-forecast-bench/run', express.json({ limit: '256kb' }), (req, 
         try {
           const bars = await _btFetchD1(inst.oanda);
           if (!bars || bars.length < 200) { log.push(`${inst.name}: too few bars (${bars?.length ?? 0})`); continue; }
-          const bench = runVolBench(bars, inst.assetClass, { oosFrac, proxy });
-          results.push({ name: inst.name, assetClass: inst.assetClass, ...bench });
+          const { ivVar, code: ivCode } = await _ivVarForBars(inst.name, bars);
+          const bench = runVolBench(bars, inst.assetClass, { oosFrac, proxy, ivVar });
+          results.push({ name: inst.name, assetClass: inst.assetClass, ivIndex: ivCode, ...bench });
           log.push(`${inst.name}: best=${bench.best} (${bench.nBars} bars)`);
+          if (bench.matched) {
+            const m = bench.matched;
+            log.push(`  ${inst.name} HAR-IV[${ivCode}] matched OOS QLIKE: harIV ${m.harIV.oos.qlike?.toFixed(4)} vs harRV ${m.harRV.oos.qlike?.toFixed(4)} → ${m.ivBeatsRvOos ? `IV WINS (${m.oosQlikeImprovementPct}%)` : 'no gain'} (n=${m.nCommon})`);
+          } else if (ivCode) {
+            log.push(`  ${inst.name}: IV index ${ivCode} unavailable/short — HAR-IV skipped`);
+          }
           // Export the OOS-winning estimator's forecast through the forecaster's own
           // band math, so the text drops into the same Pine indicator (forecastExport.js).
           if (bench.best) {
-            const ctx = benchCtx(bars, inst.assetClass, { proxy });
+            const ctx = benchCtx(bars, inst.assetClass, { proxy, ivVar });
             const { series, sigmaFwd } = sigmaSeriesForExport(bars, bench.best, ctx);
             if (Number.isFinite(sigmaFwd) && series.length >= 60) {
               exportInstruments[inst.name] = forecastFields(series, sigmaFwd, bars, inst.assetClass);
@@ -16354,6 +18036,177 @@ app.get('/api/vol-forecast-research', async (req, res) => {
   } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
+// ── AnalogML: shape-state + paper-trades JSON, written by AnalogML/paper_track.py
+// (Python, run on a schedule in start.sh) to local disk and/or R2. Same
+// disk-first-then-R2 read pattern as _loadResult above, simplified for a
+// single fixed filename per artifact (no "find the newest timestamped run"
+// scan needed -- paper_track.py overwrites these two files in place).
+const ANALOGML_DATA_DIR = path.join(__dirname, 'AnalogML', 'data');
+const ANALOGML_SHAPE_STATE_PATH = path.join(ANALOGML_DATA_DIR, 'shape_state.json');
+const ANALOGML_PAPER_TRADES_PATH = path.join(ANALOGML_DATA_DIR, 'paper_trades.json');
+
+async function _loadAnalogMLJson(localPath, r2Key) {
+  if (fs.existsSync(localPath)) {
+    try { return { ok: true, src: 'disk', ...JSON.parse(fs.readFileSync(localPath, 'utf8')) }; }
+    catch (e) { console.warn(`[analogml] local read failed (${localPath}): ${e?.message}`); }
+  }
+  if (_r2Ok()) {
+    try { const r2 = await _r2GetJSON(r2Key); if (r2) return { ok: true, src: 'r2', ...r2 }; }
+    catch (e) { console.warn(`[analogml] R2 read failed (${r2Key}): ${e?.message}`); }
+  }
+  return null;
+}
+
+app.get('/api/analogml/shape-state', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_SHAPE_STATE_PATH, 'analogml/shape_state.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no shape_state.json yet -- run AnalogML/paper_track.py' });
+  return res.json(out);
+});
+
+app.get('/api/analogml/paper-trades', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_PAPER_TRADES_PATH, 'analogml/paper_trades.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no paper_trades.json yet -- run AnalogML/paper_track.py' });
+  return res.json(out);
+});
+
+// ── AnalogML: motif-state + motif-trades JSON, written by AnalogML/motif_track.py
+// -- the structural N-touches-of-a-level signal (pylego/motif_touch.py),
+// tracked SEPARATELY from the shape-state/paper-trades pair above (the
+// fixed-window k-NN method those track banked null on 2026-08-12; this is a
+// different, still-being-validated idea, not a replacement in place). Same
+// disk-first-then-R2 pattern via _loadAnalogMLJson.
+const ANALOGML_MOTIF_STATE_PATH = path.join(ANALOGML_DATA_DIR, 'motif_state.json');
+const ANALOGML_MOTIF_TRADES_PATH = path.join(ANALOGML_DATA_DIR, 'motif_trades.json');
+
+app.get('/api/analogml/motif-state', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_STATE_PATH, 'analogml/motif_state.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_state.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
+// ── SessionResearch: per-pair Asia/London/overlap/NY session-handoff,
+// day-flow, walk-forward-model, and impulse-reversal research, distilled to
+// ONE small combined file by SessionResearch/dashboard_export.py (full
+// methodology + per-finding circular-shift null + pooled Benjamini-Hochberg
+// FDR correction documented in SessionResearch/README.md — this endpoint
+// only ever serves already-validated summary numbers, never raw cells).
+// _loadAnalogMLJson is fully generic (just a disk-first-then-R2 JSON read;
+// nothing AnalogML-specific in its body) -- reused as-is rather than
+// duplicated under a new name.
+const SESSION_RESEARCH_SUMMARY_PATH = path.join(__dirname, 'SessionResearch', 'out', 'dashboard_summary.json');
+
+app.get('/api/session-research/summary', async (_req, res) => {
+  const out = await _loadAnalogMLJson(SESSION_RESEARCH_SUMMARY_PATH, 'session-research/dashboard_summary.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no dashboard_summary.json yet -- run SessionResearch/dashboard_export.py' });
+  return res.json(out);
+});
+
+// ── SessionResearch: native in-process scheduling ───────────────────────────
+// Runs the SAME Python engine (SessionResearch/*.py — Ridge/Logistic models,
+// circular-shift permutation tests, all of it) as two setInterval timers in
+// THIS process, the way every other periodic refresh in this file already
+// works (~60 other setInterval blocks), instead of a separate bash-loop
+// script supervised by start.sh's restart_bot. That earlier version worked
+// but added a whole extra supervision layer (start.sh -> restart_bot ->
+// bash sleep-loop -> python) for what every other background refresh here
+// does with one timer — collapsing it removes that layer without touching
+// the statistics/ML code itself, which is NOT being ported to JS: there is
+// no JS equivalent to scikit-learn's Ridge/LogisticRegression worth trusting
+// over the already-validated (see SessionResearch/README.md) Python one,
+// and re-deriving it would trade a real, working, cross-checked engine for
+// a rewrite risk with no operational upside — spawning python 26x/hour costs
+// a few seconds, not something worth that trade. `BT_PYTHON`/`_execFileAsync`
+// (defined above, used by the vol-backtest routes) are reused as-is.
+//
+// Two cadences, same split the old bash loops used: `--live` only fits the
+// already-proven model on one new row per pair (cheap, hourly-safe); the
+// full study reruns every circular-shift null across every handoff/spike/
+// dayflow/impulse cell for all 26 pairs (expensive; the 10-year statistical
+// findings underneath don't move meaningfully day to day, so daily is
+// already generous). Neither refreshes the M1 parquet itself —
+// AnalogML/motif_track_loop.sh already tops up all 26 pairs hourly from
+// OANDA; these just read whatever's already current on disk.
+const SESSION_RESEARCH_PAIRS = [
+  'audcad', 'audchf', 'audjpy', 'audnzd', 'audusd', 'cadjpy', 'chfjpy',
+  'euraud', 'eurcad', 'eurchf', 'eurgbp', 'eurjpy', 'eurnzd', 'eurusd',
+  'gbpaud', 'gbpcad', 'gbpchf', 'gbpjpy', 'gbpnzd', 'gbpusd', 'gold',
+  'nzdjpy', 'nzdusd', 'usdcad', 'usdchf', 'usdjpy',
+];
+
+async function _runSessionResearchPy(pyArgs, { label, timeoutMs = 10 * 60_000 } = {}) {
+  try {
+    await _execFileAsync(BT_PYTHON, ['-m', ...pyArgs],
+      { cwd: __dirname, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
+    return true;
+  } catch (e) {
+    console.warn(`[session-research] ${label} failed: ${e.message}`);
+    return false;
+  }
+}
+
+// Serially, not Promise.all — predictable resource usage on a shared Railway
+// dyno beats parallel throughput here, same reasoning the bash-loop
+// predecessor documented (an xargs -P oversubscription bug cost real
+// debugging time once during this feature's own build).
+let _sessionResearchLiveBusy = false;
+async function _sessionResearchLiveTick() {
+  if (_sessionResearchLiveBusy) { console.warn('[session-research] live tick still running, skipping this interval'); return; }
+  _sessionResearchLiveBusy = true;
+  const startedAt = Date.now();
+  console.log(`[session-research] live tick starting ${new Date().toISOString()}`);
+  try {
+    for (const pair of SESSION_RESEARCH_PAIRS) {
+      await _runSessionResearchPy(['SessionResearch.predict_today', '--pair', pair, '--live'],
+        { label: `predict_today --live ${pair}`, timeoutMs: 60_000 });
+    }
+    await _runSessionResearchPy(['SessionResearch.dashboard_export', '--all'],
+      { label: 'dashboard_export --all', timeoutMs: 60_000 });
+    console.log(`[session-research] live tick done in ${((Date.now() - startedAt) / 1000).toFixed(0)}s`);
+  } finally {
+    _sessionResearchLiveBusy = false;
+  }
+}
+
+let _sessionResearchFullBusy = false;
+async function _sessionResearchFullTick() {
+  if (_sessionResearchFullBusy) { console.warn('[session-research] full-study tick still running, skipping this interval'); return; }
+  _sessionResearchFullBusy = true;
+  const startedAt = Date.now();
+  console.log(`[session-research] full study starting ${new Date().toISOString()}`);
+  try {
+    for (const pair of SESSION_RESEARCH_PAIRS) {
+      const studyOk = await _runSessionResearchPy(['SessionResearch.run_study', '--pair', pair],
+        { label: `run_study ${pair}`, timeoutMs: 10 * 60_000 });
+      if (!studyOk) continue;   // skip this pair's predict/report if the study itself failed
+      await _runSessionResearchPy(['SessionResearch.predict_today', '--pair', pair],
+        { label: `predict_today (replay) ${pair}`, timeoutMs: 60_000 });
+      await _runSessionResearchPy(['SessionResearch.report_html', '--pair', pair],
+        { label: `report_html ${pair}`, timeoutMs: 60_000 });
+    }
+    await _runSessionResearchPy(['SessionResearch.dashboard_export', '--all'],
+      { label: 'dashboard_export --all', timeoutMs: 60_000 });
+    console.log(`[session-research] full study done in ${((Date.now() - startedAt) / 60_000).toFixed(1)}min`);
+  } finally {
+    _sessionResearchFullBusy = false;
+  }
+}
+
+const SESSION_RESEARCH_LIVE_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH_LIVE_INTERVAL_SECONDS, 10) || 3600) * 1000;
+const SESSION_RESEARCH_FULL_INTERVAL_MS = (parseInt(process.env.SESSION_RESEARCH_FULL_INTERVAL_SECONDS, 10) || 86400) * 1000;
+// Fires once immediately on boot (same behavior the bash-loop predecessor
+// had), then on its own interval — fire-and-forget, does not block server
+// startup below.
+_sessionResearchLiveTick();
+_sessionResearchFullTick();
+setInterval(_sessionResearchLiveTick, SESSION_RESEARCH_LIVE_INTERVAL_MS);
+setInterval(_sessionResearchFullTick, SESSION_RESEARCH_FULL_INTERVAL_MS);
+
+app.get('/api/analogml/motif-trades', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_trades.json yet -- run AnalogML/motif_track.py' });
+  return res.json(out);
+});
+
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
   const { pair = '' } = req.body || {};
@@ -16734,12 +18587,26 @@ app.post('/api/forecast-accuracy/run', express.json({ limit: '16kb' }), (req, re
       for (const cfg of insts) {
         try {
           const { bars, src } = await _intradayForAB(cfg);
-          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name });
+          // Reuses the SAME cached export `/api/vol-forecast/compare-forge/:date`
+          // reads (`_loadForgeVolCompare()`) — one file, one 5-min cache, read
+          // twice from two different routes rather than loaded/parsed twice.
+          const forgeAll = _loadForgeVolCompare();
+          const key = cfg.name.toLowerCase();
+          let forgeByDate = null;
+          if (forgeAll) {
+            forgeByDate = {};
+            for (const [date, byPair] of Object.entries(forgeAll)) {
+              const v = byPair[key];
+              if (v) forgeByDate[date] = v;
+            }
+          }
+          const fa = _forecastAccuracy(bars, { ...opts, pair: cfg.name, forgeByDate });
           if (fa.insufficient) { log.push(`${cfg.name}: insufficient (${fa.nDays}d)`); continue; }
           fa.src = src;
           perPair[cfg.name] = fa;
           const A = fa.panelA, B = fa.panelB;
-          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}% · reversal ${B.reversalOverMedian}× median (src ${src})`);
+          const forgeLog = A.forge ? ` / forge ${A.forge.hlExceed}% (n=${A.forge.nDays})` : '';
+          log.push(`${cfg.name}: HL exceed feller ${A.feller.hlExceed}% / cog ${A.cog.hlExceed}% / recal ${A.recal.hlExceed}%${forgeLog} · reversal ${B.reversalOverMedian}× median (src ${src})`);
         } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
       }
       const names = Object.keys(perPair);
@@ -18323,6 +20190,9 @@ async function _surpriseAlertScan({ force = false, dryRun = false } = {}) {
   try {
     const cfg = await _saLoadConfig();
     if (!force && !cfg.enabled) return { skipped: 'disabled' };
+    // Master override — see TG_SENDERS. Skipped for dryRun so the preview/test
+    // endpoints still compose their text while the live push is muted.
+    if (!dryRun && !tgOn('surprise')) return { skipped: 'muted' };
     if (!dryRun && (!cfg.token || !cfg.chatId)) return { skipped: 'no Telegram creds' };
     // Blank pairs list = monitor every pair (same default as the forward-track
     // and /summary). A non-empty list narrows it to those pairs.
@@ -19396,14 +21266,41 @@ async function _volLevelDailyRegime(sym, ac, sessionDate) {
 
 // One scan cycle: for each forecast instrument, if live price is within the
 // per-pair pip threshold of any enabled level, enrich (once, lazily) and send.
+// Leave-one-out USD trend per major (crossAssetFit): 10-day USD log-return from the OTHER
+// majors → { dir: +1 strengthening / −1 weakening / 0 }. The direction filter on the alert.
+// Best-effort; empty on any fetch failure (block simply omitted).
+const _USD_MAJORS = { 'EUR/USD': -1, 'GBP/USD': -1, 'AUD/USD': -1, 'NZD/USD': -1, 'USD/CAD': 1, 'USD/CHF': 1 };
+async function _computeUsdTrends() {
+  const usdRet = {};
+  for (const [canon, sign] of Object.entries(_USD_MAJORS)) {
+    try {
+      const d1 = await _fetchVolLevelCandles(canon.replace('/', '_'), 'D', 12);
+      if (!d1 || d1.length < 11) continue;
+      const c0 = d1[d1.length - 11].close, c1 = d1[d1.length - 1].close;
+      if (c0 > 0 && c1 > 0) usdRet[canon] = Math.log(c1 / c0) * sign;   // → USD return
+    } catch { /* skip this leg */ }
+  }
+  const out = {};
+  for (const p of Object.keys(_USD_MAJORS)) {
+    let s = 0, n = 0;
+    for (const q of Object.keys(_USD_MAJORS)) if (q !== p && usdRet[q] != null) { s += usdRet[q]; n++; }
+    out[p] = { dir: n ? Math.sign(s) : 0, mag: n ? s : 0 };
+  }
+  return out;
+}
+
 async function checkVolLevelAlertsNow() {
   const cfg = await loadVolLevelCfg();
   if (!cfg.enabled) return;
+  if (!tgOn('volLevels')) return;   // master override — see TG_SENDERS
   const creds = await loadVolLevelCreds();
   if (!creds) return;                                   // no dedicated bot configured
 
   const brief = await computeDailyBrief();
   if (!brief?.ok || !brief.instruments) return;
+
+  let usdTrendByPair = {};
+  try { usdTrendByPair = await _computeUsdTrends(); } catch { usdTrendByPair = {}; }
 
   const now  = Date.now();
   const cdMs = Math.max(1, cfg.cooldownMin) * 60_000;
@@ -19450,8 +21347,22 @@ async function checkVolLevelAlertsNow() {
       });
     } catch { dispersion = null; }
 
+    // WaveTrend-stretch DIRECTION context (Phase-11 validated gate): MTF zone from
+    // M15 + H1 (matches the live vumanchu-state pages: wt1 ±53, 9/12/3). Best-effort —
+    // any fetch/compute failure just omits the direction block.
+    let direction = null;
+    try {
+      const [m15, h1] = await Promise.all([
+        _fetchVolLevelCandles(sym, 'M15', 200),
+        _fetchVolLevelCandles(sym, 'H1', 200),
+      ]);
+      const z15 = volWtZone(m15), z1h = volWtZone(h1);
+      if (z15 && z1h) direction = { m15: z15, h1: z1h };
+    } catch { direction = null; }
+
     const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
-      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion });
+      levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction,
+      usdTrend: usdTrendByPair[canonical] ?? null });
 
     for (const ev of events) {
       const ck = `${canonical}|${ev.key}`;
@@ -19465,6 +21376,64 @@ async function checkVolLevelAlertsNow() {
     }
   }
 }
+
+// Preview: compose the SAME alert text checkVolLevelAlertsNow would send, without
+// requiring Telegram creds/enabled/cooldown and without sending anything. For
+// demoing/inspecting the alert copy (e.g. from the Upcoming Trades dashboard) and
+// for local dev where no bot is configured. ?pair=eurusd restricts to one
+// instrument; ?thresholdMult=N widens the per-pair pip threshold (default 1×) so a
+// preview can force a look even when live price isn't currently near a level.
+app.get('/api/vol-forecast/level-alerts/preview', async (req, res) => {
+  try {
+    const cfg = await loadVolLevelCfg();
+    const brief = await computeDailyBrief();
+    if (!brief?.ok || !brief.instruments) return res.json({ ok: false, error: 'brief unavailable' });
+    let usdTrendByPair = {};
+    try { usdTrendByPair = await _computeUsdTrends(); } catch { usdTrendByPair = {}; }
+    const wantPair = req.query.pair ? String(req.query.pair).toUpperCase() : null;
+    const mult = Math.max(1, Math.min(50, +req.query.thresholdMult || 1));
+
+    const out = [];
+    for (const inst of Object.values(brief.instruments)) {
+      const { sym, current_price: price, session_open: open, dp, levels } = inst;
+      if (!sym || !price || !open || !levels) continue;
+      const canonical = sym.replace('_', '/');
+      if (wantPair && sym !== wantPair && canonical !== wantPair) continue;
+
+      const pipSize = PIP_SIZE[canonical] ?? PIP_SIZE[sym] ?? PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+      const threshold = mult * (cfg.thresholdPips?.[canonical] ?? cfg.thresholdPips?.[sym] ?? cfg.thresholdPips?.default ?? 10);
+
+      const pre = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+        levels, thresholdPips: threshold, enabled: cfg.levels, bars: null });
+      if (!pre.length) continue;
+
+      const bars = await _fetchVolLevelCandles(sym);
+      let dispersion = null;
+      try {
+        const sessOpenSec = _btLondonMidnightSec(new Date());
+        const sessBars = Array.isArray(bars) ? bars.filter(b => b.t >= sessOpenSec) : [];
+        let sessionHigh = null, sessionLow = null;
+        if (sessBars.length) { sessionHigh = Math.max(...sessBars.map(b => b.high)); sessionLow = Math.min(...sessBars.map(b => b.low)); }
+        const regime = await _volLevelDailyRegime(sym, inst.ac ?? 'fx', brief.session_date);
+        dispersion = volDispersionContext({ sessionHigh, sessionLow, sessionOpen: open,
+          hlMedPct: levels?.hl_med?.pct ?? null, priorExceed: regime.priorExceed, sigAccel: regime.sigAccel });
+      } catch { dispersion = null; }
+
+      let direction = null;
+      try {
+        const [m15, h1] = await Promise.all([_fetchVolLevelCandles(sym, 'M15', 200), _fetchVolLevelCandles(sym, 'H1', 200)]);
+        const z15 = volWtZone(m15), z1h = volWtZone(h1);
+        if (z15 && z1h) direction = { m15: z15, h1: z1h };
+      } catch { direction = null; }
+
+      const events = evaluateVolLevelPair({ pair: canonical, price, dp, pipSize, sessionOpen: open,
+        levels, thresholdPips: threshold, enabled: cfg.levels, bars, dispersion, direction,
+        usdTrend: usdTrendByPair[canonical] ?? null });
+      for (const ev of events) out.push({ pair: canonical, key: ev.key, label: ev.near.label, distPips: ev.near.distPips, text: ev.text });
+    }
+    res.json({ ok: true, preview: true, thresholdMult: mult, alerts: out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message ?? String(e) }); }
+});
 
 // Config: GET status, POST save, (levels/threshold/cooldown/pairs).
 app.get('/api/vol-forecast/level-alerts/config', async (_req, res) => {
@@ -21271,10 +23240,14 @@ app.get('/api/pattern-lab/candles/:pair', async (req, res) => {
 
 // Live candles straight from OANDA (not the static M1 parquet) — this is what
 // the live pattern scanner (PatternBot/pattern_live_bot.mjs) polls. Only the
-// granularities OANDA actually serves at intraday resolution are supported;
-// 1m is deliberately not exposed here (too noisy to alert on live, per the
-// historical study) even though the M1 parquet route above supports it.
-const PL_LIVE_GRAN = { '5m': 'M5', '15m': 'M15', '30m': 'M30', '1h': 'H1', '4h': 'H4', '1d': 'D' };
+// granularities OANDA actually serves at intraday resolution are supported.
+// 1m was originally left out here for Pattern Lab's own alerting (too noisy
+// for chart-pattern confirmation) even though the M1 parquet route above
+// supports it -- re-added for levelEngine/live_watch.py, which needs genuine
+// M1 resolution: its touch/barrier detection was backtested bar-by-bar on M1
+// parquet, and anything coarser would systematically miss or mistime touches
+// relative to what the historical stats it alerts against were measured on.
+const PL_LIVE_GRAN = { '1m': 'M1', '5m': 'M5', '15m': 'M15', '30m': 'M30', '1h': 'H1', '4h': 'H4', '1d': 'D' };
 
 app.get('/api/pattern-lab/live-candles/:pair', async (req, res) => {
   const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -21462,7 +23435,7 @@ app.get('/api/corr-history', (req, res) => {
 // Much smaller than the full corr-history response.
 app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
-  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {} });
+  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {} });
   try {
     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
     const records = data.records || [];
@@ -21487,6 +23460,8 @@ app.get('/api/hedge-alerts', async (req, res) => {
       corr_std,
       last_corr: lastCorr,
       last_betas: lastRec.beta || {},
+      last_cot_corr: data.cot_corr || {},
+      cot_corr_generated: data.cot_corr_generated || null,
     };
     // Cache in KV so the Positions tab can read it from both Railway and CF Pages
     kv.put('hedge_alerts_cache', JSON.stringify(result), { expirationTtl: 86400 }).catch(() => {});
@@ -21806,9 +23781,94 @@ app.get('/api/hedge-signals-v2/backtest/status/:jobId', (req, res) => {
 setTimeout(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 6 * 60_000);
 setInterval(() => computeHedgeSignalsV2().catch(e => console.error('[HEDGE-SIG-V2]', e.message)), 60 * 60_000);
 
+// ── Regime history — automatic recorder ─────────────────────────────────────
+// The log-parse backfill below (_parseRegimeLog / /api/regime-backfill-trigger)
+// is a MANUAL admin action — nobody was running it, so /api/regime-history came
+// back empty for every pair, every day (found 2026-08-14). Recording directly off
+// the live 5m HMM loops (runHMM5mRefresh/runHMM5mV2Refresh, already running
+// unconditionally every HMM5M_REFRESH_MS on the server) removes that manual step
+// AND removes the dependency on the Python bot process being up and writing to
+// a log file at all — this records the exact state the dashboard itself shows.
+//
+// Records are appended only on a regime change or a 15-min heartbeat (not every
+// 30s tick) so "periods held" stays a meaningful coarse unit and the buffer
+// doesn't balloon. Flushed to local KV every 5 min (cheap — local file store,
+// not CF KV, see kv.js's isCfKey) and to R2 every hour for durability across
+// Railway redeploys (CF KV route would burn quota; R2 does not).
+const REGIME_SNAPSHOT_HEARTBEAT_S = 15 * 60;
+const REGIME_HIST_MAX_RECORDS     = 2000; // ~3 weeks at the 15-min heartbeat floor
+
+function regimeHistPairSafe(sym) { return String(sym || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
+
+function recordRegimeSnapshot(ver, sym, regime, conf) {
+  if (!regime) return;
+  const pairSafe = regimeHistPairSafe(sym);
+  if (!pairSafe) return;
+  const buf = state.regimeHistBuf[ver];
+  const bucket = buf[pairSafe] ?? (buf[pairSafe] = { records: [], events: [], dirty: false });
+  const nowS = Math.floor(Date.now() / 1000);
+  const last = bucket.records[bucket.records.length - 1];
+  if (last && last.regime === regime && (nowS - last.ts) < REGIME_SNAPSHOT_HEARTBEAT_S) return;
+  bucket.records.push({ ts: nowS, regime, conf: conf ?? null });
+  if (bucket.records.length > REGIME_HIST_MAX_RECORDS) {
+    bucket.records.splice(0, bucket.records.length - REGIME_HIST_MAX_RECORDS);
+  }
+  bucket.dirty = true;
+}
+
+// Merge two record arrays by ts (later write wins on a collision) and cap length.
+function mergeRegimeRecords(a, b) {
+  const map = new Map();
+  for (const r of (a || [])) map.set(r.ts, r);
+  for (const r of (b || [])) map.set(r.ts, r);
+  const out = [...map.values()].sort((x, y) => x.ts - y.ts);
+  return out.length > REGIME_HIST_MAX_RECORDS ? out.slice(out.length - REGIME_HIST_MAX_RECORDS) : out;
+}
+
+// Every 5 min: push dirty pairs' in-memory records into local KV (the "current
+// Railway run" tier /api/regime-history already reads — see loadRegimeHistoryFromR2
+// call below it). Local KV lives in the ephemeral file store, not CF KV, so this
+// is unmetered.
+async function flushRegimeHistoryToLocalKV() {
+  for (const ver of ['v1', 'v2']) {
+    for (const [pairSafe, bucket] of Object.entries(state.regimeHistBuf[ver])) {
+      if (!bucket.dirty) continue;
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const existingRaw = await kv.get(key).catch(() => null);
+        const existing = existingRaw ? JSON.parse(existingRaw) : null;
+        const merged = { records: mergeRegimeRecords(existing?.records, bucket.records), events: existing?.events || bucket.events || [] };
+        await kv.put(key, JSON.stringify(merged));
+        bucket.dirty = false;
+      } catch (e) { console.error(`[REGIME-HIST] local KV flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
+// Every hour: fold the local-KV-durable record set into R2 (survives redeploys).
+// Reuses the same helpers the manual /api/regime-history-export path already uses.
+async function flushRegimeHistoryToR2() {
+  for (const ver of ['v1', 'v2']) {
+    for (const pairSafe of Object.keys(state.regimeHistBuf[ver])) {
+      try {
+        const key = `rg${ver}_${pairSafe}`;
+        const localRaw = await kv.get(key).catch(() => null);
+        const local = localRaw ? JSON.parse(localRaw) : { records: [], events: [] };
+        if (!local.records.length) continue;
+        const r2Existing = await loadRegimeHistoryFromR2(ver, pairSafe).catch(() => null);
+        const merged = { records: mergeRegimeRecords(r2Existing?.records, local.records), events: r2Existing?.events || local.events || [] };
+        await saveRegimeHistoryToR2(ver, pairSafe, merged);
+      } catch (e) { console.error(`[REGIME-HIST] R2 flush ${ver}/${pairSafe} error:`, e.message); }
+    }
+  }
+}
+
 // ── Regime log backfill (pure Node.js) ──────────────────────────────────────
 // Native JS log parser — no Python subprocess required.
 // Reads bot log files line-by-line with readline and writes directly to KV.
+// Kept as a manual fallback (regime-viewer.html's "Backfill logs" button) for
+// seeding history from the Python bots' own logs if that's ever useful — the
+// automatic recorder above is the primary path now.
 
 const _RG_V1_LOG = path.join(__dirname, 'bot',  'regime_bot.log');
 const _RG_V2_LOG = path.join(__dirname, 'logs', 'regime_bot_v2.log');
@@ -22084,7 +24144,7 @@ function tdeWarmSnapshot(pair) {
   let inflight = _tdeWarmInflight.get(pair);
   if (!inflight) {
     inflight = (async () => {
-      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair), credit: await _tdeCreditContext() }), refreshed: true }; }
+      try { return { snap: await tdeRefreshPair(pair, { macro: await _tdeMacroFor(pair), credit: await _tdeCreditContext(), oi: await _tdeOiContext(pair) }), refreshed: true }; }
       catch (e) { return { snap: tdeGetState(pair), refreshed: false, error: e.message ?? String(e) }; }
       finally { _tdeWarmInflight.delete(pair); }
     })();
@@ -22100,7 +24160,7 @@ function tdeWarmSnapshot(pair) {
 app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
   const t0 = Date.now();
   try {
-    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live' } = req.body ?? {};
+    const { pair, price, action, direction, approach_sigma, own_level, intraday, mode = 'live', preview } = req.body ?? {};
     if (!pair) return res.status(400).json({ ok: false, error: 'pair required' });
     const key = String(pair).toLowerCase();
     let snap, warm = null;
@@ -22116,8 +24176,164 @@ app.post('/api/trade-decision/decide', express.json(), async (req, res) => {
       if (warm.error) result.slow_loop_error = warm.error;
     }
     result.total_ms = Date.now() - t0;
-    tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
+    // preview:true = a hypothetical "what if price were at this zone right now"
+    // read (e.g. a watchlist scanning zones price hasn't touched yet). Real touches
+    // must still log — decisionLog.js is the future training set (ARCHITECTURE.md §6)
+    // and logging fictitious touches would corrupt it with events that never happened.
+    result.preview = preview === true;
+    if (preview !== true) tdeAppendDecision({ request: { pair, price, action, direction, approach_sigma, own_level, mode }, result });
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message ?? String(e) });
+  }
+});
+
+// ── Zone Duel — the live continuation-vs-fade ticker's one call per tick ────
+// /decide judges ONE proposed action; a level by itself doesn't say whether
+// price is going to accept it or reject it. This asks decisionCore for BOTH
+// hypotheses at the SAME live price — action:'follow' (continuation) and
+// action:'fade' — off one shared (warm-once) snapshot, and adds what a single
+// decide() call doesn't: a zone-quality score, a confidence read distinct from
+// either probability, and a WATCHING/APPROACHING/TESTING/CONFIRMED state so a
+// dashboard can re-poll this every few seconds and watch the two bars move as
+// price ticks and the zone read changes underneath them.
+//
+// price resolution: ?price= override (mirrors /decide, for simulating a touch)
+// else a live OANDA tick via tickPrice() — NOT monitorTick's cache, which only
+// populates when the Telegram alert loop is configured. mode=synthetic uses
+// the deterministic demo snapshot's own price, same as everywhere else in TDE.
+//
+// confidence is a heuristic, NOT a fitted number (same honesty as v0's
+// "UNCALIBRATED PRIOR" badge): how far apart the two hypotheses have pulled
+// (a coin-flip 51/49 read is not confident even if one side "wins"), blended
+// with how fresh the underlying slow-loop snapshot is.
+function _zdClamp01(x) { return Math.max(0, Math.min(1, x)); }
+app.get('/api/trade-decision/zone-duel', async (req, res) => {
+  const t0 = Date.now();
+  try {
+    const rawPair = req.query.pair;
+    if (!rawPair) return res.status(400).json({ ok: false, error: 'pair required' });
+    const key = resolveKey(rawPair) || String(rawPair).toLowerCase();
+    let rec; try { rec = instrument(key); } catch { rec = null; }
+    const display = rec?.display ?? rawPair;
+    const mode = req.query.mode === 'synthetic' ? 'synthetic' : 'live';
+
+    let snap, warm = null;
+    if (mode === 'synthetic') snap = tdeSnapshotFor(key, 'synthetic');
+    else { warm = await tdeWarmSnapshot(key); snap = warm.snap; }
+    if (!snap) return res.json({ ok: false, error: 'no snapshot yet — GET /api/trade-decision/state/' + key + ' first, or use mode=synthetic' });
+
+    let price = req.query.price != null ? Number(req.query.price) : NaN;
+    if (!Number.isFinite(price)) {
+      price = mode === 'synthetic' ? snap.price : ((rec ? await tickPrice(display, rec.oanda) : null) ?? snap.price);
+    }
+
+    const continuation = tdeDecide(snap, { pair: key, price, action: 'follow' });
+    const fade         = tdeDecide(snap, { pair: key, price, action: 'fade' });
+
+    const hit = continuation.zone ? continuation : (fade.zone ? fade : null);
+    const zoneQuality = hit ? Math.round(100 * _zdClamp01(
+      0.4 * (continuation.features?.confluence ?? fade.features?.confluence ?? 0) +
+      0.6 * (continuation.features?.zone_score ?? fade.features?.zone_score ?? 0)
+    )) : null;
+
+    const cp = continuation.probability, fp = fade.probability;
+    const haveBoth = cp != null && fp != null && (cp + fp) > 0;
+    const continuationPct = haveBoth ? +((cp / (cp + fp)) * 100).toFixed(1) : null;
+    const fadePct         = haveBoth ? +((fp / (cp + fp)) * 100).toFixed(1) : null;
+    // continuation/fade are scored as two INDEPENDENT go/skip questions, not one
+    // mutually-exclusive pick — both can clear the go-threshold at once (they did
+    // here on a real card: raw p 55.9%/55.9%, threshold 0.55). When that happens
+    // `winner` below still resolves via cp>=fp, which silently hands ties to
+    // continuation — real information (a "go" read), not a confident directional
+    // edge. `tied` flags that case so a UI can say so instead of implying
+    // conviction it doesn't have. 4pp is a display threshold, not a fitted one.
+    const tied = haveBoth && Math.abs(continuationPct - fadePct) < 4;
+
+    let status = 'WATCHING';
+    let winner = null;
+    if (hit) {
+      status = hit.zone.distance_sigma <= 0.15 ? 'TESTING' : 'APPROACHING';
+      const contGo = continuation.decision === 'go', fadeGo = fade.decision === 'go';
+      if (contGo || fadeGo) {
+        status = 'CONFIRMED';
+        winner = contGo && (!fadeGo || cp >= fp) ? 'continuation' : 'fade';
+      } else if (haveBoth) {
+        winner = cp >= fp ? 'continuation' : 'fade';
+      }
+    }
+
+    // Corroboration: the gamma/OI + liquidity-sweep candidates (OI_FEATURES /
+    // SWEEP_FEATURES in decisionCore.js) carry NO v0 weight — they don't move
+    // cp/fp — but they're real, computed, direction-matched reads, so they're
+    // an honest input to CONFIDENCE (explicitly a separate, uncalibrated
+    // "how much agrees" number, never the probability itself). Each firing
+    // signal nudges confidence a little; a clean touch with none of them lit
+    // still shows the base separation×freshness read, unpenalized.
+    const CORROBORATION = {
+      continuation: [
+        ['gamma_accel_follow', 'short-gamma regime — dealer hedging amplifies moves'],
+        ['wall_break_follow', 'zone sits at an OI wall in a short-gamma regime — a break here tends to accelerate'],
+        ['sweep_continue_follow', "today's sweep of this zone held — no rejection back through it"],
+      ],
+      fade: [
+        ['gamma_pin_fade', 'long-gamma regime — dealer hedging dampens/pins moves'],
+        ['wall_pin_fade', 'zone sits at an OI wall in a long-gamma regime — a pin candidate'],
+        ['sweep_reject_fade', "today's sweep of this zone was rejected"],
+      ],
+    };
+    let confirmingSignals = [];
+    if (winner) {
+      const side = winner === 'continuation' ? continuation : fade;
+      confirmingSignals = CORROBORATION[winner]
+        .filter(([k]) => (side.features?.[k] ?? 0) > 0)
+        .map(([, label]) => label);
+    }
+
+    // USD-trend GATE (FIT_FINDINGS.md Result 5): the one candidate that actually
+    // discriminated direction OOS (110,883 events, 6/6 majors) — a fade WITH the
+    // prevailing USD trend was after-cost-positive, AGAINST it was -3.6bp. It's a
+    // FILTER, not a smooth probability nudge (that's why it's not in CORROBORATION
+    // above, and not folded into `confidence`) — surfaced as its own direct field so
+    // the card can show it as an unmissable gate rather than one more evidence line.
+    // Only meaningful for a FADE winner on a USD major (follow has no validated edge
+    // either way — Result 5 — so it's omitted there rather than shown as neutral).
+    let usdTrend = null;
+    if (winner === 'fade' && _USD_MAJORS[display] != null) {
+      try {
+        const trends = await _computeUsdTrends();
+        const t = trends[display];
+        if (t && t.dir !== 0) {
+          const tradeUsd = (fade.direction === 'long' ? 1 : -1) * _USD_MAJORS[display];
+          usdTrend = { dir: t.dir, aligned: tradeUsd === Math.sign(t.dir) };
+        }
+      } catch {}
+    }
+
+    let confidence = null;
+    if (haveBoth) {
+      const separation = Math.abs(cp - fp);
+      const freshness = _zdClamp01(1 - (hit?.feature_staleness_ms ?? 0) / (15 * 60_000));
+      const corroborationNudge = 0.035 * confirmingSignals.length;   // up to +10.5pp, 3 signals max
+      confidence = Math.round(100 * _zdClamp01(0.7 * separation + 0.3 * freshness + corroborationNudge));
+    }
+
+    res.json({
+      ok: true, pair: key, display, mode, price,
+      zone: hit?.zone ?? null, zone_quality: zoneQuality,
+      continuation: { probability: cp, pct: continuationPct, decision: continuation.decision, direction: continuation.direction, size_multiplier: continuation.size_multiplier ?? 0, top_factors: continuation.top_factors ?? [], reasons: continuation.reasons ?? [] },
+      fade: { probability: fp, pct: fadePct, decision: fade.decision, direction: fade.direction, size_multiplier: fade.size_multiplier ?? 0, top_factors: fade.top_factors ?? [], reasons: fade.reasons ?? [] },
+      confidence, status, winner, tied, confirming_signals: confirmingSignals, usd_trend: usdTrend,
+      model_version: continuation.model_version, calibrated: continuation.calibrated === true,
+      watching_reasons: hit ? null : [...new Set([...(continuation.reasons ?? []), ...(fade.reasons ?? [])])],
+      macro: hit?.macro ?? null, credit: hit?.credit ?? null, htf_trend: hit?.htf_trend ?? null,
+      oi: snap.oi ? { side: snap.oi.side, near: snap.oi.near } : null,
+      session_phase: hit?.session_phase ?? null, regime: hit?.regime ?? null,
+      T: hit?.T ?? null, vol_percentile: hit?.vol_percentile ?? null,
+      feature_staleness_ms: hit?.feature_staleness_ms ?? null,
+      snapshot_refreshed: warm?.refreshed ?? false,
+      total_ms: Date.now() - t0,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message ?? String(e) });
   }
@@ -22365,6 +24581,69 @@ async function _tdeCreditContext() {
   return _tdeCreditCtx;
 }
 
+// Gamma/OI positioning context for the TDE (decisionCore.OI_FEATURES): resolves
+// the SAME `oi_store` KV blob the OI Analytics dashboard reads, cached whole
+// (it's one key covering every instrument) so N pairs cost one KV read, not N.
+// Per-pair extraction is cheap and re-run every call. Fail-neutral: no store,
+// no entry, or a malformed entry (missing spot/gammaFlip) all yield null —
+// buildSnapshot then stamps oi:null and every OI_FEATURES value resolves 0.
+let _tdeOiStore = null, _tdeOiStoreAt = 0;
+async function _tdeOiStoreCached() {
+  if (_tdeOiStore && Date.now() - _tdeOiStoreAt < 10 * 60_000) return _tdeOiStore;
+  try {
+    const raw = await kv.get('oi_store');
+    const parsed = raw ? JSON.parse(raw) : null;
+    _tdeOiStore = parsed ? (parsed.data ?? parsed) : {};
+  } catch (e) {
+    console.warn('[trade-decision] OI store read failed (fail-neutral):', e.message ?? e);
+    _tdeOiStore = {};
+  }
+  _tdeOiStoreAt = Date.now();
+  return _tdeOiStore;
+}
+// Sibling of _tdeOiStoreCached, but for oi_history (the day-keyed archive) — used
+// only by the backfill/fit path, which needs the WHOLE date series per pair rather
+// than today's latest snapshot. Same 10-min cache, same fail-neutral shape.
+let _tdeOiHistoryCache = null, _tdeOiHistoryCacheAt = 0;
+async function _tdeOiHistoryCached() {
+  if (_tdeOiHistoryCache && Date.now() - _tdeOiHistoryCacheAt < 10 * 60_000) return _tdeOiHistoryCache;
+  try {
+    const raw = await kv.get('oi_history');
+    const parsed = raw ? JSON.parse(raw) : null;
+    _tdeOiHistoryCache = parsed ? (parsed.data ?? parsed) : {};
+  } catch (e) {
+    console.warn('[tde-backfill] oi_history read failed (fail-neutral):', e.message ?? e);
+    _tdeOiHistoryCache = {};
+  }
+  _tdeOiHistoryCacheAt = Date.now();
+  return _tdeOiHistoryCache;
+}
+// Backfill's contextByDate.oi socket: oiContextByDate (js/oi.js) shapes the archive
+// into {date: oiCtx} with the SAME oiCtxFrom definition the live path uses. Only
+// resolves days on/after whenever _oiHistorySummary started archiving regime/gexFlips
+// (Phase B) — CME serves no OI history, so earlier days are permanently oi:null, same
+// as any other pre-context backfill row.
+async function _tdeOiContextByDateFor(pair) {
+  let rec; try { rec = instrument(pair); } catch { return {}; }
+  const hist = await _tdeOiHistoryCached();
+  return _oiContextByDate(hist?.[rec.display]);
+}
+async function _tdeOiContext(pair) {
+  try {
+    const store = await _tdeOiStoreCached();
+    let rec; try { rec = instrument(pair); } catch { return null; }
+    const inst = store?.[rec.display];
+    // oiCtxFrom (js/oi.js) is the ONE shaping definition — nearest-to-spot gexFlips
+    // crossing (root-found, not the naive single-scan gammaFlip scalar), canonical
+    // regime, walls, pcRatio — shared with the offline backfill path below so live
+    // decide() and the fit pipeline read OI identically.
+    return _oiCtxFrom(inst);
+  } catch (e) {
+    console.warn('[trade-decision] OI context failed (fail-neutral):', e.message ?? e);
+    return null;
+  }
+}
+
 // ── Telegram alert when the credit gate flips regime ─────────────────────────
 // Credit is the market's early-warning system; a flip (e.g. RISK-ON → CAUTION →
 // RISK-OFF, or back) is a "re-check your risk" event worth one push. Server-side,
@@ -22378,7 +24657,10 @@ async function _creditFlipCheck() {
     const prev = _lastCreditGate;
     _lastCreditGate = ctx.gate;
     if (!prev || prev === ctx.gate) return;                       // first read or no change
-    if (state.cfg?.enabled === false || !state.tg?.token || !state.tg?.chatId) return;
+    // Same `serverEnabled` omission as the regime-change alert had — this one
+    // kept firing after server alerts were switched off in the modal.
+    if (state.cfg?.enabled === false || state.cfg?.serverEnabled === false) return;
+    if (!state.tg?.token || !state.tg?.chatId || !tgOn('creditFlip')) return;
     if (Date.now() - _lastCreditAlertAt < CREDIT_ALERT_COOLDOWN_MS) return;
     const worse = ['RISK-ON', 'NEUTRAL', 'CAUTION', 'RISK-OFF'].indexOf(ctx.gate) > ['RISK-ON', 'NEUTRAL', 'CAUTION', 'RISK-OFF'].indexOf(prev);
     const so = ctx.widening > 0
@@ -22405,7 +24687,7 @@ app.post('/api/trade-decision/refresh', express.json(), async (req, res) => {
   const out = {};
   for (const p of pairs) {
     try {
-      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext() });
+      const s = await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext(), oi: await _tdeOiContext(p) });
       out[p] = { ok: true, builtAt: s.builtAt, zones: s.zones.length, regime: s.regime,
                  macro: s.macro ? { regime: s.macro.regime, stale: s.macro.stale } : null };
     }
@@ -22435,7 +24717,7 @@ if (process.env.TDE_PAIRS) {
     if (_tdeLoopBusy) return;
     _tdeLoopBusy = true;
     for (const p of tdePairs) {
-      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext() }); }
+      try { await tdeRefreshPair(p, { macro: await _tdeMacroFor(p), credit: await _tdeCreditContext(), oi: await _tdeOiContext(p) }); }
       catch (e) { console.log(`[trade-decision] refresh ${p} failed: ${e.message ?? e}`); }
     }
     _tdeLoopBusy = false;
@@ -22535,8 +24817,18 @@ function tdeStartBackfillJob(pairs, { incremental, gapFill = true, macro = true 
 
       let report = null;
       for (const pair of runPairs) {
-        const contextByDate = fredHist ? _macroContextByDate(pair, fredHist) : null;
+        let contextByDate = fredHist ? _macroContextByDate(pair, fredHist) : null;
         if (fredHist) onLog(`${pair}: macro context ${contextByDate && Object.keys(contextByDate).length ? `${Object.keys(contextByDate).length} days` : 'none (no riskSens driver) — macro-neutral'}`);
+        // oi context is a separate, narrower archive (NQ/gold realistically — CME OI
+        // doesn't back spot FX) — merge in whatever days it has rather than gating the
+        // whole run on it the way macro gates runPairs above.
+        const oiByDate = await _tdeOiContextByDateFor(pair);
+        const oiDays = Object.keys(oiByDate).length;
+        if (oiDays) {
+          contextByDate = contextByDate ? { ...contextByDate } : {};
+          for (const [date, oi] of Object.entries(oiByDate)) contextByDate[date] = { ...(contextByDate[date] || {}), oi };
+          onLog(`${pair}: oi context ${oiDays} day(s) (archive-limited — CME serves no OI history, forward-only)`);
+        }
         report = await tdeRunBackfill([pair], { incremental: true, gapFill, contextByDate, onLog });
       }
       job.status = 'done'; job.report = report;
@@ -22852,9 +25144,15 @@ async function runHMM5mRefresh() {
 
       const prev = state.hmm5mRegimes[sym];
       state.hmm5mRegimes[sym] = result;
+      recordRegimeSnapshot('v1', sym, result.regime, result.confidence);
 
       // Telegram alert on regime change, with cooldown
-      if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false && state.cfg?.regimeChangeAlerts !== false) {
+      // NOTE: `serverEnabled` is checked here too. It used to be omitted, so
+      // switching server alerts off in the modal silenced the main monitor but
+      // left this one firing.
+      if (prev && prev.regime !== result.regime && state.cfg?.enabled !== false
+          && state.cfg?.serverEnabled !== false
+          && state.cfg?.regimeChangeAlerts !== false && tgOn('regimeChange')) {
         const lastAlert = state.hmm5mLastAlert[sym] ?? 0;
         const now       = Date.now();
         if (now - lastAlert >= HMM5M_ALERT_COOLDOWN_MS && state.tg?.token && state.tg?.chatId) {
@@ -22891,6 +25189,7 @@ async function runHMM5mV2Refresh() {
       const result = computeHMM5mV2(bars, sym, state.hmm5mTrainedParams, state.hmm5mMacroContext);
       if (!result) continue;
       state.hmm5mV2Regimes[sym] = result;
+      recordRegimeSnapshot('v2', sym, result.regime, result.confidence);
     } catch (e) {
       console.error(`[HMM5M-V2] ${sym} error:`, e.message);
     }
@@ -23219,6 +25518,7 @@ runLevelsRefresh().catch(console.error);
 // alerts are enabled + a bot is configured).
 const V2_ALERT_MS = parseInt(process.env.V2_ALERT_MS || String(90 * 1000));
 setInterval(() => {
+  if (!tgOn('levelsV2')) return;   // master override — see TG_SENDERS
   const v2pairs = (state.cfg?.pairs?.length ? state.cfg.pairs : DEFAULT_PAIRS).map(p => p.toUpperCase?.() ?? p);
   checkV2AlertsNow(v2pairs).catch(e => console.error('[LEVELS-V2] alert loop error:', e.message));
 }, V2_ALERT_MS);
@@ -23242,6 +25542,12 @@ setTimeout(() => {
   runHMM5mV2Refresh().catch(console.error);
   setInterval(runHMM5mV2Refresh, HMM5M_REFRESH_MS);
 }, 20_000);
+
+// Regime-history auto-recorder flush — local KV every 5 min (cheap, unmetered),
+// R2 every hour (durable across redeploys). See recordRegimeSnapshot() above;
+// this just persists whatever the live HMM loops have already accumulated.
+setInterval(() => flushRegimeHistoryToLocalKV().catch(e => console.error('[REGIME-HIST] local flush error:', e.message)), 5 * 60 * 1000);
+setInterval(() => flushRegimeHistoryToR2().catch(e => console.error('[REGIME-HIST] R2 flush error:', e.message)), 60 * 60 * 1000);
 
 // V2 1h HTF HMM — refreshes every 5 min (H1 bars change slowly), 10s offset
 setTimeout(() => {
@@ -23876,6 +26182,7 @@ async function nqSendTg(msg) {
     console.log('[qmr] alert suppressed (system retired):', String(msg).slice(0, 60));
     return;
   }
+  if (!tgOn('cogShadow')) return;
   // Check NQ-specific TG config first, fall back to shared state.tg
   try {
     const cfg    = await nqLoadMonCfg();
@@ -23889,6 +26196,13 @@ async function nqSendTg(msg) {
 }
 
 async function _iqrSendTg(mon, msg) {
+  // NOTE: QMR_ALERTS_RETIRED is deliberately NOT applied here. The retirement
+  // above says it is gated "at the single send point", but there are two — this
+  // is the SPX/DOW/DAX half, and it has been sending all along. Left firing
+  // rather than silently retired as a side effect of adding switches; use the
+  // 'qmrIndices' master switch to mute it, or extend QMR_ALERTS_RETIRED here to
+  // finish the 2026-07-30 retirement properly.
+  if (!tgOn('qmrIndices')) return;
   // Check instrument-specific TG config first, fall back to shared state.tg
   try {
     const cfg    = await _iqrLoadMonCfg(mon);

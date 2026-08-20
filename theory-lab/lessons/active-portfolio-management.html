@@ -22,6 +22,8 @@
     <span>Prereqs: Alpha vs. Beta Separation, Sharpe/Sortino/Calmar &amp; the Deflated Sharpe Ratio, Factor-Based Portfolio Construction</span>
   </div>
 
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
@@ -120,6 +122,11 @@
           it consistently beat the benchmark) — the two ratios are answering
           genuinely different questions, not two versions of the same one.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>The Sharpe ratio asks "did I beat just sitting in cash, given how bumpy my whole ride was." The Information Ratio asks a narrower, different question: "did I beat this one specific yardstick I said I'd be measured against, given how bumpy the gap between me and that yardstick was." You could be a smooth investor overall but a mediocre yardstick-beater, or a bumpy investor overall who still consistently edges out the yardstick — they're genuinely not measuring the same thing.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -148,6 +155,11 @@
           needs anywhere close to \(IC=0.5\) to build a strong track record,
           provided \(BR\) is large enough and genuinely independent.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Imagine grading a weather forecaster not on "did they nail tomorrow's exact temperature," but on "across a whole year of forecasts, did their guesses lean the right direction even slightly more often than random chance." A tiny lean in the right direction, repeated across hundreds of calls, is what a "good" IC of 0.05–0.10 actually looks like — it sounds unimpressively small, but it's real, professional-grade skill, not noise.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -177,6 +189,11 @@
           calls, compounds into a respectable \(IR\) the same way many small,
           uncorrelated positions compound into a respectable portfolio Sharpe.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>A forecaster who's only slightly better than a coin flip on any single call can still build an impressively good track record — as long as they make that same slightly-better-than-a-coin-flip call many, many times, on genuinely separate, unrelated situations. The catch is "genuinely separate": if all your calls are secretly the same bet wearing different outfits, repeating it 50 times doesn't give you 50 independent shots — it gives you one bet dressed up 50 ways.</p>
+        </div>
       </div>
     </div>
     <div class="tl-step">
@@ -209,6 +226,11 @@
           between the two measures is the single most useful diagnostic this
           lesson has to offer, developed fully in the chart below.
         </p>
+
+        <div class="tl-eli5">
+          <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+          <p>Two students can get the exact same final grade (tracking error) in totally different ways — one by studying completely different material from the syllabus, the other by studying almost exactly the syllabus with one small extra topic tacked on. Active Share is like checking their actual notebooks (the holdings) instead of just their grade (the returns) — it tells you whether a fund is genuinely doing something different, or just quietly hugging the benchmark with one big side bet.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -444,6 +466,11 @@
     doing so is easy, common, or that this repo has identified one.
   </div>
 
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a pizza that's already been completely divided among everyone at the table — the average slice size, by definition, is just one divided by the number of people, no matter who's "better" at getting pizza. Investing works the same way before fees: since every single share of every company has to be owned by someone, the average actively-managed dollar's return can't beat the market — it has to exactly equal it, purely because of how the ownership adds up. Once you subtract the cost of trying, the average active dollar actually does worse than just holding everything passively.</p>
+  </div>
+
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
@@ -538,5 +565,28 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
 </body>
 </html>

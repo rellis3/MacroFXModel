@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collateral, Margin &amp; Repo Markets — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Collateral, Funding &amp; Rehypothecation / Collateral, Margin &amp; Repo Markets</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Collateral, Funding &amp; Rehypothecation 1 of 2</div>
+  <h1 class="tl-title">Collateral, Margin &amp; Repo Markets</h1>
+  <p class="tl-dek">Every leveraged position and every derivatives trade rests on a layer of plumbing most people never see: collateral posted as a buffer, discounted for its own riskiness, and lent overnight through a market that is quietly one of the largest and most important in the global financial system.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — institutional market-structure background, not a claim about anything built or traded in this repo</span>
+    <span>~15 min read</span>
+    <span>Prereqs: none — self-contained</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Initial margin (IM)</strong> is posted upfront as a buffer against <em>potential future</em> exposure — sized using standardized methodologies named here without deriving their internals: <strong>SPAN</strong> for exchange-traded/cleared derivatives, <strong>ISDA SIMM</strong> for non-cleared OTC derivatives.</li>
+      <li><strong>Variation margin (VM)</strong> is exchanged periodically, often daily, to settle the <em>realized</em> mark-to-market change in a position's value — it isn't a buffer against the future, it's a payment for what has already happened.</li>
+      <li><strong>Haircuts</strong> discount collateral below its market value to buffer against the collateral's own price volatility and the time it might take to liquidate it in a default — $100 of a volatile bond posted as collateral might count as only $95 of eligible collateral value, a 5% haircut.</li>
+      <li>A <strong>repurchase agreement (repo)</strong> is economically a collateralized loan of cash: one party sells a security today with a simultaneous agreement to buy it back later at a slightly higher price — the price difference <em>is</em> the interest, called the repo rate.</li>
+      <li><strong>SOFR</strong> — the modern USD reference rate covered in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> — is literally computed from real overnight Treasury repo transaction data, a direct, concrete tie between this lesson and that one.</li>
+      <li>This is institutional market-structure background — the plumbing underneath leverage and derivatives — not a trading signal, and not a claim about anything built in this repo.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+  Almost every leveraged position, every derivatives trade, and every dealer's daily funding operation runs on
+  the same three pieces of machinery: margin (how much of a buffer has to sit against a position before and
+  after it moves), haircuts (how much a specific piece of collateral is actually trusted to be worth in a
+  liquidation), and repo (how a dealer actually funds an inventory of securities overnight, day after day).
+  None of this is exotic — it's the ordinary plumbing that sits underneath market-making, leverage, and
+  derivatives clearing everywhere in the world, and it rarely gets discussed on its own terms because it's
+  usually invisible when it's working correctly. <a href="swap-curves-ois.html">Swap Curves &amp; OIS
+  Discounting</a> already leans on part of this machinery without spelling it out — it discounts collateralized
+  derivatives at OIS/SOFR specifically <em>because</em> those trades are backed by daily-exchanged collateral
+  under a Credit Support Annex (CSA), and SOFR itself, as this lesson shows concretely, is built directly from
+  the repo market covered here. The next lesson in this category, <a href="rehypothecation-collateral-chains.html">Rehypothecation
+  &amp; Collateral Chains</a>, picks up exactly where this one leaves off: once collateral has been posted, what
+  is the counterparty actually allowed to <em>do</em> with it?
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A pawn shop, run twice a day</h3>
+    <p>
+    Imagine a pawn shop that, instead of settling up once when you pawn an item and once when you redeem it,
+    settles up with you <em>every single day</em> the item sits in the shop, based on that day's estimate of
+    the item's value. If the item's estimated value drops today, the shop asks you for a bit more cash to keep
+    the loan properly covered — that daily top-up is variation margin, and it happens whether or not you ever
+    default, because it's just keeping the books honest about a value that's already moved. On top of that, on
+    day one, the shop also asks for a little extra cushion up front, beyond what the item is worth today — a
+    buffer against the item's value swinging hard before the shop could react and re-sell it if you disappeared
+    tomorrow. That upfront cushion is initial margin: not a settlement of anything that's already happened, but
+    a buffer against what <em>might</em> happen next. And critically, the shop doesn't value your item at its
+    full sticker price — a volatile, illiquid item gets valued at a discount, because if the shop actually had
+    to sell it in a hurry, it probably wouldn't fetch full price. That discount is the haircut. Repo, covered
+    later in this lesson, is the same shop's own funding trick in reverse: instead of pawning items <em>to</em>
+    someone, the shop temporarily sells an item it already owns to raise cash overnight, with a firm promise to
+    buy it back tomorrow for a little more than it sold it for — that little bit more is the interest.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Initial margin vs. variation margin</h2>
+  <p>
+  These two terms get used almost interchangeably in casual conversation, but they answer two genuinely
+  different questions, and precision matters here: <strong>initial margin</strong> answers "how much of a
+  buffer do we need against what <em>could</em> go wrong before we can react?" — a forward-looking question.
+  <strong>Variation margin</strong> answers "how much has this position's value <em>already</em> moved since we
+  last settled?" — a backward-looking question about something that has already occurred.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Initial margin (IM) — forward-looking buffer</h4>
+      <p>
+      Posted upfront when a position or portfolio is opened (and periodically recalculated thereafter as the
+      portfolio changes), initial margin is sized to cover the potential loss that could accumulate between the
+      last variation-margin exchange and the point a defaulting counterparty's position could actually be closed
+      out or replaced in the market — the industry calls this window the "margin period of risk." IM is not a
+      payment for anything that has happened; it exists purely as a cushion against what might happen next,
+      returned (net of any losses) once the position is closed and settled.
+      </p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>Variation margin (VM) — backward-looking settlement</h4>
+      <p>
+      Exchanged periodically — commonly daily, and intraday for especially volatile positions — variation
+      margin transfers cash (or, less commonly, other eligible collateral) equal to the realized mark-to-market
+      change in a position's value since the last exchange. If a position gained value for one side, that side
+      receives VM from the other; if it lost value, that side pays it. VM keeps each party's <em>current</em>
+      exposure to the other close to zero at every exchange, by settling gains and losses as they occur rather
+      than letting them accumulate unrealized.
+      </p>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a security deposit versus a monthly rent payment. The security deposit (initial margin) is money set aside up front, before anything has gone wrong, just in case something breaks later. Rent (variation margin) is a regular payment for something that has already happened — you already lived in the apartment that month. One is a cushion against a possible future problem; the other is settling up for time that's already passed.</p>
+  </div>
+
+  <p>
+  How much IM is actually required is not a matter of each firm guessing independently — it's calculated using
+  standardized, industry-recognized methodologies, named here by name without deriving their internal mechanics:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📊</div>
+      <h4>SPAN</h4>
+      <p>Standard Portfolio Analysis of Risk, developed by CME in the 1980s. The methodology most exchanges and clearinghouses use to calculate required initial margin for exchange-traded and centrally cleared derivatives portfolios — a scenario-based approach that evaluates a portfolio's worst plausible loss across a defined grid of price and volatility shift scenarios.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧮</div>
+      <h4>ISDA SIMM</h4>
+      <p>The Standard Initial Margin Model, developed and maintained by ISDA for non-centrally-cleared (bilateral) OTC derivatives, and mandated for large market participants under the global uncleared-margin rules that followed the 2008 crisis. A sensitivity-based, parametric methodology — required IM is computed from a portfolio's risk sensitivities, bucketed by risk factor and asset class.</p>
+    </div>
+  </div>
+  <p>
+  Both are named here as the real, standard methodologies actually used in practice — this lesson deliberately
+  does not attempt to derive their internal risk-scenario or sensitivity-bucketing mechanics, which are detailed,
+  proprietary-adjacent calculations maintained by CME and ISDA respectively. What matters for this lesson is the
+  precise conceptual distinction above: IM is a standardized, forward-looking buffer; VM is a simple,
+  backward-looking settlement of what has already moved.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Haircuts: why $100 of collateral often isn't worth $100</h2>
+  <p>
+  A <strong>haircut</strong> is the percentage by which a piece of collateral's market value is discounted when
+  determining how much of a margin or collateral requirement it can actually satisfy. Two distinct risks justify
+  the discount, and both matter: first, the collateral's own price could fall between the moment it's valued
+  and the moment it might actually need to be sold; second, even at a fair price, selling a specific asset
+  quickly — especially in a stressed, default-driven scenario, possibly alongside other forced sellers — takes
+  time and can itself move the price against the seller. A haircut prices both of those risks into the
+  collateral's <em>counted</em> value, before anything has gone wrong.
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>$100 of a volatile bond, 5% haircut</h3>
+    <p>
+    Suppose a counterparty wants to post $100 of market value in a specific corporate bond as collateral, and
+    the receiving party applies a 5% haircut to that bond because of its price volatility and the time it might
+    take to liquidate it in a default. The formula is simple:
+    </p>
+    <div class="tl-math">\[ \text{Eligible collateral value} = \text{Market value} \times (1 - \text{Haircut \%}) \]</div>
+    <div class="tl-eq-break">
+      <div class="tl-eq-chip c1"><code>Market value</code><span>$100 — the bond's current observable market price</span></div>
+      <div class="tl-eq-chip c4"><code>Haircut %</code><span>5% — priced in for the bond's own volatility and liquidation time</span></div>
+      <div class="tl-eq-chip c2"><code>Eligible value</code><span>$100 × 0.95 = $95 — what the $100 bond actually counts for against a requirement</span></div>
+    </div>
+    <p>
+    So $100 of that bond only counts as $95 toward whatever margin or collateral obligation it's being posted
+    against — the remaining $5 is the buffer the receiving party has built in for its own protection. To fully
+    satisfy a $100 collateral requirement using only this bond, the poster would actually need to post roughly
+    $105.26 of market value (\(105.26 \times 0.95 \approx 100\)) — a direct, mechanical consequence of the
+    haircut.
+    </p>
+  </div>
+  <p>
+  Haircuts are not applied uniformly across every asset — they scale with how volatile and how liquid the
+  specific collateral actually is, because that's exactly the risk the haircut is meant to price in. The ranges
+  below are illustrative, order-of-magnitude figures reflecting the kind of practice seen across markets — real
+  haircut schedules vary by counterparty, tenor, credit rating, and regulatory regime, and are not a single
+  universal table.
+  </p>
+  <div class="tl-stat-row">
+    <div class="tl-stat green"><div class="tl-stat-num">~0–2%</div><div class="tl-stat-label">Cash &amp; short-dated G7 govt bonds</div><div class="tl-stat-sub">highly liquid, low volatility</div></div>
+    <div class="tl-stat amber"><div class="tl-stat-num">~5–10%</div><div class="tl-stat-label">Investment-grade corporate bonds</div><div class="tl-stat-sub">more price/liquidity risk</div></div>
+    <div class="tl-stat red"><div class="tl-stat-num">~15%+</div><div class="tl-stat-label">Listed equities</div><div class="tl-stat-sub">materially higher volatility</div></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A haircut is like a pawn shop saying "your guitar is worth $500, but we'll only lend you $450 against it" — not because the guitar isn't worth $500 today, but because if you never come back for it, the shop might have to sell it in a hurry, and a rushed sale often doesn't fetch full price. The shakier or harder-to-sell the item, the bigger that gap between "what it's worth" and "what we'll actually count it as."</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The repo mechanism</h2>
+  <p>
+  A <strong>repurchase agreement</strong>, almost universally shortened to "repo," is a transaction in which one
+  party sells a security to a second party today, with a simultaneous, legally binding agreement to repurchase
+  that same (or a substantially identical) security at a specified future date, for a specified price that is
+  slightly <em>higher</em> than the original sale price. Nothing about the security itself changes — it's the
+  same bond changing hands twice, once out and once back. What makes a repo economically a loan, even though
+  it's legally structured as two sales, is exactly that price difference: the party who sold the security
+  receives cash now and pays back a bit more later — precisely how a collateralized loan works, just dressed in
+  the legal form of a sale-and-repurchase rather than a lending agreement.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine selling your bike to a friend today for $100, with an agreement that tomorrow you'll buy it back for $100.05. On paper, two sales happened. In reality, your friend just loaned you $100 overnight and charged you 5 cents of interest for it, holding the bike the whole time as a guarantee they'd get their money back. That is exactly what repo is — a loan dressed up as two trades.</p>
+  </div>
+
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>The two parties, named by their economic role</h4>
+        <p>
+        The party selling the security and receiving cash is economically the <strong>cash borrower</strong>
+        (even though legally it's "selling" the bond). The party buying the security and paying out cash is
+        economically the <strong>cash lender</strong>, temporarily holding the security as collateral for that
+        loan. From the cash lender's side, the exact same transaction is often called a <strong>reverse
+        repo</strong> — it's not a structurally different trade, just the mirror-image name for the other side
+        of the same agreement.
+        </p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>The repurchase price embeds the interest</h4>
+        <p>
+        The agreed repurchase price is set above the original sale price by exactly enough to represent
+        interest on the cash for the term of the repo, at the agreed <strong>repo rate</strong>. In the U.S.
+        market, this is conventionally computed on an actual/360 day-count basis:
+        </p>
+        <div class="tl-math">\[ \text{Repurchase price} = \text{Sale price} \times \left(1 + r \times \frac{\text{term (days)}}{360}\right) \]</div>
+        <div class="tl-eq-break">
+          <div class="tl-eq-chip c3"><code>r</code><span>the repo rate — the annualized implicit interest rate</span></div>
+          <div class="tl-eq-chip c4"><code>term</code><span>the number of days between the sale leg and the repurchase leg — often just one (overnight)</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Overnight is the norm, not the exception</h4>
+        <p>
+        A large share of repo activity is overnight — rolled fresh, day after day, sometimes for months at a
+        stretch — because it lets a dealer fund a large securities inventory flexibly, a day at a time, rather
+        than locking into a fixed-term loan. Term repos (a week, a month, longer) also exist, priced the same
+        way with a longer day count.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">A single overnight repo transaction, both legs</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of an overnight repo. Leg one, at the start: the cash borrower transfers a security to the cash lender, who transfers cash in the other direction. Leg two, the next day: the cash borrower pays back the cash plus interest to the cash lender, who returns the same security.">
+      <rect x="20" y="20" width="600" height="110" rx="8" style="fill:var(--blue);opacity:.08;stroke:var(--blue)"/>
+      <text x="40" y="42" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">LEG 1 — START OF THE REPO (today)</text>
+
+      <rect x="55" y="60" width="160" height="55" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+      <text x="135" y="83" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash borrower</text>
+      <text x="135" y="99" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">sells the security</text>
+
+      <rect x="425" y="60" width="160" height="55" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+      <text x="505" y="83" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash lender</text>
+      <text x="505" y="99" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">(a.k.a. "reverse repo")</text>
+
+      <line x1="215" y1="72" x2="425" y2="72" style="stroke:var(--purple);stroke-width:1.6" marker-end="url(#arrow1)"/>
+      <text x="320" y="65" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9.5px">security →</text>
+      <line x1="425" y1="103" x2="215" y2="103" style="stroke:var(--blue);stroke-width:1.6" marker-end="url(#arrow2)"/>
+      <text x="320" y="116" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:9.5px">← cash (sale price)</text>
+
+      <rect x="20" y="165" width="600" height="110" rx="8" style="fill:var(--green);opacity:.08;stroke:var(--green)"/>
+      <text x="40" y="187" style="fill:var(--green);font-family:'DM Mono',monospace;font-size:11px;font-weight:700">LEG 2 — REPURCHASE (agreed later date, e.g. tomorrow)</text>
+
+      <rect x="55" y="205" width="160" height="55" rx="6" style="fill:var(--amber);opacity:.2;stroke:var(--amber)"/>
+      <text x="135" y="228" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash borrower</text>
+      <text x="135" y="244" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">repurchases the security</text>
+
+      <rect x="425" y="205" width="160" height="55" rx="6" style="fill:var(--green);opacity:.2;stroke:var(--green)"/>
+      <text x="505" y="228" text-anchor="middle" style="fill:var(--text);font-family:'DM Mono',monospace;font-size:10.5px;font-weight:600">Cash lender</text>
+      <text x="505" y="244" text-anchor="middle" style="fill:var(--text2);font-family:'DM Sans',sans-serif;font-size:9px">returns the security</text>
+
+      <line x1="215" y1="217" x2="425" y2="217" style="stroke:var(--blue);stroke-width:1.6" marker-end="url(#arrow1)"/>
+      <text x="320" y="210" text-anchor="middle" style="fill:var(--blue);font-family:'DM Mono',monospace;font-size:9.5px">cash + interest →</text>
+      <line x1="425" y1="248" x2="215" y2="248" style="stroke:var(--purple);stroke-width:1.6" marker-end="url(#arrow2)"/>
+      <text x="320" y="261" text-anchor="middle" style="fill:var(--purple);font-family:'DM Mono',monospace;font-size:9.5px">← same security</text>
+
+      <defs>
+        <marker id="arrow1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--purple)"/></marker>
+        <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--blue)"/></marker>
+      </defs>
+    </svg>
+    <div class="tl-chart-caption">
+    The same security moves out and back; cash moves the opposite direction each leg, with slightly more cash
+    returning than went out — that extra amount is the repo interest. Legally this is two sales; economically
+    it's a fully collateralized cash loan.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Pricing an overnight repo</h3>
+    <p>
+    A dealer repos out $50,000,000 (market value) of Treasury securities overnight at a repo rate of 5.30%,
+    actual/360 convention, one-day term.
+    </p>
+    <div class="tl-math">\[ \text{Interest} = 50{,}000{,}000 \times 0.0530 \times \frac{1}{360} = \$7{,}361.11 \]</div>
+    <p>
+    The dealer receives $50,000,000 in cash today (ignoring any haircut on the Treasuries for this
+    illustration) and must pay back $50,007,361.11 tomorrow to get the securities back — that $7,361.11 is one
+    day's interest at 5.30% on $50 million, the repo rate made concrete. Roll this same trade every business
+    day for a month and the dealer has, in effect, taken out a revolving, fully collateralized short-term loan
+    funding its securities inventory.
+    </p>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>The direct tie to <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>:</strong>
+    SOFR — the Secured Overnight Financing Rate, the USD reference rate that replaced LIBOR and now anchors OIS
+    discounting for collateralized derivatives — is not an estimate or a survey. It is computed directly from
+    actual, large-volume overnight Treasury <em>repo</em> transaction data, published daily by the Federal
+    Reserve Bank of New York. The repo mechanism above is, literally, the market SOFR is measured from — a
+    concrete, factual bridge between this lesson's subject and the fixed-income discounting machinery covered
+    there.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>SOFR isn't a guess or a survey where banks say "we think overnight borrowing costs about this much" — it's built directly from real, actual overnight loans that happened, using government bonds as the collateral. It's less like asking people what they think gas costs, and more like literally averaging the price on every receipt from every gas station overnight.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+  <strong>Funding an inventory of securities.</strong> A dealer or bank holding a large book of bonds needs to
+  fund that inventory somehow — repo is the standard tool, letting the firm raise cash overnight against
+  securities it already owns, rolling the trade daily rather than tying up longer-term funding.
+  </p>
+  <p>
+  <strong>Cash-collateral reinvestment.</strong> On the other side of the trade, a cash-rich lender (a money
+  market fund is a very common example) uses repo — specifically reverse repo — as a safe, short-term,
+  fully-collateralized place to park cash overnight, earning the repo rate while holding high-quality
+  securities as protection.
+  </p>
+  <p>
+  <strong>Margin calls in practice.</strong> When a position's mark-to-market value moves, the receiving party
+  issues a variation-margin call for the realized change; when a portfolio's risk profile changes meaningfully
+  (a new position added, volatility rises), the initial-margin requirement is recalculated — via SPAN for a
+  cleared futures/options book, via SIMM for a bilateral OTC book — and additional IM may be called for.
+  </p>
+  <p>
+  <strong>"General collateral" vs. "specials."</strong> Most repo trades reference "general collateral" (GC) —
+  any of a broad basket of eligible securities, priced at a standard GC rate. Occasionally a specific security
+  is in unusually high demand (for delivery against a short sale, for instance), and repo counterparties will
+  accept a lower repo rate specifically to get their hands on <em>that</em> security rather than any GC
+  substitute — the security is said to be trading "special." This is a real, routinely observed feature of repo
+  markets, not an edge case.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">A real-world trading scenario</div>
+    <h3>A dealer funding a $100 million Treasury position overnight</h3>
+    <p>
+    A fixed-income dealer holds $100 million (market value) of 10-year U.S. Treasuries in inventory and needs
+    to fund that position overnight rather than tie up its own balance sheet cash. The dealer enters an
+    overnight repo with a money market fund: the fund applies a 2% haircut on the Treasuries (a low haircut,
+    reflecting how liquid and low-volatility Treasuries are relative to corporate bonds or equities), so it
+    advances $98 million in cash against the $100 million of securities — the $2 million gap is the fund's
+    buffer if the dealer were unable to repurchase the next day and the fund had to sell the Treasuries itself.
+    The dealer pays a repo rate close to the prevailing SOFR-adjacent overnight level, rolls the trade again the
+    next morning, and repeats this daily as long as it wants to hold the position — the same mechanism as the
+    worked example above, run every business day, at institutional scale.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where margin and repo mechanics get misunderstood</h3>
+    <ul>
+      <li><strong>Confusing initial margin with variation margin.</strong> IM is a forward-looking buffer against what might happen; VM is a backward-looking settlement of what already happened. Treating a VM call as if it were an additional buffer requirement (or vice versa) misreads the whole exercise.</li>
+      <li><strong>Treating a repo's legal form as its economic substance.</strong> A repo is legally two sales, but economically a collateralized loan — losing sight of the economic substance (e.g. in accounting or risk treatment) is a classic, real source of error.</li>
+      <li><strong>Assuming one haircut fits every asset.</strong> Haircuts scale with the specific collateral's volatility and liquidity — applying a Treasury-sized haircut to an equity or a high-yield bond dramatically understates the buffer actually needed.</li>
+      <li><strong>Ignoring "specialness."</strong> Assuming every repo trades at the general-collateral rate misses that a specific, high-demand security can trade at a materially lower repo rate purely because of demand to hold that exact security.</li>
+      <li><strong>Treating SPAN and SIMM as interchangeable.</strong> SPAN is the standard for exchange-traded/cleared derivatives; SIMM is the standard for bilateral, non-cleared OTC derivatives — they're built for structurally different market segments, not two names for the same thing.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Initial margin is forward-looking; variation margin is backward-looking.</strong> IM buffers against potential future exposure (sized via SPAN or ISDA SIMM); VM settles the realized mark-to-market change, typically daily.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A haircut discounts collateral below its market value</strong> to buffer against the collateral's own volatility and liquidation time — $100 of a volatile bond at a 5% haircut counts as only $95.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A repo is economically a collateralized loan</strong> structured legally as a sale and a simultaneous agreement to repurchase — the price difference between the two legs is the interest, the repo rate.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SOFR is computed directly from overnight Treasury repo transaction data.</strong> A concrete, factual bridge from this lesson to the OIS-discounting machinery in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The haircut ranges shown are illustrative, not a universal schedule.</strong> Real haircuts vary by counterparty, tenor, rating, and regulatory regime — treat the numbers here as order-of-magnitude, not a precise table.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional plumbing knowledge, not a trading signal.</strong> Nothing in this lesson is a claim about anything built, tested, or traded in this repo.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. What is the precise conceptual difference between initial margin and variation margin?</summary>
+    <div class="tl-answer">
+    Initial margin is a forward-looking buffer, posted upfront and periodically recalculated, sized to cover
+    the potential loss that could accumulate between the last variation-margin exchange and the point a
+    defaulting counterparty's position could be closed out — it's protection against something that
+    <em>might</em> happen. Variation margin is a backward-looking settlement, exchanged periodically (often
+    daily) to transfer the realized mark-to-market gain or loss that has <em>already</em> occurred since the
+    last exchange. IM buffers the future; VM settles the past.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Name the two standardized methodologies mentioned for calculating initial margin, and which market segment each applies to.</summary>
+    <div class="tl-answer">
+    SPAN (Standard Portfolio Analysis of Risk), developed by CME, is the standard used by exchanges and
+    clearinghouses for exchange-traded and centrally cleared derivatives. ISDA SIMM (Standard Initial Margin
+    Model), developed by ISDA, is the standard for non-centrally-cleared, bilateral OTC derivatives, mandated
+    for large market participants under the global uncleared-margin rules. They apply to structurally different
+    parts of the derivatives market — cleared vs. bilateral — and are not interchangeable.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In the worked example, why does $100 of a bond with a 5% haircut only count as $95 of eligible collateral, and what two risks is that discount meant to cover?</summary>
+    <div class="tl-answer">
+    Eligible collateral value = market value × (1 − haircut %) = $100 × 0.95 = $95. The 5% discount is meant to
+    cover two distinct risks: first, that the bond's own price could fall between the time it's valued and the
+    time it might actually need to be sold; second, that liquidating this specific asset quickly — especially
+    in a stressed, default-driven scenario — takes time and can itself move the price against the seller.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is a repo legally structured as two sales rather than as a loan, if it's economically a collateralized loan?</summary>
+    <div class="tl-answer">
+    The lesson doesn't derive the legal-drafting history, but the key point to hold onto is the distinction
+    between legal form and economic substance: a repo is documented as a sale of a security today plus a
+    simultaneous, binding agreement to repurchase the same security later at a higher price. Economically,
+    that's indistinguishable from a cash loan secured by the security as collateral, with the price difference
+    between the two legs acting as the interest payment — the repo rate. Treating the legal form as if it
+    changed the economic substance (e.g., forgetting it's really a financing transaction) is exactly the
+    pitfall called out above.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. How, specifically, does SOFR connect to the repo mechanism covered in this lesson?</summary>
+    <div class="tl-answer">
+    SOFR (the Secured Overnight Financing Rate) is calculated directly from actual, large-volume overnight
+    Treasury repo transaction data, published daily by the Federal Reserve Bank of New York. It isn't a survey
+    or an estimate of borrowing costs the way LIBOR was — it's computed from real repo trades of exactly the
+    kind described in this lesson's mechanism and worked example. That's the concrete link to <a href="swap-curves-ois.html">Swap
+    Curves &amp; OIS Discounting</a>, where SOFR anchors the modern OIS discounting curve for collateralized
+    derivatives.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>International Swaps and Derivatives Association (ISDA), ISDA SIMM methodology documentation — the official description of the sensitivity-based initial margin model for non-cleared derivatives referenced above.</li>
+    <li>CME Group, SPAN methodology overview — the official description of the scenario-based initial margin methodology used across CME-cleared and many other exchange-traded derivatives markets.</li>
+    <li>Federal Reserve Bank of New York, background materials on the Secured Overnight Financing Rate (SOFR) — the official description of how SOFR is constructed from Treasury repo transaction data, the same source referenced in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>.</li>
+    <li>Basel Committee on Banking Supervision and the Board of the International Organization of Securities Commissions (IOSCO), "Margin requirements for non-centrally cleared derivatives" — the international regulatory framework underlying mandatory bilateral IM/VM exchange.</li>
+    <li>International Capital Market Association (ICMA), primers and guides on the European and global repo markets — a widely used practitioner reference on repo market mechanics, conventions, and terminology.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="rehypothecation-collateral-chains.html">Rehypothecation &amp; Collateral Chains →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '\u2713 Simple mode on' : "\ud83e\uddd2 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+</body>
+</html>

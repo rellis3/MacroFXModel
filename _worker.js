@@ -46,10 +46,12 @@ function isAllowedKVKey(key) {
   // 'oi_store_py' is the automated sweep's SHADOW of oi_store (oi_recon/). It is
   // allowed here and marked persistent in kv.js, but is intentionally absent from
   // PERMANENT_KEYS below, so it carries the 48h TTL while it is only being compared.
-  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'oi_store_py', 'oi_expect_log', 'oi_auto_target', 'oi_sweep_last', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'cog_shadow_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
+  const EXACT = new Set(['fred', 'fred2', 'oi_store', 'oi_store_py', 'oi_expect_log', 'oi_auto_target', 'oi_sweep_last', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'cog_shadow_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_oi', 'oi_history', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
-    'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_'];
+    'oi_bot_state', 'oi_hold_calibration',
+    'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
+    'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log']);
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -631,7 +633,7 @@ export default {
                     const bid = parseFloat(tick.bids[0].price);
                     const ask = parseFloat(tick.asks[0].price);
                     const mid = (bid + ask) / 2;
-                    const payload = JSON.stringify({ price: mid, bid, ask, time: tick.time });
+                    const payload = JSON.stringify({ price: mid, bid, ask, time: tick.time, instrument: tick.instrument });
                     await writer.write(encoder.encode('data: ' + payload + '\n\n'));
                   } else if (tick.type === 'HEARTBEAT') {
                     await writer.write(encoder.encode(': heartbeat\n\n'));
@@ -817,6 +819,7 @@ export default {
           slMaxAtrMult:           0.5,
           enableZscoreConviction: false,
           volBookRebuild:         false,   // volatility-bot nightly book rebuild (server reads this)
+          levelEngineBotEnabled:  false,   // levelEngine/live_watch.py NQ level-touch alert bot (server reads this)
           updatedAt: null,
         };
 
@@ -838,6 +841,7 @@ export default {
             // deployment-level master gate; this KV flag is the day-to-day on/off.
             enableZscoreConviction: parsed.enableZscoreConviction ?? DEFAULTS.enableZscoreConviction,
             volBookRebuild:         parsed.volBookRebuild === true,
+            levelEngineBotEnabled:  parsed.levelEngineBotEnabled === true,
             updatedAt: parsed.updatedAt || null,
           });
         } catch(e) {
@@ -871,6 +875,7 @@ export default {
             slMaxAtrMult:           typeof body.slMaxAtrMult === 'number' && body.slMaxAtrMult > 0 ? body.slMaxAtrMult : 0.5,
             enableZscoreConviction: body.enableZscoreConviction === true,
             volBookRebuild:         body.volBookRebuild === true,   // volatility-bot nightly rebuild toggle
+            levelEngineBotEnabled:  body.levelEngineBotEnabled === true,   // NQ level-touch alert bot toggle
             updatedAt: new Date().toISOString(),
           };
 
@@ -946,6 +951,12 @@ export default {
             // The heartbeat must outlive the 48h TTL or a fortnight-long outage would
             // look identical to a key that simply expired.
             'oi_sweep_last',
+            // Both are FORWARD-TEST ARCHIVES built one session at a time. CME serves no
+            // options history, so a day lost to a TTL is lost permanently - and both
+            // were missing from isAllowedKVKey entirely, so every write was rejected
+            // outright while range_line_oi_live (allowlisted) kept working and made the
+            // snapshotter look healthy.
+            'range_line_oi', 'oi_history',
             'oi_store', 'journal_store', 'journal_replay_store', 'journal_running_totals',
             'tg_config', 'ai_alert_cfg', 'caps',
             'cot_data', 'cot_urls', 'cot_url',
@@ -959,6 +970,9 @@ export default {
             'gold_v2_config', 'gold_v2_credentials', 'gold_v2_trades',
             'confluence_bot_config', 'confluence_bot_credentials', 'confluence_bot_trades',
             'oi_bot_config', 'oi_bot_credentials', 'oi_bot_zones', 'oi_bot_trades',
+            // One-shot state (double-entry protection across bot restarts) + the
+            // hold-score calibration — both must outlive the 48h market-data TTL.
+            'oi_bot_state', 'oi_hold_calibration',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
             // These were allowed through isAllowedKVKey and marked persistent in
@@ -989,7 +1003,9 @@ export default {
           // record — irreplaceable once the day has passed — so it needs a
           // prefix rule or every day's log would silently expire after 48h,
           // which is precisely the failure mode documented in CLAUDE.md.
-          const PERMANENT_PREFIXES = ['vmlog_'];
+          // oi_raw_* is the irreplaceable capture: CME serves no options history, so a
+          // day lost to the 48h TTL cannot be re-fetched at any price. Permanent.
+          const PERMANENT_PREFIXES = ['vmlog_', 'oi_raw_'];
           const isPermanent = PERMANENT_KEYS.has(key)
             || PERMANENT_PREFIXES.some(p => key.startsWith(p));
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h
@@ -1674,18 +1690,30 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
       }
 
       // -- /api/cot-extremes ------------------------------------------
-      // Fetches 3 years of weekly COT history from the CFTC PRE Socrata API.
-      // Computes 3-year percentile ranks and z-scores for 35+ instruments
-      // across FX, metals, energy, grains, equities, rates, and crypto.
-      // Cached in KV for 7 days (COT releases weekly on Fridays).
+      // Fetches the most recent 200 weekly COT reports (~3.85 years, see COT_LIMIT
+      // below) from the CFTC PRE Socrata API. Computes percentile ranks and z-scores
+      // against that ~200-week window for 35+ instruments across FX, metals, energy,
+      // grains, equities, rates, and crypto. Cached in KV for 7 days (COT releases
+      // weekly on Fridays).
+      // NOTE: this used to say "3 years" — a `fromDate` cutoff was computed for that
+      // but never actually applied to the query, so the real window was always this
+      // row-count limit, not a date-anchored one. Comment corrected to match reality;
+      // no behavior change here. A true 156-week (3yr) rolling window is a deliberate,
+      // separate change — it would tighten the window and shift every computed
+      // percentile/z-score, so it's not folded silently into this comment fix.
       if (path === '/api/cot-extremes') {
         const debugMode = url.searchParams.get('debug') === '1';
 
         const wantHist0 = (url.searchParams.get('history') || '').toUpperCase();
         const forceFresh = url.searchParams.get('refresh') === '1';
 
+        // v3/v2: bumped when the payload shape changed (COT_LIMIT 200->156,
+        // COT_MIN_HISTORY added, specShareChg added) so a stale-but-unexpired 7-day
+        // cache entry from before that change can't get served under the new schema
+        // — flow() filtering on specShareChg would otherwise silently show "no data"
+        // against an old cached payload that never had that field, for up to 7 days.
         if (!debugMode && !forceFresh && env.FX_SCORES) {
-          const cached = await env.FX_SCORES.get('cot_extremes_v2').catch(() => null);
+          const cached = await env.FX_SCORES.get('cot_extremes_v3').catch(() => null);
           if (cached) {
             try {
               const { ts, data } = JSON.parse(cached);
@@ -1696,7 +1724,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
                 // happened). Serve the series from its OWN key instead, so clicking a market
                 // costs a KV read rather than a fresh CFTC fetch.
                 if (wantHist0) {
-                  const sraw = await env.FX_SCORES.get('cot_series_v1').catch(() => null);
+                  const sraw = await env.FX_SCORES.get('cot_series_v2').catch(() => null);
                   if (sraw) {
                     try {
                       const sj = JSON.parse(sraw);
@@ -1713,10 +1741,6 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             } catch(_) {}
           }
         }
-
-        const threeYearsAgo = new Date();
-        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-        const fromDate = threeYearsAgo.toISOString().split('T')[0];
 
         // Disaggregated report: metals, energy, grains, softs, livestock
         const DISAGG = [
@@ -1777,10 +1801,18 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         };
 
         // Use Socrata's column equality URL parameter (no SoQL $where needed).
-        // $order by the confirmed date field ensures most-recent 200 rows are returned.
+        // $order by the confirmed date field ensures most-recent COT_LIMIT rows are returned.
         // alt names tried sequentially if the primary name returns empty OR is stale.
         // Stale = latest record older than 90 days (CFTC renames instruments; old names persist but stop updating).
-        const COT_LIMIT = 200;
+        // 156 weeks = a true rolling 3-year window (matches the education notes' "3-year
+        // history" and the reference spec's explicit 156-week/3yr window) rather than the
+        // previous fixed 200-row limit, which had drifted to ~3.85 years with no documented
+        // reason. COT_MIN_HISTORY mirrors the same spec: don't produce a percentile/z-score
+        // off too little history — an instrument with under 52 weeks on file gets nulls
+        // instead of a number that looks precise but isn't backed by enough data.
+        const COT_LIMIT = 156;
+        const COT_MIN_HISTORY = 52;
+        const enoughHistory = sorted => sorted.length >= COT_MIN_HISTORY;
         const staleCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         async function fetchInstRows(datasetId, marketName, altNames = []) {
@@ -1888,20 +1920,26 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const clean = a => a.filter(v => v != null && Number.isFinite(v));
+            const eh = enoughHistory(sorted);
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
-              specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
+              specPct: eh ? pctRank(h(specNets), specNets[0]) : null, commPct: eh ? pctRank(h(commNets), commNets[0]) : null,
               specNet: specNets[0], commNet: commNets[0],
-              specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              specZ: eh ? zScore(h(specNets), specNets[0]) : null, commZ: eh ? zScore(h(commNets), commNets[0]) : null,
               // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
               // its percentile over the same window, `specShareZ` the z of that share.
               specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
               commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
-              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
-              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
-              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
+              specSharePct: (eh && specShare[0] != null) ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: (eh && commShare[0] != null) ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: (eh && specShare[0] != null) ? zScore(clean(h(specShare)), specShare[0]) : null,
+              // Week-over-week change in the OI-normalised share itself (percentage points),
+              // not the raw contract delta CFTC reports — this week's share minus last
+              // week's, matching the reference spec's flow definition exactly rather than
+              // dividing a raw contract change by only this week's open interest.
+              specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
-              openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
+              openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
               // The 200-week series is computed here to rank the current value, then was
@@ -1951,21 +1989,32 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
             const specShare = specNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const commShare = commNets.map((v, k) => (oiSer[k] > 0 ? v / oiSer[k] : null));
             const clean = a => a.filter(v => v != null && Number.isFinite(v));
+            const eh = enoughHistory(sorted);
             results.push({
               sym: inst.sym, label: inst.label, group: inst.group,
-              specPct: pctRank(h(specNets), specNets[0]), commPct: pctRank(h(commNets), commNets[0]),
+              specPct: eh ? pctRank(h(specNets), specNets[0]) : null, commPct: eh ? pctRank(h(commNets), commNets[0]) : null,
               specNet: specNets[0], commNet: commNets[0],
-              specZ: zScore(h(specNets), specNets[0]), commZ: zScore(h(commNets), commNets[0]),
+              specZ: eh ? zScore(h(specNets), specNets[0]) : null, commZ: eh ? zScore(h(commNets), commNets[0]) : null,
               // OI-normalised. `*Share` is the signed fraction of OI (as %), `*SharePct`
               // its percentile over the same window, `specShareZ` the z of that share.
               specShare: specShare[0] != null ? +(specShare[0] * 100).toFixed(2) : null,
               commShare: commShare[0] != null ? +(commShare[0] * 100).toFixed(2) : null,
-              specSharePct: specShare[0] != null ? pctRank(clean(h(specShare)), specShare[0]) : null,
-              commSharePct: commShare[0] != null ? pctRank(clean(h(commShare)), commShare[0]) : null,
-              specShareZ: specShare[0] != null ? zScore(clean(h(specShare)), specShare[0]) : null,
+              specSharePct: (eh && specShare[0] != null) ? pctRank(clean(h(specShare)), specShare[0]) : null,
+              commSharePct: (eh && commShare[0] != null) ? pctRank(clean(h(commShare)), commShare[0]) : null,
+              specShareZ: (eh && specShare[0] != null) ? zScore(clean(h(specShare)), specShare[0]) : null,
+              // Week-over-week change in the OI-normalised share itself (percentage points),
+              // matching the reference spec's flow definition exactly. specNets (and so
+              // specShare) already has the JPY/CAD/CHF flip baked in, so no extra sign
+              // handling is needed here the way weeklyChg below needs it.
+              specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
-              openInterest: oiSer[0], oiPct: pctRank(h(oiSer), oiSer[0]),
-              weeklyChg: pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short),
+              openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
+              // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract quotes
+              // USD-per-unit, so the raw long-minus-short change is inverted relative to our
+              // currency-direction convention. Left unflipped here for a long time — harmless
+              // as long as nothing depended on the SIGN of week-over-week change, but the flow
+              // leaderboard below does exactly that, so it needed fixing first.
+              weeklyChg: (inst.flip ? -1 : 1) * (pi(cur.change_in_lev_money_long_all ?? cur.change_in_lev_money_long ?? cur.chg_lev_long) - pi(cur.change_in_lev_money_short_all ?? cur.change_in_lev_money_short ?? cur.chg_lev_short)),
               histLen: sorted.length, reportDate: _dateF ? (cur[_dateF] ?? '').toString().split('T')[0] : null,
               // The 200-week series is computed here to rank the current value, then was
               // thrown away — so nothing downstream could chart the trend that gives a
@@ -2031,13 +2080,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           fetchErrors: fetchErrors.length ? fetchErrors : undefined };
 
         if (env.FX_SCORES) {
-          await env.FX_SCORES.put('cot_extremes_v2', JSON.stringify({ ts: Date.now(), data: payload2 }),
+          await env.FX_SCORES.put('cot_extremes_v3', JSON.stringify({ ts: Date.now(), data: payload2 }),
             { expirationTtl: 7 * 86400 }).catch(() => {});
           // Series in a SEPARATE key: keeps the hot path lean while making every
           // instrument's 200-week history a KV read away instead of a CFTC round trip.
           const series = {};
           for (const r of allInstruments) if (r._series) series[r.sym] = { sym: r.sym, label: r.label, ...r._series };
-          await env.FX_SCORES.put('cot_series_v1', JSON.stringify({ ts: Date.now(), series }),
+          await env.FX_SCORES.put('cot_series_v2', JSON.stringify({ ts: Date.now(), series }),
             { expirationTtl: 8 * 86400 }).catch(() => {});
         }
 

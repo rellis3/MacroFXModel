@@ -132,12 +132,14 @@
       <button data-c="original" class="on">Original</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
+      <button data-c="cogv2" title="COG for fx/indices, but GOLD uses HAR-IV σ (GVZ) + the forecaster's per-asset bands. HAR-IV σ is level-calibrated to the forecaster mean (strips the implied-vol risk premium that over-widened the raw bands), keeping HAR-IV's day-to-day variation. Needs the per-day hariv_annual enrichment (FRED GVZ); falls back to COG for gold if unavailable.">COG v2</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
     <span class="seg" id="calcCompare">
       <button data-cc="original" title="Overlay Original's lines">+Orig</button>
       <button data-cc="cog" title="Overlay COG's lines">+COG</button>
       <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
+      <button data-cc="cogv2" title="Overlay COG v2's lines (gold=HAR-IV)">+COGv2</button>
     </span>
     <div class="seg" id="touch">
       <button data-t="markers" title="Mark with a coloured dot where price first reached each armed level that day">● Markers</button>
@@ -153,6 +155,7 @@
       <button data-y="fade_all" class="on">Fade all</button>
       <button data-y="follow_med_fade_75">Cont med · fade 75th</button>
       <button data-y="momentum" title="WaveTrend decides per touch: overbought &amp; rolling over at an up-line (oversold &amp; turning up at a down-line) → fade; otherwise momentum-aligned → follow.">Momentum</button>
+      <button data-y="wt_stretch" title="WT-stretch MTF (Phase-11 validated gate): fade a touch when WaveTrend is OB/OS-STRETCHED in the touch direction on BOTH the chart TF and the higher TF (×4, e.g. M15→H1) — the stretch, not the roll-over turn, is what predicts reversal. WT computed on the continuous series (proper warmup), wt1 vs ±53, matching the live vumanchu pages. Historically lifts the median fade win-rate ~50%→62% OOS. Direction-confidence read, sub-cost as a standalone.">WT-stretch MTF</button>
       <button data-y="divergence" title="Regular price↔WaveTrend divergence at the touch → fade (reversal); none → follow (continuation).">Divergence</button>
       <button data-y="budget" title="Range-budget: realized session range ÷ the forecast's expected day range at the touch. Unspent (vol still to come) → fade (strong reversal); spent (range used up) → follow (break). Direction is the open question — the test is whether budget separates the outcomes.">Budget</button>
       <button data-y="timing" title="Session timing: how far through the London day the touch is (0 = open, 1 = close). EARLY touches → fade (revert); LATE → follow (continue) — the separator the Fade/Follow panel flagged as cleanest. Tcut is the early/late boundary.">Timing</button>
@@ -258,7 +261,7 @@ import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
 // Style labels (page-level: the brick knows fade_all/follow_med_fade_75; momentum
 // and divergence are page selectors that drive the brick's decideAction hook).
-const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
+const STYLE_LABEL = { fade_all: 'Fade all', follow_med_fade_75: 'Cont med · fade 75th', momentum: 'Momentum (WT)', wt_stretch: 'WT-stretch MTF', divergence: 'Divergence (WT)', budget: 'Budget (vol)', timing: 'Timing (session)' };
 // Matched to the user's VuManChu Cipher B: WaveTrend 9/12/3, divergences read on
 // the SIGNAL line (wt2), OB/OS bands 53/−53, and divergence-zone gates 45/−65
 // (regular divergences only; hidden are ungated).
@@ -295,11 +298,15 @@ function unitFor(name) {
 
 // COG's reverse-engineered constants — identical to forecast-replay / vol-forecast-v2.
 const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
+// COG-v2 gold constants = forecaster per-asset (commodity) calibration, NO COG
+// widening: BM/HN × commodity corr (js/volBacktestEngine.js): 1.572×0.898, 2.049×0.914,
+// 0.6745×1.144, 1.1503×1.092. Paired with the per-day HAR-IV σ (f.hariv_annual).
+const GOLD_C = { hl50: 1.412, hl75: 1.873, oc50: 0.772, oc75: 1.256 };
 const COG_SQRT252 = Math.sqrt(252);
 const _REPLAY_CCHV = new Set(['nq']);
 const $ = id => document.getElementById(id);
 function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'original'; }
-function calcLabel() { const m = calcMode(); return m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Original'; }
+function calcLabel() { const m = calcMode(); return m === 'cogv2' ? 'COG v2' : m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Original'; }
 function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
 function setStatus(t) { $('status').textContent = t; }
@@ -311,6 +318,16 @@ function setStatus(t) { $('status').textContent = t; }
 function bandsFor(f, mode) {
   if (!f) return null;
   mode = mode || calcMode();
+  const name = ($('pair').value || '').toLowerCase();
+  // COG v2: gold → HAR-IV σ (f.hariv_annual) × the forecaster's calibrated (non-COG)
+  // constants; fx/indices (and gold when HAR-IV is unavailable) → fall through to COG.
+  if (mode === 'cogv2') {
+    if (name === 'gold' && f.hariv_annual > 0) {
+      const s = f.hariv_annual / COG_SQRT252;
+      return { hl_median: GOLD_C.hl50 * s, hl_75: GOLD_C.hl75 * s, oc_median: GOLD_C.oc50 * s, oc_75: GOLD_C.oc75 * s };
+    }
+    mode = 'cog';
+  }
   // COG geometry for both COG and BOT — they differ only in the σ SOURCE:
   //   COG = the vol-forecast σ (f.vol_annual, with correction constants)
   //   BOT = the bot's σ (f.bot_vol_annual = volSigmaSeries, no corrections)
@@ -319,7 +336,6 @@ function bandsFor(f, mode) {
   // the same OANDA D1 history forward with nextSigma()); falls back to the COG σ
   // only if that lookup itself fails for a given day, so the calc still draws.
   if (mode === 'cog' || mode === 'bot') {
-    const name = ($('pair').value || '').toLowerCase();
     let va = (mode === 'bot') ? (f.bot_vol_annual ?? f.vol_annual) : f.vol_annual;
     if (_REPLAY_CCHV.has(name) && f.cchv_annual > 4 && f.cchv_annual < 200) va = f.cchv_annual;
     if (!(va > 0)) return null;
@@ -331,7 +347,7 @@ function bandsFor(f, mode) {
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = { armed: new Set(LADDER_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
-const CALC_TAG = { original: 'Orig', cog: 'COG', bot: 'Bot' };
+const CALC_TAG = { original: 'Orig', cog: 'COG', bot: 'Bot', cogv2: 'COGv2' };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
@@ -612,7 +628,44 @@ function prepIndicators() {
       d.divs = findDivergences(d.hi, d.lo, d.wt, { reach: 2, obLevel: DIV_OB, osLevel: DIV_OS });
     } else { d.wt1 = []; d.wt = []; d.hi = []; d.lo = []; d.divs = []; }
   }
+  prepMtfStretch();
   prepAtr();
+}
+// MTF WaveTrend-stretch zones (the Phase-11 validated gate, MTF version). Computed on
+// the CONTINUOUS series (spans days) so wt1 has proper warmup — matching the live
+// vumanchu-state pages / Telegram alert (wt1 vs ±53, 9/12/3), NOT the per-day d.wt above.
+// Base = chart TF; higher TF = chart TF × MTF_FACTOR (e.g. M15 → H1). Each bar carries the
+// last COMPLETED higher-TF bar's zone (causal, no lookahead). Sliced back to per-day arrays.
+const MTF_FACTOR = 4;
+function zoneOfWt(w) { return !Number.isFinite(w) ? 'mid' : w >= WT_OB ? 'OB' : w <= WT_OS ? 'OS' : 'mid'; }
+function prepMtfStretch() {
+  const all = days.flatMap(d => d.bars);
+  const N = all.length;
+  if (!N) { for (const d of days) { d.wtBaseZ = []; d.wtHtfZ = []; } return; }
+  const baseZoneAt = computeWaveTrend(all, WT_OPTS).wt1.map(zoneOfWt);
+  // Resample the continuous series to the higher TF (chunks of MTF_FACTOR bars).
+  const htfBars = [], chunkEnd = [];
+  for (let i = 0; i < N; i += MTF_FACTOR) {
+    const e = Math.min(i + MTF_FACTOR, N);
+    let hi = -Infinity, lo = Infinity;
+    for (let k = i; k < e; k++) { if (all[k].high > hi) hi = all[k].high; if (all[k].low < lo) lo = all[k].low; }
+    htfBars.push({ open: all[i].open, high: hi, low: lo, close: all[e - 1].close });
+    chunkEnd.push(e - 1);
+  }
+  const htfW1 = computeWaveTrend(htfBars, WT_OPTS).wt1;
+  const htfZoneAt = new Array(N).fill('mid');
+  let cj = -1;
+  for (let gi = 0; gi < N; gi++) {                       // last higher-TF bar COMPLETED by gi
+    while (cj + 1 < chunkEnd.length && chunkEnd[cj + 1] <= gi) cj++;
+    htfZoneAt[gi] = cj >= 0 ? zoneOfWt(htfW1[cj]) : 'mid';
+  }
+  let off = 0;
+  for (const d of days) {
+    const n = d.bars.length;
+    d.wtBaseZ = baseZoneAt.slice(off, off + n);
+    d.wtHtfZ  = htfZoneAt.slice(off, off + n);
+    off += n;
+  }
 }
 // Wilder ATR over the CONTINUOUS loaded series (spans days), seeded by the SMA of
 // the first `period` true ranges. Each day's `d.atr` = the ATR entering that
@@ -647,6 +700,17 @@ function makeDecider(d) {
       // down-line) = exhaustion → fade; otherwise momentum aligned → follow.
       if (L.side > 0) return (w >= WT_OB && w < wp) ? 'fade' : 'follow';
       return (w <= WT_OS && w > wp) ? 'fade' : 'follow';
+    };
+  }
+  if (state.style === 'wt_stretch') {
+    // Phase-11 validated gate (MTF version): fade when WaveTrend is STRETCHED in the
+    // touch direction on BOTH the chart TF and the higher TF (×4) — the stretch LEVEL,
+    // not the roll-over turn (Momentum requires the turn). MTF zone agreement is the
+    // strong version (~62% median fade win OOS vs 50% base). Otherwise follow.
+    return (L, ti) => {
+      const want = L.side > 0 ? 'OB' : 'OS';
+      const bz = d.wtBaseZ?.[ti], hz = d.wtHtfZ?.[ti];
+      return (bz === want && hz === want) ? 'fade' : 'follow';
     };
   }
   if (state.style === 'divergence') {

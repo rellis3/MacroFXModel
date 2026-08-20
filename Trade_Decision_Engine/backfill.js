@@ -30,6 +30,7 @@ import { loadM1ForPair, M1_DRIVE_IDS } from '../js/volBacktestM1Engine.js';
 import { gapFillPacked } from '../js/m1GapFill.js';
 import { fetchM1Range, londonMidnightSec } from '../js/volBacktestEngine.js';
 import { bisect, extractBars } from '../js/barUtils.js';
+import { computeWaveTrend } from '../js/vumanchuCore.js';
 import { DEFAULT_COST_PCT } from '../js/forecastCore.js';
 import { assetClass, oandaSymbol } from '../js/instrumentRegistry.js';
 import { buildSnapshot } from './featureState.js';
@@ -122,18 +123,62 @@ export function labelOutcome(packed, fromIdx, endIdx, entry, dirSign, sigmaAbs, 
 // live), then scan today's M1 for FIRST touches of the top zones and push each
 // through the same decide() the API serves. onEvent(evt) receives each event.
 //
-// contextByDate (optional): { 'YYYY-MM-DD': { macro?, calendar? } } — the
+// contextByDate (optional): { 'YYYY-MM-DD': { macro?, calendar?, oi? } } — the
 // historical-context injection socket. A macro loader (obs-dated FRED with
-// publication lags) supplies per-day { regime, riskSens }; a historical
-// calendar can adopt the same shape later (today the replayed calendar is []
-// — which is why the fitted news_soon weight is currently meaningless).
-// Absent dates ⇒ macro-neutral, empty calendar: pre-context rows are unchanged.
+// publication lags) supplies per-day { regime, riskSens }; oi is the sibling
+// socket fed from js/oi.js's oiContextByDate (the oi_history archive shaped
+// the same way _tdeOiContext shapes the live oi_store read — one definition,
+// oiCtxFrom, both paths). A historical calendar can adopt the same shape later
+// (today the replayed calendar is [] — which is why the fitted news_soon
+// weight is currently meaningless).
+// Absent dates ⇒ macro-neutral / oi-neutral, empty calendar: pre-context rows
+// are unchanged. oi only resolves for dates on/after the archival schema
+// change that started capturing regime/gexFlips (Phase B) — earlier days
+// resolve oi:null, same as a pre-archive live snapshot.
+// Precompute a causal MTF WaveTrend-STRETCH lookup from packed M1 (the Phase-11
+// gate): resample to M15 + H1, compute wt1 (9/12/3), and return
+// wtStretchAt(epochSec) → +1 (both TFs overbought) / −1 (both oversold) / 0 (mixed),
+// using each TF's last CLOSED bar (start + tf ≤ t) so there is no lookahead.
+const _MTF_WT = { n1: 9, n2: 12, sp: 3 }, _MTF_OB = 53, _MTF_OS = -53;
+function _mtfStretchLookup(packed) {
+  const build = (tfSec) => {
+    const N = packed.times.length, starts = [], bars = [];
+    let key = null, o = 0, h = 0, l = 0, c = 0;
+    for (let i = 0; i < N; i++) {
+      const k = Math.floor(packed.times[i] / tfSec);
+      if (k !== key) {
+        if (key !== null) { bars.push({ open: o, high: h, low: l, close: c }); starts.push(key * tfSec); }
+        key = k; o = packed.opens[i]; h = packed.highs[i]; l = packed.lows[i]; c = packed.closes[i];
+      } else {
+        if (packed.highs[i] > h) h = packed.highs[i];
+        if (packed.lows[i] < l) l = packed.lows[i];
+        c = packed.closes[i];
+      }
+    }
+    if (key !== null) { bars.push({ open: o, high: h, low: l, close: c }); starts.push(key * tfSec); }
+    return { starts, wt1: computeWaveTrend(bars, _MTF_WT).wt1, tfSec };
+  };
+  const zoneAt = ({ starts, wt1, tfSec }, t) => {
+    let lo = 0, hi = starts.length - 1, ans = -1;             // last bar CLOSED by t
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (starts[mid] + tfSec <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    if (ans < 0) return 'mid';
+    const w = wt1[ans];
+    return !Number.isFinite(w) ? 'mid' : w >= _MTF_OB ? 'OB' : w <= _MTF_OS ? 'OS' : 'mid';
+  };
+  const m15 = build(15 * 60), h1 = build(60 * 60);
+  return (t) => {
+    const a = zoneAt(m15, t), b = zoneAt(h1, t);
+    return (a === 'OB' && b === 'OB') ? 1 : (a === 'OS' && b === 'OS') ? -1 : 0;
+  };
+}
+
 export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextByDate = null, onEvent } = {}) {
   const C = { ...BACKFILL_DEFAULTS, ...cfg };
   const d1 = deriveD1Packed(packed);
   const costPct = DEFAULT_COST_PCT[safeClass(pair)] ?? DEFAULT_COST_PCT.fx;
   let events = 0, days = 0, lastDate = fromDate;
   const dayIdxByTime = new Map(d1.map((b, j) => [b.time, j]));
+  const wtStretchAt = _mtfStretchLookup(packed);   // Phase-11 MTF WT-stretch, causal
   const mondayBarsCache = new Map();   // monStartSec → bars | null
 
   for (let i = C.warmupDays; i < d1.length; i++) {
@@ -190,6 +235,7 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
     let snap;
     try {
       snap = buildSnapshot({ pair, dailyBars, calendar: dayCtx.calendar ?? [], macro: dayCtx.macro ?? null,
+        oi: dayCtx.oi ?? null,
         intradayBars: asiaBars.length >= 2 ? asiaBars : null, mondayBars,
         prevAsiaBars: prevAsiaBars?.length >= 10 ? prevAsiaBars : null,
         prevMondayBars: prevMondayBars?.length >= 20 ? prevMondayBars : null,
@@ -257,13 +303,22 @@ export function backfillPair(pair, packed, { fromDate = null, cfg = {}, contextB
         posInRange: runHi[k] > runLo[k] ? +((packed.closes[t] - runLo[k]) / (runHi[k] - runLo[k])).toFixed(3) : 0.5,
         vwapDistSigma: vwap != null ? +((packed.closes[t] - vwap) / sigmaAbs).toFixed(3) : 0,
         approachSigma: +approachSigma.toFixed(3),
+        wtStretchDir: wtStretchAt(packed.times[t]),   // Phase-11 MTF WT-stretch (+1 OB / −1 OS / 0)
       };
 
       // the SAME fast loop the live API serves. One snapshot per day here, so
       // the live 15-min staleness gate is widened to the session length —
       // that gate is about a dead slow loop, not about intraday drift.
+      // model: MODEL_V0 pinned explicitly — this harness's whole job is
+      // "candidate fit vs the v0 prior" (fitLogistic's prior_v0/fitted_beats_
+      // prior fields), which must stay anchored to v0 regardless of what
+      // decisionCore's live default becomes as new models get promoted for
+      // some pairs (decisionCore.js's defaultModelFor). Feature vectors and
+      // outcomes are model-independent (buildEventFeatures doesn't consult
+      // weights, direction defaulting doesn't either), so this only fixes
+      // which probability gets stamped/compared — not what gets fitted.
       const dec = decide(snap, { pair, price: cand.price, approachSigma, intraday },
-        { nowMs: touchMs, maxStalenessMs: 26 * 3600_000 });
+        { nowMs: touchMs, maxStalenessMs: 26 * 3600_000, model: MODEL_V0 });
       if (dec.probability == null) continue;   // gated (shouldn't happen without calendar)
 
       const dirSign = dec.direction === 'long' ? 1 : -1;
