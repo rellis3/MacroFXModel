@@ -51,7 +51,7 @@ function isAllowedKVKey(key) {
     'oi_bot_state', 'oi_hold_calibration',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log']);
-  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_'];
+  const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
   if (EXACT.has(key)) return true;
   return PREFIXES.some(p => key.startsWith(p));
 }
@@ -1003,7 +1003,9 @@ export default {
           // record — irreplaceable once the day has passed — so it needs a
           // prefix rule or every day's log would silently expire after 48h,
           // which is precisely the failure mode documented in CLAUDE.md.
-          const PERMANENT_PREFIXES = ['vmlog_'];
+          // oi_raw_* is the irreplaceable capture: CME serves no options history, so a
+          // day lost to the 48h TTL cannot be re-fetched at any price. Permanent.
+          const PERMANENT_PREFIXES = ['vmlog_', 'oi_raw_'];
           const isPermanent = PERMANENT_KEYS.has(key)
             || PERMANENT_PREFIXES.some(p => key.startsWith(p));
           const kvOpts = isPermanent ? {} : { expirationTtl: 172800 }; // 48h

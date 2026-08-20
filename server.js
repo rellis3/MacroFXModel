@@ -12472,6 +12472,13 @@ function _oiHistoryRaw(inst) {
     rawOI,
     rawChg: inst.rawChg && String(inst.rawChg).trim() ? inst.rawChg : null,
     rawVol: inst.rawVol && String(inst.rawVol).trim() ? inst.rawVol : null,
+    // The IV boxes are what make this a REPLAYABLE capture rather than an OI ladder.
+    // Without them a restored day has walls and max pain but no smile, so no charm,
+    // vanna, skew or expected-move band - the analytics page would render half a
+    // day. They were omitted when only OI was pasted by hand; the sweep now captures
+    // both nightly, so archive both.
+    rawIV: inst.rawIV && String(inst.rawIV).trim() ? inst.rawIV : null,
+    rawIVTerm: inst.rawIVTerm && String(inst.rawIVTerm).trim() ? inst.rawIVTerm : null,
     spot: inst.spot ?? null, futures: inst.futures ?? null, basis: inst.basis ?? null,
     dte: inst.dte ?? null, savedAtMs: inst.savedAtMs ?? null,
   };
@@ -12490,8 +12497,17 @@ async function _snapshotOIHistory(force = false) {
     const day = _rlSessionDate(null);
     const histRaw = await kv.get('oi_history').catch(() => null);
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
-    const rawHistRaw = await kv.get('oi_history_raw').catch(() => null);
-    const rawHist = rawHistRaw ? (JSON.parse(rawHistRaw).data ?? JSON.parse(rawHistRaw)) : {};
+    // ONE KEY PER DAY (`oi_raw_YYYY-MM-DD`), not one key for all of history.
+    // The old `oi_history_raw` accumulated every pair x every day into a single
+    // value and kept 365 days. Measured 2026-08-20: 330KB/day across 11 pairs, so
+    // that value would pass Cloudflare KV's 25MB per-value ceiling at ~77 days and
+    // start failing silently — with no signal until a restore came back short.
+    // Per-day keys are ~330KB each, so retention becomes a storage question rather
+    // than a cliff, and a date view fetches exactly the one day it wants instead of
+    // downloading a year to read Tuesday.
+    const rawDayKey = `oi_raw_${day}`;
+    const rawDayRaw = await kv.get(rawDayKey).catch(() => null);
+    const rawDay = rawDayRaw ? (JSON.parse(rawDayRaw).data ?? JSON.parse(rawDayRaw)) : {};
     let n = 0, changed = 0, rawChanged = 0;
     for (const [pair, inst] of Object.entries(store)) {
       const summary = _oiHistorySummary(inst);
@@ -12513,7 +12529,7 @@ async function _snapshotOIHistory(force = false) {
       // Raw ladder, its own key, same dedup + date-keyed archive (yesterday's slot untouched).
       const rawEntry = _oiHistoryRaw(inst);
       if (rawEntry) {
-        rawHist[pair] = rawHist[pair] || {};
+
         // Dedup on the LADDER ONLY (rawOI/rawChg/rawVol). The ~15-min basis control drifts
         // spot/basis all day, but the per-strike ladder changes just once — the daily paste.
         // Comparing the whole entry would rewrite the archive ~48×/day to freshen spot context
@@ -12521,14 +12537,10 @@ async function _snapshotOIHistory(force = false) {
         // values. So only (re)write when the ladder itself changed, keeping the FIRST-captured
         // spot/basis for the day (≈ paste time — what the historical ladder should be read against).
         const _ladderKey = e => e ? `${e.rawOI} ${e.rawChg ?? ''} ${e.rawVol ?? ''}` : '';
-        if (_ladderKey(rawHist[pair][day]) !== _ladderKey(rawEntry)) {
-          rawHist[pair][day] = rawEntry;   // new ladder (new paste) → archive with its capture-time context
+        if (_ladderKey(rawDay[pair]) !== _ladderKey(rawEntry)) {
+          rawDay[pair] = rawEntry;   // new ladder (new paste) → archive with its capture-time context
           rawChanged++;
         }
-        const rDates = Object.keys(rawHist[pair]).sort();
-        const rTrim = rDates.slice(0, Math.max(0, rDates.length - _OI_RAW_KEEP_DAYS));
-        for (const d of rTrim) delete rawHist[pair][d];
-        if (rTrim.length) rawChanged++;
       }
     }
     if (!n) return { n: 0, wrote: false, day };
@@ -12536,7 +12548,7 @@ async function _snapshotOIHistory(force = false) {
     // Nothing new — don't spend a KV write (unless the user explicitly forced one). The two
     // keys write independently so a summary-only change doesn't rewrite the bigger raw blob.
     if (changed || force) { await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() })); wrote = true; }
-    if (rawChanged || force) { await kv.put('oi_history_raw', JSON.stringify({ data: rawHist, timestamp: Date.now() })); wrote = true; }
+    if (rawChanged || force) { await kv.put(rawDayKey, JSON.stringify({ data: rawDay, timestamp: Date.now() })); wrote = true; }
     if (wrote) console.log(`[oi-history] archived ${n} pair(s), ${changed} summary / ${rawChanged} raw changed → ${day}`);
     return { n, wrote, day, changed, rawChanged };
   } catch (e) { console.error('[oi-history] snapshot failed:', e.message); return { n: 0, wrote: false, day: null, error: e.message }; }

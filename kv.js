@@ -85,6 +85,11 @@ const _CF_EXACT = new Set([
                             // built on it (brief oiChange / oiStability / flip-drift, /api/oi-history).
                             // `_snapshotOIHistory` now writes only when the summary actually CHANGED
                             // (~1-2/day on paste, not 48/day on its 30-min timer) to stay quota-cheap.
+  // NOTE: superseded 2026-08-20 by the per-day `oi_raw_YYYY-MM-DD` keys (routed by
+  // prefix below). Kept allowlisted so any value already written stays readable.
+  // The single-key design measured 330KB/day across 11 pairs against a 365-day
+  // retention, i.e. ~117MB in one value — past CF KV's 25MB ceiling at ~77 days,
+  // and it would have failed silently with no signal until a restore came back short.
   'oi_history_raw',         // ~90-day archive of the FULL per-strike ladder (rawOI/rawChg/rawVol +
                             // spot/basis context) per pair per day — side-by-side with the lean
                             // oi_history summary. The strike-over-time map + early wall-building
@@ -267,6 +272,9 @@ function isCfKey(key) {
   if (key.startsWith('boj_')) return true;
   // beigebook_* — same reasoning as fomc_/ecb_/boe_/boj_ above.
   if (key.startsWith('beigebook_')) return true;
+  // oi_raw_YYYY-MM-DD - the per-day raw OI capture (ladder + IV boxes). One key per
+  // day so no single value approaches CF KV's 25MB ceiling; see _snapshotOIHistory.
+  if (key.startsWith('oi_raw_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
