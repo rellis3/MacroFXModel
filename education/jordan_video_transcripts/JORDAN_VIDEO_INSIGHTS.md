@@ -117,6 +117,53 @@ host as "Husky" in the third person, and the host responds in kind
 Husky's induction/markup/AMA content; this screenshot evidence is the
 first direct look at Jordan's own work.
 
+### Synthesis: building an intraday exhaustion signal from bands
+
+Pulling together everything logged so far that bears on "use a
+Bollinger/SD-style band to spot intraday exhaustion," even though only
+Jordan's tool (Evidence Set A) is an actual live band:
+
+- **Core mechanic candidate**: Jordan's live percentile-range band (see
+  the Theme Index entry) — session H-L range vs. its historical median/
+  75th-percentile, `Δmed`/`Δ75p` as the exhaustion signal, rather than a
+  Gaussian SMA±k·stdev. Husky's *static* version of the same statistic has
+  explicit transcript evidence of producing exhaustion reactions ("perfect
+  touch of the closed medium... ended up being the bottom of the day," see
+  the "Close median as a magnet" and "Range/volatility forecasting tool"
+  entries) — evidence the underlying stat works, not yet evidence the live
+  version does.
+- **Regime-gate the fade**: only trade a band touch as mean-reversion when
+  ADX (4H, ~30 threshold) is low/ranging; in a trending regime, the same
+  touch is better treated as a pullback-continuation entry, not a fade —
+  demonstrated live with range-extension levels in transcript 6, directly
+  transferable to a band context (see "ADX-based regime filter").
+- **Alternative/complementary band width**: ATR×1.5 (already the group's
+  stop-sizing convention, see "ATR-based initial stop-loss sizing") is a
+  cheaper width measure than the percentile-range stat and worth A/B-ing
+  against it.
+- **Don't fade blind into a clustering regime**: after a high-volatility
+  session, widen the exhaustion threshold or expect the band to be
+  *walked* rather than snap back — see "Session structure / volatility
+  persistence."
+- **A second centerline candidate**: VWAP, not just session-range
+  midpoint — Husky treats VWAP the same directional-bias way (above =
+  bullish, below = bearish, see "VWAP used as context/frame" and the
+  midpoint-as-bias-divider facet of "Levels are bidirectional").
+- **Confluence, not a standalone signal**: the repeated warning that most
+  of the chart touches *something* (fibs, VWAPs, previous highs/lows,
+  FVGs, order blocks — see "Level-selection tie-break rules") suggests a
+  raw band touch alone is likely noisy; pairing it with a golden-pocket or
+  close-median level, the way Husky does, is probably closer to how
+  exhaustion signals are meant to be used in this system.
+- **External vol-regime input**: VIX thresholds (illustrative, >15/>20 —
+  see "Cross-asset macro dashboard") could gate band width at a
+  market-wide level, on top of the per-instrument ADX/ATR gates above.
+
+**Still blocking a full build of Jordan's specific tool**: the red/green
+side-assignment rule and the identity of the two blue MA-like lines (see
+Priority Watch above) — everything else in this synthesis is buildable
+today from what's already logged.
+
 ---
 
 ## Theme Index
