@@ -1,0 +1,412 @@
+/**
+ * Entry Trigger Lab — pure detection bricks for five discretionary entry ideas
+ * pulled from `education/jordan_video_transcripts/JORDAN_VIDEO_INSIGHTS.md`
+ * (Husky's markup-call transcripts), built for VISUAL inspection on a chart
+ * rather than a Sharpe/IS-OOS verdict — that's the deliberate point of this
+ * module: eyeball where each rule actually fires before spending a full honest
+ * backtest on any of them.
+ *
+ * Level generation is NOT reimplemented here — it reuses the repo's one
+ * canonical range/ladder/confluence engine (`ranges.js` + `confluence-core.js`,
+ * the same bricks the live dashboard and the MT5 backtest port both already
+ * use). What IS new here is the WALK: `ranges.js`'s calculateAsiaRanges /
+ * calculateMondayRanges only ever compute "today vs yesterday" (the latest
+ * live snapshot) — this file walks every session in an arbitrary loaded
+ * history so a date range can be scanned, not just the newest day.
+ *
+ * Five detectors, each named for the Theme Index entry it encodes:
+ *   detectWickEngulfing        — "Wick + engulfing-candle micro-confirmation"
+ *   detectMidpointPullback     — "Levels are bidirectional" (4th, continuation use)
+ *   detectSessionExtremeAnchor — "Edge case explicitly considered, then rejected"
+ *   detectVwapTap              — "VWAP used as context/frame" (tapping/magnet facet)
+ *   detectAdxRegimeSwitch      — "ADX-based regime filter"
+ *
+ * Pure over normalized bars — no DOM, no network. Every function is a
+ * candidate for a Node unit test (see entryTriggerLabEngine.test.mjs).
+ */
+
+import { computeBodyRange, projectFibLevels, detectConfluences } from './ranges.js';
+import { barLondonHour, barLondonDay, getPipSize } from './utils.js';
+import { adxWilder } from './indicatorCore.js';
+import { computeSessionVwap } from './vwapReversionEngine.js';
+
+// ── Bar normalization ────────────────────────────────────────────────────────
+
+// `/api/ohlc-range` returns { values: [{datetime,open,high,low,close,volume?}] }
+// with numeric fields as strings. Normalize once: keep `datetime` (the London-
+// local string the barLondonHour/barLondonDay helpers parse) alongside numeric
+// o/h/l/c/time so every detector below can do plain arithmetic.
+export function normalizeBars(values) {
+  return (values ?? [])
+    .map(v => ({
+      datetime: v.datetime,
+      time: Math.floor(new Date(v.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
+      open: +v.open, high: +v.high, low: +v.low, close: +v.close,
+      volume: v.volume != null ? +v.volume : undefined,
+    }))
+    .filter(b => Number.isFinite(b.open) && Number.isFinite(b.time))
+    .sort((a, b) => a.time - b.time);
+}
+
+// ── Session grouping (the walk-forward part `ranges.js` doesn't provide) ────
+
+// Asia session = 00:00-06:00 London, Mon-Fri only. Mirrors the >=36-bar (3h)
+// "complete session" rule from ranges.js's calculateAsiaRanges so the same
+// definition of "usable session" is honored, just applied to every day
+// present in the loaded range instead of only the newest one.
+export function groupAsiaSessions(bars5m) {
+  const byDate = new Map();
+  for (const bar of bars5m) {
+    const hour = barLondonHour(bar);
+    if (hour < 0 || hour >= 6) continue;
+    const date = bar.datetime.split(' ')[0];
+    const dow = barLondonDay(bar);
+    if (dow === 0 || dow === 6) continue;
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(bar);
+  }
+  return [...byDate.entries()]
+    .filter(([, bars]) => bars.length >= 36)
+    .map(([date, bars]) => ({ date, bars }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// The 2 hours immediately after the Asia window (06:00-08:00 London), same
+// calendar day — the "run straight outside of Asia" window Husky described
+// live, then declined to use as the default anchor. Kept separate from
+// groupAsiaSessions so callers can compare the two anchors directly.
+export function groupPostAsiaWindow(bars5m) {
+  const byDate = new Map();
+  for (const bar of bars5m) {
+    const hour = barLondonHour(bar);
+    if (hour < 6 || hour >= 8) continue;
+    const date = bar.datetime.split(' ')[0];
+    const dow = barLondonDay(bar);
+    if (dow === 0 || dow === 6) continue;
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(bar);
+  }
+  return byDate;
+}
+
+// Monday session = full Monday, 15m bars, body high/low — mirrors
+// calculateMondayRanges' >=40-bar "complete Monday" rule, walked across every
+// Monday in the loaded history.
+export function groupMondaySessions(bars15m) {
+  const byDate = new Map();
+  for (const bar of bars15m) {
+    if (barLondonDay(bar) !== 1) continue;
+    const date = bar.datetime.split(' ')[0];
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(bar);
+  }
+  return [...byDate.entries()]
+    .filter(([, bars]) => bars.length >= 40)
+    .map(([date, bars]) => ({ date, bars }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ── Level history + timeline (reuses computeBodyRange / projectFibLevels /
+//    detectConfluences from ranges.js — no range/ladder/clustering math is
+//    reimplemented here) ──────────────────────────────────────────────────
+
+export function buildAsiaRangeHistory(bars5m) {
+  return groupAsiaSessions(bars5m).map(s => ({ date: s.date, range: computeBodyRange(s.bars) }));
+}
+
+export function buildMondayRangeHistory(bars15m) {
+  return groupMondaySessions(bars15m).map(s => ({ date: s.date, range: computeBodyRange(s.bars) }));
+}
+
+// Video 8: "don't use 1.25 on Asia/daily ranges — fine on weekly." FIB_LEVELS
+// only carries the outlier on the positive side (there's no matching -1.25
+// entry), so this drops fib===1.25 for the 'asia' source only.
+function applyDailyOutlierExclusion(levels, source) {
+  if (source !== 'asia') return levels;
+  return levels.filter(l => l.fib !== 1.25);
+}
+
+// Walks `history` (ascending, from buildAsiaRangeHistory/buildMondayRangeHistory)
+// and for each entry after the first builds that period's own ladder (the
+// levels actually traded during it) plus its confluence cross-check against
+// the PRIOR period's ladder — exactly what ranges.js's calculateAsiaRanges /
+// calculateMondayRanges compute for "today vs yesterday", just repeated once
+// per period instead of only for the newest one.
+export function buildLevelTimeline(history, symbol, source) {
+  const out = [];
+  for (let i = 1; i < history.length; i++) {
+    const curr = history[i].range, prev = history[i - 1].range;
+    if (!curr || !prev) continue;
+    const levels = applyDailyOutlierExclusion(projectFibLevels(curr), source);
+    const prevLevels = applyDailyOutlierExclusion(projectFibLevels(prev), source);
+    const confluences = detectConfluences(levels, prevLevels, symbol, source, curr.range);
+    out.push({ date: history[i].date, range: curr, levels, confluences });
+  }
+  return out;
+}
+
+// The timeline entry whose period covers `dateStr`. Asia levels are valid the
+// same calendar day only (video 12's "10pm same day" cutoff is NOT modeled
+// here — this is same-date-only, a known simplification, see file header).
+// Monday levels are valid Monday..Friday of that week (video 12's "10pm
+// Friday" cutoff likewise not modeled to the hour).
+export function levelsActiveOn(dateStr, timeline, periodKind) {
+  if (periodKind === 'asia') return timeline.find(t => t.date === dateStr) ?? null;
+  // 'monday': find the most recent Monday entry with date <= dateStr, within 4 days.
+  let best = null;
+  for (const t of timeline) {
+    if (t.date > dateStr) continue;
+    const days = (new Date(dateStr + 'T00:00:00Z') - new Date(t.date + 'T00:00:00Z')) / 86400000;
+    if (days >= 0 && days <= 4 && (!best || t.date > best.date)) best = t;
+  }
+  return best;
+}
+
+// Merge the active Asia-day ladder and active Monday-week ladder for a given
+// bar's calendar date into one flat, tagged level array.
+export function activeLevelsAt(bar, asiaTimeline, mondayTimeline) {
+  const date = bar.datetime.split(' ')[0];
+  const asia = levelsActiveOn(date, asiaTimeline, 'asia');
+  const monday = levelsActiveOn(date, mondayTimeline, 'monday');
+  const out = [];
+  if (asia) for (const l of asia.levels) out.push({ price: l.price, fib: l.fib, source: 'asia' });
+  if (monday) for (const l of monday.levels) out.push({ price: l.price, fib: l.fib, source: 'monday' });
+  return out;
+}
+
+// ── 1. Wick rejection + engulfing candle ─────────────────────────────────────
+// "candle 1: wick into/beyond the level without closing beyond it; candle 2:
+// full-range engulf of candle 1 in the trade direction." (video 14)
+//
+// opts: { tolerance } — price tolerance (in price units) for "at the level",
+// since a raw price equality never happens on real bars. Defaults to 1 pip.
+export function detectWickEngulfing(bars, asiaTimeline, mondayTimeline, opts = {}) {
+  const tol = opts.tolerance ?? 0;
+  const events = [];
+  for (let i = 1; i < bars.length - 1; i++) {
+    const a = bars[i];
+    const levels = activeLevelsAt(a, asiaTimeline, mondayTimeline);
+    for (const lvl of levels) {
+      const L = lvl.price;
+      // Approached from below (level acts as resistance → short setup):
+      // candle A wicks up into/through L but closes back below it.
+      const wickedUpNoClose = a.high >= L - tol && a.close < L - tol && a.open < L - tol;
+      // Approached from above (level acts as support → long setup):
+      const wickedDownNoClose = a.low <= L + tol && a.close > L + tol && a.open > L + tol;
+      if (!wickedUpNoClose && !wickedDownNoClose) continue;
+      const b = bars[i + 1];
+      const dir = wickedUpNoClose ? 'short' : 'long';
+      const engulfs = dir === 'short'
+        ? (b.close < b.open && b.open >= a.high && b.close <= a.low)
+        : (b.close > b.open && b.open <= a.low && b.close >= a.high);
+      if (!engulfs) continue;
+      events.push({
+        time: b.time, price: b.close, level: L, levelSource: lvl.source, fib: lvl.fib,
+        dir, kind: 'wick_engulf', wickBarTime: a.time,
+      });
+    }
+  }
+  return events;
+}
+
+// ── 2. Midpoint continuation-pullback ────────────────────────────────────────
+// "when price is already trending in one direction and pulls back to the
+// midpoint without breaking through it, that pullback is a continuation
+// entry." (video 15) Midpoint = fib 0.5 of the active Asia/Monday range.
+//
+// Trend proxy (documented simplification, not from the transcripts): once
+// price closes beyond the midpoint by `breakoutTol` in one direction, that
+// direction is "established" until a close on the opposite side invalidates
+// it. Any later bar that trades back to the midpoint without CLOSING through
+// it, while the trend is still established, is a continuation trigger.
+export function detectMidpointPullback(bars, asiaTimeline, mondayTimeline, opts = {}) {
+  const breakoutTol = opts.breakoutTol ?? 0;
+  const events = [];
+  // one trend state per (source, period-date) so Asia and Monday midpoints
+  // don't interfere with each other's trend tracking.
+  const trendState = new Map(); // key -> 'up' | 'down' | null
+
+  for (let i = 1; i < bars.length; i++) {
+    const bar = bars[i];
+    const date = bar.datetime.split(' ')[0];
+    for (const [kind, timeline] of [['asia', asiaTimeline], ['monday', mondayTimeline]]) {
+      const active = levelsActiveOn(date, timeline, kind);
+      if (!active) continue;
+      const mid = active.levels.find(l => l.fib === 0.5);
+      if (!mid) continue;
+      const key = `${kind}:${active.date}`;
+      // Trend as of BEFORE this bar — established by a prior bar's close, never
+      // by this same bar (otherwise the bar that first breaks out could also
+      // count as its own pullback).
+      const trend = trendState.get(key) ?? null;
+      if (trend) {
+        const touchedWithoutBreak = trend === 'up'
+          ? (bar.low <= mid.price && bar.close > mid.price)
+          : (bar.high >= mid.price && bar.close < mid.price);
+        if (touchedWithoutBreak) {
+          events.push({
+            time: bar.time, price: bar.close, level: mid.price, levelSource: kind,
+            dir: trend === 'up' ? 'long' : 'short', kind: 'midpoint_pullback',
+          });
+        }
+      }
+      let next = trend;
+      if (bar.close > mid.price + breakoutTol) next = 'up';
+      else if (bar.close < mid.price - breakoutTol) next = 'down';
+      trendState.set(key, next);
+    }
+  }
+  return events;
+}
+
+// ── 3. Session-extreme anchoring ─────────────────────────────────────────────
+// Video 7: a live case for anchoring to the post-Asia breakout extreme
+// (06:00-08:00 London) instead of the in-window high/low when price runs hard
+// right after the session closes — demonstrated, then explicitly declined for
+// simplicity. Returns, per Asia day, BOTH ladders (in-window vs alt-anchored)
+// so they can be overlaid and visually compared; `diverges: true` when the
+// post-window extreme would have extended the range by more than `minPips`.
+export function detectSessionExtremeAnchor(bars5m, symbol, opts = {}) {
+  const minPips = opts.minPips ?? 3;
+  const pip = getPipSize(symbol);
+  const asiaSessions = groupAsiaSessions(bars5m);
+  const postWindows = groupPostAsiaWindow(bars5m);
+  const out = [];
+  for (const { date, bars } of asiaSessions) {
+    const inWindow = computeBodyRange(bars);
+    if (!inWindow) continue;
+    const post = postWindows.get(date);
+    if (!post?.length) { out.push({ date, inWindow, altRange: null, diverges: false }); continue; }
+    const postRange = computeBodyRange(post);
+    const altHigh = Math.max(inWindow.high, postRange.high);
+    const altLow = Math.min(inWindow.low, postRange.low);
+    const diverges = (altHigh - inWindow.high) / pip >= minPips || (inWindow.low - altLow) / pip >= minPips;
+    const altRange = { high: altHigh, low: altLow, range: altHigh - altLow, barCount: inWindow.barCount };
+    out.push({
+      date, inWindow, altRange, diverges,
+      inWindowLevels: projectFibLevels(inWindow),
+      altLevels: diverges ? projectFibLevels(altRange) : null,
+    });
+  }
+  return out;
+}
+
+// ── 4. VWAP tap / magnet ─────────────────────────────────────────────────────
+// "price crossing above/below VWAP and repeatedly tapping it... a magnet or
+// pivot on lower timeframes." (video 2, reconfirmed live video 18) Reuses
+// computeSessionVwap (the same brick forecast-reversion.html and the
+// already-nulled VWAP engines use) — per-session VWAP, reset each day.
+// A "tap" = price actually crosses/touches VWAP after having been away from
+// it by at least `awayTol` price units on the prior bar (so a series of bars
+// glued to VWAP doesn't spam one tap per bar).
+export function detectVwapTap(bars5m, opts = {}) {
+  const awayTol = opts.awayTol ?? 0;
+  const events = [];
+  const byDate = new Map();
+  for (const bar of bars5m) {
+    const date = bar.datetime.split(' ')[0];
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(bar);
+  }
+  for (const [, dayBars] of byDate) {
+    if (dayBars.length < 2) continue;
+    const { vwap } = computeSessionVwap(dayBars);
+    let awaySide = null; // 'above' | 'below' | null — tracks whether we're "away" and on which side
+    for (let i = 0; i < dayBars.length; i++) {
+      const bar = dayBars[i], v = vwap[i];
+      const touched = bar.low <= v && bar.high >= v;
+      if (touched) {
+        if (awaySide) {
+          events.push({ time: bar.time, price: v, level: v, levelSource: 'vwap', dir: awaySide === 'above' ? 'short' : 'long', kind: 'vwap_tap' });
+        }
+        awaySide = null;
+      } else if (bar.low > v + awayTol) {
+        awaySide = 'above';
+      } else if (bar.high < v - awayTol) {
+        awaySide = 'below';
+      }
+    }
+  }
+  return events;
+}
+
+// ── 5. ADX regime switch ─────────────────────────────────────────────────────
+// video 6 (live) / video 17 (restated, Husky's own "no data on this, I've not
+// tested this" disclaimer attached): 4H ADX < ~30 → fade the FAR extension
+// back toward basis; ADX >= ~30 → skip the fade, buy a NEAR extension as a
+// pullback-continuation entry in the trend direction.
+
+// Resample to 4-hour buckets by wall-clock epoch time (not bar-count chunks,
+// so this works regardless of the loaded timeframe — 5m or 15m alike).
+export function resampleToH4(bars) {
+  const H4 = 4 * 3600;
+  const buckets = new Map();
+  for (const bar of bars) {
+    const key = Math.floor(bar.time / H4);
+    let b = buckets.get(key);
+    if (!b) { b = { time: key * H4, open: bar.open, high: bar.high, low: bar.low, close: bar.close, lastBarIdxInBucket: [] }; buckets.set(key, b); }
+    b.high = Math.max(b.high, bar.high);
+    b.low = Math.min(b.low, bar.low);
+    b.close = bar.close;
+  }
+  return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+// Causal per-bar ADX(4H) read: each intraday bar sees the ADX of the last
+// H4 bucket that had already CLOSED before it (no lookahead into the bucket
+// still forming).
+export function computeH4AdxSeries(bars, period = 14) {
+  const H4 = 4 * 3600;
+  const h4 = resampleToH4(bars);
+  const adx = adxWilder(h4, period);
+  const h4ByKey = new Map(h4.map((b, idx) => [b.time, idx]));
+  const out = new Array(bars.length).fill(null);
+  for (let i = 0; i < bars.length; i++) {
+    const bucketKey = Math.floor(bars[i].time / H4) * H4;
+    // last COMPLETED bucket = the one strictly before this bar's own bucket
+    const prevKey = bucketKey - H4;
+    const idx = h4ByKey.get(prevKey);
+    out[i] = idx != null && adx[idx] > 0 ? adx[idx] : null;
+  }
+  return out;
+}
+
+// Near = the smallest-magnitude extension outside the range (1 < |fib| <= 1.5);
+// far = anything beyond that (|fib| > 1.5). Matches video 6's worked example
+// (skip the far fade, buy the 1.5x pullback).
+function levelBand(fib) {
+  const m = Math.abs(fib);
+  if (m <= 1) return null; // inside-range levels aren't part of this rule
+  return m <= 1.5 ? 'near' : 'far';
+}
+
+export function detectAdxRegimeSwitch(bars, asiaTimeline, mondayTimeline, opts = {}) {
+  const threshold = opts.threshold ?? 30;
+  const tol = opts.tolerance ?? 0;
+  const adxSeries = computeH4AdxSeries(bars);
+  const events = [];
+  for (let i = 1; i < bars.length; i++) {
+    const bar = bars[i];
+    const adx = adxSeries[i];
+    if (adx == null) continue;
+    const trending = adx >= threshold;
+    const levels = activeLevelsAt(bar, asiaTimeline, mondayTimeline);
+    for (const lvl of levels) {
+      const band = levelBand(lvl.fib);
+      if (!band) continue;
+      const touchedUp = bar.high >= lvl.price - tol && bars[i - 1].high < lvl.price - tol;
+      const touchedDown = bar.low <= lvl.price + tol && bars[i - 1].low > lvl.price + tol;
+      if (!touchedUp && !touchedDown) continue;
+      if (!trending && band === 'far') {
+        // ranging regime: fade the far level back toward basis
+        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: touchedUp ? 'short' : 'long', kind: 'adx_fade_far' });
+      } else if (trending && band === 'near') {
+        // trending regime: buy/sell the near level as a pullback-continuation
+        // in the direction the level was approached FROM (fib>0 side reached
+        // from below on a pullback in an uptrend = long continuation, etc.)
+        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: lvl.fib > 0 ? 'long' : 'short', kind: 'adx_continuation_near' });
+      }
+    }
+  }
+  return events;
+}
