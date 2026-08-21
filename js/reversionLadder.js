@@ -61,15 +61,23 @@ export const LADDER_LINES = [
 //   2. A p90 rung exists. On the old geometry the outermost armable line was a
 //      mislabelled 75th; the exhaustion trade lives further out than that.
 //
-// Ten lines: three rungs a side on the excursion, two a side on the close.
+// SIX lines — three rungs a side, and NO O-C rungs. That is not a simplification,
+// it is a correction. O-C and O-H/O-L are the SAME QUANTITY: by the reflection
+// principle the running maximum of a driftless walk is distributed like |close-open|,
+// so median(H-O) = median(|C-O|). The fitted multipliers say so out loud —
+// oc [0.530, 1.073, 1.668] vs oh [0.528, 1.060, 1.667], within 1%.
+//
+// Carrying both put two lines at the same price. `ladderLevels` targets the next
+// band inward, so whichever sorted second got a target sitting ON its own entry:
+// unwinnable by construction, and it showed up as C+ p50 winning 1% of 152 touches
+// and O-L p75 winning 1% of 78. Roughly half of a EURUSD tally was those trades.
+//
+// O-H/O-L are kept over O-C because they are fit SEPARATELY per side, so they carry
+// each instrument's asymmetry; O-C is symmetric by construction and adds nothing.
 export const FITTED_LINES = [
   { key: 'OH_p50', band: 'oh_p50', side:  1, tier: 'med', label: 'O-H p50', color: '#34d399', dash: [7, 4] },
   { key: 'OH_p75', band: 'oh_p75', side:  1, tier: 'p75', label: 'O-H p75', color: '#10b981', dash: [2, 4] },
   { key: 'OH_p90', band: 'oh_p90', side:  1, tier: 'p90', label: 'O-H p90', color: '#f59e0b', dash: [1, 0] },
-  { key: 'Cp_p50', band: 'oc_p50', side:  1, tier: 'med', label: 'C+ p50',  color: '#60a5fa', dash: [7, 4] },
-  { key: 'Cp_p75', band: 'oc_p75', side:  1, tier: 'p75', label: 'C+ p75',  color: '#3b82f6', dash: [2, 4] },
-  { key: 'Cm_p50', band: 'oc_p50', side: -1, tier: 'med', label: 'C- p50',  color: '#fbbf24', dash: [7, 4] },
-  { key: 'Cm_p75', band: 'oc_p75', side: -1, tier: 'p75', label: 'C- p75',  color: '#f59e0b', dash: [2, 4] },
   { key: 'OL_p50', band: 'ol_p50', side: -1, tier: 'med', label: 'O-L p50', color: '#f87171', dash: [7, 4] },
   { key: 'OL_p75', band: 'ol_p75', side: -1, tier: 'p75', label: 'O-L p75', color: '#ef4444', dash: [2, 4] },
   { key: 'OL_p90', band: 'ol_p90', side: -1, tier: 'p90', label: 'O-L p90', color: '#fb923c', dash: [1, 0] },
@@ -118,9 +126,16 @@ export function ladderLevels(open, pcts, lines_ = null) {
       sideLines[i].outerTarget = i === sideLines.length - 1 ? null : sideLines[i + 1].price;
     }
   }
+  // Drop any rung whose fade target has collapsed onto its own entry. Two bands at
+  // (nearly) the same price make an unwinnable trade — the target is unreachable as
+  // a profit and the stop is the only outcome — and it looks like a terrible edge
+  // rather than a broken level. Silently wrong beats loudly wrong here, so the rung
+  // is removed rather than traded. Threshold is a hair above float noise, in % terms.
+  const usable = lines.filter(l => Math.abs(l.price - l.target) / open * 100 > 0.005);
+  if (!usable.length) return null;
   const byKey = {};
-  for (const l of lines) byKey[l.key] = l;
-  return { open, lines, byKey };
+  for (const l of usable) byKey[l.key] = l;
+  return { open, lines: usable, byKey };
 }
 
 // Run the touch-and-resolve race for every armed line over one session's

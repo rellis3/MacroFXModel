@@ -238,7 +238,7 @@ ok('linesFor picks the fitted set from fitted bands', linesFor(FITTED) === FITTE
 ok('linesFor falls back to the legacy set', linesFor(PCTS) === LADDER_LINES && linesFor(null) === LADDER_LINES);
 
 const fl = ladderLevels(OPEN, FITTED);
-ok('fitted ladder builds all 10 lines', fl.lines.length === 10, `got ${fl.lines.length}`);
+ok('fitted ladder builds all 6 lines', fl.lines.length === 6, `got ${fl.lines.length}`);
 ok('p90 rungs exist both sides', !!fl.byKey.OH_p90 && !!fl.byKey.OL_p90);
 
 // The target chain is what actually gets traded — a mis-sort would silently aim at
@@ -256,9 +256,25 @@ ok('outermost up line has no outer target', up[up.length - 1].outerTarget === nu
 
 // Asymmetry is the property the separate O-H / O-L fit exists to keep; a mirroring
 // bug would erase it while leaving everything else looking correct.
-const asym = ladderLevels(100, { ...FITTED, oh_p90: 0.50, ol_p90: 1.50 });
+// (values kept clear of the p75 rungs — an oh_p90 equal to oh_p75 would collide and
+// be dropped by the degenerate-target guard, which is correct but not what this
+// test is about.)
+const asym = ladderLevels(100, { ...FITTED, oh_p90: 0.90, ol_p90: 1.50 });
 ok('O-H/O-L use their own percentages, not a mirror',
-   near(asym.byKey.OH_p90.price, 100.50) && near(asym.byKey.OL_p90.price, 98.50));
+   near(asym.byKey.OH_p90.price, 100.90) && near(asym.byKey.OL_p90.price, 98.50));
+
+// The bug this guard exists for: O-C and O-H are the SAME quantity (reflection
+// principle), so carrying both put two bands at one price and the outer one's fade
+// target landed on its own entry — unwinnable, and it read as 1% win rate over 152
+// touches rather than as a broken level.
+const collided = { ...FITTED, oc_p50: 0.25, oc_p75: 0.50 };   // identical to oh_p50/p75
+const cl = ladderLevels(OPEN, collided, [...FITTED_LINES,
+  { key: 'Cp_p50', band: 'oc_p50', side: 1, tier: 'med', label: 'C+ p50', color: '#60a5fa', dash: [7, 4] }]);
+const degenerate = cl.lines.filter(l => Math.abs(l.price - l.target) / OPEN * 100 <= 0.005);
+ok('a rung whose target collapses onto its entry is dropped, not traded',
+   degenerate.length === 0 && !cl.byKey.Cp_p50, `${degenerate.length} degenerate, Cp_p50 present: ${!!cl.byKey.Cp_p50}`);
+ok('no fitted rung shares a price with another',
+   new Set(fl.lines.map(l => l.pct + ':' + l.side)).size === fl.lines.length);
 
 ok('a missing ladder yields null, not zero-width lines',
    ladderLevels(100, { oh_p50: null }) === null && ladderLevels(100, null) === null);
