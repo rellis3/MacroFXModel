@@ -5,7 +5,7 @@ import {
   normalizeBars, groupAsiaSessions, groupMondaySessions, buildAsiaRangeHistory,
   buildLevelTimeline, levelsActiveOn, activeLevelsAt, detectWickEngulfing, detectMidpointPullback,
   detectSessionExtremeAnchor, detectVwapTap, resampleToH4, computeH4AdxSeries,
-  detectAdxRegimeSwitch,
+  detectAdxRegimeSwitch, planTrades,
 } from './entryTriggerLabEngine.js';
 
 let passed = 0;
@@ -252,6 +252,70 @@ t('detectAdxRegimeSwitch: runs end-to-end without throwing on a longer synthetic
   const asiaTimeline = [{ date: '2026-01-10', levels: [{ price: 1.1005, fib: 1.5 }, { price: 1.1010, fib: 2 }], confluences: [] }];
   const events = detectAdxRegimeSwitch(bars, asiaTimeline, [], { threshold: 30 });
   assert.ok(Array.isArray(events));
+});
+
+// ── planTrades ────────────────────────────────────────────────────────────────
+// Flat baseline bars (constant H-L) so ATR settles to a known, small value —
+// forward moves are then made large enough to clearly cross TP or SL
+// regardless of the exact ATR figure, so the test isn't fragile to Wilder
+// EMA arithmetic.
+function mkFlatBars(n, date, startHour, entryPrice) {
+  const bars = [];
+  for (let i = 0; i < n; i++) {
+    const hh = startHour + Math.floor(i / 12), mm = (i % 12) * 5;
+    bars.push(mkBar(date, hh, mm, entryPrice, entryPrice + 0.0005, entryPrice - 0.0005, entryPrice));
+  }
+  return bars;
+}
+
+t('planTrades: TP hit first → win, exit price pinned to the planned TP', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const winBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0100, entry - 0.0002, entry + 0.0090); // huge up move
+  const bars = [...pre, eventBar, winBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'long', kind: 'wick_engulf' }];
+  const planned = planTrades(bars, events, {});
+  assert.equal(planned.length, 1);
+  assert.equal(planned[0].planned, true);
+  assert.equal(planned[0].outcome, 'win');
+  assert.ok(Math.abs(planned[0].exitPrice - planned[0].tp) < 1e-9);
+  assert.ok(planned[0].tp > entry && planned[0].sl < entry); // long: TP above, SL below
+});
+
+t('planTrades: SL hit first → loss', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const lossBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0002, entry - 0.0100, entry - 0.0090); // huge down move
+  const bars = [...pre, eventBar, lossBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'long', kind: 'wick_engulf' }];
+  const planned = planTrades(bars, events, {});
+  assert.equal(planned[0].outcome, 'loss');
+  assert.ok(Math.abs(planned[0].exitPrice - planned[0].sl) < 1e-9);
+});
+
+t('planTrades: neither hit within the hold window → open', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const quietBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0001, entry - 0.0001, entry);
+  const bars = [...pre, eventBar, quietBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'long', kind: 'wick_engulf' }];
+  const planned = planTrades(bars, events, { maxHoldBars: 5 });
+  assert.equal(planned[0].outcome, 'open');
+});
+
+t('planTrades: short direction mirrors SL/TP placement', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const winBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0002, entry - 0.0100, entry - 0.0090); // huge down move → short wins
+  const bars = [...pre, eventBar, winBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'short', kind: 'adx_fade_far' }];
+  const planned = planTrades(bars, events, {});
+  assert.ok(planned[0].tp < entry && planned[0].sl > entry); // short: TP below, SL above
+  assert.equal(planned[0].outcome, 'win');
 });
 
 console.log(`\n${passed} passed`);

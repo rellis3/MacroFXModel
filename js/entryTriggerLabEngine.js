@@ -27,7 +27,7 @@
 
 import { computeBodyRange, projectFibLevels, detectConfluences } from './ranges.js';
 import { barLondonHour, barLondonDay, getPipSize } from './utils.js';
-import { adxWilder } from './indicatorCore.js';
+import { adxWilder, atrWilder } from './indicatorCore.js';
 import { computeSessionVwap } from './vwapReversionEngine.js';
 
 // ── Bar normalization ────────────────────────────────────────────────────────
@@ -427,4 +427,63 @@ export function detectAdxRegimeSwitch(bars, asiaTimeline, mondayTimeline, opts =
     }
   }
   return events;
+}
+
+// ── Trade planning — SL/TP + walk-forward outcome ────────────────────────────
+// Every detector above only marks WHERE a rule fired; it deliberately doesn't
+// plan a trade (see file header — visual scan, not a backtest). This adds an
+// OPTIONAL, uniform trade plan on top of any point-event list so the outcome
+// is actually visible: SL = 1.5x ATR(14) beyond entry — "ATR-based initial
+// stop-loss sizing" is the single most repeated, highest-confidence rule in
+// the whole transcripts file (videos 4, 6, 11, 17) — and TP = a 2R target
+// (2x the SL distance), a standard, uniform default rather than a
+// per-test-tuned number. Applies to wick_engulf/midpoint_pullback/vwap_tap/
+// adx_regime events only — session-extreme-anchor isn't a directional entry
+// signal, it's a per-day level-anchor comparison, so it's not planned here.
+//
+// Deliberately does NOT reuse walkBars from forecastCore.js: that brick
+// solves a different sub-problem (a RESTING order waiting to be filled, then
+// walked to SL/TP). Every event here already executed at the event bar's own
+// close — there's no fill-wait step — so forcing it through walkBars' fill
+// semantics would be more confusing than the ~10 lines below.
+function walkToExit(fwdBars, entry, sl, tp, isBuy) {
+  for (const bar of fwdBars) {
+    if (isBuy) {
+      if (bar.low <= sl) return { outcome: 'loss', exitTime: bar.time, exitPrice: sl };
+      if (bar.high >= tp) return { outcome: 'win', exitTime: bar.time, exitPrice: tp };
+    } else {
+      if (bar.high >= sl) return { outcome: 'loss', exitTime: bar.time, exitPrice: sl };
+      if (bar.low <= tp) return { outcome: 'win', exitTime: bar.time, exitPrice: tp };
+    }
+  }
+  const last = fwdBars[fwdBars.length - 1];
+  return { outcome: 'open', exitTime: last ? last.time : null, exitPrice: last ? last.close : entry };
+}
+
+// opts: { atrPeriod=14, slMult=1.5, tpMult=2 (R-multiple of the SL distance),
+// maxHoldBars=288 (~1 trading day of M5 bars — the max forward window before
+// a still-open trade is marked 'open' rather than walked indefinitely) }.
+// Returns the same events, each augmented with { planned, sl, tp, outcome,
+// exitTime, exitPrice } — 'planned:false' (SL/TP omitted) only when ATR
+// wasn't warmed up yet at that bar.
+export function planTrades(bars, events, opts = {}) {
+  const atrPeriod = opts.atrPeriod ?? 14;
+  const slMult = opts.slMult ?? 1.5;
+  const tpMult = opts.tpMult ?? 2;
+  const maxHoldBars = opts.maxHoldBars ?? 288;
+  const atr = atrWilder(bars, atrPeriod);
+  const timeIndex = new Map(bars.map((b, i) => [b.time, i]));
+
+  return events.map(ev => {
+    const i = timeIndex.get(ev.time);
+    if (i == null || !(atr[i] > 0)) return { ...ev, planned: false };
+    const isBuy = ev.dir === 'long';
+    const entry = ev.price;
+    const slDist = slMult * atr[i];
+    const sl = isBuy ? entry - slDist : entry + slDist;
+    const tp = isBuy ? entry + slDist * tpMult : entry - slDist * tpMult;
+    const fwd = bars.slice(i + 1, i + 1 + maxHoldBars);
+    const { outcome, exitTime, exitPrice } = walkToExit(fwd, entry, sl, tp, isBuy);
+    return { ...ev, planned: true, sl, tp, outcome, exitTime, exitPrice };
+  });
 }
