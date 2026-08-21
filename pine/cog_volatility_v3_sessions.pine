@@ -73,12 +73,24 @@ show_oh_ol_drift = input.bool(false,  "Show OH/OL + Drift Lines",  group="OH/OL 
 // (p50 reached on ~50% of sessions, p75 ~25%, p90 ~10%), so the 90th is the one
 // that marks a genuinely stretched session rather than an ordinary one. Older
 // exports carry no 90th; those lines simply stay na and nothing is drawn.
-col_oh_90  = input.color(color.new(color.orange,  0),  "OH 90th Colour",   group="OH/OL + Drift")
-col_ol_90  = input.color(color.new(color.red,     0),  "OL 90th Colour",   group="OH/OL + Drift")
-col_oh_75  = input.color(color.new(color.yellow,  0),  "OH 75th Colour",   group="OH/OL + Drift")
-col_oh_med = input.color(color.new(color.yellow,  60), "OH Median Colour", group="OH/OL + Drift")
-col_ol_75  = input.color(color.new(color.fuchsia, 0),  "OL 75th Colour",   group="OH/OL + Drift")
-col_ol_med = input.color(color.new(color.fuchsia, 60), "OL Median Colour", group="OH/OL + Drift")
+// Per-level visibility. Turning a rung OFF is not the same as recolouring it:
+// with three rungs a side plus the Close and Proj families the chart gets busy
+// fast, and the usual reason to hide one is to read the others, not to restyle it.
+// `show_oh_ol_drift` remains the master switch for the whole group.
+show_oh_90    = input.bool(true, "  O-H 90th",  group="OH/OL + Drift", inline="oh90")
+show_oh_75    = input.bool(true, "  O-H 75th",  group="OH/OL + Drift", inline="oh75")
+show_oh_med   = input.bool(true, "  O-H median", group="OH/OL + Drift", inline="ohmed")
+show_ol_90    = input.bool(true, "  O-L 90th",  group="OH/OL + Drift", inline="ol90")
+show_ol_75    = input.bool(true, "  O-L 75th",  group="OH/OL + Drift", inline="ol75")
+show_ol_med   = input.bool(true, "  O-L median", group="OH/OL + Drift", inline="olmed")
+show_drift    = input.bool(true, "  Drift arrow", group="OH/OL + Drift",
+     tooltip="The sloped forecast arrow from the session open. Drift is REPORTED by the fitted ladder, not applied to the O-H/O-L levels — those carry each instrument's structural asymmetry instead. Turn it off if the arrow crowds the levels.")
+col_oh_90  = input.color(color.new(color.orange,  0),  "OH 90th Colour",   group="OH/OL + Drift", inline="oh90")
+col_ol_90  = input.color(color.new(color.red,     0),  "OL 90th Colour",   group="OH/OL + Drift", inline="ol90")
+col_oh_75  = input.color(color.new(color.yellow,  0),  "OH 75th Colour",   group="OH/OL + Drift", inline="oh75")
+col_oh_med = input.color(color.new(color.yellow,  60), "OH Median Colour", group="OH/OL + Drift", inline="ohmed")
+col_ol_75  = input.color(color.new(color.fuchsia, 0),  "OL 75th Colour",   group="OH/OL + Drift", inline="ol75")
+col_ol_med = input.color(color.new(color.fuchsia, 60), "OL Median Colour", group="OH/OL + Drift", inline="olmed")
 
 // =====================================================
 // HELPERS (unchanged from v1)
@@ -461,12 +473,12 @@ plot(oc_dn_med,  "Close Med Dn", color=col_oc_med, linewidth=1, style=plot.style
 // STATIC PLOTS — OH / OL (asymmetric open-anchored bands)
 // =====================================================
 
-plot(show_oh_ol_drift ? oh_up_90  : na, "OH 90th Up",  color=col_oh_90,  linewidth=2, style=plot.style_stepline)
-plot(show_oh_ol_drift ? ol_dn_90  : na, "OL 90th Dn",  color=col_ol_90,  linewidth=2, style=plot.style_stepline)
-plot(show_oh_ol_drift ? oh_up_75  : na, "OH 75th Up",  color=col_oh_75,  linewidth=2, style=plot.style_stepline)
-plot(show_oh_ol_drift ? oh_up_med : na, "OH Med Up",   color=col_oh_med, linewidth=1, style=plot.style_stepline)
-plot(show_oh_ol_drift ? ol_dn_75  : na, "OL 75th Dn",  color=col_ol_75,  linewidth=2, style=plot.style_stepline)
-plot(show_oh_ol_drift ? ol_dn_med : na, "OL Med Dn",   color=col_ol_med, linewidth=1, style=plot.style_stepline)
+plot(show_oh_ol_drift and show_oh_90 ? oh_up_90  : na, "OH 90th Up",  color=col_oh_90,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift and show_ol_90 ? ol_dn_90  : na, "OL 90th Dn",  color=col_ol_90,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift and show_oh_75 ? oh_up_75  : na, "OH 75th Up",  color=col_oh_75,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift and show_oh_med ? oh_up_med : na, "OH Med Up",   color=col_oh_med, linewidth=1, style=plot.style_stepline)
+plot(show_oh_ol_drift and show_ol_75 ? ol_dn_75  : na, "OL 75th Dn",  color=col_ol_75,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift and show_ol_med ? ol_dn_med : na, "OL Med Dn",   color=col_ol_med, linewidth=1, style=plot.style_stepline)
 
 // =====================================================
 // DYNAMIC LINES + LABELS
@@ -524,6 +536,8 @@ var label lb_lOC_H75 = na
 var label lb_lOC_L75 = na
 
 // — OH/OL labels + drift forecast arrow —
+var label lb_oh_up_90  = na
+var label lb_ol_dn_90  = na
 var label lb_oh_up_75  = na
 var label lb_oh_up_med = na
 var label lb_ol_dn_75  = na
@@ -578,6 +592,8 @@ if barstate.islast
     label.delete(lb_lOC_H75)
     label.delete(lb_lOC_L75)
 
+    label.delete(lb_oh_up_90)
+    label.delete(lb_ol_dn_90)
     label.delete(lb_oh_up_75)
     label.delete(lb_oh_up_med)
     label.delete(lb_ol_dn_75)
@@ -819,22 +835,32 @@ if barstate.islast
     // ── OH/OL labels + Drift forecast arrow ──────────────────────────────────
     if show_oh_ol_drift
         if show_labels
-            if not na(oh_up_75)
+            if not na(oh_up_90) and show_oh_90
+                lb_oh_up_90 := label.new(bar_index + 2, oh_up_90,
+                     "OH 90p  +" + str.tostring(vol_oh_90) + "%",
+                     style=label.style_label_left, color=color.new(col_oh_90, 70),
+                     textcolor=color.white, size=size.small)
+            if not na(ol_dn_90) and show_ol_90
+                lb_ol_dn_90 := label.new(bar_index + 2, ol_dn_90,
+                     "OL 90p  -" + str.tostring(vol_ol_90) + "%",
+                     style=label.style_label_left, color=color.new(col_ol_90, 70),
+                     textcolor=color.white, size=size.small)
+            if not na(oh_up_75) and show_oh_75
                 lb_oh_up_75 := label.new(bar_index + 2, oh_up_75,
                      "OH 75p  +" + str.tostring(vol_oh_75) + "%",
                      style=label.style_label_left, color=color.new(col_oh_75, 70),
                      textcolor=color.white, size=size.small)
-            if not na(oh_up_med)
+            if not na(oh_up_med) and show_oh_med
                 lb_oh_up_med := label.new(bar_index + 2, oh_up_med,
                      "OH med  +" + str.tostring(vol_oh_med) + "%",
                      style=label.style_label_left, color=color.new(col_oh_med, 70),
                      textcolor=color.white, size=size.small)
-            if not na(ol_dn_75)
+            if not na(ol_dn_75) and show_ol_75
                 lb_ol_dn_75 := label.new(bar_index + 2, ol_dn_75,
                      "OL 75p  -" + str.tostring(vol_ol_75) + "%",
                      style=label.style_label_left, color=color.new(col_ol_75, 70),
                      textcolor=color.white, size=size.small)
-            if not na(ol_dn_med)
+            if not na(ol_dn_med) and show_ol_med
                 lb_ol_dn_med := label.new(bar_index + 2, ol_dn_med,
                      "OL med  -" + str.tostring(vol_ol_med) + "%",
                      style=label.style_label_left, color=color.new(col_ol_med, 70),
@@ -842,7 +868,7 @@ if barstate.islast
 
         // Drift forecast arrow — from session open, sloped by drift × OC 75th range
         // The line spans one full day (24 h) in time so the angle is timeframe-agnostic.
-        if not na(drift_val) and not na(dayOpen)
+        if not na(drift_val) and not na(dayOpen) and show_drift
             // Scale: drift of ±1.0 maps to ±1× the OC 75th expected move.
             // Falls back to OC med, then to 1% of price if neither is available.
             ocRef       = not na(vol_oc_75)  ? vol_oc_75  :
