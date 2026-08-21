@@ -24,18 +24,6 @@ Gold/logs/gold_journal.jsonl
 bot/regime_bot.log
 bot/.bot_state.json
 bot/data/beta_history.jsonl
-portfolioBacktest/cache/audjpy_m1.parquet
-portfolioBacktest/cache/eurcad_m1.parquet
-portfolioBacktest/cache/eurchf_m1.parquet
-portfolioBacktest/cache/eurgbp_m1.parquet
-portfolioBacktest/cache/eurjpy_m1.parquet
-portfolioBacktest/cache/gbpcad_m1.parquet
-portfolioBacktest/cache/gbpchf_m1.parquet
-portfolioBacktest/cache/gbpjpy_m1.parquet
-portfolioBacktest/cache/gold_m1.parquet
-portfolioBacktest/cache/us30_m1.parquet
-portfolioBacktest/cache/usdjpy_m1.parquet
-portfolioBacktest/cache/us2000_m1.parquet
 logs/regime_bot_v2.log
 logs/dyn_anchor_bot.log
 logs/regime_bot_v7.log
@@ -122,3 +110,14 @@ backtestSystem/killswitch_state.json
 # see forge/ff_calendar.py for the URL and the date-repair it needs)
 data/calendar/
 forge/out_vol*/
+
+# portfolioBacktest/cache — 2.4GB of M1/H1/H4/D1 parquet, refreshed by copying new
+# files in. It was half-managed: 12 _m1 files ignored by name, 10 others TRACKED,
+# and a data refresh left 128 more untracked — so `git add -A` would have staged
+# most of 2.4GB into a repo that pushes to GitHub. Ignore the directory instead of
+# chasing filenames, which drifts every time the cache gains a pair or a timeframe.
+# The tracked ones were removed with `git rm --cached`; they remain on disk.
+portfolioBacktest/cache/
+
+# CVOL history: the copy in data/cvol/ is the one forge reads (see forge/vol.py).
+cme_cvol_eod_available_history.parquet
