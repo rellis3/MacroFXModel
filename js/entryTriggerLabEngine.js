@@ -164,13 +164,31 @@ export function levelsActiveOn(dateStr, timeline, periodKind) {
 
 // Merge the active Asia-day ladder and active Monday-week ladder for a given
 // bar's calendar date into one flat, tagged level array.
-export function activeLevelsAt(bar, asiaTimeline, mondayTimeline) {
+//
+// opts.strongOnly: use the CONFLUENT levels only — i.e. where today's ladder
+// and yesterday's ladder (or this week's and last week's) land within the
+// pip/dollar threshold `detectConfluences` already applies (reused from
+// ranges.js/confluence-core.js — same 2-pip-FX / $5-gold / etc default the
+// live dashboard uses), instead of the full raw ladder. This is the "strong
+// levels" reading Husky describes repeatedly: a level is stronger when it's
+// confirmed by the prior period's own ladder landing near the same price,
+// not just any extension multiple. `fib` on a strong entry is TODAY's own
+// extension multiple (todayFib) — the level actually live/traded that
+// period — kept so near/far banding (see detectAdxRegimeSwitch) still works.
+export function activeLevelsAt(bar, asiaTimeline, mondayTimeline, opts = {}) {
   const date = bar.datetime.split(' ')[0];
   const asia = levelsActiveOn(date, asiaTimeline, 'asia');
   const monday = levelsActiveOn(date, mondayTimeline, 'monday');
+  const pick = period => {
+    if (!period) return [];
+    if (opts.strongOnly) {
+      return period.confluences.map(c => ({ price: c.price, fib: c.todayFib, isTight: c.isTight, density: c.density, strong: true }));
+    }
+    return period.levels.map(l => ({ price: l.price, fib: l.fib, strong: false }));
+  };
   const out = [];
-  if (asia) for (const l of asia.levels) out.push({ price: l.price, fib: l.fib, source: 'asia' });
-  if (monday) for (const l of monday.levels) out.push({ price: l.price, fib: l.fib, source: 'monday' });
+  for (const l of pick(asia)) out.push({ ...l, source: 'asia' });
+  for (const l of pick(monday)) out.push({ ...l, source: 'monday' });
   return out;
 }
 
@@ -185,7 +203,7 @@ export function detectWickEngulfing(bars, asiaTimeline, mondayTimeline, opts = {
   const events = [];
   for (let i = 1; i < bars.length - 1; i++) {
     const a = bars[i];
-    const levels = activeLevelsAt(a, asiaTimeline, mondayTimeline);
+    const levels = activeLevelsAt(a, asiaTimeline, mondayTimeline, { strongOnly: opts.strongOnly });
     for (const lvl of levels) {
       const L = lvl.price;
       // Approached from below (level acts as resistance → short setup):
@@ -202,7 +220,7 @@ export function detectWickEngulfing(bars, asiaTimeline, mondayTimeline, opts = {
       if (!engulfs) continue;
       events.push({
         time: b.time, price: b.close, level: L, levelSource: lvl.source, fib: lvl.fib,
-        dir, kind: 'wick_engulf', wickBarTime: a.time,
+        dir, kind: 'wick_engulf', wickBarTime: a.time, strong: !!lvl.strong,
       });
     }
   }
@@ -390,7 +408,7 @@ export function detectAdxRegimeSwitch(bars, asiaTimeline, mondayTimeline, opts =
     const adx = adxSeries[i];
     if (adx == null) continue;
     const trending = adx >= threshold;
-    const levels = activeLevelsAt(bar, asiaTimeline, mondayTimeline);
+    const levels = activeLevelsAt(bar, asiaTimeline, mondayTimeline, { strongOnly: opts.strongOnly });
     for (const lvl of levels) {
       const band = levelBand(lvl.fib);
       if (!band) continue;
@@ -399,12 +417,12 @@ export function detectAdxRegimeSwitch(bars, asiaTimeline, mondayTimeline, opts =
       if (!touchedUp && !touchedDown) continue;
       if (!trending && band === 'far') {
         // ranging regime: fade the far level back toward basis
-        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: touchedUp ? 'short' : 'long', kind: 'adx_fade_far' });
+        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: touchedUp ? 'short' : 'long', kind: 'adx_fade_far', strong: !!lvl.strong });
       } else if (trending && band === 'near') {
         // trending regime: buy/sell the near level as a pullback-continuation
         // in the direction the level was approached FROM (fib>0 side reached
         // from below on a pullback in an uptrend = long continuation, etc.)
-        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: lvl.fib > 0 ? 'long' : 'short', kind: 'adx_continuation_near' });
+        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: lvl.fib > 0 ? 'long' : 'short', kind: 'adx_continuation_near', strong: !!lvl.strong });
       }
     }
   }
