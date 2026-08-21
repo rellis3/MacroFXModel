@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entry Trigger Lab — Husky/Jordan discretionary entries</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0b0d14; --panel: #12141d; --border: #23262f;
+    --text: #e5e7eb; --text2: #9ca3af; --text3: #6b7280;
+    --blue: #3b82f6; --blue-bg: rgba(59,130,246,.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .bar h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: .3px; }
+  .bar label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 3px; }
+  select, input[type="date"], input[type="number"] {
+    background: #0c0e15; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: 'DM Mono', monospace;
+  }
+  .go { background: var(--blue); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .go:disabled { opacity: .5; cursor: not-allowed; }
+  .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .note { font-size: 10.5px; color: #d1a35a; background: rgba(209,163,90,.08);
+    border-bottom: 1px solid var(--border); padding: 5px 14px; font-family: 'DM Mono', monospace; }
+  .arm { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 14px;
+    border-bottom: 1px solid var(--border); background: var(--panel); }
+  .arm .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3);
+    border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px 3px 8px; background: #0c0e15;
+    opacity: .45; transition: opacity .12s, border-color .12s; }
+  .chip.on { opacity: 1; color: var(--text); border-color: var(--text3); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .chip .cnt { color: var(--text3); font-size: 10px; }
+  #chartWrap { position: relative; flex: 1; min-height: 0; }
+  #chart { position: absolute; inset: 0; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color: var(--text3); font-size: 13px; font-family: 'DM Mono', monospace; text-align:center; padding: 20px; }
+  #legend { position: absolute; bottom: 8px; left: 8px; z-index: 5; background: rgba(12,14,21,.9);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: 'DM Mono', monospace;
+    font-size: 10px; color: var(--text2); display: flex; flex-direction: column; gap: 4px; max-width: 260px; }
+  #legend .row { display: flex; align-items: center; gap: 6px; }
+  #legend .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>🎯 Entry Trigger Lab</h1>
+    <label>Pair</label><select id="pair"></select>
+    <label>From</label><input type="date" id="from">
+    <label>To</label><input type="date" id="to">
+    <button class="go" id="go">Generate</button>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="note">
+    Visual scan only — not a Sharpe/IS-OOS backtest. Levels (Asia + Monday range-extension
+    ladders) are reused as-is from <code>js/ranges.js</code>/<code>confluence-core.js</code>, walked
+    day-by-day across the loaded range instead of only "today vs yesterday". Every marker below is a
+    candidate a rule fired on — eyeball whether it looks like anything before spending a full honest
+    backtest on it. Source: <code>education/jordan_video_transcripts/JORDAN_VIDEO_INSIGHTS.md</code>.
+  </div>
+  <div class="arm" id="levelArm">
+    <span class="lbl">Levels</span>
+    <span class="chip on" data-lvl="asia"><span class="dot" style="background:#f59e0b"></span>Asia ladder</span>
+    <span class="chip on" data-lvl="monday"><span class="dot" style="background:#60a5fa"></span>Monday ladder</span>
+  </div>
+  <div class="arm" id="testArm">
+    <span class="lbl">Tests</span>
+    <span class="chip on" data-test="wick_engulf"><span class="dot" style="background:#f59e0b"></span>Wick+Engulf <span class="cnt" id="cnt_wick_engulf"></span></span>
+    <span class="chip on" data-test="midpoint_pullback"><span class="dot" style="background:#c084fc"></span>Midpoint pullback <span class="cnt" id="cnt_midpoint_pullback"></span></span>
+    <span class="chip on" data-test="session_extreme"><span class="dot" style="background:#34d399"></span>Session-extreme anchor <span class="cnt" id="cnt_session_extreme"></span></span>
+    <span class="chip on" data-test="vwap_tap"><span class="dot" style="background:#14b8a6"></span>VWAP tap <span class="cnt" id="cnt_vwap_tap"></span></span>
+    <span class="chip on" data-test="adx_regime"><span class="dot" style="background:#f472b6"></span>ADX regime switch <span class="cnt" id="cnt_adx_regime"></span></span>
+  </div>
+  <div id="chartWrap">
+    <div id="chart"></div>
+    <canvas id="overlay"></canvas>
+    <div id="legend">
+      <div class="row"><span class="sw" style="background:#f59e0b"></span>Asia ladder (solid, per day)</div>
+      <div class="row"><span class="sw" style="background:#60a5fa"></span>Monday ladder (dashed, per week)</div>
+      <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges</div>
+      <div class="row">▲ long / ▼ short marker, colored by test</div>
+    </div>
+    <div id="hint">Pick a pair and date range, then Generate.<br>Toggle levels/tests to isolate one idea at a time.</div>
+  </div>
+
+<script type="module">
+import { PAIRS } from './js/config.js';
+import {
+  normalizeBars, buildAsiaRangeHistory, buildMondayRangeHistory, buildLevelTimeline,
+  detectWickEngulfing, detectMidpointPullback, detectSessionExtremeAnchor, detectVwapTap,
+  detectAdxRegimeSwitch,
+} from './js/entryTriggerLabEngine.js';
+import { getPipSize } from './js/utils.js';
+
+const $ = id => document.getElementById(id);
+function setStatus(t) { $('status').textContent = t; }
+
+const TEST_COLOR = {
+  wick_engulf: '#f59e0b',
+  midpoint_pullback: '#c084fc',
+  vwap_tap: '#14b8a6',
+  adx_regime: '#f472b6',
+};
+
+const state = {
+  armedLevels: new Set(['asia', 'monday']),
+  armedTests: new Set(['wick_engulf', 'midpoint_pullback', 'session_extreme', 'vwap_tap', 'adx_regime']),
+};
+
+let chart = null, series = null, overlayCanvas = null, octx = null, dpr = window.devicePixelRatio || 1;
+let asiaTimeline = [], mondayTimeline = [];
+let events = { wick_engulf: [], midpoint_pullback: [], vwap_tap: [], adx_regime: [] };
+let sessionExtreme = [];
+let bars5m = [];
+
+// ── UI setup ─────────────────────────────────────────────────────────────────
+(function initUI() {
+  const sel = $('pair');
+  for (const p of PAIRS) {
+    const o = document.createElement('option'); o.value = p.symbol; o.textContent = p.name; sel.appendChild(o);
+  }
+  sel.value = 'EUR/USD';
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  $('to').value = iso(now);
+  $('from').value = iso(new Date(now.getTime() - 21 * 864e5));
+
+  $('levelArm').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    const k = chip.dataset.lvl;
+    if (state.armedLevels.has(k)) state.armedLevels.delete(k); else state.armedLevels.add(k);
+    chip.classList.toggle('on', state.armedLevels.has(k));
+    scheduleDraw();
+  });
+  $('testArm').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    const k = chip.dataset.test;
+    if (state.armedTests.has(k)) state.armedTests.delete(k); else state.armedTests.add(k);
+    chip.classList.toggle('on', state.armedTests.has(k));
+    scheduleDraw();
+  });
+  $('go').addEventListener('click', loadData);
+})();
+
+function ensureChart(symbol) {
+  if (chart) { try { chart.remove(); } catch (_) {} chart = null; }
+  const el = $('chart'); el.innerHTML = '';
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 11, fontFamily: "'DM Mono', monospace" },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    timeScale: { borderColor: 'rgba(255,255,255,0.12)', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.12)', scaleMargins: { top: 0.1, bottom: 0.1 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  });
+  const precision = symbol.includes('JPY') ? 3 : symbol.includes('XAU') ? 2 : 5;
+  const minMove = symbol.includes('JPY') ? 0.001 : symbol.includes('XAU') ? 0.01 : 0.00001;
+  series = chart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    priceFormat: { type: 'price', precision, minMove },
+  });
+  chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+}
+
+function setupOverlay() {
+  overlayCanvas = $('overlay');
+  octx = overlayCanvas.getContext('2d');
+  const ro = new ResizeObserver(() => { sizeOverlay(); scheduleDraw(); });
+  ro.observe($('chartWrap'));
+  sizeOverlay();
+  requestAnimationFrame(syncLoop);
+}
+function sizeOverlay() {
+  const w = $('chartWrap').clientWidth, h = $('chartWrap').clientHeight;
+  dpr = window.devicePixelRatio || 1;
+  overlayCanvas.width = w * dpr; overlayCanvas.height = h * dpr;
+  overlayCanvas.style.width = w + 'px'; overlayCanvas.style.height = h + 'px';
+}
+let _lastSig = '';
+function syncLoop() {
+  if (chart && series && bars5m.length) {
+    const r = chart.timeScale().getVisibleLogicalRange();
+    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}` : 'x';
+    if (sig !== _lastSig) { _lastSig = sig; drawOverlay(); }
+  }
+  requestAnimationFrame(syncLoop);
+}
+let _drawPending = false;
+function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnimationFrame(() => { _drawPending = false; _lastSig = ''; drawOverlay(); }); } }
+
+// ── Data load ────────────────────────────────────────────────────────────────
+async function loadData() {
+  const symbol = $('pair').value;
+  const from = $('from').value, to = $('to').value;
+  if (!symbol || !from || !to) { setStatus('pick pair + dates'); return; }
+  $('go').disabled = true; setStatus('loading…'); $('hint').style.display = 'none';
+  try {
+    const [c5, c15] = await Promise.all([
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M5`).then(r => r.json()),
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M15`).then(r => r.json()),
+    ]);
+    if (c5.error || !c5.values?.length) { setStatus(c5.error || 'no candles for that range'); $('go').disabled = false; return; }
+    bars5m = normalizeBars(c5.values);
+    const bars15m = normalizeBars(c15?.values ?? []);
+
+    const asiaHistory = buildAsiaRangeHistory(bars5m);
+    const mondayHistory = buildMondayRangeHistory(bars15m);
+    asiaTimeline = buildLevelTimeline(asiaHistory, symbol, 'asia');
+    mondayTimeline = buildLevelTimeline(mondayHistory, symbol, 'monday');
+
+    const pip = getPipSize(symbol);
+    events.wick_engulf = detectWickEngulfing(bars5m, asiaTimeline, mondayTimeline, { tolerance: pip });
+    events.midpoint_pullback = detectMidpointPullback(bars5m, asiaTimeline, mondayTimeline, { breakoutTol: pip * 2 });
+    events.vwap_tap = detectVwapTap(bars5m, { awayTol: pip * 3 });
+    events.adx_regime = detectAdxRegimeSwitch(bars5m, asiaTimeline, mondayTimeline, { threshold: 30, tolerance: pip });
+    sessionExtreme = detectSessionExtremeAnchor(bars5m, symbol, { minPips: 3 });
+
+    ensureChart(symbol);
+    if (!overlayCanvas) setupOverlay();
+    series.setData(bars5m.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+    chart.timeScale().fitContent();
+    sizeOverlay();
+
+    for (const k of Object.keys(events)) { const el = $('cnt_' + k); if (el) el.textContent = events[k].length; }
+    $('cnt_session_extreme').textContent = sessionExtreme.filter(d => d.diverges).length;
+    setStatus(`${symbol} · ${bars5m.length} M5 candles · ${asiaTimeline.length} Asia days · ${mondayTimeline.length} Monday weeks`);
+    scheduleDraw();
+  } catch (e) {
+    setStatus('error: ' + e.message);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+// ── Overlay drawing ──────────────────────────────────────────────────────────
+function dayEpoch(dateStr) { return Math.floor(Date.parse(dateStr + 'T00:00:00Z') / 1000); }
+
+function drawSegment(x1, x2, y, color, dashed) {
+  if (x1 == null || x2 == null || y == null) return;
+  octx.save();
+  octx.strokeStyle = color; octx.lineWidth = 1.5 * dpr;
+  if (dashed) octx.setLineDash([4 * dpr, 3 * dpr]); else octx.setLineDash([]);
+  octx.beginPath(); octx.moveTo(x1 * dpr, y * dpr); octx.lineTo(x2 * dpr, y * dpr); octx.stroke();
+  octx.restore();
+}
+function drawMarker(x, y, color, dir) {
+  if (x == null || y == null) return;
+  const s = 5 * dpr;
+  octx.save();
+  octx.fillStyle = color;
+  octx.beginPath();
+  if (dir === 'long') { octx.moveTo(x * dpr, y * dpr - s); octx.lineTo(x * dpr - s, y * dpr + s); octx.lineTo(x * dpr + s, y * dpr + s); }
+  else { octx.moveTo(x * dpr, y * dpr + s); octx.lineTo(x * dpr - s, y * dpr - s); octx.lineTo(x * dpr + s, y * dpr - s); }
+  octx.closePath(); octx.fill();
+  octx.restore();
+}
+
+function drawOverlay() {
+  if (!octx) return;
+  octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  if (!chart || !series || !bars5m.length) return;
+  const ts = chart.timeScale();
+  const x = t => ts.timeToCoordinate(t);
+  const y = p => series.priceToCoordinate(p);
+
+  // Level ladders — drawn as per-day/per-week SEGMENTS (not full-width price
+  // lines: this walks many days at once, so a full-width line per level would
+  // overlap every other day's ladder). This is a deliberate departure from
+  // js/levelChart.js, which is built for a single latest-snapshot view.
+  if (state.armedLevels.has('asia')) {
+    for (const day of asiaTimeline) {
+      const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
+      if (x1 == null && x2 == null) continue;
+      for (const lvl of day.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#f59e0b', false);
+    }
+  }
+  if (state.armedLevels.has('monday')) {
+    for (const wk of mondayTimeline) {
+      const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
+      if (x1 == null && x2 == null) continue;
+      for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#60a5fa', true);
+    }
+  }
+  // Session-extreme-anchor: only draw the alternate ladder on days it diverges.
+  if (state.armedTests.has('session_extreme')) {
+    for (const day of sessionExtreme) {
+      if (!day.diverges) continue;
+      const x1 = x(dayEpoch(day.date) + 6 * 3600), x2 = x(dayEpoch(day.date) + 22 * 3600);
+      for (const lvl of day.altLevels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#34d399', true);
+    }
+  }
+
+  // Point events, one triangle per trigger.
+  for (const key of ['wick_engulf', 'midpoint_pullback', 'vwap_tap', 'adx_regime']) {
+    if (!state.armedTests.has(key)) continue;
+    for (const ev of events[key]) drawMarker(x(ev.time), y(ev.price), TEST_COLOR[key], ev.dir);
+  }
+}
+</script>
+</body>
+</html>
