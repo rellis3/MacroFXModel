@@ -298,3 +298,196 @@ export function runAtrBandEntry(packed, cfg = {}) {
     },
   };
 }
+
+/**
+ * ATR-Band CONTINUATION variant — the "other half" of this engine's own
+ * transcript basis, deliberately deferred out of `runAtrBandEntry`'s v1
+ * baseline (see that RESULTS.md's Known Limitations) and requested
+ * directly: "with ADX(4H) elevated (trending), don't fade the far
+ * extension — buy a near-level pullback into the trend instead"
+ * (transcript 6, `JORDAN_VIDEO_INSIGHTS.md`). Reuses every shared
+ * primitive from `runAtrBandEntry` above (`buildDaily`, `atrWilder`,
+ * `ema`, `buildCausalAdxLookup`, `walkBars`, `maeFromPath`) — only the
+ * per-day signal logic differs, so it's a second exported function in
+ * this same file rather than a new file (Lego Principle: one shared
+ * core, imported not copied).
+ *
+ * Every discretionary judgment, pinned:
+ *   - The FAR touch (price closes beyond basis +/- zoneMult*ATR) still
+ *     marks that a real stretch happened — same trigger as the fade mode
+ *     — but instead of fading it, its direction sets the TREND bias
+ *     (stretched above basis = uptrend, below = downtrend).
+ *   - Regime gate is the OPPOSITE of the fade mode: only proceed when
+ *     ADX(4H) >= adxMinTrend (trending), not < adxMax (ranging).
+ *   - After the far touch, wait for price to pull back to a NEARER level
+ *     (basis +/- nearMult*ATR, nearMult < zoneMult) — Husky's own
+ *     "near/low-multiple extension as a pullback-buy" description.
+ *   - Confirmation at the near level = the wick+engulfing two-candle
+ *     pattern (video 14): one bar wicks into/through the near level
+ *     without closing beyond it (rejection), the NEXT bar fully engulfs
+ *     that bar's range in the trend direction. More precise than the
+ *     fade mode's single-bar "closed back toward basis" confirmation —
+ *     this is the literal, separately-logged confirmation technique.
+ *   - Fill = guaranteed fill at the bar-after-confirmation's OPEN
+ *     (`walkBars`, `entryType:'stop'`) — identical no-lookahead pattern
+ *     to the fade mode.
+ *   - Stop = beyond the two confirmation bars' own extreme (the side
+ *     away from the trend direction) + slBufferAtrMult*ATR — same
+ *     buffer convention as the fade mode.
+ *   - Target = basis +/- extremeMult*ATR (the SAME "in discovery" outer
+ *     band already defined in cfg, just applied in the continuation
+ *     direction instead of being skipped) — reuses an existing constant
+ *     rather than inventing a fresh fixed-RR number, per the
+ *     minimal-DOF-first rule.
+ *   - One trade per day, first qualifying setup — matches the fade mode.
+ *
+ * Contract: identical to `runAtrBandEntry` — `runAtrBandContinuation(packed, cfg)
+ * -> { trades[], records[], meta }`.
+ */
+export const CONTINUATION_DEFAULT_CFG = {
+  ...DEFAULT_CFG,
+  nearMult: 1.5,        // near-level pullback distance, basis +/- nearMult*ATR
+  adxMinTrend: 30,       // proceed only when ADX(4H) >= this (trending regime)
+};
+
+export function runAtrBandContinuation(packed, cfg = {}) {
+  const c = { ...CONTINUATION_DEFAULT_CFG, ...cfg };
+  const instrument = c.instrument;
+  if (!instrument) throw new Error('runAtrBandContinuation: cfg.instrument required');
+  const klass = c.assetClass ?? assetClassOf(instrument);
+  const cost = c.costPct ?? (COST_PCT[klass] ?? COST_PCT.fx);
+  const riskAmount = c.account * c.riskPct / 100;
+
+  const daily = buildDaily(packed);
+  if (daily.length < c.warmupDays + 2) {
+    return { trades: [], records: [], meta: { instrument, days: daily.length, note: 'insufficient history' } };
+  }
+
+  const trades = [];
+  const records = [];
+  const equity = [];
+
+  const adxAt = buildCausalAdxLookup(packed, c.adxTfMin, c.adxPeriod);
+
+  // Bullish/bearish two-candle wick-then-engulf confirmation (video 14):
+  // bar `w` wicks into/through the level without closing beyond it, bar
+  // `e` (the very next bar) fully engulfs `w`'s range and closes beyond
+  // `w`'s extreme in the trend direction.
+  function wickEngulf(w, e, isBuy, level) {
+    if (isBuy) {
+      const wicked = w.low <= level && w.close > level;
+      const engulfs = e.close > e.open && e.low <= w.low && e.close > w.high;
+      return wicked && engulfs;
+    }
+    const wicked = w.high >= level && w.close < level;
+    const engulfs = e.close < e.open && e.high >= w.high && e.close < w.low;
+    return wicked && engulfs;
+  }
+
+  for (let di = c.warmupDays; di < daily.length; di++) {
+    const dStart = daily[di].time;
+    const dEnd = dStart + DAY;
+    const ctxStart = dStart - c.ctxLookbackDays * DAY;
+
+    const ctxBars = resampleTo(extractBars(packed, ctxStart, dEnd), c.entryTfMin);
+    if (ctxBars.length < 50) continue;
+    const todayStartIdx = ctxBars.findIndex(b => b.time >= dStart);
+    if (todayStartIdx < 0 || todayStartIdx >= ctxBars.length - 3) continue;
+
+    const closes = ctxBars.map(b => b.close);
+    const basisSeries = ema(closes, c.emaPeriod);
+    const atrSeries = atrWilder(ctxBars, c.atrPeriod);
+
+    let stretch = null;   // { side: 'above'|'below' } — the far touch that sets trend bias
+    let signal = null;
+
+    for (let j = todayStartIdx; j < ctxBars.length - 2; j++) {
+      const bar = ctxBars[j];
+      const basis = basisSeries[j];
+      const atr = atrSeries[j];
+      if (!(basis > 0) || !(atr > 0)) continue;
+
+      const distAtr = (bar.close - basis) / atr;
+
+      if (!stretch) {
+        // First bar this day that closes beyond the FAR zone — establishes
+        // the trend bias, same trigger as the fade mode's touch.
+        if (Math.abs(distAtr) >= c.zoneMult) {
+          stretch = { side: distAtr > 0 ? 'above' : 'below' };
+        }
+        continue;
+      }
+
+      // Regime gate: only proceed in a trending regime (opposite of fade).
+      const adx = adxAt(bar.time);
+      if (adx == null || adx < c.adxMinTrend) continue;
+
+      const isBuy = stretch.side === 'above';   // stretched up -> continuation = buy the pullback
+      const nearLevel = isBuy ? basis + c.nearMult * atr : basis - c.nearMult * atr;
+
+      // Look for the wick+engulf confirmation at the near level, using
+      // this bar and the next as the (w, e) pair.
+      if (j + 1 >= ctxBars.length) continue;
+      const w = bar, e = ctxBars[j + 1];
+      if (!wickEngulf(w, e, isBuy, nearLevel)) continue;
+
+      const confirmExtreme = isBuy ? Math.min(w.low, e.low) : Math.max(w.high, e.high);
+      const buffer = c.slBufferAtrMult * atr;
+      const target = isBuy ? basis + c.extremeMult * atr : basis - c.extremeMult * atr;
+
+      signal = { j: j + 1, isBuy, confirmExtreme, buffer, basis, atr, target, adx };
+      break;   // one trade per day, first qualifying setup
+    }
+
+    if (!signal) continue;
+    if (signal.j + 1 >= ctxBars.length) continue;
+
+    // Fill at the NEXT bar's open, guaranteed — same pattern as the fade mode.
+    const entryBar = ctxBars[signal.j + 1];
+    const entry = entryBar.open;
+    const isBuy = signal.isBuy;
+    const sl = isBuy ? signal.confirmExtreme - signal.buffer : signal.confirmExtreme + signal.buffer;
+    const stopDist = Math.abs(entry - sl);
+    if (!(stopDist > 0)) continue;
+    const tp = signal.target;
+    if ((isBuy && tp <= entry) || (!isBuy && tp >= entry)) continue;   // target must be on the right side
+
+    const fillBars = ctxBars.slice(signal.j + 1);
+    const dayOpen = ctxBars[todayStartIdx].open;
+    const r = walkBars(fillBars, entry, tp, sl, isBuy, 'stop', dayOpen);
+    if (!r || !r.filled) continue;
+
+    const grossPct = r.pnlPct;
+    const netPct = +(grossPct - cost).toFixed(5);
+    const riskPctPrice = stopDist / entry * 100;
+    const rMult = +(netPct / riskPctPrice).toFixed(4);
+    const maeFrac = maeFromPath(packed, r.fillTime ?? dStart, r.exitTime, entry, isBuy);
+    const maePct = +(maeFrac * 100).toFixed(5);
+    const maeR = +(maeFrac * 100 / riskPctPrice).toFixed(4);
+
+    const date = isoDay(dStart);
+    records.push({ filled: true, pnl_pct: netPct, date });
+    const cum = (equity.length ? equity[equity.length - 1] : 0) + rMult;
+    equity.push(cum);
+    trades.push({
+      date, instrument, side: isBuy ? 'BUY' : 'SELL',
+      entry: +entry.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
+      basis: +signal.basis.toFixed(6), atr: +signal.atr.toFixed(6),
+      adxAtEntry: +signal.adx.toFixed(2),
+      outcome: r.outcome, grossPct: +grossPct.toFixed(5), netPct, rMult,
+      maePct, maeR, riskAmount: +riskAmount.toFixed(2),
+      pnlCcy: +(riskAmount * rMult).toFixed(2),
+      fillTime: r.fillTime, exitTime: r.exitTime, cumR: +cum.toFixed(4),
+    });
+  }
+
+  return {
+    trades, records,
+    meta: {
+      instrument, days: daily.length,
+      from: daily[0] ? isoDay(daily[0].time) : null,
+      to: daily[daily.length - 1] ? isoDay(daily[daily.length - 1].time) : null,
+      cost, cfg: c,
+    },
+  };
+}

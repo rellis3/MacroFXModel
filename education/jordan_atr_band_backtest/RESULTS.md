@@ -197,7 +197,7 @@ evidence the *type* of gate matters even when neither rescues the rule.
 
 ---
 
-## Reproduce
+## Reproduce (fade mode)
 
 ```bash
 npm install   # hyparquet etc. aren't vendored; needed once per environment
@@ -209,3 +209,118 @@ node education/jordan_atr_band_backtest/scripts/run_one.mjs gold education/jorda
 
 Per-trade logs: `data/{label}.trades.json`. Summary cards (full/IS/OOS +
 buy-and-hold benchmark): `data/{label}.summary.json`.
+
+---
+
+## Part 2 — the continuation variant (the "other half"), also null
+
+The Known Limitations above flagged one deliberate gap in the v1 baseline:
+"the continuation-in-trend variant... transcript 6 describes the group
+actually using" (buy a near-level pullback when ADX is elevated, instead
+of skipping the day) was never built. Built and tested now:
+`runAtrBandContinuation` in the same `js/atrBandEntryV1Engine.js` file
+(reuses `buildDaily`, `atrWilder`, `ema`, `buildCausalAdxLookup`,
+`walkBars`, `maeFromPath` — no new brick, one shared core).
+
+### The rule, exactly as pinned
+
+| Element | Mechanised as | Pinned choice |
+|---|---|---|
+| Trend bias | the same FAR touch trigger as the fade mode (price closes beyond basis ± `zoneMult`×ATR) | its direction sets the bias — stretched above basis = uptrend, below = downtrend, instead of being faded |
+| Regime gate | `adxAt` (the same causal ADX(4H) lookup) | **opposite** of the fade mode: proceed only when ADX ≥ `adxMinTrend` (30 default) — trending, not ranging |
+| Pullback level | basis ± `nearMult`×ATR, `nearMult` (1.5 default) < `zoneMult` | Husky's own description: "a near/low-multiple extension as a pullback-buy" (video 6) |
+| Confirmation | the wick-then-engulf two-candle pattern (video 14): one bar wicks into/through the near level without closing beyond it, the next bar fully engulfs that bar's range and closes beyond its extreme, in the trend direction | the literal, separately-logged confirmation technique — more precise than the fade mode's single-bar reversal check |
+| Fill | guaranteed fill at the bar-after-confirmation's OPEN (`walkBars`, `entryType:'stop'`) | identical no-lookahead pattern to the fade mode |
+| Stop | beyond the two confirmation bars' own extreme + `slBufferAtrMult`×ATR | same buffer convention as the fade mode |
+| Target | basis ± `extremeMult`×ATR — the SAME "in discovery" outer band already defined in cfg | reuses an existing constant instead of inventing a fresh fixed-RR number, per the minimal-DOF-first rule |
+| Trade cadence | one trade/day, first qualifying setup | matches the fade mode |
+
+**Sanity-checked on synthetic data before touching real data**: an
+engineered day (sharp stretch → wick-dip → engulfing reclaim → rally)
+correctly produced a BUY with TP above entry and SL below — direction and
+ordering verified before trusting real-data output.
+
+### Data
+
+Same sourcing as Part 1: gold (`VolRangeForecaster/data/m1/gold_m1.parquet`),
+NQ/NAS100 proxy (`portfolioBacktest/cache/nq_m1.parquet`), plus 8 major FX
+pairs (`eurusd gbpusd usdjpy audusd usdcad eurjpy gbpjpy nzdusd`) for
+broader coverage than Part 1 tested — 10 instruments total.
+
+### Headline result — null, and unlike Part 1, a genuine negative gross edge
+
+Baseline (`nearMult=1.5`, `adxMinTrend=30`), costs on, true 60/40 IS/OOS split:
+
+| Instrument | Trades | Win% | Sharpe (full) | Sharpe (OOS) |
+|---|--:|--:|--:|--:|
+| Gold | 593 | 36.4% | −2.468 | −2.168 (n=238) |
+| NQ (NAS100) | 648 | 40.1% | −0.974 | −1.656 (n=260) |
+| EURUSD | 726 | 25.8% | −4.699 | −4.461 (n=291) |
+| GBPUSD | 644 | 38.0% | −2.833 | −2.940 (n=258) |
+| USDJPY | 628 | 34.6% | −3.211 | −2.461 (n=252) |
+| AUDUSD | 559 | 35.8% | −3.033 | −3.075 (n=224) |
+| USDCAD | 729 | 24.1% | −5.678 | −5.962 (n=292) |
+| EURJPY | 604 | 38.4% | −2.878 | −2.883 (n=242) |
+| GBPJPY | 641 | 39.8% | −2.783 | −2.889 (n=257) |
+| NZDUSD | 584 | 37.8% | −3.389 | −3.203 (n=234) |
+
+**Pooled**: full n=6,356, mean/trade −0.0137%, t=−25.2; OOS n=2,548,
+mean/trade −0.0141%, t=−16.1. **0/10 instruments OOS-Sharpe-positive.**
+
+Unlike Part 1's fade baseline and both VWAP nulls in this repo (all of
+which show pooled **gross** ≈ 0, i.e. "no edge either way, cost alone
+tips it negative"), this continuation variant's **pooled gross mean is
+−0.00118%/trade — genuinely negative before costs**, not indistinguishable
+from zero. The wick-then-engulf continuation entry isn't a coin-flip that
+loses to friction; on this data it's mildly anti-predictive on its own.
+
+### Sensitivity — every variant tried stays solidly negative
+
+```
+                          n(OOS)   Sharpe(full)   Sharpe(OOS)
+gold   baseline (n=1.5,a=30)  238      -2.468        -2.168
+gold   n=2.5, a=40 (tighter)   38      -1.715        -1.927
+gold   n=1.0, a=30 (wider)    326      -2.894        -1.922
+eurusd baseline (n=1.5,a=30)  291      -4.699        -4.461
+eurusd n=2.5, a=40 (tighter)   50      -2.573        -2.853
+eurusd n=1.0, a=30 (wider)    331      -3.455        -2.475
+```
+
+No parameter direction rescues it, and none approaches breakeven the way
+Part 1's ADX-tightening sensitivity did — this isn't a "getting warmer"
+shape, it's flat-out negative across the tested range.
+
+### Reading this against the rest of the file
+
+The "other half" Husky describes — trade continuation instead of skipping
+the day when ADX is elevated — closes as a **second, independently null**
+result, and a more decisively negative one than the fade half: the fade
+mode's gate at least did real monotonic work even though it never crossed
+into edge; this continuation mode shows no such improvement path across
+the variants tried, and unlike this repo's other VWAP/ATR-band nulls, it
+has a genuine (small) negative gross edge rather than a coin-flip erased
+by cost. The wick-then-engulf confirmation — the most literal, separately-
+logged "how do you time the click" technique in this transcript material —
+does not produce a tradeable entry trigger on its own in this construction.
+
+### Known limitations (Part 2)
+
+- **Confirmation logic is the specific pinned reading of "wick rejection
+  then engulfing candle"** — a stricter or looser definition (e.g.
+  allowing partial-range engulfs, or requiring a close beyond a further
+  distance) was not swept.
+- **Target = extremeMult×ATR is one specific choice** among several
+  reasonable options (a fixed-RR target, or the prior far-touch level
+  itself) — not swept here.
+- **Trend bias is read from a single far-touch event**, not a
+  higher-timeframe trend filter (e.g. price vs. a longer EMA, or ADX
+  direction) — a different trend-detection method was not tried.
+
+### Reproduce (continuation mode)
+
+```bash
+node education/jordan_atr_band_backtest/scripts/run_continuation.mjs gold   education/jordan_atr_band_backtest/data
+node education/jordan_atr_band_backtest/scripts/run_continuation.mjs nq     education/jordan_atr_band_backtest/data ./portfolioBacktest/cache
+# sensitivity: run_continuation.mjs <pair> <outDir> <m1DirOrEmpty> <nearMult> <adxMinTrend>
+node education/jordan_atr_band_backtest/scripts/run_continuation.mjs gold   education/jordan_atr_band_backtest/data "" 2.5 40
+```
