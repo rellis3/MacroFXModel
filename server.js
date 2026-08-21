@@ -221,6 +221,7 @@ import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
+import { runVRPSuite, VRP_INSTRUMENTS } from './js/fxVolCarryEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
@@ -17064,6 +17065,74 @@ app.post('/api/vol-backtest-v2/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
   const job = v2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── FX/Gold Vol-Carry (VRP) Backtester — CME CVOL implied vs realized vol ────
+// Tests the VRP-gated selector (js/fxVolCarryEngine.js) against always-fade /
+// always-follow at the same exhaustion band, IS/OOS, on EURUSD/GBPUSD/USDJPY/
+// AUDUSD/USDCAD/USDCHF/GOLD. CVOL data is the static snapshot in
+// js/data/cmeCvolEod.json — no live feed, so this route only needs OANDA for
+// the D1 price bars. Same async-job pattern as vol-backtest-v2.
+const vrpJobs = new Map();
+function _purgeStaleVrpJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of vrpJobs) if (job.startedAt < cutoff) vrpJobs.delete(id);
+}
+
+app.post('/api/fx-vol-carry/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    dateFrom: b.dateFrom || '',
+    dateTo: b.dateTo || '',
+    slMult: num(b.slMult, 1.5),
+    oosFrac: Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    richZ: num(b.richZ, 0.5),
+    cheapZ: num(b.cheapZ, -0.5),
+    zPeriod: Math.round(Math.min(Math.max(num(b.zPeriod, 252), 60), 756)),
+    slopeThresh: num(b.slopeThresh, 0.002),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? VRP_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId = `vrp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleVrpJobs();
+  vrpJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log, cvolMeta } = await runVRPSuite(opts, instFilter ?? VRP_INSTRUMENTS);
+      if (!results.length) {
+        vrpJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      vrpJobs.set(jobId, { status: 'done', result: { results, log, opts, cvolMeta }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[fx-vol-carry/run]', msg, e?.stack ?? '');
+      vrpJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/fx-vol-carry/status/:jobId', (req, res) => {
+  const job = vrpJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });

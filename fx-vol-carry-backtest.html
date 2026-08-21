@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FX/Gold Vol-Carry Backtester — CME CVOL (VRP)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;align-items:flex-start;gap:16px}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:960px}
+  a.back{color:var(--text2);text-decoration:none;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:6px 12px;white-space:nowrap}
+  a.back:hover{color:var(--text)}
+  main{padding:22px 24px;max-width:1320px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--panel2);color:var(--text2);border:1px solid var(--line);font-weight:500;padding:6px 12px;font-size:12px}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .hint{color:var(--text3);font-size:11px;margin-top:3px}
+  #status{margin:14px 0;color:var(--text2);font-size:13px;min-height:18px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:6px 9px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  .inst-title{font-size:14px;font-weight:650;margin:2px 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .mode{color:var(--text2);font-weight:600}
+  .pos{color:var(--green)} .neg{color:var(--red)} .mut{color:var(--text3)}
+  .win{background:rgba(63,178,127,.12)}
+  .badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:700}
+  .b-good{background:rgba(63,178,127,.18);color:var(--green)}
+  .b-bad{background:rgba(229,96,77,.18);color:var(--red)}
+  .b-meh{background:rgba(224,169,59,.18);color:var(--amber)}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 16px}
+  @media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .kpi .l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+  .kpi .v{font-size:20px;font-weight:700;margin-top:2px}
+  .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  @media(max-width:900px){.chart-row{grid-template-columns:1fr}}
+  .chart-wrap{position:relative;height:220px}
+  .chart-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .heatmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:3px;margin-top:8px}
+  .hcell{border-radius:4px;padding:5px 3px;text-align:center;font-size:9.5px;color:#fff;line-height:1.3}
+  .csv-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .info-box{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;line-height:1.7;color:var(--text2)}
+  .info-box b{color:var(--text)}
+  .info-box code{background:var(--panel);padding:1px 6px;border-radius:4px;color:var(--text2);font-size:11.5px}
+  .legend{color:var(--text3);font-size:11.5px;margin-top:10px;line-height:1.7}
+  .warn{color:var(--amber)}
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div style="flex:1">
+    <h1>FX/Gold Vol-Carry Backtester <span class="mut" style="font-size:13px;font-weight:500">· CME CVOL variance risk premium (VRP)</span></h1>
+    <div class="sub">
+      Tests whether CME's options-implied volatility index (CVOL), compared against
+      this platform's own realized-vol math, is useful as a GATE on the existing
+      fade/follow exhaustion-band strategy — versus always-fade and always-follow at
+      the same band, IS/OOS, with real costs. Built on <code>resolveHonestDay</code>
+      (<code>honestForecastEngine.js</code>) and <code>js/impliedVolCore.js</code> —
+      no new fill logic, no new leg.
+    </div>
+  </div>
+  <a class="back" href="index.html">← Dashboard</a>
+</header>
+<main>
+
+<div class="info-box">
+  <b>What this is, and isn't.</b> This is a <b>spot-only</b> strategy test — no FX
+  options or variance swaps are tradable on this platform, so VRP (implied − realized
+  vol) is used purely as a <b>regime signal</b> gating an already-tradable spot band
+  strategy, never as a literal "sell implied variance" payoff. A synthetic
+  variance-swap P&amp;L would be a different, more optimistic-looking test that this
+  page deliberately does not run.<br><br>
+  <b>CVOL data is a static historical snapshot</b>, not a live feed — converted from
+  an uploaded CME CVOL EOD export. <span id="cvolMetaLine" class="mut">Coverage loads with the first run.</span>
+  Refreshing it needs a new CME CVOL export re-run through <code>scripts/convertCmeCvol.py</code>.
+  Covers <b>EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, GOLD (XAUUSD)</b> only — no
+  crosses, no NZDUSD.
+</div>
+
+<div class="card">
+  <div class="grid">
+    <div>
+      <label>Instrument</label>
+      <select id="pair">
+        <option value="">All 7</option>
+        <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+        <option>AUDUSD</option><option>USDCAD</option><option>USDCHF</option><option>GOLD</option>
+      </select>
+    </div>
+    <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
+    <div><label>SL multiple (×band)</label><input id="slMult" type="number" value="1.5" step="0.1"></div>
+    <div><label>Rich Z (≥ → fade)</label><input id="richZ" type="number" value="0.5" step="0.1">
+      <div class="hint">implied &gt;&gt; realized</div></div>
+    <div><label>Cheap Z (≤ → follow)</label><input id="cheapZ" type="number" value="-0.5" step="0.1">
+      <div class="hint">implied &lt;&lt; realized</div></div>
+    <div><label>VRP z-score window (days)</label><input id="zPeriod" type="number" value="252" step="10" min="60" max="756"></div>
+    <div><label>Cost % (opt)</label><input id="costPct" type="number" placeholder="auto" step="0.001"></div>
+  </div>
+  <div style="margin-top:14px"><button id="run">Run vol-carry backtest</button></div>
+  <div id="status"></div>
+</div>
+
+<div id="results"></div>
+
+<div class="card" id="legendCard" style="display:none">
+  <div class="legend">
+    <b>vrp</b> = the VRP-gated selector (rich → fade the band, cheap → follow it,
+    neutral → flat/no trade). <b>alwaysFade</b> / <b>alwaysFollow</b> = the same band,
+    every eligible day, no VRP gate — the named benchmarks. The number that matters is
+    <b>vrp</b> vs the better of the two baselines on <b>OOS Sharpe</b>, at a
+    <b>non-trivial OOS trade count (≥30)</b>. Costs and a true later-period OOS split
+    are applied throughout; the "flat" days are the hypothesis under test, not a
+    fallback — if VRP has no information, the gate should just look like a
+    trade-count-reduced version of one of the baselines, not a better one.
+  </div>
+</div>
+
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v,d=2)=> (v===undefined||v===null||isNaN(v)) ? '—' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : 'mut';
+const ARMS = ['vrp','alwaysFade','alwaysFollow'];
+const ARM_LABEL = { vrp:'vrp (VRP-gated)', alwaysFade:'alwaysFade', alwaysFollow:'alwaysFollow' };
+const ARM_COLOR = { vrp:'#5b9dff', alwaysFade:'#e5604d', alwaysFollow:'#e0a93b' };
+let charts = [];
+let lastResults = null;
+
+function row(label, s, isWin){
+  return `<tr class="${isWin?'win':''}">
+    <td class="mode">${label}</td>
+    <td>${s.trades}<span class="mut"> · ${fmt(s.tradesPerYr,0)}/yr</span></td>
+    <td>${fmt(s.winRate,1)}%</td>
+    <td>${fmt(s.profitFactor,2)}</td>
+    <td class="${cls(s.expectancy)}">${fmt(s.expectancy,4)}</td>
+    <td class="${cls(s.sharpe)}"><b>${fmt(s.sharpe,2)}</b></td>
+    <td class="${cls(s.maxDD)}">${fmt(s.maxDD,2)}</td>
+  </tr>`;
+}
+
+function verdict(arms){
+  const oos = k => arms[k].oos;
+  let bestBaseline = null;
+  for (const k of ['alwaysFade','alwaysFollow'])
+    if (oos(k).trades>=30 && (!bestBaseline || oos(k).sharpe>oos(bestBaseline).sharpe)) bestBaseline = k;
+  const v = oos('vrp');
+  if (v.trades<30) return `<span class="badge b-bad">vrp &lt;30 OOS trades — inconclusive</span>`;
+  if (!bestBaseline) return `<span class="badge b-meh">no baseline reaches 30 OOS trades</span>`;
+  const beats = v.sharpe > oos(bestBaseline).sharpe;
+  const badge = beats && v.sharpe>0 ? 'b-good' : v.sharpe>0 ? 'b-meh' : 'b-bad';
+  const note = beats
+    ? `vrp beats best baseline (${bestBaseline} ${fmt(oos(bestBaseline).sharpe,2)})`
+    : `best is ${bestBaseline} (${fmt(oos(bestBaseline).sharpe,2)}) — VRP gate adds nothing OOS`;
+  return `<span class="badge ${badge}">OOS: vrp ${fmt(v.sharpe,2)} · ${note}</span>`;
+}
+
+function kpiGrid(arms){
+  const v = arms.vrp.oos;
+  return `<div class="kpi-grid">
+    <div class="kpi"><div class="l">VRP OOS Sharpe</div><div class="v ${cls(v.sharpe)}">${fmt(v.sharpe,2)}</div></div>
+    <div class="kpi"><div class="l">VRP OOS Trades</div><div class="v">${v.trades}</div></div>
+    <div class="kpi"><div class="l">VRP OOS Max DD</div><div class="v ${cls(-Math.abs(v.maxDD))}">${fmt(v.maxDD,2)}%</div></div>
+    <div class="kpi"><div class="l">VRP OOS Win Rate</div><div class="v">${fmt(v.winRate,1)}%</div></div>
+  </div>`;
+}
+
+function heatmap(hm){
+  if (!hm || !hm.length) return '<div class="mut" style="margin-top:8px">No filled VRP trades to heatmap.</div>';
+  const max = Math.max(1, ...hm.map(m=>Math.abs(m.pnlPct)));
+  return `<div class="heatmap">${hm.map(m=>{
+    const t = Math.min(1, Math.abs(m.pnlPct)/max);
+    const bg = m.pnlPct>=0 ? `rgba(63,178,127,${0.25+0.6*t})` : `rgba(229,96,77,${0.25+0.6*t})`;
+    return `<div class="hcell" style="background:${bg}"><div>${m.month}</div><div><b>${fmt(m.pnlPct,1)}%</b></div></div>`;
+  }).join('')}</div>`;
+}
+
+function destroyCharts(){ charts.forEach(c=>c.destroy()); charts = []; }
+
+function mkEquityChart(canvasId, curves, splitDate){
+  const ctx = $(canvasId).getContext('2d');
+  const datasets = ARMS.map(k => ({
+    label: ARM_LABEL[k], borderColor: ARM_COLOR[k], backgroundColor: 'transparent',
+    borderWidth: 1.6, pointRadius: 0, tension: 0.05,
+    data: (curves[k]||[]).map(p => ({ x: p.date, y: p.cumPct })),
+  }));
+  const c = new Chart(ctx, {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      parsing:false,
+      scales: {
+        x: { type:'category', ticks:{ color:'#6f7889', maxTicksLimit:6, font:{size:10} }, grid:{color:'#1d222e'} },
+        y: { ticks:{ color:'#6f7889', font:{size:10} }, grid:{color:'#1d222e'}, title:{display:true,text:'cum. return %',color:'#6f7889',font:{size:10}} },
+      },
+      plugins: { legend:{ labels:{ color:'#aab2c0', boxWidth:12, font:{size:10.5} } } },
+    },
+  });
+  charts.push(c);
+}
+
+function mkIvRvChart(canvasId, diagnostics){
+  const ctx = $(canvasId).getContext('2d');
+  const step = Math.max(1, Math.floor(diagnostics.length / 900)); // thin for render perf
+  const pts = diagnostics.filter((_,i)=>i%step===0);
+  const c = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        { label:'CVOL (implied)', borderColor:'#5b9dff', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.cvol!=null).map(p=>({x:p.date,y:p.cvol})) },
+        { label:'RV30 (realized)', borderColor:'#e0a93b', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.rv!=null).map(p=>({x:p.date,y:p.rv})) },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false, parsing:false,
+      scales: {
+        x: { type:'category', ticks:{ color:'#6f7889', maxTicksLimit:6, font:{size:10} }, grid:{color:'#1d222e'} },
+        y: { ticks:{ color:'#6f7889', font:{size:10} }, grid:{color:'#1d222e'}, title:{display:true,text:'annualized vol %',color:'#6f7889',font:{size:10}} },
+      },
+      plugins: { legend:{ labels:{ color:'#aab2c0', boxWidth:12, font:{size:10.5} } } },
+    },
+  });
+  charts.push(c);
+}
+
+function csvDownload(filename, text){
+  const blob = new Blob([text], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// House 3-CSV-export schemas, computed client-side from the returned VRP-arm
+// trade records (Date,Return %,MAE % / date,R,MAE (R) / Trade Date,PnL ($),Risk ($)).
+// R-unit = the trade's own vol-scaled stop distance (sl_d_pct), NOT a fixed %.
+const ACCOUNT_SIZE = 100000;
+function toCsvReturns(recs){
+  const L=['Date,Return %,MAE %'];
+  for (const r of recs.filter(r=>r.filled)) L.push(`${r.date},${(+r.pnl_pct).toFixed(2)},${(+r.mae_pct).toFixed(2)}`);
+  return L.join('\n');
+}
+function toCsvRMultiples(recs){
+  const L=['date,R,MAE (R)'];
+  for (const r of recs.filter(r=>r.filled)){
+    const risk = r.sl_d_pct > 1e-9 ? r.sl_d_pct : null;
+    const R = risk ? r.pnl_pct/risk : 0, maeR = risk ? r.mae_pct/risk : 0;
+    L.push(`${r.date},${R.toFixed(2)},${maeR.toFixed(2)}`);
+  }
+  return L.join('\n');
+}
+function toCsvCurrency(recs){
+  const L=['Trade Date,PnL ($),Risk ($)'];
+  for (const r of recs.filter(r=>r.filled)) L.push(`${r.date},${((r.pnl_pct/100)*ACCOUNT_SIZE).toFixed(2)},${((r.sl_d_pct/100)*ACCOUNT_SIZE).toFixed(2)}`);
+  return L.join('\n');
+}
+
+function renderInstrument(r, idx){
+  const arms = r.arms, split = arms.vrp.splitDate;
+  const eqId = `eq_${idx}`, ivId = `iv_${idx}`;
+  let html = `<div class="card">
+    <div class="inst-title">${r.instrument} <span class="mut" style="font-weight:500;font-size:12px">· ${r.assetClass} · CVOL:${r.cvolProduct} · OOS from ${split||'—'}</span> ${verdict(arms)}</div>
+    ${kpiGrid(arms)}`;
+  for (const period of ['is','oos']){
+    const best = Math.max(...ARMS.map(k=>arms[k][period].sharpe));
+    html += `<table><thead><tr><th>${period.toUpperCase()} arm</th><th>trades</th><th>win%</th><th>PF</th><th>expect</th><th>Sharpe</th><th>maxDD</th></tr></thead><tbody>`;
+    for (const k of ARMS){ const s=arms[k][period];
+      html += row(ARM_LABEL[k], s, period==='oos' && s.trades>=30 && s.sharpe===best && s.sharpe>0); }
+    html += `</tbody></table>${period==='is'?'<div style="height:10px"></div>':''}`;
+  }
+  html += `<div class="chart-row">
+      <div><div class="chart-title">Cumulative return — vrp vs baselines</div><div class="chart-wrap"><canvas id="${eqId}"></canvas></div></div>
+      <div><div class="chart-title">CME CVOL (implied) vs RV30 (realized), annualized %</div><div class="chart-wrap"><canvas id="${ivId}"></canvas></div></div>
+    </div>
+    <div class="chart-title" style="margin-top:14px">VRP-arm monthly return (concentration check)</div>
+    ${heatmap(r.monthlyHeatmap)}
+    <div class="csv-row">
+      <span class="hint" style="width:100%">VRP-arm trade log · account size $${ACCOUNT_SIZE.toLocaleString()} · R = pnl% ÷ trade's own stop-distance% (vol-scaled, not fixed)</span>
+      <button class="ghost" data-exp="returns" data-idx="${idx}">⬇ % Returns CSV</button>
+      <button class="ghost" data-exp="rmult" data-idx="${idx}">⬇ R-Multiples CSV</button>
+      <button class="ghost" data-exp="cur" data-idx="${idx}">⬇ Currency P&amp;L CSV</button>
+    </div>
+  </div>`;
+  return html;
+}
+
+async function poll(jobId){
+  for(let i=0;i<180;i++){
+    await new Promise(r=>setTimeout(r,2000));
+    const res = await fetch(`/api/fx-vol-carry/status/${jobId}`).then(r=>r.json()).catch(()=>null);
+    if(!res) continue;
+    if(res.status==='running'){ $('status').textContent = `Running… ${res.elapsed||0}s`; continue; }
+    if(res.status==='done') return res;
+    if(res.status==='error') throw new Error(res.error||'engine error');
+  }
+  throw new Error('timed out');
+}
+
+$('run').onclick = async () => {
+  const body = {
+    pair:$('pair').value, oosFrac:$('oosFrac').value, slMult:$('slMult').value,
+    richZ:$('richZ').value, cheapZ:$('cheapZ').value, zPeriod:$('zPeriod').value,
+    costPct:$('costPct').value,
+  };
+  $('run').disabled=true; destroyCharts(); $('results').innerHTML=''; $('legendCard').style.display='none';
+  $('status').textContent='Submitting…';
+  try{
+    const start = await fetch('/api/fx-vol-carry/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+    if(!start.ok) throw new Error(start.error||'failed to start');
+    const out = await poll(start.jobId);
+    lastResults = out.results;
+    $('status').textContent = `Done — ${out.results.length} instrument(s).`;
+    if (out.cvolMeta) {
+      $('cvolMetaLine').textContent = `Loaded: ${out.cvolMeta.source}, generated ${out.cvolMeta.generatedNote?.match(/on ([\d-]+)/)?.[1]||'—'}. Rows/product: ${JSON.stringify(out.cvolMeta.rowsPerProduct)}`;
+    }
+    $('results').innerHTML = out.results.map(renderInstrument).join('');
+    out.results.forEach((r,idx) => {
+      mkEquityChart(`eq_${idx}`, r.equityCurves, r.arms.vrp.splitDate);
+      mkIvRvChart(`iv_${idx}`, r.diagnostics);
+    });
+    document.querySelectorAll('button[data-exp]').forEach(btn => {
+      btn.onclick = () => {
+        const idx = +btn.dataset.idx, r = lastResults[idx], recs = r.records.vrp;
+        const kind = btn.dataset.exp;
+        if (kind==='returns') csvDownload(`${r.instrument}_vol_carry_returns.csv`, toCsvReturns(recs));
+        if (kind==='rmult')   csvDownload(`${r.instrument}_vol_carry_rmultiples.csv`, toCsvRMultiples(recs));
+        if (kind==='cur')     csvDownload(`${r.instrument}_vol_carry_currency.csv`, toCsvCurrency(recs));
+      };
+    });
+    $('legendCard').style.display='';
+  }catch(e){ $('status').innerHTML = `<span class="neg">Error: ${e.message}</span>`; }
+  finally{ $('run').disabled=false; }
+};
+</script>
+</body>
+</html>

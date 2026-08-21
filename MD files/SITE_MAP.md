@@ -9,8 +9,9 @@
 > Command Hub dropdown bar and its Site Map overlay. `hub.html` is only a secondary
 > link index (its dead cards were removed; nothing was added to it, per the CLAUDE.md rule).
 
-**Totals: 167 root pages** — 50 live tools · 57 open research · 30 reference · 19 banked
-nulls · 9 superseded · 1 stub · 1 unclear. **29 pages moved to Archived.**
+**Totals: 168 root pages** — 50 live tools · 58 open research · 30 reference · 19 banked
+nulls · 9 superseded · 1 stub · 1 unclear. **29 pages moved to Archived.** (+1 since
+2026-08-14: `fx-vol-carry-backtest.html`, added 2026-08-21.)
 
 ## About the dates ("last accessed")
 
@@ -36,7 +37,7 @@ Pages with a later date have genuinely been worked on since.
 
 | Page | Intended purpose | Status | Last modified | Notes |
 |---|---|---|---|---|
-| `bot-config.html` | Bot control centre: config, live pair monitor, journal, backtest bot | 🟢 Live | 2026-08-12 | 📚 infrastructure; redirect target of backtest-monitor |
+| `bot-config.html` | Bot control centre: config, live pair monitor, journal, backtest bot | 🟢 Live | 2026-08-12 | 📚 infrastructure; redirect target of backtest-monitor. Its **#tab-analogml** tab is the live AnalogML daily trade log (motif_track.py's paper trades) — was previously undiscoverable here; see the fix noted 2026-08-21 |
 | `brief-config.html` | Configure what the Morning Brief auto-generates each day | 🟢 Live | ≤2026-08-09 | Server-side auto-generation config |
 | `cog-replay.html` | Read-only replay of COG forecast reference data vs price | 📚 Reference | ≤2026-08-09 | Reference data; standalone deploy copy exists in cog-standalone/ |
 | `cog-v2-engine.html` | Persistent-state COG day workflow with Setup/Risk/Trigger gates | 🔬 Research | ≤2026-08-09 | 🧪 same family, same bar (Q8) |
@@ -226,6 +227,7 @@ Pages with a later date have genuinely been worked on since.
 | `level-chart-demo.html` | Dev demo wiring levelSources.js modules into the levelChart renderer | 📚 Reference | ≤2026-08-09 | Dev brick demo, synthetic data |
 | `trade-lab.html` | Impulse/retracement visual research on Gold & NQ — real candles (frozen R2 archive + live OANDA/Yahoo proxy for anything past it, Railway-only), Fib pulled-from/to readout, browse other real historical trades with the same shape via `/api/trade-lab/similar-trades` | 🔬 Research | 2026-08-17 | Live OANDA/Yahoo fetch untestable in this sandbox (403) — needs a real check once deployed |
 | `live-validation.html` | Runs `js/impulseEmaRangeV2Engine.js` (baseline + 3 follow-up variants) against the R2 archive gap-filled to NOW via real OANDA M1 (`/api/live-validation/run`+`/status`, Railway-only), checks whether any generated signal lines up with Jordan's 4 known reconstructed trades on timing/direction/price | 🔬 Research | 2026-08-17 | Live OANDA fetch untestable in this sandbox (403) — needs a real check once deployed |
+| `fx-vol-carry-backtest.html` | Tests CME CVOL's implied-vs-realized vol spread (VRP) as a gate on the existing fade/follow exhaustion band vs always-fade/always-follow baselines, IS/OOS, 3 CSV exports (`/api/fx-vol-carry/run`+`/status`) | 🔬 Research | 2026-08-21 | CVOL data is a static parquet-derived snapshot (`js/data/cmeCvolEod.json`), not live. Live OANDA fetch untestable in this sandbox (403) — needs a real run on Railway before its verdict badges mean anything |
 
 ## 🗄 Archived — null results, superseded versions, stubs
 
@@ -235,7 +237,7 @@ group so the working nav only shows what is in use.
 
 | Page | Was intended for | Why archived | Last modified |
 |---|---|---|---|
-| `analogml-backtest.html` | Results card for the historical-analog shape-matching k-NN direction signal | ⛔ Null (banked) — Null banked 2026-08-12; signal retired; successor touches-backtest.html | 2026-08-11 |
+| `analogml-backtest.html` | Results card for the historical-analog shape-matching k-NN direction signal | ⛔ Null (banked) — Null banked 2026-08-12; signal retired; successor touches-backtest.html. A DIFFERENT, older method than the live motif-tracking paper-trade log — see `bot-config.html#tab-analogml` above | 2026-08-11 |
 | `backtest-monitor.html` | Redirect placeholder for the old backtest bot monitor | ➡️ Stub — Meta-refresh → bot-config.html#tab-backtest | ≤2026-08-09 |
 | `backtest.html` | Original browser CSV confluence backtester | 🔁 Superseded — 📚 legacy exploratory; superseded by range-line-strategy + strategy-lab | ≤2026-08-09 |
 | `claude-backtest.html` | Ad-hoc AI-generated strategy sandbox backtester | 🔁 Superseded — 📚 sandbox, not evidence — superseded by strategy-lab.html | ≤2026-08-09 |

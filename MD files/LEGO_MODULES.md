@@ -1950,6 +1950,59 @@ originally committed, nothing added to it, not even an export).
 
 ---
 
+### 1ap. CME CVOL implied-vol brick + FX/Gold vol-carry (VRP) backtester (2026-08-21)
+
+Owner uploaded a CME CVOL EOD parquet export (daily options-implied vol index
++ ATM/skew/convexity, per instrument, 2016–2026-08-20) and asked what could be
+built with it against the existing systems. Grepped the whole repo first: no
+implied-vol data was wired in anywhere — every "vol" number here (the live
+forecaster, every regime classifier, `js/volBacktestEngine.js`) is
+realized/statistical vol computed from OANDA price history. This is the first
+market-implied (forward-looking, options-derived) vol source in the codebase.
+
+Built the variance-risk-premium (VRP = implied − realized) angle first, per
+the owner's ask: does CVOL add information as a GATE on the platform's
+existing fade/follow exhaustion-band strategy, versus always-fade and
+always-follow at the same band (the named benchmarks). **Explicitly NOT** a
+synthetic variance-swap/short-vega payoff — no FX options or variance swaps
+are tradable here (spot only), so a literal "sell implied variance" backtest
+would be a different, more optimistic-looking, untradeable lookalike test —
+the kind CLAUDE.md's honest-teammate section says not to run and call the
+thing. VRP is used purely as a spot regime signal.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Implied-Vol core** | `js/impliedVolCore.js` | `loadCvolSeries(product)`, `alignCvolToBars` (exact-date, no forward-fill), `realizedVolPct` (RV30 annualized %, fx→Yang-Zhang(30)/commodity→HV(30) — imports `yzVolSeries`/`hvVarSeries` from `volBacktestEngine.js`, never re-implemented), `computeVRPSeries` (VRP + rolling z-score via `statsCore.rollingZScore`). Reads the static snapshot `js/data/cmeCvolEod.json` (16,657 rows, 7 products: EURUSD/GBPUSD/USDJPY/AUDUSD/USDCAD/USDCHF/XAUUSD), converted by `scripts/convertCmeCvol.py` | `js/fxVolCarryEngine.js` | 🟢 built + unit-tested (`js/fxVolCarryEngine.test.mjs`, synthetic data, no network) |
+| **Honest-day resolver, extracted** | `js/honestForecastEngine.js` → `resolveHonestDay` (newly exported) | The fill/cost/mark-to-close mechanics previously locked inside private `simulateDayHonest`, now takes an ALREADY-DECIDED `band`/`act` instead of deriving it from `entryMode` internally — so a different selector (VRP here) can drive the SAME mechanics without copying them (Lego Principle 1). `simulateDayHonest` now just computes `band`/`act` from `entryMode` and delegates. Byte-identical behavior for existing callers (`runHonest`/`compareModes`/`forecastCore.js` unaffected — only additive fields: `maePct` real path-derived MAE off the D1 OHLC, `slDPct` the trade's own vol-scaled stop distance, both newly needed for the house 3-CSV-export convention) | `js/fxVolCarryEngine.js` (new), `simulateDayHonest` (existing, unchanged behavior) | 🟢 refactored, `node js/legoBricks.test.mjs` + `node js/fxVolCarryEngine.test.mjs` both pass; the one pre-existing failure in legoBricks (`volatility plan: band fractions match canonical computeBands`) reproduces identically on `main` before this change — not caused by this work |
+| **FX/Gold Vol-Carry engine** | `js/fxVolCarryEngine.js` | `selectStrategyVRP(vrpZ, cfg)` — vrpZ≥richZ→fade, ≤cheapZ→follow, else flat (mirrors `selectStrategy(T,...)`'s shape: a selector on top of the primitive, not a new leg); `runVRPBacktest` — three arms (vrp-gated / always-fade / always-follow) sharing the SAME trend-derived band per day, differing only in action, so the comparison isolates what VRP adds; `runVRPSuite` (fetch+run across `VRP_INSTRUMENTS`); equity curves, monthly heatmap, and the house 3-CSV-export functions (`toCsvReturns`/`toCsvRMultiples`/`toCsvCurrency` — R-unit is the trade's own vol-scaled `slDPct`, not a fixed %, so it isn't numerically redundant with % Return, the degenerate case CLAUDE.md flags) | `server.js` (`/api/fx-vol-carry/run`+`/status`, async-job pattern copied from vol-backtest-v2), `fx-vol-carry-backtest.html` | 🟡 built + unit-tested on synthetic data; **not yet run against real OANDA/CVOL data** — OANDA is 403 in this sandbox (confirmed: `Host not in allowlist`), same documented limitation as every other live-data engine here. Needs a real run on the Railway deploy before any verdict badge on the page means anything |
+| **FX Vol-Carry page** | `fx-vol-carry-backtest.html` | Run button + async-job poll (mirrors `vol-backtest-v2.html`'s pattern) with Chart.js visuals per instrument: cumulative-return chart (3 arms overlaid), CVOL-vs-RV30 diagnostic chart, monthly-return heatmap, IS/OOS tables, verdict badge (vrp OOS Sharpe vs the better baseline, gated on ≥30 OOS trades), 3 CSV export buttons. States plainly in an info-box that CVOL is a static snapshot and this is a spot-only VRP gate, not an options strategy | `server.js`'s `/api/fx-vol-carry/*` | 🟡 built, registered in `js/siteApiMap.js` + `SITE_MAP.md` (WIP group) — untested against live data per above |
+
+**Also fixed while investigating "what else could use this data"**: a
+separate, unrelated bug the owner flagged — AnalogML's daily trade output
+was undiscoverable. `motif_track.py`'s live paper-trade log surfaces on
+`bot-config.html`'s AnalogML tab, but the only Site Map entry for "AnalogML"
+pointed at the retired k-NN `analogml-backtest.html` (tagged NULL), so
+following the documented discoverability path led to "this is dead" instead
+of the live table. Added a `bot-config.html#tab-analogml` entry to
+`js/siteApiMap.js` + `SITE_MAP.md` and disambiguated the archived entry.
+**Not fixed** (outside this session's reach): the underlying trade log
+(`AnalogML/data/motif_trades.json`) hasn't advanced past 2026-08-13 as of
+2026-08-21 — `motif_track_loop.sh`'s hourly loop appears to have stopped
+succeeding on Railway. That's an ops check (is the loop running, are its R2
+creds still valid), not a code fix from here.
+
+**Other integration ideas surfaced but not built this pass** (owner expressed
+interest, scoped as follow-ups): feeding CVOL level/z-score as a regime
+feature into `RegimeV2`/`V4`/`V7`/`RegimeOptimizer` (orthogonal to their
+existing price-only features; `skew`/`skewRatio` in particular is a new
+information category — options positioning — distinct from the COT/OI data
+already tracked); wiring XAUUSD CVOL into `Gold`/`GoldV2`/`regime_classifier_gold_mtf.py`
+directly (a clean match since gold already has dedicated infrastructure).
+Coverage caveat for both: CVOL only has 6 USD-major pairs + gold, none of the
+19 cross pairs the platform actually trades.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
