@@ -105,7 +105,13 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
     // conditioning is still an open fit.
     if (includeDrift && Number.isFinite(f.drift_d)) {
       const d = f.drift_d;
-      const lbl = Math.abs(d) < 0.1 ? 'Neutral' : d > 0 ? 'Mild bullish' : 'Mild bearish';
+      // Prefer the ranked readout: "Strong bullish (top 4% of days) · +0.47%/day".
+      // The raw ratio stays FIRST in the row because the indicator's drift parser
+      // takes the first number after ": " to slope its arrow — the words are for
+      // the human, the number is for the machine, and neither may displace the
+      // other. Falls back to the old wording when no readout is available.
+      const lbl = f.drift_read?.text
+        ?? (Math.abs(d) < 0.1 ? 'Neutral' : d > 0 ? 'Mild bullish' : 'Mild bearish');
       // Same "Drift (d=μ/σ)" token the indicator greps for. Reported, not applied —
       // the fitted O-H / O-L carry each instrument's STRUCTURAL asymmetry, which is a
       // different thing from today's trailing drift. Conditioning the rungs on d is

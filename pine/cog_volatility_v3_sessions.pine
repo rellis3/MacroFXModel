@@ -184,6 +184,11 @@ var float vol_oh_90      = na   // Open High 90th % (fitted ladder; absent on ol
 var float vol_ol_90      = na   // Open Low 90th %
 // Drift d=μ/σ
 var float drift_val      = na
+// The human-readable drift readout the export now carries after the arrow, e.g.
+// "Strong bullish (top 11% of days) · +0.60%/day". Ranked against the instrument's
+// OWN history server-side, which the indicator cannot do from a single pasted
+// number. Empty on older exports — the hardcoded wording below is the fallback.
+var string drift_text    = na
 // Session H-L consumption %s (% of daily H-L — set only if SESSION STATS section found in paste)
 var float asia_med_pct      = na
 var float asia_75_pct       = na
@@ -332,6 +337,8 @@ if barstate.isfirst
                     d = f_parseDrift(rowRaw, ": ")
                     if not na(d) and na(drift_val)
                         drift_val := d
+                    if str.contains(rowRaw, "→") and na(drift_text)
+                        drift_text := str.trim(array.get(str.split(rowRaw, "→"), 1))
 
 // =====================================================
 // DAILY TRACKING
@@ -889,13 +896,17 @@ if barstate.islast
                           xloc=xloc.bar_time, extend=extend.none)
 
             if show_labels
-                driftTag = drift_val >= 0.3  ? "Bullish ↑"         :
+                // Prefer the ranked readout from the export. The fallback scale below
+                // SATURATES — it called everything from d=0.30 up "Bullish", which is
+                // 20% of gold's days spanning 0.30 to 0.87, so a routine trend and a
+                // 1-in-25 one read identically. Kept only for older pastes.
+                driftTag = not na(drift_text) and str.length(drift_text) > 0 ? drift_text :
+                           drift_val >= 0.3  ? "Bullish ↑"         :
                            drift_val >= 0.1  ? "Mild bullish ↑"    :
                            drift_val > -0.1  ? "Neutral"            :
                            drift_val > -0.3  ? "Mild bearish ↓"    :
                                                "Bearish ↓"
-                lb_drift := label.new(bar_index + 2, driftEnd,
-                     "Drift " + str.tostring(math.round(drift_val, 3)) + "  " + driftTag,
+                lb_drift := label.new(bar_index + 2, driftEnd, "Drift  " + driftTag,
                      style=label.style_label_left, color=color.new(driftColor, 70),
                      textcolor=color.white, size=size.small)
 

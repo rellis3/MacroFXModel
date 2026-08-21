@@ -425,6 +425,84 @@ export function _driftD(ohlc, sigmaFwd, win = 14) {
   return +Math.max(-2, Math.min(2, mu / sigmaFwd)).toFixed(4);
 }
 
+// ── Drift, expressed so a human can read it ───────────────────────────────────
+//
+// The raw ratio d = mu/sigma is the right quantity and the wrong DISPLAY. Two
+// problems with showing "0.573":
+//
+//   * The unit means nothing to a reader. "0.573 standard deviations of trend per
+//     day" is not a thing anyone pictures.
+//   * A fixed word scale saturates. The old thresholds called everything from
+//     d=0.30 upward "Bullish" — that is 20% of all gold days, spanning 0.30 to
+//     0.87, so a routine trend and a 1-in-25 one read identically.
+//
+// So rank it against the instrument's OWN history instead. 0.573 is the 96th
+// percentile on gold but the 99th on EURUSD, because EURUSD trends less; a fixed
+// threshold cannot express that and a percentile does it for free.
+//
+// Percentile is on |d| — "how unusual is a trend this STRONG" — with the direction
+// carried by the word. Magnitude is reported as %/day, which is the form a reader
+// can actually picture: "+0.47% a day for a fortnight".
+//
+// NOTE this is descriptive, not predictive. Conditioning the O-H/O-L rungs on drift
+// was tested and rejected (see forge/drift.py): ~5pp of effect, and the analytic
+// form the old v2 lines used over-corrected by 3-4x. A strong reading says an
+// unusual trend HAS happened, not that today's upside band is likelier to be hit.
+// Each band must clear BOTH bars: unusual for this instrument (pct), and actually a
+// trend in absolute terms (min |d|). Either test alone fails in a way that is easy
+// to reproduce:
+//   * pct alone — on a series with no trend the |d| distribution is a puddle near
+//     zero, so d = -0.057 sits in its top 14% and gets announced as "Strong".
+//   * |d| alone — a fixed threshold cannot know that 0.573 is a 96th-percentile
+//     reading on gold and a 99th on EURUSD, which trends less.
+// The |d| floors come from the pooled distribution across instruments: median ~0.18,
+// p90 ~0.48, p99 ~0.74.
+const DRIFT_BANDS = [
+  { pct: 0.97, min: 0.50, word: 'Extreme'     },
+  { pct: 0.90, min: 0.35, word: 'Very strong' },
+  { pct: 0.75, min: 0.25, word: 'Strong'      },
+  { pct: 0.50, min: 0.15, word: 'Mild'        },
+];
+
+export function driftReadout(ohlc, sigmaFwd, win = 14) {
+  const d = _driftD(ohlc, sigmaFwd);
+  const out = { d, pct: null, word: 'Neutral', dir: 'flat', pctPerDay: null, text: null, n: 0 };
+  if (!Number.isFinite(d) || !(sigmaFwd > 0)) return out;
+
+  out.pctPerDay = Math.round(d * sigmaFwd * 100 * 100) / 100;   // signed %/day
+
+  // Historical |d| from the SAME bars this forecast was built on. Each past day's
+  // drift uses only closes up to that day, so the distribution is causal.
+  const hist = [];
+  for (let i = win + 1; i < ohlc.length; i++) {
+    const slice = ohlc.slice(0, i);
+    const mu = Math.log(slice.at(-1).close / slice.at(-(win + 1)).close) / win;
+    const v = Math.abs(mu / sigmaFwd);
+    if (Number.isFinite(v)) hist.push(Math.min(v, 2));
+  }
+  out.n = hist.length;
+  if (hist.length < 60) return out;                 // too short to rank honestly
+
+  const a = Math.abs(d);
+  out.pct = hist.filter(v => v < a).length / hist.length;
+  out.dir = d > 0.02 ? 'bullish' : d < -0.02 ? 'bearish' : 'flat';
+  const band = DRIFT_BANDS.find(b => out.pct >= b.pct && a >= b.min);
+  out.word = !band || out.dir === 'flat' ? 'Neutral' : `${band.word} ${out.dir}`;
+
+  // "Strong bullish (top 5% of days) · +0.47%/day"
+  //
+  // The "top X%" clause only earns its place when X is small. On a Mild reading it
+  // would render as "(top 49% of days)", which says nothing and actively misleads —
+  // "top" implies rarity. So it appears from Strong (75th pct) upward, and below
+  // that the word alone carries the meaning.
+  const top = Math.max(1, Math.round((1 - out.pct) * 100));
+  const mag = `${out.pctPerDay >= 0 ? '+' : ''}${out.pctPerDay.toFixed(2)}%/day`;
+  out.text = out.word === 'Neutral' ? `Neutral · ${mag}`
+           : out.pct >= 0.75        ? `${out.word} (top ${top}% of days) · ${mag}`
+           :                          `${out.word} · ${mag}`;
+  return out;
+}
+
 // ── Shared output builder ─────────────────────────────────────────────────────
 // Band constants: COG (js/cogBands.js's COG_CONST), uniform across asset classes —
 // standardized 2026-08-17, replacing the prior per-asset-corrected Feller/BM set,
@@ -621,6 +699,7 @@ export function computeForecast(ohlc, assetClass = 'fx', newsMult = 1.0, opts = 
     legacy_oc_median:  r2s(HN_P50       * legacyPct),
     // v2: drift parameter and drifted-BM OH/OL percentiles
     drift_d:       _d,
+    drift_read:    driftReadout(ohlc, sigmaFwd),
     oh_v2_median:  r2v(_bmMaxQuantile( _d, 0.5)  * _p.oc_50_corr * _sp),
     oh_v2_75:      r2v(_bmMaxQuantile( _d, 0.75) * _p.oc_75_corr * _sp),
     ol_v2_median:  r2v(_bmMaxQuantile(-_d, 0.5)  * _p.oc_50_corr * _sp),
