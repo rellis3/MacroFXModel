@@ -33,6 +33,9 @@ system already in this repo:
 - `education/jordan_atr_band_backtest/` — the rolling ATR-band mean-
   reversion idea from this file's own Synthesis section, built and tested
   (null, see Research Backlog)
+- `education/jordan_vwap_session_reversion_backtest/` — the London→NY
+  VWAP session-transition fade (Husky's stated pattern, videos 2 and 18),
+  built and tested (null, see Research Backlog)
 
 Nothing below is confirmed or backtested by default — this is a capture
 layer for hypotheses. "Confidence" is about how clearly/repeatedly Jordan
@@ -1101,8 +1104,26 @@ chart: price crossing above/below VWAP and repeatedly "tapping" it —
 implying VWAP acts as a magnet/pivot on lower timeframes intraday, distinct
 from the VuManChu Cipher B "VWAP" (wt1-wt2) already modeled in
 `vumanchuLab/`. This is a literal price-vs-session-VWAP read.
+
+**Reconfirmed live, video 18 (new):** Jordan directs Husky to add VWAP on
+stream ("add Vwap"..."see how price reacts to Vwap") and Husky demonstrates
+the same tapping/magnet behavior, repeating "VWAP is one of the few
+technical indicators I do actually really like" near word-for-word.
+
+**BUILT AND TESTED, null — see `education/jordan_vwap_session_reversion_
+backtest/RESULTS.md` and `js/vwapSessionReversionV1Engine.js`.** Fading
+the London move toward session VWAP at the NY-window handoff, tested on 26
+FX pairs + gold (real OANDA M1, costed, true IS/OOS split): pooled OOS
+t=-9.9, 1/26 pairs OOS-positive, pooled gross mean/trade ≈0.00002%
+(indistinguishable from zero) — the same "no gross edge, cost alone kills
+it" shape as the already-tested σ-band VWAP null
+(`VWAP_REVERSION_FINDINGS.md`). A magnitude-gated variant (only "decent"
+≥0.15% London moves) improved but did not rescue the result. This is a
+mechanically different hypothesis from the σ-band engine (session handoff,
+not a σ-band touch), so testing it was not redundant — but the outcome
+lands in the same place.
 **Videos:** 2 (new — session-transition-specific version of the general
-"VWAP as context" theme from video 1).
+"VWAP as context" theme from video 1), 18 (reconfirmed live).
 
 ### Prop-firm account pacing discipline (avoid tilt after passing a phase)
 **Speaker: host of transcript 2.** Confidence: med — stated as personal
@@ -1692,10 +1713,24 @@ logic). Links to a script/dir once work starts._
   conservative)** are numbers, not a discoverable entry signal (the gates
   themselves are black-box) — not backtestable as a strategy, but worth
   keeping as a reference risk-sizing convention if useful elsewhere.
-- **VWAP reversion, London → New York transition.** Concrete and testable:
-  after a directional London-session move, measure how often/how far price
-  reverts toward session VWAP in the first 3-4 hours of New York. Cheap to
-  test against existing OHLC data, no new indicator needed.
+- **VWAP reversion, London → New York transition — BUILT AND TESTED, null.**
+  See `education/jordan_vwap_session_reversion_backtest/RESULTS.md` and
+  `js/vwapSessionReversionV1Engine.js`. Fades whatever direction London
+  moved, targeting session VWAP as NY opens (13:00-17:00 UTC), stop =
+  1.5×ATR(15m) — the group's own stated stop convention. Tested on 26 FX
+  pairs + gold, real OANDA M1 2016-2026, costed, true 60/40 IS/OOS split:
+  **null** (pooled OOS t=-9.9, only 1/26 pairs OOS-Sharpe-positive). Pooled
+  **gross** mean/trade across all 26 pairs is ≈0.00002% — indistinguishable
+  from zero, the identical "no gross edge, cost alone kills it" shape as
+  the already-tested σ-band VWAP null (`VWAP_REVERSION_FINDINGS.md`). A
+  magnitude-gated sensitivity check (only "decent" London moves ≥0.15%,
+  since the baseline's zero-threshold default includes sub-pip noise)
+  improved but did not rescue the result on any of 4 pairs checked. This
+  closes VWAP out as a standalone reversion signal in every form actually
+  described across 18 transcripts (σ-band touch and session-transition
+  handoff alike) — the one still-open form is VWAP as a *conditioning
+  filter* on an edge that already exists, which needs a validated primary
+  edge to condition and this repo doesn't yet have one intraday.
 - **Asia-range extension multiples (1.5, 2, 2.75) as level generator.**
   Check first against whatever `education/jordan_impulse_range_backtest/`
   already tests — if the ratios there differ from 1.5/2/2.75, that's worth
