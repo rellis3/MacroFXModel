@@ -19,7 +19,7 @@ import { createInterface as rlCreateInterface } from 'readline';
 import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
-import worker            from './_worker.js';
+import worker, { COT_KV } from './_worker.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
@@ -924,7 +924,7 @@ const COT_CCY_GROUP = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'MXN'];
 
 async function computeCotCorrelations() {
   let raw;
-  try { raw = await kv.get('cot_series_v2'); } catch { return null; }
+  try { raw = await kv.get(COT_KV.series); } catch { return null; }
   if (!raw) return null;
   let series;
   try { series = JSON.parse(raw)?.series; } catch { return null; }
@@ -3109,7 +3109,7 @@ function _cotPairView(c, inverted) {
 // the export must never invent positioning.
 async function _cotForExport(now = Date.now()) {
   try {
-    const raw = await kv.get('cot_extremes_v2'); if (!raw) return null;
+    const raw = await kv.get(COT_KV.extremes); if (!raw) return null;
     const cd = JSON.parse(raw);
     const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
     const list = Array.isArray(arr) ? arr : []; if (!list.length) return null;
@@ -3212,7 +3212,7 @@ async function _serverSnapshotFor(name, sym) {
   } catch {}
   // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
   try {
-    const cotRaw = await kv.get('cot_extremes_v2');
+    const cotRaw = await kv.get(COT_KV.extremes);
     const m = _COT_MAP[name];
     if (cotRaw && m) {
       const cd = JSON.parse(cotRaw); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
@@ -3236,7 +3236,7 @@ async function _serverSnapshotFor(name, sym) {
   // what tells you whether one crowded pair is idiosyncratic or part of a broad
   // risk-on/risk-off crowding. Extremes are taken on the OI-NORMALISED percentile.
   try {
-    const cotRaw2 = await kv.get('cot_extremes_v2');
+    const cotRaw2 = await kv.get(COT_KV.extremes);
     if (cotRaw2) {
       const cd = JSON.parse(cotRaw2); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
       const list = (Array.isArray(arr) ? arr : []).filter(x => x && x.sym);

@@ -108,6 +108,48 @@ def test_no_history_fields_stands_down_documented():
     assert r.passed and r.signal == 'NEUTRAL' and 'not computable' in r.reason
 
 
+def test_oi_normalised_percentile_preferred_over_raw():
+    # DF-01 step 2: rank the net as a SHARE of open interest. When both are
+    # present the share read must win — here raw says "extreme long" (95th) but
+    # the OI-normalised read says middling (50th), so the entry must NOT be
+    # vetoed. This is the §4.3 defect in one assertion.
+    cot = {'levNet': 90000, 'specPct': 95.0, 'specZ': 2.5,
+           'specSharePct': 50.0, 'specShareZ': 0.1, 'reportDate': _fresh_date()}
+    r = MOD.evaluate(_state(cot), 'EUR/USD', {}, _ctx('LONG'))
+    assert r.passed and r.signal == 'NEUTRAL', r.reason
+    assert r.metadata['oi_basis'] == 'OI-normalised'
+    assert r.metadata['spec_pct'] == 50.0
+
+
+def test_oi_normalised_extreme_vetoes_when_raw_is_calm():
+    # The mirror case: raw looks calm (50th) but as a share of OI the crowd is
+    # stretched long (95th) — the veto must fire on the share read.
+    cot = {'levNet': 90000, 'specPct': 50.0, 'specSharePct': 95.0,
+           'reportDate': _fresh_date()}
+    r = MOD.evaluate(_state(cot), 'EUR/USD', {}, _ctx('LONG'))
+    assert not r.passed, r.reason
+    assert r.metadata['oi_basis'] == 'OI-normalised'
+
+
+def test_falls_back_to_raw_when_share_absent():
+    # Legacy/extremes-without-history snapshots carry no share fields; the module
+    # must still work off the raw rank rather than going dark, and must SAY which
+    # basis it used so a reader can tell the two apart.
+    cot = {'levNet': 90000, 'specPct': 95.0, 'reportDate': _fresh_date()}
+    r = MOD.evaluate(_state(cot), 'EUR/USD', {}, _ctx('LONG'))
+    assert not r.passed
+    assert r.metadata['oi_basis'] == 'raw net'
+
+
+def test_share_zscore_fallback_when_share_percentile_missing():
+    # Short history nulls the percentile but not the z — share z still preferred.
+    cot = {'levNet': 90000, 'specZ': 0.2, 'specShareZ': 2.5,
+           'reportDate': _fresh_date()}
+    r = MOD.evaluate(_state(cot), 'EUR/USD', {}, _ctx('LONG'))
+    assert not r.passed and 'z=' in r.reason
+    assert r.metadata['oi_basis'] == 'OI-normalised'
+
+
 def test_never_votes_directionally():
     # DF-01: positioning is never confirmation — the signal must be NEUTRAL in
     # every branch so cot_filter can never count toward min_agree.

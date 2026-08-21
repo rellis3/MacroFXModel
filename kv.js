@@ -97,9 +97,14 @@ const _CF_EXACT = new Set([
                             // forward" property as oi_history, so it MUST be durable. Written by the
                             // same `_snapshotOIHistory` pass, deduped independently of the summary.
   'cot_data',               // parsed CFTC COT — requires user-set URL to rebuild
-  'cot_series_v1',          // 200-week COT series per market — a CACHE, but written at most weekly and
+  'cot_series_v2',          // 156-week COT series per market — a CACHE, but written at most weekly and
                             // rebuilding costs a full CFTC refetch, so it is worth surviving a redeploy
-                            // (weekly writes are negligible against the CF KV quota)
+                            // (weekly writes are negligible against the CF KV quota). Name must track
+                            // `COT_KV.series` in _worker.js — this entry said `cot_series_v1` for the
+                            // nine days after the 2026-08-12 rename, so BOTH COT caches were silently
+                            // landing in the ephemeral file store and dying on every deploy.
+  'cot_extremes_v3',        // the lean per-instrument COT payload (series stripped) — same argument as
+                            // above; tracks `COT_KV.extremes`
   'cot_urls',               // user-configured CFTC report URLs (multi-asset)
   'cot_url',                // legacy single CFTC URL key
   'caps',                   // user-configured proximity caps
