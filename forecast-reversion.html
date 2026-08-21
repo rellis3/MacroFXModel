@@ -111,6 +111,12 @@
   table.ff th:first-child { text-align:left; }
   table.ff td { text-align:right; padding:3px 6px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text2); }
   table.ff td:first-child { text-align:left; }
+.st-cond { margin-top: 14px; }
+.st-sub { font-size: 12px; font-weight: 600; color: #cbd5e1; margin: 10px 0 3px; }
+.st-note { font-size: 10px; color: #7c8798; margin-bottom: 5px; line-height: 1.45; }
+.st-tbl { border-collapse: collapse; font-size: 11px; }
+.st-tbl th, .st-tbl td { padding: 2px 10px 2px 0; text-align: left; }
+.st-tbl th { color: #7c8798; font-weight: 500; border-bottom: 1px solid #232a36; }
 </style>
 </head>
 <body>
@@ -193,6 +199,7 @@
     <button class="ghost" id="scanBtn" title="Sweep a grid of fixed SL × TP-multiplier over the current touches and find the best — in-sample, look for a plateau not a spike.">🔍 Scan SL/TP</button>
     <button class="ghost" id="ffBtn" title="Fade-vs-Follow: for every touch, race a symmetric revert-vs-continue move and bucket the outcome by candidate signals (vol-spent, line family, tier, timing) to see what — if anything — separates a fade from a follow.">⚖ Fade/Follow</button>
     <button class="ghost" id="oscBtn" title="Show the WaveTrend oscillator pane + price↔oscillator divergence lines (regular = reversal, hidden = continuation).">〰 Osc</button>
+      <button class="dark-btn" id="vwapBtn" title="Overlay session VWAP and its +/-2SD bands (tick-weighted on FX — OANDA volume is tick count). Context for the stretch breakdown in Stats: is a touch that happens far from VWAP more likely to fade?">〜 VWAP</button>
     <a class="a2" href="forecast-replay.html"><button class="ghost" title="Open the plain Replay view (forecast lines vs realized H/L, no trades)">↩ Replay</button></a>
     <span class="status" id="status"></span>
   </div>
@@ -254,6 +261,7 @@
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
 import { LADDER_LINES, FITTED_LINES, linesFor, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=7';
+import { computeSessionVwap } from './js/vwapReversionEngine.js';
 import { computeWaveTrend } from './js/vumanchuCore.js?v=1';
 import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
 
@@ -341,7 +349,7 @@ function bandsFor(f, mode) {
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(FITTED_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
+const state = { showVwap: false, armed: new Set(FITTED_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
 const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot' };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
@@ -492,6 +500,11 @@ function buildChips() {
     $('oscBtn').classList.toggle('active', state.showOsc);
     applyOscMargins();
     scheduleDraw();
+  });
+  $('vwapBtn').addEventListener('click', () => {
+    state.showVwap = !state.showVwap;
+    $('vwapBtn').classList.toggle('active', state.showVwap);
+    scheduleDraw();                      // view-only: no recompute, the tags are already on the trades
   });
   $('scanBtn').addEventListener('click', runScan);
   $('scanClose').addEventListener('click', () => $('scanOverlay').classList.remove('open'));
@@ -651,6 +664,36 @@ function prepIndicators() {
   }
   prepMtfStretch();
   prepAtr();
+  prepVwap();
+  prepPriorVol();
+}
+
+// Session VWAP + running SD, from the SHARED brick (js/vwapReversionEngine.js) so
+// this page and the VWAP study cannot disagree about what VWAP means. Note the FX
+// caveat the brick states: OANDA "volume" is tick count, not traded volume, so this
+// is a tick-weighted average — the standard FX proxy, weaker than an equity VWAP.
+function prepVwap() {
+  for (const d of days) {
+    if (!d.bars.length) { d.vwap = null; d.vwapSd = null; d.barIdx = null; continue; }
+    const { vwap, sd } = computeSessionVwap(d.bars);
+    d.vwap = vwap; d.vwapSd = sd;
+    d.barIdx = new Map();                       // bar time -> index, to price a touch
+    for (let k = 0; k < d.bars.length; k++) d.barIdx.set(d.bars[k].time, k);
+  }
+}
+
+// "Was yesterday hot?" — yesterday's realised range over the trailing 21-day median
+// range. Strictly prior days, so it is known before today opens. This is the
+// volatility-clustering conditioner: the question is whether a touch behaves
+// differently after a big day.
+function prepPriorVol() {
+  const rng = d => (d.high > 0 && d.low > 0 && d.open > 0) ? (d.high - d.low) / d.open * 100 : NaN;
+  for (let i = 0; i < days.length; i++) {
+    const hist = days.slice(Math.max(0, i - 21), i).map(rng).filter(Number.isFinite).sort((a, b) => a - b);
+    const prev = i > 0 ? rng(days[i - 1]) : NaN;
+    days[i].priorVol = (hist.length >= 10 && Number.isFinite(prev) && hist[Math.floor(hist.length / 2)] > 0)
+      ? prev / hist[Math.floor(hist.length / 2)] : null;
+  }
 }
 // MTF WaveTrend-stretch zones (the Phase-11 validated gate, MTF version). Computed on
 // the CONTINUOUS series (spans days) so wt1 has proper warmup — matching the live
@@ -782,6 +825,17 @@ function computeTrades() {
     const bands = bandsFor(d.f);
     d.trades = reversionTrades(d.open, d.bars, bands,
       { armed: state.armed, costPct, style: state.style, sltp, forwardBars: forwardBarsFor(i), decideAction });
+    // Tag each touch with the two conditioners under test, measured AT the touch:
+    //   vwapZ    — how stretched from session VWAP, in running-SD units. A LOCATION
+    //              feature, so unlike a volatility one it is not already inside the
+    //              band (sigma knows nothing about where price sits in the session).
+    //   priorVol — yesterday's range vs its trailing median.
+    for (const t of d.trades) {
+      const k = (t.entryTime != null && d.barIdx) ? d.barIdx.get(t.entryTime) : undefined;
+      const sd = (k != null && d.vwapSd) ? d.vwapSd[k] : 0;
+      t.vwapZ = (k != null && sd > 0) ? (t.entry - d.vwap[k]) / sd : null;
+      t.priorVol = d.priorVol ?? null;
+    }
     // Per-line first-touch (for the Markers / Touched-only overlays). Uses the DRAWN
     // price (bandsFor → calc-mode aware), so it stays correct when the calc flips.
     // Recomputed here (with trades) rather than every frame.
@@ -828,6 +882,29 @@ function drawOverlay() {
     if (xb < 0 || xa > overlayCanvas.width / dpr) continue;
     const wide = (xb - xa) > 54;
     const labelX = Math.min(xb, overlayCanvas.width / dpr - 4);
+
+    // VWAP + /-2SD. Drawn as POLYLINES, not flat levels: both move through the
+    // session as volume accumulates, and flattening them to a single price would
+    // misrepresent where the band actually sat when a forecast line was touched.
+    // Behind the ladder lines (drawn first) so it reads as context, not signal.
+    if (state.showVwap && d.vwap && d.bars.length > 1) {
+      const poly = (get, color, dash, alpha, width) => {
+        octx.save();
+        octx.strokeStyle = color; octx.lineWidth = width; octx.setLineDash(dash);
+        octx.globalAlpha = alpha; octx.beginPath();
+        let started = false;
+        for (let k = 0; k < d.bars.length; k++) {
+          const v = get(k); if (!Number.isFinite(v)) continue;
+          const x = ts.timeToCoordinate(d.bars[k].time), y = series.priceToCoordinate(v);
+          if (x == null || y == null) { started = false; continue; }
+          if (!started) { octx.moveTo(x, y); started = true; } else octx.lineTo(x, y);
+        }
+        octx.stroke(); octx.restore();
+      };
+      poly(k => d.vwap[k], '#a78bfa', [], 0.85, 1.4);                              // VWAP
+      poly(k => d.vwap[k] + 2 * d.vwapSd[k], '#a78bfa', [3, 3], 0.45, 1);          // +2SD
+      poly(k => d.vwap[k] - 2 * d.vwapSd[k], '#a78bfa', [3, 3], 0.45, 1);          // -2SD
+    }
 
     const line = (price, color, dash, text, solid, alpha) => {
       const y = series.priceToCoordinate(price);
@@ -980,6 +1057,52 @@ function drawOsc(ts, pf) {
 }
 
 // ── Stats panel ──────────────────────────────────────────────────────────────
+// ── Conditional breakdown: does the fade behave differently by context? ──────
+//
+// Two conditioners, both measured AT the touch and both causal:
+//
+//   VWAP stretch — |entry - session VWAP| in running-SD units. A LOCATION feature.
+//     Sigma encodes volatility, not where price sits inside the session, so this is
+//     genuinely orthogonal to the band — unlike a volatility conditioner, which the
+//     estimator has already priced in.
+//
+//   Yesterday's vol — prior range / trailing-21d median. This one IS a volatility
+//     feature, so expect little: every estimator in the stack is a clustering model,
+//     the band already widened, and conditioning on it double-counts. Included
+//     precisely so that shows up in the numbers rather than being asserted.
+//
+// Buckets are terciles of whatever the current range produced, so they adapt to the
+// sample instead of imposing thresholds that may not split it.
+function conditionalRows(trades, field, labels) {
+  const vals = trades.map(t => t[field]).filter(Number.isFinite);
+  if (vals.length < 30) return null;
+  const srt = [...vals].sort((a, b) => a - b);
+  const lo = srt[Math.floor(srt.length / 3)], hi = srt[Math.floor(srt.length * 2 / 3)];
+  const pick = t => !Number.isFinite(t[field]) ? null : t[field] <= lo ? 0 : t[field] >= hi ? 2 : 1;
+  const out = [];
+  for (let b = 0; b < 3; b++) {
+    const g = trades.filter(t => pick(t) === b);
+    if (!g.length) continue;
+    const resolved = g.filter(t => t.outcome === 'win' || t.outcome === 'loss');
+    const wr = resolved.length ? g.filter(t => t.outcome === 'win').length / resolved.length * 100 : NaN;
+    const net = g.reduce((a, t) => a + t.netPct, 0);
+    out.push({ label: labels[b], n: g.length, wr, net, expired: g.filter(t => t.outcome === 'expired').length });
+  }
+  return { rows: out, lo, hi };
+}
+
+function conditionalTable(title, note, trades, field, labels) {
+  const r = conditionalRows(trades, field, labels);
+  if (!r) return `<div class="st-cond"><div class="st-sub">${title}</div><div class="st-empty">Not enough touches yet (need 30+).</div></div>`;
+  const body = r.rows.map(x =>
+    `<tr><td>${x.label}</td><td>${x.n}</td><td>${Number.isFinite(x.wr) ? x.wr.toFixed(0) + '%' : '—'}</td>`
+    + `<td>${x.expired}</td><td class="${x.net >= 0 ? 'pos' : 'neg'}">${x.net >= 0 ? '+' : ''}${x.net.toFixed(2)}</td></tr>`).join('');
+  return `<div class="st-cond"><div class="st-sub">${title}</div>`
+    + `<div class="st-note">${note} · terciles at ${r.lo.toFixed(2)} / ${r.hi.toFixed(2)}</div>`
+    + `<table class="st-tbl"><thead><tr><th>bucket</th><th>n</th><th>win%</th><th>exp</th><th>net%</th></tr></thead>`
+    + `<tbody>${body}</tbody></table></div>`;
+}
+
 function renderStats() {
   const el = $('stats');
   if (!state.showStats) return;
@@ -999,6 +1122,13 @@ function renderStats() {
       + `<td>${s.n}</td><td>${s.wins}</td><td>${s.losses}</td><td>${s.expired}</td>`
       + `<td>${wr}%</td><td class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td></tr>`;
   }).join('');
+  const condHtml =
+      conditionalTable('Fade by VWAP stretch at the touch',
+        'signed SD from session VWAP — negative = below VWAP. Does a touch that happens far from fair value fade better?',
+        all, 'vwapZ', ['below VWAP', 'near VWAP', 'above VWAP'])
+    + conditionalTable("Fade by yesterday's volatility",
+        "prior range / trailing-21d median. Expect little: the band already widened for it.",
+        all, 'priorVol', ['after a quiet day', 'normal', 'after a HOT day']);
   const twr = (total.winRate * 100).toFixed(0);
   const styleLbl = STYLE_LABEL[state.style] || 'Fade all';
   const u = unitFor($('pair').value);
@@ -1033,6 +1163,7 @@ function renderStats() {
     + `<td>${total.n ? twr + '%' : '—'}</td><td class="${total.netPct >= 0 ? 'pos' : 'neg'}">${total.netPct >= 0 ? '+' : ''}${total.netPct.toFixed(2)}</td></tr>`
     + `</tbody></table>`
     + splitLine
+    + condHtml
     + `<div class="st-empty">N = touches (1 per line per session). ΣNet% sums per-trade % after cost — a rough cumulative for eyeballing, not compounded equity. In-sample.</div>`;
 }
 
