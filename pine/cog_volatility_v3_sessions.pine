@@ -69,6 +69,12 @@ col_london     = input.color(color.new(color.green, 0),  "London Extension Colou
 
 show_oh_ol_drift = input.bool(false,  "Show OH/OL + Drift Lines",  group="OH/OL + Drift",
      tooltip="Draws Open-High (upside) and Open-Low (downside) band lines anchored at the daily open, plus a drift forecast arrow. Requires the v2 export block that contains Open High / Open Low / Drift lines.")
+// p90 = the exhaustion rung. On the fitted ladder each rung means what it says
+// (p50 reached on ~50% of sessions, p75 ~25%, p90 ~10%), so the 90th is the one
+// that marks a genuinely stretched session rather than an ordinary one. Older
+// exports carry no 90th; those lines simply stay na and nothing is drawn.
+col_oh_90  = input.color(color.new(color.orange,  0),  "OH 90th Colour",   group="OH/OL + Drift")
+col_ol_90  = input.color(color.new(color.red,     0),  "OL 90th Colour",   group="OH/OL + Drift")
 col_oh_75  = input.color(color.new(color.yellow,  0),  "OH 75th Colour",   group="OH/OL + Drift")
 col_oh_med = input.color(color.new(color.yellow,  60), "OH Median Colour", group="OH/OL + Drift")
 col_ol_75  = input.color(color.new(color.fuchsia, 0),  "OL 75th Colour",   group="OH/OL + Drift")
@@ -162,6 +168,8 @@ var float vol_oh_med     = na   // Open High median %
 var float vol_oh_75      = na   // Open High 75th %
 var float vol_ol_med     = na   // Open Low median %
 var float vol_ol_75      = na   // Open Low 75th %
+var float vol_oh_90      = na   // Open High 90th % (fitted ladder; absent on older exports)
+var float vol_ol_90      = na   // Open Low 90th %
 // Drift d=μ/σ
 var float drift_val      = na
 // Session H-L consumption %s (% of daily H-L — set only if SESSION STATS section found in paste)
@@ -291,17 +299,23 @@ if barstate.isfirst
                 if str.contains(rowUp, "OPEN HIGH")
                     med = f_firstNumAfter(rowRaw, ": ")
                     p75 = f_lastNumBefore(rowRaw, "75th")
+                    p90 = f_lastNumBefore(rowRaw, "90th")
                     if not na(med) and na(vol_oh_med)
                         vol_oh_med := med
                     if not na(p75) and na(vol_oh_75)
                         vol_oh_75 := p75
+                    if not na(p90) and na(vol_oh_90)
+                        vol_oh_90 := p90
                 if str.contains(rowUp, "OPEN LOW")
                     med = f_firstNumAfter(rowRaw, ": ")
                     p75 = f_lastNumBefore(rowRaw, "75th")
+                    p90 = f_lastNumBefore(rowRaw, "90th")
                     if not na(med) and na(vol_ol_med)
                         vol_ol_med := med
                     if not na(p75) and na(vol_ol_75)
                         vol_ol_75 := p75
+                    if not na(p90) and na(vol_ol_90)
+                        vol_ol_90 := p90
                 if str.contains(rowUp, "DRIFT")
                     d = f_parseDrift(rowRaw, ": ")
                     if not na(d) and na(drift_val)
@@ -385,6 +399,8 @@ oh_up_75  = not na(vol_oh_75)  ? dayOpen * (1 + vol_oh_75  / 100) : na
 oh_up_med = not na(vol_oh_med) ? dayOpen * (1 + vol_oh_med / 100) : na
 ol_dn_75  = not na(vol_ol_75)  ? dayOpen * (1 - vol_ol_75  / 100) : na
 ol_dn_med = not na(vol_ol_med) ? dayOpen * (1 - vol_ol_med / 100) : na
+oh_up_90  = not na(vol_oh_90)  ? dayOpen * (1 + vol_oh_90  / 100) : na
+ol_dn_90  = not na(vol_ol_90)  ? dayOpen * (1 - vol_ol_90  / 100) : na
 
 // =====================================================
 // PRICE LEVELS — SESSION PROJECTIONS
@@ -445,6 +461,8 @@ plot(oc_dn_med,  "Close Med Dn", color=col_oc_med, linewidth=1, style=plot.style
 // STATIC PLOTS — OH / OL (asymmetric open-anchored bands)
 // =====================================================
 
+plot(show_oh_ol_drift ? oh_up_90  : na, "OH 90th Up",  color=col_oh_90,  linewidth=2, style=plot.style_stepline)
+plot(show_oh_ol_drift ? ol_dn_90  : na, "OL 90th Dn",  color=col_ol_90,  linewidth=2, style=plot.style_stepline)
 plot(show_oh_ol_drift ? oh_up_75  : na, "OH 75th Up",  color=col_oh_75,  linewidth=2, style=plot.style_stepline)
 plot(show_oh_ol_drift ? oh_up_med : na, "OH Med Up",   color=col_oh_med, linewidth=1, style=plot.style_stepline)
 plot(show_oh_ol_drift ? ol_dn_75  : na, "OL 75th Dn",  color=col_ol_75,  linewidth=2, style=plot.style_stepline)
