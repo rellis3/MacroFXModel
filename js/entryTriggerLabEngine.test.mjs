@@ -3,7 +3,7 @@
 import assert from 'node:assert';
 import {
   normalizeBars, groupAsiaSessions, groupMondaySessions, buildAsiaRangeHistory,
-  buildLevelTimeline, levelsActiveOn, detectWickEngulfing, detectMidpointPullback,
+  buildLevelTimeline, levelsActiveOn, activeLevelsAt, detectWickEngulfing, detectMidpointPullback,
   detectSessionExtremeAnchor, detectVwapTap, resampleToH4, computeH4AdxSeries,
   detectAdxRegimeSwitch,
 } from './entryTriggerLabEngine.js';
@@ -111,6 +111,28 @@ t('levelsActiveOn: asia is same-date only, monday spans through the week', () =>
   const timeline = buildLevelTimeline(hist, 'EUR/USD', 'asia');
   assert.equal(levelsActiveOn('2026-01-06', timeline, 'asia').date, '2026-01-06');
   assert.equal(levelsActiveOn('2026-01-05', timeline, 'asia'), null); // no prior day to build day-1's ladder
+});
+
+t('activeLevelsAt: strongOnly returns only the confluent (today-vs-yesterday) levels, tagged strong', () => {
+  // Two Asia days at deliberately different scale/offset so most of the two
+  // ladders DON'T land near each other — except day2's own low (1.1049),
+  // which lands within the FX 2-pip default of day1's high (1.1050),
+  // producing a handful of real confluences out of the full 21-level ladder.
+  const bars = [
+    ...mkAsiaDay('2026-01-05', 1.1050, 1.0950),
+    ...mkAsiaDay('2026-01-06', 1.1449, 1.1049),
+  ];
+  const hist = buildAsiaRangeHistory(bars);
+  const timeline = buildLevelTimeline(hist, 'EUR/USD', 'asia');
+  const bar = { datetime: '2026-01-06 08:00:00' };
+  const full = activeLevelsAt(bar, timeline, []);
+  const strong = activeLevelsAt(bar, timeline, [], { strongOnly: true });
+  assert.ok(full.length > strong.length, 'confluence filtering should narrow the ladder down');
+  assert.ok(strong.length > 0, 'two near-identical ladders should produce at least one confluence');
+  assert.ok(strong.every(l => l.strong === true));
+  assert.ok(full.every(l => l.strong === false));
+  // fib carried through as TODAY's own extension multiple, not lost.
+  assert.ok(strong.every(l => Number.isFinite(l.fib)));
 });
 
 // ── detectWickEngulfing ──────────────────────────────────────────────────────
