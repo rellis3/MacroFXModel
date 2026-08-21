@@ -20,6 +20,7 @@ import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker, { COT_KV } from './_worker.js';
+import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
@@ -3661,6 +3662,98 @@ app.get('/api/fomc-backfill/status', async (_req, res) => {
 app.get('/api/fomc-backfill/scores', async (_req, res) => {
   const raw = await kv.get('fomc_lexicon_scores').catch(() => null);
   if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/fomc-backfill/run first' });
+  res.json({ ok: true, ...JSON.parse(raw) });
+});
+
+// ── COT history backfill — MD files/COT_POSITIONING_FACTOR_TEST.md ────────────
+// Pulls FULL CFTC Socrata history (2006→) for the 8 factor-test contracts and
+// scores it with `cotFactorCore` (OI-normalised, publication-lagged). This is
+// deliberately NOT `/api/cot-extremes`: that endpoint is display-grade — 156
+// weeks hard-capped, 7-day cache, current-week rank only, no lag shift.
+//
+// Output KV `cot_factor_history_v1` is the pre-registered test's input; the
+// series are small (~1000 weekly rows x 8) so they ship as one JSON. Sandbox
+// dev sessions cannot reach CFTC, so this runs on Railway — same build-here /
+// run-there split as the FOMC statement backfill above.
+const _COT_BACKFILL_LOG_KV = 'cot_backfill_log';
+let _cotBackfillRunning = false;
+
+async function _cotBackfillJob() {
+  const log = [];
+  const out = {};
+  const heartbeat = async phase => kv.put(_COT_BACKFILL_LOG_KV, JSON.stringify({
+    at: new Date().toISOString(), phase, log: log.slice(-20),
+  })).catch(() => {});
+
+  for (const inst of COT_FACTOR_UNIVERSE) {
+    const ds = COT_DATASETS[inst.dataset];
+    const names = [inst.name, ...(inst.alt ?? [])];
+    let rows = null, usedName = null;
+    for (const name of names) {
+      const params = new URLSearchParams({
+        market_and_exchange_names: name,
+        '$limit': '3000',
+        '$order': 'report_date_as_yyyy_mm_dd ASC',
+        '$select': `report_date_as_yyyy_mm_dd,${ds.long},${ds.short},open_interest_all`,
+      });
+      try {
+        const r = await fetch(`https://publicreporting.cftc.gov/resource/${ds.id}.json?${params}`,
+          { signal: AbortSignal.timeout(30000) });
+        if (!r.ok) { log.push(`${inst.sym} ✗ HTTP ${r.status} (${name})`); continue; }
+        const j = await r.json();
+        if (Array.isArray(j) && j.length) { rows = j; usedName = name; break; }
+        log.push(`${inst.sym} — 0 rows for "${name}"`);
+      } catch (e) { log.push(`${inst.sym} ✗ ${e.message} (${name})`); }
+    }
+    if (!rows) { log.push(`${inst.sym} ✗ no rows under any known contract name`); out[inst.sym] = { sym: inst.sym, error: 'no rows' }; continue; }
+
+    const mapped = rows.map(r => ({
+      date: String(r.report_date_as_yyyy_mm_dd ?? '').slice(0, 10),
+      specLong: Number(r[ds.long]),
+      specShort: Number(r[ds.short]),
+      openInterest: Number(r.open_interest_all),
+    })).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date));
+
+    const series = cotFactorSeries(mapped, { flip: inst.flip });
+    const scored = series.filter(s => s.z != null).length;
+    out[inst.sym] = {
+      sym: inst.sym, pair: inst.pair, dataset: inst.dataset, flip: inst.flip,
+      contractName: usedName, rows: mapped.length, scoredWeeks: scored,
+      qualifies: qualifies(series),
+      first: series[0]?.date ?? null, last: series.at(-1)?.date ?? null,
+      // Only the fields the test consumes — keeps the payload small enough to
+      // hand to a session that will run the join.
+      series: series.map(s => ({ d: s.date, t: s.tradableFrom, sh: s.share, z: s.z, p: s.pct })),
+    };
+    log.push(`${inst.sym} ✓ ${mapped.length} rows, ${scored} scored, ${series[0]?.date}→${series.at(-1)?.date}${qualifies(series) ? '' : ' [BELOW 260wk GUARD]'}`);
+    await heartbeat(`${Object.keys(out).length}/${COT_FACTOR_UNIVERSE.length}`);
+    await new Promise(r => setTimeout(r, 800)); // politeness between Socrata calls
+  }
+
+  await kv.put('cot_factor_history_v1', JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    window: COT_WINDOW_WEEKS, minWeeksQualify: MIN_WEEKS_QUALIFY,
+    lagRule: 'report Tue → tradable following Mon open (release Fri 15:30 ET)',
+    instruments: out,
+  }));
+  await heartbeat('done');
+  console.log(`[cot-backfill] ${log.join(' · ')}`);
+}
+
+app.post('/api/cot-backfill/run', (_req, res) => {
+  if (_cotBackfillRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _cotBackfillRunning = true;
+  _cotBackfillJob().catch(e => console.error('[cot-backfill]', e.message))
+    .finally(() => { _cotBackfillRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/cot-backfill/status', async (_req, res) => {
+  const raw = await kv.get(_COT_BACKFILL_LOG_KV).catch(() => null);
+  res.json({ ok: true, running: _cotBackfillRunning, last: raw ? JSON.parse(raw) : null });
+});
+app.get('/api/cot-backfill/series', async (_req, res) => {
+  const raw = await kv.get('cot_factor_history_v1').catch(() => null);
+  if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/cot-backfill/run first' });
   res.json({ ok: true, ...JSON.parse(raw) });
 });
 

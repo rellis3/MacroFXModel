@@ -1948,6 +1948,23 @@ call sites in an unrelated change. v2 deliberately did NOT import v1's
 `buildDaily` (it isn't exported, and shouldn't be — v1 stays exactly as
 originally committed, nothing added to it, not even an export).
 
+### 1ap. COT positioning factor core (2026-08-21) — DF-01's six steps, publication-lagged
+
+Built for the pre-registered test in `MD files/COT_POSITIONING_FACTOR_TEST.md`
+(proposal P-C of `education/151_STRATEGIES_PROPOSALS.md`, from book strategy 9.2
++ `education/data-foundations-notes.md` DF-01). Companion to — **not** a
+replacement for — the display-grade COT ranking in `_worker.js`.
+
+| Brick | File | What it does | Consumers | Status |
+|---|---|---|---|---|
+| **COT factor core** | `js/cotFactorCore.js` | Pure, network-free (history passed in): `tradableFrom(reportDate)` — the **publication-lag rule**, derived from `release = report + 3d` (Tue snapshot → Fri 15:30 ET) then the first Monday strictly after, so an off-cycle CFTC date can never resolve before its own release; `cotFactorSeries(rows, {flip, window})` → per-week `{date, tradableFrom, specNet, share, z, pct}` where **`share = specNet/openInterest` is what gets ranked** (DF-01 step 2), z/percentile over a 156-week window; `qualifies()` (≥260 SCORED weeks — contract renames truncate Socrata history silently, so it counts scored weeks, not raw rows); `COT_FACTOR_UNIVERSE` (the 8 contracts with local M1 price history, each with its flip flag, pinned dataset and mapped pair) and `COT_DATASETS` (Socrata ids + participant fields). **Imports `statsCore`'s `rollingZScore`/`rollingPercentile` rather than adding a THIRD copy of the repo's duplicated `pctRank`/`zScore`.** Unit-tested `js/cotFactorCore.test.mjs` (lag rule incl. year-boundary + every-weekday safety, OI-normalisation, flip-together convention, window fill, null-not-Infinity on bad OI, input hygiene, history guard). | `server.js` `_cotBackfillJob` | 🟢 built, tested; **not yet run on real history** (CFTC unreachable from the sandbox) |
+| **History backfill + routes** | `server.js` | `POST /api/cot-backfill/run` (fire-and-forget + running guard), `GET /api/cot-backfill/status`, `GET /api/cot-backfill/series`. Pulls FULL Socrata history (2006→, `$limit=3000`, ascending) for the 8 contracts, walking each contract's `alt` names on a rename, 800ms politeness between calls; scores via the brick; writes KV `cot_factor_history_v1` (durable — it is the frozen INPUT to a registered test, so a redeploy must not force a re-fetch of a *different* revised vintage). Deliberately does NOT read `/api/cot-extremes`: that is 156-week-capped, 7-day-cached, current-week-only and unlagged. | `cot-extremes.html` "⏬ Factor history" button | 🟢 built; ⏳ **awaiting a run on the deployed server** |
+
+**Known limitation recorded with the build:** Socrata serves the *current* value
+of historical rows, so this is a revised-vintage backtest, not a first-print one.
+No vintage capture exists and building one would take years of forward capture.
+Stated in the pre-registration rather than discovered later.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

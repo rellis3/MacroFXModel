@@ -105,6 +105,11 @@ const _CF_EXACT = new Set([
                             // landing in the ephemeral file store and dying on every deploy.
   'cot_extremes_v3',        // the lean per-instrument COT payload (series stripped) — same argument as
                             // above; tracks `COT_KV.extremes`
+  'cot_factor_history_v1',  // FULL Socrata COT history, OI-normalised + publication-lagged, for the
+                            // pre-registered positioning-factor test. Written once by an explicit
+                            // manual backfill (never on a schedule), and it is the frozen INPUT to a
+                            // registered test — losing it to a redeploy would mean re-fetching a
+                            // different (revised) vintage, so it must be durable
   'cot_urls',               // user-configured CFTC report URLs (multi-asset)
   'cot_url',                // legacy single CFTC URL key
   'caps',                   // user-configured proximity caps
