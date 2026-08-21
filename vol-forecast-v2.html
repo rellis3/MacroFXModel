@@ -722,8 +722,7 @@
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
-        <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogPeriod('weekly')"      disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">5-day</span></button>
-        <button class="vf-exp-item" id="vfCogMoBtn"      onclick="closeExpDropdown();exportCogPeriod('monthly')"     disabled>⬇ COG Monthly <span style="font-size:9px;opacity:.55">20-day</span></button>
+        <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogWeekly()"              disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 + √20 in one</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCZExportBtn"   onclick="closeExpDropdown();exportConfluenceZones()"        disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
       </div>
@@ -1431,7 +1430,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfLadderWkBtn','vfLadderMoBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCogMoBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfLadderBtn','vfLadderWkBtn','vfLadderMoBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -2236,16 +2235,13 @@ function _cogVol(name, f) {
   return g;
 }
 
-function buildCogExportText(data, { weekly = false, period = null } = {}) {
+function buildCogExportText(data, { weekly = false } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
   const row = (lbl, med, p75, p90, word) =>
     `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% ${word ?? '75th Percentile'}`
     + (p90 != null ? ` · ${p90.toFixed(2)}% 90th` : '');
-  const _title = !weekly ? '**VOL & RANGE FORECAST — COG**'
-    : period === 'monthly' ? '**VOL & RANGE FORECAST — COG MONTHLY (20-day)**'
-    : period === 'weekly'  ? '**VOL & RANGE FORECAST — COG WEEKLY (5-day)**'
-    : '**VOL & RANGE FORECAST — COG WEEKLY**';
-  const lines = [_title, `**For session: ${data.session_label}**`, ''];
+  const lines = [weekly ? '**VOL & RANGE FORECAST — COG WEEKLY**' : '**VOL & RANGE FORECAST — COG**',
+                 `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
     const va = _cogVol(name, f);
@@ -2253,22 +2249,20 @@ function buildCogExportText(data, { weekly = false, period = null } = {}) {
     lines.push(div(name));
     lines.push(`Volatility (annualized) : ${va.toFixed(2)}%`);
     if (weekly) {
-      // `period` narrows the old both-blocks output to one horizon, so COG has a
-      // Weekly and a Monthly export mirroring the Forecast family. Omitted =
-      // both blocks, the historical behaviour.
-      const both = !period;
-      if (both || period === 'weekly') {
-        const w5 = _cogBands(va, Math.sqrt(5));
-        lines.push('── 5-Day (Weekly)');
-        lines.push(row('High to Low range', w5.hl_median, w5.hl_75, w5.hl_90));
-        lines.push(row('Open to Close move', w5.oc_median, w5.oc_75, w5.oc_90));
-      }
-      if (both || period === 'monthly') {
-        const w20 = _cogBands(va, Math.sqrt(20));
-        lines.push('── 20-Day (Monthly)');
-        lines.push(row('High to Low range', w20.hl_median, w20.hl_75, w20.hl_90));
-        lines.push(row('Open to Close move', w20.oc_median, w20.oc_75, w20.oc_90));
-      }
+      // BOTH blocks in one export, deliberately. pine/weekly_vol_overlay.pine finds
+      // its sections by header — is5DayHdr = "5-DAY"+"WEEKLY", is20DayHdr =
+      // "20-DAY"+"MONTHLY" — and offers a "Both" display mode that overlays them.
+      // Splitting this into separate Weekly and Monthly exports left each paste with
+      // one section, so "Both" could never populate and the indicator stopped
+      // working. Row format is byte-identical to what that parser was built against;
+      // the 90th is deliberately NOT appended here for the same reason.
+      const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
+      lines.push('── 5-Day (Weekly)');
+      lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
+      lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
+      lines.push('── 20-Day (Monthly)');
+      lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
+      lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
     } else {
       const d = _cogBands(va, 1);
       lines.push(row('High to Low range', d.hl_median, d.hl_75, d.hl_90));
@@ -2341,12 +2335,12 @@ async function exportLadder(horizon = 'daily', withSession = false) {
   }
 }
 
-async function exportCogPeriod(period) {
+async function exportCogWeekly() {
   if (!currentForecast) return;
   await loadCogHv();
-  const btnId = period === 'monthly' ? 'vfCogMoBtn' : 'vfCogWkBtn';
-  const text = buildCogExportText(currentForecast, { weekly: true, period });
-  _emitCalibrated(btnId, text, `vol-forecast-cog-${period}-${currentForecast.session_date}.txt`);
+  // One paste, both horizons — weekly_vol_overlay.pine's "Both" mode needs them together.
+  _emitCalibrated('vfCogWkBtn', buildCogExportText(currentForecast, { weekly: true }),
+    `vol-forecast-cog-weekly-${currentForecast.session_date}.txt`);
 }
 
 async function exportCog() {
