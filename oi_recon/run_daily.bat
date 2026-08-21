@@ -24,11 +24,26 @@ REM  WHERE IT PUBLISHES is decided by the toggle in the OI modal (KV oi_auto_tar
 REM  NOT here - so the feed can be handed back to manual pasting from a phone without
 REM  touching this machine. Default is the oi_store_py shadow.
 REM
-REM  WHEN TO RUN IT. CME settlements publish about 23:55 UK (the updateTime on the
-REM  captured payloads), so schedule AFTER that or you capture yesterday's book.
-REM  Something like 00:30 is safe. NOTE: a Monday run legitimately returns Friday's
-REM  book - the Sunday reopen does not settle until Monday evening - so identical
-REM  data on a Monday is correct, not a failure.
+REM  WHEN TO RUN IT — 06:30 UK OR LATER, NOT JUST AFTER MIDNIGHT.
+REM
+REM  Two different publication times, and the earlier one is a trap:
+REM    * OI matrices (rawOI / rawChg / rawVol) are up shortly after the CME
+REM      evening settle and captured fine at 00:36 UK.
+REM    * The SETTLEMENTS view is gated by CME itself, in its own words:
+REM        "Today's settlements are not available for viewing until after
+REM         12:00am CT"
+REM      Midnight CT = 06:00 UK (BST). A 00:36 UK run is 18:36 CT the PREVIOUS
+REM      day, five and a half hours early.
+REM
+REM  Before that window the Settles view still renders its HEADING ("Gold (OG|GC)
+REM  Settles") over an empty shell: no selects, no table, zero rows. So the run
+REM  looks like it reached the right view and then fails on the table, which is
+REM  a confusing way to be told "come back later". Measured 2026-08-21: rawIVTerm
+REM  0/11, and with it every per-strike smile, because phase 2 drives the same view.
+REM
+REM  06:30 UK gives a margin over the 06:00 boundary and still lands well before
+REM  the London session. Do NOT move it earlier to "get in before the market" —
+REM  the data does not exist yet.
 REM
 REM  Exit code is 0 only if every stage succeeded, so Task Scheduler's "Last Run
 REM  Result" is meaningful instead of always 0x0. A failure also pings Telegram via

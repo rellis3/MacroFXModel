@@ -681,9 +681,26 @@ def _ensure_view(ctx, page, fr, key: str, tries: int = 2):
             fr = _qs_frame(ctx) or fr
         title_ok = title_ok or _view_title_ok(fr, key)
         if title_ok:
-            print(f'  {key:<8}   marker {marker!r} never appeared, but the heading says '
-                  f'{_view_label(fr)!r} - proceeding on the heading (shape is still checked)')
-            return fr, True
+            # THE HEADING IS NOT ENOUGH, and this is the counter-example that proves it.
+            # 2026-08-21: the Settles view rendered "Gold (OG|GC) Settles" with NO SELECTS
+            # AT ALL and a zero-row table, because CME gates it -- "Today's settlements are
+            # not available for viewing until after 12:00am CT". The heading is drawn from
+            # the nav selection; the CONTENT is what the marker proves.
+            #
+            # An earlier version accepted the heading alone and called the marker a false
+            # veto ("the page was loaded and correct"). It was not loaded: it was an empty
+            # shell with a correct title, and accepting it turned a clear "could not switch
+            # to this view" into a misleading "proceeding on the heading" followed by a
+            # confusing stability failure two steps later.
+            #
+            # So the marker stays a veto. What is kept from that change is the DIAGNOSTIC:
+            # say the heading was right, because "marker missing AND heading right" means
+            # something different from "marker missing AND heading wrong" -- the first is
+            # an empty or gated view, the second is a nav click that did not land.
+            print(f'  {key:<8}   marker {marker!r} never appeared though the heading says '
+                  f'{_view_label(fr)!r} - the view is present but its CONTENT is not '
+                  f'(gated, or still loading). Not accepting it.')
+            return fr, False
         # Say WHAT was on screen, not just that it wasn't right. Four rounds were
         # lost this session to "did not switch" messages that named no evidence.
         print(f'  {key:<8}   view did not switch (attempt {attempt + 1}/{tries}) '
