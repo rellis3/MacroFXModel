@@ -140,11 +140,9 @@ test('the 20-day band is wider than the 5-day one', () => {
 });
 
 test('weekly rows stay in the format the header parser was built against', () => {
-  // Deliberately NOT carrying the 90th: that parser has not been checked against it,
-  // and this export is the one that already broke once.
   const rows = buildCogExportText(DATA, { weekly: true }).split('\n');
   for (const r of rows.filter(x => x.startsWith('High to Low range') || x.startsWith('Open to Close move'))) {
-    assert.match(r, /^.{24}: \d+\.\d{2}% median · \d+\.\d{2}% 75th Percentile$/,
+    assert.match(r, /^.{24}: \d+\.\d{2}% median · \d+\.\d{2}% 75th Percentile( · \d+\.\d{2}% 90th)?$/,
       `weekly row format drifted: ${JSON.stringify(r)}`);
   }
 });
@@ -153,4 +151,26 @@ test('the export still names the instrument in a divider the parsers can find', 
   const txt = buildCogExportText(DATA, { weekly: true });
   assert.ok(txt.toUpperCase().includes('GOLD'), 'instrument name missing from the export');
   assert.match(txt, /^\*\*VOL & RANGE FORECAST — COG WEEKLY\*\*/, 'weekly title changed');
+});
+
+test('the weekly 90th is invisible to f_parseRow', () => {
+  // f_parseRow strips %/75th/Percentile/median then reads nums[0] and nums[1], so a
+  // third number is ignored. If a future edit put the 90th BEFORE the 75th, nums[1]
+  // would silently become the 90th and every weekly 75th line on the chart would jump
+  // outward with nothing failing — hence asserting the POSITIONS, not just the format.
+  const parseRow = r => r.replaceAll('%', ' ').replaceAll('75th', ' ')
+    .replaceAll('Percentile', ' ').replaceAll('median', ' ')
+    .split(' ').map(x => x.trim()).filter(Boolean).map(Number).filter(Number.isFinite);
+  const rows = buildCogExportText(DATA, { weekly: true }).split('\n');
+  const body = rows.filter(x => x.startsWith('High to Low range') || x.startsWith('Open to Close move'));
+  assert.ok(body.length >= 4, 'expected H-L and O-C rows in both sections');
+  for (const r of body) {
+    const n = parseRow(r);
+    assert.equal(n[0], firstNumAfter(r, ': '), `nums[0] must be the median in: ${r}`);
+    assert.equal(n[1], lastNumBefore(r, '75th'), `nums[1] must be the 75th, not the 90th, in: ${r}`);
+    if (r.includes('90th')) {
+      assert.equal(n.length, 3, 'the 90th should be a third, ignored number');
+      assert.ok(n[2] > n[1], 'the 90th should exceed the 75th');
+    }
+  }
 });

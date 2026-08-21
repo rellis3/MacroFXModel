@@ -2252,16 +2252,20 @@ function buildCogExportText(data, { weekly = false } = {}) {
       // its sections by header — is5DayHdr = "5-DAY"+"WEEKLY", is20DayHdr =
       // "20-DAY"+"MONTHLY" — and offers a "Both" display mode that overlays them.
       // Splitting this into separate Weekly and Monthly exports left each paste with
-      // one section, so "Both" could never populate and the indicator stopped
-      // working. Row format is byte-identical to what that parser was built against;
-      // the 90th is deliberately NOT appended here for the same reason.
+      // one section, so "Both" could never populate and the indicator broke.
+      //
+      // The 90th is safe to append here: that parser's f_parseRow strips
+      // %/75th/Percentile/median, collects whatever numbers remain and reads only
+      // nums[0] and nums[1], so a third number is ignored. Checked by simulating it
+      // against real output rather than assumed — the first attempt at this export
+      // left the 90th off purely out of caution.
       const w5 = _cogBands(va, Math.sqrt(5)), w20 = _cogBands(va, Math.sqrt(20));
       lines.push('── 5-Day (Weekly)');
-      lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
-      lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
+      lines.push(row('High to Low range', w5.hl_median, w5.hl_75, w5.hl_90));
+      lines.push(row('Open to Close move', w5.oc_median, w5.oc_75, w5.oc_90));
       lines.push('── 20-Day (Monthly)');
-      lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
-      lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+      lines.push(row('High to Low range', w20.hl_median, w20.hl_75, w20.hl_90));
+      lines.push(row('Open to Close move', w20.oc_median, w20.oc_75, w20.oc_90));
     } else {
       const d = _cogBands(va, 1);
       lines.push(row('High to Low range', d.hl_median, d.hl_75, d.hl_90));
