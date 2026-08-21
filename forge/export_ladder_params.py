@@ -27,6 +27,12 @@ import numpy as np
 NAME_MAP = {"gold": "GOLD", "nq": "NQ", "spx500": "SPX500", "de30": "DE30",
             "uk100": "UK100", "us30": "US30", "us2000": "US2000"}
 
+# Aliases: the same price series present under a second filename. Verified identical
+# (byte-for-byte equal fold scores), so shipping both would put two entries in the
+# params file for one instrument — the second under a name the forecaster never asks
+# for, and silently unreachable. Skip the alias, keep the canonical name.
+DUPLICATE_OF = {"nas100_usd": "nq", "xauusd": "gold"}
+
 CLASS_OF = {"GOLD": "commodity", "NQ": "index", "SPX500": "index", "DE30": "index",
             "UK100": "index", "US30": "index", "US2000": "index"}
 
@@ -169,6 +175,9 @@ def main(argv=None):
     report = json.load(open(args.report, encoding="utf-8"))
     pairs, skipped = {}, []
     for pair, rec in sorted(report.items()):
+        if pair in DUPLICATE_OF:
+            skipped.append(f"{pair} (duplicate of {DUPLICATE_OF[pair]})")
+            continue
         p = pair_params(rec)
         if p is None:
             skipped.append(pair)

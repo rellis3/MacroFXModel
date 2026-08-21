@@ -600,15 +600,41 @@ def walk_forward_vol(frame: pd.DataFrame, n_folds: int = 6, verbose: bool = True
     return {"folds": fold_rows, "specs": [s.to_dict() for s in specs]}
 
 
+# The session the forecaster and the Pine indicator actually trade: midnight to
+# 22:00 LONDON, DST-aware. Not a 24-hour day.
+#
+# This matters more than a boundary shift would. Refitting on it moves O-H p50 by
+# +10 to +12% and p90 by -2 to -5% against the UTC-24h numbers, because truncating
+# 22:00-00:00 removes late excursions from the tail while also changing the sigma
+# the ratio divides by. A pure boundary CHANGE barely registers by comparison —
+# London-24h lands within 1-2% of UTC-24h on every instrument tested. It is the
+# missing two hours that do the work.
+#
+# Fitting on a 24-hour day and drawing the result on a 22-hour session means the
+# rungs describe excursions the session never has the chance to make.
+SESSIONS = {
+    "utc24":    None,                       # calendar UTC day, the historical default
+    "london24": ("Europe/London", None),    # London calendar day, full 24h
+    "london22": ("Europe/London", (0, 22)),  # 00:00-22:00 London — what production uses
+}
+
+
 def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
-              day_start_hour: int = 0, years: float = 0, end: str | None = None) -> pd.DataFrame:
-    """Convenience loader matching the rest of `forge`'s data path: M1 ->
-    causal D1 OHLC for one instrument.
+              day_start_hour: int = 0, years: float = 0, end: str | None = None,
+              session: str = "london22") -> pd.DataFrame:
+    """M1 -> causal session OHLC for one instrument.
+
+    `session` selects the bucketing (see SESSIONS). Defaults to the one production
+    actually draws on; pass "utc24" to reproduce the older fits.
 
     `end` truncates the series. Its purpose is the event layer: the historical
     calendar stops before the price data does, and scoring a fold whose test window
     has NO calendar silently measures the forecast with the event multiplier switched
     off — which looks like a calibration result and isn't one.
+
+    `day_start_hour` is accepted for call-compatibility and IGNORED — it always was,
+    silently, which is how every fit came to be on UTC days regardless of what the
+    caller asked for. Use `session`.
     """
     m1 = load_m1(pair, data_root)
     if end:
@@ -616,7 +642,21 @@ def load_daily(pair: str, data_root: str = "VolRangeForecaster/data/m1",
     if years:
         cutoff = m1.index[-1] - pd.Timedelta(days=365.25 * years)
         m1 = m1[m1.index >= cutoff]
-    return resample(m1, "d1")
+
+    spec = SESSIONS.get(session, SESSIONS["london22"])
+    if spec is None:
+        return resample(m1, "d1")
+    tz, hours = spec
+    loc = m1.tz_convert(tz)
+    if hours:
+        lo, hi = hours
+        loc = loc[(loc.index.hour >= lo) & (loc.index.hour < hi)]
+    g = loc.groupby(loc.index.normalize())
+    out = pd.DataFrame({"open": g["open"].first(), "high": g["high"].max(),
+                        "low": g["low"].min(), "close": g["close"].last(),
+                        "volume": g["volume"].sum()}).dropna(subset=["open", "close"])
+    out.index = pd.DatetimeIndex(out.index).tz_convert("UTC").tz_localize(None)
+    return out
 
 
 # Indices have real 10-year M1 data too, just cached under a different root
