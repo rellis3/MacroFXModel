@@ -834,6 +834,12 @@ function computeTrades() {
       const k = (t.entryTime != null && d.barIdx) ? d.barIdx.get(t.entryTime) : undefined;
       const sd = (k != null && d.vwapSd) ? d.vwapSd[k] : 0;
       t.vwapZ = (k != null && sd > 0) ? (t.entry - d.vwap[k]) / sd : null;
+      // SIGNED stretch correlates with which side was touched — a touch of O-L means
+      // price fell below the open, which usually puts it below VWAP too. Bucketing on
+      // the signed value therefore re-expresses the O-H/O-L split as if it were a VWAP
+      // effect. |z| is the confound-free version and the one that answers the actual
+      // question: is a touch far from fair value a better fade, whichever way it went?
+      t.vwapAbs = t.vwapZ == null ? null : Math.abs(t.vwapZ);
       t.priorVol = d.priorVol ?? null;
     }
     // Per-line first-touch (for the Markers / Touched-only overlays). Uses the DRAWN
@@ -1123,8 +1129,11 @@ function renderStats() {
       + `<td>${wr}%</td><td class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${net.toFixed(2)}</td></tr>`;
   }).join('');
   const condHtml =
-      conditionalTable('Fade by VWAP stretch at the touch',
-        'signed SD from session VWAP — negative = below VWAP. Does a touch that happens far from fair value fade better?',
+      conditionalTable('Fade by DISTANCE from VWAP at the touch',
+        'absolute SD from session VWAP — the confound-free version. Does a touch far from fair value fade better, whichever side it is?',
+        all, 'vwapAbs', ['close to VWAP', 'mid', 'far from VWAP'])
+    + conditionalTable('Fade by SIDE of VWAP at the touch',
+        'signed SD. Correlated with which line was touched (an O-L touch is usually below VWAP), so read this as side-plus-location, not a pure VWAP effect.',
         all, 'vwapZ', ['below VWAP', 'near VWAP', 'above VWAP'])
     + conditionalTable("Fade by yesterday's volatility",
         "prior range / trailing-21d median. Expect little: the band already widened for it.",
