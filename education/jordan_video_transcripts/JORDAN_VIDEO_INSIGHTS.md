@@ -965,6 +965,17 @@ is not — there's no data on this, I've not tested this" — a sharper,
 first-person admission than the earlier "floated as a suggestion" framing,
 worth citing directly since it removes any ambiguity about whether this
 threshold/switch has ever actually been backtested by anyone in the group.
+
+**Now actually tested — both halves, both null.** The fade half (ADX low
+→ fade the far extension) is `runAtrBandEntry` in
+`js/atrBandEntryV1Engine.js` — null, though the gate does real monotonic
+work. The continuation half Husky describes right here (ADX high → buy a
+near-level pullback instead) is `runAtrBandContinuation` in the same
+file — also null, and more decisively so (0/10 instruments OOS-positive,
+genuine negative gross edge, no improvement path under sensitivity). See
+`education/jordan_atr_band_backtest/RESULTS.md` Parts 1 and 2. Husky's own
+"there's no data on this" turned out to be correct in both directions —
+neither half of his stated ADX switch produces edge on this repo's data.
 **Videos:** 3, 6, 17.
 
 ### Levels are bidirectional — entries AND take-profit targets
@@ -1632,6 +1643,18 @@ rejection" requirement. Worth encoding precisely if backtesting
 confirmation-gated entries: candle 1 = wick beyond/into the level without
 a close beyond it, candle 2 = full-range engulfing of candle 1 in the
 trade direction.
+
+**BUILT AND TESTED, null — as the entry trigger for the ADX-continuation
+variant.** `runAtrBandContinuation` (`js/atrBandEntryV1Engine.js`) uses
+this exact wick-then-engulf pattern as the confirmation at a near-ATR
+pullback level, gated by ADX(4H) trending. Tested on 10 instruments (gold,
+NQ, 8 FX pairs): null, 0/10 OOS-positive, genuine negative gross edge
+(not just cost). See `education/jordan_atr_band_backtest/RESULTS.md`
+Part 2. The confirmation technique itself doesn't produce a tradeable
+entry trigger in this construction — though only one specific reading of
+"wick then engulf" and one specific target (extremeMult×ATR) were tried;
+a looser/stricter confirmation definition or a different target wasn't
+swept.
 **Videos:** 14.
 
 ### Portfolio-level worst-case simultaneous-loss check
@@ -1693,13 +1716,24 @@ logic). Links to a script/dir once work starts._
   warmup starved by a too-short per-day context window, silently zero
   trades) was caught and fixed before trusting this result — see that
   file's Known Limitations. Follow-ups not yet tried: VWAP as basis instead
-  of EMA, a fixed-RR target instead of basis-reversion, and the
-  continuation-in-trend variant (buy a near-band pullback when ADX is high,
-  instead of skipping the day) that transcript 6 describes the group
-  actually using. Separately, still open on Jordan's *specific* screenshot
-  tool (now understood as likely manual trade markup, not a live indicator
-  — see the rewritten Priority Watch section): what the two blue lines are
-  and the actual period/multiplier, if it exists as a real indicator at all.
+  of EMA, a fixed-RR target instead of basis-reversion.
+  **The continuation-in-trend variant (buy a near-band pullback when ADX
+  is high, instead of skipping the day) — now BUILT AND TESTED, also
+  null**, and more decisively so than the fade half. `js/atrBandEntryV1Engine.js`'s
+  `runAtrBandContinuation` combines it with the wick-then-engulf micro-
+  confirmation (video 14). Tested on gold + NQ + 8 major FX pairs (10
+  instruments, real M1, costed, true IS/OOS split): **0/10 instruments
+  OOS-Sharpe-positive**, pooled OOS t=−16.1. Unlike the fade half and
+  every VWAP null in this repo (all showing pooled gross ≈ 0), this one
+  has a genuine **negative gross edge** (pooled gross −0.00118%/trade) —
+  not a coin-flip erased by cost. Every parameter variant tried (tighter
+  ADX, wider near-level) stayed solidly negative, no "getting warmer"
+  shape the way the fade mode's ADX-tightening sensitivity showed. See
+  `education/jordan_atr_band_backtest/RESULTS.md`'s Part 2. Separately,
+  still open on Jordan's *specific* screenshot tool (now understood as
+  likely manual trade markup, not a live indicator — see the rewritten
+  Priority Watch section): what the two blue lines are and the actual
+  period/multiplier, if it exists as a real indicator at all.
 - **Dynamic structure-trailing stop vs. fixed-R exit.** Concrete and
   testable: on any existing entry model in this repo, A/B a "trail stop to
   last swing point once structure prints" exit against the current fixed-R
@@ -1824,12 +1858,24 @@ logic). Links to a script/dir once work starts._
 - **Close-median entry quality, news days vs. non-news days.** An open
   question stated directly by the source — cheap to test given this repo
   already has both the forecasting-tool math and news/calendar data.
-- **Wick + engulfing two-candle micro-confirmation entry.** A precise,
-  directly-codable confirmation filter (candle 1: wick into/beyond the
-  level without closing beyond it; candle 2: full-range engulf of candle 1
-  in the trade direction) — testable as a confirmation gate on any
-  existing level-touch entry model, comparable to the "reject vs. no
-  reject" gate already logged under the ATR-band synthesis.
+- **Wick + engulfing two-candle micro-confirmation entry — BUILT AND
+  TESTED, null.** Used as the entry trigger for the ADX-continuation
+  variant below; 0/10 instruments OOS-positive, genuine negative gross
+  edge. See `education/jordan_atr_band_backtest/RESULTS.md` Part 2. Not
+  yet tried as a confirmation gate on a *different* base entry model
+  (e.g. the range-extension levels rather than an ATR-band pullback) —
+  still open whether the technique fares differently on a different
+  underlying signal.
+- **ADX-gated continuation (buy a near-level pullback in a trending
+  regime) — BUILT AND TESTED, null.** See
+  `education/jordan_atr_band_backtest/RESULTS.md` Part 2 and
+  `js/atrBandEntryV1Engine.js`'s `runAtrBandContinuation`. Tested on gold,
+  NQ, and 8 FX pairs: 0/10 OOS-positive, pooled OOS t=−16.1, genuine
+  negative gross edge (not just cost) — a more decisively negative result
+  than the sibling fade-mode ADX gate, which at least improved
+  monotonically under sensitivity without ever crossing into edge. This
+  closes out both halves of Husky's stated ADX regime switch (fade when
+  ranging / continuation when trending) as tested and null.
 - **Portfolio-level worst-case simultaneous-loss cap.** Not a signal to
   backtest, but a risk-gate worth building alongside any live/paper
   deployment of the range-extension levels: sum worst-case loss across
