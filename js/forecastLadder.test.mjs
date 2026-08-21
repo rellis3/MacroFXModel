@@ -200,3 +200,56 @@ test('instrument currency sets match the Python side', () => {
   assert.deepEqual(instrumentCurrencies('DE30').sort(), ['EUR', 'USD']);
   assert.deepEqual(instrumentCurrencies('UK100').sort(), ['GBP', 'USD']);
 });
+
+// ── The weekly export's contract with weekly_vol_overlay.pine ────────────────
+// It finds sections by header ("5-DAY"+"WEEKLY", "20-DAY"+"MONTHLY") and its "Both"
+// display mode overlays them, so a single-horizon paste leaves it with nothing to
+// show. Splitting the COG weekly export is exactly how that indicator broke; this
+// guards the ladder's weekly export against the same mistake.
+test('weekly export carries BOTH horizon sections in one paste', () => {
+  const lad = h => ({ hl: { p50: h, p75: h * 1.3, p90: h * 1.7 },
+                      oc: { p50: h * .5, p75: h * .9, p90: h * 1.4 },
+                      oh: { p50: h * .5, p75: h * .9, p90: h * 1.4 },
+                      ol: { p50: h * .5, p75: h * .9, p90: h * 1.4 },
+                      vol_annual: 20, estimator: 'yz_10', width_source: 'fitted-weekly',
+                      event_tag: 'none', event_mult: 0.9 });
+  const data = { session_label: 'T', instruments: { GOLD: {
+    vol_annual: 20, ladder: lad(1), ladder_weekly: lad(4), ladder_monthly: lad(8) } } };
+  const txt = buildLadderExportText(data, 'weekly');
+  const up = txt.toUpperCase().split('\n');
+  assert.ok(up.some(r => r.includes('5-DAY') && r.includes('WEEKLY')), 'no is5DayHdr match');
+  assert.ok(up.some(r => r.includes('20-DAY') && r.includes('MONTHLY')), 'no is20DayHdr match');
+
+  const rows = txt.split('\n');
+  const i5 = rows.findIndex(r => /5-Day/i.test(r)), i20 = rows.findIndex(r => /20-Day/i.test(r));
+  assert.ok(i5 < i20, '5-Day must precede 20-Day');
+
+  // f_parseRow strips %/75th/median then takes nums[0] and nums[1] — so a 90th is a
+  // third number it ignores. Verify the first two still resolve to med and p75.
+  const parseRow = r => r.replaceAll('%', ' ').replaceAll('75th', ' ')
+    .replaceAll('Percentile', ' ').replaceAll('median', ' ')
+    .split(' ').map(x => x.trim()).filter(Boolean).map(Number).filter(Number.isFinite);
+  for (const [from, to, expect] of [[i5, i20, 4], [i20, rows.length, 8]]) {
+    const hl = rows.slice(from + 1, to).find(r => r.startsWith('High to Low range'));
+    assert.ok(hl, 'section has no H-L row');
+    const n = parseRow(hl);
+    assert.equal(n[0], expect, `H-L median should come from that horizon's own fit`);
+    assert.ok(n.length >= 3, 'the 90th should be present as an ignorable third number');
+  }
+});
+
+test('each weekly section uses its OWN fitted widths, not sqrt-scaled daily ones', () => {
+  const lad = h => ({ hl: { p50: h, p75: h * 1.3, p90: h * 1.7 },
+                      oc: { p50: h, p75: h, p90: h }, oh: { p50: h, p75: h, p90: h },
+                      ol: { p50: h, p75: h, p90: h }, vol_annual: 20, event_tag: 'none', event_mult: 1 });
+  // monthly deliberately NOT 2x weekly — if the builder sqrt-scaled instead of reading
+  // ladder_monthly, the 20-day row would come out at 2x the 5-day and this would fail.
+  const data = { session_label: 'T', instruments: { GOLD: {
+    vol_annual: 20, ladder: lad(1), ladder_weekly: lad(4), ladder_monthly: lad(9) } } };
+  const rows = buildLadderExportText(data, 'weekly').split('\n');
+  const i20 = rows.findIndex(r => /20-Day/i.test(r));
+  const hls = rows.map((r, i) => [i, r]).filter(([, r]) => r.startsWith('High to Low range'));
+  const num = r => +r.match(/:\s*(\d+\.?\d*)/)[1];
+  assert.equal(num(hls.find(([i]) => i < i20)[1]), 4.00);
+  assert.equal(num(hls.find(([i]) => i > i20)[1]), 9.00, 'monthly must come from ladder_monthly');
+});

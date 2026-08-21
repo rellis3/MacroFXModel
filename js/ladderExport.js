@@ -38,7 +38,7 @@ const QTY_ROW = {
 
 const HORIZON_TITLE = {
   daily:   'VOL & RANGE FORECAST',
-  weekly:  'VOL & RANGE FORECAST — WEEKLY (5-day)',
+  weekly:  'VOL & RANGE FORECAST — WEEKLY',   // carries BOTH 5-day and 20-day, see below
   monthly: 'VOL & RANGE FORECAST — MONTHLY (20-day)',
 };
 
@@ -94,6 +94,30 @@ export function buildLadderExportText(data, horizon = 'daily', opts = {}) {
     if (!L || !(L.vol_annual > 0)) continue;
     lines.push(_div(name));
     lines.push(`Volatility (annualized) : ${_pc(L.vol_annual)}%`);
+
+    if (horizon === 'weekly') {
+      // BOTH horizons in ONE paste, matching the COG weekly export exactly.
+      // pine/weekly_vol_overlay.pine finds its sections by header — "5-DAY"+"WEEKLY"
+      // and "20-DAY"+"MONTHLY" — and its "Both" display mode overlays them, so a
+      // single-horizon paste leaves it with nothing to overlay. Splitting this was
+      // what broke that indicator on the COG side.
+      //
+      // Each section uses its OWN fitted widths (ladder_weekly / ladder_monthly),
+      // not the daily rungs scaled by sqrt-time — refitting per horizon is the point
+      // of having them, since vol mean-reverts inside a week.
+      for (const [hdr, lad] of [['── 5-Day (Weekly)', f.ladder_weekly],
+                                ['── 20-Day (Monthly)', f.ladder_monthly]]) {
+        if (!lad) continue;
+        lines.push(hdr);
+        for (const q of ['hl', 'oc', 'oh', 'ol']) {
+          const row = _rungRow(q, lad[q]);
+          if (row) lines.push(row);
+        }
+      }
+      lines.push('');
+      continue;
+    }
+
     for (const q of ['hl', 'oc', 'oh', 'ol']) {
       const row = _rungRow(q, L[q]);
       if (row) lines.push(row);

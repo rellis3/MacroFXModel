@@ -717,8 +717,7 @@
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
-        <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day</span></button>
-        <button class="vf-exp-item" id="vfLadderMoBtn"   onclick="closeExpDropdown();exportLadder('monthly')"        disabled>⬇ Forecast Monthly <span style="font-size:9px;opacity:.55">20-day</span></button>
+        <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCogBtn"        onclick="closeExpDropdown();exportCog()"                    disabled>⬇ COG <span style="font-size:9px;opacity:.55">reverse-eng</span></button>
@@ -1430,7 +1429,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfLadderWkBtn','vfLadderMoBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfLadderBtn','vfLadderWkBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -2316,8 +2315,7 @@ function buildCogV2ExportText(data) {
 // variants drifted apart from the server's — one source, one output.
 async function exportLadder(horizon = 'daily', withSession = false) {
   const btnId = withSession ? 'vfLadderSessBtn'
-    : horizon === 'weekly' ? 'vfLadderWkBtn'
-    : horizon === 'monthly' ? 'vfLadderMoBtn' : 'vfLadderBtn';
+    : horizon === 'weekly' ? 'vfLadderWkBtn' : 'vfLadderBtn';
   const btn = document.getElementById(btnId);
   const orig = btn.dataset.orig || btn.textContent;
   btn.dataset.orig = orig; btn.textContent = '… building'; btn.disabled = true;
