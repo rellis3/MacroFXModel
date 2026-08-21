@@ -2163,11 +2163,38 @@ async function exportCalibratedWeekly() {
 // weekly = daily × √5 (5-day) and × √20 (20-day). Live forecaster NOT modified — an
 // alternative export view. NOTE: our backtest recalibration wants the fx median even
 // tighter (~1.34σ) than COG's 1.56σ — this matches COG, not realized-best.
-const COG_C = { hl50: 1.56, hl75: 1.93, oc50: 0.74, oc75: 1.24 };
+// COG's four back-solved constants, plus a 90th DERIVED in his own structure.
+//
+// He publishes no 90th, so it has to come from somewhere. Not the fitted ladder's —
+// dropping a realized-calibrated number into a set whose whole job is to reproduce
+// COG's line would make it neither one thing nor the other. Instead: his constants
+// sit a consistent distance ABOVE the true theoretical quantiles, so extend at the
+// same inflation.
+//
+//   true quantiles (BM range by Monte Carlo, 400k paths; half-normal analytic)
+//     H-L  p50 1.5135  p75 1.8599  p90 2.2374
+//     O-C  p50 0.6745  p75 1.1503  p90 1.6449
+//   COG / true
+//     H-L  1.0307, 1.0377  -> mean 1.0342  (spread 0.007 — tight)
+//     O-C  1.0971, 1.0780  -> mean 1.0875  (spread 0.019)
+//   giving  H-L p90 = 2.2374 x 1.0342 = 2.314    O-C p90 = 1.6449 x 1.0875 = 1.789
+//
+// O-H and O-L reuse his O-C constants unchanged, and that is not a shortcut: COG's
+// model is symmetric, and by the reflection principle the running maximum of a
+// driftless walk is distributed like |close-open|, so in HIS structure O-H, O-L and
+// O-C are one number. They plot on top of each other, which is the honest depiction.
+// The fitted ladder is where the two sides separate, because it fits them apart.
+const COG_C = { hl50: 1.56, hl75: 1.93, hl90: 2.314,
+                oc50: 0.74, oc75: 1.24, oc90: 1.789 };
 const COG_SQRT252 = Math.sqrt(252);
 function _cogBands(volAnnual, mult) {
   const s = volAnnual / COG_SQRT252 * mult;
-  return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
+  return {
+    hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, hl_90: COG_C.hl90 * s,
+    oc_median: COG_C.oc50 * s, oc_75:  COG_C.oc75 * s, oc_90: COG_C.oc90 * s,
+    oh_median: COG_C.oc50 * s, oh_75:  COG_C.oc75 * s, oh_90: COG_C.oc90 * s,
+    ol_median: COG_C.oc50 * s, ol_75:  COG_C.oc75 * s, ol_90: COG_C.oc90 * s,
+  };
 }
 
 // ── Index σ = COG's own method (close-to-close HV) for the COG views ──────────
@@ -2211,7 +2238,9 @@ function _cogVol(name, f) {
 
 function buildCogExportText(data, { weekly = false, period = null } = {}) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
-  const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
+  const row = (lbl, med, p75, p90, word) =>
+    `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% ${word ?? '75th Percentile'}`
+    + (p90 != null ? ` · ${p90.toFixed(2)}% 90th` : '');
   const _title = !weekly ? '**VOL & RANGE FORECAST — COG**'
     : period === 'monthly' ? '**VOL & RANGE FORECAST — COG MONTHLY (20-day)**'
     : period === 'weekly'  ? '**VOL & RANGE FORECAST — COG WEEKLY (5-day)**'
@@ -2231,19 +2260,23 @@ function buildCogExportText(data, { weekly = false, period = null } = {}) {
       if (both || period === 'weekly') {
         const w5 = _cogBands(va, Math.sqrt(5));
         lines.push('── 5-Day (Weekly)');
-        lines.push(row('High to Low range', w5.hl_median, w5.hl_75));
-        lines.push(row('Open to Close move', w5.oc_median, w5.oc_75));
+        lines.push(row('High to Low range', w5.hl_median, w5.hl_75, w5.hl_90));
+        lines.push(row('Open to Close move', w5.oc_median, w5.oc_75, w5.oc_90));
       }
       if (both || period === 'monthly') {
         const w20 = _cogBands(va, Math.sqrt(20));
         lines.push('── 20-Day (Monthly)');
-        lines.push(row('High to Low range', w20.hl_median, w20.hl_75));
-        lines.push(row('Open to Close move', w20.oc_median, w20.oc_75));
+        lines.push(row('High to Low range', w20.hl_median, w20.hl_75, w20.hl_90));
+        lines.push(row('Open to Close move', w20.oc_median, w20.oc_75, w20.oc_90));
       }
     } else {
       const d = _cogBands(va, 1);
-      lines.push(row('High to Low range', d.hl_median, d.hl_75));
-      lines.push(row('Open to Close move', d.oc_median, d.oc_75));
+      lines.push(row('High to Low range', d.hl_median, d.hl_75, d.hl_90));
+      lines.push(row('Open to Close move', d.oc_median, d.oc_75, d.oc_90));
+      // Same tokens the Pine indicators grep for, so a COG paste now drives their
+      // O-H/O-L plots too — previously only a Forecast export could.
+      lines.push(row('Open High (upside)', d.oh_median, d.oh_75, d.oh_90, '75th'));
+      lines.push(row('Open Low  (downside)', d.ol_median, d.ol_75, d.ol_90, '75th'));
     }
     lines.push('');
   }
@@ -2254,7 +2287,9 @@ function buildCogExportText(data, { weekly = false, period = null } = {}) {
 // HAR-IV shadow is unavailable (no FRED_KEY / insufficient IV history).
 function buildCogV2ExportText(data) {
   const LW = 29, div = n => { const p = `──── ${n} `; return p + '─'.repeat(Math.max(0, LW - p.length)); };
-  const row = (lbl, med, p75) => `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% 75th Percentile`;
+  const row = (lbl, med, p75, p90, word) =>
+    `${lbl.padEnd(24)}: ${med.toFixed(2)}% median · ${p75.toFixed(2)}% ${word ?? '75th Percentile'}`
+    + (p90 != null ? ` · ${p90.toFixed(2)}% 90th` : '');
   const lines = ['**VOL & RANGE FORECAST — COG v2 (gold=HAR-IV)**', `**For session: ${data.session_label}**`, ''];
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     if (!(f?.vol_annual > 0)) continue;
