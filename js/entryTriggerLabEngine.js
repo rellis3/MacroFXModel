@@ -214,9 +214,18 @@ export function detectWickEngulfing(bars, asiaTimeline, mondayTimeline, opts = {
       if (!wickedUpNoClose && !wickedDownNoClose) continue;
       const b = bars[i + 1];
       const dir = wickedUpNoClose ? 'short' : 'long';
+      // "Full-range engulf" means candle B's own REALIZED range (high/low —
+      // what it actually traded through) fully brackets candle A's range,
+      // with B closing decisively in the trade direction. Checking b.open
+      // against a.high/a.low instead (an earlier version of this) requires B
+      // to already be gapped beyond A's extreme before it even opens — on
+      // continuous intrabar data b.open is essentially always ≈ a.close,
+      // which sits INSIDE a's own range, so that check was nearly always
+      // false and made this pattern almost never fire. b.high/b.low is what
+      // "candle 2 traded past candle 1's full range" actually means.
       const engulfs = dir === 'short'
-        ? (b.close < b.open && b.open >= a.high && b.close <= a.low)
-        : (b.close > b.open && b.open <= a.low && b.close >= a.high);
+        ? (b.close < b.open && b.high >= a.high && b.low <= a.low)
+        : (b.close > b.open && b.low <= a.low && b.high >= a.high);
       if (!engulfs) continue;
       events.push({
         time: b.time, price: b.close, level: L, levelSource: lvl.source, fib: lvl.fib,
