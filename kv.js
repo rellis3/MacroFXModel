@@ -105,6 +105,11 @@ const _CF_EXACT = new Set([
                             // landing in the ephemeral file store and dying on every deploy.
   'cot_extremes_v3',        // the lean per-instrument COT payload (series stripped) — same argument as
                             // above; tracks `COT_KV.extremes`
+  'oanda_financing_history', // daily broker swap/financing snapshots — THE canonical
+                            // cannot-be-backfilled series: brokers publish only today's
+                            // rates, there is no historical endpoint, and no vendor sells
+                            // it. Losing this to a redeploy loses days permanently, the
+                            // same property as oi_history. Written once per day.
   'cot_factor_history_v1',  // FULL Socrata COT history, OI-normalised + publication-lagged, for the
                             // pre-registered positioning-factor test. Written once by an explicit
                             // manual backfill (never on a schedule), and it is the frozen INPUT to a
