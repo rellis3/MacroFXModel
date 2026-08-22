@@ -136,6 +136,15 @@ weekly windows are autocorrelated. Precedent: `js/volReversionCore.js:113-136`.
 
 **Split:** IS 2006 → 2017, **OOS 2018 →**. Chronological, fixed now.
 
+> **Price-coverage note (recorded 2026-08-22, before the run, no results seen).**
+> Local M1 price history begins **2016-01-04**, so the joined panel cannot start
+> at the COT series' 2006 origin. This does **not** touch the confirmatory cell,
+> which is **OOS-only (2018 →)** and fully covered — and the signal has zero
+> fitted parameters, so the IS window is used for nothing but description. The
+> practical effect is that the "IS" period is 2016–2017 rather than 2006–2017.
+> No pass bar moved. Extending price history earlier would require an OANDA
+> pull on the deployed server and is not needed for the registered cell.
+
 **PASS** iff the OOS pooled rank-IC's **95% block-bootstrap CI excludes zero**,
 AND the point estimate has the **same sign in both OOS halves** (2018–2021 /
 2022–2026), AND ≥6 of the 8 instruments qualify on the history guard.
