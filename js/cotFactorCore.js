@@ -36,16 +36,16 @@ export const FLIP_SYMS = new Set(['JPY', 'CAD', 'CHF']);
 // options-and-futures-combined feed would silently change both the position
 // universe and the OI denominator.
 export const COT_FACTOR_UNIVERSE = [
-  { sym: 'EUR',  name: 'EURO FX - CHICAGO MERCANTILE EXCHANGE',           dataset: 'tff',    flip: false, pair: 'eurusd' },
+  { sym: 'EUR',  name: 'EURO FX - CHICAGO MERCANTILE EXCHANGE',           dataset: 'tff',    flip: false, pair: 'eurusd' , oanda: 'EUR_USD' },
   { sym: 'GBP',  name: 'BRITISH POUND - CHICAGO MERCANTILE EXCHANGE',
-    alt: ['BRITISH POUND STERLING - CHICAGO MERCANTILE EXCHANGE'],        dataset: 'tff',    flip: false, pair: 'gbpusd' },
-  { sym: 'JPY',  name: 'JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE',      dataset: 'tff',    flip: true,  pair: 'usdjpy' },
-  { sym: 'AUD',  name: 'AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE', dataset: 'tff',    flip: false, pair: 'audusd' },
-  { sym: 'CAD',  name: 'CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',   dataset: 'tff',    flip: true,  pair: 'usdcad' },
-  { sym: 'CHF',  name: 'SWISS FRANC - CHICAGO MERCANTILE EXCHANGE',       dataset: 'tff',    flip: true,  pair: 'usdchf' },
+    alt: ['BRITISH POUND STERLING - CHICAGO MERCANTILE EXCHANGE'],        dataset: 'tff',    flip: false, pair: 'gbpusd' , oanda: 'GBP_USD' },
+  { sym: 'JPY',  name: 'JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE',      dataset: 'tff',    flip: true,  pair: 'usdjpy' , oanda: 'USD_JPY' },
+  { sym: 'AUD',  name: 'AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE', dataset: 'tff',    flip: false, pair: 'audusd' , oanda: 'AUD_USD' },
+  { sym: 'CAD',  name: 'CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',   dataset: 'tff',    flip: true,  pair: 'usdcad' , oanda: 'USD_CAD' },
+  { sym: 'CHF',  name: 'SWISS FRANC - CHICAGO MERCANTILE EXCHANGE',       dataset: 'tff',    flip: true,  pair: 'usdchf' , oanda: 'USD_CHF' },
   { sym: 'NZD',  name: 'NZ DOLLAR - CHICAGO MERCANTILE EXCHANGE',
-    alt: ['NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE'],            dataset: 'tff',    flip: false, pair: 'nzdusd' },
-  { sym: 'GOLD', name: 'GOLD - COMMODITY EXCHANGE INC.',                  dataset: 'disagg', flip: false, pair: 'gold'   },
+    alt: ['NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE'],            dataset: 'tff',    flip: false, pair: 'nzdusd' , oanda: 'NZD_USD' },
+  { sym: 'GOLD', name: 'GOLD - COMMODITY EXCHANGE INC.',                  dataset: 'disagg', flip: false, pair: 'gold'   , oanda: 'XAU_USD' },
 ];
 
 // Socrata dataset ids + the participant fields each one exposes. FX uses
