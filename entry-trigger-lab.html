@@ -49,6 +49,16 @@
     font-size: 10px; color: var(--text2); display: flex; flex-direction: column; gap: 4px; max-width: 260px; }
   #legend .row { display: flex; align-items: center; gap: 6px; }
   #legend .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  #markerInfo { position: absolute; z-index: 10; background: rgba(12,14,21,.97); border: 1px solid var(--text3);
+    border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2);
+    max-width: 300px; box-shadow: 0 6px 20px rgba(0,0,0,.5); display: none; }
+  #markerInfo .mi-title { color: var(--text); font-weight: 600; font-size: 12px; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  #markerInfo .mi-close { cursor: pointer; color: var(--text3); font-size: 14px; line-height: 1; }
+  #markerInfo .mi-row { display: flex; justify-content: space-between; gap: 12px; padding: 1px 0; }
+  #markerInfo .mi-lbl { color: var(--text3); }
+  #markerInfo .mi-bar { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+  #markerInfo .mi-bar-hd { color: var(--text); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
 </style>
 </head>
 <body>
@@ -102,7 +112,9 @@
       <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges — a level comparison, no marker (see the chip tooltip)</div>
       <div class="row"><span class="sw" style="background:#22c55e"></span>▲ long / <span class="sw" style="background:#ef4444"></span>▼ short entry — ring color = test</div>
       <div class="row">W/L/open counts per chip are still SL(1.5×ATR)/2R-simulated, just not drawn on the chart</div>
+      <div class="row">Tap/click a marker to see exactly which bar(s), level and outcome produced it</div>
     </div>
+    <div id="markerInfo"></div>
     <div id="hint">Pick a pair and date range, then Generate.<br>Toggle levels/tests to isolate one idea at a time.</div>
   </div>
 
@@ -124,6 +136,15 @@ const TEST_COLOR = {
   vwap_tap: '#14b8a6',
   adx_regime: '#f472b6',
 };
+const TEST_LABEL = {
+  wick_engulf: 'Wick + Engulf',
+  midpoint_pullback: 'Midpoint pullback',
+  vwap_tap: 'VWAP tap',
+  adx_regime: 'ADX regime switch',
+};
+// Populated fresh each drawOverlay() pass — {x, y, ev, testKey} in CSS px,
+// used only for click hit-testing (see onChartWrapClick).
+let drawnMarkers = [];
 
 const state = {
   // Full raw ladders (21 fib multiples × every day/week loaded) are OFF by
@@ -210,6 +231,59 @@ function setupOverlay() {
   ro.observe($('chartWrap'));
   sizeOverlay();
   requestAnimationFrame(syncLoop);
+  // The overlay canvas itself is pointer-events:none (so drag-to-pan/pinch-zoom
+  // reach the underlying chart) — listen on the wrapper instead. A genuine tap
+  // fires a native 'click'; a pan/zoom drag does not, so this doesn't fight
+  // the chart's own gesture handling.
+  $('chartWrap').addEventListener('click', onChartWrapClick);
+  $('markerInfo').addEventListener('click', e => { if (e.target.classList.contains('mi-close')) hideMarkerInfo(); });
+}
+function onChartWrapClick(e) {
+  if (!drawnMarkers.length) return;
+  const rect = $('chartWrap').getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  let best = null, bestDist = 16; // px hit-radius
+  for (const m of drawnMarkers) {
+    const d = Math.hypot(m.x - cx, m.y - cy);
+    if (d < bestDist) { bestDist = d; best = m; }
+  }
+  if (best) showMarkerInfo(best, cx, cy); else hideMarkerInfo();
+}
+function hideMarkerInfo() { $('markerInfo').style.display = 'none'; }
+function fmtBar(b) {
+  if (!b) return null;
+  const p = currentSymbol && currentSymbol.includes('JPY') ? 3 : currentSymbol && currentSymbol.includes('XAU') ? 2 : 5;
+  const t = new Date(b.time * 1000).toISOString().replace('T', ' ').slice(0, 16);
+  return `${t}Z &nbsp; O:${b.open.toFixed(p)} H:${b.high.toFixed(p)} L:${b.low.toFixed(p)} C:${b.close.toFixed(p)}`;
+}
+function showMarkerInfo(m, cx, cy) {
+  const ev = m.ev;
+  const p = currentSymbol && currentSymbol.includes('JPY') ? 3 : currentSymbol && currentSymbol.includes('XAU') ? 2 : 5;
+  const entryBar = barsByTime.get(ev.time);
+  const rows = [];
+  rows.push(`<div class="mi-row"><span class="mi-lbl">Direction</span><span>${ev.dir === 'long' ? '▲ long' : '▼ short'}</span></div>`);
+  if (ev.level != null) rows.push(`<div class="mi-row"><span class="mi-lbl">Level</span><span>${ev.level.toFixed(p)}${ev.fib != null ? ` (${ev.levelSource ?? ''} fib ${ev.fib})` : ` (${ev.levelSource ?? ''})`}${ev.strong ? ' ⭐' : ''}</span></div>`);
+  if (ev.adx != null) rows.push(`<div class="mi-row"><span class="mi-lbl">ADX(4H)</span><span>${ev.adx.toFixed(1)}</span></div>`);
+  if (ev.planned) {
+    rows.push(`<div class="mi-row"><span class="mi-lbl">SL / TP</span><span>${ev.sl.toFixed(p)} / ${ev.tp.toFixed(p)}</span></div>`);
+    rows.push(`<div class="mi-row"><span class="mi-lbl">Outcome</span><span>${ev.outcome.toUpperCase()}</span></div>`);
+  }
+  let barsHtml = '';
+  if (ev.wickBarTime != null) {
+    const wickBar = barsByTime.get(ev.wickBarTime);
+    barsHtml = `<div class="mi-bar"><div class="mi-bar-hd">Wick-reject bar (A)</div>${fmtBar(wickBar) ?? 'n/a'}</div>
+      <div class="mi-bar"><div class="mi-bar-hd">Engulfing / entry bar (B)</div>${fmtBar(entryBar) ?? 'n/a'}</div>`;
+  } else {
+    barsHtml = `<div class="mi-bar"><div class="mi-bar-hd">Entry bar</div>${fmtBar(entryBar) ?? 'n/a'}</div>`;
+  }
+  const panel = $('markerInfo');
+  panel.innerHTML = `<div class="mi-title">${TEST_LABEL[m.testKey] ?? m.testKey}<span class="mi-close">✕</span></div>${rows.join('')}${barsHtml}`;
+  panel.style.display = 'block';
+  // Keep the panel on-screen: flip left/up if it would overflow the wrapper.
+  const ww = $('chartWrap').clientWidth, wh = $('chartWrap').clientHeight;
+  const pw = 300, ph = panel.offsetHeight || 160;
+  panel.style.left = (cx + pw + 16 > ww ? Math.max(4, cx - pw - 10) : cx + 10) + 'px';
+  panel.style.top = (cy + ph + 10 > wh ? Math.max(4, cy - ph - 10) : cy + 10) + 'px';
 }
 function sizeOverlay() {
   const w = $('chartWrap').clientWidth, h = $('chartWrap').clientHeight;
@@ -243,7 +317,7 @@ async function loadData() {
   const symbol = $('pair').value;
   const from = $('from').value, to = $('to').value;
   if (!symbol || !from || !to) { setStatus('pick pair + dates'); return; }
-  $('go').disabled = true; setStatus('loading…'); $('hint').style.display = 'none';
+  $('go').disabled = true; setStatus('loading…'); $('hint').style.display = 'none'; hideMarkerInfo();
   try {
     const [c5, c15] = await Promise.all([
       fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M5`).then(r => r.json()),
@@ -340,7 +414,7 @@ function drawMarker(x, y, dir, ringColor, size) {
 // or above its high (short), the standard buy/sell-arrow convention, instead
 // of sitting exactly on ev.price (usually inside the candle body/wick where
 // it's easy to lose against the price series).
-function drawTrade(x, y, ev, ringColor, barsByTime) {
+function drawTrade(x, y, ev, ringColor, barsByTime, testKey) {
   const bar = barsByTime.get(ev.time);
   const refPrice = bar ? (ev.dir === 'long' ? bar.low : bar.high) : ev.price;
   const baseY = y(refPrice);
@@ -348,10 +422,12 @@ function drawTrade(x, y, ev, ringColor, barsByTime) {
   if (ex == null || baseY == null) return;
   const ey = ev.dir === 'long' ? baseY + 12 : baseY - 12;
   drawMarker(ex, ey, ev.dir, ringColor);
+  drawnMarkers.push({ x: ex, y: ey, ev, testKey });
 }
 function drawOverlay() {
   if (!octx) return;
   octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  drawnMarkers = [];
   if (!chart || !series || !bars5m.length) return;
   const ts = chart.timeScale();
   const x = t => ts.timeToCoordinate(t);
@@ -414,7 +490,7 @@ function drawOverlay() {
   // clutter than clarity on a busy multi-week chart.
   for (const key of ['wick_engulf', 'midpoint_pullback', 'vwap_tap', 'adx_regime']) {
     if (!state.armedTests.has(key)) continue;
-    for (const ev of events[key]) drawTrade(x, y, ev, TEST_COLOR[key], barsByTime);
+    for (const ev of events[key]) drawTrade(x, y, ev, TEST_COLOR[key], barsByTime, key);
   }
 }
 </script>
