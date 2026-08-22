@@ -16,8 +16,18 @@ rangeLookback = input.int(20, "Lookback for 'largest impulse' selection", minval
 cooldownBars  = input.int(20, "Min bars between impulses", minval=0, tooltip="Suppresses a new impulse for this many bars after the last one, even if a later candle would otherwise qualify — keeps ladders from stacking on top of each other during one extended move.")
 maxImpulses   = input.int(3, "Max impulse ladders kept on screen", minval=1, maxval=10)
 showLabels    = input.bool(true, "Show level price labels")
+labelSizeSel  = input.string("Small", "Level label size", options=["Tiny", "Small", "Normal", "Large", "Huge"])
 upColor       = input.color(color.lime, "Bullish impulse marker")
 downColor     = input.color(color.red, "Bearish impulse marker")
+
+labelSize() =>
+    switch labelSizeSel
+        "Tiny"   => size.tiny
+        "Small"  => size.small
+        "Normal" => size.normal
+        "Large"  => size.large
+        "Huge"   => size.huge
+        => size.small
 
 // Same asymmetric ladder used elsewhere in this repo for range-extension
 // levels: quarter-steps only near the 0-1 body (-0.25/0.25/0.75/1.25), half
@@ -80,7 +90,7 @@ if isImpulse
         array.push(lns, ln)
         array.push(activeLns, ln)
         lblCol = showLabels ? col : color.new(col, 100)
-        lb = label.new(bar_index, price, str.tostring(f, "#.##") + "  " + str.tostring(price, format.mintick), xloc=xloc.bar_index, style=label.style_label_left, color=color.new(color.black, 100), textcolor=lblCol, size=size.tiny)
+        lb = label.new(bar_index, price, str.tostring(f, "#.##") + "  " + str.tostring(price, format.mintick), xloc=xloc.bar_index, style=label.style_label_left, color=color.new(color.black, 100), textcolor=lblCol, size=labelSize())
         array.push(lvlLbs, lb)
 
     mk = label.new(bar_index, bullish ? low : high, bullish ? "▲ impulse" : "▼ impulse", style=bullish ? label.style_label_up : label.style_label_down, color=bullish ? upColor : downColor, textcolor=color.white, size=size.small)
