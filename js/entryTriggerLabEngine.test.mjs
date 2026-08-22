@@ -150,6 +150,19 @@ t('detectWickEngulfing: fires on a genuine wick-reject + full-range engulf', () 
   assert.equal(events[0].kind, 'wick_engulf');
 });
 
+t('detectWickEngulfing: fires on a CONTINUOUS bar (open == prior close, no gap) whose own high/low still engulfs — regression for the open/close-vs-high/low bug', () => {
+  const level = 1.1050;
+  const asiaTimeline = [{ date: '2026-01-06', levels: [{ price: level, fib: 1 }], confluences: [] }];
+  const bars = [
+    mkBar('2026-01-06', 8, 0, 1.1030, 1.1040, 1.1025, 1.1035),
+    mkBar('2026-01-06', 8, 5, 1.1035, 1.1055, 1.1032, 1.1040),   // A: wick reject, closes at 1.1040
+    mkBar('2026-01-06', 8, 10, 1.1040, 1.1057, 1.1010, 1.1015),  // B: opens exactly at A's close (no gap) but its own high/low still brackets A's range
+  ];
+  const events = detectWickEngulfing(bars, asiaTimeline, [], { tolerance: 0 });
+  assert.equal(events.length, 1, 'a continuous (non-gapped) engulf should still fire — real M5 bars almost never gap');
+  assert.equal(events[0].dir, 'short');
+});
+
 t('detectWickEngulfing: no event when the next candle does not fully engulf', () => {
   const level = 1.1050;
   const asiaTimeline = [{ date: '2026-01-06', levels: [{ price: level, fib: 1 }], confluences: [] }];
