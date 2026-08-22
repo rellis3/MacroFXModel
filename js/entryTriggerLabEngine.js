@@ -25,8 +25,9 @@
  * candidate for a Node unit test (see entryTriggerLabEngine.test.mjs).
  */
 
-import { computeBodyRange, projectFibLevels, detectConfluences } from './ranges.js';
-import { barLondonHour, barLondonDay, getPipSize } from './utils.js';
+import { computeBodyRange, projectFibLevels } from './ranges.js';
+import { barLondonHour, barLondonDay, getPipSize, getConfluenceThreshold } from './utils.js';
+import { detectConfluencesCore } from './confluence-core.js';
 import { adxWilder, atrWilder } from './indicatorCore.js';
 import { computeSessionVwap } from './vwapReversionEngine.js';
 
@@ -129,17 +130,38 @@ function applyDailyOutlierExclusion(levels, source) {
 // Walks `history` (ascending, from buildAsiaRangeHistory/buildMondayRangeHistory)
 // and for each entry after the first builds that period's own ladder (the
 // levels actually traded during it) plus its confluence cross-check against
-// the PRIOR period's ladder — exactly what ranges.js's calculateAsiaRanges /
-// calculateMondayRanges compute for "today vs yesterday", just repeated once
-// per period instead of only for the newest one.
+// the PRIOR period's ladder — today's N levels vs yesterday's N levels (or
+// this Monday's vs last Monday's), exactly the group's own "Asia Session Fib
+// Retracement" Pine indicator.
+//
+// This calls detectConfluencesCore DIRECTLY rather than through ranges.js's
+// detectConfluences wrapper. That wrapper is state-coupled (reads
+// S._caps.clusterMerge) and defaults to clusterMerge:true — the LIVE
+// DASHBOARD's own convenience mode, which averages nearby (today,yesterday)
+// pairs into one merged line. The actual Pine indicator members trade off
+// does NOT do that: it keeps every qualifying pair as its own line and only
+// dedupes when two SELECTED prices land within 0.1 pip of each other
+// (confluence-core.js's clusterMerge:false branch) — that's what this calls,
+// so the tool matches the real indicator's behavior, not the dashboard's.
+// Per-instrument threshold (2 pips FX / $20 gold / etc, via
+// getConfluenceThreshold) and the 10%-of-threshold "tight" cutoff both mirror
+// the indicator's own calculated_threshold table and
+// tight_confluence_percentage default exactly.
 export function buildLevelTimeline(history, symbol, source) {
   const out = [];
+  const pipSize = getPipSize(symbol);
+  const normalDistance = getConfluenceThreshold(symbol) * pipSize;
+  const tightDistance = normalDistance * 0.10;
   for (let i = 1; i < history.length; i++) {
     const curr = history[i].range, prev = history[i - 1].range;
     if (!curr || !prev) continue;
     const levels = applyDailyOutlierExclusion(projectFibLevels(curr), source);
     const prevLevels = applyDailyOutlierExclusion(projectFibLevels(prev), source);
-    const confluences = detectConfluences(levels, prevLevels, symbol, source, curr.range);
+    const confluences = detectConfluencesCore(levels, prevLevels, {
+      pipSize, normalDistance, tightDistance,
+      priceMode: 'lowest', clusterMerge: false,
+      source, sessionRange: curr.range,
+    });
     out.push({ date: history[i].date, range: curr, levels, confluences });
   }
   return out;
@@ -162,29 +184,43 @@ export function levelsActiveOn(dateStr, timeline, periodKind) {
   return best;
 }
 
+// fib < 0 or fib > 1 = outside the session's own body range (the ladder's
+// extension zone, as opposed to its 0..1 inside-range quarter-levels). The
+// Pine indicator's Strong/Strongest modes both gate on the confluence's
+// SELECTED price sitting outside the session's actual (wick) high/low —
+// this uses the body-range fib instead (the same convention already used
+// by detectAdxRegimeSwitch's near/far banding below), a documented
+// simplification since this engine's ranges are body-based throughout and
+// don't separately track wick extremes.
+export function isOutsideRange(fib) { return fib < 0 || fib > 1; }
+
 // Merge the active Asia-day ladder and active Monday-week ladder for a given
 // bar's calendar date into one flat, tagged level array.
 //
-// opts.strongOnly: use the CONFLUENT levels only — i.e. where today's ladder
-// and yesterday's ladder (or this week's and last week's) land within the
-// pip/dollar threshold `detectConfluences` already applies (reused from
-// ranges.js/confluence-core.js — same 2-pip-FX / $5-gold / etc default the
-// live dashboard uses), instead of the full raw ladder. This is the "strong
-// levels" reading Husky describes repeatedly: a level is stronger when it's
-// confirmed by the prior period's own ladder landing near the same price,
-// not just any extension multiple. `fib` on a strong entry is TODAY's own
-// extension multiple (todayFib) — the level actually live/traded that
-// period — kept so near/far banding (see detectAdxRegimeSwitch) still works.
+// opts.levelMode mirrors the Pine indicator's "Display Mode" dropdown:
+//   'all'      — the full raw ladder (every fib multiple), the default.
+//   'strong'   — CONFLUENT levels only (today's ladder landing within the
+//                pip/dollar threshold of yesterday's — or this week's vs
+//                last week's), restricted to OUTSIDE the range (matches the
+//                indicator's "Strong Levels": green + orange lines).
+//   'strongest'— confluent AND tight (within 10% of the threshold) AND
+//                outside the range (matches "Strongest Levels": green only).
+// `fib` on a confluent entry is TODAY's own extension multiple (todayFib) —
+// the level actually live/traded that period — kept so near/far banding
+// (see detectAdxRegimeSwitch) still works.
 export function activeLevelsAt(bar, asiaTimeline, mondayTimeline, opts = {}) {
   const date = bar.datetime.split(' ')[0];
   const asia = levelsActiveOn(date, asiaTimeline, 'asia');
   const monday = levelsActiveOn(date, mondayTimeline, 'monday');
+  const mode = opts.levelMode ?? 'all';
   const pick = period => {
     if (!period) return [];
-    if (opts.strongOnly) {
-      return period.confluences.map(c => ({ price: c.price, fib: c.todayFib, isTight: c.isTight, density: c.density, strong: true }));
+    if (mode === 'all') {
+      return period.levels.map(l => ({ price: l.price, fib: l.fib, strong: false, strongest: false }));
     }
-    return period.levels.map(l => ({ price: l.price, fib: l.fib, strong: false }));
+    return period.confluences
+      .filter(c => isOutsideRange(c.todayFib) && (mode === 'strong' || c.isTight))
+      .map(c => ({ price: c.price, fib: c.todayFib, isTight: c.isTight, density: c.density, strong: true, strongest: !!c.isTight }));
   };
   const out = [];
   for (const l of pick(asia)) out.push({ ...l, source: 'asia' });
@@ -203,7 +239,7 @@ export function detectWickEngulfing(bars, asiaTimeline, mondayTimeline, opts = {
   const events = [];
   for (let i = 1; i < bars.length - 1; i++) {
     const a = bars[i];
-    const levels = activeLevelsAt(a, asiaTimeline, mondayTimeline, { strongOnly: opts.strongOnly });
+    const levels = activeLevelsAt(a, asiaTimeline, mondayTimeline, { levelMode: opts.levelMode });
     for (const lvl of levels) {
       const L = lvl.price;
       // Approached from below (level acts as resistance → short setup):
@@ -229,7 +265,7 @@ export function detectWickEngulfing(bars, asiaTimeline, mondayTimeline, opts = {
       if (!engulfs) continue;
       events.push({
         time: b.time, price: b.close, level: L, levelSource: lvl.source, fib: lvl.fib,
-        dir, kind: 'wick_engulf', wickBarTime: a.time, strong: !!lvl.strong,
+        dir, kind: 'wick_engulf', wickBarTime: a.time, strong: !!lvl.strong, strongest: !!lvl.strongest,
       });
     }
   }
@@ -417,7 +453,7 @@ export function detectAdxRegimeSwitch(bars, asiaTimeline, mondayTimeline, opts =
     const adx = adxSeries[i];
     if (adx == null) continue;
     const trending = adx >= threshold;
-    const levels = activeLevelsAt(bar, asiaTimeline, mondayTimeline, { strongOnly: opts.strongOnly });
+    const levels = activeLevelsAt(bar, asiaTimeline, mondayTimeline, { levelMode: opts.levelMode });
     for (const lvl of levels) {
       const band = levelBand(lvl.fib);
       if (!band) continue;
@@ -426,12 +462,12 @@ export function detectAdxRegimeSwitch(bars, asiaTimeline, mondayTimeline, opts =
       if (!touchedUp && !touchedDown) continue;
       if (!trending && band === 'far') {
         // ranging regime: fade the far level back toward basis
-        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: touchedUp ? 'short' : 'long', kind: 'adx_fade_far', strong: !!lvl.strong });
+        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: touchedUp ? 'short' : 'long', kind: 'adx_fade_far', strong: !!lvl.strong, strongest: !!lvl.strongest });
       } else if (trending && band === 'near') {
         // trending regime: buy/sell the near level as a pullback-continuation
         // in the direction the level was approached FROM (fib>0 side reached
         // from below on a pullback in an uptrend = long continuation, etc.)
-        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: lvl.fib > 0 ? 'long' : 'short', kind: 'adx_continuation_near', strong: !!lvl.strong });
+        events.push({ time: bar.time, price: bar.close, level: lvl.price, levelSource: lvl.source, fib: lvl.fib, adx, dir: lvl.fib > 0 ? 'long' : 'short', kind: 'adx_continuation_near', strong: !!lvl.strong, strongest: !!lvl.strongest });
       }
     }
   }
