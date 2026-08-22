@@ -94,3 +94,28 @@ assert.equal(COT_WINDOW_WEEKS, 156);
 assert.equal(MIN_WEEKS_QUALIFY, 260);
 
 console.log('cotFactorCore.test.mjs: all assertions passed');
+
+// ── regression: the two datasets do NOT share column names ──────────────────
+// Verified against the live CFTC schema via /api/cot-backfill/probe 2026-08-22.
+// Hard-coding the `_all` form for both is what made every FX contract map to
+// NaN while gold worked; assert the real names so a "tidy-up" can't undo it.
+import { COT_DATASETS } from './cotFactorCore.js';
+assert.equal(COT_DATASETS.tff.long, 'lev_money_positions_long', 'TFF has NO _all suffix');
+assert.equal(COT_DATASETS.tff.short, 'lev_money_positions_short');
+assert.equal(COT_DATASETS.disagg.long, 'm_money_positions_long_all', 'disagg DOES have _all');
+assert.equal(COT_DATASETS.disagg.short, 'm_money_positions_short_all');
+assert.ok(COT_DATASETS.tff.longAlt.includes('lev_money_positions_long_all'), 'keeps _all as fallback');
+assert.ok(!COT_DATASETS.disagg.longAlt.some(k => k.includes('_old') || k.includes('_other')),
+  'never fall back to the vintage splits');
+
+// ── regression: duplicate report dates are dropped, not double-counted ──────
+// Merging history across a renamed contract can deliver the same week twice.
+const dup = cotFactorSeries([
+  mk('2026-01-06', 60000, 10000, 100000),
+  mk('2026-01-06', 60000, 10000, 100000),   // same week, second contract name
+  mk('2026-01-13', 61000, 10000, 100000),
+], { window: 2 });
+assert.equal(dup.length, 2, `duplicate week dropped (got ${dup.length})`);
+assert.deepEqual(dup.map(r => r.date), ['2026-01-06', '2026-01-13']);
+
+console.log('cotFactorCore.test.mjs: column-name + dedup regressions passed');

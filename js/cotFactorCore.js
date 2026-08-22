@@ -37,7 +37,8 @@ export const FLIP_SYMS = new Set(['JPY', 'CAD', 'CHF']);
 // universe and the OI denominator.
 export const COT_FACTOR_UNIVERSE = [
   { sym: 'EUR',  name: 'EURO FX - CHICAGO MERCANTILE EXCHANGE',           dataset: 'tff',    flip: false, pair: 'eurusd' },
-  { sym: 'GBP',  name: 'BRITISH POUND - CHICAGO MERCANTILE EXCHANGE',     dataset: 'tff',    flip: false, pair: 'gbpusd' },
+  { sym: 'GBP',  name: 'BRITISH POUND - CHICAGO MERCANTILE EXCHANGE',
+    alt: ['BRITISH POUND STERLING - CHICAGO MERCANTILE EXCHANGE'],        dataset: 'tff',    flip: false, pair: 'gbpusd' },
   { sym: 'JPY',  name: 'JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE',      dataset: 'tff',    flip: true,  pair: 'usdjpy' },
   { sym: 'AUD',  name: 'AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE', dataset: 'tff',    flip: false, pair: 'audusd' },
   { sym: 'CAD',  name: 'CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE',   dataset: 'tff',    flip: true,  pair: 'usdcad' },
@@ -52,9 +53,30 @@ export const COT_FACTOR_UNIVERSE = [
 // the legacy report's "Non-commercial" that DF-01's prose describes; the
 // pre-registration states this explicitly rather than letting it pass as
 // equivalent.
+// Column names are NOT consistent between the two datasets — verified against the
+// live schema via /api/cot-backfill/probe on 2026-08-22, not assumed:
+//   TFF    → `lev_money_positions_long`      (NO `_all` suffix)
+//   Disagg → `m_money_positions_long_all`    (WITH `_all`)
+// The first backfill hard-coded the `_all` form for both, so every FX contract
+// mapped to NaN while gold worked. Fallback chains mirror `_worker.js:1981-1982`,
+// which is why the live dashboard was unaffected by the same trap.
 export const COT_DATASETS = {
-  tff:    { id: 'gpe5-46if', long: 'lev_money_positions_long_all', short: 'lev_money_positions_short_all' },
-  disagg: { id: '72hh-3qpy', long: 'm_money_positions_long_all',   short: 'm_money_positions_short_all'   },
+  tff: {
+    id: 'gpe5-46if',
+    long:  'lev_money_positions_long',
+    short: 'lev_money_positions_short',
+    longAlt:  ['lev_money_positions_long_all',  'leveraged_funds_long_all',  'lev_long'],
+    shortAlt: ['lev_money_positions_short_all', 'leveraged_funds_short_all', 'lev_short'],
+  },
+  disagg: {
+    id: '72hh-3qpy',
+    long:  'm_money_positions_long_all',
+    short: 'm_money_positions_short_all',
+    // deliberately NOT `_old`/`_other` — those are separate contract-vintage
+    // splits, not fallbacks for the combined figure
+    longAlt:  ['m_money_positions_long'],
+    shortAlt: ['m_money_positions_short'],
+  },
 };
 
 // ── Publication lag ──────────────────────────────────────────────────────────
@@ -87,10 +109,16 @@ export function tradableFrom(reportDate) {
 // ranked. Ranking the RAW contract count instead conflates "more crowded" with
 // "bigger market", which is the defect this whole exercise started from.
 export function cotFactorSeries(rows, { flip = false, window = COT_WINDOW_WEEKS } = {}) {
+  const seen = new Set();
   const clean = (Array.isArray(rows) ? rows : [])
     .filter(r => r && typeof r.date === 'string')
     .slice()
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => a.date.localeCompare(b.date))
+    // De-duplicate by report date. Contract renames are real in this data (the
+    // probe found BOTH "BRITISH POUND" and "BRITISH POUND STERLING" live), so
+    // history is merged across names and the same week can arrive twice; a
+    // duplicated week would corrupt every rolling window downstream.
+    .filter(r => (seen.has(r.date) ? false : seen.add(r.date)));
 
   const share = clean.map(r => {
     const oi = Number(r.openInterest);
