@@ -474,7 +474,16 @@ async function ensureAsiaRange(pair, sym, testDate) {
     time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
     open: +c.open, high: +c.high, low: +c.low, close: +c.close,
   })).filter(b => b.open && !isNaN(b.time));
-  const asiaBars = bars.filter(b => new Date(b.time * 1000).getUTCHours() < 6);
+  // Must match BOTH the hour window AND the calendar date. Hour-only filtering is
+  // a real bug: if the OANDA fetch returns even one candle spilling into the next
+  // (or previous) UTC day, its 00:00-05:55 hours pass an hour-only check and get
+  // silently merged into THIS day's Asia session — pulling in a chunk of whatever
+  // that other day's price action was and inflating the "range" across a move
+  // that never happened inside the actual 00:00-06:00 UTC window.
+  const asiaBars = bars.filter(b => {
+    const d = new Date(b.time * 1000);
+    return d.getUTCHours() < 6 && d.toISOString().slice(0, 10) === testDate;
+  });
   const range = bodyRange(asiaBars, 5);
   if (!range) throw new Error('no Asia-session (00:00–06:00 UTC) data on that day');
   const pip = pipSizeFor(pair);
