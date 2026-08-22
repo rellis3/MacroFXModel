@@ -453,8 +453,11 @@ function computeTouch() {
 // ── Test-Day Asia range ──────────────────────────────────────────────────────
 async function ensureAsiaRange(pair, sym, testDate) {
   if (lastAsia && lastAsia.pair === pair && lastAsia.date === testDate) return lastAsia;
-  const res = await fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${testDate}&to=${testDate}&granularity=M1`).then(r => r.json());
-  if (res.error || !res.values?.length) throw new Error(res.error || 'no M1 candles for that Test Day');
+  // /api/ohlc-range only serves M5/M15/M30/H1/D (see server.js _RANGE_GRAN) — no M1.
+  // M5 bars fed straight into bodyRange(bars, 5) is equivalent: each native M5 candle's
+  // own open/close IS that bucket's open/close, so resampling is a pass-through.
+  const res = await fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${testDate}&to=${testDate}&granularity=M5`).then(r => r.json());
+  if (res.error || !res.values?.length) throw new Error(res.error || 'no M5 candles for that Test Day');
   const bars = res.values.map(c => ({
     time: Math.floor(new Date(c.datetime.replace(' ', 'T') + 'Z').getTime() / 1000),
     open: +c.open, high: +c.high, low: +c.low, close: +c.close,
