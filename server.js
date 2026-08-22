@@ -19,7 +19,8 @@ import { createInterface as rlCreateInterface } from 'readline';
 import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
-import worker            from './_worker.js';
+import worker, { COT_KV } from './_worker.js';
+import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { computeHMM5m } from './hmm5m.js';
@@ -222,6 +223,7 @@ import { runPivotSpike } from './js/pivotSpikeEngine.js';
 import { COG_V2_TRIGGER_WINDOW, COG_V2_NY_OPEN_MINUTE, COG_V2_ENTRY_DEADLINE_MINUTE, COG_V2_SETUP_NOTE, COG_V2_RISK_NOTE, COG_V2_IMPULSE_PARAMS, COG_V2_TRIGGER_SCORE, COG_V2_SETUP_HYSTERESIS, COG_V2_SLOW_SMOOTH, COG_V2_CONFIDENCE, COG_V2_MIN_SETUP_PERSIST_BARS } from './js/cogV2Config.js';
 import { liveSignal as hedgeV2Live, runComparison as hedgeV2Comparison, V2_DEFAULTS as HEDGE_V2_DEFAULTS } from './js/hedgeSignalV2Engine.js';
 import { runGoldMinerArbSuite, GMA_DEFAULTS } from './js/goldMinerArbEngine.js';
+import { runVRPSuite, VRP_INSTRUMENTS } from './js/fxVolCarryEngine.js';
 import { decide as tdeDecide } from './Trade_Decision_Engine/decisionCore.js';
 import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
@@ -925,7 +927,7 @@ const COT_CCY_GROUP = ['EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'MXN'];
 
 async function computeCotCorrelations() {
   let raw;
-  try { raw = await kv.get('cot_series_v2'); } catch { return null; }
+  try { raw = await kv.get(COT_KV.series); } catch { return null; }
   if (!raw) return null;
   let series;
   try { series = JSON.parse(raw)?.series; } catch { return null; }
@@ -3110,7 +3112,7 @@ function _cotPairView(c, inverted) {
 // the export must never invent positioning.
 async function _cotForExport(now = Date.now()) {
   try {
-    const raw = await kv.get('cot_extremes_v2'); if (!raw) return null;
+    const raw = await kv.get(COT_KV.extremes); if (!raw) return null;
     const cd = JSON.parse(raw);
     const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
     const list = Array.isArray(arr) ? arr : []; if (!list.length) return null;
@@ -3213,7 +3215,7 @@ async function _serverSnapshotFor(name, sym) {
   } catch {}
   // COT positioning (real spec/leveraged-fund data) — same shape the prompt reads.
   try {
-    const cotRaw = await kv.get('cot_extremes_v2');
+    const cotRaw = await kv.get(COT_KV.extremes);
     const m = _COT_MAP[name];
     if (cotRaw && m) {
       const cd = JSON.parse(cotRaw); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
@@ -3237,7 +3239,7 @@ async function _serverSnapshotFor(name, sym) {
   // what tells you whether one crowded pair is idiosyncratic or part of a broad
   // risk-on/risk-off crowding. Extremes are taken on the OI-NORMALISED percentile.
   try {
-    const cotRaw2 = await kv.get('cot_extremes_v2');
+    const cotRaw2 = await kv.get(COT_KV.extremes);
     if (cotRaw2) {
       const cd = JSON.parse(cotRaw2); const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
       const list = (Array.isArray(arr) ? arr : []).filter(x => x && x.sym);
@@ -3662,6 +3664,98 @@ app.get('/api/fomc-backfill/status', async (_req, res) => {
 app.get('/api/fomc-backfill/scores', async (_req, res) => {
   const raw = await kv.get('fomc_lexicon_scores').catch(() => null);
   if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/fomc-backfill/run first' });
+  res.json({ ok: true, ...JSON.parse(raw) });
+});
+
+// ── COT history backfill — MD files/COT_POSITIONING_FACTOR_TEST.md ────────────
+// Pulls FULL CFTC Socrata history (2006→) for the 8 factor-test contracts and
+// scores it with `cotFactorCore` (OI-normalised, publication-lagged). This is
+// deliberately NOT `/api/cot-extremes`: that endpoint is display-grade — 156
+// weeks hard-capped, 7-day cache, current-week rank only, no lag shift.
+//
+// Output KV `cot_factor_history_v1` is the pre-registered test's input; the
+// series are small (~1000 weekly rows x 8) so they ship as one JSON. Sandbox
+// dev sessions cannot reach CFTC, so this runs on Railway — same build-here /
+// run-there split as the FOMC statement backfill above.
+const _COT_BACKFILL_LOG_KV = 'cot_backfill_log';
+let _cotBackfillRunning = false;
+
+async function _cotBackfillJob() {
+  const log = [];
+  const out = {};
+  const heartbeat = async phase => kv.put(_COT_BACKFILL_LOG_KV, JSON.stringify({
+    at: new Date().toISOString(), phase, log: log.slice(-20),
+  })).catch(() => {});
+
+  for (const inst of COT_FACTOR_UNIVERSE) {
+    const ds = COT_DATASETS[inst.dataset];
+    const names = [inst.name, ...(inst.alt ?? [])];
+    let rows = null, usedName = null;
+    for (const name of names) {
+      const params = new URLSearchParams({
+        market_and_exchange_names: name,
+        '$limit': '3000',
+        '$order': 'report_date_as_yyyy_mm_dd ASC',
+        '$select': `report_date_as_yyyy_mm_dd,${ds.long},${ds.short},open_interest_all`,
+      });
+      try {
+        const r = await fetch(`https://publicreporting.cftc.gov/resource/${ds.id}.json?${params}`,
+          { signal: AbortSignal.timeout(30000) });
+        if (!r.ok) { log.push(`${inst.sym} ✗ HTTP ${r.status} (${name})`); continue; }
+        const j = await r.json();
+        if (Array.isArray(j) && j.length) { rows = j; usedName = name; break; }
+        log.push(`${inst.sym} — 0 rows for "${name}"`);
+      } catch (e) { log.push(`${inst.sym} ✗ ${e.message} (${name})`); }
+    }
+    if (!rows) { log.push(`${inst.sym} ✗ no rows under any known contract name`); out[inst.sym] = { sym: inst.sym, error: 'no rows' }; continue; }
+
+    const mapped = rows.map(r => ({
+      date: String(r.report_date_as_yyyy_mm_dd ?? '').slice(0, 10),
+      specLong: Number(r[ds.long]),
+      specShort: Number(r[ds.short]),
+      openInterest: Number(r.open_interest_all),
+    })).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date));
+
+    const series = cotFactorSeries(mapped, { flip: inst.flip });
+    const scored = series.filter(s => s.z != null).length;
+    out[inst.sym] = {
+      sym: inst.sym, pair: inst.pair, dataset: inst.dataset, flip: inst.flip,
+      contractName: usedName, rows: mapped.length, scoredWeeks: scored,
+      qualifies: qualifies(series),
+      first: series[0]?.date ?? null, last: series.at(-1)?.date ?? null,
+      // Only the fields the test consumes — keeps the payload small enough to
+      // hand to a session that will run the join.
+      series: series.map(s => ({ d: s.date, t: s.tradableFrom, sh: s.share, z: s.z, p: s.pct })),
+    };
+    log.push(`${inst.sym} ✓ ${mapped.length} rows, ${scored} scored, ${series[0]?.date}→${series.at(-1)?.date}${qualifies(series) ? '' : ' [BELOW 260wk GUARD]'}`);
+    await heartbeat(`${Object.keys(out).length}/${COT_FACTOR_UNIVERSE.length}`);
+    await new Promise(r => setTimeout(r, 800)); // politeness between Socrata calls
+  }
+
+  await kv.put('cot_factor_history_v1', JSON.stringify({
+    generatedAt: new Date().toISOString(),
+    window: COT_WINDOW_WEEKS, minWeeksQualify: MIN_WEEKS_QUALIFY,
+    lagRule: 'report Tue → tradable following Mon open (release Fri 15:30 ET)',
+    instruments: out,
+  }));
+  await heartbeat('done');
+  console.log(`[cot-backfill] ${log.join(' · ')}`);
+}
+
+app.post('/api/cot-backfill/run', (_req, res) => {
+  if (_cotBackfillRunning) return res.json({ ok: true, started: false, alreadyRunning: true });
+  _cotBackfillRunning = true;
+  _cotBackfillJob().catch(e => console.error('[cot-backfill]', e.message))
+    .finally(() => { _cotBackfillRunning = false; });
+  res.json({ ok: true, started: true });
+});
+app.get('/api/cot-backfill/status', async (_req, res) => {
+  const raw = await kv.get(_COT_BACKFILL_LOG_KV).catch(() => null);
+  res.json({ ok: true, running: _cotBackfillRunning, last: raw ? JSON.parse(raw) : null });
+});
+app.get('/api/cot-backfill/series', async (_req, res) => {
+  const raw = await kv.get('cot_factor_history_v1').catch(() => null);
+  if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/cot-backfill/run first' });
   res.json({ ok: true, ...JSON.parse(raw) });
 });
 
@@ -8183,6 +8277,18 @@ app.post('/api/vumanchu/mtf-stack/send', express.json({ limit: '4kb' }), async (
   }
 });
 
+// An instrument's earliest-available-bar date never changes, so this is cached
+// indefinitely (not TTL'd like the range cache below) — avoids re-probing OANDA
+// on every /api/ohlc-range call for the same (instrument, granularity).
+const _earliestBarCache = new Map();
+async function _probeEarliestBarCached(instrument, gran) {
+  const key = `${instrument}_${gran}`;
+  if (_earliestBarCache.has(key)) return _earliestBarCache.get(key);
+  const earliest = await _probeEarliestBar(instrument, gran);
+  if (earliest) _earliestBarCache.set(key, earliest); // don't cache a null (probe failure) — worth retrying next call
+  return earliest;
+}
+
 // Paginated OANDA candle fetch over an explicit [fromISO, toISO] window at any
 // granularity (OANDA caps 5000 candles/request → forward-paginate). Returns
 // ascending values in the same London-datetime shape as /api/oanda_ohlc5m.
@@ -8191,13 +8297,29 @@ async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
   const toMs = Date.parse(toISO);
   // Daily candles align to London midnight (matches the forecaster's anchor).
   const align = gran === 'D' ? '&alignmentTimezone=Europe%2FLondon&dailyAlignment=0' : '';
+  // CFD/index instruments (gold, NAS100, etc.) were listed on OANDA much later
+  // than FX spot pairs and can have a materially shorter history ceiling — see
+  // _probeEarliestBar's own comment. Clamp `from` to that ceiling up front so a
+  // request that predates an instrument's inception can't be the cause of a
+  // failure below; reuses the same probe _fetchCouplingRange already relies on
+  // rather than duplicating the "ask OANDA for its earliest bar" logic.
   let from = fromISO;
+  const earliest = await _probeEarliestBarCached(instrument, gran);
+  if (earliest && Date.parse(earliest) > Date.parse(from)) from = earliest;
   const out = [];
   for (let page = 0; page < 40; page++) {
     const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
               + `?granularity=${gran}&from=${encodeURIComponent(from)}&count=5000&price=M${align}`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(30_000) });
-    if (!r.ok) throw new Error(`OANDA ${instrument} ${gran} HTTP ${r.status}`);
+    // Capture OANDA's actual response body on failure (matches _fetchCouplingRange's
+    // pattern below) instead of swallowing it into a bare status code — a 403 vs a
+    // 400 vs a "instrument not available for this account" message all look
+    // identical as `HTTP ${r.status}` alone, which is exactly what made the
+    // gold/NAS100 403 unexplainable from the client error message so far.
+    if (!r.ok) {
+      const bodyText = await r.text().catch(() => '');
+      throw new Error(`OANDA ${instrument} ${gran} HTTP ${r.status}${bodyText ? `: ${bodyText.slice(0, 200)}` : ''}`);
+    }
     const candles = (await r.json()).candles ?? [];
     let lastTime = null, stop = false;
     for (const c of candles) {
@@ -17065,6 +17187,74 @@ app.post('/api/vol-backtest-v2/run', express.json({ limit: '256kb' }), (req, res
 
 app.get('/api/vol-backtest-v2/status/:jobId', (req, res) => {
   const job = v2Jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') {
+    return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  }
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── FX/Gold Vol-Carry (VRP) Backtester — CME CVOL implied vs realized vol ────
+// Tests the VRP-gated selector (js/fxVolCarryEngine.js) against always-fade /
+// always-follow at the same exhaustion band, IS/OOS, on EURUSD/GBPUSD/USDJPY/
+// AUDUSD/USDCAD/USDCHF/GOLD. CVOL data is the static snapshot in
+// js/data/cmeCvolEod.json — no live feed, so this route only needs OANDA for
+// the D1 price bars. Same async-job pattern as vol-backtest-v2.
+const vrpJobs = new Map();
+function _purgeStaleVrpJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of vrpJobs) if (job.startedAt < cutoff) vrpJobs.delete(id);
+}
+
+app.post('/api/fx-vol-carry/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data' });
+  }
+  const b = req.body ?? {};
+  const num = (v, d) => (v === undefined || v === '' || isNaN(+v) ? d : +v);
+  const opts = {
+    dateFrom: b.dateFrom || '',
+    dateTo: b.dateTo || '',
+    slMult: num(b.slMult, 1.5),
+    oosFrac: Math.min(Math.max(num(b.oosFrac, 0.4), 0.1), 0.6),
+    richZ: num(b.richZ, 0.5),
+    cheapZ: num(b.cheapZ, -0.5),
+    zPeriod: Math.round(Math.min(Math.max(num(b.zPeriod, 252), 60), 756)),
+    slopeThresh: num(b.slopeThresh, 0.002),
+  };
+  if (b.costPct !== undefined && b.costPct !== '') opts.costPct = num(b.costPct, undefined);
+  if (b.slipPct !== undefined && b.slipPct !== '') opts.slipPct = num(b.slipPct, undefined);
+
+  const instFilter = b.pair
+    ? VRP_INSTRUMENTS.filter(i => i.name === String(b.pair).toUpperCase())
+    : undefined;
+
+  const jobId = `vrp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleVrpJobs();
+  vrpJobs.set(jobId, { status: 'running', startedAt });
+
+  (async () => {
+    try {
+      const { results, log, cvolMeta } = await runVRPSuite(opts, instFilter ?? VRP_INSTRUMENTS);
+      if (!results.length) {
+        vrpJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
+        return;
+      }
+      vrpJobs.set(jobId, { status: 'done', result: { results, log, opts, cvolMeta }, startedAt });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[fx-vol-carry/run]', msg, e?.stack ?? '');
+      vrpJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/fx-vol-carry/status/:jobId', (req, res) => {
+  const job = vrpJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') {
     return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });

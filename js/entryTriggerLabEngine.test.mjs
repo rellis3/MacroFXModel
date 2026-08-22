@@ -3,9 +3,9 @@
 import assert from 'node:assert';
 import {
   normalizeBars, groupAsiaSessions, groupMondaySessions, buildAsiaRangeHistory,
-  buildLevelTimeline, levelsActiveOn, detectWickEngulfing, detectMidpointPullback,
+  buildLevelTimeline, levelsActiveOn, activeLevelsAt, detectWickEngulfing, detectMidpointPullback,
   detectSessionExtremeAnchor, detectVwapTap, resampleToH4, computeH4AdxSeries,
-  detectAdxRegimeSwitch,
+  detectAdxRegimeSwitch, planTrades,
 } from './entryTriggerLabEngine.js';
 
 let passed = 0;
@@ -113,6 +113,28 @@ t('levelsActiveOn: asia is same-date only, monday spans through the week', () =>
   assert.equal(levelsActiveOn('2026-01-05', timeline, 'asia'), null); // no prior day to build day-1's ladder
 });
 
+t('activeLevelsAt: strongOnly returns only the confluent (today-vs-yesterday) levels, tagged strong', () => {
+  // Two Asia days at deliberately different scale/offset so most of the two
+  // ladders DON'T land near each other — except day2's own low (1.1049),
+  // which lands within the FX 2-pip default of day1's high (1.1050),
+  // producing a handful of real confluences out of the full 21-level ladder.
+  const bars = [
+    ...mkAsiaDay('2026-01-05', 1.1050, 1.0950),
+    ...mkAsiaDay('2026-01-06', 1.1449, 1.1049),
+  ];
+  const hist = buildAsiaRangeHistory(bars);
+  const timeline = buildLevelTimeline(hist, 'EUR/USD', 'asia');
+  const bar = { datetime: '2026-01-06 08:00:00' };
+  const full = activeLevelsAt(bar, timeline, []);
+  const strong = activeLevelsAt(bar, timeline, [], { strongOnly: true });
+  assert.ok(full.length > strong.length, 'confluence filtering should narrow the ladder down');
+  assert.ok(strong.length > 0, 'two near-identical ladders should produce at least one confluence');
+  assert.ok(strong.every(l => l.strong === true));
+  assert.ok(full.every(l => l.strong === false));
+  // fib carried through as TODAY's own extension multiple, not lost.
+  assert.ok(strong.every(l => Number.isFinite(l.fib)));
+});
+
 // ── detectWickEngulfing ──────────────────────────────────────────────────────
 t('detectWickEngulfing: fires on a genuine wick-reject + full-range engulf', () => {
   const level = 1.1050;
@@ -126,6 +148,19 @@ t('detectWickEngulfing: fires on a genuine wick-reject + full-range engulf', () 
   assert.equal(events.length, 1);
   assert.equal(events[0].dir, 'short');
   assert.equal(events[0].kind, 'wick_engulf');
+});
+
+t('detectWickEngulfing: fires on a CONTINUOUS bar (open == prior close, no gap) whose own high/low still engulfs — regression for the open/close-vs-high/low bug', () => {
+  const level = 1.1050;
+  const asiaTimeline = [{ date: '2026-01-06', levels: [{ price: level, fib: 1 }], confluences: [] }];
+  const bars = [
+    mkBar('2026-01-06', 8, 0, 1.1030, 1.1040, 1.1025, 1.1035),
+    mkBar('2026-01-06', 8, 5, 1.1035, 1.1055, 1.1032, 1.1040),   // A: wick reject, closes at 1.1040
+    mkBar('2026-01-06', 8, 10, 1.1040, 1.1057, 1.1010, 1.1015),  // B: opens exactly at A's close (no gap) but its own high/low still brackets A's range
+  ];
+  const events = detectWickEngulfing(bars, asiaTimeline, [], { tolerance: 0 });
+  assert.equal(events.length, 1, 'a continuous (non-gapped) engulf should still fire — real M5 bars almost never gap');
+  assert.equal(events[0].dir, 'short');
 });
 
 t('detectWickEngulfing: no event when the next candle does not fully engulf', () => {
@@ -230,6 +265,70 @@ t('detectAdxRegimeSwitch: runs end-to-end without throwing on a longer synthetic
   const asiaTimeline = [{ date: '2026-01-10', levels: [{ price: 1.1005, fib: 1.5 }, { price: 1.1010, fib: 2 }], confluences: [] }];
   const events = detectAdxRegimeSwitch(bars, asiaTimeline, [], { threshold: 30 });
   assert.ok(Array.isArray(events));
+});
+
+// ── planTrades ────────────────────────────────────────────────────────────────
+// Flat baseline bars (constant H-L) so ATR settles to a known, small value —
+// forward moves are then made large enough to clearly cross TP or SL
+// regardless of the exact ATR figure, so the test isn't fragile to Wilder
+// EMA arithmetic.
+function mkFlatBars(n, date, startHour, entryPrice) {
+  const bars = [];
+  for (let i = 0; i < n; i++) {
+    const hh = startHour + Math.floor(i / 12), mm = (i % 12) * 5;
+    bars.push(mkBar(date, hh, mm, entryPrice, entryPrice + 0.0005, entryPrice - 0.0005, entryPrice));
+  }
+  return bars;
+}
+
+t('planTrades: TP hit first → win, exit price pinned to the planned TP', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const winBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0100, entry - 0.0002, entry + 0.0090); // huge up move
+  const bars = [...pre, eventBar, winBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'long', kind: 'wick_engulf' }];
+  const planned = planTrades(bars, events, {});
+  assert.equal(planned.length, 1);
+  assert.equal(planned[0].planned, true);
+  assert.equal(planned[0].outcome, 'win');
+  assert.ok(Math.abs(planned[0].exitPrice - planned[0].tp) < 1e-9);
+  assert.ok(planned[0].tp > entry && planned[0].sl < entry); // long: TP above, SL below
+});
+
+t('planTrades: SL hit first → loss', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const lossBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0002, entry - 0.0100, entry - 0.0090); // huge down move
+  const bars = [...pre, eventBar, lossBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'long', kind: 'wick_engulf' }];
+  const planned = planTrades(bars, events, {});
+  assert.equal(planned[0].outcome, 'loss');
+  assert.ok(Math.abs(planned[0].exitPrice - planned[0].sl) < 1e-9);
+});
+
+t('planTrades: neither hit within the hold window → open', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const quietBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0001, entry - 0.0001, entry);
+  const bars = [...pre, eventBar, quietBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'long', kind: 'wick_engulf' }];
+  const planned = planTrades(bars, events, { maxHoldBars: 5 });
+  assert.equal(planned[0].outcome, 'open');
+});
+
+t('planTrades: short direction mirrors SL/TP placement', () => {
+  const entry = 1.1000;
+  const pre = mkFlatBars(20, '2026-01-06', 0, entry);
+  const eventBar = mkBar('2026-01-06', 2, 0, entry, entry, entry, entry);
+  const winBar = mkBar('2026-01-06', 2, 5, entry, entry + 0.0002, entry - 0.0100, entry - 0.0090); // huge down move → short wins
+  const bars = [...pre, eventBar, winBar];
+  const events = [{ time: eventBar.time, price: entry, dir: 'short', kind: 'adx_fade_far' }];
+  const planned = planTrades(bars, events, {});
+  assert.ok(planned[0].tp < entry && planned[0].sl > entry); // short: TP below, SL above
+  assert.equal(planned[0].outcome, 'win');
 });
 
 console.log(`\n${passed} passed`);

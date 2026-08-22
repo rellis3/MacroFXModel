@@ -69,25 +69,39 @@
   </div>
   <div class="arm" id="levelArm">
     <span class="lbl">Levels</span>
-    <span class="chip on" data-lvl="asia"><span class="dot" style="background:#f59e0b"></span>Asia ladder</span>
-    <span class="chip on" data-lvl="monday"><span class="dot" style="background:#60a5fa"></span>Monday ladder</span>
+    <span class="chip" data-lvl="asia" title="The full raw ladder — 21 fib multiples per day. Off by default: with 1-2 weeks loaded that's 200+ segments at once, which reads as noise rather than levels. Turn on to see everything.">
+      <span class="dot" style="background:#f59e0b"></span>Asia ladder (full)
+    </span>
+    <span class="chip" data-lvl="monday" title="The full raw ladder — 21 fib multiples per week. Off by default for the same density reason as Asia ladder.">
+      <span class="dot" style="background:#60a5fa"></span>Monday ladder (full)
+    </span>
+    <span class="chip on" data-lvl="confluence" title="Levels where today's ladder and yesterday's ladder (or this week's/last week's) land within the pip threshold — reused as-is from js/ranges.js detectConfluences, same threshold the live dashboard uses (2 pips FX default, $5/$7.5 gold, etc).">
+      <span class="dot" style="background:#facc15"></span>Confluent (strong)
+    </span>
   </div>
   <div class="arm" id="testArm">
     <span class="lbl">Tests</span>
     <span class="chip on" data-test="wick_engulf"><span class="dot" style="background:#f59e0b"></span>Wick+Engulf <span class="cnt" id="cnt_wick_engulf"></span></span>
     <span class="chip on" data-test="midpoint_pullback"><span class="dot" style="background:#c084fc"></span>Midpoint pullback <span class="cnt" id="cnt_midpoint_pullback"></span></span>
-    <span class="chip on" data-test="session_extreme"><span class="dot" style="background:#34d399"></span>Session-extreme anchor <span class="cnt" id="cnt_session_extreme"></span></span>
+    <span class="chip on" data-test="session_extreme" title="Not an entry signal — a level-generation comparison. On days where a strong move right after the Asia window (06:00-08:00 London) would have extended the range enough to matter, this draws the ALTERNATE ladder (teal dashed) alongside the standard one so you can compare them. The count is how many days diverged, not how many trades fired.">
+      <span class="dot" style="background:#34d399"></span>Session-extreme anchor (level compare, not an entry) <span class="cnt" id="cnt_session_extreme"></span>
+    </span>
     <span class="chip on" data-test="vwap_tap"><span class="dot" style="background:#14b8a6"></span>VWAP tap <span class="cnt" id="cnt_vwap_tap"></span></span>
     <span class="chip on" data-test="adx_regime"><span class="dot" style="background:#f472b6"></span>ADX regime switch <span class="cnt" id="cnt_adx_regime"></span></span>
+    <span class="chip" id="strongOnlyChip" title="Restrict Wick+Engulf and ADX regime switch (the two level-touch/reversion tests) to CONFLUENT levels only — today's ladder must land near yesterday's (or this week's near last week's) for a level to count as a valid touch. Midpoint/VWAP/session-extreme are unaffected — confluence isn't a meaningful concept for those.">
+      <span class="dot" style="background:#facc15"></span>⭐ Strong-only entries (wick+engulf, ADX)
+    </span>
   </div>
   <div id="chartWrap">
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
     <div id="legend">
-      <div class="row"><span class="sw" style="background:#f59e0b"></span>Asia ladder (solid, per day)</div>
-      <div class="row"><span class="sw" style="background:#60a5fa"></span>Monday ladder (dashed, per week)</div>
-      <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges</div>
-      <div class="row">▲ long / ▼ short marker, colored by test</div>
+      <div class="row"><span class="sw" style="background:#f59e0b;opacity:.4"></span>Asia ladder (full, faint, off by default)</div>
+      <div class="row"><span class="sw" style="background:#60a5fa;opacity:.4"></span>Monday ladder (full, faint, off by default)</div>
+      <div class="row"><span class="sw" style="background:#facc15"></span>Confluent = today vs yesterday within pip threshold (thick gold, on by default)</div>
+      <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges — a level comparison, no marker (see the chip tooltip)</div>
+      <div class="row"><span class="sw" style="background:#22c55e"></span>▲ long / <span class="sw" style="background:#ef4444"></span>▼ short entry — ring color = test</div>
+      <div class="row">W/L/open counts per chip are still SL(1.5×ATR)/2R-simulated, just not drawn on the chart</div>
     </div>
     <div id="hint">Pick a pair and date range, then Generate.<br>Toggle levels/tests to isolate one idea at a time.</div>
   </div>
@@ -97,7 +111,7 @@ import { PAIRS } from './js/config.js';
 import {
   normalizeBars, buildAsiaRangeHistory, buildMondayRangeHistory, buildLevelTimeline,
   detectWickEngulfing, detectMidpointPullback, detectSessionExtremeAnchor, detectVwapTap,
-  detectAdxRegimeSwitch,
+  detectAdxRegimeSwitch, planTrades,
 } from './js/entryTriggerLabEngine.js';
 import { getPipSize } from './js/utils.js';
 
@@ -112,8 +126,16 @@ const TEST_COLOR = {
 };
 
 const state = {
-  armedLevels: new Set(['asia', 'monday']),
+  // Full raw ladders (21 fib multiples × every day/week loaded) are OFF by
+  // default — with more than a couple of days loaded that's hundreds of short
+  // segments, and adjacent days/weeks often land close enough in price that
+  // they visually tile into solid-looking walls even though each one is
+  // correctly clipped to its own day/week span. Confluent levels are the
+  // curated, sparse subset (Husky's own stated target: "1-3 final levels per
+  // side") and stay on by default.
+  armedLevels: new Set(['confluence']),
   armedTests: new Set(['wick_engulf', 'midpoint_pullback', 'session_extreme', 'vwap_tap', 'adx_regime']),
+  strongOnly: false,
 };
 
 let chart = null, series = null, overlayCanvas = null, octx = null, dpr = window.devicePixelRatio || 1;
@@ -121,6 +143,8 @@ let asiaTimeline = [], mondayTimeline = [];
 let events = { wick_engulf: [], midpoint_pullback: [], vwap_tap: [], adx_regime: [] };
 let sessionExtreme = [];
 let bars5m = [];
+let barsByTime = new Map();
+let currentSymbol = null, currentPip = 0.0001;
 
 // ── UI setup ─────────────────────────────────────────────────────────────────
 (function initUI() {
@@ -143,6 +167,12 @@ let bars5m = [];
   });
   $('testArm').addEventListener('click', e => {
     const chip = e.target.closest('.chip'); if (!chip) return;
+    if (chip.id === 'strongOnlyChip') {
+      state.strongOnly = !state.strongOnly;
+      chip.classList.toggle('on', state.strongOnly);
+      if (bars5m.length) { recomputeEvents(); scheduleDraw(); }
+      return;
+    }
     const k = chip.dataset.test;
     if (state.armedTests.has(k)) state.armedTests.delete(k); else state.armedTests.add(k);
     chip.classList.toggle('on', state.armedTests.has(k));
@@ -191,7 +221,16 @@ let _lastSig = '';
 function syncLoop() {
   if (chart && series && bars5m.length) {
     const r = chart.timeScale().getVisibleLogicalRange();
-    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}` : 'x';
+    // A price-scale sample is REQUIRED in the signature, not just the visible
+    // time range: Lightweight Charts auto-scales the price axis to fit
+    // whatever candles are visible, so a vertical-only drag — or a horizontal
+    // pan that scrolls in candles with a different price range — moves every
+    // y-coordinate without necessarily changing r.from/r.to. Without this the
+    // overlay's lines/markers stayed frozen at their last-drawn pixel
+    // position while the candles underneath moved (the "lines don't move
+    // with price" bug). Mirrors forecast-reversion.html's syncLoop exactly.
+    const refY = bars5m[0] ? series.priceToCoordinate(bars5m[0].close) : null;
+    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}_${refY}` : 'x';
     if (sig !== _lastSig) { _lastSig = sig; drawOverlay(); }
   }
   requestAnimationFrame(syncLoop);
@@ -212,19 +251,16 @@ async function loadData() {
     ]);
     if (c5.error || !c5.values?.length) { setStatus(c5.error || 'no candles for that range'); $('go').disabled = false; return; }
     bars5m = normalizeBars(c5.values);
+    barsByTime = new Map(bars5m.map(b => [b.time, b]));
     const bars15m = normalizeBars(c15?.values ?? []);
+    currentSymbol = symbol;
+    currentPip = getPipSize(symbol);
 
     const asiaHistory = buildAsiaRangeHistory(bars5m);
     const mondayHistory = buildMondayRangeHistory(bars15m);
     asiaTimeline = buildLevelTimeline(asiaHistory, symbol, 'asia');
     mondayTimeline = buildLevelTimeline(mondayHistory, symbol, 'monday');
-
-    const pip = getPipSize(symbol);
-    events.wick_engulf = detectWickEngulfing(bars5m, asiaTimeline, mondayTimeline, { tolerance: pip });
-    events.midpoint_pullback = detectMidpointPullback(bars5m, asiaTimeline, mondayTimeline, { breakoutTol: pip * 2 });
-    events.vwap_tap = detectVwapTap(bars5m, { awayTol: pip * 3 });
-    events.adx_regime = detectAdxRegimeSwitch(bars5m, asiaTimeline, mondayTimeline, { threshold: 30, tolerance: pip });
-    sessionExtreme = detectSessionExtremeAnchor(bars5m, symbol, { minPips: 3 });
+    recomputeEvents();
 
     ensureChart(symbol);
     if (!overlayCanvas) setupOverlay();
@@ -232,8 +268,6 @@ async function loadData() {
     chart.timeScale().fitContent();
     sizeOverlay();
 
-    for (const k of Object.keys(events)) { const el = $('cnt_' + k); if (el) el.textContent = events[k].length; }
-    $('cnt_session_extreme').textContent = sessionExtreme.filter(d => d.diverges).length;
     setStatus(`${symbol} · ${bars5m.length} M5 candles · ${asiaTimeline.length} Asia days · ${mondayTimeline.length} Monday weeks`);
     scheduleDraw();
   } catch (e) {
@@ -243,29 +277,78 @@ async function loadData() {
   }
 }
 
+// Re-run detection off the already-loaded bars/timelines — used both right
+// after a data load and whenever the Strong-only toggle flips (that changes
+// which levels wick_engulf/adx_regime actually test, so it needs a real
+// recompute, not just a redraw).
+function recomputeEvents() {
+  const pip = currentPip;
+  events.wick_engulf = detectWickEngulfing(bars5m, asiaTimeline, mondayTimeline, { tolerance: pip, strongOnly: state.strongOnly });
+  events.midpoint_pullback = detectMidpointPullback(bars5m, asiaTimeline, mondayTimeline, { breakoutTol: pip * 2 });
+  events.vwap_tap = detectVwapTap(bars5m, { awayTol: pip * 3 });
+  events.adx_regime = detectAdxRegimeSwitch(bars5m, asiaTimeline, mondayTimeline, { threshold: 30, tolerance: pip, strongOnly: state.strongOnly });
+  sessionExtreme = detectSessionExtremeAnchor(bars5m, currentSymbol, { minPips: 3 });
+
+  // Plan a trade (SL/TP + walk-forward outcome) for each point-trigger event —
+  // session-extreme-anchor is a per-day level-anchor comparison, not a
+  // directional entry, so it's excluded.
+  for (const k of ['wick_engulf', 'midpoint_pullback', 'vwap_tap', 'adx_regime']) {
+    events[k] = planTrades(bars5m, events[k], {});
+  }
+
+  for (const k of Object.keys(events)) {
+    const el = $('cnt_' + k); if (!el) continue;
+    const wins = events[k].filter(e => e.outcome === 'win').length;
+    const losses = events[k].filter(e => e.outcome === 'loss').length;
+    const openN = events[k].filter(e => e.outcome === 'open').length;
+    el.textContent = events[k].length ? `${events[k].length} (${wins}W/${losses}L${openN ? '/' + openN + 'open' : ''})` : '0';
+  }
+  $('cnt_session_extreme').textContent = sessionExtreme.filter(d => d.diverges).length;
+}
+
 // ── Overlay drawing ──────────────────────────────────────────────────────────
 function dayEpoch(dateStr) { return Math.floor(Date.parse(dateStr + 'T00:00:00Z') / 1000); }
 
-function drawSegment(x1, x2, y, color, dashed) {
+function drawSegment(x1, x2, y, color, dashed, width) {
   if (x1 == null || x2 == null || y == null) return;
   octx.save();
-  octx.strokeStyle = color; octx.lineWidth = 1.5 * dpr;
+  octx.strokeStyle = color; octx.lineWidth = (width ?? 1.5) * dpr;
   if (dashed) octx.setLineDash([4 * dpr, 3 * dpr]); else octx.setLineDash([]);
   octx.beginPath(); octx.moveTo(x1 * dpr, y * dpr); octx.lineTo(x2 * dpr, y * dpr); octx.stroke();
   octx.restore();
 }
-function drawMarker(x, y, color, dir) {
+// Fill = DIRECTION (green long / red short) so direction reads at a glance
+// across every test without checking a legend; the ring = TEST color, so
+// which rule fired is still visible on closer look. No SL/TP or outcome
+// lines — direction + a clear entry mark only, per feedback that the
+// trade-plan lines were cluttering the chart rather than clarifying it.
+const DIR_COLOR = { long: '#22c55e', short: '#ef4444' };
+function drawMarker(x, y, dir, ringColor, size) {
   if (x == null || y == null) return;
-  const s = 5 * dpr;
+  const s = (size ?? 9) * dpr;
   octx.save();
-  octx.fillStyle = color;
+  octx.fillStyle = DIR_COLOR[dir] ?? '#9ca3af';
+  octx.strokeStyle = ringColor ?? 'rgba(0,0,0,.65)'; octx.lineWidth = 2 * dpr;
   octx.beginPath();
   if (dir === 'long') { octx.moveTo(x * dpr, y * dpr - s); octx.lineTo(x * dpr - s, y * dpr + s); octx.lineTo(x * dpr + s, y * dpr + s); }
   else { octx.moveTo(x * dpr, y * dpr + s); octx.lineTo(x * dpr - s, y * dpr - s); octx.lineTo(x * dpr + s, y * dpr - s); }
-  octx.closePath(); octx.fill();
+  octx.closePath(); octx.fill(); octx.stroke();
   octx.restore();
 }
 
+// Entry marker only — offset a fixed pixel gap below the candle's low (long)
+// or above its high (short), the standard buy/sell-arrow convention, instead
+// of sitting exactly on ev.price (usually inside the candle body/wick where
+// it's easy to lose against the price series).
+function drawTrade(x, y, ev, ringColor, barsByTime) {
+  const bar = barsByTime.get(ev.time);
+  const refPrice = bar ? (ev.dir === 'long' ? bar.low : bar.high) : ev.price;
+  const baseY = y(refPrice);
+  const ex = x(ev.time);
+  if (ex == null || baseY == null) return;
+  const ey = ev.dir === 'long' ? baseY + 12 : baseY - 12;
+  drawMarker(ex, ey, ev.dir, ringColor);
+}
 function drawOverlay() {
   if (!octx) return;
   octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
@@ -278,18 +361,40 @@ function drawOverlay() {
   // lines: this walks many days at once, so a full-width line per level would
   // overlap every other day's ladder). This is a deliberate departure from
   // js/levelChart.js, which is built for a single latest-snapshot view.
+  // Full raw ladders — deliberately faint (low alpha, thin) when toggled on:
+  // 21 levels × every day/week loaded is a lot of segments, and this is meant
+  // to read as background context for the curated Confluent overlay below,
+  // not compete with it.
   if (state.armedLevels.has('asia')) {
     for (const day of asiaTimeline) {
       const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
       if (x1 == null && x2 == null) continue;
-      for (const lvl of day.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#f59e0b', false);
+      for (const lvl of day.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(245,158,11,.35)', false, 1);
     }
   }
   if (state.armedLevels.has('monday')) {
     for (const wk of mondayTimeline) {
       const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
       if (x1 == null && x2 == null) continue;
-      for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#60a5fa', true);
+      for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(96,165,250,.35)', true, 1);
+    }
+  }
+  // Confluent ("strong") levels — where THIS period's ladder and the PRIOR
+  // period's ladder land within the pip threshold (reused from
+  // js/ranges.js detectConfluences, same 2-pip-FX/etc default the live
+  // dashboard uses). Drawn thicker, in gold, on top of the plain ladder —
+  // this is the "today vs yesterday, marked" comparison, always visible
+  // regardless of the Strong-only test filter below.
+  if (state.armedLevels.has('confluence')) {
+    for (const day of asiaTimeline) {
+      const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
+      if (x1 == null && x2 == null) continue;
+      for (const c of day.confluences) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(c.price), '#facc15', false, 3);
+    }
+    for (const wk of mondayTimeline) {
+      const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
+      if (x1 == null && x2 == null) continue;
+      for (const c of wk.confluences) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(c.price), '#facc15', true, 3);
     }
   }
   // Session-extreme-anchor: only draw the alternate ladder on days it diverges.
@@ -301,10 +406,15 @@ function drawOverlay() {
     }
   }
 
-  // Point events, one triangle per trigger.
+  // Point events — a single clear entry marker per trigger. Fill = direction
+  // (green long / red short), ring = which test fired. Offset off the
+  // candle's low/high rather than sitting on ev.price so it doesn't get lost
+  // in the candle body. SL/TP/outcome are still computed (see the W/L/open
+  // counts on each chip above) but deliberately NOT drawn — that was more
+  // clutter than clarity on a busy multi-week chart.
   for (const key of ['wick_engulf', 'midpoint_pullback', 'vwap_tap', 'adx_regime']) {
     if (!state.armedTests.has(key)) continue;
-    for (const ev of events[key]) drawMarker(x(ev.time), y(ev.price), TEST_COLOR[key], ev.dir);
+    for (const ev of events[key]) drawTrade(x, y, ev, TEST_COLOR[key], barsByTime);
   }
 }
 </script>

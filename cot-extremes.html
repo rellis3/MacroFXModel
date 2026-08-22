@@ -125,6 +125,7 @@ svg{display:block;width:100%;height:auto;overflow:visible}
       <button class="btn" id="basisBtn">Ranking: % OF OI</button>
       <button class="btn" id="reload">Reload</button>
       <button class="btn" id="freshBtn" title="Re-fetch from the CFTC, bypassing the 7-day cache. Needed once to populate the 200-week series.">Refresh CFTC</button>
+      <button class="btn" id="factorBtn" title="Pull FULL CFTC history (2006→) for the 8 factor-test contracts, OI-normalised and publication-lagged, for the pre-registered positioning-factor test. Separate from the display cache above — this one is not capped at 156 weeks. Takes ~1 minute.">⏬ Factor history</button>
       <a class="btn" href="oi-dashboard.html">&#9670; OI Analytics</a>
       <a class="btn" href="index.html">Dashboard</a>
     </div>
@@ -888,6 +889,52 @@ document.getElementById('freshBtn').onclick=async()=>{
     DATA=await r.json(); HIST={};
   }catch(err){ DATA={ok:false,error:err.message}; }
   b.textContent=was; render();
+};
+
+// Factor-test history backfill (MD files/COT_POSITIONING_FACTOR_TEST.md). Pulls
+// the FULL Socrata history for the 8 test contracts — not the 156-week display
+// cache — and stores the OI-normalised, publication-lagged series. Kick-and-poll
+// like the FOMC backfill: ~8 sequential CFTC fetches outlive a proxy timeout.
+document.getElementById('factorBtn').onclick=async()=>{
+  const b=document.getElementById('factorBtn'), was=b.textContent, sub=document.getElementById('sub');
+  if(!confirm('Pull full CFTC history (2006→) for the 8 factor-test contracts?\n\n'
+    +'• ~1 minute, 8 sequential Socrata fetches\n'
+    +'• writes the frozen INPUT for the pre-registered positioning-factor test\n'
+    +'• does not touch the dashboard\'s own COT cache')) return;
+  b.disabled=true; b.textContent='backfilling…';
+  // A route that doesn't exist yet 404s to the SPA fallback, i.e. HTML — so a
+  // bare .json() would throw an opaque parse error and read like a server fault
+  // when the real cause is "this deploy hasn't picked up the route yet".
+  const jfetch=async(url,opts)=>{
+    const r=await fetch(url,opts);
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')) throw new Error(r.status===404||!r.ok
+      ? 'route not live yet (HTTP '+r.status+') — is the latest deploy up?'
+      : 'unexpected non-JSON response (HTTP '+r.status+')');
+    return r.json();
+  };
+  try{
+    const kick=await jfetch('/api/cot-backfill/run',{method:'POST'});
+    if(kick.alreadyRunning) sub.textContent='A COT backfill is already running…';
+    let last=null;
+    for(let i=0;i<60;i++){
+      await new Promise(r=>setTimeout(r,3000));
+      const st=await jfetch('/api/cot-backfill/status',{cache:'no-store'});
+      last=st.last;
+      if(last) sub.textContent='Factor backfill: '+last.phase+(last.log&&last.log.length?' · '+last.log[last.log.length-1]:'');
+      if(!st.running) break;
+    }
+    const s=await jfetch('/api/cot-backfill/series',{cache:'no-store'});
+    if(s.ok){
+      const insts=Object.values(s.instruments||{});
+      const okN=insts.filter(x=>x.qualifies).length;
+      sub.textContent='Factor history ready: '+okN+'/'+insts.length+' instruments qualify (≥260 scored weeks) · '
+        +insts.map(x=>x.sym+':'+(x.scoredWeeks||0)).join(' ');
+    } else if(last){
+      sub.textContent='Factor backfill: '+last.phase+' · no series written — see /api/cot-backfill/status';
+    }
+  }catch(err){ sub.textContent='Factor backfill error: '+err.message; }
+  finally{ b.disabled=false; b.textContent=was; }
 };
 
 async function boot(){
