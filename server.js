@@ -3691,36 +3691,63 @@ async function _cotBackfillJob() {
     const ds = COT_DATASETS[inst.dataset];
     const names = [inst.name, ...(inst.alt ?? [])];
     let rows = null, usedName = null;
+    // NO $select — the first run requested `open_interest_all` explicitly and every
+    // TFF (FX) contract came back HTTP 400 while disaggregated (gold) succeeded,
+    // because the two datasets don't share that column name. `_worker.js` never
+    // uses $select and reads `open_interest_all ?? open_interest` for exactly this
+    // reason; mirror it rather than re-guessing a schema we cannot probe from here.
+    // `attempts` records what each contract name actually returned so a failure is
+    // self-diagnosing instead of a bare "no rows".
+    const attempts = [];
     for (const name of names) {
       const params = new URLSearchParams({
         market_and_exchange_names: name,
         '$limit': '3000',
         '$order': 'report_date_as_yyyy_mm_dd ASC',
-        '$select': `report_date_as_yyyy_mm_dd,${ds.long},${ds.short},open_interest_all`,
       });
       try {
         const r = await fetch(`https://publicreporting.cftc.gov/resource/${ds.id}.json?${params}`,
           { signal: AbortSignal.timeout(30000) });
-        if (!r.ok) { log.push(`${inst.sym} ✗ HTTP ${r.status} (${name})`); continue; }
+        if (!r.ok) {
+          const body = (await r.text().catch(() => '')).slice(0, 200);
+          attempts.push(`${name}: HTTP ${r.status} ${body}`);
+          log.push(`${inst.sym} ✗ HTTP ${r.status} (${name})`); continue;
+        }
         const j = await r.json();
-        if (Array.isArray(j) && j.length) { rows = j; usedName = name; break; }
+        if (Array.isArray(j) && j.length) {
+          rows = j; usedName = name;
+          attempts.push(`${name}: ${j.length} rows OK`);
+          break;
+        }
+        attempts.push(`${name}: 0 rows`);
         log.push(`${inst.sym} — 0 rows for "${name}"`);
-      } catch (e) { log.push(`${inst.sym} ✗ ${e.message} (${name})`); }
+      } catch (e) { attempts.push(`${name}: ${e.message}`); log.push(`${inst.sym} ✗ ${e.message} (${name})`); }
     }
-    if (!rows) { log.push(`${inst.sym} ✗ no rows under any known contract name`); out[inst.sym] = { sym: inst.sym, error: 'no rows' }; continue; }
+    if (!rows) {
+      log.push(`${inst.sym} ✗ no rows under any known contract name`);
+      out[inst.sym] = { sym: inst.sym, error: 'no rows', attempts };
+      continue;
+    }
 
+    // Field-name fallbacks, same defensive shape as the worker's readers.
+    const pick = (r, ...keys) => { for (const k of keys) if (r[k] != null) return Number(r[k]); return NaN; };
     const mapped = rows.map(r => ({
       date: String(r.report_date_as_yyyy_mm_dd ?? '').slice(0, 10),
-      specLong: Number(r[ds.long]),
-      specShort: Number(r[ds.short]),
-      openInterest: Number(r.open_interest_all),
+      specLong: pick(r, ds.long, ...(ds.longAlt ?? [])),
+      specShort: pick(r, ds.short, ...(ds.shortAlt ?? [])),
+      openInterest: pick(r, 'open_interest_all', 'open_interest'),
     })).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.date));
+    // Surface which columns actually resolved — a silent all-NaN map would
+    // otherwise look identical to "no history".
+    const sample = rows[0] ?? {};
+    attempts.push(`columns: long=${ds.long in sample} short=${ds.short in sample} `
+      + `oi_all=${'open_interest_all' in sample} oi=${'open_interest' in sample}`);
 
     const series = cotFactorSeries(mapped, { flip: inst.flip });
     const scored = series.filter(s => s.z != null).length;
     out[inst.sym] = {
       sym: inst.sym, pair: inst.pair, dataset: inst.dataset, flip: inst.flip,
-      contractName: usedName, rows: mapped.length, scoredWeeks: scored,
+      contractName: usedName, rows: mapped.length, scoredWeeks: scored, attempts,
       qualifies: qualifies(series),
       first: series[0]?.date ?? null, last: series.at(-1)?.date ?? null,
       // Only the fields the test consumes — keeps the payload small enough to
