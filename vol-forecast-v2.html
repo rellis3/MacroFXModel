@@ -655,6 +655,8 @@
   background: var(--s1); border: 1.5px solid var(--border);
   border-radius: 10px; padding: 6px; gap: 3px; flex-direction: column;
   z-index: 9000; min-width: 170px; box-shadow: 0 4px 16px rgba(0,0,0,.25);
+  /* Twelve Archived items make this tall — scroll rather than run off a short screen. */
+  max-height: calc(100vh - 120px); overflow-y: auto;
 }
 .vf-exp-dd.open .vf-exp-menu { display: flex; }
 .vf-exp-item {
@@ -666,6 +668,19 @@
 .vf-exp-item:hover:not(:disabled) { background: var(--s2); color: var(--blue); }
 .vf-exp-item:disabled { opacity: 0.38; cursor: default; }
 .vf-exp-sep { height: 1px; background: var(--border); margin: 3px 4px; }
+/* "Archived" group — retired exports kept one click away rather than deleted.
+   Collapsed by default so the live Forecast/COG families stay the short list. */
+.vf-exp-head {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  text-align: left; background: none; border: none; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text3); padding: 5px 10px 4px;
+}
+.vf-exp-head:hover { color: var(--text2); }
+.vf-exp-caret { display: inline-block; transition: transform .15s; font-size: 8px; }
+.vf-exp-dd.arch-open .vf-exp-caret { transform: rotate(90deg); }
+.vf-exp-arch { display: none; flex-direction: column; gap: 3px; }
+.vf-exp-dd.arch-open .vf-exp-arch { display: flex; }
 </style>
 </head>
 <body class="dark">
@@ -724,6 +739,22 @@
         <button class="vf-exp-item" id="vfCogWkBtn"      onclick="closeExpDropdown();exportCogWeekly()"              disabled>⬇ COG Weekly <span style="font-size:9px;opacity:.55">√5 + √20 in one</span></button>
         <div class="vf-exp-sep"></div>
         <button class="vf-exp-item" id="vfCZExportBtn"   onclick="closeExpDropdown();exportConfluenceZones()"        disabled>⬇ C+Z <span style="font-size:9px;opacity:.55">+ OI walls</span></button>
+        <div class="vf-exp-sep"></div>
+        <button class="vf-exp-head" onclick="toggleExpArchived(event)" title="Retired export formats — superseded by the Forecast and COG families, kept wired in case a number is missed."><span class="vf-exp-caret">▶</span> Archived</button>
+        <div class="vf-exp-arch">
+          <button class="vf-exp-item" id="vfExportBtn"      onclick="closeExpDropdown();exportForecast()"           disabled>⬇ Export <span style="font-size:9px;opacity:.55">plain forecast</span></button>
+          <button class="vf-exp-item" id="vfExtendedBtn"    onclick="closeExpDropdown();exportExtended()"           disabled>⬇ Extended <span style="font-size:9px;opacity:.55">+ percentile/legs/cone</span></button>
+          <button class="vf-exp-item" id="vfExportV2Btn"    onclick="closeExpDropdown();exportV2()"                 disabled>⬇ Export v2 <span style="font-size:9px;opacity:.55">drifted-BM O-H/O-L</span></button>
+          <button class="vf-exp-item" id="vfExportHarBtn"   onclick="closeExpDropdown();exportHar()"                disabled>⬇ Export HAR <span style="font-size:9px;opacity:.55">HAR-RV shadow σ</span></button>
+          <button class="vf-exp-item" id="vfCalibratedBtn"  onclick="closeExpDropdown();exportCalibrated()"         disabled>⬇ Calibrated <span style="font-size:9px;opacity:.55">backtest %</span></button>
+          <button class="vf-exp-item" id="vfCalExtBtn"      onclick="closeExpDropdown();exportCalibratedExtended()" disabled>⬇ Extended (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
+          <button class="vf-exp-item" id="vfSessionExportBtn" onclick="closeExpDropdown();exportSession()"          disabled>⬇ Session <span style="font-size:9px;opacity:.55">Asia/Ldn/NY block</span></button>
+          <button class="vf-exp-item" id="vfV3ExportBtn"    onclick="closeExpDropdown();exportV3()"                 disabled>⬇ V+S <span style="font-size:9px;opacity:.55">forecast + session</span></button>
+          <button class="vf-exp-item" id="vfWeeklyExportBtn" onclick="closeExpDropdown();exportWeekly()"            disabled>⬇ Weekly <span style="font-size:9px;opacity:.55">WTD + 5d/20d</span></button>
+          <button class="vf-exp-item" id="vfCalWkBtn"       onclick="closeExpDropdown();exportCalibratedWeekly()"   disabled>⬇ Weekly (cal) <span style="font-size:9px;opacity:.55">backtest %</span></button>
+          <button class="vf-exp-item" id="vfCogV2Btn"       onclick="closeExpDropdown();exportCogV2()"              disabled>⬇ COG v2 <span style="font-size:9px;opacity:.55">drifted O-H/O-L</span></button>
+          <button class="vf-exp-item" id="vfCogSessBtn"     onclick="closeExpDropdown();exportCogSession()"         disabled>⬇ COG + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
+        </div>
       </div>
     </div>
     <button class="v2-tool-btn" id="vfHistoryBtn"         onclick="toggleHistory()"           disabled>⊞ History</button>
@@ -1063,7 +1094,7 @@
 </div>
 
 <!-- ARCHIVE TABLE -->
-<div class="v2-panel" style="margin-top:22px" id="vfArchiveBox">
+<div class="v2-panel" style="margin-top:22px;display:none" id="vfArchiveBox">
   <div class="v2-panel-nav"><span class="v2-panel-title">Archive — Past Forecasts</span></div>
   <div style="overflow-x:auto">
     <div class="vf-arch-empty" id="vfArchiveEmpty">Loading…</div>
@@ -1206,6 +1237,11 @@
 
     <!-- SESSION STATS -->
     <div class="vfh-section">
+      <div class="vfh-title">⊞ History — Session History + Archive</div>
+      <p>Opens two stacked tables, both hidden until you ask for them. <strong>Session History</strong> — annualised vol% per instrument per past session; click a row, or use ← Older / Newer → / the date picker, to load that day's forecast into the grid. <strong>Archive — Past Forecasts</strong> — vol% and H-L median per day, with a ⬇ Copy per row that puts that date's export on the clipboard without leaving today. When you do load a past date an amber banner marks it, and <strong>↩ Today</strong> returns.</p>
+    </div>
+
+    <div class="vfh-section">
       <div class="vfh-title">⟳ Session Stats — Recompute Session Consumption</div>
       <p>Fetches 5 years of H1 bars from Oanda for all instruments and computes what fraction of the daily H-L range each session (Asia 00:00–06:00, London 08:00–13:00, NY 13:00–21:00 London time) historically consumes. Takes 3–5 minutes. Results are stored in KV and used by the Intraday Profile panel. Run this once, or again after significant market regime changes.</p>
     </div>
@@ -1213,14 +1249,26 @@
     <!-- EXPORTS -->
     <div class="vfh-section">
       <div class="vfh-title">⬇ Export Buttons</div>
+      <p>Every item copies to the clipboard (and falls back to a .txt download if the clipboard is blocked). Two live families, plus an <strong>Archived</strong> group holding the formats they replaced.</p>
       <table class="vfh-tbl">
-        <tr><td>⬇ Export</td><td>Plain-text vol forecast for all instruments — paste into your trading journal or Pine Script.</td></tr>
-        <tr><td>⬇ Session</td><td>Asia/London/NY session consumption stats block (median and 75th percentile % of daily range per session). For the v2 Pine Script session indicator.</td></tr>
-        <tr><td>⬇ V+S</td><td>Combined: vol forecast + session stats in one paste. For the v3 Pine Script indicator.</td></tr>
-        <tr><td>⬇ Extended</td><td>Full export: includes vol percentile, O-H/O-L legs, 5-day and 20-day ranges, vol cone, vol-of-vol.</td></tr>
+        <tr><td>⬇ Forecast <span style="opacity:.6">p50/75/90</span></td><td>The fitted ladder — O-H and O-L at p50/p75/p90, each rung a multiplier fit to realized data. Built server-side by <code>/api/vol-forecast/ladder/export</code> so the page and the bot can't drift apart.</td></tr>
+        <tr><td>⬇ Forecast Weekly</td><td>Same ladder on the 5-day and 20-day horizons in one paste — <code>weekly_vol_overlay.pine</code>'s "Both" mode needs them together. Weekly and monthly use their OWN fitted widths, not √-scaled daily ones.</td></tr>
+        <tr><td>⬇ Forecast + Session</td><td>The daily ladder with the Asia/London/NY consumption block appended underneath.</td></tr>
+        <tr><td>⬇ COG <span style="opacity:.6">reverse-eng</span></td><td>COG's own published line, reproduced from his constants (1.56 / 1.93 / 0.74 / 1.24) rather than fit to realized range. NQ and EURUSD use his close-to-close HV so the levels match his.</td></tr>
+        <tr><td>⬇ COG Weekly</td><td>COG bands at √5 and √20 in one paste.</td></tr>
+        <tr><td>⬇ C+Z <span style="opacity:.6">+ OI walls</span></td><td>Confluence Zones — Fibonacci + previous highs/lows + weekly pivots + vol levels + OI walls / max pain / gamma regime. Feeds the Pine Script zone renderer.</td></tr>
+      </table>
+      <p style="margin-top:10px"><strong>Archived</strong> — click the header in the menu to expand. Kept wired in case one of these numbers turns out to be missed; nothing here is maintained.</p>
+      <table class="vfh-tbl">
+        <tr><td>⬇ Export</td><td>The original plain-text vol forecast for all instruments.</td></tr>
+        <tr><td>⬇ Extended</td><td>Adds vol percentile, O-H/O-L legs, 5-day and 20-day ranges, vol cone, vol-of-vol.</td></tr>
+        <tr><td>⬇ Export v2</td><td>Asymmetric O-H / O-L from drifted-BM math (d = μ_14d / σ_fwd).</td></tr>
+        <tr><td>⬇ Export HAR</td><td>All instruments on the HAR-RV shadow σ, for comparison against the primary forecast.</td></tr>
+        <tr><td>⬇ Calibrated / Extended (cal) / Weekly (cal)</td><td>H-L bands scaled by the research-book recalibration factors (the raw forecast ran ~15% wide) for fx + commodity; index held; O-C unchanged. Export view only — the live forecaster is never modified. Superseded by the fitted Forecast ladder, which no longer needs a correction factor.</td></tr>
+        <tr><td>⬇ Session</td><td>The Asia/London/NY consumption block on its own, for the v2 Pine Script session indicator.</td></tr>
+        <tr><td>⬇ V+S</td><td>Vol forecast + session stats in one paste, for the v3 Pine Script indicator.</td></tr>
         <tr><td>⬇ Weekly</td><td>WTD range consumption, directional bias, 5-day and 20-day forecasts per instrument.</td></tr>
-        <tr><td>⬇ Calibrated <span style="opacity:.6">backtest %</span></td><td>H-L bands scaled by the research-book recalibration factors (raw forecast runs ~15% wide) for fx + commodity; index held; O-C unchanged. Export view only — the live forecaster is not modified.</td></tr>
-        <tr><td>⬇ Export HAR</td><td>All instruments on the HAR-RV shadow σ (for comparison against the primary forecast).</td></tr>
+        <tr><td>⬇ COG v2 / COG + Session</td><td>COG with drifted O-H/O-L, and COG with the session block appended.</td></tr>
       </table>
     </div>
 
@@ -1284,6 +1332,11 @@ document.addEventListener('DOMContentLoaded', () => {
   loadEventImpact();
   loadHitRates();
   loadDailyBrief();
+  // Pre-compile the export inputs (both memoised) — the COG family and the
+  // Archived calibrated exports would otherwise each pay a cold fetch on the
+  // first click.
+  loadCogHv();
+  loadRecalFactors();
   scheduleRefresh();
   const today = new Date().toISOString().slice(0,10);
   const dp = document.getElementById('vfHistDatePicker');
@@ -1344,13 +1397,10 @@ function switchTab(tab, el) {
   } else if (tab === 'last30') {
     viewingDate = null;
     document.getElementById('vfHistBanner').style.display = 'none';
-    // Show the history panel for last 30 days
-    const histPanel = document.getElementById('vfHistory');
-    if (histPanel) {
-      histPanel.style.display = 'block';
-      const btn = document.getElementById('vfHistoryBtn');
-      if (btn) btn.classList.add('active');
-    }
+    // Show the history + archive tables for last 30 days
+    _setHistoryVisible(true);
+    const btn = document.getElementById('vfHistoryBtn');
+    if (btn) btn.classList.add('active');
     loadHistory();
   }
 }
@@ -1429,7 +1479,9 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfLadderWkBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn'].forEach(id => {
+      ['vfLadderBtn','vfLadderWkBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+       // Archived group — everything that needs only the forecast payload
+       'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = false;
       });
@@ -1479,8 +1531,18 @@ function toggleHistory() {
   const btn   = document.getElementById('vfHistoryBtn');
   if (!panel) return;
   const visible = panel.style.display !== 'none';
-  panel.style.display = visible ? 'none' : 'block';
+  _setHistoryVisible(!visible);
   if (btn) btn.classList.toggle('active', !visible);
+}
+
+// The Archive table is the same idea as the session history — past forecasts you
+// click to load — so it rides the History button instead of sitting permanently
+// open at the bottom of the main page.
+function _setHistoryVisible(show) {
+  for (const id of ['vfHistory', 'vfArchiveBox']) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? 'block' : 'none';
+  }
 }
 
 // ── loadSession ───────────────────────────────────────────────────────────────
@@ -1588,6 +1650,8 @@ function loadSessionStats() {
     })
     .then(data => {
       currentSessionStats = data;
+      const v3 = document.getElementById('vfV3ExportBtn');
+      if (v3 && currentForecast) v3.disabled = false;
 
       // Build the intraday profile if panel is open
       if (document.getElementById('vfProfilePanel').style.display !== 'none') {
@@ -2045,22 +2109,31 @@ function toggleExpDropdown(e) {
   }
 }
 function closeExpDropdown() {
-  document.getElementById('vfExpDropdown').classList.remove('open');
+  const dd = document.getElementById('vfExpDropdown');
+  dd.classList.remove('open');
+  dd.classList.remove('arch-open');   // always reopen collapsed
+}
+function toggleExpArchived(e) {
+  e.stopPropagation();
+  document.getElementById('vfExpDropdown').classList.toggle('arch-open');
 }
 document.addEventListener('click', closeExpDropdown);
 
 // ══════════════════════════════════════════════════════════════════════════════
-// RETIRED EXPORT BUILDERS — no longer reachable from the UI (2026-08-20).
+// ARCHIVED EXPORT BUILDERS — superseded, still wired (2026-08-20 → 2026-08-22).
 //
-// The dropdown collapsed to two families: Forecast (fitted ladder, daily/weekly/
-// monthly, served by /api/vol-forecast/ladder/export) and COG (unchanged). These
-// builders backed the old Export / Calibrated / Export v2 / Export HAR / Extended /
-// Extended (cal) / Session / V+S / Weekly / Weekly (cal) / COG+Session / COG v2
-// buttons and are now ORPHANED — each is referenced only by its own definition.
+// The dropdown's live list collapsed to two families: Forecast (fitted ladder,
+// daily/weekly/monthly, served by /api/vol-forecast/ladder/export) and COG. These
+// builders backed the older Export / Calibrated / Export v2 / Export HAR /
+// Extended / Extended (cal) / Session / V+S / Weekly / Weekly (cal) / COG+Session
+// / COG v2 buttons.
 //
-// Left in place rather than deleted on the same pass that changed what the page
-// shows, so any one of them can be re-wired in a single line if a number turns out
-// to be missed. Delete once the Forecast family has a few live sessions behind it.
+// They were orphaned for two days — defined but unreachable, along with the button
+// ids they poked at, one of which (vfExtendedBtn) was still being enabled unguarded
+// by loadDateForecast and took the whole historical load down with it. They now sit
+// behind the collapsed "Archived" group in the export menu: reachable if a number
+// turns out to be missed, out of the way otherwise. Their inputs are pre-fetched at
+// boot (loadCogHv / loadRecalFactors) so a first click doesn't stall.
 // ══════════════════════════════════════════════════════════════════════════════
 
 // ── Backtest-calibrated export ────────────────────────────────────────────────
@@ -2117,23 +2190,33 @@ function buildCalibratedExportText(data, factors) {
   return _calNote(factors) + '\n' + buildExportText(_calibrateForecast(data, factors));
 }
 
-// Shared copy-or-download for a calibrated text export.
+// Remember a menu button's label the first time we overwrite it. innerHTML, not
+// textContent — these labels carry a styled <span> sub-hint ("p50/75/90") that a
+// textContent round-trip flattens away on the first click.
+function _btnLabel(btn) {
+  if (btn.dataset.origHtml == null) btn.dataset.origHtml = btn.innerHTML;
+  return btn.dataset.origHtml;
+}
+function _btnRestore(btn) { if (btn) { btn.innerHTML = _btnLabel(btn); btn.disabled = false; } }
+
+// Shared copy-or-download for one export menu item.
 function _emitCalibrated(btnId, text, fname) {
-  const btn = document.getElementById(btnId), orig = btn.dataset.orig || btn.textContent;
-  btn.dataset.orig = orig;
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  _btnLabel(btn);
   navigator.clipboard.writeText(text).then(() => {
     btn.textContent = '✓ Copied!'; btn.disabled = true;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+    setTimeout(() => _btnRestore(btn), 2200);
   }).catch(() => {
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a');
     a.href = url; a.download = fname; a.click(); URL.revokeObjectURL(url);
-    btn.textContent = orig; btn.disabled = false;
+    _btnRestore(btn);
   });
 }
 async function exportCalibrated() {
   if (!currentForecast) return;
-  const btn = document.getElementById('vfCalibratedBtn'); btn.dataset.orig = btn.textContent; btn.textContent = '… factors';
+  const btn = document.getElementById('vfCalibratedBtn'); _btnLabel(btn); btn.textContent = '… factors';
   const factors = await loadRecalFactors();
   // Scalar research-book recalibration (fx + commodity; index held). HAR-σ path was
   // reverted — the f.har shadow uses Garman-Klass daily-range RV, which misses index
@@ -2321,19 +2404,18 @@ async function exportLadder(horizon = 'daily', withSession = false) {
   const btnId = withSession ? 'vfLadderSessBtn'
     : horizon === 'weekly' ? 'vfLadderWkBtn' : 'vfLadderBtn';
   const btn = document.getElementById(btnId);
-  const orig = btn.dataset.orig || btn.textContent;
-  btn.dataset.orig = orig; btn.textContent = '… building'; btn.disabled = true;
+  _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
   try {
     const qs = `horizon=${encodeURIComponent(horizon)}${withSession ? '&session=1' : ''}`;
     const r = await fetch(`/api/vol-forecast/ladder/export?${qs}`);
     const text = await r.text();
-    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2600); return; }
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
     btn.disabled = false;
     const date = (currentForecast && currentForecast.session_date) || 'latest';
     _emitCalibrated(btnId, text, `vol-forecast-${horizon}-${date}.txt`);
   } catch (e) {
     btn.textContent = '✗ failed';
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2600);
+    setTimeout(() => _btnRestore(btn), 2600);
   }
 }
 
@@ -2354,11 +2436,6 @@ async function exportCogV2() {
   if (!currentForecast) return;
   await loadCogHv();
   _emitCalibrated('vfCogV2Btn', buildCogV2ExportText(currentForecast), `vol-forecast-cogv2-${currentForecast.session_date}.txt`);
-}
-async function exportCogWeekly() {
-  if (!currentForecast) return;
-  await loadCogHv();
-  _emitCalibrated('vfCogWkBtn', buildCogExportText(currentForecast, { weekly: true }), `vol-forecast-cog-weekly-${currentForecast.session_date}.txt`);
 }
 // Clean COG export + the COG-consistent session block appended under it (opt-in).
 async function exportCogSession() {
@@ -2388,18 +2465,7 @@ function buildExportHarText(data) {
 }
 function exportHar() {
   if (!currentForecast) return;
-  const text = buildExportHarText(currentForecast);
-  const pill = document.getElementById('vfExpPillBtn');
-  const orig = pill?.textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    if (pill) { pill.textContent = '✓ HAR copied'; setTimeout(() => { pill.textContent = orig; }, 2200); }
-  }).catch(() => {
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `vol-forecast-har-${currentForecast.session_date}.txt`;
-    a.click(); URL.revokeObjectURL(url);
-  });
+  _emitCalibrated('vfExportHarBtn', buildExportHarText(currentForecast), `vol-forecast-har-${currentForecast.session_date}.txt`);
 }
 
 // ── Export v2: asymmetric O-H / O-L from drifted-BM math (d = μ_14d / σ_fwd) ─
@@ -2430,19 +2496,7 @@ function buildExportV2Text(data) {
 
 function exportV2() {
   if (!currentForecast) return;
-  const text = buildExportV2Text(currentForecast);
-  const pill = document.getElementById('vfExpPillBtn');
-  const orig = pill?.textContent;
-
-  navigator.clipboard.writeText(text).then(() => {
-    if (pill) { pill.textContent = '✓ v2 copied'; setTimeout(() => { pill.textContent = orig; }, 2200); }
-  }).catch(() => {
-    const a = Object.assign(document.createElement('a'), {
-      href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
-      download: `vol-forecast-v2-${currentForecast.session_date}.txt`,
-    });
-    a.click();
-  });
+  _emitCalibrated('vfExportV2Btn', buildExportV2Text(currentForecast), `vol-forecast-v2-${currentForecast.session_date}.txt`);
 }
 
 // ── Export functions ───────────────────────────────────────────────────────────
@@ -2462,14 +2516,7 @@ function buildExportText(data) {
 
 function exportForecast() {
   if (!currentForecast) return;
-  const text = buildExportText(currentForecast), btn = document.getElementById('vfExportBtn');
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
-  }).catch(() => {
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text], {type:'text/plain'})), download: `vol-forecast-${currentForecast.session_date}.txt` });
-    a.click();
-  });
+  _emitCalibrated('vfExportBtn', buildExportText(currentForecast), `vol-forecast-${currentForecast.session_date}.txt`);
 }
 
 function buildSessionText(data) {
@@ -2507,14 +2554,7 @@ function buildSessionText(data) {
 
 function exportSession() {
   if (!currentSession) return;
-  const text = buildSessionText(currentSession), btn = document.getElementById('vfSessionExportBtn');
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
-  }).catch(() => {
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/plain'})), download: `session-${currentSession.session_date}.txt` });
-    a.click();
-  });
+  _emitCalibrated('vfSessionExportBtn', buildSessionText(currentSession), `session-${currentSession.session_date}.txt`);
 }
 
 // Shared SESSION STATS block — appended UNDER an export so the base export is never
@@ -2553,18 +2593,12 @@ function buildCogSessionText(forecastData, statsData) {
 
 function exportV3() {
   if (!currentForecast || !currentSessionStats) return;
-  const text = buildV3Text(currentForecast, currentSessionStats), btn = document.getElementById('vfV3ExportBtn');
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
-  }).catch(() => {
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/plain'})), download: `vol-v3-${currentForecast.session_date}.txt` }); a.click();
-  });
+  _emitCalibrated('vfV3ExportBtn', buildV3Text(currentForecast, currentSessionStats), `vol-v3-${currentForecast.session_date}.txt`);
 }
 
 async function exportConfluenceZones() {
   const btn = document.getElementById('vfCZExportBtn');
-  const orig = btn.textContent;
+  _btnLabel(btn);
   btn.textContent = '⏳ Computing…'; btn.disabled = true;
   try {
     const res = await fetch('/api/vol-forecast/zones?reach=1');
@@ -2580,10 +2614,10 @@ async function exportConfluenceZones() {
       }).click();
     });
     btn.textContent = '✓ Copied!';
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+    setTimeout(() => _btnRestore(btn), 2200);
   } catch (e) {
     btn.textContent = '✗ Error'; btn.title = e.message;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; btn.title = 'Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels + OI walls / max pain / gamma regime'; }, 3000);
+    setTimeout(() => { _btnRestore(btn); btn.title = 'Confluence Zones: Fibonacci + prev highs/lows + weekly pivots + vol levels + OI walls / max pain / gamma regime'; }, 3000);
   }
 }
 
@@ -2605,14 +2639,7 @@ function buildExtendedText(data) {
 
 function exportExtended() {
   if (!currentForecast) return;
-  const text = buildExtendedText(currentForecast), btn = document.getElementById('vfExtendedBtn');
-  const fname = `vol-extended-${currentForecast.session_date??viewingDate??'latest'}.txt`;
-  navigator.clipboard.writeText(text).then(() => {
-    const orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.disabled = true;
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
-  }).catch(() => {
-    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text],{type:'text/plain'})), download: fname }); a.click();
-  });
+  _emitCalibrated('vfExtendedBtn', buildExtendedText(currentForecast), `vol-extended-${currentForecast.session_date??viewingDate??'latest'}.txt`);
 }
 
 // ── Archive ────────────────────────────────────────────────────────────────────
@@ -2672,8 +2699,10 @@ async function loadWeekly() {
     currentWeekly = data;
     const btn = document.getElementById('vfWeeklyBtn');
     if (btn) btn.disabled = false;
-    const calWkBtn = document.getElementById('vfCalWkBtn');
-    if (calWkBtn) calWkBtn.disabled = false;
+    for (const id of ['vfWeeklyExportBtn','vfCalWkBtn']) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = false;
+    }
     renderWeekly(data);
     renderCurrencyStrength(data);
   } catch { /* silent */ }
@@ -2716,12 +2745,7 @@ function renderWeekly(data) {
 
 function exportWeekly() {
   if (!currentWeekly) return;
-  const text = _buildWeeklyText(currentWeekly), btn = document.getElementById('vfWeeklyExportBtn');
-  const fname = `vol-weekly-${(currentWeekly.week_label??'latest').replace(/[^a-z0-9]/gi,'-').toLowerCase()}.txt`;
-  navigator.clipboard.writeText(text).then(()=>{
-    const orig=btn.textContent; btn.textContent='✓ Copied!'; btn.disabled=true;
-    setTimeout(()=>{btn.textContent=orig;btn.disabled=false;},2200);
-  }).catch(()=>{ const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([text],{type:'text/plain'})),download:fname}); a.click(); });
+  _emitCalibrated('vfWeeklyExportBtn', _buildWeeklyText(currentWeekly), `vol-weekly-${(currentWeekly.week_label??'latest').replace(/[^a-z0-9]/gi,'-').toLowerCase()}.txt`);
 }
 
 function _buildWeeklyText(data) {
@@ -3554,7 +3578,7 @@ async function loadDateForecast(dateStr) {
     if (!data.ok) { setStatus('err',`No forecast stored for ${dateStr}`); return; }
     viewingDate=dateStr; currentForecast=data;
     renderV2Grid(data,true); updatePositionSizes();
-    document.getElementById('vfExtendedBtn').disabled=false;
+    const extBtn=document.getElementById('vfExtendedBtn'); if (extBtn) extBtn.disabled=false;
     const bt=document.getElementById('vfHistBannerTxt'), bn=document.getElementById('vfHistBanner');
     if (bt) bt.textContent=`Viewing historical forecast — ${data.session_label??dateStr}`;
     if (bn) bn.style.display='';
@@ -3567,6 +3591,7 @@ async function loadDateForecast(dateStr) {
 function returnToToday() {
   viewingDate=null;
   const bn=document.getElementById('vfHistBanner'); if (bn) bn.style.display='none';
+  const bt=document.getElementById('vfHistBannerTxt'); if (bt) bt.textContent='Viewing historical forecast';
   const dp=document.getElementById('vfHistDatePicker'); if (dp) dp.value='';
   if (liveForecast) { currentForecast=liveForecast; renderV2Grid(liveForecast,false); loadSession(); setStatus('ok',`Forecast ready — session ${liveForecast.session_date}`); }
   else loadForecast();
