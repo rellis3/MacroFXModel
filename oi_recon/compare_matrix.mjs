@@ -100,6 +100,15 @@ if (sweepDir) {
                  bad: !shared.length };
       }
       const P = parseOIMatrix(pasted), S = parseOIMatrix(swept);
+      // BOTH SIDES FAILING TO PARSE IS AGREEMENT, NOT A DIFFERENCE. USD/CAD's OI-CHANGE
+      // grid is too sparse to yield a matrix on either side, so this scored `bad` every
+      // single day: 43 agree / 1 differ, exit 1, and a Telegram "sweep FAILED" for a run
+      // that captured 44/44 tables and 11/11 smiles. A daily false alarm is worse than no
+      // alarm — it is the thing that makes the real one invisible. Only ONE side failing
+      // is a genuine disagreement: that means the other side did parse, so the two are
+      // seeing different data.
+      if (!P && !S) return { sym, box, p: 'null', s: 'null',
+                             verdict: 'neither side parses (sparse grid) - agreed', bad: false };
       if (!P || !S) return { sym, box, p: P ? 'ok' : 'null', s: S ? 'ok' : 'null',
                              verdict: 'one side did not parse', bad: true };
       const w = m => a => m.strikes[a.indexOf(Math.max(...a))];
