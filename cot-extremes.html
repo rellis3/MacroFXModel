@@ -902,18 +902,29 @@ document.getElementById('factorBtn').onclick=async()=>{
     +'• writes the frozen INPUT for the pre-registered positioning-factor test\n'
     +'• does not touch the dashboard\'s own COT cache')) return;
   b.disabled=true; b.textContent='backfilling…';
+  // A route that doesn't exist yet 404s to the SPA fallback, i.e. HTML — so a
+  // bare .json() would throw an opaque parse error and read like a server fault
+  // when the real cause is "this deploy hasn't picked up the route yet".
+  const jfetch=async(url,opts)=>{
+    const r=await fetch(url,opts);
+    const ct=r.headers.get('content-type')||'';
+    if(!ct.includes('application/json')) throw new Error(r.status===404||!r.ok
+      ? 'route not live yet (HTTP '+r.status+') — is the latest deploy up?'
+      : 'unexpected non-JSON response (HTTP '+r.status+')');
+    return r.json();
+  };
   try{
-    const kick=await (await fetch('/api/cot-backfill/run',{method:'POST'})).json();
+    const kick=await jfetch('/api/cot-backfill/run',{method:'POST'});
     if(kick.alreadyRunning) sub.textContent='A COT backfill is already running…';
     let last=null;
     for(let i=0;i<60;i++){
       await new Promise(r=>setTimeout(r,3000));
-      const st=await (await fetch('/api/cot-backfill/status',{cache:'no-store'})).json();
+      const st=await jfetch('/api/cot-backfill/status',{cache:'no-store'});
       last=st.last;
       if(last) sub.textContent='Factor backfill: '+last.phase+(last.log&&last.log.length?' · '+last.log[last.log.length-1]:'');
       if(!st.running) break;
     }
-    const s=await (await fetch('/api/cot-backfill/series',{cache:'no-store'})).json();
+    const s=await jfetch('/api/cot-backfill/series',{cache:'no-store'});
     if(s.ok){
       const insts=Object.values(s.instruments||{});
       const okN=insts.filter(x=>x.qualifies).length;
@@ -922,7 +933,7 @@ document.getElementById('factorBtn').onclick=async()=>{
     } else if(last){
       sub.textContent='Factor backfill: '+last.phase+' · no series written — see /api/cot-backfill/status';
     }
-  }catch(err){ sub.textContent='Factor backfill failed to start: '+err.message; }
+  }catch(err){ sub.textContent='Factor backfill error: '+err.message; }
   finally{ b.disabled=false; b.textContent=was; }
 };
 
