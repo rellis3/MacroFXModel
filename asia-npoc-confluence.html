@@ -126,6 +126,7 @@
     <span class="lbl">Lines</span>
     <span id="chips" style="display:inline-flex;gap:6px;flex-wrap:wrap"></span>
     <div class="legend">
+      <span><i style="background:rgba(250,204,21,0.55);border:1px solid #facc15;height:9px"></i>Asia candle body (5m, 00:00–06:00 UTC) — the two brightest set SD0.00/SD1.00</span>
       <span><i style="border-top-style:dotted;border-top-color:#6b7280"></i>SD, no match</span>
       <span><i style="border-top-style:dashed;border-top-color:#f59e0b;border-top-width:2px"></i>loose confluence</span>
       <span><i style="border-top-color:#26a69a;border-top-width:2px"></i>tight confluence</span>
@@ -140,7 +141,7 @@
 
 <script type="module">
 import { LADDER_LINES, FITTED_LINES, EXHAUSTION_LINES, firstTouchIdx } from './js/reversionLadder.js?v=8';
-import { bodyRange } from './js/barUtils.js';
+import { bodyRange, resampleTo } from './js/barUtils.js';
 import { calcFibs } from './js/fibProjection.js';
 import { detectConfluencesCore } from './js/confluence-core.js';
 
@@ -677,20 +678,98 @@ function drawOverlay() {
   drawTestDayGuide(anchorX);   // drawn LAST — always on top of the SD grid, never buried under it
 }
 
-// Shaded rectangle at the Test Day's actual Asia-session high/low and time span.
+// Marks the ACTUAL M5 candles the Asia range was computed from (npoc.asia.bars —
+// the 00:00–06:00 UTC window, body-only per js/barUtils.js's bodyRange). This is
+// independent of whatever TF the main candle series is showing (M5/M15/M30/H1) —
+// it overlays at the M5 bars' own time/price coordinates regardless, so it stays
+// exact even when the visible candles are coarser aggregates.
 // Drawn early (under the SD grid) — it's context, not the primary reference marker.
 function drawAsiaShading(ts) {
   if (!npoc?.asia?.bars?.length) return;
-  const bars = npoc.asia.bars;
-  const x1 = ts.timeToCoordinate(bars[0].time), x2 = ts.timeToCoordinate(bars[bars.length - 1].time);
-  const y1 = series.priceToCoordinate(npoc.asia.high), y2 = series.priceToCoordinate(npoc.asia.low);
-  if (x1 == null || x2 == null || y1 == null || y2 == null) return;
-  octx.save();
-  octx.fillStyle = 'rgba(59,130,246,0.14)';
-  octx.fillRect(x1, y1, x2 - x1, y2 - y1);
-  octx.strokeStyle = 'rgba(59,130,246,0.7)'; octx.lineWidth = 1.5; octx.setLineDash([2, 2]);
-  octx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-  octx.restore();
+  const bars = npoc.asia.bars;   // raw M5 — ensureAsiaRange always fetches M5
+
+  // Faint session-wide box first, so the per-candle marks below read as detail
+  // inside a clearly-bounded "this is the window" region. 00:00/06:00 are bucket
+  // boundaries at every supported TF (5/15/30/60m), so these two timestamps always
+  // resolve regardless of what granularity the main series is showing.
+  const bx1 = ts.timeToCoordinate(bars[0].time), bx2 = ts.timeToCoordinate(bars[bars.length - 1].time + 300);
+  const by1 = series.priceToCoordinate(npoc.asia.high), by2 = series.priceToCoordinate(npoc.asia.low);
+  if (bx1 != null && bx2 != null && by1 != null && by2 != null) {
+    octx.save();
+    octx.fillStyle = 'rgba(59,130,246,0.08)';
+    octx.fillRect(bx1, by1, bx2 - bx1, by2 - by1);
+    octx.strokeStyle = 'rgba(59,130,246,0.55)'; octx.lineWidth = 1; octx.setLineDash([2, 2]);
+    octx.strokeRect(bx1, by1, bx2 - bx1, by2 - by1);
+    octx.restore();
+  }
+
+  // Which RAW M5 bar's BODY (max/min of open,close — never the wick) actually set
+  // the session high and low — i.e. the two candles SD1.00 and SD0.00 come from.
+  // Always computed at true M5 resolution, independent of what's displayed.
+  let hiIdx = 0, loIdx = 0;
+  for (let i = 1; i < bars.length; i++) {
+    if (Math.max(bars[i].open, bars[i].close) > Math.max(bars[hiIdx].open, bars[hiIdx].close)) hiIdx = i;
+    if (Math.min(bars[i].open, bars[i].close) < Math.min(bars[loIdx].open, bars[loIdx].close)) loIdx = i;
+  }
+  const hiTime = bars[hiIdx].time, loTime = bars[loIdx].time;
+  const hiPrice = Math.max(bars[hiIdx].open, bars[hiIdx].close);
+  const loPrice = Math.min(bars[loIdx].open, bars[loIdx].close);
+
+  // timeToCoordinate only resolves timestamps that land on an actual bar boundary
+  // of the series CURRENTLY LOADED — at the default M15 (or M30/H1) main TF, most
+  // raw M5 timestamps aren't real bar times and silently fail. Resample the M5
+  // bars up to whatever TF is on screen so every marker lands on a real boundary;
+  // at M5 this is a no-op (resampleTo just returns the same bars unchanged).
+  const tfMin = { M1: 1, M5: 5, M15: 15, M30: 30, H1: 60 }[tfGran()] || 5;
+  const dispBars = tfMin <= 5 ? bars : resampleTo(bars, tfMin);
+  const barSec = tfMin * 60;
+
+  // A same-size tint over the body just recolors pixels the candle itself already
+  // painted, which is nearly invisible against a solid red/teal candle body. Pad
+  // the box out a few px beyond the body instead, so it reads as a highlight FRAME
+  // around the candle rather than a wash over it — visible regardless of candle color.
+  const PAD = 3;
+  for (const b of dispBars) {
+    const x1 = ts.timeToCoordinate(b.time), x2 = ts.timeToCoordinate(b.time + barSec);
+    if (x1 == null || x2 == null) continue;
+    const bodyHi = Math.max(b.open, b.close), bodyLo = Math.min(b.open, b.close);
+    const y1 = series.priceToCoordinate(bodyHi), y2 = series.priceToCoordinate(bodyLo);
+    if (y1 == null || y2 == null) continue;
+    const extreme = (hiTime >= b.time && hiTime < b.time + barSec) || (loTime >= b.time && loTime < b.time + barSec);
+    const w = Math.max(2, x2 - x1 - 1) + PAD * 2, h = Math.max(1, y2 - y1) + PAD * 2;
+    octx.save();
+    octx.fillStyle = extreme ? 'rgba(250,204,21,0.28)' : 'rgba(250,204,21,0.10)';
+    octx.fillRect(x1 - PAD, y1 - PAD, w, h);
+    octx.strokeStyle = extreme ? '#fde047' : 'rgba(250,204,21,0.85)';
+    octx.lineWidth = extreme ? 2.5 : 1.25;
+    octx.strokeRect(x1 - PAD, y1 - PAD, w, h);
+    octx.restore();
+  }
+
+  // Label the two body-extreme M5 candles directly, so "body only, not the wick"
+  // is unambiguous. X comes from the DISPLAYED bar that contains the extreme (so
+  // it always resolves); Y comes from the true M5 body price (so it's exact).
+  const labelExtreme = (extremeTime, price, text, above) => {
+    const host = dispBars.find(b => extremeTime >= b.time && extremeTime < b.time + barSec) || dispBars[0];
+    const bx1 = ts.timeToCoordinate(host.time), bx2 = ts.timeToCoordinate(host.time + barSec);
+    if (bx1 == null || bx2 == null) return;
+    const y = series.priceToCoordinate(price);
+    if (y == null) return;
+    const ty = y + (above ? -14 : 22);
+    octx.save();
+    octx.font = "bold 11px 'DM Mono', monospace";
+    octx.textAlign = 'center';
+    const tw = octx.measureText(text).width;
+    const W = overlayCanvas.width / dpr;
+    const x = Math.max(tw / 2 + 4, Math.min(W - tw / 2 - 4, (bx1 + bx2) / 2));
+    octx.fillStyle = 'rgba(11,13,20,0.9)';
+    octx.fillRect(x - tw / 2 - 4, ty - 10, tw + 8, 15);
+    octx.fillStyle = '#fde047';
+    octx.fillText(text, x, ty);
+    octx.restore();
+  };
+  labelExtreme(hiTime, hiPrice, '▲ Asia body high', true);
+  labelExtreme(loTime, loPrice, '▼ Asia body low', false);
 }
 
 // The x-coordinate (clamped into view) at the END of the Test Day's Asia session —
