@@ -36,6 +36,11 @@ system already in this repo:
 - `education/jordan_vwap_session_reversion_backtest/` — the London→NY
   VWAP session-transition fade (Husky's stated pattern, videos 2 and 18),
   built and tested (null, see Research Backlog)
+- `education/jordan_video_transcripts/impulse_4h_range_levels.pine` — quick
+  eyeball-only TradingView indicator for the single-impulse-4H-candle
+  range-extension variant (video 17); flags a candle as an impulse and
+  draws the same fib ladder off its own high/low. Not a backtest — just a
+  way to look at what Husky described before spending effort mechanising it.
 
 Nothing below is confirmed or backtested by default — this is a capture
 layer for hypotheses. "Confidence" is about how clearly/repeatedly Jordan

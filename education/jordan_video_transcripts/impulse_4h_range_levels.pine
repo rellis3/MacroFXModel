@@ -1,0 +1,73 @@
+// Untested / exploratory. From video 17 of education/jordan_video_transcripts/
+// JORDAN_VIDEO_INSIGHTS.md: Husky floats applying the group's usual
+// range-extension-ladder formula (level = range_low + range_width * fib) to a
+// single large 4H impulse candle instead of a session/calendar range — "find
+// a big red or big green 4-hour candle, draw this on there, and you'll be
+// quite intrigued by what you see." Nobody in the source material has tested
+// this; this is a quick-and-dirty way to eyeball it, not a validated tool.
+
+//@version=6
+indicator("Impulse 4H Range Levels (untested idea)", overlay=true, max_lines_count=500, max_labels_count=500)
+
+atrLen       = input.int(14, "ATR length", minval=1)
+impulseMult  = input.float(1.5, "Impulse threshold (x ATR)", minval=0.1, step=0.1)
+minBodyRatio = input.float(0.6, "Min body/range ratio", minval=0.1, maxval=1.0, step=0.05, tooltip="Filters out big-wick/indecision bars that happen to have a wide high-low range but aren't a genuine directional impulse.")
+maxImpulses  = input.int(3, "Max impulse ladders kept on screen", minval=1, maxval=10)
+showLabels   = input.bool(true, "Show level price labels")
+upColor      = input.color(color.lime, "Bullish impulse marker")
+downColor    = input.color(color.red, "Bearish impulse marker")
+
+// Same asymmetric ladder used elsewhere in this repo for range-extension
+// levels: quarter-steps only near the 0-1 body (-0.25/0.25/0.75/1.25), half
+// steps everywhere else out to -9.5/10.5.
+var float[] FIB = array.from(
+     -9.5, -9.0, -8.5, -8.0, -7.5, -7.0, -6.5, -6.0, -5.5, -5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5,
+     -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5,
+     2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5)
+
+zoneColor(f) =>
+    f < 0 ? color.new(color.orange, 30) : f > 1 ? color.new(color.blue, 30) : color.new(color.aqua, 15)
+
+atr = ta.atr(atrLen)
+rng = high - low
+body = math.abs(close - open)
+isImpulse = barstate.isconfirmed and not na(atr) and rng > 0 and rng >= impulseMult * atr and (body / rng) >= minBodyRatio
+bullish = close > open
+
+barcolor(isImpulse ? (bullish ? color.new(upColor, 0) : color.new(downColor, 0)) : na)
+
+var line[]  lns     = array.new<line>()
+var label[] lvlLbs  = array.new<label>()
+var label[] markLbs = array.new<label>()
+var int impulseCount = 0
+
+if isImpulse
+    lo = low
+    hi = high
+    rangeW = hi - lo
+    for i = 0 to array.size(FIB) - 1
+        f = array.get(FIB, i)
+        price = lo + rangeW * f
+        w = (f == 0.0 or f == 1.0) ? 2 : 1
+        col = zoneColor(f)
+        ln = line.new(bar_index, price, bar_index + 1, price, xloc=xloc.bar_index, extend=extend.right, color=col, width=w)
+        array.push(lns, ln)
+        lblCol = showLabels ? col : color.new(col, 100)
+        lb = label.new(bar_index, price, str.tostring(f, "#.##") + "  " + str.tostring(price, format.mintick), xloc=xloc.bar_index, style=label.style_label_left, color=color.new(color.black, 100), textcolor=lblCol, size=size.tiny)
+        array.push(lvlLbs, lb)
+
+    mk = label.new(bar_index, bullish ? low : high, bullish ? "▲ impulse" : "▼ impulse", style=bullish ? label.style_label_up : label.style_label_down, color=bullish ? upColor : downColor, textcolor=color.white, size=size.small)
+    array.push(markLbs, mk)
+
+    impulseCount += 1
+    if impulseCount > maxImpulses
+        for i = 1 to array.size(FIB)
+            line.delete(array.shift(lns))
+            label.delete(array.shift(lvlLbs))
+        label.delete(array.shift(markLbs))
+        impulseCount -= 1
+
+var table info = table.new(position.top_right, 1, 1)
+if barstate.islast
+    tfOk = timeframe.period == "240"
+    table.cell(info, 0, 0, "TF: " + timeframe.period + (tfOk ? " (4H)" : " — designed for 4H"), text_color=color.white, bgcolor=color.new(tfOk ? color.green : color.orange, 60))
