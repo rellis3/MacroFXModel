@@ -108,19 +108,19 @@
   </div>
   <div class="bar" style="background:#0e1018">
     <label title="The day whose Asia session (00:00–06:00 UTC) high/low becomes the anchor for the SD range-extension grid, projected instead of anchoring to a previous day's close.">Test Day</label>
-    <button class="ghost" id="prevDay" title="Previous day — steps back and re-runs Mark NPOC automatically">◀</button>
+    <button class="ghost" id="prevDay" title="Previous day — steps back and redraws the raw SD ladder for that day">◀</button>
     <input type="date" id="testDay">
-    <button class="ghost" id="nextDay" title="Next day — steps forward and re-runs Mark NPOC automatically">▶</button>
+    <button class="ghost" id="nextDay" title="Next day — steps forward and redraws the raw SD ladder for that day">▶</button>
     <label title="Confluence tolerance in pips (points for gold/indices) between an SD level and a historical forecast line.">Conf ±</label>
     <input type="number" id="confPips" value="2" step="0.5" min="0.1">
     <label title="Within this % of the confluence tolerance counts as a TIGHT match (teal) instead of a loose one (amber).">Tight %</label>
     <input type="number" id="tightPct" value="10" step="5" min="1" max="100">
     <button class="ghost active" id="nakedBtn" title="Only match against forecast lines that were NEVER touched in their own session — the actual 'naked' levels, like an unfilled POC. Turn off to match against every drawn line regardless of whether price already filled it.">◇ Naked only</button>
-    <button class="ghost" id="allSdBtn" title="Draw every SD level (-9.5…+10.5), not just the key anchors (0/0.25/0.5/0.75/1) and the ones that found a match.">≡ All SD levels</button>
+    <button class="ghost" id="allSdBtn" title="After Mark NPOC, keep showing the full SD ladder instead of decluttering down to just the levels that found a confluence match. Has no effect before Mark NPOC runs — the raw ladder always shows in full for validation.">≡ All SD levels</button>
     <button class="npocgo" id="npocBtn">Mark NPOC</button>
   </div>
   <div class="note">
-    "SD" here means multiples of the Asia session's own range, not a statistical std-dev: SD0.00 = Asia low, SD1.00 = Asia high, extending in 0.5 steps from SD-9.5 to SD10.5 (same grid as the Asia Range Fib Confluence Backtester). For the Test Day, that grid is projected off the Asia session's 00:00–06:00 UTC body high/low instead of a prior close, then checked against every forecast line drawn for <b>earlier</b> days in the range — a level that lines up with an old, still-unfilled forecast line is flagged, the way a naked POC marks a price that never got revisited.
+    "SD" here means multiples of the Asia session's own range, not a statistical std-dev: SD0.00 = Asia low, SD1.00 = Asia high, extending in 0.5 steps from SD-9.5 to SD10.5 (same grid as the Asia Range Fib Confluence Backtester). Pick a <b>Test Day</b> and the full grid draws right away, projected off that day's 00:00–06:00 UTC Asia body high/low instead of a prior close — validate it looks right before trusting anything else. <b>Mark NPOC</b> then checks every level against forecast lines drawn for <b>earlier</b> days in the range and declutters the chart down to just the ones that line up with an old, still-unfilled forecast line — the way a naked POC marks a price that never got revisited — while the table on the right lists exactly which day each match is against.
   </div>
   <div class="arm" id="arm">
     <span class="lbl">Lines</span>
@@ -241,7 +241,7 @@ function buildChips() {
     c.addEventListener('click', () => {
       if (state.armed.has(L.key)) state.armed.delete(L.key); else state.armed.add(L.key);
       c.classList.toggle('on', state.armed.has(L.key));
-      npoc = null; renderNpocPanel(); scheduleDraw();
+      invalidateMatches();
     });
     wrap.appendChild(c);
   }
@@ -270,7 +270,7 @@ function buildChips() {
     const before = calcMode();
     $('calc').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     if (calcMode() !== before) buildChips();
-    if (days.length) { computeTouch(); npoc = null; renderNpocPanel(); scheduleDraw(); updateStatus(); }
+    if (days.length) { computeTouch(); invalidateMatches(); updateStatus(); }
   });
   $('src').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b || b.classList.contains('on')) return;
@@ -280,7 +280,7 @@ function buildChips() {
   $('nakedBtn').addEventListener('click', () => {
     state.nakedOnly = !state.nakedOnly;
     $('nakedBtn').classList.toggle('active', state.nakedOnly);
-    npoc = null; renderNpocPanel();
+    invalidateMatches();
   });
   $('allSdBtn').addEventListener('click', () => {
     state.showAllSd = !state.showAllSd;
@@ -293,18 +293,29 @@ function buildChips() {
     scheduleDraw();
   });
   $('pair').addEventListener('change', () => { lastAsia = null; npoc = null; renderNpocPanel(); });
-  $('confPips').addEventListener('change', () => { npoc = null; renderNpocPanel(); });
-  $('tightPct').addEventListener('change', () => { npoc = null; renderNpocPanel(); });
-  $('testDay').addEventListener('change', () => { npoc = null; renderNpocPanel(); scheduleDraw(); });
+  $('confPips').addEventListener('change', invalidateMatches);
+  $('tightPct').addEventListener('change', invalidateMatches);
+  $('testDay').addEventListener('change', previewAsiaLadder);
   $('prevDay').addEventListener('click', () => stepTestDay(-1));
   $('nextDay').addEventListener('click', () => stepTestDay(1));
   $('go').addEventListener('click', loadData);
   $('npocBtn').addEventListener('click', runNpoc);
 })();
 
+// Any change that only affects which historical lines COUNT as candidates or how
+// tight a match has to be (armed lines, calc mode, Naked-only, the pip/tight%
+// inputs) invalidates a previously-computed confluence result without touching
+// the ladder itself — the Asia range/SD grid doesn't depend on any of that, so
+// there's no reason to blank the chart; it just needs Mark NPOC run again.
+function invalidateMatches() {
+  if (npoc) { npoc.matched = false; for (const e of npoc.byLevel.values()) e.matches = []; }
+  renderNpocPanel();
+  scheduleDraw();
+}
+
 // Step the Test Day ± one calendar day (skipping the FX weekend, up to a few hops
-// for a holiday gap) and immediately re-run Mark NPOC — so paging through days is
-// a single click each time, not a date-pick-then-click-Mark-NPOC round trip.
+// for a holiday gap) and redraw the raw ladder for the new day — same as picking
+// a date directly. Run Mark NPOC to check it for confluence.
 async function stepTestDay(dir) {
   const cur = $('testDay').value;
   if (!cur) return;
@@ -315,8 +326,7 @@ async function stepTestDay(dir) {
     hops++;
   } while ([0, 6].includes(d.getUTCDay()) && hops < 4);
   $('testDay').value = d.toISOString().slice(0, 10);
-  npoc = null; renderNpocPanel(); scheduleDraw();
-  await runNpoc();
+  await previewAsiaLadder();
 }
 
 function updateStatus() {
@@ -410,6 +420,7 @@ async function loadData() {
     _meta = { name, gran, src, candles: cdata.length, sessions: days.length, withFc: days.filter(d => d.f).length };
     updateStatus();
     scheduleDraw();
+    await previewAsiaLadder();   // draw the raw ladder for whatever Test Day is already picked
   } catch (e) {
     setStatus('error: ' + e.message);
   } finally {
@@ -471,13 +482,43 @@ async function ensureAsiaRange(pair, sym, testDate) {
   return lastAsia;
 }
 
+// Stage 1: just the raw ladder. Fetches the Test Day's Asia range and projects the
+// full SD grid off it — no confluence matching yet (byLevel entries all start with
+// empty matches, npoc.matched = false). Runs on every Test Day change (typing a
+// date, or stepping with Prev/Next) so the ladder is always there to validate
+// against the actual Asia box before anyone trusts a confluence read.
+async function previewAsiaLadder() {
+  const pair = $('pair').value, sym = OANDA_SYM[pair];
+  const testDate = $('testDay').value;
+  if (!testDate || !days.length) { npoc = null; renderNpocPanel(); scheduleDraw(); return; }
+  setStatus('computing Asia range…');
+  try {
+    const asia = await ensureAsiaRange(pair, sym, testDate);
+    const sd = calcFibs(asia.low, asia.range);
+    const byLevel = new Map();
+    for (const s of sd) byLevel.set(s.level, { ...s, matches: [] });
+    npoc = { testDate, pair, asia, sd, byLevel, matched: false, candidateCount: 0, clusterCount: 0 };
+    renderNpocPanel();
+    scheduleDraw();
+    const pf = priceFmt(pair), pip = pipSizeFor(pair);
+    setStatus(`${pair.toUpperCase()} · Asia ${asia.low.toFixed(pf.precision)}–${asia.high.toFixed(pf.precision)} (${(asia.range / pip).toFixed(1)} pips) · ladder drawn — click Mark NPOC to check confluence`);
+  } catch (e) {
+    npoc = null; renderNpocPanel(); scheduleDraw();
+    setStatus('error: ' + e.message);
+  }
+}
+
+// Stage 2: check the already-drawn ladder for confluence against earlier days'
+// forecast lines. Re-fetches nothing new (ensureAsiaRange is cached from Stage 1
+// for the same pair/day); just runs the match and, once it does, drawNpoc() stops
+// showing levels with no match (unless "All SD levels" overrides that).
 async function runNpoc() {
   const pair = $('pair').value, sym = OANDA_SYM[pair];
   const testDate = $('testDay').value;
   if (!testDate) { setStatus('pick a Test Day'); return; }
   if (!days.length) { setStatus('Generate the chart first'); return; }
   $('npocBtn').disabled = true; $('prevDay').disabled = true; $('nextDay').disabled = true;
-  setStatus('computing Asia range…');
+  setStatus('checking confluence…');
   try {
     const asia = await ensureAsiaRange(pair, sym, testDate);
     const sd = calcFibs(asia.low, asia.range);
@@ -520,7 +561,7 @@ async function runNpoc() {
       for (const lv of fibs) { const entry = byLevel.get(lv); if (entry) entry.matches.push(cl); }
     }
 
-    npoc = { testDate, pair, asia, sd, byLevel, candidateCount: candidates.length, clusterCount: clusters.length };
+    npoc = { testDate, pair, asia, sd, byLevel, matched: true, candidateCount: candidates.length, clusterCount: clusters.length };
     renderNpocPanel();
     scheduleDraw();
     const pf = priceFmt(pair);
@@ -538,9 +579,15 @@ function renderNpocPanel() {
   if (!npoc) { el.innerHTML = ''; el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
   const pf = priceFmt(npoc.pair);
-  const rows = [...npoc.byLevel.values()].filter(e => e.matches.length).sort((a, b) => a.level - b.level);
   let html = `<h3>NPOC — ${npoc.testDate} <span class="calcTag">${calcLabel()}</span></h3>`;
-  html += `<div style="font-size:10px;color:var(--text2);margin-bottom:6px">Asia ${npoc.asia.low.toFixed(pf.precision)}–${npoc.asia.high.toFixed(pf.precision)} vs ${npoc.candidateCount} prior line(s)</div>`;
+  html += `<div style="font-size:10px;color:var(--text2);margin-bottom:6px">Asia ${npoc.asia.low.toFixed(pf.precision)}–${npoc.asia.high.toFixed(pf.precision)}` +
+    (npoc.matched ? ` vs ${npoc.candidateCount} prior line(s)` : ' — ladder only, not checked yet') + '</div>';
+  if (!npoc.matched) {
+    html += '<div class="st-empty">Click Mark NPOC to check this ladder for confluence against earlier forecast lines</div>';
+    el.innerHTML = html;
+    return;
+  }
+  const rows = [...npoc.byLevel.values()].filter(e => e.matches.length).sort((a, b) => a.level - b.level);
   if (!rows.length) {
     html += '<div class="st-empty">no confluence within tolerance</div>';
   } else {
@@ -624,49 +671,110 @@ function drawOverlay() {
     line(d.low, '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)}` : '', true);
   }
 
-  drawAsiaBox(ts);
-  drawNpoc(ts);
+  drawAsiaShading(ts);
+  const anchorX = computeAnchorX(ts);
+  drawNpoc(ts, anchorX);
+  drawTestDayGuide(anchorX);   // drawn LAST — always on top of the SD grid, never buried under it
 }
 
-function drawAsiaBox(ts) {
+// Shaded rectangle at the Test Day's actual Asia-session high/low and time span.
+// Drawn early (under the SD grid) — it's context, not the primary reference marker.
+function drawAsiaShading(ts) {
   if (!npoc?.asia?.bars?.length) return;
   const bars = npoc.asia.bars;
   const x1 = ts.timeToCoordinate(bars[0].time), x2 = ts.timeToCoordinate(bars[bars.length - 1].time);
-  if (x1 == null || x2 == null) return;
   const y1 = series.priceToCoordinate(npoc.asia.high), y2 = series.priceToCoordinate(npoc.asia.low);
-  if (y1 == null || y2 == null) return;
+  if (x1 == null || x2 == null || y1 == null || y2 == null) return;
   octx.save();
-  octx.fillStyle = 'rgba(59,130,246,0.10)';
+  octx.fillStyle = 'rgba(59,130,246,0.14)';
   octx.fillRect(x1, y1, x2 - x1, y2 - y1);
-  octx.strokeStyle = 'rgba(59,130,246,0.5)'; octx.lineWidth = 1; octx.setLineDash([2, 2]);
+  octx.strokeStyle = 'rgba(59,130,246,0.7)'; octx.lineWidth = 1.5; octx.setLineDash([2, 2]);
   octx.strokeRect(x1, y1, x2 - x1, y2 - y1);
   octx.restore();
 }
 
-// SD grid — full chart width (a projection, not a per-session band). Only key
-// anchors (0/0.25/0.5/0.75/1) and matched levels draw by default; "All SD levels"
-// reveals the full -9.5..+10.5 grid.
-function drawNpoc(ts) {
+// The x-coordinate (clamped into view) at the END of the Test Day's Asia session —
+// the point the whole SD grid is anchored at. Pure geometry, no drawing, so both
+// drawNpoc() (label column) and drawTestDayGuide() (the marker itself) agree on it.
+function computeAnchorX(ts) {
+  if (!npoc?.asia?.bars?.length) return null;
+  const bars = npoc.asia.bars;
+  const x2 = ts.timeToCoordinate(bars[bars.length - 1].time);
+  const x1 = ts.timeToCoordinate(bars[0].time);
+  const rawX = x2 != null ? x2 : x1;
+  if (rawX == null) return null;
+  const W = overlayCanvas.width / dpr;
+  return Math.max(4, Math.min(W - 4, rawX));
+}
+
+// Full-height vertical guide + label at the Test Day marker. Drawn LAST (after the
+// SD grid's ~45 horizontal lines) so it's never painted over and stays legible as
+// the one unambiguous "this is the day everything is anchored to" reference.
+// If the Test Day marker's x falls under the floating results panel (common —
+// the default Test Day is near "now", i.e. the right edge of the loaded range,
+// same corner the panel docks to), push the tag below the panel instead of
+// letting it sit invisibly underneath.
+function labelYBelowPanel(x) {
+  const el = $('npocPanel');
+  if (!el || el.classList.contains('hidden')) return 12;
+  const chartRect = $('chartWrap').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const left = r.left - chartRect.left, right = r.right - chartRect.left;
+  return (x >= left - 24 && x <= right + 24) ? (r.bottom - chartRect.top) + 14 : 12;
+}
+
+function drawTestDayGuide(anchorX) {
+  if (anchorX == null || !npoc) return;
+  const W = overlayCanvas.width / dpr, H = overlayCanvas.height / dpr;
+  octx.save();
+  octx.strokeStyle = '#60a5fa'; octx.lineWidth = 1.5; octx.setLineDash([5, 3]); octx.globalAlpha = 0.85;
+  octx.beginPath(); octx.moveTo(anchorX, 0); octx.lineTo(anchorX, H); octx.stroke();
+  octx.setLineDash([]); octx.globalAlpha = 1;
+  const right = anchorX > W - 150;
+  const tag = '▸ Test Day ' + npoc.testDate;
+  const ly = labelYBelowPanel(anchorX);
+  octx.font = "bold 11px 'DM Mono', monospace";
+  octx.textAlign = right ? 'right' : 'left';
+  const tw = octx.measureText(tag).width, tx = anchorX + (right ? -6 : 6);
+  octx.fillStyle = 'rgba(11,13,20,0.85)';
+  octx.fillRect(right ? tx - tw - 4 : tx - 4, ly - 8, tw + 8, 16);
+  octx.fillStyle = '#60a5fa';
+  octx.fillText(tag, tx, ly);
+  octx.restore();
+}
+
+// SD grid — lines span the full chart width so a level can be eyeballed against
+// EARLIER days' forecast lines (that's the whole confluence check), but every
+// label is anchored at the Test Day's marker (anchorX) instead of a fixed x, so
+// the ladder reads as one column belonging to that day, ordered top-to-bottom by
+// price, rather than 45 labels scattered under whichever day happens to be at
+// the canvas edge. Before Mark NPOC runs (npoc.matched === false) the FULL raw
+// ladder always draws — that's the point, validate it against the Asia box first.
+// Once matched, it declutters down to just the levels that found a confluence
+// (unmatched ones dropped) unless "All SD levels" overrides that.
+function drawNpoc(ts, anchorX) {
   if (!npoc) return;
   const W = overlayCanvas.width / dpr;
+  const labelX = anchorX != null ? anchorX : 6;
+  const right = anchorX != null && anchorX > W - 150;
   for (const [level, entry] of npoc.byLevel) {
-    if (!state.showAllSd && !entry.isKey && !entry.matches.length) continue;
+    const has = entry.matches.length > 0;
+    if (npoc.matched && !state.showAllSd && !has) continue;
     const y = series.priceToCoordinate(entry.price);
     if (y == null) continue;
     const tight = entry.matches.some(m => m.isTight);
-    const has = entry.matches.length > 0;
-    const color = tight ? '#26a69a' : has ? '#f59e0b' : (entry.isKey ? '#6b7280' : '#374151');
+    const color = tight ? '#26a69a' : has ? '#f59e0b' : (entry.isKey ? '#9ca3af' : '#4b5563');
     const dash = has ? (tight ? [] : [6, 4]) : [1, 3];
     octx.save();
     octx.strokeStyle = color;
     octx.lineWidth = tight ? 2 : has ? 1.5 : 1;
     octx.setLineDash(dash);
-    octx.globalAlpha = has ? 0.9 : 0.5;
+    octx.globalAlpha = has ? 0.9 : 0.6;
     octx.beginPath(); octx.moveTo(0, y); octx.lineTo(W, y); octx.stroke();
     octx.setLineDash([]); octx.globalAlpha = 1; octx.fillStyle = color;
-    octx.textAlign = 'left';
+    octx.textAlign = right ? 'right' : 'left';
     const label = 'SD' + level.toFixed(2) + (has ? ` ×${entry.matches.reduce((s, m) => s + (m.density || 1), 0)}` : '');
-    octx.fillText(label, 6, y - 8);
+    octx.fillText(label, labelX + (right ? -6 : 6), y - 8);
     octx.restore();
   }
 }
