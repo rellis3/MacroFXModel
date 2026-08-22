@@ -271,6 +271,7 @@
     <div class="chub-menu">
       <a class="chub-item" href="discipline-map.html" target="_blank" data-href="discipline-map.html" style="opacity:.7"><span class="ci-txt">🗺 Discipline Map</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('discipline-map.html')" data-href="discipline-map.html">☆</button></a>
       <a class="chub-item" href="level-chart-demo.html" target="_blank" data-href="level-chart-demo.html" style="opacity:.7"><span class="ci-txt">🧱 Level Chart Demo</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-chart-demo.html')" data-href="level-chart-demo.html">☆</button></a>
+      <a class="chub-item" href="entry-trigger-lab.html" target="_blank" data-href="entry-trigger-lab.html" style="opacity:.7"><span class="ci-txt">🎯 Entry Trigger Lab</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('entry-trigger-lab.html')" data-href="entry-trigger-lab.html">☆</button></a>
     </div>
   </div>
 
