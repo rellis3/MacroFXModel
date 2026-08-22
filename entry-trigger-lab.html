@@ -435,6 +435,31 @@ function drawTrade(x, y, ev, ringColor, barsByTime, testKey) {
   drawMarker(ex, ey, ev.dir, ringColor);
   drawnMarkers.push({ x: ex, y: ey, ev, testKey });
 }
+function bisectLeft(arr, t) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid].time < t) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+// Clip a period's (day/week) line to the actual bars that fall inside it,
+// rather than to the calendar boundary's chart coordinate. A calendar
+// boundary (midnight, Monday+5d) often lands in a gap with no bar there —
+// before the session opens, on a weekend — so timeToCoordinate for it comes
+// back null, and the old code fell back to the raw canvas edge (0 / full
+// width) for whichever side was null. That drew the line from the literal
+// edge of the whole chart instead of clipping it to its own day/week, which
+// is the "lines coming in from all over" bug. Returns null (skip) if the
+// period has no bars in view at all.
+function periodXBounds(x, startEpoch, endEpochExclusive) {
+  const lo = bisectLeft(bars5m, startEpoch);
+  const hi = bisectLeft(bars5m, endEpochExclusive);
+  if (hi <= lo) return null;
+  const x1 = x(bars5m[lo].time), x2 = x(bars5m[hi - 1].time);
+  if (x1 == null || x2 == null) return null;
+  return [x1, x2];
+}
 function drawOverlay() {
   if (!octx) return;
   octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
@@ -454,16 +479,16 @@ function drawOverlay() {
   // not compete with it.
   if (state.armedLevels.has('asia')) {
     for (const day of asiaTimeline) {
-      const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
-      if (x1 == null && x2 == null) continue;
-      for (const lvl of day.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(245,158,11,.35)', false, 1);
+      const bounds = periodXBounds(x, dayEpoch(day.date), dayEpoch(day.date) + 86400);
+      if (!bounds) continue;
+      for (const lvl of day.levels) drawSegment(bounds[0], bounds[1], y(lvl.price), 'rgba(245,158,11,.35)', false, 1);
     }
   }
   if (state.armedLevels.has('monday')) {
     for (const wk of mondayTimeline) {
-      const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
-      if (x1 == null && x2 == null) continue;
-      for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(96,165,250,.35)', true, 1);
+      const bounds = periodXBounds(x, dayEpoch(wk.date), dayEpoch(wk.date) + 5 * 86400);
+      if (!bounds) continue;
+      for (const lvl of wk.levels) drawSegment(bounds[0], bounds[1], y(lvl.price), 'rgba(96,165,250,.35)', true, 1);
     }
   }
   // Confluent levels — where THIS period's ladder and the PRIOR period's
@@ -482,26 +507,27 @@ function drawOverlay() {
       for (const c of list) {
         const outside = isOutsideRange(c.todayFib);
         const color = !outside ? 'rgba(148,163,184,.35)' : c.isTight ? '#22c55e' : '#facc15';
-        drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(c.price), color, dashed, outside ? 3 : 1);
+        drawSegment(x1, x2, y(c.price), color, dashed, outside ? 3 : 1);
       }
     };
     for (const day of asiaTimeline) {
-      const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
-      if (x1 == null && x2 == null) continue;
-      drawConfluences(day.confluences, x1, x2, false);
+      const bounds = periodXBounds(x, dayEpoch(day.date), dayEpoch(day.date) + 86400);
+      if (!bounds) continue;
+      drawConfluences(day.confluences, bounds[0], bounds[1], false);
     }
     for (const wk of mondayTimeline) {
-      const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
-      if (x1 == null && x2 == null) continue;
-      drawConfluences(wk.confluences, x1, x2, true);
+      const bounds = periodXBounds(x, dayEpoch(wk.date), dayEpoch(wk.date) + 5 * 86400);
+      if (!bounds) continue;
+      drawConfluences(wk.confluences, bounds[0], bounds[1], true);
     }
   }
   // Session-extreme-anchor: only draw the alternate ladder on days it diverges.
   if (state.armedTests.has('session_extreme')) {
     for (const day of sessionExtreme) {
       if (!day.diverges) continue;
-      const x1 = x(dayEpoch(day.date) + 6 * 3600), x2 = x(dayEpoch(day.date) + 22 * 3600);
-      for (const lvl of day.altLevels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#34d399', true);
+      const bounds = periodXBounds(x, dayEpoch(day.date) + 6 * 3600, dayEpoch(day.date) + 22 * 3600);
+      if (!bounds) continue;
+      for (const lvl of day.altLevels) drawSegment(bounds[0], bounds[1], y(lvl.price), '#34d399', true);
     }
   }
 
