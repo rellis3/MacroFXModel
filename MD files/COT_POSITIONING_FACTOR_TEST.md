@@ -134,6 +134,18 @@ only**, via `statsCore.rankIC`.
 forward-window overlap) — a plain t-test is invalid here because overlapping
 weekly windows are autocorrelated. Precedent: `js/volReversionCore.js:113-136`.
 
+> **Recorded amendment (2026-08-22, before the run, no results seen).** Two
+> points where the frozen wording meets the actual brick:
+> 1. It says "95% CI excludes zero". `blockBootstrapIC` returns no CI — it
+>    block-resamples to build the NULL distribution and reports a two-sided
+>    **p-value**. At the 95% level these are the same decision rule
+>    ("CI excludes 0" ⟺ "p < 0.05"), so the cell uses **p < 0.05**.
+> 2. The brick floors `meanBlock` at 5, above the requested 4. A larger block
+>    retains MORE autocorrelation in the null, widening it and making the test
+>    **harder** to pass — accepted as conservative rather than overridden.
+>
+> No pass bar moved in either case.
+
 **Split:** IS 2006 → 2017, **OOS 2018 →**. Chronological, fixed now.
 
 > **Price-coverage note (recorded 2026-08-22, before the run, no results seen).**
@@ -144,6 +156,18 @@ weekly windows are autocorrelated. Precedent: `js/volReversionCore.js:113-136`.
 > practical effect is that the "IS" period is 2016–2017 rather than 2006–2017.
 > No pass bar moved. Extending price history earlier would require an OANDA
 > pull on the deployed server and is not needed for the registered cell.
+
+> **Execution note (2026-08-22).** The cell runs SERVER-SIDE via
+> `GET /api/cot-factor-test/run` — the only place both halves of the join exist
+> (COT history in KV, prices via OANDA `fetchD1`); handing the ~7,200-row series
+> to a sandbox session for the Python harness proved impractical. It re-uses
+> `statsCore`'s `rankIC` and `blockBootstrapIC`, so no statistic is
+> re-implemented, and the Python harness in `analysis/cot_factor/` remains the
+> METHOD validation (synthetic self-test: detects a planted effect, returns null
+> on noise). Prices are OANDA **D1 opens, first bar on or after** the tradable
+> Monday — holidays resolve FORWARD, never backward, so a trade can never be
+> priced before its signal existed. Using D1 rather than the local M1 also lifts
+> the price-coverage limit noted above, since OANDA D1 reaches back further.
 
 **PASS** iff the OOS pooled rank-IC's **95% block-bootstrap CI excludes zero**,
 AND the point estimate has the **same sign in both OOS halves** (2018–2021 /

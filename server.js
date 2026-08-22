@@ -20,6 +20,7 @@ import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker, { COT_KV } from './_worker.js';
+import { rankIC, blockBootstrapIC } from './js/statsCore.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
@@ -3797,6 +3798,119 @@ app.get('/api/cot-backfill/status', async (_req, res) => {
 // `market_and_exchange_names` values matching a filter (default: the currencies
 // and gold). A name mismatch, a dead dataset id and a bad column list all look
 // different here, which a bare "no rows" cannot distinguish.
+// ── The registered confirmatory cell — MD files/COT_POSITIONING_FACTOR_TEST.md ─
+// Runs SERVER-SIDE because that is the only place both halves of the join live:
+// the COT history in KV and OANDA prices via fetchD1. (The Python harness in
+// analysis/cot_factor/ was scaffolded for a JSON hand-off that proved
+// impractical at ~7,200 rows; its synthetic self-test — detects a planted
+// effect, returns null on noise — remains the validation of the METHOD. This
+// route re-uses `statsCore`'s rankIC + blockBootstrapIC, so no statistic is
+// re-implemented here.)
+//
+// Spec, frozen before any data existed: signal = OI-normalised spec net, rolling
+// 156w z; target = forward 4-week log return open-to-open from the tradable
+// Monday; pooled Spearman rank-IC, OOS only, TWO-SIDED (book 9.2 predicts one
+// sign, DF-01 the other); 95% block-bootstrap CI (meanBlock=4 — overlapping
+// weekly windows make a plain t-test invalid); PASS iff CI excludes zero AND
+// both OOS halves share the IC's sign AND >=6 of 8 instruments qualify.
+const COT_FWD_WEEKS = 4;
+const COT_OOS_START = '2018-01-01';
+const COT_OOS_MID   = '2022-01-01';
+
+// First bar on/after a target date — holidays resolve forward, never backward
+// (a backward resolve would trade on a price that predates the signal).
+function _barAtOrAfter(bars, isoDate) {
+  let lo = 0, hi = bars.length - 1, hit = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (bars[mid].date >= isoDate) { hit = mid; hi = mid - 1; } else lo = mid + 1;
+  }
+  return hit === -1 ? null : bars[hit];
+}
+const _addDaysISO = (iso, n) =>
+  new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+
+app.get('/api/cot-factor-test/run', async (_req, res) => {
+  try {
+    const raw = await kv.get('cot_factor_history_v1');
+    if (!raw) return res.json({ ok: false, error: 'no backfill yet — run /api/cot-backfill/run first' });
+    const hist = JSON.parse(raw);
+
+    const panel = [];      // { sym, date, z, fwd }
+    const perInst = [];
+    for (const inst of COT_FACTOR_UNIVERSE) {
+      const rec = hist.instruments?.[inst.sym];
+      if (!rec || rec.error || !Array.isArray(rec.series)) {
+        perInst.push({ sym: inst.sym, error: rec?.error ?? 'missing', n: 0 }); continue;
+      }
+      let bars;
+      try { bars = await _btFetchD1(inst.oanda, 5000); }
+      catch (e) { perInst.push({ sym: inst.sym, error: `price fetch: ${e.message}`, n: 0 }); continue; }
+      bars.sort((a, b) => a.date.localeCompare(b.date));
+
+      const rowsJoined = [];
+      for (const p of rec.series) {
+        if (p.z == null || !p.t) continue;
+        const entry = _barAtOrAfter(bars, p.t);
+        const exit  = _barAtOrAfter(bars, _addDaysISO(p.t, COT_FWD_WEEKS * 7));
+        if (!entry || !exit || !(entry.open > 0) || !(exit.open > 0)) continue;
+        rowsJoined.push({ sym: inst.sym, date: p.t, z: p.z, fwd: Math.log(exit.open / entry.open) });
+      }
+      panel.push(...rowsJoined);
+      const oosRows = rowsJoined.filter(r => r.date >= COT_OOS_START);
+      perInst.push({
+        sym: inst.sym, qualifies: !!rec.qualifies, scoredWeeks: rec.scoredWeeks ?? null,
+        joined: rowsJoined.length, oos: oosRows.length,
+        first: rowsJoined[0]?.date ?? null, last: rowsJoined.at(-1)?.date ?? null,
+        priceBars: bars.length, priceFrom: bars[0]?.date ?? null,
+        oosIC: oosRows.length >= 30
+          ? +rankIC(oosRows.map(r => r.z), oosRows.map(r => r.fwd)).ic.toFixed(4) : null,
+      });
+    }
+
+    const nQual = perInst.filter(p => p.qualifies).length;
+    const oos = panel.filter(r => r.date >= COT_OOS_START).sort((a, b) => a.date.localeCompare(b.date));
+    if (oos.length < 50) {
+      return res.json({ ok: true, verdict: 'INSUFFICIENT', oosRows: oos.length, perInstrument: perInst });
+    }
+    const zs = oos.map(r => r.z), fs = oos.map(r => r.fwd);
+    const pooled = rankIC(zs, fs);
+    const boot = blockBootstrapIC(zs, fs, { meanBlock: COT_FWD_WEEKS, nBoot: 10000, seed: 20260822 });
+    const h1 = oos.filter(r => r.date < COT_OOS_MID), h2 = oos.filter(r => r.date >= COT_OOS_MID);
+    const ic1 = h1.length >= 30 ? rankIC(h1.map(r => r.z), h1.map(r => r.fwd)).ic : null;
+    const ic2 = h2.length >= 30 ? rankIC(h2.map(r => r.z), h2.map(r => r.fwd)).ic : null;
+    // The registered wording was "95% block-bootstrap CI excludes zero".
+    // `statsCore.blockBootstrapIC` implements the equivalent two-sided form: it
+    // block-resamples to build the NULL distribution and returns a p-value, so
+    // "95% CI excludes 0" <=> "p < 0.05". Same decision rule, same 95% level —
+    // recorded as an amendment in the pre-registration, no bar moved. Note the
+    // brick floors meanBlock at 5, above our requested 4; a LARGER block keeps
+    // more autocorrelation in the null, which makes passing harder, not easier.
+    const excludesZero = boot.ok === true && boot.pValue < 0.05;
+    const halvesAgree = ic1 != null && ic2 != null && ((ic1 > 0) === (ic2 > 0)) && ((ic1 > 0) === (pooled.ic > 0));
+    const pass = !!(excludesZero && halvesAgree && nQual >= 6);
+
+    res.json({
+      ok: true,
+      spec: { fwdWeeks: COT_FWD_WEEKS, oosStart: COT_OOS_START, oosMid: COT_OOS_MID,
+              twoSided: true,
+              bar: 'block-bootstrap p<0.05 (== 95% CI excluding 0) AND both OOS halves share the sign AND >=6/8 qualify' },
+      cotGeneratedAt: hist.generatedAt,
+      qualifying: nQual,
+      oosRows: oos.length,
+      rankIC: pooled.ic,
+      rankICn: pooled.n,
+      bootstrap: boot,   // { ok, ic, pValue, nullMean, nullSd, meanBlock, nBoot }
+      halves: { '2018-2021': ic1 != null ? +ic1.toFixed(4) : null, '2022-': ic2 != null ? +ic2.toFixed(4) : null },
+      checks: { significant: excludesZero, halvesAgree, enoughInstruments: nQual >= 6 },
+      verdict: pass ? 'PASS' : 'FAIL',
+      readsAs: pass ? (pooled.ic > 0 ? 'hedging-pressure premium (FOLLOW specs)' : 'crowding (FADE extremes)')
+                    : 'no supported direction',
+      perInstrument: perInst,
+    });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/cot-backfill/probe', async (req, res) => {
   const needle = (req.query.q ?? 'EURO,POUND,YEN,AUSTRALIAN,CANADIAN,SWISS,ZEALAND,NZ ,GOLD')
     .split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
