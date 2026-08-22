@@ -45,13 +45,19 @@ class COTFilterModule(BaseModule):
 
     What the KV snapshot (regime_snapshot.pairs[pair].cot, built by the
     dashboard from cot_extremes_v2) actually provides:
+      · specSharePct / specShareZ — percentile and z of the spec net as a
+        SHARE OF OPEN INTEREST, ranked over the fetched history. This is the
+        DF-01 step-2 read and is PREFERRED when present. (Until 2026-08-21
+        the dashboard adapter dropped these fields, so this module could only
+        ever see the raw ones — the §4.3 defect. They now flow through from
+        /api/cot-extremes; the legacy manual-URL pipeline still has no
+        history and emits neither, hence the fallback below.)
       · specPct — percentile of the CURRENT spec net vs the full fetched
-        history (~3y). NOTE: the worker ranks the RAW net, not the
-        OI-normalised net — the snapshot carries only the current week's
-        openInterest, not an OI history, so the OI-normalisation step of
-        DF-01 cannot be computed bot-side. Documented gap, not faked.
-      · specZ — z-score of the raw spec net vs the same history (fallback
-        extreme detector when specPct is missing).
+        history (~3y), ranked on the RAW contract count. Used as fallback
+        only: raw ranks conflate "more crowded" with "bigger market", since
+        open interest itself drifts over the lookback.
+      · specZ — z-score of the raw spec net vs the same history (last-resort
+        extreme detector when neither percentile is present).
       · levPct — current net as % of current OI (single point; reported in
         metadata only, no history to rank it against).
       · reportDate / changeDate — CFTC report date, used for the staleness
@@ -85,12 +91,21 @@ class COTFilterModule(BaseModule):
             )
 
         lev_net  = cot.get('levNet', 0) or 0
-        spec_pct = cot.get('specPct')          # percentile vs ~3y history (worker)
-        spec_z   = cot.get('specZ')            # z vs same history
+        # OI-NORMALISED FIRST (DF-01 step 2), raw net as fallback. The worker ranks
+        # both; whether the share fields reach this snapshot depends on which
+        # pipeline populated it (the /api/cot-extremes adapter carries them; the
+        # legacy manual-URL path has no history and so emits neither). Falling back
+        # keeps the filter working on either shape instead of going dark.
+        share_pct = cot.get('specSharePct')
+        share_z   = cot.get('specShareZ')
+        spec_pct  = share_pct if share_pct is not None else cot.get('specPct')
+        spec_z    = share_z   if share_z   is not None else cot.get('specZ')
+        oi_basis  = 'OI-normalised' if share_pct is not None or share_z is not None else 'raw net'
         lev_pct  = cot.get('levPct')           # current net % of OI (single point)
         raw_date = cot.get('reportDate') or cot.get('changeDate')
 
         meta = {'lev_net': lev_net, 'spec_pct': spec_pct, 'spec_z': spec_z,
+                'oi_basis': oi_basis,
                 'lev_pct_of_oi': lev_pct, 'report_date': str(raw_date or '')}
 
         # ── Staleness gate ────────────────────────────────────────────────────

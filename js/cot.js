@@ -44,6 +44,21 @@ function extremesToCotData(instruments) {
       specPct:     inst.specPct,
       commPct:     inst.commPct,
       specZ:       inst.specZ,
+      // OI-NORMALISED reads — carried through so consumers can rank crowding as a
+      // SHARE of open interest instead of a raw contract count. The worker has
+      // computed these since the crowding fix, but this adapter dropped them, so
+      // every browser consumer and the live bot were still ranking raw nets — the
+      // "COT percentiles on raw contracts (not OI-normalized)" defect in
+      // BACKTEST_SYSTEMS_REVIEW.md §4.3. Raw fields stay alongside (consumers fall
+      // back to them when history is too short for a share rank) so nothing breaks
+      // and the two reads can be compared directly.
+      specShare:    inst.specShare    ?? null,   // net as a fraction of OI, current week
+      specSharePct: inst.specSharePct ?? null,   // percentile rank of THAT, vs history
+      specShareZ:   inst.specShareZ   ?? null,
+      specShareChg: inst.specShareChg ?? null,
+      commSharePct: inst.commSharePct ?? null,
+      oiPct:        inst.oiPct        ?? null,   // where open interest itself sits
+      histLen:      inst.histLen      ?? null,   // real week count — renames truncate it
       _report:     inst.group === 'metals' || inst.group === 'energy' ? 'disagg' : 'tff',
       _fromExtremes: true,
     };

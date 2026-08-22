@@ -10,6 +10,14 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token',
 };
 
+// COT cache keys — THE single source of truth, exported so `server.js` reads the
+// same names this file writes. They were plain literals in both files until
+// 2026-08-12 (`ddf1498`) bumped the worker's `cot_extremes_v2`→`v3` without
+// touching server.js's three readers; the old key then aged out of its 7-day TTL
+// and the morning brief's COT blocks plus the C+Z export's COT line silently went
+// null for a week. Bump the version HERE only — never re-inline the string.
+export const COT_KV = { extremes: 'cot_extremes_v3', series: 'cot_series_v2' };
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -1713,7 +1721,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         // — flow() filtering on specShareChg would otherwise silently show "no data"
         // against an old cached payload that never had that field, for up to 7 days.
         if (!debugMode && !forceFresh && env.FX_SCORES) {
-          const cached = await env.FX_SCORES.get('cot_extremes_v3').catch(() => null);
+          const cached = await env.FX_SCORES.get(COT_KV.extremes).catch(() => null);
           if (cached) {
             try {
               const { ts, data } = JSON.parse(cached);
@@ -1724,7 +1732,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
                 // happened). Serve the series from its OWN key instead, so clicking a market
                 // costs a KV read rather than a fresh CFTC fetch.
                 if (wantHist0) {
-                  const sraw = await env.FX_SCORES.get('cot_series_v2').catch(() => null);
+                  const sraw = await env.FX_SCORES.get(COT_KV.series).catch(() => null);
                   if (sraw) {
                     try {
                       const sj = JSON.parse(sraw);
@@ -2080,13 +2088,13 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           fetchErrors: fetchErrors.length ? fetchErrors : undefined };
 
         if (env.FX_SCORES) {
-          await env.FX_SCORES.put('cot_extremes_v3', JSON.stringify({ ts: Date.now(), data: payload2 }),
+          await env.FX_SCORES.put(COT_KV.extremes, JSON.stringify({ ts: Date.now(), data: payload2 }),
             { expirationTtl: 7 * 86400 }).catch(() => {});
           // Series in a SEPARATE key: keeps the hot path lean while making every
           // instrument's 200-week history a KV read away instead of a CFTC round trip.
           const series = {};
           for (const r of allInstruments) if (r._series) series[r.sym] = { sym: r.sym, label: r.label, ...r._series };
-          await env.FX_SCORES.put('cot_series_v2', JSON.stringify({ ts: Date.now(), series }),
+          await env.FX_SCORES.put(COT_KV.series, JSON.stringify({ ts: Date.now(), series }),
             { expirationTtl: 8 * 86400 }).catch(() => {});
         }
 
