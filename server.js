@@ -3780,6 +3780,63 @@ app.get('/api/cot-backfill/status', async (_req, res) => {
   const raw = await kv.get(_COT_BACKFILL_LOG_KV).catch(() => null);
   res.json({ ok: true, running: _cotBackfillRunning, last: raw ? JSON.parse(raw) : null });
 });
+// Diagnostic probe — answers "why did those contracts return nothing?" against
+// CFTC directly, because the sandbox cannot reach Socrata and each blind fix
+// costs a deploy + a manual click. For each dataset it reports: whether the id
+// resolves at all, the column names actually present on a row, and the distinct
+// `market_and_exchange_names` values matching a filter (default: the currencies
+// and gold). A name mismatch, a dead dataset id and a bad column list all look
+// different here, which a bare "no rows" cannot distinguish.
+app.get('/api/cot-backfill/probe', async (req, res) => {
+  const needle = (req.query.q ?? 'EURO,POUND,YEN,AUSTRALIAN,CANADIAN,SWISS,ZEALAND,NZ ,GOLD')
+    .split(',').map(x => x.trim().toUpperCase()).filter(Boolean);
+  const out = {};
+  for (const [key, ds] of Object.entries(COT_DATASETS)) {
+    const rec = { datasetId: ds.id, expectedLong: ds.long, expectedShort: ds.short };
+    // 1) does the dataset resolve, and what columns does a row actually have?
+    try {
+      const r = await fetch(`https://publicreporting.cftc.gov/resource/${ds.id}.json?$limit=1`,
+        { signal: AbortSignal.timeout(20000) });
+      rec.sampleStatus = r.status;
+      if (r.ok) {
+        const j = await r.json();
+        const row = Array.isArray(j) && j[0] ? j[0] : null;
+        rec.columns = row ? Object.keys(row).sort() : [];
+        rec.hasExpectedLong = row ? (ds.long in row) : null;
+        rec.hasExpectedShort = row ? (ds.short in row) : null;
+        rec.oiColumn = row ? (('open_interest_all' in row) ? 'open_interest_all'
+          : ('open_interest' in row) ? 'open_interest' : 'NEITHER') : null;
+      } else {
+        rec.sampleBody = (await r.text().catch(() => '')).slice(0, 300);
+      }
+    } catch (e) { rec.sampleError = e.message; }
+    // 2) which contract names does this dataset actually carry?
+    try {
+      const params = new URLSearchParams({
+        '$select': 'market_and_exchange_names',
+        '$group': 'market_and_exchange_names',
+        '$limit': '800',
+      });
+      const r = await fetch(`https://publicreporting.cftc.gov/resource/${ds.id}.json?${params}`,
+        { signal: AbortSignal.timeout(25000) });
+      rec.namesStatus = r.status;
+      if (r.ok) {
+        const j = await r.json();
+        const all = (Array.isArray(j) ? j : []).map(x => x.market_and_exchange_names).filter(Boolean);
+        rec.totalNames = all.length;
+        rec.matchingNames = all.filter(n => needle.some(w => n.toUpperCase().includes(w))).sort();
+      } else {
+        rec.namesBody = (await r.text().catch(() => '')).slice(0, 300);
+      }
+    } catch (e) { rec.namesError = e.message; }
+    out[key] = rec;
+  }
+  // 3) what the universe currently ASKS for, so mismatches are visible side by side
+  res.json({ ok: true, probedAt: new Date().toISOString(),
+    configured: COT_FACTOR_UNIVERSE.map(i => ({ sym: i.sym, dataset: i.dataset, name: i.name, alt: i.alt ?? [] })),
+    datasets: out });
+});
+
 app.get('/api/cot-backfill/series', async (_req, res) => {
   const raw = await kv.get('cot_factor_history_v1').catch(() => null);
   if (!raw) return res.json({ ok: false, error: 'no backfill run yet — POST /api/cot-backfill/run first' });
