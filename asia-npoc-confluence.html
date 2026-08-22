@@ -116,7 +116,7 @@
     <label title="Within this % of the confluence tolerance counts as a TIGHT match (teal) instead of a loose one (amber).">Tight %</label>
     <input type="number" id="tightPct" value="10" step="5" min="1" max="100">
     <button class="ghost active" id="nakedBtn" title="Only match against forecast lines that were NEVER touched in their own session — the actual 'naked' levels, like an unfilled POC. Turn off to match against every drawn line regardless of whether price already filled it.">◇ Naked only</button>
-    <button class="ghost" id="allSdBtn" title="Draw every SD level (-9.5…+10.5), not just the key anchors (0/0.25/0.5/0.75/1) and the ones that found a match.">≡ All SD levels</button>
+    <button class="ghost active" id="allSdBtn" title="Draw every SD level (-9.5…+10.5). Off shows only the key anchors (0/0.25/0.5/0.75/1) plus any level that found a match — use that once you've validated the full ladder and just want the confluence hits.">≡ All SD levels</button>
     <button class="npocgo" id="npocBtn">Mark NPOC</button>
   </div>
   <div class="note">
@@ -219,7 +219,7 @@ function bandsFor(f, mode) {
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const state = { armed: new Set(FITTED_LINES.map(l => l.key)), nakedOnly: true, showAllSd: false, showMarkers: false };
+const state = { armed: new Set(FITTED_LINES.map(l => l.key)), nakedOnly: true, showAllSd: true, showMarkers: false };
 let _meta = null;
 let chart = null, series = null, overlayCanvas = null, octx = null, dpr = window.devicePixelRatio || 1;
 let days = [];       // [{ date, open, high, low, close, tStart, tEnd, bars:[], f, touch:{} }]
@@ -624,49 +624,108 @@ function drawOverlay() {
     line(d.low, '#e5e7eb', [], wide ? `Low ${fmtPct(loPct)}` : '', true);
   }
 
-  drawAsiaBox(ts);
-  drawNpoc(ts);
+  drawAsiaShading(ts);
+  const anchorX = computeAnchorX(ts);
+  drawNpoc(ts, anchorX);
+  drawTestDayGuide(anchorX);   // drawn LAST — always on top of the SD grid, never buried under it
 }
 
-function drawAsiaBox(ts) {
+// Shaded rectangle at the Test Day's actual Asia-session high/low and time span.
+// Drawn early (under the SD grid) — it's context, not the primary reference marker.
+function drawAsiaShading(ts) {
   if (!npoc?.asia?.bars?.length) return;
   const bars = npoc.asia.bars;
   const x1 = ts.timeToCoordinate(bars[0].time), x2 = ts.timeToCoordinate(bars[bars.length - 1].time);
-  if (x1 == null || x2 == null) return;
   const y1 = series.priceToCoordinate(npoc.asia.high), y2 = series.priceToCoordinate(npoc.asia.low);
-  if (y1 == null || y2 == null) return;
+  if (x1 == null || x2 == null || y1 == null || y2 == null) return;
   octx.save();
-  octx.fillStyle = 'rgba(59,130,246,0.10)';
+  octx.fillStyle = 'rgba(59,130,246,0.14)';
   octx.fillRect(x1, y1, x2 - x1, y2 - y1);
-  octx.strokeStyle = 'rgba(59,130,246,0.5)'; octx.lineWidth = 1; octx.setLineDash([2, 2]);
+  octx.strokeStyle = 'rgba(59,130,246,0.7)'; octx.lineWidth = 1.5; octx.setLineDash([2, 2]);
   octx.strokeRect(x1, y1, x2 - x1, y2 - y1);
   octx.restore();
 }
 
-// SD grid — full chart width (a projection, not a per-session band). Only key
-// anchors (0/0.25/0.5/0.75/1) and matched levels draw by default; "All SD levels"
-// reveals the full -9.5..+10.5 grid.
-function drawNpoc(ts) {
+// The x-coordinate (clamped into view) at the END of the Test Day's Asia session —
+// the point the whole SD grid is anchored at. Pure geometry, no drawing, so both
+// drawNpoc() (label column) and drawTestDayGuide() (the marker itself) agree on it.
+function computeAnchorX(ts) {
+  if (!npoc?.asia?.bars?.length) return null;
+  const bars = npoc.asia.bars;
+  const x2 = ts.timeToCoordinate(bars[bars.length - 1].time);
+  const x1 = ts.timeToCoordinate(bars[0].time);
+  const rawX = x2 != null ? x2 : x1;
+  if (rawX == null) return null;
+  const W = overlayCanvas.width / dpr;
+  return Math.max(4, Math.min(W - 4, rawX));
+}
+
+// Full-height vertical guide + label at the Test Day marker. Drawn LAST (after the
+// SD grid's ~45 horizontal lines) so it's never painted over and stays legible as
+// the one unambiguous "this is the day everything is anchored to" reference.
+// If the Test Day marker's x falls under the floating results panel (common —
+// the default Test Day is near "now", i.e. the right edge of the loaded range,
+// same corner the panel docks to), push the tag below the panel instead of
+// letting it sit invisibly underneath.
+function labelYBelowPanel(x) {
+  const el = $('npocPanel');
+  if (!el || el.classList.contains('hidden')) return 12;
+  const chartRect = $('chartWrap').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const left = r.left - chartRect.left, right = r.right - chartRect.left;
+  return (x >= left - 24 && x <= right + 24) ? (r.bottom - chartRect.top) + 14 : 12;
+}
+
+function drawTestDayGuide(anchorX) {
+  if (anchorX == null || !npoc) return;
+  const W = overlayCanvas.width / dpr, H = overlayCanvas.height / dpr;
+  octx.save();
+  octx.strokeStyle = '#60a5fa'; octx.lineWidth = 1.5; octx.setLineDash([5, 3]); octx.globalAlpha = 0.85;
+  octx.beginPath(); octx.moveTo(anchorX, 0); octx.lineTo(anchorX, H); octx.stroke();
+  octx.setLineDash([]); octx.globalAlpha = 1;
+  const right = anchorX > W - 150;
+  const tag = '▸ Test Day ' + npoc.testDate;
+  const ly = labelYBelowPanel(anchorX);
+  octx.font = "bold 11px 'DM Mono', monospace";
+  octx.textAlign = right ? 'right' : 'left';
+  const tw = octx.measureText(tag).width, tx = anchorX + (right ? -6 : 6);
+  octx.fillStyle = 'rgba(11,13,20,0.85)';
+  octx.fillRect(right ? tx - tw - 4 : tx - 4, ly - 8, tw + 8, 16);
+  octx.fillStyle = '#60a5fa';
+  octx.fillText(tag, tx, ly);
+  octx.restore();
+}
+
+// SD grid — lines span the full chart width so a level can be eyeballed against
+// EARLIER days' forecast lines (that's the whole confluence check), but every
+// label is anchored at the Test Day's marker (anchorX) instead of a fixed x, so
+// the ladder reads as one column belonging to that day, ordered top-to-bottom by
+// price, rather than 45 labels scattered under whichever day happens to be at
+// the canvas edge. "All SD levels" (on by default) draws the whole -9.5..+10.5
+// ladder for validation; turning it off keeps only the key anchors + matches.
+function drawNpoc(ts, anchorX) {
   if (!npoc) return;
   const W = overlayCanvas.width / dpr;
+  const labelX = anchorX != null ? anchorX : 6;
+  const right = anchorX != null && anchorX > W - 150;
   for (const [level, entry] of npoc.byLevel) {
     if (!state.showAllSd && !entry.isKey && !entry.matches.length) continue;
     const y = series.priceToCoordinate(entry.price);
     if (y == null) continue;
     const tight = entry.matches.some(m => m.isTight);
     const has = entry.matches.length > 0;
-    const color = tight ? '#26a69a' : has ? '#f59e0b' : (entry.isKey ? '#6b7280' : '#374151');
+    const color = tight ? '#26a69a' : has ? '#f59e0b' : (entry.isKey ? '#9ca3af' : '#4b5563');
     const dash = has ? (tight ? [] : [6, 4]) : [1, 3];
     octx.save();
     octx.strokeStyle = color;
     octx.lineWidth = tight ? 2 : has ? 1.5 : 1;
     octx.setLineDash(dash);
-    octx.globalAlpha = has ? 0.9 : 0.5;
+    octx.globalAlpha = has ? 0.9 : 0.6;
     octx.beginPath(); octx.moveTo(0, y); octx.lineTo(W, y); octx.stroke();
     octx.setLineDash([]); octx.globalAlpha = 1; octx.fillStyle = color;
-    octx.textAlign = 'left';
+    octx.textAlign = right ? 'right' : 'left';
     const label = 'SD' + level.toFixed(2) + (has ? ` ×${entry.matches.reduce((s, m) => s + (m.density || 1), 0)}` : '');
-    octx.fillText(label, 6, y - 8);
+    octx.fillText(label, labelX + (right ? -6 : 6), y - 8);
     octx.restore();
   }
 }
