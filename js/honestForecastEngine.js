@@ -54,12 +54,19 @@ const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };
 // know whether TP or SL printed first, and assuming TP is the biggest source of
 // optimistic bias. Holding to the close (with a stop) is symmetric across fade
 // and follow, so the two hypotheses are fairly comparable.
-function simulateDayHonest(bar, hl75pct, ocMedPct, regime, opts) {
+// ── Shared order resolver: given an ALREADY-DECIDED band/action, resolve the
+// fill/cost/mark-to-close mechanics ──────────────────────────────────────────
+// Extracted from simulateDayHonest (2026-08-21) so any selector can drive the
+// SAME honest D1 mechanics without re-implementing them: simulateDayHonest's
+// own entryMode branches (fade/follow/regime/regime_fade) below, and — the
+// reason for the extraction — js/fxVolCarryEngine.js's VRP-gated selector,
+// which decides `band`/`act` from the CME CVOL implied-vs-realized spread
+// instead of entryMode. `band` = which resting band(s) get an order ('up' |
+// 'down' | 'both'); `act` = 'fade' (resting limit at the band) | 'follow'
+// (breakout stop through it).
+export function resolveHonestDay(bar, hl75pct, ocMedPct, band, act, opts) {
   const { open, high, low, close } = bar;
-  const {
-    entryMode = 'fade', slMult = 1.5,
-    costPct = 0.012, slipPct = 0.006, breachReclaim = false,
-  } = opts;
+  const { slMult = 1.5, costPct = 0.012, slipPct = 0.006, breachReclaim = false } = opts;
 
   // Exhaustion band. NOTE on geometry: the live chart's HL lines are DYNAMIC —
   // they trail the opposite running intraday extreme (proj-high off the running
@@ -73,21 +80,6 @@ function simulateDayHonest(bar, hl75pct, ocMedPct, regime, opts) {
   const slD = hl * slMult;
   const upBand = open + hl;
   const dnBand = open - hl;
-
-  // Which band do we rest an order at, and do we fade or follow it?
-  let band, act;
-  const trend = regime === 'BULL' ? 'up' : regime === 'BEAR' ? 'down' : 'range';
-  if (entryMode === 'fade') {
-    band = trend === 'range' ? 'both' : trend;  act = 'fade';
-  } else if (entryMode === 'follow') {
-    band = trend === 'range' ? 'both' : trend;  act = 'follow';
-  } else if (entryMode === 'regime') {
-    if (trend === 'range') { band = 'both'; act = 'fade'; }
-    else                   { band = trend;  act = 'follow'; }
-  } else { // regime_fade
-    if (trend === 'range') { band = 'both'; act = 'follow'; }
-    else                   { band = trend;  act = 'fade'; }
-  }
 
   // Resolve one order. isStop = breakout entry (level on the far side of the
   // move → fills as price runs INTO it → slips). Otherwise a resting limit.
@@ -126,7 +118,17 @@ function simulateDayHonest(bar, hl75pct, ocMedPct, regime, opts) {
     }
     const mfeExc = side === 'SELL' ? Math.max(0, entry - low) : Math.max(0, high - entry);
     const mfe_r  = slD > 0 ? +Math.min(mfeExc / slD, 5).toFixed(3) : 0;
-    return { side, outcome, pnlPct: +(gross - costPct).toFixed(5), mfe_r };
+    // Real MAE (not MFE): worst move AGAINST the position over the trade's
+    // path, off the actual D1 OHLC — required by the house 3-CSV convention
+    // (MD files/CLAUDE.md: "MAE must come from the real intra-trade path").
+    const maeExc = side === 'SELL' ? Math.max(0, high - entry) : Math.max(0, entry - low);
+    const maePct = +((maeExc / open) * 100).toFixed(4);
+    // Per-trade risk unit in % of price (vol-scaled, varies trade to trade) —
+    // lets an R-multiple export be a genuine risk-adjusted unit rather than a
+    // fixed % of notional (the redundant-with-%-Return degenerate case CLAUDE.md
+    // flags when R-unit and the $ export both use the same fixed %).
+    const slDPct = +((slD / open) * 100).toFixed(4);
+    return { side, outcome, pnlPct: +(gross - costPct).toFixed(5), mfe_r, maePct, slDPct };
   }
 
   const orders = [];
@@ -144,7 +146,28 @@ function simulateDayHonest(bar, hl75pct, ocMedPct, regime, opts) {
     const r = resolve(level, side, isStop);
     if (r) return { filled: true, dir, act, ...r };
   }
-  return { filled: false, dir: '', act, side: '', outcome: 'no_fill', pnlPct: 0, mfe_r: 0 };
+  return { filled: false, dir: '', act, side: '', outcome: 'no_fill', pnlPct: 0, mfe_r: 0, maePct: 0, slDPct: 0 };
+}
+
+function simulateDayHonest(bar, hl75pct, ocMedPct, regime, opts) {
+  const { entryMode = 'fade' } = opts;
+
+  // Which band do we rest an order at, and do we fade or follow it?
+  let band, act;
+  const trend = regime === 'BULL' ? 'up' : regime === 'BEAR' ? 'down' : 'range';
+  if (entryMode === 'fade') {
+    band = trend === 'range' ? 'both' : trend;  act = 'fade';
+  } else if (entryMode === 'follow') {
+    band = trend === 'range' ? 'both' : trend;  act = 'follow';
+  } else if (entryMode === 'regime') {
+    if (trend === 'range') { band = 'both'; act = 'fade'; }
+    else                   { band = trend;  act = 'follow'; }
+  } else { // regime_fade
+    if (trend === 'range') { band = 'both'; act = 'follow'; }
+    else                   { band = trend;  act = 'fade'; }
+  }
+
+  return resolveHonestDay(bar, hl75pct, ocMedPct, band, act, opts);
 }
 
 // ── Walk-forward engine (one entryMode) ──────────────────────────────────────
