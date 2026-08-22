@@ -311,6 +311,13 @@
   .ai-read .ai-rk{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:2px}
   .ai-read .ai-rv{color:var(--text2);font-size:12.5px;line-height:1.5;padding-left:22px;border-left:2px solid var(--border);margin-left:6px}
   .ai-read .ai-rv b{color:var(--text)}
+  /* Macro backdrop / dollar regime / yields-curve — always visible (not behind
+     the "signal detail" toggle every other field lives in), since this is the
+     WHY behind the read: what's driving markets and the case for the other
+     side, not just the level/positioning read. */
+  .ai-macro{display:flex;flex-direction:column;gap:9px;margin-top:11px;padding:11px 13px;
+    background:var(--card2);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px}
+  .ai-macro .ai-rv{border-left-color:rgba(79,125,240,.35)}
   .ai-dodont{display:flex;gap:16px;flex-wrap:wrap}
   .ai-dl{font-size:10.5px;font-weight:700;margin-bottom:5px;letter-spacing:.02em}
   .ai-dl.pos{color:var(--bull)} .ai-dl.neg{color:var(--bear)}
@@ -4531,9 +4538,18 @@ async function storyAI(r) {
 // Full per-pair AI analysis — the rich object we already generate (macro / yield /
 // COT / dollar-regime reads + framework + do/avoid), surfaced instead of hidden.
 // AI OPINION, clearly labelled — a reasoned synthesis, not a backtested signal.
+// Split in two: MACRO_READS surfaces the "why is this happening economically"
+// fields always-visible (previously buried behind the same collapsed toggle
+// as every options/technical field, which meant the macro narrative — when
+// the model did write it — was routinely never seen). AI_READS is everything
+// else, still collapsed behind "signal detail" since it's genuinely secondary
+// (rate-spread models, session stats, vol cone, etc.).
+const MACRO_READS = [
+  ['macroRead', '🌍', 'Macro backdrop'], ['dollarRegimeRead', '💵', 'Dollar regime'],
+  ['yieldCurveRead', '📉', 'Yields & curve'],
+];
 const AI_READS = [
-  ['macroRead', '🌍', 'Macro'], ['dollarRegimeRead', '💵', 'Dollar regime'],
-  ['yieldCurveRead', '📉', 'Yields & curve'], ['spreadSignalRead', '🔮', 'Rate-spread signal'],
+  ['spreadSignalRead', '🔮', 'Rate-spread signal'],
   ['armaRead', '📈', 'Rate forecast (ARMA)'], ['cotRead', '👥', 'Positioning (COT)'],
   ['sentimentPositioning', '🎭', 'Retail sentiment'], ['oiRead', '🎯', 'Options'],
   ['garchRead', '🌊', 'Volatility'], ['sessionRead', '🕐', 'Session'],
@@ -4560,6 +4576,8 @@ async function loadDrawerAnalysis(r) {
   const bias = a.overallBias ? `<span class="chip ${biasCls}">${esc(a.overallBias)}</span>` : '';
   const conv = a.convictionScore != null ? `<span class="muted">AI conviction ${Math.round(a.convictionScore)}/10</span>` : (a.conviction ? `<span class="muted">${esc(a.conviction)}</span>` : '');
   const head = a.headline ? `<div class="ai-head">“${esc(a.headline)}”</div>` : '';
+  const macroReads = MACRO_READS.filter(([k]) => a[k] && String(a[k]).trim())
+    .map(([k, ic, lbl]) => `<div class="ai-read"><div class="ai-rk"><span>${ic}</span>${lbl}</div><div class="ai-rv">${esc(a[k])}</div></div>`).join('');
   const reads = AI_READS.filter(([k]) => a[k] && String(a[k]).trim())
     .map(([k, ic, lbl]) => `<div class="ai-read"><div class="ai-rk"><span>${ic}</span>${lbl}</div><div class="ai-rv">${esc(a[k])}</div></div>`).join('');
   const chips = (arr, cls) => (arr ?? []).filter(Boolean).map(x => `<span class="ai-do ${cls}">${esc(x)}</span>`).join('');
@@ -4594,8 +4612,9 @@ async function loadDrawerAnalysis(r) {
   } else if (tod && tod.rationale) {
     tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
   }
+  const macroBlock = macroReads ? `<div class="ai-macro">${macroReads}</div>` : '';
   const detail = `${reads}${framework}${dodont}${risks}${levels}`;
-  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${tradeCard}` +
+  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${macroBlock}${tradeCard}` +
     (detail ? `<div class="ai-body" style="display:none;margin-top:10px">${detail}</div>` : '') + age;
   const body = box.querySelector('.ai-body');
   if (body) {
