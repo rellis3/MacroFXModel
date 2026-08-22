@@ -85,8 +85,8 @@
     <span class="chip" data-lvl="monday" title="The full raw ladder — 21 fib multiples per week. Off by default for the same density reason as Asia ladder.">
       <span class="dot" style="background:#60a5fa"></span>Monday ladder (full)
     </span>
-    <span class="chip on" data-lvl="confluence" title="Levels where today's ladder and yesterday's ladder (or this week's/last week's) land within the pip threshold — reused as-is from js/ranges.js detectConfluences, same threshold the live dashboard uses (2 pips FX default, $5/$7.5 gold, etc).">
-      <span class="dot" style="background:#facc15"></span>Confluent (strong)
+    <span class="chip on" data-lvl="confluence" title="Levels where today's ladder and yesterday's ladder (or this week's/last week's) land within the pip threshold, matching the reference Pine indicator's confluence math exactly (js/confluence-core.js, clusterMerge:false). Green = Strongest (also outside today's own range AND within the tight 10% band). Orange = Strong (outside range, not tight). Faint grey = inside-range confluence — not a Pine 'Strong' line.">
+      <span class="dot" style="background:#facc15"></span>Confluent (Strong/Strongest)
     </span>
   </div>
   <div class="arm" id="testArm">
@@ -98,8 +98,8 @@
     </span>
     <span class="chip on" data-test="vwap_tap"><span class="dot" style="background:#14b8a6"></span>VWAP tap <span class="cnt" id="cnt_vwap_tap"></span></span>
     <span class="chip on" data-test="adx_regime"><span class="dot" style="background:#f472b6"></span>ADX regime switch <span class="cnt" id="cnt_adx_regime"></span></span>
-    <span class="chip" id="strongOnlyChip" title="Restrict Wick+Engulf and ADX regime switch (the two level-touch/reversion tests) to CONFLUENT levels only — today's ladder must land near yesterday's (or this week's near last week's) for a level to count as a valid touch. Midpoint/VWAP/session-extreme are unaffected — confluence isn't a meaningful concept for those.">
-      <span class="dot" style="background:#facc15"></span>⭐ Strong-only entries (wick+engulf, ADX)
+    <span class="chip" id="levelModeChip" title="Cycles the level filter Wick+Engulf and ADX regime switch (the two level-touch/reversion tests) test against, matching the reference Pine indicator's Display Mode: All = every today-vs-yesterday confluence pair; Strong = confluence pairs also outside today's own range (orange); Strongest = Strong pairs that are additionally within the tight 10%-of-threshold band (green). Midpoint/VWAP/session-extreme are unaffected — confluence isn't a meaningful concept for those. Click to cycle.">
+      <span class="dot" id="levelModeDot" style="background:#9ca3af"></span><span id="levelModeLabel">All levels</span>
     </span>
   </div>
   <div id="chartWrap">
@@ -108,7 +108,7 @@
     <div id="legend">
       <div class="row"><span class="sw" style="background:#f59e0b;opacity:.4"></span>Asia ladder (full, faint, off by default)</div>
       <div class="row"><span class="sw" style="background:#60a5fa;opacity:.4"></span>Monday ladder (full, faint, off by default)</div>
-      <div class="row"><span class="sw" style="background:#facc15"></span>Confluent = today vs yesterday within pip threshold (thick gold, on by default)</div>
+      <div class="row"><span class="sw" style="background:#22c55e"></span>Strongest confluence (outside range + tight) &nbsp;<span class="sw" style="background:#facc15"></span>Strong confluence (outside range) &nbsp;<span class="sw" style="background:#94a3b8"></span>inside-range confluence (faint, not a Pine "Strong" line)</div>
       <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges — a level comparison, no marker (see the chip tooltip)</div>
       <div class="row"><span class="sw" style="background:#22c55e"></span>▲ long / <span class="sw" style="background:#ef4444"></span>▼ short entry — ring color = test</div>
       <div class="row">W/L/open counts per chip are still SL(1.5×ATR)/2R-simulated, just not drawn on the chart</div>
@@ -123,7 +123,7 @@ import { PAIRS } from './js/config.js';
 import {
   normalizeBars, buildAsiaRangeHistory, buildMondayRangeHistory, buildLevelTimeline,
   detectWickEngulfing, detectMidpointPullback, detectSessionExtremeAnchor, detectVwapTap,
-  detectAdxRegimeSwitch, planTrades,
+  detectAdxRegimeSwitch, planTrades, isOutsideRange,
 } from './js/entryTriggerLabEngine.js';
 import { getPipSize } from './js/utils.js';
 
@@ -156,8 +156,16 @@ const state = {
   // side") and stay on by default.
   armedLevels: new Set(['confluence']),
   armedTests: new Set(['wick_engulf', 'midpoint_pullback', 'session_extreme', 'vwap_tap', 'adx_regime']),
-  strongOnly: false,
+  // Mirrors the reference Pine indicator's "Display Mode" dropdown:
+  // all = every raw confluence pair (today-vs-yesterday within threshold);
+  // strong = confluence pairs whose selected price also sits OUTSIDE today's
+  // own body range (fib < 0 || fib > 1) — matches Pine's is_outside_asia gate;
+  // strongest = the "strong" subset that's additionally within the TIGHT
+  // (10% of normal) threshold. Cycled via levelModeChip.
+  levelMode: 'all',
 };
+const LEVEL_MODES = ['all', 'strong', 'strongest'];
+const LEVEL_MODE_LABEL = { all: 'All levels', strong: '⭐ Strong-only entries (wick+engulf, ADX)', strongest: '⭐⭐ Strongest-only entries (wick+engulf, ADX)' };
 
 let chart = null, series = null, overlayCanvas = null, octx = null, dpr = window.devicePixelRatio || 1;
 let asiaTimeline = [], mondayTimeline = [];
@@ -188,9 +196,12 @@ let currentSymbol = null, currentPip = 0.0001;
   });
   $('testArm').addEventListener('click', e => {
     const chip = e.target.closest('.chip'); if (!chip) return;
-    if (chip.id === 'strongOnlyChip') {
-      state.strongOnly = !state.strongOnly;
-      chip.classList.toggle('on', state.strongOnly);
+    if (chip.id === 'levelModeChip') {
+      const idx = (LEVEL_MODES.indexOf(state.levelMode) + 1) % LEVEL_MODES.length;
+      state.levelMode = LEVEL_MODES[idx];
+      chip.classList.toggle('on', state.levelMode !== 'all');
+      $('levelModeLabel').textContent = LEVEL_MODE_LABEL[state.levelMode];
+      $('levelModeDot').style.background = state.levelMode === 'strongest' ? '#22c55e' : state.levelMode === 'strong' ? '#facc15' : '#9ca3af';
       if (bars5m.length) { recomputeEvents(); scheduleDraw(); }
       return;
     }
@@ -262,7 +273,7 @@ function showMarkerInfo(m, cx, cy) {
   const entryBar = barsByTime.get(ev.time);
   const rows = [];
   rows.push(`<div class="mi-row"><span class="mi-lbl">Direction</span><span>${ev.dir === 'long' ? '▲ long' : '▼ short'}</span></div>`);
-  if (ev.level != null) rows.push(`<div class="mi-row"><span class="mi-lbl">Level</span><span>${ev.level.toFixed(p)}${ev.fib != null ? ` (${ev.levelSource ?? ''} fib ${ev.fib})` : ` (${ev.levelSource ?? ''})`}${ev.strong ? ' ⭐' : ''}</span></div>`);
+  if (ev.level != null) rows.push(`<div class="mi-row"><span class="mi-lbl">Level</span><span>${ev.level.toFixed(p)}${ev.fib != null ? ` (${ev.levelSource ?? ''} fib ${ev.fib})` : ` (${ev.levelSource ?? ''})`}${ev.strongest ? ' ⭐⭐' : ev.strong ? ' ⭐' : ''}</span></div>`);
   if (ev.adx != null) rows.push(`<div class="mi-row"><span class="mi-lbl">ADX(4H)</span><span>${ev.adx.toFixed(1)}</span></div>`);
   if (ev.planned) {
     rows.push(`<div class="mi-row"><span class="mi-lbl">SL / TP</span><span>${ev.sl.toFixed(p)} / ${ev.tp.toFixed(p)}</span></div>`);
@@ -357,10 +368,10 @@ async function loadData() {
 // recompute, not just a redraw).
 function recomputeEvents() {
   const pip = currentPip;
-  events.wick_engulf = detectWickEngulfing(bars5m, asiaTimeline, mondayTimeline, { tolerance: pip, strongOnly: state.strongOnly });
+  events.wick_engulf = detectWickEngulfing(bars5m, asiaTimeline, mondayTimeline, { tolerance: pip, levelMode: state.levelMode });
   events.midpoint_pullback = detectMidpointPullback(bars5m, asiaTimeline, mondayTimeline, { breakoutTol: pip * 2 });
   events.vwap_tap = detectVwapTap(bars5m, { awayTol: pip * 3 });
-  events.adx_regime = detectAdxRegimeSwitch(bars5m, asiaTimeline, mondayTimeline, { threshold: 30, tolerance: pip, strongOnly: state.strongOnly });
+  events.adx_regime = detectAdxRegimeSwitch(bars5m, asiaTimeline, mondayTimeline, { threshold: 30, tolerance: pip, levelMode: state.levelMode });
   sessionExtreme = detectSessionExtremeAnchor(bars5m, currentSymbol, { minPips: 3 });
 
   // Plan a trade (SL/TP + walk-forward outcome) for each point-trigger event —
@@ -455,22 +466,34 @@ function drawOverlay() {
       for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(96,165,250,.35)', true, 1);
     }
   }
-  // Confluent ("strong") levels — where THIS period's ladder and the PRIOR
-  // period's ladder land within the pip threshold (reused from
-  // js/ranges.js detectConfluences, same 2-pip-FX/etc default the live
-  // dashboard uses). Drawn thicker, in gold, on top of the plain ladder —
-  // this is the "today vs yesterday, marked" comparison, always visible
-  // regardless of the Strong-only test filter below.
+  // Confluent levels — where THIS period's ladder and the PRIOR period's
+  // ladder land within the pip threshold (js/confluence-core.js
+  // detectConfluencesCore, clusterMerge:false — one line per raw qualifying
+  // pair, matching the reference Pine indicator rather than the dashboard's
+  // averaging mode). Only pairs whose selected price sits OUTSIDE today's
+  // own body range count as "Strong"/"Strongest" in Pine (is_outside_asia) —
+  // an inside-range pair is drawn faint, not as a signal line. Strong pairs
+  // are orange; the tight (Strongest) subset is green — matching Pine's
+  // color convention. Always visible regardless of the level-mode test
+  // filter above (that filter only gates which levels wick_engulf/adx_regime
+  // actually test against).
   if (state.armedLevels.has('confluence')) {
+    const drawConfluences = (list, x1, x2, dashed) => {
+      for (const c of list) {
+        const outside = isOutsideRange(c.todayFib);
+        const color = !outside ? 'rgba(148,163,184,.35)' : c.isTight ? '#22c55e' : '#facc15';
+        drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(c.price), color, dashed, outside ? 3 : 1);
+      }
+    };
     for (const day of asiaTimeline) {
       const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
       if (x1 == null && x2 == null) continue;
-      for (const c of day.confluences) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(c.price), '#facc15', false, 3);
+      drawConfluences(day.confluences, x1, x2, false);
     }
     for (const wk of mondayTimeline) {
       const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
       if (x1 == null && x2 == null) continue;
-      for (const c of wk.confluences) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(c.price), '#facc15', true, 3);
+      drawConfluences(wk.confluences, x1, x2, true);
     }
   }
   // Session-extreme-anchor: only draw the alternate ladder on days it diverges.

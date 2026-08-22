@@ -113,11 +113,16 @@ t('levelsActiveOn: asia is same-date only, monday spans through the week', () =>
   assert.equal(levelsActiveOn('2026-01-05', timeline, 'asia'), null); // no prior day to build day-1's ladder
 });
 
-t('activeLevelsAt: strongOnly returns only the confluent (today-vs-yesterday) levels, tagged strong', () => {
+t('activeLevelsAt: levelMode "strong" returns only outside-range confluent (today-vs-yesterday) levels, tagged strong', () => {
   // Two Asia days at deliberately different scale/offset so most of the two
   // ladders DON'T land near each other — except day2's own low (1.1049),
   // which lands within the FX 2-pip default of day1's high (1.1050),
   // producing a handful of real confluences out of the full 21-level ladder.
+  // Per the reference Pine indicator, "strong"/"strongest" both additionally
+  // require the selected price to sit OUTSIDE today's own body range
+  // (fib < 0 || fib > 1) — of the 3 raw confluences this synthetic pair
+  // produces (todayFib -1, 0, 1), only the todayFib=-1 one qualifies as
+  // outside-range, and it isn't tight, so "strongest" is empty here.
   const bars = [
     ...mkAsiaDay('2026-01-05', 1.1050, 1.0950),
     ...mkAsiaDay('2026-01-06', 1.1449, 1.1049),
@@ -126,11 +131,15 @@ t('activeLevelsAt: strongOnly returns only the confluent (today-vs-yesterday) le
   const timeline = buildLevelTimeline(hist, 'EUR/USD', 'asia');
   const bar = { datetime: '2026-01-06 08:00:00' };
   const full = activeLevelsAt(bar, timeline, []);
-  const strong = activeLevelsAt(bar, timeline, [], { strongOnly: true });
+  const strong = activeLevelsAt(bar, timeline, [], { levelMode: 'strong' });
+  const strongest = activeLevelsAt(bar, timeline, [], { levelMode: 'strongest' });
   assert.ok(full.length > strong.length, 'confluence filtering should narrow the ladder down');
-  assert.ok(strong.length > 0, 'two near-identical ladders should produce at least one confluence');
+  assert.equal(strong.length, 1, 'only the one outside-range confluence pair should qualify as strong');
+  assert.equal(strong[0].fib, -1);
   assert.ok(strong.every(l => l.strong === true));
+  assert.ok(strong.every(l => l.strongest === false), 'the qualifying pair is not tight, so not strongest');
   assert.ok(full.every(l => l.strong === false));
+  assert.equal(strongest.length, 0, 'no tight+outside-range confluence exists in this synthetic pair');
   // fib carried through as TODAY's own extension multiple, not lost.
   assert.ok(strong.every(l => Number.isFinite(l.fib)));
 });
