@@ -237,6 +237,83 @@ def get_open_positions(magic: int = 20260099) -> list:
     return [p for p in (mt5.positions_get() or []) if p.magic == magic]
 
 
+def serialize_closed_trades(magic: int = 20260099) -> list:
+    """
+    Today's CLOSED positions for this bot's magic, in the shape the dashboard's
+    trade-history merge expects on a status push (`today_closed_trades`).
+
+    Window vs bucket — the two clocks do not agree, and that is the whole
+    subtlety here. MT5 stamps deal `.time` on the BROKER's clock (UTC+3), and
+    `history_deals_get()` reads its date arguments on that same clock. But
+    `mergeTradeHistory()` in `_worker.js` files whatever we send under the
+    Railway server's *UTC* date. Passing a plain UTC-midnight window (what the
+    other bots do) therefore asks MT5 for 21:00→21:00 UTC, so every trade that
+    closes in the last three hours of a UTC day falls outside the window — and
+    by the time the next window opens, the merge has rolled over and would file
+    it under tomorrow. So: ask for a deliberately wide window, then keep only
+    the deals whose close, converted back to real UTC, lands on today's UTC
+    date. `time_close` itself stays broker-stamped and is shipped alongside
+    `tz_offset_sec` — the dashboard corrects it on render.
+    """
+    if not HAS_MT5:
+        return []
+    try:
+        off      = tz_offset_sec()
+        now_utc  = datetime.now(timezone.utc)
+        day_utc  = now_utc.strftime('%Y-%m-%d')
+        # A day either side, so the broker-clock skew cannot clip the edges.
+        deals = mt5.history_deals_get(now_utc - timedelta(days=1),
+                                      now_utc + timedelta(days=1)) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != magic:
+                continue
+            pid = int(d.position_id)
+            by_pos.setdefault(pid, {'in': None, 'out': []})
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):        # OUT / OUT_BY
+                by_pos[pid]['out'].append(d)
+
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue                    # still open
+            last_out = max(outs, key=lambda d: d.time)
+            # Broker stamp → real UTC, so the day test matches the merge's bucket.
+            if datetime.fromtimestamp(int(last_out.time) - off,
+                                      timezone.utc).strftime('%Y-%m-%d') != day_utc:
+                continue
+            ind = grp['in']
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                # Entry deal is older than the window — infer side from the exit.
+                direction, open_price, time_open =                     ('BUY' if last_out.type == 1 else 'SELL'), None, None
+            result.append({
+                'position_id':   pid,
+                'symbol':        last_out.symbol,
+                'direction':     direction,
+                'lots':          round(sum(d.volume     for d in outs), 2),
+                'open_price':    open_price,
+                'close_price':   round(float(last_out.price), 5),
+                'profit':        round(sum(d.profit     for d in outs), 2),
+                'swap':          round(sum(d.swap       for d in outs), 2),
+                'commission':    round(sum(d.commission for d in outs), 2),
+                'time_open':     time_open,
+                'time_close':    int(last_out.time),
+                'tz_offset_sec': off,
+                'comment':       str((ind.comment if ind else last_out.comment) or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception as exc:
+        log.warning(f'serialize_closed_trades failed: {exc}')
+        return []
+
+
 def fetch_close_price(ticket: int) -> float | None:
     """Return the closing deal price for a position by its position ticket ID."""
     if not HAS_MT5:

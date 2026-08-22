@@ -18,7 +18,7 @@ from config    import load_config, sl_distance, tp_distance, chandelier_stop, _d
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
                        pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price,
-                       tz_offset_sec)
+                       tz_offset_sec, serialize_closed_trades)
 import journal
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
@@ -673,6 +673,12 @@ def main() -> None:
                         }
                         for p in open_pos
                     ],
+                    # Closed positions matter as much as open ones: the dashboard's
+                    # `mergeTradeHistory()` only files a bot's trades into
+                    # trade_hist_<key>_<date> when its status push carries this
+                    # field. Without it the bot's trades show in the live table
+                    # while open and then vanish for good on close.
+                    'today_closed_trades': serialize_closed_trades(),
                 })
 
         except KeyboardInterrupt:

@@ -152,6 +152,7 @@ import { forecastAccuracy as _forecastAccuracy } from './js/forecastAccuracyEngi
 import { reversionProof as _reversionProof } from './js/reversionProofEngine.js';   // per-day transparent reversion-vs-line proof
 import { sizePortfolio as _sizePortfolio } from './js/positionSizerEngine.js';   // vol-based position sizing off the forecast
 import { exhaustionForecast as _exhaustionForecast } from './js/exhaustionForecastEngine.js';   // fade-back line + range-budget-gated fade
+import { exhaustionLadder as _exhaustionLadder } from './js/exhaustionLadderEngine.js';   // layered turn ladder (session/ordinal/side) + hazard curve
 import { newsExhaustion as _newsExhaustion } from './js/newsExhaustionEngine.js';   // does news predict fade@median vs blow-through@75th
 import { vumanchuFade as _vumanchuFade } from './js/vumanchuFadeEngine.js';   // WaveTrend-confirmed fade at median/75th vs blind
 import { forecastStyleFade as _forecastStyleFade } from './js/forecastStyleFadeEngine.js';   // which forecaster's lines fade best (basis × line × fade/follow)
@@ -18771,6 +18772,94 @@ app.post('/api/exhaustion-forecast/run', express.json({ limit: '16kb' }), (req, 
 });
 app.get('/api/exhaustion-forecast/status/:jobId', (req, res) => {
   const job = exhJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+
+// ── Exhaustion Ladder — the LAYERED turn map (js/exhaustionLadderEngine.js). ──
+//    Where the vol bands give the day's RANGE and exhaustion-forecast gives ONE fade-back
+//    constant, this gives a ladder of turn DISTANCES-FROM-OPEN (p25/p50/p75/p90) split by
+//    session, ordinal and side — plus the two-barrier hazard curve. Because the rungs are
+//    anchored to the session open (known at 00:00) they project to real prices at midnight,
+//    which the running-extreme-anchored fade-back line cannot do.
+//
+//    The fit is slow (M1 parquet per pair) but the constants are decade-scale and move very
+//    slowly, so it is a CACHED artifact: GET serves the last run, POST recomputes. today.html
+//    reads the GET on every page load, so the cached payload is kept compact.
+const exhLadderJobs = new Map();
+const _latestExhLadderFile = () => {
+  try {
+    const files = fs.readdirSync(WBT_DATA_DIR).filter(f => f.startsWith('exhaustion_ladder_') && f.endsWith('.json'));
+    return files.length ? path.join(WBT_DATA_DIR, files.sort().at(-1)) : null;
+  } catch { return null; }
+};
+
+// Trim the engine's full output to what a page actually renders. Dropping the IS hazard and
+// the per-session hazard here is deliberate: the OOS curve is the only one that was never
+// fitted, so it is the only one a live page should ever show.
+const _compactLadder = e => ({
+  nDays: e.nDays, daysUsed: e.daysUsed, dateFrom: e.dateFrom, dateTo: e.dateTo, splitDate: e.splitDate,
+  revFrac: e.revFrac, turnsPerDay: e.turnsPerDay, nTurnsIs: e.nTurnsIs, nTurnsOos: e.nTurnsOos,
+  ladder: e.ladder, runLadder: e.runLadder, coverage: e.coverage,
+  hazard: { thetaSig: e.hazard.thetaSig, horizonMin: e.hazard.horizonMin, spacingMin: e.hazard.spacingMin,
+            nOos: e.hazard.nOos, oos: e.hazard.oos },
+});
+
+app.get('/api/exhaustion-ladder', (req, res) => {
+  const fp = _latestExhLadderFile();
+  if (!fp) return res.status(404).json({ ok: false, error: 'No exhaustion-ladder fit yet - POST /api/exhaustion-ladder/run to build one.' });
+  try {
+    const data = JSON.parse(fs.readFileSync(fp, 'utf8'));
+    res.json({ ok: true, file: path.basename(fp), computedAt: fs.statSync(fp).mtime.toISOString(), ...data });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/api/exhaustion-ladder/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(500).json({ ok: false, error: 'OANDA_KEY not set' });
+  const { pair = '', revFrac, isFrac, thetaSig, horizonMin } = req.body || {};
+  const insts = pair ? WBT_INSTRUMENTS.filter(i => i.name === pair.toUpperCase()) : WBT_INSTRUMENTS;
+  if (!insts.length) return res.status(400).json({ ok: false, error: `Unknown pair: ${pair}` });
+  const jobId = `exhl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  for (const [id, j] of exhLadderJobs) if (j.startedAt < Date.now() - 60 * 60_000) exhLadderJobs.delete(id);
+  exhLadderJobs.set(jobId, { status: 'running', startedAt });
+  const opts = {
+    revFrac:    Number.isFinite(+revFrac)    ? +revFrac    : 0.30,
+    isFrac:     Number.isFinite(+isFrac)     ? +isFrac     : 0.5,
+    thetaSig:   Number.isFinite(+thetaSig)   ? +thetaSig   : 0.25,
+    horizonMin: Number.isFinite(+horizonMin) ? +horizonMin : 60,
+  };
+  (async () => {
+    const perPair = {}, log = [];
+    try {
+      for (const cfg of insts) {
+        try {
+          const { bars, src } = await _intradayForAB(cfg);
+          const e = _exhaustionLadder(bars, { ...opts, pair: cfg.name });
+          if (e.insufficient) { log.push(`${cfg.name}: insufficient (${e.reason || e.nDays + 'd'})`); continue; }
+          const c = _compactLadder(e); c.src = src; perPair[cfg.name] = c;
+          const L = e.ladder, s = L.bySession;
+          log.push(`${cfg.name}: ${e.daysUsed}d - ${e.turnsPerDay} turns/day - dom p50 ${L.dominant.is.p50} to OOS ${L.dominant.oos.p50} - session p50 asia ${s.asia.is.p50}/lon ${s.london.is.p50}/ny ${s.ny.is.p50} - p50 coverage ${e.coverage.p50?.oosCoverage} (src ${src})`);
+        } catch (e) { log.push(`${cfg.name}: ${e?.message}`); }
+      }
+      const names = Object.keys(perPair);
+      if (!names.length) { exhLadderJobs.set(jobId, { status: 'error', error: 'No pairs evaluated', log, startedAt }); return; }
+      const payload = { ...opts, perPair, pairs: names, log, builtAt: new Date().toISOString() };
+      try {
+        fs.mkdirSync(WBT_DATA_DIR, { recursive: true });
+        fs.writeFileSync(path.join(WBT_DATA_DIR, `exhaustion_ladder_${new Date().toISOString().slice(0, 10)}.json`), JSON.stringify(payload));
+      } catch (e) { log.push(`cache write failed: ${e?.message}`); }
+      exhLadderJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...payload } });
+    } catch (e) { exhLadderJobs.set(jobId, { status: 'error', error: e?.message || String(e), log, startedAt }); }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/exhaustion-ladder/status/:jobId', (req, res) => {
+  const job = exhLadderJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });

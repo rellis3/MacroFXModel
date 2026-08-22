@@ -83,10 +83,36 @@ export const FITTED_LINES = [
   { key: 'OL_p90', band: 'ol_p90', side: -1, tier: 'p90', label: 'O-L p90', color: '#fb923c', dash: [1, 0] },
 ];
 
+// ── The EXHAUSTION ladder's lines (the "Exh" calc) ───────────────────────────
+//
+// A different QUANTITY from everything above, not a different fit of the same one.
+// FITTED_LINES / LADDER_LINES are EXCEEDANCE bands: "O-H p75" is the distance price
+// exceeds on 25% of days — a statement about how far the day TRAVELS. These rungs are
+// TURN quantiles from js/exhaustionLadderEngine.js: "Exh p75" is the distance at which
+// 75% of the day's actual reversals had already happened — a statement about where the
+// day TURNS.
+//
+// They are not interchangeable and on a real fit they are not close: on H1 EURUSD the
+// pooled turn p50 sits at 0.47σ while the range median sits near 1.3σ. Overlaying the
+// two sets (Compare → +Exh) is the point — you should SEE the turn rungs inside the
+// range rungs. If they ever coincide, one of the two fits is wrong.
+//
+// Colours are deliberately violet/amber rather than the green/red of the range ladder,
+// so an overlay never reads as "another range band".
+export const EXHAUSTION_LINES = [
+  { key: 'EXU_p50', band: 'exh_up_p50', side:  1, tier: 'med', label: 'Exh↑ p50', color: '#a78bfa', dash: [7, 4] },
+  { key: 'EXU_p75', band: 'exh_up_p75', side:  1, tier: 'p75', label: 'Exh↑ p75', color: '#8b5cf6', dash: [2, 4] },
+  { key: 'EXU_p90', band: 'exh_up_p90', side:  1, tier: 'p90', label: 'Exh↑ p90', color: '#6d28d9', dash: [1, 0] },
+  { key: 'EXD_p50', band: 'exh_dn_p50', side: -1, tier: 'med', label: 'Exh↓ p50', color: '#fcd34d', dash: [7, 4] },
+  { key: 'EXD_p75', band: 'exh_dn_p75', side: -1, tier: 'p75', label: 'Exh↓ p75', color: '#f59e0b', dash: [2, 4] },
+  { key: 'EXD_p90', band: 'exh_dn_p90', side: -1, tier: 'p90', label: 'Exh↓ p90', color: '#b45309', dash: [1, 0] },
+];
+
 // Which set a bands object implies. Keyed off the presence of a fitted rung rather
 // than a mode string, so the brick stays calc-agnostic — the page can hand it either
 // geometry and the mechanic is identical, which is the whole point of comparing them.
 export function linesFor(pcts) {
+  if (pcts && pcts.exh_up_p50 != null) return EXHAUSTION_LINES;
   return pcts && pcts.oh_p50 != null ? FITTED_LINES : LADDER_LINES;
 }
 

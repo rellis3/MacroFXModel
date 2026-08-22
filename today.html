@@ -340,6 +340,18 @@
   .lrow.now .tag{color:var(--text2)}
   .lrow.near{outline:1px solid rgba(210,153,34,.5)}
 
+
+  /* Exhaustion ladder — where the day's TURNS happen (distinct from the range bands) */
+  .exh{margin:8px 0 2px;font-variant-numeric:tabular-nums}
+  .exh-hd{display:flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;letter-spacing:.04em;color:var(--text3);text-transform:uppercase;margin-bottom:3px}
+  .exh-row{display:flex;align-items:center;gap:8px;padding:2px 6px;border-radius:5px;font-size:11px}
+  .exh-row .tag{width:52px;font-size:10px;font-weight:700;color:var(--text3)}
+  .exh-row .dnpx{width:86px;font-weight:600;color:var(--bear)}
+  .exh-row .uppx{width:86px;font-weight:600;color:var(--bull)}
+  .exh-row .sig{color:var(--text3);font-size:10px;margin-left:auto}
+  .exh-row.live{background:var(--card2);border:1px solid var(--border)}
+  .exh-warn{font-size:10px;color:var(--text3);margin-top:3px}
+
   .pc-foot{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}
   .pc-foot .vol{font-size:11px;color:var(--text2)}
   .pc-foot .vol b{color:var(--text)}
@@ -760,6 +772,14 @@
     </div>
   </div>
 
+  <div class="dr-sec" id="drExhSec" data-seckey="exh" style="display:none">
+    <h3 class="help" title="Where the day TURNS, as opposed to how far it travels. Fitted on ~10 years of London-anchored days: every reversal is measured as its distance from the session open in units of forecast sigma, then split by session, by which turn of the day it was, and by side. Rungs are anchored to the open, so they become real prices at midnight. A rung is a ZONE not a price — the turn distance is a wide distribution, and the coverage column is there so you can see whether the fit still holds out-of-sample.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Turn zones — where the day reverses</span>
+      <span class="chip neu" style="font-size:9px">descriptive · zones not prices</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drExh"><span class="muted">loading…</span></div></div>
+  </div>
+
   <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -1144,14 +1164,18 @@ async function jget(url) {
 
 async function loadAll(manual) {
   try {
-    const [b, s, f, a, sr] = await Promise.all([
+    const [b, s, f, a, sr, xl] = await Promise.all([
       jget('/api/daily-brief').catch(e => ({ ok: false, error: e.message })),
       jget('/api/vol-forecast/session').catch(() => null),
       jget('/api/vol-forecast').catch(() => null),
       jget('/api/analogml/motif-state').catch(() => null),
       jget('/api/session-research/summary').catch(() => null),
+      // Cached decade-scale fit; 404 until the first POST /api/exhaustion-ladder/run, and the
+      // turn-zone strip simply doesn't render until then rather than blocking the page.
+      jget('/api/exhaustion-ladder').catch(() => null),
     ]);
     brief = b; session = s; forecast = f;
+    exhLadder = xl?.ok ? xl : null;
     analogml = a?.ok ? Object.fromEntries((a.pairs ?? []).map(p => [p.pair, p])) : null;
     sessionResearch = sr?.ok ? Object.fromEntries((sr.pairs ?? []).map(p => [p.pair, p])) : null;
     if (!b?.ok) {
@@ -3021,6 +3045,218 @@ function rangeMapHtml(r) {
     <div class="rmap">${band}${ticks}${marker}</div>`;
 }
 
+
+// ── Exhaustion ladder (/api/exhaustion-ladder, js/exhaustionLadderEngine.js) ─────────────
+// A DIFFERENT object from the forecast bands above. The bands answer "how far does price
+// travel today" (the day's range extreme). This answers "where does price TURN" — the
+// quantiles of the distance-from-open at which the day's reversals actually happened,
+// measured over ~10 years and split by session.
+//
+// Rungs are in σ units and anchored to the London-midnight open, which is why they can be
+// turned into prices at 00:00: price = open × (1 ± rung × σ). (The older fade-back line in
+// exhaustion-forecast.html is anchored to the RUNNING extreme, so it can't be drawn until
+// an extreme exists — a trailing line, not a level.)
+//
+// Honest limits, surfaced in the UI rather than buried here:
+//  · These are UNCONDITIONAL rungs — fitted across all days including event days. No news
+//    multiplier is applied, so on a big-event day expect the turn further out than the rung.
+//  · A rung is a ZONE, not a price. The turn distance is a wide distribution; p50 means half
+//    the day's turns landed inside it, not that the turn happens there.
+//  · `coverage` is the falsification: an IS-fitted p50 that only covers 40% of OOS turns has
+//    drifted and the rung is stale. Shown in the drawer.
+let exhLadder = null;
+
+/** Daily σ as a FRACTION, inverted from the forecast's annualised σ (σ_ann = σ_d × √252). */
+function exhSigmaDaily(d) {
+  const va = d?.vol_annual;
+  return (va > 0) ? (va / 100) / Math.sqrt(252) : null;
+}
+
+/** Which session are we in now, by London wall clock — must match the engine's _sessionOf. */
+function exhSessionNow() {
+  const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(new Date());
+  return h < 7 ? 'asia' : h < 13 ? 'london' : 'ny';
+}
+const EXH_SESSION_LABEL = { asia: 'Asia 00–07', london: 'London 07–13', ny: 'NY 13–24' };
+
+/** The cached fit for one instrument, or null if the ladder hasn't been built for it. */
+function exhFor(name) { return exhLadder?.perPair?.[name] ?? null; }
+
+/**
+ * Project one rung set onto today: { p25..p90 } in σ → up/dn prices.
+ * Mirrors projectLadder() in the engine; kept local so the card renders with no import.
+ */
+function exhPrices(rungs, open, sigmaDaily) {
+  if (!rungs || rungs.insufficient || !(open > 0) || !(sigmaDaily > 0)) return null;
+  const out = { up: {}, dn: {} };
+  for (const k of ['p25', 'p50', 'p75', 'p90']) {
+    const v = rungs[k];
+    out.up[k] = v == null ? null : open * (1 + v * sigmaDaily);
+    out.dn[k] = v == null ? null : open * (1 - v * sigmaDaily);
+  }
+  return out;
+}
+
+/** Live one-sided extension from the open, in σ — the x-axis of the hazard curve. */
+function exhExtNow(d) {
+  const sig = exhSigmaDaily(d), open = d?.session_open, px = d?.current_price;
+  if (!(sig > 0) || !(open > 0) || px == null) return null;
+  return Math.abs(px - open) / open / sig;
+}
+
+/** Read the OOS hazard bucket covering the live extension. OOS only — it was never fitted. */
+function exhHazardNow(name, d) {
+  const e = exhFor(name), ext = exhExtNow(d);
+  if (!e?.hazard?.oos || ext == null) return null;
+  for (const row of e.hazard.oos) {
+    if (row.insufficient) continue;
+    if (ext >= row.lo && (row.hi == null || ext < row.hi)) return { ...row, ext };
+  }
+  return null;
+}
+
+/**
+ * Compact card strip: the CURRENT session's turn zone, plus the day's dominant turn.
+ * Two rungs only — the card is already dense, and the full ladder lives in the drawer.
+ */
+function exhStripHtml(r) {
+  const d = r.d, e = exhFor(r.name);
+  if (!e) return '';
+  const sig = exhSigmaDaily(d), open = d.session_open;
+  if (!(sig > 0) || !(open > 0)) return '';
+  const sess = exhSessionNow();
+  const sessRungs = e.ladder?.bySession?.[sess]?.is;
+  const domRungs  = e.ladder?.dominant?.is;
+  const sp = exhPrices(sessRungs, open, sig), dp2 = exhPrices(domRungs, open, sig);
+  if (!sp && !dp2) return '';
+
+  const row = (tag, rungs, prices, title, cls = '') => {
+    if (!prices) return '';
+    return `<div class="exh-row ${cls}">
+      <span class="tag help" title="${title}">${tag}</span>
+      <span class="dnpx">${prices.dn.p50 != null ? fmtN(prices.dn.p50, d.dp) : '–'}</span>
+      <span class="uppx">${prices.up.p50 != null ? fmtN(prices.up.p50, d.dp) : '–'}</span>
+      <span class="sig">p50 ${rungs.p50}σ · p75 ${rungs.p75}σ</span></div>`;
+  };
+  const hz = exhHazardNow(r.name, d);
+  const hzChip = hz ? `<span class="chip ${hz.pReversal >= 0.53 ? 'warn' : hz.pReversal <= 0.47 ? 'dim' : 'neu'}" title="Live two-barrier read: price is ${hz.ext.toFixed(2)}σ from the open. Historically, from a fresh extreme at this distance, price reversed before it continued ${(hz.pReversal * 100).toFixed(0)}% of the time (n=${hz.n}, out-of-sample). The null for a coin-flip market is exactly 50% — so ${Math.abs(hz.z) < 2 ? `this is NOT distinguishable from a coin flip (z=${hz.z})` : `this is a genuine tilt (z=${hz.z})`}.">turn odds ${(hz.pReversal * 100).toFixed(0)}%${Math.abs(hz.z) < 2 ? ' ≈coin' : ''}</span>` : '';
+
+  return `<div class="exh">
+    <div class="exh-hd">turn zones <span style="text-transform:none;font-weight:400">— where the day REVERSES (not the range)</span>${hzChip}</div>
+    ${row(EXH_SESSION_LABEL[sess].split(' ')[0], sessRungs, sp, `Turns that happened during the ${EXH_SESSION_LABEL[sess]} session historically landed this far from the open. Median rung shown; a zone, not a price.`, 'live')}
+    ${row('dominant', domRungs, dp2, "The day's BIGGEST turn — the single largest reversal of the session. Roughly where the day's high or low forms, so it sits near the range bands rather than inside them.")}
+  </div>`;
+}
+
+
+// ── Drawer: the full layered turn ladder ────────────────────────────────────────────────
+// Four tables, in the order they answer questions: what are today's turn prices (session),
+// how big is the day's main turn (dominant), does the turn depend on which one it is
+// (ordinal) and on direction (side), and — the falsification — did the fit hold OOS.
+function renderDrExh(r) {
+  const host = $('drExh'), sec = $('drExhSec');
+  const d = r.d, name = r.name, e = exhFor(name);
+  if (!e) {
+    sec.style.display = 'none';
+    host.innerHTML = '<span class="muted">no ladder fit for this instrument</span>';
+    return;
+  }
+  sec.style.display = '';
+  const sig = exhSigmaDaily(d), open = d.session_open;
+  if (!(sig > 0) || !(open > 0)) {
+    host.innerHTML = '<span class="muted">no sigma / session open today — the rungs cannot be priced</span>';
+    return;
+  }
+  const sessNow = exhSessionNow();
+  const unit = d.ac === 'fx' ? 'p' : 'pt';
+  const pipSz = (d.sym ?? '').includes('JPY') ? 0.01 : (d.ac === 'fx' ? 0.0001 : 1);
+
+  // A rung row: sigma multiples on the left, the two prices they imply on the right.
+  const rungRow = (label, rungs, title, hi) => {
+    if (!rungs || rungs.insufficient) return `<tr><td>${label}</td><td colspan="6" class="muted">too few turns (n=${rungs?.n ?? 0})</td></tr>`;
+    const px = exhPrices(rungs, open, sig);
+    const cell = k => `${fmtN(px.dn[k], d.dp)} <span class="muted">/</span> ${fmtN(px.up[k], d.dp)}`;
+    return `<tr${hi ? ' style="background:var(--card2)"' : ''}>
+      <td class="help" title="${title}"><b>${label}</b></td>
+      <td>${rungs.p25}σ</td><td>${rungs.p50}σ</td><td>${rungs.p75}σ</td><td>${rungs.p90}σ</td>
+      <td>${cell('p50')}</td><td>${cell('p75')}</td></tr>`;
+  };
+  const head = `<tr><th></th><th>p25</th><th>p50</th><th>p75</th><th>p90</th>
+    <th>p50 price (dn/up)</th><th>p75 price (dn/up)</th></tr>`;
+
+  const L = e.ladder;
+  let h = `<div class="muted" style="font-size:10.5px;margin-bottom:6px">
+    Fitted on <b>${e.daysUsed}</b> London days (${e.dateFrom} → ${e.dateTo}), IS/OOS split at ${e.splitDate}.
+    Swing threshold ${e.revFrac} × median daily range → <b>${e.turnsPerDay}</b> turns/day.
+    Today: open <b>${fmtN(open, d.dp)}</b>, σ <b>${(sig * 100).toFixed(3)}%</b>.
+    Rungs are IS-fitted; the coverage table below is the OOS check.</div>`;
+
+  h += `<table style="font-size:11px"><thead>${head}</thead><tbody>`;
+  for (const s of ['asia', 'london', 'ny']) {
+    h += rungRow(EXH_SESSION_LABEL[s], L.bySession?.[s]?.is,
+      `Reversals during ${EXH_SESSION_LABEL[s]} landed this far from the open. Later sessions sit further out mostly because the day has had longer to expand — a clock effect, not a claim that the NY turn is stronger.`,
+      s === sessNow);
+  }
+  h += rungRow("day's dominant turn", L.dominant?.is,
+    "The single largest reversal of the day, one per day. It sits close to the day's high/low, so it lands near the range bands rather than inside them — the range extreme seen from the turn side.");
+  h += `</tbody></table>`;
+
+  // Ordinal + side. Flagged as confounded because they are, and the data says so plainly.
+  h += `<div style="margin-top:10px"><table style="font-size:11px"><thead>${head}</thead><tbody>`;
+  for (const k of ['1', '2', '3+']) {
+    h += rungRow(`turn ${k}`, L.byOrdinal?.[k]?.is,
+      `The ${k === '1' ? 'first' : k === '2' ? 'second' : 'third and later'} turn of the day. NOTE: ordinal and clock time are confounded — a later turn is also a later-in-the-day turn — so read this alongside the session table above, not instead of it.`);
+  }
+  h += rungRow('up-turns', L.bySide?.up?.is, 'Turns from a HIGH (price rolling over). Kept separate because pooling the two sides hides any asymmetry.');
+  h += rungRow('dn-turns', L.bySide?.dn?.is, 'Turns from a LOW (price bouncing).');
+  h += `</tbody></table></div>`;
+
+  // ── The falsification: did the IS rungs keep their coverage OOS? ──
+  const cov = e.coverage ?? {};
+  h += `<div style="margin-top:10px"><div class="muted" style="font-size:10px;margin-bottom:3px">
+    <b>OOS coverage</b> — an IS-fitted p50 should still sit above 50% of turns in the held-out half.
+    Drift beyond about ±10pp means the rung has moved and the fit is stale.</div>
+    <table style="font-size:11px"><thead><tr><th>rung</th><th>σ</th><th>target</th><th>OOS coverage</th><th>drift</th></tr></thead><tbody>`;
+  for (const k of ['p25', 'p50', 'p75', 'p90']) {
+    const c = cov[k];
+    if (!c) { h += `<tr><td>${k}</td><td colspan="4" class="muted">–</td></tr>`; continue; }
+    const bad = Math.abs(c.drift) > 0.10;
+    h += `<tr><td>${k}</td><td>${c.rung}σ</td><td>${(c.target * 100).toFixed(0)}%</td>
+      <td>${(c.oosCoverage * 100).toFixed(1)}%</td>
+      <td style="color:${bad ? 'var(--bear)' : 'var(--text3)'}">${c.drift >= 0 ? '+' : ''}${(c.drift * 100).toFixed(1)}pp${bad ? ' ⚠' : ''}</td></tr>`;
+  }
+  h += `</tbody></table></div>`;
+
+  // ── Hazard curve: the intraday "is this the turn" readout. Not a level. ──
+  const hz = e.hazard;
+  const ext = exhExtNow(d), live = exhHazardNow(name, d);
+  h += `<div style="margin-top:10px"><div class="muted" style="font-size:10px;margin-bottom:3px">
+    <b>Turn odds by extension</b> — from a fresh extreme, ${hz.thetaSig}σ barriers each side raced over ${hz.horizonMin} min,
+    out-of-sample. <b>The null is exactly 50%</b> (a coin-flip market reverses first half the time at every distance),
+    so |z| under 2 means no edge — not a weak one.
+    ${ext != null ? `Live: price is <b>${ext.toFixed(2)}σ</b> from the open.` : ''}</div>
+    <table style="font-size:11px"><thead><tr><th>extension</th><th>n</th><th>P(reverse first)</th><th>z vs 50%</th><th>read</th></tr></thead><tbody>`;
+  for (const row of (hz.oos ?? [])) {
+    if (row.insufficient) continue;
+    const isLive = live && row.lo === live.lo;
+    const sigTxt = Math.abs(row.z) >= 2 ? (row.pReversal > 0.5 ? 'exhausts' : 'trends') : 'coin flip';
+    h += `<tr${isLive ? ' style="background:var(--card2);outline:1px solid rgba(210,153,34,.5)"' : ''}>
+      <td>${row.lo}–${row.hi ?? '∞'}σ${isLive ? ' ←now' : ''}</td><td>${row.n}</td>
+      <td>${(row.pReversal * 100).toFixed(1)}%</td>
+      <td style="color:${Math.abs(row.z) >= 2 ? 'var(--text)' : 'var(--text3)'}">${row.z}</td>
+      <td class="muted">${sigTxt}</td></tr>`;
+  }
+  h += `</tbody></table></div>`;
+
+  const domP50 = L.dominant?.is?.p50;
+  h += `<div class="exh-warn">These rungs are <b>unconditional</b> — fitted across all days, event days included, with no
+    news multiplier applied. On a scheduled-event day expect the turn further out than the rung.
+    A rung is a <b>zone</b>: p50 means half of history's turns landed inside it, not that today's turn happens there.
+    ${domP50 != null ? `Dominant p50 is ${(open * sig * domP50 / pipSz).toFixed(0)}${unit} from the open.` : ''}</div>`;
+
+  host.innerHTML = h;
+}
+
 function ladderHtml(r) {
   const d = r.d, L = d.levels ?? {};
   const px = d.current_price;
@@ -3128,6 +3364,7 @@ function cardHtml(r) {
     ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
+    ${exhStripHtml(r)}
     <div class="pc-foot">
       <span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>${coneChip}
       ${rangePts != null ? `<span class="vol help" title="On an average day this market travels about ${rangePts} ${d.ac === 'fx' ? 'pips' : 'points'} from its high to its low. Use it to size stops and targets.">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
@@ -3465,6 +3702,7 @@ async function openDrawer(name) {
     });
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
+  try { renderDrExh(r); } catch (e) { $('drExhSec').style.display = 'none'; }
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });

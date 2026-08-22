@@ -138,12 +138,14 @@
       <button data-c="ladder" class="on" title="The fitted ladder — p50/p75/p90 on O-H, O-L and O-C, with widths fit to realized range walk-forward (forge/vol.py) rather than a textbook constant times a hand-tuned correction. Each rung means what it says: p50 is reached on ~50% of sessions, p75 on ~25%, p90 on ~10%. O-H and O-L are fit SEPARATELY, so each instrument's structural asymmetry is kept.">Ladder</button>
       <button data-c="cog">COG</button>
       <button data-c="bot" title="The Volatility Bot's actual lines: COG geometry × the bot's σ (volSigmaSeries — the backtest math the bot uses, not the vol-forecast σ the COG calc uses; NQ swaps to cc-HV like the bot). Works on both Backtest and Archive source.">Bot</button>
+      <button data-c="exh" title="The EXHAUSTION ladder — a different quantity from the bands. Each rung is the distance from the open at which that share of the day's actual REVERSALS had already happened (p50 = half of all turns were inside it), fitted over ~10 years of London days by js/exhaustionLadderEngine.js. The range bands say how far price travels; these say where it turns. Needs a cached fit — POST /api/exhaustion-ladder/run.">Exh</button>
     </div>
     <label title="Overlay OTHER calcs' lines on top of the active Calc above, view-only (no touch markers, no trades) — so you can see how far apart Original/COG/Bot place their levels for the same day.">Compare</label>
     <span class="seg" id="calcCompare">
       <button data-cc="ladder" title="Overlay the fitted ladder's lines">+Ladder</button>
       <button data-cc="cog" title="Overlay COG's lines">+COG</button>
       <button data-cc="bot" title="Overlay Bot's lines">+Bot</button>
+      <button data-cc="exh" title="Overlay the EXHAUSTION turn rungs on top of the active calc. This is the comparison worth looking at: the turn rungs should sit visibly INSIDE the range bands.">+Exh</button>
     </span>
     <div class="seg" id="touch">
       <button data-t="markers" title="Mark with a coloured dot where price first reached each armed level that day">● Markers</button>
@@ -222,6 +224,7 @@
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
     <div id="stats" class="hidden"></div>
+    <div id="exhCal" class="hidden"></div>
     <div id="hint">Pick a pair and date range, then Generate.<br>Arm the lines you want to fade; each touch draws the reversion trade (entry ▸ exit) and tallies win / loss / expired.</div>
   </div>
 
@@ -260,7 +263,8 @@
 <script type="module">
 // Cache-bust the brick import so a stale cached module (missing a new export)
 // can't silently break the page after a deploy.
-import { LADDER_LINES, FITTED_LINES, linesFor, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=7';
+import { LADDER_LINES, FITTED_LINES, EXHAUSTION_LINES, linesFor, reversionTrades, tallyTrades, STYLES, ladderLevels, firstTouchIdx } from './js/reversionLadder.js?v=8';
+import { dayTurns } from './js/exhaustionLadderEngine.js?v=1';
 import { computeSessionVwap } from './js/vwapReversionEngine.js';
 import { computeWaveTrend } from './js/vumanchuCore.js?v=1';
 import { findDivergences, reversalDecision } from './js/divergenceCore.js?v=2';
@@ -308,10 +312,13 @@ const COG_SQRT252 = Math.sqrt(252);
 const _REPLAY_CCHV = new Set(['nq']);
 const $ = id => document.getElementById(id);
 function calcMode() { return $('calc').querySelector('button.on')?.dataset.c || 'ladder'; }
-function calcLabel() { const m = calcMode(); return m === 'cog' ? 'COG' : m === 'bot' ? 'Bot' : 'Ladder'; }
+function calcLabel() { return CALC_TAG[calcMode()] ?? 'Ladder'; }
 // The armable line set follows the CALC: the fitted ladder has ten lines (three rungs
 // a side on the excursion, two on the close), COG/Bot geometry has the legacy eight.
-function activeLines() { return calcMode() === 'ladder' ? FITTED_LINES : LADDER_LINES; }
+function activeLines() {
+  const m = calcMode();
+  return m === 'exh' ? EXHAUSTION_LINES : m === 'ladder' ? FITTED_LINES : LADDER_LINES;
+}
 function srcMode()  { return $('src').querySelector('button.on')?.dataset.s || 'backtest'; }
 function tfGran()   { return $('tf').querySelector('button.on')?.dataset.g || 'M15'; }
 function setStatus(t) { $('status').textContent = t; }
@@ -338,6 +345,28 @@ function bandsFor(f, mode) {
     const s = va / COG_SQRT252;
     return { hl_median: COG_C.hl50 * s, hl_75: COG_C.hl75 * s, oc_median: COG_C.oc50 * s, oc_75: COG_C.oc75 * s };
   }
+  // Exhaustion: TURN quantiles, not exceedance bands. The rungs are per-INSTRUMENT constants
+  // (σ multiples) from the cached /api/exhaustion-ladder fit; the only per-day input is that
+  // day's σ, exactly like COG. pct = rung × σ_daily × 100 = rung × vol_annual / √252.
+  //
+  // The up/dn ladders are used rather than the pooled one because they are fitted separately
+  // per side, so each instrument's turn asymmetry survives — same reasoning as the fitted
+  // ladder keeping O-H and O-L apart.
+  //
+  // IS rungs only. The OOS half exists to falsify the fit (see the calibration panel), so
+  // drawing OOS-fitted lines would quietly spend the holdout.
+  if (mode === 'exh') {
+    const up = exhFit?.ladder?.bySide?.up?.is, dn = exhFit?.ladder?.bySide?.dn?.is;
+    if (!up || up.insufficient || !dn || dn.insufficient) return null;
+    const va = f.vol_annual;
+    if (!(va > 0)) return null;
+    const sd = va / COG_SQRT252;                       // σ_daily in PERCENT
+    return {
+      exh_up_p50: up.p50 * sd, exh_up_p75: up.p75 * sd, exh_up_p90: up.p90 * sd,
+      exh_dn_p50: dn.p50 * sd, exh_dn_p75: dn.p75 * sd, exh_dn_p90: dn.p90 * sd,
+      hl_median: f.hl_median, hl_75: f.hl_75,          // carried for the Budget style's denominator
+    };
+  }
   // Ladder: the per-day fitted rungs, served by /api/vol-forecast/backtest-range.
   // hl_* are carried alongside so anything still keyed on the old names (the Budget
   // style's expected-range denominator) keeps working on the same day object.
@@ -350,7 +379,7 @@ function bandsFor(f, mode) {
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = { showVwap: false, armed: new Set(FITTED_LINES.map(l => l.key)), showStats: false, style: 'fade_all', sltpMode: 'level', eod: 'kill', showOsc: false, compareCalcs: new Set() };
-const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot' };
+const CALC_TAG = { ladder: 'Ladder', cog: 'COG', bot: 'Bot', exh: 'Exh' };
 const HOLD_SESSIONS = 5;   // 'let run' holds a trade at most this many sessions past EOD
 function styleMode() { return $('style').querySelector('button.on')?.dataset.y || 'fade_all'; }
 function eodModeSel() { return $('eod').querySelector('button.on')?.dataset.e || 'kill'; }
@@ -367,6 +396,10 @@ function refreshSlUnit() { $('slunit').textContent = unitFor($('pair').value).la
 let _meta = null;
 let chart = null, series = null, overlayCanvas = null, octx = null;
 let days = [];        // [{ date, open, high, low, close, tStart, tEnd, bars:[], f, trades:[], touch:{} }]
+// The cached exhaustion-ladder fit for the CURRENT pair (σ-multiple constants, not per-day
+// data). Null until /api/exhaustion-ladder has been built — the Exh calc and the +Exh overlay
+// stay inert rather than drawing an empty line set.
+let exhFit = null;
 let touchMarkers = false, touchedOnly = false;   // Markers / Touched-only overlay toggles (view-only)
 let dpr = window.devicePixelRatio || 1;
 
@@ -436,6 +469,7 @@ function buildChips() {
     const m = b.dataset.cc;
     if (state.compareCalcs.has(m)) state.compareCalcs.delete(m); else state.compareCalcs.add(m);
     b.classList.toggle('on', state.compareCalcs.has(m));
+    renderExhCalibration();   // the +Exh overlay drives the calibration panel's visibility
     scheduleDraw();
   });
   // Touch overlays (Markers / Touched-only) are view-only — toggle + redraw, no recompute.
@@ -595,10 +629,12 @@ async function loadData() {
     : `/api/vol-forecast/archive/range?from=${from}&to=${to}&pair=${encodeURIComponent(name)}`;
   $('go').disabled = true; setStatus(src === 'backtest' ? 'generating forecasts…' : 'loading…'); $('hint').style.display = 'none';
   try {
-    const [candlesRes, fcRes] = await Promise.all([
+    const [candlesRes, fcRes, exhRes] = await Promise.all([
       fetch(`/api/ohlc-range?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&granularity=${gran}`).then(r => r.json()),
       fetch(fcUrl).then(r => r.json()),
+      fetch('/api/exhaustion-ladder').then(r => r.json()).catch(() => null),
     ]);
+    exhFit = exhRes?.ok ? (exhRes.perPair?.[name.toUpperCase()] ?? null) : null;
     if (candlesRes.error || !candlesRes.values?.length) { setStatus(candlesRes.error || 'no candles for that range'); $('go').disabled = false; return; }
     const fcDays = fcRes?.ok ? (fcRes.days || {}) : {};
     buildDays(candlesRes.values, fcDays);
@@ -617,6 +653,7 @@ async function loadData() {
     computeTrades();
     scheduleDraw();
     renderStats();
+    renderExhCalibration();
   } catch (e) {
     setStatus('error: ' + e.message);
   } finally {
@@ -861,6 +898,7 @@ function recomputeAndDraw() {
   computeTrades();
   scheduleDraw();
   renderStats();
+  renderExhCalibration();
 }
 
 // ── Overlay draw ─────────────────────────────────────────────────────────────
@@ -1107,6 +1145,99 @@ function conditionalTable(title, note, trades, field, labels) {
     + `<div class="st-note">${note} · terciles at ${r.lo.toFixed(2)} / ${r.hi.toFixed(2)}</div>`
     + `<table class="st-tbl"><thead><tr><th>bucket</th><th>n</th><th>win%</th><th>exp</th><th>net%</th></tr></thead>`
     + `<tbody>${body}</tbody></table></div>`;
+}
+
+// ── Exhaustion calibration: the honest proof for a DESCRIPTIVE ladder ────────
+//
+// A turn rung claims a quantile, so the test is coverage, not P&L: if "Exh↑ p75" is drawn at
+// the distance 75% of up-turns fell inside, then on days you did not fit, 75% of up-turns
+// should fall inside it. That is falsifiable without ever placing a trade, and it is the claim
+// this object actually makes. The trade tally in Stats tests a DIFFERENT and much weaker claim
+// (that fading there pays), and is expected to fail on cost — see the note under the table.
+//
+// Turns are recomputed here from the loaded bars with the same zigzag and the same revFrac as
+// the fit, so the count is like-for-like with what the engine measured.
+function exhTurnsInWindow() {
+  if (!exhFit || !days.length) return null;
+  const revFrac = exhFit.revFrac ?? 0.30;
+  const ranges = days.map(d => d.high - d.low).filter(x => x > 0).sort((a, b) => a - b);
+  if (!ranges.length) return null;
+  const medRange = ranges[Math.floor(ranges.length / 2)];
+  const thr = revFrac * medRange;
+  const up = [], dn = [];
+  let daysUsed = 0, daysSkipped = 0;
+  for (const d of days) {
+    const va = d.f?.vol_annual;
+    if (!(va > 0) || !d.bars?.length || !(d.open > 0)) { daysSkipped++; continue; }
+    const ts = dayTurns(d.bars, d.open, thr, va / COG_SQRT252);   // no clock → no session split
+    if (!ts.length) { daysSkipped++; continue; }
+    daysUsed++;
+    for (const t of ts) (t.side === 'up' ? up : dn).push(t.extSig);
+  }
+  return { up, dn, daysUsed, daysSkipped, revFrac };
+}
+
+function renderExhCalibration() {
+  const el = $('exhCal');
+  if (!el) return;
+  const active = exhFit && days.length && (calcMode() === 'exh' || state.compareCalcs.has('exh'));
+  el.classList.toggle('hidden', !active);
+  if (!active) return;
+
+  const t = exhTurnsInWindow();
+  if (!t || (!t.up.length && !t.dn.length)) {
+    el.innerHTML = '<div class="st-empty">No turns detected in this window — widen the date range or check that forecasts loaded (σ is needed per day).</div>';
+    return;
+  }
+
+  // Is this window actually a holdout? The fit split at exhFit.splitDate; anything at or after
+  // that is unseen. A window that reaches back before it is contaminated, and saying so is the
+  // difference between a calibration test and a restatement of the fit.
+  const wFrom = days[0].date, wTo = days.at(-1).date, split = exhFit.splitDate;
+  const cleanOos = split && wFrom >= split;
+  const whollyIs = split && wTo < split;
+  const verdict = cleanOos
+    ? '<span class="pos">clean holdout</span> — this window is entirely after the fit\'s IS/OOS split, so the coverage below is a genuine out-of-sample test.'
+    : whollyIs
+      ? '<span class="neg">in-sample</span> — this window is entirely inside the half the rungs were fitted on. Coverage will look good because it was fitted to. Move the range after ' + split + ' for a real test.'
+      : '<span class="neg">mixed</span> — this window straddles the fit\'s IS/OOS split (' + split + '), so part of the coverage below is a restatement of the fit, not a test. Start the range at ' + split + ' or later.';
+
+  const cov = (vals, rung) => vals.length ? vals.filter(v => v <= rung).length / vals.length : null;
+  const rows = [];
+  for (const [sideLabel, vals, rungs] of [
+    ['up-turns', t.up, exhFit.ladder?.bySide?.up?.is],
+    ['dn-turns', t.dn, exhFit.ladder?.bySide?.dn?.is],
+  ]) {
+    if (!rungs || rungs.insufficient) continue;
+    for (const [key, target] of [['p50', 0.50], ['p75', 0.75], ['p90', 0.90]]) {
+      const rung = rungs[key];
+      if (rung == null) continue;
+      const c = cov(vals, rung);
+      if (c == null) continue;
+      const drift = c - target;
+      const bad = Math.abs(drift) > 0.10;
+      rows.push(`<tr><td>${sideLabel} ${key}</td><td>${rung}σ</td><td>${(target * 100).toFixed(0)}%</td>
+        <td>${(c * 100).toFixed(1)}%</td>
+        <td class="${bad ? 'neg' : ''}">${drift >= 0 ? '+' : ''}${(drift * 100).toFixed(1)}pp${bad ? ' ⚠' : ''}</td>
+        <td>${vals.length}</td></tr>`);
+    }
+  }
+
+  el.innerHTML = `
+    <h3 style="font-size:12px;margin:10px 0 4px">Exhaustion calibration — does the rung contain the turns it claims?</h3>
+    <div class="st-note">${verdict}</div>
+    <div class="st-note">Window ${wFrom} → ${wTo} · ${t.daysUsed} days with turns (${t.daysSkipped} skipped for missing σ or no swing ≥ ${t.revFrac}× median range)
+      · ${t.up.length} up-turns, ${t.dn.length} dn-turns. Fit built ${exhFit.dateFrom} → ${exhFit.dateTo}.</div>
+    <table class="st-tbl"><thead><tr><th>rung</th><th>σ</th><th>claims</th><th>actual coverage</th><th>drift</th><th>n turns</th></tr></thead>
+    <tbody>${rows.join('')}</tbody></table>
+    <div class="st-note">Drift inside ±10pp means the rung still sits where it says it does. This tests <b>calibration only</b> —
+      whether the zone contains the turn at the stated rate. It is NOT an edge test. The Stats tally above tests whether
+      <i>fading</i> the rung pays, which is a separate and much harder claim: the existing study found reward/risk ≈ 1.0 at
+      these turns (median favourable ≈ median adverse ≈ 0.5σ), so expect the tally to be negative after cost even when
+      calibration is good. A well-located line and a profitable trade are different things.</div>
+    <div class="st-note"><b>Day-boundary caveat:</b> this page groups candles by <b>UTC</b> date, while the rungs were fitted on
+      <b>London</b> days. Under BST those differ by an hour of bars at each end, which shifts the anchor open slightly and
+      adds a little noise to the coverage numbers here. It does not affect the fit itself.</div>`;
 }
 
 function renderStats() {

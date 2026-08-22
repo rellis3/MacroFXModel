@@ -225,8 +225,17 @@ def _serialize_closed_trades(magic: int) -> list:
         return []
     try:
         from datetime import timedelta
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        # Window vs bucket, two clocks that disagree. MT5 reads these date args on
+        # the BROKER's clock (UTC+3), so a plain UTC-midnight window is really
+        # 21:00→21:00 UTC: a trade closing in a UTC day's last three hours falls
+        # outside it, gets picked up by the NEXT run, and `mergeTradeHistory()` —
+        # which files by the server's UTC date — then dates it a day late. Ask
+        # wide, then keep only closes that land on today's real UTC date.
+        off      = _tz_offset_sec()
+        now_utc  = datetime.now(timezone.utc)
+        day_utc  = now_utc.strftime('%Y-%m-%d')
+        deals = mt5.history_deals_get(now_utc - timedelta(days=1),
+                                      now_utc + timedelta(days=1)) or []
         by_pos: dict = {}
         for d in deals:
             if d.magic != magic:
@@ -243,18 +252,24 @@ def _serialize_closed_trades(magic: int) -> list:
             outs = grp['out']
             if not outs:
                 continue
+            last_out = max(outs, key=lambda d: d.time)
+            # Broker stamp → real UTC, so this test matches the merge's bucket.
+            # Filter BEFORE the per-position lookup below, or every discarded
+            # position still costs a round-trip to MT5.
+            if datetime.fromtimestamp(int(last_out.time) - off,
+                                      timezone.utc).strftime('%Y-%m-%d') != day_utc:
+                continue
             ind = grp['in']
             if ind is None:
-                # Entry deal isn't in today's window — the position was opened
-                # on an earlier day (swing hold) and just closed today. Look
-                # it up directly by position id (unbounded by date) so
-                # multi-day trades still get an open_price/time_open.
+                # Entry deal isn't in the window — the position was opened on an
+                # earlier day (swing hold) and just closed today. Look it up
+                # directly by position id (unbounded by date) so multi-day
+                # trades still get an open_price/time_open.
                 try:
                     pos_deals = mt5.history_deals_get(position=pid) or []
                     ind = next((d for d in pos_deals if d.entry == 0), None)
                 except Exception:
                     ind = None
-            last_out = max(outs, key=lambda d: d.time)
             if ind:
                 direction  = 'BUY' if ind.type == 0 else 'SELL'
                 open_price = round(float(ind.price), 5)

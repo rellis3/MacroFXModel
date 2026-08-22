@@ -6106,6 +6106,11 @@ async function nqCloseTrade() {
     exit_type:  exitType,
     closed_at:  Math.floor(Date.now() / 1000),
     position_id: pos.ticket,
+    // The trade-history table reads time_open/time_close (the MT5 field names);
+    // the hand-logged QMR record calls them `time`/`closed_at`. Without the
+    // aliases these rows land in history with no clock and sort to the top.
+    time_open:  pos.time || null,
+    time_close: Math.floor(Date.now() / 1000),
   };
   data.today_closed_trades = [...(data.today_closed_trades || []), closed];
   data.mt5_positions = [];
