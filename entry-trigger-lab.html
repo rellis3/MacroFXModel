@@ -69,8 +69,12 @@
   </div>
   <div class="arm" id="levelArm">
     <span class="lbl">Levels</span>
-    <span class="chip on" data-lvl="asia"><span class="dot" style="background:#f59e0b"></span>Asia ladder</span>
-    <span class="chip on" data-lvl="monday"><span class="dot" style="background:#60a5fa"></span>Monday ladder</span>
+    <span class="chip" data-lvl="asia" title="The full raw ladder — 21 fib multiples per day. Off by default: with 1-2 weeks loaded that's 200+ segments at once, which reads as noise rather than levels. Turn on to see everything.">
+      <span class="dot" style="background:#f59e0b"></span>Asia ladder (full)
+    </span>
+    <span class="chip" data-lvl="monday" title="The full raw ladder — 21 fib multiples per week. Off by default for the same density reason as Asia ladder.">
+      <span class="dot" style="background:#60a5fa"></span>Monday ladder (full)
+    </span>
     <span class="chip on" data-lvl="confluence" title="Levels where today's ladder and yesterday's ladder (or this week's/last week's) land within the pip threshold — reused as-is from js/ranges.js detectConfluences, same threshold the live dashboard uses (2 pips FX default, $5/$7.5 gold, etc).">
       <span class="dot" style="background:#facc15"></span>Confluent (strong)
     </span>
@@ -90,9 +94,9 @@
     <div id="chart"></div>
     <canvas id="overlay"></canvas>
     <div id="legend">
-      <div class="row"><span class="sw" style="background:#f59e0b"></span>Asia ladder (solid, per day)</div>
-      <div class="row"><span class="sw" style="background:#60a5fa"></span>Monday ladder (dashed, per week)</div>
-      <div class="row"><span class="sw" style="background:#facc15"></span>Confluent = today vs yesterday within pip threshold (thick gold)</div>
+      <div class="row"><span class="sw" style="background:#f59e0b;opacity:.4"></span>Asia ladder (full, faint, off by default)</div>
+      <div class="row"><span class="sw" style="background:#60a5fa;opacity:.4"></span>Monday ladder (full, faint, off by default)</div>
+      <div class="row"><span class="sw" style="background:#facc15"></span>Confluent = today vs yesterday within pip threshold (thick gold, on by default)</div>
       <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges</div>
       <div class="row"><span class="sw" style="background:#22c55e"></span>▲ long / <span class="sw" style="background:#ef4444"></span>▼ short entry — ring color = test</div>
       <div class="row">W/L/open counts per chip are still SL(1.5×ATR)/2R-simulated, just not drawn on the chart</div>
@@ -120,7 +124,14 @@ const TEST_COLOR = {
 };
 
 const state = {
-  armedLevels: new Set(['asia', 'monday', 'confluence']),
+  // Full raw ladders (21 fib multiples × every day/week loaded) are OFF by
+  // default — with more than a couple of days loaded that's hundreds of short
+  // segments, and adjacent days/weeks often land close enough in price that
+  // they visually tile into solid-looking walls even though each one is
+  // correctly clipped to its own day/week span. Confluent levels are the
+  // curated, sparse subset (Husky's own stated target: "1-3 final levels per
+  // side") and stay on by default.
+  armedLevels: new Set(['confluence']),
   armedTests: new Set(['wick_engulf', 'midpoint_pullback', 'session_extreme', 'vwap_tap', 'adx_regime']),
   strongOnly: false,
 };
@@ -348,18 +359,22 @@ function drawOverlay() {
   // lines: this walks many days at once, so a full-width line per level would
   // overlap every other day's ladder). This is a deliberate departure from
   // js/levelChart.js, which is built for a single latest-snapshot view.
+  // Full raw ladders — deliberately faint (low alpha, thin) when toggled on:
+  // 21 levels × every day/week loaded is a lot of segments, and this is meant
+  // to read as background context for the curated Confluent overlay below,
+  // not compete with it.
   if (state.armedLevels.has('asia')) {
     for (const day of asiaTimeline) {
       const x1 = x(dayEpoch(day.date)), x2 = x(dayEpoch(day.date) + 86400);
       if (x1 == null && x2 == null) continue;
-      for (const lvl of day.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#f59e0b', false);
+      for (const lvl of day.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(245,158,11,.35)', false, 1);
     }
   }
   if (state.armedLevels.has('monday')) {
     for (const wk of mondayTimeline) {
       const x1 = x(dayEpoch(wk.date)), x2 = x(dayEpoch(wk.date) + 5 * 86400);
       if (x1 == null && x2 == null) continue;
-      for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), '#60a5fa', true);
+      for (const lvl of wk.levels) drawSegment(x1 ?? 0, x2 ?? overlayCanvas.width / dpr, y(lvl.price), 'rgba(96,165,250,.35)', true, 1);
     }
   }
   // Confluent ("strong") levels — where THIS period's ladder and the PRIOR
