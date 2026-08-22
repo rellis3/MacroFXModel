@@ -3,8 +3,9 @@
 > **Status: PRE-REGISTERED 2026-08-21. Design frozen BEFORE any COT history was
 > fetched** (CFTC is unreachable from the build sandbox, so no series existed to
 > tune against — the same structural freeze guarantee that
-> `CB_SENTIMENT_PRICE_TEST.md`'s lexicon had). NOT YET RUN: needs the Socrata
-> backfill to run on the deployed server first.
+> `CB_SENTIMENT_PRICE_TEST.md`'s lexicon had). **RUN 2026-08-22 — the registered
+> cell FAILED (p=0.094 vs a p<0.05 bar); banked as `BACKTEST_INDEX.md` Q17. See
+> §Result.**
 >
 > This is proposal **P-C** of `education/151_STRATEGIES_PROPOSALS.md`, which
 > derives from book strategy **9.2 (hedging pressure)** and the six-step method
@@ -194,6 +195,74 @@ corrects a defect the review documented regardless of what this factor does.
 
 ---
 
-## Result
+## Result (run 2026-08-22 via `GET /api/cot-factor-test/run`)
 
-*Not yet run — awaiting the Socrata backfill on the deployed server.*
+**CONFIRMATORY CELL: FAIL — banked.** COT data generated 2026-08-22T17:13Z;
+8/8 instruments qualified (899 scored weeks each, NZD 896); 3,576 OOS rows
+2018→2026.
+
+| Check | Result | Bar | |
+|---|---|---|---|
+| Block-bootstrap significance | **p = 0.0936** | p < 0.05 | ❌ |
+| Both OOS halves share the sign | −0.0252 / −0.0412 | same sign | ✅ |
+| Qualifying instruments | 8 / 8 | ≥ 6 | ✅ |
+
+**Pooled OOS rank-IC = −0.0317** (null mean 0.0001, null sd 0.019 → ≈1.7σ).
+Two of three checks pass; significance does not. Per the frozen bar that is a
+**FAIL**, and it is recorded as one. The sign is consistently negative — the
+*crowding / fade* direction — in both halves and in 5 of 8 instruments, but a
+consistent sign that cannot clear its own significance bar is not a result.
+**Neither theory is supported**: `readsAs: "no supported direction"`.
+
+### Method flaw found while reading the result — and why the null survives it
+
+The panel is stacked across instruments and then **sorted by date**, so rows
+sharing a date sit adjacent. `blockBootstrapIC` therefore resampled blocks of 5
+*neighbouring rows*, which at that sort order are ~5 different instruments on
+the same week — **not** 5 consecutive weeks of one instrument. The block was
+meant to preserve the autocorrelation created by overlapping 4-week forward
+windows, and it did not.
+
+Direction of the error matters: failing to preserve that time-overlap makes the
+null distribution **too narrow**, which makes the p-value **too small** and the
+test **easier** to pass. It failed anyway. A correctly blocked test would give
+p > 0.0936, i.e. fail harder — so the verdict is robust to the flaw and is not
+being re-run to chase it. (Re-running a design after seeing its result is the
+hazard this whole registration exists to prevent.)
+
+A second inflation runs the same way: the 7 FX legs are largely one USD trade,
+so the effective sample is far below 3,576. Both errors flatter the signal;
+neither rescues it.
+
+### Per-instrument (descriptive — the registered cell was pooled)
+
+| | EUR | GBP | JPY | AUD | CAD | CHF | NZD | GOLD |
+|---|---|---|---|---|---|---|---|---|
+| OOS rank-IC | −0.043 | **−0.228** | +0.013 | +0.004 | −0.099 | −0.015 | −0.079 | **+0.117** |
+
+Disaggregation is required before declaring a pooled null, so: the spread is
+wide, and **GBP and GOLD point in opposite directions**. GBP's −0.228 on 447
+rows is a naive t ≈ −4.9, but that collapses to ≈ −2.5 once the 4-week window
+overlap is taken into account, and it is **1 of 8 cells** examined — the
+chance-baseline for a standout that size among 8 correlated cells is not small.
+There is also no pre-registered mechanism for GBP specifically. It is therefore
+**an observation, not a claim**; pursuing it would need its own registration
+with a stated mechanism and its own multiple-testing accounting. Gold pointing
+the other way is a reminder that "positioning" means different participants in
+the two reports (Managed Money vs Leveraged Funds), as this document flagged
+before the run.
+
+### Decision table, executed
+
+**FAIL → banked in `BACKTEST_INDEX.md` (Q17).** COT remains exactly what the
+platform already labels it: positioning **context**, weekly and lagged, not a
+timing signal. `bot/modules/cot_filter.py` stays **off by default** and no
+further work is owed on it. **Proposal P-C closes.**
+
+What stands independently of this verdict:
+- The **OI-normalisation fix** (PR #1303) — it corrected a documented defect in
+  the live path, and also restored the morning brief's COT blocks, which had
+  been silently null since ~19 Aug.
+- The **history + lag infrastructure** — 20 years of publication-lagged,
+  OI-normalised weekly positioning now exists and is reusable if COT is ever
+  wanted as a conditioner on an edge that already exists (never as the edge).
