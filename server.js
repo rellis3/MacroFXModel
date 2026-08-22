@@ -3699,6 +3699,13 @@ async function _cotBackfillJob() {
     // `attempts` records what each contract name actually returned so a failure is
     // self-diagnosing instead of a bare "no rows".
     const attempts = [];
+    // MERGE across every known contract name rather than stopping at the first
+    // that returns rows. The probe found renames are real here (both "BRITISH
+    // POUND" and "BRITISH POUND STERLING" exist), and first-name-wins would
+    // silently truncate history at the rename boundary — precisely what the
+    // pre-registration's >=260-week guard is meant to catch, better avoided than
+    // detected. cotFactorSeries de-duplicates by report date.
+    let merged = [];
     for (const name of names) {
       const params = new URLSearchParams({
         market_and_exchange_names: name,
@@ -3715,14 +3722,17 @@ async function _cotBackfillJob() {
         }
         const j = await r.json();
         if (Array.isArray(j) && j.length) {
-          rows = j; usedName = name;
-          attempts.push(`${name}: ${j.length} rows OK`);
-          break;
+          const ds_ = j.map(x => String(x.report_date_as_yyyy_mm_dd ?? '').slice(0, 10)).filter(Boolean).sort();
+          merged = merged.concat(j);
+          usedName = usedName ? `${usedName}+${name}` : name;
+          attempts.push(`${name}: ${j.length} rows ${ds_[0]}→${ds_[ds_.length - 1]}`);
+          continue;   // keep going — a rename means the rest of the history is under another name
         }
         attempts.push(`${name}: 0 rows`);
         log.push(`${inst.sym} — 0 rows for "${name}"`);
       } catch (e) { attempts.push(`${name}: ${e.message}`); log.push(`${inst.sym} ✗ ${e.message} (${name})`); }
     }
+    rows = merged.length ? merged : null;
     if (!rows) {
       log.push(`${inst.sym} ✗ no rows under any known contract name`);
       out[inst.sym] = { sym: inst.sym, error: 'no rows', attempts };
