@@ -50,23 +50,35 @@ isImpulse = eligible and isLocalMax and barsSinceImpulse > cooldownBars
 
 barcolor(isImpulse ? (bullish ? color.new(upColor, 0) : color.new(downColor, 0)) : na)
 
-var line[]  lns     = array.new<line>()
-var label[] lvlLbs  = array.new<label>()
-var label[] markLbs = array.new<label>()
+var line[]  lns       = array.new<line>()
+var label[] lvlLbs    = array.new<label>()
+var label[] markLbs   = array.new<label>()
+var line[]  activeLns = array.new<line>()  // this bar's still-live ladder, stretched to "now" every bar below
 var int impulseCount = 0
+
+// Only the MOST RECENT impulse's ladder stretches forward live — once a
+// newer impulse fires, the prior ladder freezes exactly where the new one
+// started instead of running on indefinitely, which is what was producing
+// several full-length ladders all overlapping into the current price area
+// at once.
+if array.size(activeLns) > 0
+    for i = 0 to array.size(activeLns) - 1
+        line.set_x2(array.get(activeLns, i), bar_index)
 
 if isImpulse
     barsSinceImpulse := 0
     lo = low
     hi = high
     rangeW = hi - lo
+    array.clear(activeLns)
     for i = 0 to array.size(FIB) - 1
         f = array.get(FIB, i)
         price = lo + rangeW * f
         w = (f == 0.0 or f == 1.0) ? 2 : 1
         col = zoneColor(f)
-        ln = line.new(bar_index, price, bar_index + 1, price, xloc=xloc.bar_index, extend=extend.right, color=col, width=w)
+        ln = line.new(bar_index, price, bar_index + 1, price, xloc=xloc.bar_index, extend=extend.none, color=col, width=w)
         array.push(lns, ln)
+        array.push(activeLns, ln)
         lblCol = showLabels ? col : color.new(col, 100)
         lb = label.new(bar_index, price, str.tostring(f, "#.##") + "  " + str.tostring(price, format.mintick), xloc=xloc.bar_index, style=label.style_label_left, color=color.new(color.black, 100), textcolor=lblCol, size=size.tiny)
         array.push(lvlLbs, lb)
