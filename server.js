@@ -9452,6 +9452,82 @@ async function fetchOandaFinancing() {
   return out;
 }
 
+// ── Broker financing (swap) capture — the one series that CANNOT be backfilled ─
+// `fetchOandaFinancing()` above has always existed, but only as a LIVE read for
+// the carry page's current-rate haircut. Nothing ever stored a dated snapshot,
+// so the platform still has no swap history — which is exactly why
+// `education/151_STRATEGIES_PROPOSALS.md` N-1 defers the FX carry test
+// ("OANDA mids lack swap-inclusive returns") and `CLAUDE.md` records carry as
+// deferred "until swap-inclusive data exists".
+//
+// Brokers publish only TODAY's rates; there is no historical endpoint and no
+// vendor to buy it from. Every day this does not run is a day of carry history
+// that can never be recovered — the same "capture forward or lose it forever"
+// property as the CME open-interest snapshots. So this is deliberately started
+// BEFORE the test that needs it, and it is durable (`_CF_EXACT` in kv.js).
+//
+// One row per calendar day, de-duplicated by date, appended in date order. Rates
+// are annualised long/short financing percentages as OANDA reports them; no
+// interpretation is applied here — storage only, so a future test can decide how
+// to convert them.
+const _FINANCING_KV = 'oanda_financing_history';
+const _FINANCING_MAX_DAYS = 4000;   // ~11 years; well inside KV value limits
+let _financingLastRun = null;
+
+async function _captureFinancingSnapshot(reason = 'schedule') {
+  if (!process.env.OANDA_KEY || !process.env.OANDA_ACCOUNT_ID) return { ok: false, error: 'OANDA not configured' };
+  const today = new Date().toISOString().slice(0, 10);
+  const rates = await fetchOandaFinancing();
+  const names = Object.keys(rates);
+  if (!names.length) return { ok: false, error: 'no instruments returned' };
+
+  let hist = [];
+  try { const raw = await kv.get(_FINANCING_KV); if (raw) hist = JSON.parse(raw)?.days ?? []; } catch {}
+  // De-dupe by date: a re-run on the same day REPLACES that day rather than
+  // appending a second row, so a manual trigger can never corrupt the series.
+  hist = hist.filter(d => d.date !== today);
+  hist.push({ date: today, at: new Date().toISOString(), reason, rates });
+  hist.sort((a, b) => a.date.localeCompare(b.date));
+  if (hist.length > _FINANCING_MAX_DAYS) hist = hist.slice(-_FINANCING_MAX_DAYS);
+
+  await kv.put(_FINANCING_KV, JSON.stringify({ updatedAt: new Date().toISOString(), days: hist }));
+  console.log(`[financing] captured ${names.length} instruments for ${today} (${hist.length} days stored)`);
+  return { ok: true, date: today, instruments: names.length, daysStored: hist.length };
+}
+
+// Poll every 6h and capture once per calendar day. Cheap (one API call) and the
+// de-dupe makes extra ticks harmless; rates change rarely but unpredictably, so
+// a daily snapshot is the honest cadence rather than guessing when they move.
+setInterval(() => {
+  const today = new Date().toISOString().slice(0, 10);
+  if (_financingLastRun === today) return;
+  _financingLastRun = today;
+  _captureFinancingSnapshot('schedule').catch(e => {
+    _financingLastRun = null;   // let the next tick retry rather than skipping the day
+    console.error('[financing]', e.message);
+  });
+}, 6 * 60 * 60_000);
+
+app.post('/api/financing/capture-now', async (_req, res) => {
+  try { res.json(await _captureFinancingSnapshot('manual')); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/financing/history', async (req, res) => {
+  const raw = await kv.get(_FINANCING_KV).catch(() => null);
+  if (!raw) return res.json({ ok: false, error: 'no snapshots captured yet — POST /api/financing/capture-now' });
+  const parsed = JSON.parse(raw);
+  const days = parsed.days ?? [];
+  // Default to a summary; ?full=1 returns every row (it grows unboundedly useful
+  // but slowly, so the default keeps the endpoint pasteable).
+  if (req.query.full === '1') return res.json({ ok: true, ...parsed });
+  res.json({
+    ok: true, updatedAt: parsed.updatedAt, days: days.length,
+    first: days[0]?.date ?? null, last: days.at(-1)?.date ?? null,
+    instruments: Object.keys(days.at(-1)?.rates ?? {}).length,
+    latest: days.at(-1) ?? null,
+  });
+});
+
 app.get('/api/fx-carry', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured (runs on Railway)' });
   if (!process.env.FRED_KEY)  return res.status(503).json({ error: 'FRED_KEY not configured (needed for interbank rates)' });
