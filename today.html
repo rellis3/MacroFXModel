@@ -2887,29 +2887,38 @@ function agreement(r) {
 function allRows() {
   const out = [];
   for (const [name, d] of Object.entries(brief.instruments ?? {})) {
-    const s  = session?.instruments?.[name] ?? null;
-    const fc = forecast?.instruments?.[name] ?? null;
-    const hlMed = d.levels?.hl_med?.pct ?? fc?.hl_median ?? null;
-    const hl75  = d.levels?.hl_75?.pct  ?? fc?.hl_75 ?? null;
-    const used  = (s?.hl != null && hlMed) ? s.hl / hlMed : null;   // fraction of median H-L consumed
-    const trending = d.regime?.label === 'TREND';
-    const near = nearestLevel(d);
-    const isProx = near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
-    const agr = agreement({ d, s });
-    const ct = cotFor(name);
-    const oi = oiFor(name, d.sym);
-    // attention: how much this pair deserves a look right now
-    let att = 0;
-    if (used != null) att += Math.min(used, 1.6) * 50;
-    if (trending && d.regime?.reliable) att += 25;
-    if ((d.vol_pct ?? 0) >= 80) att += 15;
-    if (d.news_flag) att += 20;
-    if (s && /Strong/i.test(s.bias_detail ?? '')) att += 15;
-    if (isProx) att += 40;
-    if (agr.aligned === true) att += 10;
-    if (ct?.level === 'EXTREME') att += 12;
-    if (oi && !oi.stale) att += 8;
-    out.push({ name, d, s, fc, hlMed, hl75, used, trending, att, near, isProx, agr, ct, oi });
+    // One bad instrument (a throw in cotFor/oiFor/agreement/nearestLevel) must
+    // not take every instrument after it down with it — a plain for...of loop
+    // aborts entirely on an uncaught exception, silently dropping the rest of
+    // the grid (seen live: FX/Gold vanished while indices, earlier in
+    // iteration order, still rendered). Skip just the offending instrument.
+    try {
+      const s  = session?.instruments?.[name] ?? null;
+      const fc = forecast?.instruments?.[name] ?? null;
+      const hlMed = d.levels?.hl_med?.pct ?? fc?.hl_median ?? null;
+      const hl75  = d.levels?.hl_75?.pct  ?? fc?.hl_75 ?? null;
+      const used  = (s?.hl != null && hlMed) ? s.hl / hlMed : null;   // fraction of median H-L consumed
+      const trending = d.regime?.label === 'TREND';
+      const near = nearestLevel(d);
+      const isProx = near != null && near.pips <= (PROX_LIMIT[d.ac] ?? 12);
+      const agr = agreement({ d, s });
+      const ct = cotFor(name);
+      const oi = oiFor(name, d.sym);
+      // attention: how much this pair deserves a look right now
+      let att = 0;
+      if (used != null) att += Math.min(used, 1.6) * 50;
+      if (trending && d.regime?.reliable) att += 25;
+      if ((d.vol_pct ?? 0) >= 80) att += 15;
+      if (d.news_flag) att += 20;
+      if (s && /Strong/i.test(s.bias_detail ?? '')) att += 15;
+      if (isProx) att += 40;
+      if (agr.aligned === true) att += 10;
+      if (ct?.level === 'EXTREME') att += 12;
+      if (oi && !oi.stale) att += 8;
+      out.push({ name, d, s, fc, hlMed, hl75, used, trending, att, near, isProx, agr, ct, oi });
+    } catch (e) {
+      console.error(`[allRows] skipping ${name} — threw:`, e);
+    }
   }
   return out;
 }
