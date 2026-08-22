@@ -8182,6 +8182,18 @@ app.post('/api/vumanchu/mtf-stack/send', express.json({ limit: '4kb' }), async (
   }
 });
 
+// An instrument's earliest-available-bar date never changes, so this is cached
+// indefinitely (not TTL'd like the range cache below) — avoids re-probing OANDA
+// on every /api/ohlc-range call for the same (instrument, granularity).
+const _earliestBarCache = new Map();
+async function _probeEarliestBarCached(instrument, gran) {
+  const key = `${instrument}_${gran}`;
+  if (_earliestBarCache.has(key)) return _earliestBarCache.get(key);
+  const earliest = await _probeEarliestBar(instrument, gran);
+  if (earliest) _earliestBarCache.set(key, earliest); // don't cache a null (probe failure) — worth retrying next call
+  return earliest;
+}
+
 // Paginated OANDA candle fetch over an explicit [fromISO, toISO] window at any
 // granularity (OANDA caps 5000 candles/request → forward-paginate). Returns
 // ascending values in the same London-datetime shape as /api/oanda_ohlc5m.
@@ -8190,13 +8202,29 @@ async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
   const toMs = Date.parse(toISO);
   // Daily candles align to London midnight (matches the forecaster's anchor).
   const align = gran === 'D' ? '&alignmentTimezone=Europe%2FLondon&dailyAlignment=0' : '';
+  // CFD/index instruments (gold, NAS100, etc.) were listed on OANDA much later
+  // than FX spot pairs and can have a materially shorter history ceiling — see
+  // _probeEarliestBar's own comment. Clamp `from` to that ceiling up front so a
+  // request that predates an instrument's inception can't be the cause of a
+  // failure below; reuses the same probe _fetchCouplingRange already relies on
+  // rather than duplicating the "ask OANDA for its earliest bar" logic.
   let from = fromISO;
+  const earliest = await _probeEarliestBarCached(instrument, gran);
+  if (earliest && Date.parse(earliest) > Date.parse(from)) from = earliest;
   const out = [];
   for (let page = 0; page < 40; page++) {
     const url = `${base}/v3/instruments/${encodeURIComponent(instrument)}/candles`
               + `?granularity=${gran}&from=${encodeURIComponent(from)}&count=5000&price=M${align}`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(30_000) });
-    if (!r.ok) throw new Error(`OANDA ${instrument} ${gran} HTTP ${r.status}`);
+    // Capture OANDA's actual response body on failure (matches _fetchCouplingRange's
+    // pattern below) instead of swallowing it into a bare status code — a 403 vs a
+    // 400 vs a "instrument not available for this account" message all look
+    // identical as `HTTP ${r.status}` alone, which is exactly what made the
+    // gold/NAS100 403 unexplainable from the client error message so far.
+    if (!r.ok) {
+      const bodyText = await r.text().catch(() => '');
+      throw new Error(`OANDA ${instrument} ${gran} HTTP ${r.status}${bodyText ? `: ${bodyText.slice(0, 200)}` : ''}`);
+    }
     const candles = (await r.json()).candles ?? [];
     let lastTime = null, stop = false;
     for (const c of candles) {

@@ -94,9 +94,8 @@
       <div class="row"><span class="sw" style="background:#60a5fa"></span>Monday ladder (dashed, per week)</div>
       <div class="row"><span class="sw" style="background:#facc15"></span>Confluent = today vs yesterday within pip threshold (thick gold)</div>
       <div class="row"><span class="sw" style="background:#34d399"></span>Alt (post-Asia) anchor when it diverges</div>
-      <div class="row">▲ long / ▼ short entry, colored by test</div>
-      <div class="row">SL = 1.5×ATR(14) (red dash), TP = 2R (green dash)</div>
-      <div class="row"><span class="sw" style="background:#22c55e"></span>win <span class="sw" style="background:#ef4444"></span>loss <span class="sw" style="background:#9ca3af"></span>open — line from entry to actual exit</div>
+      <div class="row"><span class="sw" style="background:#22c55e"></span>▲ long / <span class="sw" style="background:#ef4444"></span>▼ short entry — ring color = test</div>
+      <div class="row">W/L/open counts per chip are still SL(1.5×ATR)/2R-simulated, just not drawn on the chart</div>
     </div>
     <div id="hint">Pick a pair and date range, then Generate.<br>Toggle levels/tests to isolate one idea at a time.</div>
   </div>
@@ -131,6 +130,7 @@ let asiaTimeline = [], mondayTimeline = [];
 let events = { wick_engulf: [], midpoint_pullback: [], vwap_tap: [], adx_regime: [] };
 let sessionExtreme = [];
 let bars5m = [];
+let barsByTime = new Map();
 let currentSymbol = null, currentPip = 0.0001;
 
 // ── UI setup ─────────────────────────────────────────────────────────────────
@@ -238,6 +238,7 @@ async function loadData() {
     ]);
     if (c5.error || !c5.values?.length) { setStatus(c5.error || 'no candles for that range'); $('go').disabled = false; return; }
     bars5m = normalizeBars(c5.values);
+    barsByTime = new Map(bars5m.map(b => [b.time, b]));
     const bars15m = normalizeBars(c15?.values ?? []);
     currentSymbol = symbol;
     currentPip = getPipSize(symbol);
@@ -303,51 +304,38 @@ function drawSegment(x1, x2, y, color, dashed, width) {
   octx.beginPath(); octx.moveTo(x1 * dpr, y * dpr); octx.lineTo(x2 * dpr, y * dpr); octx.stroke();
   octx.restore();
 }
-function drawMarker(x, y, color, dir, size) {
+// Fill = DIRECTION (green long / red short) so direction reads at a glance
+// across every test without checking a legend; the ring = TEST color, so
+// which rule fired is still visible on closer look. No SL/TP or outcome
+// lines — direction + a clear entry mark only, per feedback that the
+// trade-plan lines were cluttering the chart rather than clarifying it.
+const DIR_COLOR = { long: '#22c55e', short: '#ef4444' };
+function drawMarker(x, y, dir, ringColor, size) {
   if (x == null || y == null) return;
-  const s = (size ?? 7) * dpr;
+  const s = (size ?? 9) * dpr;
   octx.save();
-  octx.fillStyle = color;
-  octx.strokeStyle = 'rgba(0,0,0,.65)'; octx.lineWidth = 1 * dpr; // dark outline so a marker reads on any candle color
+  octx.fillStyle = DIR_COLOR[dir] ?? '#9ca3af';
+  octx.strokeStyle = ringColor ?? 'rgba(0,0,0,.65)'; octx.lineWidth = 2 * dpr;
   octx.beginPath();
   if (dir === 'long') { octx.moveTo(x * dpr, y * dpr - s); octx.lineTo(x * dpr - s, y * dpr + s); octx.lineTo(x * dpr + s, y * dpr + s); }
   else { octx.moveTo(x * dpr, y * dpr + s); octx.lineTo(x * dpr - s, y * dpr - s); octx.lineTo(x * dpr + s, y * dpr - s); }
   octx.closePath(); octx.fill(); octx.stroke();
   octx.restore();
 }
-function drawDot(x, y, color) {
-  if (x == null || y == null) return;
-  octx.save();
-  octx.fillStyle = color; octx.strokeStyle = 'rgba(0,0,0,.65)'; octx.lineWidth = 1 * dpr;
-  octx.beginPath(); octx.arc(x * dpr, y * dpr, 4 * dpr, 0, Math.PI * 2); octx.fill(); octx.stroke();
-  octx.restore();
-}
-const OUTCOME_COLOR = { win: '#22c55e', loss: '#ef4444', open: '#9ca3af' };
 
-// One full trade visual: entry marker (big triangle, direction + test color),
-// short SL/TP guide segments spanning entry→exit, a line connecting entry to
-// exit colored by outcome, and a small dot at the exit. `ev` may be
-// unplanned (planned:false, e.g. ATR not warmed up yet) — falls back to just
-// the entry marker in that case, same as before this feature existed.
-function drawTrade(x, y, ev, color) {
-  const ex = x(ev.time), ey = y(ev.price);
-  drawMarker(ex, ey, color, ev.dir);
-  if (!ev.planned) return;
-  const exitX = ev.exitTime != null ? x(ev.exitTime) : null;
-  if (exitX != null) {
-    drawSegment(ex ?? 0, exitX, y(ev.tp), '#22c55e', true, 1);
-    drawSegment(ex ?? 0, exitX, y(ev.sl), '#ef4444', true, 1);
-  }
-  if (ex != null && exitX != null) {
-    octx.save();
-    octx.strokeStyle = OUTCOME_COLOR[ev.outcome] ?? '#9ca3af';
-    octx.lineWidth = 1.5 * dpr; octx.setLineDash([]);
-    octx.beginPath(); octx.moveTo(ex * dpr, ey * dpr); octx.lineTo(exitX * dpr, y(ev.exitPrice) * dpr); octx.stroke();
-    octx.restore();
-    drawDot(exitX, y(ev.exitPrice), OUTCOME_COLOR[ev.outcome] ?? '#9ca3af');
-  }
+// Entry marker only — offset a fixed pixel gap below the candle's low (long)
+// or above its high (short), the standard buy/sell-arrow convention, instead
+// of sitting exactly on ev.price (usually inside the candle body/wick where
+// it's easy to lose against the price series).
+function drawTrade(x, y, ev, ringColor, barsByTime) {
+  const bar = barsByTime.get(ev.time);
+  const refPrice = bar ? (ev.dir === 'long' ? bar.low : bar.high) : ev.price;
+  const baseY = y(refPrice);
+  const ex = x(ev.time);
+  if (ex == null || baseY == null) return;
+  const ey = ev.dir === 'long' ? baseY + 12 : baseY - 12;
+  drawMarker(ex, ey, ev.dir, ringColor);
 }
-
 function drawOverlay() {
   if (!octx) return;
   octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
@@ -401,13 +389,15 @@ function drawOverlay() {
     }
   }
 
-  // Point events — entry marker + planned SL(red)/TP(green) guides + an
-  // outcome-colored line to the actual exit (green win / red loss / grey
-  // still-open), so the direction AND the trade plan are both visible, not
-  // just where the rule fired.
+  // Point events — a single clear entry marker per trigger. Fill = direction
+  // (green long / red short), ring = which test fired. Offset off the
+  // candle's low/high rather than sitting on ev.price so it doesn't get lost
+  // in the candle body. SL/TP/outcome are still computed (see the W/L/open
+  // counts on each chip above) but deliberately NOT drawn — that was more
+  // clutter than clarity on a busy multi-week chart.
   for (const key of ['wick_engulf', 'midpoint_pullback', 'vwap_tap', 'adx_regime']) {
     if (!state.armedTests.has(key)) continue;
-    for (const ev of events[key]) drawTrade(x, y, ev, TEST_COLOR[key]);
+    for (const ev of events[key]) drawTrade(x, y, ev, TEST_COLOR[key], barsByTime);
   }
 }
 </script>
