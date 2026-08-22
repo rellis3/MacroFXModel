@@ -1086,8 +1086,20 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
                 codeConfirmed: !!primaryCode, monthlyRoot: null, matchedIsMonthly: null,
                 haveSmile: !!haveSmile };
   if (Array.isArray(rows) && rows.length) {
-    const liquid = rows.filter(r => r.straddle > 0 && r.iv > 0);
-    const pool = liquid.length ? liquid : rows;
+    // LIQUID MEANS TRADED, NOT MERELY LISTED. This tested straddle and IV only, and an
+    // exchange quotes both for a contract nobody holds — so a listed-but-empty weekly
+    // passed, and on an exact-DTE match it beat the monthly that carries the book.
+    // USD/JPY 2026-08-22: SJ1U6 at 13 DTE (oiCall 0, oiPut 0) won over JPUU6 at 14 DTE
+    // (2,225 / 5,253), the smile came back with zero OI at every strike, and charm and
+    // vanna summed to exactly nothing. The walls cannot sit on an expiry with no open
+    // interest, by definition.
+    const traded = r => ((r.oiCall || 0) + (r.oiPut || 0)) > 0;
+    const liquid = rows.filter(r => r.straddle > 0 && r.iv > 0 && traded(r));
+    // Fall back through "priced but untraded" before "anything at all", so a product
+    // whose term table carries no OI column still resolves as it did before.
+    const pool = liquid.length ? liquid
+      : (rows.filter(r => r.straddle > 0 && r.iv > 0).length
+          ? rows.filter(r => r.straddle > 0 && r.iv > 0) : rows);
     // Prefer an exact CODE match — absolute, and immune to the two pastes being
     // copied on different days. Fall back to nearest DTE only when the heatmap
     // carried no codes (older/simpler paste shapes).
@@ -1095,7 +1107,17 @@ export function resolveSmileExpiry(rawOI, rawIVTerm, { dte = null, haveSmile = f
     if (m) out.matchedOn = 'code';
     else {
       m = Number.isFinite(hintDte)
-        ? pool.slice().sort((a, b) => Math.abs(a.dte - hintDte) - Math.abs(b.dte - hintDte))[0]
+        // DTE distance first, then OPEN INTEREST as the tiebreak. Ties are common and
+        // were being settled by table order, which is arbitrary: USD/JPY 2026-08-22 had
+        // WJ1U6 at 12 DTE (25 contracts) and JPUU6 at 14 DTE (7,478) both one day from
+        // the hint, and the 25-lot weekly won. The hint came from a heatmap column
+        // carrying 40,316 near-money contracts, so the tie should break toward the
+        // expiry that could plausibly hold them.
+        ? pool.slice().sort((a, b) => {
+            const d = Math.abs(a.dte - hintDte) - Math.abs(b.dte - hintDte);
+            if (d !== 0) return d;
+            return ((b.oiCall || 0) + (b.oiPut || 0)) - ((a.oiCall || 0) + (a.oiPut || 0));
+          })[0]
         : pool.slice().sort((a, b) => a.dte - b.dte)[0];   // no DTE known → front liquid expiry
       if (m) out.matchedOn = Number.isFinite(hintDte) ? 'dte' : 'front';
     }
@@ -1884,15 +1906,33 @@ export async function buildOIEntry({
       : (primaryExpiry?.dte ?? (Number.isFinite(dteEff) ? dteEff : (Number.isFinite(dteRaw) ? dteRaw : null)));
     const dteYrs = dteDays > 0 ? dteDays / 365 : null;
     if (ivp) {
+      // THE SMILE'S STRIKES ARE RAW CME PRICES. Every consumer below compares them
+      // against `spot`, which is in PAIR terms, so they have to be converted first —
+      // the same shift the OI matrix already gets (invert for 6J/6C/6S, then subtract
+      // the basis).
+      //
+      // On a non-inverted pair the two are close enough that nothing looked wrong: the
+      // strikes sit within a basis of spot. On the inverted contracts they are out by
+      // the inversion — USD/CAD's smile arrived as 0.712-0.765 against a spot of 1.378,
+      // and USD/JPY as 0.00575-0.00685 against 158.47. Black-Scholes then evaluates
+      // every strike absurdly far from the money, charm and vanna underflow, and the
+      // exposures sum to exactly 0.00 while ivStrikes cheerfully reports 31. Measured
+      // 2026-08-22: cex 0 on all three inverted pairs, non-zero on the other eight.
+      //
+      // expectedMove, ivDynamics and riskReversal take the same strikes against the
+      // same spot, so they were wrong on those pairs too — the greeks were just the
+      // only ones that failed loudly enough (a clean zero) to be noticed.
+      const ivKs = ivp.strikes.map(_shiftToSpot).map((s, i) => Number.isFinite(s) ? s : ivp.strikes[i]);
+
       // Expected move (ATM straddle) + IV dynamics + risk reversal — off the SAME paste.
-      expMove = expectedMove(ivp.strikes, ivp.callPx, ivp.putPx, spot, { dte: dteDays });
-      ivDyn = ivDynamics(ivp.strikes, ivp.iv, ivp.ivPrior, spot);
-      ivRR = riskReversal(ivp.strikes, ivp.iv, spot);
-      ivSmile = { strikes: ivp.strikes, iv: ivp.iv, ivPrior: ivp.ivPrior };   // for the smile-curve viz
+      expMove = expectedMove(ivKs, ivp.callPx, ivp.putPx, spot, { dte: dteDays });
+      ivDyn = ivDynamics(ivKs, ivp.iv, ivp.ivPrior, spot);
+      ivRR = riskReversal(ivKs, ivp.iv, spot);
+      ivSmile = { strikes: ivKs, iv: ivp.iv, ivPrior: ivp.ivPrior };   // for the smile-curve viz
 
       if (dteYrs > 0) {
-        const ivBy = new Map(ivp.strikes.map((s, i) => [s, ivp.iv[i]]));
-        const ex = charmVannaExposure(ivp.strikes, ivp.calls, ivp.puts, spot, { sigmaFn: k => ivBy.get(k), T: dteYrs, mult: cs });
+        const ivBy = new Map(ivKs.map((s, i) => [s, ivp.iv[i]]));
+        const ex = charmVannaExposure(ivKs, ivp.calls, ivp.puts, spot, { sigmaFn: k => ivBy.get(k), T: dteYrs, mult: cs });
         if (ex) greeksFlow = { cex: ex.cex, vex: ex.vex, charmFlip: ex.charmFlip, vannaFlip: ex.vannaFlip,
           source: 'iv', ivStrikes: ivp.strikes.length, dteDays,
           vanna: vannaState(ex.vex, ivDyn?.atmChg != null ? ivDyn.atmChg / 100 : null) };
