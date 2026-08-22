@@ -2001,6 +2001,18 @@ directly (a clean match since gold already has dedicated infrastructure).
 Coverage caveat for both: CVOL only has 6 USD-major pairs + gold, none of the
 19 cross pairs the platform actually trades.
 
+**Follow-up (2026-08-22) — a second uploaded dataset, CBOE GVZ + VXN, wired into the same engine.**
+Owner uploaded `XAUUSD_GVZ_2016_present.zip`: CBOE's GVZ (GLD-options implied
+vol, close-only) and VXN (NDX-options implied vol, full OHLC), 2016–2026-08-19,
+a genuinely different provider/methodology than CME CVOL, not a duplicate.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **CBOE vol-index loader** | `js/impliedVolCore.js` → `loadCboeVolSeries`, `cboeMeta`, `crossCheckSeries` (new exports) | Reads `js/data/cboeVolIndices.json` (`scripts/convertCboeVolContext.py`), normalizes GVZ/VXN into the SAME row shape `loadCvolSeries` produces (close→`cvol`; `atm`/`skew`/`upvar`/`dnvar`/`convexity` stay null — CBOE doesn't publish them, not fabricated) so `computeVRPSeries` and every existing consumer work unchanged on either source. `crossCheckSeries` aligns two independent implied-vol reads of the same underlying onto one bar series and reports their Spearman correlation (`statsCore.spearman`, imported not reimplemented) | `js/fxVolCarryEngine.js` | 🟢 built + unit-tested |
+| **`realizedVolPct` index branch** | `js/impliedVolCore.js` | Added the missing `assetClass==='index'` path (GARCH(1,1) via `garchSigmas`, same as `volSigmaSeries`'s own index path) — the function only handled fx/commodity before; NQ has no realized-vol comparator without this | `js/fxVolCarryEngine.js`'s NQ instrument | 🟢 built + unit-tested |
+| **NQ + gold cross-check wiring** | `js/fxVolCarryEngine.js` | `VRP_INSTRUMENTS` now carries `volSource`/`cvolProduct`\|`cboeProduct` per instrument instead of assuming CME; added **NQ** (`oanda: NAS100_USD`, `assetClass: 'index'`, primary source **CBOE VXN** — CME CVOL has no index coverage at all, so this is NQ's ONLY implied-vol source) and gave **GOLD** a `crossCheck: {volSource:'CBOE', cboeProduct:'XAUUSD'}` (GVZ) — computed as a correlation + overlay against the SAME diagnostics, explicitly NOT a second trading arm, so the comparison stays honest instead of quietly doubling GOLD's apparent edge surface. `volSigmaSeriesFor` and `runVRPBacktest` gained the matching GARCH branch for the exhaustion-band width itself | `server.js`'s `/api/fx-vol-carry/*` (unchanged route — instrument filter was already generic), `fx-vol-carry-backtest.html` | 🟡 built + unit-tested on synthetic + the real CBOE files (`js/fxVolCarryEngine.test.mjs`, 33 checks); still not run against live OANDA data — same sandbox limitation as the CME-only pass above |
+| **Cross-check UI** | `fx-vol-carry-backtest.html` | GOLD's card now renders a correlation badge + a 2-line implied-vol overlay chart (CVOL vs GVZ) under its monthly heatmap; instrument dropdown adds NQ; the IV-vs-RV diagnostic chart title/legend now reads the actual source (`CME:XAUUSD` vs `CBOE:NAS100`) instead of hardcoding "CVOL" | — | 🟡 built, same untested-live caveat |
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

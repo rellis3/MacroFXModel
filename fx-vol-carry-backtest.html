@@ -68,12 +68,12 @@
   <div style="flex:1">
     <h1>FX/Gold Vol-Carry Backtester <span class="mut" style="font-size:13px;font-weight:500">· CME CVOL variance risk premium (VRP)</span></h1>
     <div class="sub">
-      Tests whether CME's options-implied volatility index (CVOL), compared against
-      this platform's own realized-vol math, is useful as a GATE on the existing
-      fade/follow exhaustion-band strategy — versus always-fade and always-follow at
-      the same band, IS/OOS, with real costs. Built on <code>resolveHonestDay</code>
-      (<code>honestForecastEngine.js</code>) and <code>js/impliedVolCore.js</code> —
-      no new fill logic, no new leg.
+      Tests whether options-implied volatility (CME CVOL for FX/gold, CBOE VXN for
+      NQ), compared against this platform's own realized-vol math, is useful as a
+      GATE on the existing fade/follow exhaustion-band strategy — versus always-fade
+      and always-follow at the same band, IS/OOS, with real costs. Built on
+      <code>resolveHonestDay</code> (<code>honestForecastEngine.js</code>) and
+      <code>js/impliedVolCore.js</code> — no new fill logic, no new leg.
     </div>
   </div>
   <a class="back" href="index.html">← Dashboard</a>
@@ -87,11 +87,16 @@
   strategy, never as a literal "sell implied variance" payoff. A synthetic
   variance-swap P&amp;L would be a different, more optimistic-looking test that this
   page deliberately does not run.<br><br>
-  <b>CVOL data is a static historical snapshot</b>, not a live feed — converted from
-  an uploaded CME CVOL EOD export. <span id="cvolMetaLine" class="mut">Coverage loads with the first run.</span>
-  Refreshing it needs a new CME CVOL export re-run through <code>scripts/convertCmeCvol.py</code>.
-  Covers <b>EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, GOLD (XAUUSD)</b> only — no
-  crosses, no NZDUSD.
+  <b>Two independent implied-vol sources, both static snapshots, not live feeds.</b>
+  <b>CME CVOL</b> covers EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, GOLD
+  (XAUUSD) — no crosses, no NZDUSD, no indices. <b>CBOE</b> (GVZ/VXN) supplies the
+  <b>only</b> implied-vol source for <b>NQ</b> (VXN, since CME CVOL has no index
+  coverage), and a <b>second, independent read on GOLD</b> (GVZ) shown as a
+  cross-check against CVOL's own gold read — not a second trading arm, just a
+  correlation + overlay to see whether the two providers agree.
+  <span id="cvolMetaLine" class="mut">Coverage loads with the first run.</span>
+  Refreshing needs a fresh export re-run through <code>scripts/convertCmeCvol.py</code>
+  / <code>scripts/convertCboeVolContext.py</code>.
 </div>
 
 <div class="card">
@@ -102,6 +107,7 @@
         <option value="">All 7</option>
         <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
         <option>AUDUSD</option><option>USDCAD</option><option>USDCHF</option><option>GOLD</option>
+        <option>NQ</option>
       </select>
     </div>
     <div><label>OOS fraction</label><input id="oosFrac" type="number" value="0.4" step="0.05" min="0.1" max="0.6"></div>
@@ -192,6 +198,40 @@ function heatmap(hm){
   }).join('')}</div>`;
 }
 
+function crossCheckBlock(xc, chartId){
+  const corrTxt = xc.correlation==null ? 'n/a (no overlap)' : fmt(xc.correlation,2);
+  const badgeCls = xc.correlation==null ? 'b-meh' : xc.correlation>=0.6 ? 'b-good' : xc.correlation>=0.3 ? 'b-meh' : 'b-bad';
+  return `<div class="chart-title" style="margin-top:14px">Cross-check vs ${xc.source} (${xc.product}) — independent second implied-vol read, not a trading arm</div>
+    <div style="margin-bottom:6px"><span class="badge ${badgeCls}">Spearman ρ ${corrTxt} · n=${xc.n}</span></div>
+    <div class="chart-wrap" style="height:180px"><canvas id="${chartId}"></canvas></div>`;
+}
+
+function mkCrossCheckChart(canvasId, xc){
+  const el = $(canvasId);
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  const step = Math.max(1, Math.floor(xc.points.length / 900));
+  const pts = xc.points.filter((_,i)=>i%step===0);
+  const c = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        { label:'primary (CVOL)', borderColor:'#5b9dff', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.primary!=null).map(p=>({x:p.date,y:p.primary})) },
+        { label:`cross-check (${xc.source})`, borderColor:'#3fb27f', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.secondary!=null).map(p=>({x:p.date,y:p.secondary})) },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false, parsing:false,
+      scales: {
+        x: { type:'category', ticks:{ color:'#6f7889', maxTicksLimit:6, font:{size:10} }, grid:{color:'#1d222e'} },
+        y: { ticks:{ color:'#6f7889', font:{size:10} }, grid:{color:'#1d222e'}, title:{display:true,text:'implied vol %',color:'#6f7889',font:{size:10}} },
+      },
+      plugins: { legend:{ labels:{ color:'#aab2c0', boxWidth:12, font:{size:10.5} } } },
+    },
+  });
+  charts.push(c);
+}
+
 function destroyCharts(){ charts.forEach(c=>c.destroy()); charts = []; }
 
 function mkEquityChart(canvasId, curves, splitDate){
@@ -225,7 +265,7 @@ function mkIvRvChart(canvasId, diagnostics){
     type: 'line',
     data: {
       datasets: [
-        { label:'CVOL (implied)', borderColor:'#5b9dff', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.cvol!=null).map(p=>({x:p.date,y:p.cvol})) },
+        { label:'implied vol', borderColor:'#5b9dff', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.cvol!=null).map(p=>({x:p.date,y:p.cvol})) },
         { label:'RV30 (realized)', borderColor:'#e0a93b', backgroundColor:'transparent', borderWidth:1.3, pointRadius:0, tension:0.05, data: pts.filter(p=>p.rv!=null).map(p=>({x:p.date,y:p.rv})) },
       ],
     },
@@ -275,9 +315,9 @@ function toCsvCurrency(recs){
 
 function renderInstrument(r, idx){
   const arms = r.arms, split = arms.vrp.splitDate;
-  const eqId = `eq_${idx}`, ivId = `iv_${idx}`;
+  const eqId = `eq_${idx}`, ivId = `iv_${idx}`, xcId = `xc_${idx}`;
   let html = `<div class="card">
-    <div class="inst-title">${r.instrument} <span class="mut" style="font-weight:500;font-size:12px">· ${r.assetClass} · CVOL:${r.cvolProduct} · OOS from ${split||'—'}</span> ${verdict(arms)}</div>
+    <div class="inst-title">${r.instrument} <span class="mut" style="font-weight:500;font-size:12px">· ${r.assetClass} · ${r.volSource}:${r.volProduct} · OOS from ${split||'—'}</span> ${verdict(arms)}</div>
     ${kpiGrid(arms)}`;
   for (const period of ['is','oos']){
     const best = Math.max(...ARMS.map(k=>arms[k][period].sharpe));
@@ -288,10 +328,11 @@ function renderInstrument(r, idx){
   }
   html += `<div class="chart-row">
       <div><div class="chart-title">Cumulative return — vrp vs baselines</div><div class="chart-wrap"><canvas id="${eqId}"></canvas></div></div>
-      <div><div class="chart-title">CME CVOL (implied) vs RV30 (realized), annualized %</div><div class="chart-wrap"><canvas id="${ivId}"></canvas></div></div>
+      <div><div class="chart-title">${r.volSource}:${r.volProduct} (implied) vs RV30 (realized), annualized %</div><div class="chart-wrap"><canvas id="${ivId}"></canvas></div></div>
     </div>
     <div class="chart-title" style="margin-top:14px">VRP-arm monthly return (concentration check)</div>
     ${heatmap(r.monthlyHeatmap)}
+    ${r.crossCheck ? crossCheckBlock(r.crossCheck, xcId) : ''}
     <div class="csv-row">
       <span class="hint" style="width:100%">VRP-arm trade log · account size $${ACCOUNT_SIZE.toLocaleString()} · R = pnl% ÷ trade's own stop-distance% (vol-scaled, not fixed)</span>
       <button class="ghost" data-exp="returns" data-idx="${idx}">⬇ % Returns CSV</button>
@@ -328,13 +369,17 @@ $('run').onclick = async () => {
     const out = await poll(start.jobId);
     lastResults = out.results;
     $('status').textContent = `Done — ${out.results.length} instrument(s).`;
-    if (out.cvolMeta) {
-      $('cvolMetaLine').textContent = `Loaded: ${out.cvolMeta.source}, generated ${out.cvolMeta.generatedNote?.match(/on ([\d-]+)/)?.[1]||'—'}. Rows/product: ${JSON.stringify(out.cvolMeta.rowsPerProduct)}`;
+    if (out.cvolMeta || out.cboeMeta) {
+      const parts = [];
+      if (out.cvolMeta) parts.push(`CME CVOL rows/product: ${JSON.stringify(out.cvolMeta.rowsPerProduct)}`);
+      if (out.cboeMeta) parts.push(`CBOE rows/product: ${JSON.stringify(out.cboeMeta.rowsPerProduct)}`);
+      $('cvolMetaLine').textContent = parts.join(' · ');
     }
     $('results').innerHTML = out.results.map(renderInstrument).join('');
     out.results.forEach((r,idx) => {
       mkEquityChart(`eq_${idx}`, r.equityCurves, r.arms.vrp.splitDate);
       mkIvRvChart(`iv_${idx}`, r.diagnostics);
+      if (r.crossCheck) mkCrossCheckChart(`xc_${idx}`, r.crossCheck);
     });
     document.querySelectorAll('button[data-exp]').forEach(btn => {
       btn.onclick = () => {

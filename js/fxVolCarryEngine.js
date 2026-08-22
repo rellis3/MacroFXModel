@@ -28,27 +28,38 @@
  * "don't run a lookalike and call it the thing."
  */
 import {
-  classifyRegime, ASSET_PARAMS, BM_P75, HN_P50, hvVarSeries, yzVolSeries,
+  classifyRegime, ASSET_PARAMS, BM_P75, HN_P50, hvVarSeries, yzVolSeries, garchSigmas,
   fetchD1,
 } from './volBacktestEngine.js';
 import { resolveHonestDay, summarizeSplit } from './honestForecastEngine.js';
-import { loadCvolSeries, computeVRPSeries, cvolMeta } from './impliedVolCore.js';
+import { loadCvolSeries, loadCboeVolSeries, computeVRPSeries, crossCheckSeries, cvolMeta, cboeMeta } from './impliedVolCore.js';
 
 const DEFAULT_COST_PCT = { fx: 0.012, index: 0.010, commodity: 0.020 };
 const DEFAULT_SLIP_PCT = { fx: 0.006, index: 0.008, commodity: 0.012 };
 
-// CME CVOL product name → this platform's OANDA instrument. XAUUSD (CVOL's
-// product code for gold) has no name in common with the OANDA/GOLD naming
-// used everywhere else in this repo — mapped explicitly rather than assumed.
+// Each instrument names its PRIMARY implied-vol source (volSource: 'CME' —
+// CME CVOL, cvolProduct — or 'CBOE' — GVZ/VXN, cboeProduct). CME CVOL only
+// covers 6 USD-major FX pairs + gold, so NQ has no CME source and uses CBOE's
+// VXN as primary instead — the only implied-vol data this platform has for
+// the index asset class. GOLD additionally carries `crossCheck`: a SECOND,
+// independent implied-vol read (CBOE's GVZ) of the same underlying CVOL
+// already covers, used only to sanity-check the primary read (correlation +
+// an overlay chart), never as a second trading arm — see runVRPSuite.
 export const VRP_INSTRUMENTS = [
-  { name: 'EURUSD', oanda: 'EUR_USD', assetClass: 'fx',        cvolProduct: 'EURUSD' },
-  { name: 'GBPUSD', oanda: 'GBP_USD', assetClass: 'fx',        cvolProduct: 'GBPUSD' },
-  { name: 'USDJPY', oanda: 'USD_JPY', assetClass: 'fx',        cvolProduct: 'USDJPY' },
-  { name: 'AUDUSD', oanda: 'AUD_USD', assetClass: 'fx',        cvolProduct: 'AUDUSD' },
-  { name: 'USDCAD', oanda: 'USD_CAD', assetClass: 'fx',        cvolProduct: 'USDCAD' },
-  { name: 'USDCHF', oanda: 'USD_CHF', assetClass: 'fx',        cvolProduct: 'USDCHF' },
-  { name: 'GOLD',   oanda: 'XAU_USD', assetClass: 'commodity', cvolProduct: 'XAUUSD' },
+  { name: 'EURUSD', oanda: 'EUR_USD', assetClass: 'fx',        volSource: 'CME',  cvolProduct: 'EURUSD' },
+  { name: 'GBPUSD', oanda: 'GBP_USD', assetClass: 'fx',        volSource: 'CME',  cvolProduct: 'GBPUSD' },
+  { name: 'USDJPY', oanda: 'USD_JPY', assetClass: 'fx',        volSource: 'CME',  cvolProduct: 'USDJPY' },
+  { name: 'AUDUSD', oanda: 'AUD_USD', assetClass: 'fx',        volSource: 'CME',  cvolProduct: 'AUDUSD' },
+  { name: 'USDCAD', oanda: 'USD_CAD', assetClass: 'fx',        volSource: 'CME',  cvolProduct: 'USDCAD' },
+  { name: 'USDCHF', oanda: 'USD_CHF', assetClass: 'fx',        volSource: 'CME',  cvolProduct: 'USDCHF' },
+  { name: 'GOLD',   oanda: 'XAU_USD', assetClass: 'commodity', volSource: 'CME',  cvolProduct: 'XAUUSD',
+    crossCheck: { volSource: 'CBOE', cboeProduct: 'XAUUSD' } },
+  { name: 'NQ',     oanda: 'NAS100_USD', assetClass: 'index',  volSource: 'CBOE', cboeProduct: 'NAS100' },
 ];
+
+function loadPrimaryVolRows(cfg) {
+  return cfg.volSource === 'CBOE' ? loadCboeVolSeries(cfg.cboeProduct) : loadCvolSeries(cfg.cvolProduct);
+}
 
 // ── The selector: VRP z-score → action ────────────────────────────────────
 // Mirrors selectStrategy(T, regime, cfg) in forecastCore.js in SHAPE (a small
@@ -71,6 +82,9 @@ function volSigmaSeriesFor(bars, assetClass, p) {
     for (let j = 1; j < closes.length; j++) lr.push(Math.log(closes[j] / closes[j - 1]));
     const hv = hvVarSeries(lr, 20);
     for (let i = 2; i < bars.length; i++) out[i] = Math.sqrt(Math.max(hv[i - 2], 1e-12));
+  } else if (assetClass === 'index') {
+    const g = garchSigmas(bars, p.garch_omega ?? 4.76e-6);
+    for (let i = 0; i < bars.length; i++) out[i] = g[i];
   } else {
     const yz = yzVolSeries(bars, 30);
     for (let i = 1; i < bars.length; i++) out[i] = yz[i - 1] || 1e-6;
@@ -89,7 +103,7 @@ export function runVRPBacktest(bars, assetClass, cvolRows, opts = {}) {
   const slipPct = opts.slipPct ?? DEFAULT_SLIP_PCT[assetClass] ?? 0.006;
   const closes = bars.map(b => b.close);
   const volSigmas = volSigmaSeriesFor(bars, assetClass, p);
-  const vrpRows = computeVRPSeries(bars, cvolRows, assetClass, { zPeriod });
+  const vrpRows = computeVRPSeries(bars, cvolRows, assetClass, { zPeriod, garchOmega: p.garch_omega });
   const simOpts = { slMult: opts.slMult ?? 1.5, costPct, slipPct, breachReclaim: !!opts.breachReclaim };
 
   const rec = (b, regime, r, extra = {}) => ({
@@ -212,16 +226,28 @@ export async function runVRPSuite(opts = {}, instruments = VRP_INSTRUMENTS) {
     try {
       log.push(`Fetching ${cfg.name}…`);
       const bars = await fetchD1(cfg.oanda, 3000);
-      const cvolRows = loadCvolSeries(cfg.cvolProduct);
-      if (!cvolRows.length) { log.push(`  No CVOL data for ${cfg.cvolProduct}`); continue; }
-      log.push(`  ${bars.length} D1 bars, ${cvolRows.length} CVOL rows (${cvolRows[0]?.date} → ${cvolRows.at(-1)?.date})`);
-      const out = runVRPBacktest(bars, cfg.assetClass, cvolRows, opts);
+      const volRows = loadPrimaryVolRows(cfg);
+      if (!volRows.length) { log.push(`  No ${cfg.volSource} data for ${cfg.name}`); continue; }
+      log.push(`  ${bars.length} D1 bars, ${volRows.length} ${cfg.volSource} rows (${volRows[0]?.date} → ${volRows.at(-1)?.date})`);
+      const out = runVRPBacktest(bars, cfg.assetClass, volRows, opts);
       const vrpTrades = out.records.vrp.filter(r => r.filled).length;
       log.push(`  ${vrpTrades} VRP-gated fills`);
-      results.push({ instrument: cfg.name, assetClass: cfg.assetClass, cvolProduct: cfg.cvolProduct, ...out });
+
+      let crossCheck = null;
+      if (cfg.crossCheck) {
+        const xcRows = loadPrimaryVolRows(cfg.crossCheck);
+        if (xcRows.length) {
+          crossCheck = { source: cfg.crossCheck.volSource, product: cfg.crossCheck.cboeProduct ?? cfg.crossCheck.cvolProduct, ...crossCheckSeries(bars, volRows, xcRows) };
+          log.push(`  Cross-check vs ${crossCheck.source} (${crossCheck.product}): n=${crossCheck.n}, corr=${crossCheck.correlation}`);
+        } else {
+          log.push(`  Cross-check requested but no ${cfg.crossCheck.volSource} data found`);
+        }
+      }
+
+      results.push({ instrument: cfg.name, assetClass: cfg.assetClass, volSource: cfg.volSource, volProduct: cfg.cboeProduct ?? cfg.cvolProduct, crossCheck, ...out });
     } catch (e) {
       log.push(`  Error ${cfg.name}: ${e.message}`);
     }
   }
-  return { results, log, opts, cvolMeta: cvolMeta() };
+  return { results, log, opts, cvolMeta: cvolMeta(), cboeMeta: cboeMeta() };
 }

@@ -19,17 +19,25 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { yzVolSeries, hvVarSeries } from './volBacktestEngine.js';
-import { rollingZScore } from './statsCore.js';
+import { yzVolSeries, hvVarSeries, garchSigmas } from './volBacktestEngine.js';
+import { rollingZScore, spearman } from './statsCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = path.join(__dirname, 'data', 'cmeCvolEod.json');
+const CBOE_DATA_PATH = path.join(__dirname, 'data', 'cboeVolIndices.json');
 
 let _cache = null;
 function loadRaw() {
   if (_cache) return _cache;
   _cache = JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
   return _cache;
+}
+
+let _cboeCache = null;
+function loadCboeRaw() {
+  if (_cboeCache) return _cboeCache;
+  _cboeCache = JSON.parse(fs.readFileSync(CBOE_DATA_PATH, 'utf8'));
+  return _cboeCache;
 }
 
 export function cvolProducts() {
@@ -57,6 +65,54 @@ export function alignCvolToBars(bars, cvolRows) {
   return bars.map(b => byDate.get(b.date) ?? null);
 }
 
+// ── CBOE volatility indices (GVZ / VXN) — a SECOND, independent implied-vol
+// source (js/data/cboeVolIndices.json, from scripts/convertCboeVolContext.py).
+// Different provider and methodology than CME CVOL above: GVZ prices GLD
+// options (30-day, close-only — CBOE doesn't publish OHLC for it), VXN prices
+// NDX options (30-day, full OHLC). Products: 'NAS100' (VXN) — the only
+// implied-vol source for the index asset class, CME CVOL has none — and
+// 'XAUUSD' (GVZ) — an independent cross-check against CVOL's own XAUUSD read.
+// Normalized into the SAME row shape as loadCvolSeries so computeVRPSeries
+// and every other CME-CVOL consumer work on either source unchanged; CBOE
+// doesn't publish atm/skew/upvar/dnvar/convexity, so those stay null rather
+// than being fabricated from the single close-level number.
+export function cboeMeta() {
+  return loadCboeRaw().meta;
+}
+
+export function loadCboeVolSeries(product) {
+  const raw = loadCboeRaw();
+  const rows = raw.series[product] ?? [];
+  return rows.map(r => ({
+    date: r.date,
+    cvol: r.close,
+    atm: null, dnvar: null, upvar: null, skew: null, skewRatio: null, convexity: null, underlying: null,
+    limited: false,
+    source: r.source,   // 'GVZ' | 'VXN'
+  }));
+}
+
+// Cross-checks two independent implied-vol reads of the SAME underlying
+// (e.g. CME CVOL vs CBOE GVZ on gold) by aligning both onto the same bars and
+// computing their Spearman correlation (statsCore.js — never a fresh
+// correlation implementation). Returns the aligned point series too, for a
+// two-line diagnostic chart. n<3 or no overlap → correlation is null, not a
+// fabricated 0 (0 would misleadingly read as "confirmed no relationship").
+export function crossCheckSeries(bars, primaryRows, secondaryRows) {
+  const primary = alignCvolToBars(bars, primaryRows);
+  const secondary = alignCvolToBars(bars, secondaryRows);
+  const points = [];
+  const xs = [], ys = [];
+  for (let i = 0; i < bars.length; i++) {
+    const p = primary[i]?.cvol ?? null;
+    const s = secondary[i]?.cvol ?? null;
+    points.push({ date: bars[i].date, primary: p, secondary: s });
+    if (p != null && s != null) { xs.push(p); ys.push(s); }
+  }
+  const correlation = xs.length >= 3 ? +spearman(xs, ys).toFixed(4) : null;
+  return { n: xs.length, correlation, points };
+}
+
 // Realized vol, ANNUALIZED PERCENT (×√252×100) so it is directly comparable to
 // CVOL's index units. Window = 30 trading days to match CVOL's constant-
 // maturity ~30-day tenor. fx → Yang-Zhang(30) (matches volSigmaSeries' fx
@@ -65,7 +121,7 @@ export function alignCvolToBars(bars, cvolRows) {
 // tenor-match CVOL, a deliberate, documented divergence from the live
 // forecaster's own window, not an accidental one). No lookahead: out[i] only
 // uses bars strictly before i (yzVolSeries/hvVarSeries's own [i-1] lag).
-export function realizedVolPct(bars, assetClass) {
+export function realizedVolPct(bars, assetClass, garchOmega) {
   const n = bars.length;
   const out = new Array(n).fill(null);
   if (assetClass === 'commodity') {
@@ -74,6 +130,11 @@ export function realizedVolPct(bars, assetClass) {
     for (let j = 1; j < closes.length; j++) lr.push(Math.log(closes[j] / closes[j - 1]));
     const hv = hvVarSeries(lr, 30);
     for (let i = 2; i < n; i++) out[i] = Math.sqrt(Math.max(hv[i - 2], 1e-12)) * Math.sqrt(252) * 100;
+  } else if (assetClass === 'index') {
+    // GARCH(1,1), same as volSigmaSeries' index path — garchSigmas is itself
+    // one-step-ahead (predicts bar i from returns through i-1), so no extra lag here.
+    const g = garchSigmas(bars, garchOmega ?? 4.76e-6);
+    for (let i = 0; i < n; i++) out[i] = g[i] > 0 ? g[i] * Math.sqrt(252) * 100 : null;
   } else {
     const yz = yzVolSeries(bars, 30);
     for (let i = 1; i < n; i++) out[i] = (yz[i - 1] || 0) > 0 ? yz[i - 1] * Math.sqrt(252) * 100 : null;
@@ -88,9 +149,9 @@ export function realizedVolPct(bars, assetClass) {
 // (252 ≈ 1 trading year) trades off responsiveness vs having enough history
 // to be a real distribution; sample stdev (ddof=1), clipped to ±4 to blunt a
 // single-day data glitch from swamping the whole z-series.
-export function computeVRPSeries(bars, cvolRows, assetClass, { zPeriod = 252 } = {}) {
+export function computeVRPSeries(bars, cvolRows, assetClass, { zPeriod = 252, garchOmega } = {}) {
   const aligned = alignCvolToBars(bars, cvolRows);
-  const rv = realizedVolPct(bars, assetClass);
+  const rv = realizedVolPct(bars, assetClass, garchOmega);
   const vrp = bars.map((b, i) => {
     const c = aligned[i];
     if (!c || c.cvol == null || rv[i] == null) return null;

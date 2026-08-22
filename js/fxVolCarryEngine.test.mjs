@@ -6,8 +6,8 @@
 //
 //   node js/fxVolCarryEngine.test.mjs
 
-import { alignCvolToBars, computeVRPSeries, realizedVolPct } from './impliedVolCore.js';
-import { selectStrategyVRP, runVRPBacktest, toCsvReturns, toCsvRMultiples, toCsvCurrency } from './fxVolCarryEngine.js';
+import { alignCvolToBars, computeVRPSeries, realizedVolPct, loadCboeVolSeries, crossCheckSeries } from './impliedVolCore.js';
+import { selectStrategyVRP, runVRPBacktest, toCsvReturns, toCsvRMultiples, toCsvCurrency, VRP_INSTRUMENTS } from './fxVolCarryEngine.js';
 import { resolveHonestDay } from './honestForecastEngine.js';
 
 let failures = 0;
@@ -113,6 +113,47 @@ function makeBars(n, { seedPx = 1.1000, driftAmp = 0.0006, volAmp = 0.004 } = {}
   ok('toCsvReturns header matches house schema', csv1.startsWith('Date,Return %,MAE %'));
   ok('toCsvRMultiples header matches house schema', csv2.startsWith('date,R,MAE (R)'));
   ok('toCsvCurrency header matches house schema', csv3.startsWith('Trade Date,PnL ($),Risk ($)'));
+}
+
+// ── 7) CBOE data (GVZ/VXN) — real files, loads and shapes match the CME contract
+{
+  const nas = loadCboeVolSeries('NAS100');
+  const gold = loadCboeVolSeries('XAUUSD');
+  ok('loadCboeVolSeries: NAS100 (VXN) has rows', nas.length > 2000, `n=${nas.length}`);
+  ok('loadCboeVolSeries: XAUUSD (GVZ) has rows', gold.length > 2000, `n=${gold.length}`);
+  ok('loadCboeVolSeries: normalizes close into the cvol field', Number.isFinite(nas[0]?.cvol));
+  ok('loadCboeVolSeries: GVZ has no OHLC — atm/skew stay null, not fabricated', gold[0]?.atm === null && gold[0]?.skew === null);
+  ok('loadCboeVolSeries: unknown product returns empty, not a throw', loadCboeVolSeries('NOPE').length === 0);
+}
+
+// ── 8) index asset class end-to-end (NQ/VXN) — GARCH realized-vol path wired ──
+{
+  const bars = makeBars(400);
+  const rv = realizedVolPct(bars, 'index');
+  ok('realizedVolPct index: produces finite values once GARCH warms up', Number.isFinite(rv[100]) && rv[100] > 0);
+  const out = runVRPBacktest(bars, 'index', loadCboeVolSeries('NAS100'), { minLookback: 60, zPeriod: 100, oosFrac: 0.4 });
+  ok('runVRPBacktest index: three arms present', !!(out.arms.vrp && out.arms.alwaysFade && out.arms.alwaysFollow));
+  ok('runVRPBacktest index: diagnostics carries a numeric cvol where CBOE dates overlap the synthetic bars',
+    out.diagnostics.some(d => Number.isFinite(d.cvol)));
+}
+
+// ── 9) crossCheckSeries — GVZ vs itself is a perfect check; independent series correlate weakly ──
+{
+  const bars = makeBars(300);
+  const gvz = loadCboeVolSeries('XAUUSD').filter(r => bars.some(b => b.date === r.date));
+  const selfCheck = crossCheckSeries(bars, gvz, gvz);
+  ok('crossCheckSeries: a series checked against itself is correlation 1', selfCheck.correlation === 1, `got ${selfCheck.correlation}`);
+  ok('crossCheckSeries: point count matches overlapping dates', selfCheck.n === selfCheck.points.filter(p => p.primary != null).length);
+  const empty = crossCheckSeries(bars, [], gvz);
+  ok('crossCheckSeries: no overlap → null correlation, not a fabricated 0', empty.correlation === null);
+}
+
+// ── 10) GOLD's declared cross-check wiring is present in VRP_INSTRUMENTS ──
+{
+  const gold = VRP_INSTRUMENTS.find(i => i.name === 'GOLD');
+  const nq = VRP_INSTRUMENTS.find(i => i.name === 'NQ');
+  ok('VRP_INSTRUMENTS: GOLD declares a CBOE/GVZ cross-check', gold?.crossCheck?.volSource === 'CBOE' && gold?.crossCheck?.cboeProduct === 'XAUUSD');
+  ok('VRP_INSTRUMENTS: NQ is present with CBOE/VXN as its primary source (CME CVOL has no index coverage)', nq?.volSource === 'CBOE' && nq?.cboeProduct === 'NAS100');
 }
 
 console.log(failures === 0 ? `\nAll fxVolCarryEngine tests passed.` : `\n${failures} FAILURE(S).`);
