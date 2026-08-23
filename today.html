@@ -2950,6 +2950,9 @@ function renderHeader() {
   if (forecast?.computed_at) stamps.push(`forecast ${new Date(forecast.computed_at).toLocaleTimeString()}`);
   if (session?.fetched_at)   stamps.push(`live ${new Date(session.fetched_at).toLocaleTimeString()}`);
   if (brief.has_hit_rates && brief.hit_rates_age) stamps.push(`hit-rates ${new Date(brief.hit_rates_age).toLocaleDateString()}`);
+  // Carried-forward instruments (their data source was down at forecast time)
+  const nStale = Object.values(brief.instruments ?? {}).filter(d => d?.stale).length;
+  if (nStale) stamps.push(`⟳ ${nStale} instrument${nStale === 1 ? '' : 's'} on a carried forecast`);
   $('hdrStamp').textContent = stamps.join(' · ');
 }
 
@@ -3373,6 +3376,7 @@ function cardHtml(r) {
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
+      ${d.stale ? `<span class="chip warn" title="The live data fetch failed when this forecast was computed (e.g. an Oanda outage) — showing the last good forecast${d.carried_from ? `, from the ${d.carried_from} session` : ''}. It refreshes automatically once the data source recovers.">⟳ ${d.carried_from ?? 'carried'}</span>` : ''}
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>

@@ -1774,6 +1774,31 @@ function renderV2Grid(data, isHistorical = false) {
   const pc = document.getElementById('pillCount');
   if (pc) { pc.textContent = `${entries.length} pairs`; pc.className = entries.length > 0 ? 'dpill ok' : 'dpill err'; }
 
+  // Degraded-data banner: instruments riding on a carried-forward forecast
+  // (their data source was down at run time — e.g. Oanda 520s) and any that are
+  // missing outright. Without this the failure mode is invisible: cards either
+  // silently show yesterday's numbers or silently vanish.
+  let ban = document.getElementById('vfStaleBanner');
+  if (!ban && grid.parentNode) {
+    ban = document.createElement('div');
+    ban.id = 'vfStaleBanner';
+    ban.style.cssText = 'display:none;margin:0 0 12px;padding:8px 12px;border:1px solid #92400e55;border-radius:6px;background:#92400e18;color:#fbbf24;font-size:12px;line-height:1.5';
+    grid.parentNode.insertBefore(ban, grid);
+  }
+  if (ban) {
+    const carried = entries.filter(([, f]) => f?.stale).map(([n, f]) => `${n}${f.carried_from ? ` (from ${f.carried_from})` : ''}`);
+    const missing = (data.meta?.errors ?? []).filter(e => !data.instruments?.[e.name]);
+    if (!isHistorical && (carried.length || missing.length)) {
+      const parts = [];
+      if (carried.length) parts.push(`<b>⟳ Carried forward</b> — live fetch failed at run time, showing the last good forecast: ${carried.join(', ')}`);
+      if (missing.length) parts.push(`<b>✕ Unavailable</b>: ${missing.map(e => `${e.name} (${e.error})`).join(', ')}`);
+      ban.innerHTML = parts.join('<br>');
+      ban.style.display = 'block';
+    } else {
+      ban.style.display = 'none';
+    }
+  }
+
   _destroyAllLWCharts();
   grid.innerHTML = '';
   for (const [name, f] of entries) grid.appendChild(buildV2Card(name, f, data.meta, isHistorical));
@@ -1838,6 +1863,8 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   const pctBadge = pct != null
     ? `<span class="v2-pct-badge ${pctClass}" title="Vol higher than ${pct}% of 252-day history">${pct}th</span>` : '';
   const liveHtml = isHistorical ? '' : `<span class="v2-badge live-badge" id="v2live-${name}" style="display:none">LIVE</span>`;
+  const staleChip = f.stale
+    ? `<span class="v2-badge" style="background:#92400e22;color:#fbbf24;border:1px solid #92400e55" title="Live data fetch failed at run time — showing the last good forecast${f.carried_from ? `, computed for ${f.carried_from}` : ''}.">⟳ ${f.carried_from ?? 'carried'}</span>` : '';
 
   const newsChip = meta?.news_flag
     ? `<div style="margin-top:2px"><span style="font-size:9px;font-family:'DM Mono',monospace;font-weight:600;padding:2px 7px;border-radius:3px;background:#92400e22;color:#fbbf24;border:1px solid #92400e44">📅 ${meta.news_flag} ×${(meta.news_mult??1).toFixed(2)}</span></div>` : '';
@@ -1845,7 +1872,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
   card.innerHTML = `
     <div class="v2-card-hdr">
       <span class="v2-inst-name">${name}</span>
-      <div class="v2-hdr-pills">${trendChip}${volVovChip}${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
+      <div class="v2-hdr-pills">${staleChip}${trendChip}${volVovChip}${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
     ${coneHtml}
     <div style="position:relative">
