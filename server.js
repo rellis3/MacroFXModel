@@ -8259,7 +8259,12 @@ async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
 // ── /api/ohlc-range — OHLC candles over an explicit date window (paginated) ──
 // ?symbol=EUR/USD&from=YYYY-MM-DD&to=YYYY-MM-DD[&granularity=M15]
 // Powers the forecast-replay chart. Defaults to M15.
-const _RANGE_GRAN = new Set(['M5', 'M15', 'M30', 'H1', 'D']);
+// M1 added for the Impulse-Range Lab's 3m/1m lower-timeframe reaction test
+// (js/impulseRangeEngine.js) — OANDA has no native M3 granularity, so 3m
+// bars are resampled client-side from M1 via barUtils.resampleTo(bars, 3).
+// fetchOandaCandleRange is already granularity-agnostic (paginates 5000
+// candles/page regardless of gran), so this is a pure allow-list widening.
+const _RANGE_GRAN = new Set(['M1', 'M5', 'M15', 'M30', 'H1', 'D']);
 app.get('/api/ohlc-range', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ error: 'OANDA_KEY not configured' });
   const symbol = req.query.symbol;
