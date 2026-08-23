@@ -15763,6 +15763,11 @@ async function computeDailyBrief() {
     instruments[name] = {
       name, sym, ac, dp,
       current_price: livePrice,
+      // Carried-forward forecast (data source was down at run time — see
+      // volForecastScheduler carry-forward): surfaced so the UI can badge the
+      // row instead of the instrument silently vanishing.
+      stale:         fc.stale ?? false,
+      carried_from:  fc.carried_from ?? null,
       session_open:  anchorOpen != null ? fmt(anchorOpen) : null,   // London-midnight anchor for the levels
       news_mult:     fc.news_mult  ?? 1,
       news_flag:     (fc.news_mult ?? 1) > 1 ? (forecast.meta?.news_flag ?? 'Event') : null,
