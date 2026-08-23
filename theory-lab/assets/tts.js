@@ -334,13 +334,40 @@
     updateProgress();
     invalidateUtterance();
     var myToken = utterToken;
-    synth.cancel();
+    // Only cancel when something is actually in flight (a skip, a
+    // rate/voice change mid-utterance, or the very first play() call
+    // landing on a non-idle engine). The normal case — advancing to the
+    // next chunk after the previous one's onend already fired — has
+    // nothing to cancel. Calling cancel() unconditionally before every
+    // single speak(), several times a second once utterances are this
+    // short, is a documented way to get both Chromium and WebKit's
+    // speechSynthesis to quietly stop responding to speak() altogether
+    // after a few cycles — no onstart/onend/onerror ever fires again,
+    // which looks exactly like the reader going dead a few chunks in.
+    if (synth.speaking || synth.pending) synth.cancel();
+    speakOnce(myToken, i, false);
+  }
+
+  function speakOnce(myToken, i, isRetry) {
+    if (myToken !== utterToken) return;
     var u = new SpeechSynthesisUtterance(queue[i].text);
     u.rate = currentRate;
     if (currentVoice) u.voice = currentVoice;
+    var started = false;
+    u.onstart = function () { started = true; };
     u.onend = function () { if (isPlaying && myToken === utterToken) speakChunk(idx + 1); };
     u.onerror = function () { if (isPlaying && myToken === utterToken) speakChunk(idx + 1); };
     synth.speak(u);
+    // Some engines drop a speak() call silently under load — no callback
+    // of any kind fires, not even onerror — rather than surfacing it as a
+    // failure. If nothing happened within a couple of seconds, retry once
+    // with a fresh utterance before giving up on this chunk, so one bad
+    // speak() call can't permanently stall the reader.
+    setTimeout(function () {
+      if (myToken !== utterToken || started) return;
+      if (!isRetry) { synth.cancel(); speakOnce(myToken, i, true); }
+      else { speakChunk(i + 1); }
+    }, 2000);
   }
 
   function restartCurrentChunk() {
