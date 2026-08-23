@@ -26462,11 +26462,22 @@ if (process.env.OANDA_KEY) {
 // so the volatility page never shows "click ↻ Compute" on first load.
 // Each block is delayed to let the forecast scheduler and FRED fetches settle.
 
-// Session stats — auto-compute once if still missing after KV restore (45s delay)
+// Session stats — auto-compute if missing after KV restore, or refresh if the
+// stored 5y window has gone stale (45s delay).
+const SESSION_STATS_MAX_AGE_MS = 30 * 864e5;
+function _sessionStatsAgeMs() {
+  const d = getSessionStats();
+  if (!d) return Infinity;
+  const t = new Date(d.computed_at ?? 0).getTime();
+  return Number.isFinite(t) ? Date.now() - t : Infinity;
+}
 (async () => {
   await new Promise(r => setTimeout(r, 45_000));
-  if (getSessionStats() || isSessionStatsComputing()) return;
-  console.log('[SESSION-STATS] Not found in KV — auto-computing (5y H1 pull, ~3–5 min)…');
+  if (isSessionStatsComputing()) return;
+  const age = _sessionStatsAgeMs();
+  if (age < SESSION_STATS_MAX_AGE_MS) return;
+  console.log('[SESSION-STATS] %s — computing (5y H1 pull, ~3–5 min)…',
+    Number.isFinite(age) ? `Stale (${Math.round(age / 864e5)}d old)` : 'Not found in KV');
   try {
     const data = await computeSessionStats();
     await kv.put('session_stats', JSON.stringify(data));
@@ -26538,6 +26549,14 @@ setInterval(async () => {
     _computeEventImpact()
       .then(() => console.log('[EVENT-IMPACT] Daily refresh complete'))
       .catch(e => console.error('[EVENT-IMPACT] Daily refresh failed:', e.message));
+  }
+
+  if (!isSessionStatsComputing() && _sessionStatsAgeMs() >= SESSION_STATS_MAX_AGE_MS) {
+    console.log('[SESSION-STATS] Monthly refresh (5y H1 pull, ~3–5 min)…');
+    computeSessionStats()
+      .then(d => kv.put('session_stats', JSON.stringify(d)))
+      .then(() => console.log('[SESSION-STATS] Monthly refresh stored to KV'))
+      .catch(e => console.error('[SESSION-STATS] Monthly refresh failed:', e.message));
   }
 }, 5 * 60_000);
 

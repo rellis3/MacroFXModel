@@ -1243,7 +1243,8 @@
 
     <div class="vfh-section">
       <div class="vfh-title">⟳ Session Stats — Recompute Session Consumption</div>
-      <p>Fetches 5 years of H1 bars from Oanda for all instruments and computes what fraction of the daily H-L range each session (Asia 00:00–06:00, London 08:00–13:00, NY 13:00–21:00 London time) historically consumes. Takes 3–5 minutes. Results are stored in KV and used by the Intraday Profile panel. Run this once, or again after significant market regime changes.</p>
+      <p>Fetches 5 years of H1 bars from Oanda for all instruments and computes what fraction of the daily H-L range each session (Asia 00:00–06:00, London 08:00–13:00, NY 13:00–21:00 London time) historically consumes. Takes 3–5 minutes; the button counts up while it runs and the existing numbers stay live until the new ones land. Results are stored in KV and feed the Intraday Profile panel and the three session-bearing exports.</p>
+      <p style="margin-top:4px">You rarely need to press it — the server recomputes on startup and monthly once the stored window passes 30 days old. Use it after a significant regime change, or to force a refresh now.</p>
     </div>
 
     <!-- EXPORTS -->
@@ -1672,35 +1673,54 @@ function loadSessionStats() {
 }
 
 // ── triggerSessionStats ───────────────────────────────────────────────────────
+// The compute endpoint is fire-and-forget: it acknowledges in milliseconds and
+// does the 3–5 min H1 pull in the background. This used to assign that
+// acknowledgement — {ok:true, message:'Computing…'} — straight to
+// currentSessionStats, wiping the real payload, so ⬇ V+S, ⬇ Forecast + Session and
+// ⬇ COG + Session silently emitted empty session blocks until the next page load,
+// while the profile panel's age read "just now" for a run that hadn't finished.
+//
+// Keep the existing stats, poll the GET (which 202s for as long as the run is in
+// flight), and only swap them in for a payload that is actually newer.
+let _sessStatsPoll = null;
 function triggerSessionStats() {
-  const btn = document.getElementById('vfSessionComputeBtn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Computing…';
-  }
+  if (_sessStatsPoll) return;               // a run is already being watched
+  const btn     = document.getElementById('vfSessionComputeBtn');
+  const started = Date.now();
+  const wasAt   = currentSessionStats?.computed_at ?? null;
 
+  const tick = () => { if (btn) btn.textContent = `Computing… ${Math.round((Date.now() - started) / 1000)}s`; };
+  const stop = label => {
+    clearInterval(_sessStatsPoll); _sessStatsPoll = null;
+    if (!btn) return;
+    btn.disabled = false; btn.textContent = label;
+    if (label !== 'Session Stats') setTimeout(() => { btn.textContent = 'Session Stats'; }, 3000);
+  };
+
+  if (btn) { btn.disabled = true; tick(); }
+
+  // A concurrent run started elsewhere answers {ok:false,'Already computing'} —
+  // still worth polling, so the response body doesn't gate what happens next.
   fetch('/api/vol-forecast/session-stats/compute', { method: 'POST' })
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(data => {
-      currentSessionStats = data;
-      if (document.getElementById('vfProfilePanel').style.display !== 'none') {
-        buildIntradayProfile(data);
-      }
-      const age = document.getElementById('vfProfileAge');
-      if (age) age.textContent = 'just now';
-    })
-    .catch(err => {
-      console.error('triggerSessionStats error:', err);
-      alert('Session stats compute failed: ' + err.message);
-    })
-    .finally(() => {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Session Stats';
-      }
+    .catch(() => { /* poll anyway — the run may still have started */ })
+    .then(() => {
+      _sessStatsPoll = setInterval(async () => {
+        tick();
+        // A normal run is 3–5 min; well past that, stop claiming to be busy.
+        if (Date.now() - started > 12 * 60_000) return stop('✗ timed out');
+        try {
+          const r = await fetch('/api/vol-forecast/session-stats');
+          if (r.status === 202) return;                       // still computing
+          const d = await r.json();
+          if (!d.ok || !d.instruments) return;
+          if (wasAt && d.computed_at === wasAt) return;       // same payload — not done
+          currentSessionStats = d;
+          if (document.getElementById('vfProfilePanel').style.display !== 'none') buildIntradayProfile(d);
+          const v3 = document.getElementById('vfV3ExportBtn');
+          if (v3 && currentForecast) v3.disabled = false;
+          stop('✓ Updated');
+        } catch { /* transient — keep polling */ }
+      }, 15_000);
     });
 }
 
