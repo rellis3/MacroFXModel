@@ -125,7 +125,6 @@
   var currentVoice = null;
   var currentRate = 1;
   var keepAliveTimer = null;
-  var isChrome = /Chrome\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
 
   // Canceling an utterance can fire its onend/onerror synchronously in some
   // browsers. Without a generation guard, that stale callback re-enters
@@ -259,12 +258,17 @@
     lastHighlighted = null;
   }
 
+  // Chrome and other Chromium/WebKit-based engines (this affects Edge,
+  // Chrome on iOS, and Safari too, not just desktop Chrome — hence no
+  // browser-sniffing gate here) silently stop a SpeechSynthesisUtterance
+  // partway through if it runs past roughly 10-15 seconds. Nudging the
+  // engine with pause()/resume() well before that resets its internal
+  // timer and keeps long paragraphs playing to the end.
   function startKeepAlive() {
     stopKeepAlive();
-    if (!isChrome) return;
     keepAliveTimer = setInterval(function () {
       if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); }
-    }, 10000);
+    }, 5000);
   }
   function stopKeepAlive() {
     if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
