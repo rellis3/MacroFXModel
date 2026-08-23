@@ -81,6 +81,40 @@
     return s.replace(/\s+/g, ' ').trim();
   }
 
+  // Keeping each utterance short is what actually protects every engine —
+  // Chrome's ~15s stall bug and Safari's separate pause()/resume()-restarts
+  // bug (see startKeepAlive below) both only bite on long utterances, and
+  // a short one simply finishes and hands off to the next before either
+  // can trigger. A dense lesson paragraph easily runs 30+ seconds as one
+  // utterance, so split on sentence boundaries (falling back to a hard
+  // word-boundary cut for any one "sentence" that's still too long).
+  var MAX_UTTERANCE_CHARS = 110;
+  function splitForSpeech(text) {
+    if (text.length <= MAX_UTTERANCE_CHARS) return [text];
+    // No lookbehind (unsupported in older Safari) — split on the
+    // punctuation via a capturing group, then re-glue each piece with the
+    // punctuation that ended it.
+    var pieces = text.split(/([.!?])\s+(?=[A-Z(])/);
+    var sentences = [];
+    for (var i = 0; i < pieces.length; i += 2) {
+      var s = (pieces[i] || '') + (pieces[i + 1] || '');
+      s = s.trim();
+      if (s) sentences.push(s);
+    }
+    if (!sentences.length) sentences = [text];
+    var out = [];
+    sentences.forEach(function (sentence) {
+      while (sentence.length > MAX_UTTERANCE_CHARS) {
+        var cut = sentence.lastIndexOf(' ', MAX_UTTERANCE_CHARS);
+        if (cut < 40) cut = MAX_UTTERANCE_CHARS;
+        out.push(sentence.slice(0, cut).trim());
+        sentence = sentence.slice(cut).trim();
+      }
+      if (sentence) out.push(sentence);
+    });
+    return out;
+  }
+
   // ---------- Build the reading queue ----------
   var CHUNK_SELECTOR = [
     'h1', 'h2', 'h3', 'h4', 'p', 'li', 'blockquote', 'figcaption', 'summary',
@@ -103,9 +137,13 @@
       }
       return true;
     });
-    return kept
-      .map(function (el) { return { el: el, text: textToSpeechFriendly(el.textContent || '') }; })
-      .filter(function (c) { return c.text.length > 1; });
+    var queue = [];
+    kept.forEach(function (el) {
+      var text = textToSpeechFriendly(el.textContent || '');
+      if (text.length < 2) return;
+      splitForSpeech(text).forEach(function (part) { queue.push({ el: el, text: part }); });
+    });
+    return queue;
   }
 
   // Built eagerly, right now, rather than lazily on first click. This
@@ -125,6 +163,17 @@
   var currentVoice = null;
   var currentRate = 1;
   var keepAliveTimer = null;
+  // `window.chrome` is only ever set by an actual Chromium/Blink runtime
+  // (V8 + the Chromium browser shell). Every iOS browser — including ones
+  // branded Chrome or Edge — is required by Apple to render with WebKit
+  // under the hood and does not set this, so this check reliably separates
+  // "has Chrome's long-utterance stall bug" from "has WebKit's opposite
+  // bug where pause()+resume() restarts the utterance from the start"
+  // (a UA string check gets this wrong both ways: it misses Chromium
+  // browsers with non-"Chrome/" UAs like Edge or Chrome-on-iOS, and it
+  // can't distinguish real Chromium from an iOS browser merely branded
+  // like one).
+  var isChromiumEngine = typeof window.chrome !== 'undefined';
 
   // Canceling an utterance can fire its onend/onerror synchronously in some
   // browsers. Without a generation guard, that stale callback re-enters
@@ -258,14 +307,18 @@
     lastHighlighted = null;
   }
 
-  // Chrome and other Chromium/WebKit-based engines (this affects Edge,
-  // Chrome on iOS, and Safari too, not just desktop Chrome — hence no
-  // browser-sniffing gate here) silently stop a SpeechSynthesisUtterance
-  // partway through if it runs past roughly 10-15 seconds. Nudging the
-  // engine with pause()/resume() well before that resets its internal
-  // timer and keeps long paragraphs playing to the end.
+  // Chromium/Blink engines silently stop a SpeechSynthesisUtterance
+  // partway through if it runs past roughly 10-15 seconds; nudging with
+  // pause()/resume() resets that internal timer. This is Chromium-only:
+  // WebKit (Safari, and every iOS browser regardless of branding) has the
+  // opposite bug where resume() after pause() restarts the utterance from
+  // the beginning instead of continuing — running this workaround there
+  // would make playback worse, not better. Splitting long paragraphs into
+  // short utterances (see splitForSpeech above) is what protects WebKit,
+  // since it has no equivalent safe keep-alive trick.
   function startKeepAlive() {
     stopKeepAlive();
+    if (!isChromiumEngine) return;
     keepAliveTimer = setInterval(function () {
       if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); }
     }, 5000);
