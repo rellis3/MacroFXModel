@@ -82,11 +82,11 @@
   }
 
   // Keeping each utterance short is what actually protects every engine —
-  // Chrome's ~15s stall bug and Safari's separate pause()/resume()-restarts
-  // bug (see startKeepAlive below) both only bite on long utterances, and
-  // a short one simply finishes and hands off to the next before either
-  // can trigger. A dense lesson paragraph easily runs 30+ seconds as one
-  // utterance, so split on sentence boundaries (falling back to a hard
+  // known stall bugs (a long utterance silently cutting off partway
+  // through) only bite past a certain duration, and a short one simply
+  // finishes and hands off to the next before that can trigger. A dense
+  // lesson paragraph easily runs 30+ seconds as one utterance, so split on
+  // sentence boundaries (falling back to a hard
   // word-boundary cut for any one "sentence" that's still too long).
   var MAX_UTTERANCE_CHARS = 110;
   function splitForSpeech(text) {
@@ -162,18 +162,6 @@
   var lastHighlighted = null;
   var currentVoice = null;
   var currentRate = 1;
-  var keepAliveTimer = null;
-  // `window.chrome` is only ever set by an actual Chromium/Blink runtime
-  // (V8 + the Chromium browser shell). Every iOS browser — including ones
-  // branded Chrome or Edge — is required by Apple to render with WebKit
-  // under the hood and does not set this, so this check reliably separates
-  // "has Chrome's long-utterance stall bug" from "has WebKit's opposite
-  // bug where pause()+resume() restarts the utterance from the start"
-  // (a UA string check gets this wrong both ways: it misses Chromium
-  // browsers with non-"Chrome/" UAs like Edge or Chrome-on-iOS, and it
-  // can't distinguish real Chromium from an iOS browser merely branded
-  // like one).
-  var isChromiumEngine = typeof window.chrome !== 'undefined';
 
   // Canceling can fire a still-pending utterance's onend/onerror
   // synchronously in some browsers. Without a generation guard, a stale
@@ -307,25 +295,20 @@
     lastHighlighted = null;
   }
 
-  // Chromium/Blink engines silently stop a SpeechSynthesisUtterance
-  // partway through if it runs past roughly 10-15 seconds; nudging with
-  // pause()/resume() resets that internal timer. This is Chromium-only:
-  // WebKit (Safari, and every iOS browser regardless of branding) has the
-  // opposite bug where resume() after pause() restarts the utterance from
-  // the beginning instead of continuing — running this workaround there
-  // would make playback worse, not better. Splitting long paragraphs into
-  // short utterances (see splitForSpeech above) is what protects WebKit,
-  // since it has no equivalent safe keep-alive trick.
-  function startKeepAlive() {
-    stopKeepAlive();
-    if (!isChromiumEngine) return;
-    keepAliveTimer = setInterval(function () {
-      if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); }
-    }, 5000);
-  }
-  function stopKeepAlive() {
-    if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
-  }
+  // A previous version of this reader periodically called pause()+resume()
+  // as a "keep-alive" nudge, based on a documented desktop-Chrome bug where
+  // very long utterances silently stall. That workaround was itself found
+  // to be the actual cause of a real-world failure on Android — pause()/
+  // resume() there goes through a completely different code path (Blink's
+  // bridge to the OS-level TextToSpeech service, not desktop Chrome's own
+  // engine) with its own, differently-documented quirks, and calling it
+  // repeatedly was reliably killing playback a few seconds in, every time.
+  // No such nudge is needed any more: splitForSpeech caps every utterance
+  // at roughly a sentence (~110 chars, well under any known stall
+  // threshold), and queueBatch's own internal browser queue doesn't depend
+  // on timely callbacks to keep advancing. Removed rather than re-scoped a
+  // fourth time — the risk of an undiscovered quirk on some other platform
+  // now outweighs whatever this was still buying.
 
   // Every previous fix here (#1326, #1328, #1329) chained speak() calls
   // one at a time, each new call made from inside the PREVIOUS utterance's
@@ -386,7 +369,6 @@
     if (!queue.length) { progressLabel.textContent = 'No readable text found on this page'; return; }
     isPlaying = true;
     updatePlayBtn();
-    startKeepAlive();
     if (synth.paused && (synth.speaking || synth.pending)) { synth.resume(); return; }
     queueBatch(idx < 0 ? 0 : idx);
   }
@@ -394,7 +376,6 @@
   function pause() {
     isPlaying = false;
     updatePlayBtn();
-    stopKeepAlive();
     synth.pause();
   }
 
@@ -402,7 +383,6 @@
     isPlaying = false;
     idx = -1;
     updatePlayBtn();
-    stopKeepAlive();
     invalidateUtterance();
     synth.cancel();
     clearHighlight();
