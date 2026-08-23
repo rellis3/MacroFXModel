@@ -6,7 +6,7 @@
 //
 //   node js/fxVolCarryEngine.test.mjs
 
-import { alignCvolToBars, computeVRPSeries, realizedVolPct, loadCboeVolSeries, crossCheckSeries } from './impliedVolCore.js';
+import { alignCvolToBars, computeVRPSeries, realizedVolPct, loadCvolSeries, loadCboeVolSeries, crossCheckSeries } from './impliedVolCore.js';
 import { selectStrategyVRP, runVRPBacktest, toCsvReturns, toCsvRMultiples, toCsvCurrency, VRP_INSTRUMENTS } from './fxVolCarryEngine.js';
 import { resolveHonestDay } from './honestForecastEngine.js';
 
@@ -154,6 +154,54 @@ function makeBars(n, { seedPx = 1.1000, driftAmp = 0.0006, volAmp = 0.004 } = {}
   const nq = VRP_INSTRUMENTS.find(i => i.name === 'NQ');
   ok('VRP_INSTRUMENTS: GOLD declares a CBOE/GVZ cross-check', gold?.crossCheck?.volSource === 'CBOE' && gold?.crossCheck?.cboeProduct === 'XAUUSD');
   ok('VRP_INSTRUMENTS: NQ is present with CBOE/VXN as its primary source (CME CVOL has no index coverage)', nq?.volSource === 'CBOE' && nq?.cboeProduct === 'NAS100');
+}
+
+// ── 11) REGRESSION — real CVOL calendar gaps must not kill the z-score on
+// every day forever. Found live 2026-08-22: the first production run showed
+// the VRP arm firing ZERO trades on all 8 instruments, IS and OOS, while the
+// baselines traded normally — the tell that something upstream was broken,
+// not a null result. Root cause: CME/CBOE only settle on US options-exchange
+// days, so US holidays OANDA still trades through (MLK, Presidents Day, Good
+// Friday, Thanksgiving, …) show up as missing CVOL rows — ~98 gaps over
+// 2016-2026, spaced every ~28 trading days on average. The z-score used to
+// require the ENTIRE 252-day trailing window to be gap-free, and no window
+// ever was — verified directly against the real data file: 0 of 2774 days
+// came out finite. This test builds bars for every real weekday in EURUSD's
+// actual CVOL date range (so it reproduces the true gap pattern, not a
+// synthetic approximation of it) and asserts a meaningful majority of days
+// now get a real z-score.
+{
+  const eurCvol = loadCvolSeries('EURUSD');
+  const cvolDates = new Set(eurCvol.map(r => r.date));
+  const isWeekend = d => { const wd = new Date(d + 'T00:00:00Z').getUTCDay(); return wd === 0 || wd === 6; };
+  const addDays = (d, n) => { const dt = new Date(d + 'T00:00:00Z'); dt.setUTCDate(dt.getUTCDate() + n); return dt.toISOString().slice(0, 10); };
+  const bars = [];
+  let px = 1.10, cur = eurCvol[0].date, i = 0;
+  while (cur <= eurCvol[eurCvol.length - 1].date) {
+    if (!isWeekend(cur)) {
+      // Deterministic wide-range days (same trick as makeBars above) so the
+      // exhaustion bands actually get touched — this test is checking the
+      // real CVOL calendar's effect on the z-score/selector wiring, not
+      // realistic price action.
+      const wide = i % 4 === 0 ? 3.2 : 1;
+      const wiggle = 0.003 * wide * Math.sin(i * 1.3) * px;
+      const open = px, close = px * (1 + 0.00002 * Math.sin(i / 30)) + wiggle * 0.3;
+      bars.push({ date: cur, open, high: Math.max(open, close) + Math.abs(wiggle) * 0.9, low: Math.min(open, close) - Math.abs(wiggle) * 0.9, close });
+      px = close; i++;
+    }
+    cur = addDays(cur, 1);
+  }
+  const gapDays = bars.filter(b => !cvolDates.has(b.date)).length;
+  ok('regression setup: reproduces the real ~98-gap CVOL calendar pattern', gapDays > 80 && gapDays < 120, `gaps=${gapDays}`);
+
+  const vrpRows = computeVRPSeries(bars, eurCvol, 'fx', { zPeriod: 252 });
+  const finiteZ = vrpRows.filter(r => Number.isFinite(r.vrpZ)).length;
+  ok('regression: z-score is finite on a large majority of days despite calendar gaps (was 0/N before the fix)',
+    finiteZ > bars.length * 0.7, `finite=${finiteZ}/${bars.length}`);
+
+  const out = runVRPBacktest(bars, 'fx', eurCvol, { minLookback: 60, zPeriod: 252, oosFrac: 0.4 });
+  ok('regression: VRP arm actually fires trades against the real gap pattern (was 0 in every instrument before the fix)',
+    out.records.vrp.filter(r => r.filled).length > 0, `filled=${out.records.vrp.filter(r => r.filled).length}`);
 }
 
 console.log(failures === 0 ? `\nAll fxVolCarryEngine tests passed.` : `\n${failures} FAILURE(S).`);

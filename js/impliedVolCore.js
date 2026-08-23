@@ -20,7 +20,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { yzVolSeries, hvVarSeries, garchSigmas } from './volBacktestEngine.js';
-import { rollingZScore, spearman } from './statsCore.js';
+import { spearman, mean, stdev } from './statsCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = path.join(__dirname, 'data', 'cmeCvolEod.json');
@@ -142,6 +142,38 @@ export function realizedVolPct(bars, assetClass, garchOmega) {
   return out;
 }
 
+// A rolling z-score TOLERANT of sparse missing days within the window —
+// unlike statsCore.rollingZScore (which requires the ENTIRE window finite,
+// the right contract for a price series where a gap usually signals broken
+// data), VRP has a real, bounded, calendar-driven gap pattern: CME/CBOE only
+// settle on US options-exchange trading days, so US exchange holidays (MLK,
+// Presidents Day, Good Friday, Thanksgiving, …) that OANDA still trades
+// through show up as missing rows — verified ~98-99 gaps over 2016-2026 in
+// both js/data/cmeCvolEod.json and cboeVolIndices.json, spaced every ~28
+// trading days on average. statsCore.rollingZScore's all-or-nothing window
+// requirement made that fatal: a 252-day window is never fully clean, so the
+// z-score was NaN on literally EVERY day, forever (verified directly against
+// the real data files before this fix — 0 of 2774 days finite). This variant
+// only requires `minCoverage` of the window to be finite, computing mean/
+// stdev off whatever's actually present — it never fabricates a missing
+// day's VRP itself (still null, still skipped that day), it just stops one
+// or two calendar gaps from poisoning every window that contains them.
+function rollingZScoreTolerant(arr, period, { minCoverage = 0.85, clipAt = 4, ddof = 1 } = {}) {
+  const out = new Array(arr.length).fill(NaN);
+  const minCount = Math.ceil(period * minCoverage);
+  for (let i = 0; i < arr.length; i++) {
+    if (i + 1 < period || !Number.isFinite(arr[i])) continue;
+    const win = arr.slice(i - period + 1, i + 1).filter(Number.isFinite);
+    if (win.length < minCount) continue;
+    const m = mean(win);
+    const sd = stdev(win, ddof);
+    let z = sd > 0 ? (arr[i] - m) / sd : 0;
+    if (clipAt != null) z = Math.max(-clipAt, Math.min(clipAt, z));
+    out[i] = z;
+  }
+  return out;
+}
+
 // Per-bar VRP = implied(cvol) − realized(RV30, annualized %), plus a rolling
 // z-score of VRP so richness/cheapness is judged against the SAME
 // instrument's own history, not a raw point value (a 3-vol-point VRP means
@@ -158,7 +190,7 @@ export function computeVRPSeries(bars, cvolRows, assetClass, { zPeriod = 252, ga
     return +(c.cvol - rv[i]).toFixed(4);
   });
   const vrpForZ = vrp.map(v => (v == null ? NaN : v));
-  const z = rollingZScore(vrpForZ, zPeriod, 4, 1);
+  const z = rollingZScoreTolerant(vrpForZ, zPeriod, { minCoverage: 0.85, clipAt: 4, ddof: 1 });
   return bars.map((b, i) => ({
     date: b.date,
     cvol: aligned[i]?.cvol ?? null,
