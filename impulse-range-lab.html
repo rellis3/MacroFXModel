@@ -144,7 +144,7 @@ import { resampleTo } from './js/barUtils.js';
 import { runImpulseRangeScan, aggregateImpulseStats, buildVwapContext } from './js/impulseRangeEngine.js';
 
 const $ = id => document.getElementById(id);
-function setStatus(t) { $('status').textContent = t; }
+function setStatus(t, warn) { const el = $('status'); el.textContent = t; el.style.color = warn ? '#d1a35a' : ''; }
 
 const OUTCOME_COLOR = { CONTINUATION: '#22c55e', REVERSION: '#facc15', FAILED_IMPULSE: '#ef4444', EXTENSION: '#a855f7', NO_CLEAR_EDGE: '#6b7280' };
 let drawnMarkers = [];
@@ -268,7 +268,7 @@ async function loadData() {
       fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M15`).then(r => r.json()),
       fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M1`).then(r => r.json()),
     ]);
-    if (c5.error || !c5.values?.length) { setStatus(c5.error || 'no candles for that range'); $('go').disabled = false; return; }
+    if (c5.error || !c5.values?.length) { setStatus(c5.error || 'no candles for that range', true); $('go').disabled = false; return; }
     bars5m = normalizeBars(c5.values);
     barsByTime = new Map(bars5m.map(b => [b.time, b]));
     bars15m = normalizeBars(c15?.values ?? []);
@@ -283,7 +283,7 @@ async function loadData() {
 
     rebuildLtfAndRescan();
   } catch (e) {
-    setStatus('error: ' + e.message);
+    setStatus('error: ' + e.message, true);
   } finally {
     $('go').disabled = false;
   }
@@ -297,17 +297,28 @@ function rebuildLtfAndRescan() {
   } else {
     ltfBars = resampleTo(bars1m, state.ltfGranularityMin).map(b => ({ ...b, datetime: epochToDatetimeStr(b.time) }));
   }
-  if (!ltfBars.length) { setStatus('no M1 data for that range (OANDA/sandbox) — falling back to M5 as the reaction feed'); ltfBars = bars5m; }
-  vwapCtx = buildVwapContext(ltfBars.length ? ltfBars : bars5m);
+  // If OANDA/M1 came back empty (pagination timeout, no history that far
+  // back, etc — the wider the date range the more likely), fall back to M5
+  // as the reaction feed rather than crash. `effectiveLtfMin` tracks what
+  // ACTUALLY drove the scan so neither the status line nor the "By LTF
+  // granularity" stats breakdown silently mislabels M5-granularity results
+  // as "3m"/"1m" — that previously happened here (the fallback's own
+  // setStatus call was clobbered by the unconditional one at the end of
+  // this function, which kept printing state.ltfGranularityMin regardless).
+  const usedFallback = !ltfBars.length;
+  if (usedFallback) ltfBars = bars5m;
+  const effectiveLtfMin = usedFallback ? 5 : state.ltfGranularityMin;
+  vwapCtx = buildVwapContext(ltfBars);
 
   const preset = $('preset').value;
   events = runImpulseRangeScan({
     h4SourceBars: bars5m, asiaSourceBars: bars5m, mondaySourceBars: bars15m, ltfBars, symbol: currentSymbol,
-    opts: { preset, ltfGranularityMin: state.ltfGranularityMin },
+    opts: { preset, ltfGranularityMin: effectiveLtfMin },
   });
   stats = aggregateImpulseStats(events);
   renderStats();
-  setStatus(`${currentSymbol} · ${bars5m.length} M5 · ${ltfBars.length} ${state.ltfGranularityMin}m reaction bars · ${events.length} impulses (${$('preset').value})`);
+  const fallbackNote = usedFallback ? ` — ⚠ no M1 data for this range, fell back to M5 as the reaction feed (results below are 5m-granularity, not ${state.ltfGranularityMin}m)` : '';
+  setStatus(`${currentSymbol} · ${bars5m.length} M5 · ${ltfBars.length} ${effectiveLtfMin}m reaction bars · ${events.length} impulses (${$('preset').value})${fallbackNote}`, usedFallback);
   scheduleDraw();
 }
 $('preset').addEventListener('change', () => { if (bars5m.length) rebuildLtfAndRescan(); });
