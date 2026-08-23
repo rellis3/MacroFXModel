@@ -176,6 +176,13 @@ t('classifyLtfReaction: CONTINUATION — close beyond contTarget without ever re
   assert.equal(r.outcome, 'CONTINUATION');
   assert.equal(round2(r.mfe), 1.2); // max(104.5-103.8, 105.0-103.8) = 1.2
   assert.equal(round2(r.mae), 0.1); // max(103.8-103.7, ...) = 0.1
+  // The implied trade: long at entry(103.8), exit at the bar close that won
+  // the contTarget race (104.9) — a realized, resolved exit, not open.
+  assert.equal(r.entry, 103.8);
+  assert.equal(r.dir, 'up');
+  assert.equal(r.exitPrice, 104.9);
+  assert.equal(round2(r.returnPrice), 1.1);
+  assert.equal(r.open, false);
 });
 
 t('classifyLtfReaction: REVERSION — reaches the extension zone then closes back inside the impulse range', () => {
@@ -187,6 +194,13 @@ t('classifyLtfReaction: REVERSION — reaches the extension zone then closes bac
   ];
   const r = classifyLtfReaction(bars, imp, impulseLevels(imp), {});
   assert.equal(r.outcome, 'REVERSION');
+  // Exit is the close that actually came back inside the impulse range
+  // (103.9), not the extension level it wicked through — a REVERSION trade
+  // realizes a small gain here, not the loss a naive "faded the top" read
+  // might expect, since entry was long at the impulse's own close.
+  assert.equal(r.exitPrice, 103.9);
+  assert.equal(round2(r.returnPrice), 0.1);
+  assert.equal(r.open, false);
 });
 
 t('classifyLtfReaction: EXTENSION — reaches the extension zone and never returns within the horizon', () => {
@@ -198,6 +212,10 @@ t('classifyLtfReaction: EXTENSION — reaches the extension zone and never retur
   ];
   const r = classifyLtfReaction(bars, imp, impulseLevels(imp), { horizonBars: 2 });
   assert.equal(r.outcome, 'EXTENSION');
+  // Never resolved within the horizon — exit is a mark-to-last-close
+  // snapshot, flagged open:true so callers don't read it as a realized fill.
+  assert.equal(r.exitPrice, 106.5);
+  assert.equal(r.open, true);
 });
 
 t('classifyLtfReaction: FAILED_IMPULSE — closes beyond contStop before ever reaching contTarget or the extension zone', () => {
@@ -206,6 +224,9 @@ t('classifyLtfReaction: FAILED_IMPULSE — closes beyond contStop before ever re
   const bars = [ltfBar(closeTime, 103.8, 104.0, 102.5, 102.7)]; // close 102.7 <= contStop(102.8)
   const r = classifyLtfReaction(bars, imp, impulseLevels(imp), {});
   assert.equal(r.outcome, 'FAILED_IMPULSE');
+  assert.equal(r.exitPrice, 102.7);
+  assert.equal(round2(r.returnPrice), -1.1); // a real loss on the implied long
+  assert.equal(r.open, false);
 });
 
 t('classifyLtfReaction: NO_CLEAR_EDGE — chops inside the target/stop band for the whole horizon', () => {
@@ -217,6 +238,8 @@ t('classifyLtfReaction: NO_CLEAR_EDGE — chops inside the target/stop band for 
   ];
   const r = classifyLtfReaction(bars, imp, impulseLevels(imp), { horizonBars: 2 });
   assert.equal(r.outcome, 'NO_CLEAR_EDGE');
+  assert.equal(r.exitPrice, 103.8); // mark-to-last-close, unresolved
+  assert.equal(r.open, true);
 });
 
 t('classifyLtfReaction: displacement evidence fires on a single large-body bar in the impulse direction', () => {

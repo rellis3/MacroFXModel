@@ -109,6 +109,9 @@
     <span class="chip" data-lvl="vwap" title="Session VWAP (resets daily) across the whole loaded range.">
       <span class="dot" style="background:#818cf8"></span>VWAP
     </span>
+    <span class="chip on" data-lvl="trade" title="The implied trade: a short white tick at entry (the impulse's own close) spanning to a colored dot at exit (green = profit, red = loss) — evaluation-only history (spec §14), not a signal. See the Trade log in the side panel for every impulse at once.">
+      <span class="dot" style="background:#e5e7eb"></span>Entry/exit
+    </span>
     <label style="margin-left:10px">LTF</label>
     <select id="ltfGran">
       <option value="3">3-minute (primary)</option>
@@ -124,8 +127,9 @@
         <div class="row"><span class="sw" style="background:#facc15"></span>Extension levels (±R beyond the impulse range — fade-test zone)</div>
         <div class="row"><span class="sw" style="background:#34d399"></span>Asia/Monday confluence with an impulse level</div>
         <div class="row"><span class="sw" style="background:#818cf8"></span>VWAP</div>
+        <div class="row"><span class="sw" style="background:#e5e7eb"></span>Entry tick (impulse close) → dot at exit: green = profit, red = loss, dashed ring = still open</div>
         <div class="row"><span class="sw" style="background:#22c55e"></span>▲ bull impulse &nbsp;<span class="sw" style="background:#ef4444"></span>▼ bear impulse — ring color = outcome</div>
-        <div class="row">Tap/click an impulse marker to inspect evidence, MFE/MAE and outcome</div>
+        <div class="row">Tap/click an impulse marker to inspect the trade, evidence, MFE/MAE and outcome — or see every impulse at once in the Trade log (side panel)</div>
       </div>
       <div id="markerInfo"></div>
       <div id="hint">Pick a pair and date range, then Generate.<br>M1 fetch can be slow over wide ranges — start narrow (a few days).</div>
@@ -146,7 +150,7 @@ const OUTCOME_COLOR = { CONTINUATION: '#22c55e', REVERSION: '#facc15', FAILED_IM
 let drawnMarkers = [];
 
 const state = {
-  armedLevels: new Set(['impulseRange', 'extensions', 'asiaConf']),
+  armedLevels: new Set(['impulseRange', 'extensions', 'asiaConf', 'trade']),
   ltfGranularityMin: 3,
 };
 
@@ -315,6 +319,37 @@ function pctTable(rows, labelKey = 'key') {
     rows.map(r => `<tr><td>${r.key}</td><td>${r.count}</td><td>${r.outcomePct.CONTINUATION}</td><td>${r.outcomePct.REVERSION}</td><td>${r.outcomePct.FAILED_IMPULSE}</td><td>${r.outcomePct.EXTENSION}</td></tr>`).join('')
   }</table>`;
 }
+function fmtTime(epochSec) {
+  if (epochSec == null) return '—';
+  return new Date(epochSec * 1000).toISOString().slice(5, 16).replace('T', ' ');
+}
+function fmtPrice(v) { return v == null ? '—' : v.toFixed(pFmt()); }
+
+// The hypothetical trade implied by each impulse: long/short at the
+// impulse's own close (`entry`), exit at whatever price actually resolved
+// `outcome` — or a mark-to-last-close snapshot (marked "open") when the
+// horizon ran out before CONTINUATION/REVERSION/FAILED_IMPULSE resolved.
+// Evaluation-only history (spec §14) — not a signal, see the page banner.
+function tradeLogRows() {
+  return events
+    .filter(e => e.reaction)
+    .slice()
+    .sort((a, b) => b.time - a.time)
+    .map(e => {
+      const r = e.reaction;
+      const sign = r.returnPrice > 0 ? '+' : '';
+      const color = r.returnPrice > 0 ? '#22c55e' : r.returnPrice < 0 ? '#ef4444' : 'var(--text2)';
+      return `<tr>
+        <td style="text-align:left">${fmtTime(e.time)}</td>
+        <td style="text-align:left">${e.direction === 'up' ? '▲ long' : '▼ short'}</td>
+        <td>${fmtPrice(r.entry)}</td>
+        <td>${fmtPrice(r.exitPrice)}${r.open ? ' (open)' : ''}</td>
+        <td style="color:${OUTCOME_COLOR[r.outcome]}">${r.outcome}</td>
+        <td style="color:${color}">${sign}${fmtPrice(r.returnPrice)}</td>
+      </tr>`;
+    }).join('');
+}
+
 function renderStats() {
   const p = $('statsPanel');
   if (!stats || !stats.n) { p.innerHTML = '<div class="empty">No impulses found in this range/preset.</div>'; return; }
@@ -339,6 +374,11 @@ function renderStats() {
     <h2>By Asia/Monday confluence</h2>${pctTable(stats.byAsiaConfluence, 'confluence')}
     <h2>By score edge</h2>${pctTable(stats.byEdge, 'edge')}
     <h2>By LTF granularity</h2>${pctTable(stats.byLtfGranularity, 'tf')}
+    <h2>Trade log <span style="font-weight:400;text-transform:none;color:var(--text3)">— entry = impulse close, evaluation-only (§14), not a signal</span></h2>
+    <table>
+      <tr><th style="text-align:left">Time</th><th style="text-align:left">Dir</th><th>Entry</th><th>Exit</th><th>Outcome</th><th>Return</th></tr>
+      ${tradeLogRows()}
+    </table>
   `;
 }
 
@@ -415,6 +455,27 @@ function drawOverlay() {
       }
     }
 
+    if (state.armedLevels.has('trade') && e.reaction) {
+      const r = e.reaction;
+      const ex1 = x(closeTime), ex2 = x(r.exitTime ?? spanEnd);
+      const entryY = y(r.entry);
+      // Entry tick: a short white line at the impulse's own close, from the
+      // reaction window's start to the exit time — the implied trade's
+      // holding period, not a level (that's what impulseRange/extensions
+      // already draw).
+      if (ex1 != null && ex2 != null && entryY != null) drawSegment(ex1, ex2, entryY, 'rgba(229,231,235,.85)', false, 1.5);
+      const exitX = x(r.exitTime ?? spanEnd), exitY = y(r.exitPrice);
+      if (exitX != null && exitY != null) {
+        const exitColor = r.returnPrice > 0 ? '#22c55e' : r.returnPrice < 0 ? '#ef4444' : '#9ca3af';
+        octx.save();
+        octx.fillStyle = exitColor; octx.strokeStyle = r.open ? 'rgba(0,0,0,.4)' : 'rgba(0,0,0,.65)';
+        octx.lineWidth = 1.5 * dpr;
+        if (r.open) octx.setLineDash([2 * dpr, 2 * dpr]); else octx.setLineDash([]);
+        octx.beginPath(); octx.arc(exitX * dpr, exitY * dpr, 3.5 * dpr, 0, Math.PI * 2); octx.fill(); octx.stroke();
+        octx.restore();
+      }
+    }
+
     const markerX = x(e.time + 2 * 3600); // roughly mid-candle
     const markerY = y(e.direction === 'up' ? e.high : e.low);
     if (markerX != null && markerY != null) {
@@ -446,7 +507,11 @@ function showMarkerInfo(m, cx, cy) {
   rows.push(`<div class="mi-row"><span class="mi-lbl">Asia/Monday confluence</span><span>${e.asiaConfluence.hasConfluence ? 'yes' : 'no'}</span></div>`);
   let outcomeHtml = '', evidenceHtml = '', scoreHtml = '';
   if (r) {
-    outcomeHtml = `<div class="mi-sec"><div class="mi-sec-hd">Outcome (evaluation-only, §14)</div>
+    const retColor = r.returnPrice > 0 ? '#22c55e' : r.returnPrice < 0 ? '#ef4444' : 'inherit';
+    outcomeHtml = `<div class="mi-sec"><div class="mi-sec-hd">Implied trade (evaluation-only, §14 — not a signal)</div>
+      <div class="mi-row"><span class="mi-lbl">Entry</span><span>${r.entry.toFixed(p)} ${e.direction === 'up' ? '(long)' : '(short)'}</span></div>
+      <div class="mi-row"><span class="mi-lbl">Exit</span><span>${r.exitPrice.toFixed(p)}${r.open ? ' (open — held to horizon end)' : ''}</span></div>
+      <div class="mi-row"><span class="mi-lbl">Return</span><span style="color:${retColor}">${r.returnPrice > 0 ? '+' : ''}${r.returnPrice.toFixed(p)}</span></div>
       <div class="mi-row"><span class="mi-lbl">Outcome</span><span style="color:${OUTCOME_COLOR[r.outcome]}">${r.outcome}</span></div>
       <div class="mi-row"><span class="mi-lbl">MFE / MAE</span><span>${r.mfe.toFixed(p)} / ${r.mae.toFixed(p)}</span></div>
       <div class="mi-row"><span class="mi-lbl">VWAP dist (ATR)</span><span>${r.vwapDistanceAtr != null ? r.vwapDistanceAtr.toFixed(2) : '—'}</span></div></div>`;

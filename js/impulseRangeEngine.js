@@ -268,7 +268,7 @@ export function classifyLtfReaction(ltfBars, impulse, levelsArr, opts = {}) {
   const mid = impulse.low + range * 0.5;
 
   let mfe = 0, mae = 0;
-  let outcome = 'NO_CLEAR_EDGE', outcomeIdx = null, outcomeTime = null, resolved = false;
+  let outcome = 'NO_CLEAR_EDGE', outcomeIdx = null, outcomeTime = null, exitPrice = null, resolved = false;
   let reachedExtensionAt = null, deeperTargetFib = 1 + extensionTriggerFib * 2;
   let extremeSincePullback = dir === 'up' ? Infinity : -Infinity;
 
@@ -323,13 +323,13 @@ export function classifyLtfReaction(ltfBars, impulse, levelsArr, opts = {}) {
         else {
           const hitCont = dir === 'up' ? bar.close >= contTarget : bar.close <= contTarget;
           const hitStop = dir === 'up' ? bar.close <= contStop : bar.close >= contStop;
-          if (hitCont) { outcome = 'CONTINUATION'; outcomeIdx = i; outcomeTime = bar.time; resolved = true; }
-          else if (hitStop) { outcome = 'FAILED_IMPULSE'; outcomeIdx = i; outcomeTime = bar.time; resolved = true; }
+          if (hitCont) { outcome = 'CONTINUATION'; outcomeIdx = i; outcomeTime = bar.time; exitPrice = bar.close; resolved = true; }
+          else if (hitStop) { outcome = 'FAILED_IMPULSE'; outcomeIdx = i; outcomeTime = bar.time; exitPrice = bar.close; resolved = true; }
         }
       }
       if (reachedExtensionAt && !resolved) {
         const backInside = dir === 'up' ? bar.close <= impulse.high : bar.close >= impulse.low;
-        if (backInside) { outcome = 'REVERSION'; outcomeIdx = i; outcomeTime = bar.time; resolved = true; }
+        if (backInside) { outcome = 'REVERSION'; outcomeIdx = i; outcomeTime = bar.time; exitPrice = bar.close; resolved = true; }
         else {
           const deeperPrice = dir === 'up' ? impulse.low + range * deeperTargetFib : impulse.low + range * (1 - deeperTargetFib);
           const deeper = dir === 'up' ? bar.high >= deeperPrice : bar.low <= deeperPrice;
@@ -339,6 +339,11 @@ export function classifyLtfReaction(ltfBars, impulse, levelsArr, opts = {}) {
     }
   }
   if (reachedExtensionAt && !resolved) { outcome = 'EXTENSION'; outcomeIdx = reachedExtensionAt.idx; outcomeTime = reachedExtensionAt.time; }
+  // Never resolved within the horizon (EXTENSION held, or NO_CLEAR_EDGE) —
+  // mark-to-last-close rather than a realized exit, and say so via `open`.
+  const open = !resolved;
+  if (exitPrice == null) exitPrice = window[window.length - 1].close;
+  const returnPrice = round((exitPrice - entry) * sign);
 
   let vwapDistanceAtr = null;
   if (vwapCtx) {
@@ -369,9 +374,18 @@ export function classifyLtfReaction(ltfBars, impulse, levelsArr, opts = {}) {
   fadeEvidence.structureBreakAgainst = !!(endRegime && endRegime.dir && endRegime.dir !== dir);
 
   return {
-    windowBars: window.length, entry, mfe: round(mfe), mae: round(mae),
+    windowBars: window.length, entry, dir, mfe: round(mfe), mae: round(mae),
     outcome, outcomeIdx, outcomeTime, vwapDistanceAtr: vwapDistanceAtr != null ? round(vwapDistanceAtr) : null,
     contTarget: round(contTarget), contStop: round(contStop), extLevelPrice: round(extLevelPrice),
+    // The hypothetical trade this analysis implies: enter at the impulse's
+    // own close (`entry`) in `dir`, exit at `exitPrice` — the bar close that
+    // actually resolved `outcome` (CONTINUATION → contTarget race won,
+    // FAILED_IMPULSE → contStop race won, REVERSION → the close that came
+    // back inside the impulse range), or a mark-to-last-close snapshot
+    // (`open:true`) when EXTENSION/NO_CLEAR_EDGE never resolved within the
+    // horizon. `returnPrice` is exit-minus-entry, direction-signed, in price
+    // units — evaluation-only history (§14), never fed back as a feature.
+    exitPrice: round(exitPrice), exitTime: outcomeTime ?? window[window.length - 1].time, open, returnPrice,
     evidence: { continuation: contEvidence, fade: fadeEvidence },
   };
 }
