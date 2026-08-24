@@ -302,6 +302,40 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recheck the Feller condition for any CIR parameters, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(a=0.20\),
+      \(b=0.005\), \(\sigma=0.010\). Change any field and \(2ab\),
+      \(\sigma^2\), and whether the Feller condition holds all recalculate
+      instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Speed \(a\)</span></div>
+        <input type="number" id="feller-scratch-a" class="tl-scratch-input" value="0.20" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Long-run mean \(b\)</span></div>
+        <input type="number" id="feller-scratch-b" class="tl-scratch-input" value="0.005" step="0.001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\)</span></div>
+        <input type="number" id="feller-scratch-sigma" class="tl-scratch-input" value="0.010" step="0.001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      \(2ab\) = <b id="feller-scratch-2ab">0.00200</b>&emsp;\(\sigma^2\) = <b id="feller-scratch-sig2">0.00010</b>
+    </div>
+    <div class="tl-readout">
+      Feller condition: <b id="feller-scratch-verdict">satisfied</b>
+      <span id="feller-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="feller-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -452,6 +486,52 @@
     <a href="fokker-planck-equation.html">The Fokker-Planck Equation →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { a: 0.20, b: 0.005, sigma: 0.010 };
+  var aInput = document.getElementById('feller-scratch-a');
+  var bInput = document.getElementById('feller-scratch-b');
+  var sigmaInput = document.getElementById('feller-scratch-sigma');
+  var twoAbOut = document.getElementById('feller-scratch-2ab');
+  var sig2Out = document.getElementById('feller-scratch-sig2');
+  var verdictOut = document.getElementById('feller-scratch-verdict');
+  var note = document.getElementById('feller-scratch-note');
+  var resetBtn = document.getElementById('feller-scratch-reset');
+  if (!aInput) return;
+
+  function recompute(){
+    var a = parseFloat(aInput.value);
+    var b = parseFloat(bInput.value);
+    var sigma = parseFloat(sigmaInput.value);
+
+    if (!isFinite(a) || a < 0 || !isFinite(b) || b < 0 || !isFinite(sigma) || sigma < 0) {
+      note.textContent = '(enter non-negative numbers for a, b and σ)';
+      return;
+    }
+    note.textContent = '';
+
+    var twoAb = 2 * a * b;
+    var sig2 = sigma * sigma;
+    var holds = twoAb >= sig2;
+
+    twoAbOut.textContent = twoAb.toFixed(5);
+    sig2Out.textContent = sig2.toFixed(5);
+    verdictOut.textContent = holds ? 'satisfied' : 'violated';
+  }
+
+  aInput.addEventListener('input', recompute);
+  bInput.addEventListener('input', recompute);
+  sigmaInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    aInput.value = DEFAULTS.a;
+    bInput.value = DEFAULTS.b;
+    sigmaInput.value = DEFAULTS.sigma;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

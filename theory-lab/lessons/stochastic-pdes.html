@@ -523,6 +523,44 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Re-discretize the forward curve, live</h3>
+    <p>
+      Starts on the worked example's exact tenor points, \(x=0,5,10,15\)
+      with \(\Delta x=5\). Change any rate and the three forward
+      finite-difference slopes \(\partial f/\partial x\) recalculate
+      instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>f(t,0) (%)</span></div>
+        <input type="number" id="spde-scratch-f0" class="tl-scratch-input" value="3.00" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>f(t,5) (%)</span></div>
+        <input type="number" id="spde-scratch-f5" class="tl-scratch-input" value="3.80" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>f(t,10) (%)</span></div>
+        <input type="number" id="spde-scratch-f10" class="tl-scratch-input" value="4.20" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>f(t,15) (%)</span></div>
+        <input type="number" id="spde-scratch-f15" class="tl-scratch-input" value="4.35" step="0.05">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &part;f/&part;x at x=0: <b id="spde-scratch-d0">0.16</b>&emsp;at x=5: <b id="spde-scratch-d5">0.08</b>&emsp;at x=10: <b id="spde-scratch-d10">0.03</b>
+    </div>
+    <div class="tl-readout">
+      (percentage points per year of tenor, \(\Delta x = 5\))
+      <span id="spde-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="spde-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -700,6 +738,58 @@
     <a href="neural-sdes-spdes.html">Neural SDEs &amp; Neural SPDEs →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { f0: 3.00, f5: 3.80, f10: 4.20, f15: 4.35 };
+  var f0Input = document.getElementById('spde-scratch-f0');
+  var f5Input = document.getElementById('spde-scratch-f5');
+  var f10Input = document.getElementById('spde-scratch-f10');
+  var f15Input = document.getElementById('spde-scratch-f15');
+  var d0Out = document.getElementById('spde-scratch-d0');
+  var d5Out = document.getElementById('spde-scratch-d5');
+  var d10Out = document.getElementById('spde-scratch-d10');
+  var note = document.getElementById('spde-scratch-note');
+  var resetBtn = document.getElementById('spde-scratch-reset');
+  if (!f0Input) return;
+
+  var DX = 5;
+
+  function recompute(){
+    var f0 = parseFloat(f0Input.value);
+    var f5 = parseFloat(f5Input.value);
+    var f10 = parseFloat(f10Input.value);
+    var f15 = parseFloat(f15Input.value);
+
+    if (!isFinite(f0) || !isFinite(f5) || !isFinite(f10) || !isFinite(f15)) {
+      note.textContent = '(enter finite numbers for every tenor point)';
+      return;
+    }
+    note.textContent = '';
+
+    var d0 = (f5 - f0) / DX;
+    var d5 = (f10 - f5) / DX;
+    var d10 = (f15 - f10) / DX;
+
+    d0Out.textContent = d0.toFixed(2);
+    d5Out.textContent = d5.toFixed(2);
+    d10Out.textContent = d10.toFixed(2);
+  }
+
+  f0Input.addEventListener('input', recompute);
+  f5Input.addEventListener('input', recompute);
+  f10Input.addEventListener('input', recompute);
+  f15Input.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    f0Input.value = DEFAULTS.f0;
+    f5Input.value = DEFAULTS.f5;
+    f10Input.value = DEFAULTS.f10;
+    f15Input.value = DEFAULTS.f15;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

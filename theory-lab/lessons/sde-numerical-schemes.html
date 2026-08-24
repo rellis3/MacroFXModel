@@ -287,6 +287,51 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute a single Euler-Maruyama step, live</h3>
+    <p>
+      Starts on step 1 of the worked example above: \(X_0=100\),
+      \(\mu=0.10\), \(\sigma=0.30\), \(\Delta t=0.25\), \(\Delta W_0=0.8453\).
+      Change any field and the drift term, the diffusion term, and
+      \(X_{n+1} = X_n + \mu X_n \Delta t + \sigma X_n \Delta W_n\)
+      recalculate instantly. (Displayed to 2 decimals — the lesson's own
+      \(\Delta W\) values are themselves rounded to 4 decimals, so matching
+      to full float precision isn't meaningful here.)
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(X_n\)</span></div>
+        <input type="number" id="sdenum-scratch-x" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Drift \(\mu\)</span></div>
+        <input type="number" id="sdenum-scratch-mu" class="tl-scratch-input" value="0.10" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\)</span></div>
+        <input type="number" id="sdenum-scratch-sigma" class="tl-scratch-input" value="0.30" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\Delta t\)</span></div>
+        <input type="number" id="sdenum-scratch-dt" class="tl-scratch-input" value="0.25" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\Delta W_n\)</span></div>
+        <input type="number" id="sdenum-scratch-dw" class="tl-scratch-input" value="0.8453" step="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Drift term = <b id="sdenum-scratch-drift">2.50</b>&emsp;Diffusion term = <b id="sdenum-scratch-diff">25.36</b>
+    </div>
+    <div class="tl-readout">
+      \(X_{n+1}\) = <b id="sdenum-scratch-xnext">127.86</b>
+      <span id="sdenum-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="sdenum-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The same GBM realization: Euler-Maruyama's 4 discrete steps vs. the true continuous path</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A chart showing one simulated GBM path, drawn as a continuous jagged curve, alongside the Euler-Maruyama approximation of the same underlying randomness, drawn as five points connected by four straight line segments. The straight-line approximation follows the general direction of the true path but visibly cuts through its zig-zag detail.">
@@ -501,6 +546,60 @@
     <a href="multivariate-correlated-sdes.html">Multivariate &amp; Correlated SDEs →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { x: 100, mu: 0.10, sigma: 0.30, dt: 0.25, dw: 0.8453 };
+  var xInput = document.getElementById('sdenum-scratch-x');
+  var muInput = document.getElementById('sdenum-scratch-mu');
+  var sigmaInput = document.getElementById('sdenum-scratch-sigma');
+  var dtInput = document.getElementById('sdenum-scratch-dt');
+  var dwInput = document.getElementById('sdenum-scratch-dw');
+  var driftOut = document.getElementById('sdenum-scratch-drift');
+  var diffOut = document.getElementById('sdenum-scratch-diff');
+  var xnextOut = document.getElementById('sdenum-scratch-xnext');
+  var note = document.getElementById('sdenum-scratch-note');
+  var resetBtn = document.getElementById('sdenum-scratch-reset');
+  if (!xInput) return;
+
+  function recompute(){
+    var x = parseFloat(xInput.value);
+    var mu = parseFloat(muInput.value);
+    var sigma = parseFloat(sigmaInput.value);
+    var dt = parseFloat(dtInput.value);
+    var dw = parseFloat(dwInput.value);
+
+    if (!isFinite(x) || !isFinite(mu) || !isFinite(sigma) || !isFinite(dt) || !isFinite(dw) || dt < 0) {
+      note.textContent = '(enter finite numbers, with Δt ≥ 0)';
+      return;
+    }
+    note.textContent = '';
+
+    var drift = mu * x * dt;
+    var diffusion = sigma * x * dw;
+    var xNext = x + drift + diffusion;
+
+    driftOut.textContent = drift.toFixed(2);
+    diffOut.textContent = diffusion.toFixed(2);
+    xnextOut.textContent = xNext.toFixed(2);
+  }
+
+  xInput.addEventListener('input', recompute);
+  muInput.addEventListener('input', recompute);
+  sigmaInput.addEventListener('input', recompute);
+  dtInput.addEventListener('input', recompute);
+  dwInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    xInput.value = DEFAULTS.x;
+    muInput.value = DEFAULTS.mu;
+    sigmaInput.value = DEFAULTS.sigma;
+    dtInput.value = DEFAULTS.dt;
+    dwInput.value = DEFAULTS.dw;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
