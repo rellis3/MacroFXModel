@@ -803,6 +803,8 @@
 </div>
 <script>
 (function(){
+  function z(x){ return Math.abs(x) < 1e-9 ? 0 : x; } // snap float noise near zero to a clean 0
+
   var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, T: 1 };
   var fields = ['S', 'K', 'r', 'sigma', 'T'];
   var inputs = {};
@@ -829,9 +831,9 @@
       return;
     }
 
-    var lnSK = Math.log(S/K);
+    var lnSK = z(Math.log(S/K));
     var corr = (sigma*sigma)/2;
-    var drift = r - corr;
+    var drift = z(r - corr);
 
     corrOut.textContent = corr.toFixed(4);
     driftOut.textContent = drift.toFixed(4);
@@ -845,8 +847,8 @@
     }
 
     noteOut.textContent = '';
-    var d2 = (lnSK + drift*T) / (sigma*Math.sqrt(T));
-    var d1 = d2 + sigma*Math.sqrt(T);
+    var d2 = z((lnSK + drift*T) / (sigma*Math.sqrt(T)));
+    var d1 = z(d2 + sigma*Math.sqrt(T));
     d2Out.textContent = d2.toFixed(2);
     d1Out.textContent = d1.toFixed(2);
   }
