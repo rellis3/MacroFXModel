@@ -218,6 +218,9 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
         r := "US30"
     else if tU == str.upper(us2kT) or tU == "US2000USD" or tU == "RTY1!" or tU == "RUT"
         r := "US2000"
+    // BTC feeds vary by exchange — normalise the common tickers to the export's BTCUSD
+    else if tU == "BTCUSDT" or tU == "XBTUSD" or tU == "BTCUSD.P" or tU == "BTCUSDT.P" or tU == "BTC1!"
+        r := "BTCUSD"
     r
 
 // =====================================================
@@ -230,6 +233,7 @@ f_pipSize(sym) =>
      symU == "NQ" or symU == "US30"                 ? 1.0    :
      symU == "SPX500" or symU == "DE30" or
       symU == "UK100" or symU == "US2000"            ? 1.0    :
+     symU == "BTCUSD"                                ? 1.0    :
      str.contains(symU, "JPY")                       ? 0.01   : 0.0001
 
 // =====================================================
@@ -246,6 +250,11 @@ f_isKnownTicker(rowUp) =>
      str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
      str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
      str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+     str.contains(rowUp, "EURAUD") or str.contains(rowUp, "EURCAD") or
+     str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
+     str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
+     str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+     str.contains(rowUp, "BTCUSD") or
      str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
      str.contains(rowUp, "US30"))
