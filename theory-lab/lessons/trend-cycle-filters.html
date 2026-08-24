@@ -289,6 +289,40 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Rescale &lambda; for any frequency pair, live</h3>
+    <p>
+      Starts on the worked example's monthly rescaling (base = quarterly, 4 periods/year; target =
+      monthly, 12 periods/year). Change any input and the Ravn-Uhlig fourth-power rescaling
+      recalculates instantly &mdash; try setting the target to 1 period/year to reproduce the annual
+      case above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Baseline &lambda;</span></div>
+        <input type="number" id="tcf-scratch-lambda" class="tl-scratch-input" value="1600" step="100" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Base periods/year</span></div>
+        <input type="number" id="tcf-scratch-base" class="tl-scratch-input" value="4" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Target periods/year</span></div>
+        <input type="number" id="tcf-scratch-target" class="tl-scratch-input" value="12" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Ratio = <b id="tcf-scratch-ratio">3.00</b>&emsp;Ratio&#8308; = <b id="tcf-scratch-ratio4">81.00</b>
+    </div>
+    <div class="tl-readout">
+      &lambda;<sub>target</sub> = &lambda;<sub>base</sub> &times; ratio&#8308; &asymp; <b id="tcf-scratch-lambda-target">129,600</b>
+      <span id="tcf-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="tcf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -580,6 +614,56 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var lambdaInput = document.getElementById('tcf-scratch-lambda');
+  var baseInput = document.getElementById('tcf-scratch-base');
+  var targetInput = document.getElementById('tcf-scratch-target');
+  var ratioOut = document.getElementById('tcf-scratch-ratio');
+  var ratio4Out = document.getElementById('tcf-scratch-ratio4');
+  var lambdaOut = document.getElementById('tcf-scratch-lambda-target');
+  var noteOut = document.getElementById('tcf-scratch-note');
+  var resetBtn = document.getElementById('tcf-scratch-reset');
+  if (!lambdaInput) return;
+
+  var DEFAULTS = { lambda: 1600, base: 4, target: 12 };
+
+  function fmt(n){
+    return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+
+  function recompute(){
+    var lambda0 = parseFloat(lambdaInput.value);
+    var base = parseFloat(baseInput.value);
+    var target = parseFloat(targetInput.value);
+
+    if (!isFinite(lambda0) || !isFinite(base) || !isFinite(target) || lambda0 < 0 || base <= 0 || target <= 0) {
+      noteOut.textContent = '(enter a non-negative λ and positive periods-per-year values)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var ratio = target / base;
+    var ratio4 = Math.pow(ratio, 4);
+    var lambdaTarget = lambda0 * ratio4;
+
+    ratioOut.textContent = ratio.toFixed(2);
+    ratio4Out.textContent = ratio4.toFixed(2);
+    lambdaOut.textContent = fmt(lambdaTarget);
+  }
+
+  [lambdaInput, baseInput, targetInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    lambdaInput.value = DEFAULTS.lambda;
+    baseInput.value = DEFAULTS.base;
+    targetInput.value = DEFAULTS.target;
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

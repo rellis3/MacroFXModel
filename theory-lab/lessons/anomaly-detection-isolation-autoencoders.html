@@ -272,6 +272,35 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the anomaly score from a path length, live</h3>
+    <p>
+    Starts on the worked example's exact numbers: \(n=256\) points, average path length \(E[h(x)]=3.2\). Edit
+    either field and both the normalization constant \(c(n)\) and the anomaly score \(s(x,n)\) recalculate
+    instantly from the same formulas derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Avg. path length E[h(x)]</span></div>
+        <input type="number" id="if-scratch-eh" class="tl-scratch-input" value="3.2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Points in dataset n</span></div>
+        <input type="number" id="if-scratch-n" class="tl-scratch-input" value="256" step="1" min="2">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      c(n) &asymp; <b id="if-scratch-cn">10.24</b>
+    </div>
+    <div class="tl-readout">
+      s(x,n) = 2<sup>&minus;E[h(x)]/c(n)</sup> &asymp; <b id="if-scratch-score">0.805</b>
+      <span id="if-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="if-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>
@@ -448,6 +477,45 @@
     <a href="nlp-trading-signals-sentiment.html">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT →</a>
   </div>
 </div>
+<script>
+(function(){
+  function harmonicApprox(m){ return Math.log(m) + 0.5772; }
+  function cOfN(n){ return 2*harmonicApprox(n-1) - 2*(n-1)/n; }
+
+  var ehInput = document.getElementById('if-scratch-eh');
+  var nInput = document.getElementById('if-scratch-n');
+  if (!ehInput) return;
+  var cnOut = document.getElementById('if-scratch-cn');
+  var scoreOut = document.getElementById('if-scratch-score');
+  var note = document.getElementById('if-scratch-note');
+  var resetBtn = document.getElementById('if-scratch-reset');
+
+  function recompute(){
+    var eh = parseFloat(ehInput.value);
+    var n = parseFloat(nInput.value);
+
+    if (!isFinite(eh) || eh < 0 || !isFinite(n) || n < 2) {
+      note.textContent = '(enter a non-negative path length and n ≥ 2 points)';
+      return;
+    }
+    note.textContent = '';
+
+    var cn = cOfN(n);
+    var score = Math.pow(2, -eh/cn);
+    cnOut.textContent = cn.toFixed(2);
+    scoreOut.textContent = score.toFixed(3);
+  }
+
+  ehInput.addEventListener('input', recompute);
+  nInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    ehInput.value = 3.2;
+    nInput.value = 256;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

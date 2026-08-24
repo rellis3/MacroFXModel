@@ -288,6 +288,37 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute two of the MST's edge distances, live</h3>
+    <p>
+      Starts on the worked example's EUR&ndash;GBP and EUR&ndash;CHF
+      correlations. Change either \(\rho\) and its distance
+      \(d=\sqrt{2(1-\rho)}\) recalculates instantly, so you can see how much
+      a correlation has to move before Kruskal's algorithm would pick the
+      other edge first.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&rho; (EUR&ndash;GBP)</span></div>
+        <input type="number" id="cnm-scratch-rho1" class="tl-scratch-input" value="0.80" step="0.05" min="-1" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&rho; (EUR&ndash;CHF)</span></div>
+        <input type="number" id="cnm-scratch-rho2" class="tl-scratch-input" value="0.70" step="0.05" min="-1" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      d(EUR&ndash;GBP) = <b id="cnm-scratch-d1">0.63</b>&emsp;d(EUR&ndash;CHF) = <b id="cnm-scratch-d2">0.77</b>
+    </div>
+    <div class="tl-readout">
+      Shorter edge (added first by Kruskal's algorithm): <b id="cnm-scratch-shorter">EUR&ndash;GBP</b>
+      <span id="cnm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cnm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The full distance graph (faint) with its 4-edge minimum spanning tree (bold green) highlighted</div>
     <svg viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Five nodes — EUR, GBP, CHF, JPY, AUD — with all ten pairwise distance edges drawn faintly, and the four minimum spanning tree edges (EUR-GBP, EUR-CHF, EUR-AUD, JPY-AUD) highlighted in bold green with their distances labeled, showing EUR as a structural hub and JPY attached only through AUD">
@@ -551,6 +582,47 @@
     <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks →</a>
   </div>
 </div>
+<script>
+(function(){
+  function dist(rho){ return Math.sqrt(2*(1-rho)); }
+
+  var DEFAULTS = { rho1: 0.80, rho2: 0.70 };
+  var rho1Input = document.getElementById('cnm-scratch-rho1');
+  var rho2Input = document.getElementById('cnm-scratch-rho2');
+  var d1Out = document.getElementById('cnm-scratch-d1');
+  var d2Out = document.getElementById('cnm-scratch-d2');
+  var shorterOut = document.getElementById('cnm-scratch-shorter');
+  var noteOut = document.getElementById('cnm-scratch-note');
+  var resetBtn = document.getElementById('cnm-scratch-reset');
+  if (!rho1Input) return;
+
+  function recompute(){
+    var rho1 = parseFloat(rho1Input.value);
+    var rho2 = parseFloat(rho2Input.value);
+
+    if (!isFinite(rho1) || !isFinite(rho2) || rho1 < -1 || rho1 > 1 || rho2 < -1 || rho2 > 1) {
+      noteOut.textContent = '(enter correlations between -1 and 1)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var d1 = dist(rho1);
+    var d2 = dist(rho2);
+    d1Out.textContent = d1.toFixed(2);
+    d2Out.textContent = d2.toFixed(2);
+    shorterOut.textContent = d1 <= d2 ? 'EUR–GBP' : 'EUR–CHF';
+  }
+
+  rho1Input.addEventListener('input', recompute);
+  rho2Input.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    rho1Input.value = DEFAULTS.rho1;
+    rho2Input.value = DEFAULTS.rho2;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

@@ -404,6 +404,40 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>One Bellman backup, live — change any input below</h3>
+    <p>
+      Starts on the sweep-2 numbers for Long/Hold above: reward \(r=1\),
+      discount \(\gamma=0.9\), next-state value \(V(s')=1\), giving the
+      backed-up value \(V(s)=r+\gamma V(s')=1.9\). Edit any field and the
+      result recalculates instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Reward \(r\)</span></div>
+        <input type="number" id="mdp-scratch-r" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Discount \(\gamma\)</span></div>
+        <input type="number" id="mdp-scratch-gamma" class="tl-scratch-input" value="0.9" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Next-state value \(V(s')\)</span></div>
+        <input type="number" id="mdp-scratch-vnext" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &gamma;V(s&prime;) = <b id="mdp-scratch-gv">0.90</b>
+    </div>
+    <div class="tl-readout">
+      V(s) = r + &gamma;V(s&prime;) = <b id="mdp-scratch-v">1.90</b>
+      <span id="mdp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mdp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -575,6 +609,48 @@
     <a href="q-learning-temporal-difference.html">Q-Learning &amp; Temporal-Difference Methods →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { r: 1, gamma: 0.9, vnext: 1 };
+  var fields = ['r', 'gamma', 'vnext'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('mdp-scratch-' + f); });
+  if (!inputs.r) return;
+
+  var gvOut = document.getElementById('mdp-scratch-gv');
+  var vOut = document.getElementById('mdp-scratch-v');
+  var noteOut = document.getElementById('mdp-scratch-note');
+  var resetBtn = document.getElementById('mdp-scratch-reset');
+
+  function recompute(){
+    var r = parseFloat(inputs.r.value);
+    var gamma = parseFloat(inputs.gamma.value);
+    var vnext = parseFloat(inputs.vnext.value);
+
+    if (!isFinite(r) || !isFinite(gamma) || !isFinite(vnext)) {
+      gvOut.textContent = '—';
+      vOut.textContent = '—';
+      noteOut.textContent = '(enter numeric values for r, γ and V(s\'))';
+      return;
+    }
+
+    var gv = gamma * vnext;
+    var v = r + gv;
+    gvOut.textContent = gv.toFixed(2);
+    vOut.textContent = v.toFixed(2);
+    noteOut.textContent = (gamma < 0 || gamma > 1)
+      ? '(γ is usually kept between 0 and 1 — this still computes, but is no longer a standard discount factor)'
+      : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

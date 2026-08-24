@@ -448,6 +448,49 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the impurity reduction for this split, live</h3>
+    <p>
+      Starts on the worked example's own 8 points split at \(x\le3.5\):
+      parent impurity \(I(S)=0.25\), left child \(\{0,0,0\}\) with
+      \(I(S_L)=0\), right child \(\{1,0,1,1,1\}\) with \(I(S_R)=0.16\).
+      Change any group size or impurity value and \(\Delta I(j,s)\)
+      recalculates instantly from the formula derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Parent impurity \(I(S)\)</span></div>
+        <input type="number" id="dt-scratch-Ip" class="tl-scratch-input" value="0.25" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Left size \(|S_L|\)</span></div>
+        <input type="number" id="dt-scratch-nL" class="tl-scratch-input" value="3" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Left impurity \(I(S_L)\)</span></div>
+        <input type="number" id="dt-scratch-IL" class="tl-scratch-input" value="0" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Right size \(|S_R|\)</span></div>
+        <input type="number" id="dt-scratch-nR" class="tl-scratch-input" value="5" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Right impurity \(I(S_R)\)</span></div>
+        <input type="number" id="dt-scratch-IR" class="tl-scratch-input" value="0.16" step="0.01" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      |S| = <b id="dt-scratch-n">8</b>&emsp;weighted child impurity = <b id="dt-scratch-wchild">0.1000</b>
+    </div>
+    <div class="tl-readout">
+      &Delta;I(j,s) = <b id="dt-scratch-dI">0.1500</b>
+      <span id="dt-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="dt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">A jagged single-tree fit versus a smoother forest-averaged fit, on the same 8 points</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Step chart comparing a single unconstrained decision tree, which forms a jagged staircase touching every one of eight training points exactly including two noisy ones, against a three-tree forest average, which forms a smoother staircase that misses the two noisy points but tracks the true underlying step function more closely.">
@@ -704,5 +747,59 @@
 })();
 </script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { Ip: 0.25, nL: 3, IL: 0, nR: 5, IR: 0.16 };
+  var fields = ['Ip', 'nL', 'IL', 'nR', 'IR'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('dt-scratch-' + f); });
+  if (!inputs.Ip) return;
+
+  var nOut = document.getElementById('dt-scratch-n');
+  var wchildOut = document.getElementById('dt-scratch-wchild');
+  var dIOut = document.getElementById('dt-scratch-dI');
+  var note = document.getElementById('dt-scratch-note');
+  var resetBtn = document.getElementById('dt-scratch-reset');
+
+  function recompute(){
+    var Ip = parseFloat(inputs.Ip.value);
+    var nL = parseFloat(inputs.nL.value);
+    var IL = parseFloat(inputs.IL.value);
+    var nR = parseFloat(inputs.nR.value);
+    var IR = parseFloat(inputs.IR.value);
+
+    if (![Ip, nL, IL, nR, IR].every(isFinite) || Ip < 0 || nL < 0 || IL < 0 || nR < 0 || IR < 0) {
+      note.textContent = '(enter non-negative numbers — group sizes and impurities cannot be negative)';
+      nOut.textContent = '—';
+      wchildOut.textContent = '—';
+      dIOut.textContent = '—';
+      return;
+    }
+
+    var n = nL + nR;
+    if (n === 0) {
+      note.textContent = '(both group sizes are zero — no split to evaluate)';
+      nOut.textContent = '0';
+      wchildOut.textContent = '—';
+      dIOut.textContent = '—';
+      return;
+    }
+
+    note.textContent = '';
+    var wchild = (nL / n) * IL + (nR / n) * IR;
+    var dI = Ip - wchild;
+    nOut.textContent = n.toFixed(0);
+    wchildOut.textContent = wchild.toFixed(4);
+    dIOut.textContent = dI.toFixed(4);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 </body>
 </html>
