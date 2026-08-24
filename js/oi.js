@@ -1507,12 +1507,24 @@ export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = nu
   const exposures = oiCalcExposures(strikes, calls, puts, spot, pair, T, sigmaFn);
   const cwHead = callWalls.filter(w => w.strike >= spot).sort((a, b) => a.strike - b.strike)[0] ?? callWalls[0] ?? null;
   const pwHead = putWalls.filter(w => w.strike <= spot).sort((a, b) => b.strike - a.strike)[0] ?? putWalls[0] ?? null;
+  // Zero-gamma crossings for THIS expiry. The primary chain stores its own `gexFlips`
+  // and the day set had none, so the producer had to null the field when it swapped the
+  // day expiry in — which silently disabled the localRegime gate (oiRegimeBands needs
+  // crossings; with none it collapses to a single band at the net-GEX sign). Handing
+  // over the primary's crossings instead would judge a 1-DTE wall by the 25-DTE book,
+  // so the day set computes its own, off the same strikes/T/sigma as its gexProfile.
+  const flips = gexFlipCrossings(strikes, calls, puts,
+    { sigmaFn, sigma: oiFlatVol(pair), T, mult: cs, spot });
   return {
     dte: Number.isFinite(dte) ? dte : null,
     maxPain, callWalls, putWalls,
     callWall: cwHead?.strike ?? 0, putWall: pwHead?.strike ?? 0,
     exposures, gexProfile,
     gammaFlip: gammaFlip(gexProfile, spot),
+    gexFlips: flips,
+    gexFlip: flips.length
+      ? flips.reduce((m, f) => (Math.abs(f.price - spot) < Math.abs(m.price - spot) ? f : m)).price
+      : null,
     regime: exposures.gex > 0 ? 'PIN' : exposures.gex < 0 ? 'BREAKOUT' : null,   // sign of net dealer GEX
   };
 }

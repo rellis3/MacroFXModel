@@ -13230,7 +13230,18 @@ async function _refreshOIBotZones() {
       const tradeInst = dayEx
         ? { ...inst, dte: dayEx.dte, maxPain: dayEx.maxPain, callWalls: dayEx.callWalls, putWalls: dayEx.putWalls,
             callWall: dayEx.callWall, putWall: dayEx.putWall, exposures: dayEx.exposures,
-            gexProfile: dayEx.gexProfile, gammaFlip: dayEx.gammaFlip, gexFlip: undefined, gexFlips: undefined, dayExpiry: undefined }
+            gexProfile: dayEx.gexProfile, gammaFlip: dayEx.gammaFlip,
+            // The day set now carries its OWN zero-gamma crossings (computeExpiryLevels).
+            // These were nulled, which left oiRegimeBands with nothing to split on: it
+            // collapsed to one band at the net-GEX sign, so the localRegime gate could
+            // never trim a wall AND printed "local <regime> confirmed" — a confirmation
+            // of a check that never ran. Falling back to the primary's crossings would be
+            // wrong in the other direction (judging a 1-DTE wall by the 25-DTE book), so
+            // an older entry without day-expiry crossings still gets null, which the
+            // planner now reports honestly instead of confirming.
+            gexFlip: Number.isFinite(dayEx.gexFlip) ? dayEx.gexFlip : undefined,
+            gexFlips: Array.isArray(dayEx.gexFlips) ? dayEx.gexFlips : undefined,
+            dayExpiry: undefined }
         : inst;
       // Gamma-flow context (the "connecting info" around the flip). All no-new-data:
       // distance-to-flip = vol read; flip-drift = regime-change warning (from oi_history);

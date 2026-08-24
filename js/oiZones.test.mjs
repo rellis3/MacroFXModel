@@ -524,6 +524,43 @@ console.log('[Local-regime gate — judge a wall by the gamma band AT ITS OWN PR
   ok('fade of a wall in a short-gamma band → size trimmed ~0.5×', sellOn && Math.abs(sellOn.sizeFactor - sellOff.sizeFactor * 0.5) < 0.01, `${sellOff.sizeFactor}→${sellOn.sizeFactor}`);
   ok('mismatch is annotated', sellOn && /short-gamma zone \(may break, not hold\)/.test(sellOn.rationale), sellOn?.rationale);
   ok('fade of a wall in the PIN band → confirmed, NOT trimmed', buyOn && /local pin confirmed/.test(buyOn.rationale) && !/size down/.test(buyOn.rationale));
+
+  // REGRESSION: with NO crossings, oiRegimeBands returns a single band at the net-GEX
+  // sign, so every wall "resolved" to the regime we already knew and the gate stamped
+  // "local pin confirmed" on a check that never ran. The producer nulled gexFlips on the
+  // day-expiry path, so this was the ONLY case that ever reached production.
+  const noFlips = { ...base, exposures: { gex: 5000 }, refMove: { move: 150 }, gexFlips: [] };
+  const nf = buildOIZones(noFlips, 4200, { ...cfg, localRegime: true }).find(x => x.side === 'sell' && x.level === 4300);
+  ok('no crossings → NO false "confirmed"', nf && !/local pin confirmed/.test(nf.rationale), nf?.rationale);
+  ok('no crossings → says it could not resolve', nf && /local regime unresolved/.test(nf.rationale), nf?.rationale);
+  ok('no crossings → size untouched (no phantom trim)', nf && Math.abs(nf.sizeFactor - sellOff.sizeFactor) < 1e-9, `${sellOff.sizeFactor} vs ${nf?.sizeFactor}`);
+
+  // Crossings entirely outside the window are the same situation — one band, no read.
+  const farFlip = { ...base, exposures: { gex: 5000 }, refMove: { move: 150 },
+    gexFlips: [{ price: 99999, dir: 'long->short' }] };
+  const ff = buildOIZones(farFlip, 4200, { ...cfg, localRegime: true }).find(x => x.side === 'sell' && x.level === 4300);
+  ok('out-of-range crossing → unresolved, not confirmed', ff && /local regime unresolved/.test(ff.rationale), ff?.rationale);
+}
+
+console.log('[Day expiry carries its own gamma crossings]');
+{
+  // computeExpiryLevels now returns gexFlips/gexFlip for the day set, so the producer can
+  // hand the planner the TRADED expiry's crossings instead of nulling them (which killed
+  // the gate) or borrowing the far primary's (which would judge a 1-DTE wall by the
+  // 25-DTE book). Synthetic chain: heavy puts low, heavy calls high → a sign change.
+  const { computeExpiryLevels } = await import('./oi.js');
+  const strikes = [], calls = [], puts = [];
+  for (let k = 4000; k <= 4400; k += 25) {
+    strikes.push(k);
+    calls.push(k >= 4200 ? 8000 : 200);
+    puts.push(k < 4200 ? 8000 : 200);
+  }
+  const day = computeExpiryLevels(strikes, calls, puts, 4200, 'XAU/USD', { dte: 1, minOI: 20 });
+  ok('day expiry returns a gexFlips array', Array.isArray(day?.gexFlips), JSON.stringify(day?.gexFlips?.slice(0, 3)));
+  ok('crossings carry price + dir (the shape oiRegimeBands needs)',
+    !day.gexFlips.length || day.gexFlips.every(f => Number.isFinite(f.price) && (f.dir === 'long->short' || f.dir === 'short->long')));
+  ok('gexFlip scalar = the crossing nearest spot', !day.gexFlips.length
+    || Math.abs(day.gexFlip - day.gexFlips.reduce((m, f) => Math.abs(f.price - 4200) < Math.abs(m.price - 4200) ? f : m).price) < 1e-9);
 }
 
 console.log('[Guards]');

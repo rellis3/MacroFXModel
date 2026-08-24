@@ -307,8 +307,15 @@ export function buildOIZones(inst, price, cfg = {}) {
                : (Number.isFinite(inst.refMove?.move) && inst.refMove.move > 0) ? inst.refMove.move
                : (Number.isFinite(price) ? price * 0.02 : 0);
   const _bands = (localRegime && _rmWin > 0) ? oiRegimeBands(inst, { lo: price - 4 * _rmWin, hi: price + 4 * _rmWin }) : null;
+  // A band list with no crossing in it carries NO local information: oiRegimeBands
+  // returns a single band spanning the whole window at the net-GEX sign, so every
+  // price "resolves" to the regime we already knew. Reporting that as a local read
+  // produced "· local pin confirmed" on walls where nothing had been checked — worse
+  // than no gate, because it asserts a confirmation. 0 crossings → 1 band, N in-range
+  // crossings → N+1, so >1 band is exactly the condition for a real local read.
+  const _bandsResolve = Array.isArray(_bands) && _bands.length > 1;
   const _regimeAtPrice = (p) => {
-    if (!Array.isArray(_bands) || !Number.isFinite(p)) return null;
+    if (!_bandsResolve || !Number.isFinite(p)) return null;
     const b = _bands.find(bd => p >= bd.lo && p <= bd.hi);
     return (b && b.regime !== 'neutral') ? b.regime : null;   // 'pin' | 'breakout' | null
   };
@@ -537,6 +544,9 @@ export function buildOIZones(inst, price, cfg = {}) {
         rationale = `${rationale} · ⚠ wall in ${rg === 'breakout' ? 'short-gamma zone (may break, not hold)' : 'long-gamma zone (break may be dampened)'} → size down`;
       } else if (rg) {
         rationale = `${rationale} · local ${rg} confirmed`;
+      } else if (!_bandsResolve) {
+        // Say so rather than passing silently: the gate was asked for and could not run.
+        rationale = `${rationale} · local regime unresolved (no gamma crossing in range)`;
       }
     }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
