@@ -511,7 +511,7 @@
       </div>
     </div>
     <div class="tl-readout tl-scratch-readout">
-      r = <b id="pcr-scratch-r">0.9986</b>&emsp;&beta; = <b id="pcr-scratch-beta">1.9900</b>&emsp;&alpha; = <b id="pcr-scratch-alpha">0.0500</b>
+      r = <b id="pcr-scratch-r">0.999</b>&emsp;&beta; = <b id="pcr-scratch-beta">1.9900</b>&emsp;&alpha; = <b id="pcr-scratch-alpha">0.0500</b>
     </div>
     <div class="tl-readout">
       &#375; = &alpha; + &beta;x&emsp;R&sup2; &asymp; <b id="pcr-scratch-r2">0.9973</b>
@@ -905,7 +905,7 @@
     var sst = n * varY;
     var r2 = 1 - ssr / sst;
 
-    rOut.textContent = r.toFixed(4);
+    rOut.textContent = r.toFixed(3);
     r2Out.textContent = r2.toFixed(4);
     noteOut.textContent = '';
   }
