@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Limits, Integrals &amp; Annuity Factors — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<style>
+  .tl-scratch-input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:6px 8px;box-sizing:border-box}
+  .tl-scratch-input:focus{outline:none;border-color:var(--blue2)}
+  .tl-scratch-readout{margin-top:14px}
+  .tl-scratch-note{color:var(--text3);font-size:11px;margin-left:8px}
+  .tl-scratch-reset-btn{margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 12px;cursor:pointer}
+  .tl-scratch-reset-btn:hover{border-color:var(--blue2);color:var(--text)}
+</style>
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Deeper Foundations / Limits, Integrals &amp; Annuity Factors</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Deeper Foundations · Lesson 5 of 5</div>
+  <h1 class="tl-title">Limits, Integrals &amp; Annuity Factors</h1>
+  <p class="tl-dek">The limit hiding underneath every derivative and integral, formalized properly and then aimed squarely at fixed income: duration as a derivative of bond price, continuous discounting as an integral, and the annuity factor derived from a finite geometric series through to its perpetuity and continuous-compounding limits.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span>~18 min read</span>
+    <span>Prereqs: Calculus for Finance (Deeper Foundations 2)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>A <strong>limit</strong> formalizes "getting arbitrarily close without needing to actually arrive": \(\lim_{x\to a} f(x) = L\) — the machinery underneath every derivative and integral used anywhere in this curriculum.</li>
+      <li>The <strong>derivative</strong> (already built in Calculus for Finance as \(f'(x)=\lim_{h\to0}[f(x+h)-f(x)]/h\)) gets only a brief recap here — this lesson's real contribution is pushing it further, straight into <strong>duration</strong>: \(D_{mod} = -\frac{1}{P}\frac{dP}{dy}\), literally the derivative of bond price with respect to yield.</li>
+      <li>The <strong>integral</strong> as a limit of a Riemann sum turns the familiar discrete present-value sum into its continuous-time twin, \(PV=\int_0^T CF(t)e^{-rt}\,dt\) — the same accumulation idea, applied to a continuum of cash flows instead of discrete coupon dates.</li>
+      <li>The <strong>annuity factor</strong> is derived properly from scratch: starting at the finite geometric series \(A(n,y)=\sum_{t=1}^n(1+y)^{-t}\), multiplying by \((1+y)\), subtracting, and solving gives the closed form \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) — algebra, not an assertion.</li>
+      <li>Two limits sit inside that one formula: letting \(n\to\infty\) gives the perpetuity value \(A\to1/y\); letting the compounding frequency \(m\to\infty\) within a period recovers continuous compounding and connects the annuity factor directly to \(e^{-rt}\).</li>
+      <li>Duration, DV01, and the instantaneous forward rate \(f(t)=\frac{d}{dt}[t\cdot r(t)]\) are all, without exception, a derivative or a limit wearing a trading-desk name — not a separate piece of fixed-income folklore.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Every fixed-income formula in this curriculum — duration, convexity, DV01,
+    the annuity factor itself, and forward-rate extraction from a yield curve —
+    is a limit, a derivative, or an integral wearing a trading-desk name.
+    <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>
+    builds the pricing formula this lesson differentiates.
+    <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>
+    already uses the term "annuity factor" for a swap's fixed-leg PV01 basis
+    without deriving where it comes from — this lesson is that derivation,
+    worked from first principles instead of taken on faith.
+    <a href="nelson-siegel-svensson.html">Curve Fitting: Nelson-Siegel &amp;
+    Svensson</a> and
+    <a href="short-rate-models-vasicek-cir-hull-white.html">Short-Rate
+    Models: Vasicek, CIR &amp; Hull-White</a> both quietly lean on the
+    forward-rate-as-derivative relationship this lesson makes explicit near
+    the end.
+  </p>
+  <p>
+    A practitioner who can only plug numbers into these formulas, without
+    seeing the calculus underneath, will misapply them exactly when it
+    matters most: a large rate move where a linear (first-derivative-only)
+    duration estimate quietly breaks down, an unusual compounding convention
+    that silently changes an annuity factor's exact value, or a curve-fitting
+    edge case where the underlying limit stops being a good approximation of
+    the discrete reality it's standing in for.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Duration = a derivative</h4>
+      <p>Modified duration is exactly \(-\frac{1}{P}\frac{dP}{dy}\) — the bond-pricing formula, differentiated with respect to yield, nothing more exotic.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">∫</div>
+      <h4>Continuous PV = an integral</h4>
+      <p>\(PV=\int_0^T CF(t)e^{-rt}dt\) is the limit of the ordinary discrete present-value sum as payment dates get infinitesimally close together.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">Σ</div>
+      <h4>Annuity factor = a geometric series</h4>
+      <p>\(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) falls out of the same multiply-and-subtract trick used to sum any finite geometric series.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>Forward rate = a derivative</h4>
+      <p>\(f(t)=\frac{d}{dt}[t\cdot r(t)]\) — the instantaneous forward rate is literally the derivative of the yield curve's cumulative yield.</p>
+    </div>
+  </div>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Getting arbitrarily close, without needing to arrive</h3>
+    <p>
+      A limit is a genuinely honest, non-hand-wavy idea, even in plain
+      English: it describes what a quantity <em>approaches</em> as some input
+      is pushed arbitrarily close to a target — without that input ever
+      needing to actually reach the target itself. (The fully rigorous
+      version — for any tolerance you name, however small, inputs
+      sufficiently close to the target produce outputs within that tolerance
+      — is the formal "epsilon-delta" definition; it's mentioned here for
+      completeness, not derived, because this is a finance curriculum, not a
+      real-analysis course. Everything below only needs the informal reading.)
+    </p>
+    <p>
+      Two concrete fixed-income pictures use exactly that idea, and both
+      recur constantly for the rest of this lesson. <strong>Duration</strong>
+      is "how fast the bond's price wiggles for a tiny wiggle in yield" — take
+      the average wiggle-per-wiggle over a shrinking gap in yield, and the
+      value that gets approached as the gap shrinks to nothing is the
+      derivative \(dP/dy\). The <strong>annuity factor</strong> is "what a
+      stream of $1-per-period payments is worth today" — built by adding up
+      discount factors one payment at a time, a sum that for an ordinary bond
+      stops after a fixed number of years, but which the perpetuity case
+      pushes to literally infinitely many terms, another limit entirely.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>What a limit formally captures</h3>
+  <p>
+    A limit answers a precise question: as an input \(x\) is pushed
+    arbitrarily close to a target value \(a\) — without necessarily ever
+    equaling \(a\) — what value does \(f(x)\) get arbitrarily close to?
+    Written formally:
+  </p>
+  <div class="tl-math">\[ \lim_{x \to a} f(x) = L \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>x → a</code><span>the input approaching, but not necessarily reaching, the target</span></div>
+    <div class="tl-eq-chip c4"><code>L</code><span>the single value the output settles arbitrarily close to</span></div>
+  </div>
+  <p>
+    The most important limit already in this curriculum is the one Calculus
+    for Finance built the derivative from — the <strong>difference
+    quotient</strong>, the average rate of change of \(f\) over a shrinking
+    gap \(h\):
+  </p>
+  <div class="tl-math">\[ f'(x) = \lim_{h\to 0} \frac{f(x+h) - f(x)}{h} \]</div>
+  <p>
+    That is a limit in exactly the formal sense above — the input being
+    pushed toward a target is \(h\), the target is \(0\), and \(L\) is the
+    derivative's value at \(x\). This lesson doesn't re-derive that limit
+    (Calculus for Finance already works a full first-principles example,
+    \(d/dx(x^2)=2x\)); the job here is to take the derivative and the
+    integral it recaps and push both further than that earlier lesson had
+    room to.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine walking toward a door that's always exactly half the remaining distance away, then half of what's left, then half of that. You never technically touch the door, but you can get closer to it than any distance anyone names, no matter how tiny. A limit is a name for the spot you're closing in on — not a spot you necessarily ever stand on, just the one place you can get arbitrarily near.</p>
+  </div>
+
+  <h3>From derivative to duration: differentiating the bond-pricing formula</h3>
+  <p>
+    Recall the bond-pricing formula from
+    <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>:
+    a bond's price is the sum of every cash flow \(CF_t\) (a coupon, or the
+    final coupon plus face value at maturity) discounted at yield \(y\):
+  </p>
+  <div class="tl-math">\[ P(y) = \sum_{t=1}^{n} \frac{CF_t}{(1+y)^t} \]</div>
+  <p>
+    Differentiate term by term with respect to \(y\), using the power rule
+    \(\frac{d}{dy}(1+y)^{-t} = -t(1+y)^{-t-1}\) on each term:
+  </p>
+  <div class="tl-math">\[ \frac{dP}{dy} = -\sum_{t=1}^{n} \frac{t \cdot CF_t}{(1+y)^{t+1}} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>t·CFₜ</code><span>each cash flow, weighted by how many periods away it lands</span></div>
+    <div class="tl-eq-chip c4"><code>(1+y)^{t+1}</code><span>one extra power of (1+y) than the price formula itself has</span></div>
+  </div>
+  <p>
+    Every term in that sum is negative (all the pieces are positive numbers
+    with a minus sign out front), which is exactly the algebraic reason
+    price and yield move in strictly opposite directions — the fact
+    Bond Pricing &amp; Yield to Maturity established without yet showing the
+    derivative behind it. <strong>Modified duration</strong> is defined as
+    the negative of that derivative, scaled by price, so that the sign
+    convention practitioners actually quote comes out positive:
+  </p>
+  <div class="tl-math">\[ D_{mod} = -\frac{1}{P}\frac{dP}{dy} \]</div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">dP/dy</div>
+      <div class="tl-fp-name">The raw derivative</div>
+      <div class="tl-fp-desc">Always negative for a plain bond — price falls as yield rises</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">−1/P</div>
+      <div class="tl-fp-name">Flip the sign, normalize by price</div>
+      <div class="tl-fp-desc">Turns "dollars per unit yield" into a positive, price-independent sensitivity</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">D_mod</div>
+      <div class="tl-fp-name">Modified duration</div>
+      <div class="tl-fp-desc">The quoted number — positive, in years, directly a derivative</div>
+    </div>
+  </div>
+
+  <p>
+    A small, fully worked example makes this concrete rather than abstract.
+    Take a 2-year, $1,000 face bond with a 5% annual coupon (\(C=\$50\)),
+    priced at a 5% yield — a par bond, so \(P=\$1{,}000\) exactly:
+  </p>
+  <div class="tl-math">\[ \frac{dP}{dy} = -\left[\frac{1\times 50}{(1.05)^2} + \frac{2\times 1{,}050}{(1.05)^3}\right] = -\left[45.35 + 1{,}814.06\right] = -1{,}859.41 \]</div>
+  <div class="tl-math">\[ D_{mod} = -\frac{1}{1{,}000}\times(-1{,}859.41) = 1.8594 \text{ years} \]</div>
+  <p>
+    Every input to that calculation is a number already sitting in the
+    pricing formula — no new machinery, just the same formula differentiated.
+    The trading-desk quantity built directly on top of \(D_{mod}\) is
+    <strong>DV01</strong> (dollar value of a one-basis-point move): multiply
+    modified duration by price and by 0.0001 (one basis point as a decimal)
+    to get the dollar price change for a 1bp yield move,
+    \(DV01 = P \times D_{mod} \times 0.0001\) — the exact quantity the
+    hedging scenario below is built around.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Duration answers one question: if the interest rate wiggled by a tiny amount, how much would the bond's price wiggle in response? That's a speedometer reading, exactly like the Calculus for Finance lesson's car analogy — except the "road" is the yield and the "distance traveled" is the bond's price. Differentiating the pricing formula is just reading that speedometer directly off the math instead of guessing.</p>
+  </div>
+
+  <h3>From integral to continuous-time discounting</h3>
+  <p>
+    An integral is the sibling limit: instead of a single ratio shrinking
+    toward an instant, it's a sum of many thin slices shrinking toward a
+    continuum. Chop the interval \([a,b]\) into slices of width \(\Delta t\),
+    evaluate \(f\) at each slice, add them up, then let the slices become
+    infinitesimally thin:
+  </p>
+  <div class="tl-math">\[ \int_a^b f(t)\,dt = \lim_{\Delta t \to 0} \sum_{i} f(t_i)\,\Delta t \]</div>
+  <p>
+    Applied to discounting, the ordinary discrete present-value sum
+    \(P=\sum_t CF_t/(1+y)^t\) is itself already a sum of discrete slices —
+    one cash flow per coupon date. Imagine instead a continuum of
+    infinitesimal cash flows \(CF(t)\,dt\) arriving at every instant rather
+    than on discrete coupon dates, each discounted continuously at rate
+    \(r\) (the \(e^{-rt}\) discount factor from
+    <a href="time-value-of-money.html">Time Value of Money</a>). Letting the
+    gap between payment dates shrink to zero turns the discrete sum into
+    exactly this integral:
+  </p>
+  <div class="tl-math">\[ PV = \int_0^T CF(t)\,e^{-rt}\,dt \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>CF(t)</code><span>the cash-flow rate at instant t — dollars per unit time, not a single lump payment</span></div>
+    <div class="tl-eq-chip c3"><code>e^{-rt}</code><span>the continuous-compounding discount factor for time t</span></div>
+  </div>
+  <p>
+    Nothing about this integral is exotic once the discrete sum is already
+    familiar — it's the identical accumulation idea, just applied to a
+    continuum of cash flows instead of a handful of discrete ones. This is
+    exactly the parallel structure the annuity factor's own continuous limit
+    reuses two sections below.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Picture a bond's coupons arriving less and less far apart — annually, then monthly, then every second — while each individual payment shrinks proportionally so the total paid per year stays the same. In the limit, it's not a handful of lump payments anymore, it's a smooth trickle of cash. Adding up a smooth trickle, instead of a countable list of payments, is exactly what an integral does.</p>
+  </div>
+
+  <h3>The annuity factor, derived from a finite geometric series</h3>
+  <p>
+    An <strong>annuity factor</strong> is the present value of a stream of
+    $1-per-period payments — the coupon-only building block sitting inside
+    every coupon-bearing bond's price, and (per
+    <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>)
+    exactly the sum a swap's fixed leg needs to be valued. Define it as a
+    finite geometric series with \(n\) terms and common ratio
+    \(x=(1+y)^{-1}\):
+  </p>
+  <div class="tl-math">\[ A(n,y) = \sum_{t=1}^{n} \frac{1}{(1+y)^t} = x + x^2 + \cdots + x^n \]</div>
+  <p>
+    The closed form isn't asserted — it falls out of a short, standard trick:
+    multiply the whole series by \((1+y)\) (equivalently, by \(1/x\)), then
+    subtract the original series from that.
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Multiply by (1+y)</h4>
+        <p>Multiplying every term of \(A\) by \((1+y)\) shifts each power of \(x\) down by one — \((1+y)\cdot x^t = x^{t-1}\) — so the series becomes:</p>
+        <div class="tl-math">\[ (1+y)A = 1 + x + x^2 + \cdots + x^{n-1} \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Subtract the original series</h4>
+        <p>Line the two series up. Every middle term (\(x\) through \(x^{n-1}\)) appears in both and cancels exactly, leaving only the leading 1 from the shifted series and the trailing \(x^n\) from the original:</p>
+        <div class="tl-math">\[ (1+y)A - A = \big(1 + x + \cdots + x^{n-1}\big) - \big(x + x^2 + \cdots + x^n\big) = 1 - x^n \]</div>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Solve for A</h4>
+        <p>The left side simplifies to \(yA\), since \((1+y)A - A = A[(1+y)-1] = yA\). Substituting \(x=(1+y)^{-1}\) back in:</p>
+        <div class="tl-math">\[ yA = 1-(1+y)^{-n} \qquad\Longrightarrow\qquad A(n,y) = \frac{1-(1+y)^{-n}}{y} \]</div>
+      </div>
+    </div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">1 − (1+y)⁻ⁿ</div>
+      <div class="tl-fp-name">One minus the final discount factor</div>
+      <div class="tl-fp-desc">What survives the cancellation — the numerator</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">y</div>
+      <div class="tl-fp-name">The per-period yield</div>
+      <div class="tl-fp-desc">Divides the numerator — the denominator</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">A(n,y)</div>
+      <div class="tl-fp-name">The annuity factor</div>
+      <div class="tl-fp-desc">Multiply by a level $1-per-period cash flow to get its present value</div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>This is the exact same "multiply, subtract, solve" trick used for any repeating pattern that shrinks by the same factor each step — like figuring out how much a pile of ever-smaller chocolate bars weighs in total without stacking every single one on a scale one at a time. You compare the pile to a slightly shifted copy of itself, notice that almost everything overlaps and cancels, and only the two mismatched ends are left to deal with.</p>
+  </div>
+
+  <h3>Two limits inside the annuity factor</h3>
+  <p>
+    The closed form \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) has exactly two limits
+    worth taking, corresponding to two different things that can be pushed
+    toward infinity.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>n → ∞ — the perpetuity limit</h4>
+      <p>For \(y>0\), \((1+y)^{-n}\to 0\) as \(n\to\infty\), since raising a number greater than 1 to an ever-larger power sends its reciprocal to zero. So \(A(n,y)\to \frac{1-0}{y}=\frac{1}{y}\) — a perpetuity, a stream of $1 payments running forever, is worth exactly \(1/y\) today. The chart below shows this convergence directly.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>m → ∞ within a period — the continuous-compounding limit</h4>
+      <p>Compounding \(m\) times within a period (per <a href="time-value-of-money.html">Time Value of Money</a>'s \(\lim_{m\to\infty}(1+r/m)^m=e^r\)) sends each discrete discount factor \((1+y)^{-t}\) to \(e^{-yt}\). The annuity sum becomes the continuous-time integral \(\int_0^n e^{-yt}\,dt = \frac{1-e^{-yn}}{y}\) — the same shape, with \((1+y)^{-n}\) simply replaced by \(e^{-yn}\).</p>
+    </div>
+  </div>
+  <div class="tl-solid green">
+    <strong>Notice the structural echo:</strong> the continuous annuity
+    integral above is just the general continuous-time PV integral,
+    \(PV=\int_0^T CF(t)e^{-rt}dt\), with the constant cash-flow rate
+    \(CF(t)=1\) plugged in and evaluated. The two limits this lesson builds —
+    the derivative behind duration and the integral behind continuous
+    discounting — aren't separate ideas colliding by coincidence here; the
+    annuity factor's continuous limit <em>is</em> a special case of the
+    integral already derived above.
+  </div>
+
+  <h3>Forward rates as a derivative of the yield curve</h3>
+  <p>
+    <a href="nelson-siegel-svensson.html">Curve Fitting: Nelson-Siegel
+    &amp; Svensson</a> fits a smooth function \(r(t)\) — the zero-coupon
+    (spot) yield to maturity \(t\) — through observed market prices. A
+    zero-coupon bond maturing at \(t\) prices at \(P(t)=e^{-r(t)\,t}\) under
+    continuous compounding, so its cumulative yield exposure is
+    \(t\cdot r(t)\). The <strong>instantaneous forward rate</strong> — the
+    rate the market implicitly expects to prevail for an infinitesimally
+    short period starting at \(t\), exactly what short-rate models like
+    <a href="short-rate-models-vasicek-cir-hull-white.html">Vasicek, CIR,
+    and Hull-White</a> attempt to describe dynamically — is defined as the
+    derivative of that cumulative yield:
+  </p>
+  <div class="tl-math">\[ f(t) = \frac{d}{dt}\big[t \cdot r(t)\big] \]</div>
+  <p>
+    Applying the product rule (differentiating a product of two functions of
+    \(t\), \(t\) itself and \(r(t)\)) expands this to:
+  </p>
+  <div class="tl-math">\[ f(t) = r(t) + t\cdot r'(t) \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>r(t)</code><span>today's spot yield to maturity t</span></div>
+    <div class="tl-eq-chip c4"><code>t·r'(t)</code><span>a correction for how steeply the spot curve is sloping right at t</span></div>
+  </div>
+  <p>
+    Where the yield curve is flat (\(r'(t)=0\)), the forward rate equals the
+    spot yield exactly. Where the curve slopes upward (\(r'(t)\) positive),
+    the forward rate sits above the spot yield at that maturity — a derivative
+    of a fitted curve, wearing yet another trading-desk name.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The spot yield is like your average speed for an entire road trip so far. The forward rate is your speed <em>right now</em>, at this exact point on the trip. If your average speed has been climbing the whole way (an upward-sloping curve), your current speed has to be running a bit above that average just to keep pulling it up — that's exactly what the extra \(t\cdot r'(t)\) term captures.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(\lim_{x\to a} f(x) = L\)</td><td>"As \(x\) gets arbitrarily close to \(a\), \(f(x)\) gets arbitrarily close to \(L\)" — the formal statement of a limit.</td></tr>
+    <tr><td>\(h\)</td><td>A small, shrinking gap — used both in the derivative's difference quotient and in the annuity factor's finite-difference check below.</td></tr>
+    <tr><td>\(P(y)\), \(dP/dy\)</td><td>Bond price as a function of yield, and its derivative — the raw sensitivity of price to yield.</td></tr>
+    <tr><td>\(D_{mod}\)</td><td>Modified duration, \(-\frac{1}{P}\frac{dP}{dy}\) — the derivative above, sign-flipped and normalized by price.</td></tr>
+    <tr><td>\(D_{Mac}\)</td><td>Macaulay duration — the cash-flow-weighted average time to receive a bond's payments; related to modified duration by \(D_{mod}=D_{Mac}/(1+y/m)\).</td></tr>
+    <tr><td>DV01</td><td>Dollar value of a one-basis-point move, \(P\times D_{mod}\times 0.0001\) — modified duration converted into an actual dollar sensitivity.</td></tr>
+    <tr><td>\(\int_a^b f(t)\,dt\)</td><td>A definite integral — the limit of a sum of thin rectangular (or here, cash-flow) slices as their width shrinks to zero.</td></tr>
+    <tr><td>\(CF(t)\)</td><td>A continuous cash-flow rate at instant \(t\) — dollars per unit time, the continuous-time analogue of a discrete coupon.</td></tr>
+    <tr><td>\(A(n,y)\)</td><td>The annuity factor — the present value of a $1-per-period stream over \(n\) periods at yield \(y\); \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\).</td></tr>
+    <tr><td>\(n\)</td><td>Number of periods (or payment dates) in the annuity or bond.</td></tr>
+    <tr><td>\(y\)</td><td>The discount rate (yield) per period.</td></tr>
+    <tr><td>\(m\)</td><td>Compounding frequency within a period — letting \(m\to\infty\) recovers continuous compounding.</td></tr>
+    <tr><td>\(r(t)\)</td><td>The zero-coupon (spot) yield to maturity \(t\), as fitted by a yield-curve model.</td></tr>
+    <tr><td>\(f(t)\)</td><td>The instantaneous forward rate — \(\frac{d}{dt}[t\cdot r(t)]\), the derivative of the cumulative yield curve.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Secant line converging to the tangent line — the price-yield curve for a 5-year, $1/year annuity</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A downward-curving annuity price versus yield curve, with a secant line through two points on the curve that rotates to align with a fixed dashed tangent line as the gap between the two points shrinks toward zero">
+      <line x1="70" y1="230" x2="600" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="70" y1="20" x2="70" y2="230" style="stroke:var(--border);stroke-width:1"/>
+      <text x="335" y="262" text-anchor="middle" style="fill:var(--text3);font-size:11px">Yield y</text>
+      <text x="20" y="125" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 125)">A(5, y)</text>
+      <text x="70" y="245" text-anchor="middle" style="fill:var(--text3);font-size:10px">0.1%</text>
+      <text x="600" y="245" text-anchor="middle" style="fill:var(--text3);font-size:10px">15%</text>
+      <text x="60" y="234" text-anchor="end" style="fill:var(--text3);font-size:10px">2.5</text>
+      <text x="60" y="30" text-anchor="end" style="fill:var(--text3);font-size:10px">5.25</text>
+      <path id="lim-curve-path" style="fill:none;stroke:var(--text2);stroke-width:2" d=""/>
+      <line id="lim-tangent" style="stroke:var(--purple);stroke-width:2;stroke-dasharray:4,3"/>
+      <line id="lim-secant" style="stroke:var(--blue);stroke-width:2.5"/>
+      <circle id="lim-dot-a" cx="0" cy="0" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+      <circle id="lim-dot-b" cx="0" cy="0" r="5" style="fill:var(--blue);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Gap h (basis points)</span><span class="tl-live" id="lim-h-val">h = 400bp</span></div>
+        <input type="range" id="lim-h-slider" min="5" max="600" step="5" value="400">
+        <div class="tl-hint">Drag toward the left to shrink h. Watch the blue secant line rotate to align with the fixed dashed tangent line as the gap shrinks toward zero — exactly the limit the derivative's definition describes.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="lim-slope-readout">secant slope ≈ &minus;11.02 | tangent (exact) slope = &minus;12.51</div>
+    <div class="tl-legend">
+      <span><i style="background:var(--text2)"></i>A(5,y) — the curve</span>
+      <span><i style="background:var(--amber)"></i>Fixed point, y₀ = 4%</span>
+      <span><i style="background:var(--blue)"></i>Secant line through y₀ and y₀+h</span>
+      <span><i style="background:var(--purple)"></i>Tangent line at y₀ (the true derivative)</span>
+    </div>
+    <div class="tl-chart-caption">The secant line's slope is the average rate of change over the gap h — an honest number, but not yet the derivative. As h shrinks toward zero, the secant visibly rotates until it lies on top of the dashed tangent line, whose slope is the exact analytic derivative \(A'(0.04)\) computed from the closed form above. That convergence, made visible, is what \(\lim_{h\to0}\) means for this specific curve.</div>
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The perpetuity limit — annuity factor at 5% yield as n grows</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the annuity factor at a 5 percent yield for n equal to 5, 10, 20, 40 and 80 periods, growing toward but never reaching a dashed horizontal line at 20, the perpetuity value 1 over y">
+      <line x1="60" y1="250" x2="600" y2="250" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="250" x2="60" y2="20" style="stroke:var(--border);stroke-width:1"/>
+      <line x1="60" y1="30" x2="600" y2="30" style="stroke:var(--purple);stroke-width:1.5;stroke-dasharray:4,3"/>
+      <text x="606" y="34" style="fill:var(--purple);font-size:11px">1/y = 20 (n→∞)</text>
+      <text x="52" y="254" text-anchor="end" style="fill:var(--text3);font-size:10px">0</text>
+      <text x="20" y="140" text-anchor="middle" style="fill:var(--text3);font-size:11px" transform="rotate(-90 20 140)">A(n, 0.05)</text>
+
+      <rect x="90" y="202.4" width="60" height="47.6" style="fill:var(--blue);opacity:.85"/>
+      <text x="120" y="196" text-anchor="middle" style="fill:var(--text);font-size:10px">4.33</text>
+      <text x="120" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=5</text>
+
+      <rect x="190" y="165.1" width="60" height="84.9" style="fill:var(--blue);opacity:.85"/>
+      <text x="220" y="159" text-anchor="middle" style="fill:var(--text);font-size:10px">7.72</text>
+      <text x="220" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=10</text>
+
+      <rect x="290" y="112.9" width="60" height="137.1" style="fill:var(--blue);opacity:.85"/>
+      <text x="320" y="106" text-anchor="middle" style="fill:var(--text);font-size:10px">12.46</text>
+      <text x="320" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=20</text>
+
+      <rect x="390" y="61.3" width="60" height="188.7" style="fill:var(--blue);opacity:.85"/>
+      <text x="420" y="55" text-anchor="middle" style="fill:var(--text);font-size:10px">17.16</text>
+      <text x="420" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=40</text>
+
+      <rect x="490" y="34.4" width="60" height="215.6" style="fill:var(--green);opacity:.9"/>
+      <text x="520" y="28" text-anchor="middle" style="fill:var(--text);font-size:10px">19.60</text>
+      <text x="520" y="266" text-anchor="middle" style="fill:var(--text3);font-size:11px">n=80</text>
+    </svg>
+    <div class="tl-chart-caption">Every bar is the exact closed form \(A(n,0.05)=\frac{1-(1.05)^{-n}}{0.05}\), just evaluated at a larger \(n\). The bars keep climbing but never cross the dashed perpetuity line at \(1/0.05=20\) — they get arbitrarily close without arriving, precisely the limit definition from the top of this section, now visualized on the exact formula this lesson derived.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 5-year, $1-per-year annuity at 4%: from the geometric series to duration</h3>
+    <p>
+      Take the simplest possible case of the closed form just derived: a
+      5-year stream of $1 payments (\(n=5\)) at a 4% yield (\(y=0.04\)) — the
+      coupon-only building block that sits inside any coupon-bearing bond's
+      price.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Sum the five discount factors directly, as a check</h4>
+          <div class="tl-math">\[ 0.96154+0.92456+0.88900+0.85480+0.82193 = 4.45182 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Confirm it against the closed form</h4>
+          <div class="tl-math">\[ A(5,0.04) = \frac{1-(1.04)^{-5}}{0.04} = \frac{1-0.82193}{0.04} = \frac{0.17807}{0.04} \approx 4.4518 \]</div>
+          <p>The two methods agree to four decimal places, exactly as they must — the closed form is nothing more than the same five-term sum, algebraically compressed.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Differentiate the annuity factor itself, for its duration</h4>
+          <p>Applying the same differentiation move used on the bond-pricing formula above, but to \(A(n,y)\) directly (via the quotient rule on \(\frac{1-(1+y)^{-n}}{y}\)) and simplifying gives a clean closed form for the modified duration of a level annuity — verified algebraically, not merely asserted:</p>
+          <div class="tl-math">\[ D_{mod} = \frac{1}{y} - \frac{n}{(1+y)\big[(1+y)^n-1\big]} \]</div>
+          <div class="tl-math">\[ D_{mod} = \frac{1}{0.04} - \frac{5}{1.04\times\big[(1.04)^5-1\big]} = 25 - \frac{5}{1.04\times 0.21665} = 25 - 22.191 \approx 2.809 \text{ years} \]</div>
+          <p>And since \(D_{mod}=D_{Mac}/(1+y)\), the Macaulay duration is \(D_{Mac} = 2.809\times 1.04 \approx 2.922\) years — a little under 3 years, which makes sense: the payments run out to year 5, but the earlier, larger-weighted discount factors on the closer payments pull the cash-flow-weighted average time back well below the final maturity.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Cross-check the closed form with a numerical finite difference</h4>
+          <p>Evaluate the annuity factor at \(y=3.9\%\) and \(y=4.1\%\) (a symmetric ±10bp bump around 4%) and take the central difference, exactly the finite-difference practice covered in the practitioner section below:</p>
+          <div class="tl-math">\[ A(0.039) \approx 4.4644 \qquad A(0.041) \approx 4.4393 \]</div>
+          <div class="tl-math">\[ \frac{A(0.041)-A(0.039)}{0.002} \approx -12.51 \qquad\Rightarrow\qquad D_{mod} \approx \frac{12.51}{4.4518} \approx 2.810 \]</div>
+          <p>
+            The finite-difference estimate (2.810) and the closed-form
+            derivative (2.809) agree to within about 0.04% — the small
+            residual is exactly the kind of discretization error the
+            Calculus for Finance lesson's Taylor-series section already
+            quantified, not a sign anything here is wrong. Two independent
+            routes to the same number is exactly the point: duration isn't
+            a separately memorized formula, it's this annuity factor,
+            differentiated.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the annuity factor and its duration, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(n=5\), \(y=4\%\). Change
+      either input and both the annuity factor and its modified/Macaulay
+      duration recalculate instantly from the closed forms derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Periods \(n\)</span></div>
+        <input type="number" id="lim-scratch-n" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Yield \(y\) (%)</span></div>
+        <input type="number" id="lim-scratch-y" class="tl-scratch-input" value="4" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      A(n,y) = <b id="lim-scratch-A">4.4518</b>&emsp;D<sub>mod</sub> = <b id="lim-scratch-dmod">2.8092</b> yrs&emsp;D<sub>Mac</sub> = <b id="lim-scratch-dmac">2.9216</b> yrs
+      <span id="lim-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="lim-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A rates desk hedges a short bond position with DV01, not intuition</h3>
+    <p>
+      A rates desk that market-makes 10-year Treasury notes has just sold
+      (gone short) \(\$10{,}000{,}000\) face value of a 10-year note, priced
+      near par at 100, with a modified duration of 8.50 years. Before the
+      trader can walk away flat, the desk needs to know exactly how many
+      10-year Treasury futures contracts to buy to neutralize that yield
+      exposure — not a rough guess, a specific number derived from the exact
+      derivative built above.
+    </p>
+    <div class="tl-math">\[ DV01_{\text{position}} = \frac{100}{100}\times 10{,}000{,}000 \times 8.50 \times 0.0001 = \$8{,}500 \text{ per basis point} \]</div>
+    <p>
+      Being short the bond, a 1bp <em>fall</em> in yield (bond price rises)
+      costs the desk $8,500; a 1bp <em>rise</em> in yield (bond price falls)
+      gains the desk $8,500. To offset that, the desk needs a position that
+      moves the <em>opposite</em> way per basis point — and a long futures
+      position, like being long the underlying bond, gains when yields fall
+      and loses when yields rise, exactly the mirror image of the short cash
+      position. If the 10-year Treasury future's DV01 is approximately $85
+      per contract (an illustrative, CTD-dependent figure — real desks
+      compute this from the future's own cheapest-to-deliver bond, not a
+      round number), the hedge ratio is a plain division:
+    </p>
+    <div class="tl-math">\[ N_{\text{contracts}} = \frac{DV01_{\text{position}}}{DV01_{\text{per contract}}} = \frac{8{,}500}{85} = 100 \]</div>
+    <p>
+      The desk buys <strong>100 futures contracts</strong>. Check the hedge:
+      if yields rise 1bp, the short bond gains $8,500 while the 100 long
+      futures lose \(100\times\$85=\$8{,}500\) — net roughly flat. If yields
+      fall 1bp, the short bond loses $8,500 while the long futures gain
+      $8,500 — again roughly flat. Every piece of that hedge ratio is the
+      derivative \(dP/dy\) from this lesson's math section, computed once for
+      the cash bond and once (implicitly, inside the quoted futures DV01)
+      for the future, then divided.
+    </p>
+
+    <div class="tl-eli5">
+      <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+      <p>Imagine you're holding a seesaw that's about to tip one way, and you have a second, smaller seesaw you can load up to balance it. DV01 tells you exactly how heavy each side tips for a tiny nudge. Once you know that number for both seesaws, balancing them isn't a guess — it's just dividing one number by the other to find out how many small seesaws it takes to cancel the big one.</p>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    <strong>Duration and DV01 are almost never hand-differentiated in
+    production.</strong> The closed forms this lesson derives are exactly
+    right for a plain-vanilla bond or annuity, but most real fixed-income
+    instruments — callable bonds, mortgage-backed securities, structured
+    notes with embedded optionality — have no clean closed-form price
+    formula to differentiate at all. Practitioners instead compute
+    <strong>effective duration</strong> numerically: bump the entire yield
+    curve up by a small amount, reprice the instrument through the full
+    pricing model, bump it down by the same amount, reprice again, and take
+    the finite difference — literally the same central-difference technique
+    used to cross-check the closed-form annuity duration in the worked
+    example above, just applied to instruments where no closed form exists
+    to check it against.
+  </p>
+  <div class="tl-math">\[ D_{\text{eff}} \approx -\frac{1}{P}\cdot\frac{P(y+\epsilon)-P(y-\epsilon)}{2\epsilon} \]</div>
+  <p>
+    <strong>The annuity factor shows up directly, by name, in swap
+    valuation.</strong> <a href="swap-curves-ois.html">Swap Curves &amp;
+    OIS Discounting</a> defines the par swap rate as
+    \(K_{\text{par}}=\frac{1-DF(T_n)}{\sum_{i=1}^n DF(t_i)}\) and calls that
+    denominator the swap's "annuity factor" without deriving it — it's
+    exactly \(A(n,y)\) from this lesson, generalized to a possibly non-flat
+    discount curve. A swap's fixed leg is, structurally, nothing more than a
+    level annuity; the same closed form and the same duration derived above
+    apply directly, which is precisely why interest-rate swap risk is often
+    quoted as "PV01" (present value of one basis point) — the same DV01
+    concept, applied to the fixed leg's annuity.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where this goes wrong in practice</h3>
+    <p>
+      <strong>Treating duration as valid for large yield moves.</strong>
+      Duration is a first-derivative, local linear approximation — exactly
+      the first-order Taylor term the Calculus for Finance lesson warned
+      about. For a small yield move it's accurate; for a large one, the
+      price-yield curve's genuine curvature (its second derivative, the
+      subject of the follow-on Duration &amp; Convexity lesson) pulls the
+      true price away from the duration-only estimate, and ignoring that
+      correction is the single most common misuse of duration in practice.
+    </p>
+    <p>
+      <strong>Assuming "the annuity factor" means one universal number for
+      a given bond.</strong> Day-count conventions (actual/360, 30/360,
+      actual/365) and compounding frequency (annual, semiannual, continuous)
+      all change the exact value of \(A(n,y)\) for what colloquially gets
+      called "the same bond" — exactly the kind of convention mismatch
+      Swap Curves &amp; OIS Discounting flags as a common real-world error.
+      An annuity factor is only meaningful once its compounding and
+      day-count convention are pinned down.
+    </p>
+    <p>
+      <strong>Confusing Macaulay duration with modified duration.</strong>
+      They are related but not interchangeable: Macaulay duration
+      \(D_{Mac}\) is a cash-flow-weighted average <em>time</em> (in years);
+      modified duration \(D_{mod}\) is a price <em>sensitivity</em> (percent
+      price change per unit yield change). The precise relationship, for a
+      bond compounding \(m\) times per year, is:
+    </p>
+    <div class="tl-math">\[ D_{mod} = \frac{D_{Mac}}{1+y/m} \]</div>
+    <p>
+      Using one where the other is meant — quoting a Macaulay duration as if
+      it directly gave a percentage price sensitivity, or vice versa —
+      silently produces a wrong number by a factor of \((1+y/m)\), usually
+      small but never exactly zero.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A limit is "arbitrarily close, without needing to arrive."</strong> Every derivative and every integral in this curriculum is built from exactly that one idea, applied to a ratio or to a sum.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Duration is a derivative.</strong> \(D_{mod}=-\frac{1}{P}\frac{dP}{dy}\) — differentiate the bond-pricing formula with respect to yield, flip the sign, normalize by price. Nothing more exotic.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Continuous-time discounting is an integral.</strong> \(PV=\int_0^T CF(t)e^{-rt}dt\) is the discrete PV sum's limit as payment dates get infinitesimally close together.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The annuity factor is a finite geometric series, derived not asserted.</strong> \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) comes from the standard "multiply, subtract, solve" trick — the same one that sums any geometric series.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two limits sit inside that one formula.</strong> \(n\to\infty\) gives the perpetuity value \(1/y\); compounding frequency \(m\to\infty\) recovers continuous compounding and connects directly to \(e^{-rt}\).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Duration is a local, first-order approximation.</strong> It degrades for large yield moves without a convexity correction, and gets silently distorted by day-count/compounding convention mismatches or by confusing Macaulay with modified duration.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In plain language, what does \(\lim_{x\to a} f(x) = L\) actually assert, and why does the "epsilon-delta" formalization matter even though this lesson doesn't derive it in full?</summary>
+    <div class="tl-answer">
+      It asserts that as \(x\) is pushed arbitrarily close to \(a\) (without
+      necessarily ever equaling \(a\)), \(f(x)\) gets arbitrarily close to a
+      single value \(L\). The epsilon-delta formalization exists to make
+      "arbitrarily close" precise and testable — for any tolerance
+      (epsilon) around \(L\) you name, however small, there's a
+      corresponding closeness (delta) to \(a\) that guarantees landing
+      inside that tolerance. It's mentioned rather than derived because the
+      informal reading is sufficient for every calculation this lesson
+      actually performs — the point is honesty about what the informal
+      version is standing in for, not full rigor.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Starting from the bond-pricing formula \(P(y)=\sum_t CF_t/(1+y)^t\), derive \(dP/dy\), and explain why every term in that derivative comes out negative.</summary>
+    <div class="tl-answer">
+      Differentiating term by term with the power rule,
+      \(\frac{d}{dy}(1+y)^{-t} = -t(1+y)^{-t-1}\), gives
+      \(dP/dy = -\sum_t \frac{t\cdot CF_t}{(1+y)^{t+1}}\). Every term is
+      negative because \(t\), \(CF_t\), and \((1+y)^{t+1}\) are all positive
+      for a plain bond, and the minus sign from the power rule is applied
+      uniformly to every term — there is no configuration where raising
+      yield increases any individual discounted cash flow. That's the
+      algebraic proof, not just an empirical tendency, behind "price and
+      yield move in opposite directions" from Bond Pricing &amp; Yield to
+      Maturity.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Derive the annuity factor's closed form from the finite geometric series \(A=x+x^2+\cdots+x^n\) (with \(x=(1+y)^{-1}\)), showing the multiply-and-subtract step explicitly.</summary>
+    <div class="tl-answer">
+      Multiply the series by \((1+y)=1/x\): every term shifts down one
+      power, giving \((1+y)A = 1+x+\cdots+x^{n-1}\). Subtract the original
+      series from this: every middle term from \(x\) through \(x^{n-1}\)
+      appears in both and cancels exactly, leaving
+      \((1+y)A-A = 1-x^n\). The left side simplifies to \(yA\), since
+      \((1+y)A-A=A[(1+y)-1]=yA\). Substituting \(x=(1+y)^{-1}\) and
+      dividing both sides by \(y\) gives
+      \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) — the closed form, obtained purely
+      by algebra rather than asserted.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Explain both limits that can be taken on \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\), what each one represents financially, and why they are genuinely different limits (different variables going to infinity).</summary>
+    <div class="tl-answer">
+      Letting \(n\to\infty\) with \(y\) fixed sends \((1+y)^{-n}\to 0\)
+      (since \(y>0\) makes \((1+y)>1\), and raising a number greater than 1
+      to an ever-larger power sends its reciprocal to zero), so
+      \(A\to 1/y\) — the value of a perpetuity, a $1-per-period stream
+      running forever. Letting the compounding frequency \(m\to\infty\)
+      within a fixed period instead uses a completely different limit,
+      \(\lim_{m\to\infty}(1+r/m)^m=e^r\), which sends each discrete discount
+      factor \((1+y)^{-t}\) to \(e^{-yt}\) and turns the discrete sum into
+      the continuous integral \(\int_0^n e^{-yt}dt=\frac{1-e^{-yn}}{y}\).
+      They're different limits because they push different quantities to
+      infinity — the number of periods in one case, the number of
+      compounding sub-divisions within each period in the other — and they
+      answer different financial questions (how much is an infinitely long
+      cash-flow stream worth, versus what happens as discrete compounding
+      becomes continuous).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. In the worked example, the closed-form modified duration (2.809 years) and the central finite-difference estimate (2.810 years) don't match exactly. Is that a mistake, and why or why not?</summary>
+    <div class="tl-answer">
+      No — it's the expected, correct behavior of a finite difference. The
+      closed-form derivative is the exact limit as the bump size \(h\to 0\);
+      the central finite difference uses a small but genuinely non-zero
+      \(h=0.001\) (10bp each side), so it's approximating that limit, not
+      computing it exactly. The residual gap (about 0.04%) is precisely the
+      discretization error the Calculus for Finance lesson's Taylor-series
+      section already quantified for finite step sizes — a real, expected
+      artifact of using a finite \(h\) rather than evidence anything in the
+      derivation is wrong. A smaller \(h\) would shrink that residual
+      further, converging toward the closed-form answer.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What is the precise relationship between Macaulay duration and modified duration, and what specifically goes wrong if the two are treated as interchangeable?</summary>
+    <div class="tl-answer">
+      \(D_{mod} = D_{Mac}/(1+y/m)\), where \(m\) is the compounding
+      frequency per year. Macaulay duration is a cash-flow-weighted average
+      time to receive a bond's payments, measured in years; modified
+      duration is a percentage price sensitivity to a unit change in yield.
+      Treating them as interchangeable — for instance, using a quoted
+      Macaulay duration directly as if it were the percentage price move
+      per unit yield change — silently misstates the sensitivity by a
+      factor of \((1+y/m)\). That factor is usually modest (a few percent
+      for typical yields and annual or semiannual compounding) but is never
+      exactly 1, so the substitution is never exactly correct, only
+      approximately so.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Frederick R. Macaulay, <em>Some Theoretical Problems Suggested by the Movements of Interest Rates, Bond Yields and Stock Prices in the United States since 1856</em>, National Bureau of Economic Research, 1938 — the original source of "Macaulay duration," introduced as a cash-flow-weighted average time measure.</li>
+    <li>Frank J. Fabozzi, <em>Bond Markets, Analysis, and Strategies</em>, 9th ed., Pearson, 2016 — the standard practitioner/academic treatment of duration and convexity, including the numerically-bumped effective-duration approach used for instruments without a closed-form price.</li>
+    <li>Bruce Tuckman &amp; Angel Serrat, <em>Fixed Income Securities: Tools for Today's Markets</em>, 3rd ed., Wiley, 2011 — a rigorous, quant-oriented treatment of duration, DV01, and hedging with futures, directly underlying this lesson's trading scenario.</li>
+    <li>James Stewart, <em>Calculus</em>, Cengage Learning (any recent edition) — the standard reference for the formal limit, derivative, and Riemann-sum definitions this lesson builds on, in far more generality and depth than needed here.</li>
+    <li>This Theory Lab's own <a href="calculus-for-finance.html">Calculus for Finance</a>, <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>, and <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> lessons — the prerequisite this page builds on, and the two places its annuity-factor and duration derivations are used without being re-derived.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="calculus-for-finance.html">← Calculus for Finance</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Annuity factor and its analytic derivative, n=5 fixed, for the secant/tangent chart.
+  var N = 5, Y0 = 0.04;
+  function Aval(y, n){ return (1 - Math.pow(1+y, -n)) / y; }
+  function Aprime(y, n){
+    var vn1 = Math.pow(1+y, -(n+1));
+    var v = Math.pow(1+y, -n);
+    return (n*y*vn1 - 1 + v) / (y*y);
+  }
+
+  var slider = document.getElementById('lim-h-slider');
+  var hVal = document.getElementById('lim-h-val');
+  var pathEl = document.getElementById('lim-curve-path');
+  var secant = document.getElementById('lim-secant');
+  var tangent = document.getElementById('lim-tangent');
+  var dotA = document.getElementById('lim-dot-a');
+  var dotB = document.getElementById('lim-dot-b');
+  var readout = document.getElementById('lim-slope-readout');
+  if (!slider) return;
+
+  var X0 = 70, X1 = 600, YMIN = 0.001, YMAX = 0.15;
+  var PY0 = 230, PY1 = 20, PMIN = 2.5, PMAX = 5.25;
+
+  function xForY(y){ return X0 + (y - YMIN) / (YMAX - YMIN) * (X1 - X0); }
+  function pxForA(a){ return PY0 + (a - PMIN) / (PMAX - PMIN) * (PY1 - PY0); }
+
+  function buildCurve(){
+    var d = '';
+    var steps = 120;
+    for (var i = 0; i <= steps; i++) {
+      var y = YMIN + (YMAX - YMIN) * i / steps;
+      var a = Aval(y, N);
+      var x = xForY(y);
+      var py = pxForA(a);
+      d += (i === 0 ? 'M' : 'L') + x.toFixed(2) + ',' + py.toFixed(2) + ' ';
+    }
+    pathEl.setAttribute('d', d);
+  }
+
+  var A0 = Aval(Y0, N);
+  var tangentSlope = Aprime(Y0, N);
+  var x0px = xForY(Y0);
+  var a0px = pxForA(A0);
+
+  function drawLine(el, slope){
+    var aLeft = A0 + slope * (YMIN - Y0);
+    var aRight = A0 + slope * (YMAX - Y0);
+    el.setAttribute('x1', X0); el.setAttribute('y1', pxForA(aLeft).toFixed(2));
+    el.setAttribute('x2', X1); el.setAttribute('y2', pxForA(aRight).toFixed(2));
+  }
+
+  function update(){
+    var hbp = parseInt(slider.value, 10);
+    var h = hbp / 10000;
+    hVal.textContent = 'h = ' + hbp + 'bp';
+
+    var y1 = Y0 + h;
+    var A1 = Aval(y1, N);
+    var secantSlope = (A1 - A0) / h;
+
+    drawLine(secant, secantSlope);
+    drawLine(tangent, tangentSlope);
+
+    dotA.setAttribute('cx', x0px); dotA.setAttribute('cy', a0px);
+    var x1px = xForY(y1), a1px = pxForA(A1);
+    dotB.setAttribute('cx', x1px); dotB.setAttribute('cy', a1px);
+
+    readout.textContent = 'secant slope ≈ ' + secantSlope.toFixed(2) +
+      ' | tangent (exact) slope = ' + tangentSlope.toFixed(2);
+  }
+
+  buildCurve();
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+<script>
+(function(){
+  function Aval(n, y){ if (y <= 0) return NaN; return (1 - Math.pow(1+y, -n)) / y; }
+  function Dmod(n, y){
+    if (y <= 0) return NaN;
+    var denom = (1+y) * (Math.pow(1+y, n) - 1);
+    if (denom === 0) return NaN;
+    return 1/y - n/denom;
+  }
+
+  var nInput = document.getElementById('lim-scratch-n');
+  var yInput = document.getElementById('lim-scratch-y');
+  var aOut = document.getElementById('lim-scratch-A');
+  var dmodOut = document.getElementById('lim-scratch-dmod');
+  var dmacOut = document.getElementById('lim-scratch-dmac');
+  var note = document.getElementById('lim-scratch-note');
+  var resetBtn = document.getElementById('lim-scratch-reset');
+  if (!nInput) return;
+
+  function update(){
+    var n = parseFloat(nInput.value);
+    var yPct = parseFloat(yInput.value);
+    var y = yPct / 100;
+
+    if (!isFinite(n) || n <= 0 || !isFinite(y) || y <= 0) {
+      note.textContent = 'Enter a positive number of periods and a positive yield.';
+      return;
+    }
+    note.textContent = '';
+
+    var a = Aval(n, y);
+    var dm = Dmod(n, y);
+    var dmac = dm * (1+y);
+
+    aOut.textContent = a.toFixed(4);
+    dmodOut.textContent = dm.toFixed(4);
+    dmacOut.textContent = dmac.toFixed(4);
+  }
+
+  nInput.addEventListener('input', update);
+  yInput.addEventListener('input', update);
+  resetBtn.addEventListener('click', function(){
+    nInput.value = 5;
+    yInput.value = 4;
+    update();
+  });
+
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/tts.js?v=5" defer></script>
+</body>
+</html>
