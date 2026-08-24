@@ -395,6 +395,42 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the explained variance ratios, live</h3>
+    <p>
+      Starts on the worked example's exact eigenvalues (\(\lambda_1\approx1.85\),
+      \(\lambda_2\approx0.95\), \(\lambda_3\approx0.20\)). Edit any eigenvalue
+      and every \(\text{EVR}_i=\lambda_i/\sum_j\lambda_j\) from Step 4
+      recalculates instantly — try shrinking \(\lambda_3\) toward the
+      "fully idiosyncratic AUDJPY" contrast above and watch \(\text{EVR}_1\)
+      rise toward that case's ~50%.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&lambda;&#8321; (PC1)</span></div>
+        <input type="number" id="pca-scratch-l1" class="tl-scratch-input" value="1.85" step="0.05" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&lambda;&#8322; (PC2)</span></div>
+        <input type="number" id="pca-scratch-l2" class="tl-scratch-input" value="0.95" step="0.05" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&lambda;&#8323; (PC3)</span></div>
+        <input type="number" id="pca-scratch-l3" class="tl-scratch-input" value="0.20" step="0.05" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      total variance (trace) = <b id="pca-scratch-total">3.00</b>
+    </div>
+    <div class="tl-readout">
+      EVR&#8321; = <b id="pca-scratch-evr1">61.7%</b>&emsp;EVR&#8322; = <b id="pca-scratch-evr2">31.7%</b>&emsp;EVR&#8323; = <b id="pca-scratch-evr3">6.7%</b>
+      <span id="pca-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="pca-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The classic PCA picture — a correlated cloud, rotated into its own best axes</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of a two-instrument return cloud that is elongated and tilted diagonally, with a long red PC1 arrow drawn along the cloud's long axis and a much shorter amber PC2 arrow drawn perpendicular to it">
@@ -780,6 +816,51 @@
     <a href="black-scholes.html">Black-Scholes-Merton Option Pricing →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { l1: 1.85, l2: 0.95, l3: 0.20 };
+  var fields = ['l1', 'l2', 'l3'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('pca-scratch-' + f); });
+
+  var totalOut = document.getElementById('pca-scratch-total');
+  var evr1Out = document.getElementById('pca-scratch-evr1');
+  var evr2Out = document.getElementById('pca-scratch-evr2');
+  var evr3Out = document.getElementById('pca-scratch-evr3');
+  var noteOut = document.getElementById('pca-scratch-note');
+  var resetBtn = document.getElementById('pca-scratch-reset');
+  if (!inputs.l1) return;
+
+  function recompute(){
+    var l1 = parseFloat(inputs.l1.value);
+    var l2 = parseFloat(inputs.l2.value);
+    var l3 = parseFloat(inputs.l3.value);
+
+    if (!isFinite(l1) || !isFinite(l2) || !isFinite(l3) || l1 < 0 || l2 < 0 || l3 < 0) {
+      noteOut.textContent = "(covariance eigenvalues can't be negative — enter non-negative numbers)";
+      return;
+    }
+    var total = l1 + l2 + l3;
+    if (total <= 0) {
+      noteOut.textContent = '(eigenvalues sum to zero — no variance to explain)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    totalOut.textContent = total.toFixed(2);
+    evr1Out.textContent = (100 * l1 / total).toFixed(1) + '%';
+    evr2Out.textContent = (100 * l2 / total).toFixed(1) + '%';
+    evr3Out.textContent = (100 * l3 / total).toFixed(1) + '%';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

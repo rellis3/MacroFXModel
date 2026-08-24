@@ -501,6 +501,41 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Diagonalize a different symmetric 2&#215;2, live</h3>
+    <p>
+      Starts on the worked example's exact matrix. Edit any entry (kept
+      symmetric — the off-diagonal entry is shared by both off-diagonal
+      slots) and the trace, determinant, both eigenvalues, and both
+      eigenvectors recalculate instantly from
+      \(\lambda = \tfrac{\operatorname{trace}(A) \pm \sqrt{\operatorname{trace}(A)^2 - 4\det(A)}}{2}\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A&#8321;&#8321;</span></div>
+        <input type="number" id="la-scratch-a" class="tl-scratch-input" value="3" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A&#8321;&#8322; = A&#8322;&#8321;</span></div>
+        <input type="number" id="la-scratch-b" class="tl-scratch-input" value="1" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>A&#8322;&#8322;</span></div>
+        <input type="number" id="la-scratch-d" class="tl-scratch-input" value="3" step="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      trace = <b id="la-scratch-trace">6.0000</b>&emsp;det = <b id="la-scratch-det">8.0000</b>
+    </div>
+    <div class="tl-readout">
+      &lambda;&#8321; = <b id="la-scratch-l1">4.0000</b>, v&#8321; = <b id="la-scratch-v1">(1, 1.0000)</b>&emsp;&lambda;&#8322; = <b id="la-scratch-l2">2.0000</b>, v&#8322; = <b id="la-scratch-v2">(1, -1.0000)</b>
+      <span id="la-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="la-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -784,6 +819,76 @@
     <a href="calculus-for-finance.html">Calculus for Finance &#8594;</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { a: 3, b: 1, d: 3 };
+  var fields = ['a', 'b', 'd'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('la-scratch-' + f); });
+
+  var traceOut = document.getElementById('la-scratch-trace');
+  var detOut = document.getElementById('la-scratch-det');
+  var l1Out = document.getElementById('la-scratch-l1');
+  var l2Out = document.getElementById('la-scratch-l2');
+  var v1Out = document.getElementById('la-scratch-v1');
+  var v2Out = document.getElementById('la-scratch-v2');
+  var noteOut = document.getElementById('la-scratch-note');
+  var resetBtn = document.getElementById('la-scratch-reset');
+  if (!inputs.a) return;
+
+  function recompute(){
+    var a = parseFloat(inputs.a.value);
+    var b = parseFloat(inputs.b.value);
+    var d = parseFloat(inputs.d.value);
+
+    if (!isFinite(a) || !isFinite(b) || !isFinite(d)) {
+      noteOut.textContent = '(enter numeric matrix entries)';
+      return;
+    }
+
+    var trace = a + d;
+    var det = a*d - b*b;
+    var disc = trace*trace - 4*det; // = (a-d)^2 + 4b^2, always >= 0 for a symmetric matrix
+    if (disc < 0) {
+      noteOut.textContent = '(unexpected: a symmetric matrix always has real eigenvalues)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var s = Math.sqrt(disc);
+    var l1 = (trace + s) / 2;
+    var l2 = (trace - s) / 2;
+
+    var v1Str, v2Str;
+    if (Math.abs(b) < 1e-12) {
+      if (Math.abs(a - d) < 1e-12) {
+        v1Str = '(any direction)';
+        v2Str = '(any direction)';
+      } else {
+        v1Str = (l1 === a) ? '(1, 0)' : '(0, 1)';
+        v2Str = (l2 === a) ? '(1, 0)' : '(0, 1)';
+      }
+    } else {
+      v1Str = '(1, ' + ((l1 - a) / b).toFixed(4) + ')';
+      v2Str = '(1, ' + ((l2 - a) / b).toFixed(4) + ')';
+    }
+
+    traceOut.textContent = trace.toFixed(4);
+    detOut.textContent = det.toFixed(4);
+    l1Out.textContent = l1.toFixed(4);
+    l2Out.textContent = l2.toFixed(4);
+    v1Out.textContent = v1Str;
+    v2Out.textContent = v2Str;
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
