@@ -406,6 +406,45 @@
   .dr-top h2{font-size:18px;font-weight:700}
   .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
             border-radius:6px;padding:4px 12px;font-size:13px}
+  /* ── Cross-asset driver board (sidebar) ───────────────────────────────
+     Board-level, not per-pair: the same four lines whichever pair you're on.
+     Series hues are fixed in both themes — a data series shouldn't change
+     identity with the page background. */
+  .db-align{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+            font-size:12px;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .db-align .muted{font-size:10.5px}
+  .db-tiles{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:9px}
+  .db-tile{display:flex;align-items:center;gap:5px;font-size:11px;min-width:0}
+  .db-dot{width:8px;height:3px;border-radius:2px;flex:0 0 auto}
+  .db-k{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .db-v{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .db-v.pos{color:var(--bull)} .db-v.neg{color:var(--bear)}
+  .db-chartwrap{overflow-x:auto}
+  .db-chart{display:block;width:100%;height:auto}
+  .db-chart path{fill:none;stroke-width:1.3}
+  .db-chart .db-zero{stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.55}
+  .db-chart .db-ax{fill:var(--text3);font-size:8px;font-variant-numeric:tabular-nums}
+  .db-note{font-size:10px;margin-top:7px;line-height:1.5}
+
+  /* ── Realised vs implied volatility (Vol & Path tab) ──────────────────
+     Stat tiles wrap freely; the chart scrolls inside its own container so a
+     narrow phone never scrolls the whole drawer sideways. The two series keep
+     fixed hues (cyan = realised, amber = implied) in both themes — a data
+     series shouldn't change identity with the page background. */
+  .ivrv-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px;margin-bottom:11px}
+  .ivrv-tile{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:7px 9px}
+  .ivrv-lbl{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:3px}
+  .ivrv-val{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+  .ivrv-val.pos{color:var(--bull)} .ivrv-val.neg{color:var(--bear)}
+  .ivrv-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--text2);margin-bottom:5px}
+  .ivrv-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:2px}
+  .ivrv-chartwrap{overflow-x:auto}
+  .ivrv-chart{display:block;width:100%;min-width:420px;height:auto}
+  .ivrv-chart .ivrv-grid{stroke:rgba(var(--border-rgb),.55);stroke-width:1}
+  .ivrv-chart .ivrv-ax{fill:var(--text3);font-size:9px;font-variant-numeric:tabular-nums}
+  .ivrv-chart .ivrv-rv{stroke:#22d3ee;stroke-width:1.4;fill:none}
+  .ivrv-chart .ivrv-iv{stroke:#fbbf24;stroke-width:1.4;fill:none;opacity:.9}
+
   /* The Read tab's "At a glance" block reuses the card's own renderers, so it
      inherits .pc-bias / .pc-foot styling that was scoped to .pcard. Re-scope
      those two rules here rather than duplicating the card CSS. */
@@ -638,6 +677,7 @@
   .rs-flag{display:flex;align-items:baseline;gap:7px;font-size:11px;color:var(--text2);padding:3px 0;cursor:help}
   .rs-flag.on{color:var(--text)} .rs-flag.on .rs-ic{color:var(--amber)}
   .rs-flag .rs-ic{width:12px;flex-shrink:0;color:var(--text3)}
+  .rs-iv.stale b{font-weight:600}
   .rs-iv{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:4px 0;margin-top:4px;border-top:1px solid var(--border);cursor:help}
   .rs-iv b{color:var(--text);font-variant-numeric:tabular-nums}
   .volout-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text2);padding:4px 0;border-bottom:1px solid var(--border)}
@@ -866,6 +906,13 @@
   </div>
   </div>
   <div class="dr-pane" id="drPane-vol" role="tabpanel" aria-labelledby="drTab-vol" hidden>
+    <div class="dr-sec" id="drIvRvSec" data-seckey="ivrv" style="display:none">
+      <h3 class="help" title="Realised volatility is what this market HAS done (close-to-close, annualised). Implied is what the options market is CHARGING for the next 30 days. The gap between them is a risk premium, not a direction — a high IV-RV spread says options are expensive relative to recent movement, which is context for sizing and for whether to buy or sell premium, never a buy/sell signal on the underlying.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Realised vs implied volatility</span>
+        <span class="chip neu" style="font-size:9px">context · not a signal</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drIvRv"><span class="muted">loading…</span></div></div>
+    </div>
   <div class="dr-sec" id="drConeSec" data-seckey="cone" style="display:none">
     <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Volatility cone — is vol building or cooling?</span></h3>
     <div class="dr-sec-body"><div id="drCone"></div></div>
@@ -1310,6 +1357,13 @@ function renderRiskFlags() {
   const ivRow = (sid, label, fcName) => {
     const iv = cvol?.levels?.[sid], pc = cvol?.pct?.[sid];
     if (iv == null) return '';
+    // /api/cvol reads a 5-year window, so a DISCONTINUED index still yields a
+    // "current" level — its last ever print. EVZ stopped publishing and was
+    // being shown here as live implied vol. Say so instead of quoting it.
+    const stale = cvol?.stale?.[sid], asOf = cvol?.asOf?.[sid], age = cvol?.ageDays?.[sid];
+    if (stale) {
+      return `<div class="rs-iv stale" title="${esc0(label)} implied vol (${sid}) has not printed since ${asOf ?? 'an unknown date'} — ${age ?? '?'} days ago. CBOE appears to have discontinued it, so the last value is NOT today's implied vol and is deliberately not shown as a live reading."><span>${esc0(label)} IV</span><b class="muted">discontinued · last ${asOf ?? '?'}</b></div>`;
+    }
     const rlz = forecast?.instruments?.[fcName]?.vol_annual;
     const cmp = rlz != null ? (iv >= rlz ? 'options paying up' : 'options cheap') : '';
     return `<div class="rs-iv" title="${label} 1-month implied volatility from CBOE — what the options market charges, at the ${pc}th percentile of the last 5 years.${rlz != null ? ` Our realized/forecast σ is ${rlz.toFixed(1)}% annualised.` : ''} A price, not a forecast."><span>${esc0(label)} IV</span><b>${iv} · P${pc != null ? Math.round(pc) : '?'}${cmp ? ` · ${cmp}` : ''}</b></div>`;
@@ -3669,6 +3723,143 @@ function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   </div>`;
 }
 function esc0(s) { return (s ?? '').toString().replace(/</g, '&lt;'); }
+// ── Cross-asset driver board (sidebar) ───────────────────────────────────────
+// Deliberately NOT on the per-pair cards: these four lines are the same
+// whichever pair you are looking at, so drawing them 30 times would be 30
+// copies of one chart. It is a board-level read — "what is the tape doing
+// today" — which is what the sidebar is for.
+//
+// USD has no OANDA instrument, so its line is an equal-weight basket of the
+// majors (js/crossAssetCore.js::usdStrengthSeries), inverted where USD is the
+// quote currency. One fetch per instrument, cached for the session: the window
+// is days long, so re-pulling it on every render would be waste.
+const DRIVER_SPEC = [
+  { key: 'NAS',        sym: 'NAS100_USD', colour: '#22d3ee' },
+  { key: 'S&P 500',    sym: 'SPX500_USD', colour: '#34d399' },
+  { key: 'US T-Note',  sym: 'USB10Y_USD', colour: '#8b9cf6' },
+];
+const DRIVER_USD_LEGS = [
+  { pair: 'EUR/USD', sym: 'EUR_USD' }, { pair: 'GBP/USD', sym: 'GBP_USD' },
+  { pair: 'AUD/USD', sym: 'AUD_USD' }, { pair: 'USD/JPY', sym: 'USD_JPY' },
+];
+let driverBoard = null, _driverBoardLoading = false;
+
+async function loadDriverBoard() {
+  if (driverBoard || _driverBoardLoading || !window.crossAssetBrick) return;
+  _driverBoardLoading = true;
+  const CA = window.crossAssetBrick;
+  try {
+    const to = new Date(), from = new Date(to.getTime() - 7 * 864e5);
+    const fetchOne = async sym => {
+      const url = '/api/ohlc-range?symbol=' + encodeURIComponent(sym) + '&granularity=H1'
+                + '&from=' + from.toISOString().slice(0, 10) + '&to=' + to.toISOString().slice(0, 10);
+      const j = await jget(url).catch(() => null);
+      const bars = j && (j.values || j.candles);
+      if (!Array.isArray(bars) || bars.length < 12) return null;
+      const f = bars[0], l = bars[bars.length - 1];
+      const desc = f && l && f.datetime && l.datetime && f.datetime > l.datetime;
+      const asc = desc ? bars.slice().reverse() : bars;
+      return {
+        times: asc.map(b => String(b.datetime || b.time || '')),
+        closes: asc.map(b => Number(b.close != null ? b.close : (b.mid ? b.mid.c : b.c))),
+      };
+    };
+
+    const [direct, usdLegs] = await Promise.all([
+      Promise.all(DRIVER_SPEC.map(d => fetchOne(d.sym))),
+      Promise.all(DRIVER_USD_LEGS.map(l => fetchOne(l.sym))),
+    ]);
+
+    const lines = [];
+    let times = [];
+    DRIVER_SPEC.forEach((d, i) => {
+      const r = direct[i];
+      if (!r) return;
+      if (r.times.length > times.length) times = r.times;
+      lines.push({ key: d.key, colour: d.colour, series: CA.normaliseFromStart(r.closes) });
+    });
+
+    const legMap = {};
+    DRIVER_USD_LEGS.forEach((l, i) => {
+      const r = usdLegs[i];
+      if (r) legMap[l.pair] = CA.normaliseFromStart(r.closes);
+    });
+    const usd = CA.usdStrengthSeries(legMap);
+    if (usd.series.length) {
+      lines.push({ key: 'USD strength', colour: '#f472b6', series: usd.series, legs: usd.legs });
+    }
+
+    driverBoard = lines.length ? { lines, times } : { lines: [], times: [] };
+  } catch (e) {
+    driverBoard = { lines: [], times: [], error: e.message };
+  } finally {
+    _driverBoardLoading = false;
+    try { render(); } catch (e) {}
+  }
+}
+
+function driverBoardHtml() {
+  const CA = window.crossAssetBrick;
+  if (!CA) return '';
+  if (!driverBoard) { loadDriverBoard(); return ''; }
+  const lines = driverBoard.lines || [];
+  if (lines.length < 2) return '';
+
+  const changes = {};
+  for (const l of lines) changes[l.key] = CA.lastFinite(l.series);
+  const al = CA.driverAlignment(changes);
+
+  const W = 360, H = 132, L = 26, R = 6, T = 8, B = 16;
+  const all = lines.flatMap(l => l.series).filter(v => v != null && Number.isFinite(v));
+  if (!all.length) return '';
+  const lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+  const pad = (hi - lo) * 0.12 || 0.5;
+  const y0 = lo - pad, y1 = hi + pad;
+  const n = Math.max.apply(null, lines.map(l => l.series.length));
+  const x = i => L + (i / Math.max(1, n - 1)) * (W - L - R);
+  const y = v => H - B - ((v - y0) / (y1 - y0)) * (H - T - B);
+  const path = arr => {
+    let d = '', pen = false;
+    arr.forEach((v, i) => {
+      if (v == null || !Number.isFinite(v)) { pen = false; return; }
+      d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' ';
+      pen = true;
+    });
+    return d.trim();
+  };
+
+  const zero = (y0 <= 0 && y1 >= 0)
+    ? '<line class="db-zero" x1="' + L + '" y1="' + y(0).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(0).toFixed(1) + '"/>' : '';
+  const axis = [y1, (y0 + y1) / 2, y0].map(v =>
+    '<text class="db-ax" x="' + (L - 4) + '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end">'
+    + (v >= 0 ? '+' : '') + v.toFixed(1) + '</text>').join('');
+
+  const tiles = lines.map(l => {
+    const v = changes[l.key];
+    const cls = v == null ? '' : v > 0.15 ? 'pos' : v < -0.15 ? 'neg' : '';
+    return '<div class="db-tile"><span class="db-dot" style="background:' + l.colour + '"></span>'
+      + '<span class="db-k">' + l.key + '</span>'
+      + '<span class="db-v ' + cls + '">' + (v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%') + '</span></div>';
+  }).join('');
+
+  const usdLine = lines.find(l => l.key === 'USD strength');
+  const alTip = 'Contextual agreement across the board over the last 7 days, not a probability forecast and not an entry signal. '
+    + al.up + ' up, ' + al.down + ' down, ' + al.neutral + ' flat (anything inside ±0.15% counts as flat). '
+    + 'A single mover is not an alignment.';
+
+  return '<div class="side-card"><h3>Cross-asset drivers <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">· 7d</span></h3>'
+    + '<div class="db-align help" title="' + alTip + '"><b>' + al.label + '</b>'
+    + '<span class="muted">' + al.up + ' up · ' + al.down + ' down · ' + al.neutral + ' flat</span></div>'
+    + '<div class="db-tiles">' + tiles + '</div>'
+    + '<div class="db-chartwrap"><svg class="db-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" '
+    + 'aria-label="Cross-asset drivers, percent change over the last seven days">'
+    + zero + axis + lines.map(l => '<path d="' + path(l.series) + '" stroke="' + l.colour + '"/>').join('')
+    + '</svg></div>'
+    + '<div class="muted db-note">% change from the window start, so different scales share one axis.'
+    + (usdLine ? ' USD is an equal-weight basket of ' + usdLine.legs + ' majors (no dollar index on this feed), inverted where USD is the quote.' : '')
+    + '</div></div>';
+}
+
 function renderSidebar() {
   const el = $('sidebarCol');
   if (!el) return;
@@ -3703,6 +3894,8 @@ function renderSidebar() {
 
   el.innerHTML = `
     <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
+
+    ${driverBoardHtml()}
 
     <div class="side-card"><h3>Rates &amp; Curve Moves</h3><div id="moveList"><div class="muted">Loading…</div></div></div>
 
@@ -3935,6 +4128,7 @@ async function openDrawer(name) {
   try { renderDrExh(r); } catch (e) { $('drExhSec').style.display = 'none'; }
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
+  loadDrawerIvRv(name, d.sym).catch(() => { $('drIvRvSec').style.display = 'none'; });
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
@@ -3983,6 +4177,135 @@ async function overlayDrawerCone(name) {
   const N = _drBarCount;
   if (N) { try { drChart.timeScale().setVisibleLogicalRange({ from: N - 70, to: N + 22 }); } catch { padDrawerRange(); } }
   $('drChartNote').textContent += ' · 📐 4h claim: blue = predicted · purple = most-agreed path · green/amber = P50/P75 envelopes';
+}
+
+// ── Realised vs implied volatility (drawer, Vol & Path tab) ──────────────────
+// RV is computed here from D1 closes via js/crossAssetCore.js; IV comes from
+// /api/forecast-path/iv, which only covers 6 instruments (EVZ for EUR/USD, GVZ
+// for gold, VXN for NAS100, VIX for the other US indices). Every FX cross has
+// no implied series at all and the endpoint says so — that case renders an
+// explanation rather than an empty chart.
+async function loadDrawerIvRv(name, sym) {
+  const sec = $('drIvRvSec'), box = $('drIvRv');
+  const CA = window.crossAssetBrick;
+  if (!CA || !sec) return;
+  const key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const iv = await jget('/api/forecast-path/iv?pair=' + encodeURIComponent(key)).catch(() => null);
+
+  if (iv && iv.supported === false) {
+    sec.style.display = '';
+    box.innerHTML = '<div class="muted" style="font-size:12px;line-height:1.6">'
+      + 'No implied-vol series exists for ' + dispName(name) + ' — CBOE publishes one for EUR/USD (EVZ), '
+      + 'gold (GVZ) and the US indices, but not for FX crosses. The <b>volatility cone</b> above '
+      + "answers the same question from realised vol alone: where today's &sigma; sits in this market's own history.</div>";
+    return;
+  }
+  // supported but not ok = CBOE publishes an index for this instrument, but the
+  // feed returned nothing usable in the recent window — which is what a
+  // DISCONTINUED series looks like (EVZ, for EUR/USD). Say that rather than
+  // hiding the panel, so a dead input can't be mistaken for one nobody built.
+  if (iv && iv.supported && !iv.ok) {
+    sec.style.display = '';
+    box.innerHTML = '<div class="muted" style="font-size:12px;line-height:1.6">'
+      + "An implied-vol index exists for " + dispName(name) + ', but it returned no recent data — '
+      + 'the signature of a series CBOE has stopped publishing. Realised vol is still shown by the '
+      + '<b>volatility cone</b> above; there is simply nothing live to compare it against.</div>';
+    return;
+  }
+  if (!iv || !iv.ok || !iv.byDate) { sec.style.display = 'none'; return; }
+
+  // ~2y of D1 closes for the realised leg.
+  const to = new Date(), from = new Date(to.getTime() - 760 * 864e5);
+  const url = '/api/ohlc-range?symbol=' + encodeURIComponent(sym) + '&granularity=D'
+            + '&from=' + from.toISOString().slice(0, 10) + '&to=' + to.toISOString().slice(0, 10);
+  const d1 = await jget(url).catch(() => null);
+  const bars = d1 && (d1.values || d1.candles);
+  if (!Array.isArray(bars) || bars.length < 60) { sec.style.display = 'none'; return; }
+
+  const first = bars[0], last = bars[bars.length - 1];
+  const desc = first && last && first.datetime && last.datetime && first.datetime > last.datetime;
+  const asc = desc ? bars.slice().reverse() : bars;
+  const dates  = asc.map(b => String(b.datetime || b.time || '').slice(0, 10));
+  const closes = asc.map(b => Number(b.close != null ? b.close : (b.mid ? b.mid.c : b.c)));
+  const rv = CA.realisedVolSeries(closes, 20);
+
+  // Align IV onto the same dates; carry the last print forward across a market
+  // holiday rather than dropping the day and tearing a hole in the line.
+  let carried = null;
+  const ivAligned = dates.map(d => { const v = iv.byDate[d]; if (v != null) carried = Number(v); return carried; });
+
+  const rvNow = CA.lastFinite(rv), ivNow = CA.lastFinite(ivAligned);
+  if (rvNow == null) { sec.style.display = 'none'; return; }
+  const rvPct = CA.percentileOf(rvNow, rv), ivPct = CA.percentileOf(ivNow, ivAligned);
+  const dir = CA.volDirection(rv);
+  const spread = (ivNow != null) ? ivNow - rvNow : null;
+  const proxy = iv.exact === false;
+
+  const tile = (lbl, val, cls, tip) =>
+    '<div class="ivrv-tile' + (tip ? ' help' : '') + '"' + (tip ? ' title="' + tip + '"' : '') + '>'
+    + '<div class="ivrv-lbl">' + lbl + '</div><div class="ivrv-val ' + (cls || '') + '">' + val + '</div></div>';
+
+  const tiles = [
+    tile('Realised vol 20d', rvNow.toFixed(2) + '%', '', 'Annualised close-to-close volatility of the last 20 trading days.'),
+    ivNow != null ? tile('Implied vol 30d', ivNow.toFixed(2) + '%', '',
+      iv.series + (proxy ? " — a proxy, not this instrument's own index" : '') + '.') : '',
+    spread != null ? tile('IV &minus; RV', (spread >= 0 ? '+' : '') + spread.toFixed(2) + ' pp',
+      spread > 0 ? 'pos' : 'neg',
+      spread > 0 ? 'Options price MORE movement than has recently occurred — the usual state; that premium is what sellers are paid for.'
+                 : 'Options price LESS movement than has recently occurred — unusual, and often a sign realised vol has just spiked.') : '',
+    rvPct != null ? tile('RV percentile', rvPct + 'th', rvPct >= 80 ? 'neg' : rvPct <= 20 ? 'pos' : '',
+      "Where current realised vol sits in this market's own 2-year history.") : '',
+    ivPct != null ? tile('IV percentile', ivPct + 'th', '', "Where current implied vol sits in its own 2-year history.") : '',
+    tile('RV regime', CA.volRegimeLabel(rvPct) || '—', '', ''),
+    dir ? tile('RV direction', dir.label,
+      dir.label === 'Expanding' ? 'neg' : dir.label === 'Contracting' ? 'pos' : '',
+      'Last 5 readings average ' + (dir.changePct >= 0 ? '+' : '') + dir.changePct + '% against the 15 before them.') : '',
+  ].filter(Boolean).join('');
+
+  sec.style.display = '';
+  box.innerHTML = '<div class="ivrv-tiles">' + tiles + '</div>'
+    + ivRvChart(dates, rv, ivAligned, iv.series)
+    + '<div class="muted" style="font-size:10.5px;margin-top:8px">'
+    + 'Realised = 20-day annualised close-to-close from OANDA D1. Implied = ' + iv.series + ' (CBOE, daily via FRED)'
+    + (proxy ? ' — <b>a proxy</b> for this instrument, not its own index' : '')
+    + '. The gap between them is a risk premium, not a direction.</div>';
+}
+
+// Two-line history. Inline SVG so it inherits the theme tokens and needs no
+// chart library on a tab that may never be opened.
+function ivRvChart(dates, rv, iv, ivLabel) {
+  const W = 720, H = 190, L = 34, R = 8, T = 10, B = 22;
+  const vals = rv.concat(iv).filter(v => v != null && Number.isFinite(v));
+  if (vals.length < 30) return '';
+  const lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  const pad = (hi - lo) * 0.08 || 1;
+  const y0 = Math.max(0, lo - pad), y1 = hi + pad;
+  const x = i => L + (i / Math.max(1, dates.length - 1)) * (W - L - R);
+  const y = v => H - B - ((v - y0) / (y1 - y0)) * (H - T - B);
+  const path = arr => {
+    let d = '', pen = false;
+    arr.forEach((v, i) => {
+      if (v == null || !Number.isFinite(v)) { pen = false; return; }
+      d += (pen ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' ';
+      pen = true;
+    });
+    return d.trim();
+  };
+  let grid = '';
+  for (let k = 0; k <= 3; k++) {
+    const v = y0 + (k / 3) * (y1 - y0);
+    grid += '<line class="ivrv-grid" x1="' + L + '" y1="' + y(v).toFixed(1) + '" x2="' + (W - R) + '" y2="' + y(v).toFixed(1) + '"/>'
+          + '<text class="ivrv-ax" x="' + (L - 5) + '" y="' + (y(v) + 3).toFixed(1) + '" text-anchor="end">' + Math.round(v) + '</text>';
+  }
+  const marks = [0, Math.floor(dates.length / 2), dates.length - 1];
+  const xlab = marks.map(i => '<text class="ivrv-ax" x="' + x(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="'
+    + (i === 0 ? 'start' : i === dates.length - 1 ? 'end' : 'middle') + '">' + String(dates[i] || '').slice(0, 7) + '</text>').join('');
+  return '<div class="ivrv-legend"><span><i style="background:#22d3ee"></i>Realised 20d</span>'
+       + '<span><i style="background:#fbbf24"></i>Implied 30d (' + ivLabel + ')</span></div>'
+       + '<div class="ivrv-chartwrap"><svg class="ivrv-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" '
+       + 'aria-label="Realised versus implied volatility history">'
+       + grid + '<path class="ivrv-iv" d="' + path(iv) + '"/><path class="ivrv-rv" d="' + path(rv) + '"/>' + xlab
+       + '</svg></div>';
 }
 
 async function loadDrawerPath(name) {
@@ -5320,6 +5643,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
      tape, room left in range) may set the arrow; COT/macro/carry/OI may only
      downgrade it, because none of them has a validated directional result in
      this repo. The forecast cone is deliberately not an input at all. -->
+<!-- Cross-asset core (js/crossAssetCore.js) — realised-vol maths for the Vol tab's
+     RV-vs-IV panel, and the normalisation/alignment behind the sidebar driver
+     board. Context panels: the RV/IV gap is a risk premium, not a direction. -->
+<script type="module">
+  import * as CrossAsset from './js/crossAssetCore.js';
+  window.crossAssetBrick = CrossAsset;
+  try { window.render?.(); } catch (e) {}
+</script>
 <script type="module">
   import * as DirectionTag from './js/directionTag.js';
   window.directionTagBrick = DirectionTag;
