@@ -13247,6 +13247,37 @@ async function _refreshOIBotZones() {
       const gammaFlow = { flip: flip ?? null, dist, drift, rolloff };
 
       const _vn = inst.greeksFlow?.vanna;
+      // ── Charm conditioner: only when the reading describes the expiry being TRADED ──
+      // greeksFlow.cex is computed from the pasted IV smile at the PRIMARY expiry's DTE
+      // (greeksFlow.dteDays). On a multi-expiry paste that is the far book — 7–46 DTE
+      // across the live store — while Mode C trades the 0–3 DTE day expiry. Charm is
+      // negligible until ~1–2 DTE (the dashboard's own help says so), so a far-expiry cex
+      // carries no information about the pin the reversion fades toward.
+      //
+      // The old test was `cex !== 0`: a PRESENCE test, true for all 11 stored instruments,
+      // which made charmBoost (1.2×) an unconditional multiplier on every max-pain zone
+      // rather than a conditioner — while the rationale claimed "charm firing". Compare
+      // vanna, which carries a real `firing` boolean (false on all 11 right now).
+      //
+      // Two conditions, both required: the reading must belong to the expiry being traded,
+      // AND that expiry must actually be near-dated. Mode C's own gate makes the second
+      // redundant TODAY, but the flag would otherwise read "charm active" on a 25-DTE
+      // single-expiry paste (where the smile trivially matches the traded book) — true for
+      // US30 on the live store. Keeping it explicit means the flag stays honest for any
+      // future consumer rather than depending on Mode C's gate to stay correct.
+      const _charm = (() => {
+        const cex = inst.greeksFlow?.cex, cDte = inst.greeksFlow?.dteDays, tDte = tradeInst.dte;
+        const nearDTE = cfg.nearExpiryDTE ?? 2;
+        if (!Number.isFinite(cex) || cex === 0) return { active: false, note: null };
+        if (!Number.isFinite(cDte) || !Number.isFinite(tDte))
+          return { active: false, note: 'charm: no DTE on the smile or the traded expiry — not applied' };
+        // 1.5d tolerance: dteDays is fractional (time-of-day included), traded dte integer.
+        if (Math.abs(cDte - tDte) > 1.5)
+          return { active: false, note: `charm: smile is ${cDte.toFixed(1)}DTE but the traded expiry is ${tDte}DTE — wrong book, not applied` };
+        if (cDte > nearDTE + 1)
+          return { active: false, note: `charm: ${cDte.toFixed(1)}DTE is not near expiry (charm is negligible past ~${nearDTE}DTE) — not applied` };
+        return { active: true, note: `charm from the ${cDte.toFixed(1)}DTE smile (matches the traded expiry)` };
+      })();
       const gexMedianAbs = _oiGexMedianAbs(hist, key);
       const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
       const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
@@ -13262,7 +13293,7 @@ async function _refreshOIBotZones() {
         // Greek conditioners (theory-driven, from the pasted IV smile — null/false when no smile):
         // vanna tailwind/headwind sizes follow-vs-fade; charm amplifies the near-expiry pin.
         vannaState: _vn && _vn.firing ? { state: _vn.state, firing: true } : null,
-        charmActive: Number.isFinite(inst.greeksFlow?.cex) && inst.greeksFlow.cex !== 0,
+        charmActive: _charm.active,
         vannaNote: _vn && _vn.firing ? `vanna ${_vn.state} firing (IV ${_vn.ivFalling ? 'falling' : 'rising'}) — indices strong, gold/FX weak` : null });
       const gex = tradeInst.exposures?.gex ?? 0;   // traded regime = near-dated when a day expiry is present
       // When an in-universe instrument yields no zones, say why (flat regime / no
@@ -13286,6 +13317,7 @@ async function _refreshOIBotZones() {
         zones, zoneCount: zones.length, stale, diag,
         droppedZones: droppedZones.length ? droppedZones : null,   // minRR/spacing drops — legible blanks
         conviction: _conv,                                         // |gex| vs the trailing median (null = no history)
+        charmNote: _charm.note,                                    // why the charm boost did/didn't apply (never silent)
         refMove: inst.refMove?.move ?? null,                       // shipped for the executor's approach-velocity read
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
