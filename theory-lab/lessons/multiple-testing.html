@@ -279,6 +279,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same FWER/Bonferroni arithmetic, live — change either input below</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(m=70\) tests at
+      \(\alpha=0.05\) each. Edit either field and the family-wise error rate,
+      the Bonferroni-adjusted per-test threshold, and the expected number of
+      false positives recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of tests \(m\)</span></div>
+        <input type="number" id="mt-scratch-m" class="tl-scratch-input" value="70" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Per-test significance \(\alpha\)</span></div>
+        <input type="number" id="mt-scratch-alpha" class="tl-scratch-input" value="0.05" step="0.01" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      FWER = 1&minus;(1&minus;&alpha;)<sup>m</sup> = <b id="mt-scratch-fwer">97.2%</b>&emsp;expected false positives = m&times;&alpha; = <b id="mt-scratch-expected">3.5</b>
+    </div>
+    <div class="tl-readout">
+      Bonferroni threshold = &alpha;/m &asymp; <b id="mt-scratch-bonf">0.000714</b>
+      <span id="mt-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">70 tests on pure noise — schematic p-value histogram</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of p-values from 70 hypothesis tests run on pure noise, roughly uniform across 0 to 1, with the bin below the alpha equals 0.05 threshold highlighted in red">
@@ -527,6 +557,48 @@
     <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck &amp; Mean Reversion →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { m: 70, alpha: 0.05 };
+  var fields = ['m', 'alpha'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('mt-scratch-' + f); });
+  if (!inputs.m) return;
+
+  var fwerOut = document.getElementById('mt-scratch-fwer');
+  var expectedOut = document.getElementById('mt-scratch-expected');
+  var bonfOut = document.getElementById('mt-scratch-bonf');
+  var noteOut = document.getElementById('mt-scratch-note');
+  var resetBtn = document.getElementById('mt-scratch-reset');
+
+  function recompute(){
+    var m = parseFloat(inputs.m.value);
+    var alpha = parseFloat(inputs.alpha.value);
+
+    if (!isFinite(m) || !isFinite(alpha) || m < 1 || alpha < 0 || alpha > 1) {
+      noteOut.textContent = '(enter m ≥ 1 and 0 ≤ α ≤ 1)';
+      return;
+    }
+    m = Math.round(m);
+
+    var fwer = 1 - Math.pow(1 - alpha, m);
+    var expected = m * alpha;
+    var bonf = alpha / m;
+
+    fwerOut.textContent = (fwer * 100).toFixed(1) + '%';
+    expectedOut.textContent = expected.toFixed(2);
+    bonfOut.textContent = bonf < 0.0001 ? bonf.toExponential(2) : bonf.toFixed(6);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

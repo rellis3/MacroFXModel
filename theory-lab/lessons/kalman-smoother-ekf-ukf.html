@@ -407,6 +407,44 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same one-step EKF vs. UKF update, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers for \(h(x)=x^2\). Edit any field and every downstream
+      quantity — the EKF's Jacobian, innovation and gain, the UKF's reconstructed predicted observation,
+      and both methods' updated state estimates — recalculates instantly, holding \(\lambda=2\), \(L=1\)
+      fixed exactly as the worked example chose them.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Predicted state \(\hat{x}_{t\mid t-1}\)</span></div>
+        <input type="number" id="ekf-scratch-xhat" class="tl-scratch-input" value="1.30" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Predicted variance \(P_{t\mid t-1}\)</span></div>
+        <input type="number" id="ekf-scratch-P" class="tl-scratch-input" value="0.01" step="0.005">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation noise \(R\)</span></div>
+        <input type="number" id="ekf-scratch-R" class="tl-scratch-input" value="0.02" step="0.005">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation \(y_t\)</span></div>
+        <input type="number" id="ekf-scratch-y" class="tl-scratch-input" value="1.75" step="0.05">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      H = <b id="ekf-scratch-H">2.6000</b>&emsp;e = <b id="ekf-scratch-e">0.0600</b>&emsp;S = <b id="ekf-scratch-S">0.0876</b>&emsp;ŷ<sub>UKF</sub> = <b id="ekf-scratch-yhatukf">1.7000</b>
+    </div>
+    <div class="tl-readout">
+      x̂<sub>EKF</sub> &asymp; <b id="ekf-scratch-xekf">1.3178</b>&emsp;x̂<sub>UKF</sub> &asymp; <b id="ekf-scratch-xukf">1.3148</b>&emsp;&Delta; = <b id="ekf-scratch-delta">0.0030</b>
+      <span id="ekf-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ekf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-compare">
     <div class="tl-compare-card red">
       <h4>EKF — linearize, then apply the linear formula</h4>
@@ -700,6 +738,79 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  // Self-contained EKF-vs-UKF single-step scratchpad. h(x) = x^2 throughout,
+  // matching the worked example above; lambda=2, L=1 held fixed as chosen there.
+  var LAMBDA = 2, L = 1;
+
+  var DEFAULTS = { xhat: 1.30, P: 0.01, R: 0.02, y: 1.75 };
+  var fields = ['xhat', 'P', 'R', 'y'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('ekf-scratch-' + f); });
+
+  var HOut = document.getElementById('ekf-scratch-H');
+  var eOut = document.getElementById('ekf-scratch-e');
+  var SOut = document.getElementById('ekf-scratch-S');
+  var yhatUkfOut = document.getElementById('ekf-scratch-yhatukf');
+  var xEkfOut = document.getElementById('ekf-scratch-xekf');
+  var xUkfOut = document.getElementById('ekf-scratch-xukf');
+  var deltaOut = document.getElementById('ekf-scratch-delta');
+  var noteOut = document.getElementById('ekf-scratch-note');
+  var resetBtn = document.getElementById('ekf-scratch-reset');
+
+  function recompute(){
+    var xhat = parseFloat(inputs.xhat.value);
+    var P = parseFloat(inputs.P.value);
+    var R = parseFloat(inputs.R.value);
+    var y = parseFloat(inputs.y.value);
+
+    if (!isFinite(xhat) || !isFinite(P) || !isFinite(R) || !isFinite(y) || P < 0 || R < 0) {
+      noteOut.textContent = '(enter a number for x̂, y, and non-negative values for P, R)';
+      return;
+    }
+    if (P === 0 && R === 0) {
+      noteOut.textContent = '(P=0 and R=0 together leave nothing to update against — enter at least one positive value)';
+      return;
+    }
+
+    // --- EKF: linearize h(x)=x^2 at xhat, then the ordinary KF update ---
+    var H = 2 * xhat;
+    var hxhat = xhat * xhat;
+    var e = y - hxhat;
+    var S = H * H * P + R;
+    var Kekf = (P * H) / S;
+    var xEkf = xhat + Kekf * e;
+
+    // --- UKF: three scalar sigma points through the true h(x)=x^2 ---
+    var spread = Math.sqrt((L + LAMBDA) * P);
+    var chi0 = xhat, chi1 = xhat + spread, chi2 = xhat - spread;
+    var W0 = LAMBDA / (L + LAMBDA), W1 = 1 / (2 * (L + LAMBDA)), W2 = W1;
+    var Y0 = chi0 * chi0, Y1 = chi1 * chi1, Y2 = chi2 * chi2;
+    var yhatUkf = W0 * Y0 + W1 * Y1 + W2 * Y2;
+    var Pyy = W0 * Math.pow(Y0 - yhatUkf, 2) + W1 * Math.pow(Y1 - yhatUkf, 2) + W2 * Math.pow(Y2 - yhatUkf, 2) + R;
+    var Pxy = W0 * (chi0 - xhat) * (Y0 - yhatUkf) + W1 * (chi1 - xhat) * (Y1 - yhatUkf) + W2 * (chi2 - xhat) * (Y2 - yhatUkf);
+    var Kukf = Pxy / Pyy;
+    var xUkf = xhat + Kukf * (y - yhatUkf);
+
+    HOut.textContent = H.toFixed(4);
+    eOut.textContent = e.toFixed(4);
+    SOut.textContent = S.toFixed(4);
+    yhatUkfOut.textContent = yhatUkf.toFixed(4);
+    xEkfOut.textContent = xEkf.toFixed(4);
+    xUkfOut.textContent = xUkf.toFixed(4);
+    deltaOut.textContent = Math.abs(xEkf - xUkf).toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

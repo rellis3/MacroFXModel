@@ -404,6 +404,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the purge/embargo windows, live</h3>
+    <p>
+      Starts on the worked example's exact numbers (\(n=1{,}000\), \(w=20\),
+      \(H=5\), \(T=500\), \(h=100\), \(e=10\)). Edit any field and every
+      purged range, plus the day training actually resumes, recalculates
+      instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Feature window \(w\)</span></div>
+        <input type="number" id="wf-scratch-w" class="tl-scratch-input" value="20" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Label horizon \(H\)</span></div>
+        <input type="number" id="wf-scratch-H" class="tl-scratch-input" value="5" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fold boundary \(T\)</span></div>
+        <input type="number" id="wf-scratch-T" class="tl-scratch-input" value="500" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Test window \(h\)</span></div>
+        <input type="number" id="wf-scratch-h" class="tl-scratch-input" value="100" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Embargo \(e\)</span></div>
+        <input type="number" id="wf-scratch-e" class="tl-scratch-input" value="10" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Backward purge: days <b id="wf-scratch-back">495&ndash;499</b> (<b id="wf-scratch-back-n">5</b> rows)&emsp;Forward purge: days <b id="wf-scratch-fwd">600&ndash;618</b> (<b id="wf-scratch-fwd-n">19</b> rows)
+    </div>
+    <div class="tl-readout">
+      Embargo: days <b id="wf-scratch-emb">619&ndash;628</b> (<b id="wf-scratch-emb-n">10</b> rows) &rarr; training resumes on day <b id="wf-scratch-resume">629</b>
+      <span id="wf-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="wf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A real-world trading scenario</div>
@@ -656,6 +698,68 @@
     <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { w: 20, H: 5, T: 500, h: 100, e: 10 };
+  var fields = ['w', 'H', 'T', 'h', 'e'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('wf-scratch-' + f); });
+  if (!inputs.w) return;
+
+  var backOut = document.getElementById('wf-scratch-back');
+  var backNOut = document.getElementById('wf-scratch-back-n');
+  var fwdOut = document.getElementById('wf-scratch-fwd');
+  var fwdNOut = document.getElementById('wf-scratch-fwd-n');
+  var embOut = document.getElementById('wf-scratch-emb');
+  var embNOut = document.getElementById('wf-scratch-emb-n');
+  var resumeOut = document.getElementById('wf-scratch-resume');
+  var noteOut = document.getElementById('wf-scratch-note');
+  var resetBtn = document.getElementById('wf-scratch-reset');
+
+  function fmtRange(start, count){
+    if (count <= 0) return 'none';
+    return start + '–' + (start + count - 1);
+  }
+
+  function recompute(){
+    var w = parseFloat(inputs.w.value);
+    var H = parseFloat(inputs.H.value);
+    var T = parseFloat(inputs.T.value);
+    var h = parseFloat(inputs.h.value);
+    var e = parseFloat(inputs.e.value);
+
+    if (!isFinite(w) || !isFinite(H) || !isFinite(T) || !isFinite(h) || !isFinite(e) ||
+        w < 1 || H < 0 || T < 1 || h < 1 || e < 0) {
+      noteOut.textContent = '(enter w≥1, T≥1, h≥1, and H,e≥0)';
+      return;
+    }
+
+    var backStart = T - H, backCount = H;
+    var fwdStart = T + h, fwdCount = w - 1;
+    var embStart = T + h + w - 1, embCount = e;
+    var resume = T + h + w - 1 + e;
+
+    backOut.textContent = fmtRange(backStart, backCount);
+    backNOut.textContent = backCount;
+    fwdOut.textContent = fmtRange(fwdStart, fwdCount);
+    fwdNOut.textContent = fwdCount;
+    embOut.textContent = fmtRange(embStart, embCount);
+    embNOut.textContent = embCount;
+    resumeOut.textContent = resume;
+
+    noteOut.textContent = (backStart < 1)
+      ? '(backward purge would start before day 1 — H is larger than the available training history before T)'
+      : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

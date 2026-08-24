@@ -392,6 +392,32 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Match Gaussian and Clayton on Kendall's tau, live</h3>
+    <p>
+      Starts on the worked example's exact \(\tau = 0.40\). Change it and both
+      copulas' parameters, and both lower-tail dependence coefficients,
+      recalculate instantly — watch how far apart \(\lambda_L\) stays even
+      though both are always matched on the same \(\tau\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Kendall's tau \(\tau\)</span></div>
+        <input type="number" id="cop-scratch-tau" class="tl-scratch-input" value="0.40" step="0.05" min="-0.99" max="0.99">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Gaussian: &rho; = <b id="cop-scratch-rho">0.588</b>&emsp;Clayton: &theta; = <b id="cop-scratch-theta">1.333</b>
+    </div>
+    <div class="tl-readout">
+      &lambda;<sub>L</sub> (Gaussian) = <b id="cop-scratch-lamG">0.000</b>&emsp;&lambda;<sub>L</sub> (Clayton) = <b id="cop-scratch-lamC">0.595</b>
+      <span id="cop-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cop-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Same overall correlation, very different crash behavior</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two side-by-side scatter plots. The left panel, labeled Gaussian copula, shows a symmetric elliptical point cloud with roughly equal density in all four corners. The right panel, labeled tail-dependent Clayton copula, shows a very similar overall elliptical cloud shape and correlation, but with a visibly denser cluster of extra points specifically in the bottom-left corner, representing simultaneous crashes, that the Gaussian panel does not have">
@@ -824,6 +850,55 @@
     <a href="sharpe-family-deflated.html">Sharpe Ratio Family &amp; Deflated Sharpe →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULT_TAU = 0.40;
+  var tauInput = document.getElementById('cop-scratch-tau');
+  if (!tauInput) return;
+
+  var rhoOut = document.getElementById('cop-scratch-rho');
+  var thetaOut = document.getElementById('cop-scratch-theta');
+  var lamGOut = document.getElementById('cop-scratch-lamG');
+  var lamCOut = document.getElementById('cop-scratch-lamC');
+  var noteOut = document.getElementById('cop-scratch-note');
+  var resetBtn = document.getElementById('cop-scratch-reset');
+
+  function recompute(){
+    var tau = parseFloat(tauInput.value);
+
+    if (!isFinite(tau) || tau <= -1 || tau >= 1) {
+      rhoOut.textContent = '—';
+      thetaOut.textContent = '—';
+      lamGOut.textContent = '—';
+      lamCOut.textContent = '—';
+      noteOut.textContent = '(τ must be strictly between −1 and 1)';
+      return;
+    }
+
+    var rho = Math.sin(Math.PI * tau / 2);
+    var theta = 2 * tau / (1 - tau);
+    rhoOut.textContent = rho.toFixed(3);
+    thetaOut.textContent = theta.toFixed(3);
+    lamGOut.textContent = '0.000';
+
+    if (theta >= 0) {
+      var lamC = Math.pow(2, -1 / theta);
+      lamCOut.textContent = isFinite(lamC) ? lamC.toFixed(3) : '0.000';
+      noteOut.textContent = '';
+    } else {
+      lamCOut.textContent = '—';
+      noteOut.textContent = '(θ<0 here — Clayton’s λ_L=2^(−1/θ) is only meaningful for θ>0, i.e. τ>0)';
+    }
+  }
+
+  tauInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    tauInput.value = DEFAULT_TAU;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

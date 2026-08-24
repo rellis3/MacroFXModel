@@ -480,6 +480,51 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The Engle-Granger residual spread and its z-score, live</h3>
+    <p>
+      The worked example above walks through the procedure in prose rather
+      than a single plug-in number, so this scratchpad parameterizes its
+      core mechanical step instead — Step 2's spread,
+      \(\hat\epsilon_t = Y_t - \hat\beta X_t\) (intercept \(\hat\alpha\)
+      taken as already netted out, since OLS residuals average to zero by
+      construction), turned into a z-score against the spread's own
+      historical standard deviation. Defaults below are illustrative round
+      numbers in the spirit of the AUD/USD-vs-NZD/USD example — a hedge
+      ratio near the middle of the \(\hat\beta\approx1.05\)-\(1.15\) range it
+      describes — not a reported historical fit. Edit any field and the
+      spread and its z-score recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>AUD/USD spot \(Y_t\)</span></div>
+        <input type="number" id="coint-scratch-Y" class="tl-scratch-input" value="0.6650" step="0.0010">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>NZD/USD spot \(X_t\)</span></div>
+        <input type="number" id="coint-scratch-X" class="tl-scratch-input" value="0.6000" step="0.0010">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Hedge ratio \(\hat\beta\)</span></div>
+        <input type="number" id="coint-scratch-beta" class="tl-scratch-input" value="1.10" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spread std. dev. \(\sigma_\epsilon\)</span></div>
+        <input type="number" id="coint-scratch-sigma" class="tl-scratch-input" value="0.0080" step="0.0005" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &epsilon;&#770;<sub>t</sub> = Y<sub>t</sub> &minus; &beta;&#770;X<sub>t</sub> = <b id="coint-scratch-eps">0.0050</b>
+    </div>
+    <div class="tl-readout">
+      z = &epsilon;&#770;<sub>t</sub> / &sigma;<sub>&epsilon;</sub> = <b id="coint-scratch-z">0.63</b>
+      <span id="coint-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="coint-scratch-reset" class="tl-scratch-reset-btn">Reset to illustrative numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Two non-stationary series, one stationary combination</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Top panel: two price series, Series A and Series B, both drifting upward over time with random-walk-like noise. Bottom panel: the residual spread between them, Series A minus beta times Series B, which wanders but keeps reverting toward a horizontal dashed mean line instead of drifting away like the two series above it.">
@@ -827,6 +872,51 @@
     <a href="pca-factors.html">Principal Component Analysis &amp; Factor Regimes →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { Y: 0.6650, X: 0.6000, beta: 1.10, sigma: 0.0080 };
+  var fields = ['Y', 'X', 'beta', 'sigma'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('coint-scratch-' + f); });
+  if (!inputs.Y) return;
+
+  var epsOut = document.getElementById('coint-scratch-eps');
+  var zOut = document.getElementById('coint-scratch-z');
+  var noteOut = document.getElementById('coint-scratch-note');
+  var resetBtn = document.getElementById('coint-scratch-reset');
+
+  function recompute(){
+    var Y = parseFloat(inputs.Y.value);
+    var X = parseFloat(inputs.X.value);
+    var beta = parseFloat(inputs.beta.value);
+    var sigma = parseFloat(inputs.sigma.value);
+
+    if (!isFinite(Y) || !isFinite(X) || !isFinite(beta) || !isFinite(sigma) || sigma < 0) {
+      noteOut.textContent = '(enter numeric spots/hedge ratio and a non-negative spread std. dev.)';
+      return;
+    }
+
+    var eps = Y - beta * X;
+    epsOut.textContent = eps.toFixed(4);
+
+    if (sigma === 0) {
+      zOut.textContent = '—';
+      noteOut.textContent = '(σ_ε=0: z-score is undefined with zero historical spread variance)';
+    } else {
+      var z = eps / sigma;
+      zOut.textContent = z.toFixed(2);
+      noteOut.textContent = Math.abs(z) >= 2 ? '(|z| ≥ 2 — a typical illustrative entry-signal threshold)' : '';
+    }
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
