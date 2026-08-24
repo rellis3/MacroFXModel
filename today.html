@@ -406,6 +406,14 @@
   .dr-top h2{font-size:18px;font-weight:700}
   .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
             border-radius:6px;padding:4px 12px;font-size:13px}
+  /* Direction tag — the at-a-glance "up or down?" mark. Slightly heavier than a
+     normal chip because it leads the bias line; `dir-strong` (both descriptive
+     drivers agreeing, nothing dissenting, range not spent) gets a solid edge so
+     a clean read is separable from a lean at arm's length. MIXED deliberately
+     looks like a warning, not a third direction. */
+  .dir-tag{font-weight:800;letter-spacing:.03em;border:1px solid currentColor;padding:2px 7px}
+  .dir-tag.dir-strong{box-shadow:inset 2px 0 0 currentColor;padding-left:9px}
+
   /* ── Drawer tabs ──────────────────────────────────────────
      The drawer was 13 flat collapsibles in one scroll column, 7 of them hidden
      by default — no grouping and no way to jump to the part you want. Same
@@ -1721,10 +1729,11 @@ function pairSignal(r) {
   let reg = null, sess = null;
   const g = r.d.regime;
   if (g?.label === 'TREND' && g.trend_dir) {
-    reg = (g.trend_dir === 'up' ? 1 : -1) * ((g.trend_prob ?? 60) / 100) * (g.reliable ? 1 : 0.6);
+    reg = (_trendDir(g.trend_dir) === 'up' ? 1 : -1) * ((g.trend_prob ?? 60) / 100) * (g.reliable ? 1 : 0.6);
   } else if (g?.label === 'RANGE') { reg = 0; }
   const bd = r.s?.bias_detail ?? r.s?.bias ?? '';
-  if (/bull/i.test(bd)) sess = 1; else if (/bear/i.test(bd)) sess = -1;
+  const _sd = _biasDir(bd);
+  if (_sd === 'up') sess = 1; else if (_sd === 'down') sess = -1;
   if (sess != null && r.s?.dir != null) sess *= Math.min(1, Math.max(0.3, r.s.dir / 100));
   if (reg == null && sess == null) return null;
   if (reg == null) return sess;
@@ -1778,7 +1787,7 @@ function equitiesRisk(rs) {
   const idx = rs.filter(r => r.d.ac === 'index');
   const chips = idx.map(r => {
     const g = r.d.regime, s = r.s;
-    const dir = g?.label === 'TREND' ? g.trend_dir : (/bull/i.test(s?.bias_detail ?? '') ? 'up' : /bear/i.test(s?.bias_detail ?? '') ? 'down' : null);
+    const dir = g?.label === 'TREND' ? g.trend_dir : _biasDir(s?.bias_detail);
     return { name: dispName(r.name), dir };
   });
   const up = chips.filter(c => c.dir === 'up').length;
@@ -1856,9 +1865,10 @@ function equitiesRisk(rs) {
 }
 function pairSignalGold(r) {
   const g = r.d.regime;
-  if (g?.label === 'TREND' && g.trend_dir) return (g.trend_dir === 'up' ? 1 : -1) * ((g.trend_prob ?? 60) / 100);
-  if (/bull/i.test(r.s?.bias_detail ?? '')) return 0.4;
-  if (/bear/i.test(r.s?.bias_detail ?? '')) return -0.4;
+  if (g?.label === 'TREND' && g.trend_dir) return (_trendDir(g.trend_dir) === 'up' ? 1 : -1) * ((g.trend_prob ?? 60) / 100);
+  const _bs = _biasDir(r.s?.bias_detail);
+  if (_bs === 'up') return 0.4;
+  if (_bs === 'down') return -0.4;
   return 0;
 }
 
@@ -1897,8 +1907,8 @@ function renderMarketRead() {
   const cs = currencyStrength(rs);
   const risk = equitiesRisk(rs);
   const trending = rs.filter(r => r.trending);
-  const tUp = trending.filter(r => r.d.regime?.trend_dir === 'up').length;
-  const tDn = trending.filter(r => r.d.regime?.trend_dir === 'down').length;
+  const tUp = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'up').length;
+  const tDn = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'down').length;
 
   // USD tone across its pairs
   const usd = cs.find(c => c.ccy === 'USD');
@@ -2864,6 +2874,68 @@ function pairSignalComposite(r) {
     carry: { score: carryScore, label: 'Carry (10Y yield)' },
   });
 }
+// ── Direction tag ────────────────────────────────────────────────────────────
+// The plain question the cards never answered at a glance: is price aiming up
+// or down? Feeds js/directionTag.js, which enforces the rule that only the
+// descriptive reads may point the arrow — see that file's header for why COT,
+// macro, carry and OI are modifiers rather than drivers, and why the forecast
+// cone is absent entirely (it grades its own direction a coin flip).
+function directionFor(r) {
+  if (!window.directionTagBrick) return null;
+  const cc = PAIR_CCY[r.name];
+  const macroScore = (() => {
+    if (!cc || !macroScorecard?.ranked) return null;
+    const b = macroScorecard.ranked.find(x => x.ccy === cc[0]);
+    const q = macroScorecard.ranked.find(x => x.ccy === cc[1]);
+    if (!b || !q) return null;
+    return Math.max(-1, Math.min(1, (b.composite - q.composite) / 2));
+  })();
+  const carryScore = (() => {
+    if (!cc) return null;
+    const bfk = CCY_FRED10Y[cc[0]], qfk = CCY_FRED10Y[cc[1]];
+    if (!bfk || !qfk || fred?.[bfk]?.value == null || fred?.[qfk]?.value == null) return null;
+    return Math.max(-1, Math.min(1, (fred[bfk].value - fred[qfk].value) / 3));
+  })();
+  return window.directionTagBrick.directionTag({
+    regime:    r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir,
+                              trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
+    session:   r.s ? { bias: r.s.bias_detail ?? r.s.bias ?? '', dir: r.s.dir } : null,
+    rangeUsed: r.used,
+    cot:       r.ct?.bias ?? null,
+    macro:     macroScore,
+    carry:     carryScore,
+    oiRegime:  r.oi && !r.oi.stale ? r.oi.regime : null,
+  });
+}
+
+function directionChip(r) {
+  const t = directionFor(r);
+  if (!t || t.direction === 'flat') return '';
+  const face = { up: '▲ BULL', down: '▼ BEAR', mixed: '◆ MIXED' }[t.direction];
+  const cls  = t.direction === 'up' ? 'bull' : t.direction === 'down' ? 'bear' : 'warn';
+  const line = x => `${x.dir === 'up' ? '↑' : x.dir === 'down' ? '↓' : '·'} ${x.label}: ${x.detail}`;
+  const tip = [
+    `${t.why}.`,
+    '',
+    'SETS the direction — these describe what price is doing:',
+    ...t.drivers.map(d => '  ' + line(d)),
+    '',
+    'CANNOT set it, only weaken it — no validated directional result here:',
+    ...(t.modifiers.length ? t.modifiers.map(m => `  ${line(m)}  [${m.status}]`) : ['  (none available)']),
+    '',
+    'A description of the current lean, not a forecast. Nothing here is backtested.',
+  ].join('\n');
+  // esc0 only handles '<' — a title attribute also needs quotes and & escaped,
+  // or a stray quote in any detail string silently truncates the tooltip.
+  const attr = tip.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  // No fraction on MIXED: "agree with the direction" is undefined when there
+  // isn't one, so it always rendered a bare "0/2" that read like a failure
+  // rather than a genuine disagreement. The word carries it; the tooltip has
+  // the detail.
+  const count = t.direction === 'mixed' ? '' : (t.total ? ` ${t.agree}/${t.total}` : '');
+  return `<span class="chip ${cls} dir-tag ${t.strength === 'strong' ? 'dir-strong' : ''}" title="${attr}">${face}${count}${t.strength === 'lean' ? ' ·' : ''}</span>`;
+}
+
 function compositeChip(r) {
   const c = pairSignalComposite(r);
   if (!c || c.score == null || c.total < 2) return '';
@@ -2907,7 +2979,7 @@ function oiFor(name, sym) {
 function agreement(r) {
   const hmm = r.d.regime?.label === 'TREND' ? r.d.regime.trend_dir : null;
   const bd  = r.s?.bias_detail ?? r.s?.bias ?? '';
-  const sess = /bull/i.test(bd) ? 'up' : /bear/i.test(bd) ? 'down' : null;
+  const sess = _biasDir(bd);
   if (!hmm || !sess) return { chip: '', aligned: null };
   return hmm === sess
     ? { chip: `<span class="chip ${hmm === 'up' ? 'bull' : 'bear'}" title="Good sign: the bigger-picture trend and today's actual move both point the same way (${hmm}). Higher-confidence setups.">✓ aligned</span>`, aligned: true }
@@ -2987,8 +3059,8 @@ function renderHeader() {
 function renderSummary() {
   const rs = rows();
   const trending = rs.filter(r => r.trending);
-  const up   = trending.filter(r => r.d.regime?.trend_dir === 'up').length;
-  const down = trending.filter(r => r.d.regime?.trend_dir === 'down').length;
+  const up   = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'up').length;
+  const down = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'down').length;
   const hot  = rs.filter(r => (r.used ?? 0) >= 0.8);
   const hiVol = rs.filter(r => (r.d.vol_pct ?? 0) >= 80);
   const topUsed = rs.slice().sort((a, b) => (b.used ?? -1) - (a.used ?? -1))[0];
@@ -3016,7 +3088,7 @@ function regimeChip(d) {
   const r = d.regime;
   if (!r) return `<span class="chip neu">NO REGIME</span>`;
   if (r.label === 'TREND') {
-    const upD = r.trend_dir === 'up';
+    const upD = _trendDir(r.trend_dir) === 'up';
     const t = `This market is trending ${upD ? 'higher' : 'lower'} — it's been moving mostly in one direction (${upD ? 'up' : 'down'}). ${r.trend_prob}% = how sure the model is. Trends are for going WITH the move.`;
     return `<span class="chip ${upD ? 'bull' : 'bear'}" title="${t}">${upD ? '▲ TREND UP' : '▼ TREND DOWN'} ${r.trend_prob}%</span>`;
   }
@@ -3029,10 +3101,23 @@ function sizeChip(d) {
   const t = `How big a position to consider. Full = normal size, the read is clear. Moderate/Low = trade smaller, today's signal is less reliable. (×${r.sizing_mult} of your usual size.)`;
   return `<span class="chip ${cls}" title="${t}">${r.sizing_label} ×${r.sizing_mult}</span>`;
 }
+// The session engine's prose says "upside leg dominating", NOT "bullish" — a
+// /bull|bear/i test matched 0 of 30 live instruments, so every directional
+// read on this page (the arrow, the aligned chip, the composite's technical
+// leg, the card's colour accent) silently returned "no direction" for every
+// pair. One shared parser now: js/directionTag.js::sessionBiasDir.
+const _biasDir = t => window.directionTagBrick?.sessionBiasDir(t) ?? null;
+// The HMM feed emits "BULL"/"BEAR", NOT "up"/"down". Every `trend_dir === 'up'`
+// test matched 0 of 30 live instruments — and written as `=== 'up' ? A : B`,
+// that silently sent BULLISH trends down the bearish branch: the header chip
+// rendered every trending pair as "▼ TREND DOWN", and pairSignal() scored a
+// bull trend as -1. Normalised once, in js/directionTag.js::normTrendDir.
+const _trendDir = v => window.directionTagBrick?.normTrendDir(v) ?? null;
+
 function biasLine(r) {
   if (!r.s) return `<span class="muted">no live session data</span>`;
   const b = r.s.bias_detail ?? r.s.bias ?? '';
-  const arrow = /bull/i.test(b) ? '▲ ' : /bear/i.test(b) ? '▼ ' : '';
+  const arrow = _biasDir(b) === 'up' ? '▲ ' : _biasDir(b) === 'down' ? '▼ ' : '';
   const biasT = `Which way price is leaning so far today, and how clean the move is. '${b}'${r.s.shape ? ` — ${r.s.shape}` : ''}.`;
   const dirT = `How one-directional today's move has been. Higher % = a clean, one-way move; lower % = choppy, back-and-forth.`;
   return `<b class="help" title="${biasT}">${arrow}${b}</b>${r.s.shape ? ` · ${r.s.shape}` : ''}${r.s.dir != null ? ` · <span class="help" title="${dirT}">directionality ${Math.round(r.s.dir)}%</span>` : ''}`;
@@ -3400,14 +3485,18 @@ function cardHtml(r) {
   // Directional accent on the card's left edge — same bull/bear read biasLine() already
   // shows in words, just made scannable at a glance across a grid of 20+ cards.
   const biasTxt = r.s?.bias_detail ?? r.s?.bias ?? '';
-  const dirCls = /bull/i.test(biasTxt) ? 'dir-up' : /bear/i.test(biasTxt) ? 'dir-dn' : '';
+  // Follow the DIRECTION TAG, not the raw tape: the tag weighs the HTF trend and
+  // lets dissenting reads pull it to MIXED, so keying the accent off the tape
+  // alone produced cards with a green edge and a "◆ MIXED" tag on them.
+  const _dt = directionFor(r);
+  const dirCls = _dt?.direction === 'up' ? 'dir-up' : _dt?.direction === 'down' ? 'dir-dn' : '';
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}</div>
+    <div class="pc-bias">${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}</div>
     ${analogShapeHtml(r.name)}
     ${rangeMapHtml(r)}
     ${ladderHtml(r)}
@@ -3465,7 +3554,7 @@ function scorecardHtml(rs) {
     const icon = d.ac === 'commodity' ? '🥇' : d.ac === 'index' ? '📈' : (SC_CCY_FLAG[PAIR_CCY[r.name]?.[0]] ?? '💱');
 
     const drivers = [];
-    if (d.regime?.label === 'TREND') drivers.push(`${d.regime.trend_dir === 'up' ? 'Uptrend' : 'Downtrend'} ${d.regime.trend_prob}%`);
+    if (d.regime?.label === 'TREND') drivers.push(`${_trendDir(d.regime.trend_dir) === 'up' ? 'Uptrend' : 'Downtrend'} ${d.regime.trend_prob}%`);
     else if (d.regime?.label === 'RANGE') drivers.push(`Ranging ${d.regime.range_prob}%`);
     if (r.ct?.level === 'EXTREME') drivers.push(`COT ${r.ct.dir} extreme`);
     const wti = commodityDrivers?.wti;
@@ -3773,7 +3862,7 @@ async function openDrawer(name) {
   const drChip = $('drRegime');
   if (d.regime) {
     drChip.textContent = d.regime.label === 'TREND'
-      ? `TREND ${d.regime.trend_dir === 'up' ? '▲' : '▼'} ${d.regime.trend_prob}%`
+      ? `TREND ${_trendDir(d.regime.trend_dir) === 'up' ? '▲' : '▼'} ${d.regime.trend_prob}%`
       : `RANGE ${d.regime.range_prob}%`;
     drChip.title = 'Structural HMM daily regime.';
   } else {
@@ -3968,7 +4057,7 @@ function getIntraResearch() {
 // Map the drawer's live regime → the book's BULL/BEAR/RANGE key (null when unknown).
 function _regimeKey(d) {
   const rg = d?.regime; if (!rg) return null;
-  if (rg.label === 'TREND') return rg.trend_dir === 'up' ? 'BULL' : 'BEAR';
+  if (rg.label === 'TREND') return _trendDir(rg.trend_dir) === 'up' ? 'BULL' : 'BEAR';
   if (rg.label === 'RANGE') return 'RANGE';
   return null;
 }
@@ -4086,17 +4175,18 @@ function thesisFor(r) {
   const ai = aiCache[lvlKey(r.name, r.d.sym).replace('/', '')];
   if (ai?.overallBias) { if (/LONG|BULL/i.test(ai.overallBias)) return { dir:1, label:'LONG', src:'AI call' }; if (/SHORT|BEAR/i.test(ai.overallBias)) return { dir:-1, label:'SHORT', src:'AI call' }; }
   const g = r.d.regime;
-  if (g?.label === 'TREND' && g.trend_dir) return { dir: g.trend_dir === 'up' ? 1 : -1, label: g.trend_dir === 'up' ? 'LONG' : 'SHORT', src:'HTF trend' };
+  if (g?.label === 'TREND' && g.trend_dir) { const _d = _trendDir(g.trend_dir); return { dir: _d === 'up' ? 1 : -1, label: _d === 'up' ? 'LONG' : 'SHORT', src:'HTF trend' }; }
   const bd = r.s?.bias_detail ?? '';
-  if (/bull/i.test(bd)) return { dir:1, label:'LONG (lean)', src:'today’s tape' };
-  if (/bear/i.test(bd)) return { dir:-1, label:'SHORT (lean)', src:'today’s tape' };
+  const _td = _biasDir(bd);
+  if (_td === 'up')   return { dir:1,  label:'LONG (lean)',  src:'today’s tape' };
+  if (_td === 'down') return { dir:-1, label:'SHORT (lean)', src:'today’s tape' };
   return { dir:0, label:'NO CLEAR BIAS', src:'—' };
 }
 function biasFactors(r, arima) {
   const F = [], g = r.d.regime;
-  if (g?.label === 'TREND' && g.trend_dir) F.push({ k:'HTF trend', dir: g.trend_dir === 'up' ? 1 : -1, d:`HMM trending ${g.trend_dir} (${g.trend_prob}%)` });
+  if (g?.label === 'TREND' && g.trend_dir) F.push({ k:'HTF trend', dir: _trendDir(g.trend_dir) === 'up' ? 1 : -1, d:`HMM trending ${_trendDir(g.trend_dir) ?? g.trend_dir} (${g.trend_prob}%)` });
   else if (g?.label === 'RANGE') F.push({ k:'HTF regime', dir:0, d:`ranging (${g.range_prob}%) — no trend to back a directional trade` });
-  const bd = r.s?.bias_detail; if (bd) F.push({ k:'Today’s tape', dir: /bull/i.test(bd) ? 1 : /bear/i.test(bd) ? -1 : 0, d: bd.toLowerCase() });
+  const bd = r.s?.bias_detail; if (bd) F.push({ k:'Today’s tape', dir: _biasDir(bd) === 'up' ? 1 : _biasDir(bd) === 'down' ? -1 : 0, d: bd.toLowerCase() });
   if (r.ct?.level === 'EXTREME') { const cdir = /long/i.test(r.ct.dir) ? 1 : -1; F.push({ k:'Positioning', dir: -cdir, d:`specs extreme ${r.ct.dir} — crowded, squeeze risk against the crowd` }); }
   else if (r.ct?.dir) F.push({ k:'Positioning', dir:0, d:`specs ${r.ct.dir} — not crowded` });
   const rl = RISK_LEAN[r.name], gr = globalRisk();
@@ -4945,7 +5035,7 @@ async function loadDrawerStory(r, barsP) {
   };
   // Fast lines first (already-loaded data), slow lines fill in after
   const lines = [
-    ['today', r.s ? `${/bull/i.test(r.s.bias_detail ?? '') ? 'Leaning <b>up</b>' : /bear/i.test(r.s.bias_detail ?? '') ? 'Leaning <b>down</b>' : 'No clear lean'} so far — <b>${r.s.bias_detail ?? r.s.bias ?? ''}</b>.${r.s.outlook ? ` ${r.s.outlook}` : ''}` : null],
+    ['today', r.s ? `${_biasDir(r.s.bias_detail) === 'up' ? 'Leaning <b>up</b>' : _biasDir(r.s.bias_detail) === 'down' ? 'Leaning <b>down</b>' : 'No clear lean'} so far — <b>${r.s.bias_detail ?? r.s.bias ?? ''}</b>.${r.s.outlook ? ` ${r.s.outlook}` : ''}` : null],
     ['vol', r.fc ? (() => {
       const p = r.d.vol_pct;
       const size = p == null ? 'about average' : p >= 80 ? '<b>unusually big</b>' : p >= 60 ? 'a bit bigger than usual' : p <= 20 ? '<b>unusually quiet</b>' : p <= 40 ? 'a bit calmer than usual' : 'about average';
@@ -5186,6 +5276,16 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <script type="module">
   import * as PairComposite from './js/pairCompositeEngine.js';
   window.pairCompositeBrick = PairComposite;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- Direction tag (js/directionTag.js) — the plain "is price aiming up or
+     down?" mark on each card. Only the DESCRIPTIVE reads (HTF trend, today's
+     tape, room left in range) may set the arrow; COT/macro/carry/OI may only
+     downgrade it, because none of them has a validated directional result in
+     this repo. The forecast cone is deliberately not an input at all. -->
+<script type="module">
+  import * as DirectionTag from './js/directionTag.js';
+  window.directionTagBrick = DirectionTag;
   try { window.render?.(); } catch (e) {}
 </script>
 <!-- Same pattern for the liquidity-gate brick (js/liquidityGateEngine.js) —
