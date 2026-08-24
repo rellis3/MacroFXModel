@@ -1047,10 +1047,17 @@ async function loadCommodityDrivers() {
       jget('/api/quote?symbol=WTICO_USD'),
       jget('/api/ohlc?symbol=WTICO_USD'),
     ]);
-    const prevClose = oh?.values?.at(-1)?.close;
-    const wkAgoPrice = oh?.values?.at(-6)?.close ?? null;   // ~5 trading days back
+    // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
+    // The arithmetic below coerces silently, but prevClose.toFixed(2) in
+    // commodityChip() threw on the string — and since that chip is built inside
+    // cardHtml(), one throw took out the ENTIRE grid render. It only fired once
+    // this fetch resolved and triggered a re-render, which is why it looked
+    // intermittent. Coerce at the boundary so nothing downstream has to care.
+    const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const prevClose = num(oh?.values?.at(-1)?.close);
+    const wkAgoPrice = num(oh?.values?.at(-6)?.close);      // ~5 trading days back
     if (q?.price != null && prevClose) {
-      const hist = (oh.values ?? []).slice(-15).map(v => v.close);
+      const hist = (oh.values ?? []).slice(-15).map(v => num(v.close)).filter(v => v != null);
       hist.push(q.price);   // append today's live price so the sparkline reflects the current tick
       commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist } };
     }
