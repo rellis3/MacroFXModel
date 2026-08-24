@@ -93,6 +93,54 @@ console.log('[Max-pain reversion — near expiry + extended]');
   ok('no reversion when price sits at the pin', !buildOIZones(inst, 4205, cfg).some(x => x.mode === 'maxpain'));
 }
 
+console.log('[Max-pain reversion — the DTE gate reads the shape the store ACTUALLY has]');
+{
+  // REGRESSION: `_nearDTE` only ever read `inst.expiries`, a store shape the analyser
+  // stopped writing (it writes perExpiry / dayExpiry, and the producer sets tradeInst.dte
+  // to the traded expiry). Live entries carry no `expiries` key at all, so the gate saw
+  // null for every instrument and Mode C could never fire — on any pair, in any config.
+  // These three cases are the shapes production actually hands the planner.
+  const live = { ...base, exposures: { gex: 5000 } };
+  const byDte = buildOIZones({ ...live, dte: 1 }, 4260, cfg).find(x => x.mode === 'maxpain');
+  ok('inst.dte (what the producer sets from dayExpiry) fires the gate', byDte && byDte.side === 'sell', JSON.stringify(byDte));
+
+  const byPerExpiry = buildOIZones({ ...live, perExpiry: [{ dte: 1, maxPain: 4200 }, { dte: 8, maxPain: 4250 }] }, 4260, cfg)
+    .find(x => x.mode === 'maxpain');
+  ok('perExpiry[] min DTE fires the gate when .dte is absent', !!byPerExpiry);
+
+  // .dte WINS over perExpiry: the pin being reverted to is the traded expiry's, so a far
+  // traded expiry must not be gated in by some other near leg sitting in the book.
+  const farTraded = buildOIZones({ ...live, dte: 25, perExpiry: [{ dte: 1 }] }, 4260, cfg)
+    .find(x => x.mode === 'maxpain');
+  ok('.dte 25 beats a 1-DTE perExpiry leg → no reversion (gate and pin agree)', !farTraded);
+
+  ok('no DTE anywhere → no reversion (unchanged)', !buildOIZones(live, 4260, cfg).some(x => x.mode === 'maxpain'));
+}
+
+console.log('[Max-pain reversion — stop bounded by the pin distance, not the far wall]');
+{
+  // Guard wall far above (4700) while the pin is 60 away: the old stop sat beyond the
+  // wall (~445 risk for a 60 target = 0.13R), which minRR 0.8 then DROPPED silently.
+  const far = { ...base, exposures: { gex: 5000 }, dte: 1,
+    callWalls: [{ strike: 4700, oi: 9000, tier: 'strong', mult: 3.2 }],
+    putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3.0 }] };
+  const mp = buildOIZones(far, 4260, cfg).find(x => x.mode === 'maxpain');
+  ok('zone SURVIVES a far guard wall (was dropped by minRR)', !!mp, JSON.stringify(mp));
+  const risk = Math.abs(mp.entry - mp.sl), reward = Math.abs(mp.tp1 - mp.entry);
+  ok('stop capped at 1.0× the pin distance → RR ≥ 1', reward / risk >= 1 - 1e-9, `${reward}/${risk} = ${(reward / risk).toFixed(2)}R`);
+  ok('rationale names the capped stop', /stop capped 1× pin distance/.test(mp.rationale), mp.rationale);
+
+  // Guard wall CLOSE (4290, +5 buf = 35 < 60 cap) → structural stop still wins.
+  const near = { ...far, callWalls: [{ strike: 4290, oi: 9000, tier: 'strong', mult: 3.2 }] };
+  const mpN = buildOIZones(near, 4260, cfg).find(x => x.mode === 'maxpain');
+  ok('a NEAR guard wall is still the stop (structure beats the cap)', Math.abs(mpN.sl - 4295) < 1e-9, `sl ${mpN.sl}`);
+  ok('rationale names the guard wall', /stop guard wall 4290/.test(mpN.rationale), mpN.rationale);
+
+  // maxpainSlFrac 0 → uncapped, i.e. the old pure-guard-wall behaviour.
+  const mpOff = buildOIZones(far, 4260, { ...cfg, maxpainSlFrac: 0, minRR: 0 }).find(x => x.mode === 'maxpain');
+  ok('maxpainSlFrac 0 → uncapped guard-wall stop (old behaviour available)', Math.abs(mpOff.sl - 4705) < 1e-9, `sl ${mpOff.sl}`);
+}
+
 console.log('[Filters — liquidating veto + established requirement]');
 {
   const change = { events: [{ type: 'liquidation', kind: 'call', strike: 4300 }] };

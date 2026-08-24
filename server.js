@@ -13110,6 +13110,8 @@ const OI_BOT_INDEX = ['nq', 'spx', 'dax', 'dow', 'rut'];   // canonical registry
 const OI_BOT_UNIVERSE = ['gold', ...OI_BOT_INDEX];
 const OI_BOT_CFG_DEFAULTS = {
   minTier: 'strong', slBufferPips: 15, breakPips: 20, nearExpiryDTE: 2, extendedPips: 30,
+  maxpainSlFrac: 1.0,                // Mode C stop capped at this × the distance to the pin, so a far
+                                     // guard wall can't produce a sub-1R reversion (0 = uncapped)
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
   levelLadderTP: false,              // TP to the next structural level (walls/flips/max-pain/magnets), not always max pain
   reactAtLevels: false,              // Mode D: ENTER at structural nodes (flips/magnets/intermediate walls), regime-treated

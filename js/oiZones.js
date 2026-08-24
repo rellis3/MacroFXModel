@@ -39,8 +39,25 @@ import { oiRegimeBands } from './oi.js';
 const _TIER_RANK = { weak: 1, moderate: 2, strong: 3 };
 const _rank = t => _TIER_RANK[t] || 0;
 
-// Nearest expiry DTE from the per-expiry view (null if none tagged).
+// DTE of the expiry being PLANNED — the gate for Mode C (max-pain reversion).
+//
+// The producer hands the planner `tradeInst`, whose `.dte` is the expiry actually
+// traded (the near-dated "day" set when a multi-expiry paste supplied one, else the
+// primary) and whose `maxPain` comes from that SAME expiry. The DTE gate and the pin
+// it reverts to must therefore read one expiry, or Mode C would time a 1-DTE gate
+// against a 25-DTE pin. So `inst.dte` wins whenever it is present.
+//
+// `inst.expiries` was the ORIGINAL store shape and no longer exists on any live
+// entry — the analyser writes `perExpiry` / `dayExpiry` instead. Reading it alone
+// returned null for every instrument, which silently disabled Mode C entirely: the
+// gate below is `dte != null && dte <= nearExpiryDTE`, so max-pain reversion could
+// never fire on ANY instrument regardless of config. It is kept last as a legacy
+// fallback (and is the shape the older unit tests construct).
 function _nearDTE(inst) {
+  if (Number.isFinite(inst?.dte)) return inst.dte;
+  const rows = Array.isArray(inst?.perExpiry) ? inst.perExpiry : [];
+  const perDtes = rows.map(e => e?.dte).filter(d => Number.isFinite(d));
+  if (perDtes.length) return Math.min(...perDtes);
   const es = inst?.expiries ? Object.values(inst.expiries) : [];
   const dtes = es.map(e => e?.dte).filter(d => Number.isFinite(d));
   return dtes.length ? Math.min(...dtes) : null;
@@ -147,6 +164,16 @@ export function buildOIZones(inst, price, cfg = {}) {
     breakPips = 20,                // decisive-break distance (hold-vs-break)
     nearExpiryDTE = 2,             // max-pain reversion window
     extendedPips = 30,             // "price extended from max pain" threshold
+    maxpainSlFrac = 1.0,           // Mode C stop cap, as a fraction of the distance to the pin.
+                                   // The guard wall (next structural level on the far side) is the
+                                   // right stop when it is CLOSE — price stalling there is the thesis
+                                   // failing. When price is extended it can sit far away, giving a stop
+                                   // many times the target: risk sizing then collapses to the 0.01-lot
+                                   // floor (where a wide stop OVERSHOOTS risk_pct) or minRR drops the
+                                   // zone outright. Capping at this × the pin distance makes
+                                   // reward:risk ≥ 1/maxpainSlFrac BY CONSTRUCTION, so Mode C can never
+                                   // be silently dropped by its own minRR gate. 0 = uncapped (old
+                                   // behaviour: pure guard wall).
     fadeInPin = true, followBreaks = true, maxPainReversion = true,
     requireEstablished = false, avoidLiquidating = true,
     maxZonesPerSide = 4,           // TRADE only the K walls per side — for PIN fades the K
@@ -643,14 +670,26 @@ export function buildOIZones(inst, price, cfg = {}) {
     // Charm (theory): as time decays into expiry, dealer charm-hedging pins price toward
     // the big strikes — so near expiry a firing charm AMPLIFIES the max-pain pull. Boost size.
     const mcSize = charmActive ? +(1.0 * charmBoost).toFixed(2) : 1.0;
+    // Stop distance: the guard wall when it is near, capped at maxpainSlFrac × the
+    // distance to the pin (see the cfg note). Floored at `buf` so the stop is never
+    // inside the noise band, and falling back to buf×4 only when BOTH inputs are
+    // absent (no guard wall and the cap switched off).
+    const mpTargetDist = Math.abs(price - maxPain);
+    const mpGuardDist = guardWall != null ? Math.abs(guardWall - price) + buf : Infinity;
+    const mpCapDist = maxpainSlFrac > 0 ? maxpainSlFrac * mpTargetDist : Infinity;
+    const mpCands = [mpGuardDist, mpCapDist].filter(d => Number.isFinite(d) && d > 0);
+    const mpSlDist = Math.max(buf, mpCands.length ? Math.min(...mpCands) : buf * 4);
+    const mpSlSrc = !mpCands.length ? `${+(buf * 4).toFixed(6)} fallback (no guard wall)`
+      : (mpCapDist < mpGuardDist ? `capped ${maxpainSlFrac}× pin distance`
+        : `guard wall ${+guardWall.toFixed(6)}`);
     // minDist rides the zone so the ENGINE re-validates at fire time: the extended
     // check above ran at plan-build; by the time the bot loads the plan (or restarts)
     // price may already be back at the pin — the edge is spent and the zone must not
     // fire. The engine requires |px − level| ≥ minDist on the planned side.
     add({ mode: 'maxpain', side, level: maxPain, entry: price, minDist: +ext.toFixed(6),
-      sl: guardWall != null ? (side === 'sell' ? guardWall + buf : guardWall - buf) : (side === 'sell' ? price + buf * 4 : price - buf * 4),
+      sl: side === 'sell' ? price + mpSlDist : price - mpSlDist,
       tp1: maxPain, tp2: null, sizeFactor: mcSize,
-      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
+      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it · stop ${mpSlSrc}${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
   }
 
   // ── Mode D — react at levels (opt-in reactAtLevels): trade BETWEEN structural nodes,
