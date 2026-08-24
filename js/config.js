@@ -100,7 +100,7 @@ export const CAP_DEFAULTS = {
     enhPivAtrFrac: 0.10, enhPivPipCap: 8,
   },
   gold: {
-    confluencePips: 200,  // gold pips ($0.10 each) — 200 pips = $20
+    confluencePips: 20,   // gold pips ($1.00 each, canonical) — 20 pips = $20
     mergeFactor:    0.30, // 30% of $20 = $6 merge radius — collapses near-duplicate levels
     asiaMinPips:           150,  // gold pips — 150 = $15 min Asia range
     structuralLookbackDays: 30,  // days of 30m history for structural fib sweep

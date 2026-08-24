@@ -290,7 +290,12 @@ async function loadHMM5m() {
 }
 
 // Proximity thresholds (pips / points from the level)
-const _PROX_PIPS = { 'NAS100_USD': 20, 'SPX500_USD': 10, 'DE30_USD': 20, 'UK100_GBP': 15, 'XAU/USD': 5, 'US30_USD': 30, 'US2000_USD': 10 };
+// Distances in PIPS — only meaningful next to getPipSize(). Gold moved 5 -> 0.5 when
+// its pip was corrected 0.1 -> 1.0, preserving the $0.50 trigger exactly. That $0.50 is
+// 0.011% of price where NAS100's is 0.069% — 6x tighter, which suggests the 5 was
+// authored for pip 1.0. Preserved as-is here rather than silently widened; see
+// js/goldPipMigration.js.
+const _PROX_PIPS = { 'NAS100_USD': 20, 'SPX500_USD': 10, 'DE30_USD': 20, 'UK100_GBP': 15, 'XAU/USD': 0.5, 'US30_USD': 30, 'US2000_USD': 10 };
 
 function checkProximityAlerts() {
   const entries = window._lastEntries;

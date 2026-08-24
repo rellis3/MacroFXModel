@@ -406,10 +406,36 @@
   .dr-top h2{font-size:18px;font-weight:700}
   .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
             border-radius:6px;padding:4px 12px;font-size:13px}
+  /* ── Drawer tabs ──────────────────────────────────────────
+     The drawer was 13 flat collapsibles in one scroll column, 7 of them hidden
+     by default — no grouping and no way to jump to the part you want. Same
+     sections, same ids, same lazy loaders; only the container changed. The tab
+     strip sticks under .dr-top so it stays reachable while a pane scrolls. */
+  .dr-tabs{position:sticky;top:34px;z-index:4;display:flex;gap:2px;margin:0 -20px 14px;padding:0 20px;
+           background:var(--bg);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:thin}
+  .dr-tab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--text3);
+          font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+          padding:9px 13px 8px;white-space:nowrap;border-radius:6px 6px 0 0}
+  .dr-tab:hover{color:var(--text2);background:var(--card)}
+  .dr-tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--blue);background:var(--card)}
+  .dr-tab:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+  /* A tab whose every section failed to load or has no data for this pair —
+     dimmed rather than hidden, so the drawer's shape stays constant per pair. */
+  .dr-tab.empty{opacity:.45}
+  .dr-tab-n{font-size:9px;font-weight:700;color:var(--text3);background:var(--neu-bg);
+            border-radius:8px;padding:1px 5px;margin-left:5px;vertical-align:1px}
+  .dr-tab-n:empty{display:none}
+  .dr-pane[hidden]{display:none}
+  .dr-pending{background:var(--card);border:1px dashed var(--border2);border-radius:12px;padding:16px 18px;color:var(--text2)}
+  .dr-pending b{color:var(--text);font-size:13px}
+  .dr-pending p{font-size:12px;margin-top:6px;line-height:1.55;max-width:64ch}
+  .dr-pending-links a{color:var(--blue);font-weight:600}
   .dr-sec{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:12px}
   .dr-sec h3{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:9px}
-  /* AI Analysis — the drawer's hero section (already first in DOM order; this
-     is the visual half of "front and centre" — same accent treatment as the
+  /* AI Analysis — the drawer's hero section. Since the tab split it sits second
+     in the Read pane, under the forecast chart (the "where are we in the day"
+     answer leads); the accent below is what keeps it reading as primary rather
+     than DOM order — same accent treatment as the
      Morning Brief hero card, so it reads as the primary section at a glance
      instead of an equal-weight box next to Bot Level Book / Rates Context. */
   #drAnalysisSec{border-left:3px solid var(--blue);background:linear-gradient(135deg,rgba(79,125,240,.08),var(--card) 55%);padding:16px 18px}
@@ -708,24 +734,58 @@
 
   <!-- Headline: the plain-English translation of every signal on this pair —
        the thing worth seeing before anything else. -->
+  <div class="dr-tabs" role="tablist" aria-label="Pair detail sections">
+    <button class="dr-tab" role="tab" id="drTab-read" aria-controls="drPane-read" aria-selected="false" onclick="setDrTab('read')">Read<span class="dr-tab-n" id="drTabN-read"></span></button>
+    <button class="dr-tab" role="tab" id="drTab-macro" aria-controls="drPane-macro" aria-selected="false" onclick="setDrTab('macro')">Macro<span class="dr-tab-n" id="drTabN-macro"></span></button>
+    <button class="dr-tab" role="tab" id="drTab-flow" aria-controls="drPane-flow" aria-selected="false" onclick="setDrTab('flow')">Flow<span class="dr-tab-n" id="drTabN-flow"></span></button>
+    <button class="dr-tab" role="tab" id="drTab-levels" aria-controls="drPane-levels" aria-selected="false" onclick="setDrTab('levels')">Levels<span class="dr-tab-n" id="drTabN-levels"></span></button>
+    <button class="dr-tab" role="tab" id="drTab-vol" aria-controls="drPane-vol" aria-selected="false" onclick="setDrTab('vol')">Vol &amp; Path<span class="dr-tab-n" id="drTabN-vol"></span></button>
+    <button class="dr-tab" role="tab" id="drTab-systems" aria-controls="drPane-systems" aria-selected="false" onclick="setDrTab('systems')">Systems<span class="dr-tab-n" id="drTabN-systems"></span></button>
+  </div>
+  <div class="dr-pane" id="drPane-read" role="tabpanel" aria-labelledby="drTab-read" hidden>
+  <div class="dr-sec" id="drChartSec" data-seckey="chart">
+    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
+    <div class="dr-sec-body">
+      <div id="drChart"></div>
+      <div class="legend">
+        <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
+        <span><i style="border-color:#4f7df0"></i>O-H / O-L 75th</span>
+        <span><i style="border-color:#fbbf24"></i>day high / low</span>
+        <span><i style="border-color:var(--text);border-top-style:solid"></i>price</span>
+      </div>
+    </div>
+  </div>
   <div class="dr-sec" id="drAnalysisSec" data-seckey="analysis" style="display:none">
     <h3 class="help" title="A full fundamental read of this pair, generated by AI from the macro, yield, options, positioning and event data. AI OPINION — a reasoned synthesis, NOT a backtested signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Full analysis</span> <span class="chip warn" style="font-size:9px">AI · not backtested</span> <button id="drAnalyseBtn" class="ai-btn" onclick="analysePair()">🧠 Analyse</button> <span id="drAnalysisToggle" class="ai-toggle"></span></h3>
     <div class="dr-sec-body"><div id="drAnalysis"></div></div>
   </div>
-
   <div class="dr-sec" id="drThesisSec" data-seckey="thesis" style="display:none">
     <h3 class="help" title="The working trade idea for this pair, and — from every signal we compute — what BACKS it versus what ARGUES AGAINST it. A consistency check to frame the trade, not a prediction. Read down: thesis → what supports → what challenges → then the levels below."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>The trade thesis — what supports it, what challenges it</span></h3>
     <div class="dr-sec-body"><div id="drThesis"></div></div>
   </div>
-
   <div class="dr-sec" id="drStorySec" data-seckey="story">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>The story</span></h3>
     <div class="dr-sec-body"><div class="story" id="drStory"><span class="muted">loading…</span></div></div>
   </div>
-
-  <!-- Edge cluster: the actual decision/level outputs, grouped together instead
-       of scattered — Decision Engine + Line Fade default open, Bot Level Book
-       default collapsed (unvalidated star heuristic — kept on the page, minimised). -->
+  <div class="dr-sec" id="drNewsSec" data-seckey="news" style="display:none">
+    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today's news for this pair</span></h3>
+    <div class="dr-sec-body"><div id="drNews"></div></div>
+  </div>
+  </div>
+  <div class="dr-pane" id="drPane-macro" role="tabpanel" aria-labelledby="drTab-macro" hidden>
+  <div class="dr-sec" id="drRatesSec" data-seckey="rates" style="display:none">
+    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Rates context (yield spread)</span></h3>
+    <div class="dr-sec-body"><div id="drRates"><span class="muted">loading…</span></div></div>
+  </div>
+  <div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
+    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Correlations, hedges &amp; beta</span></h3>
+    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
+  </div>
+  </div>
+  <div class="dr-pane" id="drPane-flow" role="tabpanel" aria-labelledby="drTab-flow" hidden>
+    <div class="dr-pending"><b>Options positioning, COT detail and the crowd</b><p>The data is already loaded on this page &mdash; it currently only reaches the AI prompt. Rendering it here is the next step.</p><p class="dr-pending-links"><a href="oi-dashboard.html" target="_blank">OI dashboard &rarr;</a> &middot; <a href="cot-extremes.html" target="_blank">COT extremes &rarr;</a></p></div>
+  </div>
+  <div class="dr-pane" id="drPane-levels" role="tabpanel" aria-labelledby="drTab-levels" hidden>
   <div class="dr-sec" id="drTdeSec" data-seckey="tde">
     <h3 class="help" title="A model that scores a trade at a level: given where price is, it says go or skip, how likely it is to work, and how big to go. Click a zone below then 'Decide' to try it. Honest ceiling: OOS calibration collapses to one ~55%-realized bucket — it barely separates good setups from bad ones. The one part of this research that DID show a real, OOS, cross-pair-consistent edge (fading WITH the prevailing USD trend, not against it) isn't wired into the score below — see the USD-trend banner on the Continuation vs Fade page for that piece.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Decision Engine snapshot</span>
@@ -748,7 +808,6 @@
       <div class="err" id="drTdeErr" style="margin-top:6px"></div>
     </div>
   </div>
-
   <div class="dr-sec" id="drHitsSec" data-seckey="hits" style="display:none">
     <h3 class="help" title="For each forecast line (O-H/O-L median & 75th), how far price fades back from the line and how often it blows straight through — split by which tap it is (1st / 2nd / 3rd+). A rising blow-through% by the 3rd tap means the line has stopped holding: fade the 1st touch, stand aside by the 3rd.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Line fade by hit</span> <span class="muted" id="drHitsNote"></span>
@@ -762,7 +821,6 @@
       <div class="muted" id="drHitsTakeaway" style="margin-top:6px"></div>
     </div>
   </div>
-
   <div class="dr-sec" id="drLevelsSec" data-seckey="levels">
     <h3 class="help" title="The live bot's own price-level book, star-rated by structural confluence (tight fib, cross-session agreement, density, pivot match). Hand-set additive rating — NOT fitted, and not yet checked against real outcomes (a falsification tool exists — rank-ic.html's 'Live entry scores' — but no recorded verdict yet). Treat stars as 'more structural agreement here', not 'proven higher win rate'.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Bot level book (stars)</span>
@@ -778,7 +836,6 @@
       <div class="muted" id="drLevelsNote"></div>
     </div>
   </div>
-
   <div class="dr-sec" id="drExhSec" data-seckey="exh" style="display:none">
     <h3 class="help" title="Where the day TURNS, as opposed to how far it travels. Fitted on ~10 years of London-anchored days: every reversal is measured as its distance from the session open in units of forecast sigma, then split by session, by which turn of the day it was, and by side. Rungs are anchored to the open, so they become real prices at midnight. A rung is a ZONE not a price — the turn distance is a wide distribution, and the coverage column is there so you can see whether the fit still holds out-of-sample.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Turn zones — where the day reverses</span>
@@ -786,45 +843,19 @@
     </h3>
     <div class="dr-sec-body"><div id="drExh"><span class="muted">loading…</span></div></div>
   </div>
-
-  <div class="dr-sec" id="drChartSec" data-seckey="chart">
-    <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
-    <div class="dr-sec-body">
-      <div id="drChart"></div>
-      <div class="legend">
-        <span><i style="border-color:#06b6d4"></i>O-H / O-L median</span>
-        <span><i style="border-color:#4f7df0"></i>O-H / O-L 75th</span>
-        <span><i style="border-color:#fbbf24"></i>day high / low</span>
-        <span><i style="border-color:var(--text);border-top-style:solid"></i>price</span>
-      </div>
-    </div>
   </div>
-
-  <!-- Context cluster: real content, open by default, but not the headline. -->
-  <div class="dr-sec" id="drRatesSec" data-seckey="rates" style="display:none">
-    <h3 class="help" title="How the DE–US yield spread relates to this pair right now. CONTEXT only — measured over 22yr, the yield confirms moves but does NOT forecast direction. Use it to gauge whether the current move is rates-backed, not to pick a direction."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Rates context (yield spread)</span></h3>
-    <div class="dr-sec-body"><div id="drRates"><span class="muted">loading…</span></div></div>
-  </div>
-
+  <div class="dr-pane" id="drPane-vol" role="tabpanel" aria-labelledby="drTab-vol" hidden>
   <div class="dr-sec" id="drConeSec" data-seckey="cone" style="display:none">
     <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Volatility cone — is vol building or cooling?</span></h3>
     <div class="dr-sec-body"><div id="drCone"></div></div>
   </div>
-
   <div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
     <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
     <div class="dr-sec-body"><div id="drPath"></div></div>
   </div>
-
-  <!-- Secondary: default collapsed — lower-signal-per-scroll-inch than everything above. -->
-  <div class="dr-sec" id="drNewsSec" data-seckey="news" style="display:none">
-    <h3 class="help" title="Scheduled economic events that move THIS pair — the calendar filtered to its own two economies, soonest first. High-impact events can spike the range well beyond the forecast, so many traders wait until they're out."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today's news for this pair</span></h3>
-    <div class="dr-sec-body"><div id="drNews"></div></div>
   </div>
-
-  <div class="dr-sec" id="drCorrSec" data-seckey="corr" style="display:none">
-    <h3 class="help" title="How this market has moved RELATIVE to others over the last ~10 trading days, and its sensitivity (beta) to the dollar, rates and risk. CONTEXT only, and backward-looking: correlations are regime-dependent and in a real risk-off they snap toward 1, so a historical 'hedge' can stop hedging exactly when you need it. Not a signal — use it to avoid doubling up the same bet and to know what really drives this pair."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Correlations, hedges &amp; beta</span></h3>
-    <div class="dr-sec-body"><div id="drCorr"><span class="muted">loading…</span></div></div>
+  <div class="dr-pane" id="drPane-systems" role="tabpanel" aria-labelledby="drTab-systems" hidden>
+    <div class="dr-pending"><b>What the live bots say about this pair</b><p>One row per live system with its current stance, plus sizing and open exposure. Not built yet &mdash; this view does not exist anywhere on the site today.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
   </div>
 </div>
 
@@ -3671,6 +3702,58 @@ function applyDrSecStates() {
 
 let drChart = null, drSeries = null, drName = null;
 
+// ── Drawer tabs ──────────────────────────────────────────────────────────────
+// Display-only grouping over the same sections. Every loader still fires on
+// open regardless of which tab is showing (see openDrawer), so switching tabs
+// never triggers a fetch and a hidden pane is never stale — it is just hidden.
+const DR_TABS = ['read', 'macro', 'flow', 'levels', 'vol', 'systems'];
+let _drTab = (() => { try { return localStorage.getItem('dr_tab') || 'read'; } catch { return 'read'; } })();
+
+function setDrTab(key) {
+  if (!DR_TABS.includes(key)) key = 'read';
+  _drTab = key;
+  try { localStorage.setItem('dr_tab', key); } catch {}
+  for (const k of DR_TABS) {
+    const tab = $(`drTab-${k}`), pane = $(`drPane-${k}`);
+    if (tab) tab.setAttribute('aria-selected', k === key ? 'true' : 'false');
+    if (pane) pane.hidden = k !== key;
+  }
+  $('drawer').scrollTop = 0;
+  // The chart is built with autoSize:true, so its own ResizeObserver picks up
+  // the 0 → real width transition when this pane un-hides. What it does NOT
+  // restore is the visible logical range, so the cone's right-hand padding is
+  // lost — re-apply it a frame after the pane is laid out.
+  if (key === 'read' && drChart) requestAnimationFrame(() => { try { padDrawerRange(); } catch {} });
+}
+
+// A section hides itself (style.display='none') when its loader fails or the
+// pair has no data for it. A pane where every section is hidden would be a
+// blank tab, so dim the tab instead and say so — the shape stays constant.
+function refreshDrTabStates() {
+  for (const k of DR_TABS) {
+    const pane = $(`drPane-${k}`), tab = $(`drTab-${k}`);
+    if (!pane || !tab) continue;
+    const secs = [...pane.querySelectorAll(':scope > .dr-sec')];
+    if (!secs.length) continue;                       // placeholder pane — leave alone
+    const live = secs.filter(s => s.style.display !== 'none');
+    tab.classList.toggle('empty', live.length === 0);
+    const n = $(`drTabN-${k}`);
+    if (n) n.textContent = live.length && live.length < secs.length ? String(live.length) : '';
+  }
+}
+
+// Left/right move between tabs while the strip has focus (ARIA tablist norm).
+document.addEventListener('keydown', e => {
+  if (!$('drawer')?.classList.contains('open')) return;
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (!document.activeElement?.classList?.contains('dr-tab')) return;
+  e.preventDefault();
+  const i = DR_TABS.indexOf(_drTab);
+  const next = DR_TABS[(i + (e.key === 'ArrowRight' ? 1 : -1) + DR_TABS.length) % DR_TABS.length];
+  setDrTab(next);
+  $(`drTab-${next}`)?.focus();
+});
+
 function closeDrawer() {
   $('ovl').classList.remove('open');
   $('drawer').classList.remove('open');
@@ -3703,6 +3786,11 @@ async function openDrawer(name) {
   $('ovl').classList.add('open');
   $('drawer').classList.add('open');
   applyDrSecStates();
+  setDrTab(_drTab);
+  // Sections hide themselves as their loaders resolve or fail, so tab states
+  // can only be judged once those have had a chance to settle.
+  setTimeout(refreshDrTabStates, 1200);
+  setTimeout(refreshDrTabStates, 4000);
   $('decideOut').style.display = 'none';
   $('drTdeErr').textContent = '';
   $('drChart').innerHTML = '<div class="muted" style="padding:20px">loading candles…</div>';
