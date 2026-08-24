@@ -674,6 +674,7 @@
         <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
         <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
         <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
+        <button class="fchip" data-f="crypto" onclick="setFilter('crypto')">BTC</button>
         <span class="lbl" style="margin-left:8px">Sort</span>
         <select id="sortSel" onchange="render()">
           <option value="attention">Attention (hot first)</option>
@@ -895,6 +896,9 @@ const PAIR_NEWS_CC = {
   EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'],
   NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'],
   EURGBP:['EU','DE','GB'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'],
+  EURAUD:['EU','DE','AU'], EURCAD:['EU','DE','CA'], EURNZD:['EU','DE','NZ'],
+  GBPAUD:['GB','AU'], GBPCAD:['GB','CA'], AUDCAD:['AU','CA'],
+  NZDCAD:['NZ','CA'], NZDJPY:['NZ','JP'], BTCUSD:['US'],
   GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'],
 };
 const dispCorr = k => {   // corr key → friendly label
@@ -2649,7 +2653,7 @@ function nextHighImpact() {
 }
 
 // ── Zoom 3: proximity watch — live prices vs ladder levels ───────────────────
-const PROX_LIMIT = { fx: 12, commodity: 5, index: 25 };   // pips / points
+const PROX_LIMIT = { fx: 12, commodity: 5, index: 25, crypto: 150 };   // pips / points ($ for BTC)
 
 function livePriceFor(d) {
   if (!livePrices) return null;

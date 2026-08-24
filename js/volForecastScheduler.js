@@ -62,6 +62,25 @@ export const INSTRUMENTS = [
   { name: 'GBPCHF', oandaInstrument: 'GBP_CHF',     ticker: 'GBPCHF=X', assetClass: 'fx'        },
   { name: 'AUDJPY', oandaInstrument: 'AUD_JPY',     ticker: 'AUDJPY=X', assetClass: 'fx'        },
   { name: 'CADJPY', oandaInstrument: 'CAD_JPY',     ticker: 'CADJPY=X', assetClass: 'fx'        },
+  // Added 2026-08 — the rest of the traded cross universe. WEEKLY_INSTRUMENTS,
+  // the v2 page's OANDA_SYM/CCY_PAIRS and the levels engine already knew most
+  // of these; the daily forecast was the missing piece.
+  { name: 'EURAUD', oandaInstrument: 'EUR_AUD',     ticker: 'EURAUD=X', assetClass: 'fx'        },
+  { name: 'EURCAD', oandaInstrument: 'EUR_CAD',     ticker: 'EURCAD=X', assetClass: 'fx'        },
+  { name: 'EURNZD', oandaInstrument: 'EUR_NZD',     ticker: 'EURNZD=X', assetClass: 'fx'        },
+  { name: 'GBPAUD', oandaInstrument: 'GBP_AUD',     ticker: 'GBPAUD=X', assetClass: 'fx'        },
+  { name: 'GBPCAD', oandaInstrument: 'GBP_CAD',     ticker: 'GBPCAD=X', assetClass: 'fx'        },
+  { name: 'AUDCAD', oandaInstrument: 'AUD_CAD',     ticker: 'AUDCAD=X', assetClass: 'fx'        },
+  { name: 'NZDCAD', oandaInstrument: 'NZD_CAD',     ticker: 'NZDCAD=X', assetClass: 'fx'        },
+  { name: 'NZDJPY', oandaInstrument: 'NZD_JPY',     ticker: 'NZDJPY=X', assetClass: 'fx'        },
+  // ── Crypto ───────────────────────────────────────────────────────────────────
+  // preferYahoo: OANDA's BTC_USD CFD isn't offered on every division (UK retail
+  // accounts can't hold crypto CFDs at all), while Yahoo BTC-USD is 24/7 spot.
+  // assetClass 'commodity' picks the RS-EWMA σ estimator — like gold, BTC trends
+  // hard and close-to-close estimators understate its vol. Oanda-side extras
+  // (live price, session tracking, M5 chart) are attempted but optional — see
+  // oandaOptional in HR_INSTRUMENTS.
+  { name: 'BTCUSD', oandaInstrument: 'BTC_USD',     ticker: 'BTC-USD',  assetClass: 'commodity', preferYahoo: true },
   // ── Equity indices ───────────────────────────────────────────────────────────
   // preferYahoo: Oanda CFDs settle at 22:00 UTC; Yahoo uses exchange RTH close
   // (^GSPC/^DJI/^RUT = NYSE 16:00 ET, ^GDAXI = Xetra 17:30 CET, ^FTSE = LSE 16:30 BST)
