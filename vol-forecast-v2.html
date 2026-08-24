@@ -3657,7 +3657,10 @@ const OANDA_SYM = {
   eurcad:'EUR/CAD', eurnzd:'EUR/NZD', gbpaud:'GBP/AUD', gbpchf:'GBP/CHF',
   gbpcad:'GBP/CAD', gbpnzd:'GBP/NZD', audjpy:'AUD/JPY', audnzd:'AUD/NZD',
   audcad:'AUD/CAD', audchf:'AUD/CHF', nzdjpy:'NZD/JPY', cadjpy:'CAD/JPY',
-  chfjpy:'CHF/JPY', gold:'XAU/USD',
+  chfjpy:'CHF/JPY', nzdcad:'NZD/CAD', gold:'XAU/USD',
+  // BTC chart data needs OANDA BTC_USD — not offered on every division (UK
+  // retail has no crypto CFDs); the chart shows its error status when absent.
+  btcusd:'BTC/USD',
   // Indices — OANDA instrument codes (underscore format, no slash)
   nq:'NAS100_USD', spx500:'SPX500_USD', us30:'US30_USD',
   us2000:'US2000_USD', uk100:'UK100_GBP', de30:'DE30_EUR',
@@ -3671,6 +3674,7 @@ const OANDA_SYM = {
 function _priceFmt(name) {
   const n = (name || '').toLowerCase();
   if (n === 'gold' || n.startsWith('xau')) return { type: 'price', precision: 2, minMove: 0.01 };
+  if (n.startsWith('btc')) return { type: 'price', precision: 1, minMove: 0.1 };
   if (['nq','spx500','us30','us2000','uk100','de30'].includes(n)) return { type: 'price', precision: 1, minMove: 0.1 };
   if (n.endsWith('jpy')) return { type: 'price', precision: 3, minMove: 0.001 };
   return { type: 'price', precision: 5, minMove: 0.00001 };

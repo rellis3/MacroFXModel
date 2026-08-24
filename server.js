@@ -517,6 +517,9 @@ const PIP_SIZE = {
   'GBP/JPY': 0.01,   'USD/JPY': 0.01,   'EUR/GBP': 0.0001,
   'EUR/JPY': 0.01,   'AUD/JPY': 0.01,   'CAD/JPY': 0.01,
   'EUR/CHF': 0.0001, 'GBP/CHF': 0.0001,
+  'EUR/AUD': 0.0001, 'EUR/CAD': 0.0001, 'EUR/NZD': 0.0001,
+  'GBP/AUD': 0.0001, 'GBP/CAD': 0.0001, 'AUD/CAD': 0.0001,
+  'NZD/CAD': 0.0001, 'NZD/JPY': 0.01,   'BTC/USD': 1.0,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
   'SPX500_USD': 1.0, 'DE30_USD': 1.0,   'UK100_GBP': 1.0,
   'US30_USD': 1.0, 'US2000_USD': 1.0,
@@ -524,6 +527,7 @@ const PIP_SIZE = {
 
 const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
+  'NZD/JPY': 3, 'BTC/USD': 1,
   'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'UK100_GBP': 1,
   'US30_USD': 1, 'US2000_USD': 1,
 };
@@ -535,6 +539,9 @@ const TYPICAL_SPREAD_PIPS = {
   'USD/CHF': 1.0, 'GBP/JPY': 2.0,   'EUR/GBP': 0.9,
   'EUR/JPY': 1.0, 'EUR/CHF': 1.5,   'GBP/CHF': 2.0,
   'AUD/JPY': 1.5, 'CAD/JPY': 2.0,
+  'EUR/AUD': 2.0, 'EUR/CAD': 2.0, 'EUR/NZD': 3.5,
+  'GBP/AUD': 2.8, 'GBP/CAD': 3.0, 'AUD/CAD': 1.8,
+  'NZD/CAD': 2.5, 'NZD/JPY': 2.0,
   'XAU/USD': 0.3, 'NAS100_USD': 1.0,
   'SPX500_USD': 0.3, 'DE30_USD': 0.8, 'UK100_GBP': 0.8,
   'US30_USD': 0.5, 'US2000_USD': 0.5,
@@ -15120,6 +15127,8 @@ const WEEKLY_INSTRUMENTS = [
   { name: 'GBPNZD', sym: 'GBP_NZD',    hmmKey: null        },
   { name: 'CHFJPY', sym: 'CHF_JPY',    hmmKey: null        },
   { name: 'NZDJPY', sym: 'NZD_JPY',    hmmKey: null        },
+  { name: 'NZDCAD', sym: 'NZD_CAD',    hmmKey: null        },
+  { name: 'BTCUSD', sym: 'BTC_USD',    hmmKey: null        },
 ];
 
 // Instruments that have HMM regime data (keyed by state.hmmRegimes format).
@@ -15135,6 +15144,12 @@ const BRIEF_HMM_KEYS = {
   USDCHF: 'USD/CHF',  GBPJPY: 'GBP/JPY',
   EURGBP: 'EUR/GBP',  EURJPY: 'EUR/JPY',  EURCHF: 'EUR/CHF',
   GBPCHF: 'GBP/CHF',  AUDJPY: 'AUD/JPY',  CADJPY: 'CAD/JPY',
+  // Crosses added 2026-08 — regimes already computed by the levels engine's HMM
+  // loop for its 26-pair universe; NZDCAD isn't in that universe (and BTC has no
+  // HMM), so those two fall back to session-bias-only in the brief.
+  EURAUD: 'EUR/AUD',  EURCAD: 'EUR/CAD',  EURNZD: 'EUR/NZD',
+  GBPAUD: 'GBP/AUD',  GBPCAD: 'GBP/CAD',  AUDCAD: 'AUD/CAD',
+  NZDJPY: 'NZD/JPY',  NZDCAD: null,       BTCUSD: null,
 };
 
 function _oandaBaseW() {
@@ -15683,23 +15698,28 @@ async function computeDailyBrief() {
   // Live prices from Oanda (optional)
   const prices = {};
   if (process.env.OANDA_KEY && process.env.OANDA_ACCOUNT_ID) {
-    try {
-      const syms = HR_INSTRUMENTS.map(i => i.sym).join(',');
-      const oBase = (process.env.OANDA_ENV || 'live') === 'practice'
-        ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const oBase = (process.env.OANDA_ENV || 'live') === 'practice'
+      ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+    const fetchPrices = async syms => {
       const r = await fetch(
-        `${oBase}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(syms)}`,
+        `${oBase}/v3/accounts/${process.env.OANDA_ACCOUNT_ID}/pricing?instruments=${encodeURIComponent(syms.join(','))}`,
         { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(10_000) }
       );
-      if (r.ok) {
-        const d = await r.json();
-        for (const p of (d.prices ?? [])) {
-          if (p.asks?.[0] && p.bids?.[0]) {
-            prices[p.instrument] = (parseFloat(p.asks[0].price) + parseFloat(p.bids[0].price)) / 2;
-          }
+      if (!r.ok) return;
+      const d = await r.json();
+      for (const p of (d.prices ?? [])) {
+        if (p.asks?.[0] && p.bids?.[0]) {
+          prices[p.instrument] = (parseFloat(p.asks[0].price) + parseFloat(p.bids[0].price)) / 2;
         }
       }
-    } catch {}
+    };
+    // oandaOptional instruments (BTC_USD on divisions without crypto) go in a
+    // SEPARATE request: one unknown instrument in the list 400s the whole batch,
+    // which would blank current_price for every card.
+    const core = HR_INSTRUMENTS.filter(i => !i.oandaOptional).map(i => i.sym);
+    const opt  = HR_INSTRUMENTS.filter(i =>  i.oandaOptional).map(i => i.sym);
+    try { await fetchPrices(core); } catch {}
+    if (opt.length) { try { await fetchPrices(opt); } catch {} }
   }
 
   // London-midnight session opens — the anchor the forecast %-moves are relative
