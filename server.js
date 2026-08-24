@@ -10958,20 +10958,33 @@ async function _getCvol() {
   const fromDate = new Date(Date.now() - 1825 * 86_400_000).toISOString().slice(0, 10); // 5y
   const results  = await Promise.allSettled(CVOL_SERIES.map(sid => fetchFredSeries(sid, fromDate, fredKey)));
 
-  const levels = {}, pct = {};
+  const levels = {}, pct = {}, asOf = {}, ageDays = {};
   results.forEach((r, i) => {
     const sid = CVOL_SERIES[i];
     if (r.status !== 'fulfilled' || r.value.size < 20) return;
     const values  = [...r.value.values()];
+    const dates   = [...r.value.keys()];
     const current = values[values.length - 1];
     const below   = values.filter(v => v < current).length;
     levels[sid] = Math.round(current * 100) / 100;
     pct[sid]    = Math.round((below / values.length) * 1000) / 10;
+    // This window is 5 YEARS, so a DISCONTINUED series still yields a
+    // "current" level — its final print — which the sidebar rendered as
+    // today's implied vol. EVZ (EUR/USD) had stopped publishing and was
+    // being quoted live. Surface the last observation date so consumers
+    // can say so instead of presenting a dead number as fresh.
+    const last = dates[dates.length - 1];
+    asOf[sid]    = last ?? null;
+    ageDays[sid] = last ? Math.round((Date.now() - Date.parse(last + 'T00:00:00Z')) / 86400000) : null;
   });
 
   if (Object.keys(levels).length === 0) throw new Error('all FRED series fetches failed');
 
-  const data = { levels, pct, coherence: (pct.EVZCLS ?? 0) >= 50 };
+  // Stale once it has not printed for two weeks — long enough to clear a
+  // holiday gap, short enough to catch a discontinuation.
+  const stale = {};
+  for (const sid of Object.keys(levels)) stale[sid] = (ageDays[sid] ?? 0) > 14;
+  const data = { levels, pct, asOf, ageDays, stale, coherence: (pct.EVZCLS ?? 0) >= 50 };
   CVOL_CACHE.data      = data;
   CVOL_CACHE.fetchedAt = Date.now();
   return data;
@@ -20541,10 +20554,15 @@ const _FP_H = 16;   // 16 × M15 = 4 hours
 // there instead of UTC midnight. FX trades ~continuously → 0 is fine.
 const _FP_DAY_ANCHOR = { nq: 22, spx500: 22, us30: 22, us2000: 22, de30: 22, uk100: 22, gold: 22 };
 
-// Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ, the
-// US indices→VIX (an imperfect equity-vol proxy; honest limit). No clean
-// implied series for FX crosses → they get none (conditioner stays inert).
-const _FP_IV_SERIES = { eurusd: 'EVZCLS', gold: 'GVZCLS', nq: 'VIXCLS', spx500: 'VIXCLS', us30: 'VIXCLS', us2000: 'VIXCLS' };
+// Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ,
+// NAS100→VXN (CBOE's NASDAQ-100 vol index — js/volForecastBench.js already
+// used it; this path was borrowing the S&P's VIX, so NAS/DOW/RUSSELL all
+// showed one identical line). SPX legitimately IS VIX. US30/US2000 keep VIX
+// as an acknowledged proxy — VXD/RVX exist but aren't validated here yet.
+// No clean implied series for FX crosses → they get none (conditioner stays inert).
+const _FP_IV_SERIES = { eurusd: 'EVZCLS', gold: 'GVZCLS', nq: 'VXNCLS', spx500: 'VIXCLS', us30: 'VIXCLS', us2000: 'VIXCLS' };
+// Shown next to the numbers so a proxy is never mistaken for the real thing.
+const _FP_IV_EXACT = { eurusd: true, gold: true, nq: true, spx500: true, us30: false, us2000: false };
 const _fpIvCache = new Map();   // series → { at, byDate }
 async function _fpIvByDate(name) {
   const sid = _FP_IV_SERIES[name];
@@ -20754,7 +20772,7 @@ app.get('/api/forecast-path/iv', async (req, res) => {
   try {
     const byDate = await _fpIvByDate(name);
     if (!byDate || Object.keys(byDate).length < 20) return res.json({ ok: false, supported: true, error: 'implied-vol series unavailable' });
-    res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, byDate });
+    res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, exact: _FP_IV_EXACT[name] !== false, byDate });
   } catch (e) { res.status(500).json({ ok: false, supported: true, error: e.message }); }
 });
 
