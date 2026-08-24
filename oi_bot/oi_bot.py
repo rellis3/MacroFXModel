@@ -87,6 +87,14 @@ DEFAULT_CFG = {
     # NEW entries on a plan older than this (fail-CLOSED, unlike the event gate
     # which suppresses and correctly fails open). Brackets always keep running.
     "plan_max_age_hours": 24,      # 0 = off
+    # OI-CHAIN age gate: the plan-age gate above only proves the PRODUCER ran, not
+    # that the OI it planned from is current. The producer re-plans every 10 min
+    # from oi_store, so a forgotten paste gives a minutes-old plan built on a
+    # week-old book — fresh by generatedAt, trading a dead chain. Gate on the paste
+    # time the plan now carries (per instrument: pairs are pasted separately, so a
+    # stale gold paste must not stop NQ trading). 30h matches today.html's
+    # OI_FRESH_H, so the page and the bot call the same chain stale.
+    "oi_max_age_hours": 30,        # 0 = off
     # Break dwell: a break zone must hold its trigger for N consecutive ticks —
     # a single wick through wall+breakPips on a 3s poll is not a decisive break.
     "break_hold_ticks": 2,         # 0 = fire on first touch (old behaviour)
@@ -315,6 +323,24 @@ def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
         return None
 
 
+def _oi_age_hours(spec: dict, now_epoch: float) -> float | None:
+    """Hours since the OI chain behind this instrument was pasted.
+
+    The plan-age gate above answers "when did the PLANNER last run", which is not
+    the same question. The producer re-plans every 10 minutes from whatever sits in
+    oi_store, so a chain pasted last week yields a plan stamped minutes ago — fresh
+    by generatedAt, trading a dead book. `oiSavedAtMs` is the paste time the producer
+    now ships per instrument (pairs are pasted individually, so this is per-pair).
+
+    None when the producer didn't stamp it (an older plan shape) — treated as fresh,
+    same convention as _plan_age_hours: a missing stamp must not halt trading.
+    """
+    ts = (spec or {}).get("oiSavedAtMs")
+    if not isinstance(ts, (int, float)) or ts <= 0:
+        return None
+    return max(0.0, (now_epoch - (ts / 1000.0)) / 3600.0)
+
+
 def _position_risk_pct(pair: str, lots: float, entry: float, sl: float, balance: float) -> float:
     """A position's risk-to-SL as % of balance (the sizing formula, inverted)."""
     if not balance or sl is None or entry is None:
@@ -345,6 +371,10 @@ def _instr_lines(plan, sessions):
             # price + how far past the entry (`past`) so the page can say WHY nothing
             # traded, and whether it was primed on the level or after price left it.
             "primed": [dict(zone_id=zid, **rec) for zid, rec in sorted(sess.primed.items())] if sess else [],
+            # The OI chain's own age, alongside the plan's. Two clocks, both shown: a
+            # blocked instrument should be legible on the page, not only in the log.
+            # None when the producer didn't stamp a paste time (older plan shape).
+            "oiAgeH": (lambda a: round(a, 1) if a is not None else None)(_oi_age_hours(slice_, time.time())),
         })
     return out
 
@@ -409,6 +439,7 @@ def run(base_url: str, force_live: bool) -> None:
     plan = None
     last_plan = last_status = 0.0
     plan_age_blocked = False                     # plan-age gate state (log transitions once)
+    oi_stale_blocked: dict[str, bool] = {}       # instrument → OI-chain-age gate state (log transitions once)
     # One-shot state that must survive a bot RESTART: without this, maxpain re-fires
     # immediately (it is exempt from priming by design) and a stopped-out zone re-arms
     # if price is still beyond its entry — an innocuous redeploy could double today's
@@ -662,6 +693,25 @@ def run(base_url: str, force_live: bool) -> None:
                 hist = px_hist.setdefault(instr, deque(maxlen=600))
                 hist.append((nowt, px))
                 if plan_age_blocked:
+                    continue
+                # OI-CHAIN age gate (fail-CLOSED, per instrument). The plan-age gate above
+                # only proves the producer ran; it re-plans every 10 min from oi_store, so a
+                # forgotten paste yields a fresh plan over a dead chain. Per-instrument
+                # because pairs are pasted separately — a stale gold paste must not stop NQ.
+                # A missing stamp (older plan shape) reads as fresh, matching _plan_age_hours.
+                oi_max_age = float(cfg.get("oi_max_age_hours", 30) or 0)
+                oi_age = _oi_age_hours(_plan_instruments(plan).get(instr) or {}, nowt)
+                oi_block = bool(oi_max_age > 0 and oi_age is not None and oi_age > oi_max_age)
+                if oi_block != oi_stale_blocked.get(instr, False):
+                    oi_stale_blocked[instr] = oi_block
+                    if oi_block:
+                        log.warning(f"OI-CHAIN GATE {instr}: the pasted chain is {oi_age:.1f}h old "
+                                    f"(> {oi_max_age}h) — NEW entries blocked until it is re-pasted. "
+                                    f"The plan itself is fresh; the OI under it is not. Brackets keep running.")
+                    else:
+                        log.info(f"OI-CHAIN GATE {instr}: chain re-pasted ({oi_age:.1f}h old) — entries resumed"
+                                 if oi_age is not None else f"OI-CHAIN GATE {instr}: entries resumed")
+                if oi_block:
                     continue
                 if not broker.tradable(instr):
                     continue

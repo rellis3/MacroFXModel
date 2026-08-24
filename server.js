@@ -13318,6 +13318,13 @@ async function _refreshOIBotZones() {
         droppedZones: droppedZones.length ? droppedZones : null,   // minRR/spacing drops — legible blanks
         conviction: _conv,                                         // |gex| vs the trailing median (null = no history)
         charmNote: _charm.note,                                    // why the charm boost did/didn't apply (never silent)
+        // THE THIRD CLOCK. plan.generatedAt says when the PLANNER last ran; it says nothing
+        // about how old the OI underneath it is. The producer re-plans every 10 min from
+        // whatever is in oi_store, so a week-old paste yields a plan that is minutes old and
+        // sails through the executor's plan-age gate. Ship the paste time per instrument
+        // (each pair is pasted separately, so staleness is per-pair, not per-plan) and let
+        // the bot gate on the CHAIN's age as well as the plan's.
+        oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null,
         refMove: inst.refMove?.move ?? null,                       // shipped for the executor's approach-velocity read
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
