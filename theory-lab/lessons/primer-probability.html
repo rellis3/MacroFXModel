@@ -516,6 +516,38 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Generalize to any fair die, and any number of draws averaged</h3>
+    <p>
+      A fair die with \(N\) sides (faces \(1,\ldots,N\)) has a clean closed
+      form: \(E[X]=(N+1)/2\) and \(Var(X)=(N^2-1)/12\). Starts at \(N=6\),
+      reproducing the worked example above exactly. The second input, \(n\),
+      is the number of independent draws averaged — the same \(n\) the chart
+      above slides through — and recomputes the variance of that average,
+      \(Var(X)/n\), live.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Sides \(N\)</span></div>
+        <input type="number" id="pp-scratch-N" class="tl-scratch-input" value="6" step="1" min="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Draws averaged \(n\)</span></div>
+        <input type="number" id="pp-scratch-n" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      E[X] = <b id="pp-scratch-mean">3.5000</b>&emsp;Var(X) = <b id="pp-scratch-var">2.9167</b>&emsp;&sigma; = <b id="pp-scratch-sd">1.7078</b>
+    </div>
+    <div class="tl-readout">
+      Var(average of n) = <b id="pp-scratch-avgvar">0.5833</b>&emsp;&sigma;(average) &asymp; <b id="pp-scratch-avgsd">0.7638</b>
+      <span id="pp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="pp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -743,6 +775,57 @@
     <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { N: 6, n: 5 };
+  var nInput = document.getElementById('pp-scratch-N');
+  var kInput = document.getElementById('pp-scratch-n');
+  var meanOut = document.getElementById('pp-scratch-mean');
+  var varOut = document.getElementById('pp-scratch-var');
+  var sdOut = document.getElementById('pp-scratch-sd');
+  var avgVarOut = document.getElementById('pp-scratch-avgvar');
+  var avgSdOut = document.getElementById('pp-scratch-avgsd');
+  var noteOut = document.getElementById('pp-scratch-note');
+  var resetBtn = document.getElementById('pp-scratch-reset');
+  if (!nInput) return;
+
+  function recompute(){
+    var N = parseFloat(nInput.value);
+    var n = parseFloat(kInput.value);
+
+    if (!isFinite(N) || N < 2 || Math.round(N) !== N) {
+      noteOut.textContent = '(enter a whole number of sides, N ≥ 2)';
+      return;
+    }
+    if (!isFinite(n) || n < 1 || Math.round(n) !== n) {
+      noteOut.textContent = '(enter a whole number of draws, n ≥ 1)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var mean = (N + 1) / 2;
+    var variance = (N * N - 1) / 12;
+    var sd = Math.sqrt(variance);
+    var avgVar = variance / n;
+    var avgSd = Math.sqrt(avgVar);
+
+    meanOut.textContent = mean.toFixed(4);
+    varOut.textContent = variance.toFixed(4);
+    sdOut.textContent = sd.toFixed(4);
+    avgVarOut.textContent = avgVar.toFixed(4);
+    avgSdOut.textContent = avgSd.toFixed(4);
+  }
+
+  nInput.addEventListener('input', recompute);
+  kInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    nInput.value = DEFAULTS.N;
+    kInput.value = DEFAULTS.n;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

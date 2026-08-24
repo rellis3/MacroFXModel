@@ -479,6 +479,47 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute r, &beta;, &alpha; and R&sup2;, live</h3>
+    <p>
+      \(x\) stays fixed at \([1,2,3,4,5]\), exactly as in the worked example.
+      Edit any \(y\) value and the correlation, OLS slope/intercept, and
+      R&sup2; all recalculate instantly from the same formulas derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>y at x=1</span></div>
+        <input type="number" id="pcr-scratch-y1" class="tl-scratch-input" value="2.1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>y at x=2</span></div>
+        <input type="number" id="pcr-scratch-y2" class="tl-scratch-input" value="3.9" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>y at x=3</span></div>
+        <input type="number" id="pcr-scratch-y3" class="tl-scratch-input" value="6.2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>y at x=4</span></div>
+        <input type="number" id="pcr-scratch-y4" class="tl-scratch-input" value="7.8" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>y at x=5</span></div>
+        <input type="number" id="pcr-scratch-y5" class="tl-scratch-input" value="10.1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      r = <b id="pcr-scratch-r">0.9986</b>&emsp;&beta; = <b id="pcr-scratch-beta">1.9900</b>&emsp;&alpha; = <b id="pcr-scratch-alpha">0.0500</b>
+    </div>
+    <div class="tl-readout">
+      &#375; = &alpha; + &beta;x&emsp;R&sup2; &asymp; <b id="pcr-scratch-r2">0.9973</b>
+      <span id="pcr-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="pcr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
 
@@ -802,6 +843,79 @@
 
   noiseSlider.addEventListener('input', updateReg);
   updateReg();
+})();
+</script>
+<script>
+(function(){
+  var X = [1, 2, 3, 4, 5];
+  var DEFAULTS = { y1: 2.1, y2: 3.9, y3: 6.2, y4: 7.8, y5: 10.1 };
+  var fields = ['y1', 'y2', 'y3', 'y4', 'y5'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('pcr-scratch-' + f); });
+  if (!inputs.y1) return;
+
+  var rOut = document.getElementById('pcr-scratch-r');
+  var betaOut = document.getElementById('pcr-scratch-beta');
+  var alphaOut = document.getElementById('pcr-scratch-alpha');
+  var r2Out = document.getElementById('pcr-scratch-r2');
+  var noteOut = document.getElementById('pcr-scratch-note');
+  var resetBtn = document.getElementById('pcr-scratch-reset');
+
+  function recompute(){
+    var y = fields.map(function(f){ return parseFloat(inputs[f].value); });
+    if (y.some(function(v){ return !isFinite(v); })) {
+      noteOut.textContent = '(enter a number for every y value)';
+      return;
+    }
+
+    var n = X.length;
+    var mx = X.reduce(function(a,b){ return a+b; }, 0) / n;
+    var my = y.reduce(function(a,b){ return a+b; }, 0) / n;
+
+    var cov = 0, varX = 0, varY = 0;
+    for (var i = 0; i < n; i++){
+      var dx = X[i] - mx, dy = y[i] - my;
+      cov += dx * dy;
+      varX += dx * dx;
+      varY += dy * dy;
+    }
+    cov /= n; varX /= n; varY /= n;
+    var sx = Math.sqrt(varX), sy = Math.sqrt(varY);
+
+    var beta = cov / varX; // varX is fixed at 2 for X=[1..5], never zero
+    var alpha = my - beta * mx;
+
+    betaOut.textContent = beta.toFixed(4);
+    alphaOut.textContent = alpha.toFixed(4);
+
+    if (sy === 0) {
+      rOut.textContent = '—';
+      r2Out.textContent = '—';
+      noteOut.textContent = '(all y values are identical — no variation to correlate; r and R² are undefined)';
+      return;
+    }
+
+    var r = cov / (sx * sy);
+    var ssr = 0;
+    for (var j = 0; j < n; j++){
+      var yhat = alpha + beta * X[j];
+      var e = y[j] - yhat;
+      ssr += e * e;
+    }
+    var sst = n * varY;
+    var r2 = 1 - ssr / sst;
+
+    rOut.textContent = r.toFixed(4);
+    r2Out.textContent = r2.toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

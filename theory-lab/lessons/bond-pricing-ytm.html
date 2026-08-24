@@ -418,6 +418,44 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Reprice the bond, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(F=\$1{,}000\),
+      4% coupon, \(n=5\) years, \(y=5\%\). Edit any field and every
+      discounted cash flow, plus the final price, recalculates instantly
+      from the pricing formula above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Face value \(F\)</span></div>
+        <input type="number" id="bp-scratch-F" class="tl-scratch-input" value="1000" step="100" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Coupon rate (%)</span></div>
+        <input type="number" id="bp-scratch-c" class="tl-scratch-input" value="4" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Years to maturity \(n\)</span></div>
+        <input type="number" id="bp-scratch-n" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Yield \(y\) (%)</span></div>
+        <input type="number" id="bp-scratch-y" class="tl-scratch-input" value="5" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Annual coupon <i>C</i> = $<b id="bp-scratch-C">40.00</b>&emsp;Final cash flow = $<b id="bp-scratch-final">1040.00</b>
+    </div>
+    <div class="tl-readout">
+      Price <i>P</i> &asymp; $<b id="bp-scratch-price">956.71</b>
+      <span id="bp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="bp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -677,6 +715,69 @@
   buildCurve();
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  function bondPrice(F, C, n, y){
+    var p = 0;
+    for (var t = 1; t <= n; t++){
+      var cf = C + (t === n ? F : 0);
+      p += cf / Math.pow(1 + y, t);
+    }
+    return p;
+  }
+
+  var fInput = document.getElementById('bp-scratch-F');
+  var cInput = document.getElementById('bp-scratch-c');
+  var nInput = document.getElementById('bp-scratch-n');
+  var yInput = document.getElementById('bp-scratch-y');
+  var cOut = document.getElementById('bp-scratch-C');
+  var finalOut = document.getElementById('bp-scratch-final');
+  var priceOut = document.getElementById('bp-scratch-price');
+  var note = document.getElementById('bp-scratch-note');
+  var resetBtn = document.getElementById('bp-scratch-reset');
+  if (!fInput) return;
+
+  var DEFAULTS = { F: 1000, c: 4, n: 5, y: 5 };
+
+  function recompute(){
+    var F = parseFloat(fInput.value);
+    var cPct = parseFloat(cInput.value);
+    var n = Math.round(parseFloat(nInput.value));
+    var yPct = parseFloat(yInput.value);
+
+    if (!isFinite(F) || F < 0 || !isFinite(cPct) || !isFinite(n) || n < 1 || !isFinite(yPct)) {
+      note.textContent = '(enter a non-negative face value, a whole number of years ≥ 1, and numeric rates)';
+      return;
+    }
+    var y = yPct / 100;
+    if (1 + y <= 0) {
+      note.textContent = '(yield below −100% makes discounting undefined)';
+      return;
+    }
+    note.textContent = '';
+
+    var C = (cPct / 100) * F;
+    var price = bondPrice(F, C, n, y);
+
+    cOut.textContent = C.toFixed(2);
+    finalOut.textContent = (C + F).toFixed(2);
+    priceOut.textContent = price.toFixed(2);
+  }
+
+  [fInput, cInput, nInput, yInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    fInput.value = DEFAULTS.F;
+    cInput.value = DEFAULTS.c;
+    nInput.value = DEFAULTS.n;
+    yInput.value = DEFAULTS.y;
+    recompute();
+  });
+
+  recompute();
 })();
 </script>
 <script>

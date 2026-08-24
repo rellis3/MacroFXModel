@@ -462,6 +462,51 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The exact two-asset tangency weights, live</h3>
+    <p>
+      A clean 2-asset instance of the same mean-variance optimizer described
+      above: given two risky assets' expected returns, vols and their
+      correlation (and a fixed 2% risk-free rate, matching this repo's other
+      worked examples), the maximum-Sharpe (tangency) portfolio weight has a
+      closed form. Starts on the worked example's numbers. Nudge the risky
+      pair's expected return from 4% up toward 4.5% — the same half-point
+      change the box above describes — and watch the weight swing live.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Safe pair &mu;&#8321; (%)</span></div>
+        <input type="number" id="mbl-scratch-mu1" class="tl-scratch-input" value="3" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risky pair &mu;&#8322; (%)</span></div>
+        <input type="number" id="mbl-scratch-mu2" class="tl-scratch-input" value="4" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Safe pair vol &sigma;&#8321; (%)</span></div>
+        <input type="number" id="mbl-scratch-s1" class="tl-scratch-input" value="8" step="1" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risky pair vol &sigma;&#8322; (%)</span></div>
+        <input type="number" id="mbl-scratch-s2" class="tl-scratch-input" value="15" step="1" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation &rho;</span></div>
+        <input type="number" id="mbl-scratch-rho" class="tl-scratch-input" value="0.3" step="0.05" min="-1" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Excess returns (over 2% risk-free): e&#8321; = <b id="mbl-scratch-e1">1.00%</b>&emsp;e&#8322; = <b id="mbl-scratch-e2">2.00%</b>
+    </div>
+    <div class="tl-readout">
+      Tangency weights — safe: <b id="mbl-scratch-w1">62.45%</b>&emsp;risky: <b id="mbl-scratch-w2">37.55%</b>
+      <span id="mbl-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mbl-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The efficient frontier — raw Markowitz vs. Black-Litterman-blended</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart showing expected return on the vertical axis and risk (standard deviation) on the horizontal axis, with a blue curved efficient frontier bowing out to reach extreme high-return, high-risk corner points, a highlighted minimum-variance portfolio marker at its leftmost tip, and a more moderate green curve representing the Black-Litterman-blended frontier that stays tucked in closer to the origin">
@@ -871,6 +916,74 @@
     <a href="alpha-beta-separation.html">Alpha vs. Beta Separation →</a>
   </div>
 </div>
+<script>
+(function(){
+  var RF = 0.02;
+  var mu1I = document.getElementById('mbl-scratch-mu1');
+  var mu2I = document.getElementById('mbl-scratch-mu2');
+  var s1I = document.getElementById('mbl-scratch-s1');
+  var s2I = document.getElementById('mbl-scratch-s2');
+  var rhoI = document.getElementById('mbl-scratch-rho');
+  var e1Out = document.getElementById('mbl-scratch-e1');
+  var e2Out = document.getElementById('mbl-scratch-e2');
+  var w1Out = document.getElementById('mbl-scratch-w1');
+  var w2Out = document.getElementById('mbl-scratch-w2');
+  var note = document.getElementById('mbl-scratch-note');
+  var resetBtn = document.getElementById('mbl-scratch-reset');
+  if (!mu1I) return;
+
+  var DEFAULTS = { mu1: 3, mu2: 4, s1: 8, s2: 15, rho: 0.3 };
+
+  function recompute(){
+    var mu1 = parseFloat(mu1I.value) / 100;
+    var mu2 = parseFloat(mu2I.value) / 100;
+    var s1 = parseFloat(s1I.value) / 100;
+    var s2 = parseFloat(s2I.value) / 100;
+    var rho = parseFloat(rhoI.value);
+
+    if (!isFinite(mu1) || !isFinite(mu2) || !isFinite(s1) || !isFinite(s2) || !isFinite(rho) || s1 <= 0 || s2 <= 0) {
+      note.textContent = '(volatilities must be positive)';
+      return;
+    }
+    if (rho < -1 || rho > 1) {
+      note.textContent = '(correlation ρ must be between -1 and 1)';
+      return;
+    }
+
+    var e1 = mu1 - RF, e2 = mu2 - RF;
+    e1Out.textContent = (e1*100).toFixed(2) + '%';
+    e2Out.textContent = (e2*100).toFixed(2) + '%';
+
+    var num = e1*s2*s2 - e2*rho*s1*s2;
+    var den = e1*s2*s2 + e2*s1*s1 - (e1+e2)*rho*s1*s2;
+
+    if (Math.abs(den) < 1e-12) {
+      w1Out.textContent = '—';
+      w2Out.textContent = '—';
+      note.textContent = '(degenerate inputs — the tangency formula\'s denominator is zero)';
+      return;
+    }
+
+    var w1 = num/den;
+    var w2 = 1 - w1;
+    w1Out.textContent = (w1*100).toFixed(2) + '%';
+    w2Out.textContent = (w2*100).toFixed(2) + '%';
+
+    note.textContent = (w1 < 0 || w1 > 1) ? '(outside [0,1] — the tangency portfolio short-sells one leg)' : '';
+  }
+
+  [mu1I, mu2I, s1I, s2I, rhoI].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    mu1I.value = DEFAULTS.mu1;
+    mu2I.value = DEFAULTS.mu2;
+    s1I.value = DEFAULTS.s1;
+    s2I.value = DEFAULTS.s2;
+    rhoI.value = DEFAULTS.rho;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

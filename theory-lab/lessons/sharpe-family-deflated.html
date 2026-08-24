@@ -442,6 +442,49 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute Sharpe, Sortino and Calmar — live</h3>
+    <p>
+      Starts on the worked example's exact numbers (mean 4bp/day, std 60bp/day,
+      downside deviation 45bp/day, 9.5% CAGR, 12% max drawdown, 252 trading
+      days/year). Edit any field and all three annualized ratios recalculate
+      instantly, so you can feel how each one reacts differently to the same
+      underlying change.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Mean daily return (bp)</span></div>
+        <input type="number" id="sharpe-scratch-mean" class="tl-scratch-input" value="4" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Daily std &sigma; (bp)</span></div>
+        <input type="number" id="sharpe-scratch-std" class="tl-scratch-input" value="60" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Downside deviation (bp)</span></div>
+        <input type="number" id="sharpe-scratch-dd" class="tl-scratch-input" value="45" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>CAGR (%)</span></div>
+        <input type="number" id="sharpe-scratch-cagr" class="tl-scratch-input" value="9.5" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Max drawdown (%)</span></div>
+        <input type="number" id="sharpe-scratch-maxdd" class="tl-scratch-input" value="12" step="0.5" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Daily SR = <b id="sharpe-scratch-sr">0.0667</b>&emsp;Daily Sortino ratio = <b id="sharpe-scratch-sortinodaily">0.0889</b>
+    </div>
+    <div class="tl-readout">
+      Sharpe<sub>annual</sub> = <b id="sharpe-scratch-sharpe">1.06</b>&emsp;Sortino<sub>annual</sub> = <b id="sharpe-scratch-sortino">1.41</b>&emsp;Calmar = <b id="sharpe-scratch-calmar">0.79</b>
+      <span id="sharpe-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="sharpe-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Raw reported Sharpe vs. the chance-expected ceiling for a 50-variation search</div>
     <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart with two bars on the same Sharpe-ratio axis. The left bar, labeled raw reported Sharpe from the best of 50 trials, reaches 1.80 and is tall. The right bar, labeled expected best-of-fifty Sharpe under zero true skill, reaches 1.50 and is visibly shorter. A bracket between the two bar tops is annotated: gap explained by the number of variations tried, N equals 50.">
@@ -774,6 +817,79 @@
     <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation →</a>
   </div>
 </div>
+<script>
+(function(){
+  var meanI = document.getElementById('sharpe-scratch-mean');
+  var stdI = document.getElementById('sharpe-scratch-std');
+  var ddI = document.getElementById('sharpe-scratch-dd');
+  var cagrI = document.getElementById('sharpe-scratch-cagr');
+  var maxddI = document.getElementById('sharpe-scratch-maxdd');
+  var srOut = document.getElementById('sharpe-scratch-sr');
+  var sortinoDailyOut = document.getElementById('sharpe-scratch-sortinodaily');
+  var sharpeOut = document.getElementById('sharpe-scratch-sharpe');
+  var sortinoOut = document.getElementById('sharpe-scratch-sortino');
+  var calmarOut = document.getElementById('sharpe-scratch-calmar');
+  var note = document.getElementById('sharpe-scratch-note');
+  var resetBtn = document.getElementById('sharpe-scratch-reset');
+  if (!meanI) return;
+
+  var DEFAULTS = { mean: 4, std: 60, dd: 45, cagr: 9.5, maxdd: 12 };
+  var K = 252;
+
+  function recompute(){
+    var mean = parseFloat(meanI.value);
+    var std = parseFloat(stdI.value);
+    var dd = parseFloat(ddI.value);
+    var cagr = parseFloat(cagrI.value);
+    var maxdd = parseFloat(maxddI.value);
+
+    if (!isFinite(mean) || !isFinite(std) || !isFinite(dd) || !isFinite(cagr) || !isFinite(maxdd)) {
+      note.textContent = '(enter numeric values in every field)';
+      return;
+    }
+
+    var msgs = [];
+    if (std <= 0) msgs.push('σ must be > 0');
+    if (dd <= 0) msgs.push('downside deviation must be > 0');
+    if (maxdd <= 0) msgs.push('max drawdown must be > 0');
+
+    if (std > 0) {
+      var sr = mean / std;
+      srOut.textContent = sr.toFixed(4);
+      sharpeOut.textContent = (sr * Math.sqrt(K)).toFixed(2);
+    } else {
+      srOut.textContent = '—';
+      sharpeOut.textContent = '—';
+    }
+    if (dd > 0) {
+      var sortinoD = mean / dd;
+      sortinoDailyOut.textContent = sortinoD.toFixed(4);
+      sortinoOut.textContent = (sortinoD * Math.sqrt(K)).toFixed(2);
+    } else {
+      sortinoDailyOut.textContent = '—';
+      sortinoOut.textContent = '—';
+    }
+    if (maxdd > 0) {
+      calmarOut.textContent = (cagr / maxdd).toFixed(2);
+    } else {
+      calmarOut.textContent = '—';
+    }
+
+    note.textContent = msgs.length ? '(' + msgs.join('; ') + ')' : '';
+  }
+
+  [meanI, stdI, ddI, cagrI, maxddI].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    meanI.value = DEFAULTS.mean;
+    stdI.value = DEFAULTS.std;
+    ddI.value = DEFAULTS.dd;
+    cagrI.value = DEFAULTS.cagr;
+    maxddI.value = DEFAULTS.maxdd;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
