@@ -263,6 +263,15 @@ h2:first-of-type{margin-top:0}
 .tl-readout b{color:var(--text);font-weight:600}
 .tl-hint{font-size:10.5px;color:var(--text3);font-style:italic;margin-top:2px}
 
+/* "Try it yourself" live-recalculating worked-example scratchpads
+   (number inputs + a JS recompute, no external libs). */
+.tl-scratch-input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:6px 8px;box-sizing:border-box}
+.tl-scratch-input:focus{outline:none;border-color:var(--blue2)}
+.tl-scratch-readout{margin-top:14px}
+.tl-scratch-note{color:var(--text3);font-size:11px;margin-left:8px}
+.tl-scratch-reset-btn{margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 12px;cursor:pointer}
+.tl-scratch-reset-btn:hover{border-color:var(--blue2);color:var(--text)}
+
 /* Notation Glossary page */
 .tl-gloss-search{width:100%;background:var(--s1);border:1.5px solid var(--border);border-radius:var(--rl);padding:13px 18px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;margin:8px 0 8px}
 .tl-gloss-search:focus{outline:none;border-color:var(--blue)}
