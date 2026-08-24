@@ -450,6 +450,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>From a fitted &phi; to &theta; to half-life, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(\phi=0.90\),
+      \(\Delta t=1\) day. Edit either field and both \(\theta\) and the
+      half-life recalculate instantly from \(\theta=-\ln(\phi)/\Delta t\) and
+      \(t_{1/2}=\ln(2)/\theta\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>AR(1) coefficient \(\phi\)</span></div>
+        <input type="number" id="ou-scratch-phi" class="tl-scratch-input" value="0.90" step="0.01" min="0" max="1.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Sampling interval \(\Delta t\) (days)</span></div>
+        <input type="number" id="ou-scratch-dt" class="tl-scratch-input" value="1" step="0.25" min="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &theta; = <b id="ou-scratch-theta">0.1054</b>/day
+      <span id="ou-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout">
+      t<sub>1/2</sub> = ln(2)/&theta; &asymp; <b id="ou-scratch-halflife">6.58</b> days
+    </div>
+    <button type="button" id="ou-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -659,6 +689,51 @@
     <a href="hurst-variance-ratio.html">Hurst Exponent &amp; Variance Ratio Test →</a>
   </div>
 </div>
+<script>
+(function(){
+  var phiInput = document.getElementById('ou-scratch-phi');
+  var dtInput = document.getElementById('ou-scratch-dt');
+  var thetaOut = document.getElementById('ou-scratch-theta');
+  var halflifeOut = document.getElementById('ou-scratch-halflife');
+  var note = document.getElementById('ou-scratch-note');
+  var resetBtn = document.getElementById('ou-scratch-reset');
+  if (!phiInput) return;
+
+  var DEFAULTS = { phi: 0.90, dt: 1 };
+
+  function recompute(){
+    var phi = parseFloat(phiInput.value);
+    var dt = parseFloat(dtInput.value);
+
+    if (!isFinite(phi) || !isFinite(dt) || dt <= 0) {
+      note.textContent = '(enter a positive Δt)';
+      thetaOut.textContent = '—';
+      halflifeOut.textContent = '—';
+      return;
+    }
+    if (phi <= 0 || phi >= 1) {
+      note.textContent = '(φ must be strictly between 0 and 1 for the OU model to apply — φ≥1 means no mean reversion, the half-life formula breaks down)';
+      thetaOut.textContent = '—';
+      halflifeOut.textContent = '—';
+      return;
+    }
+    note.textContent = '';
+    var theta = -Math.log(phi) / dt;
+    var halflife = Math.log(2) / theta;
+    thetaOut.textContent = theta.toFixed(4);
+    halflifeOut.textContent = halflife.toFixed(2);
+  }
+
+  phiInput.addEventListener('input', recompute);
+  dtInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    phiInput.value = DEFAULTS.phi;
+    dtInput.value = DEFAULTS.dt;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
