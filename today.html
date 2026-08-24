@@ -406,6 +406,13 @@
   .dr-top h2{font-size:18px;font-weight:700}
   .dr-close{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
             border-radius:6px;padding:4px 12px;font-size:13px}
+  /* The Read tab's "At a glance" block reuses the card's own renderers, so it
+     inherits .pc-bias / .pc-foot styling that was scoped to .pcard. Re-scope
+     those two rules here rather than duplicating the card CSS. */
+  .dr-summary .pc-bias{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;margin-bottom:10px}
+  .dr-summary .pc-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;
+                       padding-top:9px;border-top:1px solid var(--border);font-size:11px;color:var(--text2)}
+
   /* Direction tag — the at-a-glance "up or down?" mark. Slightly heavier than a
      normal chip because it leads the bias line; `dir-strong` (both descriptive
      drivers agreeing, nothing dissenting, range not spent) gets a solid edge so
@@ -752,6 +759,12 @@
     <button class="dr-tab" role="tab" id="drTab-systems" aria-controls="drPane-systems" aria-selected="false" onclick="setDrTab('systems')">Systems<span class="dr-tab-n" id="drTabN-systems"></span></button>
   </div>
   <div class="dr-pane" id="drPane-read" role="tabpanel" aria-labelledby="drTab-read" hidden>
+    <div class="dr-sec dr-summary" id="drSummarySec" data-seckey="summary">
+      <h3 class="help" title="The same summary the card shows in the grid — direction tag, every chip, the range map and the ladder. Repeated here because opening this drawer covers the card it came from.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>At a glance</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drSummary"></div></div>
+    </div>
   <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -3484,6 +3497,36 @@ function analogShapeHtml(name) {
   </div>`;
 }
 
+// The card face, split into two reusable pieces. The drawer's Read tab shows the
+// same summary at the top: once the overlay opens, the card behind it is hidden,
+// and with it every chip, the range map and the ladder — the exact context you
+// want while reading the detail. Shared rather than copied, so the two can't drift.
+function pairChipsHtml(r) {
+  const d = r.d;
+  return `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+}
+
+function pairStripsHtml(r) {
+  const d = r.d;
+  const volPct = d.vol_pct;
+  const volCls = volPct >= 80 ? 'warn' : volPct <= 20 ? 'dim' : 'neu';
+  const rangePts = d.levels?.hl_med?.range_pts;
+  const coneGap = (d.cone_5d != null && volPct != null) ? d.cone_5d - volPct : null;
+  const coneChip = coneGap == null ? ''
+    : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th in its 5-day window vs ${volPct}th over the last year. Moves may get bigger from here; size and stops should respect that.">σ↑ building</span>`
+    : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. A compression stretch; ranges may run smaller than the year suggests.">σ↓ cooling</span>`
+    : '';
+  return `${analogShapeHtml(r.name)}
+    ${rangeMapHtml(r)}
+    ${ladderHtml(r)}
+    ${exhStripHtml(r)}
+    <div class="pc-foot"><span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>${coneChip}
+      ${rangePts != null ? `<span class="vol help" title="On an average day this market travels about ${rangePts} ${d.ac === 'fx' ? 'pips' : 'points'} from its high to its low. Use it to size stops and targets.">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
+      ${d.news_flag ? `<span class="chip warn" title="A major scheduled news event today (${d.news_flag}). Big news moves markets fast — expected ranges are scaled up ×${d.news_mult}. Consider waiting until it's out.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : ''}
+      ${(() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 22 ? e.event.slice(0, 20) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.${hi ? ' High impact — the range can blow past the forecast; many wait until it clears.' : ''}">⏰ ${nm} ${evtTime(e)}</span>`; })()}
+    </div>`;
+}
+
 function cardHtml(r) {
   const d = r.d;
   const volPct = d.vol_pct;
@@ -3511,17 +3554,8 @@ function cardHtml(r) {
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
-    <div class="pc-bias">${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${r.isProx ? `<span class="chip warn" title="Live price is right at one of the key levels now — this is a decision moment. Click the card to score it.">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn" title="${r.ct.derived ? `Both legs of this cross are stretched the same way in CFTC positioning (base Z ${r.ct.baseRead?.z ?? '—'}, quote Z ${r.ct.quoteRead?.z ?? '—'}) — a reinforcing double-extreme, derived from each currency's own contract since this cross has no direct CFTC future.` : `The crowd (big speculators, from weekly CFTC data) is very heavily positioned ${r.ct.dir} — about ${r.ct.pct.toFixed(0)}% of the market.`} Crowded one-way bets can snap back hard (a 'squeeze'), so it's a warning against joining late.">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}" title="${r.oi.regime === 'PIN' ? "From options positioning: price is likely to stay STUCK near here today and drift back to the middle — favours fading the edges, not chasing." : "From options positioning: a move could ACCELERATE today — higher chance of a sharp break, so breakouts are more likely to run."}">◎ ${r.oi.regime}</span>` : ''}${compositeChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}</div>
-    ${analogShapeHtml(r.name)}
-    ${rangeMapHtml(r)}
-    ${ladderHtml(r)}
-    ${exhStripHtml(r)}
-    <div class="pc-foot">
-      <span class="chip ${volCls}" title="How big this market's swings tend to be. 'P${volPct ?? '?'}' compares today to its own history: ${volPct != null ? (volPct >= 80 ? `calmer than only ${volPct}% of days — unusually jumpy right now, use wider stops` : volPct <= 20 ? `calmer than ${100 - volPct}% of days — an unusually quiet stretch` : `middle of its normal range`) : 'unknown'}.">σ ${fmtN(d.vol_annual, 1)}% · vol ${volPct != null ? 'P' + volPct : '–'}</span>${coneChip}
-      ${rangePts != null ? `<span class="vol help" title="On an average day this market travels about ${rangePts} ${d.ac === 'fx' ? 'pips' : 'points'} from its high to its low. Use it to size stops and targets.">expected day range <b>${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}</b> (med)</span>` : ''}
-      ${d.news_flag ? `<span class="chip warn" title="A major scheduled news event today (${d.news_flag}). Big news moves markets fast — expected ranges are scaled up ×${d.news_mult}. Consider waiting until it's out.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : ''}
-      ${(() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 22 ? e.event.slice(0, 20) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.${hi ? ' High impact — the range can blow past the forecast; many wait until it clears.' : ''}">⏰ ${nm} ${evtTime(e)}</span>`; })()}
-    </div>
+    <div class="pc-bias">${pairChipsHtml(r)}</div>
+    ${pairStripsHtml(r)}
   </div>`;
 }
 
@@ -3890,6 +3924,9 @@ async function openDrawer(name) {
   $('ovl').classList.add('open');
   $('drawer').classList.add('open');
   applyDrSecStates();
+  // Same summary the card shows — the card is behind the overlay now.
+  try { $('drSummary').innerHTML = pairChipsHtml(r) + pairStripsHtml(r); }
+  catch (e) { $('drSummarySec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
   // can only be judged once those have had a chance to settle.
