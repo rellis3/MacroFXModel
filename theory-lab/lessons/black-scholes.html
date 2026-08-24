@@ -6,6 +6,14 @@
 <title>Black-Scholes-Merton Option Pricing — Theory Lab — MacroFX</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/theory.css">
+<style>
+  .tl-scratch-input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:6px 8px;box-sizing:border-box}
+  .tl-scratch-input:focus{outline:none;border-color:var(--blue2)}
+  .tl-scratch-readout{margin-top:14px}
+  .tl-scratch-note{color:var(--text3);font-size:11px;margin-left:8px}
+  .tl-scratch-reset-btn{margin-top:10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;padding:6px 12px;cursor:pointer}
+  .tl-scratch-reset-btn:hover{border-color:var(--blue2);color:var(--text)}
+</style>
 <script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
@@ -479,6 +487,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same calculation, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and every
+      downstream quantity — \(d_1\), \(d_2\), both \(N(\cdot)\) values, and
+      the final price — recalculates instantly, so you can feel which inputs
+      the price is most sensitive to without re-deriving anything by hand.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S_0\)</span></div>
+        <input type="number" id="bs-scratch-S" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span></div>
+        <input type="number" id="bs-scratch-K" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="bs-scratch-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\) (%)</span></div>
+        <input type="number" id="bs-scratch-sigma" class="tl-scratch-input" value="20" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time \(T\) (yrs)</span></div>
+        <input type="number" id="bs-scratch-T" class="tl-scratch-input" value="1" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      d&#8321; = <b id="bs-scratch-d1">0.20</b>&emsp;d&#8322; = <b id="bs-scratch-d2">0.00</b>&emsp;N(d&#8321;) = <b id="bs-scratch-nd1">0.5793</b>&emsp;N(d&#8322;) = <b id="bs-scratch-nd2">0.5000</b>
+    </div>
+    <div class="tl-readout">
+      C = S&#8320;N(d&#8321;) &minus; Ke<sup>&minus;rT</sup>N(d&#8322;) &asymp; $<b id="bs-scratch-price">8.92</b>
+      <span id="bs-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="bs-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Payoff at expiry vs. value today</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Call option payoff diagram. The payoff-at-expiry line is flat at zero below the strike K and rises 1:1 above it, forming a hockey-stick shape. A smooth current-value curve sits above the hockey stick everywhere, closest to it far out of the money and far in the money, and furthest above it right around the strike.">
@@ -825,6 +875,79 @@
   sigmaSlider.addEventListener('input', updateChart);
   tSlider.addEventListener('input', updateChart);
   updateChart();
+})();
+</script>
+<script>
+(function(){
+  // Self-contained on purpose (own erf/normCDF, not sharing the chart
+  // script's copy above) so this block stays copy-pasteable to another
+  // lesson's worked example without also having to bring the chart along.
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+
+  var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, T: 1 };
+  var fields = ['S', 'K', 'r', 'sigma', 'T'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('bs-scratch-' + f); });
+
+  var d1Out = document.getElementById('bs-scratch-d1');
+  var d2Out = document.getElementById('bs-scratch-d2');
+  var nd1Out = document.getElementById('bs-scratch-nd1');
+  var nd2Out = document.getElementById('bs-scratch-nd2');
+  var priceOut = document.getElementById('bs-scratch-price');
+  var noteOut = document.getElementById('bs-scratch-note');
+  var resetBtn = document.getElementById('bs-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var K = parseFloat(inputs.K.value);
+    var r = parseFloat(inputs.r.value) / 100;
+    var sigma = parseFloat(inputs.sigma.value) / 100;
+    var T = parseFloat(inputs.T.value);
+
+    if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(T) || S<=0 || K<=0 || sigma<0 || T<0) {
+      noteOut.textContent = '(enter positive numbers for S₀, K and a non-negative T, σ)';
+      return;
+    }
+
+    var price, d1, d2, Nd1, Nd2, note = '';
+    if (T === 0) {
+      price = Math.max(S - K, 0);
+      d1 = d2 = Nd1 = Nd2 = NaN;
+      note = '(T=0: price is just the intrinsic value, S₀−K floored at zero — d₁/d₂ are undefined at expiry)';
+    } else if (sigma === 0) {
+      price = Math.max(S - K*Math.exp(-r*T), 0);
+      d1 = d2 = Nd1 = Nd2 = NaN;
+      note = '(σ=0: no uncertainty left to price — this collapses to the discounted intrinsic value)';
+    } else {
+      d1 = (Math.log(S/K) + (r + sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+      d2 = d1 - sigma*Math.sqrt(T);
+      Nd1 = normCDF(d1);
+      Nd2 = normCDF(d2);
+      price = S*Nd1 - K*Math.exp(-r*T)*Nd2;
+    }
+
+    d1Out.textContent = isNaN(d1) ? '—' : d1.toFixed(4);
+    d2Out.textContent = isNaN(d2) ? '—' : d2.toFixed(4);
+    nd1Out.textContent = isNaN(Nd1) ? '—' : Nd1.toFixed(4);
+    nd2Out.textContent = isNaN(Nd2) ? '—' : Nd2.toFixed(4);
+    priceOut.textContent = price.toFixed(2);
+    noteOut.textContent = note;
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>
