@@ -1,4 +1,5 @@
 import { S } from './state.js';
+import { pipSize as regPipSize, priceDigits as regPriceDigits } from './instrumentRegistry.js';
 
 // ── KV cache helpers ─────────────────────────────────────────────────────────
 
@@ -159,22 +160,32 @@ export function filterTradingDays(bars) {
 
 const _EQUITY_SYMS = new Set(['NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD']);
 
+// Pip size / price digits come from the ONE canonical table (js/instrumentRegistry.js,
+// verified in sync with pylego/instruments.json by js/reconcile.test.mjs). These used
+// to be private branches here that reported GOLD's pip as 0.1 while every other table
+// in the tree said 1.0 — a 10× drift the registry's own header had flagged as known
+// and unfixed. See js/goldPipMigration.js for why the paired constants moved too.
+//
+// Unknown symbols: the registry throws rather than defaulting a pip (a wrong pip
+// silently scales PnL), so fall back to the old FX default only for symbols it
+// genuinely does not carry, and say so loudly.
 export function getPipSize(symbol) {
-  if (symbol.includes('JPY')) return 0.01;
-  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 0.1;
-  if (_EQUITY_SYMS.has(symbol)) return 1.0;
-  return 0.0001;
+  try { return regPipSize(symbol); }
+  catch { console.warn(`[utils] no registry entry for "${symbol}" — defaulting pip 0.0001`); return 0.0001; }
 }
 
 export function getDigits(symbol) {
-  if (symbol.includes('JPY')) return 3;
-  if (symbol.includes('XAU') || symbol.includes('GOLD')) return 2;
-  if (_EQUITY_SYMS.has(symbol)) return 1;
-  return 5;
+  try { return regPriceDigits(symbol); }
+  catch { console.warn(`[utils] no registry entry for "${symbol}" — defaulting 5 digits`); return 5; }
 }
 
+// Thresholds are in PIPS, so they only mean anything alongside getPipSize above.
+// Gold's default moved 200 → 20 when its pip was corrected 0.1 → 1.0, preserving
+// the $20 clustering distance exactly (200 × 0.1 === 20 × 1.0). A stored caps
+// value written under the old basis is rescaled once by js/goldPipMigration.js.
+// Every other bucket's pip was already canonical, so their numbers are unchanged.
 export function getConfluenceThreshold(symbol) {
-  if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.confluencePips ?? 200;
+  if (symbol.includes('XAU') || symbol.includes('GOLD')) return S._caps?.gold?.confluencePips ?? 20;
   if (symbol === 'NAS100_USD') return S._caps?.nas100?.confluencePips ?? 100;
   if (symbol === 'SPX500_USD') return S._caps?.spx500?.confluencePips ?? 25;
   if (symbol === 'DE30_USD')   return S._caps?.de30?.confluencePips   ?? 80;

@@ -20,6 +20,7 @@ import { computeFXDailyTone, computeRiskBarometer, resetRiskBarometerCache, TONE
 import { computeArimaContext } from './arima-price.js';
 import { collectDecisionInputs } from '../DecisionEngine/decisionInputs.js';
 import { runDecisionEngine } from '../DecisionEngine/decisionEngine.js';
+import { migrateAlertConfig } from './goldPipMigration.js';
 
 const STORAGE_KEY    = 'tg_alert_cfg';
 const COOLDOWN_KEY   = 'tg_alert_cooldowns';
@@ -101,7 +102,7 @@ const DEFAULT_CFG = {
   proxPips:    {            // pips from level to trigger alert
     default:  5,
     'NAS100_USD': 30,
-    'XAU/USD':    8,
+    'XAU/USD':    0.8,   // 0.8 x $1 pip = $0.80 — same trigger as the old 8 x 0.1
   },
   cooldownMin: 60,         // minutes before re-alerting the same level
   onlyAligned: false,      // if true, only alert when signal aligned with entry direction
@@ -121,7 +122,16 @@ const DEFAULT_CFG = {
 export function loadAlertCfg() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_CFG, ...JSON.parse(raw) };
+    if (raw) {
+      // A config saved before gold's pip was corrected (0.1 → 1.0) carries a
+      // proxPips value 10× too large under the new basis. Rescale it once and
+      // write the stamped version straight back, so the KV copy the server
+      // reads is migrated too rather than drifting from this device's copy.
+      const stored = JSON.parse(raw);
+      const migrated = migrateAlertConfig(stored);
+      if (migrated !== stored) saveAlertCfg({ ...DEFAULT_CFG, ...migrated });
+      return { ...DEFAULT_CFG, ...migrated };
+    }
   } catch(e) {}
   return { ...DEFAULT_CFG };
 }
@@ -563,7 +573,7 @@ export function openAlertModal() {
   document.getElementById('alertCooldown').value       = cfg.cooldownMin;
   if (document.getElementById('alertFlipCandles')) document.getElementById('alertFlipCandles').value = cfg.flipCandles ?? 3;
   document.getElementById('alertProxDefault').value    = cfg.proxPips?.default ?? 5;
-  document.getElementById('alertProxGold').value       = cfg.proxPips?.['XAU/USD'] ?? 8;
+  document.getElementById('alertProxGold').value       = cfg.proxPips?.['XAU/USD'] ?? 0.8;
   document.getElementById('alertProxNas').value        = cfg.proxPips?.['NAS100_USD'] ?? 30;
   document.getElementById('alertOnlyAligned').checked    = cfg.onlyAligned;
   if (document.getElementById('alertRegimeChange'))    document.getElementById('alertRegimeChange').checked    = cfg.regimeChangeAlerts !== false;

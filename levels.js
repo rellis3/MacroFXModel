@@ -30,6 +30,8 @@ import * as kv from './kv.js';
 import { fitHMM, hmmSignalScore, compute30mSwingRegime } from './hmm.js';
 import { gradeEntry } from './js/trade-grade.js';
 import { detectConfluencesCore, mergeCrossSessionConfs } from './js/confluence-core.js';
+import { pipSize as regPipSize, priceDigits as regPriceDigits } from './js/instrumentRegistry.js';
+import { migrateCapsConfig } from './js/goldPipMigration.js';
 // Range-bias features now live in a shared brick so the Asia-range backtest can
 // grade levels the same way this engine does. Bit-identical to the old local
 // copies (proven in js/rangeBiasCore.test.mjs).
@@ -55,22 +57,23 @@ const CAP_DEFAULTS_SERVER = {
   confluencePriceMode: 'midpoint',
   clusterMerge: true,
   fx:     { confluencePips: 2,   mergeFactor: 0.30 },
-  gold:   { confluencePips: 200, mergeFactor: 0.30 },
+  gold:   { confluencePips: 20,  mergeFactor: 0.30 },   // 20 × $1 pip = $20, was 200 × 0.1
   nas100: { confluencePips: 100, mergeFactor: 0.30 },
 };
 
+// Pip size / price digits come from the ONE canonical table (js/instrumentRegistry.js,
+// verified in sync with pylego/instruments.json by js/reconcile.test.mjs). These were
+// private branches reporting GOLD's pip as 0.1 against a canonical 1.0 — and this file
+// writes ai_entries_{SYM} to KV, so the drift sat on the path into the Python bots.
+// The paired CAP_DEFAULTS_SERVER threshold moved with it; see js/goldPipMigration.js.
 function getPipSize(sym) {
-  if (sym.includes('JPY'))                          return 0.01;
-  if (sym.includes('XAU') || sym.includes('GOLD')) return 0.1;
-  if (sym === 'NAS100_USD')                         return 1.0;
-  return 0.0001;
+  try { return regPipSize(sym); }
+  catch { console.warn(`[LEVELS] no registry entry for "${sym}" — defaulting pip 0.0001`); return 0.0001; }
 }
 
 function getDigits(sym) {
-  if (sym.includes('JPY'))                          return 3;
-  if (sym.includes('XAU') || sym.includes('GOLD')) return 2;
-  if (sym === 'NAS100_USD')                         return 1;
-  return 5;
+  try { return regPriceDigits(sym); }
+  catch { console.warn(`[LEVELS] no registry entry for "${sym}" — defaulting 5 digits`); return 5; }
 }
 
 function getCapBucket(sym, caps) {
@@ -85,7 +88,8 @@ function getCapBucket(sym, caps) {
 async function loadCaps() {
   try {
     const raw = await kv.get('caps');
-    if (raw) return JSON.parse(raw);
+    // Rescales gold's pip-denominated threshold once, if it predates the pip fix.
+    if (raw) return migrateCapsConfig(JSON.parse(raw));
   } catch {}
   return null;
 }
@@ -570,7 +574,7 @@ export async function refreshPair(sym, globalData = {}) {
     const priceMode    = (caps ?? CAP_DEFAULTS_SERVER).confluencePriceMode ?? 'midpoint';
     const clusterMerge = (caps ?? CAP_DEFAULTS_SERVER).clusterMerge        ?? true;
     const pipSize      = getPipSize(sym);
-    const confPips     = bucket.confluencePips ?? (sym.includes('XAU') ? 200 : sym === 'NAS100_USD' ? 100 : 2);
+    const confPips     = bucket.confluencePips ?? (sym.includes('XAU') ? 20 : sym === 'NAS100_USD' ? 100 : 2);
     const normalDist   = confPips * pipSize;
     const tightDist    = normalDist * 0.10;
     const mergeDist    = normalDist * (bucket.mergeFactor ?? 0.30);

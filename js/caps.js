@@ -1,11 +1,14 @@
 import { S } from './state.js';
 import { CAP_DEFAULTS, KALMAN5M_DEFAULTS } from './config.js';
+import { migrateCapsConfig } from './goldPipMigration.js';
 
 export async function loadCaps() {
   try {
     const res = await fetch('/api/config/caps');
     if (!res.ok) throw new Error('caps ' + res.status);
-    S._caps = await res.json();
+    // Gold's confluence threshold is stored in pips; rescale once if it was
+    // written against the old 0.1 pip. See js/goldPipMigration.js.
+    S._caps = migrateCapsConfig(await res.json());
   } catch(e) {
     console.warn('Caps load failed, using defaults:', e.message);
     S._caps = CAP_DEFAULTS;
@@ -27,7 +30,7 @@ export async function openCfgModal() {
   try {
     const res = await fetch('/api/config/caps');
     if (res.ok) {
-      S._caps = await res.json();
+      S._caps = migrateCapsConfig(await res.json());
       populateCfgForm(S._caps);
       const kvStatus = document.getElementById('cfgKVStatus');
       if (S._caps.updatedAt) {
