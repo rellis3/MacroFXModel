@@ -1928,9 +1928,12 @@ OANDA's 5000-bar-per-request cap), then runs 4 variants via v2 (`baseline`
 at v1-matching defaults, `rangeGateMode:'exhausted'` @1.5x,
 `entryBandMode:'vwap'` @0.5xATR, and a liquidity-sweep post-filter) over
 the extended data, prints every trade
-since 2026-08-01, and cross-references against the 4 known reconstructed
-Jordan trades (same numbers as `trade-lab.html`'s `KNOWN_TRADES`) for
-timing/direction/price proximity. Verified end-to-end in this sandbox
+since 2026-08-01, and cross-references against the known reconstructed
+Jordan trades (same numbers as `trade-lab.html`'s `KNOWN_TRADES`; 4 from
+13-14 Aug plus 4 more from 24 Aug added 2026-08-24, each with its own
+`approxTime` now that the set spans more than one session — see
+`js/liveValidationCore.js`) for timing/direction/price proximity. Verified
+end-to-end in this sandbox
 (minus the actual OANDA fetch, which correctly 403s here as expected) —
 gap-fill chunking, error handling, and the "still short of Aug 1" guard all
 confirmed working before this was committed. Deliberately uses RELATIVE
