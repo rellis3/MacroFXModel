@@ -276,6 +276,38 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the periodogram spike, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, a single frequency
+      \(k_0=2\) in a length-\(N=10\) series. Pick any interior frequency
+      \(k\) (excluding the DC term \(k=0\) and the Nyquist bin \(k=N/2\),
+      which scale differently and aren't handled by this simplified widget)
+      and any amplitude, and the transform value, the periodogram value, and
+      the recovered period all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Frequency index \(k\)</span></div>
+        <input type="number" id="four-scratch-k" class="tl-scratch-input" value="2" step="1" min="1" max="4">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Amplitude \(A\)</span></div>
+        <input type="number" id="four-scratch-A" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      X(k) = <b id="four-scratch-Xk">5.00</b>&emsp;X(N&minus;k) = <b id="four-scratch-Xmirror">5.00</b>&emsp;I(k) = <b id="four-scratch-Ik">2.50</b>
+    </div>
+    <div class="tl-readout">
+      Recovered period = N/k = <b id="four-scratch-period">5.00</b> steps
+      <span id="four-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="four-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -442,6 +474,51 @@
     <a href="wavelets-time-frequency.html">Wavelets &amp; Time-Frequency Analysis →</a>
   </div>
 </div>
+<script>
+(function(){
+  var N = 10;
+  var DEFAULTS = { k: 2, A: 1 };
+  var kInput = document.getElementById('four-scratch-k');
+  var aInput = document.getElementById('four-scratch-A');
+  var xkOut = document.getElementById('four-scratch-Xk');
+  var xmOut = document.getElementById('four-scratch-Xmirror');
+  var iOut = document.getElementById('four-scratch-Ik');
+  var pOut = document.getElementById('four-scratch-period');
+  var noteOut = document.getElementById('four-scratch-note');
+  var resetBtn = document.getElementById('four-scratch-reset');
+  if (!kInput) return;
+
+  function recompute(){
+    var k = parseFloat(kInput.value);
+    var A = parseFloat(aInput.value);
+    var maxK = N / 2 - 1;
+
+    if (!isFinite(k) || !Number.isInteger(k) || k < 1 || k > maxK || !isFinite(A)) {
+      noteOut.textContent = '(enter a whole-number k between 1 and ' + maxK + ' — k=0 and k=N/2 are edge bins this simplified widget skips)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var Xk = N * A / 2;
+    var Ik = Xk * Xk / N;
+    var period = N / k;
+
+    xkOut.textContent = Xk.toFixed(2);
+    xmOut.textContent = Xk.toFixed(2);
+    iOut.textContent = Ik.toFixed(2);
+    pOut.textContent = period.toFixed(2);
+  }
+
+  kInput.addEventListener('input', recompute);
+  aInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    kInput.value = DEFAULTS.k;
+    aInput.value = DEFAULTS.A;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

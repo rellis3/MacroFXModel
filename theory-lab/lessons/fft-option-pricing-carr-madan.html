@@ -420,6 +420,37 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the operation counts, live</h3>
+    <p>
+      Starts on the worked example's exact numbers: 200 strikes and 500
+      calibration parameter sets. Change either input and both the direct
+      route's total integration count and the FFT route's speedup
+      recalculate instantly — the FFT call count depends only on the
+      number of parameter sets, never on the number of strikes.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strikes priced</span></div>
+        <input type="number" id="cm-scratch-strikes" class="tl-scratch-input" value="200" step="10" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Calibration parameter sets</span></div>
+        <input type="number" id="cm-scratch-paramsets" class="tl-scratch-input" value="500" step="50" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Direct integrations = strikes &times; param sets = <b id="cm-scratch-direct">100,000</b>&emsp;FFT calls = param sets = <b id="cm-scratch-fft">500</b>
+    </div>
+    <div class="tl-readout">
+      Reduction in pricing-call count &asymp; <b id="cm-scratch-speedup">200</b>&times;
+      <span id="cm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -624,6 +655,50 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var strikesInput = document.getElementById('cm-scratch-strikes');
+  var paramsetsInput = document.getElementById('cm-scratch-paramsets');
+  var directOut = document.getElementById('cm-scratch-direct');
+  var fftOut = document.getElementById('cm-scratch-fft');
+  var speedupOut = document.getElementById('cm-scratch-speedup');
+  var noteOut = document.getElementById('cm-scratch-note');
+  var resetBtn = document.getElementById('cm-scratch-reset');
+  if (!strikesInput) return;
+
+  var DEFAULTS = { strikes: 200, paramsets: 500 };
+
+  function fmt(n){ return n.toLocaleString('en-US'); }
+
+  function recompute(){
+    var strikes = parseFloat(strikesInput.value);
+    var paramsets = parseFloat(paramsetsInput.value);
+
+    if (!isFinite(strikes) || !isFinite(paramsets) || strikes <= 0 || paramsets <= 0) {
+      noteOut.textContent = '(enter positive numbers of strikes and parameter sets)';
+      return;
+    }
+
+    var direct = strikes * paramsets;
+    var fft = paramsets;
+    var speedup = direct / fft;
+
+    directOut.textContent = fmt(direct);
+    fftOut.textContent = fmt(fft);
+    speedupOut.textContent = speedup.toFixed(speedup % 1 === 0 ? 0 : 1);
+    noteOut.textContent = '';
+  }
+
+  strikesInput.addEventListener('input', recompute);
+  paramsetsInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    strikesInput.value = DEFAULTS.strikes;
+    paramsetsInput.value = DEFAULTS.paramsets;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

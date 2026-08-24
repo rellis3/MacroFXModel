@@ -220,6 +220,48 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the loss function and the reverse stress test, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any position size,
+      sensitivity, or shock size, and the forward loss, its share of the
+      book, and the reverse-solved shock \(s^{*}\) needed to breach a $5M
+      loss threshold all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Notional A ($M)</span></div>
+        <input type="number" id="stress-scratch-na" class="tl-scratch-input" value="6" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\beta_A\) (%)</span></div>
+        <input type="number" id="stress-scratch-ba" class="tl-scratch-input" value="30" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Notional B ($M)</span></div>
+        <input type="number" id="stress-scratch-nb" class="tl-scratch-input" value="4" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\beta_B\) (%)</span></div>
+        <input type="number" id="stress-scratch-bb" class="tl-scratch-input" value="15" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Shock \(s\)</span></div>
+        <input type="number" id="stress-scratch-s" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Loss(s) = <b id="stress-scratch-loss">$2.4M</b>&emsp;(<b id="stress-scratch-pct">24.0%</b> of book)
+    </div>
+    <div class="tl-readout">
+      Reverse-solved \(s^{*}\) for a $5M threshold &asymp; <b id="stress-scratch-sstar">2.08</b>
+      <span id="stress-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="stress-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Forward stress testing vs. reverse stress testing on the same loss function</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart with shock size on the x axis in units of an ordinary bad quarter, from zero to three, and portfolio loss in millions of dollars on the y axis, from zero to seven point five. A straight rising line shows loss equals two point four million dollars times the shock size. A blue dot marks the historical scenario at a shock of one, corresponding to a loss of two point four million dollars. A shaded band around a shock of one shows the range explored by a hypothetical Monte Carlo stress. Dashed lines mark a five million dollar unacceptable loss threshold intersecting the line at a shock of about two point zero eight, the result of solving backward in a reverse stress test.">
@@ -441,6 +483,70 @@
     <a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion →</a>
   </div>
 </div>
+<script>
+(function(){
+  var naInput = document.getElementById('stress-scratch-na');
+  var baInput = document.getElementById('stress-scratch-ba');
+  var nbInput = document.getElementById('stress-scratch-nb');
+  var bbInput = document.getElementById('stress-scratch-bb');
+  var sInput = document.getElementById('stress-scratch-s');
+  var lossOut = document.getElementById('stress-scratch-loss');
+  var pctOut = document.getElementById('stress-scratch-pct');
+  var sstarOut = document.getElementById('stress-scratch-sstar');
+  var note = document.getElementById('stress-scratch-note');
+  var resetBtn = document.getElementById('stress-scratch-reset');
+  if (!naInput) return;
+
+  var DEFAULTS = { na: 6, ba: 30, nb: 4, bb: 15, s: 1 };
+  var THRESHOLD = 5;
+
+  function recompute(){
+    var na = parseFloat(naInput.value);
+    var ba = parseFloat(baInput.value) / 100;
+    var nb = parseFloat(nbInput.value);
+    var bb = parseFloat(bbInput.value) / 100;
+    var s = parseFloat(sInput.value);
+
+    if (!isFinite(na) || !isFinite(ba) || !isFinite(nb) || !isFinite(bb) || !isFinite(s) || na < 0 || nb < 0) {
+      note.textContent = '(enter non-negative notionals and numeric sensitivities/shock)';
+      lossOut.textContent = '—';
+      pctOut.textContent = '—';
+      sstarOut.textContent = '—';
+      return;
+    }
+
+    var perUnit = na * ba + nb * bb;
+    var book = na + nb;
+    var loss = perUnit * s;
+    var pct = book > 0 ? (loss / book) * 100 : NaN;
+
+    lossOut.textContent = '$' + loss.toFixed(2) + 'M';
+    pctOut.textContent = book > 0 ? pct.toFixed(1) + '%' : '—';
+
+    if (perUnit <= 0) {
+      note.textContent = '(per-unit loss is zero or negative — reverse stress test has no finite solution)';
+      sstarOut.textContent = '—';
+    } else {
+      note.textContent = '';
+      sstarOut.textContent = (THRESHOLD / perUnit).toFixed(2);
+    }
+  }
+
+  [naInput, baInput, nbInput, bbInput, sInput].forEach(function(inp){
+    inp.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    naInput.value = DEFAULTS.na;
+    baInput.value = DEFAULTS.ba;
+    nbInput.value = DEFAULTS.nb;
+    bbInput.value = DEFAULTS.bb;
+    sInput.value = DEFAULTS.s;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

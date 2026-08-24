@@ -317,6 +317,41 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Re-run the bootstrap, live</h3>
+    <p>
+      Starts on the worked example's exact three par coupons. Edit any
+      coupon and the full bootstrap — \(z_1\), \(z_2\), \(z_3\), and the two
+      implied forward rates — recalculates instantly, in the same order the
+      worked example derived it: each zero rate uses only the ones already
+      solved.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>1yr coupon (%)</span></div>
+        <input type="number" id="ycc-scratch-c1" class="tl-scratch-input" value="3.00" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>2yr coupon (%)</span></div>
+        <input type="number" id="ycc-scratch-c2" class="tl-scratch-input" value="3.50" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>3yr coupon (%)</span></div>
+        <input type="number" id="ycc-scratch-c3" class="tl-scratch-input" value="4.00" step="0.05">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      z&#8321; = <b id="ycc-scratch-z1">3.00%</b>&emsp;z&#8322; = <b id="ycc-scratch-z2">3.51%</b>&emsp;z&#8323; = <b id="ycc-scratch-z3">4.03%</b>
+    </div>
+    <div class="tl-readout">
+      f&#8321;,&#8322; = <b id="ycc-scratch-f12">4.02%</b>&emsp;f&#8322;,&#8323; = <b id="ycc-scratch-f23">5.07%</b>
+      <span id="ycc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ycc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-stat-row">
     <div class="tl-stat blue"><div class="tl-stat-num">3.00%</div><div class="tl-stat-label">z₁ (1yr zero)</div><div class="tl-stat-sub">= the 1yr par yield, trivially</div></div>
     <div class="tl-stat green"><div class="tl-stat-num">3.51%</div><div class="tl-stat-label">z₂ (2yr zero)</div><div class="tl-stat-sub">above the 3.50% 2yr par yield</div></div>
@@ -597,6 +632,106 @@
     <a href="nelson-siegel-svensson.html">Nelson-Siegel-Svensson →</a>
   </div>
 </div>
+<script>
+(function(){
+  var c1Input = document.getElementById('ycc-scratch-c1');
+  var c2Input = document.getElementById('ycc-scratch-c2');
+  var c3Input = document.getElementById('ycc-scratch-c3');
+  var z1Out = document.getElementById('ycc-scratch-z1');
+  var z2Out = document.getElementById('ycc-scratch-z2');
+  var z3Out = document.getElementById('ycc-scratch-z3');
+  var f12Out = document.getElementById('ycc-scratch-f12');
+  var f23Out = document.getElementById('ycc-scratch-f23');
+  var note = document.getElementById('ycc-scratch-note');
+  var resetBtn = document.getElementById('ycc-scratch-reset');
+  if (!c1Input) return;
+
+  var DEFAULTS = { c1: 3.00, c2: 3.50, c3: 4.00 };
+  var F = 100, P = 100;
+
+  function blank(){
+    z1Out.textContent = '—';
+    z2Out.textContent = '—';
+    z3Out.textContent = '—';
+    f12Out.textContent = '—';
+    f23Out.textContent = '—';
+  }
+
+  function recompute(){
+    var c1 = parseFloat(c1Input.value) / 100;
+    var c2 = parseFloat(c2Input.value) / 100;
+    var c3 = parseFloat(c3Input.value) / 100;
+
+    if (!isFinite(c1) || !isFinite(c2) || !isFinite(c3)) {
+      note.textContent = '(enter numeric coupon rates for all three bonds)';
+      blank();
+      return;
+    }
+
+    // Step 1: 1yr zero, trivial single cash flow.
+    var z1 = (F * (1 + c1)) / P - 1;
+    if (!isFinite(z1) || 1 + z1 <= 0) {
+      note.textContent = '(1yr coupon produces a non-sensical zero rate — try a less extreme value)';
+      blank();
+      return;
+    }
+
+    // Step 2: 2yr zero, discounting the year-1 coupon at z1.
+    var cf1_2 = (c2 * F) / (1 + z1);
+    var remain2 = P - cf1_2;
+    if (!(remain2 > 0)) {
+      note.textContent = '(2yr coupon too large relative to the 1yr zero — bootstrap has no positive solution)';
+      blank();
+      return;
+    }
+    var z2 = Math.pow((F * (1 + c2)) / remain2, 1 / 2) - 1;
+    if (!isFinite(z2) || 1 + z2 <= 0) {
+      note.textContent = '(2yr coupon produces a non-sensical zero rate — try a less extreme value)';
+      blank();
+      return;
+    }
+
+    // Step 3: 3yr zero, discounting the first two coupons at z1 and z2.
+    var cf1_3 = (c3 * F) / (1 + z1);
+    var cf2_3 = (c3 * F) / Math.pow(1 + z2, 2);
+    var remain3 = P - cf1_3 - cf2_3;
+    if (!(remain3 > 0)) {
+      note.textContent = '(3yr coupon too large relative to the earlier zeros — bootstrap has no positive solution)';
+      blank();
+      return;
+    }
+    var z3 = Math.pow((F * (1 + c3)) / remain3, 1 / 3) - 1;
+    if (!isFinite(z3) || 1 + z3 <= 0) {
+      note.textContent = '(3yr coupon produces a non-sensical zero rate — try a less extreme value)';
+      blank();
+      return;
+    }
+
+    // Step 4: forward rates implied by the zero curve.
+    var f12 = Math.pow(1 + z2, 2) / (1 + z1) - 1;
+    var f23 = Math.pow(1 + z3, 3) / Math.pow(1 + z2, 2) - 1;
+
+    note.textContent = '';
+    z1Out.textContent = (z1 * 100).toFixed(2) + '%';
+    z2Out.textContent = (z2 * 100).toFixed(2) + '%';
+    z3Out.textContent = (z3 * 100).toFixed(2) + '%';
+    f12Out.textContent = (f12 * 100).toFixed(2) + '%';
+    f23Out.textContent = (f23 * 100).toFixed(2) + '%';
+  }
+
+  [c1Input, c2Input, c3Input].forEach(function(inp){
+    inp.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    c1Input.value = DEFAULTS.c1;
+    c2Input.value = DEFAULTS.c2;
+    c3Input.value = DEFAULTS.c3;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

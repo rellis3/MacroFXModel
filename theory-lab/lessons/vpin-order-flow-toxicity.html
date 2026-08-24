@@ -424,6 +424,49 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute VPIN over the same 5-bucket window, live</h3>
+    <p>
+      Starts on the worked example's exact five \(Z(\cdot)\) values (bucket
+      size \(V=1{,}000\) fixed, as in the example above). Edit any bucket's
+      standard-normal CDF value and every downstream quantity — each
+      bucket's buy/sell split, its order imbalance, and the final VPIN —
+      recalculates instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Z(&tau;=1)</span></div>
+        <input type="number" id="vpin-scratch-z1" class="tl-scratch-input" value="0.8413" step="0.01" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Z(&tau;=2)</span></div>
+        <input type="number" id="vpin-scratch-z2" class="tl-scratch-input" value="0.3085" step="0.01" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Z(&tau;=3)</span></div>
+        <input type="number" id="vpin-scratch-z3" class="tl-scratch-input" value="0.5000" step="0.01" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Z(&tau;=4)</span></div>
+        <input type="number" id="vpin-scratch-z4" class="tl-scratch-input" value="0.9772" step="0.01" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Z(&tau;=5)</span></div>
+        <input type="number" id="vpin-scratch-z5" class="tl-scratch-input" value="0.0668" step="0.01" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &Sigma;OI&#8348; = <b id="vpin-scratch-sumoi">2886.4</b>&emsp;(over n&times;V = <b id="vpin-scratch-denom">5000</b>)
+    </div>
+    <div class="tl-readout">
+      VPIN = &Sigma;OI&#8348; / (n&times;V) &asymp; <b id="vpin-scratch-vpin">0.577</b>
+      <span id="vpin-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="vpin-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -672,6 +715,49 @@
     <a href="execution-algorithms.html">Execution Algorithms: TWAP, VWAP, POV, IS →</a>
   </div>
 </div>
+<script>
+(function(){
+  var V = 1000, n = 5;
+  var zInputs = ['z1','z2','z3','z4','z5'].map(function(f){ return document.getElementById('vpin-scratch-' + f); });
+  var sumOut = document.getElementById('vpin-scratch-sumoi');
+  var denomOut = document.getElementById('vpin-scratch-denom');
+  var vpinOut = document.getElementById('vpin-scratch-vpin');
+  var noteOut = document.getElementById('vpin-scratch-note');
+  var resetBtn = document.getElementById('vpin-scratch-reset');
+  if (!zInputs[0]) return;
+
+  var DEFAULTS = [0.8413, 0.3085, 0.5000, 0.9772, 0.0668];
+
+  function recompute(){
+    var zs = zInputs.map(function(inp){ return parseFloat(inp.value); });
+    var bad = zs.some(function(z){ return !isFinite(z) || z < 0 || z > 1; });
+    if (bad) {
+      noteOut.textContent = '(each Z(·) must be a CDF value between 0 and 1)';
+      return;
+    }
+    var sum = 0;
+    zs.forEach(function(z){
+      var buy = z * V;
+      var sell = V - buy;
+      sum += Math.abs(buy - sell);
+    });
+    var denom = n * V;
+    var vpin = sum / denom;
+
+    sumOut.textContent = sum.toFixed(1);
+    denomOut.textContent = denom.toFixed(0);
+    vpinOut.textContent = vpin.toFixed(3);
+    noteOut.textContent = '';
+  }
+
+  zInputs.forEach(function(inp){ inp.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    zInputs.forEach(function(inp, i){ inp.value = DEFAULTS[i]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
