@@ -112,6 +112,9 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
         r := "US30"
     else if t == str.upper(us2kT) or t == "US2000USD" or t == "RTY1!" or t == "RUT"
         r := "US2000"
+    // BTC feeds vary by exchange — normalise the common tickers to the export's BTCUSD
+    else if t == "BTCUSDT" or t == "XBTUSD" or t == "BTCUSD.P" or t == "BTCUSDT.P" or t == "BTC1!"
+        r := "BTCUSD"
     r
 
 f_collapseSpaces(s) =>
@@ -242,6 +245,11 @@ if barstate.isfirst
                      str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
                      str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
                      str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+                     str.contains(rowUp, "EURAUD") or str.contains(rowUp, "EURCAD") or
+                     str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
+                     str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
+                     str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+                     str.contains(rowUp, "BTCUSD") or
                      str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
                      str.contains(rowUp, "US30")) and
@@ -292,6 +300,11 @@ if barstate.isfirst
                  str.contains(rowUp, "EURGBP") or str.contains(rowUp, "EURJPY") or
                  str.contains(rowUp, "EURCHF") or str.contains(rowUp, "GBPCHF") or
                  str.contains(rowUp, "AUDJPY") or str.contains(rowUp, "CADJPY") or
+                 str.contains(rowUp, "EURAUD") or str.contains(rowUp, "EURCAD") or
+                 str.contains(rowUp, "EURNZD") or str.contains(rowUp, "GBPAUD") or
+                 str.contains(rowUp, "GBPCAD") or str.contains(rowUp, "AUDCAD") or
+                 str.contains(rowUp, "NZDCAD") or str.contains(rowUp, "NZDJPY") or
+                 str.contains(rowUp, "BTCUSD") or
                  str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                  str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
                  str.contains(rowUp, "US30")
