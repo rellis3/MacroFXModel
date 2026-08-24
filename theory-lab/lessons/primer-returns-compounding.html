@@ -432,6 +432,41 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Compound any two-period return sequence, live</h3>
+    <p>
+      Starts on the worked example's exact \(+50\%\) then \(-50\%\). Edit the
+      starting value or either period's return and the ending value, the
+      arithmetic mean, and the geometric mean all recalculate instantly — so
+      you can feel how much a big up-then-down swing costs even when the
+      simple average says "nothing happened."
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Start value</span></div>
+        <input type="number" id="prc-scratch-P0" class="tl-scratch-input" value="100" step="10">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Period 1 return \(R_1\) (%)</span></div>
+        <input type="number" id="prc-scratch-r1" class="tl-scratch-input" value="50" step="5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Period 2 return \(R_2\) (%)</span></div>
+        <input type="number" id="prc-scratch-r2" class="tl-scratch-input" value="-50" step="5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Arithmetic mean = <b id="prc-scratch-arith">0.00</b>%&emsp;Geometric mean = <b id="prc-scratch-geo">-13.40</b>%/period
+    </div>
+    <div class="tl-readout">
+      Ending value &asymp; $<b id="prc-scratch-end">75.00</b>&emsp;Total return = <b id="prc-scratch-total">-25.00</b>%
+      <span id="prc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="prc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
 
@@ -715,6 +750,59 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var DEFAULTS = { P0: 100, r1: 50, r2: -50 };
+  var p0Input = document.getElementById('prc-scratch-P0');
+  var r1Input = document.getElementById('prc-scratch-r1');
+  var r2Input = document.getElementById('prc-scratch-r2');
+  var arithOut = document.getElementById('prc-scratch-arith');
+  var geoOut = document.getElementById('prc-scratch-geo');
+  var endOut = document.getElementById('prc-scratch-end');
+  var totalOut = document.getElementById('prc-scratch-total');
+  var noteOut = document.getElementById('prc-scratch-note');
+  var resetBtn = document.getElementById('prc-scratch-reset');
+  if (!p0Input) return;
+
+  function recompute(){
+    var P0 = parseFloat(p0Input.value);
+    var R1 = parseFloat(r1Input.value) / 100;
+    var R2 = parseFloat(r2Input.value) / 100;
+
+    if (!isFinite(P0) || P0 <= 0 || !isFinite(R1) || !isFinite(R2)) {
+      noteOut.textContent = '(enter a positive starting value and a number for each period return)';
+      return;
+    }
+    var factor1 = 1 + R1, factor2 = 1 + R2;
+    if (factor1 <= 0 || factor2 <= 0) {
+      noteOut.textContent = '(a return of -100% or worse wipes the position out entirely; enter returns greater than -100%)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var end = P0 * factor1 * factor2;
+    var totalReturn = end / P0 - 1;
+    var arith = (R1 + R2) / 2;
+    var geo = Math.sqrt(factor1 * factor2) - 1;
+
+    arithOut.textContent = (arith * 100).toFixed(2);
+    geoOut.textContent = (geo * 100).toFixed(2);
+    endOut.textContent = end.toFixed(2);
+    totalOut.textContent = (totalReturn * 100).toFixed(2);
+  }
+
+  p0Input.addEventListener('input', recompute);
+  r1Input.addEventListener('input', recompute);
+  r2Input.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    p0Input.value = DEFAULTS.P0;
+    r1Input.value = DEFAULTS.r1;
+    r2Input.value = DEFAULTS.r2;
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

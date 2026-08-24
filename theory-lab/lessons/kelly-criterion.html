@@ -486,6 +486,40 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute f*, half-Kelly, and growth retained — live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(p=55\%\), \(b=1\) (even
+      money). Edit any field and the full-Kelly fraction \(f^*\), the
+      scaled-down stake at fraction \(c\) of full Kelly, and the share of
+      full-Kelly growth that stake captures all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win probability p (%)</span></div>
+        <input type="number" id="kelly-scratch-p" class="tl-scratch-input" value="55" step="1" min="0" max="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Net odds b</span></div>
+        <input type="number" id="kelly-scratch-b" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fraction of Kelly, c</span></div>
+        <input type="number" id="kelly-scratch-c" class="tl-scratch-input" value="0.5" step="0.05" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      f* = <b id="kelly-scratch-fstar">10.00%</b>&emsp;f<sub>c</sub> = c&times;f* = <b id="kelly-scratch-fc">5.00%</b>
+    </div>
+    <div class="tl-readout">
+      Growth captured at this c: 2c&minus;c&sup2; = <b id="kelly-scratch-growth">75.00%</b> of full-Kelly growth rate
+      <span id="kelly-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="kelly-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">The growth-rate curve: why past f*, more size is less growth</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of geometric growth rate g(f) against bet fraction f. The curve starts at zero, rises to a peak at f-star (full Kelly), then falls back through zero at 2f-star and continues into negative territory beyond that. A marked point on the rising part of the curve, below and left of the peak, shows half-Kelly still solidly positive.">
@@ -821,6 +855,59 @@
     <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk →</a>
   </div>
 </div>
+<script>
+(function(){
+  var pInput = document.getElementById('kelly-scratch-p');
+  var bInput = document.getElementById('kelly-scratch-b');
+  var cInput = document.getElementById('kelly-scratch-c');
+  var fstarOut = document.getElementById('kelly-scratch-fstar');
+  var fcOut = document.getElementById('kelly-scratch-fc');
+  var growthOut = document.getElementById('kelly-scratch-growth');
+  var note = document.getElementById('kelly-scratch-note');
+  var resetBtn = document.getElementById('kelly-scratch-reset');
+  if (!pInput) return;
+
+  var DEFAULTS = { p: 55, b: 1, c: 0.5 };
+
+  function recompute(){
+    var p = parseFloat(pInput.value) / 100;
+    var b = parseFloat(bInput.value);
+    var c = parseFloat(cInput.value);
+
+    if (!isFinite(p) || !isFinite(b) || !isFinite(c) || p <= 0 || p >= 1 || b <= 0) {
+      note.textContent = '(need 0% < p < 100% and net odds b > 0)';
+      fstarOut.textContent = '—';
+      fcOut.textContent = '—';
+      growthOut.textContent = '—';
+      return;
+    }
+
+    var q = 1 - p;
+    var fstar = (b * p - q) / b;
+    var fc = c * fstar;
+    var growth = 2 * c - c * c;
+
+    var msgs = [];
+    if (fstar <= 0) msgs.push('no edge at these odds — f* ≤ 0 means "don\'t bet"');
+    if (c < 0) msgs.push('c should be ≥ 0');
+    if (c > 1) msgs.push('c > 1 is over-betting past full Kelly');
+
+    fstarOut.textContent = (fstar * 100).toFixed(2) + '%';
+    fcOut.textContent = (fc * 100).toFixed(2) + '%';
+    growthOut.textContent = (growth * 100).toFixed(2) + '%';
+    note.textContent = msgs.length ? '(' + msgs.join('; ') + ')' : '';
+  }
+
+  [pInput, bInput, cInput].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    pInput.value = DEFAULTS.p;
+    bInput.value = DEFAULTS.b;
+    cInput.value = DEFAULTS.c;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

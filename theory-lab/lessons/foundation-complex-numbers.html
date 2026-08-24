@@ -368,6 +368,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Rectangular to polar, live — change the real or imaginary part</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(z=3+4i\). Edit either
+      part and the modulus \(|z|\) and argument \(\theta\) recalculate
+      instantly (using a two-argument arctangent under the hood, so the
+      quadrant is always handled correctly — see the pitfall named below).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Real part \(a\)</span></div>
+        <input type="number" id="cn-scratch-a" class="tl-scratch-input" value="3" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Imaginary part \(b\)</span></div>
+        <input type="number" id="cn-scratch-b" class="tl-scratch-input" value="4" step="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      |z| = <b id="cn-scratch-mod">5.0000</b>&emsp;&theta; = <b id="cn-scratch-theta-rad">0.9273</b> rad = <b id="cn-scratch-theta-deg">53.13</b>&deg;
+    </div>
+    <div class="tl-readout">
+      Polar form: z &asymp; <b id="cn-scratch-polar">5.0000</b> &middot; e<sup>i&middot;<span id="cn-scratch-theta-exp">0.9273</span></sup>
+      <span id="cn-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -587,6 +617,67 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var DEFAULTS = { a: 3, b: 4 };
+  var fields = ['a', 'b'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('cn-scratch-' + f); });
+  if (!inputs.a) return;
+
+  var modOut = document.getElementById('cn-scratch-mod');
+  var thetaRadOut = document.getElementById('cn-scratch-theta-rad');
+  var thetaDegOut = document.getElementById('cn-scratch-theta-deg');
+  var polarOut = document.getElementById('cn-scratch-polar');
+  var thetaExpOut = document.getElementById('cn-scratch-theta-exp');
+  var noteOut = document.getElementById('cn-scratch-note');
+  var resetBtn = document.getElementById('cn-scratch-reset');
+
+  function recompute(){
+    var a = parseFloat(inputs.a.value);
+    var b = parseFloat(inputs.b.value);
+
+    if (!isFinite(a) || !isFinite(b)) {
+      noteOut.textContent = '(enter real numbers for both parts)';
+      modOut.textContent = '—';
+      thetaRadOut.textContent = '—';
+      thetaDegOut.textContent = '—';
+      polarOut.textContent = '—';
+      thetaExpOut.textContent = '—';
+      return;
+    }
+
+    var mod = Math.sqrt(a*a + b*b);
+
+    if (mod === 0) {
+      noteOut.textContent = '(z=0: the argument is undefined — the point sits exactly on the origin, with no direction)';
+      modOut.textContent = '0.0000';
+      thetaRadOut.textContent = '—';
+      thetaDegOut.textContent = '—';
+      polarOut.textContent = '0';
+      thetaExpOut.textContent = '—';
+      return;
+    }
+
+    var thetaRad = Math.atan2(b, a);
+    var thetaDeg = thetaRad * 180 / Math.PI;
+
+    modOut.textContent = mod.toFixed(4);
+    thetaRadOut.textContent = thetaRad.toFixed(4);
+    thetaDegOut.textContent = thetaDeg.toFixed(2);
+    polarOut.textContent = mod.toFixed(4);
+    thetaExpOut.textContent = thetaRad.toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

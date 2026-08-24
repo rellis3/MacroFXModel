@@ -335,6 +335,35 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Reweight the same 5-particle swarm, live — change the observation or its noise</h3>
+    <p>
+      Starts on the worked example's exact numbers: the five particle positions and equal prior weights
+      stay fixed exactly as propagated above; edit the observation \(y\) or its variance \(R\) and every
+      particle's likelihood, normalized weight, and \(N_{\text{eff}}\) recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation \(y\)</span></div>
+        <input type="number" id="pf-scratch-y" class="tl-scratch-input" value="1.30" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation variance \(R\)</span></div>
+        <input type="number" id="pf-scratch-R" class="tl-scratch-input" value="0.05" step="0.01" min="0.001">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      w&#8321; = <b id="pf-scratch-w1">0.130</b>&emsp;w&#8322; = <b id="pf-scratch-w2">0.194</b>&emsp;w&#8323; = <b id="pf-scratch-w3">0.220</b>&emsp;w&#8324; = <b id="pf-scratch-w4">0.237</b>&emsp;w&#8325; = <b id="pf-scratch-w5">0.220</b>
+    </div>
+    <div class="tl-readout">
+      N<sub>eff</sub> &asymp; <b id="pf-scratch-neff">4.83</b> out of 5 particles
+      <span id="pf-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="pf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>
@@ -574,6 +603,57 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  // Self-contained particle-reweighting scratchpad. The five particle
+  // positions and equal prior weights are exactly the worked example's
+  // fixed swarm; only the observation y and its variance R are inputs.
+  var PARTICLE_X = [1.05, 1.15, 1.20, 1.25, 1.40];
+  var PRIOR_W = 0.20;
+
+  var DEFAULTS = { y: 1.30, R: 0.05 };
+  var fields = ['y', 'R'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('pf-scratch-' + f); });
+
+  var wOut = [1, 2, 3, 4, 5].map(function(i){ return document.getElementById('pf-scratch-w' + i); });
+  var neffOut = document.getElementById('pf-scratch-neff');
+  var noteOut = document.getElementById('pf-scratch-note');
+  var resetBtn = document.getElementById('pf-scratch-reset');
+
+  function recompute(){
+    var y = parseFloat(inputs.y.value);
+    var R = parseFloat(inputs.R.value);
+
+    if (!isFinite(y) || !isFinite(R) || R <= 0) {
+      noteOut.textContent = '(enter a number for y and a positive observation variance R)';
+      return;
+    }
+
+    var norm = 1 / Math.sqrt(2 * Math.PI * R);
+    var raw = PARTICLE_X.map(function(x){
+      var d = y - x;
+      return norm * Math.exp(-(d * d) / (2 * R)) * PRIOR_W;
+    });
+    var sum = raw.reduce(function(a, b){ return a + b; }, 0);
+    var weights = raw.map(function(r){ return r / sum; });
+
+    weights.forEach(function(w, i){ wOut[i].textContent = w.toFixed(3); });
+
+    var sumSq = weights.reduce(function(a, w){ return a + w * w; }, 0);
+    var neff = 1 / sumSq;
+    neffOut.textContent = neff.toFixed(2);
+    noteOut.textContent = neff < 2.5 ? '(N_eff below the N/2 = 2.5 threshold — this swarm would trigger a resample)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

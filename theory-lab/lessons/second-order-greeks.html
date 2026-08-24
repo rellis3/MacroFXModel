@@ -323,6 +323,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute Vanna live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and
+      \(d_1\), \(d_2\), \(\varphi(d_1)\), and Vanna (both per 1.00 of
+      \(\sigma\) and per 1 vol point) recalculate instantly from
+      \(\text{Vanna} = -\varphi(d_1)\,d_2/\sigma\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S\)</span></div>
+        <input type="number" id="vanna-scratch-S" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span></div>
+        <input type="number" id="vanna-scratch-K" class="tl-scratch-input" value="105" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="vanna-scratch-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\) (%)</span></div>
+        <input type="number" id="vanna-scratch-sigma" class="tl-scratch-input" value="25" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time \(T\) (yrs)</span></div>
+        <input type="number" id="vanna-scratch-T" class="tl-scratch-input" value="0.5" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      d&#8321; = <b id="vanna-scratch-d1">-0.1311</b>&emsp;d&#8322; = <b id="vanna-scratch-d2">-0.3078</b>&emsp;&phi;(d&#8321;) = <b id="vanna-scratch-phi">0.3955</b>
+    </div>
+    <div class="tl-readout">
+      Vanna &asymp; <b id="vanna-scratch-vanna">0.4871</b> per 1.00&sigma; &asymp; <b id="vanna-scratch-vannapt">0.00487</b> per vol point
+      <span id="vanna-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="vanna-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -629,6 +671,69 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  // Self-contained on purpose (own normPDF), matching the pattern used by
+  // the other Theory Lab "Try it yourself" scratchpads.
+  function normPDF(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+
+  var DEFAULTS = { S: 100, K: 105, r: 2, sigma: 25, T: 0.5 };
+  var fields = ['S', 'K', 'r', 'sigma', 'T'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('vanna-scratch-' + f); });
+  if (!inputs.S) return;
+
+  var d1Out = document.getElementById('vanna-scratch-d1');
+  var d2Out = document.getElementById('vanna-scratch-d2');
+  var phiOut = document.getElementById('vanna-scratch-phi');
+  var vannaOut = document.getElementById('vanna-scratch-vanna');
+  var vannaPtOut = document.getElementById('vanna-scratch-vannapt');
+  var noteOut = document.getElementById('vanna-scratch-note');
+  var resetBtn = document.getElementById('vanna-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var K = parseFloat(inputs.K.value);
+    var r = parseFloat(inputs.r.value) / 100;
+    var sigma = parseFloat(inputs.sigma.value) / 100;
+    var T = parseFloat(inputs.T.value);
+
+    if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(T) || S<=0 || K<=0 || sigma<0 || T<0) {
+      noteOut.textContent = '(enter positive S, K, a non-negative σ, and a non-negative T)';
+      return;
+    }
+
+    var d1, d2, phi, vanna, note = '';
+
+    if (T === 0) {
+      d1 = d2 = phi = vanna = NaN;
+      note = '(T=0: d₁/d₂ are undefined at expiry — Vanna has no meaning with zero time left)';
+    } else if (sigma === 0) {
+      d1 = d2 = phi = vanna = NaN;
+      note = '(σ=0: d₁/d₂ and the σ in the denominator are both undefined at zero volatility)';
+    } else {
+      d1 = (Math.log(S/K) + (r + sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+      d2 = d1 - sigma*Math.sqrt(T);
+      phi = normPDF(d1);
+      vanna = -phi*(d2/sigma);
+    }
+
+    d1Out.textContent = isNaN(d1) ? '—' : d1.toFixed(4);
+    d2Out.textContent = isNaN(d2) ? '—' : d2.toFixed(4);
+    phiOut.textContent = isNaN(phi) ? '—' : phi.toFixed(4);
+    vannaOut.textContent = isNaN(vanna) ? '—' : vanna.toFixed(4);
+    vannaPtOut.textContent = isNaN(vanna) ? '—' : (vanna*0.01).toFixed(5);
+    noteOut.textContent = note;
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

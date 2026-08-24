@@ -417,6 +417,47 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute duration and convexity, live</h3>
+    <p>
+      Starts on the worked example's exact bond, \(F=\$1{,}000\), 4% coupon,
+      \(n=5\) years, \(y=5\%\). Unlike a level $1-per-period annuity, this
+      bond's cash flows aren't uniform — the final period carries the coupon
+      <em>plus</em> the face value — so Macaulay duration, modified duration,
+      and convexity are all computed here directly from each individual
+      discounted cash flow, exactly as in the steps above, rather than from
+      a level-annuity closed form.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Face value \(F\)</span></div>
+        <input type="number" id="dc-scratch-F" class="tl-scratch-input" value="1000" step="100" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Coupon rate (%)</span></div>
+        <input type="number" id="dc-scratch-c" class="tl-scratch-input" value="4" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Years to maturity \(n\)</span></div>
+        <input type="number" id="dc-scratch-n" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Yield \(y\) (%)</span></div>
+        <input type="number" id="dc-scratch-y" class="tl-scratch-input" value="5" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Price <i>P</i> = $<b id="dc-scratch-P">956.71</b>&emsp;D<sub>Mac</sub> = <b id="dc-scratch-dmac">4.62</b> yrs&emsp;D<sub>mod</sub> = <b id="dc-scratch-dmod">4.40</b> yrs&emsp;Convexity = <b id="dc-scratch-conv">24.47</b>
+    </div>
+    <div class="tl-readout">
+      Est. price after +100bp (duration + convexity) &asymp; $<b id="dc-scratch-shock">915.78</b>
+      <span id="dc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="dc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-stat-row">
     <div class="tl-stat blue"><div class="tl-stat-num">4.62y</div><div class="tl-stat-label">Macaulay duration</div><div class="tl-stat-sub">payment-weighted average time</div></div>
     <div class="tl-stat green"><div class="tl-stat-num">4.40y</div><div class="tl-stat-label">Modified duration</div><div class="tl-stat-sub">≈ % price move per 100bp</div></div>
@@ -742,6 +783,86 @@
   buildTrueCurve();
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  // Generic coupon-bond stats: price, Macaulay duration, modified duration,
+  // convexity — computed cash-flow by cash-flow (not a level-annuity
+  // closed form), since the final period's cash flow includes the face
+  // value on top of the coupon.
+  function bondStats(F, C, n, y){
+    var P = 0, wSum = 0, cSum = 0;
+    for (var t = 1; t <= n; t++){
+      var cf = C + (t === n ? F : 0);
+      var pv = cf / Math.pow(1 + y, t);
+      P += pv;
+      wSum += t * pv;
+      cSum += t * (t + 1) * pv;
+    }
+    var dMac = wSum / P;
+    var dMod = dMac / (1 + y);
+    var conv = cSum / (P * Math.pow(1 + y, 2));
+    return { P: P, dMac: dMac, dMod: dMod, conv: conv };
+  }
+
+  var fInput = document.getElementById('dc-scratch-F');
+  var cInput = document.getElementById('dc-scratch-c');
+  var nInput = document.getElementById('dc-scratch-n');
+  var yInput = document.getElementById('dc-scratch-y');
+  var pOut = document.getElementById('dc-scratch-P');
+  var dmacOut = document.getElementById('dc-scratch-dmac');
+  var dmodOut = document.getElementById('dc-scratch-dmod');
+  var convOut = document.getElementById('dc-scratch-conv');
+  var shockOut = document.getElementById('dc-scratch-shock');
+  var note = document.getElementById('dc-scratch-note');
+  var resetBtn = document.getElementById('dc-scratch-reset');
+  if (!fInput) return;
+
+  var DEFAULTS = { F: 1000, c: 4, n: 5, y: 5 };
+
+  function recompute(){
+    var F = parseFloat(fInput.value);
+    var cPct = parseFloat(cInput.value);
+    var n = Math.round(parseFloat(nInput.value));
+    var yPct = parseFloat(yInput.value);
+
+    if (!isFinite(F) || F < 0 || !isFinite(cPct) || !isFinite(n) || n < 1 || !isFinite(yPct)) {
+      note.textContent = '(enter a non-negative face value, a whole number of years ≥ 1, and numeric rates)';
+      return;
+    }
+    var y = yPct / 100;
+    if (1 + y <= 0) {
+      note.textContent = '(yield below −100% makes discounting undefined)';
+      return;
+    }
+    note.textContent = '';
+
+    var C = (cPct / 100) * F;
+    var stats = bondStats(F, C, n, y);
+    var dy = 0.01;
+    var pctMove = -stats.dMod * dy + 0.5 * stats.conv * dy * dy;
+    var shockPrice = stats.P * (1 + pctMove);
+
+    pOut.textContent = stats.P.toFixed(2);
+    dmacOut.textContent = stats.dMac.toFixed(2);
+    dmodOut.textContent = stats.dMod.toFixed(2);
+    convOut.textContent = stats.conv.toFixed(2);
+    shockOut.textContent = shockPrice.toFixed(2);
+  }
+
+  [fInput, cInput, nInput, yInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    fInput.value = DEFAULTS.F;
+    cInput.value = DEFAULTS.c;
+    nInput.value = DEFAULTS.n;
+    yInput.value = DEFAULTS.y;
+    recompute();
+  });
+
+  recompute();
 })();
 </script>
 <script>

@@ -425,6 +425,50 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Run one predict/update step, live</h3>
+    <p>
+      Starts on Day 1 of the worked example above: prior estimate
+      \(\hat{x}_{0\mid0}=1.20\), prior uncertainty \(P_{0\mid0}=0.0400\),
+      process variance \(Q=0.0009\), observation variance \(R=0.0100\),
+      observation \(y_1=1.35\) (with \(H_t=1\) fixed, as in the worked
+      example). Edit any field and the predict step, the gain, and the
+      update step all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior estimate &#x0078;&#x0302;<sub>t-1|t-1</sub></span></div>
+        <input type="number" id="kf-scratch-xprev" class="tl-scratch-input" value="1.20" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior uncertainty P<sub>t-1|t-1</sub></span></div>
+        <input type="number" id="kf-scratch-pprev" class="tl-scratch-input" value="0.0400" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Process variance Q</span></div>
+        <input type="number" id="kf-scratch-q" class="tl-scratch-input" value="0.0009" step="0.0001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation variance R</span></div>
+        <input type="number" id="kf-scratch-r" class="tl-scratch-input" value="0.0100" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation y<sub>t</sub></span></div>
+        <input type="number" id="kf-scratch-y" class="tl-scratch-input" value="1.35" step="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Predict: &#x0078;&#x0302;<sub>t|t-1</sub> = <b id="kf-scratch-xpred">1.20</b>&emsp;P<sub>t|t-1</sub> = <b id="kf-scratch-ppred">0.0409</b>&emsp;gain K<sub>t</sub> = <b id="kf-scratch-gain">0.804</b>
+      <span id="kf-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout">
+      Update: &#x0078;&#x0302;<sub>t|t</sub> = <b id="kf-scratch-xpost">1.321</b>&emsp;P<sub>t|t</sub> = <b id="kf-scratch-ppost">0.0080</b>
+    </div>
+    <button type="button" id="kf-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">Kalman-filtered hedge ratio vs. noisy daily observations</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Scatter plot of noisy hedge-ratio observations over time, with a smooth Kalman-filtered estimate line threading through them and a shaded uncertainty band that starts wide on the left and narrows toward the right as more observations accumulate">
@@ -798,6 +842,83 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var xPrevInput = document.getElementById('kf-scratch-xprev');
+  var pPrevInput = document.getElementById('kf-scratch-pprev');
+  var qInput = document.getElementById('kf-scratch-q');
+  var rInput = document.getElementById('kf-scratch-r');
+  var yInput = document.getElementById('kf-scratch-y');
+  var xpredOut = document.getElementById('kf-scratch-xpred');
+  var ppredOut = document.getElementById('kf-scratch-ppred');
+  var gainOut = document.getElementById('kf-scratch-gain');
+  var xpostOut = document.getElementById('kf-scratch-xpost');
+  var ppostOut = document.getElementById('kf-scratch-ppost');
+  var note = document.getElementById('kf-scratch-note');
+  var resetBtn = document.getElementById('kf-scratch-reset');
+  if (!xPrevInput) return;
+
+  var DEFAULTS = { xprev: 1.20, pprev: 0.0400, q: 0.0009, r: 0.0100, y: 1.35 };
+
+  function blank(){
+    xpredOut.textContent = '—';
+    ppredOut.textContent = '—';
+    gainOut.textContent = '—';
+    xpostOut.textContent = '—';
+    ppostOut.textContent = '—';
+  }
+
+  function recompute(){
+    var xPrev = parseFloat(xPrevInput.value);
+    var pPrev = parseFloat(pPrevInput.value);
+    var Q = parseFloat(qInput.value);
+    var R = parseFloat(rInput.value);
+    var y = parseFloat(yInput.value);
+
+    if (!isFinite(xPrev) || !isFinite(pPrev) || !isFinite(Q) || !isFinite(R) || !isFinite(y) ||
+        pPrev < 0 || Q < 0 || R < 0) {
+      note.textContent = '(enter non-negative P, Q and R)';
+      blank();
+      return;
+    }
+
+    var xPred = xPrev; // H_t = 1, pure random-walk state equation
+    var pPred = pPrev + Q;
+    var innovation = y - xPred;
+    var S = pPred + R;
+
+    if (S <= 0) {
+      note.textContent = '(P_t|t-1 + R must be positive — the gain is undefined with zero total uncertainty)';
+      blank();
+      return;
+    }
+
+    note.textContent = '';
+    var K = pPred / S;
+    var xPost = xPred + K * innovation;
+    var pPost = (1 - K) * pPred;
+
+    xpredOut.textContent = xPred.toFixed(4);
+    ppredOut.textContent = pPred.toFixed(4);
+    gainOut.textContent = K.toFixed(3);
+    xpostOut.textContent = xPost.toFixed(3);
+    ppostOut.textContent = pPost.toFixed(4);
+  }
+
+  [xPrevInput, pPrevInput, qInput, rInput, yInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    xPrevInput.value = DEFAULTS.xprev;
+    pPrevInput.value = DEFAULTS.pprev;
+    qInput.value = DEFAULTS.q;
+    rInput.value = DEFAULTS.r;
+    yInput.value = DEFAULTS.y;
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

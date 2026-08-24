@@ -512,6 +512,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Rebuild d&#8321; and d&#8322; from the Itô correction term, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(S_0=K=100\), \(r=2\%\),
+      \(\sigma=20\%\), \(T=1\). Change any input and the Itô correction term
+      \(\sigma^2/2\), the risk-neutral drift \(r-\sigma^2/2\), and both
+      \(d_2\), \(d_1\) recalculate instantly from the formulas derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S_0\)</span></div>
+        <input type="number" id="ito-scratch-S" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span></div>
+        <input type="number" id="ito-scratch-K" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="ito-scratch-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\) (%)</span></div>
+        <input type="number" id="ito-scratch-sigma" class="tl-scratch-input" value="20" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time \(T\) (yrs)</span></div>
+        <input type="number" id="ito-scratch-T" class="tl-scratch-input" value="1" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &sigma;&sup2;/2 = <b id="ito-scratch-corr">0.0200</b>&emsp;drift (r&minus;&sigma;&sup2;/2) = <b id="ito-scratch-drift">0.0000</b>&emsp;ln(S&#8320;/K) = <b id="ito-scratch-lnsk">0.0000</b>
+    </div>
+    <div class="tl-readout">
+      d&#8322; = <b id="ito-scratch-d2">0.00</b>&emsp;d&#8321; = d&#8322;+&sigma;&radic;T = <b id="ito-scratch-d1">0.20</b>
+      <span id="ito-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ito-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -759,6 +801,66 @@
     <a href="girsanov-risk-neutral.html">Girsanov's Theorem &amp; the Risk-Neutral Measure →</a>
   </div>
 </div>
+<script>
+(function(){
+  function z(x){ return Math.abs(x) < 1e-9 ? 0 : x; } // snap float noise near zero to a clean 0
+
+  var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, T: 1 };
+  var fields = ['S', 'K', 'r', 'sigma', 'T'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('ito-scratch-' + f); });
+  if (!inputs.S) return;
+
+  var corrOut = document.getElementById('ito-scratch-corr');
+  var driftOut = document.getElementById('ito-scratch-drift');
+  var lnskOut = document.getElementById('ito-scratch-lnsk');
+  var d2Out = document.getElementById('ito-scratch-d2');
+  var d1Out = document.getElementById('ito-scratch-d1');
+  var noteOut = document.getElementById('ito-scratch-note');
+  var resetBtn = document.getElementById('ito-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var K = parseFloat(inputs.K.value);
+    var r = parseFloat(inputs.r.value) / 100;
+    var sigma = parseFloat(inputs.sigma.value) / 100;
+    var T = parseFloat(inputs.T.value);
+
+    if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(T) || S<=0 || K<=0 || sigma<0 || T<0) {
+      noteOut.textContent = '(enter positive numbers for S₀, K and a non-negative T, σ)';
+      return;
+    }
+
+    var lnSK = z(Math.log(S/K));
+    var corr = (sigma*sigma)/2;
+    var drift = z(r - corr);
+
+    corrOut.textContent = corr.toFixed(4);
+    driftOut.textContent = drift.toFixed(4);
+    lnskOut.textContent = lnSK.toFixed(4);
+
+    if (sigma === 0 || T === 0) {
+      d2Out.textContent = '—';
+      d1Out.textContent = '—';
+      noteOut.textContent = '(σ=0 or T=0: d₁/d₂ are undefined — no volatility or no time left for randomness to matter)';
+      return;
+    }
+
+    noteOut.textContent = '';
+    var d2 = z((lnSK + drift*T) / (sigma*Math.sqrt(T)));
+    var d1 = z(d2 + sigma*Math.sqrt(T));
+    d2Out.textContent = d2.toFixed(2);
+    d1Out.textContent = d1.toFixed(2);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

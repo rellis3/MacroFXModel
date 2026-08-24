@@ -423,6 +423,49 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Re-evaluate the Hagan formula at ATM and &plusmn;200 pips, live</h3>
+    <p>
+      Starts on the worked example's exact numbers (\(\beta=1\) fixed by
+      convention, \(\alpha\approx9.98\%\), \(\rho=-0.25\), \(\nu=0.40\),
+      \(F=1.2000\), \(T=0.25\)). Change any input and the at-the-money vol
+      plus the two vols 200 pips either side of the forward recalculate
+      instantly from the closed-form formula above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&alpha; (%)</span></div>
+        <input type="number" id="sabr-scratch-alpha" class="tl-scratch-input" value="9.976" step="0.001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&rho;</span></div>
+        <input type="number" id="sabr-scratch-rho" class="tl-scratch-input" value="-0.25" step="0.05" min="-0.99" max="0.99">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&nu;</span></div>
+        <input type="number" id="sabr-scratch-nu" class="tl-scratch-input" value="0.40" step="0.05" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Forward \(F\)</span></div>
+        <input type="number" id="sabr-scratch-F" class="tl-scratch-input" value="1.2000" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(T\) (yrs)</span></div>
+        <input type="number" id="sabr-scratch-T" class="tl-scratch-input" value="0.25" step="0.05" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &sigma;<sub>ATM</sub> = <b id="sabr-scratch-atm">10.00</b>%
+    </div>
+    <div class="tl-readout">
+      &sigma;<sub>B</sub>(K=F+200p) = <b id="sabr-scratch-call">9.92</b>%&emsp;&sigma;<sub>B</sub>(K=F&minus;200p) = <b id="sabr-scratch-put">10.09</b>%
+      <span id="sabr-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="sabr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">How &nu; (vol-of-vol) controls smile curvature, holding ATM fixed</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three implied volatility smile curves plotted against strike-to-forward ratio, all passing through the same at-the-money point. The low vol-of-vol curve is nearly flat. The medium vol-of-vol curve shows a mild U-shape. The high vol-of-vol curve shows a pronounced, steep U-shape, especially at the wings.">
@@ -749,6 +792,69 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  // beta is fixed at 1 by convention, matching the worked example above.
+  var OFFSET = 0.02; // 200 pips either side of the forward
+
+  function sigmaB(alpha, rho, nu, F, K, T){
+    var bracket = 1 + (0.25*rho*nu*alpha + (2-3*rho*rho)/24*nu*nu)*T;
+    if (Math.abs(F-K) < 1e-12) return alpha*bracket;
+    var lnFK = Math.log(F/K);
+    var z = (nu/alpha)*lnFK;
+    if (Math.abs(z) < 1e-10) return alpha*bracket;
+    var xz = Math.log( (Math.sqrt(1-2*rho*z+z*z)+z-rho) / (1-rho) );
+    return alpha*(z/xz)*bracket;
+  }
+
+  var DEFAULTS = { alpha: 9.976, rho: -0.25, nu: 0.40, F: 1.2000, T: 0.25 };
+  var fields = ['alpha', 'rho', 'nu', 'F', 'T'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('sabr-scratch-' + f); });
+  if (!inputs.alpha) return;
+
+  var atmOut = document.getElementById('sabr-scratch-atm');
+  var callOut = document.getElementById('sabr-scratch-call');
+  var putOut = document.getElementById('sabr-scratch-put');
+  var noteOut = document.getElementById('sabr-scratch-note');
+  var resetBtn = document.getElementById('sabr-scratch-reset');
+
+  function recompute(){
+    var alpha = parseFloat(inputs.alpha.value) / 100;
+    var rho = parseFloat(inputs.rho.value);
+    var nu = parseFloat(inputs.nu.value);
+    var F = parseFloat(inputs.F.value);
+    var T = parseFloat(inputs.T.value);
+
+    if (!isFinite(alpha) || !isFinite(rho) || !isFinite(nu) || !isFinite(F) || !isFinite(T) ||
+        alpha<=0 || nu<0 || F<=0 || T<0 || rho<=-1 || rho>=1) {
+      noteOut.textContent = '(enter α>0, |ρ|<1, ν≥0, F>0, T≥0)';
+      return;
+    }
+    var Kput = F - OFFSET;
+    if (Kput <= 0) {
+      noteOut.textContent = '(forward too small — the 200-pip put strike would be non-positive)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var atm = sigmaB(alpha, rho, nu, F, F, T);
+    var call = sigmaB(alpha, rho, nu, F, F+OFFSET, T);
+    var put = sigmaB(alpha, rho, nu, F, Kput, T);
+
+    atmOut.textContent = (atm*100).toFixed(2);
+    callOut.textContent = (call*100).toFixed(2);
+    putOut.textContent = (put*100).toFixed(2);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
