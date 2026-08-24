@@ -432,6 +432,45 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Walk the book, live — change any size below</h3>
+    <p>
+      Starts on the worked example's exact ladder (200 / 300 / 500 units resting
+      at 1.1005 / 1.1006 / 1.1007) and its 600-unit market buy order. Edit any
+      level's size or the order size and the fill-by-level breakdown and VWAP
+      recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Level 1 size (@1.1005)</span></div>
+        <input type="number" id="lob-scratch-s1" class="tl-scratch-input" value="200" step="50" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Level 2 size (@1.1006)</span></div>
+        <input type="number" id="lob-scratch-s2" class="tl-scratch-input" value="300" step="50" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Level 3 size (@1.1007)</span></div>
+        <input type="number" id="lob-scratch-s3" class="tl-scratch-input" value="500" step="50" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Order size Q</span></div>
+        <input type="number" id="lob-scratch-q" class="tl-scratch-input" value="600" step="50" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Filled: L1 <b id="lob-scratch-f1">200</b>&emsp;L2 <b id="lob-scratch-f2">300</b>&emsp;L3 <b id="lob-scratch-f3">100</b>
+    </div>
+    <div class="tl-readout">
+      VWAP &asymp; <b id="lob-scratch-vwap">1.10058</b>
+      (<b id="lob-scratch-pips">0.83</b> pips worse than the 1.1005 best ask)
+      <span id="lob-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="lob-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -654,6 +693,79 @@
     <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss →</a>
   </div>
 </div>
+<script>
+(function(){
+  var P1 = 1.1005, P2 = 1.1006, P3 = 1.1007;
+
+  var s1Input = document.getElementById('lob-scratch-s1');
+  var s2Input = document.getElementById('lob-scratch-s2');
+  var s3Input = document.getElementById('lob-scratch-s3');
+  var qInput = document.getElementById('lob-scratch-q');
+  var f1Out = document.getElementById('lob-scratch-f1');
+  var f2Out = document.getElementById('lob-scratch-f2');
+  var f3Out = document.getElementById('lob-scratch-f3');
+  var vwapOut = document.getElementById('lob-scratch-vwap');
+  var pipsOut = document.getElementById('lob-scratch-pips');
+  var note = document.getElementById('lob-scratch-note');
+  var resetBtn = document.getElementById('lob-scratch-reset');
+  if (!s1Input) return;
+
+  var DEFAULTS = { s1: 200, s2: 300, s3: 500, q: 600 };
+
+  function recompute(){
+    var s1 = parseFloat(s1Input.value);
+    var s2 = parseFloat(s2Input.value);
+    var s3 = parseFloat(s3Input.value);
+    var Q = parseFloat(qInput.value);
+
+    if (!isFinite(s1) || !isFinite(s2) || !isFinite(s3) || !isFinite(Q) || s1 < 0 || s2 < 0 || s3 < 0 || Q <= 0) {
+      f1Out.textContent = '—'; f2Out.textContent = '—'; f3Out.textContent = '—';
+      vwapOut.textContent = '—'; pipsOut.textContent = '—';
+      note.textContent = '(enter non-negative level sizes and a positive order size)';
+      return;
+    }
+
+    var rem = Q;
+    var fill1 = Math.min(rem, s1); rem -= fill1;
+    var fill2 = Math.min(rem, s2); rem -= fill2;
+    var fill3 = Math.min(rem, s3); rem -= fill3;
+    var filled = fill1 + fill2 + fill3;
+
+    f1Out.textContent = fill1;
+    f2Out.textContent = fill2;
+    f3Out.textContent = fill3;
+
+    if (filled === 0) {
+      vwapOut.textContent = '—';
+      pipsOut.textContent = '—';
+      note.textContent = '(no depth available at any level)';
+      return;
+    }
+
+    var vwap = (fill1 * P1 + fill2 * P2 + fill3 * P3) / filled;
+    var pips = (vwap - P1) / 0.0001;
+
+    vwapOut.textContent = vwap.toFixed(5);
+    pipsOut.textContent = pips.toFixed(2);
+    note.textContent = rem > 0
+      ? '(order exceeds displayed depth by ' + rem + ' units — only ' + filled + ' of ' + Q + ' could fill against these three levels)'
+      : '';
+  }
+
+  s1Input.addEventListener('input', recompute);
+  s2Input.addEventListener('input', recompute);
+  s3Input.addEventListener('input', recompute);
+  qInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    s1Input.value = DEFAULTS.s1;
+    s2Input.value = DEFAULTS.s2;
+    s3Input.value = DEFAULTS.s3;
+    qInput.value = DEFAULTS.q;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

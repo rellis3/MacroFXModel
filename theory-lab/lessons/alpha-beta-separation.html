@@ -231,6 +231,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same decomposition, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and the
+      beta-explained slice, the reconstructed total return, the leftover
+      residual, and the short notional needed to fully hedge \(\beta\) to
+      zero all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strategy return \(R_p\) (%)</span></div>
+        <input type="number" id="ab-scratch-rp" class="tl-scratch-input" value="20" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Market return \(R_m\) (%)</span></div>
+        <input type="number" id="ab-scratch-rm" class="tl-scratch-input" value="15" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk-free rate \(r_f\) (%)</span></div>
+        <input type="number" id="ab-scratch-rf" class="tl-scratch-input" value="4" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Beta \(\hat\beta\)</span></div>
+        <input type="number" id="ab-scratch-beta" class="tl-scratch-input" value="1.2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Alpha \(\hat\alpha\) (%/yr)</span></div>
+        <input type="number" id="ab-scratch-alpha" class="tl-scratch-input" value="2" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &beta;&times;(R<sub>m</sub>&minus;r<sub>f</sub>) = <b id="ab-scratch-betapart">13.2%</b>&emsp;Reconstructed R<sub>p</sub> &asymp; <b id="ab-scratch-recon">19.2%</b>&emsp;Residual &epsilon; = <b id="ab-scratch-resid">0.8%</b>
+    </div>
+    <div class="tl-readout">
+      Short notional to hedge &beta; to zero &asymp; <b id="ab-scratch-hedge">1.20&times;</b> position size
+      <span id="ab-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ab-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -364,6 +406,54 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  // Self-contained decomposition calculator, separate from the hedge-slider
+  // chart script above (that one animates a fixed illustrative regression;
+  // this one recomputes the worked example's own arithmetic).
+  var DEFAULTS = { rp: 20, rm: 15, rf: 4, beta: 1.2, alpha: 2 };
+  var fields = ['rp', 'rm', 'rf', 'beta', 'alpha'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('ab-scratch-' + f); });
+
+  var betaPartOut = document.getElementById('ab-scratch-betapart');
+  var reconOut = document.getElementById('ab-scratch-recon');
+  var residOut = document.getElementById('ab-scratch-resid');
+  var hedgeOut = document.getElementById('ab-scratch-hedge');
+  var noteOut = document.getElementById('ab-scratch-note');
+  var resetBtn = document.getElementById('ab-scratch-reset');
+
+  function recompute(){
+    var rp = parseFloat(inputs.rp.value);
+    var rm = parseFloat(inputs.rm.value);
+    var rf = parseFloat(inputs.rf.value);
+    var beta = parseFloat(inputs.beta.value);
+    var alpha = parseFloat(inputs.alpha.value);
+
+    if (!isFinite(rp) || !isFinite(rm) || !isFinite(rf) || !isFinite(beta) || !isFinite(alpha)){
+      noteOut.textContent = '(enter numeric values for every field)';
+      return;
+    }
+
+    var betaPart = beta * (rm - rf);
+    var recon = rf + betaPart + alpha;
+    var resid = rp - recon;
+
+    betaPartOut.textContent = betaPart.toFixed(1) + '%';
+    reconOut.textContent = recon.toFixed(1) + '%';
+    residOut.textContent = resid.toFixed(1) + '%';
+    hedgeOut.textContent = beta.toFixed(2) + '×';
+    noteOut.textContent = beta === 0 ? '(β=0: nothing to hedge — the strategy is already market-neutral)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

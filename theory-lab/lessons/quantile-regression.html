@@ -345,6 +345,38 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the pinball loss, live</h3>
+    <p>
+      Starts on the exact numbers from Section 02's asymmetry claim: at
+      \(\tau=0.05\), a residual of \(u=-1\) (a $1 over-prediction) is
+      penalized \(0.95\), <em>nineteen times</em> more than the \(0.05\)
+      penalty an equal-sized under-prediction (\(u=+1\)) receives. Edit
+      \(\tau\) or the residual \(u=Y-q\) below and the pinball loss
+      \(\rho_\tau(u)\) recalculates instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Quantile level \(\tau\) (%)</span></div>
+        <input type="number" id="qr-scratch-tau" class="tl-scratch-input" value="5" step="1" min="0" max="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Residual \(u = Y - q\)</span></div>
+        <input type="number" id="qr-scratch-u" class="tl-scratch-input" value="-1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Side = <b id="qr-scratch-side">over-prediction</b>&emsp;Weight applied = <b id="qr-scratch-weight">0.9500</b>
+    </div>
+    <div class="tl-readout">
+      &rho;<sub>&tau;</sub>(u) = <b id="qr-scratch-loss">0.9500</b>
+      <span id="qr-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="qr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -524,6 +556,49 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var tauInput = document.getElementById('qr-scratch-tau');
+  var uInput = document.getElementById('qr-scratch-u');
+  var sideOut = document.getElementById('qr-scratch-side');
+  var weightOut = document.getElementById('qr-scratch-weight');
+  var lossOut = document.getElementById('qr-scratch-loss');
+  var noteOut = document.getElementById('qr-scratch-note');
+  var resetBtn = document.getElementById('qr-scratch-reset');
+  if (!tauInput) return;
+
+  var DEFAULTS = { tau: 5, u: -1 };
+
+  function recompute(){
+    var tauPct = parseFloat(tauInput.value);
+    var u = parseFloat(uInput.value);
+    var tau = tauPct / 100;
+
+    if (!isFinite(tauPct) || !isFinite(u) || tau < 0 || tau > 1) {
+      noteOut.textContent = '(enter a τ between 0 and 100, and any residual u)';
+      return;
+    }
+
+    var indicator = u < 0 ? 1 : 0;
+    var weight = tau - indicator;
+    var loss = u * weight;
+
+    sideOut.textContent = u < 0 ? 'over-prediction' : (u > 0 ? 'under-prediction' : 'exact — zero residual');
+    weightOut.textContent = Math.abs(weight).toFixed(4);
+    lossOut.textContent = loss.toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  tauInput.addEventListener('input', recompute);
+  uInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    tauInput.value = DEFAULTS.tau;
+    uInput.value = DEFAULTS.u;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

@@ -530,6 +530,41 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Check any 2-asset Σ for positive-definiteness, live</h3>
+    <p>
+      Starts on Part 1's exact numbers: \(\sigma_1=20\%\), \(\sigma_2=30\%\),
+      \(\rho=0.2\). Edit any field and the covariance entries, both leading
+      principal minors (the diagonal entry and the determinant), and the two
+      eigenvalues recompute instantly — push \(\rho\) toward \(\pm1\) to watch
+      the determinant, and the smaller eigenvalue, collapse toward zero.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma_1\) (%)</span></div>
+        <input type="number" id="cvx-scratch-v1" class="tl-scratch-input" value="20" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma_2\) (%)</span></div>
+        <input type="number" id="cvx-scratch-v2" class="tl-scratch-input" value="30" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation \(\rho\)</span></div>
+        <input type="number" id="cvx-scratch-rho" class="tl-scratch-input" value="0.2" step="0.1" min="-1" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &Sigma;<sub>11</sub> = <b id="cvx-scratch-s11">0.0400</b>&emsp;&Sigma;<sub>12</sub> = <b id="cvx-scratch-s12">0.0120</b>&emsp;&Sigma;<sub>22</sub> = <b id="cvx-scratch-s22">0.0900</b>&emsp;det(&Sigma;) = <b id="cvx-scratch-det">0.003456</b>
+    </div>
+    <div class="tl-readout">
+      &lambda;<sub>1</sub> = <b id="cvx-scratch-lam1">0.0927</b>&emsp;&lambda;<sub>2</sub> = <b id="cvx-scratch-lam2">0.0373</b>&emsp;&Sigma; is <b id="cvx-scratch-verdict">positive definite</b>
+      <span id="cvx-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cvx-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -783,6 +818,74 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var DEFAULTS = { v1: 20, v2: 30, rho: 0.2 };
+  var v1Input = document.getElementById('cvx-scratch-v1');
+  var v2Input = document.getElementById('cvx-scratch-v2');
+  var rhoInput = document.getElementById('cvx-scratch-rho');
+  if (!v1Input) return;
+
+  var s11Out = document.getElementById('cvx-scratch-s11');
+  var s12Out = document.getElementById('cvx-scratch-s12');
+  var s22Out = document.getElementById('cvx-scratch-s22');
+  var detOut = document.getElementById('cvx-scratch-det');
+  var lam1Out = document.getElementById('cvx-scratch-lam1');
+  var lam2Out = document.getElementById('cvx-scratch-lam2');
+  var verdictOut = document.getElementById('cvx-scratch-verdict');
+  var noteOut = document.getElementById('cvx-scratch-note');
+  var resetBtn = document.getElementById('cvx-scratch-reset');
+
+  function recompute(){
+    var v1 = parseFloat(v1Input.value) / 100;
+    var v2 = parseFloat(v2Input.value) / 100;
+    var rho = parseFloat(rhoInput.value);
+
+    if (!isFinite(v1) || !isFinite(v2) || !isFinite(rho) || v1 < 0 || v2 < 0 || rho < -1 || rho > 1) {
+      noteOut.textContent = '(enter non-negative vols and a correlation between -1 and 1)';
+      return;
+    }
+
+    var s11 = v1 * v1, s22 = v2 * v2, s12 = rho * v1 * v2;
+    var det = s11 * s22 - s12 * s12;
+    var trace = s11 + s22;
+    var half = trace / 2;
+    var disc = half * half - det;
+    var sqrtDisc = disc > 0 ? Math.sqrt(disc) : 0;
+    var lam1 = half + sqrtDisc;
+    var lam2 = half - sqrtDisc;
+
+    s11Out.textContent = s11.toFixed(4);
+    s12Out.textContent = s12.toFixed(4);
+    s22Out.textContent = s22.toFixed(4);
+    detOut.textContent = det.toFixed(6);
+    lam1Out.textContent = lam1.toFixed(4);
+    lam2Out.textContent = lam2.toFixed(4);
+
+    var verdict = 'positive definite', note = '';
+    if (v1 === 0 || v2 === 0) {
+      verdict = 'positive semi-definite (degenerate)';
+      note = '(a zero-vol asset makes Σ singular — det=0 exactly)';
+    } else if (Math.abs(rho) >= 1 - 1e-9) {
+      verdict = 'positive semi-definite (not strictly definite)';
+      note = '(ρ=±1: perfectly (anti)correlated — Σ is singular, det≈0)';
+    }
+    verdictOut.textContent = verdict;
+    noteOut.textContent = note;
+  }
+
+  v1Input.addEventListener('input', recompute);
+  v2Input.addEventListener('input', recompute);
+  rhoInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    v1Input.value = DEFAULTS.v1;
+    v2Input.value = DEFAULTS.v2;
+    rhoInput.value = DEFAULTS.rho;
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

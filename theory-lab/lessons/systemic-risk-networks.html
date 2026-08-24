@@ -279,6 +279,46 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute Bank C's contagion, two rounds in, live</h3>
+    <p>
+      Starts on the worked example's exact impact factors and Bank C's
+      full default (\(h_C(0)=1\)). Change any input and both rounds of
+      distress &mdash; \(h_A, h_B, h_D\) after round 1 and after round 2
+      &mdash; recalculate instantly from the same round-by-round rule used
+      above (the cross-exposures \(W_{AB}=0.3\), \(W_{BA}=0.2\),
+      \(W_{DA}=0.1\) stay fixed at the worked example's matrix).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bank C's shock \(h_C(0)\)</span></div>
+        <input type="number" id="srn-scratch-hc0" class="tl-scratch-input" value="1.0" step="0.1" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(W_{AC}\)</span></div>
+        <input type="number" id="srn-scratch-wac" class="tl-scratch-input" value="0.1" step="0.05" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(W_{BC}\)</span></div>
+        <input type="number" id="srn-scratch-wbc" class="tl-scratch-input" value="0.4" step="0.05" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(W_{DC}\)</span></div>
+        <input type="number" id="srn-scratch-wdc" class="tl-scratch-input" value="0.3" step="0.05" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Round 1: h<sub>A</sub>=<b id="srn-scratch-a1">0.10</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b1">0.40</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d1">0.30</b>
+    </div>
+    <div class="tl-readout">
+      Round 2: h<sub>A</sub>=<b id="srn-scratch-a2">0.22</b>&emsp;h<sub>B</sub>=<b id="srn-scratch-b2">0.42</b>&emsp;h<sub>D</sub>=<b id="srn-scratch-d2">0.31</b>
+      <span id="srn-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="srn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>You might expect one bank failing to just spread its own trouble around, like slicing a pie into smaller pieces for everyone else — the total pain staying the same size, just shared out. But the worked example shows the total pain (1.04) actually ends up bigger than the original failure (1.00). Each round of wobbling adds a little extra damage on top, rather than simply redistributing what was already there — that "extra on top" is exactly what makes network contagion dangerous.</p>
@@ -541,6 +581,70 @@
     <a href="../hub.html">Theory Lab hub</a>
   </div>
 </div>
+<script>
+(function(){
+  var hc0Input = document.getElementById('srn-scratch-hc0');
+  var wacInput = document.getElementById('srn-scratch-wac');
+  var wbcInput = document.getElementById('srn-scratch-wbc');
+  var wdcInput = document.getElementById('srn-scratch-wdc');
+  var a1Out = document.getElementById('srn-scratch-a1');
+  var b1Out = document.getElementById('srn-scratch-b1');
+  var d1Out = document.getElementById('srn-scratch-d1');
+  var a2Out = document.getElementById('srn-scratch-a2');
+  var b2Out = document.getElementById('srn-scratch-b2');
+  var d2Out = document.getElementById('srn-scratch-d2');
+  var noteOut = document.getElementById('srn-scratch-note');
+  var resetBtn = document.getElementById('srn-scratch-reset');
+  if (!hc0Input) return;
+
+  // Cross-exposures fixed at the worked example's matrix (not user inputs)
+  // so this stays a two-round illustration rather than a full 4x4 solver.
+  var W_AB = 0.3, W_BA = 0.2, W_DA = 0.1;
+
+  var DEFAULTS = { hc0: 1.0, wac: 0.1, wbc: 0.4, wdc: 0.3 };
+
+  function recompute(){
+    var hC0 = parseFloat(hc0Input.value);
+    var wac = parseFloat(wacInput.value);
+    var wbc = parseFloat(wbcInput.value);
+    var wdc = parseFloat(wdcInput.value);
+
+    if (!isFinite(hC0) || !isFinite(wac) || !isFinite(wbc) || !isFinite(wdc) ||
+        hC0 < 0 || hC0 > 1 || wac < 0 || wbc < 0 || wdc < 0) {
+      noteOut.textContent = '(enter a shock between 0 and 1, and non-negative impact factors)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var hA1 = wac * hC0;
+    var hB1 = wbc * hC0;
+    var hD1 = wdc * hC0;
+
+    var hA2 = hA1 + W_AB * hB1;
+    var hB2 = hB1 + W_BA * hA1;
+    var hD2 = hD1 + W_DA * hA1;
+
+    a1Out.textContent = hA1.toFixed(2);
+    b1Out.textContent = hB1.toFixed(2);
+    d1Out.textContent = hD1.toFixed(2);
+    a2Out.textContent = hA2.toFixed(2);
+    b2Out.textContent = hB2.toFixed(2);
+    d2Out.textContent = hD2.toFixed(2);
+  }
+
+  [hc0Input, wacInput, wbcInput, wdcInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    hc0Input.value = DEFAULTS.hc0;
+    wacInput.value = DEFAULTS.wac;
+    wbcInput.value = DEFAULTS.wbc;
+    wdcInput.value = DEFAULTS.wdc;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

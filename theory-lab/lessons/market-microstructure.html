@@ -452,6 +452,39 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Kyle's Lambda, live — change any input below</h3>
+    <p>
+      Starts on the worked example's "liquid session" numbers. Edit any
+      field and both \(\lambda\) and the resulting price impact
+      \(\Delta p\) recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Value uncertainty \(\sigma_v\)</span></div>
+        <input type="number" id="mm-scratch-sigmav" class="tl-scratch-input" value="2" step="0.5" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Noise-trading volume \(\sigma_u\)</span></div>
+        <input type="number" id="mm-scratch-sigmau" class="tl-scratch-input" value="100" step="10">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Order size \(Q\)</span></div>
+        <input type="number" id="mm-scratch-Q" class="tl-scratch-input" value="500" step="50">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &lambda; = &sigma;<sub>v</sub> / (2&sigma;<sub>u</sub>) = <b id="mm-scratch-lambda">0.0100</b>
+    </div>
+    <div class="tl-readout">
+      &Delta;p = &lambda;&times;Q &asymp; $<b id="mm-scratch-dp">5.00</b>
+      <span id="mm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Price impact vs. order size, at two liquidity levels</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Price impact chart. X-axis is order size Q from 0 to 1000 contracts, y-axis is price impact in dollars from 0 to 50. A blue straight line through the origin with slope lambda equal to 0.01 represents a deep, liquid market, reaching about 10 dollars of impact at 1000 contracts. A steeper red straight line through the origin with slope lambda-prime equal to 0.05 represents a thin, illiquid market, reaching 50 dollars of impact at 1000 contracts. A dashed vertical guide at order size 500 shows the same order producing 5 dollars of impact on the blue line versus 25 dollars of impact on the red line.">
@@ -759,6 +792,51 @@
     <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics →</a>
   </div>
 </div>
+<script>
+(function(){
+  var sigmavInput = document.getElementById('mm-scratch-sigmav');
+  var sigmauInput = document.getElementById('mm-scratch-sigmau');
+  var qInput = document.getElementById('mm-scratch-Q');
+  var lambdaOut = document.getElementById('mm-scratch-lambda');
+  var dpOut = document.getElementById('mm-scratch-dp');
+  var note = document.getElementById('mm-scratch-note');
+  var resetBtn = document.getElementById('mm-scratch-reset');
+  if (!sigmavInput) return;
+
+  var DEFAULTS = { sigmav: 2, sigmau: 100, Q: 500 };
+
+  function recompute(){
+    var sigmav = parseFloat(sigmavInput.value);
+    var sigmau = parseFloat(sigmauInput.value);
+    var Q = parseFloat(qInput.value);
+
+    if (!isFinite(sigmav) || !isFinite(sigmau) || !isFinite(Q) || sigmav < 0 || sigmau <= 0) {
+      lambdaOut.textContent = '—';
+      dpOut.textContent = '—';
+      note.textContent = '(enter a non-negative σᵥ and a positive σᵤ)';
+      return;
+    }
+
+    var lambda = sigmav / (2 * sigmau);
+    var dp = lambda * Q;
+
+    lambdaOut.textContent = lambda.toFixed(4);
+    dpOut.textContent = dp.toFixed(2);
+    note.textContent = '';
+  }
+
+  sigmavInput.addEventListener('input', recompute);
+  sigmauInput.addEventListener('input', recompute);
+  qInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    sigmavInput.value = DEFAULTS.sigmav;
+    sigmauInput.value = DEFAULTS.sigmau;
+    qInput.value = DEFAULTS.Q;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

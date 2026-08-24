@@ -389,6 +389,37 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Evaluate the objective at every vertex, live</h3>
+    <p>
+      Starts on Part 1's exact numbers: maximize \(Z=3x+5y\) over the same
+      fixed pentagon (vertices \((0,0)\), \((4,0)\), \((4,3)\), \((2,6)\),
+      \((0,6)\)). Change either coefficient and \(Z\) at every vertex — and
+      which vertex wins — recompute instantly, the same vertex-enumeration
+      argument from the worked example, just re-run on a different objective.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Coefficient on \(x\)</span></div>
+        <input type="number" id="lq-scratch-cx" class="tl-scratch-input" value="3" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Coefficient on \(y\)</span></div>
+        <input type="number" id="lq-scratch-cy" class="tl-scratch-input" value="5" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Z(0,0) = <b id="lq-scratch-z0">0</b>&emsp;Z(4,0) = <b id="lq-scratch-z1">12</b>&emsp;Z(4,3) = <b id="lq-scratch-z2">27</b>&emsp;Z(2,6) = <b id="lq-scratch-z3">36</b>&emsp;Z(0,6) = <b id="lq-scratch-z4">30</b>
+    </div>
+    <div class="tl-readout">
+      Optimal vertex: <b id="lq-scratch-vertex">(2, 6)</b>, Z = <b id="lq-scratch-zmax">36</b>
+      <span id="lq-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="lq-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -679,6 +710,66 @@
 
   slider.addEventListener('input', update);
   update();
+})();
+</script>
+<script>
+(function(){
+  var VERTICES = [[0,0],[4,0],[4,3],[2,6],[0,6]];
+  var DEFAULTS = { cx: 3, cy: 5 };
+  var cxInput = document.getElementById('lq-scratch-cx');
+  var cyInput = document.getElementById('lq-scratch-cy');
+  if (!cxInput) return;
+
+  var zOuts = [
+    document.getElementById('lq-scratch-z0'),
+    document.getElementById('lq-scratch-z1'),
+    document.getElementById('lq-scratch-z2'),
+    document.getElementById('lq-scratch-z3'),
+    document.getElementById('lq-scratch-z4')
+  ];
+  var vertexOut = document.getElementById('lq-scratch-vertex');
+  var zMaxOut = document.getElementById('lq-scratch-zmax');
+  var noteOut = document.getElementById('lq-scratch-note');
+  var resetBtn = document.getElementById('lq-scratch-reset');
+
+  function fmt(v){
+    return (Math.round(v * 10000) / 10000).toString();
+  }
+
+  function recompute(){
+    var cx = parseFloat(cxInput.value);
+    var cy = parseFloat(cyInput.value);
+
+    if (!isFinite(cx) || !isFinite(cy)) {
+      noteOut.textContent = '(enter finite numbers for both coefficients)';
+      return;
+    }
+
+    var best = -Infinity, bestIdx = 0;
+    var zs = VERTICES.map(function(p, i){
+      var z = cx * p[0] + cy * p[1];
+      if (z > best) { best = z; bestIdx = i; }
+      return z;
+    });
+
+    zs.forEach(function(z, i){ zOuts[i].textContent = fmt(z); });
+    var bp = VERTICES[bestIdx];
+    vertexOut.textContent = '(' + bp[0] + ', ' + bp[1] + ')';
+    zMaxOut.textContent = fmt(best);
+
+    noteOut.textContent = (cx <= 0 && cy <= 0)
+      ? '(both coefficients ≤0 — the maximum sits at the origin, (0,0))'
+      : '';
+  }
+
+  cxInput.addEventListener('input', recompute);
+  cyInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    cxInput.value = DEFAULTS.cx;
+    cyInput.value = DEFAULTS.cy;
+    recompute();
+  });
+  recompute();
 })();
 </script>
 <script>

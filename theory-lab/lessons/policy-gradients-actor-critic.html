@@ -312,6 +312,41 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same REINFORCE update, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Keeps the same setup —
+      starting logits \(\theta_1=\theta_2=0\) (so \(\pi(a_1)=\pi(a_2)=0.5\))
+      and action \(a_2\) sampled — and recalculates the advantage, both
+      updated logits, and the new probability of \(a_2\) as you edit the
+      return, baseline, or learning rate.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Return \(R\)</span></div>
+        <input type="number" id="pg-scratch-R" class="tl-scratch-input" value="2" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Baseline \(V(s)\)</span></div>
+        <input type="number" id="pg-scratch-V" class="tl-scratch-input" value="1" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Learning rate \(\alpha\)</span></div>
+        <input type="number" id="pg-scratch-alpha" class="tl-scratch-input" value="0.1" step="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      A = R &minus; V(s) = <b id="pg-scratch-A">1.00</b>&emsp;&theta;&#8322; = <b id="pg-scratch-theta2">0.050</b>&emsp;&theta;&#8321; = <b id="pg-scratch-theta1">-0.050</b>
+    </div>
+    <div class="tl-readout">
+      &pi;(a&#8322;) = <b id="pg-scratch-pi2">0.525</b>
+      <span id="pg-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="pg-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Repeated updates under a constant advantage: probability of the better action rises</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing the probability of choosing the large-position action rising from 0.5 toward higher values over 10 simulated policy gradient updates, each assuming the same constant advantage of plus one for illustration, following a logistic update recursion.">
@@ -554,6 +589,58 @@
     <a href="deep-q-networks.html">Deep Q-Networks: Function Approximation for Value Learning →</a>
   </div>
 </div>
+<script>
+(function(){
+  var DEFAULTS = { R: 2, V: 1, alpha: 0.1 };
+  var fields = ['R', 'V', 'alpha'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('pg-scratch-' + f); });
+  if (!inputs.R) return;
+
+  var aOut = document.getElementById('pg-scratch-A');
+  var theta2Out = document.getElementById('pg-scratch-theta2');
+  var theta1Out = document.getElementById('pg-scratch-theta1');
+  var pi2Out = document.getElementById('pg-scratch-pi2');
+  var noteOut = document.getElementById('pg-scratch-note');
+  var resetBtn = document.getElementById('pg-scratch-reset');
+
+  function recompute(){
+    var R = parseFloat(inputs.R.value);
+    var V = parseFloat(inputs.V.value);
+    var alpha = parseFloat(inputs.alpha.value);
+
+    if (!isFinite(R) || !isFinite(V) || !isFinite(alpha)) {
+      aOut.textContent = '—';
+      theta2Out.textContent = '—';
+      theta1Out.textContent = '—';
+      pi2Out.textContent = '—';
+      noteOut.textContent = '(enter numeric values for R, V(s) and α)';
+      return;
+    }
+
+    // Starting logits are both 0, so pi(a1)=pi(a2)=0.5 and the score
+    // function for the sampled action a2 is (1-0.5)=0.5, and for the
+    // un-sampled a1 is (0-0.5)=-0.5.
+    var A = R - V;
+    var theta2 = 0 + alpha * 0.5 * A;
+    var theta1 = 0 + alpha * (-0.5) * A;
+    var pi2 = Math.exp(theta2) / (Math.exp(theta2) + Math.exp(theta1));
+
+    aOut.textContent = A.toFixed(2);
+    theta2Out.textContent = theta2.toFixed(3);
+    theta1Out.textContent = theta1.toFixed(3);
+    pi2Out.textContent = pi2.toFixed(3);
+    noteOut.textContent = (alpha < 0) ? '(a negative learning rate flips the update direction — unusual, but still computed below)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

@@ -365,6 +365,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the significance check, live</h3>
+    <p>
+      Starts on the worked example's first case: \(n=500\), \(\hat\rho_1=3\%\).
+      Edit either field and the standard error, the implied t-statistic, and
+      the significance verdict all recalculate instantly — try pushing
+      \(\hat\rho_1\) up toward 15% to see the second case from above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Sample size \(n\)</span></div>
+        <input type="number" id="emh-scratch-n" class="tl-scratch-input" value="500" step="10" min="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\hat\rho_1\) (%)</span></div>
+        <input type="number" id="emh-scratch-rho" class="tl-scratch-input" value="3" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      SE &asymp; <b id="emh-scratch-se">0.0447</b>&emsp;t = &rho;&#770;/SE &asymp; <b id="emh-scratch-t">0.67</b>
+    </div>
+    <div class="tl-readout">
+      Verdict: <b id="emh-scratch-verdict">well within 1 SE — routine noise, not a signal</b>
+      <span id="emh-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="emh-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -556,6 +586,59 @@
     <a href="bayesian-inference.html">Bayesian Inference &amp; Updating →</a>
   </div>
 </div>
+<script>
+(function(){
+  var nInput = document.getElementById('emh-scratch-n');
+  var rhoInput = document.getElementById('emh-scratch-rho');
+  var seOut = document.getElementById('emh-scratch-se');
+  var tOut = document.getElementById('emh-scratch-t');
+  var verdictOut = document.getElementById('emh-scratch-verdict');
+  var note = document.getElementById('emh-scratch-note');
+  var resetBtn = document.getElementById('emh-scratch-reset');
+  if (!nInput) return;
+
+  var DEFAULTS = { n: 500, rho: 3 };
+
+  function recompute(){
+    var n = parseFloat(nInput.value);
+    var rhoPct = parseFloat(rhoInput.value);
+
+    if (!isFinite(n) || n <= 1 || !isFinite(rhoPct)) {
+      note.textContent = '(enter a sample size above 1 and a numeric autocorrelation)';
+      seOut.textContent = '—';
+      tOut.textContent = '—';
+      verdictOut.textContent = '—';
+      return;
+    }
+    note.textContent = '';
+
+    var se = 1 / Math.sqrt(n);
+    var rho = rhoPct / 100;
+    var t = rho / se;
+    var absT = Math.abs(t);
+
+    var verdict;
+    if (absT < 1) verdict = 'well within 1 SE — routine noise, not a signal';
+    else if (absT < 2) verdict = 'borderline (1–2 SE) — suggestive, not conventionally significant';
+    else if (absT < 3) verdict = 'above ~2 SE — a real statistical signal';
+    else verdict = 'above 3 SE — a strong signal, like the ρ=0.15 case above';
+
+    seOut.textContent = se.toFixed(4);
+    tOut.textContent = t.toFixed(2);
+    verdictOut.textContent = verdict;
+  }
+
+  nInput.addEventListener('input', recompute);
+  rhoInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    nInput.value = DEFAULTS.n;
+    rhoInput.value = DEFAULTS.rho;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');

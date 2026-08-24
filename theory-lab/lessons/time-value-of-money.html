@@ -401,6 +401,39 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the future value, live — annual vs. continuous</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and both
+      compounding conventions' future values, plus the gap between them,
+      recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Present value \(PV\)</span></div>
+        <input type="number" id="tvm-scratch-pv" class="tl-scratch-input" value="1000" step="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="tvm-scratch-r" class="tl-scratch-input" value="6" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time \(t\) (yrs)</span></div>
+        <input type="number" id="tvm-scratch-t" class="tl-scratch-input" value="5" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      FV<sub>annual</sub> = <b id="tvm-scratch-fv-annual">$1,338.23</b>&emsp;FV<sub>cont.</sub> = <b id="tvm-scratch-fv-cont">$1,349.86</b>
+    </div>
+    <div class="tl-readout">
+      Gap from compounding frequency alone &asymp; <b id="tvm-scratch-diff">$11.63</b>
+      <span id="tvm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="tvm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -689,6 +722,64 @@
     <a href="../hub.html">Theory Lab hub →</a>
   </div>
 </div>
+<script>
+(function(){
+  var pvInput = document.getElementById('tvm-scratch-pv');
+  var rInput = document.getElementById('tvm-scratch-r');
+  var tInput = document.getElementById('tvm-scratch-t');
+  var fvAnnualOut = document.getElementById('tvm-scratch-fv-annual');
+  var fvContOut = document.getElementById('tvm-scratch-fv-cont');
+  var diffOut = document.getElementById('tvm-scratch-diff');
+  var note = document.getElementById('tvm-scratch-note');
+  var resetBtn = document.getElementById('tvm-scratch-reset');
+  if (!pvInput) return;
+
+  var DEFAULTS = { pv: 1000, r: 6, t: 5 };
+
+  function fmtUSD(x){
+    var sign = x < 0 ? '-' : '';
+    var abs = Math.abs(x);
+    var parts = abs.toFixed(2).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return sign + '$' + parts.join('.');
+  }
+
+  function recompute(){
+    var pv = parseFloat(pvInput.value);
+    var rPct = parseFloat(rInput.value);
+    var t = parseFloat(tInput.value);
+
+    if (!isFinite(pv) || !isFinite(rPct) || !isFinite(t) || t < 0) {
+      note.textContent = '(enter a numeric PV, rate, and a non-negative time)';
+      fvAnnualOut.textContent = '—';
+      fvContOut.textContent = '—';
+      diffOut.textContent = '—';
+      return;
+    }
+    note.textContent = '';
+
+    var r = rPct / 100;
+    var fvAnnual = pv * Math.pow(1 + r, t);
+    var fvCont = pv * Math.exp(r * t);
+
+    fvAnnualOut.textContent = fmtUSD(fvAnnual);
+    fvContOut.textContent = fmtUSD(fvCont);
+    diffOut.textContent = fmtUSD(fvCont - fvAnnual);
+  }
+
+  pvInput.addEventListener('input', recompute);
+  rInput.addEventListener('input', recompute);
+  tInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    pvInput.value = DEFAULTS.pv;
+    rInput.value = DEFAULTS.r;
+    tInput.value = DEFAULTS.t;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
 <script>
 (function(){
   var btn = document.getElementById('eli5-toggle');
