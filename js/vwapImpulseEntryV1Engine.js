@@ -86,6 +86,10 @@ export const DEFAULT_CFG = {
   armMins: 240,                    // zone stays unlocked this long after the trigger closes
   bandK: 2,                        // band_reentry_fade: the fixed-σ band that defines "stretched"
   atrTfMin: 15, atrPeriod: 14, slAtrMult: 1.5,   // the sibling engines' stop convention
+  exitMode: 'target',              // 'target' (TP at the level) | 'time' (mark-to-close
+                                   // after timeExitBars M1 bars, SL still active) — the
+                                   // payoff-geometry pivot: same entries, different exit
+  timeExitBars: 60,
   ctxLookbackDays: 2,              // prior days feeding the causal ATR
   costPct: 0.020,                  // commodity round-trip, % of price
   oosFrac: 0.4,
@@ -161,17 +165,23 @@ export function runVwapImpulseEntry(packed, cfg = {}) {
           if (!tagged) continue;
           if (!inSession(bars[j].time)) break;   // zone reached outside the allowed window → skip this impulse
           const entry = level;
-          const tp = isUp ? im.high : im.low;    // the impulse extreme
-          if ((tp - entry) * sgn <= 0) break;    // no room to target
+          const tpLevel = isUp ? im.high : im.low;   // the impulse extreme
+          if ((tpLevel - entry) * sgn <= 0) break;   // no room toward the impulse
           const atr = causalAtr(packed, dayStart, bars[j].time, c);
           if (!atr) break;
           const sl = entry - sgn * c.slAtrMult * atr;
-          const r = walkBars(bars.slice(j), entry, tp, sl, isUp, 'limit', open);
+          // exitMode 'time': no target — an unreachable TP makes walkBars run
+          // to the (time-capped) window's last close, SL still live. Same
+          // mark-to-window-close discipline as the whole forecast family.
+          const timed = c.exitMode === 'time';
+          const tp = timed ? (isUp ? Infinity : -Infinity) : tpLevel;
+          const win = timed ? bars.slice(j, j + c.timeExitBars + 1) : bars.slice(j);
+          const r = walkBars(win, entry, tp, sl, isUp, 'limit', open);
           if (r?.filled) {
             const net = +(r.pnlPct - c.costPct).toFixed(5);
             records.push({ date, filled: true, pnl_pct: net });
             trades.push({ date, mode: c.mode, tf: c.triggerTfMin, side: isUp ? 'BUY' : 'SELL',
-              entry: +entry.toFixed(5), tp: +tp.toFixed(5), sl: +sl.toFixed(5),
+              entry: +entry.toFixed(5), tp: +tpLevel.toFixed(5), sl: +sl.toFixed(5),
               impulseTime: im.time, outcome: r.outcome, grossPct: +r.pnlPct.toFixed(5), netPct: net,
               fillTime: r.fillTime, exitTime: r.exitTime });
             tookTrade = true;

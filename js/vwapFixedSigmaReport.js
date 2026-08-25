@@ -125,6 +125,93 @@ export function buildFixedSigmaBook(touches, { firstTouchOnly = false } = {}) {
   return { instrument, splitDate: split, firstTouchOnly, cells };
 }
 
+// ── The RETURN-TO-VWAP book — the owner's actual question ────────────────────
+// "Price hits kσ in different volatility sessions / times / momentum states
+// and always returns to VWAP — trend that via levels of analysis." Same rows,
+// same cells, same shared holds gate — but the gated outcome is the return to
+// VWAP instead of the out/back race. `outPct` here IS the return rate — named
+// that way so `annotateHolds` and `extractHeldFindings` (which read the
+// `outPct`/`deltaOut` fields) are literally reused, not re-implemented.
+//
+// TWO honesty rules baked in, both load-bearing:
+//   1. FIXED HORIZON, not "before session end". A raw before-session-end
+//      return outcome is time-truncated: a late touch has less clock left, so
+//      every time-correlated dimension (sessionPos, session — NY is simply
+//      late in a UTC day) shows huge fake effects. First draft of this book
+//      showed sessionPos=late at Δ−40pp everywhere — a clock artifact, caught
+//      by §6-style interrogation and fixed here: the outcome is "returned
+//      within `horizonMins`", and only touches with at least `horizonMins` of
+//      session remaining are eligible at all (the §6.5 exclusion).
+//   2. READ WITH THE CONTROL: a random walk also "returns to VWAP" constantly
+//      (the VWAP converges toward price) — rates only mean something relative
+//      to the random-walk baseline printed by
+//      scripts/run_gold_vwap_sigma_controls.mjs.
+export const RETURN_HORIZON_MINS = 240;
+
+export function returnedWithin(t, horizonMins = RETURN_HORIZON_MINS) {
+  return t.minsToVwap != null && t.minsToVwap <= horizonMins;
+}
+export function returnEligible(t, horizonMins = RETURN_HORIZON_MINS) {
+  return t.minsIntoSession <= 1440 - horizonMins;
+}
+
+function tableForReturn(touches, dimKey, horizonMins = RETURN_HORIZON_MINS) {
+  const groups = {};
+  for (const t of touches) {
+    const b = t[dimKey]; if (b == null) continue;
+    const g = (groups[b] ??= { n: 0, hits: 0, mtv: [] });
+    g.n++;
+    if (returnedWithin(t, horizonMins)) { g.hits++; g.mtv.push(t.minsToVwap); }
+  }
+  const out = {};
+  for (const [b, g] of Object.entries(groups)) {
+    const s = [...g.mtv].sort((x, y) => x - y);
+    out[b] = {
+      n: g.n,
+      outPct: +(g.hits / g.n * 100).toFixed(1),      // = return-within-horizon rate
+      medMinsToVwap: s.length ? s[s.length >> 1] : null,
+    };
+  }
+  return out;
+}
+
+function summarizeAllReturn(touches, horizonMins) {
+  const fake = touches.map(t => ({ ...t, _all: 'all' }));
+  return tableForReturn(fake, '_all', horizonMins).all;
+}
+
+/**
+ * buildVwapReturnBook(touches, { firstTouchOnly }) — cells (side, band), every
+ * dimension bucketed against the return-to-VWAP rate, IS/OOS, holds-gated.
+ */
+export function buildVwapReturnBook(touches, { firstTouchOnly = true, horizonMins = RETURN_HORIZON_MINS } = {}) {
+  let pool = firstTouchOnly ? touches.filter(t => t.ordinal === 1) : touches;
+  pool = pool.filter(t => returnEligible(t, horizonMins));
+  if (!pool.length) return null;
+  const { split, is, oos } = splitAt(pool);
+  const instrument = pool[0].instrument;
+  const cells = {};
+  const bands = [...new Set(pool.map(t => t.band))].sort((a, b) => a - b);
+  for (const side of ['up', 'dn']) {
+    for (const band of bands) {
+      const key = `${side}|${band}`;
+      const cellIS = is.filter(t => t.side === side && t.band === band);
+      const cellOOS = oos.filter(t => t.side === side && t.band === band);
+      if (!cellIS.length) continue;
+      const base = { is: summarizeAllReturn(cellIS, horizonMins), oos: cellOOS.length ? summarizeAllReturn(cellOOS, horizonMins) : null };
+      const dims = {};
+      for (const [dimKey] of DIMENSIONS) {
+        const tIs = tableForReturn(cellIS, dimKey, horizonMins), tOos = tableForReturn(cellOOS, dimKey, horizonMins);
+        if (!Object.keys(tIs).length) continue;
+        dims[dimKey] = { is: tIs, oos: tOos };
+      }
+      if (base.oos) annotateHolds(dims, base.is, base.oos);
+      cells[key] = { n: { is: cellIS.length, oos: cellOOS.length }, base, dims };
+    }
+  }
+  return { instrument, splitDate: split, firstTouchOnly, outcome: `returnedWithin${horizonMins}m`, horizonMins, cells };
+}
+
 /** Every holds-gated finding across the book, biggest |effect| first. */
 export function extractHeldFindings(book, { limit = 60 } = {}) {
   if (!book) return [];

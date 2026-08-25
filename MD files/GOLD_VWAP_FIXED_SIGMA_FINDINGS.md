@@ -199,10 +199,10 @@ needs the cross-instrument sweep before believing it.
 
 ## 5. What would extend or change this
 
-1. **Cross-instrument sweep** (the 26-pair M1 archive is on disk) — the themes
-   in §3 are one-instrument findings; the same walk on FX majors would show
-   whether they're gold facts or general facts. Cheap: the engine is
-   instrument-agnostic.
+1. **Cross-instrument sweep** — DONE, see §7c: session clock, grind-dies and
+   reject/accept replicate on EURUSD/GBPUSD/USDJPY; the WaveTrend conditioning
+   does not (gold-only). The remaining 22 pairs are one command away
+   (`scripts/run_vwap_sigma_sweep.mjs`).
 2. **Session anchor sweep** — UTC-day is the Pine convention; a London or NY
    anchored VWAP changes what "the session" means for gold specifically.
 3. **σ-definition A/B** — RMS-around-VWAP (this) vs the developing
@@ -287,6 +287,104 @@ is where this dies); gating A on the book's *touch-bar* held themes
 impulse-range levels (`impulseLevels`) as the zone instead of VWAP; and the
 cross-instrument sweep before any of that, to know if gold is even the right
 instrument for the question.
+
+## 7. The return-to-VWAP book — the question behind the question
+
+The owner's actual interest, stated after §6: *"price hits x σ in different
+volatility sessions / times, maybe with VuManChu momentum, and always returns
+to VWAP — trend that via levels of analysis."* Same touch rows, new gated
+outcome: **did price return to VWAP** — with two honesty rules that turned
+out to be load-bearing:
+
+1. **Fixed horizon, not "before session end."** The first draft used
+   return-before-session-end and produced huge `sessionPos=late Δ−40pp`
+   "findings" — pure clock truncation (a late touch has less time left; NY is
+   simply late in a UTC day). Fixed: outcome = **returned within 240 min**,
+   and only touches with ≥240 min of session remaining are eligible (§6.5
+   exclusion). Everything below uses that metric.
+2. **Read against the random-walk control** — a random walk also "returns to
+   VWAP" because the VWAP converges toward price.
+
+### 7a. The headline: the return is real, and much bigger than the artifact
+
+Return-to-VWAP within 240 min, first touches, gold vs the identical engine on
+a driftless random walk:
+
+| band | gold (IS/OOS) | random walk |
+|---|---|---|
+| ±1σ | 61–66% / 59–65% | 53.5% |
+| ±2σ | 39–46% / 38–40% | 19.3% |
+| ±3σ | 29–30% / 27% | 4.8% |
+| ±4σ | 15–26% / 17–19% | 0.0% |
+
+At ±1σ the "price always returns to VWAP" impression is mostly the
+coordinate artifact (61% vs 53.5% — modest excess). **At deep bands it is
+overwhelmingly real**: a 3σ stretch returns ~6× more often than a random
+walk's, a 4σ stretch returns when a random walk's essentially never does.
+The intuition from the charts survives the control — at depth. Median time
+to return: ~70–100 min at 1–3σ, lengthening with depth.
+
+### 7b. The "levels of analysis" conditioning (gold, OOS-gated)
+
+108 held findings vs a measured permutation baseline of 38.2 (range 29–52
+over 20 shuffles) — **~3× the noise floor, the strongest conditional
+structure of anything in this study** (the race book ran 85 vs 41.5). The
+themes:
+
+- **Session (time layer) — the biggest.** Deep-band (2–3σ) return rates:
+  Asia 53% / London 38% / NY 20%. A deep stretch during NY is a real move
+  that stays gone; the same stretch in Asia/London snaps back. Held OOS
+  across many cells and both sides.
+- **VuManChu / WaveTrend (momentum layer) — real on gold, gold-only.**
+  At 3σ, WT-neutral touches return 42% vs 25% for WT-extended (held OOS on
+  dn|3 +13.4/+25.1, up|3 +8.9/+12, dn|2 +10.3/+4.7; coherently, a fully
+  "with" MTF stack at 4–5σ almost never returns within 4h: dn|5 3.5%/2.9%).
+  The random-walk control is FLAT on this dimension (Δ±1pp), so it is not
+  mechanical — a *drift* to a deep band snaps back, a *momentum move* to the
+  same band doesn't. **Caveat that keeps it honest: it did NOT replicate on
+  the FX majors (§7c) — treat as a gold-specific, medium-confidence finding
+  pending forward validation.**
+- **Volatility regime (vol layer) — thin.** Heavy-σ regimes return slightly
+  more at deep bands (3σ: 34% vs 27% normal), one OOS-held cell; quiet
+  regimes also edge above normal. Not a clean monotone — the weakest of the
+  three layers, reported as such.
+
+### 7c. Cross-instrument replication (EURUSD, GBPUSD, USDJPY — pre-named checks)
+
+The six theme checks were fixed from the gold books BEFORE the sweep ran
+(a replication, not a second fishing pass). ~2,747 sessions each:
+
+| check | EURUSD | GBPUSD | USDJPY | replicates? |
+|---|---|---|---|---|
+| deep-band return≤240m (gold 34%, control 16%) | 46.5% | 46.2% | 47.8% | ✅ even stronger |
+| NY returns least (gold: NY 20%) | NY 27.9% (min) | NY 24.0% (min) | NY 23.4% (min) | ✅ all three |
+| WT neutral ≫ extended | flat | flat | slightly reversed | ❌ gold-only |
+| race: Asia out% < NY out% | 22.3 < 38.5 | 27.6 < 32.6 | 24.8 < 33.2 | ✅ all three |
+| race: grind < spike | 22.0 < 34.4 | 25.5 < 36.3 | 23.5 < 31.1 | ✅ all three |
+| race: reject < accept (±2σ) | 24.0 < 34.3 | 26.2 < 32.8 | 25.8 < 35.8 | ✅ all three |
+
+One nuance: *which* session mean-reverts most is instrument-specific (gold
+and USDJPY: Asia highest; EURUSD/GBPUSD: London highest, their Asia being a
+dead session) — the universal form is "**deep stretches made during NY don't
+come back; stretches made in the quieter sessions do**", plus grind-dies and
+reject/accept, which generalize everywhere. Each pair's own return book also
+carries more held findings than its race book (116–154 vs 73–85) —
+return-to-VWAP is the more conditionable outcome across the board.
+
+### 7d. §6 addendum — the exit-geometry pivot, also null
+
+Per §6's own note that the continuation died on payoff geometry, the same
+entries were re-run with a time exit (60-bar mark-to-close, stop still live)
+instead of the impulse-extreme target: OOS t −1.3 (30m) / −3.7 (1h) / +0.02
+(4h). Null — the exit was not the missing piece either.
+
+**Standing discipline:** everything in §7 is descriptive, OOS-gated
+reference material. The trade-shaped tests run so far (§6, §7d) are null, so
+none of this is claimed as after-cost edge. The natural next harness-gated
+candidate — a deep-band fade conditioned jointly on quiet-session ×
+non-momentum × reject-candle — stacks several selections, so it needs
+pre-registration and a multiple-testing-aware read before anyone believes a
+good number from it.
 
 ## Status
 
