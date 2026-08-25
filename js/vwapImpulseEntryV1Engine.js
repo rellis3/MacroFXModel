@@ -98,8 +98,9 @@ export const DEFAULT_CFG = {
 };
 
 // Causal ATR(15m) as of `beforeEpoch`: prior ctxLookbackDays days + today up
-// to (not including) the entry bar.
-function causalAtr(packed, dayStart, beforeEpoch, cfg) {
+// to (not including) the entry bar. Exported — rangeFibVwapEntryV1Engine uses
+// the same stop unit, never a second copy.
+export function causalAtr(packed, dayStart, beforeEpoch, cfg) {
   const bars = resampleTo(extractBars(packed, dayStart - cfg.ctxLookbackDays * DAY, beforeEpoch), cfg.atrTfMin);
   if (bars.length < cfg.atrPeriod + 2) return null;
   const s = atrWilder(bars, cfg.atrPeriod);

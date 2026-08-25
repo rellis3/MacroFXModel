@@ -64,6 +64,8 @@
 import { computeSessionVwap } from './vwapReversionEngine.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { pipSize } from './instrumentRegistry.js';
+import { _buildAsiaSessions, _buildMondayRanges } from './rangeFibEngine.js';
+import { calcFibs } from './fibProjection.js';
 
 const DAY = 86400;
 
@@ -153,6 +155,16 @@ export const DEFAULT_CFG = {
                          // reference study's 20 bars on a 3-min chart)
   bands: BANDS,
   minBarsPerDay: 200,    // skip thin/holiday sessions entirely (touches AND rms)
+  // Range-line confluence dimension (`rangeConf`): is the touch within
+  // rangeConfTolSigma·fixedSigma of an Asia-range or Monday-range fib level?
+  // Ranges/levels come from rangeFibEngine's OWN builders (5m-body Asia
+  // 00:00-06:00 London, 15m-body full Monday) and fibProjection's grid —
+  // never re-derived. Causality: a day's Asia levels only exist for touches
+  // AFTER that Asia session closed; Monday levels only on LATER days of the
+  // same week. Level set pruned to the high-awareness core (|level| ≤ 4) so
+  // the dimension doesn't saturate the price axis.
+  rangeConfTolSigma: 0.15,
+  rangeFibLevels: [-4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4],
 };
 
 /**
@@ -174,6 +186,25 @@ export function fixedSigmaWalk(packed, opts = {}) {
   // WaveTrend needs weeks of warm-up), per-day M1 WaveTrend below.
   const htf = createHtfContext(packed, cfg.htfCfg ?? {});
   const tf = createConfluenceFeatures({ htf });
+
+  // Range-fib level sets, built once (see DEFAULT_CFG note). Each entry gets
+  // its fib prices precomputed; lookup at a touch is a short linear scan.
+  const asiaSessions = _buildAsiaSessions(packed, 'Europe/London')
+    .map(sess => ({ epoch: sess.epoch, until: sess.epoch + 24 * 3600, validFrom: sess.epoch + 6 * 3600,
+                    prices: calcFibs(sess.low, sess.range, cfg.rangeFibLevels).map(l => l.price) }));
+  const mondayRanges = _buildMondayRanges(packed, 'Europe/London', 15)
+    .map(mon => ({ validFrom: mon.epoch + 24 * 3600, until: mon.epoch + 7 * 86400,
+                   prices: calcFibs(mon.low, mon.range, cfg.rangeFibLevels).map(l => l.price) }));
+  let asiaIdx = 0, monIdx = 0;
+  const nearLevel = (list, idx, t, price, tol) => {
+    for (let i = idx; i < list.length; i++) {
+      const s2 = list[i];
+      if (s2.validFrom > t) break;
+      if (s2.until <= t) continue;
+      for (const p of s2.prices) if (Math.abs(price - p) <= tol) return true;
+    }
+    return false;
+  };
 
   const rmsAll = [];        // every completed session's RMS, in walk order
   const touches = [];
@@ -285,6 +316,11 @@ export function fixedSigmaWalk(packed, opts = {}) {
             const otherMax = maxBand[isUp ? 'dn' : 'up'];
             const sameMax = maxBand[side];
             const ladderStep = k - sameMax;
+            while (asiaIdx < asiaSessions.length && asiaSessions[asiaIdx].until <= t) asiaIdx++;
+            while (monIdx < mondayRanges.length && mondayRanges[monIdx].until <= t) monIdx++;
+            const tol = cfg.rangeConfTolSigma * fs;
+            const nearAsia = nearLevel(asiaSessions, asiaIdx, t, entry, tol);
+            const nearMon = nearLevel(mondayRanges, monIdx, t, entry, tol);
 
             touches.push({
               instrument: sym, assetClass, date, side, band: k, ordinal,
@@ -303,6 +339,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
               churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               otherSideMaxBand: otherMax === 0 ? '0·none' : otherMax >= 3 ? '3+·deep' : String(otherMax),
               ladderStep: ladderStep <= 0 ? '1·retest' : ladderStep === 1 ? '2·step' : '3·jump',
+              rangeConf: nearAsia && nearMon ? '3·both' : nearMon ? '2·monday' : nearAsia ? '1·asia' : '0·none',
               approachVel: feats.approachVel?.bucket ?? null,
               approachER: feats.approachER?.bucket ?? null,
               wtState: feats.wtState?.bucket ?? null,

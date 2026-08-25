@@ -378,6 +378,69 @@ entries were re-run with a time exit (60-bar mark-to-close, stop still live)
 instead of the impulse-extreme target: OOS t −1.3 (30m) / −3.7 (1h) / +0.02
 (4h). Null — the exit was not the missing piece either.
 
+## 8. Asia/Monday range-fib levels × VWAP (the owner's third idea)
+
+Two parts, per the request "use the Asia daily / Monday weekly fib extensions
+as entry zones and trade VWAP".
+
+### 8a. The descriptive question first: does being AT a range line change band behaviour?
+
+Added as a dimension (`rangeConf`) to the atlas itself — touch within
+0.15×fixed-σ of an Asia-range (5m-body, 00:00–06:00 London) or Monday-range
+(15m-body) fib level, using `rangeFibEngine`'s own range builders and
+`fibProjection`'s grid (|level| ≤ 4), causally gated (Asia levels only after
+Asia closes; Monday levels only Tue–Fri). Gold result: **no coherent effect.**
+Bucket shares are healthy (none 50% / asia 31% / monday 11% / both 9%), but
+deltas are ±3–6pp with signs flipping between bands and sides (e.g. asia-level
++3.3pp at ±1σ but −6.4pp at +3σ), survivor counts at the books' noise floor,
+and the return-book cells slightly NEGATIVE (at-a-line touches return
+marginally less). Consistent with the repo's standing S/R falsification
+(`LEGO_MODULES.md` §1m). Checked on the FX majors below alongside the trade
+run.
+
+### 8b. The two trade rules, as worded — pre-registered
+
+`js/rangeFibVwapEntryV1Engine.js` (composes rangeFibEngine's builders,
+fibProjection, the atlas σ, `causalAtr`, `walkBars`; costs on; 30-bar VWAP
+warmup; one trade/day/rule; pinned thresholds 0.5σ "on VWAP" / 2σ
+"stretched"):
+
+- **A `line_on_vwap_extension`** — a ladder level lying within 0.5σ of VWAP
+  is touched → enter in the ladder direction, target the next level out,
+  stop 1.5×ATR(15m).
+- **B `line_fade_stretched`** — a level ≥2σ from VWAP is touched → fade to
+  VWAP, stop 1.5×ATR beyond.
+
+**Pre-registered before running** (this text written first): "worked" = OOS
+per-trade t > 2, positive mean, OOS n ≥ 30, positive gross. Priors: §1m's S/R
+null, §6/§7d's entry nulls, and 8a's flat descriptive read all point the same
+way — expectation **null for both**, on gold and the majors alike.
+
+**Results (gold + EURUSD + GBPUSD + USDJPY, costed, OOS = last 40%):**
+
+| rule | instrument | OOS n | OOS mean/trade | OOS t | OOS gross |
+|---|---|---|---|---|---|
+| A extension | gold | 1066 | −0.0229% | −2.90 | −0.003% |
+| A extension | EURUSD | 1088 | −0.0133% | −4.65 | −0.001% |
+| A extension | GBPUSD | 1088 | −0.0144% | −4.34 | −0.002% |
+| A extension | USDJPY | 1064 | −0.0177% | −4.10 | −0.006% |
+| B fade | gold | 768 | −0.0222% | −1.55 | −0.002% |
+| B fade | EURUSD | 743 | −0.0067% | −1.00 | +0.005% |
+| B fade | GBPUSD | 742 | −0.0125% | −1.77 | −0.001% |
+| B fade | USDJPY | 678 | −0.0253% | −3.02 | −0.013% |
+
+**Verdict against the pre-registered bar: NULL, both rules, all four
+instruments** — as expected. The extension rule loses steadily and
+significantly (gross ≈ 0: it is a coin flip that pays the spread); the fade
+rule is null-to-negative everywhere.
+
+The §8a dimension check on the FX majors: same picture as gold on the return
+outcome (flat/mixed, ±2pp). One weak but sign-consistent descriptive note,
+reported without a trade claim: at ±1σ, touches AT an Asia-fib level lean
+continuation vs touches at no level on all four instruments (asia +1.5 to
++4.6pp, none −2.9 to −7.0pp) — small, and gold's own +3σ cell flips sign, so
+this is a footnote, not a theme.
+
 **Standing discipline:** everything in §7 is descriptive, OOS-gated
 reference material. The trade-shaped tests run so far (§6, §7d) are null, so
 none of this is claimed as after-cost edge. The natural next harness-gated

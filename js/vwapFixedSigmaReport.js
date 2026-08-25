@@ -28,6 +28,7 @@ export const DIMENSIONS = [
   ['churn', 'How price got here: one-sided drive vs two-sided churn'],
   ['otherSideMaxBand', 'Deepest band already tagged on the OPPOSITE side today'],
   ['ladderStep', 'Band progression: retest / orderly next step / jump'],
+  ['rangeConf', 'Touch at an Asia/Monday range-fib level (rangeFibEngine ranges)'],
   ['ordinal', 'Test number of this band today (1st/2nd/3rd…)'],
   ['approachVel', 'Approach velocity into the band'],
   ['approachER', 'Approach efficiency (driven vs choppy)'],
