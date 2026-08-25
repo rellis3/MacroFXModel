@@ -1,7 +1,7 @@
 // Synthetic, no-network unit tests for the macro-change brick.
 //   node js/macroChange.test.mjs
 
-import { seriesDeltas, buildMacroChanges, formatMacroChanges, MACRO_CHANGE_SPEC } from './macroChange.js';
+import { seriesDeltas, buildMacroChanges, formatMacroChanges, MACRO_CHANGE_SPEC, flowDp, formatFlowBn } from './macroChange.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -55,6 +55,19 @@ ok('sofr rate delta in bps (+2)', mm.rows.find(r => r.key === 'sofr')?.deltas[1]
 ok('text has one line per row', text.split('\n').length === rows.length);
 ok('text sign-formats deltas', /1d \+6bps/.test(text));
 ok('empty rows → empty text', formatMacroChanges([]) === '');
+
+// ── $bn flow formatting ─────────────────────────────────────────────────────
+// Regression: the Fed's ON RRP facility has drained from hundreds of billions to
+// under $1bn. At the old whole-billion precision the sidebar rendered a live 0.38
+// as "$0bn · 1d 0 · 5d 0" — indistinguishable from a dead feed, and reported as one.
+ok('drained-but-live RRP does not render as zero', formatFlowBn(0.38) === '0.38', formatFlowBn(0.38));
+ok('precision follows magnitude (bn)', flowDp(2500) === 0 && flowDp(42.7) === 1 && flowDp(0.38) === 2);
+ok('large flows keep whole-billion form', formatFlowBn(2500) === '2500' && formatFlowBn(42.7) === '42.7');
+ok('a genuine zero still reads as zero', Number(formatFlowBn(0)) === 0, formatFlowBn(0));
+ok('a live trickle is not rounded away', formatFlowBn(0.004) === '<0.01' && formatFlowBn(-0.004) === '>-0.01');
+ok('missing data is a dash, not a number', [null, undefined, NaN, 'x'].every(v => formatFlowBn(v) === '–'));
+ok('negative flows keep their sign', formatFlowBn(-1) === '-1.00' && formatFlowBn(-250) === '-250');
+ok('rrp spec carries flow precision', MACRO_CHANGE_SPEC.rrp.dp === 2 && MACRO_CHANGE_SPEC.rrp.kind === 'flow');
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nAll macroChange tests passed');
 process.exit(failures ? 1 : 0);
