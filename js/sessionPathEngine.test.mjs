@@ -298,4 +298,37 @@ t('otherSideProgress reads "one-way-so-far" when the opposite side has barely mo
   assert.equal(late.otherSideProgress, '3·both-sides-active', `expected full escalation after the down-side drop, got ${late.otherSideProgress}`);
 });
 
+// ── Momentum/VWAP-at-checkpoint context (reuses confluenceFeatures.js's
+// createHtfContext/createConfluenceFeatures — the SAME brick Level Atlas
+// calls at a touch, called here at a fixed checkpoint bar instead) ──────────
+t('momentum/VWAP-at-checkpoint fields are populated on real data (not vacuous)', () => {
+  const { rows } = sessionPathWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  for (const key of ['wtState', 'wtMtf', 'wtSlow', 'momAdx', 'htfTrend', 'vwapSide']) {
+    assert.ok(rows.some(r => r[key] != null), `expected at least one row with a ${key} reading`);
+  }
+});
+
+t('momentum/VWAP-at-checkpoint fields are causal — perturbing bars AFTER a checkpoint must not change that checkpoint\'s reading', () => {
+  const base = packedM1(60 * 24 * 260, { wiggle: 0.02 });
+  const wild = { ...base, highs: base.highs.slice(), lows: base.lows.slice(), closes: base.closes.slice() };
+  const start = base.n - 300;
+  for (let i = start; i < base.n; i++) { wild.highs[i] += 5; wild.lows[i] -= 5; }
+  const a = sessionPathWalk(base, { instrument: 'EURUSD', assetClass: 'fx' });
+  const b = sessionPathWalk(wild, { instrument: 'EURUSD', assetClass: 'fx' });
+  const lastDate = a.coverage.to;
+  const keyOf = r => `${r.date}|${r.side}|${r.rung}|${r.checkpointHour}`;
+  const byKeyA = new Map(a.rows.map(r => [keyOf(r), r]));
+  let checked = 0;
+  for (const rb of b.rows) {
+    if (rb.date >= lastDate) continue;
+    const ra = byKeyA.get(keyOf(rb));
+    if (!ra) continue;
+    checked++;
+    for (const key of ['wtState', 'wtMtf', 'wtSlow', 'momAdx', 'htfTrend', 'vwapSide', 'confluence']) {
+      assert.equal(ra[key], rb[key], `${key} leaked a future perturbation on ${ra.date}`);
+    }
+  }
+  assert.ok(checked > 50, `too few comparable rows to trust the result (${checked})`);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);
