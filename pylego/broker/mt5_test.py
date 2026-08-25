@@ -8,6 +8,7 @@ payload shape — against a stub. No network, no MT5.
 Run:  python pylego/broker/mt5_test.py   (or pytest)
 """
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -110,11 +111,15 @@ def test_serialize_open_filters_by_magic():
 
 
 def test_serialize_closed_groups_deals():
+    # Stamps must be relative to now: the serialiser asks MT5 for a deliberately
+    # wide window and then keeps only closes landing on TODAY's real-UTC date,
+    # so a frozen 2023 epoch would (correctly) be filtered straight back out.
+    now = int(time.time())
     d_in = SimpleNamespace(magic=MAGIC, position_id=7, entry=0, type=0, price=1.1000,
-                           time=1700000000, symbol='EURUSD', volume=0.5, profit=0,
+                           time=now - 900, symbol='EURUSD', volume=0.5, profit=0,
                            swap=0, commission=0, comment='open')
     d_out = SimpleNamespace(magic=MAGIC, position_id=7, entry=1, type=1, price=1.1050,
-                            time=1700000900, symbol='EURUSD', volume=0.5, profit=25.0,
+                            time=now, symbol='EURUSD', volume=0.5, profit=25.0,
                             swap=-0.2, commission=-1.0, comment='close')
     d_other = SimpleNamespace(magic=999, position_id=8, entry=0, type=0, price=1.0,
                               time=1, symbol='X', volume=1, profit=0, swap=0,

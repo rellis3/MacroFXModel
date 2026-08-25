@@ -1023,7 +1023,7 @@ export default {
           // which merges via its own /api/bot/status endpoint below). A bot left
           // out still shows live positions but loses every closed trade the
           // moment it exits — silently, since nothing errors.
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -2303,7 +2303,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const to   = url.searchParams.get('to')   || from;
         // Keep in step with STATUS_KEYS in /api/kv/set — a key written but not
         // read back here is history that exists in KV and never reaches the page.
-        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'];
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'];
         const dates = [];
         const startD = new Date(from + 'T00:00:00Z');
         const endD   = new Date(to   + 'T00:00:00Z');
@@ -2345,7 +2345,15 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
           const byDate = {};
           for (const t of trades) {
             if (t.position_id == null || !t.time_close) continue;
-            const d = new Date(t.time_close * 1000).toISOString().slice(0, 10);
+            // time_close is stamped on the BROKER's clock (UTC+3 on the live
+            // account), not UTC. Bucketing it raw files every trade closing in
+            // the last three hours of a UTC day under TOMORROW — disagreeing
+            // with the live status-push path, which corrects before it files.
+            // The backfill scripts ship tz_offset_sec alongside each trade;
+            // when it is absent (an older payload) fall back to no correction
+            // rather than guessing an offset.
+            const off = Number(t.tz_offset_sec) || 0;
+            const d = new Date((t.time_close - off) * 1000).toISOString().slice(0, 10);
             (byDate[d] = byDate[d] || []).push(t);
           }
           // Each date's get+put is a real network round-trip to Cloudflare KV

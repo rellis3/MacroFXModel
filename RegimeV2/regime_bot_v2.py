@@ -56,7 +56,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
 sys.path.insert(0, os.path.dirname(__file__))
 
 from pylego.instruments import pip_sizes_for  # noqa: E402  (shared pip table — single source of truth)
-from pylego.broker.clock import ServerClock   # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
+from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window   # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
+from pylego.trade_window import within_window as _within_window   # noqa: E402  (parsed, not string-compared)
 from bocpd        import BOCPRegistry
 from macro_overlay import MacroOverlay
 from regime_score  import compute_regime_score
@@ -719,8 +720,10 @@ def close_position(ticket: int, pair: str, paper_mode: bool, reason: str = '') -
 # ── Trade window ───────────────────────────────────────────────────────────────
 
 def within_window(cfg: dict) -> bool:
-    now = datetime.now(timezone.utc).strftime('%H:%M')
-    return cfg.get('trade_window_start', '07:00') <= now <= cfg.get('trade_window_end', '20:00')
+    # Parsed, not string-compared: '7:00' in the config used to sort AFTER
+    # '20:00' and close the window permanently with nothing logged.
+    return _within_window(cfg.get('trade_window_start'), cfg.get('trade_window_end'),
+                          default_start='07:00', default_end='20:00')
 
 
 # ── Cross-pair consensus ───────────────────────────────────────────────────────
@@ -789,8 +792,14 @@ def _serialize_closed_trades(magic: int) -> list:
         return []
     try:
         from datetime import timedelta
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        # Window vs bucket, two clocks that disagree. MT5 reads these date args
+        # on the BROKER clock, so a plain UTC-midnight window is really
+        # 21:00->21:00 UTC on a +3h broker: every trade closing in the last
+        # three hours of a UTC day falls outside it and is then filed a day
+        # late. Ask wide, keep only today's real-UTC closes — the filter in
+        # the loop below (pylego/broker/clock.py).
+        win_from, win_to = history_window()
+        deals = mt5.history_deals_get(win_from, win_to) or []
         by_pos: dict = {}
         for d in deals:
             if d.magic != magic:
@@ -819,6 +828,10 @@ def _serialize_closed_trades(magic: int) -> list:
                 except Exception:
                     ind = None
             last_out = max(outs, key=lambda d: d.time)
+            # The wide window also returns other days' closes, so bucket on the
+            # close's REAL-UTC date rather than its raw broker stamp.
+            if not closes_on_utc_day(int(last_out.time), _tz_offset_sec()):
+                continue
             if ind:
                 direction  = 'BUY' if ind.type == 0 else 'SELL'
                 open_price = round(float(ind.price), 5)
@@ -1036,7 +1049,11 @@ def run(url: str, paper_mode: bool) -> None:
             confidence = float(rd.get('confidence', 0))
             vol_z      = float(rd.get('volZ', rd.get('vol_z', 0.0)))
             session_lbl= rd.get('sessionLabel', '')
-            p_change   = 100.0 - confidence   # simple change prob
+            # NOT a change-point probability — just (100 - confidence). It is
+            # only the FALLBACK for the alert's `change_prob` field when the
+            # real BOCPD run-length probability isn't available yet, and it is
+            # named for what it is so nobody reads it as a BOCPD signal.
+            conf_complement = 100.0 - confidence
 
             h1_rd      = h1_regimes.get(pair) or {}
             h1_regime  = h1_rd.get('regime', '').upper() if h1_rd else None
@@ -1086,7 +1103,7 @@ def run(url: str, paper_mode: bool) -> None:
                     msg = regime_change_alert(
                         pair=pair, prev_regime=prev_regime, new_regime=regime,
                         confidence=confidence, price=price_now, vol_z=vol_z,
-                        run_length=run_lengths[pair], change_prob=bocpd_prob or p_change,
+                        run_length=run_lengths[pair], change_prob=bocpd_prob or conf_complement,
                         prev_regime_duration_secs=prev_regime_dur[pair],
                         consensus=cons, consensus_total=cons_total,
                         h1_regime=h1_regime, bocpd_prob=bocpd_prob,
@@ -1361,7 +1378,7 @@ def run(url: str, paper_mode: bool) -> None:
                         pair=pair, regime=regime, confidence=confidence,
                         slope=conf_slope, vol_z=vol_z,
                         regime_secs=regime_secs, momentum_secs=momentum_secs,
-                        change_prob=bocpd_prob or p_change,
+                        change_prob=bocpd_prob or conf_complement,
                         open_pos=pos_info, h1_regime=h1_regime,
                         bocpd_prob=bocpd_prob, exhaustion_score=exhaust_score,
                         consensus=cons, consensus_total=cons_total,

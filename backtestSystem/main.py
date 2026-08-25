@@ -14,11 +14,13 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 
-from config    import load_config, sl_distance, tp_distance, chandelier_stop, _deep_merge
+from config    import (load_config, sl_distance, tp_distance, chandelier_stop, _deep_merge,
+                       DEFAULTS)
 from mt5_utils import (connect, fetch_bars_5m, fetch_bars_30m, fetch_bars_daily,
                        fetch_price, get_balance, get_open_positions, place_order,
                        pip_size, london_now, move_sl_to_be, modify_sl, fetch_close_price,
-                       tz_offset_sec, serialize_closed_trades)
+                       tz_offset_sec, serialize_closed_trades, LIVE_SPREAD)
+from pylego.costs import expected_fill   # size off the fill we'll pay, not the mid
 import journal
 from levels    import (compute_asia_range, compute_monday_range, project_fib_levels,
                        detect_confluences, get_yesterday_range_bars)
@@ -69,6 +71,22 @@ def _fetch_server_regimes(dashboard_url: str) -> None:
         log.warning(f'[Regime] Could not fetch server regimes: {exc}')
 
 
+def _regime_key_candidates(pair: str):
+    """The key shapes the server's /api/hmm5m response might use for `pair`, in
+    preference order. FX majors arrive slashed ('EUR/USD'); indices and other
+    broker symbols do not split into 3+3 at all, so the slashed form is only
+    offered for a plain 6-character symbol."""
+    seen = set()
+    cands = [pair]
+    if '/' not in pair and len(pair) == 6:
+        cands.append(f'{pair[:3]}/{pair[3:]}')
+    cands.append(pair.replace('/', ''))
+    for c in cands:
+        if c not in seen:
+            seen.add(c)
+            yield c
+
+
 def _regime_veto(pair: str, entry_dir: str, cfg: dict) -> str | None:
     """
     Return a veto reason string if the 1m HMM on the server strongly opposes
@@ -82,9 +100,16 @@ def _regime_veto(pair: str, entry_dir: str, cfg: dict) -> str | None:
     if not cfg.get('useServerRegime', False):
         return None
 
-    # Normalise pair to the key format the server uses (e.g. 'EUR/USD')
-    sym = pair if '/' in pair else f'{pair[:3]}/{pair[3:]}'
-    r   = _regime_cache.get(sym)
+    # Normalise pair to the key format the server uses (e.g. 'EUR/USD'). The
+    # old unconditional f'{pair[:3]}/{pair[3:]}' split turned 'USTECH100M' into
+    # 'UST/ECH100M', which can never match — silently disabling the veto for
+    # every non-6-character symbol (i.e. all indices) rather than failing loudly.
+    # Try the plausible key shapes instead of assuming one.
+    r = None
+    for cand in _regime_key_candidates(pair):
+        r = _regime_cache.get(cand)
+        if r:
+            break
     if not r:
         return None
 
@@ -220,7 +245,8 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     tol_pips    = cfg.get('confTolPips',  2.0)
     price_mode  = cfg.get('priceMode',   'lowest')
     cluster     = cfg.get('clusterMerge', True)
-    confluences = detect_confluences(today_levels, yest_levels, pip, tol_pips, price_mode, cluster)
+    confluences = detect_confluences(today_levels, yest_levels, pip, tol_pips, price_mode, cluster,
+                                     tight_pct=cfg.get('tightPct', 10))
 
     sig_filter = cfg.get('signalFilter', 'all_conf')
     if   sig_filter == 'tight_only':  confluences = [c for c in confluences if c.get('isTight')]
@@ -233,7 +259,10 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
                 if asia else 'no range')
 
     range_ref  = asia['range'] if asia else (monday['range'] if monday else pip * 20)
-    prox_limit = range_ref * cfg.get('entryProximityATR', 0.30)
+    # Default must match DEFAULTS['entryProximityATR'] in config.py — these were
+    # 0.5 and 0.30, two literals for one setting. DEFAULTS makes the key always
+    # present so neither was ever reached, but the drift is the bug pattern.
+    prox_limit = range_ref * cfg.get('entryProximityATR', DEFAULTS['entryProximityATR'])
 
     if confluences:
         # Populate status confluences (sorted nearest first, cap at 12)
@@ -403,7 +432,14 @@ def run_pair(pair: str, cfg: dict, kill: KillSwitch,
     # ── Position sizing ───────────────────────────────────────────────────
     balance  = get_balance()
     risk_pct = cfg.get('riskPct', 1.0)
-    lots     = position_size(balance, risk_pct, sl_dist, pip, pair, price=price)
+    # Size off the EXPECTED FILL, not the mid. `sl` above is placed relative to
+    # the mid, but place_order() fills a long at `ask` / a short at `bid`, so
+    # the distance actually at risk from the fill is |fill - sl| — wider than
+    # sl_dist by half the spread. Sizing off sl_dist therefore risked more than
+    # riskPct on every trade, worst on wide-spread symbols and tight stops.
+    fill_price = expected_fill(price, entry_dir == 'long', pair, LIVE_SPREAD)
+    risk_dist  = abs(fill_price - sl)
+    lots     = position_size(balance, risk_pct, risk_dist, pip, pair, price=price)
 
     # ── Place order (only within trade window) ───────────────────────────────
     if not can_trade:

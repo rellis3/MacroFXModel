@@ -76,7 +76,7 @@ from modules.exits import plan_exits
 
 # Shared multi-instrument bricks — never re-inline a pip table or a sizing formula.
 from pylego.instruments import instrument, oanda_symbol
-from pylego.broker.clock import ServerClock   # broker-clock offset — MT5 stamps aren't UTC
+from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window   # broker-clock offset — MT5 stamps aren't UTC
 from pylego.point_values import point_value, DEFAULT_POINT_VALUE
 from pylego.sizing import position_size
 
@@ -711,8 +711,14 @@ def _serialize_closed_trades(magic: int) -> list:
     if not HAS_MT5:
         return []
     try:
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+        # Window vs bucket, two clocks that disagree. MT5 reads these date args
+        # on the BROKER clock, so a plain UTC-midnight window is really
+        # 21:00->21:00 UTC on a +3h broker: every trade closing in the last
+        # three hours of a UTC day falls outside it and is then filed a day
+        # late. Ask wide, keep only today's real-UTC closes — the filter in
+        # the loop below (pylego/broker/clock.py).
+        win_from, win_to = history_window()
+        deals = mt5.history_deals_get(win_from, win_to) or []
         by_pos: dict = {}
         for d in deals:
             if d.magic != magic:
@@ -730,6 +736,10 @@ def _serialize_closed_trades(magic: int) -> list:
                 continue
             ind      = grp['in']
             last_out = max(outs, key=lambda d: d.time)
+            # The wide window also returns other days' closes, so bucket on the
+            # close's REAL-UTC date rather than its raw broker stamp.
+            if not closes_on_utc_day(int(last_out.time), _tz_offset_sec()):
+                continue
             if ind:
                 direction, open_price, time_open = \
                     ('BUY' if ind.type == 0 else 'SELL'), round(float(ind.price), 5), int(ind.time)

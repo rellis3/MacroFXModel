@@ -88,6 +88,7 @@ def _build_trades(deals: list) -> tuple[list, int]:
     across partial entries/exits. Skips positions with no matching IN+OUT pair
     in the queried window (still open, or truncated at the range edge)."""
     import MetaTrader5 as mt5
+    tz_off = mt5_utils.tz_offset_sec()
     by_position: dict = {}
     for d in deals:
         by_position.setdefault(d.position_id, []).append(d)
@@ -117,6 +118,12 @@ def _build_trades(deals: list) -> tuple[list, int]:
             'swap':        round(sum(d.swap for d in group), 2),
             'time_open':   int(min(d.time for d in entries)),
             'time_close':  int(max(d.time for d in exits)),
+            # Both stamps above are on the BROKER's clock, not UTC. Ship the
+            # offset so /api/trade-history/backfill files each trade under the
+            # day it really closed — without it a 21:00-23:59 UTC close lands
+            # in tomorrow's bucket, which is how the live path and the backfill
+            # path came to disagree.
+            'tz_offset_sec': tz_off,
         })
 
     trades.sort(key=lambda t: t['time_close'])
@@ -168,7 +175,8 @@ def main():
         return
 
     total_pnl = sum(t['profit'] + t['swap'] for t in trades)
-    dates = sorted({datetime.fromtimestamp(t['time_close'], tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
+    dates = sorted({datetime.fromtimestamp(t['time_close'] - int(t.get('tz_offset_sec') or 0),
+                                           tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
     log.info(f'Date range: {dates[0]} -> {dates[-1]}  ({len(dates)} distinct days)  net P&L: {total_pnl:+.2f}')
 
     if args.out:

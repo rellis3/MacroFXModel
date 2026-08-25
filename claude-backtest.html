@@ -282,6 +282,20 @@ function parseBars(csv) {
 }
 
 // ── Pip size ─────────────────────────────────────────────────────
+// DELIBERATELY NOT the canonical registry pip (which is gold 1.0, index 1.0).
+// On this page `pip` is only ever a GEOMETRY unit: confluence thresholds, star
+// proximity (pip*5, pip*8), the minimum Asia range (pip*5) and the entry-budget
+// floor (pip*3) are all expressed in it, and every one of those numbers was
+// tuned against gold=0.1. Re-pointing this at the registry would silently
+// re-tune the whole backtest by 10x rather than fix anything — there is no cost
+// or P&L term on this page for a wrong pip to scale (this page models ZERO
+// transaction cost, which is the real thing to fix here; see bot/backtest.py's
+// apply_costs for the pattern).
+//
+// So: read the "pips" this page reports as ITS OWN unit. They are NOT
+// comparable to pips on regime-backtest.html, in bot-config.html, or in any
+// Python bot. Indices are not handled at all and fall to the FX default; the
+// page is fed FX/gold CSVs, so add a case before running an index through it.
 function getPipSize(sym) {
   if (sym.indexOf('JPY') >= 0) return 0.01;
   if (sym.indexOf('XAU') >= 0 || sym.indexOf('GOLD') >= 0) return 0.1;

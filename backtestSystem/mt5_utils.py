@@ -11,7 +11,8 @@ log = logging.getLogger(__name__)
 _root = str(Path(__file__).resolve().parents[1])
 if _root not in sys.path:
     sys.path.insert(0, _root)                    # repo root → pylego
-from pylego.instruments import pip_sizes_for     # noqa: E402  (shared pip table — single source of truth)
+from pylego.instruments import (pip_sizes_for,   # noqa: E402  (shared pip table — single source of truth)
+                                pip_size as _registry_pip_size)
 from pylego.broker.clock import ServerClock      # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
 
 try:
@@ -55,11 +56,27 @@ def resolve_symbol(symbol: str) -> str:
 
 
 def pip_size(symbol: str) -> float:
+    """Canonical pip size, resolved through the shared instrument registry.
+
+    This used to be a substring scan over PIP_SIZES ("does any known key appear
+    inside this symbol?"), which silently mis-resolved every broker symbol that
+    didn't literally contain a known key. 'USTECH100M' contains neither 'NAS100'
+    nor 'US100', so the NASDAQ index fell through to the 0.0001 FX default — a
+    10,000x error that flowed straight into `position_size()`. The registry
+    knows the broker aliases (ustech100m -> nq -> 1.0), so ask it instead of
+    pattern-matching. Unknown symbols still fall back to the FX default, but
+    loudly, because a silent default is what caused the bug."""
     mt5_sym = resolve_symbol(symbol)
-    for key, val in PIP_SIZES.items():
-        if key in mt5_sym.upper() or mt5_sym.upper() in key:
-            return val
-    return PIP_SIZES.get(mt5_sym, 0.0001)
+    try:
+        return _registry_pip_size(mt5_sym)
+    except Exception:
+        pass
+    if mt5_sym in PIP_SIZES:
+        return PIP_SIZES[mt5_sym]
+    log.warning(f'pip_size: {symbol!r} is not in the instrument registry — '
+                f'defaulting to 0.0001. Add it to pylego/instruments.json '
+                f'(or its aliases) before trading this symbol.')
+    return 0.0001
 
 
 # ── London DST conversion ─────────────────────────────────────────────────────
@@ -159,6 +176,30 @@ def fetch_price(symbol: str) -> float | None:
     if tick and tick.bid > 0:
         return round((tick.bid + tick.ask) / 2, 6)
     return None
+
+
+class _LiveSpread:
+    """Duck-types the `broker` argument `pylego.costs.spread_for` looks for, so
+    `expected_fill` can size off the spread we are ACTUALLY about to pay rather
+    than the static per-pair default. Returns None when MT5 is unavailable or
+    the tick is unusable — `spread_for` then falls back to `default_spread`,
+    which is the right behaviour: a stale/absent tick must not silently become
+    a zero spread."""
+
+    @staticmethod
+    def spread(symbol: str):
+        if not HAS_MT5:
+            return None
+        try:
+            tick = mt5.symbol_info_tick(resolve_symbol(symbol))
+            if tick and tick.ask > 0 and tick.bid > 0 and tick.ask >= tick.bid:
+                return float(tick.ask - tick.bid)
+        except Exception:
+            pass
+        return None
+
+
+LIVE_SPREAD = _LiveSpread()
 
 
 def get_balance() -> float:

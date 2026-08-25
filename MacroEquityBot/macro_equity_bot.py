@@ -29,7 +29,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root → pylego
-from pylego.broker.clock import ServerClock  # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
+from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window  # noqa: E402  (broker-clock offset — MT5 stamps aren't UTC)
 from fred_signal import (
     fetch_all_fred, compute_macro_score,
     compute_target_alloc, _fetch_vix_prices,
@@ -344,7 +344,13 @@ def rebalance_instrument(
     diff_lots = round(target_lots - current_lots, 2)
     # Compute approximate alloc% of change to compare vs threshold
     tick = mt5.symbol_info_tick(symbol) if HAS_MT5 else None
-    price = tick.ask if tick else 0
+    # Price the change on the side it will actually execute: a BUY lifts the
+    # ask, a SELL/trim hits the bid. Using the ask for both made a reduction's
+    # notional (and so its threshold test) very slightly too large.
+    if tick:
+        price = tick.bid if diff_lots < 0 else tick.ask
+    else:
+        price = 0
     contract_size = info.trade_contract_size if info else 1
     diff_notional = abs(diff_lots) * price * contract_size
     diff_alloc    = diff_notional / equity if equity > 0 else 0
@@ -456,8 +462,14 @@ def _serialize_open_positions() -> list[dict]:
 def _serialize_closed_trades() -> list[dict]:
     if not HAS_MT5:
         return []
-    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+    # Window vs bucket, two clocks that disagree. MT5 reads these date args on
+    # the BROKER clock, so a plain UTC-midnight window is really 21:00->21:00
+    # UTC on a +3h broker: every trade closing in the last three hours of a UTC
+    # day falls outside it and is then filed a day late. Ask wide, keep only
+    # today's real-UTC closes — the filter in the loop below
+    # (pylego/broker/clock.py).
+    win_from, win_to = history_window()
+    deals = mt5.history_deals_get(win_from, win_to) or []
     by_pos: dict[int, list] = {}
     for d in deals:
         if d.magic not in MAGICS_MINE:
@@ -469,7 +481,13 @@ def _serialize_closed_trades() -> list[dict]:
         exits   = [d for d in ds if d.entry == 1]
         if not exits:
             continue
-        ex = exits[-1]
+        # max-by-time, not exits[-1]: the wide window returns deals across days,
+        # so positional order is no longer a safe proxy for "the final exit".
+        ex = max(exits, key=lambda d: d.time)
+        # The wide window also returns other days' closes, so bucket on the
+        # close's REAL-UTC date rather than its raw broker stamp.
+        if not closes_on_utc_day(int(ex.time), _tz_offset_sec()):
+            continue
         en = entries[0] if entries else None
         if en is None:
             # Entry deal isn't in today's window — the position was opened

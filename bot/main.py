@@ -43,6 +43,8 @@ if _REPO_ROOT not in _sys.path:
     _sys.path.insert(0, _REPO_ROOT)
 from pylego.instruments import pip_sizes_for  # shared pip table (single source of truth)
 from pylego.broker.clock import ServerClock   # broker-clock offset (MT5 stamps aren't UTC)
+from pylego.costs import expected_fill        # size off the fill we'll pay, not the mid
+from pylego.trade_window import within_window as _within_window   # parsed, not string-compared
 
 from utils.state_reader import fetch_state, fetch_quote, check_staleness, push_bot_status, trigger_refresh, StaleDataError
 from utils.sl_tp_engine import SLTPEngine
@@ -167,6 +169,30 @@ _MT5_SYMBOL: dict[str, str] = {
 
 def _mt5_sym(pair: str) -> str:
     return _MT5_SYMBOL.get(pair, pair.replace('/', ''))
+
+
+class _LiveSpread:
+    """Duck-types the `broker` argument `pylego.costs.spread_for` looks for, so
+    `expected_fill` can size off the spread we are ACTUALLY about to pay rather
+    than the static per-pair default. Returns None when MT5 is unavailable or
+    the tick is unusable — `spread_for` then falls back to `default_spread`,
+    which is the right behaviour: a stale/absent tick must not silently become
+    a zero spread."""
+
+    @staticmethod
+    def spread(pair: str):
+        if not HAS_MT5:
+            return None
+        try:
+            tick = mt5.symbol_info_tick(_mt5_sym(pair))
+            if tick and tick.ask > 0 and tick.bid > 0 and tick.ask >= tick.bid:
+                return float(tick.ask - tick.bid)
+        except Exception:
+            pass
+        return None
+
+
+_LIVE_SPREAD = _LiveSpread()
 
 # resolve_grade_thresholds and session_threshold_mult live in utils/config_helpers.py
 
@@ -541,7 +567,15 @@ def pre_screen(state: dict, pair: str, config: dict, live_price: float) -> tuple
     pip_size  = _PIP_SIZES.get(pair, 0.0001)
 
     # Dynamic ATR tolerance from MT5 5m bars; falls back to config when unavailable
-    bars_5m = fetch_bars(pair, count=30)
+    #
+    # 50, not 30. compute_wt1() needs n1 + n2 = 31 bars and returns NaN below
+    # that, so a 30-bar fetch made `wt1_5m` NaN on EVERY live tick — and the
+    # `math.isnan(wt1_5m)` branch below then scored 2 unconditionally. The whole
+    # bardir direction filter was dead live while bot/backtest.py (which fetches
+    # 50) applied it, so the backtest was validating a strategy the live bot was
+    # not running. 50 also matches the backtest's ATR window, so tol_pips now
+    # agrees between the two as well. Keep these two counts in step.
+    bars_5m = fetch_bars(pair, count=50)
     if bars_5m is not None:
         atr      = compute_atr(bars_5m)
         tol_pips = atr_to_tol_pips(atr, pip_size)
@@ -676,9 +710,11 @@ def handle_actions(results: dict, paper_mode: bool) -> None:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def within_trade_window(config: dict) -> bool:
-    s   = config.get('safety') or {}
-    now = datetime.now(timezone.utc).strftime('%H:%M')
-    return s.get('trade_window_start', '06:05') <= now <= s.get('trade_window_end', '21:00')
+    # Parsed, not string-compared: '7:00' in the config used to sort AFTER
+    # '20:00' and close the window permanently with nothing logged.
+    s = config.get('safety') or {}
+    return _within_window(s.get('trade_window_start'), s.get('trade_window_end'),
+                          default_start='06:05', default_end='21:00')
 
 
 class RiskGuard:
@@ -1128,7 +1164,15 @@ def evaluate_pair(state: dict, pair: str, config: dict, live_price: float,
         acct    = mt5.account_info()
         balance = float(acct.balance) if acct else 10_000.0
 
-    sl_dist = abs(live_price - sl_tp.sl)
+    # Size off the EXPECTED FILL, not the mid. execute_trade() fills a LONG at
+    # `ask` and a SHORT at `bid`, so the stop distance actually paid from the
+    # fill is |mid - sl| + half the spread. Sizing off the mid therefore risked
+    # slightly MORE than risk_pct on every trade — worst on wide-spread symbols
+    # (gold, indices) and on tight stops, where the half-spread is a large
+    # fraction of the stop. A market order cannot be sized after it fills, so
+    # the expected fill is the honest input (pylego/costs.py).
+    fill_price = expected_fill(live_price, direction == 'LONG', pair, _LIVE_SPREAD)
+    sl_dist = abs(fill_price - sl_tp.sl)
     size    = sl_tp_engine.position_size(balance, risk_pct, sl_dist, pair, sizing_mult,
                                          price=live_price)
 

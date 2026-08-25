@@ -11,7 +11,8 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from pylego.broker.clock import ServerClock, measure_offset_sec  # noqa: E402
+from pylego.broker.clock import (ServerClock, closes_on_utc_day,  # noqa: E402
+                                 history_window, measure_offset_sec)
 
 NOW = 1785741600          # 2026-08-03 07:20:00 UTC
 H3 = 3 * 3600
@@ -113,6 +114,44 @@ def test_conversions_round_trip_and_never_guess():
     assert blind.offset_sec() is None
     assert blind.to_utc(NOW + H3) == NOW + H3      # unknown -> unchanged, not 0-shifted
     assert blind.to_server(NOW) == NOW
+
+
+def test_late_utc_close_on_a_plus3_broker_buckets_under_today():
+    """The bug this pair of helpers exists for: a trade closing 22:30 real UTC on
+    a UTC+3 broker is stamped 01:30 the NEXT day. Bucketing the raw stamp files
+    it a day late; correcting first puts it back under today."""
+    from datetime import datetime, timezone
+    close_utc   = datetime(2026, 8, 3, 22, 30, tzinfo=timezone.utc)
+    broker_stamp = int(close_utc.timestamp()) + H3        # what MT5 hands us
+    now          = datetime(2026, 8, 3, 23, 0, tzinfo=timezone.utc)
+
+    # Naive: the broker stamp reads as 2026-08-04 -> filed under tomorrow.
+    naive = datetime.fromtimestamp(broker_stamp, timezone.utc).strftime('%Y-%m-%d')
+    assert naive == '2026-08-04'
+
+    assert closes_on_utc_day(broker_stamp, H3, now_utc=now) is True
+    assert closes_on_utc_day(broker_stamp, H3, day_utc='2026-08-04', now_utc=now) is False
+
+
+def test_unknown_offset_keeps_the_trade_rather_than_dropping_it():
+    # offset_sec() returns None on a closed market. Arithmetic on None would
+    # raise and (inside the serialisers' try/except) silently drop EVERY trade,
+    # so an unknown offset is treated as 0 — uncorrected beats absent.
+    from datetime import datetime, timezone
+    now = datetime(2026, 8, 3, 12, 0, tzinfo=timezone.utc)
+    stamp = int(datetime(2026, 8, 3, 11, 0, tzinfo=timezone.utc).timestamp())
+    assert closes_on_utc_day(stamp, None, now_utc=now) is True
+    assert closes_on_utc_day(None, H3, now_utc=now) is False
+
+
+def test_history_window_is_wide_enough_for_any_broker_offset():
+    # The window must straddle a full day either side: MT5 reads these bounds on
+    # the broker clock, so anything narrower re-introduces the edge clipping.
+    from datetime import datetime, timezone
+    now = datetime(2026, 8, 3, 12, 0, tzinfo=timezone.utc)
+    lo, hi = history_window(now_utc=now)
+    assert (now - lo).total_seconds() >= 24 * 3600
+    assert (hi - now).total_seconds() >= 24 * 3600
 
 
 if __name__ == "__main__":

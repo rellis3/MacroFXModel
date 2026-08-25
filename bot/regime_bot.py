@@ -55,6 +55,7 @@ from pylego.point_values import point_values_for      # shared pip-value table
 from pylego.sizing import position_size as _position_size_lots
 from pylego.risk_guard import RiskGuard                # shared DD/cooldown guard
 from pylego.broker import Mt5Broker                    # shared MT5 execution brick
+from pylego.trade_window import within_window as _within_window   # parsed, not string-compared
 
 try:
     import MetaTrader5 as mt5
@@ -444,8 +445,10 @@ class RegimeDebounce:
 # ── Trade window check ─────────────────────────────────────────────────────────
 
 def within_window(cfg: dict) -> bool:
-    now = datetime.now(timezone.utc).strftime('%H:%M')
-    return cfg.get('trade_window_start', '07:00') <= now <= cfg.get('trade_window_end', '20:00')
+    # Parsed, not string-compared: '7:00' in the config used to sort AFTER
+    # '20:00' and close the window permanently with nothing logged.
+    return _within_window(cfg.get('trade_window_start'), cfg.get('trade_window_end'),
+                          default_start='07:00', default_end='20:00')
 
 
 # ── Position serialiser ────────────────────────────────────────────────────────

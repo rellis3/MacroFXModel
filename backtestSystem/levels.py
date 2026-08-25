@@ -62,13 +62,20 @@ def project_fib_levels(range_data: dict) -> list:
 def detect_confluences(today_levels: list, yest_levels: list,
                        pip: float, tol_pips: float,
                        price_mode: str = 'midpoint',
-                       cluster_merge: bool = True) -> list:
+                       cluster_merge: bool = True,
+                       tight_pct: float = 10.0) -> list:
     """
     Find prices where today's Fib aligns with yesterday's Fib within tol_pips.
     Returns list of {price, fib, isTight, sources}.
+
+    `tight_pct` is the config's `tightPct`, as a PERCENT of the normal
+    tolerance. It used to be hardcoded at 10 while configs/active.json set 50,
+    so the `isTight` flag (and the `tight_only` signal filter that reads it)
+    behaved nothing like the config said. Default stays 10 so a caller that
+    doesn't pass it keeps the old behaviour.
     """
     normal_dist = tol_pips * pip
-    tight_dist  = normal_dist * 0.10
+    tight_dist  = normal_dist * (float(tight_pct) / 100.0)
     merge_dist  = normal_dist * 0.30
 
     raw = []

@@ -167,13 +167,15 @@ def fetch_journal_replay(base_url: str) -> dict:
         return {}
 
 
-def fetch_bars_at(pair: str, dt: datetime, count: int = 50):
-    """Fetches count 5m bars ending at dt from MT5 (for indicators at entry)."""
+def fetch_bars_at(pair: str, dt: datetime, count: int = 50, timeframe=None):
+    """Fetches count bars ending at dt from MT5 (for indicators at entry).
+    Defaults to M5; pass timeframe=mt5.TIMEFRAME_H1 for the 1H direction leg."""
     if not HAS_MT5:
         return None
     try:
         sym  = pair.replace('/', '')
-        bars = mt5.copy_rates_from(sym, mt5.TIMEFRAME_M5, dt, count)
+        tf   = timeframe if timeframe is not None else mt5.TIMEFRAME_M5
+        bars = mt5.copy_rates_from(sym, tf, dt, count)
         if bars is not None and len(bars) >= 10:
             return bars
     except Exception as exc:
@@ -307,6 +309,7 @@ def simulate_pre_screen(
     pair: str,
     bars,
     exec_cfg: dict,
+    bars_1h=None,
 ) -> tuple[int, float, float]:
     """
     Simulates pre_screen for a single historical entry.
@@ -336,7 +339,14 @@ def simulate_pre_screen(
         return 0, tol_pips, float('nan')
 
     score = 1
-    wt1   = compute_wt1(bars) if bars is not None else float('nan')
+
+    # Mirrors bot/main.py pre_screen() exactly — including the 1H leg, which
+    # this simulation used to omit entirely. Live `bardir='on'` requires the 5m
+    # AND 1H WaveTrend to agree; simulating only the 5m leg made 'on' a strictly
+    # looser filter here than in production. Any change to the live block must
+    # be mirrored here, or the backtest stops describing the live bot.
+    wt1    = compute_wt1(bars) if bars is not None else float('nan')
+    wt1_1h = compute_wt1(bars_1h) if bars_1h is not None else float('nan')
 
     if bardir == 'off' or math.isnan(wt1):
         score = 2
@@ -347,8 +357,16 @@ def simulate_pre_screen(
         else:
             is_long  = entry_direction.lower() in ('long', 'buy')
             is_short = entry_direction.lower() in ('short', 'sell')
-            if (is_long and wt1 > 0) or (is_short and wt1 < 0):
-                score = 2
+            if not (is_long or is_short):
+                score = 2            # no readable direction — live doesn't block either
+            else:
+                dir_ok_5m = (is_long and wt1 > 0) or (is_short and wt1 < 0)
+                if bardir == 'on' and not math.isnan(wt1_1h):
+                    dir_ok_1h = (is_long and wt1_1h > 0) or (is_short and wt1_1h < 0)
+                    if dir_ok_5m and dir_ok_1h:
+                        score = 2
+                elif dir_ok_5m:
+                    score = 2
 
     return score, tol_pips, wt1
 
@@ -702,12 +720,16 @@ def run_backtest(
             log.info(f'  Processing {i+1}/{len(all_records)}…')
 
         bars = fetch_bars_at(rec['pair'], rec['date']) if HAS_MT5 else None
+        # The 1H leg live pre_screen applies when bardir='on' (bot/main.py).
+        bars_1h = (fetch_bars_at(rec['pair'], rec['date'], count=50,
+                                 timeframe=mt5.TIMEFRAME_H1) if HAS_MT5 else None)
         score, tol_pips, wt1 = simulate_pre_screen(
             entry_price     = rec.get('price', 0),
             entry_direction = rec.get('direction', 'long'),
             entry_stars     = rec.get('stars', 0),
             pair            = rec['pair'],
             bars            = bars,
+            bars_1h         = bars_1h,
             exec_cfg        = exec_cfg,
         )
 

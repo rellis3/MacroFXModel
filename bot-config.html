@@ -6872,9 +6872,15 @@ window._refreshHedgeLotSuggestions = _refreshHedgeLotSuggestions;
 function _calcHedgePips(hedgeSymbol, entryPrice, closePrice, direction) {
   if (entryPrice == null || closePrice == null) return null;
   const sym = (hedgeSymbol || '').toUpperCase();
+  // Pip sizes mirror js/instrumentRegistry.js / pylego/instruments.json, so the
+  // pips shown here mean the same thing as the pips the Python bots size and
+  // log with. Gold was 0.1 (a 10x disagreement with the canonical 1.0), which
+  // made this column read 10x larger than the same move anywhere else in the
+  // system. Recomputed from stored prices on every render — nothing persisted
+  // was in the old units, so nothing needs migrating.
   let pipSize;
   if (sym.includes('JPY')) pipSize = 0.01;
-  else if (/XAU|GOLD/.test(sym)) pipSize = 0.1;
+  else if (/XAU|GOLD/.test(sym)) pipSize = 1;
   else if (/NAS|SPX|US30|DAX|FTSE|CAC|GER|UK|JP225|AUS200/.test(sym)) pipSize = 1;
   else pipSize = 0.0001;
   return Math.round(((closePrice - entryPrice) / pipSize) * (direction === 'BUY' ? 1 : -1) * 10) / 10;

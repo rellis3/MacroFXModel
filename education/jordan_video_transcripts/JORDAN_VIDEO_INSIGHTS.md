@@ -41,6 +41,17 @@ system already in this repo:
   range-extension variant (video 17); flags a candle as an impulse and
   draws the same fib ladder off its own high/low. Not a backtest — just a
   way to look at what Husky described before spending effort mechanising it.
+- `education/jordan_impulse_4h_range_levels_backtest/` — the above indicator
+  mechanised and actually run against 10.6 years of real M1 data across
+  gold, NAS100, and 5 FX pairs: level hit-rate table, impulse-size-vs-
+  exhaustion and VWAP-distance-vs-reversal correlations (both checked
+  IS/OOS), and an MAE/dynamic-stop sizing test. Two findings survive an
+  honest OOS check (impulse-size↔exhaustion is negatively correlated;
+  VWAP-distance-at-exhaustion↔reversal-size is positively correlated,
+  consistently across all 7 instruments); the rest (level hit-rate shape,
+  reversal-size-vs-impulse-size, the pinned continuation trade, and
+  tightening the stop early) come back null or don't survive an honest
+  IS/OOS check — see RESULTS.md.
 
 Nothing below is confirmed or backtested by default — this is a capture
 layer for hypotheses. "Confidence" is about how clearly/repeatedly Jordan

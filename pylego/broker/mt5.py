@@ -27,7 +27,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Callable
 
-from pylego.broker.clock import ServerClock
+from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window
 
 
 class Mt5Broker:
@@ -251,14 +251,21 @@ class Mt5Broker:
             return []
 
     def serialize_closed_trades(self) -> list:
-        """Today's closed positions for this bot's magic, from MT5 deal history."""
+        """Today's closed positions for this bot's magic, from MT5 deal history.
+
+        Window vs bucket — two clocks that disagree. `history_deals_get` reads
+        its date arguments on the BROKER's clock, while the dashboard files what
+        we push under the server's real-UTC date, so a plain UTC-midnight window
+        drops every trade closing in a UTC day's last `offset` hours. Ask wide,
+        then keep only the closes that land on today's real UTC date —
+        `pylego/broker/clock.py`."""
         if not self.available:
             return []
         try:
             mt5 = self.mt5
             tz_off = self.server_offset_sec()
-            today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-            deals = mt5.history_deals_get(today, today + timedelta(days=1)) or []
+            win_from, win_to = history_window()
+            deals = mt5.history_deals_get(win_from, win_to) or []
             by_pos: dict = {}
             for d in deals:
                 if d.magic != self.magic:
@@ -275,6 +282,11 @@ class Mt5Broker:
                 outs = grp['out']
                 if not outs:
                     continue
+                last_out = max(outs, key=lambda d: d.time)
+                # The wide window's price: it also returns yesterday's and
+                # tomorrow's closes, so bucket on the close's REAL-UTC date.
+                if not closes_on_utc_day(int(last_out.time), tz_off):
+                    continue
                 ind = grp['in']
                 if ind is None:
                     # Entry deal isn't in today's window — the position was
@@ -287,7 +299,6 @@ class Mt5Broker:
                         ind = next((d for d in pos_deals if d.entry == 0), None)
                     except Exception:
                         ind = None
-                last_out = max(outs, key=lambda d: d.time)
                 if ind:
                     direction = 'BUY' if ind.type == 0 else 'SELL'
                     open_price = round(float(ind.price), 5)

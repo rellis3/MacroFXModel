@@ -916,6 +916,15 @@ function computeATRForTf(m1s, period, tfMin) {
 
 // Approximate pip/point size per instrument (used by the "Fixed Pips" SL mode).
 // FX majors/crosses: 0.0001 (0.01 for JPY quote pairs). Gold: 0.01. Indices: 1 point.
+//
+// Gold is DELIBERATELY 0.01 here rather than the canonical 1.0
+// (js/instrumentRegistry.js). This value's only job is to interpret the user's
+// "Fixed Pips" stop-distance input, so changing it would silently reinterpret
+// every saved config — an SL typed as 30 would jump from $0.30 to $30 on gold.
+// It does NOT touch the cost model: costs on this page are a percentage of the
+// day-open price (`costPct`, see the cost input's help text), which is
+// price-relative and has no pip term, so no cost is understated by this.
+// Treat it as an input unit for this page, not a system-wide pip.
 function pipSizeForPair(pair) {
   if (pair.includes('JPY')) return 0.01;
   const cls = PAIR_ASSET_CLASS[pair] ?? 'fx';

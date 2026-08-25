@@ -238,5 +238,14 @@ def compute_macd(closes: list, fast: int = 12, slow: int = 26, signal: int = 9):
     e_fast = compute_ema(closes, fast)
     e_slow = compute_ema(closes, slow)
     macd_line = [e_fast[i] - e_slow[i] for i in range(len(closes))]
-    sig_line  = compute_ema(macd_line[slow:], signal)
+    # Signal EMA over the FULL macd_line — the standard definition, and the only
+    # version whose length matches macd_line. It used to be computed on
+    # macd_line[slow:], leaving sig_line `slow` elements shorter; the sole
+    # caller reads [-1] on both so it worked, but any element-wise use (a
+    # histogram, a crossover scan) would have silently misaligned the two by 26
+    # bars. compute_ema seeds on values[0] with k=0.2 here, so the extra warmup
+    # bars decay to ~0.3% influence by macd_line[slow:] — the [-1] read is
+    # unchanged for any realistic series length.
+    sig_line  = compute_ema(macd_line, signal)
+    assert len(sig_line) == len(macd_line)   # the contract this function broke
     return macd_line, sig_line

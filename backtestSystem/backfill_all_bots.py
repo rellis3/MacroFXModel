@@ -59,6 +59,9 @@ except ImportError:                              # dotenv is optional
     def load_dotenv(*_a, **_kw):
         return False
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # repo root -> pylego
+from pylego.broker.clock import ServerClock   # noqa: E402  (MT5 stamps aren't UTC)
+
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s  %(levelname)-7s  %(message)s', datefmt='%H:%M:%S')
 
@@ -167,6 +170,9 @@ def _build_trades(deals: list, magic: int) -> tuple[list, int, int]:
     Returns (trades, skipped_open, manual_closed) — manual_closed counts trades
     whose close was NOT done by the EA (magic differs on an exit deal)."""
     import MetaTrader5 as mt5
+    # Measured fresh per bot: each account can sit on a different broker server,
+    # so a cached offset from the previous bot would be the wrong correction.
+    tz_off = ServerClock(mt5, log=log).offset_sec()
     by_position: dict = {}
     for d in deals:
         by_position.setdefault(d.position_id, []).append(d)
@@ -215,6 +221,12 @@ def _build_trades(deals: list, magic: int) -> tuple[list, int, int]:
             'swap':        round(sum(d.swap for d in group), 2),
             'time_open':   int(min(d.time for d in entries)),
             'time_close':  int(max(d.time for d in exits)),
+            # Both stamps above are on the BROKER's clock, not UTC. Ship the
+            # offset so /api/trade-history/backfill can file each trade under
+            # the day it really closed — without it a 21:00-23:59 UTC close
+            # lands in tomorrow's bucket, which is exactly how the live path
+            # and the backfill path came to disagree.
+            'tz_offset_sec': tz_off,
         })
 
     trades.sort(key=lambda t: t['time_close'])
@@ -313,7 +325,8 @@ def main():
             continue
 
         net = sum(t['profit'] + t['swap'] for t in trades)
-        dates = sorted({datetime.fromtimestamp(t['time_close'], tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
+        dates = sorted({datetime.fromtimestamp(t['time_close'] - int(t.get('tz_offset_sec') or 0),
+                                               tz=timezone.utc).strftime('%Y-%m-%d') for t in trades})
         manual_s = f'  incl. {manual} manual-closed' if manual else ''
         log.info(f'    {len(trades)} trades across {len(dates)} days '
                  f'({dates[0]} -> {dates[-1]})  net P&L: {net:+.2f}{manual_s}')

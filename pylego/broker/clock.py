@@ -128,3 +128,39 @@ class ServerClock:
         if utc_epoch is None or off is None:
             return utc_epoch
         return int(utc_epoch) + off
+
+
+# ── Closed-trade day bucketing ───────────────────────────────────────────────
+# MT5 reads the date arguments of `history_deals_get` on the BROKER's clock, but
+# the dashboard files whatever a bot pushes under the SERVER's real-UTC date.
+# Those two clocks disagree by `offset_sec()`, so the naive
+# `history_deals_get(utc_midnight, utc_midnight + 1day)` is really asking for
+# 21:00 -> 21:00 UTC on a +3h broker: every trade closing in a UTC day's last
+# three hours falls outside the window, is picked up by the NEXT day's run, and
+# is then filed a day late. The fix is always the same two steps — ask WIDE,
+# then keep only the closes whose real-UTC date is today — so both live here
+# instead of being re-derived (and re-broken) per bot.
+
+def history_window(now_utc=None, pad_days: int = 1):
+    """(from, to) datetimes for `history_deals_get`, padded a day either side so
+    no broker-clock skew can clip the edges. Pair with `closes_on_utc_day` to
+    narrow the over-wide result back down to one real-UTC day."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc) if now_utc is None else now_utc
+    pad = timedelta(days=pad_days)
+    return now - pad, now + pad
+
+
+def closes_on_utc_day(broker_epoch, offset_sec, day_utc=None, now_utc=None) -> bool:
+    """True when a BROKER-stamped close lands on `day_utc` (default: today) in
+    real UTC. `offset_sec` may be None (offset not measurable — a closed market)
+    and is then treated as 0: an uncorrected stamp is far better than dropping
+    every trade, which is what arithmetic on None would do."""
+    from datetime import datetime, timezone
+    if broker_epoch is None:
+        return False
+    now = datetime.now(timezone.utc) if now_utc is None else now_utc
+    day = now.strftime('%Y-%m-%d') if day_utc is None else day_utc
+    off = int(offset_sec or 0)
+    real = datetime.fromtimestamp(int(broker_epoch) - off, timezone.utc)
+    return real.strftime('%Y-%m-%d') == day

@@ -1016,6 +1016,34 @@ const PAIR_SAFE_MAP = {
 
 const pairSafe = p => PAIR_SAFE_MAP[p] || p.toLowerCase().replace('/', '').replace('_','');
 
+// ─── Pip size — from the SYMBOL, never from the price magnitude ──────────────
+// This page used to infer pip size as `px => px >= 20 ? 0.01 : 0.0001`. Gold at
+// ~$3,000 and NAS100 at ~$22,000 both landed on 0.01 while the canonical pip for
+// each is 1.0 (pylego/instruments.json, js/instrumentRegistry.js), so every
+// pip-denominated cost on gold and the indices was ~100x too small — costs
+// effectively vanished and the equity curve read better than reality. Price
+// magnitude never determined pip size; the instrument does.
+//
+// Mirrors js/instrumentRegistry.js. That file is an ES module and this page's
+// engines are not, hence the table rather than an import — if the registry
+// changes, change this with it.
+const PIP_BY_KEY = {
+  gold: 1.0,
+  nq: 1.0, spx: 1.0, spx500: 1.0, dax: 1.0, de30: 1.0, ftse: 1.0, uk100: 1.0,
+  us30: 1.0, us2000: 1.0, rut: 1.0,
+};
+function pipSizeOfSymbol(sym) {
+  const key = pairSafe(sym || '');
+  if (PIP_BY_KEY[key] != null) return PIP_BY_KEY[key];
+  return /jpy$/.test(key) ? 0.01 : 0.0001;      // FX: JPY-quoted 0.01, else 0.0001
+}
+// V2.1 and the edge-cost card only ever run on the single selected pair (the
+// multi-pair sweep is V8-only, and V8 costs in basis points with no pip term).
+function currentPipSize() {
+  const el = document.getElementById('pairSel');
+  return pipSizeOfSymbol(el ? el.value : '');
+}
+
 // ─── V1 Config ───────────────────────────────────────────────────────────────
 
 const V1_PARAMS = [
@@ -1118,7 +1146,7 @@ const V2_DEFAULTS = Object.fromEntries([...V2_PARAMS.map(p=>[p.key,p.def]),...V2
 const V2_1_PARAMS = [
   ...V2_PARAMS,
   { key:'spread_pips',    label:'Spread (pips, round-trip)', min:0, max:8, step:0.1, def:1.2, fixed:true,
-    help:'Total transaction cost charged to EVERY trade, in pips, expressed as the full round-trip spread (entry + exit). Pip size is inferred from price (0.01 for JPY/large-quote pairs, 0.0001 otherwise). This is THE fix for "profitable in backtest, losing live": V2 modelled zero cost. Set to your broker\'s typical regime-hours spread for the pair (EURUSD ~0.8–1.5, crosses higher).' },
+    help:'Total transaction cost charged to EVERY trade, in pips, expressed as the full round-trip spread (entry + exit). Pip size comes from the SELECTED INSTRUMENT (js/instrumentRegistry.js): FX 0.0001, JPY-quoted 0.01, gold $1.00, indices 1 point. It used to be guessed from price magnitude, which gave gold and every index 0.01 and so understated their cost ~100x — re-run any saved gold/index result, and set this in the instrument\'s own pips (gold ~0.3 = $0.30, NAS100 ~2.5 = 2.5pts). This is THE fix for "profitable in backtest, losing live": V2 modelled zero cost. Set to your broker\'s typical regime-hours spread for the pair (EURUSD ~0.8–1.5, crosses higher).' },
   { key:'tp_r',           label:'Take Profit (R)',          min:0, max:8, step:0.1, def:2.0,
     help:'Fixed take-profit at this many R (multiples of the stop distance). Checked intrabar against each M1 high/low. 0 = disabled (pure V2 give-back exits). A real target is the main reason V2.1 banks trend winners instead of round-tripping them. 1.5–3.0 typical for regime trends.' },
   { key:'be_trigger_r',   label:'Breakeven Trigger (R)',    min:0, max:4, step:0.1, def:1.0,
@@ -3331,13 +3359,13 @@ function simulateV21(candles, signals, c) {
   let pos = null, debounce = 0, rangeHold = 0, cooldown = 0;
   let prevConf = null;
   let curDay = null, tradesToday = 0;
-  const pipSizeOf = px => px >= 20 ? 0.01 : 0.0001;
+  const pipSizeOf = () => currentPipSize();   // by SYMBOL, not price magnitude
 
   // Build a trade with the round-trip spread deducted from P&L (in % terms),
   // keeping the original stop distance as the R denominator.
   const mkT = (p, exitTs, exitPx, reason) => {
     const t = mkTrade(p, exitTs, exitPx, reason);
-    const costPct = (c.spread_pips * pipSizeOf(p.entry_price)) / p.entry_price * 100;
+    const costPct = (c.spread_pips * pipSizeOf()) / p.entry_price * 100;
     t.pnl_pct -= costPct;
     t.pnl_r    = t.risk_pct > 0 ? t.pnl_pct / t.risk_pct : 0;
     t.win      = t.pnl_pct > 0;
@@ -3435,7 +3463,7 @@ function simulateV21(candles, signals, c) {
       // ── Breakeven + ATR trailing (after exits, applied for next bar) ──
       if (c.be_trigger_r > 0 && pos.mfe_r >= c.be_trigger_r) {
         pos.be_armed = true;
-        const buf = c.spread_pips * pipSizeOf(pos.entry_price);
+        const buf = c.spread_pips * pipSizeOf();
         if (pos.direction === 'LONG')  { const be = pos.entry_price + buf; if (be > pos.sl) pos.sl = be; }
         else                           { const be = pos.entry_price - buf; if (be < pos.sl) pos.sl = be; }
       }
@@ -5028,13 +5056,13 @@ function renderEdgeCost() {
   if (!allTrades.length) { card.style.display = 'none'; return; }
   card.style.display = '';
 
-  const pipSizeOf = px => px >= 20 ? 0.01 : 0.0001;
+  const pipSizeOf = () => currentPipSize();   // by SYMBOL, not price magnitude
   const hurdlePips = parseFloat(document.getElementById('ecHurdle').value) || 0;
   // Per trade: gross P&L (cost added back) and the cost this trade WOULD pay at the typed hurdle.
   const T = allTrades.map(t => ({
     t,
     gross: t.pnl_pct + (t.cost_pct || 0),
-    hcost: hurdlePips * pipSizeOf(t.entry_price) / t.entry_price * 100,
+    hcost: hurdlePips * pipSizeOf() / t.entry_price * 100,
   }));
   const N = T.length;
   const grossTot = T.reduce((s, x) => s + x.gross, 0);

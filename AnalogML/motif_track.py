@@ -303,21 +303,59 @@ def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) 
     return resolved
 
 
-def _category_confidence(motifs: list, n_touches: int, is_top: bool) -> dict | None:
+def _category_confidence(motifs: list, n_touches: int, is_top: bool,
+                         pair: str, bars, params: dict) -> dict | None:
     """Historical win-rate/PF/avg-R for confirmed motifs of THIS category
     (same n_touches, same side) on THIS pair -- what actually backs the
     "confidence" shown for a live in-progress setup. Real, already-measured
     aggregate; never a fabricated per-instance probability. None if too few
-    samples to mean anything (< 10)."""
+    samples to mean anything (< 10).
+
+    The PF and avg-R come from RACING each historical motif through the shared
+    barrier walker at the frozen grid -- the same resolution the tracked record
+    uses. They used to be a proxy (`1.5 if m.played_out else -1.0`), which is a
+    different and systematically kinder question: `played_out` asks "did the
+    pattern's textbook direction hold", not "did the 1.5R TP come before the
+    20-pip SL". A motif that broke the right way and was then stopped scored a
+    full +1.5R win in the number shown live, so the live confidence read better
+    than the validated track record it was meant to summarise.
+
+    `played_out_rate` is unchanged -- it was always honestly labelled, and it
+    answers the pattern question rather than the trade question."""
     same = [m for m in motifs if m.confirm_idx is not None
            and m.n_touches == n_touches and m.is_top == is_top]
     if len(same) < 10:
         return None
-    r_values = [1.5 if m.played_out else -1.0 for m in same]  # tp_r outcome proxy at the frozen grid
-    s = summarize_r(r_values)
     played_out_rate = sum(1 for m in same if m.played_out) / len(same)
+
+    # Race the category at the frozen grid. Entry is the bar AFTER confirmation
+    # (same convention as scan_pair_motif), and race_trades drops any motif
+    # without min_bars_ahead of forward runway, so recent motifs are excluded
+    # from the aggregate rather than resolved on partial data.
+    n = len(bars)
+    pip = pip_size(pair)
+    sl_price = params["sl_pips"] * pip
+    opens = bars["open"].to_numpy()
+    entries = [
+        Entry(idx=m.confirm_idx + 1, direction=m.direction,
+              entry_price=float(opens[m.confirm_idx + 1]))
+        for m in same if m.confirm_idx + 1 < n
+    ]
+    raced = race_trades(bars, entries, sl=sl_price, tp_r=params["tp_r"],
+                        max_bars_ahead=params["max_bars_ahead"],
+                        cost_price=default_spread(pair),
+                        min_bars_ahead=params["min_bars_ahead"])
+    if len(raced) < 10:
+        # Enough motifs, but not enough of them have resolvable forward runway.
+        # Report the pattern rate alone rather than a PF built on a handful.
+        return {"n_samples": len(same), "played_out_rate": round(played_out_rate, 3),
+                "profit_factor": None, "avg_r": None, "n_raced": len(raced)}
+
+    s = summarize_r([r["r"] for r in raced])
     return {"n_samples": len(same), "played_out_rate": round(played_out_rate, 3),
-            "profit_factor": round(s["profit_factor"], 2), "avg_r": round(s["avg_r"], 3)}
+            "profit_factor": round(s["profit_factor"], 2), "avg_r": round(s["avg_r"], 3),
+            "n_raced": len(raced),
+            "win_rate": round(sum(1 for r in raced if r["r"] > 0) / len(raced), 3)}
 
 
 def _htf_lean_for_entry(pair: str, entry_time) -> int | None:
@@ -405,8 +443,12 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
     conf_line = ""
     if confidence:
         bar = _confidence_bar(confidence["played_out_rate"])
+        # PF is None when the category has motifs but too few with forward
+        # runway to race — show that rather than implying a measured number.
+        _pf = confidence.get("profit_factor")
+        _pf_s = f"{_pf:.2f}" if _pf is not None else "n/a"
         conf_line = (f"\U0001f4ca {bar} {confidence['played_out_rate'] * 100:.0f}% played out "
-                     f"· PF {confidence['profit_factor']:.2f} · n={confidence['n_samples']}\n")
+                     f"· PF {_pf_s} · n={confidence['n_samples']}\n")
 
     kind = "top" if m.is_top else "bottom"
     # Direction icon matches the ACTUAL confirmed trade direction, not the
@@ -469,7 +511,7 @@ def compute_motif_state(pair: str, bars: pd.DataFrame, motifs: list, params: dic
     dist_to_level_pips = abs(current_price - live.level) / pip
     dist_to_touch_level_pips = abs(current_price - live.touch_level) / pip
 
-    confidence = _category_confidence(motifs, live.n_touches, live.is_top)
+    confidence = _category_confidence(motifs, live.n_touches, live.is_top, pair, bars, params)
     current_atr = float(atr_arr[-1]) if atr_arr is not None and len(atr_arr) else None
 
     return {
@@ -503,8 +545,10 @@ def format_nearing_alert(pair: str, state: dict) -> str:
     c = state.get("confidence")
     if c:
         bar = _confidence_bar(c["played_out_rate"])
+        _pf = c.get("profit_factor")
+        _pf_s = f"{_pf:.2f}" if _pf is not None else "n/a"
         conf_line = (f"\U0001f4ca {bar} {c['played_out_rate'] * 100:.0f}% played out "
-                     f"· PF {c['profit_factor']:.2f} · n={c['n_samples']}\n")
+                     f"· PF {_pf_s} · n={c['n_samples']}\n")
     # Textbook expectation, purely informational -- a top expects a reversal
     # DOWN (SELL), a bottom expects a reversal UP (BUY). Not a claim this
     # WILL happen (the "failure" case breaks the other way, same as
@@ -606,7 +650,8 @@ def run(args: argparse.Namespace) -> None:
                       f"tp={t['tp_price']:.5f}  {t['entry_date']}")
                 if tg_ready:
                     htf_lean = _htf_lean_for_entry(pair, bars.index[m.confirm_idx])
-                    confidence = _category_confidence(motifs, m.n_touches, m.is_top)
+                    confidence = _category_confidence(motifs, m.n_touches, m.is_top,
+                                                      pair, bars, FROZEN)
                     current_price = float(bars["close"].to_numpy()[-1])
                     text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price)
                     if send_via_dashboard(args.dashboard_url, text):

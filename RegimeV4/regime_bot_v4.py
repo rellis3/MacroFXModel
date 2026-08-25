@@ -81,6 +81,8 @@ sys.path.insert(0, _HERE)
 sys.path.insert(0, _V2_DIR)   # bocpd, macro_overlay, formatter live in RegimeV2
 
 from pylego.instruments import pip_sizes_for      # noqa: E402  (shared pip table — single source of truth)
+from pylego.broker.clock import (ServerClock, closes_on_utc_day,  # noqa: E402  (MT5 stamps aren't UTC)
+                                 history_window)
 from bocpd         import BOCPRegistry           # noqa: E402
 from macro_overlay import MacroOverlay            # noqa: E402
 from formatter     import (                       # noqa: E402
@@ -740,6 +742,20 @@ class RiskGuardV4:
 
 # ── Status push helpers ───────────────────────────────────────────────────────
 
+_SERVER_CLOCK = None
+
+
+def _tz_offset_sec():
+    """Seconds the broker's clock runs ahead of UTC. MT5 stamps `.time` fields on
+    the SERVER's wall clock, so every time_open/time_close below is shifted by
+    this much — the serialisers ship it so the dashboard renders the real instant
+    instead of assuming UTC. See pylego/broker/clock.py."""
+    global _SERVER_CLOCK
+    if _SERVER_CLOCK is None:
+        _SERVER_CLOCK = ServerClock(mt5 if HAS_MT5 else None, log=log)
+    return _SERVER_CLOCK.offset_sec()
+
+
 def _serialize_open_positions() -> list:
     if not HAS_MT5:
         return []
@@ -753,11 +769,87 @@ def _serialize_open_positions() -> list:
                 'open_price': round(float(p.price_open), 5),
                 'price':      round(float(p.price_current), 5),
                 'profit':     round(float(p.profit), 2),
+                'time_open':  int(p.time),
+                'tz_offset_sec': _tz_offset_sec(),
             }
             for p in (mt5.positions_get() or [])
             if p.magic == MAGIC
         ]
     except Exception:
+        return []
+
+
+def _serialize_closed_trades(magic: int = MAGIC) -> list:
+    """Today's closed positions for this bot, in the shape the dashboard's
+    trade-history merge expects on a status push. V4 shipped without this, so
+    its closes only ever reached the dashboard via the offline backfill script.
+
+    Window vs bucket, two clocks that disagree. MT5 reads these date args on the
+    BROKER clock, so a plain UTC-midnight window is really 21:00->21:00 UTC on a
+    +3h broker: every trade closing in the last three hours of a UTC day falls
+    outside it and is then filed a day late. Ask wide, keep only today's
+    real-UTC closes (pylego/broker/clock.py)."""
+    if not HAS_MT5:
+        return []
+    try:
+        win_from, win_to = history_window()
+        deals = mt5.history_deals_get(win_from, win_to) or []
+        by_pos: dict = {}
+        for d in deals:
+            if d.magic != magic:
+                continue
+            pid = int(d.position_id)
+            if pid not in by_pos:
+                by_pos[pid] = {'in': None, 'out': []}
+            if d.entry == 0:
+                by_pos[pid]['in'] = d
+            elif d.entry in (1, 3):
+                by_pos[pid]['out'].append(d)
+        result = []
+        for pid, grp in by_pos.items():
+            outs = grp['out']
+            if not outs:
+                continue                     # still open
+            last_out = max(outs, key=lambda d: d.time)
+            # The wide window also returns other days' closes, so bucket on the
+            # close's REAL-UTC date rather than its raw broker stamp.
+            if not closes_on_utc_day(int(last_out.time), _tz_offset_sec()):
+                continue
+            ind = grp['in']
+            if ind is None:
+                # Opened on an earlier day (swing hold) and closed today — look
+                # the entry up by position id so it still gets an open_price.
+                try:
+                    pos_deals = mt5.history_deals_get(position=pid) or []
+                    ind = next((d for d in pos_deals if d.entry == 0), None)
+                except Exception:
+                    ind = None
+            if ind:
+                direction  = 'BUY' if ind.type == 0 else 'SELL'
+                open_price = round(float(ind.price), 5)
+                time_open  = int(ind.time)
+            else:
+                direction  = 'BUY' if last_out.type == 1 else 'SELL'
+                open_price = None
+                time_open  = None
+            result.append({
+                'position_id': pid,
+                'symbol':      last_out.symbol,
+                'direction':   direction,
+                'lots':        round(sum(d.volume     for d in outs), 2),
+                'open_price':  open_price,
+                'close_price': round(float(last_out.price), 5),
+                'profit':      round(sum(d.profit     for d in outs), 2),
+                'swap':        round(sum(d.swap       for d in outs), 2),
+                'commission':  round(sum(d.commission for d in outs), 2),
+                'time_open':   time_open,
+                'time_close':  int(last_out.time),
+                'tz_offset_sec': _tz_offset_sec(),
+                'comment':     str(ind.comment if ind else last_out.comment or ''),
+            })
+        return sorted(result, key=lambda t: t['time_close'])
+    except Exception as exc:
+        log.warning(f'_serialize_closed_trades failed: {exc}')
         return []
 
 
@@ -771,6 +863,7 @@ def push_status(pairs_status: dict, balance: float, paper_mode: bool,
         'pushed_at':        time.time(),
         'version':          'v4',
         'mt5_positions':    _serialize_open_positions(),
+        'today_closed_trades': _serialize_closed_trades(MAGIC),
     }, url)
 
 
