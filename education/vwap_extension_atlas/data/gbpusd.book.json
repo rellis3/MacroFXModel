@@ -1,0 +1,3199 @@
+{
+  "instrument": "gbpusd",
+  "assetClass": "fx",
+  "coverage": {
+    "from": "2016-02-02",
+    "to": "2026-08-20",
+    "days": 3293
+  },
+  "cells": {
+    "up|1": {
+      "n": 150,
+      "splitDate": "2023-06-08",
+      "base": {
+        "is": {
+          "n": 90,
+          "pct": 15.6
+        },
+        "oos": {
+          "n": 60,
+          "pct": 23.3
+        }
+      },
+      "magnitudeFull": {
+        "n": 150,
+        "touchedVwapPct": 18.7,
+        "didExtendFurtherPct": 81.3,
+        "wentToOppositeSidePct": 3.6,
+        "unresolvedPct": 81.3,
+        "avgPeakExtAtr": 1.275,
+        "avgPctRetraced": 0.479,
+        "avgBarsToVwapTouch": 181
+      },
+      "magnitudeIS": {
+        "n": 90,
+        "touchedVwapPct": 15.6,
+        "didExtendFurtherPct": 81.1,
+        "wentToOppositeSidePct": 7.1,
+        "unresolvedPct": 84.4,
+        "avgPeakExtAtr": 1.302,
+        "avgPctRetraced": 0.491,
+        "avgBarsToVwapTouch": 182
+      },
+      "magnitudeOOS": {
+        "n": 60,
+        "touchedVwapPct": 23.3,
+        "didExtendFurtherPct": 81.7,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 76.7,
+        "avgPeakExtAtr": 1.234,
+        "avgPctRetraced": 0.462,
+        "avgBarsToVwapTouch": 181
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 64,
+              "pct": 12.5,
+              "deltaVsBase": -3.1,
+              "holds": true
+            },
+            "Asia": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 1.1,
+              "holds": false
+            },
+            "London": {
+              "n": 20,
+              "pct": 25,
+              "deltaVsBase": 9.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 44,
+              "pct": 11.4,
+              "deltaVsBase": -11.9,
+              "holds": true
+            },
+            "Asia": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -23.3,
+              "holds": false
+            },
+            "London": {
+              "n": 13,
+              "pct": 69.2,
+              "deltaVsBase": 45.9,
+              "holds": false
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "3·16-24utc": {
+              "n": 32,
+              "pct": 9.4,
+              "deltaVsBase": -6.2,
+              "holds": false
+            },
+            "2·08-16utc": {
+              "n": 55,
+              "pct": 14.5,
+              "deltaVsBase": -1.1,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 3,
+              "pct": 100,
+              "deltaVsBase": 84.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·16-24utc": {
+              "n": 24,
+              "pct": 8.3,
+              "deltaVsBase": -15,
+              "holds": false
+            },
+            "2·08-16utc": {
+              "n": 36,
+              "pct": 33.3,
+              "deltaVsBase": 10,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "1": {
+              "n": 9,
+              "pct": 22.2,
+              "deltaVsBase": 6.6,
+              "holds": false
+            },
+            "2": {
+              "n": 20,
+              "pct": 20,
+              "deltaVsBase": 4.4,
+              "holds": false
+            },
+            "3": {
+              "n": 22,
+              "pct": 9.1,
+              "deltaVsBase": -6.5,
+              "holds": false
+            },
+            "4": {
+              "n": 28,
+              "pct": 21.4,
+              "deltaVsBase": 5.8,
+              "holds": false
+            },
+            "5": {
+              "n": 11,
+              "pct": 0,
+              "deltaVsBase": -15.6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 11,
+              "pct": 18.2,
+              "deltaVsBase": -5.1,
+              "holds": false
+            },
+            "2": {
+              "n": 8,
+              "pct": 25,
+              "deltaVsBase": 1.7,
+              "holds": false
+            },
+            "3": {
+              "n": 17,
+              "pct": 29.4,
+              "deltaVsBase": 6.1,
+              "holds": false
+            },
+            "4": {
+              "n": 12,
+              "pct": 16.7,
+              "deltaVsBase": -6.6,
+              "holds": false
+            },
+            "5": {
+              "n": 12,
+              "pct": 25,
+              "deltaVsBase": 1.7,
+              "holds": false
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 53,
+              "pct": 15.1,
+              "deltaVsBase": -0.5,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 20,
+              "pct": 10,
+              "deltaVsBase": -5.6,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 17,
+              "pct": 23.5,
+              "deltaVsBase": 7.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 34,
+              "pct": 26.5,
+              "deltaVsBase": 3.2,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 11,
+              "pct": 27.3,
+              "deltaVsBase": 4,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 15,
+              "pct": 13.3,
+              "deltaVsBase": -10,
+              "holds": false
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 86,
+              "pct": 15.1,
+              "deltaVsBase": -0.5,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 9.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 46,
+              "pct": 23.9,
+              "deltaVsBase": 0.6,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 14,
+              "pct": 21.4,
+              "deltaVsBase": -1.9,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "RANGE": {
+              "n": 32,
+              "pct": 15.6,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 49,
+              "pct": 12.2,
+              "deltaVsBase": -3.4,
+              "holds": false
+            },
+            "TREND": {
+              "n": 9,
+              "pct": 33.3,
+              "deltaVsBase": 17.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "RANGE": {
+              "n": 32,
+              "pct": 25,
+              "deltaVsBase": 1.7,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 25,
+              "pct": 16,
+              "deltaVsBase": -7.3,
+              "holds": false
+            },
+            "TREND": {
+              "n": 3,
+              "pct": 66.7,
+              "deltaVsBase": 43.4,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 25,
+              "pct": 24,
+              "deltaVsBase": 8.4,
+              "holds": false
+            },
+            "1·against": {
+              "n": 30,
+              "pct": 20,
+              "deltaVsBase": 4.4,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 35,
+              "pct": 5.7,
+              "deltaVsBase": -9.9,
+              "holds": true
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 11,
+              "pct": 36.4,
+              "deltaVsBase": 13.1,
+              "holds": false
+            },
+            "1·against": {
+              "n": 14,
+              "pct": 28.6,
+              "deltaVsBase": 5.3,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 35,
+              "pct": 17.1,
+              "deltaVsBase": -6.2,
+              "holds": true
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 43,
+              "pct": 14,
+              "deltaVsBase": -1.6,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 32,
+              "pct": 15.6,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "1·range": {
+              "n": 15,
+              "pct": 20,
+              "deltaVsBase": 4.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 20,
+              "pct": 25,
+              "deltaVsBase": 1.7,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 26,
+              "pct": 23.1,
+              "deltaVsBase": -0.2,
+              "holds": false
+            },
+            "1·range": {
+              "n": 14,
+              "pct": 21.4,
+              "deltaVsBase": -1.9,
+              "holds": false
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "3·with": {
+              "n": 48,
+              "pct": 12.5,
+              "deltaVsBase": -3.1,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 42,
+              "pct": 19,
+              "deltaVsBase": 3.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 30,
+              "pct": 20,
+              "deltaVsBase": -3.3,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 28,
+              "pct": 21.4,
+              "deltaVsBase": -1.9,
+              "holds": false
+            },
+            "1·against": {
+              "n": 2,
+              "pct": 100
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "3·stretched": {
+              "n": 31,
+              "pct": 3.2,
+              "deltaVsBase": -12.4,
+              "holds": false
+            },
+            "2·mid": {
+              "n": 58,
+              "pct": 20.7,
+              "deltaVsBase": 5.1,
+              "holds": false
+            },
+            "1·counter": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 84.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·stretched": {
+              "n": 23,
+              "pct": 17.4,
+              "deltaVsBase": -5.9,
+              "holds": false
+            },
+            "2·mid": {
+              "n": 34,
+              "pct": 23.5,
+              "deltaVsBase": 0.2,
+              "holds": false
+            },
+            "1·counter": {
+              "n": 3,
+              "pct": 66.7,
+              "deltaVsBase": 43.4,
+              "holds": false
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "1·grind": {
+              "n": 41,
+              "pct": 14.6,
+              "deltaVsBase": -1,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 31,
+              "pct": 12.9,
+              "deltaVsBase": -2.7,
+              "holds": false
+            },
+            "3·climax": {
+              "n": 18,
+              "pct": 22.2,
+              "deltaVsBase": 6.6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·grind": {
+              "n": 28,
+              "pct": 7.1,
+              "deltaVsBase": -16.2,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 17,
+              "pct": 23.5,
+              "deltaVsBase": 0.2,
+              "holds": false
+            },
+            "3·climax": {
+              "n": 15,
+              "pct": 53.3,
+              "deltaVsBase": 30,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "up|1.5": {
+      "n": 21,
+      "splitDate": "2022-09-29",
+      "base": {
+        "is": {
+          "n": 12,
+          "pct": 25
+        },
+        "oos": {
+          "n": 9,
+          "pct": 11.1
+        }
+      },
+      "magnitudeFull": {
+        "n": 21,
+        "touchedVwapPct": 19,
+        "didExtendFurtherPct": 85.7,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 81,
+        "avgPeakExtAtr": 1.937,
+        "avgPctRetraced": 0.442,
+        "avgBarsToVwapTouch": 227
+      },
+      "magnitudeIS": {
+        "n": 12,
+        "touchedVwapPct": 25,
+        "didExtendFurtherPct": 75,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 75,
+        "avgPeakExtAtr": 2.141,
+        "avgPctRetraced": 0.514,
+        "avgBarsToVwapTouch": 176
+      },
+      "magnitudeOOS": {
+        "n": 9,
+        "touchedVwapPct": 11.1,
+        "didExtendFurtherPct": 100,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 88.9,
+        "avgPeakExtAtr": 1.666,
+        "avgPctRetraced": 0.347,
+        "avgBarsToVwapTouch": 381
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 7,
+              "pct": 28.6,
+              "deltaVsBase": 3.6,
+              "holds": false
+            },
+            "London": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 8.3,
+              "holds": false
+            },
+            "Asia": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 7,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "London": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 88.9,
+              "holds": false
+            },
+            "Asia": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "2·08-16utc": {
+              "n": 6,
+              "pct": 33.3,
+              "deltaVsBase": 8.3,
+              "holds": false
+            },
+            "3·16-24utc": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·08-16utc": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 22.2,
+              "holds": false
+            },
+            "3·16-24utc": {
+              "n": 6,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "1": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 25,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "3": {
+              "n": 3,
+              "pct": 66.7,
+              "deltaVsBase": 41.7,
+              "holds": false
+            },
+            "4": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "5": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "3": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 38.9,
+              "holds": false
+            },
+            "4": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "5": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 6,
+              "pct": 33.3,
+              "deltaVsBase": 8.3,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 25,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 13.9,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 12,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 9,
+              "pct": 11.1,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "RANGE": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 8,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "RANGE": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 22.2,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "TREND": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "1·against": {
+              "n": 6,
+              "pct": 33.3,
+              "deltaVsBase": 8.3,
+              "holds": false
+            },
+            "3·with": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 8.3,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·against": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 5.6,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 8,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 13.9,
+              "holds": false
+            },
+            "1·range": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "2·mixed": {
+              "n": 5,
+              "pct": 20,
+              "deltaVsBase": -5,
+              "holds": false
+            },
+            "3·with": {
+              "n": 7,
+              "pct": 28.6,
+              "deltaVsBase": 3.6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mixed": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "3·with": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 5.6,
+              "holds": false
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "3·stretched": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "2·mid": {
+              "n": 7,
+              "pct": 42.9,
+              "deltaVsBase": 17.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·stretched": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 5.6,
+              "holds": false
+            },
+            "2·mid": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "1·grind": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 7,
+              "pct": 42.9,
+              "deltaVsBase": 17.9,
+              "holds": false
+            },
+            "3·climax": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·grind": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "3·climax": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 88.9,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "up|2": {
+      "n": 3,
+      "splitDate": "2019-03-11",
+      "base": {
+        "is": {
+          "n": 1,
+          "pct": 0
+        },
+        "oos": {
+          "n": 2,
+          "pct": 0
+        }
+      },
+      "magnitudeFull": {
+        "n": 3,
+        "touchedVwapPct": 0,
+        "didExtendFurtherPct": 66.7,
+        "wentToOppositeSidePct": null,
+        "unresolvedPct": 100,
+        "avgPeakExtAtr": 3.392,
+        "avgPctRetraced": 0.251,
+        "avgBarsToVwapTouch": null
+      },
+      "magnitudeIS": {
+        "n": 1,
+        "touchedVwapPct": 0,
+        "didExtendFurtherPct": 100,
+        "wentToOppositeSidePct": null,
+        "unresolvedPct": 100,
+        "avgPeakExtAtr": 2.998,
+        "avgPctRetraced": 0.255,
+        "avgBarsToVwapTouch": null
+      },
+      "magnitudeOOS": {
+        "n": 2,
+        "touchedVwapPct": 0,
+        "didExtendFurtherPct": 50,
+        "wentToOppositeSidePct": null,
+        "unresolvedPct": 100,
+        "avgPeakExtAtr": 3.588,
+        "avgPctRetraced": 0.249,
+        "avgBarsToVwapTouch": null
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "Asia": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "2·08-16utc": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·16-24utc": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "2": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 1,
+              "pct": 0
+            },
+            "4": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·quiet": {
+              "n": 1,
+              "pct": 0
+            },
+            "3·wild": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "1·against": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "3·stretched": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mid": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "1·grind": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·climax": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        }
+      }
+    },
+    "up|2.5": {
+      "n": 2,
+      "splitDate": "2019-12-12",
+      "base": {
+        "is": {
+          "n": 1,
+          "pct": 0
+        },
+        "oos": {
+          "n": 1,
+          "pct": 0
+        }
+      },
+      "magnitudeFull": {
+        "n": 2,
+        "touchedVwapPct": 0,
+        "didExtendFurtherPct": 50,
+        "wentToOppositeSidePct": null,
+        "unresolvedPct": 100,
+        "avgPeakExtAtr": 3.895,
+        "avgPctRetraced": 0.234,
+        "avgBarsToVwapTouch": null
+      },
+      "magnitudeIS": {
+        "n": 1,
+        "touchedVwapPct": 0,
+        "didExtendFurtherPct": 0,
+        "wentToOppositeSidePct": null,
+        "unresolvedPct": 100,
+        "avgPeakExtAtr": 2.998,
+        "avgPctRetraced": 0.255,
+        "avgBarsToVwapTouch": null
+      },
+      "magnitudeOOS": {
+        "n": 1,
+        "touchedVwapPct": 0,
+        "didExtendFurtherPct": 100,
+        "wentToOppositeSidePct": null,
+        "unresolvedPct": 100,
+        "avgPeakExtAtr": 4.792,
+        "avgPctRetraced": 0.214,
+        "avgBarsToVwapTouch": null
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "Asia": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "3·16-24utc": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·16-24utc": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "2": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "4": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mixed": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "3·stretched": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mid": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "3·climax": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·climax": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "down|1": {
+      "n": 142,
+      "splitDate": "2023-02-03",
+      "base": {
+        "is": {
+          "n": 85,
+          "pct": 16.5
+        },
+        "oos": {
+          "n": 57,
+          "pct": 19.3
+        }
+      },
+      "magnitudeFull": {
+        "n": 142,
+        "touchedVwapPct": 17.6,
+        "didExtendFurtherPct": 90.1,
+        "wentToOppositeSidePct": 8,
+        "unresolvedPct": 82.4,
+        "avgPeakExtAtr": 1.354,
+        "avgPctRetraced": 0.513,
+        "avgBarsToVwapTouch": 254
+      },
+      "magnitudeIS": {
+        "n": 85,
+        "touchedVwapPct": 16.5,
+        "didExtendFurtherPct": 88.2,
+        "wentToOppositeSidePct": 14.3,
+        "unresolvedPct": 83.5,
+        "avgPeakExtAtr": 1.435,
+        "avgPctRetraced": 0.507,
+        "avgBarsToVwapTouch": 215
+      },
+      "magnitudeOOS": {
+        "n": 57,
+        "touchedVwapPct": 19.3,
+        "didExtendFurtherPct": 93,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 80.7,
+        "avgPeakExtAtr": 1.233,
+        "avgPctRetraced": 0.522,
+        "avgBarsToVwapTouch": 303
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 55,
+              "pct": 7.3,
+              "deltaVsBase": -9.2,
+              "holds": true
+            },
+            "Asia": {
+              "n": 7,
+              "pct": 42.9,
+              "deltaVsBase": 26.4,
+              "holds": false
+            },
+            "London": {
+              "n": 23,
+              "pct": 30.4,
+              "deltaVsBase": 13.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 35,
+              "pct": 0,
+              "deltaVsBase": -19.3,
+              "holds": true
+            },
+            "Asia": {
+              "n": 4,
+              "pct": 50,
+              "deltaVsBase": 30.7,
+              "holds": false
+            },
+            "London": {
+              "n": 18,
+              "pct": 50,
+              "deltaVsBase": 30.7,
+              "holds": false
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "2·08-16utc": {
+              "n": 55,
+              "pct": 14.5,
+              "deltaVsBase": -2,
+              "holds": false
+            },
+            "3·16-24utc": {
+              "n": 26,
+              "pct": 11.5,
+              "deltaVsBase": -5,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 4,
+              "pct": 75,
+              "deltaVsBase": 58.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·08-16utc": {
+              "n": 34,
+              "pct": 17.6,
+              "deltaVsBase": -1.7,
+              "holds": false
+            },
+            "3·16-24utc": {
+              "n": 15,
+              "pct": 0,
+              "deltaVsBase": -19.3,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 8,
+              "pct": 62.5,
+              "deltaVsBase": 43.2,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "1": {
+              "n": 8,
+              "pct": 25,
+              "deltaVsBase": 8.5,
+              "holds": false
+            },
+            "2": {
+              "n": 21,
+              "pct": 23.8,
+              "deltaVsBase": 7.3,
+              "holds": false
+            },
+            "3": {
+              "n": 11,
+              "pct": 9.1,
+              "deltaVsBase": -7.4,
+              "holds": false
+            },
+            "4": {
+              "n": 25,
+              "pct": 12,
+              "deltaVsBase": -4.5,
+              "holds": false
+            },
+            "5": {
+              "n": 20,
+              "pct": 15,
+              "deltaVsBase": -1.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 7,
+              "pct": 42.9,
+              "deltaVsBase": 23.6,
+              "holds": false
+            },
+            "2": {
+              "n": 11,
+              "pct": 18.2,
+              "deltaVsBase": -1.1,
+              "holds": false
+            },
+            "3": {
+              "n": 14,
+              "pct": 28.6,
+              "deltaVsBase": 9.3,
+              "holds": false
+            },
+            "4": {
+              "n": 16,
+              "pct": 6.3,
+              "deltaVsBase": -13,
+              "holds": false
+            },
+            "5": {
+              "n": 9,
+              "pct": 11.1,
+              "deltaVsBase": -8.2,
+              "holds": false
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 43,
+              "pct": 14,
+              "deltaVsBase": -2.5,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 14,
+              "pct": 21.4,
+              "deltaVsBase": 4.9,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 28,
+              "pct": 17.9,
+              "deltaVsBase": 1.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 29,
+              "pct": 13.8,
+              "deltaVsBase": -5.5,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 12,
+              "pct": 25,
+              "deltaVsBase": 5.7,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 16,
+              "pct": 25,
+              "deltaVsBase": 5.7,
+              "holds": false
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 84,
+              "pct": 16.7,
+              "deltaVsBase": 0.2,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -16.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 51,
+              "pct": 19.6,
+              "deltaVsBase": 0.3,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": -2.6,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "RANGE": {
+              "n": 41,
+              "pct": 17.1,
+              "deltaVsBase": 0.6,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 35,
+              "pct": 17.1,
+              "deltaVsBase": 0.6,
+              "holds": false
+            },
+            "TREND": {
+              "n": 9,
+              "pct": 11.1,
+              "deltaVsBase": -5.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "RANGE": {
+              "n": 32,
+              "pct": 15.6,
+              "deltaVsBase": -3.7,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 22,
+              "pct": 27.3,
+              "deltaVsBase": 8,
+              "holds": false
+            },
+            "TREND": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -19.3,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "2·flat": {
+              "n": 32,
+              "pct": 15.6,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "1·against": {
+              "n": 26,
+              "pct": 23.1,
+              "deltaVsBase": 6.6,
+              "holds": false
+            },
+            "3·with": {
+              "n": 27,
+              "pct": 11.1,
+              "deltaVsBase": -5.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·flat": {
+              "n": 35,
+              "pct": 14.3,
+              "deltaVsBase": -5,
+              "holds": false
+            },
+            "1·against": {
+              "n": 8,
+              "pct": 37.5,
+              "deltaVsBase": 18.2,
+              "holds": false
+            },
+            "3·with": {
+              "n": 14,
+              "pct": 21.4,
+              "deltaVsBase": 2.1,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "2·mixed": {
+              "n": 28,
+              "pct": 10.7,
+              "deltaVsBase": -5.8,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 41,
+              "pct": 17.1,
+              "deltaVsBase": 0.6,
+              "holds": false
+            },
+            "1·range": {
+              "n": 16,
+              "pct": 25,
+              "deltaVsBase": 8.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mixed": {
+              "n": 25,
+              "pct": 20,
+              "deltaVsBase": 0.7,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 21,
+              "pct": 14.3,
+              "deltaVsBase": -5,
+              "holds": false
+            },
+            "1·range": {
+              "n": 11,
+              "pct": 27.3,
+              "deltaVsBase": 8,
+              "holds": false
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "3·with": {
+              "n": 47,
+              "pct": 21.3,
+              "deltaVsBase": 4.8,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 38,
+              "pct": 10.5,
+              "deltaVsBase": -6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 28,
+              "pct": 25,
+              "deltaVsBase": 5.7,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 27,
+              "pct": 14.8,
+              "deltaVsBase": -4.5,
+              "holds": false
+            },
+            "1·against": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "2·mid": {
+              "n": 53,
+              "pct": 18.9,
+              "deltaVsBase": 2.4,
+              "holds": false
+            },
+            "3·stretched": {
+              "n": 31,
+              "pct": 12.9,
+              "deltaVsBase": -3.6,
+              "holds": false
+            },
+            "1·counter": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -16.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mid": {
+              "n": 37,
+              "pct": 24.3,
+              "deltaVsBase": 5,
+              "holds": false
+            },
+            "3·stretched": {
+              "n": 19,
+              "pct": 10.5,
+              "deltaVsBase": -8.8,
+              "holds": false
+            },
+            "1·counter": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -19.3,
+              "holds": false
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "1·grind": {
+              "n": 45,
+              "pct": 13.3,
+              "deltaVsBase": -3.2,
+              "holds": true
+            },
+            "2·normal": {
+              "n": 27,
+              "pct": 18.5,
+              "deltaVsBase": 2,
+              "holds": false
+            },
+            "3·climax": {
+              "n": 13,
+              "pct": 23.1,
+              "deltaVsBase": 6.6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·grind": {
+              "n": 38,
+              "pct": 15.8,
+              "deltaVsBase": -3.5,
+              "holds": true
+            },
+            "2·normal": {
+              "n": 12,
+              "pct": 33.3,
+              "deltaVsBase": 14,
+              "holds": false
+            },
+            "3·climax": {
+              "n": 7,
+              "pct": 14.3,
+              "deltaVsBase": -5,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "down|1.5": {
+      "n": 30,
+      "splitDate": "2022-04-26",
+      "base": {
+        "is": {
+          "n": 18,
+          "pct": 11.1
+        },
+        "oos": {
+          "n": 12,
+          "pct": 8.3
+        }
+      },
+      "magnitudeFull": {
+        "n": 30,
+        "touchedVwapPct": 10,
+        "didExtendFurtherPct": 83.3,
+        "wentToOppositeSidePct": 33.3,
+        "unresolvedPct": 90,
+        "avgPeakExtAtr": 2.017,
+        "avgPctRetraced": 0.505,
+        "avgBarsToVwapTouch": 171
+      },
+      "magnitudeIS": {
+        "n": 18,
+        "touchedVwapPct": 11.1,
+        "didExtendFurtherPct": 72.2,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 88.9,
+        "avgPeakExtAtr": 2.17,
+        "avgPctRetraced": 0.546,
+        "avgBarsToVwapTouch": 147
+      },
+      "magnitudeOOS": {
+        "n": 12,
+        "touchedVwapPct": 8.3,
+        "didExtendFurtherPct": 100,
+        "wentToOppositeSidePct": 100,
+        "unresolvedPct": 91.7,
+        "avgPeakExtAtr": 1.787,
+        "avgPctRetraced": 0.442,
+        "avgBarsToVwapTouch": 220
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 11,
+              "pct": 9.1,
+              "deltaVsBase": -2,
+              "holds": false
+            },
+            "Asia": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 13.9,
+              "holds": false
+            },
+            "London": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 7,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "Asia": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 41.7,
+              "holds": false
+            },
+            "London": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "3·16-24utc": {
+              "n": 12,
+              "pct": 8.3,
+              "deltaVsBase": -2.8,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 88.9,
+              "holds": false
+            },
+            "2·08-16utc": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·16-24utc": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 41.7,
+              "holds": false
+            },
+            "2·08-16utc": {
+              "n": 6,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "1": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 22.2,
+              "holds": false
+            },
+            "3": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "4": {
+              "n": 8,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "5": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 13.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 91.7,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "3": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "4": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "5": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "1·quiet": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 10,
+              "pct": 10,
+              "deltaVsBase": -1.1,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 5,
+              "pct": 20,
+              "deltaVsBase": 8.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·quiet": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 91.7,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 6,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 18,
+              "pct": 11.1,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 12,
+              "pct": 8.3,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "RANGE": {
+              "n": 10,
+              "pct": 10,
+              "deltaVsBase": -1.1,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 5.6,
+              "holds": false
+            },
+            "TREND": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "RANGE": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 7,
+              "pct": 14.3,
+              "deltaVsBase": 6,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 5.6,
+              "holds": false
+            },
+            "1·against": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 13.9,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 8,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "1·against": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 7,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 9,
+              "pct": 11.1,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 7,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "1·range": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 38.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 5,
+              "pct": 20,
+              "deltaVsBase": 11.7,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "1·range": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "3·with": {
+              "n": 7,
+              "pct": 28.6,
+              "deltaVsBase": 17.5,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 11,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 6,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 6,
+              "pct": 16.7,
+              "deltaVsBase": 8.4,
+              "holds": false
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "3·stretched": {
+              "n": 9,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "2·mid": {
+              "n": 9,
+              "pct": 22.2,
+              "deltaVsBase": 11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·stretched": {
+              "n": 5,
+              "pct": 20,
+              "deltaVsBase": 11.7,
+              "holds": false
+            },
+            "2·mid": {
+              "n": 7,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "3·climax": {
+              "n": 9,
+              "pct": 22.2,
+              "deltaVsBase": 11.1,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 8,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            },
+            "1·grind": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -11.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·climax": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 41.7,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            },
+            "1·grind": {
+              "n": 5,
+              "pct": 0,
+              "deltaVsBase": -8.3,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "down|2": {
+      "n": 9,
+      "splitDate": "2020-03-18",
+      "base": {
+        "is": {
+          "n": 5,
+          "pct": 20
+        },
+        "oos": {
+          "n": 4,
+          "pct": 25
+        }
+      },
+      "magnitudeFull": {
+        "n": 9,
+        "touchedVwapPct": 22.2,
+        "didExtendFurtherPct": 77.8,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 77.8,
+        "avgPeakExtAtr": 3.107,
+        "avgPctRetraced": 0.591,
+        "avgBarsToVwapTouch": 289
+      },
+      "magnitudeIS": {
+        "n": 5,
+        "touchedVwapPct": 20,
+        "didExtendFurtherPct": 80,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 80,
+        "avgPeakExtAtr": 3.592,
+        "avgPctRetraced": 0.609,
+        "avgBarsToVwapTouch": 358
+      },
+      "magnitudeOOS": {
+        "n": 4,
+        "touchedVwapPct": 25,
+        "didExtendFurtherPct": 75,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 75,
+        "avgPeakExtAtr": 2.502,
+        "avgPctRetraced": 0.568,
+        "avgBarsToVwapTouch": 220
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "Asia": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 5,
+              "holds": false
+            },
+            "NY": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            }
+          },
+          "oos": {
+            "Asia": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 75,
+              "holds": false
+            },
+            "NY": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "3·16-24utc": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 80,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·16-24utc": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 75,
+              "holds": false
+            },
+            "2·08-16utc": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "3": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "4": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "5": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 80,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 1,
+              "pct": 100
+            },
+            "3": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "4": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "5": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 80,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 75,
+              "holds": false
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 5,
+              "pct": 20,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 3,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 30,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 25,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "TREND": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "1·against": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 30,
+              "holds": false
+            },
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 8.3,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "2·mixed": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 13.3,
+              "holds": false
+            },
+            "1·range": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "2·mixed": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "3·with": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 80,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mixed": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 25,
+              "holds": false
+            },
+            "3·with": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "2·mid": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 5,
+              "holds": false
+            },
+            "3·stretched": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·stretched": {
+              "n": 4,
+              "pct": 25,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "3·climax": {
+              "n": 4,
+              "pct": 0,
+              "deltaVsBase": -20,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 80,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·climax": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 25,
+              "holds": false
+            },
+            "2·normal": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -25,
+              "holds": false
+            },
+            "1·grind": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        }
+      }
+    },
+    "down|2.5": {
+      "n": 6,
+      "splitDate": "2017-06-08",
+      "base": {
+        "is": {
+          "n": 3,
+          "pct": 33.3
+        },
+        "oos": {
+          "n": 3,
+          "pct": 33.3
+        }
+      },
+      "magnitudeFull": {
+        "n": 6,
+        "touchedVwapPct": 33.3,
+        "didExtendFurtherPct": 66.7,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 66.7,
+        "avgPeakExtAtr": 3.555,
+        "avgPctRetraced": 0.714,
+        "avgBarsToVwapTouch": 288
+      },
+      "magnitudeIS": {
+        "n": 3,
+        "touchedVwapPct": 33.3,
+        "didExtendFurtherPct": 66.7,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 66.7,
+        "avgPeakExtAtr": 4.367,
+        "avgPctRetraced": 0.795,
+        "avgBarsToVwapTouch": 355
+      },
+      "magnitudeOOS": {
+        "n": 3,
+        "touchedVwapPct": 33.3,
+        "didExtendFurtherPct": 66.7,
+        "wentToOppositeSidePct": 0,
+        "unresolvedPct": 66.7,
+        "avgPeakExtAtr": 2.743,
+        "avgPctRetraced": 0.634,
+        "avgBarsToVwapTouch": 220
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "Asia": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "Asia": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            },
+            "NY": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        },
+        "sessionPos": {
+          "is": {
+            "3·16-24utc": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·16-24utc": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "1·00-08utc": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "4": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "5": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1": {
+              "n": 1,
+              "pct": 100
+            },
+            "3": {
+              "n": 1,
+              "pct": 0
+            },
+            "4": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            }
+          }
+        },
+        "dayVolRegime": {
+          "is": {
+            "2·normal": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "3·wild": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "1·quiet": {
+              "n": 1,
+              "pct": 100
+            }
+          }
+        },
+        "rangeConsumedBucket": {
+          "is": {
+            "3·wild": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·wild": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "TREND": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "1·against": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "2·mixed": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "1·range": {
+              "n": 1,
+              "pct": 0
+            }
+          }
+        },
+        "wtMtf": {
+          "is": {
+            "2·mixed": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "3·with": {
+              "n": 1,
+              "pct": 100,
+              "deltaVsBase": 66.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mixed": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "3·with": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            }
+          }
+        },
+        "wtSlow": {
+          "is": {
+            "2·mid": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "3·stretched": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·mid": {
+              "n": 1,
+              "pct": 0,
+              "deltaVsBase": -33.3,
+              "holds": false
+            },
+            "3·stretched": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16.7,
+              "holds": false
+            }
+          }
+        },
+        "approachSpeed": {
+          "is": {
+            "3·climax": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·climax": {
+              "n": 3,
+              "pct": 33.3,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          }
+        }
+      }
+    }
+  }
+}
