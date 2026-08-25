@@ -197,5 +197,35 @@ console.log('6. computeFixedSigmaByDate matches walk-recorded σ');
   assert(mismatches === 0, `every touch's fixedSigma matches the by-date series (${mismatches} mismatches)`);
 }
 
+// ── 7. liteContext invariance + sigmaMode sanity ─────────────────────────────
+// liteContext must change ONLY the context bucket fields (nulled) — identity
+// and outcome fields must be byte-identical. 'developing' must run and use a
+// per-bar σ (its recorded fixedSigma varies within a day).
+console.log('7. liteContext invariance; developing-mode sanity');
+{
+  const days = [];
+  for (let d = 0; d < 25; d++) {
+    const arr = []; let px = 100 + d * 0.05;
+    for (let m = 0; m < 400; m++) { px += Math.sin((d * 400 + m) * 0.7) * 0.15; arr.push(px); }
+    days.push(arr);
+  }
+  const packed = packDays(days);
+  const opts = { instrument: 'TEST', minHistory: 10, minBarsPerDay: 300 };
+  const fullRun = fixedSigmaWalk(packed, opts).touches;
+  const liteRun = fixedSigmaWalk(packed, { ...opts, liteContext: true }).touches;
+  const core = t => [t.date, t.side, t.band, t.ordinal, t.outcome, t.mfeSigma, t.maeSigma,
+                     t.reachedVwap, t.minsToVwap, t.fixedSigma].join('|');
+  assert(fullRun.length === liteRun.length, `lite and full runs emit the same touches (${fullRun.length} vs ${liteRun.length})`);
+  assert(fullRun.every((t, i) => core(t) === core(liteRun[i])), 'lite run: identity+outcome fields byte-identical to full run');
+  assert(liteRun.every(t => t.wtState == null && t.rangeConf == null), 'lite run: context bucket fields are null');
+
+  const dev = fixedSigmaWalk(packed, { ...opts, liteContext: true, sigmaMode: 'developing' }).touches;
+  assert(dev.length > 0, `developing mode emits touches (${dev.length})`);
+  const byDay = new Map();
+  for (const t of dev) (byDay.get(t.date) ?? byDay.set(t.date, []).get(t.date)).push(t.fixedSigma);
+  const varies = [...byDay.values()].some(a => a.length > 1 && Math.abs(a[0] - a[a.length - 1]) > 1e-9);
+  assert(varies, 'developing mode: σ varies within a day (per-bar unit, not frozen)');
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

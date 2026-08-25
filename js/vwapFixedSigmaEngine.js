@@ -66,6 +66,7 @@ import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures
 import { pipSize } from './instrumentRegistry.js';
 import { _buildAsiaSessions, _buildMondayRanges } from './rangeFibEngine.js';
 import { calcFibs } from './fibProjection.js';
+import { forecastSigma } from './forecastSigma.js';
 
 const DAY = 86400;
 
@@ -165,6 +166,24 @@ export const DEFAULT_CFG = {
   // the dimension doesn't saturate the price axis.
   rangeConfTolSigma: 0.15,
   rangeFibLevels: [-4, -3.5, -3, -2.5, -2, -1.5, -1, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4],
+  // ── σ-definition A/B (findings doc §10) ───────────────────────────────────
+  // 'fixedRms'   — this study's unit: frozen prior-sessions RMS-from-VWAP.
+  // 'developing' — the session's own developing volume-weighted σ
+  //                (computeSessionVwap's sd, lag-one, ≥developingWarmupBars) —
+  //                the classic self-widening VWAP band.
+  // 'forecast'   — the platform's daily forecast σ (forecastSigma, fit on
+  //                strictly-prior D1 built from these same sessions).
+  // Default 'fixedRms' reproduces the original walk exactly (pinned by the
+  // full test suite). All three share every other line of the walk.
+  sigmaMode: 'fixedRms',
+  developingWarmupBars: 30,
+  forecastEstimator: 'yz_30',
+  minForecastDays: 40,
+  // liteContext skips the feature pack / HTF stack / range-fib sources (their
+  // bucket fields become null) — for σ-A/B comparison runs that only need
+  // identity + outcome fields. An invariance test pins that outcomes are
+  // identical with it on or off.
+  liteContext: false,
 };
 
 /**
@@ -184,15 +203,15 @@ export function fixedSigmaWalk(packed, opts = {}) {
 
   // Feature pack: HTF context once over the FULL packed history (a 4h
   // WaveTrend needs weeks of warm-up), per-day M1 WaveTrend below.
-  const htf = createHtfContext(packed, cfg.htfCfg ?? {});
-  const tf = createConfluenceFeatures({ htf });
+  const htf = cfg.liteContext ? null : createHtfContext(packed, cfg.htfCfg ?? {});
+  const tf = cfg.liteContext ? null : createConfluenceFeatures({ htf });
 
   // Range-fib level sets, built once (see DEFAULT_CFG note). Each entry gets
   // its fib prices precomputed; lookup at a touch is a short linear scan.
-  const asiaSessions = _buildAsiaSessions(packed, 'Europe/London')
+  const asiaSessions = (cfg.liteContext ? [] : _buildAsiaSessions(packed, 'Europe/London'))
     .map(sess => ({ epoch: sess.epoch, until: sess.epoch + 24 * 3600, validFrom: sess.epoch + 6 * 3600,
                     prices: calcFibs(sess.low, sess.range, cfg.rangeFibLevels).map(l => l.price) }));
-  const mondayRanges = _buildMondayRanges(packed, 'Europe/London', 15)
+  const mondayRanges = (cfg.liteContext ? [] : _buildMondayRanges(packed, 'Europe/London', 15))
     .map(mon => ({ validFrom: mon.epoch + 24 * 3600, until: mon.epoch + 7 * 86400,
                    prices: calcFibs(mon.low, mon.range, cfg.rangeFibLevels).map(l => l.price) }));
   let asiaIdx = 0, monIdx = 0;
@@ -207,6 +226,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
   };
 
   const rmsAll = [];        // every completed session's RMS, in walk order
+  const d1 = [];            // completed D1 bars, for sigmaMode 'forecast'
   const touches = [];
   let prevDayClose = null;
   let daysWalked = 0, daysSkippedWarmup = 0;
@@ -216,7 +236,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
     const { bars } = full[di];
     const date = isoDay(bars[0].time);
     const open = bars[0].open;
-    const { vwap } = computeSessionVwap(bars);
+    const { vwap, sd } = computeSessionVwap(bars);
 
     // Fixed σ for TODAY: strictly-prior sessions' RMS only.
     const histWin = rmsAll.slice(-cfg.historySessions);
@@ -224,7 +244,19 @@ export function fixedSigmaWalk(packed, opts = {}) {
       ? (cfg.useMedian ? median(histWin) : histWin.reduce((s, v) => s + v, 0) / histWin.length)
       : null;
 
-    if (fs != null && fs > 0) {
+    // σ under the selected mode (all strictly causal — see DEFAULT_CFG note).
+    let fsForecast = null;
+    if (cfg.sigmaMode === 'forecast' && d1.length >= cfg.minForecastDays) {
+      try { const f = forecastSigma(d1, cfg.forecastEstimator); if (f > 0) fsForecast = f * open; } catch { /* thin prefix */ }
+    }
+    const daySig = cfg.sigmaMode === 'forecast' ? fsForecast : fs;   // null for 'developing'
+    const sigAt = cfg.sigmaMode === 'developing'
+      ? (m) => (m - 1 >= cfg.developingWarmupBars && sd[m - 1] > 0 ? sd[m - 1] : 0)
+      : () => daySig;
+    const dayOk = cfg.sigmaMode === 'developing' ? bars.length > cfg.developingWarmupBars + 2
+      : (daySig != null && daySig > 0);
+
+    if (dayOk) {
       daysWalked++;
       if (!firstDate) firstDate = date;
       lastDate = date;
@@ -232,18 +264,18 @@ export function fixedSigmaWalk(packed, opts = {}) {
       // Day-level context (all causal — prior sessions only).
       const regimeHist = rmsAll.slice(-cfg.regimeLookback);
       const regMed = regimeHist.length >= 20 ? median(regimeHist) : null;
-      const volRegime = regMed > 0
+      const volRegime = (regMed > 0 && fs > 0)
         ? (fs / regMed < 0.85 ? '1·quiet' : fs / regMed > 1.25 ? '3·heavy' : '2·normal') : null;
       const prevRms = rmsAll[rmsAll.length - 1];
-      const prevSessionVol = prevRms > 0
+      const prevSessionVol = (prevRms > 0 && fs > 0)
         ? (prevRms / fs < 0.8 ? '1·calm-prev' : prevRms / fs > 1.3 ? '3·wild-prev' : '2·normal-prev') : null;
-      const gapSig = (prevDayClose != null && fs > 0) ? (open - prevDayClose) / fs : null;
+      const gapUnit = daySig ?? fs;
+      const gapSig = (prevDayClose != null && gapUnit > 0) ? (open - prevDayClose) / gapUnit : null;
       const gapBucket = gapSig == null ? null
         : Math.abs(gapSig) < 0.25 ? 'flat' : gapSig > 0 ? 'gap-up' : 'gap-down';
       const dow = dowOf(bars[0].time);
-      const sigmaFrac = fs / open;   // σ unit for the feature pack (see header)
 
-      const wt1 = tf.wtSeries(bars);
+      const wt1 = cfg.liteContext ? null : tf.wtSeries(bars);
 
       // Per-(side,band) day state. maxBand/first-touch maps reflect bars
       // strictly BEFORE the bar being processed (merged at end of each bar).
@@ -260,8 +292,10 @@ export function fixedSigmaWalk(packed, opts = {}) {
           const isUp = side === 'up';
           const sgn = isUp ? 1 : -1;
           for (const k of cfg.bands) {
-            const L1 = vwap[j - 1] + sgn * k * fs;   // level as of prior close
-            const L2 = vwap[j - 2] + sgn * k * fs;   // level as it stood one bar earlier
+            const s1 = sigAt(j), s2 = sigAt(j - 1);
+            if (!(s1 > 0 && s2 > 0)) continue;
+            const L1 = vwap[j - 1] + sgn * k * s1;   // level as of prior close
+            const L2 = vwap[j - 2] + sgn * k * s2;   // level as it stood one bar earlier
             const fresh = isUp
               ? (bars[j - 1].close < L2 && bars[j].high >= L1)
               : (bars[j - 1].close > L2 && bars[j].low <= L1);
@@ -279,8 +313,9 @@ export function fixedSigmaWalk(packed, opts = {}) {
             const winEnd = j + cfg.measureBars;
             for (let m = j; m < bars.length; m++) {
               const vRef = vwap[m - 1];
-              const outer = vRef + sgn * (k + 1) * fs;
-              const inner = vRef + sgn * (k - 1) * fs;
+              const sm = sigAt(m) || s1;
+              const outer = vRef + sgn * (k + 1) * sm;
+              const inner = vRef + sgn * (k - 1) * sm;
               const fwd = isUp ? bars[m].high : bars[m].low;
               const bwd = isUp ? bars[m].low : bars[m].high;
               if (outcome === 'neither') {
@@ -289,7 +324,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
               }
               if (vwapTime == null && (isUp ? bars[m].low <= vRef : bars[m].high >= vRef)) vwapTime = bars[m].time;
               if (reentryTime == null && m > j
-                  && (isUp ? bars[m].close < vRef + sgn * k * fs : bars[m].close > vRef + sgn * k * fs)) {
+                  && (isUp ? bars[m].close < vRef + sgn * k * sm : bars[m].close > vRef + sgn * k * sm)) {
                 reentryTime = bars[m].time;
               }
               if (m > j && m <= winEnd) {   // MFE/MAE window: bar AFTER touch onward
@@ -303,7 +338,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
             }
 
             // Context at the touch (feature pack + day/bar-local reads).
-            const feats = tf.compute({ bars, touchIdx: j, open, sigma: sigmaFrac,
+            const feats = cfg.liteContext ? {} : tf.compute({ bars, touchIdx: j, open, sigma: s1 / open,
                                        side, wt1, level: entry, pip, confLevels: null });
             const t = bars[j].time;
             const hourUtc = new Date(t * 1000).getUTCHours();
@@ -312,24 +347,24 @@ export function fixedSigmaWalk(packed, opts = {}) {
             const totalTravel = runHi - runLo;
             const dirTravel = isUp ? (runHi - open) : (open - runLo);
             const churnRatio = totalTravel > 0 ? Math.min(1, Math.max(0, dirTravel / totalTravel)) : null;
-            const driftSig = (vwap[j - 1] - open) / fs * sgn;   // + = VWAP drifted toward the touch side
+            const driftSig = (vwap[j - 1] - open) / s1 * sgn;   // + = VWAP drifted toward the touch side
             const otherMax = maxBand[isUp ? 'dn' : 'up'];
             const sameMax = maxBand[side];
             const ladderStep = k - sameMax;
             while (asiaIdx < asiaSessions.length && asiaSessions[asiaIdx].until <= t) asiaIdx++;
             while (monIdx < mondayRanges.length && mondayRanges[monIdx].until <= t) monIdx++;
-            const tol = cfg.rangeConfTolSigma * fs;
+            const tol = cfg.rangeConfTolSigma * s1;
             const nearAsia = nearLevel(asiaSessions, asiaIdx, t, entry, tol);
             const nearMon = nearLevel(mondayRanges, monIdx, t, entry, tol);
 
             touches.push({
-              instrument: sym, assetClass, date, side, band: k, ordinal,
+              instrument: sym, assetClass, date, side, band: k, ordinal, epoch: t,
               hourUtc, session: sessionOf(hourUtc), dow, dowSession: `${dow}|${sessionOf(hourUtc)}`,
               minsIntoSession: +minsIntoSession.toFixed(0),
               sessionPos: sessionFrac < 0.33 ? '1·early' : sessionFrac < 0.67 ? '2·mid' : '3·late',
               overlapWindow: hourUtc >= 12 && hourUtc < 16,
               level: +entry.toFixed(6), vwapAtTouch: +vwap[j - 1].toFixed(6),
-              fixedSigma: +fs.toFixed(6), sigmaPct: +(sigmaFrac * 100).toFixed(4),
+              fixedSigma: +s1.toFixed(6), sigmaPct: +(s1 / open * 100).toFixed(4),
               volRegime, prevSessionVol, gapBucket,
               gapSig: gapSig != null ? +gapSig.toFixed(3) : null,
               vwapDrift: Math.abs(driftSig) < 0.5 ? '2·flat' : driftSig > 0 ? '3·with' : '1·against',
@@ -339,7 +374,8 @@ export function fixedSigmaWalk(packed, opts = {}) {
               churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               otherSideMaxBand: otherMax === 0 ? '0·none' : otherMax >= 3 ? '3+·deep' : String(otherMax),
               ladderStep: ladderStep <= 0 ? '1·retest' : ladderStep === 1 ? '2·step' : '3·jump',
-              rangeConf: nearAsia && nearMon ? '3·both' : nearMon ? '2·monday' : nearAsia ? '1·asia' : '0·none',
+              rangeConf: cfg.liteContext ? null
+                : nearAsia && nearMon ? '3·both' : nearMon ? '2·monday' : nearAsia ? '1·asia' : '0·none',
               approachVel: feats.approachVel?.bucket ?? null,
               approachER: feats.approachER?.bucket ?? null,
               wtState: feats.wtState?.bucket ?? null,
@@ -358,9 +394,9 @@ export function fixedSigmaWalk(packed, opts = {}) {
               minsToReentry: reentryTime != null ? +((reentryTime - t) / 60).toFixed(0) : null,
               // MFE/MAE oriented to the fade (upper touch = hypothetical short
               // toward VWAP; lower = long) — σ units are the honest scale here.
-              mfeSigma: +(mfe / fs).toFixed(3), maeSigma: +(mae / fs).toFixed(3),
+              mfeSigma: +(mfe / s1).toFixed(3), maeSigma: +(mae / s1).toFixed(3),
               mfePrice: +mfe.toFixed(5), maePrice: +mae.toFixed(5),
-              windowDriftSigma: windowClose != null ? +(((entry - windowClose) * sgn) / fs).toFixed(3) : null,
+              windowDriftSigma: windowClose != null ? +(((entry - windowClose) * sgn) / s1).toFixed(3) : null,
               windowBars,
             });
             newTouches.push({ side, k, time: t });
@@ -372,9 +408,12 @@ export function fixedSigmaWalk(packed, opts = {}) {
       daysSkippedWarmup++;
     }
 
-    // Bank THIS session's RMS strictly after its walk — never before.
+    // Bank THIS session's RMS + D1 bar strictly after its walk — never before.
     const rms = sessionRmsFromVwap(bars, vwap);
     if (rms != null && rms > 0) rmsAll.push(rms);
+    let dHi = -Infinity, dLo = Infinity;
+    for (const b of bars) { if (b.high > dHi) dHi = b.high; if (b.low < dLo) dLo = b.low; }
+    d1.push({ date, open, high: dHi, low: dLo, close: bars[bars.length - 1].close });
     prevDayClose = bars[bars.length - 1].close;
   }
 

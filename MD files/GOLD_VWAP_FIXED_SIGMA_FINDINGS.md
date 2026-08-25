@@ -441,6 +441,82 @@ continuation vs touches at no level on all four instruments (asia +1.5 to
 +4.6pp, none −2.9 to −7.0pp) — small, and gold's own +3σ cell flips sign, so
 this is a footnote, not a theme.
 
+## 9. The stacked fade — the one entry the books themselves point at
+
+The only entry candidate the data suggested (§7's own closing note), run at
+the owner's request with the multiple-selection risk stated up front: **the
+conditions below were chosen by looking at the mined books, so even a passing
+number here would need forward validation before belief.** This is the test
+that decides whether the descriptive structure converts to an after-cost
+entry at all.
+
+**Mechanics (pinned):** first touch of a ±2σ or ±3σ band with ≥240 min of
+session remaining; entry at the NEXT bar's open (the touch bar must complete
+— the reject gate reads it), toward VWAP; TP = VWAP as of the touch (frozen);
+SL = 1.5×ATR(15m) beyond; exit capped at 240 min (mark-to-close) — the exact
+window the return book measures. One trade per day (first qualifying). Costs
+on (0.020%/0.012%).
+
+**Three pre-registered variants, no sweep:**
+- **V0 baseline** — no gates (the named benchmark floor; §2/§6 say this loses).
+- **V1 core** — touch NOT in NY session AND touch-bar `candleReject=3·reject`.
+  All four instruments (both gates replicated cross-market in §7c).
+- **V2 gold-only** — V1 AND `wtState=2·neutral` (the gold-only WT finding).
+
+**Bar (same as every trade test here):** OOS per-trade t > 2, positive mean,
+positive gross, OOS n ≥ 30. If OOS n < 30 the verdict is "insufficient n",
+not pass or fail.
+
+**Results (costed, OOS = last 40%):**
+
+| variant | instrument | OOS n | OOS mean | OOS t | OOS gross |
+|---|---|---|---|---|---|
+| V0 baseline | gold | 852 | −0.008% | −0.64 | +0.012% |
+| V0 baseline | EURUSD / GBPUSD / USDJPY | 831 / 827 / 755 | −0.008 / −0.015 / −0.017% | −1.3 / −2.4 / −2.3 | ≈0 / −0.003 / −0.005% |
+| V1 core | gold | 120 | −0.011% | −0.37 | +0.009% |
+| V1 core | EURUSD | 93 | +0.0005% | +0.03 | +0.013% |
+| V1 core | GBPUSD / USDJPY | 112 / 102 | −0.043 / −0.032% | −2.59 / −1.82 | −0.031 / −0.020% |
+| V2 gold+WT | gold | 30 | −0.092% | −1.52 | −0.072% |
+
+**Verdict: NULL against the pre-registered bar, every variant, every
+instrument.** The best cell (EURUSD V1, t +0.03) is exactly zero. The fully
+stacked V2 — the books' own favourite conditions — was the WORST cell OOS
+(−1.52 at the minimum n), which is what over-selection on mined data looks
+like. Conclusion, now demonstrated three separate ways (§6, §8b, §9): the
+descriptive structure in these books, real as it is, does not convert into an
+after-cost entry by gating touches. The books' honest use is expectations and
+exits around edges that exist elsewhere, not entry generation.
+
+## 10. σ-definition A/B — the frozen unit wins
+
+Same touch walk (`sigmaMode` in the engine; default path pinned unchanged by
+the test suite) under three band units, each read against the random-walk
+control run under the SAME unit. Tag% here counts a day tagged if EITHER side
+touched (pooled), so it reads higher than §1's per-side table. Metric =
+gold-minus-control **excess** (the non-mechanical information content):
+
+| unit | 3σ tag% (gold) | race excess 3σ/4σ | return≤240 excess 2σ/3σ/4σ |
+|---|---|---|---|
+| **fixedRms** (this study) | 44% | +11.4 / +14.3 | **+21.9 / +23.6 / +19.1** |
+| developing (classic self-widening) | 97% | +9.8 / +16.4 | +2.9 / +4.3 / +4.1 |
+| forecast (daily σ) | 2.8% at 2σ | — | +15.3 at 1σ, ladder barely exists |
+
+- **The developing band mostly measures itself.** Because it widens with the
+  day's own volatility, "3σ" is tagged on 97% of days and the return excess
+  collapses to +3–4pp — the self-scaling unit absorbs exactly the
+  information the frozen unit exposes. This is also a clean retrospective
+  explanation for why the original developing-band trade test
+  (`VWAP_REVERSION_FINDINGS.md`) had nothing to work with.
+- **The daily forecast σ is too coarse for an intraday ladder** — 1σ tagged
+  on 28% of days, 2σ on 2.8%; decent excess at 1σ but no usable ladder.
+- **The frozen RMS unit — the owner's original Pine construction — carries
+  by far the largest non-mechanical excess at the depths where the return
+  effect lives.** Freezing σ was the right design choice of the three.
+
+Caveats: the control's volatility is uniform by construction (no session
+shape, no clustering), so excesses are indicative magnitudes, not precise
+nulls; developing-mode 5σ control cells have tiny n.
+
 **Standing discipline:** everything in §7 is descriptive, OOS-gated
 reference material. The trade-shaped tests run so far (§6, §7d) are null, so
 none of this is claimed as after-cost edge. The natural next harness-gated

@@ -30,35 +30,12 @@ const args = process.argv.slice(2);
 const touchesFile = args.includes('--touches') ? args[args.indexOf('--touches') + 1] : 'logs/gold_vwap_sigma_touches.json';
 const nPerms = args.includes('--perms') ? +args[args.indexOf('--perms') + 1] : 20;
 
-function mulberry32(a) {
-  return function () {
-    let t = (a += 0x6D2B79F5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { mulberry32, syntheticRandomWalkPacked } from '../js/syntheticWalk.js';
 
 // ── 1. Random-walk control ───────────────────────────────────────────────────
 console.log('── Control 1: driftless random walk through the identical engine ──');
 {
-  const rnd = mulberry32(7);
-  const gauss = () => { const u = Math.max(rnd(), 1e-12), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-  const DAY = 86400, BASE = Date.UTC(2018, 0, 1) / 1000;
-  const times = [], opens = [], highs = [], lows = [], closes = [], volumes = [];
-  let px = 2000;
-  for (let d = 0; d < 800; d++) {
-    for (let m = 0; m < 1440; m++) {
-      const o = px; px += gauss() * 0.8; const c = px;
-      times.push(BASE + d * DAY + m * 60); opens.push(o);
-      highs.push(Math.max(o, c) + Math.abs(gauss()) * 0.2);
-      lows.push(Math.min(o, c) - Math.abs(gauss()) * 0.2);
-      closes.push(c); volumes.push(1 + Math.abs(gauss()));
-    }
-  }
-  const packed = { n: times.length, times: Int32Array.from(times), opens: Float32Array.from(opens),
-                   highs: Float32Array.from(highs), lows: Float32Array.from(lows),
-                   closes: Float32Array.from(closes), volumes: Float32Array.from(volumes) };
+  const packed = syntheticRandomWalkPacked({ seed: 7, days: 800 });
   const { touches } = fixedSigmaWalk(packed, { instrument: 'TEST', minHistory: 10 });
   const firsts = touches.filter(t => t.ordinal === 1);
   console.log(`  ${firsts.length} first touches over 800 synthetic days`);
