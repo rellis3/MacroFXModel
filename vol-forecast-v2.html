@@ -716,6 +716,7 @@
   <div class="v2-btn-row">
     <button class="v2-tool-btn" id="vfLevelsBtn"          onclick="toggleLevelsView()"    disabled>Levels</button>
     <button class="v2-tool-btn" id="vfHitRatesBtn"        onclick="toggleHitRates()">Hit Rates</button>
+    <button class="v2-tool-btn" id="vfPathBtn"            onclick="togglePathOdds()" title="At each rung of the fitted ladder, how often price carries on to the NEXT rung - and how often it stalls there instead. Derived from the ladder's own walk-forward out-of-sample exceedance rates, so it can never drift from the lines on the chart.">Path Odds</button>
     <button class="v2-tool-btn" id="vfBriefBtn"           onclick="toggleBrief()">Brief</button>
     <button class="v2-tool-btn" id="vfWeeklyBtn"          onclick="toggleWeekly()"        disabled>Weekly</button>
     <button class="v2-tool-btn" id="vfProfileBtn"         onclick="toggleProfile()">Profile</button>
@@ -950,6 +951,19 @@
 </div>
 
 <!-- HIT RATES PANEL -->
+<div class="vf-lhist-panel" id="vfPathPanel" style="display:none">
+  <div class="vf-lhist-nav">
+    <span class="vf-lhist-title">Ladder Path Odds</span>
+    <span class="vf-lhist-sub">reach a rung -> how often price carries on to the next</span>
+    <span class="vf-panel-age" id="vfPathMeta"></span>
+    <select id="vfPathHorizon" onchange="_loadPathOdds(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);font-family:'DM Mono',monospace;font-size:10px;padding:2px 5px;border-radius:4px;outline:none">
+      <option value="daily">Daily</option>
+      <option value="weekly">Weekly</option>
+      <option value="monthly">Monthly</option>
+    </select>
+  </div>
+  <div id="vfPathBody" style="padding:10px 14px"></div>
+</div>
 <div class="vf-lhist-panel" id="vfHitRatesPanel" style="display:none">
   <div class="vf-lhist-nav">
     <span class="vf-lhist-title">Forecast Level Hit Rates</span>
@@ -2963,6 +2977,115 @@ async function computeHitRates() {
     },30_000);
   } catch(e) { btn.disabled=false; btn.textContent='↻ Compute'; document.getElementById('vfHROverview').innerHTML=`<div style="padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">Error: ${e.message}</div>`; }
 }
+
+// -- Ladder Path Odds --------------------------------------------------------
+// "Price just tagged the p50 line - does it carry on, or stall here?"
+//
+// The numbers are the ladder's OWN walk-forward out-of-sample exceedance rates
+// (js/ladderPathStats.js), re-expressed as conditionals. Because the rungs are
+// nested - a high that cleared p90 necessarily cleared p75 and p50 - the
+// conditional is exact arithmetic on the fit, NOT a second backtest that could
+// drift from the lines drawn on the chart.
+let _pathData = null, _pathOpen = null;
+const _PMONO = "font-family:'DM Mono',monospace";
+
+function togglePathOdds() {
+  const panel = document.getElementById('vfPathPanel'), btn = document.getElementById('vfPathBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : ''; btn.classList.toggle('active', !shown);
+  if (!shown) _loadPathOdds();
+}
+
+async function _loadPathOdds(force) {
+  const horizon = document.getElementById('vfPathHorizon')?.value || 'daily';
+  const body = document.getElementById('vfPathBody');
+  if (force) _pathData = null;
+  if (_pathData && _pathData.horizon === horizon) { _buildPathPanel(); return; }
+  body.innerHTML = '<div style="' + _PMONO + ';font-size:11px;color:var(--text3);padding:12px">Loading...</div>';
+  try {
+    const r = await fetch('/api/vol-forecast/ladder/path-stats?horizon=' + encodeURIComponent(horizon));
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'failed');
+    _pathData = { horizon, stats: j.stats };
+    _buildPathPanel();
+  } catch (e) {
+    body.innerHTML = '<div style="' + _PMONO + ';font-size:11px;color:var(--red);padding:12px">Path odds unavailable: ' + e.message + '</div>';
+  }
+}
+
+// Stall rate is the actionable number, so colour it: high = the rung tends to
+// hold. Thresholds are descriptive bands for the eye, not a signal.
+function _pathStallCell(v) {
+  if (v == null) return '<td style="text-align:right;color:var(--text3)">-</td>';
+  const col = v >= 65 ? 'var(--green)' : v <= 50 ? 'var(--red)' : 'var(--text2)';
+  return '<td style="text-align:right;padding:4px 6px;color:' + col + ';font-weight:600">' + v.toFixed(0) + '%</td>';
+}
+const _pathNum = v => '<td style="text-align:right;padding:4px 6px;color:var(--text2)">' + (v == null ? '-' : v.toFixed(0) + '%') + '</td>';
+
+function _buildPathPanel() {
+  const body = document.getElementById('vfPathBody');
+  const stats = (_pathData && _pathData.stats) || {};
+  const syms = Object.keys(stats).sort();
+  if (!syms.length) {
+    body.innerHTML = '<div style="' + _PMONO + ';font-size:11px;color:var(--text3);padding:12px">No fitted path stats for this horizon.</div>';
+    return;
+  }
+  const any = stats[syms[0]];
+  document.getElementById('vfPathMeta').textContent =
+    'fit through ' + (any.trainedThrough || '-') + ' - walk-forward OOS - ' + syms.length + ' instruments';
+
+  let h = '<div style="' + _PMONO + ';font-size:10.5px;color:var(--text3);margin-bottom:10px;line-height:1.6">'
+    + '<b style="color:var(--text2)">How to read this.</b> <b>reach</b> = % of days price tags that rung at all. '
+    + '<b>&rarr;next</b> = of the days it got there, the % that carried on to the rung beyond. '
+    + '<b>stall</b> = the complement at p75 - how often price tags p75 and fails to reach p90. '
+    + 'A chain near <b>50% &rarr; 40%</b> is the ladder behaving exactly as designed: getting further out does <b>not</b> make the next leg less likely. '
+    + 'What varies for real is the <b>up/down asymmetry per instrument</b> - that is the content here. '
+    + '<span style="color:#e0a93b">Unconditioned on the event calendar</span>: the live ladder widens sigma on an FOMC/NFP day, but these rates are pooled across all days, so this is the all-days average, not today\'s.'
+    + '</div>';
+
+  h += '<table style="width:100%;border-collapse:collapse;' + _PMONO + ';font-size:11px">'
+    + '<thead><tr style="color:var(--text3);font-size:9.5px;text-transform:uppercase;letter-spacing:.04em">'
+    + '<th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)">Instrument</th>'
+    + '<th colspan="4" style="padding:4px 6px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">Upside (O-H)</th>'
+    + '<th colspan="4" style="padding:4px 6px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">Downside (O-L)</th>'
+    + '</tr><tr style="color:var(--text3);font-size:9.5px">'
+    + '<th style="border-bottom:1px solid var(--border)"></th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">reach p50</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border)">&rarr;p75</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border)">&rarr;p90</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border)">stall@p75</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border);border-left:1px solid var(--border)">reach p50</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border)">&rarr;p75</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border)">&rarr;p90</th>'
+    + '<th style="text-align:right;padding:3px 6px;border-bottom:1px solid var(--border)">stall@p75</th>'
+    + '</tr></thead><tbody>';
+
+  for (const sym of syms) {
+    const c = stats[sym], up = c.oh, dn = c.ol;
+    const sel = _pathOpen === sym;
+    const blank = '<td style="text-align:right;padding:4px 6px;color:var(--text3)">-</td>';
+    h += '<tr onclick="_pathToggleRow(\'' + sym + '\')" style="cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04)'
+       + (sel ? ';background:rgba(91,157,255,.07)' : '') + '">'
+       + '<td style="padding:4px 6px;color:var(--text)">' + sym + '</td>'
+       + '<td style="text-align:right;padding:4px 6px;color:var(--text2);border-left:1px solid var(--border)">' + (up ? up.reach.p50.toFixed(0) + '%' : '-') + '</td>'
+       + (up ? _pathNum(up.given.p75_given_p50) + _pathNum(up.given.p90_given_p75) + _pathStallCell(up.stall.at_p75) : blank + blank + blank)
+       + '<td style="text-align:right;padding:4px 6px;color:var(--text2);border-left:1px solid var(--border)">' + (dn ? dn.reach.p50.toFixed(0) + '%' : '-') + '</td>'
+       + (dn ? _pathNum(dn.given.p75_given_p50) + _pathNum(dn.given.p90_given_p75) + _pathStallCell(dn.stall.at_p75) : blank + blank + blank)
+       + '</tr>';
+    if (sel) {
+      const upL = (c.plain && c.plain.up) || [], dnL = (c.plain && c.plain.down) || [];
+      const lines = upL.map(l => 'UP&nbsp;&nbsp; ' + l).concat(dnL.map(l => 'DOWN ' + l));
+      h += '<tr><td colspan="9" style="padding:8px 14px 12px;background:rgba(255,255,255,.02)">'
+         + '<div style="font-size:10.5px;color:var(--text2);line-height:1.8">' + lines.join('<br>') + '</div>'
+         + (c.levels ? '' : '<div style="font-size:9.5px;color:var(--text3);margin-top:6px">Today\'s prices appear here once a forecast is cached - hit Refresh.</div>')
+         + '</td></tr>';
+    }
+  }
+  h += '</tbody></table>';
+  body.innerHTML = h;
+}
+
+function _pathToggleRow(sym) { _pathOpen = (_pathOpen === sym ? null : sym); _buildPathPanel(); }
 
 function toggleHitRates() {
   const panel=document.getElementById('vfHitRatesPanel'), btn=document.getElementById('vfHitRatesBtn');

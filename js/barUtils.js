@@ -107,3 +107,36 @@ export function groupByDate(rows) {
   }
   return byDate;
 }
+
+// ── Packed → higher-timeframe bars (the packed twin of resampleTo) ───────────
+// Same bucketing and OHLC rule as `resampleTo`, but reads the packed columnar
+// arrays DIRECTLY so a whole multi-year M1 history can be lifted to 15m/1h/4h
+// without first materialising millions of per-bar objects (that intermediate
+// array is what makes the naive `resampleTo(extractBars(packed, …))` route blow
+// up on the index/metals parquets — 5M+ M1 rows).
+//
+// Adds `volume` (summed tick volume) because the HTF consumers that needed this
+// (VWAP, volume climax) are exactly the ones that can't use `resampleTo`'s
+// volume-less output. Gaps are simply absent buckets — weekends/holidays never
+// produce an empty bar, so consumers must read the returned `time` and never
+// assume a fixed cadence.
+export function resamplePacked(packed, minutes) {
+  const secs = minutes * 60;
+  const { n = 0, times, opens, highs, lows, closes, volumes } = packed || {};
+  const out = [];
+  let cur = null;
+  for (let i = 0; i < n; i++) {
+    const bucket = times[i] - (times[i] % secs);
+    if (!cur || cur.time !== bucket) {
+      cur = { time: bucket, open: opens[i], high: highs[i], low: lows[i], close: closes[i],
+              volume: volumes ? (volumes[i] || 0) : 0 };
+      out.push(cur);
+    } else {
+      if (highs[i] > cur.high) cur.high = highs[i];
+      if (lows[i]  < cur.low)  cur.low  = lows[i];
+      cur.close = closes[i];
+      if (volumes) cur.volume += volumes[i] || 0;
+    }
+  }
+  return out;
+}

@@ -57,7 +57,7 @@ function _purgeStaleAfJobs() {
 }
 
 // Run a refresh as a tracked async job. Returns the jobId.
-function startRefreshJob({ pairs, horizons }) {
+function startRefreshJob({ pairs, horizons, confluence = false }) {
   const jobId     = `af_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   const log = [];
@@ -65,7 +65,7 @@ function startRefreshJob({ pairs, horizons }) {
   afJobs.set(jobId, { status: 'running', startedAt, log });
   (async () => {
     try {
-      const manifest = await runAnalyserRefresh({ pairs, horizons, onLog: m => { log.push(m); console.log('[analyser-refresh]', m); } });
+      const manifest = await runAnalyserRefresh({ pairs, horizons, confluence, onLog: m => { log.push(m); console.log('[analyser-refresh]', m); } });
       afJobs.set(jobId, { status: 'done', startedAt, log, result: { manifest } });
     } catch (e) {
       const msg = e?.message || String(e);
@@ -118,7 +118,11 @@ export function mountAnalyserRoutes(app, express) {
     const b = req.body ?? {};
     const pairs    = Array.isArray(b.pairs) && b.pairs.length ? b.pairs.map(p => String(p).toLowerCase()) : null;
     const horizons = Array.isArray(b.horizons) && b.horizons.length ? b.horizons : undefined;
-    res.json({ ok: true, jobId: startRefreshJob({ pairs, horizons }) });
+    // Opt-in wider feature set (MTF WaveTrend / VWAP / structural confluence —
+    // js/confluenceFeatures.js). Off by default: it adds six bucket columns per
+    // stored line row plus a per-session level build.
+    const confluence = b.confluence === true || (b.confluence && typeof b.confluence === 'object') ? b.confluence : false;
+    res.json({ ok: true, jobId: startRefreshJob({ pairs, horizons, confluence }) });
   });
 
   app.get('/api/forecast-analysis/refresh/status/:jobId', (req, res) => {

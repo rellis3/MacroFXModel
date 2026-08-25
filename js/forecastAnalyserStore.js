@@ -15,20 +15,35 @@
 import { loadM1ForPair, M1_DRIVE_IDS } from './volBacktestM1Engine.js';
 import { bucketM1IntoSessions, runAnalyser, aggregate } from './forecastAnalyser.js';
 import { putJSON, getJSON, listKeys, r2Configured } from './r2Store.js';
-import { pipSize, oandaSymbol, resolveKey } from './instrumentRegistry.js';
+import { pipSize, oandaSymbol, resolveKey, instrument } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { extractTouches, runPerLine, runRigor, runSensitivity, runExitStudy, runExitGateSweep, runRideRigor, runDayTypeStudy, runStopStudy, costForPair, DEFAULT_SLIP_PCT } from './perLineStrategy.js';
 import { deflatedSharpe } from './backtestStats.js';
 import { computeBands, HORIZONS as FC_HORIZONS } from './forecastCore.js';
 import { resampleTo } from './barUtils.js';
+// The wider at-a-touch feature pack (MTF WaveTrend / VWAP / structural confluence).
+// Imported HERE, not in forecastAnalyser: the pack reaches rangeLineAnalyser for
+// the shared confluence bucketer, which imports forecastAnalyser — so the store
+// is the one place that can wire the two together without an import cycle.
+import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
+import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
 const HORIZONS  = ['daily', 'weekly', 'monthly'];
 
 // Resolve asset class for the band corrections (fx default).
+//
+// The instrument REGISTRY is the source of truth; the name patterns below are a
+// fallback for parquet names it doesn't know. It used to be pattern-only, and
+// that was a real bug: 'nq' matched nothing and fell through to 'fx', so Nasdaq
+// was analysed with FX band corrections — while its own byte-identical alias
+// 'nas100_usd' correctly returned 'index'. Since `dedupePairsByInstrument`
+// PREFERS the canonical name, a full refresh picked 'nq' and got it wrong every
+// time. The registry already had `assetClass: 'index'` for it; nothing was asking.
 export function assetClassFor(pair) {
   const p = String(pair).toLowerCase();
+  try { const meta = instrument(p); if (meta?.assetClass) return meta.assetClass; } catch { /* unknown symbol → fall back to the patterns */ }
   if (/xau|gold|xag|silver|wti|brent|oil|xpt|xpd|copper|natgas/.test(p)) return 'commodity';
   if (/nas|ndx|dax|spx|sp500|us30|us500|us2000|de30|de40|ftse|uk100|nikkei|jp225|hk50|esp35|index/.test(p)) return 'index';
   return 'fx';
@@ -161,6 +176,15 @@ function sliceSet(records, q1, q2) {
     byVolClimax:   aggregate(records, (r, ln) => ln.volClimax),    // per-touch volume climax vs baseline
     byCandleReject:aggregate(records, (r, ln) => ln.candleReject), // per-touch wick rejection at the level
     byRoundNum:    aggregate(records, (r, ln) => ln.roundNum),     // line distance to nearest round number
+    // The wider context stack (confluenceFeatures.js) — present only on records
+    // refreshed with `confluence` on; every slice is empty {} otherwise, and the
+    // Drivers tab already filters slices it has no data for.
+    byConfluence:  aggregate(records, (r, ln) => ln.confluence),   // distinct structural sources at the line
+    byVwapSide:    aggregate(records, (r, ln) => ln.vwapSide),     // line's extension beyond session VWAP (σ units)
+    byWtMtf:       aggregate(records, (r, ln) => ln.wtMtf),        // 15m/1h/4h WaveTrend agreement vs the touch
+    byWtSlow:      aggregate(records, (r, ln) => ln.wtSlow),       // 1h WaveTrend stretch in the touch direction
+    byMomAdx:      aggregate(records, (r, ln) => ln.momAdx),       // 1h ADX trend-vs-range at the touch
+    byHtfTrend:    aggregate(records, (r, ln) => ln.htfTrend),     // 4h EMA slope vs the touch direction
     byGap:     aggregate(records, r => r.gapBucket),
     byEvent:   aggregate(records, r => r.eventBucket),
     byPhase:   aggregate(records, r => r.monthPhase),
@@ -209,9 +233,35 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}, o
   let pip = 0; try { pip = pipSize(pair) || 0; } catch { /* unknown symbol → round-number feature off */ }
   onLog(`${pair}: ${packed.n} M1 bars → ${sessions.size} sessions (${assetClass}, pip ${pip || 'n/a'})`);
 
+  // ── Optional wider feature set (opts.confluence) ───────────────────────────
+  // OFF by default: it adds six bucket columns to every stored line row and a
+  // per-session level build, so it's opt-in per refresh rather than a silent
+  // cost on every pair. The HTF context is built ONCE per pair here — a 4h
+  // WaveTrend needs weeks of prior bars, so it cannot be rebuilt per session.
+  let tf = null, confLevelsFor = null;
+  if (opts.confluence) {
+    const cfg = typeof opts.confluence === 'object' ? opts.confluence : {};
+    tf = createConfluenceFeatures({ htf: createHtfContext(packed, cfg), ...cfg });
+    onLog(`  ${pair}: confluence feature pack ON (${tf.KEYS.length} feature columns)`);
+    if (cfg.structural !== false) {
+      const allDates = [...sessions.keys()].sort();
+      const lookback = cfg.lookbackDays ?? 5;
+      confLevelsFor = (i, _date, d1Bars) => {
+        let intraday = [];
+        for (let j = Math.max(0, i - lookback); j < i; j++) {
+          const b = sessions.get(allDates[j]); if (b) intraday = intraday.concat(b);
+        }
+        // Daily sources only — the fib/VWAP sources re-anchor intraday and are
+        // added at the touch itself by the pack (no double counting).
+        return sessionConfluenceLevels({ dailyBars: d1Bars.slice(0, i), intraday, pip,
+          price: d1Bars[i]?.open, sources: DAILY_CONFLUENCE_SOURCES, fib15: false });
+      };
+    }
+  }
+
   const out = { pair, assetClass, horizons: {} };
   for (const h of horizons) {
-    const records  = runAnalyser(sessions, assetClass, { horizon: h, pip });
+    const records  = runAnalyser(sessions, assetClass, { horizon: h, pip, tf, confLevelsFor });
     const coverage = { from: records[0]?.date ?? null, to: records.at(-1)?.date ?? null, windows: records.length };
     await putJSON(`${PREFIX}/${pair}/${h}.json`, { pair, horizon: h, assetClass, coverage, records });
     out.horizons[h] = { coverage, aggregates: buildAggregates(records) };
@@ -226,11 +276,11 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}, o
 // pair) keeps every pair finished so far instead of losing the whole batch — and
 // a daily-only refresh never wipes a pair's stored weekly/monthly coverage.
 export async function runRefresh({ pairs, horizons = HORIZONS, generatedAt, onLog = () => {},
-                                   gapFill = false, fetchCandles, nowSec } = {}) {
+                                   gapFill = false, fetchCandles, nowSec, confluence = false } = {}) {
   if (!r2Configured()) throw new Error('R2 not configured (R2_ACCESS_KEY / R2_SECRET_KEY)');
   const list = pairs?.length ? pairs : await discoverPairs();
-  onLog(`Refreshing ${list.length} pair(s)${gapFill ? ' [gap-fill ON]' : ''}: ${list.join(', ')}`);
-  const pairOpts = { gapFill, fetchCandles, nowSec };
+  onLog(`Refreshing ${list.length} pair(s)${gapFill ? ' [gap-fill ON]' : ''}${confluence ? ' [confluence features ON]' : ''}: ${list.join(', ')}`);
+  const pairOpts = { gapFill, fetchCandles, nowSec, confluence };
 
   // Start from the existing dataset so partial/subset refreshes accumulate.
   const prevManifest = await getManifest();

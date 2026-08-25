@@ -140,7 +140,8 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
 //     — so freezing neighbours at the touch bar is faithful, not an approximation.
 export function analyseWindow(session, ladder, ctx = {}) {
   const { open, bars } = session;
-  const { sigma = 0, tf = null, pip = 0, trailFrac = 0.5, beTrigger = 0.5, forwardBars = null } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params + next-day M1 for the ride-hold exit
+  const { sigma = 0, tf = null, pip = 0, trailFrac = 0.5, beTrigger = 0.5, forwardBars = null,
+          confLevels = null } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params + next-day M1 for the ride-hold exit + this session's structural-confluence levels (see confluenceFeatures.js)
   const n = bars.length;
   const last = bars[n - 1];
   const closePx = last?.close ?? open;
@@ -152,11 +153,15 @@ export function analyseWindow(session, ladder, ctx = {}) {
   // WaveTrend computed ONCE per window (causal EMA → indexing at a touch bar is
   // lookahead-free). null when no touch-feature computer is wired.
   const wt1 = tf ? tf.wtSeries(bars) : null;
-  const FEAT_KEYS = ['approachER', 'approachVel', 'wtState', 'volClimax', 'candleReject', 'roundNum'];
+  // Which bucket columns this run stores. A feature pack declares its own set
+  // (`confluenceFeatures.js` adds the MTF/VWAP/structural stack); the plain
+  // `createTouchFeatures` computer has no KEYS, so it falls back to the six this
+  // analyser has always written — old stored records stay readable either way.
+  const FEAT_KEYS = tf?.KEYS ?? ['approachER', 'approachVel', 'wtState', 'volClimax', 'candleReject', 'roundNum'];
   const NO_FEATS = Object.fromEntries(FEAT_KEYS.map(k => [k, null]));
   const featBuckets = (touchIdx, side, level) => {
     if (!tf || touchIdx < 0) return NO_FEATS;
-    const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level, pip });
+    const f = tf.compute({ bars, touchIdx, open, sigma, side, wt1, level, pip, confLevels });
     return Object.fromEntries(FEAT_KEYS.map(k => [k, f[k]?.bucket ?? null]));
   };
 
@@ -397,7 +402,16 @@ function sessionsToD1(sessions, dates) {
 export function runAnalyser(sessions, assetClass, opts = {}) {
   const { horizon = 'daily', minLookback = 50, dateFrom = '', dateTo = '', minBarsPerSession = 30 } = opts;
   const H = HORIZONS[horizon] ?? HORIZONS.daily;
-  const tf = createTouchFeatures(opts.touchCfg);   // at-the-moment approach features (configured here)
+  // At-the-moment approach features. `opts.tf` lets a caller inject a RICHER
+  // feature pack (js/confluenceFeatures.js — MTF WaveTrend, VWAP, structural
+  // confluence) without this module importing it: that pack imports
+  // rangeLineAnalyser, which imports THIS file, so the dependency has to point
+  // one way only. Default stays the plain six-feature computer.
+  const tf = opts.tf ?? createTouchFeatures(opts.touchCfg);
+  // Optional per-session structural-confluence levels, built by the caller for
+  // the same reason (`sessionConfluenceLevels` lives in rangeLineAnalyser).
+  // Signature: (i, date, d1Bars) → Level[] | null, using completed prior days only.
+  const confLevelsFor = typeof opts.confLevelsFor === 'function' ? opts.confLevelsFor : null;
 
   // Drop thin sessions (holidays / partial days) so a session is a real path.
   const dates = [...sessions.keys()].sort()
@@ -439,7 +453,8 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
       forwardBars = [];
       for (let k = i + 1; k <= Math.min(i + holdDays, dates.length - 1); k++) forwardBars.push(...sessions.get(dates[k]));
     }
-    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0, forwardBars });
+    const confLevels = confLevelsFor ? confLevelsFor(i, date, d1Bars) : null;
+    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0, forwardBars, confLevels });
 
     // Day-type score (no lookahead: reads closes[< i] only) + the selector's
     // directional choice + the realized continuation/reversion label, for the

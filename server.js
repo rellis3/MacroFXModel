@@ -48,6 +48,7 @@ import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } 
 import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
+import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
 import { rawDayDecision, mergeRawDay }                              from './js/oiRawArchive.js';
 import { runHonestSuite, HONEST_INSTRUMENTS }                        from './js/honestForecastEngine.js';
 import { runTrendFlipSummarized, DEFAULTS as TREND_FLIP_DEFAULTS }   from './js/trendFlipEngine.js';
@@ -67,6 +68,7 @@ import { runZoneSuite, ZONE_INSTRUMENTS } from './js/macroFxZoneEngine.js';
 import { runDecisionSuite, DECISION_INSTRUMENTS } from './js/macroFxDecisionEngine.js';
 import { runMaxCopierSuite, traceMaxCopierPair, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
+import { mountLevelAtlasRoutes } from './js/levelAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
@@ -10946,20 +10948,32 @@ async function _getCvol() {
   const fromDate = new Date(Date.now() - 1825 * 86_400_000).toISOString().slice(0, 10); // 5y
   const results  = await Promise.allSettled(CVOL_SERIES.map(sid => fetchFredSeries(sid, fromDate, fredKey)));
 
-  const levels = {}, pct = {};
+  const levels = {}, pct = {}, asOf = {}, ageDays = {};
   results.forEach((r, i) => {
     const sid = CVOL_SERIES[i];
     if (r.status !== 'fulfilled' || r.value.size < 20) return;
     const values  = [...r.value.values()];
+    const dates   = [...r.value.keys()];
     const current = values[values.length - 1];
     const below   = values.filter(v => v < current).length;
     levels[sid] = Math.round(current * 100) / 100;
     pct[sid]    = Math.round((below / values.length) * 1000) / 10;
+    // The 5-year window means a DISCONTINUED series still yields a "current"
+    // level — its final print — which the sidebar then rendered as today's
+    // implied vol. EVZ (EUR/USD) had stopped publishing and was being quoted
+    // live. Surface the last observation date so consumers can say so.
+    const last = dates[dates.length - 1];
+    asOf[sid]    = last ?? null;
+    ageDays[sid] = last ? Math.round((Date.now() - Date.parse(last + 'T00:00:00Z')) / 86400000) : null;
   });
 
   if (Object.keys(levels).length === 0) throw new Error('all FRED series fetches failed');
 
-  const data = { levels, pct, coherence: (pct.EVZCLS ?? 0) >= 50 };
+  // Stale once it has not printed for two weeks — long enough to clear a
+  // holiday gap, short enough to catch a discontinuation.
+  const stale = {};
+  for (const sid of Object.keys(levels)) stale[sid] = (ageDays[sid] ?? 0) > 14;
+  const data = { levels, pct, asOf, ageDays, stale, coherence: (pct.EVZCLS ?? 0) >= 50 };
   CVOL_CACHE.data      = data;
   CVOL_CACHE.fetchedAt = Date.now();
   return data;
@@ -14142,6 +14156,49 @@ function _fmtSessionText(data) {
   }
   return lines.join('\n');
 }
+
+// ── Ladder path stats — the conditional rung chain ───────────────────────────
+// "Price is at the p50 line — what happens next?" Re-expresses the ladder's own
+// walk-forward OOS exceedance rates as P(reach next rung | reached this one).
+// It is a re-expression, NOT a second measurement, so it can never drift from
+// the fit (js/ladderPathStats.js explains why the conditional is exact).
+// Static from the fitted params — no forecast state needed, so it answers even
+// before the first refresh.
+//   GET /api/vol-forecast/ladder/path-stats[?instrument=EURUSD][&horizon=daily]
+app.get('/api/vol-forecast/ladder/path-stats', (req, res) => {
+  const horizon = ['daily', 'weekly', 'monthly'].includes(String(req.query.horizon))
+    ? String(req.query.horizon) : 'daily';
+  try {
+    const one = req.query.instrument ? String(req.query.instrument).toUpperCase() : null;
+    // Today's actual prices, when a forecast is cached, so the UI can name the
+    // level rather than the rung. Absent before the first refresh — not an error.
+    const levelsFor = (sym) => {
+      const f = forecastState.latest?.instruments?.[sym];
+      const L = f?.ladder?.levels;
+      if (!L) return null;
+      return { oh: L.oh ?? null, ol: L.ol ?? null };
+    };
+    const build = (sym) => {
+      // Asset class + price digits from the instrument registry (a wrong digit
+      // count only mis-renders the sentence, but the registry is the one source).
+      let ac = 'fx', dig = 5;
+      try { const meta = instrument(sym); ac = meta?.assetClass ?? 'fx'; dig = meta?.digits ?? 5; } catch { /* unknown symbol → fx defaults */ }
+      const chain = ladderPathChain(sym, { horizon, assetClass: ac });
+      const lv = levelsFor(sym);
+      return { ...chain, digits: dig, levels: lv,
+               plain: { up: describeSide(chain, 'oh', lv?.oh ?? null, dig),
+                        down: describeSide(chain, 'ol', lv?.ol ?? null, dig) } };
+    };
+    if (one) return res.json({ ok: true, horizon, stats: build(one) });
+    const syms = Object.keys(forecastState.latest?.instruments ?? {});
+    const list = syms.length ? syms : VOL_INSTRUMENTS.map(i => (typeof i === 'string' ? i : i.name));
+    const out = {};
+    for (const sym of list) { const c = build(sym); if (c.fitted) out[sym] = c; }
+    res.json({ ok: true, horizon, count: Object.keys(out).length, stats: out });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // ── Forecast ladder export (the collapsed "Forecast" family) ─────────────────
 // One route, three horizons. This is the ONLY place the Forecast text is built —
@@ -18015,6 +18072,9 @@ app.get('/api/strategy-lab/specs', (_req, res) => {
 mountAnalyserRoutes(app, express);
 startAnalyserAutoRefresh();  // no-op unless ANALYSER_AUTO_REFRESH=1
 
+// ── Level Atlas — the comprehensive per-touch reference book ────────────────
+mountLevelAtlasRoutes(app, express);
+
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {
   const status = _m1CacheStatus();
@@ -20563,10 +20623,15 @@ const _FP_H = 16;   // 16 × M15 = 4 hours
 // there instead of UTC midnight. FX trades ~continuously → 0 is fine.
 const _FP_DAY_ANCHOR = { nq: 22, spx500: 22, us30: 22, us2000: 22, de30: 22, uk100: 22, gold: 22 };
 
-// Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ, the
-// US indices→VIX (an imperfect equity-vol proxy; honest limit). No clean
-// implied series for FX crosses → they get none (conditioner stays inert).
-const _FP_IV_SERIES = { eurusd: 'EVZCLS', gold: 'GVZCLS', nq: 'VIXCLS', spx500: 'VIXCLS', us30: 'VIXCLS', us2000: 'VIXCLS' };
+// Implied-vol series per instrument (FRED daily): EUR/USD→EVZ, GOLD→GVZ,
+// NAS100→VXN (CBOE's NASDAQ-100 vol index — js/volForecastBench.js already
+// used it; this path was borrowing the S&P's VIX, so NAS/DOW/RUSSELL all
+// showed one identical line). SPX legitimately IS VIX. US30/US2000 keep VIX
+// as an acknowledged proxy — VXD/RVX exist but aren't validated here yet.
+// No clean implied series for FX crosses → they get none (conditioner stays inert).
+const _FP_IV_SERIES = { eurusd: 'EVZCLS', gold: 'GVZCLS', nq: 'VXNCLS', spx500: 'VIXCLS', us30: 'VIXCLS', us2000: 'VIXCLS' };
+// Shown next to the numbers so a proxy is never mistaken for the real thing.
+const _FP_IV_EXACT = { eurusd: true, gold: true, nq: true, spx500: true, us30: false, us2000: false };
 const _fpIvCache = new Map();   // series → { at, byDate }
 async function _fpIvByDate(name) {
   const sid = _FP_IV_SERIES[name];
@@ -20776,7 +20841,7 @@ app.get('/api/forecast-path/iv', async (req, res) => {
   try {
     const byDate = await _fpIvByDate(name);
     if (!byDate || Object.keys(byDate).length < 20) return res.json({ ok: false, supported: true, error: 'implied-vol series unavailable' });
-    res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, byDate });
+    res.json({ ok: true, supported: true, pair: name.toUpperCase(), series: sid, exact: _FP_IV_EXACT[name] !== false, byDate });
   } catch (e) { res.status(500).json({ ok: false, supported: true, error: e.message }); }
 });
 
