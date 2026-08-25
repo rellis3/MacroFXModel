@@ -95,14 +95,31 @@ nobody will know which one to trust.
 
 ---
 
-## 4. The architecture: four layers, always in this order
+## 4. The architecture: four layers, only the first is mandatory
 
 ```
    ENGINE  →  REPORT  →  ROUTES  →  UI
    (walk)     (book)     (serve)    (translate)
+   ALWAYS     OPTIONAL   OPTIONAL   OPTIONAL
 ```
 
-### 4.1 Engine (pure, no I/O)
+**The engine's raw `rows` output is itself the deliverable — a reusable
+dataset, not just an intermediate step on the way to a book.** REPORT (§4.2)
+is what you build when the specific question is "does this context factor
+hold up out-of-sample" — but that's one particular consumer of the rows, not
+a mandatory next stage. The rows are one-record-per-unit, richly contextual,
+causally clean data: perfectly good input to a manual exploration, a
+different kind of aggregation, a completely different downstream question, or
+just sitting there as a trustworthy dataset until you know what you want from
+it. Don't build the OOS-gated book machinery (§4.2), the async-job routes
+(§4.3), or a UI (§4.4) until something actually needs them — a lot of value
+can come from just running the walk and looking at what came out.
+
+What's NOT optional regardless of how far you take it: the no-lookahead
+contract (§3.1) and the causality tests (§6) — those protect the rows
+themselves, which is the thing you're keeping either way.
+
+### 4.1 Engine (pure, no I/O) — the only mandatory layer
 One exported walk function. Input: packed M1 (+ instrument/assetClass config).
 Output: `{ rows: [...], coverage: {from, to, sessions} }`. No network, no
 clock reads, no randomness — every test depends on this being 100%
@@ -115,7 +132,7 @@ Each row carries:
   which ones)
 - **The outcome** — what happened next, resolved causally
 
-### 4.2 Report (aggregation + the holding gate)
+### 4.2 Report (optional — build only when you need the OOS-holding question answered)
 Turns raw rows into a **book**: a `cell` (the primary axis from §2) crossed
 with every **dimension** (a context field), each bucket carrying an n, an
 IS/OOS rate, a delta vs the cell's own base rate, and a `holds` boolean from
@@ -320,12 +337,15 @@ the template:
    session-completeness gating (§6.2), peak-tracking if the question has any
    "how far along" shape (§6.3), tautology check (§6.4), already-resolved
    exclusion (§6.5).
-5. Build the report layer: cell + dimensions, IS/OOS split, the holds gate
-   (§3.2) — one shared function, no per-dimension special cases.
-6. Run it against REAL data before trusting any test suite alone. Look for
+5. Run the walk against REAL data and just look at the rows before deciding
+   anything else — this alone is often enough to be useful (§4). Look for
    surprising magnitudes or directions and chase them down (§6.6) — several
    of this project's most important fixes only showed up here, not in
    synthetic tests.
+6. Only build the report layer (cell + dimensions, IS/OOS split, the holds
+   gate from §3.2 — one shared function, no per-dimension special cases) if
+   the question genuinely needs "does this hold OOS" answered. If you just
+   need the dataset, stop at step 5.
 7. Only THEN decide if a live UI is needed. If yes, build the fast-live path
    (§4.3) — bounded window, warm cache, recompute-on-change-only — don't
    default to polling the full walk.
