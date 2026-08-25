@@ -4223,7 +4223,28 @@ async function overlayDrawerCone(name) {
   // last candle ~3/4 across with the cone filling the right quarter.
   const N = _drBarCount;
   if (N) { try { drChart.timeScale().setVisibleLogicalRange({ from: N - 70, to: N + 22 }); } catch { padDrawerRange(); } }
-  $('drChartNote').textContent += ' · 📐 4h claim: blue = predicted · purple = most-agreed path · green/amber = P50/P75 envelopes';
+
+  // Say WHEN the claim was made. /api/forecast-path/summary is cached 15 min and
+  // the cone sits on an M15 grid, so the anchor routinely trails the freshest M5
+  // candle by up to ~30 min — and it starts at the price AT THAT MOMENT, not the
+  // live one. That is deliberate (re-anchoring to spot would fabricate a claim
+  // nobody made), but unlabelled it just looks like the cone is detached from
+  // the candles, which is exactly how it got reported. Show the age instead.
+  // A marker on the candle the cone actually starts from, so the offset reads as
+  // "the claim was made here" rather than "the cone is drawn in the wrong place".
+  try {
+    drSeries.setMarkers([{
+      time: cone.anchorTime, position: 'belowBar', color: '#5b9dff', shape: 'arrowUp',
+      text: 'cone from here',
+    }]);
+  } catch (e) {}
+
+  const ageMin = Math.max(0, Math.round((Date.now() / 1000 - cone.anchorTime) / 60));
+  const at = new Date(cone.anchorTime * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const stale = ageMin >= 10
+    ? ` · ⚓ anchored ${at} (${ageMin}m ago, at ${cone.anchor}) — it starts where the claim was made, not at the live price`
+    : ` · ⚓ anchored ${at}`;
+  $('drChartNote').textContent += ' · 📐 4h claim: blue = predicted · purple = most-agreed path · green/amber = P50/P75 envelopes' + stale;
 }
 
 // ── Realised vs implied volatility (drawer, Vol & Path tab) ──────────────────
