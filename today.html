@@ -926,6 +926,13 @@
     <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
     <div class="dr-sec-body"><div id="drPath"></div></div>
   </div>
+  <div class="dr-sec" id="drVmSec" data-seckey="vumanchu" style="display:none">
+    <h3 class="help" title="VuManChu (WaveTrend/Cipher-B) — a momentum oscillator, same family as RSI/Stochastic: it measures the speed of recent price swings and flags overbought/oversold or bullish/bearish crosses. Same server-rendered pane vumanchu-chart.html and the Telegram alerts use — one image, never redrawn twice.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>VuManChu — momentum</span>
+      <span class="chip neu" style="font-size:9px">context · not a signal</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drVm"><span class="muted">loading…</span></div></div>
+  </div>
   </div>
   <div class="dr-pane" id="drPane-systems" role="tabpanel" aria-labelledby="drTab-systems" hidden>
     <div class="dr-pending"><b>What the live bots say about this pair</b><p>One row per live system with its current stance, plus sizing and open exposure. Not built yet &mdash; this view does not exist anywhere on the site today.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
@@ -4035,7 +4042,7 @@ const DR_SEC_DEFAULTS = { // true = open by default; anything not listed default
   atlas: true,     // Level Atlas — OOS-checked historical base rates at today's touch
   thesis: true, story: true, tde: true, hits: true,
   levels: false,   // Bot Level Book — unvalidated star heuristic, minimised
-  chart: true, rates: true, cone: true, path: true,
+  chart: true, rates: true, cone: true, path: true, vumanchu: true,
   news: false, corr: false,
 };
 function drSecState() {
@@ -4174,6 +4181,7 @@ async function openDrawer(name) {
     });
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
+  try { loadDrawerVumanchu(r); } catch { $('drVmSec').style.display = 'none'; }
   try { renderDrExh(r); } catch (e) { $('drExhSec').style.display = 'none'; }
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
@@ -4426,6 +4434,22 @@ async function loadDrawerTrendBias(name) {
   } catch { b.textContent = '—'; }
 }
 
+// ── VuManChu momentum pane — server-rendered image, the SAME endpoint
+// vumanchu-chart.html and the Telegram photo alerts use (js/vumanchuChart.js
+// composing vumanchuCore + divergenceCore, rasterised via pngCanvas.js — no
+// browser-side redraw, so this can never disagree with the alert someone
+// already got). Just an <img>; the browser handles load/error natively.
+function loadDrawerVumanchu(r) {
+  const sec = $('drVmSec'), box = $('drVm');
+  if (!r?.d?.sym) { sec.style.display = 'none'; return; }
+  const q = new URLSearchParams({ symbol: r.d.sym, tf: 'M15', bars: '160', w: '760', h: '220', vwap: 'wtdiff',
+    tz: String(-new Date().getTimezoneOffset()) });
+  box.innerHTML = `<img src="/api/vumanchu/chart?${q}" alt="VuManChu momentum" style="width:100%;height:auto;border-radius:6px;display:block"
+    onerror="this.closest('.dr-sec').style.display='none'">
+    <div class="muted" style="font-size:10px;margin-top:4px">15m WaveTrend — momentum oscillator, same family as RSI/Stochastic. Context, not a signal. <a href="vumanchu-chart.html?symbol=${encodeURIComponent(r.d.sym)}" target="_blank" style="color:var(--accent,#5b9dff)">open full pane →</a></div>`;
+  sec.style.display = 'block';
+}
+
 // ── Volatility cone graphic — percentile of current σ per lookback window ─────
 // Data comes free with /api/vol-forecast (cone_5d/21d/63d + vol_pct, computed in
 // volForecast.js _buildOutput). Dots sliding right as the window shortens = vol
@@ -4638,27 +4662,92 @@ function biasFactors(r, arima) {
 // structurally the same idea (supports vs challenges vs a net read), just
 // sourced from a decade of measured history instead of live cross-signal
 // factors.
-function _atlasRow(m) {
-  const dir = m.deltaOutIS >= 0 ? 'more often' : 'less often';
-  const d = `${m.bucket} → reaches the next line ${dir} from here `
-    + `(Δ${m.deltaOutIS >= 0 ? '+' : ''}${m.deltaOutIS}pp now-checked / Δ${m.deltaOutOOS >= 0 ? '+' : ''}${m.deltaOutOOS}pp on unseen data, n=${m.n.is}/${m.n.oos})`;
-  return `<div class="th-row ${m.favors === 'out' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${esc0(d)}</span></div>`;
+// ── Plain-English translation for every context field ─────────────────────
+// Same underlying dimensions as before (vwapSide, wtState, dayVol, session…),
+// just worded for someone reading this to LEARN what they mean, not someone
+// who already knows what "Δ+6.3pp / n=162" means. Used both for the "Right
+// now" panel (every reading, whether or not it's currently driving anything)
+// and to translate the "why" rows behind the details toggle.
+const DIM_PLAIN = {
+  vwapSide:  { '3·near': "close to today's average price (VWAP)", '2·mid': "a moderate stretch from today's average price", '1·far': "well stretched from today's average price" },
+  wtState:   { '1·counter': 'VuManChu running against the move', '2·neutral': 'VuManChu flat, no clear push', '3·extended': 'VuManChu already stretched with the move' },
+  wtMtf:     { '1·against': 'timeframes fighting the move', '2·mixed': 'timeframes split', '3·with': 'timeframes aligned with the move' },
+  wtSlow:    { '1·counter': '1h VuManChu against the move', '2·mid': '1h VuManChu neutral', '3·stretched': '1h VuManChu stretched with the move' },
+  momAdx:    { '1·range': 'choppy, not trending (1h)', '2·mixed': 'borderline trend (1h)', '3·trend': 'trending (1h)' },
+  htfTrend:  { '1·against': 'bigger picture (4h) points against this', '2·flat': 'no clear bigger-picture (4h) trend', '3·with': 'bigger picture (4h) supports this' },
+  dayVol:    { '1·quiet': 'quieter than usual today', '2·normal': 'normal volatility today', '3·heavy': 'more volatile than usual today' },
+  asiaVol:   { '1·quiet': 'Asia session was quiet', '2·normal': 'Asia session was normal', '3·wild': 'Asia session was wild' },
+  londonVol: { '1·quiet': 'London session was quiet', '2·normal': 'London session was normal', '3·wild': 'London session was wild' },
+  sessionPos:{ '1·early': 'early in the session', '2·mid': 'mid-session', '3·late': 'late in the session' },
+  confluence:{ '1·none': 'no other technical levels line up here', '2·single': 'one other technical level lines up here', '3·multi': 'multiple other technical levels line up here' },
+  approachVel:{ '1·grind': 'a slow grind into this level', '2·med': 'moderate speed into this level', '3·spike': 'a fast spike into this level' },
+  approachER:{ '1·choppy': 'a choppy approach', '2·mixed': 'a mixed approach', '3·driven': 'a clean, driven approach' },
+  roundNum:  { '1·off': 'not near a round number', '2·near': 'near a round number', '3·on-figure': 'right on a round number' },
+  volClimax: { '1·quiet': 'quiet volume at the touch', '2·normal': 'normal volume at the touch', '3·surge': 'a volume surge at the touch' },
+  churn:     { '1·churned': 'chopping both ways today', '2·mixed': 'mixed one-way/two-way action today', '3·driven': 'a one-sided, driven move today' },
+};
+const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function _plainVal(key, val) {
+  if (val == null) return null;
+  if (DIM_PLAIN[key]?.[val] != null) return DIM_PLAIN[key][val];
+  if (key === 'gapBucket') return val === 'flat' ? 'opened flat vs yesterday' : val === 'gap-up' ? 'gapped up vs yesterday' : 'gapped down vs yesterday';
+  if (key === 'session') return `in the ${val} session`;
+  if (key === 'prevCloseLoc') return val === '1·inside' ? "yesterday closed inside its own forecast range"
+    : /beyond-p75/.test(val) ? "yesterday closed VERY stretched (beyond its own p75 band)" : "yesterday closed stretched (beyond its own p50 band)";
+  if (key === 'otherSideTouchedBefore') return val ? 'the opposite line was already tagged today' : null;
+  if (key === 'overlapWindow') return val ? 'in the deep-liquidity London/NY overlap' : null;
+  if (key === 'dow') return DOW_NAMES[val] ? `it's a ${DOW_NAMES[val]}` : null;
+  return null;
 }
-function _atlasMatchBody(m) {
-  if (!m) return `<div class="hint">No historical read stored for this rung/side yet.</div>`;
-  const leanCls = m.lean === 'continuation' ? 'range' : m.lean === 'reversion' ? 'bear' : 'neu';
-  const leanLbl = m.lean === 'continuation' ? 'Leans continuation' : m.lean === 'reversion' ? 'Leans reversion' : 'No clear lean (coin flip)';
-  let html = `<div class="th-top">Base rate: <span class="chip ${leanCls}">${leanLbl}</span> `
-    + `<span class="muted">${m.base.out}% through / ${m.base.back}% back` + (m.base.outOOS != null ? ` (unseen data: ${m.base.outOOS}% / ${m.base.backOOS}%)` : '') + `</span></div>`;
-  if (m.supports.length) html += `<div class="th-grp"><div class="th-h pos">✓ Supports</div>${m.supports.map(_atlasRow).join('')}</div>`;
-  if (m.challenges.length) html += `<div class="th-grp"><div class="th-h neg">✗ Challenges</div>${m.challenges.map(_atlasRow).join('')}</div>`;
-  if (m.context.length) html += `<div class="th-grp"><div class="th-h ctx">• Context (lean itself is a coin flip)</div>${m.context.map(_atlasRow).join('')}</div>`;
-  const net = m.lean === 'neutral' ? 'No historical edge either way at this rung — treat any move from here as a coin flip.'
-    : m.supports.length > m.challenges.length + 1 ? `<b>Well supported</b> — the readings mostly back the ${m.lean} base rate.`
-    : m.challenges.length > m.supports.length ? `<b>Fighting the base rate</b> — more argues against ${m.lean} than for it here.`
-    : `<b>Mixed</b> — real support and real pushback both present.`;
-  html += `<div class="th-net">${net} <span class="muted" style="font-size:10px">Average pullback after a touch: ${m.base.avgPullback}% of the way back.</span></div>`;
-  return html;
+// "Right now" — plain facts about the current moment, shown REGARDLESS of
+// whether they're currently proven to matter (that's what the "why" section
+// below is for). Deliberately no verdict language here — this panel exists
+// so someone reading it can learn to recognise "VWAP stretched" or "VuManChu
+// extended" in practice, building intuition even on touches where that
+// particular reading isn't driving anything.
+const RIGHT_NOW_FIELDS = [
+  ['vwapSide', '📍'], ['wtState', '📊'], ['momAdx', '🎯'], ['htfTrend', '📈'], ['dayVol', '🌊'],
+  ['session', '🕐'], ['sessionPos', null], ['confluence', '🧭'], ['approachVel', null],
+  ['prevCloseLoc', null], ['churn', null], ['overlapWindow', null], ['otherSideTouchedBefore', null], ['gapBucket', null],
+];
+function _rightNowPanel(t) {
+  if (!t) return '';
+  const lines = [];
+  for (const [key, icon] of RIGHT_NOW_FIELDS) {
+    const s = _plainVal(key, t[key]);
+    if (s) lines.push(`<div class="th-row"><span class="th-d">${icon ? icon + ' ' : '• '}${esc0(s.charAt(0).toUpperCase() + s.slice(1))}</span></div>`);
+  }
+  if (!lines.length) return '';
+  return `<div class="th-grp"><div class="th-h ctx">Right now</div>${lines.join('')}</div>`;
+}
+function _atlasRow(m) {
+  const word = m.favors === 'out' ? 'continuing' : 'reversing';
+  const bucketPlain = _plainVal(m.dimKey, m.bucket) ?? m.bucket;
+  const sameSign = Math.sign(m.deltaOutIS) === Math.sign(m.deltaOutOOS);
+  const d = `${esc0(bucketPlain)} — pushes ${Math.abs(m.deltaOutIS)} points toward ${word}`
+    + (sameSign ? ', held up on an independent double-check' : ', weaker on the double-check')
+    + ` (seen ${m.n.is + m.n.oos} times)`;
+  return `<div class="th-row ${m.favors === 'out' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${d}</span></div>`;
+}
+function _verdictChip(m) {
+  if (!m || m.lean === 'neutral') return { cls: 'neu', label: '🪙 Toss-up' };
+  const arrow = m.lean === 'continuation' ? '↗' : '↘';
+  const word = m.lean === 'continuation' ? 'continuing' : 'reversing';
+  const margin = m.supports.length - m.challenges.length;
+  return { cls: m.lean === 'continuation' ? 'range' : 'bear', label: `${arrow} ${margin > 1 ? 'Strong lean' : 'Leans'} ${word}` };
+}
+function _atlasMatchBody(m, t) {
+  const right = _rightNowPanel(t);
+  if (!m) return right + `<div class="hint">No historical read stored for this rung/side yet.</div>`;
+  const v = _verdictChip(m);
+  let why = '';
+  if (m.supports.length) why += `<div class="th-grp"><div class="th-h pos">✓ Points toward ${m.lean === 'continuation' ? 'continuing' : 'reversing'}</div>${m.supports.map(_atlasRow).join('')}</div>`;
+  if (m.challenges.length) why += `<div class="th-grp"><div class="th-h neg">✗ Points the other way</div>${m.challenges.map(_atlasRow).join('')}</div>`;
+  if (m.context.length) why += `<div class="th-grp"><div class="th-h ctx">• Other readings (this rung's a toss-up either way)</div>${m.context.map(_atlasRow).join('')}</div>`;
+  return right
+    + `<div class="th-top">History says: <span class="chip ${v.cls}">${v.label}</span> <span class="muted">${m.base.out}% continued / ${m.base.back}% reversed, historically</span></div>`
+    + (why ? `<details class="atlas-why" style="margin-top:4px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${why}</details>` : '')
+    + `<div class="hint">On average, when it reverses it gives back ${m.base.avgPullback}% of the move first.</div>`;
 }
 // ── Live pending-level ticker ─────────────────────────────────────────────
 // `live.pending` (js/levelAtlasRoutes.js) is today's NOT-yet-touched rungs,
@@ -4694,7 +4783,7 @@ function _atlasPendingRow(p) {
   const distId = `atlasDist_${t.side}_${t.rung}`;
   return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> — `
     + `<span id="${esc0(distId)}" class="chip neu">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span></div>`
-    + _atlasMatchBody(p.match);
+    + _atlasMatchBody(p.match, t);
 }
 // One-line synthesis across everything else in the section: whichever level
 // currently shown has the CLEAREST historical read (non-neutral lean, more
@@ -4714,10 +4803,11 @@ function _atlasHeadline(candidates) {
     return `<div class="th-top">💡 <b>No clear edge right now</b> <span class="muted">— every level below reads as a coin flip, not a call.</span></div>`;
   }
   const leanCls = best.match.lean === 'continuation' ? 'range' : 'bear';
-  const leanLbl = best.match.lean === 'continuation' ? 'through' : 'back';
-  const strength = best.margin > 1 ? 'well-supported' : 'net-positive but mixed';
-  return `<div class="th-top">💡 <b>Clearest read:</b> ${esc0(best.label)} leans <span class="chip ${leanCls}">${leanLbl}</span> `
-    + `<span class="muted">(${strength} — ${best.match.base.out}% through / ${best.match.base.back}% back historically)</span></div>`;
+  const leanLbl = best.match.lean === 'continuation' ? 'continuing' : 'reversing';
+  const arrow = best.match.lean === 'continuation' ? '↗' : '↘';
+  const strength = best.margin > 1 ? 'strong lean' : 'leans, but mixed';
+  return `<div class="th-top">💡 <b>Clearest read:</b> ${esc0(best.label)} <span class="chip ${leanCls}">${arrow} ${leanLbl}</span> `
+    + `<span class="muted">(${strength} — ${best.match.base.out}% continued / ${best.match.base.back}% reversed, historically)</span></div>`;
 }
 // Polled every 5s while the drawer's open (see _startAtlasPolling) — the
 // server-side cache (js/levelAtlasRoutes.js's getFastLive) makes most of
@@ -4748,7 +4838,7 @@ async function loadDrawerAtlas(r) {
     const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})`;
     html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> touched — ${esc0(ord)}, ${esc0(timeStr)}`
       + (t.outcome && t.outcome !== 'neither' ? ` <span class="muted">(went ${t.outcome === 'out' ? 'through' : 'back'})</span>` : ' <span class="muted">(unresolved — still live)</span>')
-      + `</div>` + _atlasMatchBody(primary.match);
+      + `</div>` + _atlasMatchBody(primary.match, t);
     if (earlier.length) {
       const line = earlier.map(({ touch: e }) => `${e.side === 'up' ? '▲' : '▼'}${e.rung} ${String(e.hourUtc).padStart(2, '0')}:${String(e.minute).padStart(2, '0')} (${e.outcome === 'out' ? 'through' : e.outcome === 'back' ? 'back' : 'unresolved'})`).join(', ');
       html += `<div class="hint">Earlier today: ${esc0(line)}</div>`;
