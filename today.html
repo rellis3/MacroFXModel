@@ -4463,6 +4463,15 @@ function _sessRow(m) {
     + (sameSign ? ', held up on an independent double-check' : '') + ` (seen ${m.n.is + m.n.oos} times)`;
   return `<div class="th-row ${m.favors === 'reach' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${d}</span></div>`;
 }
+// One "typical day vs given today's shape" comparison bar. `typicalPct` is
+// the fitted, UNCONDITIONAL ladder exceedance rate (js/ladderPathStats.js) —
+// without it, a bare "62% reached it historically" number has no way to show
+// whether today's setup is actually boosting the odds or dragging them down.
+function _sessPathBar(label, pct, color) {
+  const w = Math.max(0, Math.min(100, pct ?? 0));
+  return `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted,#64748b);margin:5px 0 2px"><span>${esc0(label)}</span><span>${pct == null ? '—' : pct + '%'}</span></div>`
+    + `<div style="background:rgba(255,255,255,.08);border-radius:3px;height:6px;overflow:hidden"><div style="background:${color};height:100%;width:${w}%"></div></div>`;
+}
 async function loadDrawerSessionPath(r) {
   const sec = $('drSessPathSec'), box = $('drSessPath');
   let j;
@@ -4472,18 +4481,33 @@ async function loadDrawerSessionPath(r) {
   const live = j?.live;
   if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
 
-  const rowsHtml = live.rows.map(({ row, match }) => {
+  const rowsHtml = live.rows.map(({ row, match, typicalPct }) => {
     const sideArrow = row.side === 'up' ? '▲' : '▼';
     const timeStr = `${String(row.checkpointHour).padStart(2, '0')}:00 since session start`;
-    let html = `<div class="th-top">${sideArrow} <b>${esc0(row.rung)}</b> band — as of ${esc0(timeStr)}</div>`
-      + `<div class="th-row"><span class="th-d">${esc0(_plainVal('shape', row.shape) ?? row.shape)}, ${esc0(_plainVal('progress', row.progress) ?? row.progress)}</span></div>`;
-    if (!match) { html += `<div class="hint">No historical read stored for this setup yet.</div>`; return html; }
+    const shapeTxt = `${esc0(_plainVal('shape', row.shape) ?? row.shape)}, ${esc0(_plainVal('progress', row.progress) ?? row.progress)}`;
+    if (!match) {
+      return `<div class="th-top">${sideArrow} <b>${esc0(row.rung)}</b> band — as of ${esc0(timeStr)}</div>`
+        + `<div class="th-row"><span class="th-d">${shapeTxt}</span></div>`
+        + `<div class="hint">No historical read stored for this setup yet.</div>`;
+    }
     const base = match.base;
-    const v = base.is >= 50 ? { cls: 'range', label: '↗ Leans reaching' } : base.is <= 20 ? { cls: 'bear', label: '↘ Leans NOT reaching' } : { cls: 'neu', label: '🪙 Uncertain' };
-    html += `<div class="th-top">Given today's shape: <span class="chip ${v.cls}">${v.label}</span> <span class="muted">${base.is}% reached it historically (unseen data: ${base.oos ?? '—'}%)</span></div>`;
-    if (match.matched.length) html += `<details class="atlas-why" style="margin-top:4px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${match.matched.map(_sessRow).join('')}</details>`;
+    const lift = typicalPct != null ? +(base.is - typicalPct).toFixed(1) : null;
+    const v = lift != null && lift >= 8 ? { cls: 'range', color: 'var(--bull,#22c55e)', label: '↗ Boosted odds of reaching it' }
+      : lift != null && lift <= -8 ? { cls: 'bear', color: 'var(--bear,#ef4444)', label: '↘ Reduced odds of reaching it' }
+      : { cls: 'neu', color: 'var(--muted,#64748b)', label: '🪙 About a typical day' };
+    // Callout box, styled distinctly (not just another th-top row) — the ONE
+    // thing meant to be readable at a glance without opening "Why?".
+    let html = `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
+      + `<div class="th-top" style="margin:0">${sideArrow} <b>${esc0(row.rung)}</b> band <span class="muted" style="font-size:10px">— as of ${esc0(timeStr)}</span></div>`
+      + `<div class="th-row" style="padding:2px 0"><span class="th-d">${shapeTxt}</span></div>`
+      + `<div class="chip ${v.cls}" style="margin-top:4px;display:inline-block">${v.label}</div>`
+      + _sessPathBar('Typical day', typicalPct, 'var(--muted,#64748b)')
+      + _sessPathBar("Given today's shape", base.is, v.color)
+      + `<div class="muted" style="font-size:10px;margin-top:4px">unseen-data check: ${base.oos ?? '—'}%${lift != null ? ` · ${lift >= 0 ? '+' : ''}${lift}pp vs typical` : ''}</div>`
+      + `</div>`;
+    if (match.matched.length) html += `<details class="atlas-why" style="margin-top:2px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${match.matched.map(_sessRow).join('')}</details>`;
     return html;
-  }).join('<hr style="border-color:var(--line,#1f2937);opacity:.4;margin:8px 0">');
+  }).join('');
 
   box.innerHTML = rowsHtml;
   sec.style.display = 'block';

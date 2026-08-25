@@ -15,6 +15,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { sessionPathWalk } from './sessionPathEngine.js';
 import { buildSessionPathBook, matchSessionPath } from './sessionPathReport.js';
+import { ladderPathChain } from './ladderPathStats.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { oandaSymbol } from './instrumentRegistry.js';
@@ -160,7 +161,7 @@ async function getFastLive(pair) {
   return { warming: false, ...entry.result };
 }
 
-export { boundPacked, getFastLive, liveCache, liveWarming };
+export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob };
 
 /** Mount all /api/session-path/* routes. */
 export function mountSessionPathRoutes(app, express) {
@@ -200,7 +201,16 @@ export function mountSessionPathRoutes(app, express) {
       if (live.warming) return res.json({ ok: true, instrument: pair.toUpperCase(), warming: true, live: { date: null, rows: [] } });
       const stored = await getJSON(`${PREFIX}/${pair}.json`);
       const book = stored?.book ?? null;
-      const matched = live.rows.map(r => ({ row: r, match: book ? matchSessionPath(book, r) : null }));
+      // "Typical day" — the fitted, UNCONDITIONAL reach rate (js/ladderPathStats.js,
+      // the walk-forward OOS exceedance already validated for the ladder itself,
+      // not re-measured here). This is the "before this signal" bar a UI needs to
+      // make the conditional cell rate (`match.base`, ALREADY conditioned on
+      // today's progress/shape) mean anything — a bare percentage alone doesn't
+      // tell you if today's setup is boosting or hurting the odds.
+      let chain = null;
+      try { chain = ladderPathChain(pair.toUpperCase(), { assetClass: stored?.assetClass ?? 'fx' }); } catch (e) {}
+      const typicalPct = (side, rung) => chain?.[side === 'up' ? 'oh' : 'ol']?.reach?.[rung] ?? null;
+      const matched = live.rows.map(r => ({ row: r, match: book ? matchSessionPath(book, r) : null, typicalPct: typicalPct(r.side, r.rung) }));
       res.json({ ok: true, instrument: pair.toUpperCase(), warming: false, bookGeneratedAt: stored?.generatedAt ?? null, live: { date: live.date, rows: matched } });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

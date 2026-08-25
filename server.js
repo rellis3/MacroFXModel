@@ -68,8 +68,8 @@ import { runZoneSuite, ZONE_INSTRUMENTS } from './js/macroFxZoneEngine.js';
 import { runDecisionSuite, DECISION_INSTRUMENTS } from './js/macroFxDecisionEngine.js';
 import { runMaxCopierSuite, traceMaxCopierPair, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
-import { mountLevelAtlasRoutes } from './js/levelAtlasRoutes.js';
-import { mountSessionPathRoutes } from './js/sessionPathRoutes.js';
+import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
+import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
@@ -26593,6 +26593,54 @@ if (process.env.OANDA_KEY) {
     else console.log('[book-rebuild] nightly tick — disabled (turn on "Rebuild book nightly" on the Config page)');
   });
   console.log(`[book-rebuild] nightly tick armed at ${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')} UTC (run gated by Caps.volBookRebuild or VOL_BOOK_REBUILD=1)`);
+}
+
+// Schedule the NIGHTLY Level Atlas + Session Path rebuild (js/levelAtlasRoutes.js
+// + js/sessionPathRoutes.js). Both books were manual-trigger only through
+// 2026-08-25 — every "gap-fill", "resume after a dead job" moment that day
+// traced back to nobody having re-run them, including the job itself silently
+// dying mid-sweep on an unrelated deploy's server restart (in-memory job
+// tracking, no trace left behind — caught only by cross-checking the
+// manifest). This is the fix: hands-off, same as the vol book rebuild above.
+//
+// London-anchored (`_scheduleDailyLondon`, not `_scheduleDailyUtc`) because
+// both books' own `coverage.to` is a LONDON calendar day
+// (`bucketM1IntoSessions('Europe/London')`) — a fixed-UTC schedule would
+// silently fire at the wrong point in the session for half the year, exactly
+// the DST bug already fixed for the vol plan's own scheduling (see
+// _scheduleDailyLondon's header comment). 00:30 London — 25 min after the
+// 00:05 vol plan, so it isn't competing with that for the single JS thread's
+// CPU at the exact same moment.
+//
+// Defaults ON (Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD env
+// var can turn it off) — unlike the vol book rebuild's default-off, opt-in
+// convention: these two books have no other freshness mechanism at all, so
+// "off by default" would just reproduce the exact problem this exists to fix.
+// Runs sequentially in ONE tick (Level Atlas ~30-40 min, Session Path
+// ~60-90 min for the full pair list) — both are the SAME async-job/R2-persist
+// pattern already used for a manual /run, just triggered on a timer instead
+// of a curl. BTCUSD is included and expected to keep failing (no M1 archive
+// anywhere — a real, known data gap, not something this job can fix).
+const REFERENCE_ENGINE_PAIRS = [
+  'GOLD', 'NQ', 'SPX500', 'DE30', 'UK100', 'US30', 'US2000',
+  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF',
+  'GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY',
+  'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
+  'BTCUSD',
+];
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(0, 30, async () => {
+    let enabled = process.env.REFERENCE_ENGINE_REBUILD !== '0';   // env opt-OUT, defaults on
+    try {
+      const raw = await kv.get('caps');
+      if (raw) { const c = JSON.parse(raw); if (typeof c.referenceEngineRebuild === 'boolean') enabled = c.referenceEngineRebuild; }
+    } catch (e) { console.error('[reference-engine-rebuild] caps read failed:', e.message); }
+    if (!enabled) { console.log('[reference-engine-rebuild] nightly tick — disabled (Caps.referenceEngineRebuild=false or REFERENCE_ENGINE_REBUILD=0)'); return; }
+    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    try { _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Level Atlas trigger failed:', e.message); }
+    try { _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Path trigger failed:', e.message); }
+  });
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
