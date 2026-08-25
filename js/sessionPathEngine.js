@@ -235,13 +235,26 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
       // separately, which checkpoint hours have already had their row
       // emitted (a checkpoint only fires once, at the FIRST bar at/after its
       // target minute — later bars within the same clock hour don't re-fire).
+      //
+      // `peakElapsedHrs` tracks WHEN runExtreme was actually set — a real
+      // user caught, on real data, that reporting a session's peak/reversal
+      // as if it happened AT the checkpoint hour that reports it is wrong:
+      // the checkpoint is a fixed sampling grid (4,5,6,...), not the moment
+      // the peak occurred. On the real example that was caught, the peak sat
+      // at 1h40m into the session while the checkpoint reporting "already
+      // reversing" was the 4h one — a checkpoint that fires 2+ hours after
+      // the actual event and describes it with the checkpoint's OWN time
+      // reads as flatly wrong once you check it against a real chart. Stored
+      // per row so the UI can say "peaked ~1.7h in" instead of implying it
+      // peaked at the checkpoint itself.
       let runExtreme = open;   // running high (up) / running low (down) so far
+      let peakElapsedHrs = 0;
       let cpIdx = 0;
       const startTime = bars[0].time;
       for (let k = 0; k < bars.length && cpIdx < checkpointHours.length; k++) {
         const bar = bars[k];
-        if (isUp ? bar.high > runExtreme : bar.low < runExtreme) runExtreme = isUp ? bar.high : bar.low;
         const elapsedHrs = (bar.time - startTime) / 3600;
+        if (isUp ? bar.high > runExtreme : bar.low < runExtreme) { runExtreme = isUp ? bar.high : bar.low; peakElapsedHrs = elapsedHrs; }
         if (elapsedHrs < checkpointHours[cpIdx]) continue;
         const hour = checkpointHours[cpIdx];
 
@@ -274,7 +287,8 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
 
           rows.push({
             instrument: sym, assetClass, date, side, rung, checkpointHour: hour,
-            progressFrac, peakFrac, reversalFrac,
+            open: +open.toFixed(6), level: +level.toFixed(6), currentPrice: +bar.close.toFixed(6), pip,
+            progressFrac, peakFrac, reversalFrac, peakElapsedHrs: +peakElapsedHrs.toFixed(2),
             progress: progressBucket(progressFrac), shape: shapeBucket(peakFrac, reversalFrac),
             dow, gapBucket, dayVol,
             asiaVol: hour >= 7 ? (asiaVolCandidate?.bucket ?? null) : null,
