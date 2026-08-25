@@ -22,11 +22,13 @@
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const JPY_PAIRS  = new Set(['USDJPY', 'GBPJPY', 'EURJPY', 'AUDJPY', 'CADJPY']);
+const JPY_PAIRS  = new Set(['USDJPY', 'GBPJPY', 'EURJPY', 'AUDJPY', 'CADJPY', 'NZDJPY']);
 
 // Cluster threshold (price units): how close two levels must be to merge into one zone
+// ~0.065% of price across the board (GOLD 3/4650, NQ 15/29000, SPX 6/7650).
 const CLUSTER_THRESH = {
   GOLD: 3.0, NQ: 15.0, SPX500: 6.0, DE30: 15.0, UK100: 8.0, US30: 15.0, US2000: 3.0,
+  BTCUSD: 60.0,
 };
 const FX_CLUSTER_THRESH  = 0.0005;   // 5 pips standard FX
 const JPY_CLUSTER_THRESH = 0.05;     // 5 pips JPY pairs
@@ -48,15 +50,37 @@ const FIB_EXTS    = [1.272, 1.618];
 // Decimal places for price output
 const PRICE_DP = {
   GOLD: 2, NQ: 2, SPX500: 2, DE30: 2, UK100: 2, US30: 2, US2000: 2,
+  BTCUSD: 2,
 };
 
-// Round-number grid per instrument (psychological levels every N price units)
+// Round-number grid per instrument (psychological levels every N price units).
+// Roughly 1% of price across the board: GOLD 50/4650, NQ 250/29000, SPX 100/7650.
+// An instrument MISSING from here falls back to FX_ROUND_GRID (0.01), which is only
+// sane for something priced near 1.0 — see the guard in roundNumberLevels().
 const ROUND_GRID = {
   GOLD: 50.0, NQ: 250.0, SPX500: 100.0, DE30: 100.0,
   UK100: 100.0, US30: 250.0, US2000: 50.0,
+  BTCUSD: 1000.0,
 };
 const FX_ROUND_GRID  = 0.01;    // every 100 pips FX
 const JPY_ROUND_GRID = 1.0;     // every 100 pips JPY
+
+// Sanity ceiling on the round-number ladder. A correctly-gridded instrument needs a
+// handful of steps (GOLD 4, NQ 4, worst FX cross ~168). Anything wildly past that means
+// the grid is wrong for this instrument's price scale, not that the market has thousands
+// of psychological levels — so contribute NO round levels rather than a wall of junk.
+const MAX_ROUND_STEPS = 400;
+
+// Append every element of `src` to `dst`. Deliberately NOT `dst.push(...src)`: the
+// spread passes each element as a separate ARGUMENT, so a large generator result
+// overflows the call stack (V8 caps at ~65-125k args) and throws RangeError. That
+// turned one mis-gridded instrument into a 500 on the entire zones export. A loop
+// has no argument limit, so a bad array is now just a bad array.
+function pushAll(dst, src) {
+  if (!Array.isArray(src)) return dst;
+  for (let i = 0; i < src.length; i++) dst.push(src[i]);
+  return dst;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -137,7 +161,7 @@ function fibFromSwingPairs(bars, refPrice, rangeFilter, lookback = 25, maxPairs 
     if (p1.isHigh !== p0.isHigh) {      // alternating = valid swing
       const high = Math.max(p1.price, p0.price);
       const low  = Math.min(p1.price, p0.price);
-      levels.push(..._fibLevels(high, low, refPrice, rangeFilter));
+      pushAll(levels, _fibLevels(high, low, refPrice, rangeFilter));
       pairsUsed++;
     }
   }
@@ -149,7 +173,7 @@ function fibFromSwingPairs(bars, refPrice, rangeFilter, lookback = 25, maxPairs 
         const sl   = bars.slice(-n);
         const high = Math.max(...sl.map(b => b.high));
         const low  = Math.min(...sl.map(b => b.low));
-        levels.push(..._fibLevels(high, low, refPrice, rangeFilter));
+        pushAll(levels, _fibLevels(high, low, refPrice, rangeFilter));
       }
     }
   }
@@ -280,8 +304,16 @@ function volForecastAbsLevels(refPrice, fc, rangeFilter) {
 
 function roundNumberLevels(refPrice, name, rangeFilter) {
   const grid = JPY_PAIRS.has(name) ? JPY_ROUND_GRID : (ROUND_GRID[name] ?? FX_ROUND_GRID);
+  if (!(grid > 0) || !(refPrice > 0) || !(rangeFilter >= 0)) return [];
   const base  = Math.round(refPrice / grid) * grid;
   const steps = Math.ceil(rangeFilter / grid) + 1;
+  // Grid/price-scale mismatch — an instrument with no ROUND_GRID entry inheriting the
+  // 0.01 FX grid. BTCUSD did exactly this: rangeFilter ~5,220 over a 0.01 grid asked for
+  // a million levels, and `pushAll(all, levels)` then blew the call stack and took the
+  // WHOLE export down (500 "Maximum call stack size exceeded"), including the OI section
+  // that has its own try/catch and would have succeeded. Drop the round-number layer for
+  // this instrument; every other level type still contributes.
+  if (steps > MAX_ROUND_STEPS) return [];
   const levels = [];
   for (let i = -steps; i <= steps; i++) {
     const p = base + i * grid;
@@ -340,31 +372,31 @@ export function computeZonesForInstrument(name, bars, fc, todayOpen = null) {
   const all         = [];
 
   // 1. Swing pivot S/R — proper pivot detection (2-bar confirmation each side, 30-day lookback)
-  all.push(...pivotSRLevels(bars, refPrice, rangeFilter));
+  pushAll(all, pivotSRLevels(bars, refPrice, rangeFilter));
 
   // 2. Fibonacci from identified swing pivot pairs (recursive, most recent 3 pairs)
-  all.push(...fibFromSwingPairs(bars, refPrice, rangeFilter));
+  pushAll(all, fibFromSwingPairs(bars, refPrice, rangeFilter));
 
   // 3. Previous daily opens (last 5 days) — key magnet levels
-  all.push(...prevOpenLevels(bars, refPrice, rangeFilter));
+  pushAll(all, prevOpenLevels(bars, refPrice, rangeFilter));
 
   // 4. VWAP proxy — previous session pivot (H+L+C)/3
-  all.push(...vwapProxyLevel(bars, refPrice, rangeFilter));
+  pushAll(all, vwapProxyLevel(bars, refPrice, rangeFilter));
 
   // 5. POC approximation — daily range midpoints (last 5 days)
-  all.push(...pocLevels(bars, refPrice, rangeFilter));
+  pushAll(all, pocLevels(bars, refPrice, rangeFilter));
 
   // 6. NPOC — unvisited daily midpoints (20-day lookback)
-  all.push(...npocLevels(bars, refPrice, rangeFilter));
+  pushAll(all, npocLevels(bars, refPrice, rangeFilter));
 
   // 7. Weekly pivots PP/R1/R2/S1/S2
-  all.push(...weeklyPivotLevels(bars, refPrice, rangeFilter));
+  pushAll(all, weeklyPivotLevels(bars, refPrice, rangeFilter));
 
   // 8. Vol forecast absolute levels — medians and 75th pct from reference price
-  all.push(...volForecastAbsLevels(refPrice, fc, rangeFilter));
+  pushAll(all, volForecastAbsLevels(refPrice, fc, rangeFilter));
 
   // 9. Psychological round numbers
-  all.push(...roundNumberLevels(refPrice, name, rangeFilter));
+  pushAll(all, roundNumberLevels(refPrice, name, rangeFilter));
 
   return clusterLevels(all, thresh);
 }
