@@ -29,7 +29,9 @@ import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
-import { instrument as instrumentMeta } from './instrumentRegistry.js';
+import { instrument as instrumentMeta, oandaSymbol } from './instrumentRegistry.js';
+import { gapFillPacked } from './m1GapFill.js';
+import { fetchM1Range } from './volBacktestEngine.js';
 
 const PREFIX = 'level-atlas';
 const DEFAULT_REARM = 0.3;
@@ -44,8 +46,19 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
   const pair = String(instrument).toLowerCase();
   const sym = String(instrument).toUpperCase();
   onLog(`${sym}: loading M1…`);
-  const packed = await loadM1ForPair(pair);
+  let packed = await loadM1ForPair(pair);
   if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
+  // The R2 M1 parquet is a static, periodically-uploaded snapshot — nothing
+  // appends to it automatically. Top it up to "now" from OANDA so the /live
+  // section reflects today's actual session rather than whenever the parquet
+  // was last synced. Same brick + fetch fn as forecastAnalyserStore.refreshPair.
+  if (process.env.OANDA_KEY) {
+    try {
+      const before = packed.n;
+      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog });
+      if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
+    } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); }
+  }
   const assetClass = assetClassFor(pair);
   onLog(`${sym}: ${packed.n.toLocaleString()} M1 bars, assetClass ${assetClass} — walking the ladder…`);
   const { touches, coverage } = atlasWalk(packed, { instrument: sym, assetClass, rearmFracs });
@@ -65,11 +78,12 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
   // ── Live snapshot — the MOST RECENT date's touches, matched against the
   // DEFAULT_REARM book. Free: `touches` already contains this date's records
   // (atlasWalk processes every day including the last), so this is a filter
-  // + match, not a second M1 walk. If the caller supplied M1 data that extends
-  // through "right now" (a live pull, not a frozen historical parquet), these
-  // ARE genuinely live in-progress touches (outcome:'neither' until they
-  // resolve) — see `atlasLiveToday`'s docstring for why that degrades
-  // correctly with no special-casing needed here.
+  // + match, not a second M1 walk. With the gap-fill above, `packed` extends
+  // through "right now", so these ARE genuinely live in-progress touches
+  // (outcome:'neither' until they resolve) — see `atlasLiveToday`'s docstring
+  // for why that degrades correctly with no special-casing needed here. If
+  // OANDA_KEY is unset or the gap-fill call fails, this silently falls back
+  // to whatever date the stored parquet last covered.
   const liveBook = books[DEFAULT_REARM];
   const liveDate = coverage?.to ?? null;
   const liveTouches = (liveDate && liveBook)
