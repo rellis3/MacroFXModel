@@ -69,6 +69,7 @@ import { runDecisionSuite, DECISION_INSTRUMENTS } from './js/macroFxDecisionEngi
 import { runMaxCopierSuite, traceMaxCopierPair, MAXCOPIER_INSTRUMENTS, MAXCOPIER_DEFAULTS, EXIT_MODES as MAXCOPIER_EXIT_MODES } from './js/maxCopierEngine.js';
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { mountLevelAtlasRoutes } from './js/levelAtlasRoutes.js';
+import { mountSessionPathRoutes } from './js/sessionPathRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
@@ -18105,6 +18106,11 @@ startAnalyserAutoRefresh();  // no-op unless ANALYSER_AUTO_REFRESH=1
 
 // ── Level Atlas — the comprehensive per-touch reference book ────────────────
 mountLevelAtlasRoutes(app, express);
+
+// ── Session Path — the whole-session companion (one row per day × checkpoint
+// hour, not per touch): "given how today's started, what's the odds it
+// reaches this band" — see js/sessionPathEngine.js.
+mountSessionPathRoutes(app, express);
 
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {

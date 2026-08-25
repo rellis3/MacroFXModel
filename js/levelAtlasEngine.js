@@ -102,7 +102,7 @@ function firstTouchTimes(bars, lv, isUp) {
 
 // Causal trailing median of a session's OWN range history (same session type
 // only — Asia vs Asia, never Asia vs London), `lookback` prior occurrences.
-function sessionVolBucket(rangeMap, date, sessName, priorDates, lookback = 20) {
+export function sessionVolBucket(rangeMap, date, sessName, priorDates, lookback = 20) {
   const hist = [];
   for (let k = priorDates.length - 1; k >= 0 && hist.length < lookback; k--) {
     const v = rangeMap.get(`${priorDates[k]}|${sessName}`);

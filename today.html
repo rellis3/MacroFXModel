@@ -926,6 +926,13 @@
     <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
     <div class="dr-sec-body"><div id="drPath"></div></div>
   </div>
+  <div class="dr-sec" id="drSessPathSec" data-seckey="sesspath" style="display:none">
+    <h3 class="help" title="Given how TODAY has already moved toward a forecast band, what does history say about the odds the FULL SESSION goes on to reach it? Different question from the Read tab (which is about a specific line touch): this is whole-session shape — still extending, pulled back, or fully reversed from its own peak so far — each checked out-of-sample before being shown. Not a signal, a base rate.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Session Path — where's today headed?</span>
+      <span class="chip neu" style="font-size:9px">OOS-checked</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drSessPath"><span class="muted">loading…</span></div></div>
+  </div>
   <div class="dr-sec" id="drVmSec" data-seckey="vumanchu" style="display:none">
     <h3 class="help" title="VuManChu (WaveTrend/Cipher-B) — a momentum oscillator, same family as RSI/Stochastic: it measures the speed of recent price swings and flags overbought/oversold or bullish/bearish crosses. Same server-rendered pane vumanchu-chart.html and the Telegram alerts use — one image, never redrawn twice.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>VuManChu — momentum</span>
@@ -4042,7 +4049,7 @@ const DR_SEC_DEFAULTS = { // true = open by default; anything not listed default
   atlas: true,     // Level Atlas — OOS-checked historical base rates at today's touch
   thesis: true, story: true, tde: true, hits: true,
   levels: false,   // Bot Level Book — unvalidated star heuristic, minimised
-  chart: true, rates: true, cone: true, path: true, vumanchu: true,
+  chart: true, rates: true, cone: true, path: true, vumanchu: true, sesspath: true,
   news: false, corr: false,
 };
 function drSecState() {
@@ -4130,6 +4137,7 @@ function closeDrawer() {
   $('drawer').classList.remove('open');
   if (drChart) { try { drChart.remove(); } catch (e) {} drChart = null; drSeries = null; }
   _stopAtlasPolling();
+  _stopSessPathPolling();
 }
 
 let _drR = null;   // current drawer row — for the on-demand "Analyse" button
@@ -4182,6 +4190,7 @@ async function openDrawer(name) {
   loadDrawerStory(r, barsP).catch(e => { $('drStory').innerHTML = `<span class="muted">story unavailable: ${e.message}</span>`; });
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
   try { loadDrawerVumanchu(r); } catch { $('drVmSec').style.display = 'none'; }
+  _startSessPathPolling(r);
   try { renderDrExh(r); } catch (e) { $('drExhSec').style.display = 'none'; }
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
@@ -4432,6 +4441,60 @@ async function loadDrawerTrendBias(name) {
     b.innerHTML = `<span class="${cls}">${arrow} ${j.dir}</span> ${tail}`;
     b.title = 'Daily cone bent by the replicated momentum sign (trendFollowEngine), graded on non-overlapping 10-day windows vs a 50% coin flip. Context/sizing only — never a buy/sell signal. Full line on the Forecast Path page.';
   } catch { b.textContent = '—'; }
+}
+
+// ── Session Path — the whole-session companion to the Read tab's Level Atlas
+// ticker. Different question: not "what happens at this specific line" but
+// "given how today's already moved toward a band, does the FULL SESSION go
+// on to reach it" (js/sessionPathEngine.js). Same plain-English translation
+// helpers as the Level Atlas section (DIM_PLAIN/_plainVal) — the shared
+// bucket values (dow/dayVol/prevCloseLoc/asiaVol/londonVol) are computed by
+// the literal same formulas, so reusing the same label function is correct,
+// not just convenient. Polled every 15s (slower than the Read tab's 5s —
+// this walk is heavier, and a whole day's shape doesn't change as fast as a
+// price tick anyway).
+let _sessPathTimer = null;
+const SESSPATH_POLL_MS = 15000;
+function _sessRow(m) {
+  const word = m.favors === 'reach' ? 'reaching' : 'NOT reaching';
+  const bucketPlain = _plainVal(m.dimKey, m.bucket) ?? m.bucket;
+  const sameSign = Math.sign(m.deltaIS) === Math.sign(m.deltaOOS);
+  const d = `${esc0(bucketPlain)} — pushes ${Math.abs(m.deltaIS)} points toward ${word} the band`
+    + (sameSign ? ', held up on an independent double-check' : '') + ` (seen ${m.n.is + m.n.oos} times)`;
+  return `<div class="th-row ${m.favors === 'reach' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${d}</span></div>`;
+}
+async function loadDrawerSessionPath(r) {
+  const sec = $('drSessPathSec'), box = $('drSessPath');
+  let j;
+  try { j = await jget(`/api/session-path/fastlive/${encodeURIComponent(r.name)}`); }
+  catch { return; }
+  if (j?.warming) return;   // leave whatever's on screen; try again next tick
+  const live = j?.live;
+  if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
+
+  const rowsHtml = live.rows.map(({ row, match }) => {
+    const sideArrow = row.side === 'up' ? '▲' : '▼';
+    const timeStr = `${String(row.checkpointHour).padStart(2, '0')}:00 since session start`;
+    let html = `<div class="th-top">${sideArrow} <b>${esc0(row.rung)}</b> band — as of ${esc0(timeStr)}</div>`
+      + `<div class="th-row"><span class="th-d">${esc0(_plainVal('shape', row.shape) ?? row.shape)}, ${esc0(_plainVal('progress', row.progress) ?? row.progress)}</span></div>`;
+    if (!match) { html += `<div class="hint">No historical read stored for this setup yet.</div>`; return html; }
+    const base = match.base;
+    const v = base.is >= 50 ? { cls: 'range', label: '↗ Leans reaching' } : base.is <= 20 ? { cls: 'bear', label: '↘ Leans NOT reaching' } : { cls: 'neu', label: '🪙 Uncertain' };
+    html += `<div class="th-top">Given today's shape: <span class="chip ${v.cls}">${v.label}</span> <span class="muted">${base.is}% reached it historically (unseen data: ${base.oos ?? '—'}%)</span></div>`;
+    if (match.matched.length) html += `<details class="atlas-why" style="margin-top:4px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${match.matched.map(_sessRow).join('')}</details>`;
+    return html;
+  }).join('<hr style="border-color:var(--line,#1f2937);opacity:.4;margin:8px 0">');
+
+  box.innerHTML = rowsHtml;
+  sec.style.display = 'block';
+}
+function _startSessPathPolling(r) {
+  if (_sessPathTimer) clearInterval(_sessPathTimer);
+  loadDrawerSessionPath(r).catch(() => { $('drSessPathSec').style.display = 'none'; });
+  _sessPathTimer = setInterval(() => loadDrawerSessionPath(r).catch(() => {}), SESSPATH_POLL_MS);
+}
+function _stopSessPathPolling() {
+  if (_sessPathTimer) { clearInterval(_sessPathTimer); _sessPathTimer = null; }
 }
 
 // ── VuManChu momentum pane — server-rendered image, the SAME endpoint
@@ -4697,6 +4760,11 @@ function _plainVal(key, val) {
   if (key === 'otherSideTouchedBefore') return val ? 'the opposite line was already tagged today' : null;
   if (key === 'overlapWindow') return val ? 'in the deep-liquidity London/NY overlap' : null;
   if (key === 'dow') return DOW_NAMES[val] ? `it's a ${DOW_NAMES[val]}` : null;
+  if (key === 'otherSideProgress') return val === '1·one-way-so-far' ? 'only one side has moved today so far'
+    : val === '2·some-two-way' ? 'the opposite side has moved a little today too' : 'both sides have moved meaningfully today';
+  if (key === 'progress') return val === '1·early' ? 'early — not far toward the band yet' : val === '2·partway' ? 'partway to the band' : 'most of the way to the band';
+  if (key === 'shape') return val === '1·flat' ? 'barely moved today' : val === '2·extending' ? 'still sitting near its best level today'
+    : val === '3·pulled-back' ? 'pulled back some from its best level today' : 'reversed most of the way back from its best level today';
   return null;
 }
 // "Right now" — plain facts about the current moment, shown REGARDLESS of
