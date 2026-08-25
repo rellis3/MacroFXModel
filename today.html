@@ -4682,6 +4682,29 @@ function _atlasPendingRow(p) {
     + `<span id="${esc0(distId)}" class="chip neu">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span></div>`
     + _atlasMatchBody(p.match);
 }
+// One-line synthesis across everything else in the section: whichever level
+// currently shown has the CLEAREST historical read (non-neutral lean, more
+// supporting readings than challenging ones), stated plainly — or an honest
+// "nothing here clears the bar" if none do. Not a new statistical claim: it's
+// the same lean/supports/challenges the detail below already computed, just
+// picked out and put first so reading every row isn't required to get the
+// gist. Deliberately still refuses to force a pick when the data doesn't
+// support one — same "coin flip" honesty as the per-rung base rate.
+function _atlasHeadline(candidates) {
+  const scored = candidates
+    .filter(c => c.match && c.match.lean !== 'neutral')
+    .map(c => ({ ...c, margin: c.match.supports.length - c.match.challenges.length }))
+    .sort((a, b) => b.margin - a.margin);
+  const best = scored[0];
+  if (!best || best.margin <= 0) {
+    return `<div class="th-top">💡 <b>No clear edge right now</b> <span class="muted">— every level below reads as a coin flip, not a call.</span></div>`;
+  }
+  const leanCls = best.match.lean === 'continuation' ? 'range' : 'bear';
+  const leanLbl = best.match.lean === 'continuation' ? 'through' : 'back';
+  const strength = best.margin > 1 ? 'well-supported' : 'net-positive but mixed';
+  return `<div class="th-top">💡 <b>Clearest read:</b> ${esc0(best.label)} leans <span class="chip ${leanCls}">${leanLbl}</span> `
+    + `<span class="muted">(${strength} — ${best.match.base.out}% through / ${best.match.base.back}% back historically)</span></div>`;
+}
 async function loadDrawerAtlas(r) {
   const sec = $('drAtlasSec'), box = $('drAtlas');
   _atlasSym = null; _atlasPending = [];
@@ -4692,12 +4715,14 @@ async function loadDrawerAtlas(r) {
   if (!j?.ok || (!live?.touches?.length && !live?.pending?.length)) { sec.style.display = 'none'; return; }
 
   let html = '';
+  const headlineCandidates = [];
   const rows = live.touches ?? [];
   if (rows.length) {
     const primary = rows[rows.length - 1];   // most recent touch — the one still relevant
     const earlier = rows.slice(0, -1);
     const t = primary.touch;
     const sideArrow = t.side === 'up' ? '▲' : '▼';
+    headlineCandidates.push({ label: `${sideArrow}${esc0(t.rung)} (touched today)`, match: primary.match });
     const ord = t.ordinal === 1 ? '1st test today' : t.ordinal === 2 ? '2nd test today' : t.ordinal === 3 ? '3rd test today' : `${t.ordinal}th test today`;
     const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})`;
     html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> touched — ${esc0(ord)}, ${esc0(timeStr)}`
@@ -4716,13 +4741,17 @@ async function loadDrawerAtlas(r) {
   const nearestDown = pending.find(p => p.touch.side === 'down');
   const nearest = [nearestUp, nearestDown].filter(Boolean);
   if (nearest.length) {
+    for (const p of nearest) {
+      const sideArrow = p.touch.side === 'up' ? '▲' : '▼';
+      headlineCandidates.push({ label: `${sideArrow}${esc0(p.touch.rung)} (${esc0(_fmtDistance(p.touch.distancePips, p.touch.pip))} away)`, match: p.match });
+    }
     html += `<div class="th-h ctx" style="margin-top:6px">Approaching (not yet touched today)</div>`
       + nearest.map(_atlasPendingRow).join('');
     _atlasSym = r.d.sym;
     _atlasPending = nearest.map(p => ({ side: p.touch.side, rung: p.touch.rung, level: p.touch.level, pip: p.touch.pip }));
   }
 
-  box.innerHTML = html;
+  box.innerHTML = (headlineCandidates.length ? _atlasHeadline(headlineCandidates) : '') + html;
   sec.style.display = 'block';
 }
 // Called on every live price tick (SSE) for whichever pair the drawer has
@@ -4735,7 +4764,19 @@ function updateAtlasDistances(sym, price) {
     const el = document.getElementById(`atlasDist_${p.side}_${p.rung}`);
     if (!el) continue;
     const distPips = Math.abs(p.level - price) / (p.pip || 1);
-    el.textContent = `${_fmtDistance(distPips, p.pip)} away`;
+    // The base-rate verdict below this chip is frozen as of the last /run —
+    // nothing tells the server a touch happened until the next manual run.
+    // Once price is essentially AT the level, keep saying "0.0 away" would
+    // read as broken/stuck rather than honest about that staleness — flip to
+    // an explicit "needs a refresh" state instead of a silently wrong number.
+    const reachedThresh = p.pip >= 1 ? 3 : 2;   // ~3pt indices/gold, ~2pip FX
+    if (distPips <= reachedThresh) {
+      el.textContent = 'at the level — book hasn’t caught up yet';
+      el.className = 'chip warn';
+    } else {
+      el.textContent = `${_fmtDistance(distPips, p.pip)} away`;
+      el.className = 'chip neu';
+    }
   }
 }
 
