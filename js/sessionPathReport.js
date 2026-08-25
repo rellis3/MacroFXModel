@@ -30,6 +30,13 @@ export const SESSION_DIMENSIONS = [
   ['londonVol', "London session volatility vs its own trailing"],
   ['prevCloseLoc', "Yesterday's close vs ITS OWN forecast bands (exhaustion carried over)"],
   ['otherSideProgress', 'Has the OPPOSITE side also moved today (two-way vs one-way so far)'],
+  ['wtState', 'WaveTrend state at the checkpoint'],
+  ['wtMtf', 'Multi-timeframe WaveTrend alignment at the checkpoint'],
+  ['wtSlow', 'Slow-timeframe WaveTrend stretch at the checkpoint'],
+  ['momAdx', 'Slow-timeframe trend strength (ADX) at the checkpoint'],
+  ['htfTrend', 'Higher-timeframe trend backdrop at the checkpoint'],
+  ['vwapSide', 'Band distance beyond session VWAP at the checkpoint'],
+  ['confluence', 'Structural confluence near the band at the checkpoint'],
 ];
 const DIM_LABEL = new Map(SESSION_DIMENSIONS);
 

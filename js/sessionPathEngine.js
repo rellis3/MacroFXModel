@@ -44,6 +44,9 @@ import { buildLadder } from './forecastLadder.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
 import { forecastSigma } from './forecastSigma.js';
 import { sessionRangeSeries, sessionVolBucket } from './levelAtlasEngine.js';
+import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
+import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
+import { pipSize } from './instrumentRegistry.js';
 
 function dowOf(dateStr) { return new Date(dateStr + 'T00:00:00Z').getUTCDay(); }
 function sessionOf(hourUtc) {
@@ -100,7 +103,8 @@ function shapeBucket(peakFrac, reversalFrac) {
  *     -> { rows: [...], coverage: { from, to, sessions } }
  */
 export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLookback = 60,
-                                           checkpointHours = CHECKPOINT_HOURS, liveWindowDays = null } = {}) {
+                                           checkpointHours = CHECKPOINT_HOURS, liveWindowDays = null,
+                                           htfMinBars, structural = true, confLookback = 5 } = {}) {
   const sym = String(instrument).toUpperCase();
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
   const dates = [...sessions.keys()].sort().filter(d => (sessions.get(d)?.length ?? 0) >= 200);
@@ -114,6 +118,15 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
   const est = LADDER_PARAMS.pairs?.[sym]?.estimator ?? LADDER_PARAMS.classDefaults?.[assetClass]?.estimator ?? 'yz_30';
   const rangeMap = sessionRangeSeries(packed);
   const otherSide = { up: 'down', down: 'up' };
+
+  // ── Momentum/VWAP-at-checkpoint context — SAME brick Level Atlas uses at a
+  // touch (`createHtfContext`/`createConfluenceFeatures`), called here at each
+  // checkpoint bar instead of at a touch. One `htf`/`tf` per instrument, one
+  // WaveTrend series per day (cached), never a second copy of this math.
+  let pip = 1; try { pip = pipSize(instrument) || 1; } catch { /* unknown symbol → raw price units */ }
+  const htf = createHtfContext(packed, htfMinBars ? { minHtfBars: htfMinBars } : {});
+  const tf = createConfluenceFeatures({ htf });
+  const wt1Cache = new Map();   // date -> session M1 WaveTrend series (causal EMA, computed once)
 
   const startIdx = liveWindowDays != null ? Math.max(minLookback, dates.length - liveWindowDays) : minLookback;
   const rows = [];
@@ -158,6 +171,17 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
     })();
     const asiaVolCandidate = sessionVolBucket(rangeMap, date, 'Asia', priorDates);
     const londonVolCandidate = sessionVolBucket(rangeMap, date, 'London', priorDates);
+
+    // ── Momentum/VWAP context, once per day (reused across sides/rungs/hours) ──
+    let wt1 = wt1Cache.get(date);
+    if (!wt1) { wt1 = tf.wtSeries(bars); wt1Cache.set(date, wt1); }
+    let confLevels = null;
+    if (structural) {
+      let intraday = [];
+      for (let j = Math.max(0, i - confLookback); j < i; j++) { const pb = sessions.get(dates[j]); if (pb) intraday = intraday.concat(pb); }
+      confLevels = sessionConfluenceLevels({ dailyBars: d1.slice(0, i), intraday, pip, price: open,
+        sources: DAILY_CONFLUENCE_SOURCES, fib15: false });
+    }
     // Session boundaries here are in ELAPSED HOURS SINCE SESSION START
     // (≈ London local hour, since the session itself starts at London
     // midnight) rather than the UTC-hour convention levelAtlasEngine.js's
@@ -242,6 +266,12 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
             if (isUp ? px >= level : px <= level) { reachedLater = true; break; }
           }
 
+          // ── At-the-checkpoint momentum/VWAP conditioning — same call site
+          // shape as Level Atlas's at-touch conditioning, just evaluated at a
+          // fixed checkpoint bar (`k`) toward the STILL-PENDING band, rather
+          // than at the bar where a touch actually occurred.
+          const feats = tf.compute({ bars, touchIdx: k, open, sigma, side: isUp ? 'up' : 'dn', wt1, level, pip, confLevels });
+
           rows.push({
             instrument: sym, assetClass, date, side, rung, checkpointHour: hour,
             progressFrac, peakFrac, reversalFrac,
@@ -251,6 +281,13 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
             londonVol: hour >= 13 ? (londonVolCandidate?.bucket ?? null) : null,
             prevCloseLoc,
             otherSideProgress: otherSideBucket(side, rung, hour),
+            wtState: feats.wtState?.bucket ?? null,
+            wtMtf: feats.wtMtf?.bucket ?? null,
+            wtSlow: feats.wtSlow?.bucket ?? null,
+            momAdx: feats.momAdx?.bucket ?? null,
+            htfTrend: feats.htfTrend?.bucket ?? null,
+            vwapSide: feats.vwapSide?.bucket ?? null,
+            confluence: feats.confluence?.bucket ?? null,
             reachedLater,
           });
         }

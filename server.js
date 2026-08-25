@@ -70,6 +70,7 @@ import { runMaxCopierSuite, traceMaxCopierPair, MAXCOPIER_INSTRUMENTS, MAXCOPIER
 import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } from './js/analyserRoutes.js';
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
+import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
@@ -18111,6 +18112,7 @@ mountLevelAtlasRoutes(app, express);
 // hour, not per touch): "given how today's started, what's the odds it
 // reaches this band" — see js/sessionPathEngine.js.
 mountSessionPathRoutes(app, express);
+mountSessionHandoffRoutes(app, express);
 
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {
@@ -26636,11 +26638,12 @@ if (process.env.OANDA_KEY) {
       if (raw) { const c = JSON.parse(raw); if (typeof c.referenceEngineRebuild === 'boolean') enabled = c.referenceEngineRebuild; }
     } catch (e) { console.error('[reference-engine-rebuild] caps read failed:', e.message); }
     if (!enabled) { console.log('[reference-engine-rebuild] nightly tick — disabled (Caps.referenceEngineRebuild=false or REFERENCE_ENGINE_REBUILD=0)'); return; }
-    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path + Session Handoff, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
     try { _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Level Atlas trigger failed:', e.message); }
     try { _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Path trigger failed:', e.message); }
+    try { _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Handoff trigger failed:', e.message); }
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
