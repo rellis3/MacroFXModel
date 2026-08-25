@@ -139,11 +139,34 @@ export const REARM_FRACS = [0.15, 0.30, 0.50];
  */
 export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                      minLookback = 60, htfMinBars, structural = true, confLookback = 5,
-                                     ivByDate = null, pendingRearmFrac = null } = {}) {
+                                     ivByDate = null, pendingRearmFrac = null, liveWindowDays = null } = {}) {
   const sym = String(instrument).toUpperCase();
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
   const dates = [...sessions.keys()].sort().filter(d => (sessions.get(d)?.length ?? 0) >= 200);
   if (dates.length <= minLookback) return { touches: [], coverage: null };
+  // `liveWindowDays` — everything in the per-day context block (sigma,
+  // dayVol, ivRegime, confLevels, htf features) only ever reads a BOUNDED
+  // trailing window regardless of how much MORE history precedes it —
+  // forecastSigma/sessionConfluenceLevels are rolling-window functions that
+  // read the tail of whatever's handed to them, never the full series (the
+  // widest lookback anywhere in the stack is swing_fib's 60 trading days).
+  // So replaying only the last N days (default 90 — comfortable margin over
+  // that 60) instead of the FULL history reproduces IDENTICAL context for
+  // those N days, at a fraction of the cost: the 40-80s/instrument the full
+  // book-rebuild costs is spent almost entirely on redoing this same per-day
+  // work ~2700 times, not on any single day being expensive. This is what
+  // makes a live, pollable-every-few-seconds context check possible without
+  // a second implementation of any of the math.
+  // ONE real, bounded, DOCUMENTED approximation: `lastVisit`-derived fields
+  // (`prevOutcomeCrossDay`, `rollingRate`, `wtStateRepeated`) reference the
+  // last ≤5 visits to a rung/side, found by replay — if a rung's last visit
+  // was further back than the window, those fields read null/thin here where
+  // a full walk would find it. Acceptable: `prevOutcomeCrossDay` was already
+  // found to hold no OOS effect on its own (see the field's own comment) —
+  // it never survives into a book finding regardless — and same-day fields
+  // (the ones that DO hold) are always fully correct since "today" itself is
+  // always inside the window.
+  const startIdx = liveWindowDays != null ? Math.max(minLookback, dates.length - liveWindowDays) : minLookback;
 
   const d1 = dates.map(d => {
     const b = sessions.get(d); let hi = -Infinity, lo = Infinity;
@@ -166,7 +189,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
 
   const touches = [];
   const pending = [];
-  for (let i = minLookback; i < dates.length; i++) {
+  for (let i = startIdx; i < dates.length; i++) {
     const date = dates[i];
     const bars = sessions.get(date);
     const open = bars[0].open;

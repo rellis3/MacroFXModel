@@ -481,4 +481,58 @@ t('pending dayVol is stable under truncation (day-level context is unaffected by
   }
 });
 
+// ── liveWindowDays — the fast live-poll path ─────────────────────────────────
+// The whole point: replaying only the last N days must produce IDENTICAL
+// context for those N days as replaying the full history, because every
+// context input is a rolling-window function that only ever reads its own
+// tail. If this test ever fails, that assumption broke somewhere and the fast
+// path is no longer provably the same numbers as the book — treat it as a
+// correctness incident, not something to loosen the tolerance on.
+t('liveWindowDays=90 produces IDENTICAL touches/pending for the live day as the full walk', () => {
+  const full = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
+  const fast = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3, liveWindowDays: 90 });
+  assert.equal(fast.coverage.to, full.coverage.to, 'both must land on the same live date');
+
+  const fullToday = full.touches.filter(r => r.date === full.coverage.to);
+  const fastToday = fast.touches.filter(r => r.date === fast.coverage.to);
+  assert.equal(fastToday.length, fullToday.length, 'same number of real touches on the live day');
+  // Every field EXCEPT the documented, bounded lastVisit-derived ones (which
+  // legitimately may not find a same-window prior visit if the true last
+  // visit predates the 90-day replay — see the field's own comment on why
+  // that's an acceptable approximation, not a silent bug).
+  const EXCLUDE = new Set(['prevOutcomeCrossDay', 'rollingRate', 'wtStateRepeated', 'outcomeRepeated', 'daysSincePrev', 'prevOutcome', 'prevWtState']);
+  const keyOf = r => `${r.date}|${r.side}|${r.rung}|${r.ordinal}`;
+  const fullByKey = new Map(fullToday.map(r => [keyOf(r), r]));
+  for (const rf of fastToday) {
+    const rFull = fullByKey.get(keyOf(rf));
+    assert.ok(rFull, `fast touch ${keyOf(rf)} missing from the full walk`);
+    for (const field of Object.keys(rf)) {
+      if (EXCLUDE.has(field)) continue;
+      assert.deepEqual(rf[field], rFull[field], `field "${field}" diverged between the 90-day fast walk and the full walk for ${keyOf(rf)}: ${JSON.stringify(rf[field])} vs ${JSON.stringify(rFull[field])}`);
+    }
+  }
+
+  assert.equal(fast.pending.length, full.pending.length, 'same number of pending rungs on the live day');
+  const fullPendByKey = new Map(full.pending.map(p => [`${p.side}|${p.rung}`, p]));
+  for (const p of fast.pending) {
+    const pFull = fullPendByKey.get(`${p.side}|${p.rung}`);
+    assert.ok(pFull, `fast pending ${p.side}/${p.rung} missing from the full walk`);
+    for (const field of Object.keys(p)) {
+      if (EXCLUDE.has(field)) continue;
+      assert.deepEqual(p[field], pFull[field], `pending field "${field}" diverged for ${p.side}/${p.rung}: ${JSON.stringify(p[field])} vs ${JSON.stringify(pFull[field])}`);
+    }
+  }
+});
+
+t('liveWindowDays is dramatically faster than the full walk (sanity, not a hard perf gate)', () => {
+  const t0 = Date.now();
+  atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.15, 0.3, 0.5] });
+  const fullMs = Date.now() - t0;
+  const t1 = Date.now();
+  atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3, liveWindowDays: 90 });
+  const fastMs = Date.now() - t1;
+  console.log(`    (full: ${fullMs.toFixed(0)}ms, liveWindowDays=90: ${fastMs.toFixed(0)}ms, ${(fullMs / Math.max(1, fastMs)).toFixed(1)}x)`);
+  assert.ok(fastMs < fullMs, `expected the windowed walk to be faster (full ${fullMs.toFixed(0)}ms vs fast ${fastMs.toFixed(0)}ms)`);
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);
