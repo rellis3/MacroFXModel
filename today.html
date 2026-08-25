@@ -1396,25 +1396,32 @@ function renderMacroMoved() {
   if (!macroMoved?.length) { el.innerHTML = '<div class="muted">No macro-change data yet.</div>'; return; }
   const dCls = (v, spread) => v == null || v === 0 ? 'flat' : (spread ? (v > 0 ? 'dn' : 'up') : 'neu');
   const dArrow = v => v == null ? '–' : v > 0 ? '▲' : v < 0 ? '▼' : '–';
-  const dTxt = v => v != null ? `${v > 0 ? '+' : ''}${v}` : '–';
+  // Flows are sub-billion now that RRP has drained, so they need the same
+  // magnitude-aware precision the level uses — otherwise every delta reads 0.
+  const dTxt = (v, flow) => {
+    if (v == null) return '–';
+    if (flow && window.formatFlowBn) { const t = window.formatFlowBn(v); return v > 0 && !t.startsWith('<') ? '+' + t : t; }
+    return `${v > 0 ? '+' : ''}${v}`;
+  };
   el.innerHTML = macroMoved.map(r => {
     const spread = r.kind === 'spread';
+    const flow = r.kind === 'flow';
     const d1 = r.deltas?.[1], d5 = r.deltas?.[5], d20 = r.deltas?.[20];
     const lastFmt = r.kind === 'rate' ? `${(+r.last).toFixed(2)}%`
       : r.kind === 'spread' ? `${Math.round(r.last * 100)}bps`
       : r.kind === 'curve' ? `${Math.round(r.last)}bps`
-      : r.kind === 'flow' ? `$${Math.round(r.last)}bn` : (+r.last).toFixed(1);
+      : r.kind === 'flow' ? `$${window.formatFlowBn ? window.formatFlowBn(r.last) : (+r.last).toFixed(2)}bn` : (+r.last).toFixed(1);
     // Flag when today's move runs counter to the week's — a same-day arrow
     // can read as a bigger deal than it is if it's actually just a blip
     // inside a larger multi-day move the other way (or vice versa).
     const diverges = d1 != null && d5 != null && d1 !== 0 && d5 !== 0 && Math.sign(d1) !== Math.sign(d5);
-    const blip = diverges ? `<span class="mv-blip" title="Today's move (${dTxt(d1)}${r.unit}) runs against the week's direction (${dTxt(d5)}${r.unit}) — could be a blip inside the larger move, not a reversal of it.">⟲</span>` : '';
-    const title = `${r.label}: now ${lastFmt}.${d1 != null ? ` 1d ${dTxt(d1)}${r.unit}` : ''}${d5 != null ? ` · 5d ${dTxt(d5)}${r.unit}` : ''}${d20 != null ? ` · 20d ${dTxt(d20)}${r.unit}` : ''}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
+    const blip = diverges ? `<span class="mv-blip" title="Today's move (${dTxt(d1, flow)}${r.unit}) runs against the week's direction (${dTxt(d5, flow)}${r.unit}) — could be a blip inside the larger move, not a reversal of it.">⟲</span>` : '';
+    const title = `${r.label}: now ${lastFmt}.${d1 != null ? ` 1d ${dTxt(d1, flow)}${r.unit}` : ''}${d5 != null ? ` · 5d ${dTxt(d5, flow)}${r.unit}` : ''}${d20 != null ? ` · 20d ${dTxt(d20, flow)}${r.unit}` : ''}${r.note ? ' ' + r.note + ' today.' : ''} Directional context, not a signal.`;
     return `<div class="move-row" title="${title}">
       <div class="mv-top"><span class="mv-lbl">${esc0(r.label)}</span><span class="mv-now">${lastFmt}</span></div>
       <div class="mv-deltas">
-        <span class="mv-d"><i>1d</i><b class="mv-arrow ${dCls(d1, spread)}">${dArrow(d1)} ${esc0(dTxt(d1))}${r.unit}</b>${blip}</span>
-        <span class="mv-d"><i>5d</i><b class="mv-arrow ${dCls(d5, spread)}">${dArrow(d5)} ${esc0(dTxt(d5))}${r.unit}</b></span>
+        <span class="mv-d"><i>1d</i><b class="mv-arrow ${dCls(d1, spread)}">${dArrow(d1)} ${esc0(dTxt(d1, flow))}${r.unit}</b>${blip}</span>
+        <span class="mv-d"><i>5d</i><b class="mv-arrow ${dCls(d5, spread)}">${dArrow(d5)} ${esc0(dTxt(d5, flow))}${r.unit}</b></span>
       </div>
     </div>`;
   }).join('');
@@ -5661,6 +5668,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) fo
 <!-- Cross-asset core (js/crossAssetCore.js) — realised-vol maths for the Vol tab's
      RV-vs-IV panel, and the normalisation/alignment behind the sidebar driver
      board. Context panels: the RV/IV gap is a risk premium, not a direction. -->
+<!-- Macro-change formatting (js/macroChange.js) — shared with the server that
+     builds /api/macro-changes, so a $bn flow is formatted by one rule in both
+     places. Whole-billion precision made a drained RRP read as a dead feed. -->
+<script type="module">
+  import { formatFlowBn } from './js/macroChange.js';
+  window.formatFlowBn = formatFlowBn;
+  try { window.render?.(); } catch (e) {}
+</script>
 <script type="module">
   import * as CrossAsset from './js/crossAssetCore.js';
   window.crossAssetBrick = CrossAsset;

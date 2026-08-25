@@ -32,10 +32,33 @@ export const MACRO_CHANGE_SPEC = {
   // Fed's reverse-repo facility usage ($bn level → change shows liquidity
   // draining/building). Both daily.
   sofr:  { label: 'SOFR (repo rate)',    bps: true,  kind: 'rate' },
-  rrp:   { label: 'Reverse repo (RRP)',  bps: false, kind: 'flow', unit: 'bn', dp: 0 },
+  rrp:   { label: 'Reverse repo (RRP)',  bps: false, kind: 'flow', unit: 'bn', dp: 2 },
 };
 
 const _round = (x, dp = 0) => { const m = 10 ** dp; return Math.round(x * m) / m; };
+
+// ── Formatting a $bn flow ────────────────────────────────────────────────────
+// RRP ran in the HUNDREDS of billions for years, so whole-billion precision was
+// right. The facility has since drained to well under $1bn — at which point 0 dp
+// turns a live reading into a flat "$0bn / 1d 0 / 5d 0", which is indistinguishable
+// from a dead feed. Precision now follows magnitude, and a non-zero value is never
+// allowed to render as exactly zero.
+export function flowDp(v) {
+  const a = Math.abs(Number(v));
+  if (!Number.isFinite(a)) return 2;
+  return a >= 100 ? 0 : a >= 10 ? 1 : 2;
+}
+
+/** Format a $bn flow. Returns a STRING; '<0.01' rather than '0' for a live trickle. */
+export function formatFlowBn(v) {
+  const n = Number(v);
+  if (v == null || !Number.isFinite(n)) return '–';
+  const dp = flowDp(n);
+  const r = Number(n.toFixed(dp));
+  if (r === 0 && n !== 0) return n > 0 ? '<0.01' : '>-0.01';
+  return r.toFixed(dp);
+}
+
 
 // Latest value + change over each window (in OBSERVATIONS: FRED daily series skip
 // weekends/holidays, so 1/5/20 obs ≈ 1d/1wk/1mo). Returns null if too few points.
