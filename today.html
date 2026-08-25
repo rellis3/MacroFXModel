@@ -823,6 +823,7 @@
   </div>
   <div class="dr-sec" id="drAtlasSec" data-seckey="atlas" style="display:none">
     <h3 class="help" title="What history says happens when price is exactly where it is right now, relative to today's forecast ladder. Built from a decade of real M1 touches at this rung — every context reading shown here (session, approach speed, yesterday's close, implied vol, etc.) held up on OUT-OF-SAMPLE data before being allowed to appear; anything that didn't survive that check is left out rather than shown as a maybe. Not a signal, not a prediction — a base rate."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Level Atlas — what history says from here</span> <span class="chip neu" style="font-size:9px">OOS-checked</span></h3>
+    <div class="hint" style="margin:2px 0 6px">Not a trade call — a base rate. "Touched" below already happened today (context only); "👉 Approaching" is the untouched line still ahead, live right now — that's the one to watch.</div>
     <div class="dr-sec-body"><div id="drAtlas"></div></div>
   </div>
   <div class="dr-sec" id="drThesisSec" data-seckey="thesis" style="display:none">
@@ -931,7 +932,16 @@
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Session Path — where's today headed?</span>
       <span class="chip neu" style="font-size:9px">OOS-checked</span>
     </h3>
+    <div class="hint" style="margin:2px 0 6px">Not a trade call — a gauge. Checks how far today has already pushed toward each remaining target, and whether history says a day shaped like this reaches it more or less often than usual. If it's already spiked and given the move back, that lowers the odds of it running further today — it doesn't tell you to open a new trade either way.</div>
     <div class="dr-sec-body"><div id="drSessPath"><span class="muted">loading…</span></div></div>
+  </div>
+  <div class="dr-sec" id="drHandoffSec" data-seckey="handoff" style="display:none">
+    <h3 class="help" title="Session-to-session, not touch/band level: given how the most recently CLOSED session (Asia/London/NY) behaved, what does history say about the session that's about to happen? Two SEPARATE questions checked out-of-sample: does the move CONTINUE in the same direction (checked across 5 instruments: a clean coin-flip — an honest null, shown as such) and is the NEXT session likely to be volatile (a real, consistent effect — a wild close tends to hand off into another wild session).">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Session Handoff — what did the last session hand off?</span>
+      <span class="chip neu" style="font-size:9px">OOS-checked</span>
+    </h3>
+    <div class="hint" style="margin:2px 0 6px">Not a trade call. "Does it continue" is usually close to a coin flip on its own — shown honestly, not hidden. "Next session wild?" is the more reliable read: a volatile close tends to hand off into another volatile session, which matters for how wide to expect the next few hours to be, not which direction to take.</div>
+    <div class="dr-sec-body"><div id="drHandoff"><span class="muted">loading…</span></div></div>
   </div>
   <div class="dr-sec" id="drVmSec" data-seckey="vumanchu" style="display:none">
     <h3 class="help" title="VuManChu (WaveTrend/Cipher-B) — a momentum oscillator, same family as RSI/Stochastic: it measures the speed of recent price swings and flags overbought/oversold or bullish/bearish crosses. Same server-rendered pane vumanchu-chart.html and the Telegram alerts use — one image, never redrawn twice.">
@@ -4138,6 +4148,7 @@ function closeDrawer() {
   if (drChart) { try { drChart.remove(); } catch (e) {} drChart = null; drSeries = null; }
   _stopAtlasPolling();
   _stopSessPathPolling();
+  _stopHandoffPolling();
 }
 
 let _drR = null;   // current drawer row — for the on-demand "Analyse" button
@@ -4191,6 +4202,7 @@ async function openDrawer(name) {
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
   try { loadDrawerVumanchu(r); } catch { $('drVmSec').style.display = 'none'; }
   _startSessPathPolling(r);
+  _startHandoffPolling(r);
   try { renderDrExh(r); } catch (e) { $('drExhSec').style.display = 'none'; }
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
@@ -4472,6 +4484,44 @@ function _sessPathBar(label, pct, color) {
   return `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted,#64748b);margin:5px 0 2px"><span>${esc0(label)}</span><span>${pct == null ? '—' : pct + '%'}</span></div>`
     + `<div style="background:rgba(255,255,255,.08);border-radius:3px;height:6px;overflow:hidden"><div style="background:${color};height:100%;width:${w}%"></div></div>`;
 }
+// A single coherent SENTENCE per shape, instead of gluing the shape text and
+// the progress text together with a comma. The glued version ("reversed most
+// of the way back from its best level today, early — not far toward the band
+// yet") reads as two competing stories to a human, even though it's
+// internally consistent (shape = the round-trip so far, progress = where
+// price sits RIGHT NOW — a session that gave back its own spike is, BY
+// DEFINITION, back near "early"). Fold that relationship into one sentence
+// instead of asking the reader to reconcile two separate clauses themselves.
+function _sessShapeSentence(row) {
+  const progressTxt = esc0(_plainVal('progress', row.progress) ?? row.progress ?? '');
+  switch (row.shape) {
+    case '1·flat': return 'Barely moved today — no real push toward this band yet.';
+    case '2·extending': return `Still pushing toward this band — ${progressTxt}.`;
+    case '3·pulled-back': return `Pulled back some after an earlier push toward this band — ${progressTxt}.`;
+    case '4·deep-reversal': return 'Spiked partway toward this band earlier, then gave nearly all of it back — now close to where it opened.';
+    default: return esc0(_plainVal('shape', row.shape) ?? row.shape ?? '');
+  }
+}
+// One synthesized line at the top — the SAME fix already applied to the
+// Level Atlas card, for the same reason: five bands each independently
+// saying "reduced odds" is one fact repeated five times, not five facts.
+// Picks whichever band's odds are furthest from "typical" and states it
+// once, noting how many OTHER bands are telling the same story.
+function _sessPathHeadline(entries) {
+  const scored = entries.filter(e => e.lift != null).sort((a, b) => Math.abs(b.lift) - Math.abs(a.lift));
+  const best = scored[0];
+  if (!best || Math.abs(best.lift) < 8) {
+    return `<div class="th-top">💡 <b>About a typical day</b> <span class="muted">— no band's odds are meaningfully off from normal right now.</span></div>`;
+  }
+  const sideArrow = best.row.side === 'up' ? '▲' : '▼';
+  const verb = best.lift > 0 ? 'boosted' : 'reduced';
+  const cls = best.lift > 0 ? 'range' : 'bear';
+  const sameStory = scored.filter(e => Math.sign(e.lift) === Math.sign(best.lift) && Math.abs(e.lift) >= 8).length;
+  const echo = sameStory > 1 ? `same story across ${sameStory} bands, clearest: ` : '';
+  return `<div class="th-top">💡 <b>Today's shape has ${verb} the odds</b> of reaching what's still ahead `
+    + `<span class="chip ${cls}">${sideArrow}${esc0(best.row.rung)} ${best.match.base.is}% vs typical ${best.typicalPct}%</span> `
+    + `<span class="muted">(${echo}${best.lift >= 0 ? '+' : ''}${best.lift}pp)</span></div>`;
+}
 async function loadDrawerSessionPath(r) {
   const sec = $('drSessPathSec'), box = $('drSessPath');
   let j;
@@ -4481,27 +4531,44 @@ async function loadDrawerSessionPath(r) {
   const live = j?.live;
   if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
 
-  const rowsHtml = live.rows.map(({ row, match, typicalPct, firstRow, firstMatch }) => {
+  const entries = live.rows.map(({ row, match, typicalPct, firstRow, firstMatch }) => {
+    const lift = (match && typicalPct != null) ? +(match.base.is - typicalPct).toFixed(1) : null;
+    return { row, match, typicalPct, firstRow, firstMatch, lift };
+  });
+  const headline = _sessPathHeadline(entries);
+
+  const rowsHtml = entries.map(({ row, match, typicalPct, firstRow, firstMatch, lift }) => {
     const sideArrow = row.side === 'up' ? '▲' : '▼';
-    const timeStr = `${String(row.checkpointHour).padStart(2, '0')}:00 since session start`;
-    const shapeTxt = `${esc0(_plainVal('shape', row.shape) ?? row.shape)}, ${esc0(_plainVal('progress', row.progress) ?? row.progress)}`;
+    // `checkpointHour` is HOURS INTO THE SESSION (session = London midnight),
+    // not a clock time in any timezone the site or a chart happens to show —
+    // rendering it as "04:00" invited exactly the mistake a real user made
+    // (reading it as "the spike happened at 4am" and comparing it against
+    // their own chart's clock, which showed a DIFFERENT peak time because
+    // it's on a different timezone AND because a checkpoint is a SAMPLE, not
+    // the moment the thing it describes actually happened — the peak can, and
+    // often does, sit well before the checkpoint that reports it). Spelled
+    // out as an elapsed offset instead, which can't be misread as a clock.
+    const timeStr = `${row.checkpointHour}h into today's session`;
+    const shapeTxt = _sessShapeSentence(row);
     if (!match) {
-      return `<div class="th-top">${sideArrow} <b>${esc0(row.rung)}</b> band — as of ${esc0(timeStr)}</div>`
+      return `<div class="th-top">${sideArrow} <b>${esc0(row.rung)}</b> band — ${esc0(timeStr)}</div>`
         + `<div class="th-row"><span class="th-d">${shapeTxt}</span></div>`
         + `<div class="hint">No historical read stored for this setup yet.</div>`;
     }
     const base = match.base;
-    const lift = typicalPct != null ? +(base.is - typicalPct).toFixed(1) : null;
     const v = lift != null && lift >= 8 ? { cls: 'range', color: 'var(--bull,#22c55e)', label: '↗ Boosted odds of reaching it' }
       : lift != null && lift <= -8 ? { cls: 'bear', color: 'var(--bear,#ef4444)', label: '↘ Reduced odds of reaching it' }
       : { cls: 'neu', color: 'var(--muted,#64748b)', label: '🪙 About a typical day' };
-    // "Since [first checkpoint today]" — the "has this morning's setup held
+    // "At the [first checkpoint today]" — the "has this morning's setup held
     // up or faded" comparison. Only shown once a SECOND, later checkpoint
     // has actually fired for this rung today (firstRow is null otherwise —
-    // nothing to compare against yet).
+    // nothing to compare against yet). "At", not "Since" — a checkpoint is
+    // a SAMPLE of the day's progress so far, not the moment an event
+    // happened; the read described could have been reached anywhere earlier
+    // in the session and simply persisted (or not) up to this checkpoint.
     const sinceHtml = (firstRow && firstMatch)
-      ? `<div class="muted" style="font-size:10px;margin:2px 0 4px">Since ${String(firstRow.checkpointHour).padStart(2, '0')}:00: `
-        + `${esc0(_plainVal('shape', firstRow.shape) ?? firstRow.shape)} (${firstMatch.base.is}%) → now ${esc0(_plainVal('shape', row.shape) ?? row.shape)} (${base.is}%)</div>`
+      ? `<div class="muted" style="font-size:10px;margin:2px 0 4px">At the ${firstRow.checkpointHour}h mark: `
+        + `${_sessShapeSentence(firstRow)} (${firstMatch.base.is}%) → by the ${row.checkpointHour}h mark: ${shapeTxt} (${base.is}%)</div>`
       : '';
     // Callout box, styled distinctly (not just another th-top row) — the ONE
     // thing meant to be readable at a glance without opening "Why?".
@@ -4518,7 +4585,7 @@ async function loadDrawerSessionPath(r) {
     return html;
   }).join('');
 
-  box.innerHTML = rowsHtml;
+  box.innerHTML = headline + rowsHtml;
   sec.style.display = 'block';
 }
 function _startSessPathPolling(r) {
@@ -4528,6 +4595,82 @@ function _startSessPathPolling(r) {
 }
 function _stopSessPathPolling() {
   if (_sessPathTimer) { clearInterval(_sessPathTimer); _sessPathTimer = null; }
+}
+
+// ── Session Handoff — session-to-session, not touch/band level. Two SEPARATE
+// questions per closed session, shown honestly as what they are: `continued`
+// is a checked-and-confirmed COIN FLIP (48-53% on every instrument tested —
+// shown as a toss-up chip, not hidden), `nextVol` is a real, OOS-consistent
+// effect (a wild close tends to hand off into another wild session). Polled
+// slower than Session Path (30s, not 15s) — a session only closes every few
+// hours, nothing changes between polls most of the time.
+let _handoffTimer = null;
+const HANDOFF_POLL_MS = 30000;
+function _handoffRow(m, questionWord) {
+  const bucketPlain = _plainVal(m.dimKey, m.bucket) ?? m.bucket;
+  const sameSign = Math.sign(m.deltaIS) === Math.sign(m.deltaOOS);
+  const word = m.favors === 'yes' ? questionWord : `NOT ${questionWord}`;
+  const d = `${esc0(bucketPlain)} — pushes ${Math.abs(m.deltaIS)} points toward ${word}`
+    + (sameSign ? ', held up on an independent double-check' : '') + ` (seen ${m.n.is + m.n.oos} times)`;
+  return `<div class="th-row ${m.favors === 'yes' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${d}</span></div>`;
+}
+// `pct` is "% chance the next session continues in `side`'s direction" — a
+// reading BELOW 50% means reversal is actually the more likely outcome, so
+// the arrow/colour reflect the EFFECTIVE expected direction (side, flipped
+// when continuation itself is the less-likely outcome), not just whether pct
+// clears 50 — a raw "41% continuation on the DOWN side" needs exactly this
+// translation to read as what it actually implies (more likely to bounce up).
+function _handoffContinuationChip(pct, oos, side) {
+  if (pct == null) return { cls: 'neu', label: '—' };
+  if (Math.abs(pct - 50) < 5) return { cls: 'neu', label: `🪙 Toss-up (${pct}%)` };
+  const effectiveSide = pct > 50 ? side : (side === 'up' ? 'down' : 'up');
+  const arrow = effectiveSide === 'up' ? '↗' : '↘';
+  return { cls: effectiveSide === 'up' ? 'range' : 'bear', label: `${arrow} ${pct}% (unseen-data check: ${oos ?? '—'}%)` };
+}
+async function loadDrawerHandoff(r) {
+  const sec = $('drHandoffSec'), box = $('drHandoff');
+  let j;
+  try { j = await jget(`/api/session-handoff/fastlive/${encodeURIComponent(r.name)}`); }
+  catch { return; }
+  if (j?.warming) return;   // leave whatever's on screen; try again next tick
+  const live = j?.live;
+  if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
+
+  const rowsHtml = live.rows.map(({ row, continuationMatch, volClusterMatch }) => {
+    const sideArrow = row.side === 'up' ? '▲' : '▼';
+    const shapeTxt = `closed ${esc0(_plainVal('giveback', row.giveback) ?? row.giveback)} — ${esc0(_plainVal('travel', row.travel) ?? row.travel)}`;
+    const contBase = continuationMatch?.base, volBase = volClusterMatch?.base;
+    const contChip = _handoffContinuationChip(contBase?.is, contBase?.oos, row.side);
+    // Vol-cluster reads as a plain "how likely is the NEXT session wild"
+    // number, always framed the same direction (higher = more likely wild) —
+    // no side-dependent flip like continuation's "toward which direction".
+    const volPct = volBase?.is;
+    const volChip = volPct == null ? { cls: 'neu', label: '—' }
+      : volPct >= 30 ? { cls: 'bear', label: `⚡ ${volPct}% (unseen-data check: ${volBase.oos ?? '—'}%)` }
+      : { cls: 'neu', label: `${volPct}% (unseen-data check: ${volBase.oos ?? '—'}%)` };
+    let html = `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
+      + `<div class="th-top" style="margin:0"><b>${esc0(row.transition)}</b> just closed</div>`
+      + `<div class="th-row" style="padding:2px 0"><span class="th-d">${sideArrow} ${shapeTxt}</span></div>`
+      + `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px">`
+      + `<div style="flex:1"><div class="muted" style="font-size:9px">Does it continue?</div><div class="chip ${contChip.cls}" style="font-size:10px;margin-top:2px;display:inline-block">${contChip.label}</div></div>`
+      + `<div style="flex:1"><div class="muted" style="font-size:9px">Next session wild?</div><div class="chip ${volChip.cls}" style="font-size:10px;margin-top:2px;display:inline-block">${volChip.label}</div></div>`
+      + `</div></div>`;
+    const matchedHtml = (continuationMatch?.matched ?? []).map(m => _handoffRow(m, 'continuing'))
+      .concat((volClusterMatch?.matched ?? []).map(m => _handoffRow(m, 'a wild next session')));
+    if (matchedHtml.length) html += `<details class="atlas-why" style="margin-top:2px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${matchedHtml.join('')}</details>`;
+    return html;
+  }).join('');
+
+  box.innerHTML = rowsHtml;
+  sec.style.display = 'block';
+}
+function _startHandoffPolling(r) {
+  if (_handoffTimer) clearInterval(_handoffTimer);
+  loadDrawerHandoff(r).catch(() => { $('drHandoffSec').style.display = 'none'; });
+  _handoffTimer = setInterval(() => loadDrawerHandoff(r).catch(() => {}), HANDOFF_POLL_MS);
+}
+function _stopHandoffPolling() {
+  if (_handoffTimer) { clearInterval(_handoffTimer); _handoffTimer = null; }
 }
 
 // ── VuManChu momentum pane — server-rendered image, the SAME endpoint
@@ -4781,6 +4924,8 @@ const DIM_PLAIN = {
   roundNum:  { '1·off': 'not near a round number', '2·near': 'near a round number', '3·on-figure': 'right on a round number' },
   volClimax: { '1·quiet': 'quiet volume at the touch', '2·normal': 'normal volume at the touch', '3·surge': 'a volume surge at the touch' },
   churn:     { '1·churned': 'chopping both ways today', '2·mixed': 'mixed one-way/two-way action today', '3·driven': 'a one-sided, driven move today' },
+  travel:    { '1·churned': 'chopped both ways', '2·mixed': 'a mix of one-way and two-way action', '3·driven': 'a one-sided, driven move' },
+  giveback:  { '1·held': 'held near its best level into the close', '2·partial-giveback': 'gave back some of its move before closing', '3·full-reversal': 'gave back most of its move before closing' },
 };
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function _plainVal(key, val) {
@@ -4878,11 +5023,34 @@ function _fmtDistance(pips, pip) {
   // "pips" only reads naturally for the latter, so label generically instead.
   return pip >= 1 ? `${pips.toFixed(1)}pt` : `${pips.toFixed(1)}p`;
 }
+// "upside"/"downside" instead of a bare ▲/▼ — the arrow alone is easy to miss
+// on mobile, and was the direct cause of a real "why is there a p50 above AND
+// a p50 below" confusion: they're two DIFFERENT bands (the O-H and O-L legs
+// of the same rung), not a duplicate.
+function _atlasSideWord(side) { return side === 'up' ? 'upside' : 'downside'; }
+// How long ago a TOUCHED record's own timestamp was, relative to right now —
+// without this, "In the London session" (a touch's OWN context, frozen at
+// the moment it happened) sits next to "In the Asia session" (an approaching
+// line's context, evaluated right now) with nothing to explain why they can
+// legitimately differ: they're two different POINTS IN TIME, not a
+// contradiction. `date` is the touch's own session date (`live.date`).
+function _atlasAgoStr(date, hourUtc, minute) {
+  if (date == null || hourUtc == null) return '';
+  const t = Date.parse(`${date}T${String(hourUtc).padStart(2, '0')}:${String(minute ?? 0).padStart(2, '0')}:00Z`);
+  if (!Number.isFinite(t)) return '';
+  const mins = Math.round((Date.now() - t) / 60000);
+  if (mins < 0 || mins > 1440) return '';   // don't show a nonsense/huge "ago" for clock skew or a stale date
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+}
 function _atlasPendingRow(p, opts = {}) {
   const t = p.touch;
   const sideArrow = t.side === 'up' ? '▲' : '▼';
   const distId = `atlasDist_${t.side}_${t.rung}`;
-  return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> — `
+  const dp = opts.dp ?? 5;
+  const priceStr = t.level != null ? ` at <b>${esc0(fmtN(t.level, dp))}</b>` : '';
+  return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))})${priceStr} — `
     + `<span id="${esc0(distId)}" class="chip neu">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span></div>`
     + _atlasMatchBody(p.match, t, opts);
 }
@@ -4925,6 +5093,7 @@ async function loadDrawerAtlas(r) {
   _atlasSym = null; _atlasPending = [];
   const live = j?.live;
   if (!j?.ok || (!live?.touches?.length && !live?.pending?.length)) { sec.style.display = 'none'; return; }
+  const dp = r.d?.dp ?? 5;
 
   let html = '';
   const headlineCandidates = [];
@@ -4936,10 +5105,12 @@ async function loadDrawerAtlas(r) {
     const sideArrow = t.side === 'up' ? '▲' : '▼';
     headlineCandidates.push({ label: `${sideArrow}${esc0(t.rung)} (touched today)`, match: primary.match });
     const ord = t.ordinal === 1 ? '1st test today' : t.ordinal === 2 ? '2nd test today' : t.ordinal === 3 ? '3rd test today' : `${t.ordinal}th test today`;
-    const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})`;
-    html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> touched — ${esc0(ord)}, ${esc0(timeStr)}`
+    const ago = _atlasAgoStr(live.date, t.hourUtc, t.minute);
+    const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})${ago ? `, ${ago}` : ''}`;
+    const priceStr = t.level != null ? ` at <b>${esc0(fmtN(t.level, dp))}</b>` : '';
+    html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))})${priceStr} touched — ${esc0(ord)}, ${esc0(timeStr)}`
       + (t.outcome && t.outcome !== 'neither' ? ` <span class="muted">(went ${t.outcome === 'out' ? 'through' : 'back'})</span>` : ' <span class="muted">(unresolved — still live)</span>')
-      + `</div>` + _atlasMatchBody(primary.match, t, { rightNowHeading: 'At that touch' });
+      + `</div>` + _atlasMatchBody(primary.match, t, { rightNowHeading: 'Conditions AT that touch (history, not live)' });
     if (earlier.length) {
       const line = earlier.map(({ touch: e }) => `${e.side === 'up' ? '▲' : '▼'}${e.rung} ${String(e.hourUtc).padStart(2, '0')}:${String(e.minute).padStart(2, '0')} (${e.outcome === 'out' ? 'through' : e.outcome === 'back' ? 'back' : 'unresolved'})`).join(', ');
       html += `<div class="hint">Earlier today: ${esc0(line)}</div>`;
@@ -4968,13 +5139,20 @@ async function loadDrawerAtlas(r) {
     // rung, is the fix for the other half of the redundancy: repeating an
     // identical VWAP/VuManChu/session readout 2-3 times over said nothing
     // extra, it just made "which level actually matters" harder to see.
-    html += `<div class="th-h ctx" style="margin-top:6px">Approaching (not yet touched today)</div>`
+    const curPrice = nearest[0].touch.currentPrice;
+    const curPriceStr = curPrice != null ? ` <span class="muted" style="font-weight:normal">— price now <b>${esc0(fmtN(curPrice, dp))}</b></span>` : '';
+    html += `<div class="th-h ctx" style="margin-top:6px">👉 Approaching (not yet touched — this is the one to watch)${curPriceStr}</div>`
       + _rightNowPanel(nearest[0].touch)
-      + nearest.map(p => _atlasPendingRow(p, { skipRightNow: true })).join('');
+      + nearest.map(p => _atlasPendingRow(p, { skipRightNow: true, dp })).join('');
     _atlasSym = r.d.sym;
     _atlasPending = nearest.map(p => ({ side: p.touch.side, rung: p.touch.rung, level: p.touch.level, pip: p.touch.pip }));
   }
 
+  // The past-vs-live distinction is now explained ONCE, always-visible, in
+  // the section's static intro line (a hover `title=` tooltip is effectively
+  // invisible on mobile — no hover, unreliable long-press — which is exactly
+  // why this needed explaining by hand at all) rather than re-derived here
+  // every render.
   box.innerHTML = (headlineCandidates.length ? _atlasHeadline(headlineCandidates) : '') + html;
   sec.style.display = 'block';
 }

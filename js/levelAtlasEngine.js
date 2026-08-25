@@ -59,12 +59,17 @@ function sessionOf(hourUtc) {
 function dowOf(dateStr) { return new Date(dateStr + 'T00:00:00Z').getUTCDay(); }
 
 // ── Session-level realized range series (NEW — not in any existing engine) ───
-// For each session-date, the high-low range of EACH of the three sessions
+// For each session-date, the high-low-open-close of EACH of the three sessions
 // (Asia/London/NY), keyed as `${date}|${sessionName}`. Built once per pair from
 // the packed M1, independent of which rung/touch is being analysed.
+// `open`/`close` (added for sessionHandoffEngine.js — needs a session's own
+// DIRECTION, not just its range) are correct by construction from a single
+// forward pass: bars for a fixed key arrive in chronological order (the packed
+// array itself is time-ordered), so the first write is the session's open and
+// the last write is its close — no second pass or explicit ordering needed.
 export function sessionRangeSeries(packed) {
-  const { n, times, highs, lows } = packed;
-  const out = new Map();   // key -> { hi, lo, range, t0 }
+  const { n, times, opens, highs, lows, closes } = packed;
+  const out = new Map();   // key -> { hi, lo, range, open, close, t0 }
   for (let i = 0; i < n; i++) {
     const t = times[i], d = new Date(t * 1000);
     const h = d.getUTCHours();
@@ -77,8 +82,8 @@ export function sessionRangeSeries(packed) {
     const date = dayD.toISOString().slice(0, 10);
     const key = `${date}|${sess}`;
     const cur = out.get(key);
-    if (!cur) out.set(key, { hi: highs[i], lo: lows[i], range: 0, t0: t });
-    else { if (highs[i] > cur.hi) cur.hi = highs[i]; if (lows[i] < cur.lo) cur.lo = lows[i]; }
+    if (!cur) out.set(key, { hi: highs[i], lo: lows[i], range: 0, open: opens[i], close: closes[i], t0: t });
+    else { if (highs[i] > cur.hi) cur.hi = highs[i]; if (lows[i] < cur.lo) cur.lo = lows[i]; cur.close = closes[i]; }
   }
   for (const v of out.values()) v.range = v.hi - v.lo;
   return out;
