@@ -276,6 +276,46 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same two-bond setup, live — change the default probability, face value, or confidence level</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and both VaR and CVaR — for each bond
+      alone, summed, and for the combined portfolio (still assuming independence) — recalculate instantly,
+      so you can find inputs where sub-additivity holds as well as the one above where it breaks.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Default probability (%)</span></div>
+        <input type="number" id="crm-scratch-q" class="tl-scratch-input" value="4" step="0.5" min="0" max="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Face value $</span></div>
+        <input type="number" id="crm-scratch-F" class="tl-scratch-input" value="100" step="10" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Confidence \(p\) (%)</span></div>
+        <input type="number" id="crm-scratch-p" class="tl-scratch-input" value="95" step="0.5" min="50" max="99.9">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      VaR(A) = VaR(B) = $<b id="crm-scratch-var1">0</b>&emsp;VaR(A)+VaR(B) = $<b id="crm-scratch-varsum">0</b>
+    </div>
+    <div class="tl-readout">
+      VaR(A+B) = $<b id="crm-scratch-varcomb">100</b>
+      <span id="crm-scratch-varnote" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      CVaR(A) = CVaR(B) = $<b id="crm-scratch-cvar1">100</b>&emsp;CVaR(A)+CVaR(B) = $<b id="crm-scratch-cvarsum">200</b>
+    </div>
+    <div class="tl-readout">
+      CVaR(A+B) = $<b id="crm-scratch-cvarcomb">200</b>
+      <span id="crm-scratch-cvarnote" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="crm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">VaR vs. CVaR: individual sum vs. combined portfolio, from the worked example above</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing VaR of the summed individual bonds at zero dollars, VaR of the combined portfolio at one hundred dollars (a violation of sub-additivity), and CVaR of both the summed individual bonds and the combined portfolio equal at two hundred dollars (coherent)">
@@ -495,6 +535,88 @@
 </div>
 <script>
 (function(){
+  var qInput = document.getElementById('crm-scratch-q');
+  var FInput = document.getElementById('crm-scratch-F');
+  var pInput = document.getElementById('crm-scratch-p');
+  if (!qInput) return;
+
+  var var1Out = document.getElementById('crm-scratch-var1');
+  var varSumOut = document.getElementById('crm-scratch-varsum');
+  var varCombOut = document.getElementById('crm-scratch-varcomb');
+  var varNoteOut = document.getElementById('crm-scratch-varnote');
+  var cvar1Out = document.getElementById('crm-scratch-cvar1');
+  var cvarSumOut = document.getElementById('crm-scratch-cvarsum');
+  var cvarCombOut = document.getElementById('crm-scratch-cvarcomb');
+  var cvarNoteOut = document.getElementById('crm-scratch-cvarnote');
+  var resetBtn = document.getElementById('crm-scratch-reset');
+
+  var DEFAULTS = { q: 4, F: 100, p: 95 };
+
+  function money(x){ return '$' + x.toFixed(2).replace(/\.00$/, ''); }
+
+  function recompute(){
+    var qPct = parseFloat(qInput.value);
+    var F = parseFloat(FInput.value);
+    var pPct = parseFloat(pInput.value);
+
+    if (!isFinite(qPct) || !isFinite(F) || !isFinite(pPct) || qPct < 0 || qPct > 100 || F <= 0 || pPct <= 0 || pPct >= 100) {
+      varNoteOut.textContent = '(enter a default probability 0-100%, a positive face value, and a confidence level strictly between 0 and 100%)';
+      cvarNoteOut.textContent = '';
+      return;
+    }
+
+    var q = qPct / 100;
+    var alpha = 1 - pPct / 100; // tail probability 1-p
+
+    // Two independent bonds, each losing $0 or $F on default with prob q.
+    var VaR_single = q <= alpha ? 0 : F;
+    var p1 = q * (2 - q);   // P(combined loss > 0)  = P(at least one default)
+    var p2 = q * q;         // P(combined loss > F)  = P(both default)
+    var VaR_comb;
+    if (p1 <= alpha) VaR_comb = 0;
+    else if (p2 <= alpha) VaR_comb = F;
+    else VaR_comb = 2 * F;
+
+    var CVaR_single = q > 0 ? F : 0;
+    var sumVaR = 2 * VaR_single;
+    var sumCVaR = 2 * CVaR_single;
+
+    var CVaR_comb;
+    if (q === 0) CVaR_comb = 0;
+    else if (VaR_comb === 0) CVaR_comb = 2 * F / (2 - q);
+    else CVaR_comb = 2 * F; // both the "only both-default exceeds VaR" case and the degenerate max-loss case
+
+    var1Out.textContent = money(VaR_single);
+    varSumOut.textContent = money(sumVaR);
+    varCombOut.textContent = money(VaR_comb);
+    cvar1Out.textContent = money(CVaR_single);
+    cvarSumOut.textContent = money(sumCVaR);
+    cvarCombOut.textContent = money(CVaR_comb);
+
+    if (q === 0) {
+      varNoteOut.textContent = '(q=0: no default risk at all, everything is $0)';
+      cvarNoteOut.textContent = '';
+    } else if (VaR_comb > sumVaR + 1e-9) {
+      varNoteOut.textContent = '⚠ sub-additivity VIOLATED — combining made VaR worse';
+      cvarNoteOut.textContent = CVaR_comb <= sumCVaR + 1e-9 ? '✓ sub-additivity holds for CVaR' : '';
+    } else {
+      varNoteOut.textContent = '✓ sub-additivity holds here — no VaR violation at these inputs';
+      cvarNoteOut.textContent = '';
+    }
+  }
+
+  [qInput, FInput, pInput].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    qInput.value = DEFAULTS.q;
+    FInput.value = DEFAULTS.F;
+    pInput.value = DEFAULTS.p;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -516,6 +638,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

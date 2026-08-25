@@ -271,6 +271,37 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute pair 3's Haar coefficients, live</h3>
+    <p>
+      Starts on the worked example's exact shock pair, \(x_4=3.00\),
+      \(x_5=-0.05\). Edit either value and the pair's average \(a_3\),
+      detail \(d_3\), and how many multiples larger \(|d_3|\) is than the
+      quietest baseline detail elsewhere in the series (\(d_1=0.100\), fixed
+      from the untouched first pair) recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_4\)</span></div>
+        <input type="number" id="wav-scratch-x1" class="tl-scratch-input" value="3.00" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_5\)</span></div>
+        <input type="number" id="wav-scratch-x2" class="tl-scratch-input" value="-0.05" step="0.05">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      a&#8323; = <b id="wav-scratch-a">1.475</b>&emsp;d&#8323; = <b id="wav-scratch-d">1.525</b>
+    </div>
+    <div class="tl-readout">
+      |d&#8323;| is <b id="wav-scratch-ratio">15.25</b>&times; the baseline detail (d&#8321;=0.100)
+      <span id="wav-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="wav-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -441,6 +472,53 @@
 </div>
 <script>
 (function(){
+  var D1 = 0.100; // baseline detail from the series' untouched first pair
+  var DEFAULTS = { x1: 3.00, x2: -0.05 };
+  var x1Input = document.getElementById('wav-scratch-x1');
+  var x2Input = document.getElementById('wav-scratch-x2');
+  var aOut = document.getElementById('wav-scratch-a');
+  var dOut = document.getElementById('wav-scratch-d');
+  var ratioOut = document.getElementById('wav-scratch-ratio');
+  var noteOut = document.getElementById('wav-scratch-note');
+  var resetBtn = document.getElementById('wav-scratch-reset');
+  if (!x1Input) return;
+
+  function recompute(){
+    var x1 = parseFloat(x1Input.value);
+    var x2 = parseFloat(x2Input.value);
+
+    if (!isFinite(x1) || !isFinite(x2)) {
+      noteOut.textContent = '(enter numbers for both x₄ and x₅)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var a = (x1 + x2) / 2;
+    var d = (x1 - x2) / 2;
+
+    aOut.textContent = a.toFixed(3);
+    dOut.textContent = d.toFixed(3);
+
+    if (Math.abs(d) < 1e-9) {
+      ratioOut.textContent = '0.00';
+      noteOut.textContent = '(d₃ ≈ 0: this pair is perfectly balanced, nothing to localize)';
+    } else {
+      ratioOut.textContent = (Math.abs(d) / D1).toFixed(2);
+    }
+  }
+
+  x1Input.addEventListener('input', recompute);
+  x2Input.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    x1Input.value = DEFAULTS.x1;
+    x2Input.value = DEFAULTS.x2;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -462,6 +540,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

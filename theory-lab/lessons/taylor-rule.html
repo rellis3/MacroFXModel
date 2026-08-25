@@ -207,6 +207,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same rule, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers, with Taylor's original
+      \(a=b=0.5\) reaction coefficient applied symmetrically to both gaps.
+      Edit any field and the inflation gap and the prescribed policy rate
+      recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Neutral real rate \(r^{*}\) (%)</span></div>
+        <input type="number" id="tr-scratch-rstar" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Inflation \(\pi\) (%)</span></div>
+        <input type="number" id="tr-scratch-pi" class="tl-scratch-input" value="3" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Target \(\pi^{*}\) (%)</span></div>
+        <input type="number" id="tr-scratch-pistar" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Output gap \(y-y^{*}\) (%)</span></div>
+        <input type="number" id="tr-scratch-ygap" class="tl-scratch-input" value="1" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Reaction coeff. \(a=b\)</span></div>
+        <input type="number" id="tr-scratch-coef" class="tl-scratch-input" value="0.5" step="0.1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &pi; &minus; &pi;* = <b id="tr-scratch-infgap">1.0</b>pp&emsp;neutral nominal rate = <b id="tr-scratch-neutral">4.0</b>%
+    </div>
+    <div class="tl-readout">
+      i = r* + &pi; + a(&pi;&minus;&pi;*) + b(y&minus;y*) = <b id="tr-scratch-i">6.0</b>%
+      <span id="tr-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="tr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <h3>The number that moves markets isn't \(i\) — it's \(i_{\text{implied}} - i_{\text{actual}}\)</h3>
   <div class="tl-solid blue">
     <strong>The key insight:</strong> no desk trades the Taylor Rule's level in
@@ -527,6 +569,50 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { rstar: 2, pi: 3, pistar: 2, ygap: 1, coef: 0.5 };
+  var fields = ['rstar', 'pi', 'pistar', 'ygap', 'coef'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('tr-scratch-' + f); });
+  if (!inputs.rstar) return;
+
+  var infgapOut = document.getElementById('tr-scratch-infgap');
+  var neutralOut = document.getElementById('tr-scratch-neutral');
+  var iOut = document.getElementById('tr-scratch-i');
+  var noteOut = document.getElementById('tr-scratch-note');
+  var resetBtn = document.getElementById('tr-scratch-reset');
+
+  function recompute(){
+    var rstar = parseFloat(inputs.rstar.value);
+    var pi = parseFloat(inputs.pi.value);
+    var piStar = parseFloat(inputs.pistar.value);
+    var ygap = parseFloat(inputs.ygap.value);
+    var coef = parseFloat(inputs.coef.value);
+
+    if (!isFinite(rstar) || !isFinite(pi) || !isFinite(piStar) || !isFinite(ygap) || !isFinite(coef) || coef < 0) {
+      noteOut.textContent = '(enter numeric rates/gaps and a non-negative reaction coefficient)';
+      return;
+    }
+
+    var infGap = pi - piStar;
+    var neutral = rstar + piStar;
+    var i = rstar + pi + coef * infGap + coef * ygap;
+
+    infgapOut.textContent = infGap.toFixed(2);
+    neutralOut.textContent = neutral.toFixed(2);
+    iOut.textContent = i.toFixed(2);
+    noteOut.textContent = i < 0 ? '(rule prescribes a negative rate — the effective lower bound this lesson flags binds here)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -548,6 +634,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

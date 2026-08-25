@@ -24,11 +24,28 @@ import { gapFillPacked } from './m1GapFill.js';
 import { runImpulseEmaRange, buildDaily } from './impulseEmaRangeV2Engine.js';
 import { oandaSymbol } from './instrumentRegistry.js';
 
+// Each trade may carry its own `approxTime` (epoch seconds) — needed once
+// KNOWN_TRADES spans more than one reconstructed session, since a single
+// shared KNOWN_APPROX_TIME would silently match Aug-24 trades against
+// fills near the original Aug-13/14 window. Entries without one fall back
+// to KNOWN_APPROX_TIME (see the matcher below).
 export const KNOWN_TRADES = [
   { label: 'Gold SHORT · 13 Aug ~11:21-14:20 UTC', instrument: 'gold', side: 'SELL', entry: 4372.3, sl: 4380, tp: 4345.7 },
   { label: 'NQ SHORT (failed) · 14 Aug ~03:37-07:02 UTC', instrument: 'nq', side: 'SELL', entry: 30274.25, sl: 30285, tp: 30204.5 },
   { label: 'NQ LONG ("ignoring the SL") · 14 Aug ~10:19-15:05 UTC', instrument: 'nq', side: 'BUY', entry: 30097.25, sl: 30032, tp: 30160 },
   { label: 'NQ SHORT · 14 Aug ~19:01 UTC', instrument: 'nq', side: 'SELL', entry: 30226.5, sl: 30230, tp: 30210.75 },
+  // Jordan's "today's test results" screenshots (NAS100 + XAUUSD), 24 Aug
+  // 2026. Price levels typed in directly by the owner (not read off the
+  // screenshot by OCR/vision) — see the chip pill values in the two
+  // screenshots for the visual source. Anchor times are the highlighted
+  // price-ladder timestamps in each screenshot (08:31 for NAS100, 06:22 for
+  // XAUUSD), assumed UK local (BST, UTC+1 in August) per the same
+  // convention `trade-lab.html`'s PRESETS already uses for this trader's
+  // UI — unverified/approximate, not the actual fill time.
+  { label: 'NQ LONG #1 · 24 Aug ~08:31 BST', instrument: 'nq', side: 'BUY', entry: 29088, sl: 29053, tp: 29226, approxTime: Date.parse('2026-08-24T07:31:00Z') / 1000 },
+  { label: 'NQ LONG #2 · 24 Aug ~08:31 BST (SL unconfirmed)', instrument: 'nq', side: 'BUY', entry: 28920, sl: null, tp: 29170, approxTime: Date.parse('2026-08-24T07:31:00Z') / 1000 },
+  { label: 'Gold SHORT · 24 Aug ~06:22 BST', instrument: 'gold', side: 'SELL', entry: 4654, sl: 4661, tp: 4629, approxTime: Date.parse('2026-08-24T05:22:00Z') / 1000 },
+  { label: 'Gold LONG · 24 Aug ~06:22 BST', instrument: 'gold', side: 'BUY', entry: 4632, sl: 4628, tp: 4680, approxTime: Date.parse('2026-08-24T05:22:00Z') / 1000 },
 ];
 
 const M1_DIR_OVERRIDE = { nq: './portfolioBacktest/cache' };
@@ -78,9 +95,10 @@ export async function runLiveValidation(pair, { onLog = () => {} } = {}) {
 
   const matches = KNOWN_TRADES.filter(k => k.instrument === pair).map(kt => {
     const sameDir = allSignals.filter(s => s.side === kt.side);
+    const anchorTime = kt.approxTime ?? KNOWN_APPROX_TIME;
     let best = null, bestDist = Infinity;
     for (const s of sameDir) {
-      const dt = Math.abs(s.fillTime - KNOWN_APPROX_TIME);
+      const dt = Math.abs(s.fillTime - anchorTime);
       if (dt < bestDist) { bestDist = dt; best = s; }
     }
     if (!best || bestDist > 48 * 3600) return { known: kt, found: false };

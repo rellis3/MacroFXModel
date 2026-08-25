@@ -62,6 +62,25 @@ export const INSTRUMENTS = [
   { name: 'GBPCHF', oandaInstrument: 'GBP_CHF',     ticker: 'GBPCHF=X', assetClass: 'fx'        },
   { name: 'AUDJPY', oandaInstrument: 'AUD_JPY',     ticker: 'AUDJPY=X', assetClass: 'fx'        },
   { name: 'CADJPY', oandaInstrument: 'CAD_JPY',     ticker: 'CADJPY=X', assetClass: 'fx'        },
+  // Added 2026-08 — the rest of the traded cross universe. WEEKLY_INSTRUMENTS,
+  // the v2 page's OANDA_SYM/CCY_PAIRS and the levels engine already knew most
+  // of these; the daily forecast was the missing piece.
+  { name: 'EURAUD', oandaInstrument: 'EUR_AUD',     ticker: 'EURAUD=X', assetClass: 'fx'        },
+  { name: 'EURCAD', oandaInstrument: 'EUR_CAD',     ticker: 'EURCAD=X', assetClass: 'fx'        },
+  { name: 'EURNZD', oandaInstrument: 'EUR_NZD',     ticker: 'EURNZD=X', assetClass: 'fx'        },
+  { name: 'GBPAUD', oandaInstrument: 'GBP_AUD',     ticker: 'GBPAUD=X', assetClass: 'fx'        },
+  { name: 'GBPCAD', oandaInstrument: 'GBP_CAD',     ticker: 'GBPCAD=X', assetClass: 'fx'        },
+  { name: 'AUDCAD', oandaInstrument: 'AUD_CAD',     ticker: 'AUDCAD=X', assetClass: 'fx'        },
+  { name: 'NZDCAD', oandaInstrument: 'NZD_CAD',     ticker: 'NZDCAD=X', assetClass: 'fx'        },
+  { name: 'NZDJPY', oandaInstrument: 'NZD_JPY',     ticker: 'NZDJPY=X', assetClass: 'fx'        },
+  // ── Crypto ───────────────────────────────────────────────────────────────────
+  // preferYahoo: OANDA's BTC_USD CFD isn't offered on every division (UK retail
+  // accounts can't hold crypto CFDs at all), while Yahoo BTC-USD is 24/7 spot.
+  // assetClass 'commodity' picks the RS-EWMA σ estimator — like gold, BTC trends
+  // hard and close-to-close estimators understate its vol. Oanda-side extras
+  // (live price, session tracking, M5 chart) are attempted but optional — see
+  // oandaOptional in HR_INSTRUMENTS.
+  { name: 'BTCUSD', oandaInstrument: 'BTC_USD',     ticker: 'BTC-USD',  assetClass: 'commodity', preferYahoo: true },
   // ── Equity indices ───────────────────────────────────────────────────────────
   // preferYahoo: Oanda CFDs settle at 22:00 UTC; Yahoo uses exchange RTH close
   // (^GSPC/^DJI/^RUT = NYSE 16:00 ET, ^GDAXI = Xetra 17:30 CET, ^FTSE = LSE 16:30 BST)
@@ -167,9 +186,27 @@ async function fetchOHLCYahoo(ticker) {
 }
 
 // Dispatcher: Oanda if key is available, unless instrument sets preferYahoo.
+// An Oanda failure (transient Cloudflare 520s, outages) retries once, then
+// FALLS BACK to the instrument's Yahoo ticker instead of throwing — a dead
+// Oanda edge must not blank gold + every FX pair out of the daily forecast
+// while the preferYahoo indices sail through (seen live 2025-08: every
+// Oanda-sourced instrument 520'd and vanished from today.html / Vol Forecast
+// v2 until the next day's run). Returns { bars, source }.
 async function fetchOHLC(cfg) {
-  if (process.env.OANDA_KEY && !cfg.preferYahoo) return fetchOHLCOanda(cfg.oandaInstrument);
-  return fetchOHLCYahoo(cfg.ticker);
+  if (process.env.OANDA_KEY && !cfg.preferYahoo) {
+    try {
+      return { bars: await fetchOHLCOanda(cfg.oandaInstrument), source: 'oanda' };
+    } catch (e1) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        return { bars: await fetchOHLCOanda(cfg.oandaInstrument), source: 'oanda' };
+      } catch (e2) {
+        console.warn(`[VOL-FORECAST] ${cfg.name} Oanda failed twice (${e2.message}) — falling back to Yahoo ${cfg.ticker}`);
+        return { bars: await fetchOHLCYahoo(cfg.ticker), source: 'yahoo-fallback' };
+      }
+    }
+  }
+  return { bars: await fetchOHLCYahoo(cfg.ticker), source: 'yahoo' };
 }
 
 // ── M15 bar fetching (batched) ────────────────────────────────────────────────
@@ -339,7 +376,7 @@ export async function ensureOhlcCache() {
     let n = 0;
     for (const cfg of INSTRUMENTS) {
       try {
-        forecastState.ohlcCache[cfg.name] = await fetchOHLC(cfg);
+        forecastState.ohlcCache[cfg.name] = (await fetchOHLC(cfg)).bars;
         n++;
         await new Promise(r => setTimeout(r, 120));   // be polite to Oanda (matches runVolForecast)
       } catch (e) {
@@ -350,6 +387,21 @@ export async function ensureOhlcCache() {
     return forecastState.ohlcCache;
   })().finally(() => { _ohlcWarmInFlight = null; });
   return _ohlcWarmInFlight;
+}
+
+// Most recent good forecast entry for an instrument, searching latest → history.
+// A carried entry counts (it IS the last good data) but keeps its ORIGINAL
+// session date, so `carried_from` always names the session the numbers were
+// actually computed for, however many failed runs it has ridden through.
+function _lastGoodForecastFor(name) {
+  const seen = new Set();
+  for (const fc of [forecastState.latest, ...forecastState.history]) {
+    if (!fc || seen.has(fc)) continue;
+    seen.add(fc);
+    const f = fc.instruments?.[name];
+    if (f) return { f, date: f.carried_from ?? fc.session_date };
+  }
+  return null;
 }
 
 // ── Core computation ──────────────────────────────────────────────────────────
@@ -376,7 +428,7 @@ export async function runVolForecast(targetDate) {
 
   for (const cfg of INSTRUMENTS) {
     try {
-      const ohlc = await fetchOHLC(cfg);
+      const { bars: ohlc, source: instSource } = await fetchOHLC(cfg);
       forecastState.ohlcCache[cfg.name] = ohlc;
       const eventTag = detectEventTagFor(events, cfg.name);
       const f    = computeForecast(ohlc, cfg.assetClass, newsMult, { instrument: cfg.name, eventTag });
@@ -411,11 +463,21 @@ export async function runVolForecast(targetDate) {
           }
         }
       }
+      f.data_source = instSource;   // per-instrument: 'oanda' | 'yahoo' | 'yahoo-fallback'
       instruments[cfg.name] = f;
-      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}[${dataSource}]`);
+      console.log(`[VOL-FORECAST]  ${cfg.name.padEnd(6)} vol=${f.vol_annual.toFixed(2)}%  HL=${f.hl_median}–${f.hl_75}%  OC=${f.oc_median}–${f.oc_75}%  ${f.har ? `har=${f.har.vol_annual.toFixed(2)}%  ` : ''}[${instSource}]`);
     } catch (err) {
       console.error(`[VOL-FORECAST] ${cfg.name} error: ${err.message}`);
       errors.push({ name: cfg.name, error: err.message });
+      // Last line of defence: even with the Yahoo fallback dead too, DON'T drop
+      // the instrument — carry the most recent good forecast forward, flagged
+      // stale. A day-old vol forecast is far more useful than a vanished card
+      // (daily-brief consumers skip instruments that aren't in this object).
+      const prev = _lastGoodForecastFor(cfg.name);
+      if (prev) {
+        instruments[cfg.name] = { ...prev.f, stale: true, carried_from: prev.date };
+        console.warn(`[VOL-FORECAST] ${cfg.name} carrying forward forecast from ${prev.date}`);
+      }
     }
   }
 
@@ -445,6 +507,7 @@ export async function runVolForecast(targetDate) {
     // Each entry: { date, label, computed_at, <instrument>: vol_annual, ... }
     const indexEntry = { date: sessionDate, label: forecast.session_label, computed_at: forecast.computed_at };
     for (const [sym, f] of Object.entries(instruments)) {
+      if (f.stale) continue;   // carried-forward copy of an older session — don't record it as this session's forecast
       indexEntry[sym] = { vol: f.vol_annual, hl_med: f.hl_median, hl_75: f.hl_75, oc_med: f.oc_median, oc_75: f.oc_75 };
     }
     const rawIdx = await kv.get('vol_forecast_index');
@@ -702,7 +765,29 @@ async function _warmSessionCache() {
 
 let _lastRunDate = null;
 
+// Self-repair: while the served forecast is missing instruments or carrying
+// stale copies forward (a data source was down during the run), retry hourly
+// until it heals — including weekends, where the daily trigger never fires but
+// candle history is still fetchable. Without this a partial 22:00 run is
+// served untouched until the NEXT day's run.
+let _lastRepairMs   = 0;
+let _repairInFlight = false;
+
+function _repairTick() {
+  const inst = forecastState.latest?.instruments;
+  if (!inst) return;   // nothing cached yet — the normal startup/daily path owns this
+  const broken = INSTRUMENTS.some(c => !inst[c.name]) || Object.values(inst).some(f => f?.stale);
+  if (!broken || _repairInFlight || Date.now() - _lastRepairMs < 60 * 60 * 1000) return;
+  _lastRepairMs   = Date.now();
+  _repairInFlight = true;
+  console.log('[VOL-FORECAST] Partial forecast detected (missing/stale instruments) — repair run …');
+  runVolForecast()
+    .catch(e => console.error('[VOL-FORECAST] Repair run failed:', e.message))
+    .finally(() => { _repairInFlight = false; });
+}
+
 async function _schedulerTick() {
+  _repairTick();
   const now = new Date();
   const day = now.getUTCDay();
   if (day === 0 || day === 6) return;                             // skip weekends
@@ -777,11 +862,23 @@ export async function startVolForecastScheduler() {
     // har === null      → attempted but unavailable — do NOT re-run for it.
     (HAR_SHADOW_ON && f.har === undefined)
   );
-  const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingFields;
+  // A cached forecast that is missing instruments, or serving carried-forward
+  // (stale) copies of them, came from a run where a data source was down
+  // (e.g. Oanda 520s took out gold + all FX). Retry on startup instead of
+  // serving the partial forecast until tomorrow's scheduled run.
+  const missingInstruments = cachedDate ? INSTRUMENTS.some(c => !cachedInst[c.name]) : false;
+  const staleInstruments   = Object.values(cachedInst).some(f => f?.stale);
+  const needsImmediateRun = !cachedDate || cachedDate !== neededDate || missingFields
+    || missingInstruments || staleInstruments;
 
   if (needsImmediateRun) {
-    const reason = !cachedDate ? 'no cache' : cachedDate !== neededDate ? `date mismatch (${cachedDate})` : 'shadow fields missing (YZ/HV/EWMA/HAR)';
+    const reason = !cachedDate ? 'no cache'
+      : cachedDate !== neededDate ? `date mismatch (${cachedDate})`
+      : missingInstruments ? 'instruments missing from cached forecast'
+      : staleInstruments ? 'cached forecast has carried-forward (stale) instruments'
+      : 'shadow fields missing (YZ/HV/EWMA/HAR)';
     console.log(`[VOL-FORECAST] ${reason} — computing on startup …`);
+    _lastRepairMs = Date.now();   // the startup run IS the first repair attempt — don't double-run
     runVolForecast(new Date(neededDate + 'T12:00:00Z'))
       .catch(e => console.error('[VOL-FORECAST] Startup run failed:', e.message));
   } else {

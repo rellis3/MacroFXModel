@@ -396,6 +396,47 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same target-vs-online comparison, live — change any input below</h3>
+    <p>
+      Starts on step 3 and 4's exact numbers above for transition #4. Edit
+      any field and the max over the target network's two actions, the TD
+      target, and the squared error all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Reward \(r\)</span></div>
+        <input type="number" id="dqn-scratch-r" class="tl-scratch-input" value="0.1" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Discount \(\gamma\)</span></div>
+        <input type="number" id="dqn-scratch-gamma" class="tl-scratch-input" value="0.9" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(Q(s_5,\text{Hold};\theta^-)\)</span></div>
+        <input type="number" id="dqn-scratch-qhold" class="tl-scratch-input" value="2.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(Q(s_5,\text{Close};\theta^-)\)</span></div>
+        <input type="number" id="dqn-scratch-qclose" class="tl-scratch-input" value="1.2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(Q(s_4,a;\theta)\) (online)</span></div>
+        <input type="number" id="dqn-scratch-qonline" class="tl-scratch-input" value="1.6" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      max<sub>a&prime;</sub>Q(s&prime;;&theta;&#8315;) = <b id="dqn-scratch-maxq">2.00</b>&emsp;target = <b id="dqn-scratch-target">1.90</b>
+    </div>
+    <div class="tl-readout">
+      (target &minus; Q<sub>online</sub>)&sup2; = <b id="dqn-scratch-sqerr">0.0900</b>
+      <span id="dqn-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="dqn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -618,6 +659,55 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { r: 0.1, gamma: 0.9, qhold: 2.0, qclose: 1.2, qonline: 1.6 };
+  var fields = ['r', 'gamma', 'qhold', 'qclose', 'qonline'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('dqn-scratch-' + f); });
+  if (!inputs.r) return;
+
+  var maxqOut = document.getElementById('dqn-scratch-maxq');
+  var targetOut = document.getElementById('dqn-scratch-target');
+  var sqerrOut = document.getElementById('dqn-scratch-sqerr');
+  var noteOut = document.getElementById('dqn-scratch-note');
+  var resetBtn = document.getElementById('dqn-scratch-reset');
+
+  function recompute(){
+    var r = parseFloat(inputs.r.value);
+    var gamma = parseFloat(inputs.gamma.value);
+    var qhold = parseFloat(inputs.qhold.value);
+    var qclose = parseFloat(inputs.qclose.value);
+    var qonline = parseFloat(inputs.qonline.value);
+
+    if (!isFinite(r) || !isFinite(gamma) || !isFinite(qhold) || !isFinite(qclose) || !isFinite(qonline)) {
+      maxqOut.textContent = '—';
+      targetOut.textContent = '—';
+      sqerrOut.textContent = '—';
+      noteOut.textContent = '(enter numeric values for every field)';
+      return;
+    }
+
+    var maxq = Math.max(qhold, qclose);
+    var target = r + gamma * maxq;
+    var sqerr = Math.pow(target - qonline, 2);
+
+    maxqOut.textContent = maxq.toFixed(2);
+    targetOut.textContent = target.toFixed(2);
+    sqerrOut.textContent = sqerr.toFixed(4);
+    noteOut.textContent = (gamma < 0 || gamma > 1)
+      ? '(γ is usually kept between 0 and 1 — this still computes, but is no longer a standard discount factor)'
+      : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -639,6 +729,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

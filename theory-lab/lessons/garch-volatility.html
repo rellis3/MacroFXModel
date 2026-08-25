@@ -340,6 +340,49 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the GARCH(1,1) recursion, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, re-expressed in %&sup2; so
+      \(\omega=1.0\times10^{-6}\) becomes \(\omega=0.01\)%&sup2; and
+      \(\sigma_{t-1}^2=5.0\times10^{-5}\) becomes \(0.50\)%&sup2;. Edit any
+      field and today's forecast, the persistence, the half-life, and the
+      long-run level all recalculate instantly from the formulas above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&omega; (%&sup2;)</span></div>
+        <input type="number" id="garch-scratch-omega" class="tl-scratch-input" value="0.01" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&alpha;</span></div>
+        <input type="number" id="garch-scratch-alpha" class="tl-scratch-input" value="0.08" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&beta;</span></div>
+        <input type="number" id="garch-scratch-beta" class="tl-scratch-input" value="0.90" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior variance &sigma;<sub>t-1</sub>&sup2; (%&sup2;)</span></div>
+        <input type="number" id="garch-scratch-sigmaprev" class="tl-scratch-input" value="0.50" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Shock &epsilon;<sub>t-1</sub> (%)</span></div>
+        <input type="number" id="garch-scratch-shock" class="tl-scratch-input" value="2.5" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &alpha;+&beta; = <b id="garch-scratch-persist">0.98</b>&emsp;half-life &asymp; <b id="garch-scratch-halflife">34.3</b> days&emsp;long-run &sigma;&#772; &asymp; <b id="garch-scratch-sigmabar">0.71</b>%
+      <span id="garch-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout">
+      &sigma;<sub>t</sub>&sup2; = &omega; + &alpha;&epsilon;<sub>t-1</sub>&sup2; + &beta;&sigma;<sub>t-1</sub>&sup2; &asymp; <b id="garch-scratch-sigmat2">0.96</b>%&sup2; &rArr; &sigma;<sub>t</sub> &asymp; <b id="garch-scratch-sigmat">0.98</b>%
+    </div>
+    <button type="button" id="garch-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Volatility clustering, visualized: shock cluster → sigma reacts → slow decay</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two-panel chart. Top: daily returns that are small in the first third, spike into a cluster of large up and down moves in the middle third, then calm down but not fully. Bottom: a GARCH conditional volatility line that jumps up sharply as the spike cluster begins, then decays gradually, not instantly, back toward its long-run level.">
@@ -489,6 +532,83 @@
     updateGarchChart();
   })();
   </script>
+<script>
+(function(){
+  var omegaInput = document.getElementById('garch-scratch-omega');
+  var alphaInput = document.getElementById('garch-scratch-alpha');
+  var betaInput = document.getElementById('garch-scratch-beta');
+  var sigmaPrevInput = document.getElementById('garch-scratch-sigmaprev');
+  var shockInput = document.getElementById('garch-scratch-shock');
+  var persistOut = document.getElementById('garch-scratch-persist');
+  var halflifeOut = document.getElementById('garch-scratch-halflife');
+  var sigmabarOut = document.getElementById('garch-scratch-sigmabar');
+  var sigmat2Out = document.getElementById('garch-scratch-sigmat2');
+  var sigmatOut = document.getElementById('garch-scratch-sigmat');
+  var note = document.getElementById('garch-scratch-note');
+  var resetBtn = document.getElementById('garch-scratch-reset');
+  if (!omegaInput) return;
+
+  var DEFAULTS = { omega: 0.01, alpha: 0.08, beta: 0.90, sigmaprev: 0.50, shock: 2.5 };
+
+  function blank(){
+    persistOut.textContent = '—';
+    halflifeOut.textContent = '—';
+    sigmabarOut.textContent = '—';
+    sigmat2Out.textContent = '—';
+    sigmatOut.textContent = '—';
+  }
+
+  function recompute(){
+    var omega = parseFloat(omegaInput.value);
+    var alpha = parseFloat(alphaInput.value);
+    var beta = parseFloat(betaInput.value);
+    var sigmaPrev2 = parseFloat(sigmaPrevInput.value);
+    var shock = parseFloat(shockInput.value);
+
+    if (!isFinite(omega) || !isFinite(alpha) || !isFinite(beta) || !isFinite(sigmaPrev2) || !isFinite(shock) ||
+        omega <= 0 || alpha < 0 || beta < 0 || sigmaPrev2 < 0) {
+      note.textContent = '(enter ω>0, α≥0, β≥0, and a non-negative prior variance)';
+      blank();
+      return;
+    }
+
+    var sigmaT2 = omega + alpha * shock * shock + beta * sigmaPrev2;
+    var sigmaT = Math.sqrt(sigmaT2);
+    var persistence = alpha + beta;
+
+    sigmat2Out.textContent = sigmaT2.toFixed(4);
+    sigmatOut.textContent = sigmaT.toFixed(4);
+    persistOut.textContent = persistence.toFixed(4);
+
+    if (persistence >= 1) {
+      note.textContent = '(α+β≥1: not a valid stationary GARCH model — the half-life and long-run σ̄ are undefined, the recursion never mean-reverts)';
+      halflifeOut.textContent = '—';
+      sigmabarOut.textContent = '—';
+      return;
+    }
+
+    note.textContent = '';
+    var halflife = Math.log(0.5) / Math.log(persistence);
+    var sigmaBar2 = omega / (1 - persistence);
+    var sigmaBar = Math.sqrt(sigmaBar2);
+    halflifeOut.textContent = halflife.toFixed(1);
+    sigmabarOut.textContent = sigmaBar.toFixed(2);
+  }
+
+  [omegaInput, alphaInput, betaInput, sigmaPrevInput, shockInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    omegaInput.value = DEFAULTS.omega;
+    alphaInput.value = DEFAULTS.alpha;
+    betaInput.value = DEFAULTS.beta;
+    sigmaPrevInput.value = DEFAULTS.sigmaprev;
+    shockInput.value = DEFAULTS.shock;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -686,6 +806,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

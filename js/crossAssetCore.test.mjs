@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   logReturns, realisedVolSeries, percentileOf, volDirection, volRegimeLabel,
-  normaliseFromStart, lastFinite, usdStrengthSeries, driverAlignment,
+  normaliseFromStart, lastFinite, usdStrengthSeries, driverAlignment, marketToneScore,
 } from './crossAssetCore.js';
 
 const approx = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} !== ${b}`);
@@ -152,4 +152,50 @@ test('driverAlignment counts add up to the inputs it could read', () => {
 test('lastFinite ignores trailing nulls', () => {
   assert.equal(lastFinite([1, 2, 3, null, null]), 3);
   assert.equal(lastFinite([null]), null);
+});
+
+// ── market tone ─────────────────────────────────────────────────────────────
+// The bug this replaces: the needle read index breadth alone, so with no index
+// direction (overnight, or when trend_dir failed to parse) it sat on a
+// confident 50 while credit / VIX / USD / oil all had readings on screen.
+
+test('the displayed rows move the needle', () => {
+  const none = marketToneScore(0, []);
+  const onish = marketToneScore(0, ['on', 'on', 'on']);
+  const offish = marketToneScore(0, ['off', 'off', 'off']);
+  assert.equal(none.score, 50, 'flat breadth with nothing else is genuinely 50');
+  assert.ok(onish.score > 50, `risk-on rows should lift the needle, got ${onish.score}`);
+  assert.ok(offish.score < 50, `risk-off rows should drop it, got ${offish.score}`);
+});
+
+test('no read at all is null, never a confident 50', () => {
+  const t = marketToneScore(null, []);
+  assert.equal(t.score, null, '"nothing to say" must be distinguishable from "balanced"');
+  assert.equal(t.votes, 0);
+});
+
+test('rows alone can drive it when breadth is unknown', () => {
+  // Exactly the overnight case: no index direction, but the macro rows do read.
+  const t = marketToneScore(null, ['on', 'on', 'off']);
+  assert.notEqual(t.score, null);
+  assert.ok(t.score > 50);
+});
+
+test('breadth outweighs a single row but not the whole board', () => {
+  const bullBreadth = marketToneScore(1, ['off']);
+  assert.ok(bullBreadth.score > 50, 'one dissenting row cannot flip full breadth');
+  const outvoted = marketToneScore(1, ['off', 'off', 'off', 'off', 'off']);
+  assert.ok(outvoted.score < 50, 'a unanimous board should outweigh breadth alone');
+});
+
+test('a two-way row abstains rather than voting for balance', () => {
+  const withMix = marketToneScore(null, ['on', 'mix', 'mix']);
+  const without = marketToneScore(null, ['on']);
+  assert.equal(withMix.score, without.score, "'mix' must not dilute a real read");
+  assert.equal(withMix.votes, 1);
+});
+
+test('the extremes are reachable', () => {
+  assert.equal(marketToneScore(1, ['on', 'on']).score, 100);
+  assert.equal(marketToneScore(-1, ['off', 'off']).score, 0);
 });

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Impulse Range Lab — 4H impulse-as-range continuation/fade research</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root {
+    --bg: #0b0d14; --panel: #12141d; --border: #23262f;
+    --text: #e5e7eb; --text2: #9ca3af; --text3: #6b7280;
+    --blue: #3b82f6; --blue-bg: rgba(59,130,246,.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  .bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--panel); }
+  .bar h1 { font-size: 14px; font-weight: 600; margin: 0 8px 0 0; letter-spacing: .3px; }
+  .bar label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 3px; }
+  select, input[type="date"], input[type="number"] {
+    background: #0c0e15; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; font-family: 'DM Mono', monospace;
+  }
+  .go { background: var(--blue); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .go:disabled { opacity: .5; cursor: not-allowed; }
+  .status { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .note { font-size: 10.5px; color: #d1a35a; background: rgba(209,163,90,.08);
+    border-bottom: 1px solid var(--border); padding: 5px 14px; font-family: 'DM Mono', monospace; }
+  .arm { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 14px;
+    border-bottom: 1px solid var(--border); background: var(--panel); }
+  .arm .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-right: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+    font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3);
+    border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px 3px 8px; background: #0c0e15;
+    opacity: .45; transition: opacity .12s, border-color .12s; }
+  .chip.on { opacity: 1; color: var(--text); border-color: var(--text3); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .chip .cnt { color: var(--text3); font-size: 10px; }
+  #main { flex: 1; min-height: 0; display: flex; }
+  #chartWrap { position: relative; flex: 1; min-width: 0; }
+  #chart { position: absolute; inset: 0; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #hint { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color: var(--text3); font-size: 13px; font-family: 'DM Mono', monospace; text-align:center; padding: 20px; }
+  #legend { position: absolute; bottom: 8px; left: 8px; z-index: 5; background: rgba(12,14,21,.9);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: 'DM Mono', monospace;
+    font-size: 10px; color: var(--text2); display: flex; flex-direction: column; gap: 4px; max-width: 300px; }
+  #legend .row { display: flex; align-items: center; gap: 6px; }
+  #legend .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  #markerInfo { position: absolute; z-index: 10; background: rgba(12,14,21,.97); border: 1px solid var(--text3);
+    border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2);
+    max-width: 320px; box-shadow: 0 6px 20px rgba(0,0,0,.5); display: none; }
+  #markerInfo .mi-title { color: var(--text); font-weight: 600; font-size: 12px; margin-bottom: 6px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  #markerInfo .mi-close { cursor: pointer; color: var(--text3); font-size: 14px; line-height: 1; }
+  #markerInfo .mi-row { display: flex; justify-content: space-between; gap: 12px; padding: 1px 0; }
+  #markerInfo .mi-lbl { color: var(--text3); }
+  #markerInfo .mi-evrow { display: flex; justify-content: space-between; gap: 8px; padding: 0; font-size: 10px; }
+  #markerInfo .mi-sec { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+  #markerInfo .mi-sec-hd { color: var(--text); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
+  #statsPanel { width: 320px; flex: none; overflow-y: auto; border-left: 1px solid var(--border);
+    background: var(--panel); padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+  #statsPanel h2 { font-size: 11px; color: var(--text); text-transform: uppercase; letter-spacing: .5px;
+    margin: 14px 0 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+  #statsPanel h2:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+  #statsPanel table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  #statsPanel td, #statsPanel th { padding: 2px 4px; text-align: right; border-bottom: 1px solid rgba(255,255,255,.04); }
+  #statsPanel th { color: var(--text3); font-weight: 500; text-align: right; }
+  #statsPanel td:first-child, #statsPanel th:first-child { text-align: left; }
+  #statsPanel .empty { color: var(--text3); font-style: italic; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>🧭 Impulse Range Lab</h1>
+    <label>Pair</label><select id="pair"></select>
+    <label>From</label><input type="date" id="from">
+    <label>To</label><input type="date" id="to">
+    <label>Preset</label>
+    <select id="preset">
+      <option value="classic">Classic (1.5x body, 65% body%)</option>
+      <option value="displacement">Displacement (2.0x body, 75% body%)</option>
+    </select>
+    <button class="go" id="go">Generate</button>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="note">
+    Research-only (spec §16) — this is NOT an execution signal. It tests whether a significant 4H
+    impulse candle works better as a REFERENCE RANGE (levels + extensions lower-timeframe price action
+    reacts to) than as a standalone directional signal, conditioned on Asia/Monday range confluence and
+    VWAP context. Extends the Asia-range confluence work in <code>entry-trigger-lab.html</code> — same
+    <code>confluence-core.js</code> math, not a separate indicator. Continuation/fade scores are an
+    explicit, unvalidated experiment (spec §11) — do not read them as a signal.
+  </div>
+  <div class="arm" id="levelArm">
+    <span class="lbl">Levels</span>
+    <span class="chip on" data-lvl="impulseRange" title="The impulse candle's own high/low/mid/25%/75%, scoped to its forward reaction window.">
+      <span class="dot" style="background:#e5e7eb"></span>Impulse range
+    </span>
+    <span class="chip on" data-lvl="extensions" title="±0.25R/0.5R/0.75R/1.0R beyond the impulse high (bullish) or low (bearish) — the zone tested for a fade (spec §7).">
+      <span class="dot" style="background:#facc15"></span>Extensions
+    </span>
+    <span class="chip on" data-lvl="asiaConf" title="Asia/Monday range levels that land within the pip threshold of an impulse-derived level (spec §3) — same detectConfluencesCore math as Entry Trigger Lab.">
+      <span class="dot" style="background:#34d399"></span>Asia/Monday confluence
+    </span>
+    <span class="chip" data-lvl="vwap" title="Session VWAP (resets daily) across the whole loaded range.">
+      <span class="dot" style="background:#818cf8"></span>VWAP
+    </span>
+    <span class="chip on" data-lvl="trade" title="The implied trade: a short white tick at entry (the impulse's own close) spanning to a colored dot at exit (green = profit, red = loss) — evaluation-only history (spec §14), not a signal. See the Trade log in the side panel for every impulse at once.">
+      <span class="dot" style="background:#e5e7eb"></span>Entry/exit
+    </span>
+    <label style="margin-left:10px">LTF</label>
+    <select id="ltfGran">
+      <option value="3">3-minute (primary)</option>
+      <option value="1">1-minute (refinement)</option>
+    </select>
+  </div>
+  <div id="main">
+    <div id="chartWrap">
+      <div id="chart"></div>
+      <canvas id="overlay"></canvas>
+      <div id="legend">
+        <div class="row"><span class="sw" style="background:#e5e7eb"></span>Impulse high/low/mid (solid, scoped to reaction window)</div>
+        <div class="row"><span class="sw" style="background:#facc15"></span>Extension levels (±R beyond the impulse range — fade-test zone)</div>
+        <div class="row"><span class="sw" style="background:#34d399"></span>Asia/Monday confluence with an impulse level</div>
+        <div class="row"><span class="sw" style="background:#818cf8"></span>VWAP</div>
+        <div class="row"><span class="sw" style="background:#e5e7eb"></span>Entry tick (impulse close) → dot at exit: green = profit, red = loss, dashed ring = still open</div>
+        <div class="row"><span class="sw" style="background:#22c55e"></span>▲ bull impulse &nbsp;<span class="sw" style="background:#ef4444"></span>▼ bear impulse — ring color = outcome</div>
+        <div class="row">Tap/click an impulse marker to inspect the trade, evidence, MFE/MAE and outcome — or see every impulse at once in the Trade log (side panel)</div>
+      </div>
+      <div id="markerInfo"></div>
+      <div id="hint">Pick a pair and date range, then Generate.<br>M1 fetch can be slow over wide ranges — start narrow (a few days).</div>
+    </div>
+    <div id="statsPanel"><div class="empty">Generate to see stats.</div></div>
+  </div>
+
+<script type="module">
+import { PAIRS } from './js/config.js';
+import { normalizeBars } from './js/entryTriggerLabEngine.js';
+import { resampleTo } from './js/barUtils.js';
+import { runImpulseRangeScan, aggregateImpulseStats, buildVwapContext } from './js/impulseRangeEngine.js';
+
+const $ = id => document.getElementById(id);
+function setStatus(t, warn) { const el = $('status'); el.textContent = t; el.style.color = warn ? '#d1a35a' : ''; }
+
+const OUTCOME_COLOR = { CONTINUATION: '#22c55e', REVERSION: '#facc15', FAILED_IMPULSE: '#ef4444', EXTENSION: '#a855f7', NO_CLEAR_EDGE: '#6b7280' };
+let drawnMarkers = [];
+
+const state = {
+  armedLevels: new Set(['impulseRange', 'extensions', 'asiaConf', 'trade']),
+  ltfGranularityMin: 3,
+};
+
+let chart = null, series = null, overlayCanvas = null, octx = null, dpr = window.devicePixelRatio || 1;
+let bars5m = [], bars15m = [], bars1m = [], ltfBars = [];
+let barsByTime = new Map();
+let events = [], stats = null;
+let vwapCtx = null;
+let currentSymbol = null;
+
+// ── UI setup ─────────────────────────────────────────────────────────────────
+(function initUI() {
+  const sel = $('pair');
+  for (const p of PAIRS) { const o = document.createElement('option'); o.value = p.symbol; o.textContent = p.name; sel.appendChild(o); }
+  sel.value = 'EUR/USD';
+  const now = new Date();
+  const iso = d => d.toISOString().slice(0, 10);
+  $('to').value = iso(now);
+  $('from').value = iso(new Date(now.getTime() - 4 * 864e5)); // narrow default — M1 fetch is heavy
+  $('ltfGran').value = String(state.ltfGranularityMin);
+
+  $('levelArm').addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    const k = chip.dataset.lvl;
+    if (state.armedLevels.has(k)) state.armedLevels.delete(k); else state.armedLevels.add(k);
+    chip.classList.toggle('on', state.armedLevels.has(k));
+    scheduleDraw();
+  });
+  $('ltfGran').addEventListener('change', () => {
+    state.ltfGranularityMin = parseInt($('ltfGran').value, 10);
+    if (bars1m.length) { rebuildLtfAndRescan(); scheduleDraw(); }
+  });
+  $('go').addEventListener('click', loadData);
+})();
+
+function ensureChart(symbol) {
+  if (chart) { try { chart.remove(); } catch (_) {} chart = null; }
+  const el = $('chart'); el.innerHTML = '';
+  chart = LightweightCharts.createChart(el, {
+    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#9ca3af', fontSize: 11, fontFamily: "'DM Mono', monospace" },
+    grid: { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+    timeScale: { borderColor: 'rgba(255,255,255,0.12)', timeVisible: true, secondsVisible: false, rightOffset: 6 },
+    rightPriceScale: { borderColor: 'rgba(255,255,255,0.12)', scaleMargins: { top: 0.1, bottom: 0.1 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
+  });
+  const precision = symbol.includes('JPY') ? 3 : symbol.includes('XAU') ? 2 : 5;
+  const minMove = symbol.includes('JPY') ? 0.001 : symbol.includes('XAU') ? 0.01 : 0.00001;
+  series = chart.addCandlestickSeries({
+    upColor: '#26a69a', downColor: '#ef5350', borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    priceFormat: { type: 'price', precision, minMove },
+  });
+  chart.timeScale().subscribeVisibleTimeRangeChange(scheduleDraw);
+}
+
+function setupOverlay() {
+  overlayCanvas = $('overlay');
+  octx = overlayCanvas.getContext('2d');
+  const ro = new ResizeObserver(() => { sizeOverlay(); scheduleDraw(); });
+  ro.observe($('chartWrap'));
+  sizeOverlay();
+  requestAnimationFrame(syncLoop);
+  $('chartWrap').addEventListener('click', onChartWrapClick);
+  $('markerInfo').addEventListener('click', e => { if (e.target.classList.contains('mi-close')) hideMarkerInfo(); });
+}
+function sizeOverlay() {
+  const w = $('chartWrap').clientWidth, h = $('chartWrap').clientHeight;
+  dpr = window.devicePixelRatio || 1;
+  overlayCanvas.width = w * dpr; overlayCanvas.height = h * dpr;
+  overlayCanvas.style.width = w + 'px'; overlayCanvas.style.height = h + 'px';
+}
+let _lastSig = '';
+function syncLoop() {
+  if (chart && series && bars5m.length) {
+    const r = chart.timeScale().getVisibleLogicalRange();
+    // Price-scale sample required alongside the time range — see
+    // entry-trigger-lab.html's syncLoop for why (vertical-only pan/zoom
+    // moves every y-coordinate without changing r.from/r.to).
+    const refY = bars5m[0] ? series.priceToCoordinate(bars5m[0].close) : null;
+    const sig = r ? `${r.from.toFixed(2)}_${r.to.toFixed(2)}_${refY}` : 'x';
+    if (sig !== _lastSig) { _lastSig = sig; drawOverlay(); }
+  }
+  requestAnimationFrame(syncLoop);
+}
+let _drawPending = false;
+function scheduleDraw() { if (!_drawPending) { _drawPending = true; requestAnimationFrame(() => { _drawPending = false; _lastSig = ''; drawOverlay(); }); } }
+
+// ── Bisect-based real-bar clipping (never fall back to the raw canvas edge —
+// see the Entry Trigger Lab line-clipping fix this mirrors) ────────────────
+function bisectLeft(arr, t) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid].time < t) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+function periodXBounds(x, startEpoch, endEpochExclusive) {
+  const lo = bisectLeft(bars5m, startEpoch), hi = bisectLeft(bars5m, endEpochExclusive);
+  if (hi <= lo) return null;
+  const x1 = x(bars5m[lo].time), x2 = x(bars5m[hi - 1].time);
+  if (x1 == null || x2 == null) return null;
+  return [x1, x2];
+}
+function epochToDatetimeStr(epochSec) { return new Date(epochSec * 1000).toISOString().replace('T', ' ').slice(0, 19); }
+
+// ── Data load ────────────────────────────────────────────────────────────────
+async function loadData() {
+  const symbol = $('pair').value;
+  const from = $('from').value, to = $('to').value;
+  if (!symbol || !from || !to) { setStatus('pick pair + dates'); return; }
+  $('go').disabled = true; setStatus('loading…'); $('hint').style.display = 'none'; hideMarkerInfo();
+  try {
+    const [c5, c15, c1] = await Promise.all([
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M5`).then(r => r.json()),
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M15`).then(r => r.json()),
+      fetch(`/api/ohlc-range?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&granularity=M1`).then(r => r.json()),
+    ]);
+    if (c5.error || !c5.values?.length) { setStatus(c5.error || 'no candles for that range', true); $('go').disabled = false; return; }
+    bars5m = normalizeBars(c5.values);
+    barsByTime = new Map(bars5m.map(b => [b.time, b]));
+    bars15m = normalizeBars(c15?.values ?? []);
+    bars1m = normalizeBars(c1?.values ?? []);
+    currentSymbol = symbol;
+
+    ensureChart(symbol);
+    if (!overlayCanvas) setupOverlay();
+    series.setData(bars5m.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close })));
+    chart.timeScale().fitContent();
+    sizeOverlay();
+
+    rebuildLtfAndRescan();
+  } catch (e) {
+    setStatus('error: ' + e.message, true);
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+// Rebuilds ltfBars at the selected granularity and re-runs the scan — called
+// on load and whenever the 1m/3m toggle flips.
+function rebuildLtfAndRescan() {
+  if (state.ltfGranularityMin === 1) {
+    ltfBars = bars1m;
+  } else {
+    ltfBars = resampleTo(bars1m, state.ltfGranularityMin).map(b => ({ ...b, datetime: epochToDatetimeStr(b.time) }));
+  }
+  // If OANDA/M1 came back empty (pagination timeout, no history that far
+  // back, etc — the wider the date range the more likely), fall back to M5
+  // as the reaction feed rather than crash. `effectiveLtfMin` tracks what
+  // ACTUALLY drove the scan so neither the status line nor the "By LTF
+  // granularity" stats breakdown silently mislabels M5-granularity results
+  // as "3m"/"1m" — that previously happened here (the fallback's own
+  // setStatus call was clobbered by the unconditional one at the end of
+  // this function, which kept printing state.ltfGranularityMin regardless).
+  const usedFallback = !ltfBars.length;
+  if (usedFallback) ltfBars = bars5m;
+  const effectiveLtfMin = usedFallback ? 5 : state.ltfGranularityMin;
+  vwapCtx = buildVwapContext(ltfBars);
+
+  const preset = $('preset').value;
+  events = runImpulseRangeScan({
+    h4SourceBars: bars5m, asiaSourceBars: bars5m, mondaySourceBars: bars15m, ltfBars, symbol: currentSymbol,
+    opts: { preset, ltfGranularityMin: effectiveLtfMin },
+  });
+  stats = aggregateImpulseStats(events);
+  renderStats();
+  const fallbackNote = usedFallback ? ` — ⚠ no M1 data for this range, fell back to M5 as the reaction feed (results below are 5m-granularity, not ${state.ltfGranularityMin}m)` : '';
+  setStatus(`${currentSymbol} · ${bars5m.length} M5 · ${ltfBars.length} ${effectiveLtfMin}m reaction bars · ${events.length} impulses (${$('preset').value})${fallbackNote}`, usedFallback);
+  scheduleDraw();
+}
+$('preset').addEventListener('change', () => { if (bars5m.length) rebuildLtfAndRescan(); });
+
+// ── Stats panel ──────────────────────────────────────────────────────────────
+function pctTable(rows, labelKey = 'key') {
+  if (!rows.length) return '<div class="empty">no data</div>';
+  return `<table><tr><th>${labelKey}</th><th>n</th><th>Cont%</th><th>Rev%</th><th>Fail%</th><th>Ext%</th></tr>${
+    rows.map(r => `<tr><td>${r.key}</td><td>${r.count}</td><td>${r.outcomePct.CONTINUATION}</td><td>${r.outcomePct.REVERSION}</td><td>${r.outcomePct.FAILED_IMPULSE}</td><td>${r.outcomePct.EXTENSION}</td></tr>`).join('')
+  }</table>`;
+}
+function fmtTime(epochSec) {
+  if (epochSec == null) return '—';
+  return new Date(epochSec * 1000).toISOString().slice(5, 16).replace('T', ' ');
+}
+function fmtPrice(v) { return v == null ? '—' : v.toFixed(pFmt()); }
+
+// The hypothetical trade implied by each impulse: long/short at the
+// impulse's own close (`entry`), exit at whatever price actually resolved
+// `outcome` — or a mark-to-last-close snapshot (marked "open") when the
+// horizon ran out before CONTINUATION/REVERSION/FAILED_IMPULSE resolved.
+// Evaluation-only history (spec §14) — not a signal, see the page banner.
+function tradeLogRows() {
+  return events
+    .filter(e => e.reaction)
+    .slice()
+    .sort((a, b) => b.time - a.time)
+    .map(e => {
+      const r = e.reaction;
+      const sign = r.returnPrice > 0 ? '+' : '';
+      const color = r.returnPrice > 0 ? '#22c55e' : r.returnPrice < 0 ? '#ef4444' : 'var(--text2)';
+      return `<tr>
+        <td style="text-align:left">${fmtTime(e.time)}</td>
+        <td style="text-align:left">${e.direction === 'up' ? '▲ long' : '▼ short'}</td>
+        <td>${fmtPrice(r.entry)}</td>
+        <td>${fmtPrice(r.exitPrice)}${r.open ? ' (open)' : ''}</td>
+        <td style="color:${OUTCOME_COLOR[r.outcome]}">${r.outcome}</td>
+        <td style="color:${color}">${sign}${fmtPrice(r.returnPrice)}</td>
+      </tr>`;
+    }).join('');
+}
+
+function renderStats() {
+  const p = $('statsPanel');
+  if (!stats || !stats.n) { p.innerHTML = '<div class="empty">No impulses found in this range/preset.</div>'; return; }
+  const o = stats.overall;
+  p.innerHTML = `
+    <h2>Overall</h2>
+    <table>
+      <tr><td>Impulses</td><td>${o.count}</td></tr>
+      <tr><td>Bull / Bear</td><td>${o.bullish} / ${o.bearish}</td></tr>
+      <tr><td>Avg range</td><td>${o.avgRange != null ? o.avgRange.toFixed(5) : '—'}</td></tr>
+      <tr><td>Avg body%</td><td>${o.avgBodyPct != null ? (o.avgBodyPct * 100).toFixed(1) + '%' : '—'}</td></tr>
+      <tr><td>Avg MFE</td><td>${o.avgMfe != null ? o.avgMfe.toFixed(5) : '—'}</td></tr>
+      <tr><td>Avg MAE</td><td>${o.avgMae != null ? o.avgMae.toFixed(5) : '—'}</td></tr>
+      <tr><td>Continuation</td><td>${o.outcomePct.CONTINUATION}%</td></tr>
+      <tr><td>Reversion</td><td>${o.outcomePct.REVERSION}%</td></tr>
+      <tr><td>Failed impulse</td><td>${o.outcomePct.FAILED_IMPULSE}%</td></tr>
+      <tr><td>Extension</td><td>${o.outcomePct.EXTENSION}%</td></tr>
+      <tr><td>No clear edge</td><td>${o.outcomePct.NO_CLEAR_EDGE}%</td></tr>
+    </table>
+    <h2>By session</h2>${pctTable(stats.bySession, 'session')}
+    <h2>By day of week</h2>${pctTable(stats.byDayOfWeek, 'day')}
+    <h2>By Asia/Monday confluence</h2>${pctTable(stats.byAsiaConfluence, 'confluence')}
+    <h2>By score edge</h2>${pctTable(stats.byEdge, 'edge')}
+    <h2>By LTF granularity</h2>${pctTable(stats.byLtfGranularity, 'tf')}
+    <h2>Trade log <span style="font-weight:400;text-transform:none;color:var(--text3)">— entry = impulse close, evaluation-only (§14), not a signal</span></h2>
+    <table>
+      <tr><th style="text-align:left">Time</th><th style="text-align:left">Dir</th><th>Entry</th><th>Exit</th><th>Outcome</th><th>Return</th></tr>
+      ${tradeLogRows()}
+    </table>
+  `;
+}
+
+// ── Overlay drawing ──────────────────────────────────────────────────────────
+function drawSegment(x1, x2, y, color, dashed, width) {
+  if (x1 == null || x2 == null || y == null) return;
+  octx.save();
+  octx.strokeStyle = color; octx.lineWidth = (width ?? 1.5) * dpr;
+  if (dashed) octx.setLineDash([4 * dpr, 3 * dpr]); else octx.setLineDash([]);
+  octx.beginPath(); octx.moveTo(x1 * dpr, y * dpr); octx.lineTo(x2 * dpr, y * dpr); octx.stroke();
+  octx.restore();
+}
+function drawImpulseMarker(x, y, dir, ringColor, size) {
+  if (x == null || y == null) return;
+  const s = (size ?? 9) * dpr;
+  octx.save();
+  octx.fillStyle = dir === 'up' ? '#22c55e' : '#ef4444';
+  octx.strokeStyle = ringColor ?? 'rgba(0,0,0,.65)'; octx.lineWidth = 2.5 * dpr;
+  octx.beginPath();
+  // diamond, distinct from Entry Trigger Lab's triangle markers
+  octx.moveTo(x * dpr, y * dpr - s); octx.lineTo(x * dpr + s, y * dpr); octx.lineTo(x * dpr, y * dpr + s); octx.lineTo(x * dpr - s, y * dpr);
+  octx.closePath(); octx.fill(); octx.stroke();
+  octx.restore();
+}
+
+function drawOverlay() {
+  if (!octx) return;
+  octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  drawnMarkers = [];
+  if (!chart || !series || !bars5m.length) return;
+  const ts = chart.timeScale();
+  const x = t => ts.timeToCoordinate(t);
+  const y = p => series.priceToCoordinate(p);
+
+  if (state.armedLevels.has('vwap') && vwapCtx?.rows.length) {
+    octx.save(); octx.strokeStyle = '#818cf8'; octx.lineWidth = 1 * dpr; octx.setLineDash([]);
+    octx.beginPath();
+    let started = false;
+    for (const row of vwapCtx.rows) {
+      const xx = x(row.time), yy = y(row.vwap);
+      if (xx == null || yy == null) continue;
+      if (!started) { octx.moveTo(xx * dpr, yy * dpr); started = true; } else octx.lineTo(xx * dpr, yy * dpr);
+    }
+    octx.stroke(); octx.restore();
+  }
+
+  const horizonSec = 4 * 3600 + (60 * state.ltfGranularityMin * 60); // impulse candle + a generous reaction window
+  for (const e of events) {
+    const closeTime = e.time + 4 * 3600;
+    const windowEnd = e.reaction?.outcomeTime ?? (closeTime + 60 * state.ltfGranularityMin * 60 * 20);
+    const spanEnd = Math.max(windowEnd, closeTime + 3600);
+    if (state.armedLevels.has('impulseRange')) {
+      const bounds = periodXBounds(x, e.time, spanEnd);
+      if (bounds) {
+        for (const lvl of e.levels.filter(l => l.fib >= 0 && l.fib <= 1)) {
+          drawSegment(bounds[0], bounds[1], y(lvl.price), 'rgba(229,231,235,.55)', false, lvl.fib === 0 || lvl.fib === 1 ? 1.5 : 1);
+        }
+      }
+    }
+    if (state.armedLevels.has('extensions')) {
+      const bounds = periodXBounds(x, e.time, spanEnd);
+      if (bounds) {
+        for (const lvl of e.levels.filter(l => l.fib < 0 || l.fib > 1)) {
+          drawSegment(bounds[0], bounds[1], y(lvl.price), 'rgba(250,204,21,.6)', true, 1);
+        }
+      }
+    }
+    if (state.armedLevels.has('asiaConf')) {
+      const bounds = periodXBounds(x, e.time, spanEnd);
+      if (bounds) {
+        for (const c of [...e.asiaConfluence.asia, ...e.asiaConfluence.monday]) {
+          drawSegment(bounds[0], bounds[1], y(c.price), '#34d399', false, c.isTight ? 3 : 2);
+        }
+      }
+    }
+
+    if (state.armedLevels.has('trade') && e.reaction) {
+      const r = e.reaction;
+      const ex1 = x(closeTime), ex2 = x(r.exitTime ?? spanEnd);
+      const entryY = y(r.entry);
+      // Entry tick: a short white line at the impulse's own close, from the
+      // reaction window's start to the exit time — the implied trade's
+      // holding period, not a level (that's what impulseRange/extensions
+      // already draw).
+      if (ex1 != null && ex2 != null && entryY != null) drawSegment(ex1, ex2, entryY, 'rgba(229,231,235,.85)', false, 1.5);
+      const exitX = x(r.exitTime ?? spanEnd), exitY = y(r.exitPrice);
+      if (exitX != null && exitY != null) {
+        const exitColor = r.returnPrice > 0 ? '#22c55e' : r.returnPrice < 0 ? '#ef4444' : '#9ca3af';
+        octx.save();
+        octx.fillStyle = exitColor; octx.strokeStyle = r.open ? 'rgba(0,0,0,.4)' : 'rgba(0,0,0,.65)';
+        octx.lineWidth = 1.5 * dpr;
+        if (r.open) octx.setLineDash([2 * dpr, 2 * dpr]); else octx.setLineDash([]);
+        octx.beginPath(); octx.arc(exitX * dpr, exitY * dpr, 3.5 * dpr, 0, Math.PI * 2); octx.fill(); octx.stroke();
+        octx.restore();
+      }
+    }
+
+    const markerX = x(e.time + 2 * 3600); // roughly mid-candle
+    const markerY = y(e.direction === 'up' ? e.high : e.low);
+    if (markerX != null && markerY != null) {
+      const ring = OUTCOME_COLOR[e.reaction?.outcome] ?? 'rgba(0,0,0,.65)';
+      drawImpulseMarker(markerX, markerY, e.direction, ring);
+      drawnMarkers.push({ x: markerX, y: markerY, e });
+    }
+  }
+}
+
+function onChartWrapClick(ev) {
+  if (!drawnMarkers.length) return;
+  const rect = $('chartWrap').getBoundingClientRect();
+  const cx = ev.clientX - rect.left, cy = ev.clientY - rect.top;
+  let best = null, bestDist = 16;
+  for (const m of drawnMarkers) { const d = Math.hypot(m.x - cx, m.y - cy); if (d < bestDist) { bestDist = d; best = m; } }
+  if (best) showMarkerInfo(best, cx, cy); else hideMarkerInfo();
+}
+function hideMarkerInfo() { $('markerInfo').style.display = 'none'; }
+function pFmt() { return currentSymbol && currentSymbol.includes('JPY') ? 3 : currentSymbol && currentSymbol.includes('XAU') ? 2 : 5; }
+function evRow(label, val) { return `<div class="mi-evrow"><span class="mi-lbl">${label}</span><span>${val ? '✓' : '·'}</span></div>`; }
+
+function showMarkerInfo(m, cx, cy) {
+  const e = m.e, r = e.reaction, p = pFmt();
+  const rows = [];
+  rows.push(`<div class="mi-row"><span class="mi-lbl">Direction</span><span>${e.direction === 'up' ? '▲ bull' : '▼ bear'}</span></div>`);
+  rows.push(`<div class="mi-row"><span class="mi-lbl">Body / Range%</span><span>${(e.bodyPct * 100).toFixed(0)}% · ${e.bodyToAvg.toFixed(1)}x avg</span></div>`);
+  rows.push(`<div class="mi-row"><span class="mi-lbl">Range</span><span>${e.range.toFixed(p)}</span></div>`);
+  rows.push(`<div class="mi-row"><span class="mi-lbl">Asia/Monday confluence</span><span>${e.asiaConfluence.hasConfluence ? 'yes' : 'no'}</span></div>`);
+  let outcomeHtml = '', evidenceHtml = '', scoreHtml = '';
+  if (r) {
+    const retColor = r.returnPrice > 0 ? '#22c55e' : r.returnPrice < 0 ? '#ef4444' : 'inherit';
+    outcomeHtml = `<div class="mi-sec"><div class="mi-sec-hd">Implied trade (evaluation-only, §14 — not a signal)</div>
+      <div class="mi-row"><span class="mi-lbl">Entry</span><span>${r.entry.toFixed(p)} ${e.direction === 'up' ? '(long)' : '(short)'}</span></div>
+      <div class="mi-row"><span class="mi-lbl">Exit</span><span>${r.exitPrice.toFixed(p)}${r.open ? ' (open — held to horizon end)' : ''}</span></div>
+      <div class="mi-row"><span class="mi-lbl">Return</span><span style="color:${retColor}">${r.returnPrice > 0 ? '+' : ''}${r.returnPrice.toFixed(p)}</span></div>
+      <div class="mi-row"><span class="mi-lbl">Outcome</span><span style="color:${OUTCOME_COLOR[r.outcome]}">${r.outcome}</span></div>
+      <div class="mi-row"><span class="mi-lbl">MFE / MAE</span><span>${r.mfe.toFixed(p)} / ${r.mae.toFixed(p)}</span></div>
+      <div class="mi-row"><span class="mi-lbl">VWAP dist (ATR)</span><span>${r.vwapDistanceAtr != null ? r.vwapDistanceAtr.toFixed(2) : '—'}</span></div></div>`;
+    evidenceHtml = `<div class="mi-sec"><div class="mi-sec-hd">Continuation evidence</div>
+      ${evRow('displacement', r.evidence.continuation.displacement)}
+      ${evRow('FVG aligned', r.evidence.continuation.fvgAligned)}
+      ${evRow('structure aligned', r.evidence.continuation.structureBreakAligned)}
+      ${evRow('pullback→continue', r.evidence.continuation.pullbackThenContinuation)}
+      ${evRow('VWAP aligned', r.evidence.continuation.vwapAligned)}
+      </div>
+      <div class="mi-sec"><div class="mi-sec-hd">Fade evidence</div>
+      ${evRow('extended from VWAP', r.evidence.fade.extendedFromVwap)}
+      ${evRow('rejected extension lvl', r.evidence.fade.rejectedExtensionLevel)}
+      ${evRow('rejection wick', r.evidence.fade.rejectionWick)}
+      ${evRow('breakout failed', r.evidence.fade.breakoutFailedQuick)}
+      ${evRow('structure against', r.evidence.fade.structureBreakAgainst)}
+      </div>`;
+    scoreHtml = `<div class="mi-sec"><div class="mi-row"><span class="mi-lbl">Cont / Fade score</span><span>${e.scores.continuationScore} / ${e.scores.fadeScore}</span></div>
+      <div class="mi-row"><span class="mi-lbl">Edge (experimental)</span><span>${e.scores.edge}</span></div></div>`;
+  }
+  const panel = $('markerInfo');
+  panel.innerHTML = `<div class="mi-title">4H Impulse<span class="mi-close">✕</span></div>${rows.join('')}${outcomeHtml}${evidenceHtml}${scoreHtml}`;
+  panel.style.display = 'block';
+  const ww = $('chartWrap').clientWidth, wh = $('chartWrap').clientHeight;
+  const pw = 320, ph = panel.offsetHeight || 300;
+  panel.style.left = (cx + pw + 16 > ww ? Math.max(4, cx - pw - 10) : cx + 10) + 'px';
+  panel.style.top = (cy + ph + 10 > wh ? Math.max(4, cy - ph - 10) : cy + 10) + 'px';
+}
+</script>
+</body>
+</html>

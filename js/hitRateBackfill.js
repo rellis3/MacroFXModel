@@ -51,6 +51,20 @@ export const HR_INSTRUMENTS = [
   { name: 'GBPCHF', sym: 'GBP_CHF',    ac: 'fx'        },
   { name: 'AUDJPY', sym: 'AUD_JPY',    ac: 'fx'        },
   { name: 'CADJPY', sym: 'CAD_JPY',    ac: 'fx'        },
+  { name: 'EURAUD', sym: 'EUR_AUD',    ac: 'fx'        },
+  { name: 'EURCAD', sym: 'EUR_CAD',    ac: 'fx'        },
+  { name: 'EURNZD', sym: 'EUR_NZD',    ac: 'fx'        },
+  { name: 'GBPAUD', sym: 'GBP_AUD',    ac: 'fx'        },
+  { name: 'GBPCAD', sym: 'GBP_CAD',    ac: 'fx'        },
+  { name: 'AUDCAD', sym: 'AUD_CAD',    ac: 'fx'        },
+  { name: 'NZDCAD', sym: 'NZD_CAD',    ac: 'fx'        },
+  { name: 'NZDJPY', sym: 'NZD_JPY',    ac: 'fx'        },
+  // oandaOptional: BTC_USD isn't offered on every OANDA division (UK retail can't
+  // hold crypto CFDs). Consumers must tolerate its Oanda-side fetches failing:
+  // it's excluded from the daily brief's batched pricing request (one unknown
+  // instrument 400s the WHOLE batch) and its hit-rate computation may be null.
+  // The vol forecast itself comes from Yahoo (preferYahoo in the scheduler).
+  { name: 'BTCUSD', sym: 'BTC_USD',    ac: 'crypto', oandaOptional: true },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -313,7 +327,14 @@ export async function computeHitRates(lookbackDays = 90, existingData = null) {
     const results = {};
     for (const { name, sym, ac } of HR_INSTRUMENTS) {
       console.log(`[HIT-RATES] ── ${name} ──`);
-      results[name] = await _computeInstrument(name, sym, ac, lookbackDays, existingData?.instruments?.[name] ?? null);
+      // One instrument failing (e.g. BTC_USD on an OANDA division without crypto)
+      // must not kill the whole backfill — record null and keep going.
+      try {
+        results[name] = await _computeInstrument(name, sym, ac, lookbackDays, existingData?.instruments?.[name] ?? null);
+      } catch (e) {
+        console.error(`[HIT-RATES] ${name} failed: ${e.message} — skipping`);
+        results[name] = existingData?.instruments?.[name] ?? null;
+      }
     }
     return {
       ok:           true,

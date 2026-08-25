@@ -320,6 +320,38 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Reprice the overnight repo, live</h3>
+    <p>
+    Starts on the worked example's exact numbers: $50,000,000 overnight at 5.30%, actual/360. Change any field
+    and the interest and total repurchase price recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Notional ($)</span></div>
+        <input type="number" id="repo-scratch-notional" class="tl-scratch-input" value="50000000" step="1000000">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Repo rate \(r\) (%)</span></div>
+        <input type="number" id="repo-scratch-rate" class="tl-scratch-input" value="5.30" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Term (days)</span></div>
+        <input type="number" id="repo-scratch-days" class="tl-scratch-input" value="1" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Interest = <b id="repo-scratch-interest">$7,361.11</b>
+    </div>
+    <div class="tl-readout">
+      Repurchase price = <b id="repo-scratch-total">$50,007,361.11</b>
+      <span id="repo-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="repo-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-solid blue">
     <strong>The direct tie to <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>:</strong>
     SOFR — the Secured Overnight Financing Rate, the USD reference rate that replaced LIBOR and now anchors OIS
@@ -478,6 +510,53 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { notional: 50000000, rate: 5.30, days: 1 };
+  var notionalInput = document.getElementById('repo-scratch-notional');
+  var rateInput = document.getElementById('repo-scratch-rate');
+  var daysInput = document.getElementById('repo-scratch-days');
+  var interestOut = document.getElementById('repo-scratch-interest');
+  var totalOut = document.getElementById('repo-scratch-total');
+  var note = document.getElementById('repo-scratch-note');
+  var resetBtn = document.getElementById('repo-scratch-reset');
+  if (!notionalInput) return;
+
+  function fmtMoney(n){
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function recompute(){
+    var notional = parseFloat(notionalInput.value);
+    var rate = parseFloat(rateInput.value) / 100;
+    var days = parseFloat(daysInput.value);
+
+    if (!isFinite(notional) || notional <= 0 || !isFinite(rate) || rate < 0 || !isFinite(days) || days <= 0) {
+      note.textContent = '(enter a positive notional, a non-negative rate, and a positive number of days)';
+      return;
+    }
+    note.textContent = '';
+
+    var interest = notional * rate * days / 360;
+    var total = notional + interest;
+
+    interestOut.textContent = fmtMoney(interest);
+    totalOut.textContent = fmtMoney(total);
+  }
+
+  notionalInput.addEventListener('input', recompute);
+  rateInput.addEventListener('input', recompute);
+  daysInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    notionalInput.value = DEFAULTS.notional;
+    rateInput.value = DEFAULTS.rate;
+    daysInput.value = DEFAULTS.days;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -499,6 +578,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

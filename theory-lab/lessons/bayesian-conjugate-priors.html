@@ -354,6 +354,44 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the Beta-Binomial posterior, live</h3>
+    <p>
+      Starts on the worked example's final (Round 2, cumulative) numbers:
+      \(\text{Beta}(2,3)\) prior updated with 40 days observed, 12 of them
+      trend days. Change any field and the posterior parameters, mean, and
+      standard deviation recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior \(\alpha\)</span></div>
+        <input type="number" id="cp-scratch-alpha" class="tl-scratch-input" value="2" step="1" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior \(\beta\)</span></div>
+        <input type="number" id="cp-scratch-beta" class="tl-scratch-input" value="3" step="1" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trials \(n\)</span></div>
+        <input type="number" id="cp-scratch-n" class="tl-scratch-input" value="40" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Successes \(s\)</span></div>
+        <input type="number" id="cp-scratch-s" class="tl-scratch-input" value="12" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Posterior = Beta(<b id="cp-scratch-postalpha">14</b>, <b id="cp-scratch-postbeta">31</b>)
+    </div>
+    <div class="tl-readout">
+      mean = <b id="cp-scratch-mean">0.3111</b>&emsp;sd = <b id="cp-scratch-sd">0.0683</b>
+      <span id="cp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="cp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world scenario</div>
@@ -627,6 +665,65 @@
 </script>
 <script>
 (function(){
+  var DEFAULTS = { alpha: 2, beta: 3, n: 40, s: 12 };
+  var fields = ['alpha', 'beta', 'n', 's'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('cp-scratch-' + f); });
+
+  var postAlphaOut = document.getElementById('cp-scratch-postalpha');
+  var postBetaOut = document.getElementById('cp-scratch-postbeta');
+  var meanOut = document.getElementById('cp-scratch-mean');
+  var sdOut = document.getElementById('cp-scratch-sd');
+  var noteOut = document.getElementById('cp-scratch-note');
+  var resetBtn = document.getElementById('cp-scratch-reset');
+  if (!inputs.alpha) return;
+
+  function recompute(){
+    var alpha = parseFloat(inputs.alpha.value);
+    var beta = parseFloat(inputs.beta.value);
+    var n = parseFloat(inputs.n.value);
+    var s = parseFloat(inputs.s.value);
+
+    if (!isFinite(alpha) || !isFinite(beta) || !isFinite(n) || !isFinite(s) || alpha <= 0 || beta <= 0 || n < 0 || s < 0) {
+      noteOut.textContent = '(α and β must be positive; n and s must be non-negative)';
+      postAlphaOut.textContent = '—';
+      postBetaOut.textContent = '—';
+      meanOut.textContent = '—';
+      sdOut.textContent = '—';
+      return;
+    }
+    if (s > n) {
+      noteOut.textContent = '(s cannot exceed n — successes can\'t outnumber trials)';
+      postAlphaOut.textContent = '—';
+      postBetaOut.textContent = '—';
+      meanOut.textContent = '—';
+      sdOut.textContent = '—';
+      return;
+    }
+
+    var postAlpha = alpha + s;
+    var postBeta = beta + (n - s);
+    var mean = postAlpha / (postAlpha + postBeta);
+    var variance = (postAlpha * postBeta) / (Math.pow(postAlpha + postBeta, 2) * (postAlpha + postBeta + 1));
+    var sd = Math.sqrt(variance);
+
+    postAlphaOut.textContent = postAlpha.toFixed(2).replace(/\.00$/, '');
+    postBetaOut.textContent = postBeta.toFixed(2).replace(/\.00$/, '');
+    meanOut.textContent = mean.toFixed(4);
+    sdOut.textContent = sd.toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -648,6 +745,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

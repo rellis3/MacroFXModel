@@ -755,6 +755,7 @@
         <button class="fchip" data-f="fx" onclick="setFilter('fx')">FX</button>
         <button class="fchip" data-f="index" onclick="setFilter('index')">Indices</button>
         <button class="fchip" data-f="commodity" onclick="setFilter('commodity')">Gold</button>
+        <button class="fchip" data-f="crypto" onclick="setFilter('crypto')">BTC</button>
         <span class="lbl" style="margin-left:8px">Sort</span>
         <select id="sortSel" onchange="render()">
           <option value="attention">Attention (hot first)</option>
@@ -998,6 +999,9 @@ const PAIR_NEWS_CC = {
   EURUSD:['US','EU','DE'], GBPUSD:['US','GB'], USDJPY:['US','JP'], AUDUSD:['US','AU'],
   NZDUSD:['US','NZ'], USDCAD:['US','CA'], USDCHF:['US','CH'], GBPJPY:['GB','JP'],
   EURGBP:['EU','DE','GB'], EURJPY:['EU','DE','JP'], AUDJPY:['AU','JP'], CADJPY:['CA','JP'],
+  EURAUD:['EU','DE','AU'], EURCAD:['EU','DE','CA'], EURNZD:['EU','DE','NZ'],
+  GBPAUD:['GB','AU'], GBPCAD:['GB','CA'], AUDCAD:['AU','CA'],
+  NZDCAD:['NZ','CA'], NZDJPY:['NZ','JP'], BTCUSD:['US'],
   GOLD:['US'], NQ:['US'], SPX500:['US'], US30:['US'], US2000:['US'], DE30:['DE','EU'], UK100:['GB'],
 };
 const dispCorr = k => {   // corr key → friendly label
@@ -1115,10 +1119,17 @@ async function loadCommodityDrivers() {
       jget('/api/quote?symbol=WTICO_USD'),
       jget('/api/ohlc?symbol=WTICO_USD'),
     ]);
-    const prevClose = oh?.values?.at(-1)?.close;
-    const wkAgoPrice = oh?.values?.at(-6)?.close ?? null;   // ~5 trading days back
+    // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
+    // The arithmetic below coerces silently, but prevClose.toFixed(2) in
+    // commodityChip() threw on the string — and since that chip is built inside
+    // cardHtml(), one throw took out the ENTIRE grid render. It only fired once
+    // this fetch resolved and triggered a re-render, which is why it looked
+    // intermittent. Coerce at the boundary so nothing downstream has to care.
+    const num = v => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+    const prevClose = num(oh?.values?.at(-1)?.close);
+    const wkAgoPrice = num(oh?.values?.at(-6)?.close);      // ~5 trading days back
     if (q?.price != null && prevClose) {
-      const hist = (oh.values ?? []).slice(-15).map(v => v.close);
+      const hist = (oh.values ?? []).slice(-15).map(v => num(v.close)).filter(v => v != null);
       hist.push(q.price);   // append today's live price so the sparkline reflects the current tick
       commodityDrivers = { wti: { price: q.price, prevClose, wkAgoPrice, pct: (q.price - prevClose) / prevClose * 100, hist } };
     }
@@ -1865,7 +1876,11 @@ function equitiesRisk(rs) {
   const idx = rs.filter(r => r.d.ac === 'index');
   const chips = idx.map(r => {
     const g = r.d.regime, s = r.s;
-    const dir = g?.label === 'TREND' ? g.trend_dir : _biasDir(s?.bias_detail);
+    // BOTH halves need normalising. trend_dir is "BULL"/"BEAR", so comparing the
+    // raw value to 'up'/'down' below counted every trending index as neither —
+    // equity stuck at 0, which pinned the Market Tone gauge to exactly 50 and made
+    // "indices bid" read 0/N while the rows underneath moved.
+    const dir = g?.label === 'TREND' ? _trendDir(g.trend_dir) : _biasDir(s?.bias_detail);
     return { name: dispName(r.name), dir };
   });
   const up = chips.filter(c => c.dir === 'up').length;
@@ -2768,7 +2783,7 @@ function nextHighImpact() {
 }
 
 // ── Zoom 3: proximity watch — live prices vs ladder levels ───────────────────
-const PROX_LIMIT = { fx: 12, commodity: 5, index: 25 };   // pips / points
+const PROX_LIMIT = { fx: 12, commodity: 5, index: 25, crypto: 150 };   // pips / points ($ for BTC)
 
 function livePriceFor(d) {
   if (!livePrices) return null;
@@ -3055,7 +3070,9 @@ function oiFor(name, sym) {
 
 // ── Zoom 1: do the signals agree? ────────────────────────────────────────────
 function agreement(r) {
-  const hmm = r.d.regime?.label === 'TREND' ? r.d.regime.trend_dir : null;
+  // Normalised: sess below is 'up'/'down', but trend_dir is "BULL"/"BEAR", so the
+  // equality test could never be true and this chip always said ⚠ mixed.
+  const hmm = r.d.regime?.label === 'TREND' ? _trendDir(r.d.regime.trend_dir) : null;
   const bd  = r.s?.bias_detail ?? r.s?.bias ?? '';
   const sess = _biasDir(bd);
   if (!hmm || !sess) return { chip: '', aligned: null };
@@ -3131,6 +3148,9 @@ function renderHeader() {
   if (forecast?.computed_at) stamps.push(`forecast ${new Date(forecast.computed_at).toLocaleTimeString()}`);
   if (session?.fetched_at)   stamps.push(`live ${new Date(session.fetched_at).toLocaleTimeString()}`);
   if (brief.has_hit_rates && brief.hit_rates_age) stamps.push(`hit-rates ${new Date(brief.hit_rates_age).toLocaleDateString()}`);
+  // Carried-forward instruments (their data source was down at forecast time)
+  const nStale = Object.values(brief.instruments ?? {}).filter(d => d?.stale).length;
+  if (nStale) stamps.push(`⟳ ${nStale} instrument${nStale === 1 ? '' : 's'} on a carried forecast`);
   $('hdrStamp').textContent = stamps.join(' · ');
 }
 
@@ -3601,6 +3621,7 @@ function cardHtml(r) {
   return `<div class="pcard ${dirCls} ${(r.used ?? 0) >= 0.8 || d.news_flag ? 'hot' : ''} ${r.isProx ? 'prox' : ''}" onclick="openDrawer('${r.name}')">
     <div class="pc-top">
       <span class="pc-name">${dispName(r.name)}</span>
+      ${d.stale ? `<span class="chip warn" title="The live data fetch failed when this forecast was computed (e.g. an Oanda outage) — showing the last good forecast${d.carried_from ? `, from the ${d.carried_from} session` : ''}. It refreshes automatically once the data source recovers.">⟳ ${d.carried_from ?? 'carried'}</span>` : ''}
       <span class="pc-price">${d.current_price != null ? fmtN(d.current_price, d.dp) : ''}</span>
       <span class="push">${regimeChip(d)}${sizeChip(d)}</span>
     </div>
@@ -3697,13 +3718,13 @@ function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   // Semi-circle gauge: needle + a 0-100 score, both from risk.equity (indices
   // breadth, -1..+1) — the same input equitiesRisk() already uses for its
   // RISK-ON/OFF verdict, just rescaled for display.
-  const eq = Math.max(-1, Math.min(1, risk.equity ?? 0));
-  const score = Math.round((eq + 1) / 2 * 100);
-  const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
-  const cx = 75, cy = 72, r = 58;
-  const rad = (deg) => (deg - 180) * Math.PI / 180;
-  const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
-  const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
+  // The needle used to read risk.equity ALONE while five rows sat underneath it
+  // feeding it nothing — so overnight, with no index direction, it parked on a
+  // confident 50 while credit/VIX/USD/oil all had readings on screen. Every row
+  // the panel displays now votes (js/crossAssetCore.js::marketToneScore), with
+  // breadth still weighted double as the most direct read of risk appetite.
+  // Rows are built below, so this is computed after them.
+  const eqRaw = risk.equity != null && Number.isFinite(risk.equity) ? Math.max(-1, Math.min(1, risk.equity)) : null;
   const toneCls = risk.cls === 'on' ? 'on' : risk.cls === 'off' ? 'off' : 'mix';
 
   // Real-data rows below the gauge — same convention as the mockup's list,
@@ -3715,6 +3736,19 @@ function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   if (usd) rows.push(['USD Trend', usd.score > 0.05 ? 'Strengthening' : usd.score < -0.05 ? 'Weakening' : 'Flat', usd.score > 0.05 ? 'on' : usd.score < -0.05 ? 'off' : 'mix']);
   if (usTen?.value != null && usTen.prev != null) rows.push(['Rate Trend (10Y)', usTen.value > usTen.prev ? 'Rising' : usTen.value < usTen.prev ? 'Falling' : 'Flat', 'mix']);
   if (wti?.pct != null) rows.push(['Oil Trend (WTI)', wti.pct > 0.15 ? 'Firming' : wti.pct < -0.15 ? 'Slightly Weak' : 'Flat', wti.pct > 0.15 ? 'on' : wti.pct < -0.15 ? 'off' : 'mix']);
+
+  const tone = window.crossAssetBrick
+    ? window.crossAssetBrick.marketToneScore(eqRaw, rows.map(r => r[2]))
+    : { score: eqRaw == null ? null : Math.round((eqRaw + 1) / 2 * 100), votes: eqRaw == null ? 0 : 1 };
+  // A null score means nothing had a read — show that, rather than a 50 that
+  // looks like a confident "balanced".
+  const score = tone.score == null ? '–' : tone.score;
+  const eq = tone.score == null ? 0 : (tone.score / 50) - 1;
+  const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
+  const cx = 75, cy = 72, r = 58;
+  const rad = (deg) => (deg - 180) * Math.PI / 180;
+  const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
+  const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
 
   return `<div class="gauge-wrap">
     <div class="gauge-svg-wrap">

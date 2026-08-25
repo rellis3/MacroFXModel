@@ -382,6 +382,45 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the wall ratios, live</h3>
+    <p>
+      Starts on the worked example's exact numbers: the 260 call strike
+      (7,800 OI) against its neighbor at 255 (2,200 OI), and the 240 put
+      strike (6,500 OI) against its neighbor at 245 (2,600 OI). Edit any
+      field and both ratios recompute instantly against this lesson's
+      "3×+ = strong wall" threshold from Step 1 above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Call OI at candidate wall</span></div>
+        <input type="number" id="oiw-scratch-callWall" class="tl-scratch-input" value="7800" step="100" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Call OI at nearest neighbor</span></div>
+        <input type="number" id="oiw-scratch-callNeighbor" class="tl-scratch-input" value="2200" step="100" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Put OI at candidate wall</span></div>
+        <input type="number" id="oiw-scratch-putWall" class="tl-scratch-input" value="6500" step="100" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Put OI at nearest neighbor</span></div>
+        <input type="number" id="oiw-scratch-putNeighbor" class="tl-scratch-input" value="2600" step="100" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Call ratio = <b id="oiw-scratch-callRatio">3.55&times;</b>&emsp;Put ratio = <b id="oiw-scratch-putRatio">2.50&times;</b>
+    </div>
+    <div class="tl-readout">
+      Call side: <b id="oiw-scratch-callVerdict">strong wall (&ge;3&times;)</b>&emsp;Put side: <b id="oiw-scratch-putVerdict">below the 3&times; threshold</b>
+      <span id="oiw-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="oiw-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -598,6 +637,69 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
 </div>
 <script>
 (function(){
+  var callWallInput = document.getElementById('oiw-scratch-callWall');
+  var callNeighborInput = document.getElementById('oiw-scratch-callNeighbor');
+  var putWallInput = document.getElementById('oiw-scratch-putWall');
+  var putNeighborInput = document.getElementById('oiw-scratch-putNeighbor');
+  var callRatioOut = document.getElementById('oiw-scratch-callRatio');
+  var putRatioOut = document.getElementById('oiw-scratch-putRatio');
+  var callVerdictOut = document.getElementById('oiw-scratch-callVerdict');
+  var putVerdictOut = document.getElementById('oiw-scratch-putVerdict');
+  var noteOut = document.getElementById('oiw-scratch-note');
+  var resetBtn = document.getElementById('oiw-scratch-reset');
+  if (!callWallInput) return;
+
+  var DEFAULTS = { callWall: 7800, callNeighbor: 2200, putWall: 6500, putNeighbor: 2600 };
+
+  function verdict(ratio){
+    return ratio >= 3 ? 'strong wall (≥3×)' : 'below the 3× threshold';
+  }
+
+  function recompute(){
+    var callWall = parseFloat(callWallInput.value);
+    var callNeighbor = parseFloat(callNeighborInput.value);
+    var putWall = parseFloat(putWallInput.value);
+    var putNeighbor = parseFloat(putNeighborInput.value);
+
+    if (!isFinite(callWall) || !isFinite(callNeighbor) || !isFinite(putWall) || !isFinite(putNeighbor) ||
+        callWall < 0 || callNeighbor < 0 || putWall < 0 || putNeighbor < 0) {
+      noteOut.textContent = '(enter non-negative open-interest numbers)';
+      return;
+    }
+    if (callNeighbor === 0 || putNeighbor === 0) {
+      callRatioOut.textContent = callNeighbor === 0 ? '—' : (callWall/callNeighbor).toFixed(2) + '×';
+      putRatioOut.textContent = putNeighbor === 0 ? '—' : (putWall/putNeighbor).toFixed(2) + '×';
+      callVerdictOut.textContent = '—';
+      putVerdictOut.textContent = '—';
+      noteOut.textContent = '(neighbor OI of zero makes the ratio undefined)';
+      return;
+    }
+
+    var callRatio = callWall / callNeighbor;
+    var putRatio = putWall / putNeighbor;
+
+    callRatioOut.textContent = callRatio.toFixed(2) + '×';
+    putRatioOut.textContent = putRatio.toFixed(2) + '×';
+    callVerdictOut.textContent = verdict(callRatio);
+    putVerdictOut.textContent = verdict(putRatio);
+    noteOut.textContent = '';
+  }
+
+  [callWallInput, callNeighborInput, putWallInput, putNeighborInput].forEach(function(inp){
+    inp.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    callWallInput.value = DEFAULTS.callWall;
+    callNeighborInput.value = DEFAULTS.callNeighbor;
+    putWallInput.value = DEFAULTS.putWall;
+    putNeighborInput.value = DEFAULTS.putNeighbor;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -619,6 +721,6 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

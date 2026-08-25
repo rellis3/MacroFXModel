@@ -306,6 +306,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Collapse the same two branches, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit either branch's mean, variance, or posterior
+      weight (the second branch's weight is always \(1-\pi_{1\mid j}\)) and the collapsed mean, the
+      weighted-average-of-variances term, the weighted-variance-of-means term, and the total collapsed
+      variance all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Branch 1 mean \(\hat{x}^{(1,j)}\)</span></div>
+        <input type="number" id="rs-scratch-x1" class="tl-scratch-input" value="1.30" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Branch 1 variance \(P^{(1,j)}\)</span></div>
+        <input type="number" id="rs-scratch-P1" class="tl-scratch-input" value="0.004" step="0.001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Branch 1 weight \(\pi_{1\mid j}\)</span></div>
+        <input type="number" id="rs-scratch-w1" class="tl-scratch-input" value="0.75" step="0.05" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Branch 2 mean \(\hat{x}^{(2,j)}\)</span></div>
+        <input type="number" id="rs-scratch-x2" class="tl-scratch-input" value="1.10" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Branch 2 variance \(P^{(2,j)}\)</span></div>
+        <input type="number" id="rs-scratch-P2" class="tl-scratch-input" value="0.010" step="0.001" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      avg(P) = <b id="rs-scratch-avgp">0.0055</b>&emsp;var(means) = <b id="rs-scratch-varm">0.0075</b>
+    </div>
+    <div class="tl-readout">
+      x̂<sub>t</sub><sup>(j)</sup> = <b id="rs-scratch-mean">1.250</b>&emsp;P<sub>t</sub><sup>(j)</sup> = <b id="rs-scratch-p">0.0130</b>
+      <span id="rs-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="rs-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>
@@ -489,6 +531,56 @@
 </div>
 <script>
 (function(){
+  // Self-contained two-branch Gaussian-collapse scratchpad (Kim's filter
+  // moment matching), matching the worked example's formulas exactly.
+  var DEFAULTS = { x1: 1.30, P1: 0.004, w1: 0.75, x2: 1.10, P2: 0.010 };
+  var fields = ['x1', 'P1', 'w1', 'x2', 'P2'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('rs-scratch-' + f); });
+
+  var avgPOut = document.getElementById('rs-scratch-avgp');
+  var varMOut = document.getElementById('rs-scratch-varm');
+  var meanOut = document.getElementById('rs-scratch-mean');
+  var pOut = document.getElementById('rs-scratch-p');
+  var noteOut = document.getElementById('rs-scratch-note');
+  var resetBtn = document.getElementById('rs-scratch-reset');
+
+  function recompute(){
+    var x1 = parseFloat(inputs.x1.value);
+    var P1 = parseFloat(inputs.P1.value);
+    var w1 = parseFloat(inputs.w1.value);
+    var x2 = parseFloat(inputs.x2.value);
+    var P2 = parseFloat(inputs.P2.value);
+
+    if (!isFinite(x1) || !isFinite(P1) || !isFinite(w1) || !isFinite(x2) || !isFinite(P2) ||
+        P1 < 0 || P2 < 0 || w1 < 0 || w1 > 1) {
+      noteOut.textContent = '(enter numbers for both means, non-negative variances, and a weight π₁|ⱼ between 0 and 1)';
+      return;
+    }
+
+    var w2 = 1 - w1;
+    var mean = w1 * x1 + w2 * x2;
+    var avgP = w1 * P1 + w2 * P2;
+    var varM = w1 * Math.pow(mean - x1, 2) + w2 * Math.pow(mean - x2, 2);
+    var P = avgP + varM;
+
+    avgPOut.textContent = avgP.toFixed(4);
+    varMOut.textContent = varM.toFixed(4);
+    meanOut.textContent = mean.toFixed(3);
+    pOut.textContent = P.toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -510,6 +602,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

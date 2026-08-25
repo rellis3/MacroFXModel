@@ -489,6 +489,48 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute vega live — change any input below</h3>
+    <p>
+      Starts on the worked example's at-the-money, 30-day numbers. Edit any
+      field and \(d_1\), \(\varphi(d_1)\), and vega (both per 1.00 of
+      \(\sigma\) and per 1 vol point) recalculate instantly from
+      \(\nu = S\varphi(d_1)\sqrt{T}\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S\)</span></div>
+        <input type="number" id="vega-scratch-S" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span></div>
+        <input type="number" id="vega-scratch-K" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="vega-scratch-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\) (%)</span></div>
+        <input type="number" id="vega-scratch-sigma" class="tl-scratch-input" value="20" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry</span></div>
+        <input type="number" id="vega-scratch-dte" class="tl-scratch-input" value="30" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      d&#8321; = <b id="vega-scratch-d1">0.0573</b>&emsp;&phi;(d&#8321;) = <b id="vega-scratch-phi">0.3983</b>
+    </div>
+    <div class="tl-readout">
+      &nu; &asymp; <b id="vega-scratch-vega">11.42</b> per 1.00&sigma; &asymp; <b id="vega-scratch-vegapt">0.1142</b> per vol point
+      <span id="vega-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="vega-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -812,6 +854,69 @@
 </div>
 <script>
 (function(){
+  // Self-contained on purpose (own normPDF), matching the pattern used by
+  // the other Theory Lab "Try it yourself" scratchpads.
+  function normPDF(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+
+  var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, dte: 30 };
+  var fields = ['S', 'K', 'r', 'sigma', 'dte'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('vega-scratch-' + f); });
+  if (!inputs.S) return;
+
+  var d1Out = document.getElementById('vega-scratch-d1');
+  var phiOut = document.getElementById('vega-scratch-phi');
+  var vegaOut = document.getElementById('vega-scratch-vega');
+  var vegaPtOut = document.getElementById('vega-scratch-vegapt');
+  var noteOut = document.getElementById('vega-scratch-note');
+  var resetBtn = document.getElementById('vega-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var K = parseFloat(inputs.K.value);
+    var r = parseFloat(inputs.r.value) / 100;
+    var sigma = parseFloat(inputs.sigma.value) / 100;
+    var dte = parseFloat(inputs.dte.value);
+
+    if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(dte) || S<=0 || K<=0 || sigma<0 || dte<0) {
+      noteOut.textContent = '(enter positive S, K, a non-negative σ, and a non-negative number of days)';
+      return;
+    }
+
+    var T = dte / 365;
+    var d1, phi, vega, note = '';
+
+    if (T === 0) {
+      d1 = phi = vega = NaN;
+      note = '(0 days to expiry: d₁ is undefined and there is no time value left to be sensitive to σ — vega is 0 at expiry)';
+      vega = 0;
+    } else if (sigma === 0) {
+      d1 = phi = NaN;
+      note = '(σ=0: d₁ is undefined at zero volatility)';
+      vega = NaN;
+    } else {
+      d1 = (Math.log(S/K) + (r + sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
+      phi = normPDF(d1);
+      vega = S*phi*Math.sqrt(T);
+    }
+
+    d1Out.textContent = isNaN(d1) ? '—' : d1.toFixed(4);
+    phiOut.textContent = isNaN(phi) ? '—' : phi.toFixed(4);
+    vegaOut.textContent = isNaN(vega) ? '—' : vega.toFixed(2);
+    vegaPtOut.textContent = isNaN(vega) ? '—' : (vega*0.01).toFixed(4);
+    noteOut.textContent = note;
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -833,6 +938,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

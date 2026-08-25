@@ -463,6 +463,49 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute theta live — change any input below</h3>
+    <p>
+      Starts on the worked example's 30-day-to-expiry numbers. Edit any field
+      and \(\tau\), \(d_1\), \(d_2\), \(\varphi(d_1)\), \(N(d_2)\), and the
+      final theta (per year and per day) all recalculate instantly from the
+      exact closed form \(\Theta = -S\varphi(d_1)\sigma/(2\sqrt{\tau}) -
+      rKe^{-r\tau}N(d_2)\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S\)</span></div>
+        <input type="number" id="theta-scratch-S" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span></div>
+        <input type="number" id="theta-scratch-K" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Rate \(r\) (%)</span></div>
+        <input type="number" id="theta-scratch-r" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\) (%)</span></div>
+        <input type="number" id="theta-scratch-sigma" class="tl-scratch-input" value="20" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry</span></div>
+        <input type="number" id="theta-scratch-dte" class="tl-scratch-input" value="30" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &tau; = <b id="theta-scratch-tau">0.0822</b>&emsp;d&#8321; = <b id="theta-scratch-d1">0.0573</b>&emsp;d&#8322; = <b id="theta-scratch-d2">0.0000</b>&emsp;&phi;(d&#8321;) = <b id="theta-scratch-phi">0.3983</b>&emsp;N(d&#8322;) = <b id="theta-scratch-nd2">0.5000</b>
+    </div>
+    <div class="tl-readout">
+      &Theta; &asymp; <b id="theta-scratch-year">-14.89</b> /year &asymp; $<b id="theta-scratch-day">-0.0408</b> per day
+      <span id="theta-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="theta-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -850,6 +893,85 @@
 </script>
 <script>
 (function(){
+  // Self-contained on purpose (own erf/normCDF/normPDF), matching the
+  // pattern used by the other Theory Lab "Try it yourself" scratchpads.
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function normPDF(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+
+  var DEFAULTS = { S: 100, K: 100, r: 2, sigma: 20, dte: 30 };
+  var fields = ['S', 'K', 'r', 'sigma', 'dte'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('theta-scratch-' + f); });
+  if (!inputs.S) return;
+
+  var tauOut = document.getElementById('theta-scratch-tau');
+  var d1Out = document.getElementById('theta-scratch-d1');
+  var d2Out = document.getElementById('theta-scratch-d2');
+  var phiOut = document.getElementById('theta-scratch-phi');
+  var nd2Out = document.getElementById('theta-scratch-nd2');
+  var yearOut = document.getElementById('theta-scratch-year');
+  var dayOut = document.getElementById('theta-scratch-day');
+  var noteOut = document.getElementById('theta-scratch-note');
+  var resetBtn = document.getElementById('theta-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var K = parseFloat(inputs.K.value);
+    var r = parseFloat(inputs.r.value) / 100;
+    var sigma = parseFloat(inputs.sigma.value) / 100;
+    var dte = parseFloat(inputs.dte.value);
+
+    if (!isFinite(S) || !isFinite(K) || !isFinite(r) || !isFinite(sigma) || !isFinite(dte) || S<=0 || K<=0 || sigma<0 || dte<0) {
+      noteOut.textContent = '(enter positive S, K, a non-negative σ, and a non-negative number of days)';
+      return;
+    }
+
+    var T = dte / 365;
+    var tau, d1, d2, phi, Nd2, thetaYear, note = '';
+
+    if (T === 0) {
+      tau = 0; d1 = d2 = phi = Nd2 = NaN; thetaYear = NaN;
+      note = '(0 days to expiry: τ=0 makes d₁/d₂ undefined — theta is not defined exactly at expiry)';
+    } else if (sigma === 0) {
+      tau = T; d1 = d2 = phi = Nd2 = NaN; thetaYear = NaN;
+      note = '(σ=0: no diffusion term left to decay — the closed form is undefined at σ=0)';
+    } else {
+      tau = T;
+      d1 = (Math.log(S/K) + (r + sigma*sigma/2)*tau) / (sigma*Math.sqrt(tau));
+      d2 = d1 - sigma*Math.sqrt(tau);
+      phi = normPDF(d1);
+      Nd2 = normCDF(d2);
+      thetaYear = -(S*phi*sigma)/(2*Math.sqrt(tau)) - r*K*Math.exp(-r*tau)*Nd2;
+    }
+
+    tauOut.textContent = isNaN(tau) ? '—' : tau.toFixed(4);
+    d1Out.textContent = isNaN(d1) ? '—' : d1.toFixed(4);
+    d2Out.textContent = isNaN(d2) ? '—' : d2.toFixed(4);
+    phiOut.textContent = isNaN(phi) ? '—' : phi.toFixed(4);
+    nd2Out.textContent = isNaN(Nd2) ? '—' : Nd2.toFixed(4);
+    yearOut.textContent = isNaN(thetaYear) ? '—' : thetaYear.toFixed(2);
+    dayOut.textContent = isNaN(thetaYear) ? '—' : (thetaYear/365).toFixed(4);
+    noteOut.textContent = note;
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -871,6 +993,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

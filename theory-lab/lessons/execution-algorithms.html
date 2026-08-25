@@ -494,6 +494,44 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute Implementation Shortfall, live</h3>
+    <p>
+      Starts on the worked example's exact prices for the 10,000-share order
+      (9,000 shares filled, 1,000 left unfilled at the close). Edit any price
+      and the delay, impact, opportunity, and total shortfall recalculate
+      instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Decision price \(P_{\text{decision}}\)</span></div>
+        <input type="number" id="ea-scratch-pdec" class="tl-scratch-input" value="50.00" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Start price \(P_{\text{start}}\)</span></div>
+        <input type="number" id="ea-scratch-pstart" class="tl-scratch-input" value="50.05" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Avg. execution price \(\bar{P}_{\text{exec}}\)</span></div>
+        <input type="number" id="ea-scratch-pavg" class="tl-scratch-input" value="50.1333" step="0.0001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Cancel (close) price \(P_{\text{cancel}}\)</span></div>
+        <input type="number" id="ea-scratch-pcancel" class="tl-scratch-input" value="50.30" step="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Delay &asymp; $<b id="ea-scratch-delay">450</b>&emsp;Impact &asymp; $<b id="ea-scratch-impact">750</b>&emsp;Opportunity &asymp; $<b id="ea-scratch-opp">300</b>
+    </div>
+    <div class="tl-readout">
+      Total Implementation Shortfall &asymp; $<b id="ea-scratch-is">1,500</b>
+      <span id="ea-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ea-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Choosing an algorithm: urgency vs. impact concern</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Quadrant chart with impact concern on the vertical axis and urgency on the horizontal axis. Low urgency and high impact concern places VWAP in the top left. High urgency and high impact concern places POV in the top right. Low urgency and low impact concern places TWAP in the bottom left. High urgency and low impact concern places aggressive Implementation Shortfall execution in the bottom right.">
@@ -729,6 +767,71 @@
 </div>
 <script>
 (function(){
+  var FILLED = 9000, UNFILLED = 1000;
+
+  function addCommas(n){
+    var sign = n < 0 ? '-' : '';
+    var s = Math.abs(n).toString();
+    var parts = [];
+    while (s.length > 3) { parts.unshift(s.slice(-3)); s = s.slice(0, -3); }
+    parts.unshift(s);
+    return sign + parts.join(',');
+  }
+
+  var pdecInput = document.getElementById('ea-scratch-pdec');
+  var pstartInput = document.getElementById('ea-scratch-pstart');
+  var pavgInput = document.getElementById('ea-scratch-pavg');
+  var pcancelInput = document.getElementById('ea-scratch-pcancel');
+  var delayOut = document.getElementById('ea-scratch-delay');
+  var impactOut = document.getElementById('ea-scratch-impact');
+  var oppOut = document.getElementById('ea-scratch-opp');
+  var isOut = document.getElementById('ea-scratch-is');
+  var note = document.getElementById('ea-scratch-note');
+  var resetBtn = document.getElementById('ea-scratch-reset');
+  if (!pdecInput) return;
+
+  var DEFAULTS = { pdec: 50.00, pstart: 50.05, pavg: 50.1333, pcancel: 50.30 };
+
+  function recompute(){
+    var pdec = parseFloat(pdecInput.value);
+    var pstart = parseFloat(pstartInput.value);
+    var pavg = parseFloat(pavgInput.value);
+    var pcancel = parseFloat(pcancelInput.value);
+
+    if (!isFinite(pdec) || !isFinite(pstart) || !isFinite(pavg) || !isFinite(pcancel)) {
+      delayOut.textContent = '—'; impactOut.textContent = '—'; oppOut.textContent = '—'; isOut.textContent = '—';
+      note.textContent = '(enter valid numeric prices for all four fields)';
+      return;
+    }
+
+    var delay = (pstart - pdec) * FILLED;
+    var impact = (pavg - pstart) * FILLED;
+    var opp = (pcancel - pdec) * UNFILLED;
+    var is = delay + impact + opp;
+
+    delayOut.textContent = addCommas(Math.round(delay));
+    impactOut.textContent = addCommas(Math.round(impact));
+    oppOut.textContent = addCommas(Math.round(opp));
+    isOut.textContent = addCommas(Math.round(is));
+    note.textContent = '';
+  }
+
+  pdecInput.addEventListener('input', recompute);
+  pstartInput.addEventListener('input', recompute);
+  pavgInput.addEventListener('input', recompute);
+  pcancelInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    pdecInput.value = DEFAULTS.pdec;
+    pstartInput.value = DEFAULTS.pstart;
+    pavgInput.value = DEFAULTS.pavg;
+    pcancelInput.value = DEFAULTS.pcancel;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -750,6 +853,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

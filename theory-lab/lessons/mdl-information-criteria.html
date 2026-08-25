@@ -270,6 +270,49 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute both models' code lengths, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and both
+      \(DL(M_A)\) and \(DL(M_B)\) recalculate instantly from
+      \(DL = \tfrac{k}{2}\log_2(n) + \tfrac{-2\ln\hat L}{2\ln 2}\), so you can
+      feel how many extra bits of residual fit a model needs to save to earn
+      back the bits its extra parameters cost to state.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>n (observations)</span></div>
+        <input type="number" id="mdl-scratch-n" class="tl-scratch-input" value="100" step="1" min="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model A: k</span></div>
+        <input type="number" id="mdl-scratch-ka" class="tl-scratch-input" value="2" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model A: &minus;2lnL&#770;</span></div>
+        <input type="number" id="mdl-scratch-nlla" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model B: k</span></div>
+        <input type="number" id="mdl-scratch-kb" class="tl-scratch-input" value="5" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model B: &minus;2lnL&#770;</span></div>
+        <input type="number" id="mdl-scratch-nllb" class="tl-scratch-input" value="94" step="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      DL(M<sub>A</sub>) = <b id="mdl-scratch-dla">78.78</b> bits&emsp;DL(M<sub>B</sub>) = <b id="mdl-scratch-dlb">84.42</b> bits
+    </div>
+    <div class="tl-readout">
+      Shorter code wins: <b id="mdl-scratch-winner">Model A</b> by <b id="mdl-scratch-gap">5.64</b> bits
+      <span id="mdl-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mdl-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The exact two-part code lengths computed above, drawn to scale</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stacked bar chart comparing two-part MDL code lengths in bits for Model A and Model B. Model A's bar totals about 78.8 bits, split into 6.6 bits for the model and 72.1 bits for the data given the model. Model B's bar totals about 84.4 bits, split into 16.6 bits for the model and 67.8 bits for the data given the model. Model A's total is shorter.">
@@ -438,6 +481,59 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { n: 100, ka: 2, nlla: 100, kb: 5, nllb: 94 };
+  var fields = ['n', 'ka', 'nlla', 'kb', 'nllb'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('mdl-scratch-' + f); });
+
+  var dlaOut = document.getElementById('mdl-scratch-dla');
+  var dlbOut = document.getElementById('mdl-scratch-dlb');
+  var winnerOut = document.getElementById('mdl-scratch-winner');
+  var gapOut = document.getElementById('mdl-scratch-gap');
+  var noteOut = document.getElementById('mdl-scratch-note');
+  var resetBtn = document.getElementById('mdl-scratch-reset');
+  if (!inputs.n) return;
+
+  // Two-part MDL code length: bits to state the model, plus bits to state
+  // the residual given the model, from -2*ln(Lhat).
+  function DL(n, k, negLL){
+    var LM = (k/2) * Math.log2(n);
+    var LD = negLL / (2 * Math.LN2);
+    return LM + LD;
+  }
+
+  function recompute(){
+    var n = parseFloat(inputs.n.value);
+    var ka = parseFloat(inputs.ka.value);
+    var nlla = parseFloat(inputs.nlla.value);
+    var kb = parseFloat(inputs.kb.value);
+    var nllb = parseFloat(inputs.nllb.value);
+
+    if (!isFinite(n) || n < 2 || !isFinite(ka) || ka < 0 || !isFinite(nlla) ||
+        !isFinite(kb) || kb < 0 || !isFinite(nllb)) {
+      noteOut.textContent = '(enter n ≥ 2 and non-negative parameter counts)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var dlA = DL(n, ka, nlla);
+    var dlB = DL(n, kb, nllb);
+    dlaOut.textContent = dlA.toFixed(2);
+    dlbOut.textContent = dlB.toFixed(2);
+    gapOut.textContent = Math.abs(dlA - dlB).toFixed(2);
+    winnerOut.textContent = dlA <= dlB ? 'Model A' : 'Model B';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -459,6 +555,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

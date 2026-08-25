@@ -362,6 +362,45 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Run the same leapfrog trajectory, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, target still the fixed
+      \(N(0,1)\) potential (\(\nabla U(\theta)=\theta\)). Edit the starting
+      position, momentum, step size, or number of steps and the final
+      proposal, both Hamiltonians, and the Metropolis acceptance probability
+      all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Start \(\theta_0\)</span></div>
+        <input type="number" id="hmc-scratch-theta0" class="tl-scratch-input" value="1.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Start \(p_0\)</span></div>
+        <input type="number" id="hmc-scratch-p0" class="tl-scratch-input" value="0.5" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Step size \(\varepsilon\)</span></div>
+        <input type="number" id="hmc-scratch-eps" class="tl-scratch-input" value="0.3" step="0.05" min="0.001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Steps \(L\)</span></div>
+        <input type="number" id="hmc-scratch-L" class="tl-scratch-input" value="3" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &theta;* = <b id="hmc-scratch-theta">1.1633</b>&emsp;p* = <b id="hmc-scratch-p">-0.1643</b>&emsp;H&#8320; = <b id="hmc-scratch-h0">0.6250</b>&emsp;H* = <b id="hmc-scratch-hstar">0.6902</b>
+    </div>
+    <div class="tl-readout">
+      &alpha; = min(1, e<sup>H&#8320;&minus;H*</sup>) &asymp; <b id="hmc-scratch-alpha">0.9369</b>
+      <span id="hmc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="hmc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>NUTS: removing HMC's hardest dial</h2>
   <p>
@@ -672,6 +711,66 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { theta0: 1.0, p0: 0.5, eps: 0.3, L: 3 };
+  var fields = ['theta0', 'p0', 'eps', 'L'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('hmc-scratch-' + f); });
+
+  var thetaOut = document.getElementById('hmc-scratch-theta');
+  var pOut = document.getElementById('hmc-scratch-p');
+  var h0Out = document.getElementById('hmc-scratch-h0');
+  var hstarOut = document.getElementById('hmc-scratch-hstar');
+  var alphaOut = document.getElementById('hmc-scratch-alpha');
+  var noteOut = document.getElementById('hmc-scratch-note');
+  var resetBtn = document.getElementById('hmc-scratch-reset');
+  if (!inputs.theta0) return;
+
+  // Fixed target: pi(theta) = N(0,1), so U(theta) = 0.5*theta^2 + const,
+  // and grad U(theta) = theta.
+  function gradU(theta){ return theta; }
+  function H(theta, p){ return 0.5*theta*theta + 0.5*p*p; }
+
+  function recompute(){
+    var theta0 = parseFloat(inputs.theta0.value);
+    var p0 = parseFloat(inputs.p0.value);
+    var eps = parseFloat(inputs.eps.value);
+    var L = parseInt(inputs.L.value, 10);
+
+    if (!isFinite(theta0) || !isFinite(p0) || !isFinite(eps) || eps <= 0 ||
+        !isFinite(L) || L < 1) {
+      noteOut.textContent = '(enter a positive step size and an integer L ≥ 1)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var theta = theta0;
+    var p = p0 - (eps/2) * gradU(theta0);
+    for (var i = 0; i < L; i++) {
+      theta = theta + eps * p;
+      p = p - (eps/2) * gradU(theta);
+    }
+
+    var H0 = H(theta0, p0);
+    var Hstar = H(theta, p);
+    var alpha = Math.min(1, Math.exp(H0 - Hstar));
+
+    thetaOut.textContent = theta.toFixed(4);
+    pOut.textContent = p.toFixed(4);
+    h0Out.textContent = H0.toFixed(4);
+    hstarOut.textContent = Hstar.toFixed(4);
+    alphaOut.textContent = alpha.toFixed(4);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -693,6 +792,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

@@ -440,6 +440,50 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Change the five trade returns, watch the resamples wobble</h3>
+    <p>
+      Starts on the worked example's exact five trade returns. The three
+      resamples reuse the exact same draw pattern as the worked example
+      (resample 1 draws trades 1,1,2,5,3; resample 2 draws 4,4,5,2,4;
+      resample 3 draws 3,5,3,1,2) — edit any \(x_i\) and the sample mean and
+      all three resample means recalculate instantly, from the same fixed
+      draw pattern.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_1\)</span></div>
+        <input type="number" id="boot-scratch-x1" class="tl-scratch-input" value="2" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_2\)</span></div>
+        <input type="number" id="boot-scratch-x2" class="tl-scratch-input" value="-1" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_3\)</span></div>
+        <input type="number" id="boot-scratch-x3" class="tl-scratch-input" value="3" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_4\)</span></div>
+        <input type="number" id="boot-scratch-x4" class="tl-scratch-input" value="-2" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(x_5\)</span></div>
+        <input type="number" id="boot-scratch-x5" class="tl-scratch-input" value="1" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Sample mean \(\bar{x}\) = <b id="boot-scratch-mean">0.60</b>%
+    </div>
+    <div class="tl-readout">
+      \(\bar{x}^{*(1)}\) = <b id="boot-scratch-r1">1.40</b>%&emsp;\(\bar{x}^{*(2)}\) = <b id="boot-scratch-r2">-1.20</b>%&emsp;\(\bar{x}^{*(3)}\) = <b id="boot-scratch-r3">1.60</b>%
+      <span id="boot-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="boot-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
 
@@ -702,6 +746,61 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { x1: 2, x2: -1, x3: 3, x4: -2, x5: 1 };
+  var fields = ['x1', 'x2', 'x3', 'x4', 'x5'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('boot-scratch-' + f); });
+  if (!inputs.x1) return;
+
+  // Fixed draw patterns reproducing the worked example's three hand-drawn
+  // resamples (1-indexed into x1..x5), independent of the current x values.
+  var DRAWS = [
+    [1, 1, 2, 5, 3],
+    [4, 4, 5, 2, 4],
+    [3, 5, 3, 1, 2]
+  ];
+
+  var meanOut = document.getElementById('boot-scratch-mean');
+  var r1Out = document.getElementById('boot-scratch-r1');
+  var r2Out = document.getElementById('boot-scratch-r2');
+  var r3Out = document.getElementById('boot-scratch-r3');
+  var noteOut = document.getElementById('boot-scratch-note');
+  var resetBtn = document.getElementById('boot-scratch-reset');
+
+  function mean(arr){
+    var s = 0;
+    for (var i = 0; i < arr.length; i++) s += arr[i];
+    return s / arr.length;
+  }
+
+  function recompute(){
+    var x = fields.map(function(f){ return parseFloat(inputs[f].value); });
+
+    if (x.some(function(v){ return !isFinite(v); })) {
+      noteOut.textContent = '(enter a number for every trade return x₁…x₅)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    meanOut.textContent = mean(x).toFixed(2);
+
+    var rOuts = [r1Out, r2Out, r3Out];
+    DRAWS.forEach(function(draw, i){
+      var resample = draw.map(function(idx){ return x[idx - 1]; });
+      rOuts[i].textContent = mean(resample).toFixed(2);
+    });
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -723,6 +822,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

@@ -455,6 +455,44 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Revalue the swap, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers: a flat 3% OIS curve,
+      \(N=\$10{,}000{,}000\), a 2-year annual-pay swap, and a fixed rate of
+      \(K=3.2\%\). Change any field and the annuity factor, the par rate,
+      and both legs' present values recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Flat OIS rate \(r\) (%)</span></div>
+        <input type="number" id="sc-scratch-r" class="tl-scratch-input" value="3" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Tenor \(n\) (years)</span></div>
+        <input type="number" id="sc-scratch-n" class="tl-scratch-input" value="2" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Notional \(N\)</span></div>
+        <input type="number" id="sc-scratch-N" class="tl-scratch-input" value="10000000" step="1000000" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fixed rate \(K\) (%)</span></div>
+        <input type="number" id="sc-scratch-K" class="tl-scratch-input" value="3.2" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Annuity factor &Sigma;DF(t<sub>i</sub>) = <b id="sc-scratch-annuity">1.913470</b>&emsp;Par rate K<sub>par</sub> = <b id="sc-scratch-kpar">3.0000</b>%
+    </div>
+    <div class="tl-readout">
+      PV<sub>float</sub> = $<b id="sc-scratch-pvfloat">574,041</b>&emsp;PV<sub>fixed</sub> = $<b id="sc-scratch-pvfixed">612,310</b>&emsp;V<sub>payer</sub> = $<b id="sc-scratch-vpayer">-38,269</b>
+      <span id="sc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="sc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -680,6 +718,85 @@
 </div>
 <script>
 (function(){
+  function fmtMoney(x){
+    var sign = x < 0 ? '-' : '';
+    var s = Math.abs(x).toFixed(0);
+    s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return sign + s;
+  }
+
+  function swapValuation(r, n, N, K){
+    var annuity = 0, DFn = 0;
+    for (var t = 1; t <= n; t++){
+      var df = 1 / Math.pow(1 + r, t);
+      annuity += df;
+      if (t === n) DFn = df;
+    }
+    var pvFloat = N * (1 - DFn);
+    var kPar = (1 - DFn) / annuity;
+    var pvFixed = K * N * annuity;
+    var vPayer = pvFloat - pvFixed;
+    return { annuity: annuity, kPar: kPar, pvFloat: pvFloat, pvFixed: pvFixed, vPayer: vPayer };
+  }
+
+  var rInput = document.getElementById('sc-scratch-r');
+  var nInput = document.getElementById('sc-scratch-n');
+  var nInputN = document.getElementById('sc-scratch-N');
+  var kInput = document.getElementById('sc-scratch-K');
+  var annuityOut = document.getElementById('sc-scratch-annuity');
+  var kparOut = document.getElementById('sc-scratch-kpar');
+  var pvFloatOut = document.getElementById('sc-scratch-pvfloat');
+  var pvFixedOut = document.getElementById('sc-scratch-pvfixed');
+  var vPayerOut = document.getElementById('sc-scratch-vpayer');
+  var note = document.getElementById('sc-scratch-note');
+  var resetBtn = document.getElementById('sc-scratch-reset');
+  if (!rInput) return;
+
+  var DEFAULTS = { r: 3, n: 2, N: 10000000, K: 3.2 };
+
+  function recompute(){
+    var rPct = parseFloat(rInput.value);
+    var n = Math.round(parseFloat(nInput.value));
+    var N = parseFloat(nInputN.value);
+    var kPct = parseFloat(kInput.value);
+
+    if (!isFinite(rPct) || !isFinite(n) || n < 1 || !isFinite(N) || N < 0 || !isFinite(kPct)) {
+      note.textContent = '(enter a numeric rate, a whole number of years ≥ 1, and a non-negative notional)';
+      return;
+    }
+    var r = rPct / 100;
+    if (1 + r <= 0) {
+      note.textContent = '(a discount rate below −100% makes discounting undefined)';
+      return;
+    }
+    note.textContent = '';
+
+    var K = kPct / 100;
+    var v = swapValuation(r, n, N, K);
+
+    annuityOut.textContent = v.annuity.toFixed(6);
+    kparOut.textContent = (v.kPar * 100).toFixed(4);
+    pvFloatOut.textContent = fmtMoney(v.pvFloat);
+    pvFixedOut.textContent = fmtMoney(v.pvFixed);
+    vPayerOut.textContent = fmtMoney(v.vPayer);
+  }
+
+  [rInput, nInput, nInputN, kInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    rInput.value = DEFAULTS.r;
+    nInput.value = DEFAULTS.n;
+    nInputN.value = DEFAULTS.N;
+    kInput.value = DEFAULTS.K;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -701,6 +818,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

@@ -286,6 +286,46 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute AIC and BIC for both models, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and both
+      criteria — and which model each one prefers — recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Sample size \(n\)</span></div>
+        <input type="number" id="aic-scratch-n" class="tl-scratch-input" value="100" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model A: params \(k_A\)</span></div>
+        <input type="number" id="aic-scratch-kA" class="tl-scratch-input" value="2" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model A: \(\ln\hat L_A\)</span></div>
+        <input type="number" id="aic-scratch-lnLA" class="tl-scratch-input" value="-50" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model B: params \(k_B\)</span></div>
+        <input type="number" id="aic-scratch-kB" class="tl-scratch-input" value="5" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Model B: \(\ln\hat L_B\)</span></div>
+        <input type="number" id="aic-scratch-lnLB" class="tl-scratch-input" value="-47" step="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      AIC<sub>A</sub> = <b id="aic-scratch-aicA">104.00</b>&emsp;AIC<sub>B</sub> = <b id="aic-scratch-aicB">104.00</b>&emsp;&rarr; AIC prefers <b id="aic-scratch-aic-winner">a tie</b>
+    </div>
+    <div class="tl-readout">
+      BIC<sub>A</sub> = <b id="aic-scratch-bicA">109.21</b>&emsp;BIC<sub>B</sub> = <b id="aic-scratch-bicB">117.03</b>&emsp;&rarr; BIC prefers <b id="aic-scratch-bic-winner">Model A</b>
+      <span id="aic-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="aic-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-solid amber">
     <strong>The takeaway:</strong> the same data, the same two models, and the same 6-point
     deviance improvement read as "a dead heat" under AIC and "a clear win for the simpler model"
@@ -504,6 +544,62 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { n: 100, kA: 2, lnLA: -50, kB: 5, lnLB: -47 };
+  var fields = ['n', 'kA', 'lnLA', 'kB', 'lnLB'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('aic-scratch-' + f); });
+  if (!inputs.n) return;
+
+  var aicAOut = document.getElementById('aic-scratch-aicA');
+  var aicBOut = document.getElementById('aic-scratch-aicB');
+  var aicWinnerOut = document.getElementById('aic-scratch-aic-winner');
+  var bicAOut = document.getElementById('aic-scratch-bicA');
+  var bicBOut = document.getElementById('aic-scratch-bicB');
+  var bicWinnerOut = document.getElementById('aic-scratch-bic-winner');
+  var noteOut = document.getElementById('aic-scratch-note');
+  var resetBtn = document.getElementById('aic-scratch-reset');
+
+  function winnerLabel(a, b){
+    if (Math.abs(a - b) < 1e-9) return 'a tie';
+    return a < b ? 'Model A' : 'Model B';
+  }
+
+  function recompute(){
+    var n = parseFloat(inputs.n.value);
+    var kA = parseFloat(inputs.kA.value);
+    var lnLA = parseFloat(inputs.lnLA.value);
+    var kB = parseFloat(inputs.kB.value);
+    var lnLB = parseFloat(inputs.lnLB.value);
+
+    if (!isFinite(n) || !isFinite(kA) || !isFinite(lnLA) || !isFinite(kB) || !isFinite(lnLB) || n <= 0 || kA < 0 || kB < 0) {
+      noteOut.textContent = '(enter a positive n and non-negative parameter counts)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var aicA = 2*kA - 2*lnLA;
+    var aicB = 2*kB - 2*lnLB;
+    var bicA = kA*Math.log(n) - 2*lnLA;
+    var bicB = kB*Math.log(n) - 2*lnLB;
+
+    aicAOut.textContent = aicA.toFixed(2);
+    aicBOut.textContent = aicB.toFixed(2);
+    aicWinnerOut.textContent = winnerLabel(aicA, aicB);
+    bicAOut.textContent = bicA.toFixed(2);
+    bicBOut.textContent = bicB.toFixed(2);
+    bicWinnerOut.textContent = winnerLabel(bicA, bicB);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -525,6 +621,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

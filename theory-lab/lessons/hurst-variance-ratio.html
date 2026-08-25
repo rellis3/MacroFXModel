@@ -352,6 +352,40 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute VR(q), live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any field and both
+      the random-walk-implied variance and \(VR(q)\) recalculate instantly —
+      watch how far below or above 1 the ratio moves as you change the actual
+      q-day variance.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>1-day variance Var(r&#8321;) (%&sup2;)</span></div>
+        <input type="number" id="hurst-scratch-var1" class="tl-scratch-input" value="0.1289" step="0.01" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Horizon q (days)</span></div>
+        <input type="number" id="hurst-scratch-q" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Actual q-day variance (%&sup2;)</span></div>
+        <input type="number" id="hurst-scratch-varq" class="tl-scratch-input" value="0.45" step="0.01" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      q&times;Var(r&#8321;) = <b id="hurst-scratch-expected">0.6445</b> %&sup2;
+      <span id="hurst-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout">
+      VR(q) = Var(r<sub>t</sub><sup>(q)</sup>) / [q&times;Var(r&#8321;)] &asymp; <b id="hurst-scratch-vr">0.70</b>
+    </div>
+    <button type="button" id="hurst-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -574,6 +608,49 @@
 </script>
 <script>
 (function(){
+  var var1Input = document.getElementById('hurst-scratch-var1');
+  var qInput = document.getElementById('hurst-scratch-q');
+  var varqInput = document.getElementById('hurst-scratch-varq');
+  var expectedOut = document.getElementById('hurst-scratch-expected');
+  var vrOut = document.getElementById('hurst-scratch-vr');
+  var note = document.getElementById('hurst-scratch-note');
+  var resetBtn = document.getElementById('hurst-scratch-reset');
+  if (!var1Input) return;
+
+  var DEFAULTS = { var1: 0.1289, q: 5, varq: 0.45 };
+
+  function recompute(){
+    var var1 = parseFloat(var1Input.value);
+    var q = parseFloat(qInput.value);
+    var varq = parseFloat(varqInput.value);
+
+    if (!isFinite(var1) || !isFinite(q) || !isFinite(varq) || var1 <= 0 || q <= 0 || varq < 0) {
+      note.textContent = '(enter a positive Var(r₁), a positive q, and a non-negative q-day variance)';
+      expectedOut.textContent = '—';
+      vrOut.textContent = '—';
+      return;
+    }
+    note.textContent = '';
+    var expected = q * var1;
+    var vr = varq / expected;
+    expectedOut.textContent = expected.toFixed(4);
+    vrOut.textContent = vr.toFixed(4);
+  }
+
+  var1Input.addEventListener('input', recompute);
+  qInput.addEventListener('input', recompute);
+  varqInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    var1Input.value = DEFAULTS.var1;
+    qInput.value = DEFAULTS.q;
+    varqInput.value = DEFAULTS.varq;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -595,6 +672,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

@@ -168,6 +168,14 @@ const PRESETS = [
   { label: 'NQ SHORT (failed) · 14 Aug 03:37→07:02', instrument: 'nq', from: '2026-08-14T01:30', to: '2026-08-14T06:30', entry: 30274.25, sl: 30285, tp: 30204.5 },
   { label: 'NQ LONG · 14 Aug 10:19→15:05 ("ignoring the SL")', instrument: 'nq', from: '2026-08-14T08:30', to: '2026-08-14T14:30', entry: 30097.25, sl: 30032, tp: 30160 },
   { label: 'NQ SHORT · 14 Aug 19:01', instrument: 'nq', from: '2026-08-14T17:00', to: '2026-08-14T18:30', entry: 30226.5, sl: 30230, tp: 30210.75 },
+  // "Today's test results" screenshots, 24 Aug 2026. Price levels typed in
+  // directly by the owner, not OCR'd off the screenshot. Windows are a rough
+  // ±1h around each screenshot's highlighted price-ladder timestamp
+  // (08:31/06:22, assumed BST like the rows above) — not confirmed fill times.
+  { label: 'NQ LONG #1 · 24 Aug ~08:31', instrument: 'nq', from: '2026-08-24T07:30', to: '2026-08-24T09:30', entry: 29088, sl: 29053, tp: 29226 },
+  { label: 'NQ LONG #2 · 24 Aug ~08:31 (SL unconfirmed)', instrument: 'nq', from: '2026-08-24T07:30', to: '2026-08-24T09:30', entry: 28920, sl: null, tp: 29170 },
+  { label: 'Gold SHORT · 24 Aug ~06:22', instrument: 'gold', from: '2026-08-24T05:30', to: '2026-08-24T07:30', entry: 4654, sl: 4661, tp: 4629 },
+  { label: 'Gold LONG · 24 Aug ~06:22', instrument: 'gold', from: '2026-08-24T05:30', to: '2026-08-24T07:30', entry: 4632, sl: 4628, tp: 4680 },
 ];
 
 const presetsEl = document.getElementById('presets');

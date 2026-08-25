@@ -227,6 +227,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Rebuild the chain with a different pool size or chain length, live</h3>
+    <p>
+      Starts on the worked example's exact numbers: $10,000,000 through a
+      four-party chain (A→B→C→D). Change either input and the number of
+      stacked re-pledge links and the total stacked exposure across the
+      chain recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Collateral value ($)</span></div>
+        <input type="number" id="rehypo-scratch-value" class="tl-scratch-input" value="10000000" step="1000000">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Parties in chain</span></div>
+        <input type="number" id="rehypo-scratch-parties" class="tl-scratch-input" value="4" step="1" min="2">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Re-pledge links = <b id="rehypo-scratch-links">3</b>&emsp;Velocity multiplier &asymp; <b id="rehypo-scratch-multiplier">3&times;</b>
+    </div>
+    <div class="tl-readout">
+      Total stacked exposure &asymp; <b id="rehypo-scratch-exposure">$30,000,000</b>
+      <span id="rehypo-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="rehypo-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">A four-link collateral chain: one asset, three stacked re-pledges</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of a collateral chain. Hedge fund A posts ten million dollars of securities to prime broker B. B rehypothecates the same securities to counterparty C. C re-pledges the same securities again to counterparty D. A caption below notes there is one physical asset but three separate stacked claims across the chain.">
@@ -441,6 +471,51 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { value: 10000000, parties: 4 };
+  var valueInput = document.getElementById('rehypo-scratch-value');
+  var partiesInput = document.getElementById('rehypo-scratch-parties');
+  var linksOut = document.getElementById('rehypo-scratch-links');
+  var multOut = document.getElementById('rehypo-scratch-multiplier');
+  var exposureOut = document.getElementById('rehypo-scratch-exposure');
+  var note = document.getElementById('rehypo-scratch-note');
+  var resetBtn = document.getElementById('rehypo-scratch-reset');
+  if (!valueInput) return;
+
+  function fmtMoney(n){
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+
+  function recompute(){
+    var value = parseFloat(valueInput.value);
+    var parties = parseFloat(partiesInput.value);
+
+    if (!isFinite(value) || value <= 0 || !isFinite(parties) || parties < 2 || Math.floor(parties) !== parties) {
+      note.textContent = '(enter a positive collateral value and a whole number of parties, at least 2)';
+      return;
+    }
+    note.textContent = '';
+
+    var links = parties - 1;
+    var exposure = value * links;
+
+    linksOut.textContent = links.toString();
+    multOut.textContent = links.toString() + '×';
+    exposureOut.textContent = fmtMoney(exposure);
+  }
+
+  valueInput.addEventListener('input', recompute);
+  partiesInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    valueInput.value = DEFAULTS.value;
+    partiesInput.value = DEFAULTS.parties;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -462,6 +537,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

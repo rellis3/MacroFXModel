@@ -393,6 +393,42 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The Fundamental Law, live — change any input below</h3>
+    <p>
+      Starts on Part 1's exact numbers. Edit the skill, the number of
+      instruments re-ranked, or how often they're re-ranked, and both the
+      implied breadth and the predicted Information Ratio recalculate
+      instantly — a fast way to feel how much of an impressive-looking
+      \(IR\) is really coming from \(IC\) versus from an assumption of
+      independence across bets.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Information Coefficient \(IC\)</span></div>
+        <input type="number" id="apm-scratch-ic" class="tl-scratch-input" value="0.10" step="0.01" min="-1" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Pairs re-ranked \(N\)</span></div>
+        <input type="number" id="apm-scratch-n" class="tl-scratch-input" value="9" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Re-ranks per year</span></div>
+        <input type="number" id="apm-scratch-freq" class="tl-scratch-input" value="4" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Breadth BR = N &times; freq = <b id="apm-scratch-br">36</b>
+    </div>
+    <div class="tl-readout">
+      IR &approx; IC &times; &radic;BR = <b id="apm-scratch-ir">0.60</b>
+      <span id="apm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="apm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -568,6 +604,45 @@
 </div>
 <script>
 (function(){
+  // Self-contained Fundamental Law calculator.
+  var DEFAULTS = { ic: 0.10, n: 9, freq: 4 };
+  var fields = ['ic', 'n', 'freq'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('apm-scratch-' + f); });
+
+  var brOut = document.getElementById('apm-scratch-br');
+  var irOut = document.getElementById('apm-scratch-ir');
+  var noteOut = document.getElementById('apm-scratch-note');
+  var resetBtn = document.getElementById('apm-scratch-reset');
+
+  function recompute(){
+    var ic = parseFloat(inputs.ic.value);
+    var n = parseFloat(inputs.n.value);
+    var freq = parseFloat(inputs.freq.value);
+
+    if (!isFinite(ic) || !isFinite(n) || !isFinite(freq) || n <= 0 || freq <= 0){
+      noteOut.textContent = '(enter a numeric IC, and positive N and re-ranks/year)';
+      return;
+    }
+
+    var br = n * freq;
+    var ir = ic * Math.sqrt(br);
+
+    brOut.textContent = (Math.round(br) === br) ? br.toFixed(0) : br.toFixed(2);
+    irOut.textContent = ir.toFixed(2);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -589,6 +664,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

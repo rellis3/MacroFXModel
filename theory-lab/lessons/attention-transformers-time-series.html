@@ -327,6 +327,46 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the attention weights and output, live</h3>
+    <p>
+      Starts on the worked example's exact numbers: raw dot-product scores
+      \(q\cdot k_1=1\), \(q\cdot k_2=0\), \(q\cdot k_3=1\), with \(d_k=2\).
+      The three value vectors are held fixed at the worked example's
+      \(v_1=[2,0]\), \(v_2=[0,2]\), \(v_3=[1,1]\). Edit any score or
+      \(d_k\) and the scaled scores, softmax weights, and blended output
+      recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>q&middot;k&#8321;</span></div>
+        <input type="number" id="attn-scratch-s1" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>q&middot;k&#8322;</span></div>
+        <input type="number" id="attn-scratch-s2" class="tl-scratch-input" value="0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>q&middot;k&#8323;</span></div>
+        <input type="number" id="attn-scratch-s3" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>d<sub>k</sub></span></div>
+        <input type="number" id="attn-scratch-dk" class="tl-scratch-input" value="2" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      weights = [<b id="attn-scratch-w1">0.401</b>, <b id="attn-scratch-w2">0.198</b>, <b id="attn-scratch-w3">0.401</b>]
+    </div>
+    <div class="tl-readout">
+      output &asymp; [<b id="attn-scratch-ox">1.203</b>, <b id="attn-scratch-oy">0.797</b>]
+      <span id="attn-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="attn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -553,6 +593,60 @@
 </div>
 <script>
 (function(){
+  var V1 = [2, 0], V2 = [0, 2], V3 = [1, 1];
+  var DEFAULTS = { s1: 1, s2: 0, s3: 1, dk: 2 };
+  var fields = ['s1', 's2', 's3', 'dk'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('attn-scratch-' + f); });
+  if (!inputs.s1) return;
+
+  var w1Out = document.getElementById('attn-scratch-w1');
+  var w2Out = document.getElementById('attn-scratch-w2');
+  var w3Out = document.getElementById('attn-scratch-w3');
+  var oxOut = document.getElementById('attn-scratch-ox');
+  var oyOut = document.getElementById('attn-scratch-oy');
+  var note = document.getElementById('attn-scratch-note');
+  var resetBtn = document.getElementById('attn-scratch-reset');
+
+  function recompute(){
+    var s1 = parseFloat(inputs.s1.value);
+    var s2 = parseFloat(inputs.s2.value);
+    var s3 = parseFloat(inputs.s3.value);
+    var dk = parseFloat(inputs.dk.value);
+
+    if (!isFinite(s1) || !isFinite(s2) || !isFinite(s3) || !isFinite(dk) || dk <= 0) {
+      note.textContent = '(enter numeric dot-product scores and a positive d_k)';
+      return;
+    }
+    note.textContent = '';
+
+    var scale = Math.sqrt(dk);
+    var z1 = s1/scale, z2 = s2/scale, z3 = s3/scale;
+    var m = Math.max(z1, z2, z3);
+    var e1 = Math.exp(z1-m), e2 = Math.exp(z2-m), e3 = Math.exp(z3-m);
+    var sum = e1+e2+e3;
+    var w1 = e1/sum, w2 = e2/sum, w3 = e3/sum;
+
+    var ox = w1*V1[0] + w2*V2[0] + w3*V3[0];
+    var oy = w1*V1[1] + w2*V2[1] + w3*V3[1];
+
+    w1Out.textContent = w1.toFixed(3);
+    w2Out.textContent = w2.toFixed(3);
+    w3Out.textContent = w3.toFixed(3);
+    oxOut.textContent = ox.toFixed(3);
+    oyOut.textContent = oy.toFixed(3);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -574,6 +668,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

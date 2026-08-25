@@ -428,6 +428,41 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Both partial derivatives of \(V(S,t)=Se^{-\delta t}\), live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(S=\$100\),
+      \(\delta=3\%\), \(t=2\) years. Edit any field and both partials —
+      \(\partial V/\partial S\) (spot's sensitivity, time frozen) and
+      \(\partial V/\partial t\) (time's sensitivity, spot frozen) —
+      recalculate instantly, alongside the forward value \(V\) itself.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S\) ($)</span></div>
+        <input type="number" id="mv-scratch-S" class="tl-scratch-input" value="100" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Dividend yield \(\delta\) (%)</span></div>
+        <input type="number" id="mv-scratch-delta" class="tl-scratch-input" value="3" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time \(t\) (years)</span></div>
+        <input type="number" id="mv-scratch-t" class="tl-scratch-input" value="2" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      V(S,t) = <b id="mv-scratch-V">94.18</b>&emsp;&part;V/&part;S = <b id="mv-scratch-dVdS">0.9418</b>
+    </div>
+    <div class="tl-readout">
+      &part;V/&part;t = <b id="mv-scratch-dVdt">&minus;2.825</b>
+      <span id="mv-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mv-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -663,6 +698,52 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { S: 100, delta: 3, t: 2 };
+  var fields = ['S', 'delta', 't'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('mv-scratch-' + f); });
+  if (!inputs.S) return;
+
+  var VOut = document.getElementById('mv-scratch-V');
+  var dVdSOut = document.getElementById('mv-scratch-dVdS');
+  var dVdtOut = document.getElementById('mv-scratch-dVdt');
+  var noteOut = document.getElementById('mv-scratch-note');
+  var resetBtn = document.getElementById('mv-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var delta = parseFloat(inputs.delta.value) / 100;
+    var t = parseFloat(inputs.t.value);
+
+    if (!isFinite(S) || !isFinite(delta) || !isFinite(t) || S < 0 || t < 0) {
+      noteOut.textContent = '(S and t must be non-negative — a negative asset price or a negative time to expiry has no meaning here)';
+      VOut.textContent = '—';
+      dVdSOut.textContent = '—';
+      dVdtOut.textContent = '—';
+      return;
+    }
+
+    var discount = Math.exp(-delta * t);
+    var V = S * discount;
+    var dVdS = discount;
+    var dVdt = -delta * S * discount;
+
+    VOut.textContent = V.toFixed(2);
+    dVdSOut.textContent = dVdS.toFixed(4);
+    dVdtOut.textContent = dVdt.toFixed(3);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -684,6 +765,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

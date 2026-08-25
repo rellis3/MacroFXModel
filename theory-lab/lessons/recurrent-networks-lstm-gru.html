@@ -361,6 +361,45 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute one scalar LSTM step, live</h3>
+    <p>
+      Starts on the worked example's step 1 numbers: previous cell state
+      \(C_{t-1}=0\), input \(x_t=1\), shared gate weight
+      \(w_f=w_i=w_o=2\), candidate weight \(w_C=1\) (all biases zero, as in
+      the worked example). Edit any field and the gate value, candidate,
+      new cell state, and hidden state recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>C<sub>t&minus;1</sub></span></div>
+        <input type="number" id="lstm-scratch-cprev" class="tl-scratch-input" value="0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>x<sub>t</sub></span></div>
+        <input type="number" id="lstm-scratch-x" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>gate weight (w<sub>f</sub>=w<sub>i</sub>=w<sub>o</sub>)</span></div>
+        <input type="number" id="lstm-scratch-wgate" class="tl-scratch-input" value="2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>w<sub>C</sub></span></div>
+        <input type="number" id="lstm-scratch-wc" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      f=i=o = <b id="lstm-scratch-gate">0.881</b>&emsp;C̃<sub>t</sub> = <b id="lstm-scratch-ctilde">0.762</b>
+    </div>
+    <div class="tl-readout">
+      C<sub>t</sub> = <b id="lstm-scratch-ct">0.671</b>&emsp;h<sub>t</sub> = <b id="lstm-scratch-ht">0.516</b>
+      <span id="lstm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="lstm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -567,6 +606,54 @@
 </div>
 <script>
 (function(){
+  function sigmoid(x){ return 1/(1+Math.exp(-x)); }
+
+  var DEFAULTS = { cprev: 0, x: 1, wgate: 2, wc: 1 };
+  var fields = ['cprev', 'x', 'wgate', 'wc'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('lstm-scratch-' + f); });
+  if (!inputs.cprev) return;
+
+  var gateOut = document.getElementById('lstm-scratch-gate');
+  var ctildeOut = document.getElementById('lstm-scratch-ctilde');
+  var ctOut = document.getElementById('lstm-scratch-ct');
+  var htOut = document.getElementById('lstm-scratch-ht');
+  var note = document.getElementById('lstm-scratch-note');
+  var resetBtn = document.getElementById('lstm-scratch-reset');
+
+  function recompute(){
+    var cprev = parseFloat(inputs.cprev.value);
+    var x = parseFloat(inputs.x.value);
+    var wgate = parseFloat(inputs.wgate.value);
+    var wc = parseFloat(inputs.wc.value);
+
+    if (!isFinite(cprev) || !isFinite(x) || !isFinite(wgate) || !isFinite(wc)) {
+      note.textContent = '(enter numeric values for every field)';
+      return;
+    }
+    note.textContent = '';
+
+    var gate = sigmoid(wgate * x);
+    var ctilde = Math.tanh(wc * x);
+    var ct = gate*cprev + gate*ctilde;
+    var ht = gate*Math.tanh(ct);
+
+    gateOut.textContent = gate.toFixed(3);
+    ctildeOut.textContent = ctilde.toFixed(3);
+    ctOut.textContent = ct.toFixed(3);
+    htOut.textContent = ht.toFixed(3);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -588,6 +675,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

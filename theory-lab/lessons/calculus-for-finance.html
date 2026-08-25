@@ -485,6 +485,32 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the Taylor error for any step size, live</h3>
+    <p>
+      Starts on the worked example's small-step case, \(h=0.05\). Change
+      \(h\) — try 0.30 to reproduce the "larger step" case above — and the
+      true value \(\ln(1+h)\), the second-order approximation
+      \(h-h^2/2\), and the gap between them all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Step \(h\)</span></div>
+        <input type="number" id="calc-scratch-h" class="tl-scratch-input" value="0.05" step="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      True \(\ln(1+h)\) = <b id="calc-scratch-true">0.04879</b>&emsp;Approx \(h-h^2/2\) = <b id="calc-scratch-approx">0.04875</b>
+    </div>
+    <div class="tl-readout">
+      Error = <b id="calc-scratch-err">0.00004</b>
+      <span id="calc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="calc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -786,6 +812,43 @@
 </div>
 <script>
 (function(){
+  var hInput = document.getElementById('calc-scratch-h');
+  var trueOut = document.getElementById('calc-scratch-true');
+  var approxOut = document.getElementById('calc-scratch-approx');
+  var errOut = document.getElementById('calc-scratch-err');
+  var note = document.getElementById('calc-scratch-note');
+  var resetBtn = document.getElementById('calc-scratch-reset');
+  if (!hInput) return;
+
+  function recompute(){
+    var h = parseFloat(hInput.value);
+
+    if (!isFinite(h) || h <= -1) {
+      note.textContent = '(enter h > -1 so 1+h stays positive)';
+      return;
+    }
+    note.textContent = '';
+
+    var trueVal = Math.log(1 + h);
+    var approx = h - (h * h) / 2;
+    var err = trueVal - approx;
+
+    trueOut.textContent = trueVal.toFixed(5);
+    approxOut.textContent = approx.toFixed(5);
+    errOut.textContent = err.toFixed(5);
+  }
+
+  hInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    hInput.value = 0.05;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -807,6 +870,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

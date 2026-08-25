@@ -394,6 +394,54 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Assign a point to its nearest centroid, live</h3>
+    <p>
+      Starts on the worked example's iteration-2 numbers from step 2 above:
+      point \(B=(1,2)\) checked against the already-shifted centroids
+      \(\mu_1=(1,1)\) (unchanged) and \(\mu_2=(4.4,5.0)\) (pulled toward
+      \(D,E,F\)). Edit any coordinate and both squared distances, plus the
+      resulting assignment, recompute instantly — this is exactly the
+      \(\|x-\mu_i\|^2\) comparison the assign step performs for every point.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Point x</span></div>
+        <input type="number" id="km-scratch-px" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Point y</span></div>
+        <input type="number" id="km-scratch-py" class="tl-scratch-input" value="2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Centroid &mu;&#8321; x</span></div>
+        <input type="number" id="km-scratch-c1x" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Centroid &mu;&#8321; y</span></div>
+        <input type="number" id="km-scratch-c1y" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Centroid &mu;&#8322; x</span></div>
+        <input type="number" id="km-scratch-c2x" class="tl-scratch-input" value="4.4" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Centroid &mu;&#8322; y</span></div>
+        <input type="number" id="km-scratch-c2y" class="tl-scratch-input" value="5.0" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &#8214;x&minus;&mu;&#8321;&#8214;&sup2; = <b id="km-scratch-d1">1.00</b>&emsp;&#8214;x&minus;&mu;&#8322;&#8214;&sup2; = <b id="km-scratch-d2">20.56</b>
+    </div>
+    <div class="tl-readout">
+      Assignment: <b id="km-scratch-assign">cluster 1 (&mu;&#8321;)</b>
+      <span id="km-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="km-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Hierarchical clustering applied outside portfolio construction — grouping sectors by behavioral similarity</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A dendrogram of five equity sectors clustered by behavioral similarity: Tech and Financials merge first at a low distance, Energy and Utilities merge separately, Healthcare joins the Tech-Financials group, and finally the two blocs merge at the root at the highest distance. No portfolio weights are computed anywhere in this diagram">
@@ -685,6 +733,56 @@
 </div>
 <script>
 (function(){
+  function sqDist(x1,y1,x2,y2){ var dx=x1-x2, dy=y1-y2; return dx*dx+dy*dy; }
+
+  var DEFAULTS = { px: 1, py: 2, c1x: 1, c1y: 1, c2x: 4.4, c2y: 5.0 };
+  var fields = ['px','py','c1x','c1y','c2x','c2y'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('km-scratch-' + f); });
+  if (!inputs.px) return;
+
+  var d1Out = document.getElementById('km-scratch-d1');
+  var d2Out = document.getElementById('km-scratch-d2');
+  var assignOut = document.getElementById('km-scratch-assign');
+  var note = document.getElementById('km-scratch-note');
+  var resetBtn = document.getElementById('km-scratch-reset');
+
+  function recompute(){
+    var v = {};
+    for (var i = 0; i < fields.length; i++) {
+      var val = parseFloat(inputs[fields[i]].value);
+      if (!isFinite(val)) {
+        note.textContent = '(enter numeric coordinates for the point and both centroids)';
+        return;
+      }
+      v[fields[i]] = val;
+    }
+    note.textContent = '';
+
+    var dist1 = sqDist(v.px, v.py, v.c1x, v.c1y);
+    var dist2 = sqDist(v.px, v.py, v.c2x, v.c2y);
+    d1Out.textContent = dist1.toFixed(2);
+    d2Out.textContent = dist2.toFixed(2);
+
+    if (dist1 < dist2) {
+      assignOut.textContent = 'cluster 1 (μ₁)';
+    } else if (dist2 < dist1) {
+      assignOut.textContent = 'cluster 2 (μ₂)';
+    } else {
+      assignOut.textContent = 'tie — equidistant from both centroids';
+    }
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -706,6 +804,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

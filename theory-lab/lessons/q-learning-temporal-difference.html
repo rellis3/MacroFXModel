@@ -295,6 +295,46 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same TD update, live — change any input below</h3>
+    <p>
+      Starts on step 3's exact numbers above. Edit any field and the TD
+      target, TD error, and updated \(Q(s,a)\) all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Current \(Q(s,a)\)</span></div>
+        <input type="number" id="ql-scratch-Q" class="tl-scratch-input" value="0.5" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Reward \(r\)</span></div>
+        <input type="number" id="ql-scratch-r" class="tl-scratch-input" value="1" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Discount \(\gamma\)</span></div>
+        <input type="number" id="ql-scratch-gamma" class="tl-scratch-input" value="0.9" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Learning rate \(\alpha\)</span></div>
+        <input type="number" id="ql-scratch-alpha" class="tl-scratch-input" value="0.5" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>\(\max_{a'}Q(s',a')\)</span></div>
+        <input type="number" id="ql-scratch-maxq" class="tl-scratch-input" value="0.5" step="0.05">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      TD target = <b id="ql-scratch-target">1.45</b>&emsp;TD error &delta; = <b id="ql-scratch-error">0.95</b>
+    </div>
+    <div class="tl-readout">
+      Q(s,a) &larr; Q(s,a) + &alpha;&delta; = <b id="ql-scratch-qnew">0.975</b>
+      <span id="ql-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ql-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Q(Long, Hold) climbing toward Q* = 10 under repeated sampling</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart showing Q of Long, Hold rising from zero and approaching, but not exactly reaching, the dashed asymptote at 10 over 40 simulated updates, following the recursion Q sub k plus one equals point nine five times Q sub k plus point five. Two labeled points mark the first two hand-computed updates from the worked example, at 0.5 and 0.975.">
@@ -516,6 +556,57 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { Q: 0.5, r: 1, gamma: 0.9, alpha: 0.5, maxq: 0.5 };
+  var fields = ['Q', 'r', 'gamma', 'alpha', 'maxq'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('ql-scratch-' + f); });
+  if (!inputs.Q) return;
+
+  var targetOut = document.getElementById('ql-scratch-target');
+  var errorOut = document.getElementById('ql-scratch-error');
+  var qnewOut = document.getElementById('ql-scratch-qnew');
+  var noteOut = document.getElementById('ql-scratch-note');
+  var resetBtn = document.getElementById('ql-scratch-reset');
+
+  function recompute(){
+    var Q = parseFloat(inputs.Q.value);
+    var r = parseFloat(inputs.r.value);
+    var gamma = parseFloat(inputs.gamma.value);
+    var alpha = parseFloat(inputs.alpha.value);
+    var maxq = parseFloat(inputs.maxq.value);
+
+    if (!isFinite(Q) || !isFinite(r) || !isFinite(gamma) || !isFinite(alpha) || !isFinite(maxq)) {
+      targetOut.textContent = '—';
+      errorOut.textContent = '—';
+      qnewOut.textContent = '—';
+      noteOut.textContent = '(enter numeric values for every field)';
+      return;
+    }
+
+    var target = r + gamma * maxq;
+    var error = target - Q;
+    var qnew = Q + alpha * error;
+
+    targetOut.textContent = target.toFixed(3);
+    errorOut.textContent = error.toFixed(3);
+    qnewOut.textContent = qnew.toFixed(3);
+
+    var notes = [];
+    if (gamma < 0 || gamma > 1) notes.push('γ is usually kept between 0 and 1');
+    if (alpha < 0 || alpha > 1) notes.push('α is usually kept between 0 and 1');
+    noteOut.textContent = notes.length ? '(' + notes.join('; ') + ' — this still computes below, just outside the usual convention)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -537,6 +628,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

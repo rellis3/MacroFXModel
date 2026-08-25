@@ -361,6 +361,50 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same recursive bisection, live — change any volatility below</h3>
+    <p>
+      Starts on the worked example's exact volatilities and the same fixed
+      tree ({EURUSD,GBPUSD,AUDUSD} vs. {USDJPY,USDCHF}, then splitting again
+      at each merge). Edit any pair's volatility and every split down the
+      tree — each \(\alpha\), and all five final weights — recalculates
+      instantly, using each cluster's inverse-variance-weighted variance as
+      \(V\), exactly as in Stage 3.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>EURUSD vol (%)</span></div>
+        <input type="number" id="hrp-scratch-vE" class="tl-scratch-input" value="8" step="0.5" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>GBPUSD vol (%)</span></div>
+        <input type="number" id="hrp-scratch-vG" class="tl-scratch-input" value="9" step="0.5" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>AUDUSD vol (%)</span></div>
+        <input type="number" id="hrp-scratch-vA" class="tl-scratch-input" value="11" step="0.5" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>USDJPY vol (%)</span></div>
+        <input type="number" id="hrp-scratch-vJ" class="tl-scratch-input" value="7" step="0.5" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>USDCHF vol (%)</span></div>
+        <input type="number" id="hrp-scratch-vC" class="tl-scratch-input" value="6" step="0.5" min="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Root split &alpha;<sub>L</sub> = <b id="hrp-scratch-alphaL">0.429</b>&emsp;&alpha;<sub>R</sub> = <b id="hrp-scratch-alphaR">0.571</b>&emsp;left sub-split &alpha;<sub>EG</sub> = <b id="hrp-scratch-alphaEG">0.772</b>
+    </div>
+    <div class="tl-readout">
+      Final weights: EURUSD <b id="hrp-scratch-wE">18.5%</b>&emsp;GBPUSD <b id="hrp-scratch-wG">14.6%</b>&emsp;AUDUSD <b id="hrp-scratch-wA">9.8%</b>&emsp;USDJPY <b id="hrp-scratch-wJ">24.2%</b>&emsp;USDCHF <b id="hrp-scratch-wC">32.9%</b>
+      <span id="hrp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="hrp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -543,6 +587,85 @@
 </div>
 <script>
 (function(){
+  // Self-contained: fixed tree matching the worked example
+  // ({EURUSD,GBPUSD,AUDUSD} vs. {USDJPY,USDCHF}, splitting again at each
+  // merge), only the five leaf volatilities are editable.
+  function ivWeightedVar(vars){
+    var s = 0;
+    for (var i=0; i<vars.length; i++) s += 1/vars[i];
+    return 1/s;
+  }
+
+  var DEFAULTS = { vE: 8, vG: 9, vA: 11, vJ: 7, vC: 6 };
+  var fields = ['vE', 'vG', 'vA', 'vJ', 'vC'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('hrp-scratch-' + f); });
+
+  var alphaLOut = document.getElementById('hrp-scratch-alphaL');
+  var alphaROut = document.getElementById('hrp-scratch-alphaR');
+  var alphaEGOut = document.getElementById('hrp-scratch-alphaEG');
+  var wOut = {
+    E: document.getElementById('hrp-scratch-wE'),
+    G: document.getElementById('hrp-scratch-wG'),
+    A: document.getElementById('hrp-scratch-wA'),
+    J: document.getElementById('hrp-scratch-wJ'),
+    C: document.getElementById('hrp-scratch-wC')
+  };
+  var noteOut = document.getElementById('hrp-scratch-note');
+  var resetBtn = document.getElementById('hrp-scratch-reset');
+
+  function recompute(){
+    var vals = {};
+    for (var i=0; i<fields.length; i++){
+      var f = fields[i];
+      vals[f] = parseFloat(inputs[f].value);
+      if (!isFinite(vals[f]) || vals[f] <= 0){
+        noteOut.textContent = '(enter positive volatilities for all five pairs)';
+        return;
+      }
+    }
+
+    var varE = vals.vE*vals.vE, varG = vals.vG*vals.vG, varA = vals.vA*vals.vA;
+    var varJ = vals.vJ*vals.vJ, varC = vals.vC*vals.vC;
+
+    var VL = ivWeightedVar([varE, varG, varA]);
+    var VR = ivWeightedVar([varJ, varC]);
+    var alphaL = 1 - VL/(VL+VR);
+    var alphaR = 1 - alphaL;
+
+    var V_EG = ivWeightedVar([varE, varG]);
+    var alphaEG = 1 - V_EG/(V_EG+varA);
+
+    var alphaE = 1 - varE/(varE+varG);
+    var alphaJ = 1 - varJ/(varJ+varC);
+
+    var pE = alphaL * alphaEG * alphaE;
+    var pG = alphaL * alphaEG * (1-alphaE);
+    var pA = alphaL * (1-alphaEG);
+    var pJ = alphaR * alphaJ;
+    var pC = alphaR * (1-alphaJ);
+
+    alphaLOut.textContent = alphaL.toFixed(3);
+    alphaROut.textContent = alphaR.toFixed(3);
+    alphaEGOut.textContent = alphaEG.toFixed(3);
+    wOut.E.textContent = (pE*100).toFixed(1) + '%';
+    wOut.G.textContent = (pG*100).toFixed(1) + '%';
+    wOut.A.textContent = (pA*100).toFixed(1) + '%';
+    wOut.J.textContent = (pJ*100).toFixed(1) + '%';
+    wOut.C.textContent = (pC*100).toFixed(1) + '%';
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -564,6 +687,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

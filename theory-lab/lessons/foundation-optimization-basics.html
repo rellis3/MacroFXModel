@@ -391,6 +391,54 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Re-solve the minimum-variance portfolio, live</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit any input and the
+      constraint-only solution \(w_1=(\text{target}-\mu_2)/(\mu_1-\mu_2)\),
+      \(w_2=1-w_1\) recalculates instantly, along with the resulting
+      portfolio volatility \(\sigma_p\) — so you can feel how a higher
+      return target, a wider return gap, or a different correlation changes
+      both the weights and the diversification benefit.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&mu;<sub>1</sub> (%)</span></div>
+        <input type="number" id="opt-scratch-mu1" class="tl-scratch-input" value="8" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&sigma;<sub>1</sub> (%)</span></div>
+        <input type="number" id="opt-scratch-sigma1" class="tl-scratch-input" value="20" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&mu;<sub>2</sub> (%)</span></div>
+        <input type="number" id="opt-scratch-mu2" class="tl-scratch-input" value="4" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&sigma;<sub>2</sub> (%)</span></div>
+        <input type="number" id="opt-scratch-sigma2" class="tl-scratch-input" value="10" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&rho;</span></div>
+        <input type="number" id="opt-scratch-rho" class="tl-scratch-input" value="0.30" step="0.05" min="-1" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Target return (%)</span></div>
+        <input type="number" id="opt-scratch-target" class="tl-scratch-input" value="6" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      w<sub>1</sub> = <b id="opt-scratch-w1">0.500</b>&emsp;w<sub>2</sub> = <b id="opt-scratch-w2">0.500</b>
+    </div>
+    <div class="tl-readout">
+      &sigma;<sub>p</sub> = <b id="opt-scratch-sigp">12.45</b>%
+      <span id="opt-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="opt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -612,6 +660,73 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { mu1: 8, sigma1: 20, mu2: 4, sigma2: 10, rho: 0.30, target: 6 };
+  var fields = ['mu1', 'sigma1', 'mu2', 'sigma2', 'rho', 'target'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('opt-scratch-' + f); });
+  if (!inputs.mu1) return;
+
+  var w1Out = document.getElementById('opt-scratch-w1');
+  var w2Out = document.getElementById('opt-scratch-w2');
+  var sigpOut = document.getElementById('opt-scratch-sigp');
+  var noteOut = document.getElementById('opt-scratch-note');
+  var resetBtn = document.getElementById('opt-scratch-reset');
+
+  function recompute(){
+    var mu1 = parseFloat(inputs.mu1.value) / 100;
+    var sigma1 = parseFloat(inputs.sigma1.value) / 100;
+    var mu2 = parseFloat(inputs.mu2.value) / 100;
+    var sigma2 = parseFloat(inputs.sigma2.value) / 100;
+    var rho = parseFloat(inputs.rho.value);
+    var target = parseFloat(inputs.target.value) / 100;
+
+    if (!isFinite(mu1) || !isFinite(sigma1) || !isFinite(mu2) || !isFinite(sigma2) || !isFinite(rho) || !isFinite(target) || sigma1 < 0 || sigma2 < 0 || rho < -1 || rho > 1) {
+      noteOut.textContent = '(volatilities must be non-negative and correlation ρ must be between -1 and 1)';
+      w1Out.textContent = '—';
+      w2Out.textContent = '—';
+      sigpOut.textContent = '—';
+      return;
+    }
+
+    if (mu1 === mu2) {
+      w1Out.textContent = '—';
+      w2Out.textContent = '—';
+      sigpOut.textContent = '—';
+      noteOut.textContent = target === mu1
+        ? '(μ₁=μ₂=target: every weight hits the target — this simplified case can\'t pick one without minimizing variance directly)'
+        : '(μ₁=μ₂ but the target differs from both: no weight combination can hit this target return)';
+      return;
+    }
+
+    var w1 = (target - mu2) / (mu1 - mu2);
+    var w2 = 1 - w1;
+    var varp = w1*w1*sigma1*sigma1 + w2*w2*sigma2*sigma2 + 2*w1*w2*rho*sigma1*sigma2;
+
+    w1Out.textContent = w1.toFixed(3);
+    w2Out.textContent = w2.toFixed(3);
+
+    if (varp < 0) {
+      sigpOut.textContent = '—';
+      noteOut.textContent = '(negative variance from these inputs — check that ρ is a valid correlation)';
+      return;
+    }
+
+    sigpOut.textContent = (Math.sqrt(varp) * 100).toFixed(2);
+    noteOut.textContent = (w1 < 0 || w1 > 1)
+      ? '(w₁ falls outside [0,1] — this target return requires a short position in one asset)'
+      : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -633,6 +748,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

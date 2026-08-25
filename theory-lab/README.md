@@ -76,9 +76,11 @@ markup, the house content order, and a verification checklist.
 - **0 · Math Primer** (4) — descriptive stats/normal distribution,
   probability/CLT, correlation/regression, returns/compounding. Start here
   if you're new to statistics.
-- **0.5 · Deeper Foundations** (4) — linear algebra, calculus, stationarity/
-  ACF/PACF, time value of money. Not sequential — read one alongside
-  whichever later lesson calls for it.
+- **0.5 · Deeper Foundations** (5) — linear algebra, calculus, stationarity/
+  ACF/PACF, time value of money, and limits/integrals/the annuity factor
+  (formalizes the limit underneath a derivative and an integral, then
+  derives duration, DV01, and the annuity factor from first principles).
+  Not sequential — read one alongside whichever later lesson calls for it.
 - **1 · Foundations & Epistemics** (3) — EMH, Bayesian inference, multiple
   testing.
 - **2 · Time Series & Regimes** (5) — Ornstein-Uhlenbeck, Hurst/variance
@@ -214,7 +216,7 @@ theory-lab/
   glossary.html       — searchable notation glossary
   assets/theory.css   — shared stylesheet (dark theme, MathJax, interactive-
                          chart, real-world-scenario, and skim-path classes)
-  lessons/*.html      — 121 lesson files (5 Foundation Mathematics + 8
+  lessons/*.html      — 122 lesson files (5 Foundation Mathematics + 9
                         primers/foundations + 34 numbered theory lessons +
                         5 Fixed Income Mathematics + 5 Numerical Methods
                         (incl. FFT option pricing) + 4 further Market

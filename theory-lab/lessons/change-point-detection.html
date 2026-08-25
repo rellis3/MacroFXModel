@@ -312,6 +312,48 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute one CUSUM step, live — change any input below</h3>
+    <p>
+      Starts on the worked example's \(t=9\) step exactly: the running statistic going into it,
+      \(S_{t-1}=2.2\), and the observation that pushes it past the threshold, \(x_t=2.8\). Edit any field
+      and the allowance-adjusted deviation, the new \(S_t\), and whether it flags a change all recalculate
+      instantly from the one-step CUSUM update.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Running statistic \(S_{t-1}\)</span></div>
+        <input type="number" id="cpd-scratch-sprev" class="tl-scratch-input" value="2.2" step="0.1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Observation \(x_t\)</span></div>
+        <input type="number" id="cpd-scratch-x" class="tl-scratch-input" value="2.8" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Baseline \(\mu_0\)</span></div>
+        <input type="number" id="cpd-scratch-mu0" class="tl-scratch-input" value="0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Allowance \(k\)</span></div>
+        <input type="number" id="cpd-scratch-k" class="tl-scratch-input" value="1.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Threshold \(h\)</span></div>
+        <input type="number" id="cpd-scratch-h" class="tl-scratch-input" value="3.5" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      x<sub>t</sub>&minus;&mu;<sub>0</sub>&minus;k = <b id="cpd-scratch-dev">1.8000</b>
+    </div>
+    <div class="tl-readout">
+      S<sub>t</sub> = <b id="cpd-scratch-st">4.0000</b>
+      <span id="cpd-scratch-note" class="tl-scratch-note">flagged — S_t &gt; h</span>
+    </div>
+    <button type="button" id="cpd-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>
@@ -495,6 +537,48 @@
 </div>
 <script>
 (function(){
+  // Self-contained one-step CUSUM scratchpad, matching the worked
+  // example's S_t = max(0, S_{t-1} + (x_t - mu0 - k)) update exactly.
+  var DEFAULTS = { sprev: 2.2, x: 2.8, mu0: 0, k: 1.0, h: 3.5 };
+  var fields = ['sprev', 'x', 'mu0', 'k', 'h'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('cpd-scratch-' + f); });
+
+  var devOut = document.getElementById('cpd-scratch-dev');
+  var stOut = document.getElementById('cpd-scratch-st');
+  var noteOut = document.getElementById('cpd-scratch-note');
+  var resetBtn = document.getElementById('cpd-scratch-reset');
+
+  function recompute(){
+    var sprev = parseFloat(inputs.sprev.value);
+    var x = parseFloat(inputs.x.value);
+    var mu0 = parseFloat(inputs.mu0.value);
+    var k = parseFloat(inputs.k.value);
+    var h = parseFloat(inputs.h.value);
+
+    if (!isFinite(sprev) || !isFinite(x) || !isFinite(mu0) || !isFinite(k) || !isFinite(h) || sprev < 0) {
+      noteOut.textContent = '(enter numbers for every field; S_{t-1} must be non-negative)';
+      return;
+    }
+
+    var dev = x - mu0 - k;
+    var st = Math.max(0, sprev + dev);
+
+    devOut.textContent = dev.toFixed(4);
+    stOut.textContent = st.toFixed(4);
+    noteOut.textContent = st > h ? 'flagged — S_t > h' : 'not flagged — S_t ≤ h';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -516,6 +600,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

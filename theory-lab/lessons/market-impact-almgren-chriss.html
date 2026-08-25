@@ -479,6 +479,44 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Back out &kappa; and the trajectory, live</h3>
+    <p>
+      Starts on the worked example's moderately-risk-averse case
+      (\(\lambda=27\), \(\sigma^2=0.0004\), \(\eta=0.0012\)), read out at the
+      halfway checkpoint \(t=0.5\). Edit any field and both \(\kappa\) and the
+      fraction of the order still remaining recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk aversion \(\lambda\)</span></div>
+        <input type="number" id="ac-scratch-lambda" class="tl-scratch-input" value="27" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Variance \(\sigma^2\)</span></div>
+        <input type="number" id="ac-scratch-sigma2" class="tl-scratch-input" value="0.0004" step="0.0001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Temp. impact \(\eta\)</span></div>
+        <input type="number" id="ac-scratch-eta" class="tl-scratch-input" value="0.0012" step="0.0001" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time elapsed \(t\) (fraction of T)</span></div>
+        <input type="number" id="ac-scratch-t" class="tl-scratch-input" value="0.5" step="0.05" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      &kappa; = &radic;(&lambda;&sigma;&sup2;/&eta;) = <b id="ac-scratch-kappa">3.00</b>
+    </div>
+    <div class="tl-readout">
+      x(t)/X = sinh(&kappa;(1&minus;t))/sinh(&kappa;) &asymp; <b id="ac-scratch-frac">21.3</b>% of the order still remaining
+      <span id="ac-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ac-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">The Almgren-Chriss optimal execution trajectory — drag risk aversion κ</div>
     <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart with x-axis time elapsed from 0 to 1 and y-axis fraction of order remaining from 0 to 1. A curve starts at the top left at 1.0 and ends at the bottom right at 0.0. At low risk aversion the curve is a straight line. As risk aversion increases via the slider, the curve becomes increasingly front-loaded, dropping steeply at the start and flattening out near zero for the remainder of the time window.">
@@ -772,6 +810,62 @@
 </script>
 <script>
 (function(){
+  function sinh(z){ return (Math.exp(z) - Math.exp(-z)) / 2; }
+  function fracRemaining(t, kappa){
+    if (kappa < 1e-6) return 1 - t;
+    return sinh(kappa * (1 - t)) / sinh(kappa);
+  }
+
+  var lambdaInput = document.getElementById('ac-scratch-lambda');
+  var sigma2Input = document.getElementById('ac-scratch-sigma2');
+  var etaInput = document.getElementById('ac-scratch-eta');
+  var tInput = document.getElementById('ac-scratch-t');
+  var kappaOut = document.getElementById('ac-scratch-kappa');
+  var fracOut = document.getElementById('ac-scratch-frac');
+  var note = document.getElementById('ac-scratch-note');
+  var resetBtn = document.getElementById('ac-scratch-reset');
+  if (!lambdaInput) return;
+
+  var DEFAULTS = { lambda: 27, sigma2: 0.0004, eta: 0.0012, t: 0.5 };
+
+  function recompute(){
+    var lambda = parseFloat(lambdaInput.value);
+    var sigma2 = parseFloat(sigma2Input.value);
+    var eta = parseFloat(etaInput.value);
+    var t = parseFloat(tInput.value);
+
+    if (!isFinite(lambda) || !isFinite(sigma2) || !isFinite(eta) || !isFinite(t) ||
+        lambda < 0 || sigma2 < 0 || eta <= 0 || t < 0 || t > 1) {
+      kappaOut.textContent = '—';
+      fracOut.textContent = '—';
+      note.textContent = '(enter non-negative λ, σ², a positive η, and t between 0 and 1)';
+      return;
+    }
+
+    var kappa = Math.sqrt(lambda * sigma2 / eta);
+    var frac = fracRemaining(t, kappa) * 100;
+
+    kappaOut.textContent = kappa.toFixed(2);
+    fracOut.textContent = frac.toFixed(1);
+    note.textContent = '';
+  }
+
+  lambdaInput.addEventListener('input', recompute);
+  sigma2Input.addEventListener('input', recompute);
+  etaInput.addEventListener('input', recompute);
+  tInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    lambdaInput.value = DEFAULTS.lambda;
+    sigma2Input.value = DEFAULTS.sigma2;
+    etaInput.value = DEFAULTS.eta;
+    tInput.value = DEFAULTS.t;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -793,6 +887,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

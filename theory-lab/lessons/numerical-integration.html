@@ -407,6 +407,41 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same trapezoidal estimate, live — change the bounds or the strip count</h3>
+    <p>
+      Starts on the worked example's exact numbers: \(a=0\), \(b=1\),
+      \(n=4\) strips on \(\varphi(z)\). Edit any field and the composite
+      trapezoidal estimate, the true value \(\Phi(b)-\Phi(a)\), and the error
+      between them recompute instantly, using the same erf-based normal CDF
+      as the interactive chart above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Lower bound \(a\)</span></div>
+        <input type="number" id="ni-scratch-a" class="tl-scratch-input" value="0" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Upper bound \(b\)</span></div>
+        <input type="number" id="ni-scratch-b" class="tl-scratch-input" value="1" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strips \(n\)</span></div>
+        <input type="number" id="ni-scratch-n" class="tl-scratch-input" value="4" step="1" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      h = <b id="ni-scratch-h">0.2500</b>&emsp;trapezoidal estimate = <b id="ni-scratch-est">0.34008</b>
+    </div>
+    <div class="tl-readout">
+      true &Phi;(b)&minus;&Phi;(a) = <b id="ni-scratch-true">0.34134</b>&emsp;error = <b id="ni-scratch-error">-0.00126</b>
+      <span id="ni-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ni-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -700,6 +735,74 @@
 </script>
 <script>
 (function(){
+  // Self-contained on purpose (own erf/Phi copy, not sharing the chart
+  // script's copy above) so this block stays copy-pasteable on its own.
+  function phi(z){ return Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI); }
+  function erf(x){
+    var sign = x >= 0 ? 1 : -1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1 / (1 + p * x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign * y;
+  }
+  function Phi(z){ return 0.5 * (1 + erf(z / Math.SQRT2)); }
+
+  var DEFAULTS = { a: 0, b: 1, n: 4 };
+  var aInput = document.getElementById('ni-scratch-a');
+  var bInput = document.getElementById('ni-scratch-b');
+  var nInput = document.getElementById('ni-scratch-n');
+  if (!aInput) return;
+
+  var hOut = document.getElementById('ni-scratch-h');
+  var estOut = document.getElementById('ni-scratch-est');
+  var trueOut = document.getElementById('ni-scratch-true');
+  var errOut = document.getElementById('ni-scratch-error');
+  var noteOut = document.getElementById('ni-scratch-note');
+  var resetBtn = document.getElementById('ni-scratch-reset');
+
+  function recompute(){
+    var a = parseFloat(aInput.value);
+    var b = parseFloat(bInput.value);
+    var n = Math.round(parseFloat(nInput.value));
+
+    if (!isFinite(a) || !isFinite(b) || !isFinite(n) || n < 1) {
+      hOut.textContent = '—'; estOut.textContent = '—'; trueOut.textContent = '—'; errOut.textContent = '—';
+      noteOut.textContent = '(enter a strip count n≥1 and finite bounds)';
+      return;
+    }
+
+    var h = (b - a) / n;
+    var sum = (phi(a) + phi(b)) / 2;
+    for (var i = 1; i < n; i++){
+      sum += phi(a + i * h);
+    }
+    sum *= h;
+
+    var trueVal = Phi(b) - Phi(a);
+    var error = sum - trueVal;
+
+    hOut.textContent = h.toFixed(4);
+    estOut.textContent = sum.toFixed(5);
+    trueOut.textContent = trueVal.toFixed(5);
+    errOut.textContent = (error >= 0 ? '+' : '') + error.toFixed(5);
+    noteOut.textContent = (b === a) ? '(a=b: the integral over a zero-width interval is trivially 0)' : '';
+  }
+
+  aInput.addEventListener('input', recompute);
+  bInput.addEventListener('input', recompute);
+  nInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    aInput.value = DEFAULTS.a;
+    bInput.value = DEFAULTS.b;
+    nInput.value = DEFAULTS.n;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -721,6 +824,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

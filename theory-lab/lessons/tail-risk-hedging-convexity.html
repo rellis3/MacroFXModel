@@ -255,6 +255,56 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same calm-year/crash-year comparison, live — change any assumption</h3>
+    <p>
+      Starts on the worked example's exact numbers: a calm year at +12%, a crash year at &minus;35%, and
+      the illustrative overlay costs/payoffs above. Edit any field and every strategy's calm-year and
+      crash-year return, plus the 5-year (4 calm + 1 crash) cumulative compounding, recalculates instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Index, calm year (%)</span></div>
+        <input type="number" id="trh-scratch-idxCalm" class="tl-scratch-input" value="12" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Index, crash year (%)</span></div>
+        <input type="number" id="trh-scratch-idxCrash" class="tl-scratch-input" value="-35" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Short-conv. calm bonus (%)</span></div>
+        <input type="number" id="trh-scratch-scCalm" class="tl-scratch-input" value="3" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Short-conv. crash extra (%)</span></div>
+        <input type="number" id="trh-scratch-scCrash" class="tl-scratch-input" value="-25" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Tail hedge calm cost (%)</span></div>
+        <input type="number" id="trh-scratch-thCalm" class="tl-scratch-input" value="-1.5" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Tail hedge crash payoff (%)</span></div>
+        <input type="number" id="trh-scratch-thCrash" class="tl-scratch-input" value="40" step="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Calm years before the crash</span></div>
+        <input type="number" id="trh-scratch-nyears" class="tl-scratch-input" value="4" step="1" min="0" max="30">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Calm year: Unhedged <b id="trh-scratch-calmU">+12.0%</b>&emsp;Short-conv <b id="trh-scratch-calmSC">+15.0%</b>&emsp;Tail-hedged <b id="trh-scratch-calmTH">+10.5%</b>
+      <br>Crash year: Unhedged <b id="trh-scratch-crashU">&minus;35.0%</b>&emsp;Short-conv <b id="trh-scratch-crashSC">&minus;60.0%</b>&emsp;Tail-hedged <b id="trh-scratch-crashTH">+5.0%</b>
+    </div>
+    <div class="tl-readout">
+      Cumulative over the period: Unhedged <b id="trh-scratch-cumU">+2.3%</b>&emsp;Short-conv <b id="trh-scratch-cumSC">&minus;30.0%</b>&emsp;Tail-hedged <b id="trh-scratch-cumTH">+56.5%</b>
+      <span id="trh-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="trh-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-solid amber">
     <strong>The honest cost-of-carry tradeoff:</strong> a tail hedge is designed to cost money in calm
     times. If the calm period runs long enough, or the eventual crash is smaller than assumed, the
@@ -464,6 +514,82 @@
 </div>
 <script>
 (function(){
+  var fields = ['idxCalm', 'idxCrash', 'scCalm', 'scCrash', 'thCalm', 'thCrash', 'nyears'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('trh-scratch-' + f); });
+  if (!inputs.idxCalm) return;
+
+  var DEFAULTS = { idxCalm: 12, idxCrash: -35, scCalm: 3, scCrash: -25, thCalm: -1.5, thCrash: 40, nyears: 4 };
+
+  var calmUOut = document.getElementById('trh-scratch-calmU');
+  var calmSCOut = document.getElementById('trh-scratch-calmSC');
+  var calmTHOut = document.getElementById('trh-scratch-calmTH');
+  var crashUOut = document.getElementById('trh-scratch-crashU');
+  var crashSCOut = document.getElementById('trh-scratch-crashSC');
+  var crashTHOut = document.getElementById('trh-scratch-crashTH');
+  var cumUOut = document.getElementById('trh-scratch-cumU');
+  var cumSCOut = document.getElementById('trh-scratch-cumSC');
+  var cumTHOut = document.getElementById('trh-scratch-cumTH');
+  var noteOut = document.getElementById('trh-scratch-note');
+  var resetBtn = document.getElementById('trh-scratch-reset');
+
+  function pctStr(x){
+    var sign = x < 0 ? '−' : '+';
+    return sign + Math.abs(x).toFixed(1) + '%';
+  }
+  function mult(pct){ return 1 + pct / 100; }
+
+  function recompute(){
+    var idxCalm = parseFloat(inputs.idxCalm.value);
+    var idxCrash = parseFloat(inputs.idxCrash.value);
+    var scCalm = parseFloat(inputs.scCalm.value);
+    var scCrash = parseFloat(inputs.scCrash.value);
+    var thCalm = parseFloat(inputs.thCalm.value);
+    var thCrash = parseFloat(inputs.thCrash.value);
+    var nYears = parseInt(inputs.nyears.value, 10);
+
+    if ([idxCalm, idxCrash, scCalm, scCrash, thCalm, thCrash].some(function(v){ return !isFinite(v); }) || !isFinite(nYears) || nYears < 0) {
+      noteOut.textContent = '(enter numeric returns and a non-negative number of calm years)';
+      return;
+    }
+
+    var calmU = idxCalm, crashU = idxCrash;
+    var calmSC = idxCalm + scCalm, crashSC = idxCrash + scCrash;
+    var calmTH = idxCalm + thCalm, crashTH = idxCrash + thCrash;
+
+    var cumU = Math.pow(mult(calmU), nYears) * mult(crashU);
+    var cumSC = Math.pow(mult(calmSC), nYears) * mult(crashSC);
+    var cumTH = Math.pow(mult(calmTH), nYears) * mult(crashTH);
+
+    calmUOut.textContent = pctStr(calmU);
+    calmSCOut.textContent = pctStr(calmSC);
+    calmTHOut.textContent = pctStr(calmTH);
+    crashUOut.textContent = pctStr(crashU);
+    crashSCOut.textContent = pctStr(crashSC);
+    crashTHOut.textContent = pctStr(crashTH);
+    cumUOut.textContent = pctStr((cumU - 1) * 100);
+    cumSCOut.textContent = pctStr((cumSC - 1) * 100);
+    cumTHOut.textContent = pctStr((cumTH - 1) * 100);
+
+    if (cumTH > cumU && crashSC < crashU) {
+      noteOut.textContent = 'tail-hedged beats unhedged over the full period — but only because the crash year happened at all';
+    } else if (cumTH <= cumU) {
+      noteOut.textContent = 'at these inputs the hedge drag outweighs its crash-year payoff over this period — the honest cost-of-carry outcome';
+    } else {
+      noteOut.textContent = '';
+    }
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -485,6 +611,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

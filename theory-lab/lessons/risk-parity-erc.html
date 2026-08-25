@@ -417,6 +417,45 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute ERC weights and risk contributions — live</h3>
+    <p>
+      Starts on the worked example's exact numbers: bonds 5% vol, equities
+      15% vol, commodities 25% vol, a shared pairwise correlation of 0.30.
+      Edit any field and the inverse-volatility (= ERC, under this
+      uniform-correlation assumption) weights, portfolio volatilities, and
+      each asset's risk-contribution share all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Bonds vol &sigma;&#8321; (%)</span></div>
+        <input type="number" id="rp-scratch-s1" class="tl-scratch-input" value="5" step="1" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Equities vol &sigma;&#8322; (%)</span></div>
+        <input type="number" id="rp-scratch-s2" class="tl-scratch-input" value="15" step="1" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Commodities vol &sigma;&#8323; (%)</span></div>
+        <input type="number" id="rp-scratch-s3" class="tl-scratch-input" value="25" step="1" min="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation &rho; (all pairs)</span></div>
+        <input type="number" id="rp-scratch-rho" class="tl-scratch-input" value="0.30" step="0.05" min="-1" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      ERC weights = <b id="rp-scratch-w">65.2% / 21.7% / 13.0%</b>&emsp;ERC risk shares = <b id="rp-scratch-rc">33.3% / 33.3% / 33.3%</b>
+    </div>
+    <div class="tl-readout">
+      &sigma;<sub>p</sub> — equal-dollar: <b id="rp-scratch-naivevol">11.64%</b>&emsp;ERC: <b id="rp-scratch-ercvol">7.14%</b>
+      <span id="rp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="rp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -609,6 +648,91 @@
 </div>
 <script>
 (function(){
+  var s1I = document.getElementById('rp-scratch-s1');
+  var s2I = document.getElementById('rp-scratch-s2');
+  var s3I = document.getElementById('rp-scratch-s3');
+  var rhoI = document.getElementById('rp-scratch-rho');
+  var wOut = document.getElementById('rp-scratch-w');
+  var rcOut = document.getElementById('rp-scratch-rc');
+  var naiveVolOut = document.getElementById('rp-scratch-naivevol');
+  var ercVolOut = document.getElementById('rp-scratch-ercvol');
+  var note = document.getElementById('rp-scratch-note');
+  var resetBtn = document.getElementById('rp-scratch-reset');
+  if (!s1I) return;
+
+  var DEFAULTS = { s1: 5, s2: 15, s3: 25, rho: 0.30 };
+
+  function riskContrib(w, sig, rho){
+    var Sig = [[0,0,0],[0,0,0],[0,0,0]];
+    for (var i = 0; i < 3; i++){
+      for (var j = 0; j < 3; j++){
+        Sig[i][j] = (i === j) ? sig[i]*sig[i] : rho*sig[i]*sig[j];
+      }
+    }
+    var Sw = [0,0,0];
+    for (var i = 0; i < 3; i++){
+      var acc = 0;
+      for (var j = 0; j < 3; j++) acc += Sig[i][j]*w[j];
+      Sw[i] = acc;
+    }
+    var varP = 0;
+    for (var i = 0; i < 3; i++) varP += w[i]*Sw[i];
+    if (varP < 0) varP = 0;
+    var sigP = Math.sqrt(varP);
+    var RC = [0,0,0];
+    for (var i = 0; i < 3; i++) RC[i] = sigP > 0 ? w[i]*Sw[i]/sigP : 0;
+    return { RC: RC, sigP: sigP };
+  }
+
+  function recompute(){
+    var s1 = parseFloat(s1I.value) / 100;
+    var s2 = parseFloat(s2I.value) / 100;
+    var s3 = parseFloat(s3I.value) / 100;
+    var rho = parseFloat(rhoI.value);
+
+    if (!isFinite(s1) || !isFinite(s2) || !isFinite(s3) || !isFinite(rho) || s1 <= 0 || s2 <= 0 || s3 <= 0) {
+      note.textContent = '(all three volatilities must be positive)';
+      return;
+    }
+    if (rho < -1 || rho > 1) {
+      note.textContent = '(correlation ρ must be between -1 and 1)';
+      return;
+    }
+
+    var sig = [s1, s2, s3];
+    var invSum = 1/s1 + 1/s2 + 1/s3;
+    var wErc = [ (1/s1)/invSum, (1/s2)/invSum, (1/s3)/invSum ];
+    var wNaive = [1/3, 1/3, 1/3];
+
+    var rErc = riskContrib(wErc, sig, rho);
+    var rNaive = riskContrib(wNaive, sig, rho);
+
+    wOut.textContent = (wErc[0]*100).toFixed(1) + '% / ' + (wErc[1]*100).toFixed(1) + '% / ' + (wErc[2]*100).toFixed(1) + '%';
+    if (rErc.sigP > 0) {
+      rcOut.textContent = (rErc.RC[0]/rErc.sigP*100).toFixed(1) + '% / ' + (rErc.RC[1]/rErc.sigP*100).toFixed(1) + '% / ' + (rErc.RC[2]/rErc.sigP*100).toFixed(1) + '%';
+    } else {
+      rcOut.textContent = '—';
+    }
+    naiveVolOut.textContent = (rNaive.sigP*100).toFixed(2) + '%';
+    ercVolOut.textContent = (rErc.sigP*100).toFixed(2) + '%';
+
+    var note3 = (rho < -0.5) ? '(ρ < -1/(n-1) = -0.5 makes this equal-correlation 3-asset structure an invalid covariance matrix — results shown are clipped, not meaningful)' : '';
+    note.textContent = note3;
+  }
+
+  [s1I, s2I, s3I, rhoI].forEach(function(el){ el.addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    s1I.value = DEFAULTS.s1;
+    s2I.value = DEFAULTS.s2;
+    s3I.value = DEFAULTS.s3;
+    rhoI.value = DEFAULTS.rho;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -630,6 +754,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

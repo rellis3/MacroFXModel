@@ -357,6 +357,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute regime duration and long-run share, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(A_{11}=0.70\),
+      \(A_{22}=0.85\). Edit either self-transition probability and both the
+      expected regime durations and the stationary (long-run) probabilities
+      recalculate instantly from the formulas derived above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>P(stay trending) A<sub>11</sub></span></div>
+        <input type="number" id="hmm-scratch-a11" class="tl-scratch-input" value="0.70" step="0.01" min="0" max="0.999">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>P(stay choppy) A<sub>22</sub></span></div>
+        <input type="number" id="hmm-scratch-a22" class="tl-scratch-input" value="0.85" step="0.01" min="0" max="0.999">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Expected duration — trending: <b id="hmm-scratch-durt">3.33</b> days&emsp;choppy: <b id="hmm-scratch-durc">6.67</b> days
+      <span id="hmm-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <div class="tl-readout">
+      Long-run share — trending: <b id="hmm-scratch-pit">33.3</b>%&emsp;choppy: <b id="hmm-scratch-pic">66.7</b>%
+    </div>
+    <button type="button" id="hmm-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart interactive">
     <div class="tl-chart-label">The regime is never observed — only the price line is</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single price line drawn over alternating background bands: narrow blue bands where the hidden state is trending and the line climbs steadily, and wider amber bands where the hidden state is choppy and the line chops sideways with noise. The trending bands are about half the width of the choppy bands, matching the worked example's expected durations of about 3.3 days trending versus about 6.7 days choppy.">
@@ -449,6 +479,67 @@
     updateHmmChart();
   })();
   </script>
+<script>
+(function(){
+  var a11Input = document.getElementById('hmm-scratch-a11');
+  var a22Input = document.getElementById('hmm-scratch-a22');
+  var durtOut = document.getElementById('hmm-scratch-durt');
+  var durcOut = document.getElementById('hmm-scratch-durc');
+  var pitOut = document.getElementById('hmm-scratch-pit');
+  var picOut = document.getElementById('hmm-scratch-pic');
+  var note = document.getElementById('hmm-scratch-note');
+  var resetBtn = document.getElementById('hmm-scratch-reset');
+  if (!a11Input) return;
+
+  var DEFAULTS = { a11: 0.70, a22: 0.85 };
+
+  function recompute(){
+    var a11 = parseFloat(a11Input.value);
+    var a22 = parseFloat(a22Input.value);
+
+    if (!isFinite(a11) || !isFinite(a22) || a11 < 0 || a11 >= 1 || a22 < 0 || a22 >= 1) {
+      note.textContent = '(A₁₁ and A₂₂ must each be a probability strictly between 0 and 1)';
+      durtOut.textContent = '—';
+      durcOut.textContent = '—';
+      pitOut.textContent = '—';
+      picOut.textContent = '—';
+      return;
+    }
+
+    var a = 1 - a11; // P(leave trending)
+    var b = 1 - a22; // P(leave choppy)
+
+    if (a + b === 0) {
+      note.textContent = '(both regimes absorbing — no switching, long-run shares undefined)';
+      durtOut.textContent = (1 / a11 > 0 ? '∞' : '—');
+      durcOut.textContent = '∞';
+      pitOut.textContent = '—';
+      picOut.textContent = '—';
+      return;
+    }
+
+    note.textContent = '';
+    var durT = 1 / a;
+    var durC = 1 / b;
+    var piT = b / (a + b);
+    var piC = a / (a + b);
+
+    durtOut.textContent = durT.toFixed(2);
+    durcOut.textContent = durC.toFixed(2);
+    pitOut.textContent = (piT * 100).toFixed(1);
+    picOut.textContent = (piC * 100).toFixed(1);
+  }
+
+  a11Input.addEventListener('input', recompute);
+  a22Input.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    a11Input.value = DEFAULTS.a11;
+    a22Input.value = DEFAULTS.a22;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
@@ -658,6 +749,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

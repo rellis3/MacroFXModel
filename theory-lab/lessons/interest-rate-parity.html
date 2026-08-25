@@ -315,6 +315,39 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same CIP calculation, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit spot or either rate
+      and the fair forward \(F^\ast\) and the implied forward premium
+      recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S\) (USD/EUR)</span></div>
+        <input type="number" id="irp-scratch-S" class="tl-scratch-input" value="1.10" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Domestic rate \(r_d\) (%)</span></div>
+        <input type="number" id="irp-scratch-rd" class="tl-scratch-input" value="5.00" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Foreign rate \(r_f\) (%)</span></div>
+        <input type="number" id="irp-scratch-rf" class="tl-scratch-input" value="3.00" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      (1+r&#8320;)/(1+r&#7623;) = <b id="irp-scratch-ratio">1.019417</b>&emsp;forward premium = <b id="irp-scratch-premium">1.94%</b>
+    </div>
+    <div class="tl-readout">
+      F&#42; = S &times; (1+r&#8320;)/(1+r&#7623;) &asymp; <b id="irp-scratch-F">1.1214</b> USD/EUR
+      <span id="irp-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="irp-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <p><strong>3. The forward premium puzzle — Fama (1984).</strong> UIP makes
   a sharp, testable prediction: currencies with a higher interest rate should
   <em>on average</em> depreciate by roughly the size of their rate advantage,
@@ -709,6 +742,48 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { S: 1.10, rd: 5.00, rf: 3.00 };
+  var fields = ['S', 'rd', 'rf'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('irp-scratch-' + f); });
+  if (!inputs.S) return;
+
+  var ratioOut = document.getElementById('irp-scratch-ratio');
+  var premiumOut = document.getElementById('irp-scratch-premium');
+  var fOut = document.getElementById('irp-scratch-F');
+  var noteOut = document.getElementById('irp-scratch-note');
+  var resetBtn = document.getElementById('irp-scratch-reset');
+
+  function recompute(){
+    var S = parseFloat(inputs.S.value);
+    var rd = parseFloat(inputs.rd.value) / 100;
+    var rf = parseFloat(inputs.rf.value) / 100;
+
+    if (!isFinite(S) || !isFinite(rd) || !isFinite(rf) || S <= 0 || rd <= -1 || rf <= -1) {
+      noteOut.textContent = '(enter a positive spot and rates above -100%)';
+      return;
+    }
+
+    var ratio = (1 + rd) / (1 + rf);
+    var F = S * ratio;
+    var premium = ratio - 1;
+
+    ratioOut.textContent = ratio.toFixed(6);
+    premiumOut.textContent = (premium * 100).toFixed(2) + '%';
+    fOut.textContent = F.toFixed(4);
+    noteOut.textContent = rf === -1 ? '(foreign rate of -100% is undefined here)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -730,6 +805,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

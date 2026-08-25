@@ -383,6 +383,44 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>The same 2×2 solve, live — change any loading below</h3>
+    <p>
+      Starts on the worked example's exact loadings, still targeting long
+      carry at \(+1.0\) and momentum-neutral (\(0.0\)). Edit any loading and
+      the solved weights \(w_1\) (AUDUSD), \(w_2\) (USDJPY) recalculate
+      instantly by solving \(B^\top w = q\) directly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>AUDUSD carry \(C_1\)</span></div>
+        <input type="number" id="fpc-scratch-c1" class="tl-scratch-input" value="1.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>AUDUSD momentum \(M_1\)</span></div>
+        <input type="number" id="fpc-scratch-m1" class="tl-scratch-input" value="0.2" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>USDJPY carry \(C_2\)</span></div>
+        <input type="number" id="fpc-scratch-c2" class="tl-scratch-input" value="-0.8" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>USDJPY momentum \(M_2\)</span></div>
+        <input type="number" id="fpc-scratch-m2" class="tl-scratch-input" value="0.6" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      det(B) = <b id="fpc-scratch-det">0.760</b>
+    </div>
+    <div class="tl-readout">
+      w<sub>1</sub> (AUDUSD) = <b id="fpc-scratch-w1">78.9%</b>&emsp;w<sub>2</sub> (USDJPY) = <b id="fpc-scratch-w2">-26.3%</b>
+      <span id="fpc-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="fpc-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -557,6 +595,60 @@
 </div>
 <script>
 (function(){
+  // Self-contained 2x2 linear solve via Cramer's rule. Target profile
+  // (long carry +1.0, momentum-neutral 0.0) is fixed, matching the worked
+  // example; only the four loadings are editable.
+  var qC = 1.0, qM = 0.0;
+  var DEFAULTS = { c1: 1.0, m1: 0.2, c2: -0.8, m2: 0.6 };
+  var fields = ['c1', 'm1', 'c2', 'm2'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('fpc-scratch-' + f); });
+
+  var detOut = document.getElementById('fpc-scratch-det');
+  var w1Out = document.getElementById('fpc-scratch-w1');
+  var w2Out = document.getElementById('fpc-scratch-w2');
+  var noteOut = document.getElementById('fpc-scratch-note');
+  var resetBtn = document.getElementById('fpc-scratch-reset');
+
+  function recompute(){
+    var c1 = parseFloat(inputs.c1.value);
+    var m1 = parseFloat(inputs.m1.value);
+    var c2 = parseFloat(inputs.c2.value);
+    var m2 = parseFloat(inputs.m2.value);
+
+    if (!isFinite(c1) || !isFinite(m1) || !isFinite(c2) || !isFinite(m2)){
+      noteOut.textContent = '(enter numeric loadings for both pairs)';
+      return;
+    }
+
+    var det = c1*m2 - c2*m1;
+    detOut.textContent = det.toFixed(3);
+
+    if (Math.abs(det) < 1e-9){
+      w1Out.textContent = '—';
+      w2Out.textContent = '—';
+      noteOut.textContent = '(det(B)≈0: these two loading vectors are collinear — no unique solution exists)';
+      return;
+    }
+
+    var w1 = (qC*m2 - c2*qM) / det;
+    var w2 = (c1*qM - qC*m1) / det;
+
+    w1Out.textContent = (w1*100).toFixed(1) + '%';
+    w2Out.textContent = (w2*100).toFixed(1) + '%';
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -578,6 +670,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

@@ -319,6 +319,47 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the shrinkage estimate, live</h3>
+    <p>
+      Starts on Strategy A's exact numbers from the worked example above.
+      Change any field and the shrinkage weight \(B_j\) and the partially
+      pooled estimate \(\hat\theta_j\) recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trade count \(n_j\)</span></div>
+        <input type="number" id="hb-scratch-n" class="tl-scratch-input" value="5" step="1" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Raw Sharpe \(\bar y_j\)</span></div>
+        <input type="number" id="hb-scratch-ybar" class="tl-scratch-input" value="2.10" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Grand mean \(\mu\)</span></div>
+        <input type="number" id="hb-scratch-mu" class="tl-scratch-input" value="0.70" step="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Between-group var \(\tau^2\)</span></div>
+        <input type="number" id="hb-scratch-tau2" class="tl-scratch-input" value="0.25" step="0.05" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Within-group var \(\sigma^2\)</span></div>
+        <input type="number" id="hb-scratch-sigma2" class="tl-scratch-input" value="1" step="0.1" min="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      B<sub>j</sub> = <b id="hb-scratch-b">0.556</b>
+    </div>
+    <div class="tl-readout">
+      θⱼ-hat = Bⱼ&#183;ȳⱼ + (1&minus;Bⱼ)&#183;μ &asymp; <b id="hb-scratch-shrunk">1.478</b>
+      <span id="hb-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="hb-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world scenario</div>
@@ -556,6 +597,50 @@
 </script>
 <script>
 (function(){
+  var DEFAULTS = { n: 5, ybar: 2.10, mu: 0.70, tau2: 0.25, sigma2: 1 };
+  var fields = ['n', 'ybar', 'mu', 'tau2', 'sigma2'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('hb-scratch-' + f); });
+
+  var bOut = document.getElementById('hb-scratch-b');
+  var shrunkOut = document.getElementById('hb-scratch-shrunk');
+  var noteOut = document.getElementById('hb-scratch-note');
+  var resetBtn = document.getElementById('hb-scratch-reset');
+  if (!inputs.n) return;
+
+  function recompute(){
+    var n = parseFloat(inputs.n.value);
+    var ybar = parseFloat(inputs.ybar.value);
+    var mu = parseFloat(inputs.mu.value);
+    var tau2 = parseFloat(inputs.tau2.value);
+    var sigma2 = parseFloat(inputs.sigma2.value);
+
+    if (!isFinite(n) || !isFinite(ybar) || !isFinite(mu) || !isFinite(tau2) || !isFinite(sigma2) || n <= 0 || tau2 < 0 || sigma2 <= 0) {
+      noteOut.textContent = '(n and σ² must be positive; τ² must be non-negative)';
+      bOut.textContent = '—';
+      shrunkOut.textContent = '—';
+      return;
+    }
+
+    var se2 = sigma2 / n;
+    var B = tau2 + se2 === 0 ? 0 : tau2 / (tau2 + se2);
+    var shrunk = B * ybar + (1 - B) * mu;
+
+    bOut.textContent = B.toFixed(3);
+    shrunkOut.textContent = shrunk.toFixed(3);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -577,6 +662,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

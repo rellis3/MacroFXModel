@@ -265,6 +265,43 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Mix two independent shocks into a correlated pair, live</h3>
+    <p>
+      The worked example above needs thousands of simulated paths to show
+      convergence, which isn't something a single live formula can
+      recompute — so this scratchpad instead lets you play with the 2×2
+      Cholesky mixing step (Section 3 above) that every one of those paths is
+      built from. Starts on the lesson's target \(\rho=0.6\) with two clean
+      unit shocks \(z_1=z_2=1.00\); change any input and the Cholesky factor
+      entries and the resulting correlated shocks recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Target &rho;</span></div>
+        <input type="number" id="chol-scratch-rho" class="tl-scratch-input" value="0.6" step="0.05" min="-0.99" max="0.99">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Independent shock \(z_1\)</span></div>
+        <input type="number" id="chol-scratch-z1" class="tl-scratch-input" value="1.00" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Independent shock \(z_2\)</span></div>
+        <input type="number" id="chol-scratch-z2" class="tl-scratch-input" value="1.00" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      L = [[1,0],[<b id="chol-scratch-L21">0.600</b>,<b id="chol-scratch-L22">0.800</b>]]
+    </div>
+    <div class="tl-readout">
+      dW¹<sub>corr</sub> = <b id="chol-scratch-dw1">1.000</b>&emsp;dW²<sub>corr</sub> = &rho;z&#8321;+&radic;(1&minus;&rho;&sup2;)z&#8322; = <b id="chol-scratch-dw2">1.400</b>
+      <span id="chol-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="chol-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Ask 50 random strangers whether two coins landed the same way and you'll get a noisy, wobbly estimate of how "linked" the coins really are. Ask 100,000 strangers and the noise mostly washes out, leaving something very close to the true answer. Realized correlation from a small number of simulated paths is exactly this — a noisy poll, not a wrong answer — and it only settles down once you run enough paths.</p>
@@ -443,6 +480,51 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { rho: 0.6, z1: 1.00, z2: 1.00 };
+  var fields = ['rho', 'z1', 'z2'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('chol-scratch-' + f); });
+  if (!inputs.rho) return;
+
+  var l21Out = document.getElementById('chol-scratch-L21');
+  var l22Out = document.getElementById('chol-scratch-L22');
+  var dw1Out = document.getElementById('chol-scratch-dw1');
+  var dw2Out = document.getElementById('chol-scratch-dw2');
+  var noteOut = document.getElementById('chol-scratch-note');
+  var resetBtn = document.getElementById('chol-scratch-reset');
+
+  function recompute(){
+    var rho = parseFloat(inputs.rho.value);
+    var z1 = parseFloat(inputs.z1.value);
+    var z2 = parseFloat(inputs.z2.value);
+
+    if (!isFinite(rho) || !isFinite(z1) || !isFinite(z2) || rho <= -1 || rho >= 1) {
+      noteOut.textContent = '(enter a target correlation strictly between -1 and 1)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var L21 = rho;
+    var L22 = Math.sqrt(1 - rho*rho);
+    var dW1 = z1;
+    var dW2 = rho*z1 + L22*z2;
+
+    l21Out.textContent = L21.toFixed(3);
+    l22Out.textContent = L22.toFixed(3);
+    dw1Out.textContent = dW1.toFixed(3);
+    dw2Out.textContent = dW2.toFixed(3);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -464,6 +546,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

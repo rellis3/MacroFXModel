@@ -492,6 +492,44 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute normalized betweenness, live</h3>
+    <p>
+      The 7-node network's topology (two triangles plus the JPY bridge) is
+      fixed, so it's not something to type numbers into — but the
+      normalization step the worked example does by hand is a clean formula
+      on its own. Starts on the worked example's exact raw path counts: JPY
+      sits on 9 of the 13 indirect shortest paths, EUR and AUD each sit on 8.
+      Edit any field and the normalization denominator
+      \((n-1)(n-2)/2\) and both normalized betweenness scores recalculate
+      instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Nodes \(n\)</span></div>
+        <input type="number" id="gt-scratch-n" class="tl-scratch-input" value="7" step="1" min="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Raw betweenness, JPY</span></div>
+        <input type="number" id="gt-scratch-bjpy" class="tl-scratch-input" value="9" step="1" min="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Raw betweenness, EUR/AUD</span></div>
+        <input type="number" id="gt-scratch-bea" class="tl-scratch-input" value="8" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      (n&minus;1)(n&minus;2)/2 = <b id="gt-scratch-denom">15</b>
+    </div>
+    <div class="tl-readout">
+      C<sub>B</sub>(JPY) = <b id="gt-scratch-cbjpy">0.60</b>&emsp;C<sub>B</sub>(EUR)=C<sub>B</sub>(AUD) = <b id="gt-scratch-cbea">0.53</b>
+      <span id="gt-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="gt-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">A named scenario</div>
@@ -689,6 +727,56 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { n: 7, bjpy: 9, bea: 8 };
+  var nInput = document.getElementById('gt-scratch-n');
+  var bjpyInput = document.getElementById('gt-scratch-bjpy');
+  var beaInput = document.getElementById('gt-scratch-bea');
+  var denomOut = document.getElementById('gt-scratch-denom');
+  var cbjpyOut = document.getElementById('gt-scratch-cbjpy');
+  var cbeaOut = document.getElementById('gt-scratch-cbea');
+  var noteOut = document.getElementById('gt-scratch-note');
+  var resetBtn = document.getElementById('gt-scratch-reset');
+  if (!nInput) return;
+
+  function recompute(){
+    var n = parseFloat(nInput.value);
+    var bjpy = parseFloat(bjpyInput.value);
+    var bea = parseFloat(beaInput.value);
+
+    if (!isFinite(n) || !Number.isInteger(n) || n < 2 || !isFinite(bjpy) || !isFinite(bea) || bjpy < 0 || bea < 0) {
+      noteOut.textContent = '(enter a whole number of nodes, n≥2, and non-negative raw betweenness counts)';
+      return;
+    }
+
+    var denom = (n - 1) * (n - 2) / 2;
+    denomOut.textContent = denom.toFixed(0);
+
+    if (denom === 0) {
+      cbjpyOut.textContent = '—';
+      cbeaOut.textContent = '—';
+      noteOut.textContent = '(n=2 leaves only one possible pair — nothing left to normalize by, since no third node could ever sit on a shortest path between them)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    cbjpyOut.textContent = (bjpy / denom).toFixed(2);
+    cbeaOut.textContent = (bea / denom).toFixed(2);
+  }
+
+  nInput.addEventListener('input', recompute);
+  bjpyInput.addEventListener('input', recompute);
+  beaInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    nInput.value = DEFAULTS.n;
+    bjpyInput.value = DEFAULTS.bjpy;
+    beaInput.value = DEFAULTS.bea;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -710,6 +798,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

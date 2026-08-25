@@ -329,6 +329,44 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute one boosting-round update, live</h3>
+    <p>
+      Starts on the worked example's \(x=1\) point: actual \(y=3\), current
+      prediction \(F_0=7\), fitted leaf \(h_1(x)=-2.333\), shrinkage
+      \(\nu=0.5\). Change any input and the round-0 residual, the updated
+      prediction \(F_1\), and the new residual \(r_1\) recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Actual \(y\)</span></div>
+        <input type="number" id="gb-scratch-y" class="tl-scratch-input" value="3" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Current \(F_0\)</span></div>
+        <input type="number" id="gb-scratch-F0" class="tl-scratch-input" value="7" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Fitted leaf \(h_1(x)\)</span></div>
+        <input type="number" id="gb-scratch-h" class="tl-scratch-input" value="-2.333" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Shrinkage \(\nu\)</span></div>
+        <input type="number" id="gb-scratch-nu" class="tl-scratch-input" value="0.5" step="0.05" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      r&#8320; = y &minus; F&#8320; = <b id="gb-scratch-r0">-4.000</b>
+    </div>
+    <div class="tl-readout">
+      F&#8321; = F&#8320; + &nu;h&#8321;(x) &asymp; <b id="gb-scratch-F1">5.833</b>&emsp;r&#8321; = y &minus; F&#8321; &asymp; <b id="gb-scratch-r1">-2.833</b>
+      <span id="gb-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="gb-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">Total leftover error shrinking across boosting rounds</div>
     <svg viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart showing the sum of absolute residuals dropping from 14.0 before boosting, to 7.3 after round 1, computed exactly from the worked example, with a dashed illustrative continuation showing further rounds continuing to shrink the remaining error toward zero.">
@@ -590,6 +628,52 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { y: 3, F0: 7, h: -2.333, nu: 0.5 };
+  var fields = ['y', 'F0', 'h', 'nu'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('gb-scratch-' + f); });
+  if (!inputs.y) return;
+
+  var r0Out = document.getElementById('gb-scratch-r0');
+  var F1Out = document.getElementById('gb-scratch-F1');
+  var r1Out = document.getElementById('gb-scratch-r1');
+  var note = document.getElementById('gb-scratch-note');
+  var resetBtn = document.getElementById('gb-scratch-reset');
+
+  function recompute(){
+    var y = parseFloat(inputs.y.value);
+    var F0 = parseFloat(inputs.F0.value);
+    var h = parseFloat(inputs.h.value);
+    var nu = parseFloat(inputs.nu.value);
+
+    if (![y, F0, h, nu].every(isFinite)) {
+      note.textContent = '(enter numeric values for all four fields)';
+      r0Out.textContent = '—';
+      F1Out.textContent = '—';
+      r1Out.textContent = '—';
+      return;
+    }
+
+    note.textContent = nu < 0 ? '(shrinkage ν is normally kept between 0 and 1)' : '';
+
+    var r0 = y - F0;
+    var F1 = F0 + nu * h;
+    var r1 = y - F1;
+    r0Out.textContent = r0.toFixed(3);
+    F1Out.textContent = F1.toFixed(3);
+    r1Out.textContent = r1.toFixed(3);
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
 </body>
 </html>

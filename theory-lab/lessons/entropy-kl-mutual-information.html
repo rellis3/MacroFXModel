@@ -267,6 +267,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute both KL divergences, live</h3>
+    <p>
+      Starts on the worked example's exact coins, \(P=(0.99,0.01)\) and
+      \(Q=(0.5,0.5)\). Edit either "heads" probability and both directions
+      of the KL divergence recalculate instantly, so you can feel how
+      sharply the asymmetry grows as one distribution gets more confident.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>P(heads) — true coin</span></div>
+        <input type="number" id="ekl-scratch-p" class="tl-scratch-input" value="0.99" step="0.01" min="0" max="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Q(heads) — model coin</span></div>
+        <input type="number" id="ekl-scratch-q" class="tl-scratch-input" value="0.5" step="0.01" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      P = (<b id="ekl-scratch-p1">0.990</b>, <b id="ekl-scratch-p0">0.010</b>)&emsp;Q = (<b id="ekl-scratch-q1">0.500</b>, <b id="ekl-scratch-q0">0.500</b>)
+    </div>
+    <div class="tl-readout">
+      D<sub>KL</sub>(P‖Q) = <b id="ekl-scratch-klpq">0.919</b> bits&emsp;D<sub>KL</sub>(Q‖P) = <b id="ekl-scratch-klqp">2.329</b> bits
+      <span id="ekl-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="ekl-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-solid red">
   <strong>The trap this generalizes to:</strong> a risk model that assigns near-zero probability to a
   large adverse move — because historical data made it look nearly impossible — pays an outsized KL
@@ -536,6 +566,54 @@
 </div>
 <script>
 (function(){
+  function log2(x){ return Math.log(x) / Math.log(2); }
+  var DEFAULTS = { p: 0.99, q: 0.5 };
+  var pInput = document.getElementById('ekl-scratch-p');
+  var qInput = document.getElementById('ekl-scratch-q');
+  var p1Out = document.getElementById('ekl-scratch-p1');
+  var p0Out = document.getElementById('ekl-scratch-p0');
+  var q1Out = document.getElementById('ekl-scratch-q1');
+  var q0Out = document.getElementById('ekl-scratch-q0');
+  var klpqOut = document.getElementById('ekl-scratch-klpq');
+  var klqpOut = document.getElementById('ekl-scratch-klqp');
+  var noteOut = document.getElementById('ekl-scratch-note');
+  var resetBtn = document.getElementById('ekl-scratch-reset');
+  if (!pInput) return;
+
+  function recompute(){
+    var p = parseFloat(pInput.value);
+    var q = parseFloat(qInput.value);
+
+    if (!isFinite(p) || !isFinite(q) || p <= 0 || p >= 1 || q <= 0 || q >= 1) {
+      noteOut.textContent = '(enter probabilities strictly between 0 and 1 — exactly 0 or 1 makes at least one log undefined)';
+      return;
+    }
+    noteOut.textContent = '';
+
+    var p0 = 1 - p, q0 = 1 - q;
+    var klpq = p*log2(p/q) + p0*log2(p0/q0);
+    var klqp = q*log2(q/p) + q0*log2(q0/p0);
+
+    p1Out.textContent = p.toFixed(3);
+    p0Out.textContent = p0.toFixed(3);
+    q1Out.textContent = q.toFixed(3);
+    q0Out.textContent = q0.toFixed(3);
+    klpqOut.textContent = klpq.toFixed(3);
+    klqpOut.textContent = klqp.toFixed(3);
+  }
+
+  pInput.addEventListener('input', recompute);
+  qInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    pInput.value = DEFAULTS.p;
+    qInput.value = DEFAULTS.q;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -557,6 +635,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

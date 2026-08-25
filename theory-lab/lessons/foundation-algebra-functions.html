@@ -449,6 +449,40 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Solve for the rate, live — change any input below</h3>
+    <p>
+      Starts on the worked example's exact numbers. Edit the principal, the
+      number of periods, or the future value and every downstream quantity —
+      the growth factor and the implied rate \(r\) — recalculates instantly
+      from the same rearranged formula, \(r = (FV/P)^{1/n} - 1\).
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Principal \(P\) ($)</span></div>
+        <input type="number" id="fa-scratch-P" class="tl-scratch-input" value="1000" step="100">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Periods \(n\) (years)</span></div>
+        <input type="number" id="fa-scratch-n" class="tl-scratch-input" value="5" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Future value \(FV\) ($)</span></div>
+        <input type="number" id="fa-scratch-FV" class="tl-scratch-input" value="1276.28" step="10">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Growth factor FV/P = <b id="fa-scratch-factor">1.27628</b>
+    </div>
+    <div class="tl-readout">
+      r = (FV/P)<sup>1/n</sup> &minus; 1 &asymp; <b id="fa-scratch-r">5.0000</b>%
+      <span id="fa-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="fa-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -661,6 +695,48 @@
 </script>
 <script>
 (function(){
+  var DEFAULTS = { P: 1000, n: 5, FV: 1276.28 };
+  var fields = ['P', 'n', 'FV'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('fa-scratch-' + f); });
+  if (!inputs.P) return;
+
+  var factorOut = document.getElementById('fa-scratch-factor');
+  var rOut = document.getElementById('fa-scratch-r');
+  var noteOut = document.getElementById('fa-scratch-note');
+  var resetBtn = document.getElementById('fa-scratch-reset');
+
+  function recompute(){
+    var P = parseFloat(inputs.P.value);
+    var n = parseFloat(inputs.n.value);
+    var FV = parseFloat(inputs.FV.value);
+
+    if (!isFinite(P) || !isFinite(n) || !isFinite(FV) || P <= 0 || n <= 0 || FV <= 0) {
+      noteOut.textContent = '(enter a positive principal, a positive number of periods, and a positive future value)';
+      factorOut.textContent = '—';
+      rOut.textContent = '—';
+      return;
+    }
+
+    var factor = FV / P;
+    var r = Math.pow(factor, 1/n) - 1;
+    var note = factor < 1 ? '(FV < P: this implies a negative rate — a loss over the period, not growth)' : '';
+
+    factorOut.textContent = factor.toFixed(5);
+    rOut.textContent = (r*100).toFixed(4);
+    noteOut.textContent = note;
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -682,6 +758,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

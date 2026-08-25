@@ -1931,9 +1931,12 @@ OANDA's 5000-bar-per-request cap), then runs 4 variants via v2 (`baseline`
 at v1-matching defaults, `rangeGateMode:'exhausted'` @1.5x,
 `entryBandMode:'vwap'` @0.5xATR, and a liquidity-sweep post-filter) over
 the extended data, prints every trade
-since 2026-08-01, and cross-references against the 4 known reconstructed
-Jordan trades (same numbers as `trade-lab.html`'s `KNOWN_TRADES`) for
-timing/direction/price proximity. Verified end-to-end in this sandbox
+since 2026-08-01, and cross-references against the known reconstructed
+Jordan trades (same numbers as `trade-lab.html`'s `KNOWN_TRADES`; 4 from
+13-14 Aug plus 4 more from 24 Aug added 2026-08-24, each with its own
+`approxTime` now that the set spans more than one session — see
+`js/liveValidationCore.js`) for timing/direction/price proximity. Verified
+end-to-end in this sandbox
 (minus the actual OANDA fetch, which correctly 403s here as expected) —
 gap-fill chunking, error handling, and the "still short of Aug 1" guard all
 confirmed working before this was committed. Deliberately uses RELATIVE
@@ -2032,6 +2035,50 @@ a genuinely different provider/methodology than CME CVOL, not a duplicate.
 | **`realizedVolPct` index branch** | `js/impliedVolCore.js` | Added the missing `assetClass==='index'` path (GARCH(1,1) via `garchSigmas`, same as `volSigmaSeries`'s own index path) — the function only handled fx/commodity before; NQ has no realized-vol comparator without this | `js/fxVolCarryEngine.js`'s NQ instrument | 🟢 built + unit-tested |
 | **NQ + gold cross-check wiring** | `js/fxVolCarryEngine.js` | `VRP_INSTRUMENTS` now carries `volSource`/`cvolProduct`\|`cboeProduct` per instrument instead of assuming CME; added **NQ** (`oanda: NAS100_USD`, `assetClass: 'index'`, primary source **CBOE VXN** — CME CVOL has no index coverage at all, so this is NQ's ONLY implied-vol source) and gave **GOLD** a `crossCheck: {volSource:'CBOE', cboeProduct:'XAUUSD'}` (GVZ) — computed as a correlation + overlay against the SAME diagnostics, explicitly NOT a second trading arm, so the comparison stays honest instead of quietly doubling GOLD's apparent edge surface. `volSigmaSeriesFor` and `runVRPBacktest` gained the matching GARCH branch for the exhaustion-band width itself | `server.js`'s `/api/fx-vol-carry/*` (unchanged route — instrument filter was already generic), `fx-vol-carry-backtest.html` | 🟡 built + unit-tested on synthetic + the real CBOE files (`js/fxVolCarryEngine.test.mjs`, 33 checks); still not run against live OANDA data — same sandbox limitation as the CME-only pass above |
 | **Cross-check UI** | `fx-vol-carry-backtest.html` | GOLD's card now renders a correlation badge + a 2-line implied-vol overlay chart (CVOL vs GVZ) under its monthly heatmap; instrument dropdown adds NQ; the IV-vs-RV diagnostic chart title/legend now reads the actual source (`CME:XAUUSD` vs `CBOE:NAS100`) instead of hardcoding "CVOL" | — | 🟡 built, same untested-live caveat |
+
+---
+
+### 1ap. Impulse Range Engine (2026-08-23) — 4H impulse-as-range continuation/fade research, extending Entry Trigger Lab
+
+A colleague handoff (Jordan) proposed a specific, testable framing: a
+significant 4H impulse candle might work better as a REFERENCE RANGE (levels
++ extensions lower-timeframe price action tests for continuation vs fade)
+than as a standalone directional signal, conditioned on Asia/Monday range
+confluence and VWAP context. Explicit instruction: extend the Asia-range
+confluence work already built for `entry-trigger-lab.html`, not build a
+disconnected model — the H4 resampling, Asia/Monday ladder history, and the
+today-vs-yesterday confluence math are all imported straight from
+`js/entryTriggerLabEngine.js` (itself not yet its own formal §1 row —
+gap noted, not backfilled here) / `js/confluence-core.js`; VWAP is
+`js/vwapReversionEngine.js`'s `computeSessionVwap`; swing-structure regime
+classification is `js/patternEngine.js`'s `classifySwingStructure`/`regimeAt`.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Impulse Range Engine** | `js/impulseRangeEngine.js` | `detectH4Impulses` (classic/displacement presets, strictly causal — qualification uses only the impulse's own H4 bar + strictly prior bars, never a future one), `impulseLevels` (same `low+range*fib` convention as `ranges.js:projectFibLevels`, deliberately — lets impulse levels and Asia/Monday levels compare through the same `detectConfluencesCore` call), `detectFVG` (new — no fair-value-gap detector existed anywhere in the repo before this), `buildVwapContext`/`vwapAt` (daily-reset VWAP + slope, reusing `computeSessionVwap`), `computeAsiaConfluence` (reuses `activeLevelsAt` + `detectConfluencesCore` — same Pine-matching math as Entry Trigger Lab, applied to impulse-vs-range instead of range-vs-range), `classifyLtfReaction` (one forward walk over lower-timeframe bars at-or-after the impulse's close → deterministic `CONTINUATION`/`REVERSION`/`FAILED_IMPULSE`/`EXTENSION`/`NO_CLEAR_EDGE` outcome + MFE/MAE, kept strictly separate from the independent evidence-flag booleans so outcome labels are never fed back as detection inputs, per the handoff's explicit anti-lookahead requirement), `scoreImpulse` (explicit, unvalidated experimental weighted-count — spec says do not claim predictive until validated), `runImpulseRangeScan` (orchestrator), `aggregateImpulseStats` (by-session/day-of-week/instrument/confluence/score-edge/LTF-granularity breakdowns). Pure, no I/O. 23 unit tests on synthetic data (`js/impulseRangeEngine.test.mjs`), including a dedicated causal-window test (a huge-body bar placed just outside the `bodyLookback` window must NOT inflate the average). | `impulse-range-lab.html` | 🟢 built + unit-tested + Playwright-verified end-to-end (mocked chart lib); **not yet run against real OANDA data** — sandbox can't reach it, needs a Railway check |
+| **Impulse Range Lab (page)** | `impulse-range-lab.html` | Dashboard: pair/date/preset picker, 4H impulse markers + impulse-range/extension/Asia-confluence lines (scoped to each impulse's own reaction window via the same real-bar-coordinate clipping fix as `entry-trigger-lab.html`'s line-bleed bug — never falls back to the raw canvas edge), a 3m/1m LTF toggle (resamples the fetched M1 feed client-side via `barUtils.resampleTo`, or uses M1 directly), click-to-inspect evidence/outcome/score panel, and a stats side panel for every `aggregateImpulseStats` breakdown. Explicitly research-only (banner states it plainly) — not wired into any execution signal. | registered in `js/siteApiMap.js` (WIP group) + `SITE_MAP.md` | 🟡 built + smoke-tested; awaiting a real Railway data check |
+
+**Server-side prerequisite:** `server.js`'s `/api/ohlc-range` only allowed
+`M5/M15/M30/H1/D` before this — no `M1`, and OANDA has no native `M3`
+granularity at all. Widened `_RANGE_GRAN` to include `M1` (the underlying
+`fetchOandaCandleRange` was already granularity-agnostic, so this is a pure
+allow-list change); 3-minute bars are resampled from M1 client-side, never
+fetched directly.
+
+**What v1 answers vs defers**, against the handoff's own §16 research
+questions: detection, level/extension projection, Asia/Monday confluence,
+VWAP context, and a deterministic outcome taxonomy are all built and
+unit-tested. Deliberately deferred/simplified for v1 (documented, not
+hidden): the "reversion return target" only checks a return to impulse
+high/low, not the handoff's other options (midpoint/open/VWAP); FVG and
+structure-break are new, first-pass detectors (no prior brick existed to
+compare against); the confluence score's weight table is explicitly
+unvalidated per the handoff's own instruction not to optimise before the
+underlying questions are answered. **No result yet** — this is
+infrastructure, not a finding; the honest next step is running it on real
+OANDA data (Railway) across enough pairs/days to say anything about whether
+the framework carries information, per this repo's "built ≠ works ≠ has
+edge" discipline.
 
 ---
 

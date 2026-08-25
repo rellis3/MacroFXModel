@@ -231,6 +231,32 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute \(TE_{X\to Y}\) for any channel noise level, live</h3>
+    <p>
+    Starts on the worked example's \(\varepsilon=0.1\). Change the channel's flip probability and
+    both the binary entropy \(H(\varepsilon)\) and \(TE_{X\to Y}=1-H(\varepsilon)\) recalculate
+    instantly &mdash; \(TE_{Y\to X}\) stays exactly zero regardless, because \(X\) was built to have
+    no memory of anything.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Flip probability \(\varepsilon\)</span></div>
+        <input type="number" id="tec-scratch-eps" class="tl-scratch-input" value="0.1" step="0.01" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      H(&epsilon;) = <b id="tec-scratch-h">0.469</b> bits
+    </div>
+    <div class="tl-readout">
+      TE(X&#8594;Y) = 1 &minus; H(&epsilon;) &asymp; <b id="tec-scratch-te">0.531</b> bits&emsp;TE(Y&#8594;X) = <b>0</b> bits, always
+      <span id="tec-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="tec-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The worked example's asymmetry, drawn to scale</div>
     <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing transfer entropy in each direction. TE from X to Y is a tall bar at approximately 0.531 bits. TE from Y to X is a bar at exactly zero bits, drawn as a flat line at the baseline.">
@@ -426,6 +452,48 @@
 </div>
 <script>
 (function(){
+  function H(p){
+    if (p <= 0 || p >= 1) return 0;
+    return -p*Math.log2(p) - (1-p)*Math.log2(1-p);
+  }
+
+  var epsInput = document.getElementById('tec-scratch-eps');
+  var hOut = document.getElementById('tec-scratch-h');
+  var teOut = document.getElementById('tec-scratch-te');
+  var noteOut = document.getElementById('tec-scratch-note');
+  var resetBtn = document.getElementById('tec-scratch-reset');
+  if (!epsInput) return;
+
+  function recompute(){
+    var eps = parseFloat(epsInput.value);
+
+    if (!isFinite(eps) || eps < 0 || eps > 1) {
+      noteOut.textContent = '(enter a flip probability between 0 and 1)';
+      return;
+    }
+    if (eps === 0 || eps === 1) {
+      noteOut.textContent = '(a channel that never/always flips still carries a full 1 bit about X — no genuine uncertainty in the transmission)';
+    } else {
+      noteOut.textContent = '';
+    }
+
+    var h = H(eps);
+    var te = 1 - h;
+
+    hOut.textContent = h.toFixed(3);
+    teOut.textContent = te.toFixed(3);
+  }
+
+  epsInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    epsInput.value = 0.1;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -447,6 +515,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

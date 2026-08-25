@@ -639,6 +639,53 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recompute the mean, s and z-score, live</h3>
+    <p>
+      Starts on the worked example's exact six returns. Edit any value and the
+      mean, sample standard deviation, and the z-score of the sample's best
+      day (its maximum) all recalculate instantly — along with the
+      percentile that z-score implies if the returns were exactly normal, the
+      same 68%/95% framing discussed above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day 1 (%)</span></div>
+        <input type="number" id="psn-scratch-r1" class="tl-scratch-input" value="1.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day 2 (%)</span></div>
+        <input type="number" id="psn-scratch-r2" class="tl-scratch-input" value="2.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day 3 (%)</span></div>
+        <input type="number" id="psn-scratch-r3" class="tl-scratch-input" value="-1.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day 4 (%)</span></div>
+        <input type="number" id="psn-scratch-r4" class="tl-scratch-input" value="3.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day 5 (%)</span></div>
+        <input type="number" id="psn-scratch-r5" class="tl-scratch-input" value="0.0" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Day 6 (%)</span></div>
+        <input type="number" id="psn-scratch-r6" class="tl-scratch-input" value="1.0" step="0.1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      x&#772; = <b id="psn-scratch-mean">1.0000</b>%&emsp;s = <b id="psn-scratch-sd">1.4142</b>%
+    </div>
+    <div class="tl-readout">
+      Best day = <b id="psn-scratch-best">3.0000</b>%&emsp;z = <b id="psn-scratch-z">1.41</b>&emsp;percentile &asymp; <b id="psn-scratch-pct">92.1</b>%
+      <span id="psn-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="psn-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -891,6 +938,74 @@
 </script>
 <script>
 (function(){
+  // Self-contained on purpose (own erf/normCDF copy) so this block stays
+  // copy-pasteable to another lesson's worked example on its own.
+  function erf(x){
+    var sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    var y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return sign*y;
+  }
+  function normCDF(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+
+  var DEFAULTS = { r1: 1.0, r2: 2.0, r3: -1.0, r4: 3.0, r5: 0.0, r6: 1.0 };
+  var fields = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('psn-scratch-' + f); });
+  if (!inputs.r1) return;
+
+  var meanOut = document.getElementById('psn-scratch-mean');
+  var sdOut = document.getElementById('psn-scratch-sd');
+  var bestOut = document.getElementById('psn-scratch-best');
+  var zOut = document.getElementById('psn-scratch-z');
+  var pctOut = document.getElementById('psn-scratch-pct');
+  var noteOut = document.getElementById('psn-scratch-note');
+  var resetBtn = document.getElementById('psn-scratch-reset');
+
+  function recompute(){
+    var vals = fields.map(function(f){ return parseFloat(inputs[f].value); });
+    if (vals.some(function(v){ return !isFinite(v); })) {
+      noteOut.textContent = '(enter a number for every day)';
+      return;
+    }
+
+    var n = vals.length;
+    var mean = vals.reduce(function(a,b){ return a+b; }, 0) / n;
+    var ssq = vals.reduce(function(a,b){ return a + (b-mean)*(b-mean); }, 0);
+    var variance = ssq / (n-1);
+    var sd = Math.sqrt(variance);
+    var best = Math.max.apply(null, vals);
+
+    meanOut.textContent = mean.toFixed(4);
+    sdOut.textContent = sd.toFixed(4);
+    bestOut.textContent = best.toFixed(4);
+
+    if (sd === 0) {
+      zOut.textContent = '—';
+      pctOut.textContent = '—';
+      noteOut.textContent = '(no variation in the sample — standard deviation is zero, so z is undefined)';
+      return;
+    }
+
+    var z = (best - mean) / sd;
+    var pct = normCDF(z) * 100;
+    zOut.textContent = z.toFixed(2);
+    pctOut.textContent = pct.toFixed(1);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -912,6 +1027,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

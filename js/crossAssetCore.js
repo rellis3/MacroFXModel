@@ -126,6 +126,48 @@ export function usdStrengthSeries(legs = {}) {
 }
 
 /**
+ * Market-tone score (0–100) from the reads the panel actually displays.
+ *
+ * The needle used to come from index breadth ALONE, while five rows sat beneath
+ * it — credit, equity vol, USD, rates, oil — that fed it nothing. Overnight,
+ * when no index has a direction yet, breadth is 0 and the needle parked on a
+ * confident-looking 50 while everything under it moved. Worse, 50 meant two
+ * different things: "genuinely balanced" and "nothing to say".
+ *
+ * Now every displayed row votes. Breadth still carries the most weight (it is a
+ * direct read of risk appetite rather than a proxy), but it no longer decides
+ * alone, and a row that is genuinely two-way ('mix') contributes nothing rather
+ * than being counted as balance.
+ *
+ * @param {number|null} equity   index breadth in [-1,+1], or null if unknown
+ * @param {Array<'on'|'off'|'mix'>} rowClasses  the per-row risk reads as shown
+ * @returns {{score:number|null, votes:number, up:number, down:number}}
+ *          score null = nothing had a read; render that as "no read", never 50.
+ */
+export function marketToneScore(equity, rowClasses = []) {
+  const votes = [];
+  if (equity != null && Number.isFinite(equity)) {
+    // Breadth is one read but the most direct, so it weighs as much as two rows.
+    votes.push({ v: Math.max(-1, Math.min(1, equity)), w: 2 });
+  }
+  for (const c of rowClasses) {
+    if (c === 'on') votes.push({ v: 1, w: 1 });
+    else if (c === 'off') votes.push({ v: -1, w: 1 });
+    // 'mix' is a genuine two-way read: it should not pull toward the middle,
+    // it should simply not vote.
+  }
+  if (!votes.length) return { score: null, votes: 0, up: 0, down: 0 };
+  const wsum = votes.reduce((a, b) => a + b.w, 0);
+  const mean = votes.reduce((a, b) => a + b.v * b.w, 0) / wsum;
+  return {
+    score: Math.round((Math.max(-1, Math.min(1, mean)) + 1) / 2 * 100),
+    votes: votes.length,
+    up: votes.filter(x => x.v > 0).length,
+    down: votes.filter(x => x.v < 0).length,
+  };
+}
+
+/**
  * Agreement across the driver board's instruments.
  *
  * `changes` = { label: percentChange }. Anything inside ±`dead` counts as

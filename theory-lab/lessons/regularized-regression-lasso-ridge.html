@@ -380,6 +380,39 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Shrink a single OLS coefficient, live</h3>
+    <p>
+      Starts on the worked example's own OLS estimate for \(x_1\),
+      \(\hat\beta_{OLS}=3.4\). This uses the standard single-coefficient
+      (orthogonal-design) closed forms for each penalty — a simplified
+      illustration of the shrinkage <em>mechanism</em>, not a reproduction
+      of the correlated, cross-validated 3-predictor fit above. Change
+      \(\hat\beta_{OLS}\) or \(\lambda\) and both penalties' shrunk
+      coefficients recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>OLS coefficient \(\hat\beta_{OLS}\)</span></div>
+        <input type="number" id="rr-scratch-beta" class="tl-scratch-input" value="3.4" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Penalty \(\lambda\)</span></div>
+        <input type="number" id="rr-scratch-lambda" class="tl-scratch-input" value="1" step="0.1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Ridge: \(\hat\beta_{OLS}/(1+\lambda)\) = <b id="rr-scratch-ridge">1.7000</b>
+    </div>
+    <div class="tl-readout">
+      LASSO: sign(\(\hat\beta_{OLS}\))&middot;max(|\(\hat\beta_{OLS}\)|&minus;\(\lambda\), 0) = <b id="rr-scratch-lasso">2.4000</b>
+      <span id="rr-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="rr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-chart">
     <div class="tl-chart-label">The same three coefficients as λ increases</div>
     <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two line-chart panels tracking three coefficients as regularization strength lambda increases. Left panel, Ridge: all three coefficients curve smoothly toward zero but none reach it. Right panel, LASSO: the noise coefficient hits exactly zero first, the duplicate coefficient hits exactly zero next, and the real-signal coefficient shrinks but stays clearly nonzero throughout">
@@ -684,6 +717,57 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script>
+(function(){
+  var DEFAULTS = { beta: 3.4, lambda: 1 };
+  var betaInput = document.getElementById('rr-scratch-beta');
+  var lambdaInput = document.getElementById('rr-scratch-lambda');
+  if (!betaInput) return;
+
+  var ridgeOut = document.getElementById('rr-scratch-ridge');
+  var lassoOut = document.getElementById('rr-scratch-lasso');
+  var note = document.getElementById('rr-scratch-note');
+  var resetBtn = document.getElementById('rr-scratch-reset');
+
+  function recompute(){
+    var beta = parseFloat(betaInput.value);
+    var lambda = parseFloat(lambdaInput.value);
+
+    if (!isFinite(beta) || !isFinite(lambda)) {
+      note.textContent = '(enter numeric values for both fields)';
+      ridgeOut.textContent = '—';
+      lassoOut.textContent = '—';
+      return;
+    }
+
+    var msgs = [];
+    if (lambda < 0) msgs.push('λ is a penalty strength — normally kept ≥ 0');
+
+    var lassoSign = beta > 0 ? 1 : (beta < 0 ? -1 : 0);
+    var lasso = lassoSign * Math.max(Math.abs(beta) - lambda, 0);
+    lassoOut.textContent = lasso.toFixed(4);
+
+    if (1 + lambda === 0) {
+      msgs.push('λ = -1 makes the Ridge denominator zero — undefined');
+      ridgeOut.textContent = '—';
+    } else {
+      var ridge = beta / (1 + lambda);
+      ridgeOut.textContent = ridge.toFixed(4);
+    }
+
+    note.textContent = msgs.length ? '(' + msgs.join('; ') + ')' : '';
+  }
+
+  betaInput.addEventListener('input', recompute);
+  lambdaInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    betaInput.value = DEFAULTS.beta;
+    lambdaInput.value = DEFAULTS.lambda;
+    recompute();
+  });
+  recompute();
+})();
+</script>
 </body>
 </html>

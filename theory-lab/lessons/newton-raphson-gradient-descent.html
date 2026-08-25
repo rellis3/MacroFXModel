@@ -483,6 +483,50 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>One Newton-Raphson step on the bond-yield solve, live</h3>
+    <p>
+      Starts on Part 1's exact numbers: a 3-year, 5-coupon bond priced at
+      97.50, with the current yield guess \(y_n=5.000\%\). Change any field
+      and \(P(y_n)\), \(f(y_n)=P(y_n)-P_{mkt}\), and the next iterate
+      \(y_{n+1}=y_n-f(y_n)/P'(y_n)\) recompute instantly — try a wild starting
+      guess (say \(y_n=50\%\)) to see how much bigger the first correction
+      gets.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Current guess \(y_n\) (%)</span></div>
+        <input type="number" id="nr-scratch-y" class="tl-scratch-input" value="5" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Coupon \(C\)</span></div>
+        <input type="number" id="nr-scratch-C" class="tl-scratch-input" value="5" step="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Face \(F\)</span></div>
+        <input type="number" id="nr-scratch-F" class="tl-scratch-input" value="100" step="5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Maturity \(N\) (yrs)</span></div>
+        <input type="number" id="nr-scratch-N" class="tl-scratch-input" value="3" step="1" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Market price \(P_{mkt}\)</span></div>
+        <input type="number" id="nr-scratch-P" class="tl-scratch-input" value="97.5" step="0.5">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      P(y<sub>n</sub>) = <b id="nr-scratch-price">100.0000</b>&emsp;f(y<sub>n</sub>) = <b id="nr-scratch-f">2.5000</b>
+    </div>
+    <div class="tl-readout">
+      y<sub>n+1</sub> = y<sub>n</sub> &minus; f(y<sub>n</sub>)/P&prime;(y<sub>n</sub>) &asymp; <b id="nr-scratch-ynext">5.9180</b>%
+      <span id="nr-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="nr-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -759,6 +803,82 @@
 </script>
 <script>
 (function(){
+  // Self-contained on purpose (own bond-pricing helpers) so this block
+  // stays copy-pasteable to another lesson without also bringing the
+  // gradient-descent chart script along.
+  function bondPrice(y, C, F, N){
+    var s = 0;
+    for (var t = 1; t <= N; t++){
+      var cf = (t < N) ? C : C + F;
+      s += cf / Math.pow(1 + y, t);
+    }
+    return s;
+  }
+  function bondPriceDeriv(y, C, F, N){
+    var s = 0;
+    for (var t = 1; t <= N; t++){
+      var cf = (t < N) ? C : C + F;
+      s += -t * cf / Math.pow(1 + y, t + 1);
+    }
+    return s;
+  }
+
+  var DEFAULTS = { y: 5, C: 5, F: 100, N: 3, P: 97.5 };
+  var fields = ['y', 'C', 'F', 'N', 'P'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('nr-scratch-' + f); });
+  if (!inputs.y) return;
+
+  var priceOut = document.getElementById('nr-scratch-price');
+  var fOut = document.getElementById('nr-scratch-f');
+  var yNextOut = document.getElementById('nr-scratch-ynext');
+  var noteOut = document.getElementById('nr-scratch-note');
+  var resetBtn = document.getElementById('nr-scratch-reset');
+
+  function recompute(){
+    var yPct = parseFloat(inputs.y.value);
+    var C = parseFloat(inputs.C.value);
+    var F = parseFloat(inputs.F.value);
+    var N = Math.round(parseFloat(inputs.N.value));
+    var Pmkt = parseFloat(inputs.P.value);
+
+    if (!isFinite(yPct) || !isFinite(C) || !isFinite(F) || !isFinite(N) || !isFinite(Pmkt) || N < 1 || (1 + yPct / 100) <= 0) {
+      priceOut.textContent = '—';
+      fOut.textContent = '—';
+      yNextOut.textContent = '—';
+      noteOut.textContent = '(enter a maturity N≥1 and a yield above −100%)';
+      return;
+    }
+
+    var y = yPct / 100;
+    var price = bondPrice(y, C, F, N);
+    var f = price - Pmkt;
+    var deriv = bondPriceDeriv(y, C, F, N);
+
+    priceOut.textContent = price.toFixed(4);
+    fOut.textContent = f.toFixed(4);
+
+    if (Math.abs(deriv) < 1e-9) {
+      yNextOut.textContent = '—';
+      noteOut.textContent = "(P'(yₙ) ≈ 0 — the Newton step is undefined here; try a different starting guess)";
+      return;
+    }
+
+    var yNext = y - f / deriv;
+    yNextOut.textContent = (yNext * 100).toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -780,6 +900,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

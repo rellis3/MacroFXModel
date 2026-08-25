@@ -488,6 +488,48 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Evaluate the fitted curve at any maturity, live</h3>
+    <p>
+      Starts on the worked example's exact parameters, \(\beta_0=4.5\%\),
+      \(\beta_1=-2.0\%\), \(\beta_2=1.0\%\), \(\lambda=2.0\). Change any
+      parameter or the maturity \(\tau\) and \(y(\tau)\) recalculates
+      instantly from the Nelson-Siegel formula above.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&beta;&#8320; (level, %)</span></div>
+        <input type="number" id="nss-scratch-b0" class="tl-scratch-input" value="4.5" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&beta;&#8321; (slope, %)</span></div>
+        <input type="number" id="nss-scratch-b1" class="tl-scratch-input" value="-2.0" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&beta;&#8322; (curvature, %)</span></div>
+        <input type="number" id="nss-scratch-b2" class="tl-scratch-input" value="1.0" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>&lambda; (decay)</span></div>
+        <input type="number" id="nss-scratch-lambda" class="tl-scratch-input" value="2.0" step="0.1" min="0.001">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Maturity &tau; (years)</span></div>
+        <input type="number" id="nss-scratch-tau" class="tl-scratch-input" value="5" step="1" min="0">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      x = &tau;/&lambda; = <b id="nss-scratch-x">2.5000</b>&emsp;L(x) = <b id="nss-scratch-L">0.3672</b>
+    </div>
+    <div class="tl-readout">
+      y(&tau;) &asymp; <b id="nss-scratch-y">4.0507</b>%
+      <span id="nss-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="nss-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -835,6 +877,74 @@
 </script>
 <script>
 (function(){
+  // Self-contained on purpose (own copy of the NS math, not shared with the
+  // chart script above), so this block stays copy-pasteable on its own.
+  function nsLevel(x){
+    // lim_{x->0} (1-e^-x)/x = 1, so treat x=0 as a removable singularity.
+    if (Math.abs(x) < 1e-9) return 1;
+    return (1 - Math.exp(-x)) / x;
+  }
+  function nsYield(b0, b1, b2, lambda, tau){
+    var x = tau / lambda;
+    var L = nsLevel(x);
+    var y = b0 + b1 * L + b2 * (L - Math.exp(-x));
+    return { x: x, L: L, y: y };
+  }
+
+  var b0Input = document.getElementById('nss-scratch-b0');
+  var b1Input = document.getElementById('nss-scratch-b1');
+  var b2Input = document.getElementById('nss-scratch-b2');
+  var lamInput = document.getElementById('nss-scratch-lambda');
+  var tauInput = document.getElementById('nss-scratch-tau');
+  var xOut = document.getElementById('nss-scratch-x');
+  var lOut = document.getElementById('nss-scratch-L');
+  var yOut = document.getElementById('nss-scratch-y');
+  var note = document.getElementById('nss-scratch-note');
+  var resetBtn = document.getElementById('nss-scratch-reset');
+  if (!b0Input) return;
+
+  var DEFAULTS = { b0: 4.5, b1: -2.0, b2: 1.0, lambda: 2.0, tau: 5 };
+
+  function recompute(){
+    var b0 = parseFloat(b0Input.value);
+    var b1 = parseFloat(b1Input.value);
+    var b2 = parseFloat(b2Input.value);
+    var lambda = parseFloat(lamInput.value);
+    var tau = parseFloat(tauInput.value);
+
+    if (!isFinite(b0) || !isFinite(b1) || !isFinite(b2) || !isFinite(lambda) || !isFinite(tau) || tau < 0) {
+      note.textContent = '(enter numeric beta parameters and a non-negative maturity)';
+      return;
+    }
+    if (lambda <= 0) {
+      note.textContent = '(λ must be positive — it sets the curve’s decay scale)';
+      return;
+    }
+    note.textContent = '';
+
+    var r = nsYield(b0, b1, b2, lambda, tau);
+    xOut.textContent = r.x.toFixed(4);
+    lOut.textContent = r.L.toFixed(4);
+    yOut.textContent = r.y.toFixed(4);
+  }
+
+  [b0Input, b1Input, b2Input, lamInput, tauInput].forEach(function(el){
+    el.addEventListener('input', recompute);
+  });
+  resetBtn.addEventListener('click', function(){
+    b0Input.value = DEFAULTS.b0;
+    b1Input.value = DEFAULTS.b1;
+    b2Input.value = DEFAULTS.b2;
+    lamInput.value = DEFAULTS.lambda;
+    tauInput.value = DEFAULTS.tau;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -856,6 +966,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

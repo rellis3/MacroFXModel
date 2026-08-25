@@ -81,6 +81,40 @@
     return s.replace(/\s+/g, ' ').trim();
   }
 
+  // Keeping each utterance short is what actually protects every engine —
+  // known stall bugs (a long utterance silently cutting off partway
+  // through) only bite past a certain duration, and a short one simply
+  // finishes and hands off to the next before that can trigger. A dense
+  // lesson paragraph easily runs 30+ seconds as one utterance, so split on
+  // sentence boundaries (falling back to a hard
+  // word-boundary cut for any one "sentence" that's still too long).
+  var MAX_UTTERANCE_CHARS = 110;
+  function splitForSpeech(text) {
+    if (text.length <= MAX_UTTERANCE_CHARS) return [text];
+    // No lookbehind (unsupported in older Safari) — split on the
+    // punctuation via a capturing group, then re-glue each piece with the
+    // punctuation that ended it.
+    var pieces = text.split(/([.!?])\s+(?=[A-Z(])/);
+    var sentences = [];
+    for (var i = 0; i < pieces.length; i += 2) {
+      var s = (pieces[i] || '') + (pieces[i + 1] || '');
+      s = s.trim();
+      if (s) sentences.push(s);
+    }
+    if (!sentences.length) sentences = [text];
+    var out = [];
+    sentences.forEach(function (sentence) {
+      while (sentence.length > MAX_UTTERANCE_CHARS) {
+        var cut = sentence.lastIndexOf(' ', MAX_UTTERANCE_CHARS);
+        if (cut < 40) cut = MAX_UTTERANCE_CHARS;
+        out.push(sentence.slice(0, cut).trim());
+        sentence = sentence.slice(cut).trim();
+      }
+      if (sentence) out.push(sentence);
+    });
+    return out;
+  }
+
   // ---------- Build the reading queue ----------
   var CHUNK_SELECTOR = [
     'h1', 'h2', 'h3', 'h4', 'p', 'li', 'blockquote', 'figcaption', 'summary',
@@ -103,9 +137,13 @@
       }
       return true;
     });
-    return kept
-      .map(function (el) { return { el: el, text: textToSpeechFriendly(el.textContent || '') }; })
-      .filter(function (c) { return c.text.length > 1; });
+    var queue = [];
+    kept.forEach(function (el) {
+      var text = textToSpeechFriendly(el.textContent || '');
+      if (text.length < 2) return;
+      splitForSpeech(text).forEach(function (part) { queue.push({ el: el, text: part }); });
+    });
+    return queue;
   }
 
   // Built eagerly, right now, rather than lazily on first click. This
@@ -124,14 +162,13 @@
   var lastHighlighted = null;
   var currentVoice = null;
   var currentRate = 1;
-  var keepAliveTimer = null;
 
-  // Canceling an utterance can fire its onend/onerror synchronously in some
-  // browsers. Without a generation guard, that stale callback re-enters
-  // speakChunk() and races the caller's own next speakChunk() call, which
-  // can cascade through the whole queue in one tick. Bumping this token
-  // before every cancel() makes any in-flight callback from the utterance
-  // being canceled a no-op.
+  // Canceling can fire a still-pending utterance's onend/onerror
+  // synchronously in some browsers. Without a generation guard, a stale
+  // callback from a batch that's since been superseded (a skip, a
+  // rate/voice change) could still fire stopReader() after the fact.
+  // Bumping this token before every queueBatch()/cancel() makes any
+  // leftover callback from a superseded batch a no-op.
   var utterToken = 0;
   function invalidateUtterance() { utterToken++; }
 
@@ -174,13 +211,13 @@
     rateSelect.addEventListener('change', function () {
       currentRate = parseFloat(rateSelect.value) || 1;
       try { localStorage.setItem(RATE_KEY, String(currentRate)); } catch (e) {}
-      if (isPlaying) restartCurrentChunk();
+      if (isPlaying) queueBatch(idx);
     });
     voiceSelect.addEventListener('change', function () {
       var voices = synth.getVoices();
       currentVoice = voices[parseInt(voiceSelect.value, 10)] || null;
       try { localStorage.setItem(VOICE_KEY, currentVoice ? currentVoice.name : ''); } catch (e) {}
-      if (isPlaying) restartCurrentChunk();
+      if (isPlaying) queueBatch(idx);
       syncBarHeight();
     });
 
@@ -258,55 +295,87 @@
     lastHighlighted = null;
   }
 
-  // Chrome and other Chromium/WebKit-based engines (this affects Edge,
-  // Chrome on iOS, and Safari too, not just desktop Chrome — hence no
-  // browser-sniffing gate here) silently stop a SpeechSynthesisUtterance
-  // partway through if it runs past roughly 10-15 seconds. Nudging the
-  // engine with pause()/resume() well before that resets its internal
-  // timer and keeps long paragraphs playing to the end.
-  function startKeepAlive() {
-    stopKeepAlive();
-    keepAliveTimer = setInterval(function () {
-      if (synth.speaking && !synth.paused) { synth.pause(); synth.resume(); }
-    }, 5000);
-  }
-  function stopKeepAlive() {
-    if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
-  }
+  // A previous version of this reader periodically called pause()+resume()
+  // as a "keep-alive" nudge, based on a documented desktop-Chrome bug where
+  // very long utterances silently stall. That workaround was itself found
+  // to be the actual cause of a real-world failure on Android — pause()/
+  // resume() there goes through a completely different code path (Blink's
+  // bridge to the OS-level TextToSpeech service, not desktop Chrome's own
+  // engine) with its own, differently-documented quirks, and calling it
+  // repeatedly was reliably killing playback a few seconds in, every time.
+  // No such nudge is needed any more: splitForSpeech caps every utterance
+  // at roughly a sentence (~110 chars, well under any known stall
+  // threshold), and queueBatch's own internal browser queue doesn't depend
+  // on timely callbacks to keep advancing. Removed rather than re-scoped a
+  // fourth time — the risk of an undiscovered quirk on some other platform
+  // now outweighs whatever this was still buying.
 
-  function speakChunk(i) {
-    if (i < 0 || i >= queue.length) { stopReader(); return; }
-    idx = i;
-    highlight(queue[i].el);
-    updateProgress();
+  // Every previous fix here (#1326, #1328, #1329) chained speak() calls
+  // one at a time, each new call made from inside the PREVIOUS utterance's
+  // async onend/onerror callback. That reactive chaining is the actual
+  // problem: several engines — iOS Safari chief among them, in numerous
+  // independent reports — only reliably honor speak() calls that are
+  // synchronously traceable back to a real user gesture (the click that
+  // opened the reader), and start silently dropping calls made later from
+  // an async callback after just a couple of hops. No error, no onstart,
+  // nothing — playback just goes dead a couple of utterances in, which
+  // matches this bug's exact signature and explains why fixing cancel()
+  // timing, keep-alive scoping, and utterance length never actually
+  // resolved it: none of those touched the real cause.
+  //
+  // The fix is to stop manually chaining at all. SpeechSynthesis already
+  // has its own internal queue — calling speak() many times back-to-back
+  // enqueues each utterance, and the engine plays them in order on its
+  // own without any JS involvement to advance between them. Queuing every
+  // remaining utterance for the rest of the lesson synchronously, all
+  // within the click/skip/rate-change handler's own call stack, means no
+  // speak() call ever again originates from an async callback — sidestepping
+  // this whole bug class rather than working around one symptom of it.
+  function queueBatch(startIndex) {
     invalidateUtterance();
     var myToken = utterToken;
-    synth.cancel();
-    var u = new SpeechSynthesisUtterance(queue[i].text);
-    u.rate = currentRate;
-    if (currentVoice) u.voice = currentVoice;
-    u.onend = function () { if (isPlaying && myToken === utterToken) speakChunk(idx + 1); };
-    u.onerror = function () { if (isPlaying && myToken === utterToken) speakChunk(idx + 1); };
-    synth.speak(u);
-  }
-
-  function restartCurrentChunk() {
-    if (idx >= 0) speakChunk(idx);
+    if (synth.speaking || synth.pending) synth.cancel();
+    if (startIndex < 0 || startIndex >= queue.length) { stopReader(); return; }
+    idx = startIndex;
+    highlight(queue[startIndex].el);
+    updateProgress();
+    var lastIndex = queue.length - 1;
+    for (var i = startIndex; i <= lastIndex; i++) {
+      (function (i) {
+        var u = new SpeechSynthesisUtterance(queue[i].text);
+        u.rate = currentRate;
+        if (currentVoice) u.voice = currentVoice;
+        // Progress/highlight tracks playback as the engine actually gets
+        // to each item — more accurate than setting it up front, and if
+        // one item's onstart happens not to fire, the engine's own queue
+        // still moves on to the next utterance regardless (unlike the old
+        // design, nothing here depends on this callback to keep playing).
+        u.onstart = function () {
+          if (myToken !== utterToken) return;
+          idx = i;
+          highlight(queue[i].el);
+          updateProgress();
+        };
+        if (i === lastIndex) {
+          u.onend = function () { if (myToken === utterToken) stopReader(); };
+          u.onerror = function () { if (myToken === utterToken) stopReader(); };
+        }
+        synth.speak(u);
+      })(i);
+    }
   }
 
   function play() {
     if (!queue.length) { progressLabel.textContent = 'No readable text found on this page'; return; }
     isPlaying = true;
     updatePlayBtn();
-    startKeepAlive();
-    if (synth.paused && idx >= 0) { synth.resume(); return; }
-    speakChunk(idx < 0 ? 0 : idx);
+    if (synth.paused && (synth.speaking || synth.pending)) { synth.resume(); return; }
+    queueBatch(idx < 0 ? 0 : idx);
   }
 
   function pause() {
     isPlaying = false;
     updatePlayBtn();
-    stopKeepAlive();
     synth.pause();
   }
 
@@ -314,7 +383,6 @@
     isPlaying = false;
     idx = -1;
     updatePlayBtn();
-    stopKeepAlive();
     invalidateUtterance();
     synth.cancel();
     clearHighlight();
@@ -324,10 +392,12 @@
   function skip(delta) {
     if (!queue.length) return;
     var next = Math.max(0, Math.min(queue.length - 1, (idx < 0 ? 0 : idx) + delta));
-    invalidateUtterance();
-    synth.cancel();
-    if (isPlaying) { speakChunk(next); }
-    else { idx = next; highlight(queue[idx].el); updateProgress(); }
+    if (isPlaying) { queueBatch(next); }
+    else {
+      invalidateUtterance();
+      if (synth.speaking || synth.pending) synth.cancel();
+      idx = next; highlight(queue[idx].el); updateProgress();
+    }
   }
 
   // The bar's height varies with voice-name length and viewport width

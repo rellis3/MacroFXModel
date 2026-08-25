@@ -353,6 +353,42 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Run a single Metropolis step, live</h3>
+    <p>
+      Starts on the worked example's Step 2 exactly: current \(\theta=0.8\),
+      proposed increment \(\Delta=-1.5\) (so \(\theta'=-0.7\), a downhill
+      move), and a uniform draw \(u=0.55\) deciding whether to accept it.
+      Change any field and \(f(\theta)\), \(f(\theta')\), the ratio, and
+      \(\alpha\) all recalculate instantly, with the accept/reject outcome
+      updating too.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Current \(\theta\)</span></div>
+        <input type="number" id="mh-scratch-theta" class="tl-scratch-input" value="0.8" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Proposed step \(\Delta\)</span></div>
+        <input type="number" id="mh-scratch-delta" class="tl-scratch-input" value="-1.5" step="0.1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Uniform draw \(u\)</span></div>
+        <input type="number" id="mh-scratch-u" class="tl-scratch-input" value="0.55" step="0.01" min="0" max="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      θ&prime; = <b id="mh-scratch-thetaprime">-0.70</b>&emsp;f(θ) = <b id="mh-scratch-fcur">1.2431</b>&emsp;f(θ&prime;) = <b id="mh-scratch-fprop">1.2032</b>&emsp;ratio = <b id="mh-scratch-ratio">0.9679</b>&emsp;α = <b id="mh-scratch-alpha">0.9679</b>
+    </div>
+    <div class="tl-readout">
+      Outcome: <b id="mh-scratch-outcome">accept (u &lt; α)</b> — new state θ = <b id="mh-scratch-newstate">-0.70</b>
+      <span id="mh-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="mh-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world scenario</div>
@@ -647,6 +683,70 @@
 </script>
 <script>
 (function(){
+  // Self-contained on purpose — own copy of the target density, not sharing
+  // the trace-plot script's copy above.
+  function targetF(theta){ return Math.exp(-Math.pow(theta, 4) / 4 + Math.pow(theta, 2) / 2); }
+
+  var DEFAULTS = { theta: 0.8, delta: -1.5, u: 0.55 };
+  var fields = ['theta', 'delta', 'u'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('mh-scratch-' + f); });
+
+  var thetaPrimeOut = document.getElementById('mh-scratch-thetaprime');
+  var fCurOut = document.getElementById('mh-scratch-fcur');
+  var fPropOut = document.getElementById('mh-scratch-fprop');
+  var ratioOut = document.getElementById('mh-scratch-ratio');
+  var alphaOut = document.getElementById('mh-scratch-alpha');
+  var outcomeOut = document.getElementById('mh-scratch-outcome');
+  var newStateOut = document.getElementById('mh-scratch-newstate');
+  var noteOut = document.getElementById('mh-scratch-note');
+  var resetBtn = document.getElementById('mh-scratch-reset');
+  if (!inputs.theta) return;
+
+  function recompute(){
+    var theta = parseFloat(inputs.theta.value);
+    var delta = parseFloat(inputs.delta.value);
+    var u = parseFloat(inputs.u.value);
+
+    if (!isFinite(theta) || !isFinite(delta) || !isFinite(u) || u < 0 || u > 1) {
+      noteOut.textContent = '(θ and Δ must be numbers; u must be between 0 and 1)';
+      thetaPrimeOut.textContent = '—';
+      fCurOut.textContent = '—';
+      fPropOut.textContent = '—';
+      ratioOut.textContent = '—';
+      alphaOut.textContent = '—';
+      outcomeOut.textContent = '—';
+      newStateOut.textContent = '—';
+      return;
+    }
+
+    var thetaPrime = theta + delta;
+    var fCur = targetF(theta);
+    var fProp = targetF(thetaPrime);
+    var ratio = fCur === 0 ? Infinity : fProp / fCur;
+    var alpha = Math.min(1, ratio);
+    var accept = u < alpha;
+
+    thetaPrimeOut.textContent = thetaPrime.toFixed(2);
+    fCurOut.textContent = fCur.toFixed(4);
+    fPropOut.textContent = fProp.toFixed(4);
+    ratioOut.textContent = isFinite(ratio) ? ratio.toFixed(4) : '∞';
+    alphaOut.textContent = alpha.toFixed(4);
+    outcomeOut.textContent = accept ? 'accept (u < α)' : 'reject (u ≥ α), chain repeats';
+    newStateOut.textContent = accept ? thetaPrime.toFixed(2) : theta.toFixed(2);
+    noteOut.textContent = alpha === 1 ? '(uphill move — automatic accept, no coin flip needed)' : '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -668,6 +768,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

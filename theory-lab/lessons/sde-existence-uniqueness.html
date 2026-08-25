@@ -341,6 +341,40 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Recheck the Lipschitz and growth conditions for any GBM parameters, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(\mu=0.08\),
+      \(\sigma=0.20\), \(x=100\). Change any field and the Lipschitz
+      constant \(K\), the growth-condition left- and right-hand sides, and
+      whether the condition holds all recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Drift \(\mu\)</span></div>
+        <input type="number" id="sdeeu-scratch-mu" class="tl-scratch-input" value="0.08" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\)</span></div>
+        <input type="number" id="sdeeu-scratch-sigma" class="tl-scratch-input" value="0.20" step="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Point \(x\)</span></div>
+        <input type="number" id="sdeeu-scratch-x" class="tl-scratch-input" value="100" step="10">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      \(K\) = <b id="sdeeu-scratch-k">0.28</b>&emsp;\(|\mu x|+|\sigma x|\) = <b id="sdeeu-scratch-lhs">28.00</b>&emsp;\(K(1+|x|)\) = <b id="sdeeu-scratch-rhs">28.28</b>
+    </div>
+    <div class="tl-readout">
+      Growth condition: <b id="sdeeu-scratch-verdict">holds</b>
+      <span id="sdeeu-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="sdeeu-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -499,6 +533,55 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { mu: 0.08, sigma: 0.20, x: 100 };
+  var muInput = document.getElementById('sdeeu-scratch-mu');
+  var sigmaInput = document.getElementById('sdeeu-scratch-sigma');
+  var xInput = document.getElementById('sdeeu-scratch-x');
+  var kOut = document.getElementById('sdeeu-scratch-k');
+  var lhsOut = document.getElementById('sdeeu-scratch-lhs');
+  var rhsOut = document.getElementById('sdeeu-scratch-rhs');
+  var verdictOut = document.getElementById('sdeeu-scratch-verdict');
+  var note = document.getElementById('sdeeu-scratch-note');
+  var resetBtn = document.getElementById('sdeeu-scratch-reset');
+  if (!muInput) return;
+
+  function recompute(){
+    var mu = parseFloat(muInput.value);
+    var sigma = parseFloat(sigmaInput.value);
+    var x = parseFloat(xInput.value);
+
+    if (!isFinite(mu) || !isFinite(sigma) || !isFinite(x)) {
+      note.textContent = '(enter finite numbers for μ, σ and x)';
+      return;
+    }
+    note.textContent = '';
+
+    var K = Math.abs(mu) + Math.abs(sigma);
+    var lhs = Math.abs(mu * x) + Math.abs(sigma * x);
+    var rhs = K * (1 + Math.abs(x));
+    var holds = lhs <= rhs;
+
+    kOut.textContent = K.toFixed(4);
+    lhsOut.textContent = lhs.toFixed(4);
+    rhsOut.textContent = rhs.toFixed(4);
+    verdictOut.textContent = holds ? 'holds' : 'fails';
+  }
+
+  muInput.addEventListener('input', recompute);
+  sigmaInput.addEventListener('input', recompute);
+  xInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    muInput.value = DEFAULTS.mu;
+    sigmaInput.value = DEFAULTS.sigma;
+    xInput.value = DEFAULTS.x;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -520,6 +603,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

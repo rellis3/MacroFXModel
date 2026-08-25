@@ -288,6 +288,36 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Rescale the naive-backprop memory cost, live</h3>
+    <p>
+      Starts on the worked example's exact numbers, \(N=1{,}000\) steps,
+      \(d=50\). Change either input and the number of stored state floats
+      \(N\times d\), plus what happens if the path length doubles,
+      recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Steps \(N\)</span></div>
+        <input type="number" id="nsde-scratch-n" class="tl-scratch-input" value="1000" step="100" min="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>State dimension \(d\)</span></div>
+        <input type="number" id="nsde-scratch-d" class="tl-scratch-input" value="50" step="10" min="1">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      Stored floats \(N\times d\) = <b id="nsde-scratch-floats">50,000</b>
+    </div>
+    <div class="tl-readout">
+      At \(2N\) steps &rarr; <b id="nsde-scratch-doubled">100,000</b> floats
+      <span id="nsde-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="nsde-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-solid amber">
     <strong>Say this plainly, as the closing word on this entire five-lesson
     sequence:</strong> everything in this lesson — neural SDEs, the stochastic
@@ -424,6 +454,49 @@
 </div>
 <script>
 (function(){
+  var DEFAULTS = { n: 1000, d: 50 };
+  var nInput = document.getElementById('nsde-scratch-n');
+  var dInput = document.getElementById('nsde-scratch-d');
+  var floatsOut = document.getElementById('nsde-scratch-floats');
+  var doubledOut = document.getElementById('nsde-scratch-doubled');
+  var note = document.getElementById('nsde-scratch-note');
+  var resetBtn = document.getElementById('nsde-scratch-reset');
+  if (!nInput) return;
+
+  function fmtInt(n){
+    return Math.round(n).toLocaleString('en-US');
+  }
+
+  function recompute(){
+    var n = parseFloat(nInput.value);
+    var d = parseFloat(dInput.value);
+
+    if (!isFinite(n) || n <= 0 || !isFinite(d) || d <= 0) {
+      note.textContent = '(enter positive numbers for N and d)';
+      return;
+    }
+    note.textContent = '';
+
+    var floats = n * d;
+    var doubled = (2 * n) * d;
+
+    floatsOut.textContent = fmtInt(floats);
+    doubledOut.textContent = fmtInt(doubled);
+  }
+
+  nInput.addEventListener('input', recompute);
+  dInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    nInput.value = DEFAULTS.n;
+    dInput.value = DEFAULTS.d;
+    recompute();
+  });
+
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -445,6 +518,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

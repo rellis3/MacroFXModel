@@ -510,6 +510,39 @@
     </div>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>ATM gamma at any expiry, live</h3>
+    <p>
+      Starts on the worked example's 1-day-to-expiry case (\(S=100\),
+      \(\sigma=20\%\)). Edit any field and \(T\), \(\sigma\sqrt{T}\), and
+      \(\Gamma_{\text{ATM}}\) recalculate instantly.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot \(S\)</span></div>
+        <input type="number" id="gex-scratch-S" class="tl-scratch-input" value="100" step="1" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Vol \(\sigma\) (%)</span></div>
+        <input type="number" id="gex-scratch-sigma" class="tl-scratch-input" value="20" step="1" min="0.01">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry</span></div>
+        <input type="number" id="gex-scratch-dte" class="tl-scratch-input" value="1" step="1" min="0.01">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      T = <b id="gex-scratch-T">0.0027</b>y&emsp;&sigma;&radic;T = <b id="gex-scratch-sigT">0.0105</b>
+    </div>
+    <div class="tl-readout">
+      &Gamma;<sub>ATM</sub> &asymp; &phi;(0)/(S&sigma;&radic;T) &asymp; <b id="gex-scratch-gamma">0.3811</b> per $1 move
+      <span id="gex-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="gex-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -812,6 +845,57 @@
 </script>
 <script>
 (function(){
+  var PHI0 = 1/Math.sqrt(2*Math.PI); // phi(0), standard normal density at 0
+
+  var sInput = document.getElementById('gex-scratch-S');
+  var sigmaInput = document.getElementById('gex-scratch-sigma');
+  var dteInput = document.getElementById('gex-scratch-dte');
+  var tOut = document.getElementById('gex-scratch-T');
+  var sigTOut = document.getElementById('gex-scratch-sigT');
+  var gammaOut = document.getElementById('gex-scratch-gamma');
+  var note = document.getElementById('gex-scratch-note');
+  var resetBtn = document.getElementById('gex-scratch-reset');
+  if (!sInput) return;
+
+  var DEFAULTS = { S: 100, sigma: 20, dte: 1 };
+
+  function recompute(){
+    var S = parseFloat(sInput.value);
+    var sigma = parseFloat(sigmaInput.value) / 100;
+    var dte = parseFloat(dteInput.value);
+
+    if (!isFinite(S) || !isFinite(sigma) || !isFinite(dte) || S <= 0 || sigma <= 0 || dte <= 0) {
+      tOut.textContent = '—';
+      sigTOut.textContent = '—';
+      gammaOut.textContent = '—';
+      note.textContent = '(enter a positive spot, volatility, and days to expiry)';
+      return;
+    }
+
+    var T = dte / 365;
+    var sigT = sigma * Math.sqrt(T);
+    var gamma = PHI0 / (S * sigT);
+
+    tOut.textContent = T.toFixed(4);
+    sigTOut.textContent = sigT.toFixed(4);
+    gammaOut.textContent = gamma.toFixed(4);
+    note.textContent = '';
+  }
+
+  sInput.addEventListener('input', recompute);
+  sigmaInput.addEventListener('input', recompute);
+  dteInput.addEventListener('input', recompute);
+  resetBtn.addEventListener('click', function(){
+    sInput.value = DEFAULTS.S;
+    sigmaInput.value = DEFAULTS.sigma;
+    dteInput.value = DEFAULTS.dte;
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -833,6 +917,6 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>

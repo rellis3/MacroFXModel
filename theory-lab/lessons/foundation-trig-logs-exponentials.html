@@ -421,6 +421,37 @@
     </p>
   </div>
 
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧪</div>
+    <div class="tl-box-label">Try it yourself</div>
+    <h3>Convert a simple rate to its continuous equivalent, live</h3>
+    <p>
+      Starts on Part 1's exact numbers, a 5% simple annual rate over 1 year.
+      Change either input and the continuous rate \(r_c=\ln(1+R)\)
+      recalculates instantly — and the simple and continuous growth factors
+      stay equal, however \(t\) is changed, exactly because \(r_c\) was
+      defined to make them match.
+    </p>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Simple annual rate \(R\) (%)</span></div>
+        <input type="number" id="fa2-scratch-R" class="tl-scratch-input" value="5" step="0.25">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time \(t\) (years)</span></div>
+        <input type="number" id="fa2-scratch-t" class="tl-scratch-input" value="1" step="0.25">
+      </div>
+    </div>
+    <div class="tl-readout tl-scratch-readout">
+      r<sub>c</sub> = ln(1+R) = <b id="fa2-scratch-rc">4.8790</b>%
+    </div>
+    <div class="tl-readout">
+      Simple factor (1+R)<sup>t</sup> = <b id="fa2-scratch-simple">1.0500</b> &emsp; Continuous factor e<sup>r<sub>c</sub>t</sup> = <b id="fa2-scratch-cont">1.0500</b>
+      <span id="fa2-scratch-note" class="tl-scratch-note"></span>
+    </div>
+    <button type="button" id="fa2-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
+  </div>
+
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
@@ -643,6 +674,50 @@
 </script>
 <script>
 (function(){
+  var DEFAULTS = { R: 5, t: 1 };
+  var fields = ['R', 't'];
+  var inputs = {};
+  fields.forEach(function(f){ inputs[f] = document.getElementById('fa2-scratch-' + f); });
+  if (!inputs.R) return;
+
+  var rcOut = document.getElementById('fa2-scratch-rc');
+  var simpleOut = document.getElementById('fa2-scratch-simple');
+  var contOut = document.getElementById('fa2-scratch-cont');
+  var noteOut = document.getElementById('fa2-scratch-note');
+  var resetBtn = document.getElementById('fa2-scratch-reset');
+
+  function recompute(){
+    var R = parseFloat(inputs.R.value) / 100;
+    var t = parseFloat(inputs.t.value);
+
+    if (!isFinite(R) || !isFinite(t) || R <= -1 || t < 0) {
+      noteOut.textContent = '(R must be above -100% — a growth factor of 1+R can\'t be zero or negative — and t must be non-negative)';
+      rcOut.textContent = '—';
+      simpleOut.textContent = '—';
+      contOut.textContent = '—';
+      return;
+    }
+
+    var rc = Math.log(1 + R);
+    var simpleFactor = Math.pow(1 + R, t);
+    var contFactor = Math.exp(rc * t);
+
+    rcOut.textContent = (rc*100).toFixed(4);
+    simpleOut.textContent = simpleFactor.toFixed(4);
+    contOut.textContent = contFactor.toFixed(4);
+    noteOut.textContent = '';
+  }
+
+  fields.forEach(function(f){ inputs[f].addEventListener('input', recompute); });
+  resetBtn.addEventListener('click', function(){
+    fields.forEach(function(f){ inputs[f].value = DEFAULTS[f]; });
+    recompute();
+  });
+  recompute();
+})();
+</script>
+<script>
+(function(){
   var btn = document.getElementById('eli5-toggle');
   if (!btn) return;
   var KEY = 'theoryLabELI5';
@@ -664,7 +739,7 @@
   });
 })();
 </script>
-<script src="../assets/tts.js" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
 </body>
 </html>
 </content>
