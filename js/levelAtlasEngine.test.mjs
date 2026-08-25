@@ -404,4 +404,81 @@ t('a live touch\'s CONTEXT fields are identical to what a full historical walk c
   assert.ok(checked > 0);
 });
 
+// ── "Pending" (not-yet-touched) snapshots — the live-ticker feature ─────────
+// The whole point of `pending` is that a rung's context, BEFORE it's actually
+// touched, must be computed from the exact same inputs the book itself was
+// built from — otherwise a live "if this touches next, history says X" would
+// be silently comparing apples to oranges. These tests pin that down.
+
+t('pending is empty unless pendingRearmFrac is requested', () => {
+  const { pending } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  assert.deepEqual(pending, [], 'pending must stay empty when the caller never asked for it — zero cost, zero behavior change for the historical book path');
+});
+
+t('pending never overlaps a rung that already has a real touch today, at the requested rearm', () => {
+  const { touches, pending, coverage } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
+  assert.ok(pending.length > 0, 'expected at least one untouched rung on the last day — widen/adjust the fixture if this is ever empty');
+  const touchedToday = new Set(touches.filter(r => r.date === coverage.to && r.rearmFrac === 0.3).map(r => `${r.side}|${r.rung}`));
+  for (const p of pending) {
+    assert.equal(p.date, coverage.to, 'pending must only ever be dated the live day');
+    assert.equal(p.pending, true);
+    assert.equal(p.rearmFrac, 0.3);
+    assert.ok(!touchedToday.has(`${p.side}|${p.rung}`), `pending emitted for ${p.side}/${p.rung} which already has a real touch today — the two must be mutually exclusive`);
+  }
+});
+
+t('pending shares EXACT day-level context with real touches on the same day — the core no-apples-to-oranges guarantee', () => {
+  const { touches, pending, coverage } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
+  const todaysTouches = touches.filter(r => r.date === coverage.to && r.rearmFrac === 0.3);
+  assert.ok(todaysTouches.length > 0 && pending.length > 0, 'need both a real touch AND a pending rung today to compare — adjust the fixture if this ever fails');
+  // These fields are computed ONCE per day, before the side/rung loop even
+  // starts, from data strictly before today — a pending snapshot and a real
+  // touch on the SAME day must read the identical value, no exceptions.
+  const DAY_LEVEL_FIELDS = ['dayVol', 'gapBucket', 'gapSig', 'dow', 'prevCloseLoc', 'ivRegime', 'vrp'];
+  const ref = todaysTouches[0];
+  for (const field of DAY_LEVEL_FIELDS) {
+    for (const p of pending) {
+      assert.equal(p[field], ref[field], `day-level field "${field}" diverged between a pending snapshot and a real touch on the same day (${p[field]} vs ${ref[field]}) — pending is reading different inputs than the book`);
+    }
+  }
+});
+
+t('pending distance fields are internally consistent with level/currentPrice/pip', () => {
+  const { pending } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
+  assert.ok(pending.length > 0);
+  for (const p of pending) {
+    // level and currentPrice are each independently rounded to 6dp in the
+    // engine, so comparing against a distance recomputed from those already-
+    // rounded values can be off by up to ~2 ULPs at the 6th decimal — not a
+    // real inconsistency, just double-rounding. 1e-5 comfortably covers it
+    // while still catching a genuine mismatch (which would be orders larger).
+    const expectedDist = Math.abs(p.level - p.currentPrice);
+    assert.ok(Math.abs(expectedDist - p.distance) < 1e-5, `distance (${p.distance}) doesn't match |level - currentPrice| (${expectedDist})`);
+    assert.ok(Math.abs(expectedDist / p.pip - p.distancePips) < 0.05, `distancePips inconsistent with distance/pip`);
+    assert.ok(p.distancePips >= 0, 'distance cannot be negative');
+    assert.equal(p.ordinal, 1, 'a never-touched-today rung is hypothetically its first test if it touches now');
+  }
+});
+
+t('pending dayVol is stable under truncation (day-level context is unaffected by how much of today has happened)', () => {
+  // Same technique as the atlasLiveToday reuse-consistency test above: a
+  // truncated "now" must not change context that's computed from data
+  // strictly BEFORE today (trailing σ history), only from data within today
+  // itself. dayVol depends on neither today's high/low nor today's time-of-day
+  // — truncating today's session must not move it.
+  const cut = P.n - 300;
+  const truncated = { n: cut, times: P.times.slice(0, cut), opens: P.opens.slice(0, cut),
+                       highs: P.highs.slice(0, cut), lows: P.lows.slice(0, cut),
+                       closes: P.closes.slice(0, cut), volumes: P.volumes.slice(0, cut) };
+  const truncRun = atlasWalk(truncated, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
+  const fullRun = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  assert.ok(truncRun.pending.length > 0, 'expected pending rungs in the truncated run');
+  if (truncRun.coverage.to !== fullRun.coverage.to) return;   // truncation landed on an earlier session date — day-level values legitimately differ, not a divergence
+  const fullSameDay = fullRun.touches.find(r => r.date === truncRun.coverage.to);
+  if (!fullSameDay) return;   // no real touch that day in the full run to compare against
+  for (const p of truncRun.pending) {
+    assert.equal(p.dayVol, fullSameDay.dayVol, `dayVol changed under truncation: ${p.dayVol} (truncated) vs ${fullSameDay.dayVol} (full)`);
+  }
+});
+
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

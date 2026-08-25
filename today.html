@@ -2802,6 +2802,7 @@ async function pollPrices() {
     for (const d of Object.values(brief?.instruments ?? {})) {
       const p = livePriceFor(d);
       if (p != null && p !== d.current_price) { d.current_price = p; changed = true; }
+      if (p != null && d.sym === _atlasSym) updateAtlasDistances(d.sym, p);
     }
     if (changed) { renderSummary(); render(); }
   } catch (e) {}
@@ -2842,6 +2843,7 @@ function _openTodaySse(syms) {
         _todaySseDelay = 3000;
         if (!livePrices) livePrices = {};
         livePrices[d.instrument] = { price: d.price };
+        updateAtlasDistances(d.instrument, d.price);
         let changed = false;
         for (const inst of Object.values(brief?.instruments ?? {})) {
           if (inst.sym !== d.instrument) continue;
@@ -4641,50 +4643,100 @@ function _atlasRow(m) {
     + `(Δ${m.deltaOutIS >= 0 ? '+' : ''}${m.deltaOutIS}pp now-checked / Δ${m.deltaOutOOS >= 0 ? '+' : ''}${m.deltaOutOOS}pp on unseen data, n=${m.n.is}/${m.n.oos})`;
   return `<div class="th-row ${m.favors === 'out' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${esc0(d)}</span></div>`;
 }
+function _atlasMatchBody(m) {
+  if (!m) return `<div class="hint">No historical read stored for this rung/side yet.</div>`;
+  const leanCls = m.lean === 'continuation' ? 'range' : m.lean === 'reversion' ? 'bear' : 'neu';
+  const leanLbl = m.lean === 'continuation' ? 'Leans continuation' : m.lean === 'reversion' ? 'Leans reversion' : 'No clear lean (coin flip)';
+  let html = `<div class="th-top">Base rate: <span class="chip ${leanCls}">${leanLbl}</span> `
+    + `<span class="muted">${m.base.out}% through / ${m.base.back}% back` + (m.base.outOOS != null ? ` (unseen data: ${m.base.outOOS}% / ${m.base.backOOS}%)` : '') + `</span></div>`;
+  if (m.supports.length) html += `<div class="th-grp"><div class="th-h pos">✓ Supports</div>${m.supports.map(_atlasRow).join('')}</div>`;
+  if (m.challenges.length) html += `<div class="th-grp"><div class="th-h neg">✗ Challenges</div>${m.challenges.map(_atlasRow).join('')}</div>`;
+  if (m.context.length) html += `<div class="th-grp"><div class="th-h ctx">• Context (lean itself is a coin flip)</div>${m.context.map(_atlasRow).join('')}</div>`;
+  const net = m.lean === 'neutral' ? 'No historical edge either way at this rung — treat any move from here as a coin flip.'
+    : m.supports.length > m.challenges.length + 1 ? `<b>Well supported</b> — the readings mostly back the ${m.lean} base rate.`
+    : m.challenges.length > m.supports.length ? `<b>Fighting the base rate</b> — more argues against ${m.lean} than for it here.`
+    : `<b>Mixed</b> — real support and real pushback both present.`;
+  html += `<div class="th-net">${net} <span class="muted" style="font-size:10px">Average pullback after a touch: ${m.base.avgPullback}% of the way back.</span></div>`;
+  return html;
+}
+// ── Live pending-level ticker ─────────────────────────────────────────────
+// `live.pending` (js/levelAtlasRoutes.js) is today's NOT-yet-touched rungs,
+// matched against the SAME book as an actual touch — "if price reaches here
+// next, history says X". The context/base-rate half only refreshes with the
+// next /run (recomputing it needs the same walk that builds the book — not
+// cheap enough to do per tick); the DISTANCE half is genuinely live, updated
+// on every price tick via updateAtlasDistances below, piggybacking on the SSE
+// stream this page already has open for the price ticker.
+let _atlasSym = null;      // instrument the currently-rendered pending rows belong to
+let _atlasPending = [];    // [{ side, rung, level, pip }] for live distance updates
+function _fmtDistance(pips, pip) {
+  // Indices/BTC have pip=1 (whole points/dollars); FX/Gold pip is fractional —
+  // "pips" only reads naturally for the latter, so label generically instead.
+  return pip >= 1 ? `${pips.toFixed(1)}pt` : `${pips.toFixed(1)}p`;
+}
+function _atlasPendingRow(p) {
+  const t = p.touch;
+  const sideArrow = t.side === 'up' ? '▲' : '▼';
+  const distId = `atlasDist_${t.side}_${t.rung}`;
+  return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> — `
+    + `<span id="${esc0(distId)}" class="chip neu">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span></div>`
+    + _atlasMatchBody(p.match);
+}
 async function loadDrawerAtlas(r) {
   const sec = $('drAtlasSec'), box = $('drAtlas');
+  _atlasSym = null; _atlasPending = [];
   let j;
   try { j = await jget(`/api/level-atlas/live/${encodeURIComponent(r.name)}`); }
   catch { sec.style.display = 'none'; return; }
   const live = j?.live;
-  if (!j?.ok || !live?.touches?.length) { sec.style.display = 'none'; return; }
+  if (!j?.ok || (!live?.touches?.length && !live?.pending?.length)) { sec.style.display = 'none'; return; }
 
-  const rows = live.touches;
-  const primary = rows[rows.length - 1];   // most recent touch — the one still relevant
-  const earlier = rows.slice(0, -1);
-  const t = primary.touch, m = primary.match;
-  const sideArrow = t.side === 'up' ? '▲' : '▼';
-  const ord = t.ordinal === 1 ? '1st test today' : t.ordinal === 2 ? '2nd test today' : t.ordinal === 3 ? '3rd test today' : `${t.ordinal}th test today`;
-  const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})`;
-
-  let html = `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> touched — ${esc0(ord)}, ${esc0(timeStr)}`
-    + (t.outcome && t.outcome !== 'neither' ? ` <span class="muted">(went ${t.outcome === 'out' ? 'through' : 'back'})</span>` : ' <span class="muted">(unresolved — still live)</span>')
-    + `</div>`;
-
-  if (!m) {
-    html += `<div class="hint">No historical read stored for this rung/side yet.</div>`;
-  } else {
-    const leanCls = m.lean === 'continuation' ? 'range' : m.lean === 'reversion' ? 'bear' : 'neu';
-    const leanLbl = m.lean === 'continuation' ? 'Leans continuation' : m.lean === 'reversion' ? 'Leans reversion' : 'No clear lean (coin flip)';
-    html += `<div class="th-top">Base rate: <span class="chip ${leanCls}">${leanLbl}</span> `
-      + `<span class="muted">${m.base.out}% through / ${m.base.back}% back` + (m.base.outOOS != null ? ` (unseen data: ${m.base.outOOS}% / ${m.base.backOOS}%)` : '') + `</span></div>`;
-    if (m.supports.length) html += `<div class="th-grp"><div class="th-h pos">✓ Supports</div>${m.supports.map(_atlasRow).join('')}</div>`;
-    if (m.challenges.length) html += `<div class="th-grp"><div class="th-h neg">✗ Challenges</div>${m.challenges.map(_atlasRow).join('')}</div>`;
-    if (m.context.length) html += `<div class="th-grp"><div class="th-h ctx">• Context (lean itself is a coin flip)</div>${m.context.map(_atlasRow).join('')}</div>`;
-    const net = m.lean === 'neutral' ? 'No historical edge either way at this rung — treat any move from here as a coin flip.'
-      : m.supports.length > m.challenges.length + 1 ? `<b>Well supported</b> — the readings mostly back the ${m.lean} base rate.`
-      : m.challenges.length > m.supports.length ? `<b>Fighting the base rate</b> — more argues against ${m.lean} than for it here.`
-      : `<b>Mixed</b> — real support and real pushback both present.`;
-    html += `<div class="th-net">${net} <span class="muted" style="font-size:10px">Average pullback after a touch: ${m.base.avgPullback}% of the way back.</span></div>`;
+  let html = '';
+  const rows = live.touches ?? [];
+  if (rows.length) {
+    const primary = rows[rows.length - 1];   // most recent touch — the one still relevant
+    const earlier = rows.slice(0, -1);
+    const t = primary.touch;
+    const sideArrow = t.side === 'up' ? '▲' : '▼';
+    const ord = t.ordinal === 1 ? '1st test today' : t.ordinal === 2 ? '2nd test today' : t.ordinal === 3 ? '3rd test today' : `${t.ordinal}th test today`;
+    const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})`;
+    html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> touched — ${esc0(ord)}, ${esc0(timeStr)}`
+      + (t.outcome && t.outcome !== 'neither' ? ` <span class="muted">(went ${t.outcome === 'out' ? 'through' : 'back'})</span>` : ' <span class="muted">(unresolved — still live)</span>')
+      + `</div>` + _atlasMatchBody(primary.match);
+    if (earlier.length) {
+      const line = earlier.map(({ touch: e }) => `${e.side === 'up' ? '▲' : '▼'}${e.rung} ${String(e.hourUtc).padStart(2, '0')}:${String(e.minute).padStart(2, '0')} (${e.outcome === 'out' ? 'through' : e.outcome === 'back' ? 'back' : 'unresolved'})`).join(', ');
+      html += `<div class="hint">Earlier today: ${esc0(line)}</div>`;
+    }
   }
 
-  if (earlier.length) {
-    const line = earlier.map(({ touch: e }) => `${e.side === 'up' ? '▲' : '▼'}${e.rung} ${String(e.hourUtc).padStart(2, '0')}:${String(e.minute).padStart(2, '0')} (${e.outcome === 'out' ? 'through' : e.outcome === 'back' ? 'back' : 'unresolved'})`).join(', ');
-    html += `<div class="hint">Earlier today: ${esc0(line)}</div>`;
+  // Nearest untouched rung PER SIDE — pending is emitted in rung order
+  // (p50/p75/p90), so the first entry per side is always the closest one.
+  const pending = live.pending ?? [];
+  const nearestUp = pending.find(p => p.touch.side === 'up');
+  const nearestDown = pending.find(p => p.touch.side === 'down');
+  const nearest = [nearestUp, nearestDown].filter(Boolean);
+  if (nearest.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Approaching (not yet touched today)</div>`
+      + nearest.map(_atlasPendingRow).join('');
+    _atlasSym = r.d.sym;
+    _atlasPending = nearest.map(p => ({ side: p.touch.side, rung: p.touch.rung, level: p.touch.level, pip: p.touch.pip }));
   }
 
   box.innerHTML = html;
   sec.style.display = 'block';
+}
+// Called on every live price tick (SSE) for whichever pair the drawer has
+// open — recomputes ONLY the distance text for the pending rows already
+// rendered above, no server round-trip, no full re-render. The base-rate
+// verdict underneath stays as of the last /run; only "how far away" is live.
+function updateAtlasDistances(sym, price) {
+  if (!_atlasSym || sym !== _atlasSym || !_atlasPending.length || price == null) return;
+  for (const p of _atlasPending) {
+    const el = document.getElementById(`atlasDist_${p.side}_${p.rung}`);
+    if (!el) continue;
+    const distPips = Math.abs(p.level - price) / (p.pip || 1);
+    el.textContent = `${_fmtDistance(distPips, p.pip)} away`;
+  }
 }
 
 async function loadDrawerThesis(r) {

@@ -61,7 +61,7 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
   }
   const assetClass = assetClassFor(pair);
   onLog(`${sym}: ${packed.n.toLocaleString()} M1 bars, assetClass ${assetClass} — walking the ladder…`);
-  const { touches, coverage } = atlasWalk(packed, { instrument: sym, assetClass, rearmFracs });
+  const { touches, pending, coverage } = atlasWalk(packed, { instrument: sym, assetClass, rearmFracs, pendingRearmFrac: DEFAULT_REARM });
   onLog(`${sym}: ${touches.length.toLocaleString()} touch-records, ${coverage?.sessions ?? 0} sessions (${coverage?.from}→${coverage?.to})`);
 
   const books = {}, cards = {};
@@ -90,12 +90,20 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
     ? touches.filter(t => t.rearmFrac === DEFAULT_REARM && t.date === liveDate)
         .map(t => ({ touch: t, match: matchLiveContext(liveBook, t) }))
     : [];
+  // Rungs NOT yet touched today (`atlasWalk`'s `pending`, computed only for the
+  // live day) — same match against the same book, so a UI can show "if price
+  // reaches here next, history says X" for a level price hasn't hit yet, not
+  // only for ones it already has. Distance fields ride along so the client can
+  // render "N pips away" without a second lookup.
+  const pendingTouches = (liveDate && liveBook)
+    ? (pending ?? []).map(t => ({ touch: t, match: matchLiveContext(liveBook, t) }))
+    : [];
 
   const result = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
     defaultRearm: DEFAULT_REARM, rearmFracs,
     books, cards, sessionTransitions,
-    live: { date: liveDate, touches: liveTouches },
+    live: { date: liveDate, touches: liveTouches, pending: pendingTouches },
     // Raw touches are NOT persisted (large; the aggregated book is the product) —
     // re-run to regenerate them if a future dimension needs re-aggregating.
   };
@@ -169,7 +177,7 @@ export function mountLevelAtlasRoutes(app, express) {
       const pair = String(req.params.instrument).toLowerCase();
       const stored = await getJSON(`${PREFIX}/${pair}.json`);
       if (!stored) return res.status(404).json({ ok: false, error: `no atlas data for ${req.params.instrument} yet — POST /api/level-atlas/run first` });
-      res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, live: stored.live ?? { date: null, touches: [] } });
+      res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, live: stored.live ?? { date: null, touches: [], pending: [] } });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -139,7 +139,7 @@ export const REARM_FRACS = [0.15, 0.30, 0.50];
  */
 export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                      minLookback = 60, htfMinBars, structural = true, confLookback = 5,
-                                     ivByDate = null } = {}) {
+                                     ivByDate = null, pendingRearmFrac = null } = {}) {
   const sym = String(instrument).toUpperCase();
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
   const dates = [...sessions.keys()].sort().filter(d => (sessions.get(d)?.length ?? 0) >= 200);
@@ -165,6 +165,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
   const lastVisit = {};
 
   const touches = [];
+  const pending = [];
   for (let i = minLookback; i < dates.length; i++) {
     const date = dates[i];
     const bars = sessions.get(date);
@@ -492,8 +493,103 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
         }
       }
     }
+
+    // ── "Pending" snapshot — rungs NOT YET touched today, so a live view can
+    // show "if price reaches here next, history says X" BEFORE it happens, not
+    // just after. Deliberately reuses every context input already computed
+    // above for this day (sigma, dayVol, ivRegime, confLevels, lvBySide,
+    // firstTouchBySide) rather than recomputing anything a second way — the
+    // whole point is these are the SAME numbers the book itself was built
+    // from, or matchLiveContext would be comparing apples to oranges. Only
+    // meaningful — and only computed — on the LAST day of whatever history was
+    // supplied (the live/in-progress day); every earlier day is fully resolved
+    // by definition, so "pending" wouldn't mean anything there.
+    if (pendingRearmFrac != null && i === dates.length - 1) {
+      const bar = bars[bars.length - 1];
+      for (const side of SIDES) {
+        const isUp = side === 'up';
+        const lv = lvBySide[side]; if (!lv) continue;
+        const otherSide = isUp ? 'down' : 'up';
+        for (let ri = 0; ri < RUNGS.length; ri++) {
+          const rung = RUNGS[ri];
+          // Rearm-independent: a rung already touched at least once today
+          // (even if since resolved and re-armed) already has a real record
+          // — showing a synthetic "pending" alongside it would just be
+          // confusing, so pending is only for a rung untouched all day.
+          if (firstTouchBySide[side]?.[rung] != null) continue;
+          const here = lv[ri + 1];
+
+          const totalTravel = d1[i].high - d1[i].low;
+          const dirTravel = isUp ? (d1[i].high - open) : (open - d1[i].low);
+          const churnRatio = totalTravel > 0 ? Math.min(1, Math.max(0, dirTravel / totalTravel)) : null;
+          const churn = churnRatio == null ? null : churnRatio >= 0.80 ? '3·driven' : churnRatio >= 0.55 ? '2·mixed' : '1·churned';
+          const feats = tf.compute({ bars, touchIdx: bars.length - 1, open, sigma, side: isUp ? 'up' : 'dn', wt1, level: here, pip, confLevels });
+          const minsIntoSession = (bar.time - bars[0].time) / 60;
+          const minsRemaining = sessionSpanMins - minsIntoSession;
+          const sessionFrac = sessionSpanMins > 0 ? minsIntoSession / sessionSpanMins : null;
+          const sessionPos = sessionFrac == null ? null : sessionFrac < 0.33 ? '1·early' : sessionFrac < 0.67 ? '2·mid' : '3·late';
+          const touchSession = sessionOf(new Date(bar.time * 1000).getUTCHours());
+          const asiaVolSafe   = (touchSession === 'London' || touchSession === 'NY') ? asiaVolCandidate?.bucket ?? null : null;
+          const londonVolSafe = (touchSession === 'NY') ? londonVolCandidate?.bucket ?? null : null;
+          const otherFirst = firstTouchBySide[otherSide]?.[rung] ?? null;
+          const otherSideTouchedBefore = otherFirst != null ? (otherFirst < bar.time) : false;
+          const ivSkewDir = (() => {
+            if (!ivYesterday || !Number.isFinite(ivYesterday.skew)) return null;
+            const oriented = isUp ? ivYesterday.skew : -ivYesterday.skew;
+            return Math.abs(oriented) < 0.15 ? '2·neutral' : oriented > 0 ? '3·with' : '1·against';
+          })();
+          const key = `${side}|${rung}|${pendingRearmFrac}`;
+          const hist = lastVisit[key] ?? [];
+          const prev = hist.at(-1) ?? null;
+          const daysSincePrevN = prev ? (i - prev.dayIdx) : null;
+          const rollOut = hist.filter(h => h.outcome === 'out').length;
+          const rollBack = hist.filter(h => h.outcome === 'back').length;
+          const rollingRate = hist.length >= 3
+            ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
+            : null;
+          const dist = Math.abs(bar.close - here);
+
+          pending.push({
+            instrument: sym, assetClass, date, side, rung, rearmFrac: pendingRearmFrac,
+            pending: true, ordinal: 1,
+            hourUtc: new Date(bar.time * 1000).getUTCHours(),
+            minute: new Date(bar.time * 1000).getUTCMinutes(),
+            minsIntoSession: +minsIntoSession.toFixed(0),
+            minsRemaining: +minsRemaining.toFixed(0),
+            sessionPos, session: touchSession,
+            dowSession: `${dow}|${touchSession}`, dow,
+            gapBucket, gapSig: +gapSig.toFixed(3),
+            dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe,
+            churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
+            otherSideTouchedBefore,
+            level: +here.toFixed(6), pip,
+            distance: +dist.toFixed(6), distancePips: +(dist / pip).toFixed(1),
+            distancePct: bar.close > 0 ? +(dist / bar.close * 100).toFixed(3) : null,
+            currentPrice: +bar.close.toFixed(6),
+            approachVel: feats.approachVel?.bucket ?? null,
+            approachER: feats.approachER?.bucket ?? null,
+            wtState: feats.wtState?.bucket ?? null,
+            wtMtf: feats.wtMtf?.bucket ?? null,
+            wtSlow: feats.wtSlow?.bucket ?? null,
+            vwapSide: feats.vwapSide?.bucket ?? null,
+            momAdx: feats.momAdx?.bucket ?? null,
+            confluence: feats.confluence?.bucket ?? null,
+            candleReject: feats.candleReject?.bucket ?? null,
+            htfTrend: feats.htfTrend?.bucket ?? null,
+            volClimax: feats.volClimax?.bucket ?? null,
+            roundNum: feats.roundNum?.bucket ?? null,
+            prevCloseLoc, ivRegime, vrp, ivSkewDir,
+            overlapWindow: (new Date(bar.time * 1000).getUTCHours() >= 12 && new Date(bar.time * 1000).getUTCHours() < 16),
+            prevOutcome: prev?.outcome ?? null,
+            prevOutcomeSameDay: (daysSincePrevN === 0 && prev?.outcome !== 'neither') ? prev.outcome : null,
+            prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+            rollingRate,
+          });
+        }
+      }
+    }
   }
-  return { touches, coverage: { from: dates[minLookback], to: dates.at(-1), sessions: dates.length, estimator: est } };
+  return { touches, pending, coverage: { from: dates[minLookback], to: dates.at(-1), sessions: dates.length, estimator: est } };
 }
 
 /**
@@ -531,8 +627,8 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
  *          date, coverage }
  */
 export function atlasLiveToday(packed, opts = {}) {
-  const { touches, coverage } = atlasWalk(packed, { ...opts, rearmFracs: [opts.rearmFrac ?? 0.3] });
+  const { touches, pending, coverage } = atlasWalk(packed, { ...opts, rearmFracs: [opts.rearmFrac ?? 0.3] });
   const lastDate = coverage?.to ?? null;
   const today = lastDate ? touches.filter(t => t.date === lastDate) : [];
-  return { touches: today, date: lastDate, coverage };
+  return { touches: today, pending: pending ?? [], date: lastDate, coverage };
 }
