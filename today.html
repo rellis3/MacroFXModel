@@ -4481,7 +4481,7 @@ async function loadDrawerSessionPath(r) {
   const live = j?.live;
   if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
 
-  const rowsHtml = live.rows.map(({ row, match, typicalPct }) => {
+  const rowsHtml = live.rows.map(({ row, match, typicalPct, firstRow, firstMatch }) => {
     const sideArrow = row.side === 'up' ? '▲' : '▼';
     const timeStr = `${String(row.checkpointHour).padStart(2, '0')}:00 since session start`;
     const shapeTxt = `${esc0(_plainVal('shape', row.shape) ?? row.shape)}, ${esc0(_plainVal('progress', row.progress) ?? row.progress)}`;
@@ -4495,11 +4495,20 @@ async function loadDrawerSessionPath(r) {
     const v = lift != null && lift >= 8 ? { cls: 'range', color: 'var(--bull,#22c55e)', label: '↗ Boosted odds of reaching it' }
       : lift != null && lift <= -8 ? { cls: 'bear', color: 'var(--bear,#ef4444)', label: '↘ Reduced odds of reaching it' }
       : { cls: 'neu', color: 'var(--muted,#64748b)', label: '🪙 About a typical day' };
+    // "Since [first checkpoint today]" — the "has this morning's setup held
+    // up or faded" comparison. Only shown once a SECOND, later checkpoint
+    // has actually fired for this rung today (firstRow is null otherwise —
+    // nothing to compare against yet).
+    const sinceHtml = (firstRow && firstMatch)
+      ? `<div class="muted" style="font-size:10px;margin:2px 0 4px">Since ${String(firstRow.checkpointHour).padStart(2, '0')}:00: `
+        + `${esc0(_plainVal('shape', firstRow.shape) ?? firstRow.shape)} (${firstMatch.base.is}%) → now ${esc0(_plainVal('shape', row.shape) ?? row.shape)} (${base.is}%)</div>`
+      : '';
     // Callout box, styled distinctly (not just another th-top row) — the ONE
     // thing meant to be readable at a glance without opening "Why?".
     let html = `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
       + `<div class="th-top" style="margin:0">${sideArrow} <b>${esc0(row.rung)}</b> band <span class="muted" style="font-size:10px">— as of ${esc0(timeStr)}</span></div>`
       + `<div class="th-row" style="padding:2px 0"><span class="th-d">${shapeTxt}</span></div>`
+      + sinceHtml
       + `<div class="chip ${v.cls}" style="margin-top:4px;display:inline-block">${v.label}</div>`
       + _sessPathBar('Typical day', typicalPct, 'var(--muted,#64748b)')
       + _sessPathBar("Given today's shape", base.is, v.color)

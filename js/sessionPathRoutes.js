@@ -103,19 +103,32 @@ function boundPacked(packed, days) {
 // Today's LATEST checkpoint per (side, rung) — sessionPathWalk already only
 // emits a checkpoint once it's been reached, so the last one emitted per key
 // IS "as of now". Reused as-is, not a second implementation.
+//
+// ALSO keeps the EARLIEST checkpoint of the day per key, as `firstRow` — the
+// engine already walks every checkpoint hour (4,5,6,...,20), but a first
+// draft of this function threw all but the latest one away, which silently
+// discarded exactly the "was strong at 7am, has since faded" comparison a
+// live view actually needs (a real gap, not a different philosophy from a
+// tool that DOES show this — the data was already there, just not surfaced).
 function computeLiveRows(pair, packed) {
   const sym = pair.toUpperCase();
   const assetClass = assetClassFor(pair);
   const { rows, coverage } = sessionPathWalk(packed, { instrument: sym, assetClass });
   const liveDate = coverage?.to ?? null;
   const today = liveDate ? rows.filter(r => r.date === liveDate) : [];
-  const latestByKey = new Map();
+  const latestByKey = new Map(), firstByKey = new Map();
   for (const r of today) {
     const k = `${r.side}|${r.rung}`;
     const cur = latestByKey.get(k);
     if (!cur || r.checkpointHour > cur.checkpointHour) latestByKey.set(k, r);
+    const first = firstByKey.get(k);
+    if (!first || r.checkpointHour < first.checkpointHour) firstByKey.set(k, r);
   }
-  return { date: liveDate, rows: [...latestByKey.values()] };
+  const out = [...latestByKey.entries()].map(([k, row]) => {
+    const first = firstByKey.get(k);
+    return { ...row, firstRow: first && first.checkpointHour !== row.checkpointHour ? first : null };
+  });
+  return { date: liveDate, rows: out };
 }
 
 async function coldStartLiveCache(pair) {
@@ -210,7 +223,15 @@ export function mountSessionPathRoutes(app, express) {
       let chain = null;
       try { chain = ladderPathChain(pair.toUpperCase(), { assetClass: stored?.assetClass ?? 'fx' }); } catch (e) {}
       const typicalPct = (side, rung) => chain?.[side === 'up' ? 'oh' : 'ol']?.reach?.[rung] ?? null;
-      const matched = live.rows.map(r => ({ row: r, match: book ? matchSessionPath(book, r) : null, typicalPct: typicalPct(r.side, r.rung) }));
+      // `firstRow` (see computeLiveRows) is the day's EARLIEST checkpoint for
+      // this rung, if it differs from the latest — matched against the SAME
+      // book so the UI can show "at 07:00: X% -> now: Y%", the "has this
+      // morning's setup held up or faded" comparison a checkpoint-hour walk
+      // is uniquely placed to answer but wasn't previously surfacing.
+      const matched = live.rows.map(r => ({
+        row: r, match: book ? matchSessionPath(book, r) : null, typicalPct: typicalPct(r.side, r.rung),
+        firstRow: r.firstRow, firstMatch: r.firstRow && book ? matchSessionPath(book, r.firstRow) : null,
+      }));
       res.json({ ok: true, instrument: pair.toUpperCase(), warming: false, bookGeneratedAt: stored?.generatedAt ?? null, live: { date: live.date, rows: matched } });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
