@@ -45,6 +45,13 @@ t('sessionPathWalk runs end-to-end on synthetic data and returns rows', () => {
     assert.ok(CHECKPOINT_HOURS.includes(r.checkpointHour));
     assert.equal(typeof r.reachedLater, 'boolean');
     assert.ok(r.peakFrac < 1, 'a row with peakFrac >= 1 (already reached) must have been excluded');
+    assert.ok(r.peakElapsedHrs >= 0 && r.peakElapsedHrs <= r.checkpointHour,
+      `peakElapsedHrs (${r.peakElapsedHrs}) must sit between session start and this row's own checkpoint (${r.checkpointHour}) — it can't be in the future relative to the checkpoint that reports it`);
+    // Real price fields (added so the UI can show actual levels, not just
+    // percentages) — sanity-check internal consistency, not exact values.
+    assert.ok(r.open > 0 && r.level > 0 && r.currentPrice > 0, 'open/level/currentPrice must all be real positive prices');
+    const dist = r.side === 'up' ? (r.level - r.open) : (r.open - r.level);
+    assert.ok(dist > 0, 'level must sit on the correct side of open for its own side');
   }
 });
 
@@ -70,6 +77,7 @@ t('progress/peak reads are causal — perturbing bars AFTER a checkpoint must no
     checked++;
     assert.equal(ra.progressFrac, rb.progressFrac, `progressFrac leaked a future perturbation on ${ra.date}`);
     assert.equal(ra.peakFrac, rb.peakFrac, `peakFrac leaked a future perturbation on ${ra.date}`);
+    assert.equal(ra.peakElapsedHrs, rb.peakElapsedHrs, `peakElapsedHrs leaked a future perturbation on ${ra.date}`);
     assert.equal(ra.reachedLater, rb.reachedLater, `reachedLater outcome changed on ${ra.date} from a perturbation strictly in the future relative to THAT day`);
   }
   assert.ok(checked > 50, `too few comparable rows to trust the result (${checked})`);
@@ -148,6 +156,17 @@ t('shape bucket correctly distinguishes a still-extending day from a faded-from-
   assert.equal(extRow.shape, '2·extending', `got ${extRow.shape} (progress=${extRow.progressFrac}, peak=${extRow.peakFrac})`);
   assert.equal(pbRow.shape, '3·pulled-back', `got ${pbRow.shape} (progress=${pbRow.progressFrac}, peak=${pbRow.peakFrac})`);
   assert.equal(drRow.shape, '4·deep-reversal', `got ${drRow.shape} (progress=${drRow.progressFrac}, peak=${drRow.peakFrac})`);
+  // The peak in this fixture is placed at frac=0.08 of the session — real
+  // elapsed hours is (0.08 * nDay minutes) / 60, NOT the checkpoint hour (10)
+  // that happens to be reporting it. This is the exact bug a real user
+  // caught on live data: the checkpoint is a sampling grid, not the event
+  // time, and reporting the checkpoint's own hour as "when it peaked" is
+  // wrong whenever the peak sits well before the checkpoint that observes it
+  // (as it does here, and as it did in the real GOLD example that surfaced this).
+  const expectedPeakHrs = (0.08 * nDay) / 60;
+  assert.ok(Math.abs(drRow.peakElapsedHrs - expectedPeakHrs) < 0.5,
+    `peakElapsedHrs should reflect the ACTUAL peak time (~${expectedPeakHrs.toFixed(2)}h), not the checkpoint hour (10) — got ${drRow.peakElapsedHrs}`);
+  assert.ok(drRow.peakElapsedHrs < drRow.checkpointHour - 2, 'sanity: this fixture\'s peak is deliberately well before the checkpoint that reports it');
   assert.equal(drRow.progressFrac, 0, 'the deep-reversal fixture returns fully to the open before the checkpoint — current progress should read as zero');
   // None of the three fixtures' ramps actually cross the band by day's end
   // (peak tops out well under 1 for all three) — reachedLater must
