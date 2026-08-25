@@ -4965,11 +4965,34 @@ function _fmtDistance(pips, pip) {
   // "pips" only reads naturally for the latter, so label generically instead.
   return pip >= 1 ? `${pips.toFixed(1)}pt` : `${pips.toFixed(1)}p`;
 }
+// "upside"/"downside" instead of a bare ▲/▼ — the arrow alone is easy to miss
+// on mobile, and was the direct cause of a real "why is there a p50 above AND
+// a p50 below" confusion: they're two DIFFERENT bands (the O-H and O-L legs
+// of the same rung), not a duplicate.
+function _atlasSideWord(side) { return side === 'up' ? 'upside' : 'downside'; }
+// How long ago a TOUCHED record's own timestamp was, relative to right now —
+// without this, "In the London session" (a touch's OWN context, frozen at
+// the moment it happened) sits next to "In the Asia session" (an approaching
+// line's context, evaluated right now) with nothing to explain why they can
+// legitimately differ: they're two different POINTS IN TIME, not a
+// contradiction. `date` is the touch's own session date (`live.date`).
+function _atlasAgoStr(date, hourUtc, minute) {
+  if (date == null || hourUtc == null) return '';
+  const t = Date.parse(`${date}T${String(hourUtc).padStart(2, '0')}:${String(minute ?? 0).padStart(2, '0')}:00Z`);
+  if (!Number.isFinite(t)) return '';
+  const mins = Math.round((Date.now() - t) / 60000);
+  if (mins < 0 || mins > 1440) return '';   // don't show a nonsense/huge "ago" for clock skew or a stale date
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+}
 function _atlasPendingRow(p, opts = {}) {
   const t = p.touch;
   const sideArrow = t.side === 'up' ? '▲' : '▼';
   const distId = `atlasDist_${t.side}_${t.rung}`;
-  return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> — `
+  const dp = opts.dp ?? 5;
+  const priceStr = t.level != null ? ` at <b>${esc0(fmtN(t.level, dp))}</b>` : '';
+  return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))})${priceStr} — `
     + `<span id="${esc0(distId)}" class="chip neu">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span></div>`
     + _atlasMatchBody(p.match, t, opts);
 }
@@ -5012,6 +5035,7 @@ async function loadDrawerAtlas(r) {
   _atlasSym = null; _atlasPending = [];
   const live = j?.live;
   if (!j?.ok || (!live?.touches?.length && !live?.pending?.length)) { sec.style.display = 'none'; return; }
+  const dp = r.d?.dp ?? 5;
 
   let html = '';
   const headlineCandidates = [];
@@ -5023,10 +5047,12 @@ async function loadDrawerAtlas(r) {
     const sideArrow = t.side === 'up' ? '▲' : '▼';
     headlineCandidates.push({ label: `${sideArrow}${esc0(t.rung)} (touched today)`, match: primary.match });
     const ord = t.ordinal === 1 ? '1st test today' : t.ordinal === 2 ? '2nd test today' : t.ordinal === 3 ? '3rd test today' : `${t.ordinal}th test today`;
-    const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})`;
-    html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> touched — ${esc0(ord)}, ${esc0(timeStr)}`
+    const ago = _atlasAgoStr(live.date, t.hourUtc, t.minute);
+    const timeStr = `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} UTC (${t.session})${ago ? `, ${ago}` : ''}`;
+    const priceStr = t.level != null ? ` at <b>${esc0(fmtN(t.level, dp))}</b>` : '';
+    html += `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))})${priceStr} touched — ${esc0(ord)}, ${esc0(timeStr)}`
       + (t.outcome && t.outcome !== 'neither' ? ` <span class="muted">(went ${t.outcome === 'out' ? 'through' : 'back'})</span>` : ' <span class="muted">(unresolved — still live)</span>')
-      + `</div>` + _atlasMatchBody(primary.match, t, { rightNowHeading: 'At that touch' });
+      + `</div>` + _atlasMatchBody(primary.match, t, { rightNowHeading: 'Conditions AT that touch (history, not live)' });
     if (earlier.length) {
       const line = earlier.map(({ touch: e }) => `${e.side === 'up' ? '▲' : '▼'}${e.rung} ${String(e.hourUtc).padStart(2, '0')}:${String(e.minute).padStart(2, '0')} (${e.outcome === 'out' ? 'through' : e.outcome === 'back' ? 'back' : 'unresolved'})`).join(', ');
       html += `<div class="hint">Earlier today: ${esc0(line)}</div>`;
@@ -5055,14 +5081,24 @@ async function loadDrawerAtlas(r) {
     // rung, is the fix for the other half of the redundancy: repeating an
     // identical VWAP/VuManChu/session readout 2-3 times over said nothing
     // extra, it just made "which level actually matters" harder to see.
-    html += `<div class="th-h ctx" style="margin-top:6px">Approaching (not yet touched today)</div>`
+    const curPrice = nearest[0].touch.currentPrice;
+    const curPriceStr = curPrice != null ? ` <span class="muted" style="font-weight:normal">— price now <b>${esc0(fmtN(curPrice, dp))}</b></span>` : '';
+    html += `<div class="th-h ctx" style="margin-top:6px">👉 Approaching (not yet touched — this is the one to watch)${curPriceStr}</div>`
       + _rightNowPanel(nearest[0].touch)
-      + nearest.map(p => _atlasPendingRow(p, { skipRightNow: true })).join('');
+      + nearest.map(p => _atlasPendingRow(p, { skipRightNow: true, dp })).join('');
     _atlasSym = r.d.sym;
     _atlasPending = nearest.map(p => ({ side: p.touch.side, rung: p.touch.rung, level: p.touch.level, pip: p.touch.pip }));
   }
 
-  box.innerHTML = (headlineCandidates.length ? _atlasHeadline(headlineCandidates) : '') + html;
+  // Only worth spelling out when BOTH a past touch AND an approaching line
+  // are shown together — that's exactly the layout that reads as
+  // contradictory ("London session" next to "Asia session") without this,
+  // because the two sections describe two different POINTS IN TIME, not the
+  // same moment. A single-section render doesn't need it.
+  const legend = (rows.length && nearest.length)
+    ? `<div class="hint" style="margin-bottom:4px">The first block below is a record of what already happened today (for context, not live) — the "👉 Approaching" block is the untouched line still ahead, evaluated right now. That's the one worth watching.</div>`
+    : '';
+  box.innerHTML = legend + (headlineCandidates.length ? _atlasHeadline(headlineCandidates) : '') + html;
   sec.style.display = 'block';
 }
 // Called on every live price tick (SSE) for whichever pair the drawer has
