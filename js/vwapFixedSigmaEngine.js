@@ -86,6 +86,51 @@ function median(arr) {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
+// ── Shared day-grouping: packed M1 → UTC-day sessions with volume ───────────
+// (barUtils.extractBars deliberately drops volume; the VWAP needs it.)
+// Exported so downstream engines (vwapImpulseEntryV1Engine) group days the
+// EXACT same way — a drifted day boundary would silently desync their bands.
+export function groupUtcDays(packed, minBarsPerDay = DEFAULT_CFG?.minBarsPerDay ?? 200) {
+  const { n, times, opens, highs, lows, closes, volumes } = packed;
+  const days = [];
+  let cur = null;
+  for (let i = 0; i < n; i++) {
+    const dStart = times[i] - (times[i] % DAY);
+    if (!cur || cur.dayStart !== dStart) { cur = { dayStart: dStart, bars: [] }; days.push(cur); }
+    cur.bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i],
+                    close: closes[i], volume: volumes ? volumes[i] : 1 });
+  }
+  return days.filter(d => d.bars.length >= minBarsPerDay);
+}
+
+/**
+ * The fixed σ each session would trade with, per date — THE band unit, exported
+ * so any trade-level engine uses the identical number the atlas recorded (an
+ * equivalence test in vwapFixedSigmaEngine.test.mjs pins them together).
+ *
+ *   computeFixedSigmaByDate(packed, cfg?) -> Map('YYYY-MM-DD' -> fixedSigma)
+ *
+ * Same no-lookahead contract as the walk: a session's own RMS is banked
+ * strictly AFTER that session; dates without enough history are absent.
+ */
+export function computeFixedSigmaByDate(packed, opts = {}) {
+  const cfg = { ...DEFAULT_CFG, ...opts };
+  const out = new Map();
+  const rmsAll = [];
+  for (const { bars } of groupUtcDays(packed, cfg.minBarsPerDay)) {
+    const date = isoDay(bars[0].time);
+    const { vwap } = computeSessionVwap(bars);
+    if (rmsAll.length >= cfg.minHistory) {
+      const histWin = rmsAll.slice(-cfg.historySessions);
+      const fs = cfg.useMedian ? median(histWin) : histWin.reduce((s, v) => s + v, 0) / histWin.length;
+      if (fs != null && fs > 0) out.set(date, fs);
+    }
+    const rms = sessionRmsFromVwap(bars, vwap);
+    if (rms != null && rms > 0) rmsAll.push(rms);
+  }
+  return out;
+}
+
 // One session's RMS deviation of hlc3 from its own RUNNING VWAP — the exact
 // per-session statistic the reference Pine study banks
 // (sqrt(mean((src - sessionVWAP)^2)), src read against the developing VWAP).
@@ -122,18 +167,8 @@ export function fixedSigmaWalk(packed, opts = {}) {
   const sym = String(instrument).toUpperCase();
   let pip = 1; try { pip = pipSize(instrument) || 1; } catch { /* raw price units */ }
 
-  // ── Group packed M1 into UTC-day sessions (bars carry volume — the VWAP
-  // needs it; barUtils.extractBars deliberately drops it). ──────────────────
-  const { n, times, opens, highs, lows, closes, volumes } = packed;
-  const days = [];   // [{ dayStart, bars: [{time,open,high,low,close,volume}] }]
-  let cur = null;
-  for (let i = 0; i < n; i++) {
-    const dStart = times[i] - (times[i] % DAY);
-    if (!cur || cur.dayStart !== dStart) { cur = { dayStart: dStart, bars: [] }; days.push(cur); }
-    cur.bars.push({ time: times[i], open: opens[i], high: highs[i], low: lows[i],
-                    close: closes[i], volume: volumes ? volumes[i] : 1 });
-  }
-  const full = days.filter(d => d.bars.length >= cfg.minBarsPerDay);
+  // Shared UTC-day grouping (bars carry volume — the VWAP needs it).
+  const full = groupUtcDays(packed, cfg.minBarsPerDay);
 
   // Feature pack: HTF context once over the FULL packed history (a 4h
   // WaveTrend needs weeks of warm-up), per-day M1 WaveTrend below.

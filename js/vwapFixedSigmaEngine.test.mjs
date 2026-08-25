@@ -12,7 +12,7 @@
  * Run: node js/vwapFixedSigmaEngine.test.mjs
  */
 
-import { fixedSigmaWalk, sessionRmsFromVwap, DEFAULT_CFG } from './vwapFixedSigmaEngine.js';
+import { fixedSigmaWalk, sessionRmsFromVwap, computeFixedSigmaByDate, DEFAULT_CFG } from './vwapFixedSigmaEngine.js';
 import { computeSessionVwap } from './vwapReversionEngine.js';
 
 let failures = 0;
@@ -170,6 +170,31 @@ console.log('4. Session isolation: ordinals/state reset daily');
   assert(f1.length >= 1 && f2.length >= 1, 'both ramp days registered a +1σ touch');
   assert(f1[0]?.ordinal === 1 && f2[0]?.ordinal === 1, 'ordinal resets to 1 on the new session');
   assert(f2[0]?.ladderStep === '2·step', 'day-2 first +1σ touch is a fresh step (state not carried over)');
+}
+
+// ── 6. computeFixedSigmaByDate ≡ the σ the walk records on touches ──────────
+// The exported by-date series exists so trade-level engines use the IDENTICAL
+// band unit — this equivalence test is what makes that a guarantee, not a hope.
+console.log('6. computeFixedSigmaByDate matches walk-recorded σ');
+{
+  const days = [];
+  for (let d = 0; d < 25; d++) {
+    const arr = [];
+    let px = 100 + d * 0.05;
+    for (let m = 0; m < 400; m++) { px += Math.sin((d * 400 + m) * 0.7) * 0.15; arr.push(px); }
+    days.push(arr);
+  }
+  const packed = packDays(days);
+  const opts = { instrument: 'TEST', minHistory: 10, minBarsPerDay: 300 };
+  const { touches } = fixedSigmaWalk(packed, opts);
+  const byDate = computeFixedSigmaByDate(packed, opts);
+  assert(touches.length > 0 && byDate.size > 0, `have ${touches.length} touches and ${byDate.size} σ dates to compare`);
+  let mismatches = 0;
+  for (const t of touches) {
+    const fs = byDate.get(t.date);
+    if (fs == null || Math.abs(fs - t.fixedSigma) > 1e-4) mismatches++;
+  }
+  assert(mismatches === 0, `every touch's fixedSigma matches the by-date series (${mismatches} mismatches)`);
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

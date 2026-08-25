@@ -212,11 +212,91 @@ needs the cross-instrument sweep before believing it.
    harness-gated exercise (costs, `summarizeSplit`, pre-registered outcomes) —
    this book deliberately stops short of it.
 
+## 6. Stage 2 — the trade-level test (impulse trigger → entry zone)
+
+The owner's follow-up: *"when should a trade open from the VWAP high/low or
+back to VWAP? an impulse move happens (30m/1h/4h) — some trigger which unlocks
+an entry zone and kicks in a trade."* That crosses from reference book into
+signal search, so it runs as a separate, costed, harness-gated exercise:
+`js/vwapImpulseEntryV1Engine.js`, reusing `detectH4Impulses` (the existing
+causal impulse brick — timeframe-agnostic), the same VWAP/fixed-σ math as the
+atlas (equivalence-tested), `walkBars` fills, ATR(15m)×1.5 stops, 0.020%
+round-trip cost, `summarizeSplit` IS/OOS.
+
+Two opposite hypotheses through one flow, minimal-DOF, pinned in the engine
+header:
+
+- **A `pullback_continuation`** — a closed 30m/1h/4h impulse bar unlocks a
+  with-impulse limit entry at the session VWAP for 240 min; target = the
+  impulse extreme, stop = 1.5×ATR(15m). "Back to VWAP" as continuation entry.
+- **B `band_reentry_fade`** — an impulse closing beyond the fixed +2σ/−2σ band
+  arms a fade; the first M1 close back inside the band (the Pine study's
+  re-entry event) fires an entry toward VWAP; target = VWAP, stop = 1.5×ATR.
+
+**Pre-registered before running** (this section written first, results filled
+in after): "worked" = OOS per-trade t > 2 with positive mean, OOS n ≥ 30, and
+positive gross (cost-back-out) — anything else is null. Priors: the atlas is
+descriptive evidence only; fade MFE<MAE at every band argues against B;
+spike-continues/grind-dies + the NY-overlap theme argue mildly for A; every
+entry-trigger family tested in this repo (vwapReversion,
+vwapSessionReversion, impulseEmaRange) has come back null after costs.
+Default expectation: **null for both**; if either shows anything, more likely
+A. One labeled sensitivity (not headline): A restricted to entries in the
+London/NY overlap (12:00–16:00 UTC), the book's held continuation window —
+one added DOF, stated as such.
+
+**Results (gold, same M1 archive, costed, OOS = last 40%):**
+
+| mode | trigger | OOS n | OOS mean/trade | OOS t | OOS win% | OOS gross |
+|---|---|---|---|---|---|---|
+| A continuation | 30m | 933 | −0.0022% | −0.29 | 58.1% | +0.018% |
+| A continuation | 1h | 658 | −0.0276% | −2.97 | 50.0% | −0.008% |
+| A continuation | 4h | 202 | +0.0086% | +0.37 | 45.0% | +0.029% |
+| B re-entry fade | 30m | 379 | −0.0469% | −2.55 | 36.7% | −0.027% |
+| B re-entry fade | 1h | 306 | −0.0700% | −3.44 | 33.7% | −0.050% |
+| B re-entry fade | 4h | 155 | −0.0018% | −0.06 | 37.4% | +0.018% |
+| A, overlap-only (sensitivity) | 30m | 496 | −0.0151% | −1.29 | 50.8% | +0.005% |
+| A, overlap-only (sensitivity) | 1h | 290 | −0.0315% | −2.20 | 48.3% | −0.012% |
+| A, overlap-only (sensitivity) | 4h | 79 | +0.0158% | +0.33 | 39.2% | +0.036% |
+
+**Verdict against the pre-registered bar: NULL for both modes, at every
+trigger timeframe.** No cell reaches OOS t > 2 positive; the best cells
+(4h continuation, +0.37 and +0.33) are statistically indistinguishable from
+zero on small n. In-sample tells the same story (nothing positive), so this
+is not an OOS decay — the mechanic never had an edge to decay.
+
+Two honest observations inside the null, both consistent with the book's
+descriptive findings rather than contradicting them:
+- The **fade loses more, and more consistently, than the continuation**
+  (OOS t −2.55/−3.44 vs −0.29/+0.37) — exactly the direction §2's MFE<MAE
+  and §3's grind/spike asymmetry pointed. The book's description and the
+  trade test agree; neither yields a tradeable number.
+- The continuation's shape is >50% win rate with negative mean: the target
+  (the impulse extreme) is near, the 1.5×ATR stop is wide, and the cost eats
+  the remainder — a payoff-geometry problem as much as a signal problem.
+- The overlap-only filter (the book's held continuation window) does not
+  rescue any cell — a held *descriptive* context does not convert into an
+  after-cost entry edge here. This is the expected relationship between the
+  two layers, now demonstrated rather than assumed.
+
+Per the pivot rule, structurally different angles NOT yet tested (no
+prediction attached): asymmetric exits (time-stop or trailing instead of the
+fixed extreme target — the geometry note above says the exit, not the entry,
+is where this dies); gating A on the book's *touch-bar* held themes
+(candleReject accept / spike approach) rather than the calendar window;
+impulse-range levels (`impulseLevels`) as the zone instead of VWAP; and the
+cross-instrument sweep before any of that, to know if gold is even the right
+instrument for the question.
+
 ## Status
 
-Engine `js/vwapFixedSigmaEngine.js` (+ tests), report
-`js/vwapFixedSigmaReport.js` (imports the shared `annotateHolds` gate from
-`levelAtlasReport.js`), runner `scripts/run_gold_vwap_sigma.mjs`, controls
-`scripts/run_gold_vwap_sigma_controls.mjs`. Registered in `LEGO_MODULES.md`.
-No routes/UI yet — per the playbook, the rows + book are the deliverable until
-something needs a live view.
+Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
+`computeFixedSigmaByDate` so trade-level engines share the identical band
+unit, equivalence-tested), report `js/vwapFixedSigmaReport.js` (imports the
+shared `annotateHolds` gate from `levelAtlasReport.js`), runner
+`scripts/run_gold_vwap_sigma.mjs`, controls
+`scripts/run_gold_vwap_sigma_controls.mjs`. Stage-2 trade test
+`js/vwapImpulseEntryV1Engine.js` (+ tests) with runner
+`scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
+harness. Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook,
+the rows + book are the deliverable until something needs a live view.
