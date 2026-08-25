@@ -15,6 +15,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { sessionPathWalk } from './sessionPathEngine.js';
 import { buildSessionPathBook, matchSessionPath } from './sessionPathReport.js';
+import { ladderPathChain } from './ladderPathStats.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { oandaSymbol } from './instrumentRegistry.js';
@@ -102,19 +103,32 @@ function boundPacked(packed, days) {
 // Today's LATEST checkpoint per (side, rung) — sessionPathWalk already only
 // emits a checkpoint once it's been reached, so the last one emitted per key
 // IS "as of now". Reused as-is, not a second implementation.
+//
+// ALSO keeps the EARLIEST checkpoint of the day per key, as `firstRow` — the
+// engine already walks every checkpoint hour (4,5,6,...,20), but a first
+// draft of this function threw all but the latest one away, which silently
+// discarded exactly the "was strong at 7am, has since faded" comparison a
+// live view actually needs (a real gap, not a different philosophy from a
+// tool that DOES show this — the data was already there, just not surfaced).
 function computeLiveRows(pair, packed) {
   const sym = pair.toUpperCase();
   const assetClass = assetClassFor(pair);
   const { rows, coverage } = sessionPathWalk(packed, { instrument: sym, assetClass });
   const liveDate = coverage?.to ?? null;
   const today = liveDate ? rows.filter(r => r.date === liveDate) : [];
-  const latestByKey = new Map();
+  const latestByKey = new Map(), firstByKey = new Map();
   for (const r of today) {
     const k = `${r.side}|${r.rung}`;
     const cur = latestByKey.get(k);
     if (!cur || r.checkpointHour > cur.checkpointHour) latestByKey.set(k, r);
+    const first = firstByKey.get(k);
+    if (!first || r.checkpointHour < first.checkpointHour) firstByKey.set(k, r);
   }
-  return { date: liveDate, rows: [...latestByKey.values()] };
+  const out = [...latestByKey.entries()].map(([k, row]) => {
+    const first = firstByKey.get(k);
+    return { ...row, firstRow: first && first.checkpointHour !== row.checkpointHour ? first : null };
+  });
+  return { date: liveDate, rows: out };
 }
 
 async function coldStartLiveCache(pair) {
@@ -160,7 +174,7 @@ async function getFastLive(pair) {
   return { warming: false, ...entry.result };
 }
 
-export { boundPacked, getFastLive, liveCache, liveWarming };
+export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob };
 
 /** Mount all /api/session-path/* routes. */
 export function mountSessionPathRoutes(app, express) {
@@ -200,7 +214,24 @@ export function mountSessionPathRoutes(app, express) {
       if (live.warming) return res.json({ ok: true, instrument: pair.toUpperCase(), warming: true, live: { date: null, rows: [] } });
       const stored = await getJSON(`${PREFIX}/${pair}.json`);
       const book = stored?.book ?? null;
-      const matched = live.rows.map(r => ({ row: r, match: book ? matchSessionPath(book, r) : null }));
+      // "Typical day" — the fitted, UNCONDITIONAL reach rate (js/ladderPathStats.js,
+      // the walk-forward OOS exceedance already validated for the ladder itself,
+      // not re-measured here). This is the "before this signal" bar a UI needs to
+      // make the conditional cell rate (`match.base`, ALREADY conditioned on
+      // today's progress/shape) mean anything — a bare percentage alone doesn't
+      // tell you if today's setup is boosting or hurting the odds.
+      let chain = null;
+      try { chain = ladderPathChain(pair.toUpperCase(), { assetClass: stored?.assetClass ?? 'fx' }); } catch (e) {}
+      const typicalPct = (side, rung) => chain?.[side === 'up' ? 'oh' : 'ol']?.reach?.[rung] ?? null;
+      // `firstRow` (see computeLiveRows) is the day's EARLIEST checkpoint for
+      // this rung, if it differs from the latest — matched against the SAME
+      // book so the UI can show "at 07:00: X% -> now: Y%", the "has this
+      // morning's setup held up or faded" comparison a checkpoint-hour walk
+      // is uniquely placed to answer but wasn't previously surfacing.
+      const matched = live.rows.map(r => ({
+        row: r, match: book ? matchSessionPath(book, r) : null, typicalPct: typicalPct(r.side, r.rung),
+        firstRow: r.firstRow, firstMatch: r.firstRow && book ? matchSessionPath(book, r.firstRow) : null,
+      }));
       res.json({ ok: true, instrument: pair.toUpperCase(), warming: false, bookGeneratedAt: stored?.generatedAt ?? null, live: { date: live.date, rows: matched } });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

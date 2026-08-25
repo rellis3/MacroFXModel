@@ -243,7 +243,7 @@ function startRunJob({ instruments }) {
 }
 
 // Exported for js/levelAtlasRoutes.test.mjs only — not part of the route API.
-export { boundPacked, getFastLive, liveCache, liveWarming };
+export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob };
 
 /** Mount all /api/level-atlas/* routes. */
 export function mountLevelAtlasRoutes(app, express) {
