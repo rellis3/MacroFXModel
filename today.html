@@ -933,6 +933,13 @@
     </h3>
     <div class="dr-sec-body"><div id="drSessPath"><span class="muted">loading…</span></div></div>
   </div>
+  <div class="dr-sec" id="drHandoffSec" data-seckey="handoff" style="display:none">
+    <h3 class="help" title="Session-to-session, not touch/band level: given how the most recently CLOSED session (Asia/London/NY) behaved, what does history say about the session that's about to happen? Two SEPARATE questions checked out-of-sample: does the move CONTINUE in the same direction (checked across 5 instruments: a clean coin-flip — an honest null, shown as such) and is the NEXT session likely to be volatile (a real, consistent effect — a wild close tends to hand off into another wild session).">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Session Handoff — what did the last session hand off?</span>
+      <span class="chip neu" style="font-size:9px">OOS-checked</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drHandoff"><span class="muted">loading…</span></div></div>
+  </div>
   <div class="dr-sec" id="drVmSec" data-seckey="vumanchu" style="display:none">
     <h3 class="help" title="VuManChu (WaveTrend/Cipher-B) — a momentum oscillator, same family as RSI/Stochastic: it measures the speed of recent price swings and flags overbought/oversold or bullish/bearish crosses. Same server-rendered pane vumanchu-chart.html and the Telegram alerts use — one image, never redrawn twice.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>VuManChu — momentum</span>
@@ -4138,6 +4145,7 @@ function closeDrawer() {
   if (drChart) { try { drChart.remove(); } catch (e) {} drChart = null; drSeries = null; }
   _stopAtlasPolling();
   _stopSessPathPolling();
+  _stopHandoffPolling();
 }
 
 let _drR = null;   // current drawer row — for the on-demand "Analyse" button
@@ -4191,6 +4199,7 @@ async function openDrawer(name) {
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
   try { loadDrawerVumanchu(r); } catch { $('drVmSec').style.display = 'none'; }
   _startSessPathPolling(r);
+  _startHandoffPolling(r);
   try { renderDrExh(r); } catch (e) { $('drExhSec').style.display = 'none'; }
   _drPathP = jget(`/api/forecast-path/summary?pairs=${encodeURIComponent(name.toLowerCase())}`).catch(() => null);
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
@@ -4530,6 +4539,82 @@ function _stopSessPathPolling() {
   if (_sessPathTimer) { clearInterval(_sessPathTimer); _sessPathTimer = null; }
 }
 
+// ── Session Handoff — session-to-session, not touch/band level. Two SEPARATE
+// questions per closed session, shown honestly as what they are: `continued`
+// is a checked-and-confirmed COIN FLIP (48-53% on every instrument tested —
+// shown as a toss-up chip, not hidden), `nextVol` is a real, OOS-consistent
+// effect (a wild close tends to hand off into another wild session). Polled
+// slower than Session Path (30s, not 15s) — a session only closes every few
+// hours, nothing changes between polls most of the time.
+let _handoffTimer = null;
+const HANDOFF_POLL_MS = 30000;
+function _handoffRow(m, questionWord) {
+  const bucketPlain = _plainVal(m.dimKey, m.bucket) ?? m.bucket;
+  const sameSign = Math.sign(m.deltaIS) === Math.sign(m.deltaOOS);
+  const word = m.favors === 'yes' ? questionWord : `NOT ${questionWord}`;
+  const d = `${esc0(bucketPlain)} — pushes ${Math.abs(m.deltaIS)} points toward ${word}`
+    + (sameSign ? ', held up on an independent double-check' : '') + ` (seen ${m.n.is + m.n.oos} times)`;
+  return `<div class="th-row ${m.favors === 'yes' ? 'pos' : 'neg'}"><span class="th-k">${esc0(m.dimLabel)}</span><span class="th-d">${d}</span></div>`;
+}
+// `pct` is "% chance the next session continues in `side`'s direction" — a
+// reading BELOW 50% means reversal is actually the more likely outcome, so
+// the arrow/colour reflect the EFFECTIVE expected direction (side, flipped
+// when continuation itself is the less-likely outcome), not just whether pct
+// clears 50 — a raw "41% continuation on the DOWN side" needs exactly this
+// translation to read as what it actually implies (more likely to bounce up).
+function _handoffContinuationChip(pct, oos, side) {
+  if (pct == null) return { cls: 'neu', label: '—' };
+  if (Math.abs(pct - 50) < 5) return { cls: 'neu', label: `🪙 Toss-up (${pct}%)` };
+  const effectiveSide = pct > 50 ? side : (side === 'up' ? 'down' : 'up');
+  const arrow = effectiveSide === 'up' ? '↗' : '↘';
+  return { cls: effectiveSide === 'up' ? 'range' : 'bear', label: `${arrow} ${pct}% (unseen-data check: ${oos ?? '—'}%)` };
+}
+async function loadDrawerHandoff(r) {
+  const sec = $('drHandoffSec'), box = $('drHandoff');
+  let j;
+  try { j = await jget(`/api/session-handoff/fastlive/${encodeURIComponent(r.name)}`); }
+  catch { return; }
+  if (j?.warming) return;   // leave whatever's on screen; try again next tick
+  const live = j?.live;
+  if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
+
+  const rowsHtml = live.rows.map(({ row, continuationMatch, volClusterMatch }) => {
+    const sideArrow = row.side === 'up' ? '▲' : '▼';
+    const shapeTxt = `closed ${esc0(_plainVal('giveback', row.giveback) ?? row.giveback)} — ${esc0(_plainVal('travel', row.travel) ?? row.travel)}`;
+    const contBase = continuationMatch?.base, volBase = volClusterMatch?.base;
+    const contChip = _handoffContinuationChip(contBase?.is, contBase?.oos, row.side);
+    // Vol-cluster reads as a plain "how likely is the NEXT session wild"
+    // number, always framed the same direction (higher = more likely wild) —
+    // no side-dependent flip like continuation's "toward which direction".
+    const volPct = volBase?.is;
+    const volChip = volPct == null ? { cls: 'neu', label: '—' }
+      : volPct >= 30 ? { cls: 'bear', label: `⚡ ${volPct}% (unseen-data check: ${volBase.oos ?? '—'}%)` }
+      : { cls: 'neu', label: `${volPct}% (unseen-data check: ${volBase.oos ?? '—'}%)` };
+    let html = `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
+      + `<div class="th-top" style="margin:0"><b>${esc0(row.transition)}</b> just closed</div>`
+      + `<div class="th-row" style="padding:2px 0"><span class="th-d">${sideArrow} ${shapeTxt}</span></div>`
+      + `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px">`
+      + `<div style="flex:1"><div class="muted" style="font-size:9px">Does it continue?</div><div class="chip ${contChip.cls}" style="font-size:10px;margin-top:2px;display:inline-block">${contChip.label}</div></div>`
+      + `<div style="flex:1"><div class="muted" style="font-size:9px">Next session wild?</div><div class="chip ${volChip.cls}" style="font-size:10px;margin-top:2px;display:inline-block">${volChip.label}</div></div>`
+      + `</div></div>`;
+    const matchedHtml = (continuationMatch?.matched ?? []).map(m => _handoffRow(m, 'continuing'))
+      .concat((volClusterMatch?.matched ?? []).map(m => _handoffRow(m, 'a wild next session')));
+    if (matchedHtml.length) html += `<details class="atlas-why" style="margin-top:2px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${matchedHtml.join('')}</details>`;
+    return html;
+  }).join('');
+
+  box.innerHTML = rowsHtml;
+  sec.style.display = 'block';
+}
+function _startHandoffPolling(r) {
+  if (_handoffTimer) clearInterval(_handoffTimer);
+  loadDrawerHandoff(r).catch(() => { $('drHandoffSec').style.display = 'none'; });
+  _handoffTimer = setInterval(() => loadDrawerHandoff(r).catch(() => {}), HANDOFF_POLL_MS);
+}
+function _stopHandoffPolling() {
+  if (_handoffTimer) { clearInterval(_handoffTimer); _handoffTimer = null; }
+}
+
 // ── VuManChu momentum pane — server-rendered image, the SAME endpoint
 // vumanchu-chart.html and the Telegram photo alerts use (js/vumanchuChart.js
 // composing vumanchuCore + divergenceCore, rasterised via pngCanvas.js — no
@@ -4781,6 +4866,8 @@ const DIM_PLAIN = {
   roundNum:  { '1·off': 'not near a round number', '2·near': 'near a round number', '3·on-figure': 'right on a round number' },
   volClimax: { '1·quiet': 'quiet volume at the touch', '2·normal': 'normal volume at the touch', '3·surge': 'a volume surge at the touch' },
   churn:     { '1·churned': 'chopping both ways today', '2·mixed': 'mixed one-way/two-way action today', '3·driven': 'a one-sided, driven move today' },
+  travel:    { '1·churned': 'chopped both ways', '2·mixed': 'a mix of one-way and two-way action', '3·driven': 'a one-sided, driven move' },
+  giveback:  { '1·held': 'held near its best level into the close', '2·partial-giveback': 'gave back some of its move before closing', '3·full-reversal': 'gave back most of its move before closing' },
 };
 const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function _plainVal(key, val) {
