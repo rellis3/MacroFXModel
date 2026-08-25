@@ -8,6 +8,7 @@
 // Run:  node --test js/directionTag.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { directionTag, sessionBiasDir, normTrendDir } from './directionTag.js';
 
 // ── The HMM trend vocabulary ────────────────────────────────────────────────
@@ -188,4 +189,32 @@ test('agree/total counts every voter, drivers and modifiers alike', () => {
   const t = directionTag({ regime: TREND_UP, session: TAPE_UP, cot: 0.6, macro: -0.6 });
   assert.equal(t.total, 4);          // htf, tape, cot, macro
   assert.equal(t.agree, 3);          // all but macro
+});
+
+// ── Regression guard: raw vocabulary must never be compared directly ─────────
+// This class of bug has now bitten four times in one file — trend_dir compared
+// to 'up' (the Market Tone gauge pinned at 50, "indices bid" stuck at 0/N, the
+// aligned chip permanently reading "mixed", pairSignal scoring bull trends as
+// -1) and bias_detail tested with /bull|bear/i (every directional read blank).
+// Each time it failed SILENTLY — a plausible-looking number, never an error.
+// So assert the shape of the calling code, not just the parsers.
+test('today.html never compares raw feed vocabulary to up/down', () => {
+  const src = readFileSync(new URL('../today.html', import.meta.url), 'utf8');
+  const code = src.replace(/<!--[\s\S]*?-->/g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const bad = [];
+
+  // trend_dir must always pass through _trendDir() before being read as a direction.
+  for (const m of code.matchAll(/(\w+(?:\.\w+)*\.trend_dir)\s*(===|==|!==|!=)\s*['"](up|down)['"]/g)) {
+    bad.push(`raw ${m[1]} ${m[2]} '${m[3]}' — wrap in _trendDir()`);
+  }
+  // …and must not be assigned as a direction without normalising.
+  for (const m of code.matchAll(/\b(?:const|let)\s+\w*[Dd]ir\w*\s*=\s*[^;\n]*\?\s*(\w+(?:\.\w+)*\.trend_dir)\s*:/g)) {
+    bad.push(`${m[1]} assigned as a direction unnormalised — wrap in _trendDir()`);
+  }
+  // bias_detail prose must go through sessionBiasDir(), never a bull/bear regex.
+  for (const m of code.matchAll(/\/(?:bull|bear)\/i\.test\(/g)) {
+    bad.push("a /bull|bear/i test — the feed says 'upside leg dominating'; use _biasDir()");
+  }
+
+  assert.equal(bad.length, 0, `\nRaw feed vocabulary compared directly:\n  ${bad.join('\n  ')}\n`);
 });

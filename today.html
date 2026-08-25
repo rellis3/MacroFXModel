@@ -1872,7 +1872,11 @@ function equitiesRisk(rs) {
   const idx = rs.filter(r => r.d.ac === 'index');
   const chips = idx.map(r => {
     const g = r.d.regime, s = r.s;
-    const dir = g?.label === 'TREND' ? g.trend_dir : _biasDir(s?.bias_detail);
+    // BOTH halves need normalising. trend_dir is "BULL"/"BEAR", so comparing the
+    // raw value to 'up'/'down' below counted every trending index as neither —
+    // equity stuck at 0, which pinned the Market Tone gauge to exactly 50 and made
+    // "indices bid" read 0/N while the rows underneath moved.
+    const dir = g?.label === 'TREND' ? _trendDir(g.trend_dir) : _biasDir(s?.bias_detail);
     return { name: dispName(r.name), dir };
   });
   const up = chips.filter(c => c.dir === 'up').length;
@@ -3062,7 +3066,9 @@ function oiFor(name, sym) {
 
 // ── Zoom 1: do the signals agree? ────────────────────────────────────────────
 function agreement(r) {
-  const hmm = r.d.regime?.label === 'TREND' ? r.d.regime.trend_dir : null;
+  // Normalised: sess below is 'up'/'down', but trend_dir is "BULL"/"BEAR", so the
+  // equality test could never be true and this chip always said ⚠ mixed.
+  const hmm = r.d.regime?.label === 'TREND' ? _trendDir(r.d.regime.trend_dir) : null;
   const bd  = r.s?.bias_detail ?? r.s?.bias ?? '';
   const sess = _biasDir(bd);
   if (!hmm || !sess) return { chip: '', aligned: null };
@@ -3708,13 +3714,13 @@ function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   // Semi-circle gauge: needle + a 0-100 score, both from risk.equity (indices
   // breadth, -1..+1) — the same input equitiesRisk() already uses for its
   // RISK-ON/OFF verdict, just rescaled for display.
-  const eq = Math.max(-1, Math.min(1, risk.equity ?? 0));
-  const score = Math.round((eq + 1) / 2 * 100);
-  const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
-  const cx = 75, cy = 72, r = 58;
-  const rad = (deg) => (deg - 180) * Math.PI / 180;
-  const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
-  const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
+  // The needle used to read risk.equity ALONE while five rows sat underneath it
+  // feeding it nothing — so overnight, with no index direction, it parked on a
+  // confident 50 while credit/VIX/USD/oil all had readings on screen. Every row
+  // the panel displays now votes (js/crossAssetCore.js::marketToneScore), with
+  // breadth still weighted double as the most direct read of risk appetite.
+  // Rows are built below, so this is computed after them.
+  const eqRaw = risk.equity != null && Number.isFinite(risk.equity) ? Math.max(-1, Math.min(1, risk.equity)) : null;
   const toneCls = risk.cls === 'on' ? 'on' : risk.cls === 'off' ? 'off' : 'mix';
 
   // Real-data rows below the gauge — same convention as the mockup's list,
@@ -3726,6 +3732,19 @@ function marketToneGaugeHtml(risk, cs, usTen, wti, mood) {
   if (usd) rows.push(['USD Trend', usd.score > 0.05 ? 'Strengthening' : usd.score < -0.05 ? 'Weakening' : 'Flat', usd.score > 0.05 ? 'on' : usd.score < -0.05 ? 'off' : 'mix']);
   if (usTen?.value != null && usTen.prev != null) rows.push(['Rate Trend (10Y)', usTen.value > usTen.prev ? 'Rising' : usTen.value < usTen.prev ? 'Falling' : 'Flat', 'mix']);
   if (wti?.pct != null) rows.push(['Oil Trend (WTI)', wti.pct > 0.15 ? 'Firming' : wti.pct < -0.15 ? 'Slightly Weak' : 'Flat', wti.pct > 0.15 ? 'on' : wti.pct < -0.15 ? 'off' : 'mix']);
+
+  const tone = window.crossAssetBrick
+    ? window.crossAssetBrick.marketToneScore(eqRaw, rows.map(r => r[2]))
+    : { score: eqRaw == null ? null : Math.round((eqRaw + 1) / 2 * 100), votes: eqRaw == null ? 0 : 1 };
+  // A null score means nothing had a read — show that, rather than a 50 that
+  // looks like a confident "balanced".
+  const score = tone.score == null ? '–' : tone.score;
+  const eq = tone.score == null ? 0 : (tone.score / 50) - 1;
+  const angle = -90 + (eq + 1) / 2 * 180;   // -90deg (full bear) .. +90deg (full bull)
+  const cx = 75, cy = 72, r = 58;
+  const rad = (deg) => (deg - 180) * Math.PI / 180;
+  const nx = cx + r * 0.86 * Math.cos(rad(angle + 90));
+  const ny = cy + r * 0.86 * Math.sin(rad(angle + 90));
 
   return `<div class="gauge-wrap">
     <div class="gauge-svg-wrap">
