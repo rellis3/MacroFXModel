@@ -38,6 +38,7 @@ const REG = {
   audnzd: { display: 'AUD/NZD', oanda: 'AUD_NZD', yahoo: 'AUDNZD=X', mt5: 'AUDNZD', assetClass: 'fx', pip: 0.0001, digits: 5 },
   audcad: { display: 'AUD/CAD', oanda: 'AUD_CAD', yahoo: 'AUDCAD=X', mt5: 'AUDCAD', assetClass: 'fx', pip: 0.0001, digits: 5 },
   audchf: { display: 'AUD/CHF', oanda: 'AUD_CHF', yahoo: 'AUDCHF=X', mt5: 'AUDCHF', assetClass: 'fx', pip: 0.0001, digits: 5 },
+  nzdcad: { display: 'NZD/CAD', oanda: 'NZD_CAD', yahoo: 'NZDCAD=X', mt5: 'NZDCAD', assetClass: 'fx', pip: 0.0001, digits: 5 },
   gbpaud: { display: 'GBP/AUD', oanda: 'GBP_AUD', yahoo: 'GBPAUD=X', mt5: 'GBPAUD', assetClass: 'fx', pip: 0.0001, digits: 5 },
   gbpcad: { display: 'GBP/CAD', oanda: 'GBP_CAD', yahoo: 'GBPCAD=X', mt5: 'GBPCAD', assetClass: 'fx', pip: 0.0001, digits: 5 },
   gbpchf: { display: 'GBP/CHF', oanda: 'GBP_CHF', yahoo: 'GBPCHF=X', mt5: 'GBPCHF', assetClass: 'fx', pip: 0.0001, digits: 5 },
