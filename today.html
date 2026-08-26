@@ -4492,13 +4492,26 @@ function _sessPathBar(label, pct, color) {
 // price sits RIGHT NOW — a session that gave back its own spike is, BY
 // DEFINITION, back near "early"). Fold that relationship into one sentence
 // instead of asking the reader to reconcile two separate clauses themselves.
+// The engine now tracks WHEN its running peak was actually set
+// (`peakElapsedHrs`, hours into the session) — not just the checkpoint hour
+// that happens to be reporting it. A real user caught this the hard way: on
+// live GOLD data, the checkpoint that reported "already reversing" was the
+// 4h one, but the actual peak sat at ~1.7h in — attributing the peak to the
+// checkpoint's own time was flatly wrong once checked against a real chart.
+// Fold the REAL peak time into the sentence instead.
+function _sessPeakTimeTxt(row) {
+  const h = row.peakElapsedHrs;
+  if (h == null || h <= 0.1) return '';   // peak sat at/near the open — nothing distinct to point to
+  return ` around the ${h < 1 ? Math.round(h * 60) + 'm' : h.toFixed(1) + 'h'} mark`;
+}
 function _sessShapeSentence(row) {
   const progressTxt = esc0(_plainVal('progress', row.progress) ?? row.progress ?? '');
+  const peakTxt = esc0(_sessPeakTimeTxt(row));
   switch (row.shape) {
     case '1·flat': return 'Barely moved today — no real push toward this band yet.';
     case '2·extending': return `Still pushing toward this band — ${progressTxt}.`;
-    case '3·pulled-back': return `Pulled back some after an earlier push toward this band — ${progressTxt}.`;
-    case '4·deep-reversal': return 'Spiked partway toward this band earlier, then gave nearly all of it back — now close to where it opened.';
+    case '3·pulled-back': return `Pulled back some after an earlier push${peakTxt} toward this band — ${progressTxt}.`;
+    case '4·deep-reversal': return `Spiked partway toward this band${peakTxt}, then gave nearly all of it back — now close to where it opened.`;
     default: return esc0(_plainVal('shape', row.shape) ?? row.shape ?? '');
   }
 }
@@ -4522,6 +4535,91 @@ function _sessPathHeadline(entries) {
     + `<span class="chip ${cls}">${sideArrow}${esc0(best.row.rung)} ${best.match.base.is}% vs typical ${best.typicalPct}%</span> `
     + `<span class="muted">(${echo}${best.lift >= 0 ? '+' : ''}${best.lift}pp)</span></div>`;
 }
+// Distance-to-target in real price units, reusing Level Atlas's own
+// pip/point formatter (`_fmtDistance`) — the SAME distance concept, no
+// second formatting convention for a UI to drift from.
+function _sessPathDistTxt(row) {
+  const distPips = (row.side === 'up' ? (row.level - row.currentPrice) : (row.currentPrice - row.level)) / row.pip;
+  return _fmtDistance(Math.abs(distPips), row.pip);
+}
+// The ONE hero card for a side — real target price, the two-bar typical-vs-
+// given-today comparison, and the earlier-vs-now checkpoint numbers (no
+// longer a repeated sentence — just the two percentages, since the sentence
+// describing WHY is already stated once in the side header above this card).
+function _sessPathPrimaryCard(entry, dp) {
+  const { row, match, typicalPct, firstRow, firstMatch, lift } = entry;
+  const distTxt = _sessPathDistTxt(row);
+  const priceStr = esc0(fmtN(row.level, dp));
+  if (!match) {
+    return `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
+      + `<div class="th-top" style="margin:0">Target · <b>${esc0(row.rung)}</b> — <b>${priceStr}</b> <span class="muted" style="font-size:10px">(${esc0(distTxt)} away)</span></div>`
+      + `<div class="hint">No historical read stored for this setup yet.</div></div>`;
+  }
+  const base = match.base;
+  const v = lift != null && lift >= 8 ? { cls: 'range', color: 'var(--bull,#22c55e)', label: '↗ Boosted odds of reaching it' }
+    : lift != null && lift <= -8 ? { cls: 'bear', color: 'var(--bear,#ef4444)', label: '↘ Reduced odds of reaching it' }
+    : { cls: 'neu', color: 'var(--muted,#64748b)', label: '🪙 About a typical day' };
+  const sinceHtml = (firstRow && firstMatch && firstRow.checkpointHour !== row.checkpointHour)
+    ? `<div class="muted" style="font-size:10px;margin:2px 0 4px">At the ${firstRow.checkpointHour}h mark: ${firstMatch.base.is}% → by the ${row.checkpointHour}h mark: ${base.is}%</div>`
+    : '';
+  let html = `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
+    + `<div class="th-top" style="margin:0">Target · <b>${esc0(row.rung)}</b> — <b>${priceStr}</b> <span class="muted" style="font-size:10px">(${esc0(distTxt)} away)</span></div>`
+    + sinceHtml
+    + `<div class="chip ${v.cls}" style="margin-top:2px;display:inline-block">${v.label}</div>`
+    + _sessPathBar('Typical day', typicalPct, 'var(--muted,#64748b)')
+    + _sessPathBar("Given today's shape", base.is, v.color)
+    + `<div class="muted" style="font-size:10px;margin-top:4px">unseen-data check: ${base.oos ?? '—'}%${lift != null ? ` · ${lift >= 0 ? '+' : ''}${lift}pp vs typical` : ''}</div>`
+    + `</div>`;
+  if (match.matched.length) html += `<details class="atlas-why" style="margin-top:2px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${match.matched.map(_sessRow).join('')}</details>`;
+  return html;
+}
+// A SECONDARY band, compressed to one line — price, distance, and the
+// odds-vs-typical, no repeated narrative sentence. This is the direct fix
+// for "all your descriptions are exactly the same": the shape sentence is
+// stated ONCE in the side header (or here, ONLY if this band's shape
+// actually differs from the header's) — everything genuinely different
+// between bands (the target price and its own odds) still gets its own line.
+function _sessPathCompactRow(entry, dp, primaryShape) {
+  const { row, match, typicalPct, lift } = entry;
+  const distTxt = _sessPathDistTxt(row);
+  const priceStr = esc0(fmtN(row.level, dp));
+  const shapeDiffers = row.shape !== primaryShape ? `<div class="hint" style="margin:0 0 4px">${_sessShapeSentence(row)}</div>` : '';
+  if (!match) {
+    return `<div class="th-row"><span class="th-k">${esc0(row.rung)} <span class="muted" style="font-weight:normal">${priceStr}, ${esc0(distTxt)} away</span></span><span class="th-d muted">no read yet</span></div>${shapeDiffers}`;
+  }
+  const base = match.base;
+  const cls = lift != null && lift >= 8 ? 'range' : lift != null && lift <= -8 ? 'bear' : 'neu';
+  const arrow = lift != null && lift >= 8 ? '↗' : lift != null && lift <= -8 ? '↘' : '🪙';
+  let html = `<div class="th-row"><span class="th-k">${esc0(row.rung)} <span class="muted" style="font-weight:normal">${priceStr}, ${esc0(distTxt)} away</span></span>`
+    + `<span class="th-d"><span class="chip ${cls}" style="font-size:10px">${arrow} ${base.is}%</span> <span class="muted">vs typical ${typicalPct ?? '—'}%</span></span></div>${shapeDiffers}`;
+  if (match.matched.length) html += `<details class="atlas-why" style="margin:0 0 4px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:10px">Why?</summary>${match.matched.map(_sessRow).join('')}</details>`;
+  return html;
+}
+// One block per SIDE (up/down), not one box per BAND — the fix for the real
+// complaint that every band's box said the identical sentence: they were
+// literally describing the same underlying price action against different
+// target distances. State the shared story ONCE, then show what's actually
+// DIFFERENT between bands (price, distance, odds) compactly. The "primary"
+// band (clearest signal — same selection the headline above uses) gets the
+// full hero-card treatment; the rest are one-liners.
+function _sessPathSideBlock(sideEntries, dp) {
+  const side = sideEntries[0].row.side;
+  const sideArrow = side === 'up' ? '▲' : '▼';
+  const sideWord = side === 'up' ? 'Upside' : 'Downside';
+  const curPrice = sideEntries[0].row.currentPrice;
+  const withLift = sideEntries.filter(e => e.lift != null).sort((a, b) => Math.abs(b.lift) - Math.abs(a.lift));
+  const primary = withLift[0] ?? sideEntries[0];
+  const rest = sideEntries.filter(e => e !== primary);
+
+  let html = `<div class="th-top" style="margin-bottom:2px">${sideArrow} <b>${sideWord}</b> <span class="muted" style="font-size:10px">— price now ${esc0(fmtN(curPrice, dp))}, ${primary.row.checkpointHour}h into today's session</span></div>`
+    + `<div class="th-row" style="padding:0 0 4px"><span class="th-d">${_sessShapeSentence(primary.row)}</span></div>`
+    + _sessPathPrimaryCard(primary, dp);
+  if (rest.length) {
+    html += `<div class="hint" style="margin:2px 0 2px">Other ${sideWord.toLowerCase()} targets:</div>`
+      + rest.map(e => _sessPathCompactRow(e, dp, primary.row.shape)).join('');
+  }
+  return html;
+}
 async function loadDrawerSessionPath(r) {
   const sec = $('drSessPathSec'), box = $('drSessPath');
   let j;
@@ -4530,6 +4628,7 @@ async function loadDrawerSessionPath(r) {
   if (j?.warming) return;   // leave whatever's on screen; try again next tick
   const live = j?.live;
   if (!j?.ok || !live?.rows?.length) { sec.style.display = 'none'; return; }
+  const dp = r.d?.dp ?? 5;
 
   const entries = live.rows.map(({ row, match, typicalPct, firstRow, firstMatch }) => {
     const lift = (match && typicalPct != null) ? +(match.base.is - typicalPct).toFixed(1) : null;
@@ -4537,55 +4636,15 @@ async function loadDrawerSessionPath(r) {
   });
   const headline = _sessPathHeadline(entries);
 
-  const rowsHtml = entries.map(({ row, match, typicalPct, firstRow, firstMatch, lift }) => {
-    const sideArrow = row.side === 'up' ? '▲' : '▼';
-    // `checkpointHour` is HOURS INTO THE SESSION (session = London midnight),
-    // not a clock time in any timezone the site or a chart happens to show —
-    // rendering it as "04:00" invited exactly the mistake a real user made
-    // (reading it as "the spike happened at 4am" and comparing it against
-    // their own chart's clock, which showed a DIFFERENT peak time because
-    // it's on a different timezone AND because a checkpoint is a SAMPLE, not
-    // the moment the thing it describes actually happened — the peak can, and
-    // often does, sit well before the checkpoint that reports it). Spelled
-    // out as an elapsed offset instead, which can't be misread as a clock.
-    const timeStr = `${row.checkpointHour}h into today's session`;
-    const shapeTxt = _sessShapeSentence(row);
-    if (!match) {
-      return `<div class="th-top">${sideArrow} <b>${esc0(row.rung)}</b> band — ${esc0(timeStr)}</div>`
-        + `<div class="th-row"><span class="th-d">${shapeTxt}</span></div>`
-        + `<div class="hint">No historical read stored for this setup yet.</div>`;
-    }
-    const base = match.base;
-    const v = lift != null && lift >= 8 ? { cls: 'range', color: 'var(--bull,#22c55e)', label: '↗ Boosted odds of reaching it' }
-      : lift != null && lift <= -8 ? { cls: 'bear', color: 'var(--bear,#ef4444)', label: '↘ Reduced odds of reaching it' }
-      : { cls: 'neu', color: 'var(--muted,#64748b)', label: '🪙 About a typical day' };
-    // "At the [first checkpoint today]" — the "has this morning's setup held
-    // up or faded" comparison. Only shown once a SECOND, later checkpoint
-    // has actually fired for this rung today (firstRow is null otherwise —
-    // nothing to compare against yet). "At", not "Since" — a checkpoint is
-    // a SAMPLE of the day's progress so far, not the moment an event
-    // happened; the read described could have been reached anywhere earlier
-    // in the session and simply persisted (or not) up to this checkpoint.
-    const sinceHtml = (firstRow && firstMatch)
-      ? `<div class="muted" style="font-size:10px;margin:2px 0 4px">At the ${firstRow.checkpointHour}h mark: `
-        + `${_sessShapeSentence(firstRow)} (${firstMatch.base.is}%) → by the ${row.checkpointHour}h mark: ${shapeTxt} (${base.is}%)</div>`
-      : '';
-    // Callout box, styled distinctly (not just another th-top row) — the ONE
-    // thing meant to be readable at a glance without opening "Why?".
-    let html = `<div style="background:rgba(91,157,255,.07);border:1px solid rgba(91,157,255,.22);border-radius:8px;padding:9px 11px;margin-bottom:6px">`
-      + `<div class="th-top" style="margin:0">${sideArrow} <b>${esc0(row.rung)}</b> band <span class="muted" style="font-size:10px">— as of ${esc0(timeStr)}</span></div>`
-      + `<div class="th-row" style="padding:2px 0"><span class="th-d">${shapeTxt}</span></div>`
-      + sinceHtml
-      + `<div class="chip ${v.cls}" style="margin-top:4px;display:inline-block">${v.label}</div>`
-      + _sessPathBar('Typical day', typicalPct, 'var(--muted,#64748b)')
-      + _sessPathBar("Given today's shape", base.is, v.color)
-      + `<div class="muted" style="font-size:10px;margin-top:4px">unseen-data check: ${base.oos ?? '—'}%${lift != null ? ` · ${lift >= 0 ? '+' : ''}${lift}pp vs typical` : ''}</div>`
-      + `</div>`;
-    if (match.matched.length) html += `<details class="atlas-why" style="margin-top:2px"><summary style="cursor:pointer;color:var(--accent,#5b9dff);font-size:11px">Why?</summary>${match.matched.map(_sessRow).join('')}</details>`;
-    return html;
-  }).join('');
+  // Group by side, nearest band first within each side.
+  const RUNG_ORDER = { p50: 0, p75: 1, p90: 2 };
+  const bySide = new Map();
+  for (const e of entries) { const arr = bySide.get(e.row.side) ?? []; arr.push(e); bySide.set(e.row.side, arr); }
+  for (const arr of bySide.values()) arr.sort((a, b) => (RUNG_ORDER[a.row.rung] ?? 9) - (RUNG_ORDER[b.row.rung] ?? 9));
 
-  box.innerHTML = headline + rowsHtml;
+  const sideHtml = [...bySide.values()].map(sideEntries => _sessPathSideBlock(sideEntries, dp)).join('<div style="height:6px"></div>');
+
+  box.innerHTML = headline + sideHtml;
   sec.style.display = 'block';
 }
 function _startSessPathPolling(r) {
@@ -4917,6 +4976,8 @@ const DIM_PLAIN = {
   dayVol:    { '1·quiet': 'quieter than usual today', '2·normal': 'normal volatility today', '3·heavy': 'more volatile than usual today' },
   asiaVol:   { '1·quiet': 'Asia session was quiet', '2·normal': 'Asia session was normal', '3·wild': 'Asia session was wild' },
   londonVol: { '1·quiet': 'London session was quiet', '2·normal': 'London session was normal', '3·wild': 'London session was wild' },
+  prevSessionVol: { '1·quiet': 'the session that just closed was quiet', '2·normal': 'the session that just closed was normal', '3·wild': 'the session that just closed was wild' },
+  prevVol:   { '1·quiet': 'the session before that was quiet', '2·normal': 'the session before that was normal', '3·wild': 'the session before that was wild' },
   sessionPos:{ '1·early': 'early in the session', '2·mid': 'mid-session', '3·late': 'late in the session' },
   confluence:{ '1·none': 'no other technical levels line up here', '2·single': 'one other technical level lines up here', '3·multi': 'multiple other technical levels line up here' },
   approachVel:{ '1·grind': 'a slow grind into this level', '2·med': 'moderate speed into this level', '3·spike': 'a fast spike into this level' },
