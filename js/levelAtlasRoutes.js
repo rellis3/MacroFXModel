@@ -27,11 +27,30 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
+import { buildBarrierTrades } from './levelAtlasVoteReview.js';
+import { summarizeTrades } from './metricsCore.js';
+import { costForPair } from './perLineStrategy.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { instrument as instrumentMeta, oandaSymbol } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { fetchM1Range } from './volBacktestEngine.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Same precomputed-local-file + live-source-fallback pattern server.js
+// already uses for Pattern Lab: the sandbox this was built in has M1 read
+// access (R2/parquet/Drive) but no R2 WRITE credentials, so a one-off
+// analysis script writes here directly; the real Railway deploy (which does
+// have R2 creds) writes to R2 via `runOne` above and this route finds that
+// copy instead once it exists. Local file wins when present (dev/precompute
+// convenience) so a redeploy doesn't need to have already re-run.
+const VOTE_TRADES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades');
+function loadLocalVoteTrades(pair) {
+  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}.json`), 'utf8')); }
+  catch { return null; }
+}
 
 const PREFIX = 'level-atlas';
 const DEFAULT_REARM = 0.3;
@@ -74,6 +93,33 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
   const sessionTransitions = {
     asiaToLondon: sessionTransitionTable(touches, 'asiaVol', 'londonVol'),
   };
+
+  // ── Vote-margin barrier backtest (2026-08-26) — the honest, walk-forward-
+  // validated fixed-target/stop trade list (js/levelAtlasVoteReview.js):
+  // decide fade/follow from a touch's own held-dimension vote, price it
+  // against the REAL rung distances (not the best/worst point the path
+  // reached), reusing the SAME touches/book already built above — no second
+  // M1 walk. Persisted SEPARATELY from the main book blob (that one's own
+  // comment says raw touches are deliberately left out for size; this is a
+  // much smaller derived artifact — one row per decided OOS touch — kept
+  // apart so `level-atlas-vote-backtest.html` can fetch it without pulling
+  // the full book too).
+  const voteBook = books[DEFAULT_REARM];
+  if (voteBook) {
+    try {
+      const cost = costForPair(pair, assetClass);
+      const trades = buildBarrierTrades(touches, voteBook, { rearmFrac: DEFAULT_REARM, cost });
+      const summaryByMargin = {};
+      for (const m of [1, 2, 3, 4]) {
+        const sub = trades.filter(t => t.margin >= m);
+        summaryByMargin[m] = summarizeTrades(sub.map(t => t.pnlPct), sub.map(t => t.date));
+      }
+      await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
+        instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: voteBook.splitDate,
+        trades, summaryByMargin,
+      });
+    } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }
+  }
 
   // ── Live snapshot — the MOST RECENT date's touches, matched against the
   // DEFAULT_REARM book. Free: `touches` already contains this date's records
@@ -343,6 +389,26 @@ export function mountLevelAtlasRoutes(app, express) {
       res.type('text/plain').send(renderBookText(stored.books?.[rearm]));
     } catch (e) {
       res.status(500).type('text/plain').send(`Error: ${e.message}`);
+    }
+  });
+
+  // GET /api/level-atlas/vote-trades/EURUSD[?minMargin=3] — the barrier-priced
+  // OOS trade list from js/levelAtlasVoteReview.js (see `runOne` above for how
+  // it's built/persisted): real fixed target/stop pnl, not MFE/MAE, for
+  // level-atlas-vote-backtest.html's chart + trade table. `minMargin` filters
+  // server-side (cheap — a few thousand rows) so the client never has to ship
+  // the full unfiltered list just to show a tighter gate.
+  app.get('/api/level-atlas/vote-trades/:instrument', async (req, res) => {
+    try {
+      const pair = String(req.params.instrument).toLowerCase();
+      const stored = loadLocalVoteTrades(pair) ?? await getJSON(`${PREFIX}/${pair}-votetrades.json`);
+      if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
+      const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 1;
+      const trades = stored.trades.filter(t => t.margin >= minMargin);
+      res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
+                 splitDate: stored.splitDate, minMargin, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 

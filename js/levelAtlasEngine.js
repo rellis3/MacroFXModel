@@ -413,8 +413,26 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               if (isUp ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; resolveIdx = j; break; }
             }
             const pullbackFrac = rungSpan > 0 ? Math.min(1, Math.abs(here - deepest) / rungSpan) : null;
-            const fadePips = (here - deepest) / pip * sgn * -1;   // +ve = gave back distance from the touch
+            // `deepest` only ever moves AWAY from `here` in the retracement
+            // direction (down for isUp, up for isDown), so (here-deepest) is
+            // >=0 for isUp and <=0 for isDown — `* sgn` alone already lands on
+            // "+ve = gave back distance"; a stray extra `* -1` here used to
+            // flip that, making fadePips <=0 on BOTH sides (verified
+            // algebraically and against real data: every fade-decision touch
+            // in js/levelAtlasVoteReview.js's real-pair run showed NEGATIVE
+            // mean MFE even in 90%+-win-rate subgroups — the tell that this
+            // was a sign bug, not a real risk/reward asymmetry).
+            const fadePips = (here - deepest) / pip * sgn;   // +ve = gave back distance from the touch
             const runPips  = (extreme - here) / pip * sgn;        // +ve = extended further past the touch
+            // FIXED distances from the touch to each real barrier — known at
+            // the moment of touch, before outcome resolves, so this is what an
+            // actual bracket order (target/stop) would be priced against.
+            // Distinct from fadePips/runPips, which measure how far price
+            // ACTUALLY travelled (the best/worst point reached) — useful for
+            // an MFE/MAE excursion check, but not the same as a fixed-target
+            // trade's real payoff (see js/levelAtlasVoteReview.js's `priceBarrierTrade`).
+            const innerDistPips = rungSpan / pip;
+            const outerDistPips = outer != null ? Math.abs(outer - here) / pip : null;
             const minsToResolve = resolveTime != null ? (resolveTime - bar.time) / 60 : null;
             const minsIntoSession = (bar.time - bars[0].time) / 60;
             // Same fix as sessionSpanMins above, same bug shape: must be
@@ -490,11 +508,13 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe, prevSessionVol,
               churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               otherSideTouchedBefore,
-              level: +here.toFixed(6), pip,
+              level: +here.toFixed(6), pip, open,
+              time: bar.time, resolveTime,
               outcome, resolveIdx,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),
+              innerDistPips: +innerDistPips.toFixed(1), outerDistPips: outerDistPips != null ? +outerDistPips.toFixed(1) : null,
               approachVel: feats.approachVel?.bucket ?? null,
               approachER: feats.approachER?.bucket ?? null,
               wtState: feats.wtState?.bucket ?? null,
@@ -634,7 +654,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe, prevSessionVol,
             churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
             otherSideTouchedBefore,
-            level: +here.toFixed(6), pip,
+            level: +here.toFixed(6), pip, open,
             distance: +dist.toFixed(6), distancePips: +(dist / pip).toFixed(1),
             distancePct: bar.close > 0 ? +(dist / bar.close * 100).toFixed(3) : null,
             currentPrice: +bar.close.toFixed(6),

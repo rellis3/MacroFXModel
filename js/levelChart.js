@@ -63,6 +63,12 @@ export const KIND_STYLE = {
   vbIdle:      { color: '#5a6380', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
   vbOpen:      { color: '#5b9dff', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
   vbPrice:     { color: '#e0a93b', lineStyle: LINE_STYLE.LargeDashed, lineWidth: 2 },
+  // Level Atlas vote-backtest (level-atlas-vote-backtest.html): one trade's
+  // own entry/target/stop, so all three can render together via ONE
+  // setLevels() call (it clears prior lines on every call).
+  voteEntry:   { color: '#94a3b8', lineStyle: LINE_STYLE.Dashed, lineWidth: 1 },
+  voteTarget:  { color: '#10b981', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  voteStop:    { color: '#f87171', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
   _default:    { color: '#9ca3af', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
 };
 

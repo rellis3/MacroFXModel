@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level Atlas Vote Backtest</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --green:#10b981; --red:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  .sub { color:var(--muted); font-size:12px; }
+  select, button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; align-items:flex-start; }
+  #chart-col { flex:1 1 640px; min-width:320px; }
+  #chart { height:440px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  #chartMeta { font-size:12px; color:var(--muted); padding:8px 2px; min-height:18px; }
+  .side { flex:0 0 380px; min-width:320px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px 12px; }
+  .stat { font-family:'DM Mono',monospace; }
+  .stat .v { font-size:15px; font-weight:600; }
+  .stat .k { font-size:10px; color:var(--muted); text-transform:uppercase; }
+  .pos { color:var(--green); } .neg { color:var(--red); }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:11px; }
+  thead th { position:sticky; top:0; background:var(--panel); text-align:left; color:var(--muted); font-weight:500; padding:4px 6px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; }
+  tbody td { padding:3px 6px; border-bottom:1px solid #182030; white-space:nowrap; }
+  tbody tr:hover { background:#182030; cursor:pointer; }
+  tbody tr.selected { background:#1f2b45; }
+  #tableWrap { max-height:420px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  .muted { color:var(--muted); font-size:11px; }
+  .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); padding:0 2px 8px; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Level Atlas Vote Backtest</h1>
+  <div class="controls">
+    <label>Pair <select id="pairSel">
+      <option value="eurusd">EURUSD</option>
+      <option value="gbpusd">GBPUSD</option>
+      <option value="gold">GOLD</option>
+      <option value="usdjpy">USDJPY</option>
+      <option value="audusd">AUDUSD</option>
+    </select></label>
+    <label>Min vote margin <select id="marginSel">
+      <option value="1">≥1 (all decided)</option>
+      <option value="2">≥2</option>
+      <option value="3" selected>≥3</option>
+      <option value="4">≥4</option>
+    </select></label>
+    <label>Decision <select id="decSel"><option value="all">all</option><option value="fade">fade</option><option value="follow">follow</option></select></label>
+    <label>Outcome <select id="outSel"><option value="all">all</option><option value="win">wins</option><option value="loss">losses</option></select></label>
+  </div>
+  <div class="sub" id="headerSub">loading…</div>
+</header>
+
+<div class="wrap">
+  <div id="chart-col">
+    <div id="chart"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:#94a3b8"></span>entry</span>
+      <span><span class="dot" style="background:#10b981"></span>target</span>
+      <span><span class="dot" style="background:#f87171"></span>stop</span>
+    </div>
+    <div id="chartMeta">Click a trade in the table to load its chart.</div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h2>Barrier-priced OOS summary (fixed target/stop, real cost)</h2>
+      <div class="stat-grid" id="summaryGrid"><span class="muted">loading…</span></div>
+    </div>
+    <div class="card">
+      <h2>Trades (<span id="tradeCount">0</span>)</h2>
+      <div id="tableWrap">
+        <table id="tradeTable">
+          <thead><tr>
+            <th data-k="date">Date</th><th data-k="side">Side</th><th data-k="rung">Rung</th>
+            <th data-k="decision">Dec</th><th data-k="margin">Marg</th><th data-k="win">Res</th><th data-k="pnlPct">PnL%</th>
+          </tr></thead>
+          <tbody id="tradeBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card muted">
+      Fixed target/stop from the touch's own rung distances (not the best/worst
+      point the path reached) — the honest, walk-forward-validated version of
+      this session's vote-margin backtest. See <code>js/levelAtlasVoteReview.js</code>
+      / <code>MD files/LEGO_MODULES.md</code> for the full methodology and caveats
+      (trades aren't strictly independent — same-day/overlapping touches on one
+      instrument — so the reported Sharpe is likely an upper bound on what's
+      really achievable; no concurrent-position sizing policy defined yet).
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+
+const pairSel = document.getElementById('pairSel');
+const marginSel = document.getElementById('marginSel');
+const decSel = document.getElementById('decSel');
+const outSel = document.getElementById('outSel');
+const headerSub = document.getElementById('headerSub');
+const summaryGrid = document.getElementById('summaryGrid');
+const tradeBody = document.getElementById('tradeBody');
+const tradeCountEl = document.getElementById('tradeCount');
+const chartMeta = document.getElementById('chartMeta');
+
+const view = createLevelChart(document.getElementById('chart'), { height: 440 });
+
+let allTrades = [];
+let sortKey = 'date', sortDir = -1;
+
+function fmtPct(v, dp = 3) { return v == null ? '—' : `${v.toFixed(dp)}%`; }
+function signClass(v) { return v > 0 ? 'pos' : v < 0 ? 'neg' : ''; }
+
+async function loadData() {
+  const pair = pairSel.value, minMargin = marginSel.value;
+  headerSub.textContent = 'loading…';
+  summaryGrid.innerHTML = '<span class="muted">loading…</span>';
+  tradeBody.innerHTML = '';
+  try {
+    const res = await fetch(`/api/level-atlas/vote-trades/${pair}?minMargin=${minMargin}`);
+    const j = await res.json();
+    if (!j.ok) { headerSub.textContent = `no data: ${j.error}`; summaryGrid.innerHTML = '<span class="muted">no data yet — run /api/level-atlas/run for this pair</span>'; return; }
+    allTrades = j.trades;
+    headerSub.textContent = `${j.instrument} · split ${j.splitDate} (OOS only) · cost ${j.cost}%/trade · generated ${new Date(j.generatedAt).toLocaleDateString()}`;
+    renderSummary(j.summary);
+    applyFiltersAndRender();
+  } catch (e) {
+    headerSub.textContent = `error: ${e.message}`;
+  }
+}
+
+function renderSummary(s) {
+  if (!s) { summaryGrid.innerHTML = '<span class="muted">no summary</span>'; return; }
+  const rows = [
+    ['Trades', s.trades, ''],
+    ['Win rate', `${s.winRate}%`, ''],
+    ['Profit factor', s.profitFactor, ''],
+    ['Expectancy', fmtPct(s.expectancy, 4), signClass(s.expectancy)],
+    ['Sharpe (ann.)', `${s.sharpe}±${s.sharpeSE ?? '—'}`, signClass(s.sharpe)],
+    ['Max DD', fmtPct(s.maxDD), 'neg'],
+    ['Min track (yrs)', s.minTrackYears ?? '—', ''],
+    ['Trades/yr', s.tradesPerYr ?? '—', ''],
+    ['Total PnL', fmtPct(s.totalPnl), signClass(s.totalPnl)],
+  ];
+  summaryGrid.innerHTML = rows.map(([k, v, cls]) => `<div class="stat"><div class="v ${cls}">${v}</div><div class="k">${k}</div></div>`).join('');
+}
+
+function applyFiltersAndRender() {
+  const dec = decSel.value, out = outSel.value;
+  let rows = allTrades.filter(t =>
+    (dec === 'all' || t.decision === dec) &&
+    (out === 'all' || (out === 'win') === t.win)
+  );
+  rows = rows.slice().sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : (av - bv);
+    return cmp * sortDir;
+  });
+  tradeCountEl.textContent = rows.length;
+  tradeBody.innerHTML = rows.map((t, i) => `
+    <tr data-i="${i}" class="${t===selectedTrade ? 'selected' : ''}">
+      <td>${t.date}</td><td>${t.side}</td><td>${t.rung}</td>
+      <td>${t.decision}</td><td>${t.margin}</td>
+      <td class="${t.win ? 'pos' : 'neg'}">${t.win ? 'WIN' : 'LOSS'}</td>
+      <td class="${signClass(t.pnlPct)}">${fmtPct(t.pnlPct)}</td>
+    </tr>`).join('');
+  tradeBody.__rows = rows;
+  [...tradeBody.querySelectorAll('tr')].forEach(tr => {
+    tr.addEventListener('click', () => loadTradeChart(rows[+tr.dataset.i]));
+  });
+}
+
+let selectedTrade = null;
+
+function priceLinesFor(t) {
+  const isUp = t.side === 'up';
+  const contSign = isUp ? 1 : -1;
+  const targetSign = t.decision === 'fade' ? -contSign : contSign;
+  const stopSign = t.decision === 'fade' ? contSign : -contSign;
+  const targetPrice = t.entry + targetSign * t.targetPips * t.pip;
+  const stopPrice = t.entry + stopSign * t.stopPips * t.pip;
+  return [
+    { price: t.entry, kind: 'voteEntry', label: `entry ${t.entry.toFixed(5)}` },
+    { price: targetPrice, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
+    { price: stopPrice, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
+  ];
+}
+
+function isoToEpoch(iso) { return Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000); }
+
+async function loadTradeChart(t) {
+  selectedTrade = t;
+  applyFiltersAndRender();
+  const pair = pairSel.value;
+  const bufferSecs = 4 * 3600;
+  const fromDate = new Date((t.time - bufferSecs) * 1000).toISOString().slice(0, 10);
+  const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
+  chartMeta.textContent = `Loading ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate}…`;
+  try {
+    const res = await fetch(`/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`);
+    const j = await res.json();
+    if (!j.ok || !j.candles?.length) { chartMeta.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
+    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    view.setCandles(bars);
+    view.setLevels(priceLinesFor(t), { showTitle: true });
+    view.series.setMarkers([
+      { time: t.time, position: 'inBar', color: '#94a3b8', shape: 'circle', text: `entry ${t.decision}/${t.side}` },
+      { time: t.resolveTime, position: t.win ? 'belowBar' : 'aboveBar', color: t.win ? '#10b981' : '#f87171', shape: t.win ? 'arrowUp' : 'arrowDown', text: `${t.win ? 'WIN' : 'LOSS'} ${t.pnlPct.toFixed(3)}%` },
+    ]);
+    view.fit();
+    chartMeta.textContent = `${t.date} · ${t.side} ${t.rung} · ${t.decision} (margin ${t.margin}) · ${t.win ? 'WIN' : 'LOSS'} ${fmtPct(t.pnlPct)} · target ${t.targetPips}p / stop ${t.stopPips}p`;
+  } catch (e) {
+    chartMeta.textContent = `error loading candles: ${e.message}`;
+  }
+}
+
+document.querySelectorAll('#tradeTable thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    sortDir = (sortKey === k) ? -sortDir : -1;
+    sortKey = k;
+    applyFiltersAndRender();
+  });
+});
+
+pairSel.addEventListener('change', loadData);
+marginSel.addEventListener('change', loadData);
+decSel.addEventListener('change', applyFiltersAndRender);
+outSel.addEventListener('change', applyFiltersAndRender);
+
+loadData();
+</script>
+</body>
+</html>
