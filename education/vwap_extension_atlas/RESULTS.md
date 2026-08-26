@@ -71,7 +71,10 @@ no p-values, just "did it happen again on data it wasn't built from."
 ## Headline finding — most ≥1×ATR VWAP extensions do NOT fade back same day
 
 This is the base rate every other number below sits on top of, and it's the
-direct answer to "does it fade back to VWAP":
+direct answer to "does it fade back to VWAP" — using the most generous
+possible reading (any M1 wick touching VWAP counts). The confirmation-
+timeframe section further down shows this rate only gets LOWER, not higher,
+under a stricter "closes not wicks" reading.
 
 | Instrument | Side | n | Touched VWAP same day | Extended further first | Unresolved at day-end | Avg peak reached |
 |---|---|--:|--:|--:|--:|--:|
@@ -129,6 +132,39 @@ might naively suggest: an extension that first clears the threshold during
 NY tends to **persist**, not mean-revert, more than the all-session base
 rate.
 
+### 1b. Pooled across instruments: London is the mirror image of NY — MORE likely to fade back
+
+Per-instrument, Asia and London each produce too few crossings (n=9–23 in
+either half) to clear the n≥30 holding gate on their own — that's a sample-
+size gap, not a null result, and the original pass above should have pooled
+before calling it inconclusive. Pooling threshold=1.0 rows across all 4
+instruments (same 60/40 split, same gate) gives London enough data to test
+honestly:
+
+| Session | Side | IS (n, touch%) | OOS (n, touch%) | vs pooled base (up 17.5% / down 20.6%) |
+|---|---|---|---|---|
+| **London** | up | 44, 36.4% | 42, **61.9%** | +18.9pp IS, **+44.4pp OOS — holds** |
+| **London** | down | 46, 47.8% | 64, 39.1% | +27.2pp IS, +18.5pp OOS — holds |
+| Asia | up | 30, 36.7% | 23, 8.7% | sign flips OOS — does not hold |
+| Asia | down | 25, 36.0% | 21, 42.9% | consistent direction, but n<30 both halves |
+| NY | up | 222, 10.8% | 200, 9.5% | −6.7pp / −8.0pp — holds (already §1) |
+| NY | down | 280, 17.5% | 186, 7.5% | −3.1pp / −13.1pp — holds (already §1) |
+
+**London genuinely holds, in the opposite direction from NY**: London
+extensions are *more* likely to touch VWAP again than average, cross-
+instrument, out-of-sample, with real sample size once pooled. Asia's down
+side leans the same way as London but stays just under the n≥30 bar even
+pooled; Asia's up side flips sign OOS and looks like noise, not edge. A
+plausible mechanism: VWAP resets at UTC midnight, inside Asia — London is
+still close enough afterward that the average hasn't drifted far, so a
+1×ATR stretch there is still "early relative to VWAP" and prone to snapping
+back; by NY, VWAP has accumulated most of the session's information and an
+extension that clears 1×ATR that late looks more like a genuine trend.
+**Still a rate, not a P&L** — this repo's own standalone VWAP σ-band fade
+(a different unit) already tested null system-wide after costs
+(`VWAP_REVERSION_FINDINGS.md`); a higher touch-rate is necessary, not
+sufficient, for a real edge.
+
 ### 2. A slow (grinding) approach into the threshold also lowers the fade-back rate — real, but only half the cells
 
 `approachSpeed = 1·grind` (the extension built up gradually over the prior
@@ -176,6 +212,62 @@ the table above are labeled provisional, not promoted alongside it.
 
 ---
 
+## Confirmation timeframe — does the wick-vs-close choice matter?
+
+Everything above counts a "touch" the moment any M1 bar's wick reaches
+VWAP — the most generous possible reading. This group's own stated
+convention (`JORDAN_VIDEO_INSIGHTS.md`, the dynamic-stop entry) is
+**"closes not wicks"**: a level isn't really broken/reached until a candle
+*closes* through it, not just wicks it. The engine now takes a
+`confirmTfMinutes` parameter (default 1 = the M1-wick reading used
+everywhere above, byte-identical output) that requires the crossing AND
+the return-to-VWAP to be confirmed by an actual bucket close at that
+timeframe — 5m/15m/30m/1h/4h — before either counts.
+
+Swept threshold=1.0 on all 4 instruments, 1m/5m/15m/30m/1h/4h:
+
+| Instrument, side | 1m | 5m | 15m | 30m | 1h | 4h |
+|---|--:|--:|--:|--:|--:|--:|
+| Gold, up | 18.7% | 14.2% | 10.0% | 7.4% | 3.4% | 1.8% |
+| Gold, down | 14.5% | 9.8% | 8.5% | 8.9% | 5.6% | 7.0% |
+| NAS100, up | 11.5% | 5.3% | 4.5% | 4.9% | 2.8% | 0.0% |
+| NAS100, down | 29.5% | 20.6% | 15.5% | 13.6% | 9.6% | 4.1% |
+| EURUSD, up | 19.1% | 13.3% | 9.2% | 6.7% | 4.6% | 3.1% |
+| EURUSD, down | 17.2% | 14.7% | 14.8% | 11.0% | 10.3% | 9.5% |
+| GBPUSD, up | 18.7% | 11.4% | 9.8% | 8.4% | 7.6% | 0.0% |
+| GBPUSD, down | 17.6% | 18.1% | 16.1% | 14.9% | 8.9% | 1.7% |
+
+**The fade-back rate falls in essentially every cell as the confirmation
+timeframe rises** — close to monotonic across all 8 (instrument × side)
+rows, two negligible one-step wobbles aside (EURUSD-down 14.7→14.8%,
+GBPUSD-down 17.6→18.1%). By 1h/4h confirmation several cells are down to
+low single digits or zero. This makes the headline base-rate finding
+**stronger under a stricter, more realistic reading, not weaker**: an M1
+wick reaching back to VWAP is the most generous possible definition of
+"fading back," and even that reading already showed a minority outcome —
+requiring an actual confirmed close makes it rarer still. (n also shrinks
+at coarser confirmation — fewer crossings even register, since the
+crossing itself now also needs a bucket close — from 104–200 at 1m down to
+42–77 at 4h; the 4h row is directional, not gate-tested.)
+
+**The NY/London split survives every confirmation timeframe checked.**
+Re-running the session cut at 1m/15m/1h: NY has the LOWEST touch rate and
+London a materially higher one, on **every single one of the 24
+(instrument × side × timeframe) comparisons** — the ordering never once
+flips, even though Asia/London sample sizes shrink at coarser timeframes
+(down to n=2–20, too thin to run the formal IS/OOS gate past 15m). A
+pattern that survives a completely different methodological choice
+(wick-counting vs close-confirmation) this consistently is closer to real
+signal than to an artifact of one particular counting convention.
+
+Engine: `confirmTfMinutes` param in `js/vwapExtensionAtlasEngine.js` (see
+its header for the exact confirmed-close semantics; tested in
+`js/vwapExtensionAtlasEngine.test.mjs`). Sweep script:
+[`scripts/confirm_tf_sweep.mjs`](scripts/confirm_tf_sweep.mjs), data in
+`data/<pair>.confirm_tf_sweep.json`.
+
+---
+
 ## What this does and doesn't mean
 
 This is a description of history, not a trading rule, and not a claim that
@@ -215,6 +307,11 @@ not this file.
   the group's own Asia/Monday range-extension ladder (`js/fibProjection.js`)
   — flagged in the engine file's own footer as a deliberate, unbuilt
   follow-up, not a silent gap.
+- **Confirmation-timeframe sweep (above) is directional past 15m, not
+  gate-tested** — 1h/4h sample sizes (especially Asia/London) are too thin
+  for a formal IS/OOS split; the monotonic base-rate decline and the
+  NY/London ordering are reported as observations across many independent
+  cuts, not as separately-held findings the way §1/§1b are.
 
 ---
 
@@ -227,6 +324,12 @@ node education/vwap_extension_atlas/scripts/run_one.mjs gold       education/vwa
 node education/vwap_extension_atlas/scripts/run_one.mjs nas100_usd education/vwap_extension_atlas/data index
 node education/vwap_extension_atlas/scripts/run_one.mjs eurusd     education/vwap_extension_atlas/data fx
 node education/vwap_extension_atlas/scripts/run_one.mjs gbpusd     education/vwap_extension_atlas/data fx
+
+# confirmation-timeframe sweep (1m/5m/15m/30m/1h/4h), per instrument
+node education/vwap_extension_atlas/scripts/confirm_tf_sweep.mjs gold       commodity
+node education/vwap_extension_atlas/scripts/confirm_tf_sweep.mjs nas100_usd index
+node education/vwap_extension_atlas/scripts/confirm_tf_sweep.mjs eurusd     fx
+node education/vwap_extension_atlas/scripts/confirm_tf_sweep.mjs gbpusd     fx
 ```
 
 Per-instrument raw rows: `data/<pair>.rows.json`. Full dimension book

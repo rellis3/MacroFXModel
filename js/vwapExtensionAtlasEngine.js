@@ -22,6 +22,15 @@
  * only — re-arm/multiple-per-day is a documented future extension, not
  * built here, see the module-level TODO at the bottom).
  *
+ * `confirmTfMinutes` (default 1 = raw M1, byte-identical to omitting it):
+ * which candle has to CLOSE beyond the threshold/back at VWAP for the
+ * crossing/touch to count. VWAP itself is always computed from every M1
+ * bar — only the SIGNAL (crossing/peak/touch/opposite-side), not the
+ * average, is resampled. At 1, an M1 wick touching VWAP counts (matches
+ * every finding already reported in RESULTS.md). At >1 (5/15/30/60/240),
+ * only that bucket's own close counts — a wick alone doesn't, per this
+ * group's own "closes not wicks" convention (JORDAN_VIDEO_INSIGHTS.md).
+ *
  * VWAP anchor = plain UTC calendar day (00:00–23:59 UTC), matching
  * `vwapReversionEngine.js`/`vwapSessionReversionV1Engine.js` exactly — kept
  * identical on purpose so this engine's population is directly comparable
@@ -103,7 +112,7 @@ const THRESHOLDS_DEFAULT = [1.0, 1.5, 2.0, 2.5];
 export function vwapExtensionAtlasWalk(packed, {
   instrument, assetClass = 'fx', thresholds = THRESHOLDS_DEFAULT,
   minLookbackDays = 25, approachLookbackBars = 15, trailingDays = 20,
-  minDayBars = 200,
+  minDayBars = 200, confirmTfMinutes = 1,
 } = {}) {
   const sym = String(instrument).toUpperCase();
   const { n, times, opens, highs, lows, closes, volumes } = packed;
@@ -160,6 +169,20 @@ export function vwapExtensionAtlasWalk(packed, {
     const date = dayKeys[i];
     const bars = dayBars(date);
     if (bars.length < minDayBars) continue;   // holiday/illiquid day — skip, don't force a read
+    const { dayStart } = dayIndex.get(date);
+    // Confirmation-timeframe gate: at confirmTfMinutes=1 (default) every M1
+    // bar is its own "bucket close" — behaviour is byte-identical to no gate
+    // at all. At confirmTfMinutes>1, only the bar that closes a Nm bucket
+    // (e.g. the 15th minute of a 15m bucket) counts as a confirmed crossing/
+    // touch — an M1 wick alone no longer qualifies, matching this group's
+    // own stated "closes not wicks" convention (JORDAN_VIDEO_INSIGHTS.md).
+    // VWAP itself is still computed from EVERY M1 bar regardless — only the
+    // signal (crossing/peak/touch/opposite-side), not the average, is
+    // resampled.
+    const isBucketClose = confirmTfMinutes <= 1 ? null : (barTime) => {
+      const minuteOfDay = Math.round((barTime - dayStart) / 60);
+      return ((minuteOfDay + 1) % confirmTfMinutes) === 0;
+    };
 
     // dayAtr: Wilder ATR-14 as of the CLOSE of yesterday (index i-1) — never
     // today's own range.
@@ -196,6 +219,7 @@ export function vwapExtensionAtlasWalk(packed, {
       const rangeConsumedToday = medRange > 0 ? (runHi - runLo) / medRange : null;
       const hourUtc = new Date(bar.time * 1000).getUTCHours();
 
+      const confirmedBar = !isBucketClose || isBucketClose(bar.time);
       for (const side of ['up', 'down']) {
         const isUp = side === 'up';
         const d = isUp ? distAtr[k] : -distAtr[k];
@@ -203,6 +227,7 @@ export function vwapExtensionAtlasWalk(packed, {
           const doneSet = isUp ? crossedUp : crossedDown;
           const key = thr;
           if (doneSet.has(key)) continue;         // already fired this side+threshold today
+          if (!confirmedBar) continue;             // not a confirmation-bucket close — wait
           if (!(d >= thr)) continue;               // not there yet
           doneSet.add(key);
 
@@ -225,11 +250,17 @@ export function vwapExtensionAtlasWalk(packed, {
 
           for (let j = k + 1; j < bars.length; j++) {
             const bj = bars[j];
+            if (isBucketClose && !isBucketClose(bj.time)) continue;   // only confirmed bucket-closes resolve the outcome
             const dj = isUp ? distAtr[j] : -distAtr[j];
             if (dj > peakExtAtr) { peakExtAtr = dj; didExtendFurtherFirst = true; }
-            // VWAP touch: opposite-direction extreme of the bar crosses back
-            // to (or through) that bar's own cumulative VWAP.
-            const touchedThisBar = isUp ? (bj.low <= vwap[j]) : (bj.high >= vwap[j]);
+            // VWAP touch: at confirmTfMinutes=1 (default), an M1 wick
+            // reaching VWAP counts (unchanged from before this option
+            // existed). At confirmTfMinutes>1, only that bucket's own CLOSE
+            // crossing back to VWAP counts — a wick alone is not a confirmed
+            // touch, matching the "closes not wicks" convention above.
+            const touchedThisBar = isBucketClose
+              ? (isUp ? (bj.close <= vwap[j]) : (bj.close >= vwap[j]))
+              : (isUp ? (bj.low <= vwap[j]) : (bj.high >= vwap[j]));
             if (touchedThisBar) {
               touchedVwapAfter = true;
               barsToVwapTouch = j - k;
@@ -238,6 +269,7 @@ export function vwapExtensionAtlasWalk(packed, {
               // threshold before day end? (ICT-style "VWAP as pivot, not
               // wall" case.)
               for (let m = j + 1; m < bars.length; m++) {
+                if (isBucketClose && !isBucketClose(bars[m].time)) continue;
                 const dm = isUp ? -distAtr[m] : distAtr[m];   // opposite side's own signed distance
                 if (dm >= thr) { wentToOppositeSide = true; break; }
               }
@@ -252,7 +284,7 @@ export function vwapExtensionAtlasWalk(packed, {
 
           rows.push({
             instrument: sym, assetClass, date, side,
-            extAtrThreshold: thr,
+            extAtrThreshold: thr, confirmTfMinutes,
             crossTime: t, crossHourUtc: hourUtc,
             session: sessionOf(hourUtc), sessionPos: sessionPosOf(hourUtc), dow,
             dayAtr: +dayAtr.toFixed(6),

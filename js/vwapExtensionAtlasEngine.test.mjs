@@ -200,5 +200,37 @@ t('an engineered day that never returns to VWAP is flagged unresolved, not silen
   assert.equal(r.barsToVwapTouch, null);
 });
 
+t('confirmTfMinutes=1 (explicit) reproduces the default output byte-for-byte', () => {
+  const a = vwapExtensionAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', thresholds: [0.3, 0.5, 0.75] });
+  const b = vwapExtensionAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', thresholds: [0.3, 0.5, 0.75], confirmTfMinutes: 1 });
+  assert.deepEqual(a.rows, b.rows, 'passing confirmTfMinutes:1 explicitly must reproduce the default output exactly');
+});
+
+t('a wick-only VWAP touch counts at confirmTfMinutes=1 but NOT at a higher confirmation timeframe (closes, not wicks)', () => {
+  const warm = warmupDays(28);
+  function oneDayWithWick(dayIdx, closeFn, wickAtMinute) {
+    const d = oneDay(dayIdx, closeFn);
+    if (wickAtMinute != null) d.lows[wickAtMinute] -= 5;   // a huge intrabar wick, single bar
+    return d;
+  }
+  const day = oneDayWithWick(28, m => {
+    if (m < 300) return 100 + 0.05 * Math.sin(m / 50);
+    if (m === 300) return 103;                    // spike crosses the threshold
+    if (m === 305) return 102.8;                   // CLOSES elevated despite the wick below
+    return 102.5 + 0.01 * Math.sin(m / 20);         // holds elevated the rest of the day
+  }, 305);
+  const A = concatDays([...warm, day, oneDay(29, m => 100 + 0.3 * Math.sin(m / 180))]);
+  const targetDate = new Date((T0 + 28 * DAY) * 1000).toISOString().slice(0, 10);
+
+  const wick = vwapExtensionAtlasWalk(A, { instrument: 'SYN', assetClass: 'fx', minLookbackDays: 25, thresholds: [1.0], confirmTfMinutes: 1 });
+  const confirmed = vwapExtensionAtlasWalk(A, { instrument: 'SYN', assetClass: 'fx', minLookbackDays: 25, thresholds: [1.0], confirmTfMinutes: 15 });
+  const rWick = wick.rows.find(r => r.date === targetDate && r.side === 'up');
+  const rConfirmed = confirmed.rows.find(r => r.date === targetDate && r.side === 'up');
+  assert.ok(rWick && rConfirmed, 'expected an up-crossing row at both confirmation settings');
+  assert.equal(rWick.touchedVwapAfter, true, 'the M1 wick alone must count as a touch at confirmTfMinutes=1');
+  assert.equal(rConfirmed.touchedVwapAfter, false, 'the same wick must NOT count as a touch at confirmTfMinutes=15 — the bucket never closed at VWAP');
+  assert.equal(rConfirmed.unresolvedAtDayEnd, true);
+});
+
 console.log(`${passed} passed`);
 process.exit(process.exitCode || 0);
