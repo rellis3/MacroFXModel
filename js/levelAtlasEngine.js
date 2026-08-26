@@ -122,6 +122,44 @@ export function sessionVolBucket(rangeMap, date, sessName, priorDates, lookback 
   return { bucket: r < 0.7 ? '1·quiet' : r > 1.4 ? '3·wild' : '2·normal', ratio: +r.toFixed(2), range: today.range };
 }
 
+// Which session immediately precedes a given session TYPE, and whether that
+// predecessor sits on the SAME date key or the PRIOR one. Checked empirically
+// against real session start times before writing this (see
+// sessionHandoffEngine.js's own header for the full derivation — this bit
+// that module once already, so it's captured here as the single canonical
+// answer instead of a second hand-derived copy): chronological order per
+// date-key D is London(D) 07:00 → NY(D) 13:00 → Asia(D) 22:00 → London(D+1)
+// 07:00, so Asia is the one that crosses the date boundary INTO the next
+// key, and London(D)'s own predecessor is Asia of the PRIOR key.
+export const PREV_SESSION = {
+  London: { session: 'Asia', dateOffset: -1 },
+  NY: { session: 'London', dateOffset: 0 },
+  Asia: { session: 'NY', dateOffset: 0 },
+};
+
+// The vol bucket of whichever session most recently closed before `session`
+// on `date` — regardless of which specific session that is. Unlike
+// asiaVol/londonVol (only exposed to a touch once that NAMED session has
+// itself closed, since a touch inside Asia can't see London/NY yet), this is
+// causal by construction for EVERY session type: the immediately preceding
+// session, by definition, has already fully closed by the time anything
+// happens in the current one. Fills a real gap those two dimensions leave —
+// a touch/checkpoint during Asia previously had NO "just-closed session vol"
+// reading at all (Asia hasn't closed, London/NY haven't happened yet).
+export function prevSessionVolBucket(rangeMap, date, session, dates) {
+  const info = PREV_SESSION[session];
+  if (!info) return null;
+  let prevDateKey = date;
+  if (info.dateOffset !== 0) {
+    const d = new Date(date + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + info.dateOffset);
+    prevDateKey = d.toISOString().slice(0, 10);
+  }
+  const idx = dates.indexOf(prevDateKey);
+  if (idx < 0) return null;
+  return sessionVolBucket(rangeMap, prevDateKey, info.session, dates.slice(0, idx))?.bucket ?? null;
+}
+
 // ── Ordinal test tracking, swept at multiple re-arm distances ────────────────
 // "1st test / 2nd test / 3rd+" needs a definition of when a touch counts as a
 // NEW test rather than the same wobble re-counted. `rearmFracs` sweeps that
@@ -419,6 +457,11 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             // (still-incomplete) range.
             const asiaVolSafe   = (touchSession === 'London' || touchSession === 'NY') ? asiaVolCandidate?.bucket ?? null : null;
             const londonVolSafe = (touchSession === 'NY') ? londonVolCandidate?.bucket ?? null : null;
+            // Fills the gap asiaVol/londonVol leave for an Asia-session touch
+            // (neither is available yet) — causal for EVERY session by
+            // construction, since a session's immediate predecessor has
+            // always already closed by the time anything happens in it.
+            const prevSessionVol = prevSessionVolBucket(rangeMap, date, touchSession, dates);
             // Has the OPPOSITE side of this SAME rung already been tagged today,
             // strictly before this bar? (re-arm-independent first-touch times,
             // precomputed once per day above — a genuine two-way-day flag).
@@ -444,7 +487,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               dowSession: `${dow}|${touchSession}`,
               dow,
               gapBucket, gapSig: +gapSig.toFixed(3),
-              dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe,
+              dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe, prevSessionVol,
               churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               otherSideTouchedBefore,
               level: +here.toFixed(6), pip,
@@ -559,6 +602,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
           const touchSession = sessionOf(new Date(bar.time * 1000).getUTCHours());
           const asiaVolSafe   = (touchSession === 'London' || touchSession === 'NY') ? asiaVolCandidate?.bucket ?? null : null;
           const londonVolSafe = (touchSession === 'NY') ? londonVolCandidate?.bucket ?? null : null;
+          const prevSessionVol = prevSessionVolBucket(rangeMap, date, touchSession, dates);
           const otherFirst = firstTouchBySide[otherSide]?.[rung] ?? null;
           const otherSideTouchedBefore = otherFirst != null ? (otherFirst < bar.time) : false;
           const ivSkewDir = (() => {
@@ -587,7 +631,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             sessionPos, session: touchSession,
             dowSession: `${dow}|${touchSession}`, dow,
             gapBucket, gapSig: +gapSig.toFixed(3),
-            dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe,
+            dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe, prevSessionVol,
             churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
             otherSideTouchedBefore,
             level: +here.toFixed(6), pip,

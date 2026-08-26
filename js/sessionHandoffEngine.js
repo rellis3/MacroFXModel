@@ -62,7 +62,7 @@
  * Pure: no network, no I/O. Callers supply packed M1.
  */
 
-import { sessionRangeSeries, sessionVolBucket, SESSION_BOUNDS } from './levelAtlasEngine.js';
+import { sessionRangeSeries, sessionVolBucket, prevSessionVolBucket, SESSION_BOUNDS } from './levelAtlasEngine.js';
 
 function dowOf(dateStr) { return new Date(dateStr + 'T00:00:00Z').getUTCDay(); }
 
@@ -139,6 +139,12 @@ export function sessionHandoffWalk(packed, { instrument, assetClass = 'fx', minL
       const shape = sessionShape(closing);
       if (!shape) continue;
       const volBucket = sessionVolBucket(rangeMap, date, from, priorDates)?.bucket ?? null;
+      // Persistence check (#4): does the CLOSING session's own predecessor
+      // (one hop further back) ALSO carry information about the NEXT
+      // session's volatility, beyond what `vol` (the immediate predecessor)
+      // already captures? Reuses the SAME shared helper Level Atlas/Session
+      // Path now use — one canonical "what closed before this" answer.
+      const prevVolBucket = prevSessionVolBucket(rangeMap, date, from, dates);
 
       const continued = shape.side === 'up' ? (next.close > closing.close) : (next.close < closing.close);
 
@@ -154,7 +160,7 @@ export function sessionHandoffWalk(packed, { instrument, assetClass = 'fx', minL
       rows.push({
         instrument: sym, assetClass, date, transition,
         side: shape.side, giveback: shape.giveback, travel: shape.travel,
-        vol: volBucket, dow,
+        vol: volBucket, prevVol: prevVolBucket, dow,
         continued,
         nextVol: nextVolInfo?.bucket ?? null, nextRatio: nextVolInfo?.ratio ?? null,
       });

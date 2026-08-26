@@ -18,6 +18,7 @@ function mkRows(n, fn) {
     rows.push({ date: d.toISOString().slice(0, 10), transition: ['London→NY', 'NY→Asia', 'Asia→London'][i % 3],
       side: i % 2 === 0 ? 'up' : 'down', giveback: ['1·held', '2·partial-giveback', '3·full-reversal'][i % 3],
       travel: ['1·churned', '2·mixed', '3·driven'][i % 3], vol: ['1·quiet', '2·normal', '3·wild'][i % 3],
+      prevVol: ['1·quiet', '2·normal', '3·wild'][(i + 1) % 3],
       dow: i % 7, ...fn(i) });
   }
   return rows;
@@ -70,6 +71,45 @@ t('matchContinuation/matchVolCluster return null for a cell the book has no data
   const volBook = buildVolClusterBook(rows);
   assert.equal(matchContinuation(contBook, { transition: 'nonexistent', side: 'up', giveback: '1·held' }), null);
   assert.equal(matchVolCluster(volBook, { transition: 'nonexistent', vol: '1·quiet' }), null);
+});
+
+// ── #4 additions: prevVol persistence dimension + meanNextRatio ──────────────
+t('buildVolClusterBook finds a prevVol effect that holds (persistence beyond one hop)', () => {
+  // Self-contained fixture, not reusing mkRows' i%3 pattern for prevVol
+  // (that formula ties prevVol to i in a way that doesn't cleanly separate
+  // from vol/giveback/etc. for this specific test) — prevVol='3·wild' pushes
+  // nextVol strongly wild; everything else sits at a fixed, lower base rate.
+  const rows = [];
+  for (let i = 0; i < 4000; i++) {
+    const d = new Date(2020, 0, 1 + Math.floor(i / 3));
+    const prevVol = ['1·quiet', '2·normal', '3·wild'][i % 3];
+    rows.push({
+      date: d.toISOString().slice(0, 10), transition: 'London→NY',
+      side: 'up', giveback: '1·held', travel: '2·mixed', vol: '2·normal', prevVol, dow: i % 7,
+      nextVol: prevVol === '3·wild' ? (i % 10 < 8 ? '3·wild' : '1·quiet') : (i % 10 < 3 ? '3·wild' : '1·quiet'),
+    });
+  }
+  const book = buildVolClusterBook(rows);
+  const findings = extractHeldHandoffFindings(book);
+  const prevVolFinding = findings.find(f => f.dimKey === 'prevVol' && f.bucket === '3·wild');
+  assert.ok(prevVolFinding, 'expected a held prevVol=3·wild finding on data deliberately shaped to produce one');
+  assert.ok(prevVolFinding.deltaIS > 0, 'prevVol=3·wild should show a POSITIVE lift toward next-wild');
+});
+
+t('meanNextRatio reports IS/OOS means per cell, null (not NaN/throw) when a cell has no nextRatio data', () => {
+  const rows = mkRows(4000, i => ({ nextVol: i % 4 === 0 ? '3·wild' : '1·quiet', nextRatio: 0.5 + (i % 10) / 10 }));
+  const book = buildVolClusterBook(rows);
+  assert.ok(book);
+  for (const cell of Object.values(book.cells)) {
+    assert.ok('meanNextRatio' in cell, 'every cell should carry a meanNextRatio entry');
+    assert.ok(cell.meanNextRatio.is == null || Number.isFinite(cell.meanNextRatio.is));
+    assert.ok(cell.meanNextRatio.oos == null || Number.isFinite(cell.meanNextRatio.oos));
+  }
+  const withReal = Object.values(book.cells).filter(c => c.meanNextRatio.is != null);
+  assert.ok(withReal.length > 0, 'expected at least one cell with a real meanNextRatio (not vacuous)');
+  const rowsNoRatio = mkRows(200, i => ({ nextVol: i % 2 === 0 ? '3·wild' : '1·quiet' }));
+  const bookNoRatio = buildVolClusterBook(rowsNoRatio);
+  for (const cell of Object.values(bookNoRatio.cells)) assert.equal(cell.meanNextRatio.is, null);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

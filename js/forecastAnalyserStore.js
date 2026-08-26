@@ -27,6 +27,7 @@ import { resampleTo } from './barUtils.js';
 // is the one place that can wire the two together without an import cycle.
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
+import { sessionRangeSeries, prevSessionVolBucket } from './levelAtlasEngine.js';
 
 const PREFIX   = 'forecast-analysis';
 const M1_PREFIX = process.env.R2_KEY_PREFIX || 'm1';
@@ -231,6 +232,16 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}, o
   const sessions   = bucketM1IntoSessions(packed, 'Europe/London');
   const assetClass = assetClassFor(pair);
   let pip = 0; try { pip = pipSize(pair) || 0; } catch { /* unknown symbol → round-number feature off */ }
+  // Cross-reference dimension (Session Handoff's own validated finding): the
+  // vol regime of whatever session most recently closed before a touch. Cheap
+  // (same brick Session Handoff's whole walk already runs on, the fastest of
+  // the three engines) — computed unconditionally, unlike the opt-in
+  // confluence pack below. Passed as a CALLBACK, not an import inside
+  // forecastAnalyser.js, because levelAtlasEngine.js already imports FROM
+  // that file — see analyseWindow's own comment for the full reasoning.
+  const rangeMap = sessionRangeSeries(packed);
+  const allDates = [...sessions.keys()].sort();
+  const prevSessionVolFor = (date, sess) => prevSessionVolBucket(rangeMap, date, sess, allDates);
   onLog(`${pair}: ${packed.n} M1 bars → ${sessions.size} sessions (${assetClass}, pip ${pip || 'n/a'})`);
 
   // ── Optional wider feature set (opts.confluence) ───────────────────────────
@@ -261,7 +272,7 @@ export async function refreshPair(pair, horizons = HORIZONS, onLog = () => {}, o
 
   const out = { pair, assetClass, horizons: {} };
   for (const h of horizons) {
-    const records  = runAnalyser(sessions, assetClass, { horizon: h, pip, tf, confLevelsFor });
+    const records  = runAnalyser(sessions, assetClass, { horizon: h, pip, tf, confLevelsFor, prevSessionVolFor });
     const coverage = { from: records[0]?.date ?? null, to: records.at(-1)?.date ?? null, windows: records.length };
     await putJSON(`${PREFIX}/${pair}/${h}.json`, { pair, horizon: h, assetClass, coverage, records });
     out.horizons[h] = { coverage, aggregates: buildAggregates(records) };

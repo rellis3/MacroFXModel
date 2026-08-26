@@ -10,7 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import { sessionHandoffWalk, TRANSITIONS, SIDES } from './sessionHandoffEngine.js';
-import { SESSION_BOUNDS, sessionRangeSeries as _sessionRangeSeries, sessionVolBucket as _sessionVolBucket } from './levelAtlasEngine.js';
+import { SESSION_BOUNDS, sessionRangeSeries as _sessionRangeSeries, sessionVolBucket as _sessionVolBucket, prevSessionVolBucket as _prevSessionVolBucket } from './levelAtlasEngine.js';
 
 let passed = 0;
 const t = (n, f) => { try { f(); passed++; console.log(`  ✓ ${n}`); }
@@ -240,6 +240,47 @@ t('nextVol reads the NEXT session\'s OWN prior-history median, not the closing s
   const priorDates = dates.slice(0, nextIdx);
   const expected = _sessionVolBucket(rangeMap, nextDateKey, 'London', priorDates);
   assert.equal(sample.nextVol, expected?.bucket ?? null, `nextVol mismatch for Asia→London on ${sample.date}`);
+});
+
+// ── prevVol (persistence check, #4) — reuses the SAME shared helper
+// levelAtlasEngine.js's own tests already verify, so this checks the
+// ENGINE'S WIRING of it, not the helper's own correctness a second time.
+t('prevVol matches a direct prevSessionVolBucket call for the closing session\'s own predecessor', () => {
+  const { rows } = sessionHandoffWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const rangeMap = _sessionRangeSeries(P);
+  const dates = [...new Set([...rangeMap.keys()].map(k => k.split('|')[0]))].sort();
+  const FROM_OF = { 'London→NY': 'London', 'NY→Asia': 'NY', 'Asia→London': 'Asia' };
+  let checked = 0;
+  for (const t of TRANSITIONS) {
+    const withPrevVol = rows.filter(r => r.transition === t && r.prevVol != null);
+    if (!withPrevVol.length) continue;
+    const sample = withPrevVol[Math.floor(withPrevVol.length / 2)];
+    const expected = _prevSessionVolBucket(rangeMap, sample.date, FROM_OF[t], dates);
+    assert.equal(sample.prevVol, expected, `prevVol mismatch for ${t} on ${sample.date}`);
+    checked++;
+  }
+  assert.ok(checked > 0, 'expected at least one transition with a checkable prevVol reading');
+});
+
+t('prevVol is causal — perturbing bars AFTER a handoff must not change that handoff\'s prevVol', () => {
+  const base = packedM1(60 * 24 * 260, { wiggle: 0.02 });
+  const wild = { ...base, highs: base.highs.slice(), lows: base.lows.slice(), closes: base.closes.slice() };
+  const start = base.n - 300;
+  for (let i = start; i < base.n; i++) { wild.highs[i] += 5; wild.lows[i] -= 5; }
+  const a = sessionHandoffWalk(base, { instrument: 'EURUSD', assetClass: 'fx' });
+  const b = sessionHandoffWalk(wild, { instrument: 'EURUSD', assetClass: 'fx' });
+  const lastDate = a.coverage.to;
+  const keyOf = r => `${r.date}|${r.transition}`;
+  const byKeyA = new Map(a.rows.map(r => [keyOf(r), r]));
+  let checked = 0;
+  for (const rb of b.rows) {
+    if (rb.date >= lastDate) continue;
+    const ra = byKeyA.get(keyOf(rb));
+    if (!ra) continue;
+    checked++;
+    assert.equal(ra.prevVol, rb.prevVol, `prevVol leaked a future perturbation on ${ra.date}|${ra.transition}`);
+  }
+  assert.ok(checked > 50, `too few comparable rows (${checked})`);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

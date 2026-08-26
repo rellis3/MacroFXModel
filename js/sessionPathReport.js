@@ -28,6 +28,7 @@ export const SESSION_DIMENSIONS = [
   ['dayVol', "Today's volatility vs its own trailing"],
   ['asiaVol', "Asia session volatility vs its own trailing"],
   ['londonVol', "London session volatility vs its own trailing"],
+  ['prevSessionVol', 'The session that just closed (whichever it was) — its volatility vs its own trailing'],
   ['prevCloseLoc', "Yesterday's close vs ITS OWN forecast bands (exhaustion carried over)"],
   ['otherSideProgress', 'Has the OPPOSITE side also moved today (two-way vs one-way so far)'],
   ['wtState', 'WaveTrend state at the checkpoint'],

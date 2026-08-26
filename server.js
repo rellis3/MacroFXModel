@@ -17664,12 +17664,12 @@ app.post('/api/fx-vol-carry/run', express.json({ limit: '64kb' }), (req, res) =>
 
   (async () => {
     try {
-      const { results, log, cvolMeta } = await runVRPSuite(opts, instFilter ?? VRP_INSTRUMENTS);
+      const { results, log, cvolMeta, cboeMeta } = await runVRPSuite(opts, instFilter ?? VRP_INSTRUMENTS);
       if (!results.length) {
         vrpJobs.set(jobId, { status: 'error', error: 'No results generated', log, startedAt });
         return;
       }
-      vrpJobs.set(jobId, { status: 'done', result: { results, log, opts, cvolMeta }, startedAt });
+      vrpJobs.set(jobId, { status: 'done', result: { results, log, opts, cvolMeta, cboeMeta }, startedAt });
     } catch (e) {
       const msg = e?.message || String(e) || 'Unknown engine error';
       console.error('[fx-vol-carry/run]', msg, e?.stack ?? '');
