@@ -43,9 +43,10 @@ import { fileURLToPath } from 'url';
 // already uses for Pattern Lab: the sandbox this was built in has M1 read
 // access (R2/parquet/Drive) but no R2 WRITE credentials, so a one-off
 // analysis script writes here directly; the real Railway deploy (which does
-// have R2 creds) writes to R2 via `runOne` above and this route finds that
-// copy instead once it exists. Local file wins when present (dev/precompute
-// convenience) so a redeploy doesn't need to have already re-run.
+// have R2 creds) writes to R2 via `runOne` above via the nightly auto-rebuild.
+// R2 wins when present (see the route below) — this file is ONLY a bootstrap
+// snapshot so the page has something to show before Railway's first real run,
+// not a permanent override of it.
 const VOTE_TRADES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades');
 function loadLocalVoteTrades(pair) {
   try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}.json`), 'utf8')); }
@@ -401,7 +402,13 @@ export function mountLevelAtlasRoutes(app, express) {
   app.get('/api/level-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
-      const stored = loadLocalVoteTrades(pair) ?? await getJSON(`${PREFIX}/${pair}-votetrades.json`);
+      // R2 wins when present — it's the nightly-refreshed, real production
+      // copy (same auto-rebuild schedule as the main Level Atlas book). The
+      // local file is ONLY the bootstrap snapshot from this dev sandbox
+      // (which has no R2 write access) — if it took priority, it would
+      // permanently shadow every future real `/run`, which is a staleness
+      // bug this project has been bitten by before in other forms.
+      const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`) ?? loadLocalVoteTrades(pair);
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 1;
       const trades = stored.trades.filter(t => t.margin >= minMargin);
