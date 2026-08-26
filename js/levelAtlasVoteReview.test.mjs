@@ -162,7 +162,8 @@ function mkBook(dimSpecs) {
       date: `${year}-0${1 + (i % 9)}-15`, time: 1700000000 + i * 3600, resolveTime: 1700003600 + i * 3600,
       dimA: 'high', dimB: 'high', dimC: 'high',   // 2 out-votes (dimA,dimB) vs 1 back-vote (dimC) -> follow, margin 1
       outcome: i % 3 === 0 ? 'back' : 'out',      // ~67% win for a follow decision
-      innerDistPips: 8, outerDistPips: 20, pip: 0.0001, open: 1.1,
+      innerDistPips: 8, outerDistPips: 20, pip: 0.0001, open: 1.1, session: 'London',
+      fadePips: 3, runPips: 12,
     });
   }
   const trades = buildBarrierTrades(touches, book, { rearmFrac: 0.3 });
@@ -179,6 +180,17 @@ function mkBook(dimSpecs) {
   ok('T7 costStress 1x matches overall (same cost)', wf.costStress['1x'].expectancy === wf.overall.expectancy, JSON.stringify({ x1: wf.costStress['1x'].expectancy, overall: wf.overall.expectancy }));
   ok('T7 costStress 3x expectancy is lower than 1x (heavier cost drag)', wf.costStress['3x'].expectancy < wf.costStress['1x'].expectancy, JSON.stringify({ x1: wf.costStress['1x'].expectancy, x3: wf.costStress['3x'].expectancy }));
   ok('T7 returns null (not throw) with no book', runBarrierWalkForward(touches, null) === null);
+
+  // ── Test 8: trades carry session + REAL path-based MAE/MFE (for a
+  // tearsheet's session breakdown and CSV MAE column — not the fixed
+  // target/stop distance, the actual worst/best point the path reached).
+  // These touches are all 'follow' decisions, so per reorientExcursion's
+  // convention MFE=runPips=12, MAE=fadePips=3.
+  ok('T8 every trade carries its session, unchanged from the touch', trades.every(t => t.session === 'London'));
+  ok('T8 MAE/MFE come from the real path (fadePips/runPips), not the fixed stop/target distance',
+     trades.every(t => t.maePct != null && t.mfePct != null && t.maePct !== t.stopPips && t.mfePct !== t.targetPips));
+  const expectMaePct = +(3 * 0.0001 / 1.1 * 100).toFixed(4);
+  ok('T8 MAE value matches fadePips reoriented for a follow decision', Math.abs(trades[0].maePct - expectMaePct) < 1e-6, JSON.stringify({ got: trades[0].maePct, expect: expectMaePct }));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

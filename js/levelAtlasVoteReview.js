@@ -201,11 +201,20 @@ export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rear
     if (!vd || vd.margin < minMargin) continue;
     const priced = priceBarrierTrade(t, vd.decision, cost);
     if (!priced) continue;
+    // Real intra-trade adverse/favourable excursion (from the actual M1 path,
+    // via the SAME reorientExcursion already used for the MFE/MAE review
+    // above) — riding along for a tearsheet's MAE column, which per this
+    // project's own house rule (CLAUDE.md) must come from the real path, not
+    // be approximated from the fixed stop distance.
+    const { mfePips, maePips } = reorientExcursion(t, vd.decision);
+    const denom = t.open > 0 ? t.open : null;
     trades.push({
       instrument: t.instrument, date: t.date, time: t.time, resolveTime: t.resolveTime,
-      side: t.side, rung: t.rung, entry: t.level, pip: t.pip,
+      side: t.side, rung: t.rung, session: t.session, entry: t.level, pip: t.pip,
       decision: vd.decision, margin: vd.margin,
       targetPips: priced.targetPips, stopPips: priced.stopPips,
+      mfePct: denom ? +(mfePips * t.pip / denom * 100).toFixed(4) : null,
+      maePct: denom ? +(Math.abs(maePips) * t.pip / denom * 100).toFixed(4) : null,
       win: priced.win, pnlPct: priced.pnlPct,
     });
   }
