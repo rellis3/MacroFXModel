@@ -8,7 +8,7 @@
  *   node js/levelAtlasRoutes.test.mjs
  */
 import assert from 'node:assert/strict';
-import { boundPacked, getFastLive, liveCache, liveWarming } from './levelAtlasRoutes.js';
+import { boundPacked, getFastLive, liveCache, liveWarming, pickFresher } from './levelAtlasRoutes.js';
 
 let passed = 0;
 const results = [];
@@ -90,6 +90,27 @@ await t('a SECOND warm call is dramatically faster than the cold path (cache hit
   assert.equal(r1.warming, false); assert.equal(r2.warming, false);
   assert.ok(ms2 < 5000, `expected a warm poll well under 5s (this is the number the whole redesign was for), took ${ms2}ms`);
   assert.equal(r1.date, r2.date, 'same live date across both warm calls');
+});
+
+// ── pickFresher — pure, synthetic. The exact bug this guards: a nightly
+// Railway run landing between two pushes leaves R2 holding real but OLDER
+// data than a freshly-pushed local bootstrap file (hit for real 2026-08-26,
+// R2 was missing a field a same-day local rebuild had) — "R2 always wins"
+// would silently keep serving the older copy forever.
+await t('pickFresher picks R2 when it is newer than local', () => {
+  const r2 = { generatedAt: '2026-08-26T20:00:00.000Z', v: 'r2' };
+  const local = { generatedAt: '2026-08-26T10:00:00.000Z', v: 'local' };
+  assert.equal(pickFresher(r2, local).v, 'r2');
+});
+await t('pickFresher picks LOCAL when it is newer than R2 — the exact staleness bug this exists to prevent', () => {
+  const r2 = { generatedAt: '2026-08-26T10:00:00.000Z', v: 'r2' };
+  const local = { generatedAt: '2026-08-26T20:00:00.000Z', v: 'local' };
+  assert.equal(pickFresher(r2, local).v, 'local');
+});
+await t('pickFresher falls back to whichever source exists when the other is null', () => {
+  assert.equal(pickFresher(null, { v: 'local' }).v, 'local');
+  assert.equal(pickFresher({ v: 'r2' }, null).v, 'r2');
+  assert.equal(pickFresher(null, null), null);
 });
 
 console.log(results.join('\n'));

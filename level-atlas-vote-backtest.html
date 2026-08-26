@@ -92,7 +92,8 @@
 </div>
 
 <div class="card">
-  <h2>Cumulative P&amp;L % (trade-by-trade)</h2>
+  <h2>Cumulative P&amp;L % (trade-by-trade) — additive, not compounded</h2>
+  <div class="muted" style="margin-bottom:8px">Each trade's pnl% is summed flat, never reinvested — a fixed-fractional-risk curve, not equity-scaled position sizing. See "Annual Return (linear)" above for the matching non-compounded annualisation; CAGR alongside it assumes reinvestment and is shown for reference only.</div>
   <canvas id="eqChart"></canvas>
 </div>
 
@@ -248,12 +249,20 @@ function computeStats(trades) {
 
   const firstT = sorted[0].date, lastT = sorted[sorted.length - 1].date;
   const years = Math.max((Date.parse(lastT) - Date.parse(firstT)) / (365.25 * 864e5), 1 / 52);
+  // CAGR treats the additive total (equity — a flat sum of each trade's
+  // pnlPct, NEVER reinvested trade-to-trade) as if it were ONE compounded
+  // return over the period, which quietly assumes gains get reinvested —
+  // something this fixed-fractional-risk trade list doesn't actually do.
+  // `linearAnnualReturn` (totalPnl / years) makes no such assumption — the
+  // two SHOULD read close together at these return sizes but diverge fast
+  // at outsized ones; report both rather than pick one silently.
   const cagr = (Math.pow(1 + equity / 100, 1 / years) - 1) * 100;
+  const linearAnnualReturn = equity / years;
   const sortino = sortinoRatio(pnls, base.tradesPerYr);
   const cmr = calmarRatio(cagr, maxDD);
 
   return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
-    totalPnl: equity, maxDD, equityCurve, grossCurve, cagr, sortino, calmar: cmr, years,
+    totalPnl: equity, maxDD, equityCurve, grossCurve, cagr, linearAnnualReturn, sortino, calmar: cmr, years,
     sortedDates: sorted.map(t => t.date) };
 }
 
@@ -267,8 +276,9 @@ function renderKpis(s) {
     kpiCard('Profit Factor', s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'amber' : 'red', 'gross win / gross loss'),
     kpiCard('Sharpe Ratio', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', 'annualised (trade-based)'),
     kpiCard('Max Drawdown', '-' + fmt1(s.maxDD) + '%', 'red', 'cumulative peak→trough'),
-    kpiCard('Total P&L %', fmtPct(s.totalPnl), signClass(s.totalPnl), 'sum of all trade pnl%'),
-    kpiCard('CAGR', fmt1(s.cagr) + '%', s.cagr >= 15 ? 'green' : s.cagr >= 0 ? 'amber' : 'red', 'annualised compound'),
+    kpiCard('Total P&L %', fmtPct(s.totalPnl), signClass(s.totalPnl), 'additive sum, NOT compounded'),
+    kpiCard('CAGR', fmt1(s.cagr) + '%', s.cagr >= 15 ? 'green' : s.cagr >= 0 ? 'amber' : 'red', 'annualised, ASSUMES compounding'),
+    kpiCard('Annual Return (linear)', fmt1(s.linearAnnualReturn) + '%', signClass(s.linearAnnualReturn), 'total P&L ÷ years — NOT compounded'),
     kpiCard('Sortino', fmt2(s.sortino), '', 'downside-adjusted'),
     kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / max DD'),
     kpiCard('Reward : Risk', fmt2(s.rr), '', 'avg win / avg loss'),

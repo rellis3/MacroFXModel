@@ -44,13 +44,24 @@ import { fileURLToPath } from 'url';
 // access (R2/parquet/Drive) but no R2 WRITE credentials, so a one-off
 // analysis script writes here directly; the real Railway deploy (which does
 // have R2 creds) writes to R2 via `runOne` above via the nightly auto-rebuild.
-// R2 wins when present (see the route below) — this file is ONLY a bootstrap
-// snapshot so the page has something to show before Railway's first real run,
-// not a permanent override of it.
+// The route below picks whichever of this file / R2 has the NEWER
+// `generatedAt`, not "R2 always wins" — a nightly Railway run landing
+// between two pushes can leave R2 holding real but genuinely OLDER data
+// than a freshly-pushed local file (hit for real 2026-08-26: R2 had a
+// pre-`session`-field copy shadowing the local file that had it).
 const VOTE_TRADES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades');
 function loadLocalVoteTrades(pair) {
   try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-votetrades.json`), 'utf8')); }
   catch { return null; }
+}
+
+// Exported for js/levelAtlasRoutes.test.mjs — pure, so the "compare
+// generatedAt, don't assume one source always wins" logic is checkable
+// without mocking R2 or the filesystem.
+export function pickFresher(r2Data, localData) {
+  if (!r2Data) return localData;
+  if (!localData) return r2Data;
+  return Date.parse(r2Data.generatedAt) >= Date.parse(localData.generatedAt) ? r2Data : localData;
 }
 
 const PREFIX = 'level-atlas';
@@ -402,13 +413,17 @@ export function mountLevelAtlasRoutes(app, express) {
   app.get('/api/level-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
-      // R2 wins when present — it's the nightly-refreshed, real production
-      // copy (same auto-rebuild schedule as the main Level Atlas book). The
-      // local file is ONLY the bootstrap snapshot from this dev sandbox
-      // (which has no R2 write access) — if it took priority, it would
-      // permanently shadow every future real `/run`, which is a staleness
-      // bug this project has been bitten by before in other forms.
-      const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`) ?? loadLocalVoteTrades(pair);
+      // Whichever of R2 / the local bootstrap snapshot has the NEWER
+      // `generatedAt` wins — not "R2 always wins". A blind R2-always-wins
+      // rule (this route's own first version) has exactly the staleness
+      // failure mode it was meant to prevent: a nightly `/run` that executed
+      // on Railway BETWEEN two pushes writes a version of this file to R2
+      // that predates a field added in the second push (e.g. `session`) —
+      // that R2 copy is real production data, but it is not the freshest
+      // data, and would otherwise permanently shadow the newly-pushed local
+      // file until the next nightly run. Comparing timestamps instead of
+      // assuming "R2 = newest" fixes this in both directions.
+      const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 1;
       const trades = stored.trades.filter(t => t.margin >= minMargin);
