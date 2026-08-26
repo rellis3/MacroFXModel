@@ -141,7 +141,7 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
 export function analyseWindow(session, ladder, ctx = {}) {
   const { open, bars } = session;
   const { sigma = 0, tf = null, pip = 0, trailFrac = 0.5, beTrigger = 0.5, forwardBars = null,
-          confLevels = null } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params + next-day M1 for the ride-hold exit + this session's structural-confluence levels (see confluenceFeatures.js)
+          confLevels = null, date = null, prevSessionVolFor = null } = ctx;   // daily-σ frac + touch-feature computer + pip size + exit-study trail/BE params + next-day M1 for the ride-hold exit + this session's structural-confluence levels (see confluenceFeatures.js) + this window's own date + a (date,session)->bucket callback for prevSessionVol (see runAnalyser's own comment on why this is a callback, not an import)
   const n = bars.length;
   const last = bars[n - 1];
   const closePx = last?.close ?? open;
@@ -202,7 +202,7 @@ export function analyseWindow(session, ladder, ctx = {}) {
       if (touchIdx < 0) {
         const fin = levelAt(nm, side, n - 1);
         outRows.push({ name: nm, side, level: +fin.toFixed(6), distPct,
-          hit: false, outcome: 'no_touch', firstTouchTime: null, session: null, budgetBucket: null,
+          hit: false, outcome: 'no_touch', firstTouchTime: null, session: null, budgetBucket: null, prevSessionVol: null,
           retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
           closeBeyond: isUp ? closePx > fin : closePx < fin, mfePct: 0, ...NO_FEATS });
         continue;
@@ -217,9 +217,19 @@ export function analyseWindow(session, ladder, ctx = {}) {
       const budget   = expRange > 0 ? (runHigh[touchIdx] - runLow[touchIdx]) / expRange : 0;
       const budgetBucket = budget < 0.4 ? '1·early' : budget < 0.75 ? '2·mid' : '3·exhausted';
       const sess = classifySession(firstTouchTime);
+      // Cross-reference dimension from Session Handoff's own validated finding
+      // (a wild closing session hands off into another wild one — see
+      // js/sessionHandoffEngine.js): the vol regime of whichever session most
+      // recently closed before THIS touch's own session. Causal by
+      // construction (that session has already closed). A callback, not an
+      // import of prevSessionVolBucket, because levelAtlasEngine.js already
+      // imports FROM this file (bucketM1IntoSessions) — the dependency can
+      // only point one way, same reasoning as the `tf`/`confLevelsFor` pattern
+      // just above.
+      const prevSessionVol = (prevSessionVolFor && date && sess) ? prevSessionVolFor(date, sess) : null;
       if (!hasPath) {
         outRows.push({ name: nm, side, level: +touchLvl.toFixed(6), distPct,
-          hit: true, outcome: 'no_intraday', firstTouchTime, session: sess, budgetBucket,
+          hit: true, outcome: 'no_intraday', firstTouchTime, session: sess, budgetBucket, prevSessionVol,
           retraceTo: null, retracePct: 0, extTo: null, extPct: 0,
           closeBeyond: isUp ? closePx > touchLvl : closePx < touchLvl, mfePct: 0, ...fb });
         continue;
@@ -305,7 +315,7 @@ export function analyseWindow(session, ladder, ctx = {}) {
 
       outRows.push({
         name: nm, side, level: +touchLvl.toFixed(6), distPct,
-        hit: true, outcome, firstTouchTime, session: sess, budgetBucket,
+        hit: true, outcome, firstTouchTime, session: sess, budgetBucket, prevSessionVol,
         retraceTo: retraceTo ? +retraceTo.toFixed(6) : null, retracePct: +retracePct.toFixed(4),
         extTo: extTo ? +extTo.toFixed(6) : null, extPct: +extPct.toFixed(4),
         // Exit-variant gross PnLs (%-of-price, no cost) for the OOS exit study.
@@ -412,6 +422,10 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
   // the same reason (`sessionConfluenceLevels` lives in rangeLineAnalyser).
   // Signature: (i, date, d1Bars) → Level[] | null, using completed prior days only.
   const confLevelsFor = typeof opts.confLevelsFor === 'function' ? opts.confLevelsFor : null;
+  // Same callback pattern, same reason (levelAtlasEngine.js already imports
+  // bucketM1IntoSessions FROM this file, so this file can't import back from
+  // it — see analyseWindow's own comment). Signature: (date, session) -> bucket|null.
+  const prevSessionVolFor = typeof opts.prevSessionVolFor === 'function' ? opts.prevSessionVolFor : null;
 
   // Drop thin sessions (holidays / partial days) so a session is a real path.
   const dates = [...sessions.keys()].sort()
@@ -454,7 +468,7 @@ export function runAnalyser(sessions, assetClass, opts = {}) {
       for (let k = i + 1; k <= Math.min(i + holdDays, dates.length - 1); k++) forwardBars.push(...sessions.get(dates[k]));
     }
     const confLevels = confLevelsFor ? confLevelsFor(i, date, d1Bars) : null;
-    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0, forwardBars, confLevels });
+    const lines  = analyseWindow({ open, bars }, ladder, { sigma, tf, pip: opts.pip ?? 0, forwardBars, confLevels, date, prevSessionVolFor });
 
     // Day-type score (no lookahead: reads closes[< i] only) + the selector's
     // directional choice + the realized continuation/reversion label, for the
