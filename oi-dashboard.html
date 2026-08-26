@@ -1152,12 +1152,42 @@ function todaysRead(e){
   const dtxt = function(v){ const d=dist(v); return Number.isFinite(d)?((d>=0?'+':'')+d.toFixed(0)+'p'):''; };
   const age = ageOf(e);
   const pin = gex>0, brk = gex<0;
+
+  // One day's plausible move, 1 sigma. Front ATM IV is the market's own answer; fall back
+  // to scaling the reference move down from its own horizon. Everything below is measured
+  // against this, because "how far is it" is the wrong question — "can price get there
+  // today" is the one that decides whether a level is a target or wallpaper.
+  const dayMove = (function(){
+    const fiv = e.ivTermStructure && e.ivTermStructure.front && e.ivTermStructure.front.iv;
+    if(Number.isFinite(fiv) && fiv>0 && Number.isFinite(S)) return S*(fiv/100)*Math.sqrt(1/365);
+    const rmv = (e.refMove && e.refMove.move>0) ? e.refMove.move : null;
+    const dte = (Number.isFinite(e.dte) && e.dte>0) ? e.dte : null;
+    return (rmv && dte) ? rmv*Math.sqrt(1/dte) : null;
+  })();
+  const xday = function(v){
+    return (dayMove && Number.isFinite(v) && Number.isFinite(S)) ? Math.abs(v-S)/dayMove : NaN; };
+  const reachTxt = function(v){
+    const x = xday(v);
+    if(!Number.isFinite(x)) return '';
+    return x<=1 ? 'reachable today'
+         : x<=2 ? x.toFixed(1)+'x today — a stretch'
+                : x.toFixed(1)+'x today — not in play';
+  };
   const dayDte = (e.dayExpiry && Number.isFinite(e.dayExpiry.dte)) ? e.dayExpiry.dte : null;
 
   // ── headline ───────────────────────────────────────────────────────────────
-  const gl = _gammaLevels(e,3);
+  const glAll = _gammaLevels(e,6);
+  // Drop gamma levels price cannot plausibly reach today. A strike 5x the day's move away
+  // is real structure, but it is not a level you can trade against between now and the
+  // close, and listing it next to one 20 points away implies they are comparable.
+  const glIn  = glAll.rows.filter(function(r){ return !Number.isFinite(xday(r.strike)) || xday(r.strike)<=2; });
+  const gl    = { src: glAll.src, rows: (glIn.length?glIn:glAll.rows).slice(0,3) };
+  const glCut = glAll.rows.length - glIn.length;
   const glTxt = gl.rows.length
-    ? gl.rows.map(function(r){ return '<b>'+fx(show(r.strike,e),SYM)+'</b> ('+dtxt(r.strike)+')'; }).join(' · ')
+    ? gl.rows.map(function(r){
+        const x = xday(r.strike);
+        return '<b>'+fx(show(r.strike,e),SYM)+'</b> ('+dtxt(r.strike)
+          + ((Number.isFinite(x) && x>1) ? ', '+x.toFixed(1)+'x today' : '')+')'; }).join(' · ')
     : 'none resolvable';
   const verdict = (gex==null) ? 'No net GEX stored, so the regime is unknown.'
     : pin  ? 'Dealers are <b>damping</b> moves. Ranges tend to hold, and fading extremes into the levels below is the behaviour that fits.'
@@ -1169,10 +1199,16 @@ function todaysRead(e){
 
   let top = '<div class="rd-top">'
     + '<div class="rd-reg" style="color:'+regCol+'">'+regTxt+'</div>'
-    + '<div class="rd-say">'+verdict+'</div>'
-    + '<div class="rd-say">The levels that actually matter today, ranked by <b>dealer gamma</b> rather than'
+    + '<div class="rd-say">'+verdict+'</div>';
+  if(dayMove){
+    top += '<div class="rd-say"><b>What is realistic today:</b> roughly <b>'+fx(show(S-dayMove,e),SYM)+'</b>'
+      + ' to <b>'+fx(show(S+dayMove,e),SYM)+'</b> — about '+Math.round(dayMove/pip(SYM))+'p either side of spot,'
+      + ' from the front-month implied vol. Anything outside that band is background, not a target for today.</div>';
+  }
+  top += '<div class="rd-say">The levels that actually matter today, ranked by <b>dealer gamma</b> rather than'
       + ' raw open interest, from '+(gl.src||'—')+': '+glTxt+'.'
-      + ' That is where hedging is concentrated, so that is where price is most likely to react.</div>';
+      + ' That is where hedging is concentrated, so that is where price is most likely to react.'
+      + (glCut>0 ? ' ('+glCut+' more carry gamma but sit too far out to reach today.)' : '')+'</div>';
   if(age && age.h>30) top += '<div class="rd-say" style="color:var(--warn)">⚠ This chain was pasted '+age.txt
     + ' ago. Open interest updates once a day — re-paste before trading these levels.</div>';
   top += '</div>';
@@ -1190,9 +1226,13 @@ function todaysRead(e){
     // Those agree at long DTE and come apart near expiry, and which it is changes
     // whether this panel is showing you a level or a pile of dead paper.
     const isGamma = gl.rows.some(function(r){ return Math.abs(r.strike-biggest.strike) < 1e-6; });
-    sub.push(_rd(far?'warn':isGamma?'ok':'warn','Open interest by strike',
-      'Heaviest strike is <b>'+lvl(biggest.strike)+'</b> ('+dtxt(biggest.strike)+')',
-      (far ? 'That is a long way from price — big open interest out there is mostly abandoned paper, not a level for today. '
+    const bx = xday(biggest.strike);
+    const outOfPlay = Number.isFinite(bx) && bx>2;
+    sub.push(_rd(outOfPlay?'warn':isGamma?'ok':'warn','Open interest by strike',
+      'Heaviest strike is <b>'+lvl(biggest.strike)+'</b> ('+dtxt(biggest.strike)+')'
+        + (reachTxt(biggest.strike) ? ' — '+reachTxt(biggest.strike) : ''),
+      (outOfPlay ? 'Price would need '+bx.toFixed(1)+' normal days to get there, so it is not a level you can trade against today. '
+        : far ? 'That is a long way from price — big open interest out there is mostly abandoned paper, not a level for today. '
            : '')
       + (isGamma
           ? 'It is also one of the top gamma strikes, so the crowd and the hedging agree: this is a real level.'
@@ -1211,7 +1251,11 @@ function todaysRead(e){
       : (pin?'Positive':brk?'Negative':'Flat')+' — flip at <b>'+lvl(flip)+'</b> ('+dtxt(flip)+')',
     !Number.isFinite(flip) ? 'No crossing found in range.'
       : nearFlip ? 'Price is sitting on the boundary, so the regime can flip either way today. Treat the read above as provisional and size smaller.'
-      : (S>flip ? 'Price is above the flip, on the damping side.' : 'Price is below the flip, on the amplifying side.')));
+      : (S>flip ? 'Price is above the flip, on the damping side. ' : 'Price is below the flip, on the amplifying side. ')
+        + (Number.isFinite(xday(flip))
+            ? (xday(flip)>2 ? 'The crossing is '+xday(flip).toFixed(1)+'x a normal day away, so the regime above is solid — it will not flip on you intraday.'
+                            : 'The crossing is only '+xday(flip).toFixed(1)+'x a normal day away, so a decent move could flip the regime today.')
+            : '')));
 
   // ── IV smile ───────────────────────────────────────────────────────────────
   const iv=e.ivDynamics, rr=e.riskReversal;
@@ -1222,7 +1266,11 @@ function todaysRead(e){
     (ch==null ? 'Paste the IV smile to light this up.'
       : (ch<0 ? 'Nothing here argues against your plan — the market is not bracing for a storm.'
               : 'People are paying up for protection. If your signal is long, that is a reason to go smaller or wait, not to reverse.'))
-    + ((rr && rr.tilt) ? ' Protection is priced <b>'+esc(rr.tilt)+'</b>.' : '')));
+    + ((rr && rr.tilt==='downside')
+        ? ' People are also paying more to protect against a <b>fall</b> than to bet on a rise — a mild caution if you are long.'
+        : (rr && rr.tilt==='upside')
+          ? ' People are also paying more to bet on a <b>rise</b> than to protect against a fall — a mild caution if you are short.'
+          : '')));
 
   // ── walls ──────────────────────────────────────────────────────────────────
   const cw=e.callWall, pw=e.putWall;
@@ -1276,8 +1324,10 @@ function todaysRead(e){
 
   // ── volume magnets ─────────────────────────────────────────────────────────
   const vm = (e.volumeMagnets||[]).filter(function(v){ return v && Number.isFinite(v.strike); });
-  sub.push(_rd(vm.length?'ok':'off','Volume magnets',
-    vm.length ? 'Busiest strike today <b>'+lvl(vm[0].strike)+'</b> ('+dtxt(vm[0].strike)+')' : 'No volume pasted',
+  const vmOut = vm.length && Number.isFinite(xday(vm[0].strike)) && xday(vm[0].strike)>2;
+  sub.push(_rd(vm.length?(vmOut?'warn':'ok'):'off','Volume magnets',
+    vm.length ? 'Busiest strike today <b>'+lvl(vm[0].strike)+'</b> ('+dtxt(vm[0].strike)+')'
+      + (reachTxt(vm[0].strike) ? ' — '+reachTxt(vm[0].strike) : '') : 'No volume pasted',
     vm.length ? 'Volume is what traded today; open interest is what is still held. A busy strike with little open interest is a fresh fight, not an established level.' : ''));
 
   // ── full-book GEX ──────────────────────────────────────────────────────────
