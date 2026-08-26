@@ -98,6 +98,13 @@ export function extractTouches(records, { conditions = ['approachVel'], dtThresh
         // only confluent levels, direction unchanged) can read it without fragmenting
         // the policy into per-bucket cells. Undefined unless the analyser computed it.
         confluence: ln.confluence ?? null,
+        // Cross-reference dimension from Session Handoff's own validated
+        // finding (js/sessionHandoffEngine.js) — the vol regime of whatever
+        // session most recently closed before this touch. Carried as a
+        // standalone field (like confluence/dayType above) regardless of
+        // whether it's an active `conditions` entry, so a study can inspect
+        // it directly. Undefined on records built before it shipped.
+        prevSessionVol: ln.prevSessionVol ?? null,
         // Ex-ante daily σ for the touch's session (% of price, volSigmaSeries — no
         // lookahead). The vol-sizing overlay's input; null on records built before
         // it shipped (the overlay treats missing σ as weight 1).
@@ -946,6 +953,66 @@ export function runDayTypeStudy(touchesByPair, { splitFrac = 0.6, minN = 50, mar
       n, baselineNetPnl: +baselineNetPnl.toFixed(4), gatedNetPnl: +gatedNetPnl.toFixed(4), gatedAction,
     },
   };
+}
+
+// ── 8b) prevSessionVol study — OOS A/B, same architecture as runDayTypeStudy ──
+// Does conditioning the fade/follow policy on Session Handoff's own validated
+// cross-reference dimension (the vol regime of whatever session most recently
+// closed before the touch) improve the OOS book, on THIS strategy's own
+// after-cost trade log — not assumed from Level Atlas/Session Path's own
+// (different) outcome. Two views of the SAME touches, cell key differing only
+// by whether `prevSessionVol` is folded in; same IS-learned/OOS-graded split,
+// same after-cost pricer, same "wins OOS" bar (Sharpe ≥ baseline AND n ≥ 30)
+// runDayTypeStudy already established — reused, not reinvented.
+export function runPrevSessionVolStudy(touchesByPair, { splitFrac = 0.6, minN = 50, marginPct = 0.01,
+                                                        costByPair = {}, slipByPair = {} } = {}) {
+  const pairs = Object.entries(touchesByPair || {});
+  if (!pairs.length) return null;
+  const cloneWith = (cellFn) => {
+    const out = {};
+    for (const [pair, ts] of pairs) out[pair] = ts.map(t => ({ ...t, cell: cellFn(t) }));
+    return out;
+  };
+  const baseByPair  = cloneWith(t => t.cell);                                     // as extracted (baseline conditions)
+  const gatedByPair = cloneWith(t => `${t.cell}|${t.prevSessionVol ?? 'na'}`);     // + prevSessionVol
+
+  const opts = { splitFrac, minN, marginPct, costByPair, slipByPair, mcRuns: 0, bootRuns: 0 };
+  const baseRes  = runPerLine(baseByPair,  opts);
+  const gatedRes = runPerLine(gatedByPair, opts);
+  if (!baseRes || !gatedRes) return null;
+  const splitDate = baseRes.splitDate;
+
+  const cardOf = (res) => {
+    const p = res.portfolio || {};
+    const exp = summarizeTrades(res.equity.map(e => e.pnl), res.equity.map(e => e.date)).expectancy;
+    return {
+      sharpe: p.sharpe ?? 0, cagr: p.cagr ?? 0, maxDD: p.maxDD ?? 0,
+      expectancy: exp, nTrades: res.nTrades,
+      cells: { fade: res.coverage.fadeCells, follow: res.coverage.followCells, skip: res.coverage.skipCells },
+    };
+  };
+  const baseline = cardOf(baseRes);
+  const gated    = cardOf(gatedRes);
+
+  const delta = {
+    sharpe: +((gated.sharpe ?? 0) - (baseline.sharpe ?? 0)).toFixed(3),
+    expectancy: +((gated.expectancy ?? 0) - (baseline.expectancy ?? 0)).toFixed(4),
+    nTrades: (gated.nTrades ?? 0) - (baseline.nTrades ?? 0),
+  };
+  const gatedWinsOos = (gated.sharpe ?? -Infinity) >= (baseline.sharpe ?? Infinity) && (gated.nTrades ?? 0) >= 30;
+
+  // Coverage note: how much of the OOS book actually HAD a prevSessionVol
+  // reading (early history / short trailing lookback → null) — a study result
+  // built on a thin subset should say so rather than imply full coverage.
+  let oosTotal = 0, oosWithReading = 0;
+  for (const [, ts] of pairs) for (const t of ts) {
+    if (t.date < splitDate) continue;
+    oosTotal++;
+    if (t.prevSessionVol != null) oosWithReading++;
+  }
+  const coveragePct = oosTotal ? +(oosWithReading / oosTotal * 100).toFixed(1) : 0;
+
+  return { splitDate, baseline, gated, delta, gatedWinsOos, coverage: { oosTotal, oosWithReading, coveragePct } };
 }
 
 // ── 9) Stop-loss study — per-pair optimal SL from winners' MAE, out-of-sample ──

@@ -76,6 +76,23 @@ a{color:var(--acc)}
 .lv .f{font-family:var(--mono);font-size:12px;color:var(--tx3);margin-top:1px}
 .lv .d{font-family:var(--mono);font-size:12px;color:var(--tx2);margin-top:1px}
 
+/* Today's read - the plain-English summary strip above the panels */
+.todayread{margin-bottom:18px}
+.todayread .body{padding:0}
+.rd-top{padding:16px 18px;border-bottom:1px solid var(--line)}
+.rd-reg{font-size:13px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.rd-say{font-size:14px;line-height:1.62;color:var(--tx2);margin-top:6px;max-width:104ch}
+.rd-say b{color:var(--tx);font-weight:600}
+.rd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:1px;background:var(--line)}
+.rd{background:var(--bg2);padding:13px 16px}
+.rd-h{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:flex;align-items:center;gap:7px}
+.rdot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.rd-v{font-size:14.5px;color:var(--tx);margin-top:5px;line-height:1.45}
+.rd-v b{font-family:var(--mono);font-weight:600}
+.rd-d{font-size:12.5px;color:var(--tx3);margin-top:5px;line-height:1.55}
+.rd-d b{color:var(--tx2)}
+@media(max-width:760px){.rd-grid{grid-template-columns:1fr}}
+
 /* panels */
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
 .p{background:var(--bg2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
@@ -260,9 +277,9 @@ const HELP = {
   charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
   vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
   expmove:['Expected move','The option market own estimate of the <b>plus/minus range</b> by expiry, read from the at-the-money straddle price.','A target beyond this band is one the market itself considers unlikely to be reached by expiry.'],
-  oichart:['Open interest by strike','How many contracts are open at each strike. <b>Red bars right = calls</b> (resistance above), <b>green bars left = puts</b> (support below).','Tall bars are the walls. Amber dashes are spot. Only strikes within 4 reference moves are shown — far-out strikes are usually abandoned paper and would flatten the scale.'],
-  gexchart:['Net GEX by strike','Call gamma minus put gamma at each strike — where <b>dealer hedging</b> concentrates and which way it pushes.','Red above the line = call-dominated, green below = put-dominated. The marked crossings are the regime boundaries.'],
-  smile:['IV smile','<b>Implied volatility</b> against strike. Solid = today, dotted = the previous settlement.','Called a smile because vol is lowest at the money and rises at both wings — the market pays up for tail protection. A <b>steeper left wing</b> means demand for downside puts, i.e. fear. Watching it move day to day shows where hedging demand is going.'],
+  oichart:['Open interest by strike','How many contracts sit at each strike. <b>Red bars right = calls</b> (resistance above), <b>green bars left = puts</b> (support below). A tall bar is a lot of money parked at that price. Amber dashes mark spot, and only strikes near price are drawn.','Use it to see <b>where the crowd is positioned</b> — not where price is going. One trap: close to expiry a big bar far from price is old paper with no hedging left behind it. The Net GEX chart is the better guide to which strikes still actually matter today.'],
+  gexchart:['Net GEX by strike','Where dealers are forced to hedge, and which way that pushes price. <b>Red above the line</b> = calls dominate, <b>green below</b> = puts dominate. The marked crossing is where their behaviour flips.','<b>Above the flip</b> dealers lean against moves: ranges hold and fading extremes works. <b>Below it</b> they push moves along: breaks run, so do not fade them. If price is sitting right on the crossing the regime is unstable — trade smaller until it picks a side.'],
+  smile:['IV smile','What the options market is <b>bracing for</b> — not direction, but how much movement, and which side people are paying up to protect. <b>Blue is today, grey is the previous settlement.</b> Blue below grey means the market expects a calmer day than it did yesterday.','Use it to decide <b>how far to trust your signal</b>, never to pick a side. Calm or falling: trade normally. Rising sharply — especially with the left wing steepening, meaning downside protection is getting expensive — is the market buying umbrellas. If your signal is long, that is a reason to go smaller or wait, not to reverse.'],
   term:['ATM IV term structure','At-the-money implied vol across <b>expiries</b> — the market vol forecast by horizon.','<b>Upward sloping</b> is normal: more time, more uncertainty. <b>Inverted</b> (near-dated higher) means an event is expected soon and short-dated levels break more easily.'],
   flow:['Positioning and flow','Aggregate reads on how the option book is positioned and how that changed since yesterday.','These describe the <b>character</b> of the market — whether moves get damped or amplified, whether positioning is being built or unwound. They are context, not entry signals.'],
   netgex:['Net GEX','Total dealer gamma exposure. <b>Positive</b>: dealers damp moves, ranges hold, fading extremes works. <b>Negative</b>: they amplify, breaks run, do not fade.'],
@@ -801,8 +818,15 @@ function chartOI(e,big){
   if(win.length<3) win=rows.slice();                       // window too tight → show everything
   win=win.filter(r=>(r.callOI||0)+(r.putOI||0)>0);
   if(!win.length) return '<div class="empty">Every strike in the focus window has zero open interest.</div>';
+  // Keep the strikes NEAREST SPOT, then sort for display. Sorting descending first and
+  // slicing kept the 44 HIGHEST strikes instead: gold's +-4x refMove window holds 427
+  // strikes, so the chart rendered 5429-5799 against a 4644 spot and never drew the spot
+  // line at all. The sort below is for the top-down price axis; it must not decide WHICH
+  // strikes survive.
+  const _cap = big?90:44;
+  if(win.length>_cap) win = win.slice()
+    .sort((a,b)=>Math.abs(a.strike-spot)-Math.abs(b.strike-spot)).slice(0,_cap);
   win.sort((a,b)=>b.strike-a.strike);
-  if(win.length>(big?90:44)) win=win.slice(0,big?90:44);
   const maxOI=Math.max(...win.map(r=>Math.max(r.callOI||0,r.putOI||0)),1);
   const rowH=big?24:18, W=1000, H=Math.max(120,win.length*rowH), MID=W*0.5, HALF=W*0.35;
   let s=`<svg viewBox="0 0 ${W} ${H+28}">`;
@@ -1083,6 +1107,242 @@ function volumePanel(e){
     + `</tbody></table>`;
 }
 
+// ── TODAY'S READ ──────────────────────────────────────────────────────────────
+// The page shows ~33 numbers across 10 panels and never says what they add up to.
+// This is the plain-English answer to "what is this book telling me today", with one
+// sub-read per panel so every number below is already interpreted before you scroll to
+// it. Nothing here is a second opinion — it reads the same stored fields the panels do
+// and says them in English.
+//
+// Traffic lights are deliberately NOT directional. Green = nothing here argues against
+// your plan. Amber = something is changing. Red = this contradicts a trade you might be
+// about to take. Direction comes from your own system; this says how far to trust it.
+
+function _rd(light, panel, headline, detail){
+  const col = light==='ok' ? 'var(--ok)' : light==='warn' ? 'var(--warn)'
+            : light==='bad' ? 'var(--call)' : 'var(--tx3)';
+  return '<div class="rd"><div class="rd-h"><span class="rdot" style="background:'+col+'"></span>'+panel+'</div>'
+    + '<div class="rd-v">'+headline+'</div>'+(detail?'<div class="rd-d">'+detail+'</div>':'')+'</div>';
+}
+
+// The levels that ACTUALLY matter: ranked by dealer gamma, not raw open interest.
+// At 30 DTE the two agree. At 1-2 DTE they do not — gamma collapses into a spike at the
+// money while the big open interest is still parked at strikes that are now worthless,
+// so an OI-ranked wall list points at levels nothing is hedging. Measured on gold at
+// 1 DTE: the wall table said 5143/5133/4943, the gamma said 4643/4693/4743 — no overlap.
+// Prefer the traded (day) expiry's profile when there is one; that is the book in play.
+function _gammaLevels(e, n){
+  const day = (e.dayExpiry && Array.isArray(e.dayExpiry.gexProfile) && e.dayExpiry.gexProfile.length)
+    ? e.dayExpiry : null;
+  const gp = (day ? day.gexProfile : e.gexProfile) || [];
+  const rows = gp.filter(function(r){ return r && Number.isFinite(r.strike) && Number.isFinite(r.netGex) && r.netGex!==0; });
+  if(!rows.length || !Number.isFinite(e.spot)) return { src:null, rows:[] };
+  const rm = (e.refMove && e.refMove.move>0) ? e.refMove.move : Math.abs(e.spot)*0.02;
+  const near = rows.filter(function(r){ return Math.abs(r.strike-e.spot) <= 1.5*rm; });
+  const pick = (near.length?near:rows).slice()
+    .sort(function(a,b){ return Math.abs(b.netGex)-Math.abs(a.netGex); }).slice(0, n||3);
+  return { src: day ? ('the '+day.dte+'DTE book') : ((e.dte!=null) ? ('the '+e.dte+'DTE book') : 'the primary book'), rows: pick };
+}
+
+function todaysRead(e){
+  if(!e) return '';
+  const S=e.spot, ex=e.exposures||{}, gex=Number.isFinite(ex.gex)?ex.gex:null;
+  const lvl  = function(v){ return Number.isFinite(v) ? fx(show(v,e),SYM) : '—'; };
+  const dist = function(v){ return (Number.isFinite(v)&&Number.isFinite(S)) ? ((v-S)/pip(SYM)) : NaN; };
+  const dtxt = function(v){ const d=dist(v); return Number.isFinite(d)?((d>=0?'+':'')+d.toFixed(0)+'p'):''; };
+  const age = ageOf(e);
+  const pin = gex>0, brk = gex<0;
+
+  // One day's plausible move, 1 sigma. Front ATM IV is the market's own answer; fall back
+  // to scaling the reference move down from its own horizon. Everything below is measured
+  // against this, because "how far is it" is the wrong question — "can price get there
+  // today" is the one that decides whether a level is a target or wallpaper.
+  const dayMove = (function(){
+    const fiv = e.ivTermStructure && e.ivTermStructure.front && e.ivTermStructure.front.iv;
+    if(Number.isFinite(fiv) && fiv>0 && Number.isFinite(S)) return S*(fiv/100)*Math.sqrt(1/365);
+    const rmv = (e.refMove && e.refMove.move>0) ? e.refMove.move : null;
+    const dte = (Number.isFinite(e.dte) && e.dte>0) ? e.dte : null;
+    return (rmv && dte) ? rmv*Math.sqrt(1/dte) : null;
+  })();
+  const xday = function(v){
+    return (dayMove && Number.isFinite(v) && Number.isFinite(S)) ? Math.abs(v-S)/dayMove : NaN; };
+  const reachTxt = function(v){
+    const x = xday(v);
+    if(!Number.isFinite(x)) return '';
+    return x<=1 ? 'reachable today'
+         : x<=2 ? x.toFixed(1)+'x today — a stretch'
+                : x.toFixed(1)+'x today — not in play';
+  };
+  const dayDte = (e.dayExpiry && Number.isFinite(e.dayExpiry.dte)) ? e.dayExpiry.dte : null;
+
+  // ── headline ───────────────────────────────────────────────────────────────
+  const glAll = _gammaLevels(e,6);
+  // Drop gamma levels price cannot plausibly reach today. A strike 5x the day's move away
+  // is real structure, but it is not a level you can trade against between now and the
+  // close, and listing it next to one 20 points away implies they are comparable.
+  const glIn  = glAll.rows.filter(function(r){ return !Number.isFinite(xday(r.strike)) || xday(r.strike)<=2; });
+  const gl    = { src: glAll.src, rows: (glIn.length?glIn:glAll.rows).slice(0,3) };
+  const glCut = glAll.rows.length - glIn.length;
+  const glTxt = gl.rows.length
+    ? gl.rows.map(function(r){
+        const x = xday(r.strike);
+        return '<b>'+fx(show(r.strike,e),SYM)+'</b> ('+dtxt(r.strike)
+          + ((Number.isFinite(x) && x>1) ? ', '+x.toFixed(1)+'x today' : '')+')'; }).join(' · ')
+    : 'none resolvable';
+  const verdict = (gex==null) ? 'No net GEX stored, so the regime is unknown.'
+    : pin  ? 'Dealers are <b>damping</b> moves. Ranges tend to hold, and fading extremes into the levels below is the behaviour that fits.'
+    : brk  ? 'Dealers are <b>amplifying</b> moves. Breaks tend to run, so do not fade them — the levels below are launchpads, not brick walls.'
+           : 'Net GEX is flat. No clear damping or amplifying regime today.';
+  const regTxt = (gex==null) ? 'REGIME UNKNOWN' : pin ? 'PIN — moves get damped'
+    : brk ? 'BREAKOUT — moves get amplified' : 'NEUTRAL';
+  const regCol = (gex==null) ? 'var(--tx3)' : pin ? 'var(--ok)' : brk ? 'var(--call)' : 'var(--tx2)';
+
+  let top = '<div class="rd-top">'
+    + '<div class="rd-reg" style="color:'+regCol+'">'+regTxt+'</div>'
+    + '<div class="rd-say">'+verdict+'</div>';
+  if(dayMove){
+    top += '<div class="rd-say"><b>What is realistic today:</b> roughly <b>'+fx(show(S-dayMove,e),SYM)+'</b>'
+      + ' to <b>'+fx(show(S+dayMove,e),SYM)+'</b> — about '+Math.round(dayMove/pip(SYM))+'p either side of spot,'
+      + ' from the front-month implied vol. Anything outside that band is background, not a target for today.</div>';
+  }
+  top += '<div class="rd-say">The levels that actually matter today, ranked by <b>dealer gamma</b> rather than'
+      + ' raw open interest, from '+(gl.src||'—')+': '+glTxt+'.'
+      + ' That is where hedging is concentrated, so that is where price is most likely to react.'
+      + (glCut>0 ? ' ('+glCut+' more carry gamma but sit too far out to reach today.)' : '')+'</div>';
+  if(age && age.h>30) top += '<div class="rd-say" style="color:var(--warn)">⚠ This chain was pasted '+age.txt
+    + ' ago. Open interest updates once a day — re-paste before trading these levels.</div>';
+  top += '</div>';
+
+  const sub = [];
+
+  // ── open interest by strike ────────────────────────────────────────────────
+  const gp = (e.gexProfile||[]).filter(function(r){ return r && Number.isFinite(r.strike); });
+  const rm = (e.refMove && e.refMove.move>0) ? e.refMove.move : null;
+  if(gp.length){
+    const biggest = gp.slice().sort(function(a,b){
+      return ((b.callOI||0)+(b.putOI||0)) - ((a.callOI||0)+(a.putOI||0)); })[0];
+    const far = rm ? Math.abs(biggest.strike-S) > 1.5*rm : false;
+    // Does the biggest pile of contracts coincide with where dealers actually hedge?
+    // Those agree at long DTE and come apart near expiry, and which it is changes
+    // whether this panel is showing you a level or a pile of dead paper.
+    const isGamma = gl.rows.some(function(r){ return Math.abs(r.strike-biggest.strike) < 1e-6; });
+    const bx = xday(biggest.strike);
+    const outOfPlay = Number.isFinite(bx) && bx>2;
+    sub.push(_rd(outOfPlay?'warn':isGamma?'ok':'warn','Open interest by strike',
+      'Heaviest strike is <b>'+lvl(biggest.strike)+'</b> ('+dtxt(biggest.strike)+')'
+        + (reachTxt(biggest.strike) ? ' — '+reachTxt(biggest.strike) : ''),
+      (outOfPlay ? 'Price would need '+bx.toFixed(1)+' normal days to get there, so it is not a level you can trade against today. '
+        : far ? 'That is a long way from price — big open interest out there is mostly abandoned paper, not a level for today. '
+           : '')
+      + (isGamma
+          ? 'It is also one of the top gamma strikes, so the crowd and the hedging agree: this is a real level.'
+          : 'But the hedging is concentrated elsewhere ('
+            + (gl.rows.length ? gl.rows.map(function(r){ return fx(show(r.strike,e),SYM); }).join(' · ') : 'see above')
+            + '). Where dealers must hedge beats where the contracts are parked — trust those.')));
+  } else {
+    sub.push(_rd('off','Open interest by strike','No per-strike data','Press Analyse to store the full ladder.'));
+  }
+
+  // ── net GEX by strike ──────────────────────────────────────────────────────
+  const flip = Number.isFinite(e.gexFlip) ? e.gexFlip : e.gammaFlip;
+  const nearFlip = (Number.isFinite(flip) && rm) ? Math.abs(flip-S) < 0.5*rm : false;
+  sub.push(_rd(gex==null?'off':nearFlip?'warn':'ok','Net GEX by strike',
+    gex==null ? 'No GEX stored'
+      : (pin?'Positive':brk?'Negative':'Flat')+' — flip at <b>'+lvl(flip)+'</b> ('+dtxt(flip)+')',
+    !Number.isFinite(flip) ? 'No crossing found in range.'
+      : nearFlip ? 'Price is sitting on the boundary, so the regime can flip either way today. Treat the read above as provisional and size smaller.'
+      : (S>flip ? 'Price is above the flip, on the damping side. ' : 'Price is below the flip, on the amplifying side. ')
+        + (Number.isFinite(xday(flip))
+            ? (xday(flip)>2 ? 'The crossing is '+xday(flip).toFixed(1)+'x a normal day away, so the regime above is solid — it will not flip on you intraday.'
+                            : 'The crossing is only '+xday(flip).toFixed(1)+'x a normal day away, so a decent move could flip the regime today.')
+            : '')));
+
+  // ── IV smile ───────────────────────────────────────────────────────────────
+  const iv=e.ivDynamics, rr=e.riskReversal;
+  const ch = (iv && Number.isFinite(iv.atmChg)) ? iv.atmChg : null;
+  sub.push(_rd(ch==null?'off':(ch>1?'bad':ch>0?'warn':'ok'),'IV smile',
+    ch==null ? 'No IV pasted'
+      : 'Options expect <b>'+(ch<0?'less':'more')+'</b> movement than yesterday ('+(ch>0?'+':'')+ch+'%)',
+    (ch==null ? 'Paste the IV smile to light this up.'
+      : (ch<0 ? 'Nothing here argues against your plan — the market is not bracing for a storm.'
+              : 'People are paying up for protection. If your signal is long, that is a reason to go smaller or wait, not to reverse.'))
+    + ((rr && rr.tilt==='downside')
+        ? ' People are also paying more to protect against a <b>fall</b> than to bet on a rise — a mild caution if you are long.'
+        : (rr && rr.tilt==='upside')
+          ? ' People are also paying more to bet on a <b>rise</b> than to protect against a fall — a mild caution if you are short.'
+          : '')));
+
+  // ── walls ──────────────────────────────────────────────────────────────────
+  const cw=e.callWall, pw=e.putWall;
+  const boxed = Number.isFinite(cw)&&Number.isFinite(pw)&&S>pw&&S<cw;
+  sub.push(_rd((Number.isFinite(cw)||Number.isFinite(pw))?'ok':'off','Call / put walls',
+    boxed ? 'Boxed between <b>'+lvl(pw)+'</b> and <b>'+lvl(cw)+'</b>'
+          : 'Resistance '+lvl(cw)+' · support '+lvl(pw),
+    (boxed ? 'Price is inside the range these two defend. In a PIN regime that range tends to hold; in BREAKOUT expect one side to give.'
+           : 'Price is outside the wall pair, so the nearer one is behind it and no longer defending this side.')
+    + ((dayDte!=null && dayDte<=2)
+        ? ' <b>Careful:</b> at ' + dayDte + ' DTE these tables rank by raw open interest, which points at strikes with almost no gamma left. Trust the gamma-ranked levels at the top instead.'
+        : '')));
+
+  // ── positioning and flow ───────────────────────────────────────────────────
+  const pc=e.pcRatio, sk=e.skew;
+  const build = (Number.isFinite(e.totalCallChg)?e.totalCallChg:0) + (Number.isFinite(e.totalPutChg)?e.totalPutChg:0);
+  sub.push(_rd(Number.isFinite(pc)?'ok':'off','Positioning and flow',
+    Number.isFinite(pc) ? 'P/C '+pc.toFixed(2)+' — '+(pc>1.3?'heavy hedging':pc<0.7?'call-heavy':'balanced')
+      + ((sk && sk.read && sk.read!=='balanced') ? ' · '+esc(sk.read) : '') : 'No positioning data',
+    build>0 ? 'Open interest is <b>building</b> — new money is committing, so these levels are firming.'
+    : build<0 ? 'Open interest is <b>closing</b> — positions are unwinding, so these levels are losing their backing.'
+              : 'No meaningful change since yesterday.'));
+
+  // ── term structure ─────────────────────────────────────────────────────────
+  const its = e.ivTermStructure;
+  const inv = !!(its && its.shape==='inverted');
+  const slope = (its && Number.isFinite(its.slope)) ? its.slope : null;
+  sub.push(_rd(its?(inv?'warn':'ok'):'off','ATM IV term structure',
+    its ? (inv ? '<b>Inverted</b> — near-dated vol above far-dated'
+               : 'Upward sloping — normal')
+            + (slope!=null ? ' ('+(slope>0?'+':'')+slope.toFixed(2)+')' : '')
+        : 'No IV term structure',
+    its ? (inv ? 'The market is pricing something soon. Short-dated levels break more easily than usual today, so treat near-expiry walls as weaker than they look.'
+               : 'No event premium in the front. Levels behave normally.')
+        : 'Paste the settlements table to populate this.'));
+
+  // ── per-expiry ─────────────────────────────────────────────────────────────
+  const pe = Array.isArray(e.perExpiry) ? e.perExpiry.filter(function(r){ return r && Number.isFinite(r.maxPain); }) : [];
+  if(pe.length>1){
+    const nr = pe[0];
+    const prim = pe.filter(function(r){ return r.dte===e.dte; })[0] || pe[pe.length-1];
+    const gap = Math.abs(nr.maxPain-prim.maxPain);
+    const disagree = rm ? gap > 0.5*rm : false;
+    sub.push(_rd(disagree?'warn':'ok','Per-expiry structure',
+      'Traded expiry pins '+lvl(nr.maxPain)+' · main book '+lvl(prim.maxPain),
+      disagree ? 'These disagree by '+Math.round(gap/pip(SYM))+'p about where price belongs. Expect the pin to move once the near expiry rolls off, so do not lean on it.'
+               : 'The expiry you trade and the main book agree, so the pin is structural rather than a one-day artifact.'));
+  } else {
+    sub.push(_rd('off','Per-expiry structure','Single expiry only','Paste the full strike-by-expiry matrix to compare horizons.'));
+  }
+
+  // ── volume magnets ─────────────────────────────────────────────────────────
+  const vm = (e.volumeMagnets||[]).filter(function(v){ return v && Number.isFinite(v.strike); });
+  const vmOut = vm.length && Number.isFinite(xday(vm[0].strike)) && xday(vm[0].strike)>2;
+  sub.push(_rd(vm.length?(vmOut?'warn':'ok'):'off','Volume magnets',
+    vm.length ? 'Busiest strike today <b>'+lvl(vm[0].strike)+'</b> ('+dtxt(vm[0].strike)+')'
+      + (reachTxt(vm[0].strike) ? ' — '+reachTxt(vm[0].strike) : '') : 'No volume pasted',
+    vm.length ? 'Volume is what traded today; open interest is what is still held. A busy strike with little open interest is a fresh fight, not an established level.' : ''));
+
+  // ── full-book GEX ──────────────────────────────────────────────────────────
+  const fb = e.fullBook;
+  const agree = (fb && Number.isFinite(fb.gex) && gex!=null) ? ((fb.gex>0)===(gex>0)) : null;
+  sub.push(_rd(fb?(agree?'ok':'warn'):'off','Full-book GEX',
+    fb ? (fb.gex>0?'Positive':'Negative')+' across all expiries' : 'Needs a multi-expiry paste',
+    fb ? (agree ? 'Agrees with the single-expiry regime above — the read is consistent across the whole book.'
+                : '<b>Disagrees</b> with the single-expiry regime above. The expiry you trade leans one way and the wider book the other, so treat the regime as low-confidence.')
+       : ''));
+
+  return '<div class="p c12 todayread"><h3><span class="grow">Today’s read — '+esc(nm(SYM))+'</span></h3>'
+    + '<div class="body">'+top+'<div class="rd-grid">'+sub.join('')+'</div></div></div>';
+}
+
 function render(){
   const e=STORE[SYM]; renderRail();
   document.getElementById('unitBtn').textContent='Showing: '+(SPOTADJ?'SPOT-ADJ':'FUTURES');
@@ -1090,7 +1350,7 @@ function render(){
   if(!e){ document.getElementById('main').innerHTML='<div class="empty">No OI stored for this instrument.</div>'; return; }
   document.getElementById('sub').textContent =
     nm(SYM)+' · '+(e.primaryExpiry?.code||'no expiry code')+' · '+(e.numRows||0)+' strikes · saved '+ageOf(e).txt+' ago';
-  document.getElementById('main').innerHTML = priceBar(e)+diagBar(e)+levelStrip(e)+'<div class="grid">'
+  document.getElementById('main').innerHTML = priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e)+'<div class="grid">'
     + panel('c7','oi','Open interest by strike','oichart',chartOI)
     + panel('c5','flow','Positioning and flow','flow',flowPanel,true)
     + panel('c7','gex','Net GEX by strike','gexchart',chartGEX)
