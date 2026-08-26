@@ -1,0 +1,1953 @@
+{
+  "instrument": "gold",
+  "assetClass": "commodity",
+  "coverage": {
+    "from": "2016-02-02",
+    "to": "2026-08-20",
+    "sessions": 3279
+  },
+  "cells": {
+    "short|2": {
+      "n": 1672,
+      "touchedVwapPct": 52.7,
+      "didExtendFurtherPct": 95.6,
+      "wentToOppositePct": 37.1,
+      "unresolvedPct": 47.3,
+      "avgPeakExtSigma": "1.911",
+      "avgBarsToVwapTouch": 186,
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 515,
+              "pct": 35,
+              "deltaVsBase": -17.7,
+              "holds": true
+            },
+            "London": {
+              "n": 327,
+              "pct": 70.6,
+              "deltaVsBase": 17.9,
+              "holds": true
+            },
+            "Asia": {
+              "n": 149,
+              "pct": 74.5,
+              "deltaVsBase": 21.8,
+              "holds": true
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 359,
+              "pct": 35.4,
+              "deltaVsBase": -17.3,
+              "holds": true
+            },
+            "London": {
+              "n": 206,
+              "pct": 71.8,
+              "deltaVsBase": 19.1,
+              "holds": true
+            },
+            "Asia": {
+              "n": 116,
+              "pct": 72.4,
+              "deltaVsBase": 19.7,
+              "holds": true
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 11,
+              "pct": 45.5,
+              "deltaVsBase": -7.2,
+              "holds": false
+            },
+            "1": {
+              "n": 162,
+              "pct": 51.2,
+              "deltaVsBase": -1.5,
+              "holds": false
+            },
+            "2": {
+              "n": 200,
+              "pct": 52.5,
+              "deltaVsBase": -0.2,
+              "holds": false
+            },
+            "3": {
+              "n": 195,
+              "pct": 51.3,
+              "deltaVsBase": -1.4,
+              "holds": false
+            },
+            "4": {
+              "n": 195,
+              "pct": 50.8,
+              "deltaVsBase": -1.9,
+              "holds": false
+            },
+            "5": {
+              "n": 228,
+              "pct": 57,
+              "deltaVsBase": 4.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 4,
+              "pct": 50,
+              "deltaVsBase": -2.7,
+              "holds": false
+            },
+            "1": {
+              "n": 115,
+              "pct": 53.9,
+              "deltaVsBase": 1.2,
+              "holds": false
+            },
+            "2": {
+              "n": 151,
+              "pct": 54.3,
+              "deltaVsBase": 1.6,
+              "holds": false
+            },
+            "3": {
+              "n": 141,
+              "pct": 57.4,
+              "deltaVsBase": 4.7,
+              "holds": false
+            },
+            "4": {
+              "n": 134,
+              "pct": 48.5,
+              "deltaVsBase": -4.2,
+              "holds": false
+            },
+            "5": {
+              "n": 136,
+              "pct": 49.3,
+              "deltaVsBase": -3.4,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 431,
+              "pct": 56.6,
+              "deltaVsBase": 3.9,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 315,
+              "pct": 50.8,
+              "deltaVsBase": -1.9,
+              "holds": false
+            },
+            "1·against": {
+              "n": 245,
+              "pct": 48.2,
+              "deltaVsBase": -4.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 350,
+              "pct": 54.3,
+              "deltaVsBase": 1.6,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 122,
+              "pct": 47.5,
+              "deltaVsBase": -5.2,
+              "holds": false
+            },
+            "1·against": {
+              "n": 209,
+              "pct": 53.1,
+              "deltaVsBase": 0.4,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "1·range": {
+              "n": 309,
+              "pct": 50.8,
+              "deltaVsBase": -1.9,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 335,
+              "pct": 59.1,
+              "deltaVsBase": 6.4,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 347,
+              "pct": 48.1,
+              "deltaVsBase": -4.6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·range": {
+              "n": 232,
+              "pct": 50.9,
+              "deltaVsBase": -1.8,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 220,
+              "pct": 57.3,
+              "deltaVsBase": 4.6,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 229,
+              "pct": 50.2,
+              "deltaVsBase": -2.5,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 483,
+              "pct": 53.4,
+              "deltaVsBase": 0.7,
+              "holds": false
+            },
+            "TREND": {
+              "n": 112,
+              "pct": 67,
+              "deltaVsBase": 14.3,
+              "holds": true
+            },
+            "RANGE": {
+              "n": 396,
+              "pct": 47.7,
+              "deltaVsBase": -5,
+              "holds": true
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 317,
+              "pct": 50.8,
+              "deltaVsBase": -1.9,
+              "holds": false
+            },
+            "TREND": {
+              "n": 133,
+              "pct": 65.4,
+              "deltaVsBase": 12.7,
+              "holds": true
+            },
+            "RANGE": {
+              "n": 231,
+              "pct": 48.1,
+              "deltaVsBase": -4.6,
+              "holds": true
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 979,
+              "pct": 52.3,
+              "deltaVsBase": -0.4,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 12,
+              "pct": 83.3,
+              "deltaVsBase": 30.6,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 662,
+              "pct": 52.7,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 19,
+              "pct": 52.6,
+              "deltaVsBase": -0.1,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 876,
+              "pct": 51.8,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "1": {
+              "n": 109,
+              "pct": 58.7,
+              "deltaVsBase": 6,
+              "holds": false
+            },
+            "2": {
+              "n": 6,
+              "pct": 66.7,
+              "deltaVsBase": 14,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 593,
+              "pct": 52.8,
+              "deltaVsBase": 0.1,
+              "holds": false
+            },
+            "1": {
+              "n": 85,
+              "pct": 50.6,
+              "deltaVsBase": -2.1,
+              "holds": false
+            },
+            "2": {
+              "n": 3,
+              "pct": 100,
+              "deltaVsBase": 47.3,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "short|2.5": {
+      "n": 1100,
+      "touchedVwapPct": 43.8,
+      "didExtendFurtherPct": 95.2,
+      "wentToOppositePct": 28.6,
+      "unresolvedPct": 56.2,
+      "avgPeakExtSigma": "2.052",
+      "avgBarsToVwapTouch": 196,
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 391,
+              "pct": 29.7,
+              "deltaVsBase": -15.5,
+              "holds": true
+            },
+            "London": {
+              "n": 195,
+              "pct": 66.2,
+              "deltaVsBase": 21,
+              "holds": true
+            },
+            "Asia": {
+              "n": 77,
+              "pct": 71.4,
+              "deltaVsBase": 26.2,
+              "holds": true
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 261,
+              "pct": 27.2,
+              "deltaVsBase": -14.4,
+              "holds": true
+            },
+            "London": {
+              "n": 107,
+              "pct": 60.7,
+              "deltaVsBase": 19.1,
+              "holds": true
+            },
+            "Asia": {
+              "n": 69,
+              "pct": 66.7,
+              "deltaVsBase": 25.1,
+              "holds": true
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 4,
+              "pct": 50,
+              "deltaVsBase": 4.8,
+              "holds": false
+            },
+            "1": {
+              "n": 97,
+              "pct": 41.2,
+              "deltaVsBase": -4,
+              "holds": false
+            },
+            "2": {
+              "n": 124,
+              "pct": 39.5,
+              "deltaVsBase": -5.7,
+              "holds": false
+            },
+            "3": {
+              "n": 138,
+              "pct": 45.7,
+              "deltaVsBase": 0.5,
+              "holds": false
+            },
+            "4": {
+              "n": 138,
+              "pct": 44.2,
+              "deltaVsBase": -1,
+              "holds": false
+            },
+            "5": {
+              "n": 162,
+              "pct": 52.5,
+              "deltaVsBase": 7.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 8.4,
+              "holds": false
+            },
+            "1": {
+              "n": 82,
+              "pct": 43.9,
+              "deltaVsBase": 2.3,
+              "holds": false
+            },
+            "2": {
+              "n": 85,
+              "pct": 43.5,
+              "deltaVsBase": 1.9,
+              "holds": false
+            },
+            "3": {
+              "n": 90,
+              "pct": 43.3,
+              "deltaVsBase": 1.7,
+              "holds": false
+            },
+            "4": {
+              "n": 82,
+              "pct": 36.6,
+              "deltaVsBase": -5,
+              "holds": false
+            },
+            "5": {
+              "n": 96,
+              "pct": 40.6,
+              "deltaVsBase": -1,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 304,
+              "pct": 51,
+              "deltaVsBase": 5.8,
+              "holds": true
+            },
+            "2·flat": {
+              "n": 197,
+              "pct": 41.1,
+              "deltaVsBase": -4.1,
+              "holds": true
+            },
+            "1·against": {
+              "n": 162,
+              "pct": 39.5,
+              "deltaVsBase": -5.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 231,
+              "pct": 45,
+              "deltaVsBase": 3.4,
+              "holds": true
+            },
+            "2·flat": {
+              "n": 76,
+              "pct": 32.9,
+              "deltaVsBase": -8.7,
+              "holds": true
+            },
+            "1·against": {
+              "n": 130,
+              "pct": 40.8,
+              "deltaVsBase": -0.8,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "1·range": {
+              "n": 194,
+              "pct": 47.4,
+              "deltaVsBase": 2.2,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 229,
+              "pct": 50.7,
+              "deltaVsBase": 5.5,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 240,
+              "pct": 38.3,
+              "deltaVsBase": -6.9,
+              "holds": true
+            }
+          },
+          "oos": {
+            "1·range": {
+              "n": 139,
+              "pct": 41.7,
+              "deltaVsBase": 0.1,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 145,
+              "pct": 45.5,
+              "deltaVsBase": 3.9,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 153,
+              "pct": 37.9,
+              "deltaVsBase": -3.7,
+              "holds": true
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 321,
+              "pct": 44.9,
+              "deltaVsBase": -0.3,
+              "holds": false
+            },
+            "TREND": {
+              "n": 87,
+              "pct": 62.1,
+              "deltaVsBase": 16.9,
+              "holds": true
+            },
+            "RANGE": {
+              "n": 255,
+              "pct": 40,
+              "deltaVsBase": -5.2,
+              "holds": true
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 196,
+              "pct": 40.8,
+              "deltaVsBase": -0.8,
+              "holds": false
+            },
+            "TREND": {
+              "n": 90,
+              "pct": 53.3,
+              "deltaVsBase": 11.7,
+              "holds": true
+            },
+            "RANGE": {
+              "n": 151,
+              "pct": 35.8,
+              "deltaVsBase": -5.8,
+              "holds": true
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 656,
+              "pct": 45,
+              "deltaVsBase": -0.2,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 7,
+              "pct": 71.4,
+              "deltaVsBase": 26.2,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 426,
+              "pct": 41.3,
+              "deltaVsBase": -0.3,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 11,
+              "pct": 54.5,
+              "deltaVsBase": 12.9,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 591,
+              "pct": 43.8,
+              "deltaVsBase": -1.4,
+              "holds": false
+            },
+            "1": {
+              "n": 70,
+              "pct": 55.7,
+              "deltaVsBase": 10.5,
+              "holds": true
+            },
+            "2": {
+              "n": 2,
+              "pct": 100,
+              "deltaVsBase": 54.8,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 386,
+              "pct": 41.2,
+              "deltaVsBase": -0.4,
+              "holds": false
+            },
+            "1": {
+              "n": 51,
+              "pct": 45.1,
+              "deltaVsBase": 3.5,
+              "holds": true
+            }
+          }
+        }
+      }
+    },
+    "short|3": {
+      "n": 710,
+      "touchedVwapPct": 37,
+      "didExtendFurtherPct": 95.1,
+      "wentToOppositePct": 26.2,
+      "unresolvedPct": 63,
+      "avgPeakExtSigma": "2.229",
+      "avgBarsToVwapTouch": 190,
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 264,
+              "pct": 22.3,
+              "deltaVsBase": -16.7,
+              "holds": true
+            },
+            "London": {
+              "n": 113,
+              "pct": 62.8,
+              "deltaVsBase": 23.8,
+              "holds": true
+            },
+            "Asia": {
+              "n": 51,
+              "pct": 72.5,
+              "deltaVsBase": 33.5,
+              "holds": true
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 180,
+              "pct": 21.7,
+              "deltaVsBase": -12.3,
+              "holds": true
+            },
+            "London": {
+              "n": 68,
+              "pct": 57.4,
+              "deltaVsBase": 23.4,
+              "holds": true
+            },
+            "Asia": {
+              "n": 34,
+              "pct": 52.9,
+              "deltaVsBase": 18.9,
+              "holds": true
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 2,
+              "pct": 100,
+              "deltaVsBase": 61,
+              "holds": false
+            },
+            "1": {
+              "n": 59,
+              "pct": 33.9,
+              "deltaVsBase": -5.1,
+              "holds": false
+            },
+            "2": {
+              "n": 82,
+              "pct": 34.1,
+              "deltaVsBase": -4.9,
+              "holds": false
+            },
+            "3": {
+              "n": 90,
+              "pct": 42.2,
+              "deltaVsBase": 3.2,
+              "holds": true
+            },
+            "4": {
+              "n": 91,
+              "pct": 35.2,
+              "deltaVsBase": -3.8,
+              "holds": true
+            },
+            "5": {
+              "n": 104,
+              "pct": 45.2,
+              "deltaVsBase": 6.2,
+              "holds": true
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16,
+              "holds": false
+            },
+            "1": {
+              "n": 50,
+              "pct": 32,
+              "deltaVsBase": -2,
+              "holds": false
+            },
+            "2": {
+              "n": 57,
+              "pct": 35.1,
+              "deltaVsBase": 1.1,
+              "holds": false
+            },
+            "3": {
+              "n": 60,
+              "pct": 38.3,
+              "deltaVsBase": 4.3,
+              "holds": true
+            },
+            "4": {
+              "n": 54,
+              "pct": 25.9,
+              "deltaVsBase": -8.1,
+              "holds": true
+            },
+            "5": {
+              "n": 59,
+              "pct": 37.3,
+              "deltaVsBase": 3.3,
+              "holds": true
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 203,
+              "pct": 45.8,
+              "deltaVsBase": 6.8,
+              "holds": true
+            },
+            "2·flat": {
+              "n": 122,
+              "pct": 31.1,
+              "deltaVsBase": -7.9,
+              "holds": true
+            },
+            "1·against": {
+              "n": 103,
+              "pct": 35,
+              "deltaVsBase": -4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 158,
+              "pct": 37.3,
+              "deltaVsBase": 3.3,
+              "holds": true
+            },
+            "2·flat": {
+              "n": 47,
+              "pct": 27.7,
+              "deltaVsBase": -6.3,
+              "holds": true
+            },
+            "1·against": {
+              "n": 77,
+              "pct": 31.2,
+              "deltaVsBase": -2.8,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "1·range": {
+              "n": 107,
+              "pct": 40.2,
+              "deltaVsBase": 1.2,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 161,
+              "pct": 45.3,
+              "deltaVsBase": 6.3,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 160,
+              "pct": 31.9,
+              "deltaVsBase": -7.1,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·range": {
+              "n": 81,
+              "pct": 32.1,
+              "deltaVsBase": -1.9,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 103,
+              "pct": 37.9,
+              "deltaVsBase": 3.9,
+              "holds": true
+            },
+            "2·mixed": {
+              "n": 98,
+              "pct": 31.6,
+              "deltaVsBase": -2.4,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 208,
+              "pct": 38,
+              "deltaVsBase": -1,
+              "holds": false
+            },
+            "TREND": {
+              "n": 61,
+              "pct": 59,
+              "deltaVsBase": 20,
+              "holds": true
+            },
+            "RANGE": {
+              "n": 159,
+              "pct": 32.7,
+              "deltaVsBase": -6.3,
+              "holds": true
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 126,
+              "pct": 31.7,
+              "deltaVsBase": -2.3,
+              "holds": false
+            },
+            "TREND": {
+              "n": 61,
+              "pct": 45.9,
+              "deltaVsBase": 11.9,
+              "holds": true
+            },
+            "RANGE": {
+              "n": 95,
+              "pct": 29.5,
+              "deltaVsBase": -4.5,
+              "holds": true
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 421,
+              "pct": 38.5,
+              "deltaVsBase": -0.5,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 7,
+              "pct": 71.4,
+              "deltaVsBase": 32.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 272,
+              "pct": 33.1,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 10,
+              "pct": 60,
+              "deltaVsBase": 26,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 372,
+              "pct": 37.6,
+              "deltaVsBase": -1.4,
+              "holds": false
+            },
+            "1": {
+              "n": 54,
+              "pct": 50,
+              "deltaVsBase": 11,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 0,
+              "deltaVsBase": -39,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 246,
+              "pct": 33.7,
+              "deltaVsBase": -0.3,
+              "holds": false
+            },
+            "1": {
+              "n": 34,
+              "pct": 35.3,
+              "deltaVsBase": 1.3,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 50,
+              "deltaVsBase": 16,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "long|2": {
+      "n": 1651,
+      "touchedVwapPct": 56.1,
+      "didExtendFurtherPct": 92.9,
+      "wentToOppositePct": 34.3,
+      "unresolvedPct": 43.9,
+      "avgPeakExtSigma": "1.963",
+      "avgBarsToVwapTouch": 173,
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 525,
+              "pct": 41,
+              "deltaVsBase": -16,
+              "holds": true
+            },
+            "London": {
+              "n": 338,
+              "pct": 73.7,
+              "deltaVsBase": 16.7,
+              "holds": true
+            },
+            "Asia": {
+              "n": 128,
+              "pct": 78.9,
+              "deltaVsBase": 21.9,
+              "holds": true
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 328,
+              "pct": 36.3,
+              "deltaVsBase": -18.4,
+              "holds": true
+            },
+            "London": {
+              "n": 206,
+              "pct": 68,
+              "deltaVsBase": 13.3,
+              "holds": true
+            },
+            "Asia": {
+              "n": 126,
+              "pct": 81,
+              "deltaVsBase": 26.3,
+              "holds": true
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 9,
+              "pct": 88.9,
+              "deltaVsBase": 31.9,
+              "holds": false
+            },
+            "1": {
+              "n": 171,
+              "pct": 56.7,
+              "deltaVsBase": -0.3,
+              "holds": false
+            },
+            "2": {
+              "n": 205,
+              "pct": 55.6,
+              "deltaVsBase": -1.4,
+              "holds": false
+            },
+            "3": {
+              "n": 205,
+              "pct": 56.6,
+              "deltaVsBase": -0.4,
+              "holds": false
+            },
+            "4": {
+              "n": 204,
+              "pct": 55.9,
+              "deltaVsBase": -1.1,
+              "holds": false
+            },
+            "5": {
+              "n": 197,
+              "pct": 58.9,
+              "deltaVsBase": 1.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 14,
+              "pct": 71.4,
+              "deltaVsBase": 16.7,
+              "holds": false
+            },
+            "1": {
+              "n": 124,
+              "pct": 53.2,
+              "deltaVsBase": -1.5,
+              "holds": false
+            },
+            "2": {
+              "n": 125,
+              "pct": 55.2,
+              "deltaVsBase": 0.5,
+              "holds": false
+            },
+            "3": {
+              "n": 132,
+              "pct": 53.8,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "4": {
+              "n": 149,
+              "pct": 59.1,
+              "deltaVsBase": 4.4,
+              "holds": false
+            },
+            "5": {
+              "n": 116,
+              "pct": 49.1,
+              "deltaVsBase": -5.6,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 433,
+              "pct": 56.1,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 281,
+              "pct": 59.1,
+              "deltaVsBase": 2.1,
+              "holds": false
+            },
+            "1·against": {
+              "n": 277,
+              "pct": 56.3,
+              "deltaVsBase": -0.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 333,
+              "pct": 58,
+              "deltaVsBase": 3.3,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 131,
+              "pct": 50.4,
+              "deltaVsBase": -4.3,
+              "holds": false
+            },
+            "1·against": {
+              "n": 196,
+              "pct": 52,
+              "deltaVsBase": -2.7,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 320,
+              "pct": 58.1,
+              "deltaVsBase": 1.1,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 353,
+              "pct": 57.8,
+              "deltaVsBase": 0.8,
+              "holds": false
+            },
+            "1·range": {
+              "n": 318,
+              "pct": 55,
+              "deltaVsBase": -2,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 198,
+              "pct": 63.6,
+              "deltaVsBase": 8.9,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 237,
+              "pct": 50.6,
+              "deltaVsBase": -4.1,
+              "holds": false
+            },
+            "1·range": {
+              "n": 225,
+              "pct": 51.1,
+              "deltaVsBase": -3.6,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "TREND": {
+              "n": 110,
+              "pct": 60.9,
+              "deltaVsBase": 3.9,
+              "holds": true
+            },
+            "MIXED": {
+              "n": 502,
+              "pct": 59.6,
+              "deltaVsBase": 2.6,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 379,
+              "pct": 52.5,
+              "deltaVsBase": -4.5,
+              "holds": false
+            }
+          },
+          "oos": {
+            "TREND": {
+              "n": 106,
+              "pct": 63.2,
+              "deltaVsBase": 8.5,
+              "holds": true
+            },
+            "MIXED": {
+              "n": 311,
+              "pct": 53.4,
+              "deltaVsBase": -1.3,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 243,
+              "pct": 52.7,
+              "deltaVsBase": -2,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 978,
+              "pct": 57.1,
+              "deltaVsBase": 0.1,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 13,
+              "pct": 53.8,
+              "deltaVsBase": -3.2,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 644,
+              "pct": 55,
+              "deltaVsBase": 0.3,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 16,
+              "pct": 43.8,
+              "deltaVsBase": -10.9,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 898,
+              "pct": 56.7,
+              "deltaVsBase": -0.3,
+              "holds": false
+            },
+            "1": {
+              "n": 91,
+              "pct": 59.3,
+              "deltaVsBase": 2.3,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 100,
+              "deltaVsBase": 43,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 606,
+              "pct": 55.3,
+              "deltaVsBase": 0.6,
+              "holds": false
+            },
+            "1": {
+              "n": 54,
+              "pct": 48.1,
+              "deltaVsBase": -6.6,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "long|2.5": {
+      "n": 1112,
+      "touchedVwapPct": 47.3,
+      "didExtendFurtherPct": 92.4,
+      "wentToOppositePct": 27.2,
+      "unresolvedPct": 52.7,
+      "avgPeakExtSigma": "2.110",
+      "avgBarsToVwapTouch": 181,
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 360,
+              "pct": 29.2,
+              "deltaVsBase": -18.4,
+              "holds": true
+            },
+            "London": {
+              "n": 221,
+              "pct": 67.4,
+              "deltaVsBase": 19.8,
+              "holds": true
+            },
+            "Asia": {
+              "n": 73,
+              "pct": 78.1,
+              "deltaVsBase": 30.5,
+              "holds": true
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 258,
+              "pct": 32.2,
+              "deltaVsBase": -14.7,
+              "holds": true
+            },
+            "London": {
+              "n": 134,
+              "pct": 60.4,
+              "deltaVsBase": 13.5,
+              "holds": true
+            },
+            "Asia": {
+              "n": 66,
+              "pct": 77.3,
+              "deltaVsBase": 30.4,
+              "holds": true
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 5,
+              "pct": 80,
+              "deltaVsBase": 32.4,
+              "holds": false
+            },
+            "1": {
+              "n": 101,
+              "pct": 49.5,
+              "deltaVsBase": 1.9,
+              "holds": false
+            },
+            "2": {
+              "n": 143,
+              "pct": 48.3,
+              "deltaVsBase": 0.7,
+              "holds": false
+            },
+            "3": {
+              "n": 152,
+              "pct": 48.7,
+              "deltaVsBase": 1.1,
+              "holds": false
+            },
+            "4": {
+              "n": 128,
+              "pct": 40.6,
+              "deltaVsBase": -7,
+              "holds": false
+            },
+            "5": {
+              "n": 125,
+              "pct": 49.6,
+              "deltaVsBase": 2,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 8,
+              "pct": 75,
+              "deltaVsBase": 28.1,
+              "holds": false
+            },
+            "1": {
+              "n": 84,
+              "pct": 48.8,
+              "deltaVsBase": 1.9,
+              "holds": false
+            },
+            "2": {
+              "n": 92,
+              "pct": 44.6,
+              "deltaVsBase": -2.3,
+              "holds": false
+            },
+            "3": {
+              "n": 87,
+              "pct": 46,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "4": {
+              "n": 105,
+              "pct": 50.5,
+              "deltaVsBase": 3.6,
+              "holds": false
+            },
+            "5": {
+              "n": 82,
+              "pct": 41.5,
+              "deltaVsBase": -5.4,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 291,
+              "pct": 47.1,
+              "deltaVsBase": -0.5,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 182,
+              "pct": 50,
+              "deltaVsBase": 2.4,
+              "holds": false
+            },
+            "1·against": {
+              "n": 181,
+              "pct": 45.9,
+              "deltaVsBase": -1.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 222,
+              "pct": 48.2,
+              "deltaVsBase": 1.3,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 93,
+              "pct": 46.2,
+              "deltaVsBase": -0.7,
+              "holds": false
+            },
+            "1·against": {
+              "n": 143,
+              "pct": 45.5,
+              "deltaVsBase": -1.4,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 208,
+              "pct": 47.6,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "1·range": {
+              "n": 205,
+              "pct": 46.3,
+              "deltaVsBase": -1.3,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 241,
+              "pct": 48.5,
+              "deltaVsBase": 0.9,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 154,
+              "pct": 54.5,
+              "deltaVsBase": 7.6,
+              "holds": false
+            },
+            "1·range": {
+              "n": 144,
+              "pct": 46.5,
+              "deltaVsBase": -0.4,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 160,
+              "pct": 40,
+              "deltaVsBase": -6.9,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "TREND": {
+              "n": 75,
+              "pct": 53.3,
+              "deltaVsBase": 5.7,
+              "holds": true
+            },
+            "MIXED": {
+              "n": 335,
+              "pct": 50.1,
+              "deltaVsBase": 2.5,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 244,
+              "pct": 42.2,
+              "deltaVsBase": -5.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "TREND": {
+              "n": 82,
+              "pct": 57.3,
+              "deltaVsBase": 10.4,
+              "holds": true
+            },
+            "MIXED": {
+              "n": 216,
+              "pct": 44.9,
+              "deltaVsBase": -2,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 160,
+              "pct": 44.4,
+              "deltaVsBase": -2.5,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 645,
+              "pct": 47.6,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 9,
+              "pct": 44.4,
+              "deltaVsBase": -3.2,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 445,
+              "pct": 46.7,
+              "deltaVsBase": -0.2,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 13,
+              "pct": 53.8,
+              "deltaVsBase": 6.9,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 592,
+              "pct": 47.1,
+              "deltaVsBase": -0.5,
+              "holds": false
+            },
+            "1": {
+              "n": 62,
+              "pct": 51.6,
+              "deltaVsBase": 4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 423,
+              "pct": 48.5,
+              "deltaVsBase": 1.6,
+              "holds": false
+            },
+            "1": {
+              "n": 33,
+              "pct": 30.3,
+              "deltaVsBase": -16.6,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "pct": 0
+            }
+          }
+        }
+      }
+    },
+    "long|3": {
+      "n": 734,
+      "touchedVwapPct": 36.9,
+      "didExtendFurtherPct": 91.8,
+      "wentToOppositePct": 21,
+      "unresolvedPct": 63.1,
+      "avgPeakExtSigma": "2.344",
+      "avgBarsToVwapTouch": 194,
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 272,
+              "pct": 22.1,
+              "deltaVsBase": -14.8,
+              "holds": true
+            },
+            "London": {
+              "n": 126,
+              "pct": 57.1,
+              "deltaVsBase": 20.2,
+              "holds": true
+            },
+            "Asia": {
+              "n": 38,
+              "pct": 76.3,
+              "deltaVsBase": 39.4,
+              "holds": true
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 188,
+              "pct": 23.4,
+              "deltaVsBase": -13.5,
+              "holds": true
+            },
+            "London": {
+              "n": 73,
+              "pct": 54.8,
+              "deltaVsBase": 17.9,
+              "holds": true
+            },
+            "Asia": {
+              "n": 37,
+              "pct": 70.3,
+              "deltaVsBase": 33.4,
+              "holds": true
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 3,
+              "pct": 66.7,
+              "deltaVsBase": 29.8,
+              "holds": false
+            },
+            "1": {
+              "n": 65,
+              "pct": 38.5,
+              "deltaVsBase": 1.6,
+              "holds": false
+            },
+            "2": {
+              "n": 94,
+              "pct": 36.2,
+              "deltaVsBase": -0.7,
+              "holds": false
+            },
+            "3": {
+              "n": 106,
+              "pct": 38.7,
+              "deltaVsBase": 1.8,
+              "holds": false
+            },
+            "4": {
+              "n": 82,
+              "pct": 32.9,
+              "deltaVsBase": -4,
+              "holds": false
+            },
+            "5": {
+              "n": 86,
+              "pct": 37.2,
+              "deltaVsBase": 0.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 5,
+              "pct": 60,
+              "deltaVsBase": 23.1,
+              "holds": false
+            },
+            "1": {
+              "n": 56,
+              "pct": 44.6,
+              "deltaVsBase": 7.7,
+              "holds": false
+            },
+            "2": {
+              "n": 61,
+              "pct": 34.4,
+              "deltaVsBase": -2.5,
+              "holds": false
+            },
+            "3": {
+              "n": 63,
+              "pct": 36.5,
+              "deltaVsBase": -0.4,
+              "holds": false
+            },
+            "4": {
+              "n": 59,
+              "pct": 35.6,
+              "deltaVsBase": -1.3,
+              "holds": false
+            },
+            "5": {
+              "n": 54,
+              "pct": 31.5,
+              "deltaVsBase": -5.4,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 192,
+              "pct": 34.9,
+              "deltaVsBase": -2,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 120,
+              "pct": 41.7,
+              "deltaVsBase": 4.8,
+              "holds": false
+            },
+            "1·against": {
+              "n": 124,
+              "pct": 35.5,
+              "deltaVsBase": -1.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 149,
+              "pct": 38.9,
+              "deltaVsBase": 2,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 53,
+              "pct": 35.8,
+              "deltaVsBase": -1.1,
+              "holds": false
+            },
+            "1·against": {
+              "n": 96,
+              "pct": 34.4,
+              "deltaVsBase": -2.5,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 147,
+              "pct": 36.1,
+              "deltaVsBase": -0.8,
+              "holds": false
+            },
+            "1·range": {
+              "n": 119,
+              "pct": 32.8,
+              "deltaVsBase": -4.1,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 170,
+              "pct": 40.6,
+              "deltaVsBase": 3.7,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 105,
+              "pct": 47.6,
+              "deltaVsBase": 10.7,
+              "holds": false
+            },
+            "1·range": {
+              "n": 85,
+              "pct": 35.3,
+              "deltaVsBase": -1.6,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 108,
+              "pct": 27.8,
+              "deltaVsBase": -9.1,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "TREND": {
+              "n": 47,
+              "pct": 44.7,
+              "deltaVsBase": 7.8,
+              "holds": true
+            },
+            "MIXED": {
+              "n": 229,
+              "pct": 38.4,
+              "deltaVsBase": 1.5,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 160,
+              "pct": 32.5,
+              "deltaVsBase": -4.4,
+              "holds": false
+            }
+          },
+          "oos": {
+            "TREND": {
+              "n": 53,
+              "pct": 50.9,
+              "deltaVsBase": 14,
+              "holds": true
+            },
+            "MIXED": {
+              "n": 151,
+              "pct": 33.1,
+              "deltaVsBase": -3.8,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 94,
+              "pct": 35.1,
+              "deltaVsBase": -1.8,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 429,
+              "pct": 36.6,
+              "deltaVsBase": -0.3,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 7,
+              "pct": 57.1,
+              "deltaVsBase": 20.2,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 289,
+              "pct": 36.3,
+              "deltaVsBase": -0.6,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 9,
+              "pct": 55.6,
+              "deltaVsBase": 18.7,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 394,
+              "pct": 36,
+              "deltaVsBase": -0.9,
+              "holds": false
+            },
+            "1": {
+              "n": 42,
+              "pct": 45.2,
+              "deltaVsBase": 8.3,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 279,
+              "pct": 37.6,
+              "deltaVsBase": 0.7,
+              "holds": false
+            },
+            "1": {
+              "n": 19,
+              "pct": 26.3,
+              "deltaVsBase": -10.6,
+              "holds": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -142,5 +142,46 @@ t('MFE/MAE arithmetic matches a hand-computed path for an engineered short touch
   assert.ok(r.maePips >= 0.6 && r.maePips <= 0.75, `expected MAE ≈0.67 (push to 100.7 vs entry≈100.03), got ${r.maePips}`);
 });
 
+t("resolutionMode:'returnToVwap' — a spike that extends further, touches VWAP, then overshoots the opposite side reads all four fields correctly", () => {
+  const warm = warmupDays(28, { base: 100, amp: 0.005 });
+  const day = oneDay(28, m => {
+    if (m < 300) return 100 + 0.001 * Math.sin(m / 50);
+    if (m === 300) return 100.5;   // crosses +2σ short
+    if (m === 301) return 100.6;   // extends further first
+    if (m === 302) return 100.0;   // touches back to VWAP
+    if (m === 303) return 99.5;    // overshoots through to the opposite side
+    return 99.5;
+  }, { wick: 0 });
+  const A = concatDays([...warm, day, oneDay(29, m => 100 + 0.001 * Math.sin(m / 180))]);
+  const { rows } = vwapFixedSigmaAtlasWalk(A, { instrument: 'SYN', assetClass: 'fx', minLookbackSessions: 25, levels: [2], resolutionMode: 'returnToVwap' });
+  const targetDate = new Date((T0 + 28 * DAY) * 1000).toISOString().slice(0, 10);
+  const r = rows.find(x => x.date === targetDate && x.side === 'short' && x.level === 2);
+  assert.ok(r, 'expected a short +2σ returnToVwap event');
+  assert.equal(r.touchedVwapAfter, true);
+  assert.equal(r.barsToVwapTouch, 2);
+  assert.equal(r.didExtendFurtherFirst, true);
+  assert.equal(r.wentToOppositeSide, true);
+  assert.equal(r.unresolvedAtDayEnd, false);
+  assert.ok(r.peakExtPips > 0);
+});
+
+t("resolutionMode:'returnToVwap' — a spike that never returns to VWAP by session end is censored, not discarded", () => {
+  const warm = warmupDays(28, { base: 100, amp: 0.005 });
+  const day = oneDay(28, m => {
+    if (m < 1400) return 100 + 0.001 * Math.sin(m / 50);
+    if (m === 1400) return 100.5;   // crosses +2σ short, one-way for the rest of the day
+    return 100.5 + (m - 1400) * 0.001;
+  }, { wick: 0 });
+  const A = concatDays([...warm, day, oneDay(29, m => 100 + 0.001 * Math.sin(m / 180))]);
+  const { rows } = vwapFixedSigmaAtlasWalk(A, { instrument: 'SYN', assetClass: 'fx', minLookbackSessions: 25, levels: [2], resolutionMode: 'returnToVwap' });
+  const targetDate = new Date((T0 + 28 * DAY) * 1000).toISOString().slice(0, 10);
+  const r = rows.find(x => x.date === targetDate && x.side === 'short' && x.level === 2);
+  assert.ok(r, 'expected a censored short +2σ event to be RECORDED, not silently dropped, at session end');
+  assert.equal(r.touchedVwapAfter, false);
+  assert.equal(r.barsToVwapTouch, null);
+  assert.equal(r.unresolvedAtDayEnd, true);
+  assert.equal(r.wentToOppositeSide, false);
+});
+
 console.log(`${passed} passed`);
 process.exit(process.exitCode || 0);
