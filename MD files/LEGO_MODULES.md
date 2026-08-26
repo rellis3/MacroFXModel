@@ -2296,6 +2296,30 @@ tracks + these five) is real, worth keeping per-level exactly as the owner
 asked, but the search for a THIRD universal rule came back empty this
 round — reported plainly, not reframed as a near-miss.
 
+**Macro-calendar proximity added (2026-08-26, same session — closes the gap
+flagged at every prior mention of "macro-calendar proximity" since the very
+first proposal).** `js/calendarLoader.js` reads the real `calendar_events.csv`
+(2014-2026, verified against known FOMC 2pm-ET announcement times to confirm
+`datetime_raw` is UTC) — schedule only (date/time/currency/impact tier), the
+`actual`/`consensus`/`previous` outcome columns are never parsed at all,
+structurally. `macroEventHours`/`macroEventBucket`: hours to the nearest
+`'Major'`-impact event (FOMC/ECB/BoE decisions, NFP, CPI, etc.) in the
+instrument's relevant currencies. Explicitly documented as the ONE field in
+this engine allowed to look in both directions from the touch — a scheduled
+calendar date is public knowledge in advance (unlike price, and a different
+KIND of forward-looking than CVOL's uncertain market-implied read). 4 more
+tests (31 total for the engine).
+
+**Real-data check**: 6-19 held findings per instrument, same scattered-by-
+rung pattern as every other addition tonight except the original two — not a
+third law. Worth flagging as the closest of the new additions to something
+recognizable: EURUSD shows `2·same-day` (near a Major event) with a
+NEGATIVE lift on 4 of its top 6 held rungs — a same-instrument lean toward
+reversion near macro events — but this does not replicate across GBPUSD/
+USDJPY/GOLD, which show mixed signs for the same bucket at different rungs.
+Real, level-specific context; not evidence of a universal "fade near
+events" rule.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
