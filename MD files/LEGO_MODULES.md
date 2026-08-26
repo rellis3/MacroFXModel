@@ -2129,6 +2129,48 @@ edge" discipline.
 
 ---
 
+### 1aq. Asia Fib Atlas engine (2026-08-26) — Level Atlas's sibling for Asia range-extension lines
+
+Requested build: apply Level Atlas's per-touch reference-engine template
+(`MD files/REFERENCE_ENGINE_PLAYBOOK.md` — literally extracted from building
+Level Atlas + Session Path, "the template for the NEXT analysis, whatever it
+turns out to be") to the Asia-range-extension fib lines the "Asia Session Fib
+Retracement" Pine indicator draws (`education/range-extension-levels-notes.md`),
+instead of forecast-ladder lines. Genuinely a different unit from Level Atlas
+per the playbook's §2 rule (don't force a new question into an existing unit):
+one row = one touch of one Asia-range extension rung (a fib multiple outside
+[0,1] — the 0/0.25/0.5/0.75/1 key levels are the range box itself, deliberately
+excluded from the walk), outcome = does price reach the next rung out or
+revert to the one just inside it (the SAME `out`/`back`/`neither` shape Level
+Atlas uses, chosen deliberately so the two books' outcome tables are directly
+comparable and share a report-layer implementation — see below).
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Asia Fib Atlas Engine** | `js/asiaFibAtlasEngine.js` | `asiaFibAtlasWalk(packed, {instrument, assetClass})` → `{touches, coverage}`, `asiaFibAtlasLiveToday`. Composes, copies nothing: `sessionRanges.js` (Asia 00:00-06:00 London + Monday ranges, body hi/lo — "closes=acceptance" per the lesson notes), `fibProjection.js` (the SAME 45-level grid the Pine indicator draws — `RUNGS_ABOVE`/`RUNGS_BELOW` are derived FROM `FIB_LEVELS`, never hand-copied), `confluence-core.js:detectConfluencesCore` (the Pine-Script-matching matcher — `clusterMerge:false`, `priceMode:'lowest'`, the session-range-capped tolerance formula — for confluence vs previous-Asia AND vs Monday, never a local re-derivation), `confluenceFeatures.js` (the same VuManChu/VWAP/ADX/structural-confluence/candle-reject/volume-climax/round-number touch pack Level Atlas uses), `rangeLineAnalyser.js:sessionConfluenceLevels`, `forecastLadder`/`forecastSigma` (Level Atlas's own daily-σ fit, reused for `dayVol` and a genuinely new use — `rangeBudgetUsedPct`, how much of today's TYPICAL day-range is already consumed by the time price reaches this rung, from `education/FORECASTER_WALKTHROUGH_NOTES.md` Part 5), `instrumentRegistry.js:pipSize` (one pip source — fixes the gold 1.0-vs-0.1 inconsistency `rangeFibEngine.js`/`asiaRangeEngine.js` still carry, noted in §3 below). **Deliberately NOT reused**: `levelAtlasEngine.js`'s own `sessionRangeSeries`/`sessionVolBucket` measure a UTC 22:00-07:00 "Asia" — a genuinely different window from this engine's London 00:00-06:00 Asia range, so `asiaVolBucket` here is a small fresh implementation, not a copy of the same formula on different-window data (would have silently mislabelled the vol regime against the wrong session). New context beyond Level Atlas's set: `levelFlipState` (fresh touch vs a retest of a line already body-closed-through earlier the same window — causal running close-extreme, no lookahead), `confluenceGrade`/`confluenceSources` (graded 0·none through 3·tight-multi against prev-Asia AND Monday, not a binary), `sessionHandoff` (finer than plain session: Asia-close breakout / London morning / London-NY overlap / NY afternoon / NY-late-pre-Asia). Monday confluence is causally gated exactly like the Pine script's own `is_current_monday ? prev_monday : curr_monday` — a Monday's own touches read the PREVIOUS week's completed Monday, never the current, still-forming one (verified by a white-box test against the actual `sessionRanges` helpers, not a behavioural perturbation — perturbing a Monday's own bars turned out to shift which touches occur that day at all, which broke record-matching before the confluence question could even be asked). 21 unit tests (`js/asiaFibAtlasEngine.test.mjs`) — the causality ones matter most here: the far-future-perturbation test that already caught Level Atlas's dayVol tautology also caught THIS engine's own bug during development (`dayOpen` referenced before its `const` declaration executed — a temporal-dead-zone `ReferenceError` silently swallowed by a `try/catch` around the ladder fit, which made `rangeBudgetUsedPct`/`gapSig` silently null/NaN for every row; `node --check` and the type-free JS runtime both missed it, only running the walk and inspecting null-rates caught it). Two of the "both sides / extreme rung" tests needed a deterministically-constructed price path rather than a bigger random fixture, once a naive "symmetric" generator turned out to still be structurally range-bound at any wiggle amplitude (the SHAPE, not the scale, was the problem) — worth remembering for the next engine's tests that need a rare joint condition. | none yet (engine + report only) | 🟢 built + unit-tested on synthetic data; **not yet run against real OANDA/M1 data** — sandbox can't reach it, needs a Railway check before any finding here is trusted |
+| **Asia Fib Atlas Report** | `js/asiaFibAtlasReport.js` | `buildAsiaFibAtlasBook(touches, {rearmFrac})` → per-`(side, level)` cell × dimension book, IS/OOS split, `extractHeldFindings`, `renderAsiaFibBookText`. Imports `annotateHolds` (THE shared OOS-holding gate, REFERENCE_ENGINE_PLAYBOOK.md §3.2 — n≥30 both halves, ≥3pp effect, same sign) straight from `levelAtlasReport.js`, never a second copy. Also newly exports `splitAt`/`tableFor`/`summarizeAll`/`pctiles` FROM `levelAtlasReport.js` (previously private there) — legitimate reuse, not a coincidental resemblance: both engines' outcome records share the exact `{outcome, fadePips, runPips, pullbackFrac, minsToResolve}` shape by deliberate design specifically so the table-building logic could be shared rather than re-derived. 27 context dimensions (vs Level Atlas's ~25) — see the file's own `DIMENSIONS` export for the full list and labels. | none yet | 🟢 built, smoke-tested against a synthetic book |
+
+**What v1 answers vs defers**, per the playbook's own "don't build report/UI
+until the engine's rows earn it" discipline (§4): the engine + OOS-gated
+report layer (the actual "does this context factor hold up" analysis the
+build was requested for) are done. Explicitly deferred, not forgotten:
+routes (async-job `/run`+`/status`+`/card` pattern, mirroring
+`levelAtlasRoutes.js`) and any UI/dashboard page — build these once the book's
+findings on real data are worth serving live, not before. Also flagged as
+natural next layers rather than built now (checked against
+`education/jordan_video_transcripts/JORDAN_VIDEO_INSIGHTS.md`,
+`cross-asset-options-diagnostic-notes.md`, `QUANT_MACRO_LESSONS_1-6.md` during
+scoping): macro-calendar proximity (FOMC/CPI/NFP/OpEx — `calendar_events.csv`
+exists in-repo but its schema/coverage wasn't verified before this build),
+COT positioning (weekly cadence needs its own lag rule, unlike CVOL's daily
+one-day lag), and cross-asset regime (yield-spread rate-of-change, VIX
+regime). **No result yet** — this is infrastructure, not a finding; the
+honest next step is the same one Impulse Range Engine (§1ap, immediately
+above) is waiting on: run it against real OANDA/M1 data on Railway across
+enough pairs/days before trusting any cell in the book.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
