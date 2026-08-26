@@ -266,34 +266,34 @@ const HELP = {
   cfd:['CFD spot','The price <b>your broker</b> quotes — what you actually trade. Option strikes are NOT quoted here; they are quoted in futures terms, which is why the basis exists.'],
   fut:['CME futures','The <b>futures contract</b> the options are written on. Fetched live at the moment you press Analyse.','Amber means it fell back to a settlement price, which can be a day stale.'],
   basis:['Basis','<b>Futures minus spot.</b> Options are struck on the future, you trade the spot, so every level must be shifted by this to be drawable on your chart.','It comes from carry (the interest-rate differential). It only means anything if both prices were read at the same instant — that is what "both legs same instant" confirms.'],
-  refmove:['Reference move','How far price could <b>plausibly travel</b> by expiry — from the option-implied straddle when trustworthy, otherwise from volatility.','Used to judge whether a strike is close enough to matter. A wall ten reference-moves away is abandoned paper, not a level.'],
+  refmove:['Reference move','The yardstick everything else is measured against — how far price could plausibly travel by expiry.','A wall ten reference moves away is abandoned paper, not a level. <b>Careful:</b> this is measured to the <b>main</b> expiry, so for a same-day trade it overstates what is reachable. For intraday use the &ldquo;what is realistic today&rdquo; line in Today&rsquo;s read at the top of the page.'],
   expiry:['Expiry','Which option expiry these levels come from. Different expiries pin at different prices, so the label matters.','Chosen automatically as the nearest expiry with real near-the-money open interest.'],
   saved:['Saved','When you last pressed Analyse. Open interest updates once a day, so a stale save means stale levels.'],
-  callwall:['Call wall','The strike with the heaviest <b>call</b> open interest — acts as <b>resistance</b>.','Dealers who sold those calls buy the underlying as price rises toward the strike, which supports the move. At the strike they are fully hedged, the buying stops, and the rally runs out of fuel. Resistance is the fuel ending, not selling.'],
-  putwall:['Put wall','The strike with the heaviest <b>put</b> open interest — acts as <b>support</b>.','Mirror image: dealer selling accelerates the fall into the strike, then stops there, so the decline stalls.'],
-  maxpain:['Max pain','The strike where the <b>most options expire worthless</b>, so option sellers profit most.','Price tends to drift toward it as expiry approaches — strongest in the final 48 hours, weak more than about five days out.'],
-  gflip:['Gamma flip','The price where dealer gamma changes sign, read off the per-strike profile.','<b>Above it</b> dealer hedging dampens moves and ranges hold. <b>Below it</b> hedging amplifies and trends run. Rougher than the GEX flip.'],
-  gexflip:['GEX flip','The same boundary done properly: where <b>total</b> net dealer gamma crosses zero, re-evaluating the whole book at each candidate price.','When this and the gamma flip disagree, trust this one.'],
+  callwall:['Call wall','The strike with the most call options above price — a <b>ceiling other people have already sold into</b>.','As price rises toward it the dealers who sold those calls must <b>buy</b> to stay hedged, which helps price up. At the strike that buying stops. So rallies tend to <b>stall there</b>: it is a place to take profit on a long or look for a short — not a place to buy a breakout.'],
+  putwall:['Put wall','The strike with the most put options below price — a <b>floor other people have already bought protection at</b>.','As price falls toward it dealers must <b>sell</b> to stay hedged, which speeds the drop. At the strike that selling stops. So falls tend to <b>stall there</b>: a place to cover a short or look for a long — not a place to sell a breakdown.'],
+  maxpain:['Max pain','The price where the most options expire worthless, so the people who sold them make the most money.','Price tends to <b>drift toward it as expiry approaches</b>, and the pull is only real in the last day or two — more than about five days out, ignore it. Even close in, only trade it if the pin is <b>near enough to reach today</b>. A magnet three days of movement away is not a target.'],
+  gflip:['Gamma flip','The same calm-versus-jumpy border as the GEX flip, but read off the per-strike chart — the rougher of the two.','Above it moves get damped and ranges hold. Below it moves get amplified and trends run. When the two flips disagree, trust the GEX flip.'],
+  gexflip:['GEX flip','The price where dealers switch from <b>calming</b> the market to <b>stirring it up</b>.','Above it, fade extremes. Below it, follow breaks. If price is sitting close to it the regime is fragile and can switch on you intraday, so trade smaller until price picks a side. Where this and the gamma flip disagree, trust this one.'],
   charm:['Charm flip','Where <b>time-decay</b> driven hedging reverses. Charm is how delta changes as time passes.','This is the mechanism that pins price to big strikes into expiry. Negligible until the last day or two, then it dominates.'],
   vanna:['Vanna flip','Where <b>volatility-driven</b> hedging reverses. Vanna is how delta changes when implied vol moves.','Dormant until IV moves. Classic use: after an event IV collapses, and if dealers are positioned right that forces buying with no news at all.'],
-  expmove:['Expected move','The option market own estimate of the <b>plus/minus range</b> by expiry, read from the at-the-money straddle price.','A target beyond this band is one the market itself considers unlikely to be reached by expiry.'],
+  expmove:['Expected move','The range the options market itself expects price to stay inside by expiry.','Use it as a reality check on take-profits. A target outside this band is one the option market is pricing as unlikely — if your TP sits there, you are betting against their own pricing.'],
   oichart:['Open interest by strike','How many contracts sit at each strike. <b>Red bars right = calls</b> (resistance above), <b>green bars left = puts</b> (support below). A tall bar is a lot of money parked at that price. Amber dashes mark spot, and only strikes near price are drawn.','Use it to see <b>where the crowd is positioned</b> — not where price is going. One trap: close to expiry a big bar far from price is old paper with no hedging left behind it. The Net GEX chart is the better guide to which strikes still actually matter today.'],
   gexchart:['Net GEX by strike','Where dealers are forced to hedge, and which way that pushes price. <b>Red above the line</b> = calls dominate, <b>green below</b> = puts dominate. The marked crossing is where their behaviour flips.','<b>Above the flip</b> dealers lean against moves: ranges hold and fading extremes works. <b>Below it</b> they push moves along: breaks run, so do not fade them. If price is sitting right on the crossing the regime is unstable — trade smaller until it picks a side.'],
   smile:['IV smile','What the options market is <b>bracing for</b> — not direction, but how much movement, and which side people are paying up to protect. <b>Blue is today, grey is the previous settlement.</b> Blue below grey means the market expects a calmer day than it did yesterday.','Use it to decide <b>how far to trust your signal</b>, never to pick a side. Calm or falling: trade normally. Rising sharply — especially with the left wing steepening, meaning downside protection is getting expensive — is the market buying umbrellas. If your signal is long, that is a reason to go smaller or wait, not to reverse.'],
   term:['ATM IV term structure','At-the-money implied vol across <b>expiries</b> — the market vol forecast by horizon.','<b>Upward sloping</b> is normal: more time, more uncertainty. <b>Inverted</b> (near-dated higher) means an event is expected soon and short-dated levels break more easily.'],
   flow:['Positioning and flow','Aggregate reads on how the option book is positioned and how that changed since yesterday.','These describe the <b>character</b> of the market — whether moves get damped or amplified, whether positioning is being built or unwound. They are context, not entry signals.'],
-  netgex:['Net GEX','Total dealer gamma exposure. <b>Positive</b>: dealers damp moves, ranges hold, fading extremes works. <b>Negative</b>: they amplify, breaks run, do not fade.'],
+  netgex:['Net GEX','One number for whether dealers are <b>calming</b> the market or <b>stirring it up</b>.','<b>Positive</b>: they lean against moves, so ranges hold — buying dips and selling rallies into the levels is what works. <b>Negative</b>: they push moves along, so breaks run — do not fade them, trade with the move.'],
   netdex:['Net DEX','Total dealer delta exposure — how much underlying they must hold to stay hedged.'],
-  pc:['Put/call ratio','Put open interest divided by call open interest. Below 0.7 is call-heavy; above 1.3 is heavy hedging or fear.','Extremes can be contrarian, but in a strong trend an extreme reading can persist for weeks.'],
+  pc:['Put/call ratio','How many puts are open for every call — a rough gauge of whether the crowd is <b>hedged or chasing</b>.','Below 0.7 is call-heavy (crowd leaning long); above 1.3 is put-heavy (hedged or scared). Extremes can be contrarian, but in a strong trend they persist for weeks — never trade this on its own.'],
   skew:['OI skew','<b>Where</b> positioning sits rather than how much. Negative = puts stacked below (downside hedged). Positive = calls stacked above.'],
-  conc:['Concentration','Share of all open interest in the top few strikes. Concentrated means a handful of levels dominate; dispersed means no single strike matters much.'],
-  cex:['CEX (charm)','Aggregate time-decay hedging flow. Grows into expiry and is what produces pinning.'],
-  vex:['VEX (vanna)','Aggregate vol-driven hedging flow — which way dealers must trade <b>if IV moves</b>.'],
-  rr:['Risk reversal','Out-of-the-money put IV minus call IV. Positive means puts are bid relative to calls — a downside tilt in sentiment.'],
-  atmiv:['ATM IV change','How at-the-money implied vol moved versus the previous settlement. Rising means hedging demand increasing.'],
+  conc:['Concentration','Whether the open interest is piled into a few strikes or spread thinly across many.','<b>Concentrated</b> means a handful of levels dominate, so price respects them and fading into them works. <b>Dispersed</b> means nothing is really defended — expect levels to hold less well and give breakouts more room.'],
+  cex:['CEX (charm)','How hard time-decay is pulling price toward the big strikes.','Only meaningful in the last day or two before expiry — that is when it produces pinning. A big number with weeks left on the clock is not telling you anything.'],
+  vex:['VEX (vanna)','Which way dealers are forced to trade if implied vol moves.','Dormant while IV is flat. The classic case: after an event IV collapses and, if dealers are positioned right, that alone forces them to buy — a rally with no news behind it.'],
+  rr:['Risk reversal','Whether people are paying more to bet on a <b>rise</b> or to protect against a <b>fall</b>.','Downside tilt: protection against a fall is the expensive side — mild caution if you are long. Upside tilt: upside bets are the expensive side — mild caution if you are short. It is a lean, never a signal on its own.'],
+  atmiv:['ATM IV change','Whether the options market expects <b>more or less</b> movement than it did yesterday.','Falling: calmer, trade your signal normally. Rising sharply: something is making people nervous — go smaller or wait for confirmation, rather than reversing.'],
   volpc:['Volume P/C','Today <b>traded</b> put/call ratio, versus the resting open-interest ratio. When they diverge, today flow disagrees with existing positioning.'],
   oichg:['OI change','Contracts added or removed since yesterday. <b>Building</b> = new money committing. <b>Closing</b> = positions unwinding, so the level is losing its backing.'],
-  walls:['Wall tables','Every strike with meaningful open interest on that side.','<b>Tier</b> is the 3x rule — open interest as a multiple of neighbouring strikes, so a strong wall in a quiet area beats a big number in a busy one. <b>xnbr</b> is that multiple. <b>Delta</b> is the change since yesterday. Use <b>Walls: STRENGTH / NEAREST</b> in the header to re-sort by distance from price instead.'],
+  walls:['Wall tables','Every strike with meaningful open interest on that side — the ceilings above price and the floors below it.','<b>Strength</b> is how big the strike is versus its neighbours, so a big number in a quiet area beats a big number in a busy one. <b>&times; nearby</b> is that multiple. <b>Careful near expiry:</b> these rank by contracts held, and within a day or two of expiry the biggest piles sit at strikes nobody is hedging any more. When the traded expiry is close, use the gamma-ranked levels in Today&rsquo;s read instead.'],
   perexp:['Per-expiry structure','Where each expiry pins, so you can see whether near and far horizons agree.','If a nearby expiry and a distant one pin at very different prices, expect the level to shift once the near one expires.'],
   reach:['Reachability','The chance price <b>touches</b> each wall within the horizon, from a Monte Carlo over the volatility cone. A wick counts.','The raw model is over-confident — a raw 94% only touches about 68% of the time — so these are CORRECTED against a reliability curve fitted on real EUR/USD data and verified out of sample to about 2pp. The curve is shown beside the numbers so you can see how much correction was applied. It says nothing about whether a wall then HOLDS.'],
   volmag:['Volume magnets','Strikes with the heaviest <b>volume traded today</b>, as opposed to resting open interest.','Volume is activity, open interest is commitment. A strike busy today with little open interest is a fresh fight, not an established wall.'],
@@ -994,13 +994,13 @@ function levelStrip(e){
   const rows=[
     ['call wall', e.callWall, 'var(--call)', fOI(e.callWallOI)+' OI', 'callwall'],
     ['put wall',  e.putWall,  'var(--put)',  fOI(e.putWallOI)+' OI', 'putwall'],
-    ['max pain',  e.maxPain,  'var(--pain)', 'expiry magnet', 'maxpain'],
-    ['gamma flip',e.gammaFlip,'var(--vol)',  'profile crossing', 'gflip'],
-    ['GEX flip',  e.gexFlip,  'var(--gam)',  'total GEX = 0', 'gexflip'],
+    ['max pain',  e.maxPain,  'var(--pain)', 'drifts here by expiry', 'maxpain'],
+    ['gamma flip',e.gammaFlip,'var(--vol)',  'above = calm · below = jumpy', 'gflip'],
+    ['GEX flip',  e.gexFlip,  'var(--gam)',  'the calm / jumpy border', 'gexflip'],
     // charm/vanna are blank without a per-strike IV smile — say WHY on the card
     // instead of a bare "—" next to a greek symbol (the #1 "is it broken?" question).
-    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)', e.greeksFlow?'∂Δ/∂time':'needs IV smile', 'charm'],
-    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)',  e.greeksFlow?'∂Δ/∂vol':'needs IV smile', 'vanna'],
+    ['charm flip',e.greeksFlow?.charmFlip,'var(--warn)', e.greeksFlow?'pins price into expiry':'needs IV smile', 'charm'],
+    ['vanna flip',e.greeksFlow?.vannaFlip,'var(--gam)',  e.greeksFlow?'kicks in when IV moves':'needs IV smile', 'vanna'],
     ['exp move ↑',e.expectedMove?.upper,'var(--tx2)', e.expectedMove?'±'+e.expectedMove.pct+'%':'', 'expmove'],
     ['exp move ↓',e.expectedMove?.lower,'var(--tx2)', e.expectedMove?.dte?('to '+e.expectedMove.dte+'d'):'', 'expmove'],
   ];
@@ -1038,7 +1038,7 @@ function wallTable(e,side){
       + `<td style="color:${w.chg>0?'var(--put)':w.chg<0?'var(--call)':'var(--tx3)'}">${w.chg?(w.chg>0?'+':'')+fOI(w.chg):'—'}</td>`
       + `<td class="muted">${Number.isFinite(d)?(d>=0?'+':'')+d.toFixed(0)+'p':'—'}</td></tr>`;
   }).join('');
-  return `<table><thead><tr><th>Strike</th><th>OI</th><th></th><th>Tier</th><th>xnbr</th><th>Chg</th><th>Dist</th></tr></thead>`
+  return `<table><thead><tr><th>Strike</th><th>Contracts</th><th></th><th>Strength</th><th>&times; nearby</th><th>vs yest</th><th>From price</th></tr></thead>`
     + `<tbody>${body}</tbody></table>`
     + `<div class="note">Sorted by <b>${SORT==='proximity'?'distance from price':'strength'}</b> — switch with the Walls button in the header. Dimmed <b>far</b> rows sit beyond 2.5 reference moves and are excluded from the chart export.</div>`;
 }
@@ -1047,16 +1047,16 @@ function flowPanel(e){
   const g=e.greeksFlow, rr=e.riskReversal, iv=e.ivDynamics, vf=e.volFlow, cn=e.concentration;
   const row=(k,hk,v,n)=>`<tr><td class="muted">${k}${h(hk)}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
   return `<table><tbody>`
-    + row('Net GEX','netgex', e.exposures?fOI(e.exposures.gex):'—', e.exposures?.gex>0?'long gamma &middot; ranges hold':'short gamma &middot; breaks run')
+    + row('Net GEX','netgex', e.exposures?fOI(e.exposures.gex):'—', e.exposures?.gex>0?'dealers damp moves &middot; fade extremes':'dealers amplify &middot; don&rsquo;t fade breaks')
     + row('Net DEX','netdex', e.exposures?fOI(e.exposures.dex):'—','')
     + row('P/C ratio','pc', Number.isFinite(e.pcRatio)?e.pcRatio.toFixed(2):'—', e.pcRatio>1.3?'heavy hedging':e.pcRatio<0.7?'call-heavy':'balanced')
     + row('OI skew','skew', e.skew?e.skew.score:'—', esc(e.skew?.read||''))
     + row('Concentration','conc', cn?`${cn.top5Pct}% / ${cn.top10Pct}%`:'—', cn?esc(cn.read)+' (top 5 / top 10)':'')
-    + row('CEX (charm)','cex', g?fOI(g.cex):'—','time-decay flow')
+    + row('CEX (charm)','cex', g?fOI(g.cex):'—','pull toward big strikes near expiry')
     + row('VEX (vanna)','vex', g?fOI(g.vex):'—', esc(g?.vanna?.state||''))
     + row('Risk reversal','rr', rr?rr.rr:'—', esc(rr?.tilt?rr.tilt+' tilt':''))
-    + row('ATM IV change','atmiv', iv?.atmChg!=null?iv.atmChg+'%':'—','vs prior settle')
-    + row('Volume P/C','volpc', vf?vf.volPcRatio:'—', vf?.divergence?'diverges from resting OI':'')
+    + row('ATM IV change','atmiv', iv?.atmChg!=null?iv.atmChg+'%':'—', iv?.atmChg==null?'vs yesterday':(iv.atmChg<0?'calmer than yesterday':'more nervous than yesterday'))
+    + row('Volume P/C','volpc', vf?vf.volPcRatio:'—', vf?.divergence?'today&rsquo;s trading disagrees with the positions already held':'')
     + row('Call OI change','oichg', fOI(e.totalCallChg), e.totalCallChg>0?'building':'closing')
     + row('Put OI change','oichg', fOI(e.totalPutChg), e.totalPutChg>0?'building':'closing')
     + `</tbody></table>`;
@@ -1072,7 +1072,7 @@ function fullBookPanel(e){
   const r=(k,v,n)=>`<tr><td class="muted">${k}</td><td>${v}</td><td class="muted" style="text-align:left">${n||''}</td></tr>`;
   return `<table><tbody>`
     + r('Full-book regime',`<b style="color:${col(isPin)}">${fb.regime}</b>`,`${fb.nExpiries} expiries · ${fb.volSource==='atm-iv'?'per-expiry ATM IV':'flat vol'}`)
-    + r('Full-book GEX',fOI(fb.gex),isPin?'long gamma &middot; ranges hold':'short gamma &middot; breaks run')
+    + r('Full-book GEX',fOI(fb.gex),isPin?'dealers damp moves &middot; fade extremes':'dealers amplify &middot; don&rsquo;t fade breaks')
     + r('Gamma flip',fb.flip?fx(show(fb.flip,e),SYM):'—','whole-book zero-gamma')
     + r('vs single-expiry',`<b style="color:${col(singlePin)}">${!Number.isFinite(single)?'—':(singlePin?'PIN':'BREAKOUT')}</b>`,
         agree==null?'':(agree?'agree':'⚠ DISAGREE — other expiries pull against the traded column'))
