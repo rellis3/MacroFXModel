@@ -2265,6 +2265,37 @@ test.mjs`'s own settle-lag test verbatim (same outlier-injection technique);
 Asia closes must not move it — a different causal boundary than every other
 field in this engine, worth its own proof).
 
+**Real-data check on the five new dimensions (2026-08-26, same 4-instrument
+run)** — mixed and worth reporting exactly as found, per this repo's own
+"report the green honestly and the red honestly" rule:
+- **CVOL (`ivRegime`/`vrp`/`ivSkewDir`) — ZERO held findings on ALL 4
+  instruments.** A genuine, notable null: CVOL's `vrp` is Level Atlas's own
+  standout finding for forecast-line touches (OOS effect usually as strong
+  as IS, "worth the most trust of any single finding" per that engine's own
+  entry above) — and it holds NOTHING for range-extension touches. Not a
+  bug (the settle-lag mechanics are unit-tested and match Level Atlas's own
+  proven pattern exactly) — implied vol/skew genuinely doesn't condition
+  behaviour at a fib rung the way it does at a forecast-ladder rung.
+- **Hurst (`hurstBucket`) — ZERO held findings on ALL 4 instruments.**
+  Consistent with (not identical to — this is a different question) its
+  prior drop from the live entry-conviction aggregate. Honest confirmation
+  rather than a wasted addition, exactly as flagged when it was wired in.
+- **`weeklyPivotZone`** — real findings (7-18 per instrument) but the same
+  scattered-by-rung, no-universal-direction pattern as the confluence
+  tracks above — worth having per-level, not a third cross-instrument law.
+- **`asiaShape`** — modest findings (4-9 per instrument), scattered.
+- **`swingRegime`** — modest findings (4-11 per instrument); `3·agree`
+  recurs across all 4 instruments' held lists more often than the other new
+  dimensions, but even within ONE instrument the sign flips by rung (EURUSD
+  `below|-3.5` agree → +15.7pp IS; `below|-3` agree → -8.5pp IS) — a real,
+  level-specific read, not a fourth universal finding.
+
+Net: the two headline findings from the first real-data run remain the only
+cross-instrument laws in the book. Everything added since (confluence
+tracks + these five) is real, worth keeping per-level exactly as the owner
+asked, but the search for a THIRD universal rule came back empty this
+round — reported plainly, not reframed as a near-miss.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
