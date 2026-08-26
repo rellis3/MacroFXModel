@@ -55,6 +55,30 @@
  * is about not duplicating the same computation — this is a different one that
  * happens to share a name).
  *
+ * ── CONFLUENCE: TWO INDEPENDENT TRACKS, NOT A CROSS-COMPARISON ────────────────
+ * Corrected 2026-08-26 (owner review): the original Pine indicator computes
+ * TWO SEPARATE confluence checks — Asia(today) vs Asia(previous day), and
+ * Monday(this week) vs Monday(the week before) — it never cross-compares
+ * Asia fibs to the Monday ladder. An earlier version of this engine did
+ * exactly that (checked today's Asia rungs against the Monday ladder AND
+ * folded the result into one conflated `confluenceGrade`), which is a real
+ * mismatch from the source strategy, not a refinement of it. Now:
+ *   (1) `confluenceGrade`/`asiaConfPips` — Asia vs previous Asia ONLY, the
+ *       core track, matching the indicator exactly.
+ *   (2) `mondayWeekTightestPips`/`mondayWeekZone` — Monday vs the previous
+ *       Monday, entirely independent of Asia, computed once per WEEK (same
+ *       value for every touch Mon-Fri that week — drawn once, persists).
+ *   (3) `mondayCrossPips`/`mondayCrossZone` — does today's Asia rung land
+ *       near the Monday ladder anyway? Real, kept as an EXPLORATORY field,
+ *       but deliberately never blended into (1)'s grade.
+ * `asiaConfPips`/`mondayCrossPips`/`mondayWeekTightestPips` are the actual
+ * pip gap to the nearest matching prior-cycle level, always reported (never
+ * threshold-gated) — the real "zone for analysis of activity": the book can
+ * show reaction as a smooth function of tightness, not a pre-filtered
+ * yes/no. `confluenceGrade` stays as a categorical companion (mirrors the
+ * indicator's own green/orange distinction) but is one dimension among many
+ * below, never the sole thing a finding gets attributed to.
+ *
  * ── NO-LOOKAHEAD CONTRACT ─────────────────────────────────────────────────────
  * The extension ladder for day D is fixed at Asia's own close (06:00 London) —
  * every rung price is known before any touch in the walk window can occur, so
@@ -116,6 +140,42 @@ function confluenceThresholdPips(instrument) {
   if (s.includes('US30') || s.includes('DJI') || s.includes('WALLST')) return CONFLUENCE_PIPS_DEFAULT.us30;
   if (s.includes('US2000') || s.includes('RUT') || s.includes('RUSSELL')) return CONFLUENCE_PIPS_DEFAULT.us2000;
   return CONFLUENCE_PIPS_DEFAULT.fx;
+}
+
+// Raw nearest-pip distance from one PRICE to ANY level in a fib grid (array
+// of {price}) — always computed, never threshold-gated. This is the actual
+// "zone" for analysis: the real pip gap between X and previous X, not a
+// pre-filtered yes/no confluence flag. Returns null if the grid is
+// unavailable (e.g. no previous Asia session yet, or no Monday resolved).
+function nearestPipDist(price, grid, pip) {
+  if (!grid?.length) return null;
+  let best = Infinity;
+  for (const g of grid) { const d = Math.abs(price - g.price); if (d < best) best = d; }
+  return best / pip;
+}
+
+// Same idea, grid-vs-grid (both full fib ladders) — the tightest pair
+// anywhere between two whole ladders. Used for the Monday-vs-previous-Monday
+// week-level zone, which has no single "touched price" to anchor from.
+function minGridDist(gridA, gridB, pip) {
+  if (!gridA?.length || !gridB?.length) return null;
+  let best = Infinity;
+  for (const a of gridA) for (const b of gridB) { const d = Math.abs(a.price - b.price); if (d < best) best = d; }
+  return best / pip;
+}
+
+// Fine pip bands so the book can show how reaction changes as a SMOOTH
+// function of tightness ("together levels are a tighter pip") rather than a
+// single binary tight/normal split.
+function pipZoneBucket(pips) {
+  if (pips == null) return null;
+  if (pips <= 0.5) return '1·<0.5p';
+  if (pips <= 1) return '2·0.5-1p';
+  if (pips <= 2) return '3·1-2p';
+  if (pips <= 5) return '4·2-5p';
+  if (pips <= 10) return '5·5-10p';
+  if (pips <= 20) return '6·10-20p';
+  return '7·>20p';
 }
 
 // UTC-hour session classification — SAME 3-way convention as levelAtlasEngine
@@ -264,25 +324,51 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
     const todayFibs = calcFibs(asia.low, asia.range);              // {level, price, isKey}
     const todayForConf = todayFibs.map(f => ({ price: f.price, fib: f.level }));
 
-    // ── Confluence vs previous Asia & (causally-gated) Monday ────────────────
+    // ── Confluence: TWO INDEPENDENT tracks, matching the original indicator
+    // exactly — re-reading the Pine script's own two confluence blocks side
+    // by side (not just skimming) shows it NEVER cross-compares Asia fibs to
+    // Monday fibs; an earlier version of this engine did exactly that
+    // (comparing today's Asia rungs against the Monday ladder) and folded it
+    // into one conflated "confluenceGrade" — a real design bug, fixed here:
+    //   (1) Asia (today) vs Asia (previous day) — daily, the CORE track,
+    //       feeds `confluenceGrade` below, same as always.
+    //   (2) Monday (this week, causally resolved) vs Monday (the week
+    //       before) — weekly, its OWN track, entirely independent of Asia.
+    //       `mon`/`mon2` depend only on which WEEK it is, so this is
+    //       computed once and is the same value for every touch Mon-Fri
+    //       that week — "drawn once, persists the week", never re-derived
+    //       per day.
+    // A THIRD, genuinely different question this engine also answers — does
+    // today's Asia rung land near the Monday ladder anyway — is real and
+    // worth keeping (see `mondayCrossPips` below), but it is NOT part of the
+    // original strategy and must stay a clearly separate, secondary field,
+    // never blended into `confluenceGrade`.
     const prevAsiaFibs = prevA ? calcFibs(prevA.low, prevA.range).map(f => ({ price: f.price, fib: f.level })) : null;
     const isMonday = dow === 1;
     let mon = mondayForDay(mondayRanges, asia.epoch);
     if (isMonday && mon) mon = prevMonday(mondayRanges, mon.epoch);   // Pine: is_current_monday ? prev_monday : curr_monday
+    const mon2 = mon ? prevMonday(mondayRanges, mon.epoch) : null;    // the Monday immediately before `mon` — track (2)'s "previous Monday"
     const mondayFibs = mon ? calcFibs(mon.low, mon.range).map(f => ({ price: f.price, fib: f.level })) : null;
+    const prevMondayFibs = mon2 ? calcFibs(mon2.low, mon2.range).map(f => ({ price: f.price, fib: f.level })) : null;
 
+    // Track (1)'s canonical, threshold-gated match — reuses the SAME
+    // Pine-matching matcher + range-capped tolerance as the live indicator,
+    // never re-derived. Feeds `confluenceGrade` (categorical) below.
     const confAsia = prevAsiaFibs ? detectConfluencesCore(todayForConf, prevAsiaFibs, {
-      pipSize: pip, normalDistance: normalDistPrice, tightDistance: tightDistPrice,
-      mergeDistance: normalDistPrice, priceMode: 'lowest', clusterMerge: false, sessionRange: asia.range,
-    }) : [];
-    const confMonday = mondayFibs ? detectConfluencesCore(todayForConf, mondayFibs, {
       pipSize: pip, normalDistance: normalDistPrice, tightDistance: tightDistPrice,
       mergeDistance: normalDistPrice, priceMode: 'lowest', clusterMerge: false, sessionRange: asia.range,
     }) : [];
     const asiaMatch = new Set(confAsia.map(c => c.todayFib));
     const asiaTight = new Set(confAsia.filter(c => c.isTight).map(c => c.todayFib));
-    const monMatch = new Set(confMonday.map(c => c.todayFib));
-    const monTight = new Set(confMonday.filter(c => c.isTight).map(c => c.todayFib));
+
+    // Track (2), week-level (constant for every touch this week): how
+    // tightly does THIS week's Monday ladder sit against LAST week's? This
+    // IS the "Monday vs previous Monday, its own zone" — never touches Asia
+    // at all. Continuous pip gap, not threshold-gated (see `nearestPipDist`
+    // — the owner's actual ask: the raw pip distance between X and previous
+    // X is the zone worth analysing, not a pre-filtered yes/no).
+    const mondayWeekTightestPips = (mondayFibs && prevMondayFibs) ? minGridDist(mondayFibs, prevMondayFibs, pip) : null;
+    const mondayWeekZone = pipZoneBucket(mondayWeekTightestPips);
 
     // ── Structural confluence (pivots/prior-hilo/volume-profile/swing/round) —
     // same builder + tolerance the range-line book was validated on, reused
@@ -383,16 +469,25 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             const rangeBudgetBucket = rangeBudgetUsedPct == null ? null
               : rangeBudgetUsedPct < 0.5 ? '1·low' : rangeBudgetUsedPct <= 1.0 ? '2·mid' : '3·high';
 
-            const confluenceGrade = (() => {
-              const matchAsia = asiaMatch.has(level), tightAsia = asiaTight.has(level);
-              const matchMon = monMatch.has(level), tightMon = monTight.has(level);
-              const count = (matchAsia ? 1 : 0) + (matchMon ? 1 : 0);
-              const isTight = tightAsia || tightMon;
-              if (count === 0) return '0·none';
-              if (count === 2) return isTight ? '3·tight-multi' : '2·multi';
-              return isTight ? '2·tight-single' : '1·single';
-            })();
-            const confluenceSources = [asiaMatch.has(level) ? 'prevAsia' : null, monMatch.has(level) ? 'monday' : null].filter(Boolean).join('+') || null;
+            // Track (1), continuous — the actual pip gap from THIS touched
+            // rung to the NEAREST previous-Asia level, always reported. The
+            // real "zone for analysis of activity": lets the book show
+            // reaction as a function of how tight the two ladders' levels
+            // land together, not a pre-filtered yes/no.
+            const asiaConfPips = nearestPipDist(here, prevAsiaFibs, pip);
+            const asiaConfZone = pipZoneBucket(asiaConfPips);
+            // Track (1), categorical — same threshold/tight distinction the
+            // live indicator draws (green vs orange). One dimension among
+            // many below; never the sole reason a cell's behaviour gets
+            // explained.
+            const confluenceGrade = !asiaMatch.has(level) ? '0·none' : asiaTight.has(level) ? '2·tight' : '1·match';
+
+            // EXPLORATORY, secondary — does this Asia rung ALSO land near
+            // the (causally-resolved) Monday ladder? Real signal, kept
+            // separate on purpose: not part of the original strategy, so it
+            // never feeds confluenceGrade above.
+            const mondayCrossPips = nearestPipDist(here, mondayFibs, pip);
+            const mondayCrossZone = pipZoneBucket(mondayCrossPips);
 
             const feats = tf.compute({ bars, touchIdx: k, open: winOpen, sigma, side: isAbove ? 'up' : 'dn', wt1, level: here, pip, confLevels });
 
@@ -420,7 +515,10 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               rangeBudgetBucket,
               churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               levelFlipState,
-              confluenceGrade, confluenceSources,
+              confluenceGrade,
+              asiaConfPips: asiaConfPips != null ? +asiaConfPips.toFixed(2) : null, asiaConfZone,
+              mondayCrossPips: mondayCrossPips != null ? +mondayCrossPips.toFixed(2) : null, mondayCrossZone,
+              mondayWeekTightestPips: mondayWeekTightestPips != null ? +mondayWeekTightestPips.toFixed(2) : null, mondayWeekZone,
               otherSideTouchedBefore: null,   // filled in a post-pass below (needs both sides' first-touch times)
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,

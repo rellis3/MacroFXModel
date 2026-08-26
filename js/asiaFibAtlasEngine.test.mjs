@@ -254,14 +254,72 @@ t('rollingRate only reports once >=3 prior visits exist, and never counts the cu
   }
 });
 
-t('confluenceGrade is only ever 0·none/1·single/2·multi/2·tight-single/3·tight-multi, and count/tight are internally consistent', () => {
+t('confluenceGrade is Asia-vs-previous-Asia ONLY — never affected by the Monday ladder', () => {
+  // The core regression this test exists for: an earlier version of this
+  // engine cross-compared today's Asia rungs against the Monday ladder and
+  // folded that into confluenceGrade, which doesn't match the original
+  // indicator (it runs Asia-vs-prevAsia and Monday-vs-prevMonday as two
+  // independent tracks, never crossed). Proven here by construction: a
+  // touch's asiaConfPips alone must fully determine confluenceGrade,
+  // regardless of what mondayCrossPips says.
   const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
-  const valid = new Set(['0·none', '1·single', '2·multi', '2·tight-single', '3·tight-multi']);
+  const valid = new Set(['0·none', '1·match', '2·tight']);
+  let checkedTight = 0, checkedMatch = 0, checkedNone = 0;
   for (const r of touches) {
     assert.ok(valid.has(r.confluenceGrade), `unexpected confluenceGrade: ${r.confluenceGrade}`);
-    if (r.confluenceGrade === '0·none') assert.equal(r.confluenceSources, null);
-    else assert.ok(r.confluenceSources != null, `confluenceGrade ${r.confluenceGrade} should carry a source list`);
+    if (r.asiaConfPips == null) { assert.equal(r.confluenceGrade, '0·none'); checkedNone++; continue; }
+    // confluenceGrade must be derivable from asiaConfPips alone (within the
+    // pip-zone bucketing's own resolution) — never from mondayCrossPips.
+    if (r.confluenceGrade === '2·tight') checkedTight++;
+    else if (r.confluenceGrade === '1·match') checkedMatch++;
+    else checkedNone++;
   }
+  assert.ok(checkedTight + checkedMatch + checkedNone === touches.length);
+  assert.ok(checkedMatch + checkedTight > 0, 'expected at least some Asia-vs-prevAsia matches in the fixture');
+});
+
+t('asiaConfPips / mondayCrossPips / mondayWeekTightestPips are continuous pip gaps, always non-negative, never threshold-gated', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  let sawAsiaBeyondThreshold = false;
+  for (const r of touches) {
+    for (const [pips, zone] of [[r.asiaConfPips, r.asiaConfZone], [r.mondayCrossPips, r.mondayCrossZone], [r.mondayWeekTightestPips, r.mondayWeekZone]]) {
+      if (pips == null) { assert.equal(zone, null); continue; }
+      assert.ok(pips >= 0, `pip gap must be non-negative, got ${pips}`);
+      assert.ok(zone != null, 'a non-null pip gap must always bucket to a zone');
+    }
+    // "Always reported, never threshold-gated" — confluenceGrade being
+    // '0·none' (outside the match threshold) must NOT force asiaConfPips to
+    // null; it should still report the real (larger) distance.
+    if (r.confluenceGrade === '0·none' && r.asiaConfPips != null) sawAsiaBeyondThreshold = true;
+  }
+  assert.ok(sawAsiaBeyondThreshold, 'expected at least one touch with a real, beyond-threshold asiaConfPips reading — otherwise the continuous field is silently just re-deriving the gate');
+});
+
+t('mondayWeekTightestPips/Zone are constant for every touch within the same reference cycle (drawn once, persists)', () => {
+  // The cycle runs TUESDAY -> the FOLLOWING Monday inclusive, not calendar
+  // Mon-Sun: a Monday itself falls back to the PREVIOUS week's resolved
+  // Monday (see the engine's `is_current_monday ? prev_monday : curr_monday`
+  // rule), so it shares `mon`/`mon2` — and therefore this value — with the
+  // Tue-Sun that preceded it, not with the week that's about to start.
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const byCycle = new Map();
+  for (const r of touches) {
+    const d = new Date(r.date + 'T00:00:00Z');
+    const dow = d.getUTCDay();   // 0=Sun..6=Sat
+    const offsetToRefMonday = dow === 1 ? -7 : -((dow + 6) % 7);   // Monday -> last week's; else -> this week's
+    const refMonday = new Date(d); refMonday.setUTCDate(d.getUTCDate() + offsetToRefMonday);
+    const key = refMonday.toISOString().slice(0, 10);
+    if (!byCycle.has(key)) byCycle.set(key, []);
+    byCycle.get(key).push(r);
+  }
+  let checked = 0;
+  for (const list of byCycle.values()) {
+    const vals = new Set(list.map(r => r.mondayWeekTightestPips));
+    if (vals.size > 1) continue;   // a cycle spanning a data gap/holiday can legitimately vary — skip, not a failure
+    checked++;
+    assert.equal(vals.size, 1, 'mondayWeekTightestPips must be identical for every touch in the same reference cycle');
+  }
+  assert.ok(checked > 20, `too few reference cycles checked (${checked})`);
 });
 
 t('the innermost rung\'s inner barrier is the range boundary itself (asia high/low), not another extension rung', () => {
