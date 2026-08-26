@@ -13,6 +13,7 @@ import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import { asiaFibAtlasWalk } from '../js/asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, extractHeldFindings, renderAsiaFibBookText } from '../js/asiaFibAtlasReport.js';
 import { cvolSeries, CVOL_PRODUCTS } from '../js/cvolLoader.js';
+import { majorEventEpochs } from '../js/calendarLoader.js';
 
 const args = process.argv.slice(2);
 const full = args.includes('--full');
@@ -23,6 +24,7 @@ const list = pairs.length ? pairs : ['eurusd', 'gbpusd', 'usdjpy', 'gold'];
 // pair naming ('gold') doesn't match CVOL's ('XAUUSD') — same mapping the
 // engine's own pipSize/assetClass lookups need.
 const CVOL_PRODUCT = { gold: 'XAUUSD' };
+const macroEvents = majorEventEpochs();   // loaded once, shared across pairs — currency-filtered inside the engine per instrument
 
 for (const pair of list) {
   const t0 = Date.now();
@@ -34,7 +36,7 @@ for (const pair of list) {
   const ivByDate = CVOL_PRODUCTS.includes(cvolProduct) ? await cvolSeries(cvolProduct) : null;
   if (!ivByDate) console.log(`  (no CVOL coverage for ${pair} — ivRegime/vrp/ivSkewDir will read null)`);
 
-  const { touches, coverage } = asiaFibAtlasWalk(packed, { instrument: pair, assetClass, rearmFracs: [0.3], ivByDate });
+  const { touches, coverage } = asiaFibAtlasWalk(packed, { instrument: pair, assetClass, rearmFracs: [0.3], ivByDate, macroEvents });
   console.log(`\n=== ${pair.toUpperCase()} — ${packed.n} M1 bars, walk ${Date.now() - t0}ms ===`);
   console.log(`  coverage: ${coverage?.from} -> ${coverage?.to} (${coverage?.sessions} sessions, estimator ${coverage?.estimator})`);
   console.log(`  touches: ${touches.length}`);

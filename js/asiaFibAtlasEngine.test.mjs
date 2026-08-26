@@ -19,6 +19,7 @@
 import assert from 'node:assert/strict';
 import { asiaFibAtlasWalk, asiaFibAtlasLiveToday, RUNGS_ABOVE, RUNGS_BELOW, SIDES } from './asiaFibAtlasEngine.js';
 import { buildAsiaSessions, buildMondayRanges, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
+import { majorEventEpochs } from './calendarLoader.js';
 
 let passed = 0;
 const t = (n, f) => { try { f(); passed++; console.log(`  ✓ ${n}`); }
@@ -507,6 +508,80 @@ t('swingRegime is only ever 1·conflict/2·neutral/3·agree, and both agree and 
   const seen = new Set(touches.map(r => r.swingRegime));
   for (const v of seen) assert.ok(valid.has(v), `unexpected swingRegime: ${v}`);
   assert.ok(seen.has('1·conflict') || seen.has('3·agree'), 'expected at least some non-neutral swing reads over a multi-year synthetic run');
+});
+
+// ── macroEventHours/macroEventBucket (2026-08-26) — schedule-only, both
+// forward AND backward lookups are legitimate here (see the engine's own
+// header note and calendarLoader.js's), unlike every other field's
+// strictly-backward causal contract. Tests focus on: correctness of the
+// nearest-in-either-direction search, currency filtering, and graceful
+// degradation — not a "no leak from the future" test, since forward IS
+// correct here by design. ──────────────────────────────────────────────────
+
+t('a null macroEvents degrades every macro field to null, never throws', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], macroEvents: null });
+  assert.ok(touches.every(r => r.macroEventHours === null && r.macroEventBucket === null));
+});
+
+t('macroEventHours finds the nearest event in EITHER direction, and only within the instrument\'s relevant currencies', () => {
+  const { touches: baseline } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const sample = baseline[Math.floor(baseline.length / 2)];
+  const t = sample.time;
+
+  // One EUR event 2h before, one USD event 40h after — nearest by ANY
+  // relevant currency (EUR or USD, both relevant to EURUSD) should be the
+  // 2h-before one.
+  const macroEvents = [
+    { epoch: t - 2 * 3600, ccy: 'EUR' },
+    { epoch: t + 40 * 3600, ccy: 'USD' },
+  ];
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], macroEvents });
+  const r = touches.find(x => x.time === t && x.side === sample.side && x.level === sample.level && x.ordinal === sample.ordinal);
+  assert.ok(r, 'expected to find the same touch in the macro-events run');
+  assert.ok(Math.abs(r.macroEventHours - 2) < 0.01, `expected ~2h to nearest event, got ${r.macroEventHours}`);
+  assert.equal(r.macroEventBucket, '1·imminent');
+
+  // A GBP-only event exactly at touch time must be IGNORED for EURUSD (not
+  // a relevant currency) — falls back to the 40h USD event instead.
+  const macroEventsGbpOnly = [{ epoch: t, ccy: 'GBP' }, { epoch: t + 40 * 3600, ccy: 'USD' }];
+  const { touches: touches2 } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], macroEvents: macroEventsGbpOnly });
+  const r2 = touches2.find(x => x.time === t && x.side === sample.side && x.level === sample.level && x.ordinal === sample.ordinal);
+  assert.ok(r2, 'expected to find the same touch in the GBP-only run');
+  assert.ok(Math.abs(r2.macroEventHours - 40) < 0.01, `GBP event should be ignored for EURUSD, got ${r2.macroEventHours}h`);
+});
+
+t('macroEventBucket boundaries are internally consistent with macroEventHours', () => {
+  // A synthetic, deterministic event stream (one USD event every 18h across
+  // the whole dataset span) — plenty of variety across all four bucket
+  // boundaries without depending on the real, occasionally-updated CSV.
+  const events = [];
+  for (let t = T0; t < T0 + P.n * 60; t += 18 * 3600) events.push({ epoch: t, ccy: 'USD' });
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], macroEvents: events });
+  const seenBuckets = new Set();
+  for (const r of touches) {
+    if (r.macroEventHours == null) { assert.equal(r.macroEventBucket, null); continue; }
+    const h = r.macroEventHours;   // rounded to 1dp for display; the engine buckets the RAW value, so
+                                    // allow a small tolerance right at each boundary (double-rounding,
+                                    // same class of issue Level Atlas's own pending-distance test guards).
+    const EPS = 0.05;
+    if (Math.abs(h - 6) > EPS && Math.abs(h - 24) > EPS && Math.abs(h - 72) > EPS) {
+      const expected = h <= 6 ? '1·imminent' : h <= 24 ? '2·same-day' : h <= 72 ? '3·this-week' : '4·quiet';
+      assert.equal(r.macroEventBucket, expected, `bucket/hours mismatch: ${h}h -> ${r.macroEventBucket}`);
+    }
+    assert.ok(h >= 0, 'hours must be non-negative');
+    seenBuckets.add(r.macroEventBucket);
+  }
+  assert.ok(seenBuckets.has('1·imminent') && seenBuckets.has('2·same-day'), `expected multiple buckets exercised, got ${[...seenBuckets]}`);
+});
+
+t('the calendar loader never exposes the actual/consensus/previous outcome columns (lookahead-risk fields)', () => {
+  const events = majorEventEpochs();
+  assert.ok(events.length > 100, 'expected the real calendar_events.csv to be present and parsed');
+  for (const e of events.slice(0, 5)) {
+    assert.ok(!('actual' in e) && !('consensus' in e) && !('previous' in e) && !('event' in e),
+      'majorEventEpochs() must only ever expose {epoch, ccy} — no outcome/name fields');
+    assert.equal(Object.keys(e).sort().join(','), 'ccy,epoch');
+  }
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

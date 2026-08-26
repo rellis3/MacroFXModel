@@ -55,6 +55,11 @@
  *                                `confluenceFeatures.createHtfContext` uses for its
  *                                15m/1h/4h series — never a per-touch resample,
  *                                which would be O(n²) over a multi-year walk)
+ *   `calendarLoader.js`       — `majorEventEpochs()`, the local economic-calendar
+ *                                CSV — SCHEDULE ONLY (date/time/currency/impact
+ *                                tier), never the outcome columns; see that
+ *                                file's own header for why a future scheduled
+ *                                date is not lookahead the way future price is
  *
  * ── DELIBERATELY *NOT* REUSED — a documented near-miss, not an oversight ─────
  * `levelAtlasEngine.js`'s own `sessionRangeSeries`/`sessionVolBucket` measure a
@@ -193,6 +198,37 @@ function pipZoneBucket(pips) {
   return '7·>20p';
 }
 
+// Which calendar currencies this instrument's macro-event proximity should
+// read. FX pairs decompose into their two ISO codes; gold is USD-driven
+// (XAU itself isn't a calendar currency in this feed).
+function macroCurrencies(instrument) {
+  const s = String(instrument).toUpperCase();
+  if (s.includes('XAU') || s === 'GOLD') return ['USD'];
+  if (s.length === 6) return [s.slice(0, 3), s.slice(3, 6)];
+  return ['USD'];
+}
+
+// Hours to the NEAREST 'Major'-impact scheduled event in either direction —
+// see calendarLoader.js's own header for why looking FORWARD at a
+// calendar DATE is not lookahead here (the schedule is public knowledge),
+// unlike looking forward at PRICE. `epochs` must be sorted ascending.
+function nearestEventHours(epochs, t) {
+  if (!epochs?.length) return null;
+  const i = bisect(epochs, t);   // first index with epochs[i] >= t
+  let best = Infinity;
+  if (i < epochs.length) best = Math.min(best, Math.abs(epochs[i] - t));
+  if (i > 0) best = Math.min(best, Math.abs(t - epochs[i - 1]));
+  return best / 3600;
+}
+
+function macroEventBucket(hours) {
+  if (hours == null) return null;
+  if (hours <= 6) return '1·imminent';
+  if (hours <= 24) return '2·same-day';
+  if (hours <= 72) return '3·this-week';
+  return '4·quiet';
+}
+
 // UTC-hour session classification — SAME 3-way convention as levelAtlasEngine
 // (Asia 22-7 / London 7-13 / NY 13-22 UTC), re-derived rather than imported for
 // the same reason that file gives: it's private there. NOTE this describes
@@ -248,7 +284,7 @@ function asiaVolBucketAt(asiaSessions, idx, lookback = 20) {
 export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                             minLookback = 60, htfMinBars, structural = true, confLookback = 5,
                                             asiaHrs = 6, pendingRearmFrac = null, liveWindowDays = null,
-                                            ivByDate = null } = {}) {
+                                            ivByDate = null, macroEvents = null } = {}) {
   const sym = String(instrument).toUpperCase();
 
   // Calendar-day OHLC + trailing-σ index — SAME construction as levelAtlasEngine,
@@ -289,6 +325,16 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
   const bars30m = resamplePacked(packed, 30);
   const closeTimes30m = new Float64Array(bars30m.length);
   for (let k = 0; k < bars30m.length; k++) closeTimes30m[k] = bars30m[k].time + 30 * 60;
+
+  // ── Macro-calendar proximity — 'Major'-impact scheduled events (FOMC/ECB/
+  // BoE decisions, NFP, CPI, etc.) in this instrument's relevant currencies
+  // only. `macroEvents` (from calendarLoader.js's `majorEventEpochs()`) is
+  // caller-loaded, same pure-engine/I/O-boundary-in-the-caller contract as
+  // `ivByDate`. Filtered + sorted once per instrument.
+  const relevantCcys = macroEvents ? new Set(macroCurrencies(sym)) : null;
+  const macroEpochs = macroEvents
+    ? new Float64Array(macroEvents.filter(e => relevantCcys.has(e.ccy)).map(e => e.epoch).sort((a, b) => a - b))
+    : null;
 
   const lastVisit = {};   // `${side}|${level}|${rearmFrac}` -> last <=5 visits (repeatability)
 
@@ -624,6 +670,12 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               return swing.signal === wantDir ? '3·agree' : '1·conflict';
             })();
 
+            // Macro-calendar proximity — schedule-only, see calendarLoader.js
+            // and `nearestEventHours` above for why looking forward at a
+            // known future calendar date isn't lookahead here.
+            const macroEventHours = nearestEventHours(macroEpochs, bar.time);
+            const macroEventBucketVal = macroEventBucket(macroEventHours);
+
             const feats = tf.compute({ bars, touchIdx: k, open: winOpen, sigma, side: isAbove ? 'up' : 'dn', wt1, level: here, pip, confLevels });
 
             const hourUtc = new Date(bar.time * 1000).getUTCHours();
@@ -657,6 +709,8 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               weeklyPivotPips: weeklyPivotPips != null ? +weeklyPivotPips.toFixed(2) : null, weeklyPivotZone,
               ivRegime, vrp, ivSkewDir,
               hurstBucket, asiaShape, swingRegime,
+              macroEventHours: macroEventHours != null ? +macroEventHours.toFixed(1) : null,
+              macroEventBucket: macroEventBucketVal,
               otherSideTouchedBefore: null,   // filled in a post-pass below (needs both sides' first-touch times)
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,

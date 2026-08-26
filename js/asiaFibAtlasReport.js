@@ -56,6 +56,7 @@ export const DIMENSIONS = [
   ['hurstBucket', 'Trailing-80-day Hurst exponent (reverting/random-walk/trending) — known to saturate high in a different (entry-conviction) context; tested fresh here'],
   ['asiaShape', "Did Asia's OWN formation drive cleanly one way or chop both ways (same churn thresholds, Asia's own close-direction as reference)"],
   ['swingRegime', 'HTF swing structure (CHoCH/BOS) agreeing or conflicting with the range-extension direction'],
+  ['macroEventBucket', "Hours to the nearest 'Major'-impact scheduled event (FOMC/ECB/BoE/NFP/CPI) in this instrument's currencies — schedule only, never the event's outcome"],
 ];
 
 /**
