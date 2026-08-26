@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -191,6 +191,117 @@ function mkBook(dimSpecs) {
      trades.every(t => t.maePct != null && t.mfePct != null && t.maePct !== t.stopPips && t.mfePct !== t.targetPips));
   const expectMaePct = +(3 * 0.0001 / 1.1 * 100).toFixed(4);
   ok('T8 MAE value matches fadePips reoriented for a follow decision', Math.abs(trades[0].maePct - expectMaePct) < 1e-6, JSON.stringify({ got: trades[0].maePct, expect: expectMaePct }));
+}
+
+// ── Test 9: priceAtTighterStop — tightening-only, no M1 re-walk ────────────
+{
+  const base = { entry: 1.1, pip: 0.0001, stopPips: 20, targetPips: 10, pnlPct: +(10 * 0.0001 / 1.1 * 100).toFixed(4), win: true, maePips: 5 };
+  const untouched = priceAtTighterStop(base, 8, 0);
+  ok('T9 win whose real MAE (5p) never reaches the candidate stop (8p) -> unchanged', untouched.win === true && untouched.pnlPct === base.pnlPct, JSON.stringify(untouched));
+
+  const flipped = priceAtTighterStop(base, 3, 0);
+  ok('T9 win whose real MAE (5p) EXCEEDS a tighter candidate stop (3p) -> flips to a loss at -3p', flipped.win === false, JSON.stringify(flipped));
+  const expectFlippedPct = +(-(3 * 0.0001 / 1.1 * 100)).toFixed(4);
+  ok('T9 flipped loss is sized at the TIGHTER stop, not the original', Math.abs(flipped.pnlPct - expectFlippedPct) < 1e-6, JSON.stringify({ got: flipped.pnlPct, expect: expectFlippedPct }));
+
+  const lossTrade = { entry: 1.1, pip: 0.0001, stopPips: 20, targetPips: 10, pnlPct: -(20 * 0.0001 / 1.1 * 100), win: false, maePips: 20 };
+  const tightenedLoss = priceAtTighterStop(lossTrade, 10, 0);
+  ok('T9 an already-losing trade stays a loss but SHRINKS at a tighter stop (20p -> 10p)', tightenedLoss.win === false, JSON.stringify(tightenedLoss));
+  const expectShrunkPct = +(-(10 * 0.0001 / 1.1 * 100)).toFixed(4);
+  ok('T9 shrunk loss is exactly the tighter stop size', Math.abs(tightenedLoss.pnlPct - expectShrunkPct) < 1e-6, JSON.stringify({ got: tightenedLoss.pnlPct, expect: expectShrunkPct }));
+
+  const widerIgnored = priceAtTighterStop(base, 30, 0);
+  ok('T9 a WIDER candidate stop (30p > original 20p) is clamped to the original — never widened past what real data can support', widerIgnored.win === true && widerIgnored.pnlPct === base.pnlPct, JSON.stringify(widerIgnored));
+
+  ok('T9 no real MAE on the trade -> null, not a bad number', priceAtTighterStop({ ...base, maePips: null }, 5, 0) === null);
+  ok('T9 no entry price -> null, not a throw', priceAtTighterStop({ ...base, entry: null }, 5, 0) === null);
+
+  const withCost = priceAtTighterStop(base, 3, 0.01);
+  ok('T9 cost is subtracted on the flipped loss too', Math.abs(withCost.pnlPct - (expectFlippedPct - 0.01)) < 1e-6, JSON.stringify(withCost));
+}
+
+// ── Test 10: runStopStudy — grids candidate stops off REAL winners' MAE,
+// sliced per session, picks the best by Sharpe among candidates with real n ─
+{
+  const entry = 1.1, pip = 0.0001, stopPips = 20, targetPips = 10;
+  const mkTrade = (win, maePips, session, i) => ({
+    entry, pip, stopPips, targetPips, win, maePips, session,
+    date: `2022-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 27)).padStart(2, '0')}`,
+    pnlPct: win ? +(targetPips * pip / entry * 100).toFixed(4) : +(-(stopPips * pip / entry * 100)).toFixed(4),
+  });
+  const london = [];
+  // 25 winners with real MAE spread 1..19p (all < the 20p stop, as any real
+  // win must be) + 15 losses whose MAE ≈ the stop itself (how a real loss's
+  // decision-agnostic MAE actually comes out — the resolution loop stops the
+  // instant the barrier is hit, so it can't see past it).
+  for (let i = 0; i < 25; i++) london.push(mkTrade(true, 1 + (i % 19), 'London', i));
+  for (let i = 0; i < 15; i++) london.push(mkTrade(false, stopPips, 'London', i + 25));
+  const ny = [mkTrade(true, 4, 'NY', 0), mkTrade(false, stopPips, 'NY', 1), mkTrade(true, 6, 'NY', 2)];   // too few to grid
+  const trades = [...london, ...ny];
+
+  const bySession = runStopStudy(trades, { sliceBy: t => t.session, minN: 10 });
+  ok('T10 splits into London/NY slices', Object.keys(bySession).sort().join(',') === 'London,NY', JSON.stringify(Object.keys(bySession)));
+  ok('T10 London band matches a plain summarizeTrades of its own original pnls', bySession.London.band.trades === 40 && bySession.London.band.winRate === 62.5, JSON.stringify(bySession.London.band));
+  ok('T10 NY has too few winners to grid -> empty candidates, no best, explanatory note', bySession.NY.candidates.length === 0 && bySession.NY.best === null && !!bySession.NY.note, JSON.stringify(bySession.NY));
+  ok('T10 London grids real candidates with stopPips drawn from ITS OWN winners (all < the original 20p stop)', bySession.London.candidates.length > 0 && bySession.London.candidates.every(c => c.stopPips < stopPips), JSON.stringify(bySession.London.candidates.map(c => c.stopPips)));
+  ok('T10 a tightened candidate never has a WORSE win rate ceiling than possible (sanity: trades count matches the slice)', bySession.London.candidates.every(c => c.trades === 40));
+
+  const overall = runStopStudy(trades, { minN: 10 });
+  ok('T10 sliceBy omitted -> one pooled "overall" group', Object.keys(overall).join(',') === 'overall' && overall.overall.n === trades.length, JSON.stringify(Object.keys(overall)));
+
+  ok('T10 no trades -> null, not a throw', runStopStudy([]) === null && runStopStudy(null) === null);
+}
+
+// ── Test 11: runExitVariantStudy — reuses forecastAnalyser's ALREADY-
+// VALIDATED simulateExitVariants against a hand-built M1 path, hand-verified
+// by arithmetic before running: a 'follow' trade whose price climbs cleanly
+// through the fixed target (+20p at bar 10) then KEEPS climbing to a peak
+// (+50p at bar 25) before reversing — 'fixed'/'chand' must exit at the
+// original target (never see the extra run since both still check TP),
+// 'ride' (no TP) must ride the trail all the way to peak-5p (trailFrac=0.5 x
+// R=10p stop distance) = +45p, a materially better real result.
+{
+  const day = Date.UTC(2022, 0, 10, 8, 0, 0) / 1000;   // 2022-01-10 08:00 UTC, January -> no BST, clean 'Europe/London' key
+  const n = 30;
+  const times = new Int32Array(n), opens = new Float32Array(n), highs = new Float32Array(n),
+        lows = new Float32Array(n), closes = new Float32Array(n), volumes = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    times[i] = day + i * 60;
+    if (i <= 25) {
+      const px = 1.1000 + i * 0.0002;                  // steady climb, +2p/bar, bar10=1.1020 (target), bar25=1.1050 (peak)
+      opens[i] = highs[i] = lows[i] = closes[i] = px;
+    } else if (i === 26) {
+      opens[i] = 1.1050; highs[i] = 1.1050; lows[i] = 1.1040; closes[i] = 1.1040;   // reversal bar, breaches the 1.1045 trail
+    } else {
+      opens[i] = highs[i] = lows[i] = closes[i] = 1.1030;   // tail bars, irrelevant — everything should have exited by bar 26
+    }
+    volumes[i] = 10;
+  }
+  const packed = { n, times, opens, highs, lows, closes, volumes };
+
+  const entry = 1.1000, pip = 0.0001;
+  const fixedPnlPct = +((1.1020 - entry) / entry * 100).toFixed(4);   // +20p, the ALREADY-VALIDATED atlasWalk result
+  const trade = {
+    date: '2022-01-10', time: times[0], entry, pip, side: 'up', decision: 'follow',
+    targetPips: 20, stopPips: 10,   // follow: target=outer(+20p)=1.1020, stop=inner(-10p)=1.0990
+    pnlPct: fixedPnlPct, win: true,
+  };
+
+  const study = runExitVariantStudy([trade], packed, { trailFrac: 0.5, beTrigger: 0.5, cost: 0 });
+  ok('T11 matches the trade to its real M1 session (no unmatched)', study.n === 1 && study.unmatched === 0, JSON.stringify({ n: study.n, unmatched: study.unmatched }));
+  ok('T11 cross-check: replaying the SAME fixed rule via simulateExitVariants matches the already-validated pnlPct almost exactly', study.crossCheck.maxAbsDiffPct < 0.001, JSON.stringify(study.crossCheck));
+  ok('T11 fixed summary total matches the hand-computed +20p result', Math.abs(study.fixed.totalPnl - fixedPnlPct) < 0.001, JSON.stringify(study.fixed));
+  ok('T11 chand matches fixed in a clean run-to-target (TP is hit long before any dip could trigger the trail)', Math.abs(study.chand.totalPnl - fixedPnlPct) < 0.001, JSON.stringify(study.chand));
+  const expectRidePct = +((1.1045 - entry) / entry * 100).toFixed(4);
+  ok('T11 ride (no TP cap) rides the trail to the hand-computed peak-minus-trail exit (+45p), materially beating fixed', Math.abs(study.ride.totalPnl - expectRidePct) < 0.001, JSON.stringify({ got: study.ride.totalPnl, expect: expectRidePct }));
+  ok('T11 ride genuinely beats fixed here — this is the "let winners run" hypothesis working on a controlled path', study.ride.totalPnl > study.fixed.totalPnl * 2);
+
+  // A trade whose date has no matching M1 session at all -> unmatched, not a throw.
+  const orphan = { ...trade, date: '2099-01-01' };
+  const studyOrphan = runExitVariantStudy([orphan], packed, {});
+  ok('T11 a trade with no matching session date -> unmatched, excluded, not a throw', studyOrphan.n === 0 && studyOrphan.unmatched === 1);
+
+  ok('T11 no trades / no packed data -> null, not a throw', runExitVariantStudy([], packed) === null && runExitVariantStudy([trade], null) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

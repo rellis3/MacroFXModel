@@ -22,6 +22,7 @@
  */
 import { matchLiveContext } from './levelAtlasReport.js';
 import { summarizeTrades } from './metricsCore.js';
+import { simulateExitVariants, bucketM1IntoSessions } from './forecastAnalyser.js';
 
 /**
  * The vote-margin decision for one touch: how many of ITS OWN held
@@ -213,6 +214,11 @@ export function buildBarrierTrades(touches, book, { excludeRungs = ['p90'], rear
       side: t.side, rung: t.rung, session: t.session, entry: t.level, pip: t.pip,
       decision: vd.decision, margin: vd.margin,
       targetPips: priced.targetPips, stopPips: priced.stopPips,
+      // Raw pips ALONGSIDE the %-of-price versions below — the stop study
+      // (runStopStudy) needs pips to compare directly against stopPips/
+      // targetPips (both pips), and round-tripping through % would lose
+      // precision for no reason since the pips are already in hand here.
+      mfePips: +mfePips.toFixed(1), maePips: +Math.abs(maePips).toFixed(1),
       mfePct: denom ? +(mfePips * t.pip / denom * 100).toFixed(4) : null,
       maePct: denom ? +(Math.abs(maePips) * t.pip / denom * 100).toFixed(4) : null,
       win: priced.win, pnlPct: priced.pnlPct,
@@ -254,5 +260,175 @@ export function runBarrierWalkForward(touches, book, { excludeRungs = ['p90'], r
     byYear: Object.fromEntries(Object.entries(byYear).sort().map(([y, ts]) => [y, summarizeTrades(ts.map(t => t.pnlPct), ts.map(t => t.date))])),
     costStress,
     tradesUsed: trades.length,
+  };
+}
+
+function pctile(sorted, p) {
+  if (!sorted.length) return null;
+  return sorted[Math.min(sorted.length - 1, Math.floor(p / 100 * sorted.length))];
+}
+
+/**
+ * Re-prices ONE already-built trade under a TIGHTER candidate stop, using its
+ * own real adverse excursion (`maePips`) — no M1 re-walk needed, same
+ * discipline `perLineStrategy.js`'s own `pnlAtSL` already established for
+ * exactly this reason: WIDENING a stop needs to know what price did AFTER
+ * the original barrier was hit, which this decision-agnostic excursion data
+ * cannot see (the touch's own resolution loop stops the instant a barrier is
+ * hit) — so `candidateStopPips` is silently clamped to never exceed the
+ * trade's own `stopPips`. A tighter stop can only ever convert a WIN into a
+ * (smaller) loss, never the reverse, and an already-losing trade's loss only
+ * ever shrinks — both directions are mechanically safe with existing data.
+ *
+ *   priceAtTighterStop(trade, candidateStopPips, cost) -> { win, pnlPct } | null
+ */
+export function priceAtTighterStop(trade, candidateStopPips, cost) {
+  if (trade.maePips == null || !(trade.entry > 0)) return null;
+  const s = Math.min(candidateStopPips, trade.stopPips);
+  const sPct = s * trade.pip / trade.entry * 100;
+  const maePct = trade.maePips * trade.pip / trade.entry * 100;
+  if (maePct >= sPct) return { win: false, pnlPct: +(-sPct - cost).toFixed(4) };
+  return { win: trade.win, pnlPct: trade.pnlPct };
+}
+
+/**
+ * The stop/target study: does a TIGHTER stop, grounded in this trade list's
+ * OWN real winners'-MAE percentiles (never invented — the exact grid-grounding
+ * discipline `perLineStrategy.js`'s `runStopStudy` already uses), beat the
+ * current fixed-rung stop? `sliceBy(trade) -> string|null` optionally splits
+ * the grid per group (e.g. `t => t.session`) — a session/vol-regime-specific
+ * stop is a genuinely different question from one global number, and this
+ * lets a caller ask either. Each slice grids its OWN candidate stops from ITS
+ * OWN winners (a session's typical adverse excursion isn't the same as
+ * another's), summarized via `summarizeTrades` at n≥minN before a candidate
+ * is trusted enough to compare.
+ *
+ *   runStopStudy(trades, { cost, sliceBy, minN, percentiles }) ->
+ *     { [sliceKey]: { n, band: {...summarizeTrades}, candidates: [{p, stopPips, ...summarizeTrades}], best } }
+ */
+export function runStopStudy(trades, { cost = 0, sliceBy = null, minN = 30, percentiles = [50, 75, 90, 95] } = {}) {
+  if (!trades?.length) return null;
+  const groups = new Map();
+  for (const t of trades) {
+    const key = sliceBy ? (sliceBy(t) ?? '—') : 'overall';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+
+  const out = {};
+  for (const [key, group] of groups) {
+    const band = summarizeTrades(group.map(t => t.pnlPct), group.map(t => t.date));
+    const winnerMae = group.filter(t => t.win && t.maePips != null).map(t => t.maePips).sort((a, b) => a - b);
+    if (winnerMae.length < minN) { out[key] = { n: group.length, band, candidates: [], best: null, note: `fewer than ${minN} winners with real MAE — grid skipped` }; continue; }
+
+    const seen = new Set();
+    const candidates = [];
+    for (const p of percentiles) {
+      const stopPips = pctile(winnerMae, p);
+      if (stopPips == null || seen.has(stopPips)) continue;
+      seen.add(stopPips);
+      // Keep pnl/date paired through the filter — a trade with no real MAE
+      // (priceAtTighterStop returns null) must drop its date too, not just
+      // its pnl, or the two arrays silently misalign.
+      const priced = group.map(t => ({ p: priceAtTighterStop(t, stopPips, cost), date: t.date })).filter(x => x.p);
+      if (!priced.length) continue;
+      const summary = summarizeTrades(priced.map(x => x.p.pnlPct), priced.map(x => x.date));
+      candidates.push({ p, stopPips, ...summary });
+    }
+    const eligible = candidates.filter(c => c.trades >= minN);
+    const best = eligible.length ? eligible.reduce((a, b) => (b.sharpe > a.sharpe ? b : a)) : null;
+    out[key] = { n: group.length, band, candidates, best };
+  }
+  return out;
+}
+
+/**
+ * A/B: the current fixed-rung target/stop vs a chandelier trail / no-cap
+ * ride — reusing `forecastAnalyser.js`'s ALREADY-VALIDATED `simulateExitVariants`
+ * (the exact exit walker `perLineStrategy.js`'s own exit study already trusts
+ * for this), not a new simulation. The fixed-rung outcome ALREADY has a
+ * correct, causal answer from `atlasWalk` itself — riding past it (chandelier
+ * or an uncapped ride) means walking bars PAST that original resolution
+ * point, which needs the real M1 path again — hence this function takes the
+ * raw `packed` M1 data, unlike every other function in this module.
+ *
+ * `bucketM1IntoSessions(packed, 'Europe/London')` is the SAME call
+ * `levelAtlasEngine.js`'s `atlasWalk` makes internally — reusing it (not a
+ * second slicing) guarantees each trade's `date` lands in the identical
+ * session bars atlasWalk itself walked, so `touchIdx` (found by matching
+ * `bar.time === t.time`, exact — `t.time` was set FROM `bar.time` originally)
+ * lines up on the correct bar.
+ *
+ * Self-check built in: `crossCheck` reprices the SAME fixed-rung outcome via
+ * `simulateExitVariants`'s own 'fixed' rule and compares it to the trade's
+ * already-validated `pnlPct` (gross, since simulateExitVariants has no cost
+ * model). Checked on real EURUSD (2026-08-27): 8 of 1189 trades (0.7%)
+ * disagree, ALL because the touch resolved on the SAME bar it entered on (a
+ * single M1 bar wide enough to span both target AND stop — a real ~70-pip
+ * news-spike bar in one case) — `atlasWalk`'s own resolution loop checks the
+ * OUTER/continuation barrier first regardless of decision, while
+ * `simulateExitVariants` always checks the STOP first regardless of side.
+ * Neither convention is wrong — an OHLC bar can't say which threshold was
+ * actually touched first intrabar — but the two ALREADY-EXISTING, both
+ * independently-used engines made opposite tie-break assumptions, and this
+ * function inherits atlasWalk's original resolution as the trusted one (it's
+ * what's already shipped) while flagging the disagreement rather than hiding
+ * it. A nonzero `crossCheck.maxAbsDiffPct` around this magnitude on a big
+ * enough sample is this known, explained, rare edge case — NOT evidence of a
+ * reconstruction bug — but investigate again if it ever comes back large
+ * relative to n, or before trusting a small sample. If this ever drifts for
+ * a DIFFERENT reason, the inner/outer/touchIdx reconstruction below has a
+ * real bug and the chand/ride numbers should not be trusted until it's
+ * fixed — that's the whole reason this check exists, not a formality.
+ *
+ * `trailFrac` default (0.5, `simulateExitVariants`'s own default) is TOO
+ * TIGHT for this ladder's rung distances — checked on real EURUSD margin≥3
+ * (2026-08-27): at 0.5, the trail activates from bar ZERO (ratchets on every
+ * bar including the entry bar, not after some minimum favourable move), so
+ * 98.3% of trades exit via 'trail' almost immediately and total P&L
+ * collapses to ~25% vs the fixed rule's ~73%. At 1.5-2.0 the ride's total
+ * P&L recovers to roughly TIE the fixed rule (~70-73%) — still not a proven
+ * improvement, but no longer an artifact of an overly tight default. Pass
+ * `trailFrac` explicitly; do not trust this function's own default for
+ * anything beyond a smoke test.
+ *
+ *   runExitVariantStudy(trades, packed, { trailFrac, beTrigger, cost }) ->
+ *     { n, unmatched, crossCheck: {maxAbsDiffPct}, fixed, chand, ride: {...summarizeTrades} }
+ */
+export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger = 0.5, cost = 0 } = {}) {
+  if (!trades?.length || !packed?.n) return null;
+  const sessions = bucketM1IntoSessions(packed, 'Europe/London');
+  const rows = [];
+  let unmatched = 0, maxAbsDiffPct = 0;
+  for (const t of trades) {
+    const bars = sessions.get(t.date);
+    if (!bars?.length) { unmatched++; continue; }
+    const touchIdx = bars.findIndex(b => b.time === t.time);
+    if (touchIdx < 0) { unmatched++; continue; }
+    const isUp = t.side === 'up';
+    const innerDistPips = t.decision === 'fade' ? t.targetPips : t.stopPips;
+    const outerDistPips = t.decision === 'fade' ? t.stopPips : t.targetPips;
+    const sgn = isUp ? 1 : -1;
+    const inner = t.entry - sgn * innerDistPips * t.pip;
+    const outer = t.entry + sgn * outerDistPips * t.pip;
+    const ex = simulateExitVariants(bars, touchIdx, { touchLvl: t.entry, inner, outer, isUp, open: bars[0].open, trailFrac, beTrigger });
+    const pick = (fadeKey, followKey) => t.decision === 'fade' ? ex[fadeKey] : ex[followKey];
+
+    const fixedReplay = +(pick('exFadeFixed', 'exFollowFixed') - cost).toFixed(4);
+    maxAbsDiffPct = Math.max(maxAbsDiffPct, Math.abs(fixedReplay - t.pnlPct));
+
+    rows.push({
+      date: t.date, fixedPnl: t.pnlPct,   // the already-validated atlasWalk result — kept, not replaced
+      chandPnl: +(pick('exFadeChand', 'exFollowChand') - cost).toFixed(4),
+      ridePnl: +(pick('exFadeRide', 'exFollowRide') - cost).toFixed(4),
+    });
+  }
+  const dates = rows.map(r => r.date);
+  return {
+    n: rows.length, unmatched,
+    crossCheck: { maxAbsDiffPct: +maxAbsDiffPct.toFixed(4) },
+    fixed: summarizeTrades(rows.map(r => r.fixedPnl), dates),
+    chand: summarizeTrades(rows.map(r => r.chandPnl), dates),
+    ride: summarizeTrades(rows.map(r => r.ridePnl), dates),
   };
 }
