@@ -338,5 +338,56 @@ console.log('[oiDeltas - basis drift must not fake wall turnover (regression, 20
      (classifyOIChange(real)?.events || []).filter(e => e.type === 'fresh_wall').length === 0);
 }
 
+console.log('[oiStoreToLevels — walls scored by the gamma they carry, not size × a distance guess]');
+{
+  // A near-expiry book and a far-expiry book, same strikes. Gamma per contract collapses
+  // away from the money as T->0 but stays wide at 30 DTE, so the SAME distance means
+  // different things on each. Scoring by gexProfile (oi × gamma) encodes that; a single
+  // distance radius cannot. Measured on gold: at +300 a 30DTE contract carries ~8,700×
+  // the gamma of a 1DTE one.
+  const spot = 4650;
+  //                       at the money        far out
+  const dayWalls  = [{ strike: 5150, oi: 10000, tier: 'strong' },   // huge size, no gamma left at 1 DTE
+                     { strike: 4650, oi:  1600, tier: 'strong' }];  // smaller, all the gamma
+  const dayProf   = [{ strike: 5150, callOI: 10000, putOI: 0, callGex: 1,       putGex: 0, netGex: 1 },
+                     { strike: 4650, callOI:  1600, putOI: 0, callGex: 5.0e6,   putGex: 0, netGex: 5.0e6 }];
+  const inst = {
+    spot, dte: 30, refMove: { move: 265 },
+    callWalls: [], putWalls: [], gexProfile: [],
+    callWall: null, putWall: null,
+    dayExpiry: { dte: 1, callWalls: dayWalls, putWalls: [], gexProfile: dayProf,
+                 callWall: 4650, putWall: null, maxPain: 4650 },
+  };
+  const walls = oiStoreToLevels(inst).filter(l => l.type === 'call_wall').map(l => l.price);
+  ok('the at-the-money strike survives despite 6× less open interest', walls.includes(4650), JSON.stringify(walls));
+  ok('the far 1-DTE strike is dropped despite the biggest OI in the book', !walls.includes(5150), JSON.stringify(walls));
+
+  // Same two strikes, but now on a 30-DTE book where the far one still carries gamma:
+  // it must be KEPT. This is the half a plain distance filter gets wrong.
+  const farProf = [{ strike: 5150, callOI: 10000, putOI: 0, callGex: 4.0e6, putGex: 0, netGex: 4.0e6 },
+                   { strike: 4650, callOI:  1600, putOI: 0, callGex: 1.2e6, putGex: 0, netGex: 1.2e6 }];
+  const inst2 = { spot, dte: 30, refMove: { move: 265 }, gexProfile: farProf,
+    callWalls: [{ strike: 5150, oi: 10000, tier: 'strong' }, { strike: 4650, oi: 1600, tier: 'strong' }],
+    putWalls: [], callWall: 4650, putWall: null };
+  const w2 = oiStoreToLevels(inst2).filter(l => l.type === 'call_wall').map(l => l.price);
+  ok('a FAR wall on a far-dated book is kept (gamma still real there)', w2.includes(5150), JSON.stringify(w2));
+
+  // Fallback: a quota-trimmed record loses gexProfile. Must not throw, must not go blank.
+  const trimmed = { ...inst2, gexProfile: undefined };
+  let threw = null, n = 0;
+  try { n = oiStoreToLevels(trimmed).filter(l => /wall/.test(l.type)).length; } catch (e) { threw = e.message; }
+  ok('no gexProfile → falls back to size × distance, no throw', threw === null && n > 0, threw || `${n} walls`);
+
+  // Mixed units guard: a profile covering only SOME strikes must not rank a gamma score
+  // against a size score. All-or-nothing per book.
+  const half = { ...inst2, gexProfile: [farProf[0]] };
+  threw = null;
+  try { oiStoreToLevels(half); } catch (e) { threw = e.message; }
+  ok('partial gexProfile → no throw (falls back wholesale)', threw === null, threw || '');
+
+  ok('explicit topWalls still bypasses scoring (back-compat)',
+     oiStoreToLevels(inst2, { topWalls: 2 }).filter(l => l.type === 'call_wall').length > 0);
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
