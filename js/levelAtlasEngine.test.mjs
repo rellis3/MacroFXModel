@@ -10,7 +10,7 @@
  * file existed; these tests pin the fix so it can't silently regress.
  */
 import assert from 'node:assert/strict';
-import { atlasWalk, atlasLiveToday, sessionRangeSeries, RUNGS, SIDES } from './levelAtlasEngine.js';
+import { atlasWalk, atlasLiveToday, sessionRangeSeries, sessionVolBucket, prevSessionVolBucket, PREV_SESSION, RUNGS, SIDES } from './levelAtlasEngine.js';
 
 let passed = 0;
 const t = (n, f) => { try { f(); passed++; console.log(`  ✓ ${n}`); }
@@ -108,6 +108,14 @@ t('londonVol IS available for NY touches (once warmed up) and null for Asia/Lond
   const ny = touches.filter(r => r.session === 'NY');
   assert.ok(ny.some(r => r.londonVol != null), 'NY touches should eventually see a completed London vol bucket');
   assert.ok(touches.filter(r => r.session !== 'NY').every(r => r.londonVol == null));
+});
+
+t('prevSessionVol fills the gap asiaVol/londonVol leave for Asia-session touches', () => {
+  const { touches } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const asia = touches.filter(r => r.session === 'Asia');
+  assert.ok(asia.length > 0, 'expected some Asia-session touches in the fixture');
+  assert.ok(asia.every(r => r.asiaVol == null && r.londonVol == null), 'sanity: Asia touches have no asiaVol/londonVol reading — that\'s the gap prevSessionVol exists to fill');
+  assert.ok(asia.some(r => r.prevSessionVol != null), 'expected at least one Asia touch with a real prevSessionVol reading (NY\'s vol, once warmed up)');
 });
 
 t('ordinal increments only after the re-arm distance is cleared', () => {
@@ -253,6 +261,41 @@ t('sessionRangeSeries never produces a negative or zero-width range on real bars
   assert.ok(n > 100, 'expected many session-range entries');
 });
 
+t('prevSessionVolBucket agrees with a direct sessionVolBucket call once the date-crossing is resolved by hand', () => {
+  // Regression check against the exact chronology sessionHandoffEngine.js
+  // already derived empirically (London(D)->NY(D)->Asia(D)->London(D+1)):
+  // London's own predecessor is Asia of the PRIOR date, NY's and Asia's are
+  // same-date. Verified here independently — not by re-reading the source —
+  // so a copy/paste mistake in PREV_SESSION would actually get caught.
+  const rangeMap = sessionRangeSeries(P);
+  const dates = [...new Set([...rangeMap.keys()].map(k => k.split('|')[0]))].sort();
+  const mid = dates[Math.floor(dates.length / 2)];
+  const midIdx = dates.indexOf(mid);
+  const prevDate = dates[midIdx - 1];
+
+  const nyExpected = sessionVolBucket(rangeMap, mid, 'London', dates.slice(0, midIdx))?.bucket ?? null;
+  const nyGot = prevSessionVolBucket(rangeMap, mid, 'NY', dates);
+  assert.equal(nyGot, nyExpected, 'NY\'s predecessor should be London on the SAME date');
+
+  const asiaExpected = sessionVolBucket(rangeMap, mid, 'NY', dates.slice(0, midIdx))?.bucket ?? null;
+  const asiaGot = prevSessionVolBucket(rangeMap, mid, 'Asia', dates);
+  assert.equal(asiaGot, asiaExpected, 'Asia\'s predecessor should be NY on the SAME date');
+
+  const prevIdx = dates.indexOf(prevDate);
+  const londonExpected = sessionVolBucket(rangeMap, prevDate, 'Asia', dates.slice(0, prevIdx))?.bucket ?? null;
+  const londonGot = prevSessionVolBucket(rangeMap, mid, 'London', dates);
+  assert.equal(londonGot, londonExpected, 'London\'s predecessor should be Asia of the PRIOR date');
+
+  // Sanity: not vacuous — at least one of these should resolve to a real bucket.
+  assert.ok([nyGot, asiaGot, londonGot].some(v => v != null), 'expected at least one real bucket, got all null');
+});
+
+t('prevSessionVolBucket returns null (not throw) when the predecessor date falls off the start of history', () => {
+  const rangeMap = sessionRangeSeries(P);
+  const dates = [...new Set([...rangeMap.keys()].map(k => k.split('|')[0]))].sort();
+  assert.equal(prevSessionVolBucket(rangeMap, dates[0], 'London', dates), null);
+});
+
 t('a rung whose real neighbour spacing is degenerate is simply skipped, not NaN', () => {
   const { touches } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
   for (const r of touches) {
@@ -391,7 +434,13 @@ t('a live touch\'s CONTEXT fields are identical to what a full historical walk c
   const CONTEXT_FIELDS = ['session', 'sessionPos', 'dow', 'gapBucket', 'dayVol',
     'churn', 'churnRatio', 'otherSideTouchedBefore', 'approachVel', 'approachER', 'wtState', 'wtMtf',
     'wtSlow', 'vwapSide', 'momAdx', 'confluence', 'candleReject', 'htfTrend', 'volClimax', 'roundNum',
-    'prevCloseLoc', 'level', 'hourUtc', 'minute'];
+    'prevCloseLoc', 'level', 'hourUtc', 'minute',
+    // prevSessionVol is NOT truncation-sensitive like asiaVol/londonVol — it
+    // always reads the PREDECESSOR session, which is entirely in the past
+    // relative to the touch and unaffected by how much of the CURRENT
+    // session came after it. Belongs in the "must not diverge" list, not the
+    // excluded one.
+    'prevSessionVol'];
   let checked = 0;
   for (const r of live) {
     const f = fullByKey.get(keyOf(r));

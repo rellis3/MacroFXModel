@@ -34,6 +34,12 @@ export const VOL_CLUSTER_DIMENSIONS = [
   ['giveback', 'How much of its own move the closing session gave back by its close'],
   ['travel', "The closing session's own one-sidedness (churned vs driven)"],
   ['dow', 'Day of week'],
+  // Persistence check (#4): the cell is already conditioned on `vol` (the
+  // IMMEDIATE predecessor's regime) — testing `prevVol` (one hop further
+  // back) against that SAME cell's base rate asks whether the clustering
+  // effect has memory beyond a single handoff, not just whether volatility
+  // clusters at all (already established by the cell's own base rate).
+  ['prevVol', 'The session BEFORE the one that just closed — its volatility vs its own trailing'],
 ];
 const DIM_LABEL = new Map([...CONTINUATION_DIMENSIONS, ...VOL_CLUSTER_DIMENSIONS]);
 
@@ -100,9 +106,24 @@ export function buildContinuationBook(rows, opts = {}) {
 
 const volClusterCellKey = r => `${r.transition}|${r.vol}`;
 const volClusterOutcome = r => r.nextVol === '3·wild';
+function meanOf(arr) { return arr.length ? +(arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(3) : null; }
 export function buildVolClusterBook(rows, opts = {}) {
   const book = buildBook(rows, { cellKeyFn: volClusterCellKey, outcomeFn: volClusterOutcome, dimensions: VOL_CLUSTER_DIMENSIONS, ...opts });
-  if (book) for (const [key, cell] of Object.entries(book.cells)) { const [transition, vol] = key.split('|'); Object.assign(cell, { transition, vol }); }
+  if (!book) return book;
+  // `meanNextRatio` — the continuous companion to the `3·wild` THRESHOLD
+  // outcome above: the average of the next session's own range ÷ its
+  // trailing median (nextRatio, already computed by the engine), not just
+  // whether it crossed the wild cutoff. A cell can show a rising mean even
+  // when the wild-rate itself doesn't move much, or vice versa — reported
+  // descriptively (a mean needs no OOS-holds gate to be meaningful the way a
+  // rate-delta does), not folded into the holds-gated dimension logic above.
+  for (const [key, cell] of Object.entries(book.cells)) {
+    const [transition, vol] = key.split('|');
+    const cellRows = rows.filter(r => r.transition === transition && r.vol === vol && r.nextRatio != null);
+    const isRows = cellRows.filter(r => r.date < book.oosStart), oosRows = cellRows.filter(r => r.date >= book.oosStart);
+    cell.meanNextRatio = { is: meanOf(isRows.map(r => r.nextRatio)), oos: meanOf(oosRows.map(r => r.nextRatio)) };
+    Object.assign(cell, { transition, vol });
+  }
   return book;
 }
 
@@ -137,7 +158,7 @@ function matchHandoff(book, live, cellKeyFn) {
       deltaIS: g.deltaIS, deltaOOS: g.deltaOOS, n: g.n, favors: g.deltaIS > 0 ? 'yes' : 'no' });
   }
   matched.sort((a, c) => Math.abs(c.deltaIS) - Math.abs(a.deltaIS));
-  return { base: cell.base, matched };
+  return { base: cell.base, meanNextRatio: cell.meanNextRatio ?? null, matched };
 }
 export const matchContinuation = (book, live) => matchHandoff(book, live, continuationCellKey);
 export const matchVolCluster = (book, live) => matchHandoff(book, live, volClusterCellKey);

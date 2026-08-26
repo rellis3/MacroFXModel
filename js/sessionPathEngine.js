@@ -43,7 +43,7 @@ import { bucketM1IntoSessions } from './forecastAnalyser.js';
 import { buildLadder } from './forecastLadder.js';
 import { LADDER_PARAMS } from './forecastLadderParams.js';
 import { forecastSigma } from './forecastSigma.js';
-import { sessionRangeSeries, sessionVolBucket } from './levelAtlasEngine.js';
+import { sessionRangeSeries, sessionVolBucket, prevSessionVolBucket } from './levelAtlasEngine.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
@@ -293,6 +293,10 @@ export function sessionPathWalk(packed, { instrument, assetClass = 'fx', minLook
             dow, gapBucket, dayVol,
             asiaVol: hour >= 7 ? (asiaVolCandidate?.bucket ?? null) : null,
             londonVol: hour >= 13 ? (londonVolCandidate?.bucket ?? null) : null,
+            // Cross-reference from Session Handoff's own validated finding —
+            // causal for every checkpoint by construction (whatever session
+            // most recently closed has, by definition, already fully closed).
+            prevSessionVol: prevSessionVolBucket(rangeMap, date, sessionOf(hour), dates),
             prevCloseLoc,
             otherSideProgress: otherSideBucket(side, rung, hour),
             wtState: feats.wtState?.bucket ?? null,

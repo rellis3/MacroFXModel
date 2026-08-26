@@ -240,6 +240,14 @@ t('asiaVol/londonVol are only exposed to checkpoints AFTER that session has actu
   assert.ok(rows.some(r => r.checkpointHour >= 13 && r.londonVol != null), 'expected SOME londonVol readings once warmed up — otherwise this test is vacuous');
 });
 
+t('prevSessionVol is populated even for early checkpoints (before Asia/London have closed), unlike asiaVol/londonVol', () => {
+  const { rows } = sessionPathWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const early = rows.filter(r => r.checkpointHour < 7);
+  assert.ok(early.length > 0, 'expected some early checkpoints in the fixture');
+  assert.ok(early.every(r => r.asiaVol == null && r.londonVol == null), 'sanity: early checkpoints have no asiaVol/londonVol — the gap prevSessionVol exists to fill');
+  assert.ok(early.some(r => r.prevSessionVol != null), 'expected at least one early checkpoint with a real prevSessionVol reading');
+});
+
 t('dow/gapBucket/dayVol/prevCloseLoc are identical for every row on the same day (day-level, not checkpoint-level, facts)', () => {
   const { rows } = sessionPathWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   const byDate = new Map();
@@ -275,6 +283,7 @@ t('otherSideProgress is causal — perturbing bars AFTER a checkpoint must not c
     if (!ra) continue;
     checked++;
     assert.equal(ra.otherSideProgress, rb.otherSideProgress, `otherSideProgress leaked a future perturbation on ${ra.date}`);
+    assert.equal(ra.prevSessionVol, rb.prevSessionVol, `prevSessionVol leaked a future perturbation on ${ra.date}`);
   }
   assert.ok(checked > 50, `too few comparable rows (${checked})`);
 });

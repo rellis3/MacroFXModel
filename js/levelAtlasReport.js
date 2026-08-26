@@ -23,6 +23,13 @@ export const DIMENSIONS = [
   ['dayVol', "Today's volatility vs its own trailing"],
   ['asiaVol', "Asia session volatility vs its own trailing"],
   ['londonVol', "London session volatility vs its own trailing"],
+  // Cross-reference from Session Handoff's own validated finding (a wild
+  // closing session hands off into another wild session 2-4x more often —
+  // see js/sessionHandoffEngine.js): the vol regime of WHATEVER session most
+  // recently closed, regardless of which one that is. Fills the gap
+  // asiaVol/londonVol leave for an Asia-session touch (neither is available
+  // yet) — this is causal for every session by construction.
+  ['prevSessionVol', 'The session that just closed (whichever it was) — its volatility vs its own trailing'],
   // churn is reported FIRST among the price-action features — this was the
   // single largest effect measured across the whole session (a speed-matched
   // control found one-sided arrivals running 1.2-1.8x, two-sided/churned
