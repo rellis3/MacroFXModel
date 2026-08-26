@@ -49,7 +49,7 @@ import { fileURLToPath } from 'url';
 // not a permanent override of it.
 const VOTE_TRADES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'analysis', 'output', 'level-atlas-vote-trades');
 function loadLocalVoteTrades(pair) {
-  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}.json`), 'utf8')); }
+  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-votetrades.json`), 'utf8')); }
   catch { return null; }
 }
 
