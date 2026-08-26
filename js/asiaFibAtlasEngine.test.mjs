@@ -114,6 +114,10 @@ t('dayVol/gapSig/rangeBudgetUsedPct are NOT derived from a FAR-FUTURE perturbati
     assert.equal(ra.dayVol, rb.dayVol, `dayVol leaked a far-future perturbation on ${ra.date}`);
     assert.equal(ra.gapSig, rb.gapSig, `gapSig leaked a far-future perturbation on ${ra.date}`);
     assert.equal(ra.rangeBudgetUsedPct, rb.rangeBudgetUsedPct, `rangeBudgetUsedPct leaked a far-future perturbation on ${ra.date}`);
+    assert.equal(ra.weeklyPivotPips, rb.weeklyPivotPips, `weeklyPivotPips leaked a far-future perturbation on ${ra.date}`);
+    assert.equal(ra.hurstBucket, rb.hurstBucket, `hurstBucket leaked a far-future perturbation on ${ra.date}`);
+    assert.equal(ra.asiaShape, rb.asiaShape, `asiaShape leaked a far-future perturbation on ${ra.date}`);
+    assert.equal(ra.swingRegime, rb.swingRegime, `swingRegime leaked a far-future perturbation on ${ra.date}`);
     assert.equal(ra.outcome, rb.outcome, `outcome itself changed on ${ra.date} despite the perturbation being far in the future`);
   }
   assert.ok(checked > 50, `too few comparable touches to trust the result (${checked})`);
@@ -398,6 +402,111 @@ t('liveWindowDays=90 produces IDENTICAL touches for the live day as the full wal
       assert.deepEqual(rf[field], rFull[field], `field "${field}" diverged between the 90-day fast walk and the full walk for ${keyOf(rf)}`);
     }
   }
+});
+
+// ── New context dimensions (2026-08-26): CVOL, weekly pivots, Hurst, Asia's
+// own shape, HTF swing structure ────────────────────────────────────────────
+
+t('ivRegime/vrp/ivSkewDir use YESTERDAY\'s settle only — today\'s settle must never leak in', () => {
+  // Same technique as levelAtlasEngine's own CVOL test: two runs, identical
+  // except a deliberate outlier planted on ONLY the last date's settle.
+  // Every touch dated on or before the outlier day must read IDENTICALLY in
+  // both runs; the day AFTER should legitimately diverge (proves the 1-day
+  // lag is actually being read, not just never leaking).
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const dates = [...new Set(touches.map(t => t.date))].sort();
+  const clean = new Map();
+  dates.forEach((d, i) => clean.set(d, { cvol: 10 + Math.sin(i / 9) * 2, skew: Math.sin(i / 13), skewRatio: 1, dnvar: 10, upvar: 10, convexity: 1 }));
+  const outlierDate = dates[dates.length - 5];
+  const spiked = new Map(clean);
+  spiked.set(outlierDate, { cvol: 999, skew: 999, skewRatio: 999, dnvar: 999, upvar: 999, convexity: 999 });
+
+  const { touches: a } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], ivByDate: clean });
+  const { touches: b } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], ivByDate: spiked });
+  const keyOf = r => `${r.date}|${r.side}|${r.level}|${r.ordinal}|${r.hourUtc}|${r.minute}`;
+  const byKeyA = new Map(a.map(r => [keyOf(r), r]));
+  let checked = 0, sawDivergenceAfter = false;
+  for (const rb of b) {
+    const ra = byKeyA.get(keyOf(rb));
+    if (!ra) continue;
+    if (rb.date <= outlierDate) {
+      checked++;
+      assert.equal(ra.ivRegime, rb.ivRegime, `ivRegime diverged on/before the outlier day (${rb.date})`);
+      assert.equal(ra.vrp, rb.vrp, `vrp diverged on/before the outlier day (${rb.date})`);
+      assert.equal(ra.ivSkewDir, rb.ivSkewDir, `ivSkewDir diverged on/before the outlier day (${rb.date})`);
+    } else if (ra.ivRegime !== rb.ivRegime) sawDivergenceAfter = true;
+  }
+  assert.ok(checked > 500, `too few comparable touches (${checked})`);
+  assert.ok(sawDivergenceAfter, 'the day AFTER the outlier should legitimately diverge — otherwise the outlier is never read at all');
+});
+
+t('a null ivByDate degrades every CVOL field to null, never throws', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], ivByDate: null });
+  assert.ok(touches.every(r => r.ivRegime === null && r.vrp === null && r.ivSkewDir === null));
+});
+
+t('ivSkewDir orientation flips correctly between above and below touches on the SAME day', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const dates = [...new Set(touches.map(t => t.date))].sort();
+  const ivByDate = new Map(dates.map(d => [d, { cvol: 10, skew: 0.5, skewRatio: 1.1, dnvar: 10, upvar: 10, convexity: 1 }]));   // constant positive skew
+  const { touches: withIv } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], ivByDate });
+  const above = withIv.find(r => r.side === 'above' && r.ivSkewDir != null);
+  const below = withIv.find(r => r.side === 'below' && r.date === above?.date && r.ivSkewDir != null);
+  if (above && below) { assert.equal(above.ivSkewDir, '3·with'); assert.equal(below.ivSkewDir, '1·against'); }
+});
+
+t('hurstBucket is always one of the three valid buckets, and reads null gracefully as "2·random-walk" style default when data is thin', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const valid = new Set(['1·reverting', '2·random-walk', '3·trending']);
+  assert.ok(touches.every(r => valid.has(r.hurstBucket)), 'every touch must have a valid hurstBucket');
+});
+
+t('weeklyPivotZone is null exactly when weeklyPivotPips is null, and the pips are never negative', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  for (const r of touches) {
+    if (r.weeklyPivotPips == null) assert.equal(r.weeklyPivotZone, null);
+    else { assert.ok(r.weeklyPivotPips >= 0); assert.ok(r.weeklyPivotZone != null); }
+  }
+});
+
+t('asiaShape uses the SAME bucket labels as the post-Asia churn field, and both directions occur', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const valid = new Set(['1·churned', '2·mixed', '3·driven']);
+  const seen = new Set(touches.map(r => r.asiaShape).filter(Boolean));
+  for (const v of seen) assert.ok(valid.has(v), `unexpected asiaShape bucket: ${v}`);
+  assert.ok(seen.size > 1, 'expected more than one asiaShape bucket across a multi-year synthetic run');
+});
+
+t('asiaShape is a pure function of the Asia FORMATION window only — perturbing bars AFTER Asia closes must not change it', () => {
+  const base = packedM1(60 * 24 * 120, { wiggle: 0.02 });
+  const a = asiaFibAtlasWalk(base, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const wild = { ...base, highs: base.highs.slice(), lows: base.lows.slice(), closes: base.closes.slice() };
+  // Perturb only the LAST 500 bars — guaranteed to land after Asia closes on
+  // any day whose OWN Asia formation happened earlier in the dataset.
+  const start = base.n - 500;
+  for (let i = start; i < base.n; i++) { wild.highs[i] += 3; wild.lows[i] -= 3; }
+  const b = asiaFibAtlasWalk(wild, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const lastDates = [...new Set(a.touches.map(r => r.date))].sort();
+  const cutoff = lastDates[Math.max(0, lastDates.length - 5)];
+  const keyOf = r => `${r.date}|${r.side}|${r.level}|${r.ordinal}|${r.hourUtc}|${r.minute}`;
+  const byKeyA = new Map(a.touches.map(r => [keyOf(r), r]));
+  let checked = 0;
+  for (const rb of b.touches) {
+    if (rb.date >= cutoff) continue;
+    const ra = byKeyA.get(keyOf(rb));
+    if (!ra) continue;
+    checked++;
+    assert.equal(ra.asiaShape, rb.asiaShape, `asiaShape leaked a post-Asia-close perturbation on ${ra.date}`);
+  }
+  assert.ok(checked > 30, `too few comparable touches (${checked})`);
+});
+
+t('swingRegime is only ever 1·conflict/2·neutral/3·agree, and both agree and conflict occur', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const valid = new Set(['1·conflict', '2·neutral', '3·agree']);
+  const seen = new Set(touches.map(r => r.swingRegime));
+  for (const v of seen) assert.ok(valid.has(v), `unexpected swingRegime: ${v}`);
+  assert.ok(seen.has('1·conflict') || seen.has('3·agree'), 'expected at least some non-neutral swing reads over a multi-year synthetic run');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

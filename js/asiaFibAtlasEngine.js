@@ -42,6 +42,19 @@
  *   `instrumentRegistry.js`   — pip size (fixes the gold 1.0-vs-0.1 inconsistency
  *                                documented in LEGO_MODULES.md between asiaRangeEngine
  *                                and rangeFibEngine — this engine has ONE pip source)
+ *   `cvolLoader.js`           — CVOL implied-vol settle, the SAME parquet reader
+ *                                and one-day-lag discipline levelAtlasEngine.js uses
+ *   `rangeBiasCore.js`        — `computeWeeklyPivots` (classic PP/R1/R2/S1/S2, a
+ *                                second structural level family), `computeHurst`
+ *                                (trailing R/S estimator), `featureSwingRegime`
+ *                                (HTF CHoCH/BOS structure) — three bricks already
+ *                                live in `levels.js`/`asiaRangeEngine`, none
+ *                                previously wired into this engine
+ *   `barUtils.js`             — `resamplePacked` for the once-per-instrument 30m
+ *                                series `featureSwingRegime` reads (same pattern
+ *                                `confluenceFeatures.createHtfContext` uses for its
+ *                                15m/1h/4h series — never a per-touch resample,
+ *                                which would be O(n²) over a multi-year walk)
  *
  * ── DELIBERATELY *NOT* REUSED — a documented near-miss, not an oversight ─────
  * `levelAtlasEngine.js`'s own `sessionRangeSeries`/`sessionVolBucket` measure a
@@ -107,10 +120,12 @@ import { forecastSigma } from './forecastSigma.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
-import { extractBars } from './barUtils.js';
+import { extractBars, resamplePacked, bisect } from './barUtils.js';
 import { buildAsiaSessions, buildMondayRanges, prevSession, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
 import { FIB_LEVELS, KEY_LEVELS, calcFibs } from './fibProjection.js';
 import { detectConfluencesCore } from './confluence-core.js';
+import { computeWeeklyPivots, computeHurst, featureSwingRegime } from './rangeBiasCore.js';
+import { cvolSeries } from './cvolLoader.js';
 
 // ── Extension rungs, derived from the shared grid (never hand-copied) ────────
 // "above" = extensions above the range (level > 1, short-consideration zones);
@@ -232,7 +247,8 @@ function asiaVolBucketAt(asiaSessions, idx, lookback = 20) {
  */
 export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                             minLookback = 60, htfMinBars, structural = true, confLookback = 5,
-                                            asiaHrs = 6, pendingRearmFrac = null, liveWindowDays = null } = {}) {
+                                            asiaHrs = 6, pendingRearmFrac = null, liveWindowDays = null,
+                                            ivByDate = null } = {}) {
   const sym = String(instrument).toUpperCase();
 
   // Calendar-day OHLC + trailing-σ index — SAME construction as levelAtlasEngine,
@@ -261,6 +277,18 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
   const htf = createHtfContext(packed, htfMinBars ? { minHtfBars: htfMinBars } : {});
   const tf = createConfluenceFeatures({ htf });
   const wt1Cache = new Map();
+
+  // ── 30m swing-structure series, built ONCE per instrument (same pattern as
+  // confluenceFeatures.createHtfContext's own byTf series) — NOT per touch.
+  // rangeBiasCore.featureSwingRegime does its own internal O(60) pivot scan
+  // on whatever slice it's handed; recomputing the resample+scan from a
+  // growing prefix on every touch would be O(n) per touch = O(n²) over a
+  // multi-year walk. Instead: resample the whole instrument to 30m once
+  // (`resamplePacked`, the same brick createHtfContext uses), then a bisect
+  // per touch (O(log n)) finds the trailing 60-bar window to hand the brick.
+  const bars30m = resamplePacked(packed, 30);
+  const closeTimes30m = new Float64Array(bars30m.length);
+  for (let k = 0; k < bars30m.length; k++) closeTimes30m[k] = bars30m[k].time + 30 * 60;
 
   const lastVisit = {};   // `${side}|${level}|${rearmFrac}` -> last <=5 visits (repeatability)
 
@@ -318,6 +346,77 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
     const asiaVolBucket = asiaVolBucketAt(asiaSessions, i);
     const prevA = prevSession(asiaSessions, asia.epoch);
     const prevAsiaVolBucket = prevA ? asiaVolBucketAt(asiaSessions, i - 1) : null;
+
+    // ── CVOL (CME's implied-vol settle) — the one FORWARD-LOOKING signal in
+    // the book; everything else here is realized. SAME one-day-lag
+    // discipline as levelAtlasEngine.js: `ivByDate` is keyed by date and is
+    // an EOD settle, so the causally correct read for day `di` is
+    // YESTERDAY's settle (`dates[di-1]`) — today's own settle isn't
+    // published until today's own close. `ivByDate` may be null (no CVOL
+    // coverage for this instrument) — every downstream field then stays
+    // null, never thrown. Reuses `cvolLoader.js` verbatim, never a second
+    // parquet reader.
+    const ivYesterday = (ivByDate && di > 0) ? ivByDate.get(dates[di - 1]) : null;
+    const ivRegime = (() => {
+      if (!ivByDate || !ivYesterday) return null;
+      const hist = [];
+      for (let k = Math.max(0, di - 21); k < di; k++) { const v = ivByDate.get(dates[k])?.cvol; if (v > 0) hist.push(v); }
+      if (hist.length < 8) return null;
+      const sorted = [...hist].sort((a, b) => a - b), med = sorted[Math.floor(sorted.length / 2)];
+      if (!(med > 0)) return null;
+      const r = ivYesterday.cvol / med;
+      return r < 0.85 ? '1·iv-low' : r > 1.25 ? '3·iv-high' : '2·iv-normal';
+    })();
+    const vrp = (() => {
+      if (!ivYesterday || !(sigma > 0)) return null;
+      const realizedAnnualPct = sigma * Math.sqrt(252) * 100;
+      if (!(realizedAnnualPct > 0)) return null;
+      const r = ivYesterday.cvol / realizedAnnualPct;
+      return r < 0.9 ? '1·iv-cheap' : r > 1.3 ? '3·iv-rich' : '2·fair';
+    })();
+
+    // ── Weekly pivots (rangeBiasCore.computeWeeklyPivots) — a genuinely
+    // separate structural level family from the fib grid (classic
+    // PP/R1/R2/S1/S2, from the prior ~5 completed days). Causal by the
+    // function's own construction (`dailyBars.slice(-7,-2)` — a built-in
+    // 2-day lag buffer), reused verbatim, never re-derived.
+    const weeklyPivots = computeWeeklyPivots(d1.slice(0, di));
+    const weeklyPivotGrid = weeklyPivots ? Object.values(weeklyPivots).map(price => ({ price })) : null;
+
+    // ── Hurst exponent (rangeBiasCore.computeHurst) — trailing 80 daily
+    // closes, same window `featureHurst` uses elsewhere. CAVEAT, carried
+    // forward honestly rather than hidden: this exact estimator was DROPPED
+    // from the live entry-conviction aggregate (2026-07-25, see
+    // LEGO_MODULES.md §3) after saturating near ~0.88 on EVERY tested
+    // instrument with zero exceptions — a guaranteed vote, not a real read,
+    // in that context. Wired in fresh here anyway because this is a
+    // genuinely different question (touch-level rung behaviour, not entry
+    // conviction) — the OOS-holding gate below will show plainly if it's
+    // similarly uninformative here, which is itself a useful, honest
+    // confirmation rather than a wasted addition.
+    const hurstVal = computeHurst(d1.slice(Math.max(0, di - 80), di).map(d => d.close));
+    const hurstBucket = hurstVal < 0.4 ? '1·reverting' : hurstVal > 0.6 ? '3·trending' : '2·random-walk';
+
+    // ── Asia's own internal shape — did the Asia session build its range by
+    // a clean one-sided drive, or by chopping both ways? SAME bucket
+    // thresholds/labels as the post-Asia `churn` field below (0.80/0.55,
+    // '1·churned'/'2·mixed'/'3·driven') for direct comparability, but a
+    // DIFFERENT formula, not a copy: post-Asia churn measures one-sided
+    // travel TOWARD an external touched rung; Asia's own formation has no
+    // such external target, so this uses Asia's own close-vs-open direction
+    // as the reference instead.
+    const asiaShape = (() => {
+      const asiaBars = extractBars(packed, asia.epoch, asia.epoch + asiaHrs * 3600);
+      if (asiaBars.length < 10) return null;
+      let wickHi = -Infinity, wickLo = Infinity;
+      for (const b of asiaBars) { if (b.high > wickHi) wickHi = b.high; if (b.low < wickLo) wickLo = b.low; }
+      const totalTravel = wickHi - wickLo;
+      if (!(totalTravel > 0)) return null;
+      const closedUp = asiaBars.at(-1).close >= asiaBars[0].open;
+      const dirTravel = closedUp ? (wickHi - asiaBars[0].open) : (asiaBars[0].open - wickLo);
+      const ratio = Math.min(1, Math.max(0, dirTravel / totalTravel));
+      return ratio >= 0.80 ? '3·driven' : ratio >= 0.55 ? '2·mixed' : '1·churned';
+    })();
 
     // ── Today's extension ladder (fixed at Asia close — nothing after this
     // point in the day-setup block reads anything dated later than `asia`) ──
@@ -489,6 +588,42 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             const mondayCrossPips = nearestPipDist(here, mondayFibs, pip);
             const mondayCrossZone = pipZoneBucket(mondayCrossPips);
 
+            // Distance to the nearest weekly pivot level — a genuinely
+            // different structural family from the fib grid, same
+            // always-on continuous-pip-gap treatment as the confluence
+            // tracks above.
+            const weeklyPivotPips = nearestPipDist(here, weeklyPivotGrid, pip);
+            const weeklyPivotZone = pipZoneBucket(weeklyPivotPips);
+
+            // Options-market directional lean (CVOL skew), oriented to the
+            // touch — same construction as levelAtlasEngine.js: positive
+            // skew = upside implied vol priced richer, so for an ABOVE touch
+            // that's "with", for a BELOW touch it's "against". Same 1-day
+            // settle lag as ivRegime/vrp above (computed day-level).
+            const ivSkewDir = (() => {
+              if (!ivYesterday || !Number.isFinite(ivYesterday.skew)) return null;
+              const oriented = isAbove ? ivYesterday.skew : -ivYesterday.skew;
+              return Math.abs(oriented) < 0.15 ? '2·neutral' : oriented > 0 ? '3·with' : '1·against';
+            })();
+
+            // HTF swing structure (CHoCH/BOS) — a qualitative break-state
+            // read (trend_up/trend_down/range) that ADX/EMA-slope alone
+            // can't give (those are magnitude-of-trend, not
+            // structure-of-trend). `featureSwingRegime` needs only bars
+            // STRICTLY AT-OR-BEFORE the touch, found via the once-per-
+            // instrument bisect index above — strictly causal, O(log n).
+            const swingRegime = (() => {
+              const i30 = bisect(closeTimes30m, bar.time + 1) - 1;
+              if (i30 < 19) return '2·neutral';   // brick's own minimum (20 bars)
+              const window30 = bars30m.slice(Math.max(0, i30 - 59), i30 + 1);
+              const swing = featureSwingRegime(window30);
+              if (!swing?.signal) return '2·neutral';
+              // Range-extension framing (education/range-extension-levels-notes.md):
+              // above the range = short consideration, below = long.
+              const wantDir = isAbove ? 'short' : 'long';
+              return swing.signal === wantDir ? '3·agree' : '1·conflict';
+            })();
+
             const feats = tf.compute({ bars, touchIdx: k, open: winOpen, sigma, side: isAbove ? 'up' : 'dn', wt1, level: here, pip, confLevels });
 
             const hourUtc = new Date(bar.time * 1000).getUTCHours();
@@ -519,6 +654,9 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               asiaConfPips: asiaConfPips != null ? +asiaConfPips.toFixed(2) : null, asiaConfZone,
               mondayCrossPips: mondayCrossPips != null ? +mondayCrossPips.toFixed(2) : null, mondayCrossZone,
               mondayWeekTightestPips: mondayWeekTightestPips != null ? +mondayWeekTightestPips.toFixed(2) : null, mondayWeekZone,
+              weeklyPivotPips: weeklyPivotPips != null ? +weeklyPivotPips.toFixed(2) : null, weeklyPivotZone,
+              ivRegime, vrp, ivSkewDir,
+              hurstBucket, asiaShape, swingRegime,
               otherSideTouchedBefore: null,   // filled in a post-pass below (needs both sides' first-touch times)
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,

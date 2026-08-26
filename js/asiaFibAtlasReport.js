@@ -48,6 +48,14 @@ export const DIMENSIONS = [
   ['ordinal', 'Test number (1st/2nd/3rd…)'],
   ['prevOutcomeSameDay', 'Same-window retest: what the last visit to this rung did'],
   ['prevOutcomeCrossDay', 'A different day\'s prior visit to this rung'],
+  // Added 2026-08-26 (owner request — "what else, like the volatility atlas").
+  ['weeklyPivotZone', 'Pip gap to the nearest classic weekly pivot (PP/R1/R2/S1/S2) — a separate structural family from the fib grid'],
+  ['ivRegime', "Yesterday's implied-vol level vs its own trailing history (CVOL, one-day settle lag)"],
+  ['vrp', 'Implied vol vs realized (variance risk premium) — rich, cheap, or fair'],
+  ['ivSkewDir', "Options-market directional skew, oriented to the touch"],
+  ['hurstBucket', 'Trailing-80-day Hurst exponent (reverting/random-walk/trending) — known to saturate high in a different (entry-conviction) context; tested fresh here'],
+  ['asiaShape', "Did Asia's OWN formation drive cleanly one way or chop both ways (same churn thresholds, Asia's own close-direction as reference)"],
+  ['swingRegime', 'HTF swing structure (CHoCH/BOS) agreeing or conflicting with the range-extension direction'],
 ];
 
 /**

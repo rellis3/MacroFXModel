@@ -12,11 +12,17 @@
 import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import { asiaFibAtlasWalk } from '../js/asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, extractHeldFindings, renderAsiaFibBookText } from '../js/asiaFibAtlasReport.js';
+import { cvolSeries, CVOL_PRODUCTS } from '../js/cvolLoader.js';
 
 const args = process.argv.slice(2);
 const full = args.includes('--full');
 const pairs = args.filter(a => !a.startsWith('-'));
 const list = pairs.length ? pairs : ['eurusd', 'gbpusd', 'usdjpy', 'gold'];
+
+// cvolLoader's product keys are uppercase FX/XAU symbols; this engine's own
+// pair naming ('gold') doesn't match CVOL's ('XAUUSD') — same mapping the
+// engine's own pipSize/assetClass lookups need.
+const CVOL_PRODUCT = { gold: 'XAUUSD' };
 
 for (const pair of list) {
   const t0 = Date.now();
@@ -24,7 +30,11 @@ for (const pair of list) {
   if (!packed?.n) { console.log(`\n=== ${pair}: no M1 ===`); continue; }
   const assetClass = pair === 'gold' ? 'commodity' : 'fx';
 
-  const { touches, coverage } = asiaFibAtlasWalk(packed, { instrument: pair, assetClass, rearmFracs: [0.3] });
+  const cvolProduct = CVOL_PRODUCT[pair] ?? pair.toUpperCase();
+  const ivByDate = CVOL_PRODUCTS.includes(cvolProduct) ? await cvolSeries(cvolProduct) : null;
+  if (!ivByDate) console.log(`  (no CVOL coverage for ${pair} — ivRegime/vrp/ivSkewDir will read null)`);
+
+  const { touches, coverage } = asiaFibAtlasWalk(packed, { instrument: pair, assetClass, rearmFracs: [0.3], ivByDate });
   console.log(`\n=== ${pair.toUpperCase()} — ${packed.n} M1 bars, walk ${Date.now() - t0}ms ===`);
   console.log(`  coverage: ${coverage?.from} -> ${coverage?.to} (${coverage?.sessions} sessions, estimator ${coverage?.estimator})`);
   console.log(`  touches: ${touches.length}`);

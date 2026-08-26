@@ -2209,6 +2209,62 @@ Engine (§1ap, immediately above): widen to the full 26-pair set and let a
 LATER, separate signal-search exercise decide if either finding survives
 costs.
 
+**Confluence corrected (2026-08-26, owner review)** — the original Pine
+indicator runs Asia-vs-previous-Asia and Monday-vs-previous-Monday as TWO
+INDEPENDENT confluence checks; it never cross-compares Asia fibs to the
+Monday ladder. The first version of this engine did exactly that cross
+comparison and folded it into one conflated `confluenceGrade` — a real
+mismatch from the source strategy. Now three separated fields:
+`confluenceGrade`/`asiaConfPips` (Asia vs previous Asia only, the core
+track), `mondayWeekTightestPips`/`mondayWeekZone` (Monday vs the previous
+Monday, its own independent weekly track — constant for every touch in a
+reference cycle that runs Tuesday through the following Monday inclusive,
+since Monday itself borrows the prior cycle's resolved Monday), and
+`mondayCrossPips`/`mondayCrossZone` (does this Asia rung land near the
+Monday ladder anyway — kept, explicitly exploratory, never blended into the
+core grade). Per the owner's framing, the actual pip gap to the nearest
+matching prior-cycle level is always reported (never threshold-gated) — the
+real zone worth analysing, not a pre-filtered yes/no. **Real-data check**:
+none of the three confluence dimensions produce a single cross-instrument
+law the way the two headline findings above do — real, level-specific
+context (worth keeping in the analysis exactly as the owner asked), but
+scattered by rung and instrument rather than a second universal rule.
+
+**Second round of context added (2026-08-26, "what else, like the
+volatility atlas" + "build the full analysis while I sleep")** — five new
+dimensions, three of them ready-made bricks not previously wired into this
+engine:
+- `ivRegime`/`vrp`/`ivSkewDir` — CVOL implied-vol settle, via `cvolLoader.js`,
+  same one-day-lag discipline as `levelAtlasEngine.js`. A concrete gap this
+  engine had vs. Level Atlas until now.
+- `weeklyPivotZone` — `rangeBiasCore.computeWeeklyPivots` (classic
+  PP/R1/R2/S1/S2), a genuinely separate structural level family from the fib
+  grid, same always-on pip-gap treatment as the confluence tracks.
+- `hurstBucket` — `rangeBiasCore.computeHurst`, trailing 80 daily closes.
+  Carried the known caveat forward rather than hiding it: this exact
+  estimator was dropped from a DIFFERENT context (live entry-conviction
+  voting) after saturating near 0.88 on every tested instrument — wired in
+  fresh here anyway since a touch-level rung question is a genuinely
+  different test of it, not a retry of the same one.
+- `asiaShape` — did the Asia session's OWN formation drive cleanly one way or
+  chop, using the SAME churn thresholds/labels as the existing post-Asia
+  `churn` field but Asia's own close-direction as the reference (no external
+  target line exists for Asia's own shape) — a new formula, not a copy.
+- `swingRegime` — HTF swing structure (CHoCH/BOS) via
+  `rangeBiasCore.featureSwingRegime`, agreeing or conflicting with the
+  range-extension direction (above=short, below=long, per the lesson notes'
+  own framing). Built on a once-per-instrument 30m resample
+  (`barUtils.resamplePacked`, the same brick `confluenceFeatures.
+  createHtfContext` uses for its own HTF series) + a bisect lookup per
+  touch — recomputing the resample per touch would be O(n²) over a
+  multi-year walk.
+
+29 unit tests total (10 new) — the CVOL one mirrors `levelAtlasEngine.
+test.mjs`'s own settle-lag test verbatim (same outlier-injection technique);
+`asiaShape` gets a dedicated causality test (perturbing bars strictly AFTER
+Asia closes must not move it — a different causal boundary than every other
+field in this engine, worth its own proof).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
