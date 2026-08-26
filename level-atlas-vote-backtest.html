@@ -175,6 +175,17 @@
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
 import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
+import { portfolioStats } from './js/backtestStats.js';
+
+// Same aggregation js/perLineStrategy.js's own `dailySeries` uses before
+// portfolioStats — days with MULTIPLE trades (overlapping/same-day touches
+// across rungs, which this trade list genuinely has) collapse into ONE
+// return observation instead of being counted as N independent periods.
+function dailySeries(trades) {
+  const m = new Map();
+  for (const t of trades) m.set(t.date, (m.get(t.date) || 0) + t.pnlPct);
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
 
 const pairSel = document.getElementById('pairSel');
 const marginSel = document.getElementById('marginSel');
@@ -261,8 +272,18 @@ function computeStats(trades) {
   const sortino = sortinoRatio(pnls, base.tradesPerYr);
   const cmr = calmarRatio(cagr, maxDD);
 
+  // `base.sharpe` (from summarizeTrades) annualises by sqrt(trades/year=277
+  // here) — treating every touch as an independent period. Multiple rungs on
+  // the SAME instrument can touch on the SAME day (this trade list genuinely
+  // has that), so that count overstates independent observations and inflates
+  // Sharpe. `portfolioStats` on the DAILY-aggregated series (same brick +
+  // convention js/perLineStrategy.js's own portfolio Sharpe already uses)
+  // collapses same-day trades into one return first — the honest number.
+  const port = portfolioStats(dailySeries(sorted));
+
   return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
     totalPnl: equity, maxDD, equityCurve, grossCurve, cagr, linearAnnualReturn, sortino, calmar: cmr, years,
+    dailySharpe: port.sharpe, dailyDays: port.days, dailyPsr: port.psr,
     sortedDates: sorted.map(t => t.date) };
 }
 
@@ -274,7 +295,8 @@ function renderKpis(s) {
   document.getElementById('kpiPrimary').innerHTML = [
     kpiCard('Win Rate', fmt1(s.winRate) + '%', s.winRate >= 50 ? 'green' : 'amber', `${s.trades - Math.round(s.trades * (1 - s.winRate / 100))}W / ${Math.round(s.trades * (1 - s.winRate / 100))}L of ${s.trades}`),
     kpiCard('Profit Factor', s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'amber' : 'red', 'gross win / gross loss'),
-    kpiCard('Sharpe Ratio', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', 'annualised (trade-based)'),
+    kpiCard('Sharpe Ratio (daily)', fmt2(s.dailySharpe), s.dailySharpe >= 2 ? 'green' : s.dailySharpe >= 1 ? 'blue' : 'amber', `THE honest one — ${s.dailyDays} trading days, PSR ${fmt2(s.dailyPsr)}`),
+    kpiCard('Sharpe (per-trade)', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, 'amber', 'OPTIMISTIC — treats same-day touches as independent'),
     kpiCard('Max Drawdown', '-' + fmt1(s.maxDD) + '%', 'red', 'cumulative peak→trough'),
     kpiCard('Total P&L %', fmtPct(s.totalPnl), signClass(s.totalPnl), 'additive sum, NOT compounded'),
     kpiCard('CAGR', fmt1(s.cagr) + '%', s.cagr >= 15 ? 'green' : s.cagr >= 0 ? 'amber' : 'red', 'annualised, ASSUMES compounding'),
