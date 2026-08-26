@@ -2038,6 +2038,42 @@ a genuinely different provider/methodology than CME CVOL, not a duplicate.
 | **NQ + gold cross-check wiring** | `js/fxVolCarryEngine.js` | `VRP_INSTRUMENTS` now carries `volSource`/`cvolProduct`\|`cboeProduct` per instrument instead of assuming CME; added **NQ** (`oanda: NAS100_USD`, `assetClass: 'index'`, primary source **CBOE VXN** — CME CVOL has no index coverage at all, so this is NQ's ONLY implied-vol source) and gave **GOLD** a `crossCheck: {volSource:'CBOE', cboeProduct:'XAUUSD'}` (GVZ) — computed as a correlation + overlay against the SAME diagnostics, explicitly NOT a second trading arm, so the comparison stays honest instead of quietly doubling GOLD's apparent edge surface. `volSigmaSeriesFor` and `runVRPBacktest` gained the matching GARCH branch for the exhaustion-band width itself | `server.js`'s `/api/fx-vol-carry/*` (unchanged route — instrument filter was already generic), `fx-vol-carry-backtest.html` | 🟡 built + unit-tested on synthetic + the real CBOE files (`js/fxVolCarryEngine.test.mjs`, 33 checks); still not run against live OANDA data — same sandbox limitation as the CME-only pass above |
 | **Cross-check UI** | `fx-vol-carry-backtest.html` | GOLD's card now renders a correlation badge + a 2-line implied-vol overlay chart (CVOL vs GVZ) under its monthly heatmap; instrument dropdown adds NQ; the IV-vs-RV diagnostic chart title/legend now reads the actual source (`CME:XAUUSD` vs `CBOE:NAS100`) instead of hardcoding "CVOL" | — | 🟡 built, same untested-live caveat |
 
+**Follow-up (2026-08-26) — first real run found a real bug, not a null.** Owner
+ran `fx-vol-carry-backtest.html` for real (Railway, live OANDA + the static
+CVOL/CBOE files) and pasted the results back: the `vrp` arm showed **exactly
+0 trades on all 8 instruments, IS and OOS**, while `alwaysFade`/`alwaysFollow`
+traded normally (hundreds of trades each) — the asymmetry was the tell this
+was broken plumbing, not "VRP has no information" (a genuine null would look
+like a trade-count-reduced baseline, not zero everywhere on every instrument
+across 11 years).
+
+Root cause, traced and proven against the real data files (not assumed):
+CME CVOL and CBOE (GVZ/VXN) only settle on US options-exchange trading days,
+so US holidays OANDA still trades through (MLK Day, Presidents Day, Good
+Friday, Thanksgiving, …) are missing rows in both `js/data/cmeCvolEod.json`
+and `cboeVolIndices.json` — ~98-99 gaps over 2016-2026, spaced every ~28
+trading days on average. `computeVRPSeries`'s z-score used
+`statsCore.rollingZScore`, which requires the ENTIRE 252-day trailing window
+to be gap-free before it computes anything. A 252-day window is never once
+clean when gaps recur every ~28 days — verified directly: **0 of 2774 days
+came out finite, for the whole 11-year history.**
+
+| Fix | File | Detail |
+|---|---|---|
+| **Tolerant rolling z-score** | `js/impliedVolCore.js` → `rollingZScoreTolerant` (new, private to this file) | Requires 85% window coverage instead of 100%, computing mean/stdev off whatever's actually present in the window. Deliberately NOT added to `statsCore.rollingZScore` itself — that primitive's other callers correctly rely on its strict all-finite contract for a price series, where a gap usually means broken data; VRP's gaps are a known, bounded, calendar-driven pattern, a different case. Verified against the real gap pattern: 2432 of 2774 days now finite |
+| **`cboeMeta` wired through** | `server.js`'s `/api/fx-vol-carry/run` handler | A second real bug found in the same review pass: `runVRPSuite` already returned `cboeMeta`, but the route only destructured `cvolMeta` — so the page's info box silently never showed CBOE's data coverage, even though NQ and the GVZ cross-check were both working off it correctly. One-line fix |
+| **Regression test** | `js/fxVolCarryEngine.test.mjs` (test #11) | Reproduces EURUSD's ACTUAL CVOL calendar (not a synthetic approximation of the gap pattern) and asserts both a majority-finite z-score and actual filled trades, so this exact failure mode can't silently return |
+
+Verified none of the ~82 commits that landed on `main` between the original
+build and this fix touched any file this system depends on (`impliedVolCore.js`,
+`fxVolCarryEngine.js`, `honestForecastEngine.js`, `volBacktestEngine.js`,
+`statsCore.js`, `forecastCore.js`) before re-running the full test suite —
+34 checks pass, `legoBricks.test.mjs`'s one pre-existing unrelated failure
+(`volatility plan: band fractions match canonical computeBands`) is unchanged.
+**Still needs a real re-run on Railway** to confirm the fix produces sane
+trade counts and Sharpe numbers against live data — the fix is proven against
+the real calendar/gap pattern in isolation, not yet against a full live run.
+
 ---
 
 ### 1ap. Impulse Range Engine (2026-08-23) — 4H impulse-as-range continuation/fade research, extending Entry Trigger Lab
