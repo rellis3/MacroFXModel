@@ -77,7 +77,10 @@ function _londonOffsetHours(y, mo /*1-12*/, d) {
   return (afterMar && beforeOct) ? 1 : 0;
 }
 // UTC epoch (seconds) of local midnight for `dateStr` ('YYYY-MM-DD') in tz.
-function dayStartEpoch(dateStr, tz) {
+// Exported (2026-08-25): vwapFixedSigmaEngine's range-line confluence
+// dimension and rangeFibVwapEntryV1Engine reuse THIS session/range math —
+// never a second copy of the Asia/Monday range definition.
+export function dayStartEpoch(dateStr, tz) {
   const [y, mo, d] = dateStr.split('-').map(Number);
   const utcMidnight = Date.UTC(y, mo - 1, d) / 1000;
   if (tz === 'london') return utcMidnight - _londonOffsetHours(y, mo, d) * 3600;
@@ -104,7 +107,7 @@ function _eachDate(packed, fn) {
   for (; cur <= end; cur += 86400 * 1000) fn(new Date(cur).toISOString().substring(0, 10));
 }
 
-function _buildAsiaSessions(packed, tz) {
+export function _buildAsiaSessions(packed, tz) {
   // One Asia range per calendar date (00:00–06:00 local).
   const out = [];
   _eachDate(packed, (ds) => {
@@ -117,7 +120,7 @@ function _buildAsiaSessions(packed, tz) {
   return out.sort((a, b) => a.epoch - b.epoch);
 }
 
-function _buildMondayRanges(packed, tz, mondayTfMin) {
+export function _buildMondayRanges(packed, tz, mondayTfMin) {
   // One range per Monday (full local Monday), bodies on the chosen timeframe.
   const out = [];
   _eachDate(packed, (ds) => {

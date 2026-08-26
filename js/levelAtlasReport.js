@@ -127,7 +127,10 @@ function tableFor(touches, dimKey) {
 // render would otherwise be free to surface whichever of ~50+ cells looks
 // biggest that day, with no check it ever survived a split. `holdsOOS` is the
 // gate; nothing downstream should present a chip that fails it as a reason.
-function annotateHolds(dims, baseIS, baseOOS, { minN = 30, minDelta = 3 } = {}) {
+// Exported (2026-08): the OOS-holding gate is THE shared function every
+// reference book must go through identically (REFERENCE_ENGINE_PLAYBOOK.md
+// §3.2) — vwapFixedSigmaReport.js imports it rather than growing a copy.
+export function annotateHolds(dims, baseIS, baseOOS, { minN = 30, minDelta = 3 } = {}) {
   for (const dim of Object.values(dims)) {
     for (const bucket of Object.keys(dim.is)) {
       const bi = dim.is[bucket], bo = dim.oos[bucket];

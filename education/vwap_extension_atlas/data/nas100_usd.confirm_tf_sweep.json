@@ -1,0 +1,377 @@
+{
+  "instrument": "nas100_usd",
+  "byTf": {
+    "1": {
+      "up": {
+        "n": 104,
+        "basePct": 11.5,
+        "sessions": {
+          "Asia": {
+            "n": 15,
+            "touchPct": 13.3,
+            "isN": 9,
+            "isPct": 22.2,
+            "oosN": 6,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 5,
+            "touchPct": 60,
+            "isN": 3,
+            "isPct": 100,
+            "oosN": 2,
+            "oosPct": 0
+          },
+          "NY": {
+            "n": 84,
+            "touchPct": 8.3,
+            "isN": 50,
+            "isPct": 10,
+            "oosN": 34,
+            "oosPct": 5.9
+          }
+        }
+      },
+      "down": {
+        "n": 200,
+        "basePct": 29.5,
+        "sessions": {
+          "Asia": {
+            "n": 17,
+            "touchPct": 23.5,
+            "isN": 10,
+            "isPct": 30,
+            "oosN": 7,
+            "oosPct": 14.3
+          },
+          "London": {
+            "n": 13,
+            "touchPct": 84.6,
+            "isN": 7,
+            "isPct": 100,
+            "oosN": 6,
+            "oosPct": 66.7
+          },
+          "NY": {
+            "n": 170,
+            "touchPct": 25.9,
+            "isN": 102,
+            "isPct": 30.4,
+            "oosN": 68,
+            "oosPct": 19.1
+          }
+        }
+      }
+    },
+    "5": {
+      "up": {
+        "n": 94,
+        "basePct": 5.3,
+        "sessions": {
+          "Asia": {
+            "n": 15,
+            "touchPct": 6.7,
+            "isN": 9,
+            "isPct": 11.1,
+            "oosN": 6,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 3,
+            "touchPct": 66.7,
+            "isN": 1,
+            "isPct": 100,
+            "oosN": 2,
+            "oosPct": 50
+          },
+          "NY": {
+            "n": 76,
+            "touchPct": 2.6,
+            "isN": 45,
+            "isPct": 0,
+            "oosN": 31,
+            "oosPct": 6.5
+          }
+        }
+      },
+      "down": {
+        "n": 175,
+        "basePct": 20.6,
+        "sessions": {
+          "Asia": {
+            "n": 18,
+            "touchPct": 22.2,
+            "isN": 10,
+            "isPct": 30,
+            "oosN": 8,
+            "oosPct": 12.5
+          },
+          "London": {
+            "n": 8,
+            "touchPct": 75,
+            "isN": 4,
+            "isPct": 75,
+            "oosN": 4,
+            "oosPct": 75
+          },
+          "NY": {
+            "n": 149,
+            "touchPct": 17.4,
+            "isN": 89,
+            "isPct": 20.2,
+            "oosN": 60,
+            "oosPct": 13.3
+          }
+        }
+      }
+    },
+    "15": {
+      "up": {
+        "n": 88,
+        "basePct": 4.5,
+        "sessions": {
+          "Asia": {
+            "n": 17,
+            "touchPct": 5.9,
+            "isN": 10,
+            "isPct": 10,
+            "oosN": 7,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 3,
+            "touchPct": 33.3,
+            "isN": 1,
+            "isPct": 100,
+            "oosN": 2,
+            "oosPct": 0
+          },
+          "NY": {
+            "n": 68,
+            "touchPct": 2.9,
+            "isN": 40,
+            "isPct": 0,
+            "oosN": 28,
+            "oosPct": 7.1
+          }
+        }
+      },
+      "down": {
+        "n": 142,
+        "basePct": 15.5,
+        "sessions": {
+          "Asia": {
+            "n": 18,
+            "touchPct": 22.2,
+            "isN": 10,
+            "isPct": 30,
+            "oosN": 8,
+            "oosPct": 12.5
+          },
+          "London": {
+            "n": 6,
+            "touchPct": 66.7,
+            "isN": 3,
+            "isPct": 66.7,
+            "oosN": 3,
+            "oosPct": 66.7
+          },
+          "NY": {
+            "n": 118,
+            "touchPct": 11.9,
+            "isN": 70,
+            "isPct": 11.4,
+            "oosN": 48,
+            "oosPct": 12.5
+          }
+        }
+      }
+    },
+    "30": {
+      "up": {
+        "n": 81,
+        "basePct": 4.9,
+        "sessions": {
+          "Asia": {
+            "n": 17,
+            "touchPct": 5.9,
+            "isN": 10,
+            "isPct": 10,
+            "oosN": 7,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 3,
+            "touchPct": 33.3,
+            "isN": 1,
+            "isPct": 100,
+            "oosN": 2,
+            "oosPct": 0
+          },
+          "NY": {
+            "n": 61,
+            "touchPct": 3.3,
+            "isN": 36,
+            "isPct": 0,
+            "oosN": 25,
+            "oosPct": 8
+          }
+        }
+      },
+      "down": {
+        "n": 125,
+        "basePct": 13.6,
+        "sessions": {
+          "Asia": {
+            "n": 20,
+            "touchPct": 20,
+            "isN": 12,
+            "isPct": 25,
+            "oosN": 8,
+            "oosPct": 12.5
+          },
+          "London": {
+            "n": 4,
+            "touchPct": 50,
+            "isN": 2,
+            "isPct": 50,
+            "oosN": 2,
+            "oosPct": 50
+          },
+          "NY": {
+            "n": 101,
+            "touchPct": 10.9,
+            "isN": 60,
+            "isPct": 10,
+            "oosN": 41,
+            "oosPct": 12.2
+          }
+        }
+      }
+    },
+    "60": {
+      "up": {
+        "n": 71,
+        "basePct": 2.8,
+        "sessions": {
+          "Asia": {
+            "n": 16,
+            "touchPct": 0,
+            "isN": 9,
+            "isPct": 0,
+            "oosN": 7,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 2,
+            "touchPct": 50,
+            "isN": 1,
+            "isPct": 100,
+            "oosN": 1,
+            "oosPct": 0
+          },
+          "NY": {
+            "n": 53,
+            "touchPct": 1.9,
+            "isN": 31,
+            "isPct": 0,
+            "oosN": 22,
+            "oosPct": 4.5
+          }
+        }
+      },
+      "down": {
+        "n": 104,
+        "basePct": 9.6,
+        "sessions": {
+          "Asia": {
+            "n": 16,
+            "touchPct": 25,
+            "isN": 9,
+            "isPct": 33.3,
+            "oosN": 7,
+            "oosPct": 14.3
+          },
+          "London": {
+            "n": 3,
+            "touchPct": 66.7,
+            "isN": 1,
+            "isPct": 100,
+            "oosN": 2,
+            "oosPct": 50
+          },
+          "NY": {
+            "n": 85,
+            "touchPct": 4.7,
+            "isN": 51,
+            "isPct": 3.9,
+            "oosN": 34,
+            "oosPct": 5.9
+          }
+        }
+      }
+    },
+    "240": {
+      "up": {
+        "n": 53,
+        "basePct": 0,
+        "sessions": {
+          "Asia": {
+            "n": 29,
+            "touchPct": 0,
+            "isN": 17,
+            "isPct": 0,
+            "oosN": 12,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 0,
+            "touchPct": null,
+            "isN": 0,
+            "isPct": null,
+            "oosN": 0,
+            "oosPct": null
+          },
+          "NY": {
+            "n": 24,
+            "touchPct": 0,
+            "isN": 14,
+            "isPct": 0,
+            "oosN": 10,
+            "oosPct": 0
+          }
+        }
+      },
+      "down": {
+        "n": 74,
+        "basePct": 4.1,
+        "sessions": {
+          "Asia": {
+            "n": 30,
+            "touchPct": 6.7,
+            "isN": 18,
+            "isPct": 11.1,
+            "oosN": 12,
+            "oosPct": 0
+          },
+          "London": {
+            "n": 0,
+            "touchPct": null,
+            "isN": 0,
+            "isPct": null,
+            "oosN": 0,
+            "oosPct": null
+          },
+          "NY": {
+            "n": 44,
+            "touchPct": 2.3,
+            "isN": 26,
+            "isPct": 0,
+            "oosN": 18,
+            "oosPct": 5.6
+          }
+        }
+      }
+    }
+  }
+}
