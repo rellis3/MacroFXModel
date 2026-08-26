@@ -1,0 +1,2921 @@
+{
+  "instrument": "gold",
+  "assetClass": "commodity",
+  "coverage": {
+    "from": "2016-02-02",
+    "to": "2026-08-20",
+    "sessions": 3279
+  },
+  "cells": {
+    "short|2": {
+      "n": 5837,
+      "splitDate": "2022-04-11",
+      "base": {
+        "is": {
+          "n": 3578,
+          "avgMfeSigma": 0.478,
+          "avgMaeSigma": 0.51,
+          "netSigma": -0.033,
+          "reachedFullRR": 50.8
+        },
+        "oos": {
+          "n": 2259,
+          "avgMfeSigma": 0.465,
+          "avgMaeSigma": 0.492,
+          "netSigma": -0.027,
+          "reachedFullRR": 50.6
+        }
+      },
+      "full": {
+        "n": 5837,
+        "avgMfeSigma": 0.473,
+        "avgMaeSigma": 0.503,
+        "netSigma": -0.031,
+        "reachedFullRR": 50.7
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 2215,
+              "avgMfeSigma": 0.488,
+              "avgMaeSigma": 0.495,
+              "netSigma": -0.007,
+              "reachedFullRR": 51,
+              "deltaVsBase": 0.026,
+              "holds": false
+            },
+            "London": {
+              "n": 974,
+              "avgMfeSigma": 0.48,
+              "avgMaeSigma": 0.515,
+              "netSigma": -0.035,
+              "reachedFullRR": 52.8,
+              "deltaVsBase": -0.002,
+              "holds": false
+            },
+            "Asia": {
+              "n": 389,
+              "avgMfeSigma": 0.411,
+              "avgMaeSigma": 0.586,
+              "netSigma": -0.176,
+              "reachedFullRR": 44.2,
+              "deltaVsBase": -0.143,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 1389,
+              "avgMfeSigma": 0.48,
+              "avgMaeSigma": 0.505,
+              "netSigma": -0.025,
+              "reachedFullRR": 50,
+              "deltaVsBase": 0.002,
+              "holds": false
+            },
+            "London": {
+              "n": 563,
+              "avgMfeSigma": 0.457,
+              "avgMaeSigma": 0.443,
+              "netSigma": 0.014,
+              "reachedFullRR": 55.2,
+              "deltaVsBase": 0.041,
+              "holds": false
+            },
+            "Asia": {
+              "n": 307,
+              "avgMfeSigma": 0.408,
+              "avgMaeSigma": 0.523,
+              "netSigma": -0.115,
+              "reachedFullRR": 44.6,
+              "deltaVsBase": -0.088,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 8,
+              "avgMfeSigma": 0.948,
+              "avgMaeSigma": 1.226,
+              "netSigma": -0.277,
+              "reachedFullRR": 62.5,
+              "deltaVsBase": -0.244,
+              "holds": false
+            },
+            "1": {
+              "n": 575,
+              "avgMfeSigma": 0.428,
+              "avgMaeSigma": 0.455,
+              "netSigma": -0.028,
+              "reachedFullRR": 51.7,
+              "deltaVsBase": 0.005,
+              "holds": false
+            },
+            "2": {
+              "n": 772,
+              "avgMfeSigma": 0.458,
+              "avgMaeSigma": 0.455,
+              "netSigma": 0.003,
+              "reachedFullRR": 52.6,
+              "deltaVsBase": 0.036,
+              "holds": false
+            },
+            "3": {
+              "n": 700,
+              "avgMfeSigma": 0.475,
+              "avgMaeSigma": 0.569,
+              "netSigma": -0.094,
+              "reachedFullRR": 47.6,
+              "deltaVsBase": -0.061,
+              "holds": false
+            },
+            "4": {
+              "n": 780,
+              "avgMfeSigma": 0.452,
+              "avgMaeSigma": 0.526,
+              "netSigma": -0.074,
+              "reachedFullRR": 47.6,
+              "deltaVsBase": -0.041,
+              "holds": false
+            },
+            "5": {
+              "n": 743,
+              "avgMfeSigma": 0.561,
+              "avgMaeSigma": 0.531,
+              "netSigma": 0.03,
+              "reachedFullRR": 54.4,
+              "deltaVsBase": 0.063,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 4,
+              "avgMfeSigma": 1.157,
+              "avgMaeSigma": 4.355,
+              "netSigma": -3.198,
+              "reachedFullRR": 50,
+              "deltaVsBase": -3.171,
+              "holds": false
+            },
+            "1": {
+              "n": 442,
+              "avgMfeSigma": 0.407,
+              "avgMaeSigma": 0.454,
+              "netSigma": -0.047,
+              "reachedFullRR": 50.2,
+              "deltaVsBase": -0.02,
+              "holds": false
+            },
+            "2": {
+              "n": 483,
+              "avgMfeSigma": 0.493,
+              "avgMaeSigma": 0.452,
+              "netSigma": 0.042,
+              "reachedFullRR": 53.2,
+              "deltaVsBase": 0.069,
+              "holds": false
+            },
+            "3": {
+              "n": 449,
+              "avgMfeSigma": 0.497,
+              "avgMaeSigma": 0.535,
+              "netSigma": -0.038,
+              "reachedFullRR": 49.4,
+              "deltaVsBase": -0.011,
+              "holds": false
+            },
+            "4": {
+              "n": 450,
+              "avgMfeSigma": 0.438,
+              "avgMaeSigma": 0.478,
+              "netSigma": -0.04,
+              "reachedFullRR": 48,
+              "deltaVsBase": -0.013,
+              "holds": false
+            },
+            "5": {
+              "n": 431,
+              "avgMfeSigma": 0.481,
+              "avgMaeSigma": 0.511,
+              "netSigma": -0.03,
+              "reachedFullRR": 52,
+              "deltaVsBase": -0.003,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 1715,
+              "avgMfeSigma": 0.493,
+              "avgMaeSigma": 0.528,
+              "netSigma": -0.035,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": -0.002,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 1076,
+              "avgMfeSigma": 0.47,
+              "avgMaeSigma": 0.486,
+              "netSigma": -0.016,
+              "reachedFullRR": 51.5,
+              "deltaVsBase": 0.017,
+              "holds": false
+            },
+            "1·against": {
+              "n": 787,
+              "avgMfeSigma": 0.455,
+              "avgMaeSigma": 0.505,
+              "netSigma": -0.05,
+              "reachedFullRR": 50.6,
+              "deltaVsBase": -0.017,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 1195,
+              "avgMfeSigma": 0.502,
+              "avgMaeSigma": 0.513,
+              "netSigma": -0.011,
+              "reachedFullRR": 50.7,
+              "deltaVsBase": 0.016,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 398,
+              "avgMfeSigma": 0.422,
+              "avgMaeSigma": 0.456,
+              "netSigma": -0.034,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": -0.007,
+              "holds": false
+            },
+            "1·against": {
+              "n": 666,
+              "avgMfeSigma": 0.424,
+              "avgMaeSigma": 0.476,
+              "netSigma": -0.052,
+              "reachedFullRR": 50.9,
+              "deltaVsBase": -0.025,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "1·range": {
+              "n": 785,
+              "avgMfeSigma": 0.544,
+              "avgMaeSigma": 0.534,
+              "netSigma": 0.01,
+              "reachedFullRR": 52.2,
+              "deltaVsBase": 0.043,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 1361,
+              "avgMfeSigma": 0.456,
+              "avgMaeSigma": 0.494,
+              "netSigma": -0.038,
+              "reachedFullRR": 51.1,
+              "deltaVsBase": -0.005,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 1432,
+              "avgMfeSigma": 0.462,
+              "avgMaeSigma": 0.513,
+              "netSigma": -0.051,
+              "reachedFullRR": 49.6,
+              "deltaVsBase": -0.018,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·range": {
+              "n": 554,
+              "avgMfeSigma": 0.515,
+              "avgMaeSigma": 0.537,
+              "netSigma": -0.022,
+              "reachedFullRR": 52.9,
+              "deltaVsBase": 0.005,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 837,
+              "avgMfeSigma": 0.438,
+              "avgMaeSigma": 0.472,
+              "netSigma": -0.034,
+              "reachedFullRR": 49.9,
+              "deltaVsBase": -0.007,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 868,
+              "avgMfeSigma": 0.459,
+              "avgMaeSigma": 0.483,
+              "netSigma": -0.024,
+              "reachedFullRR": 49.8,
+              "deltaVsBase": 0.003,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 1702,
+              "avgMfeSigma": 0.487,
+              "avgMaeSigma": 0.525,
+              "netSigma": -0.038,
+              "reachedFullRR": 50.8,
+              "deltaVsBase": -0.005,
+              "holds": false
+            },
+            "TREND": {
+              "n": 412,
+              "avgMfeSigma": 0.517,
+              "avgMaeSigma": 0.613,
+              "netSigma": -0.095,
+              "reachedFullRR": 48.3,
+              "deltaVsBase": -0.062,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 1464,
+              "avgMfeSigma": 0.456,
+              "avgMaeSigma": 0.465,
+              "netSigma": -0.009,
+              "reachedFullRR": 51.4,
+              "deltaVsBase": 0.024,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 1042,
+              "avgMfeSigma": 0.465,
+              "avgMaeSigma": 0.484,
+              "netSigma": -0.019,
+              "reachedFullRR": 52.2,
+              "deltaVsBase": 0.008,
+              "holds": false
+            },
+            "TREND": {
+              "n": 432,
+              "avgMfeSigma": 0.568,
+              "avgMaeSigma": 0.504,
+              "netSigma": 0.065,
+              "reachedFullRR": 51.9,
+              "deltaVsBase": 0.092,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 785,
+              "avgMfeSigma": 0.408,
+              "avgMaeSigma": 0.496,
+              "netSigma": -0.088,
+              "reachedFullRR": 47.8,
+              "deltaVsBase": -0.061,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 3552,
+              "avgMfeSigma": 0.476,
+              "avgMaeSigma": 0.511,
+              "netSigma": -0.035,
+              "reachedFullRR": 50.8,
+              "deltaVsBase": -0.002,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 26,
+              "avgMfeSigma": 0.732,
+              "avgMaeSigma": 0.463,
+              "netSigma": 0.269,
+              "reachedFullRR": 46.2,
+              "deltaVsBase": 0.302,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 2183,
+              "avgMfeSigma": 0.465,
+              "avgMaeSigma": 0.489,
+              "netSigma": -0.025,
+              "reachedFullRR": 50.8,
+              "deltaVsBase": 0.002,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 76,
+              "avgMfeSigma": 0.476,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.096,
+              "reachedFullRR": 44.7,
+              "deltaVsBase": -0.069,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 3114,
+              "avgMfeSigma": 0.475,
+              "avgMaeSigma": 0.512,
+              "netSigma": -0.037,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": -0.004,
+              "holds": false
+            },
+            "1": {
+              "n": 446,
+              "avgMfeSigma": 0.49,
+              "avgMaeSigma": 0.496,
+              "netSigma": -0.006,
+              "reachedFullRR": 54.3,
+              "deltaVsBase": 0.027,
+              "holds": false
+            },
+            "2": {
+              "n": 18,
+              "avgMfeSigma": 0.646,
+              "avgMaeSigma": 0.533,
+              "netSigma": 0.113,
+              "reachedFullRR": 50,
+              "deltaVsBase": 0.146,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 1962,
+              "avgMfeSigma": 0.455,
+              "avgMaeSigma": 0.502,
+              "netSigma": -0.047,
+              "reachedFullRR": 49.9,
+              "deltaVsBase": -0.02,
+              "holds": false
+            },
+            "1": {
+              "n": 289,
+              "avgMfeSigma": 0.523,
+              "avgMaeSigma": 0.433,
+              "netSigma": 0.09,
+              "reachedFullRR": 54.3,
+              "deltaVsBase": 0.117,
+              "holds": false
+            },
+            "2": {
+              "n": 8,
+              "avgMfeSigma": 0.764,
+              "avgMaeSigma": 0.27,
+              "netSigma": 0.494,
+              "reachedFullRR": 87.5,
+              "deltaVsBase": 0.521,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "short|2.5": {
+      "n": 3703,
+      "splitDate": "2022-04-12",
+      "base": {
+        "is": {
+          "n": 2278,
+          "avgMfeSigma": 0.518,
+          "avgMaeSigma": 0.542,
+          "netSigma": -0.024,
+          "reachedFullRR": 51.1
+        },
+        "oos": {
+          "n": 1425,
+          "avgMfeSigma": 0.485,
+          "avgMaeSigma": 0.515,
+          "netSigma": -0.03,
+          "reachedFullRR": 50.2
+        }
+      },
+      "full": {
+        "n": 3703,
+        "avgMfeSigma": 0.505,
+        "avgMaeSigma": 0.532,
+        "netSigma": -0.027,
+        "reachedFullRR": 50.8
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 1505,
+              "avgMfeSigma": 0.519,
+              "avgMaeSigma": 0.517,
+              "netSigma": 0.002,
+              "reachedFullRR": 51,
+              "deltaVsBase": 0.026,
+              "holds": false
+            },
+            "London": {
+              "n": 536,
+              "avgMfeSigma": 0.556,
+              "avgMaeSigma": 0.563,
+              "netSigma": -0.007,
+              "reachedFullRR": 52.6,
+              "deltaVsBase": 0.017,
+              "holds": false
+            },
+            "Asia": {
+              "n": 237,
+              "avgMfeSigma": 0.426,
+              "avgMaeSigma": 0.657,
+              "netSigma": -0.231,
+              "reachedFullRR": 48.1,
+              "deltaVsBase": -0.207,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 952,
+              "avgMfeSigma": 0.496,
+              "avgMaeSigma": 0.524,
+              "netSigma": -0.029,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "London": {
+              "n": 289,
+              "avgMfeSigma": 0.454,
+              "avgMaeSigma": 0.528,
+              "netSigma": -0.075,
+              "reachedFullRR": 48.4,
+              "deltaVsBase": -0.045,
+              "holds": false
+            },
+            "Asia": {
+              "n": 184,
+              "avgMfeSigma": 0.479,
+              "avgMaeSigma": 0.448,
+              "netSigma": 0.032,
+              "reachedFullRR": 52.2,
+              "deltaVsBase": 0.062,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 3,
+              "avgMfeSigma": 1.134,
+              "avgMaeSigma": 1.9,
+              "netSigma": -0.766,
+              "reachedFullRR": 66.7,
+              "deltaVsBase": -0.742,
+              "holds": false
+            },
+            "1": {
+              "n": 383,
+              "avgMfeSigma": 0.473,
+              "avgMaeSigma": 0.446,
+              "netSigma": 0.027,
+              "reachedFullRR": 53.3,
+              "deltaVsBase": 0.051,
+              "holds": false
+            },
+            "2": {
+              "n": 435,
+              "avgMfeSigma": 0.473,
+              "avgMaeSigma": 0.527,
+              "netSigma": -0.054,
+              "reachedFullRR": 51.5,
+              "deltaVsBase": -0.03,
+              "holds": false
+            },
+            "3": {
+              "n": 478,
+              "avgMfeSigma": 0.528,
+              "avgMaeSigma": 0.616,
+              "netSigma": -0.088,
+              "reachedFullRR": 47.5,
+              "deltaVsBase": -0.064,
+              "holds": false
+            },
+            "4": {
+              "n": 547,
+              "avgMfeSigma": 0.511,
+              "avgMaeSigma": 0.517,
+              "netSigma": -0.006,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.018,
+              "holds": false
+            },
+            "5": {
+              "n": 432,
+              "avgMfeSigma": 0.596,
+              "avgMaeSigma": 0.584,
+              "netSigma": 0.012,
+              "reachedFullRR": 50.9,
+              "deltaVsBase": 0.036,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 2,
+              "avgMfeSigma": 0.378,
+              "avgMaeSigma": 7.962,
+              "netSigma": -7.583,
+              "reachedFullRR": 0,
+              "deltaVsBase": -7.553,
+              "holds": false
+            },
+            "1": {
+              "n": 297,
+              "avgMfeSigma": 0.415,
+              "avgMaeSigma": 0.439,
+              "netSigma": -0.024,
+              "reachedFullRR": 50.2,
+              "deltaVsBase": 0.006,
+              "holds": false
+            },
+            "2": {
+              "n": 287,
+              "avgMfeSigma": 0.48,
+              "avgMaeSigma": 0.509,
+              "netSigma": -0.029,
+              "reachedFullRR": 50.2,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "3": {
+              "n": 301,
+              "avgMfeSigma": 0.531,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.042,
+              "reachedFullRR": 48.8,
+              "deltaVsBase": -0.012,
+              "holds": false
+            },
+            "4": {
+              "n": 270,
+              "avgMfeSigma": 0.51,
+              "avgMaeSigma": 0.477,
+              "netSigma": 0.033,
+              "reachedFullRR": 51.9,
+              "deltaVsBase": 0.063,
+              "holds": false
+            },
+            "5": {
+              "n": 268,
+              "avgMfeSigma": 0.493,
+              "avgMaeSigma": 0.526,
+              "netSigma": -0.033,
+              "reachedFullRR": 50.7,
+              "deltaVsBase": -0.003,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 1149,
+              "avgMfeSigma": 0.53,
+              "avgMaeSigma": 0.553,
+              "netSigma": -0.023,
+              "reachedFullRR": 50.8,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 621,
+              "avgMfeSigma": 0.519,
+              "avgMaeSigma": 0.517,
+              "netSigma": 0.002,
+              "reachedFullRR": 53.5,
+              "deltaVsBase": 0.026,
+              "holds": false
+            },
+            "1·against": {
+              "n": 508,
+              "avgMfeSigma": 0.489,
+              "avgMaeSigma": 0.549,
+              "netSigma": -0.061,
+              "reachedFullRR": 48.8,
+              "deltaVsBase": -0.037,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 803,
+              "avgMfeSigma": 0.502,
+              "avgMaeSigma": 0.52,
+              "netSigma": -0.018,
+              "reachedFullRR": 50.9,
+              "deltaVsBase": 0.012,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 211,
+              "avgMfeSigma": 0.47,
+              "avgMaeSigma": 0.5,
+              "netSigma": -0.03,
+              "reachedFullRR": 50.2,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "1·against": {
+              "n": 411,
+              "avgMfeSigma": 0.459,
+              "avgMaeSigma": 0.514,
+              "netSigma": -0.055,
+              "reachedFullRR": 48.9,
+              "deltaVsBase": -0.025,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "1·range": {
+              "n": 384,
+              "avgMfeSigma": 0.62,
+              "avgMaeSigma": 0.59,
+              "netSigma": 0.03,
+              "reachedFullRR": 55.2,
+              "deltaVsBase": 0.054,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 894,
+              "avgMfeSigma": 0.484,
+              "avgMaeSigma": 0.533,
+              "netSigma": -0.049,
+              "reachedFullRR": 50,
+              "deltaVsBase": -0.025,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 1000,
+              "avgMfeSigma": 0.508,
+              "avgMaeSigma": 0.532,
+              "netSigma": -0.024,
+              "reachedFullRR": 50.5,
+              "deltaVsBase": 0,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·range": {
+              "n": 288,
+              "avgMfeSigma": 0.558,
+              "avgMaeSigma": 0.595,
+              "netSigma": -0.037,
+              "reachedFullRR": 51.4,
+              "deltaVsBase": -0.007,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 518,
+              "avgMfeSigma": 0.491,
+              "avgMaeSigma": 0.511,
+              "netSigma": -0.019,
+              "reachedFullRR": 49,
+              "deltaVsBase": 0.011,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 619,
+              "avgMfeSigma": 0.446,
+              "avgMaeSigma": 0.482,
+              "netSigma": -0.036,
+              "reachedFullRR": 50.7,
+              "deltaVsBase": -0.006,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 1153,
+              "avgMfeSigma": 0.517,
+              "avgMaeSigma": 0.541,
+              "netSigma": -0.023,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "TREND": {
+              "n": 274,
+              "avgMfeSigma": 0.533,
+              "avgMaeSigma": 0.675,
+              "netSigma": -0.143,
+              "reachedFullRR": 47.8,
+              "deltaVsBase": -0.119,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 851,
+              "avgMfeSigma": 0.514,
+              "avgMaeSigma": 0.501,
+              "netSigma": 0.012,
+              "reachedFullRR": 53.2,
+              "deltaVsBase": 0.036,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 640,
+              "avgMfeSigma": 0.495,
+              "avgMaeSigma": 0.511,
+              "netSigma": -0.016,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": 0.014,
+              "holds": false
+            },
+            "TREND": {
+              "n": 294,
+              "avgMfeSigma": 0.577,
+              "avgMaeSigma": 0.516,
+              "netSigma": 0.061,
+              "reachedFullRR": 54.8,
+              "deltaVsBase": 0.091,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 491,
+              "avgMfeSigma": 0.417,
+              "avgMaeSigma": 0.52,
+              "netSigma": -0.103,
+              "reachedFullRR": 48.3,
+              "deltaVsBase": -0.073,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 2255,
+              "avgMfeSigma": 0.519,
+              "avgMaeSigma": 0.544,
+              "netSigma": -0.025,
+              "reachedFullRR": 51.1,
+              "deltaVsBase": -0.001,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 23,
+              "avgMfeSigma": 0.434,
+              "avgMaeSigma": 0.404,
+              "netSigma": 0.03,
+              "reachedFullRR": 47.8,
+              "deltaVsBase": 0.054,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 1375,
+              "avgMfeSigma": 0.484,
+              "avgMaeSigma": 0.508,
+              "netSigma": -0.025,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": 0.005,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 50,
+              "avgMfeSigma": 0.529,
+              "avgMaeSigma": 0.706,
+              "netSigma": -0.177,
+              "reachedFullRR": 46,
+              "deltaVsBase": -0.147,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 1944,
+              "avgMfeSigma": 0.523,
+              "avgMaeSigma": 0.54,
+              "netSigma": -0.017,
+              "reachedFullRR": 51.4,
+              "deltaVsBase": 0.007,
+              "holds": false
+            },
+            "1": {
+              "n": 322,
+              "avgMfeSigma": 0.49,
+              "avgMaeSigma": 0.561,
+              "netSigma": -0.071,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": -0.047,
+              "holds": false
+            },
+            "2": {
+              "n": 12,
+              "avgMfeSigma": 0.416,
+              "avgMaeSigma": 0.408,
+              "netSigma": 0.009,
+              "reachedFullRR": 41.7,
+              "deltaVsBase": 0.033,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 1247,
+              "avgMfeSigma": 0.485,
+              "avgMaeSigma": 0.522,
+              "netSigma": -0.037,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": -0.007,
+              "holds": false
+            },
+            "1": {
+              "n": 173,
+              "avgMfeSigma": 0.49,
+              "avgMaeSigma": 0.463,
+              "netSigma": 0.027,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": 0.057,
+              "holds": false
+            },
+            "2": {
+              "n": 5,
+              "avgMfeSigma": 0.298,
+              "avgMaeSigma": 0.689,
+              "netSigma": -0.391,
+              "reachedFullRR": 40,
+              "deltaVsBase": -0.361,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "short|3": {
+      "n": 2241,
+      "splitDate": "2022-03-10",
+      "base": {
+        "is": {
+          "n": 1384,
+          "avgMfeSigma": 0.558,
+          "avgMaeSigma": 0.613,
+          "netSigma": -0.055,
+          "reachedFullRR": 49
+        },
+        "oos": {
+          "n": 857,
+          "avgMfeSigma": 0.545,
+          "avgMaeSigma": 0.585,
+          "netSigma": -0.04,
+          "reachedFullRR": 48.7
+        }
+      },
+      "full": {
+        "n": 2241,
+        "avgMfeSigma": 0.553,
+        "avgMaeSigma": 0.603,
+        "netSigma": -0.049,
+        "reachedFullRR": 48.9
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 973,
+              "avgMfeSigma": 0.535,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.037,
+              "reachedFullRR": 49,
+              "deltaVsBase": 0.018,
+              "holds": false
+            },
+            "London": {
+              "n": 265,
+              "avgMfeSigma": 0.672,
+              "avgMaeSigma": 0.695,
+              "netSigma": -0.022,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.033,
+              "holds": false
+            },
+            "Asia": {
+              "n": 146,
+              "avgMfeSigma": 0.507,
+              "avgMaeSigma": 0.741,
+              "netSigma": -0.234,
+              "reachedFullRR": 42.5,
+              "deltaVsBase": -0.179,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 621,
+              "avgMfeSigma": 0.524,
+              "avgMaeSigma": 0.585,
+              "netSigma": -0.061,
+              "reachedFullRR": 46.7,
+              "deltaVsBase": -0.021,
+              "holds": false
+            },
+            "London": {
+              "n": 162,
+              "avgMfeSigma": 0.603,
+              "avgMaeSigma": 0.538,
+              "netSigma": 0.065,
+              "reachedFullRR": 54.9,
+              "deltaVsBase": 0.105,
+              "holds": false
+            },
+            "Asia": {
+              "n": 74,
+              "avgMfeSigma": 0.596,
+              "avgMaeSigma": 0.694,
+              "netSigma": -0.098,
+              "reachedFullRR": 51.4,
+              "deltaVsBase": -0.058,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 2,
+              "avgMfeSigma": 1.51,
+              "avgMaeSigma": 2.349,
+              "netSigma": -0.839,
+              "reachedFullRR": 50,
+              "deltaVsBase": -0.784,
+              "holds": false
+            },
+            "1": {
+              "n": 186,
+              "avgMfeSigma": 0.512,
+              "avgMaeSigma": 0.507,
+              "netSigma": 0.004,
+              "reachedFullRR": 50.5,
+              "deltaVsBase": 0.059,
+              "holds": false
+            },
+            "2": {
+              "n": 290,
+              "avgMfeSigma": 0.507,
+              "avgMaeSigma": 0.574,
+              "netSigma": -0.067,
+              "reachedFullRR": 43.1,
+              "deltaVsBase": -0.012,
+              "holds": false
+            },
+            "3": {
+              "n": 315,
+              "avgMfeSigma": 0.572,
+              "avgMaeSigma": 0.689,
+              "netSigma": -0.117,
+              "reachedFullRR": 51.1,
+              "deltaVsBase": -0.062,
+              "holds": false
+            },
+            "4": {
+              "n": 324,
+              "avgMfeSigma": 0.55,
+              "avgMaeSigma": 0.589,
+              "netSigma": -0.039,
+              "reachedFullRR": 50.6,
+              "deltaVsBase": 0.016,
+              "holds": false
+            },
+            "5": {
+              "n": 267,
+              "avgMfeSigma": 0.633,
+              "avgMaeSigma": 0.656,
+              "netSigma": -0.023,
+              "reachedFullRR": 49.8,
+              "deltaVsBase": 0.032,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 2,
+              "avgMfeSigma": 0.628,
+              "avgMaeSigma": 7.462,
+              "netSigma": -6.833,
+              "reachedFullRR": 0,
+              "deltaVsBase": -6.793,
+              "holds": false
+            },
+            "1": {
+              "n": 163,
+              "avgMfeSigma": 0.474,
+              "avgMaeSigma": 0.558,
+              "netSigma": -0.084,
+              "reachedFullRR": 46.6,
+              "deltaVsBase": -0.044,
+              "holds": false
+            },
+            "2": {
+              "n": 173,
+              "avgMfeSigma": 0.51,
+              "avgMaeSigma": 0.524,
+              "netSigma": -0.014,
+              "reachedFullRR": 54.9,
+              "deltaVsBase": 0.026,
+              "holds": false
+            },
+            "3": {
+              "n": 171,
+              "avgMfeSigma": 0.68,
+              "avgMaeSigma": 0.646,
+              "netSigma": 0.034,
+              "reachedFullRR": 51.5,
+              "deltaVsBase": 0.074,
+              "holds": false
+            },
+            "4": {
+              "n": 174,
+              "avgMfeSigma": 0.538,
+              "avgMaeSigma": 0.518,
+              "netSigma": 0.02,
+              "reachedFullRR": 44.8,
+              "deltaVsBase": 0.06,
+              "holds": false
+            },
+            "5": {
+              "n": 174,
+              "avgMfeSigma": 0.519,
+              "avgMaeSigma": 0.601,
+              "netSigma": -0.082,
+              "reachedFullRR": 46,
+              "deltaVsBase": -0.042,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 688,
+              "avgMfeSigma": 0.576,
+              "avgMaeSigma": 0.648,
+              "netSigma": -0.072,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": -0.017,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 354,
+              "avgMfeSigma": 0.556,
+              "avgMaeSigma": 0.58,
+              "netSigma": -0.024,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": 0.031,
+              "holds": false
+            },
+            "1·against": {
+              "n": 342,
+              "avgMfeSigma": 0.524,
+              "avgMaeSigma": 0.578,
+              "netSigma": -0.054,
+              "reachedFullRR": 46.8,
+              "deltaVsBase": 0.001,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 506,
+              "avgMfeSigma": 0.551,
+              "avgMaeSigma": 0.582,
+              "netSigma": -0.031,
+              "reachedFullRR": 50.6,
+              "deltaVsBase": 0.009,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 123,
+              "avgMfeSigma": 0.491,
+              "avgMaeSigma": 0.602,
+              "netSigma": -0.111,
+              "reachedFullRR": 44.7,
+              "deltaVsBase": -0.071,
+              "holds": false
+            },
+            "1·against": {
+              "n": 228,
+              "avgMfeSigma": 0.56,
+              "avgMaeSigma": 0.583,
+              "netSigma": -0.023,
+              "reachedFullRR": 46.5,
+              "deltaVsBase": 0.017,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "1·range": {
+              "n": 188,
+              "avgMfeSigma": 0.663,
+              "avgMaeSigma": 0.71,
+              "netSigma": -0.047,
+              "reachedFullRR": 50,
+              "deltaVsBase": 0.008,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 510,
+              "avgMfeSigma": 0.536,
+              "avgMaeSigma": 0.623,
+              "netSigma": -0.086,
+              "reachedFullRR": 49.2,
+              "deltaVsBase": -0.031,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 686,
+              "avgMfeSigma": 0.546,
+              "avgMaeSigma": 0.58,
+              "netSigma": -0.034,
+              "reachedFullRR": 48.5,
+              "deltaVsBase": 0.021,
+              "holds": false
+            }
+          },
+          "oos": {
+            "1·range": {
+              "n": 173,
+              "avgMfeSigma": 0.589,
+              "avgMaeSigma": 0.709,
+              "netSigma": -0.119,
+              "reachedFullRR": 42.2,
+              "deltaVsBase": -0.079,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 341,
+              "avgMfeSigma": 0.529,
+              "avgMaeSigma": 0.512,
+              "netSigma": 0.017,
+              "reachedFullRR": 51.3,
+              "deltaVsBase": 0.057,
+              "holds": false
+            },
+            "3·trend": {
+              "n": 343,
+              "avgMfeSigma": 0.539,
+              "avgMaeSigma": 0.596,
+              "netSigma": -0.058,
+              "reachedFullRR": 49.3,
+              "deltaVsBase": -0.018,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "MIXED": {
+              "n": 719,
+              "avgMfeSigma": 0.535,
+              "avgMaeSigma": 0.604,
+              "netSigma": -0.068,
+              "reachedFullRR": 48,
+              "deltaVsBase": -0.013,
+              "holds": false
+            },
+            "TREND": {
+              "n": 181,
+              "avgMfeSigma": 0.647,
+              "avgMaeSigma": 0.761,
+              "netSigma": -0.113,
+              "reachedFullRR": 46.4,
+              "deltaVsBase": -0.058,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 484,
+              "avgMfeSigma": 0.558,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.014,
+              "reachedFullRR": 51.4,
+              "deltaVsBase": 0.041,
+              "holds": false
+            }
+          },
+          "oos": {
+            "MIXED": {
+              "n": 396,
+              "avgMfeSigma": 0.533,
+              "avgMaeSigma": 0.555,
+              "netSigma": -0.022,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.018,
+              "holds": false
+            },
+            "TREND": {
+              "n": 179,
+              "avgMfeSigma": 0.656,
+              "avgMaeSigma": 0.64,
+              "netSigma": 0.016,
+              "reachedFullRR": 44.7,
+              "deltaVsBase": 0.056,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 282,
+              "avgMfeSigma": 0.491,
+              "avgMaeSigma": 0.594,
+              "netSigma": -0.103,
+              "reachedFullRR": 45.7,
+              "deltaVsBase": -0.063,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 1369,
+              "avgMfeSigma": 0.555,
+              "avgMaeSigma": 0.616,
+              "netSigma": -0.061,
+              "reachedFullRR": 48.9,
+              "deltaVsBase": -0.006,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 15,
+              "avgMfeSigma": 0.852,
+              "avgMaeSigma": 0.384,
+              "netSigma": 0.468,
+              "reachedFullRR": 60,
+              "deltaVsBase": 0.523,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 832,
+              "avgMfeSigma": 0.534,
+              "avgMaeSigma": 0.579,
+              "netSigma": -0.046,
+              "reachedFullRR": 48.7,
+              "deltaVsBase": -0.006,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 25,
+              "avgMfeSigma": 0.928,
+              "avgMaeSigma": 0.791,
+              "netSigma": 0.137,
+              "reachedFullRR": 48,
+              "deltaVsBase": 0.177,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 1179,
+              "avgMfeSigma": 0.559,
+              "avgMaeSigma": 0.608,
+              "netSigma": -0.049,
+              "reachedFullRR": 48.6,
+              "deltaVsBase": 0.006,
+              "holds": false
+            },
+            "1": {
+              "n": 197,
+              "avgMfeSigma": 0.552,
+              "avgMaeSigma": 0.654,
+              "netSigma": -0.102,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": -0.047,
+              "holds": false
+            },
+            "2": {
+              "n": 8,
+              "avgMfeSigma": 0.564,
+              "avgMaeSigma": 0.366,
+              "netSigma": 0.198,
+              "reachedFullRR": 75,
+              "deltaVsBase": 0.253,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 733,
+              "avgMfeSigma": 0.55,
+              "avgMaeSigma": 0.604,
+              "netSigma": -0.054,
+              "reachedFullRR": 47.9,
+              "deltaVsBase": -0.014,
+              "holds": false
+            },
+            "1": {
+              "n": 117,
+              "avgMfeSigma": 0.519,
+              "avgMaeSigma": 0.487,
+              "netSigma": 0.032,
+              "reachedFullRR": 53.8,
+              "deltaVsBase": 0.072,
+              "holds": false
+            },
+            "2": {
+              "n": 7,
+              "avgMfeSigma": 0.446,
+              "avgMaeSigma": 0.287,
+              "netSigma": 0.159,
+              "reachedFullRR": 42.9,
+              "deltaVsBase": 0.199,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "long|2": {
+      "n": 5329,
+      "splitDate": "2022-02-24",
+      "base": {
+        "is": {
+          "n": 3186,
+          "avgMfeSigma": 0.526,
+          "avgMaeSigma": 0.57,
+          "netSigma": -0.043,
+          "reachedFullRR": 52.1
+        },
+        "oos": {
+          "n": 2143,
+          "avgMfeSigma": 0.488,
+          "avgMaeSigma": 0.525,
+          "netSigma": -0.036,
+          "reachedFullRR": 51.5
+        }
+      },
+      "full": {
+        "n": 5329,
+        "avgMfeSigma": 0.511,
+        "avgMaeSigma": 0.552,
+        "netSigma": -0.041,
+        "reachedFullRR": 51.8
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 1978,
+              "avgMfeSigma": 0.527,
+              "avgMaeSigma": 0.555,
+              "netSigma": -0.028,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.015,
+              "holds": false
+            },
+            "London": {
+              "n": 876,
+              "avgMfeSigma": 0.527,
+              "avgMaeSigma": 0.603,
+              "netSigma": -0.077,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": -0.034,
+              "holds": false
+            },
+            "Asia": {
+              "n": 332,
+              "avgMfeSigma": 0.524,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.049,
+              "reachedFullRR": 55.7,
+              "deltaVsBase": -0.006,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 1301,
+              "avgMfeSigma": 0.471,
+              "avgMaeSigma": 0.529,
+              "netSigma": -0.058,
+              "reachedFullRR": 49.9,
+              "deltaVsBase": -0.022,
+              "holds": false
+            },
+            "London": {
+              "n": 538,
+              "avgMfeSigma": 0.511,
+              "avgMaeSigma": 0.519,
+              "netSigma": -0.008,
+              "reachedFullRR": 53.5,
+              "deltaVsBase": 0.028,
+              "holds": false
+            },
+            "Asia": {
+              "n": 304,
+              "avgMfeSigma": 0.524,
+              "avgMaeSigma": 0.519,
+              "netSigma": 0.005,
+              "reachedFullRR": 54.6,
+              "deltaVsBase": 0.041,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 8,
+              "avgMfeSigma": 1.61,
+              "avgMaeSigma": 3.489,
+              "netSigma": -1.879,
+              "reachedFullRR": 75,
+              "deltaVsBase": -1.836,
+              "holds": false
+            },
+            "1": {
+              "n": 589,
+              "avgMfeSigma": 0.472,
+              "avgMaeSigma": 0.479,
+              "netSigma": -0.007,
+              "reachedFullRR": 56.5,
+              "deltaVsBase": 0.036,
+              "holds": false
+            },
+            "2": {
+              "n": 675,
+              "avgMfeSigma": 0.489,
+              "avgMaeSigma": 0.608,
+              "netSigma": -0.118,
+              "reachedFullRR": 49.5,
+              "deltaVsBase": -0.075,
+              "holds": false
+            },
+            "3": {
+              "n": 687,
+              "avgMfeSigma": 0.521,
+              "avgMaeSigma": 0.594,
+              "netSigma": -0.073,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": -0.03,
+              "holds": false
+            },
+            "4": {
+              "n": 663,
+              "avgMfeSigma": 0.521,
+              "avgMaeSigma": 0.527,
+              "netSigma": -0.006,
+              "reachedFullRR": 51.6,
+              "deltaVsBase": 0.037,
+              "holds": false
+            },
+            "5": {
+              "n": 564,
+              "avgMfeSigma": 0.626,
+              "avgMaeSigma": 0.599,
+              "netSigma": 0.026,
+              "reachedFullRR": 52.8,
+              "deltaVsBase": 0.069,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 11,
+              "avgMfeSigma": 1.264,
+              "avgMaeSigma": 0.896,
+              "netSigma": 0.368,
+              "reachedFullRR": 54.5,
+              "deltaVsBase": 0.404,
+              "holds": false
+            },
+            "1": {
+              "n": 444,
+              "avgMfeSigma": 0.431,
+              "avgMaeSigma": 0.507,
+              "netSigma": -0.076,
+              "reachedFullRR": 51.1,
+              "deltaVsBase": -0.04,
+              "holds": false
+            },
+            "2": {
+              "n": 448,
+              "avgMfeSigma": 0.438,
+              "avgMaeSigma": 0.494,
+              "netSigma": -0.056,
+              "reachedFullRR": 49.3,
+              "deltaVsBase": -0.02,
+              "holds": false
+            },
+            "3": {
+              "n": 374,
+              "avgMfeSigma": 0.546,
+              "avgMaeSigma": 0.521,
+              "netSigma": 0.025,
+              "reachedFullRR": 51.6,
+              "deltaVsBase": 0.061,
+              "holds": false
+            },
+            "4": {
+              "n": 483,
+              "avgMfeSigma": 0.506,
+              "avgMaeSigma": 0.502,
+              "netSigma": 0.004,
+              "reachedFullRR": 53.8,
+              "deltaVsBase": 0.04,
+              "holds": false
+            },
+            "5": {
+              "n": 383,
+              "avgMfeSigma": 0.512,
+              "avgMaeSigma": 0.603,
+              "netSigma": -0.091,
+              "reachedFullRR": 51.2,
+              "deltaVsBase": -0.055,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 1319,
+              "avgMfeSigma": 0.524,
+              "avgMaeSigma": 0.608,
+              "netSigma": -0.084,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": -0.041,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 912,
+              "avgMfeSigma": 0.541,
+              "avgMaeSigma": 0.555,
+              "netSigma": -0.014,
+              "reachedFullRR": 53.7,
+              "deltaVsBase": 0.029,
+              "holds": false
+            },
+            "1·against": {
+              "n": 955,
+              "avgMfeSigma": 0.517,
+              "avgMaeSigma": 0.532,
+              "netSigma": -0.015,
+              "reachedFullRR": 52.8,
+              "deltaVsBase": 0.028,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 995,
+              "avgMfeSigma": 0.52,
+              "avgMaeSigma": 0.578,
+              "netSigma": -0.058,
+              "reachedFullRR": 53.6,
+              "deltaVsBase": -0.022,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 442,
+              "avgMfeSigma": 0.449,
+              "avgMaeSigma": 0.451,
+              "netSigma": -0.003,
+              "reachedFullRR": 50.7,
+              "deltaVsBase": 0.033,
+              "holds": false
+            },
+            "1·against": {
+              "n": 706,
+              "avgMfeSigma": 0.468,
+              "avgMaeSigma": 0.496,
+              "netSigma": -0.028,
+              "reachedFullRR": 49,
+              "deltaVsBase": 0.008,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 1198,
+              "avgMfeSigma": 0.533,
+              "avgMaeSigma": 0.588,
+              "netSigma": -0.055,
+              "reachedFullRR": 52.3,
+              "deltaVsBase": -0.012,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 1226,
+              "avgMfeSigma": 0.494,
+              "avgMaeSigma": 0.551,
+              "netSigma": -0.057,
+              "reachedFullRR": 51.8,
+              "deltaVsBase": -0.014,
+              "holds": false
+            },
+            "1·range": {
+              "n": 762,
+              "avgMfeSigma": 0.569,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.003,
+              "reachedFullRR": 52.1,
+              "deltaVsBase": 0.04,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 789,
+              "avgMfeSigma": 0.488,
+              "avgMaeSigma": 0.574,
+              "netSigma": -0.086,
+              "reachedFullRR": 50.1,
+              "deltaVsBase": -0.05,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 843,
+              "avgMfeSigma": 0.46,
+              "avgMaeSigma": 0.466,
+              "netSigma": -0.006,
+              "reachedFullRR": 53.9,
+              "deltaVsBase": 0.03,
+              "holds": false
+            },
+            "1·range": {
+              "n": 511,
+              "avgMfeSigma": 0.536,
+              "avgMaeSigma": 0.547,
+              "netSigma": -0.011,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": 0.025,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "TREND": {
+              "n": 293,
+              "avgMfeSigma": 0.6,
+              "avgMaeSigma": 0.756,
+              "netSigma": -0.156,
+              "reachedFullRR": 48.8,
+              "deltaVsBase": -0.113,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 1621,
+              "avgMfeSigma": 0.534,
+              "avgMaeSigma": 0.595,
+              "netSigma": -0.061,
+              "reachedFullRR": 52.8,
+              "deltaVsBase": -0.018,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 1272,
+              "avgMfeSigma": 0.5,
+              "avgMaeSigma": 0.495,
+              "netSigma": 0.005,
+              "reachedFullRR": 51.9,
+              "deltaVsBase": 0.048,
+              "holds": false
+            }
+          },
+          "oos": {
+            "TREND": {
+              "n": 334,
+              "avgMfeSigma": 0.606,
+              "avgMaeSigma": 0.648,
+              "netSigma": -0.041,
+              "reachedFullRR": 53.9,
+              "deltaVsBase": -0.005,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 1000,
+              "avgMfeSigma": 0.474,
+              "avgMaeSigma": 0.515,
+              "netSigma": -0.041,
+              "reachedFullRR": 51,
+              "deltaVsBase": -0.005,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 809,
+              "avgMfeSigma": 0.458,
+              "avgMaeSigma": 0.486,
+              "netSigma": -0.028,
+              "reachedFullRR": 51.1,
+              "deltaVsBase": 0.008,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 3143,
+              "avgMfeSigma": 0.527,
+              "avgMaeSigma": 0.569,
+              "netSigma": -0.043,
+              "reachedFullRR": 52.1,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 43,
+              "avgMfeSigma": 0.516,
+              "avgMaeSigma": 0.616,
+              "netSigma": -0.1,
+              "reachedFullRR": 53.5,
+              "deltaVsBase": -0.057,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 2082,
+              "avgMfeSigma": 0.488,
+              "avgMaeSigma": 0.52,
+              "netSigma": -0.032,
+              "reachedFullRR": 51.7,
+              "deltaVsBase": 0.004,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 61,
+              "avgMfeSigma": 0.493,
+              "avgMaeSigma": 0.691,
+              "netSigma": -0.198,
+              "reachedFullRR": 44.3,
+              "deltaVsBase": -0.162,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 2869,
+              "avgMfeSigma": 0.531,
+              "avgMaeSigma": 0.561,
+              "netSigma": -0.03,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.013,
+              "holds": false
+            },
+            "1": {
+              "n": 309,
+              "avgMfeSigma": 0.487,
+              "avgMaeSigma": 0.596,
+              "netSigma": -0.109,
+              "reachedFullRR": 48.9,
+              "deltaVsBase": -0.066,
+              "holds": false
+            },
+            "2": {
+              "n": 8,
+              "avgMfeSigma": 0.538,
+              "avgMaeSigma": 2.831,
+              "netSigma": -2.293,
+              "reachedFullRR": 37.5,
+              "deltaVsBase": -2.25,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 1953,
+              "avgMfeSigma": 0.492,
+              "avgMaeSigma": 0.525,
+              "netSigma": -0.032,
+              "reachedFullRR": 51.7,
+              "deltaVsBase": 0.004,
+              "holds": false
+            },
+            "1": {
+              "n": 185,
+              "avgMfeSigma": 0.449,
+              "avgMaeSigma": 0.523,
+              "netSigma": -0.074,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": -0.038,
+              "holds": false
+            },
+            "2": {
+              "n": 5,
+              "avgMfeSigma": 0.343,
+              "avgMaeSigma": 0.711,
+              "netSigma": -0.367,
+              "reachedFullRR": 20,
+              "deltaVsBase": -0.331,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "long|2.5": {
+      "n": 3509,
+      "splitDate": "2022-01-26",
+      "base": {
+        "is": {
+          "n": 2101,
+          "avgMfeSigma": 0.563,
+          "avgMaeSigma": 0.607,
+          "netSigma": -0.044,
+          "reachedFullRR": 52.7
+        },
+        "oos": {
+          "n": 1408,
+          "avgMfeSigma": 0.556,
+          "avgMaeSigma": 0.585,
+          "netSigma": -0.028,
+          "reachedFullRR": 50
+        }
+      },
+      "full": {
+        "n": 3509,
+        "avgMfeSigma": 0.56,
+        "avgMaeSigma": 0.598,
+        "netSigma": -0.038,
+        "reachedFullRR": 51.6
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 1424,
+              "avgMfeSigma": 0.526,
+              "avgMaeSigma": 0.585,
+              "netSigma": -0.059,
+              "reachedFullRR": 51.3,
+              "deltaVsBase": -0.015,
+              "holds": false
+            },
+            "London": {
+              "n": 467,
+              "avgMfeSigma": 0.661,
+              "avgMaeSigma": 0.678,
+              "netSigma": -0.017,
+              "reachedFullRR": 52.9,
+              "deltaVsBase": 0.027,
+              "holds": false
+            },
+            "Asia": {
+              "n": 210,
+              "avgMfeSigma": 0.591,
+              "avgMaeSigma": 0.597,
+              "netSigma": -0.006,
+              "reachedFullRR": 61.9,
+              "deltaVsBase": 0.038,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 946,
+              "avgMfeSigma": 0.53,
+              "avgMaeSigma": 0.557,
+              "netSigma": -0.027,
+              "reachedFullRR": 49.4,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "London": {
+              "n": 299,
+              "avgMfeSigma": 0.621,
+              "avgMaeSigma": 0.659,
+              "netSigma": -0.038,
+              "reachedFullRR": 51.8,
+              "deltaVsBase": -0.01,
+              "holds": false
+            },
+            "Asia": {
+              "n": 163,
+              "avgMfeSigma": 0.587,
+              "avgMaeSigma": 0.609,
+              "netSigma": -0.022,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": 0.006,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 5,
+              "avgMfeSigma": 1.814,
+              "avgMaeSigma": 4.469,
+              "netSigma": -2.655,
+              "reachedFullRR": 60,
+              "deltaVsBase": -2.611,
+              "holds": false
+            },
+            "1": {
+              "n": 339,
+              "avgMfeSigma": 0.422,
+              "avgMaeSigma": 0.574,
+              "netSigma": -0.152,
+              "reachedFullRR": 47.5,
+              "deltaVsBase": -0.108,
+              "holds": false
+            },
+            "2": {
+              "n": 485,
+              "avgMfeSigma": 0.552,
+              "avgMaeSigma": 0.602,
+              "netSigma": -0.05,
+              "reachedFullRR": 53.2,
+              "deltaVsBase": -0.006,
+              "holds": false
+            },
+            "3": {
+              "n": 466,
+              "avgMfeSigma": 0.631,
+              "avgMaeSigma": 0.627,
+              "netSigma": 0.005,
+              "reachedFullRR": 54.1,
+              "deltaVsBase": 0.049,
+              "holds": false
+            },
+            "4": {
+              "n": 447,
+              "avgMfeSigma": 0.548,
+              "avgMaeSigma": 0.511,
+              "netSigma": 0.037,
+              "reachedFullRR": 55.7,
+              "deltaVsBase": 0.081,
+              "holds": false
+            },
+            "5": {
+              "n": 359,
+              "avgMfeSigma": 0.622,
+              "avgMaeSigma": 0.686,
+              "netSigma": -0.064,
+              "reachedFullRR": 51.3,
+              "deltaVsBase": -0.02,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 5,
+              "avgMfeSigma": 1.87,
+              "avgMaeSigma": 0.84,
+              "netSigma": 1.03,
+              "reachedFullRR": 40,
+              "deltaVsBase": 1.058,
+              "holds": false
+            },
+            "1": {
+              "n": 295,
+              "avgMfeSigma": 0.52,
+              "avgMaeSigma": 0.579,
+              "netSigma": -0.059,
+              "reachedFullRR": 50.5,
+              "deltaVsBase": -0.031,
+              "holds": false
+            },
+            "2": {
+              "n": 312,
+              "avgMfeSigma": 0.539,
+              "avgMaeSigma": 0.54,
+              "netSigma": -0.002,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": 0.026,
+              "holds": false
+            },
+            "3": {
+              "n": 265,
+              "avgMfeSigma": 0.547,
+              "avgMaeSigma": 0.567,
+              "netSigma": -0.02,
+              "reachedFullRR": 46.8,
+              "deltaVsBase": 0.008,
+              "holds": false
+            },
+            "4": {
+              "n": 274,
+              "avgMfeSigma": 0.579,
+              "avgMaeSigma": 0.602,
+              "netSigma": -0.022,
+              "reachedFullRR": 55.5,
+              "deltaVsBase": 0.006,
+              "holds": false
+            },
+            "5": {
+              "n": 257,
+              "avgMfeSigma": 0.578,
+              "avgMaeSigma": 0.64,
+              "netSigma": -0.062,
+              "reachedFullRR": 47.5,
+              "deltaVsBase": -0.034,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 895,
+              "avgMfeSigma": 0.563,
+              "avgMaeSigma": 0.619,
+              "netSigma": -0.056,
+              "reachedFullRR": 52.8,
+              "deltaVsBase": -0.012,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 600,
+              "avgMfeSigma": 0.577,
+              "avgMaeSigma": 0.596,
+              "netSigma": -0.018,
+              "reachedFullRR": 53.3,
+              "deltaVsBase": 0.026,
+              "holds": false
+            },
+            "1·against": {
+              "n": 606,
+              "avgMfeSigma": 0.548,
+              "avgMaeSigma": 0.601,
+              "netSigma": -0.053,
+              "reachedFullRR": 51.8,
+              "deltaVsBase": -0.009,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 669,
+              "avgMfeSigma": 0.586,
+              "avgMaeSigma": 0.67,
+              "netSigma": -0.084,
+              "reachedFullRR": 48.7,
+              "deltaVsBase": -0.056,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 252,
+              "avgMfeSigma": 0.585,
+              "avgMaeSigma": 0.51,
+              "netSigma": 0.075,
+              "reachedFullRR": 51.2,
+              "deltaVsBase": 0.103,
+              "holds": false
+            },
+            "1·against": {
+              "n": 487,
+              "avgMfeSigma": 0.5,
+              "avgMaeSigma": 0.506,
+              "netSigma": -0.006,
+              "reachedFullRR": 51.1,
+              "deltaVsBase": 0.022,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 829,
+              "avgMfeSigma": 0.522,
+              "avgMaeSigma": 0.608,
+              "netSigma": -0.086,
+              "reachedFullRR": 52.1,
+              "deltaVsBase": -0.042,
+              "holds": false
+            },
+            "1·range": {
+              "n": 444,
+              "avgMfeSigma": 0.645,
+              "avgMaeSigma": 0.653,
+              "netSigma": -0.008,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.036,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 828,
+              "avgMfeSigma": 0.559,
+              "avgMaeSigma": 0.581,
+              "netSigma": -0.022,
+              "reachedFullRR": 53.4,
+              "deltaVsBase": 0.022,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 590,
+              "avgMfeSigma": 0.538,
+              "avgMaeSigma": 0.6,
+              "netSigma": -0.063,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": -0.035,
+              "holds": false
+            },
+            "1·range": {
+              "n": 306,
+              "avgMfeSigma": 0.618,
+              "avgMaeSigma": 0.582,
+              "netSigma": 0.036,
+              "reachedFullRR": 50,
+              "deltaVsBase": 0.064,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 512,
+              "avgMfeSigma": 0.541,
+              "avgMaeSigma": 0.568,
+              "netSigma": -0.027,
+              "reachedFullRR": 49.6,
+              "deltaVsBase": 0.001,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "TREND": {
+              "n": 185,
+              "avgMfeSigma": 0.633,
+              "avgMaeSigma": 0.829,
+              "netSigma": -0.196,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": -0.152,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 1103,
+              "avgMfeSigma": 0.574,
+              "avgMaeSigma": 0.618,
+              "netSigma": -0.045,
+              "reachedFullRR": 53.5,
+              "deltaVsBase": -0.001,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 813,
+              "avgMfeSigma": 0.532,
+              "avgMaeSigma": 0.541,
+              "netSigma": -0.01,
+              "reachedFullRR": 52.3,
+              "deltaVsBase": 0.034,
+              "holds": false
+            }
+          },
+          "oos": {
+            "TREND": {
+              "n": 236,
+              "avgMfeSigma": 0.712,
+              "avgMaeSigma": 0.732,
+              "netSigma": -0.02,
+              "reachedFullRR": 48.3,
+              "deltaVsBase": 0.008,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 713,
+              "avgMfeSigma": 0.511,
+              "avgMaeSigma": 0.573,
+              "netSigma": -0.062,
+              "reachedFullRR": 48.9,
+              "deltaVsBase": -0.034,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 459,
+              "avgMfeSigma": 0.546,
+              "avgMaeSigma": 0.526,
+              "netSigma": 0.02,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": 0.048,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 2078,
+              "avgMfeSigma": 0.564,
+              "avgMaeSigma": 0.605,
+              "netSigma": -0.041,
+              "reachedFullRR": 52.7,
+              "deltaVsBase": 0.003,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 23,
+              "avgMfeSigma": 0.451,
+              "avgMaeSigma": 0.816,
+              "netSigma": -0.365,
+              "reachedFullRR": 52.2,
+              "deltaVsBase": -0.321,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 1370,
+              "avgMfeSigma": 0.55,
+              "avgMaeSigma": 0.576,
+              "netSigma": -0.026,
+              "reachedFullRR": 50,
+              "deltaVsBase": 0.002,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 38,
+              "avgMfeSigma": 0.789,
+              "avgMaeSigma": 0.908,
+              "netSigma": -0.119,
+              "reachedFullRR": 50,
+              "deltaVsBase": -0.091,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 1885,
+              "avgMfeSigma": 0.567,
+              "avgMaeSigma": 0.598,
+              "netSigma": -0.032,
+              "reachedFullRR": 52.4,
+              "deltaVsBase": 0.012,
+              "holds": false
+            },
+            "1": {
+              "n": 210,
+              "avgMfeSigma": 0.527,
+              "avgMaeSigma": 0.691,
+              "netSigma": -0.164,
+              "reachedFullRR": 54.8,
+              "deltaVsBase": -0.12,
+              "holds": false
+            },
+            "2": {
+              "n": 6,
+              "avgMfeSigma": 0.564,
+              "avgMaeSigma": 0.39,
+              "netSigma": 0.175,
+              "reachedFullRR": 83.3,
+              "deltaVsBase": 0.219,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 1283,
+              "avgMfeSigma": 0.562,
+              "avgMaeSigma": 0.586,
+              "netSigma": -0.023,
+              "reachedFullRR": 50.1,
+              "deltaVsBase": 0.005,
+              "holds": false
+            },
+            "1": {
+              "n": 120,
+              "avgMfeSigma": 0.497,
+              "avgMaeSigma": 0.572,
+              "netSigma": -0.075,
+              "reachedFullRR": 49.2,
+              "deltaVsBase": -0.047,
+              "holds": false
+            },
+            "2": {
+              "n": 5,
+              "avgMfeSigma": 0.361,
+              "avgMaeSigma": 0.595,
+              "netSigma": -0.234,
+              "reachedFullRR": 40,
+              "deltaVsBase": -0.206,
+              "holds": false
+            }
+          }
+        }
+      }
+    },
+    "long|3": {
+      "n": 2278,
+      "splitDate": "2022-02-04",
+      "base": {
+        "is": {
+          "n": 1389,
+          "avgMfeSigma": 0.603,
+          "avgMaeSigma": 0.674,
+          "netSigma": -0.071,
+          "reachedFullRR": 50
+        },
+        "oos": {
+          "n": 889,
+          "avgMfeSigma": 0.599,
+          "avgMaeSigma": 0.656,
+          "netSigma": -0.057,
+          "reachedFullRR": 50.2
+        }
+      },
+      "full": {
+        "n": 2278,
+        "avgMfeSigma": 0.602,
+        "avgMaeSigma": 0.667,
+        "netSigma": -0.065,
+        "reachedFullRR": 50.1
+      },
+      "dims": {
+        "session": {
+          "is": {
+            "NY": {
+              "n": 1022,
+              "avgMfeSigma": 0.552,
+              "avgMaeSigma": 0.628,
+              "netSigma": -0.076,
+              "reachedFullRR": 49.5,
+              "deltaVsBase": -0.005,
+              "holds": false
+            },
+            "London": {
+              "n": 261,
+              "avgMfeSigma": 0.749,
+              "avgMaeSigma": 0.807,
+              "netSigma": -0.058,
+              "reachedFullRR": 49,
+              "deltaVsBase": 0.013,
+              "holds": false
+            },
+            "Asia": {
+              "n": 106,
+              "avgMfeSigma": 0.746,
+              "avgMaeSigma": 0.793,
+              "netSigma": -0.047,
+              "reachedFullRR": 57.5,
+              "deltaVsBase": 0.024,
+              "holds": false
+            }
+          },
+          "oos": {
+            "NY": {
+              "n": 598,
+              "avgMfeSigma": 0.563,
+              "avgMaeSigma": 0.608,
+              "netSigma": -0.046,
+              "reachedFullRR": 50.5,
+              "deltaVsBase": 0.011,
+              "holds": false
+            },
+            "London": {
+              "n": 193,
+              "avgMfeSigma": 0.702,
+              "avgMaeSigma": 0.772,
+              "netSigma": -0.07,
+              "reachedFullRR": 48.7,
+              "deltaVsBase": -0.013,
+              "holds": false
+            },
+            "Asia": {
+              "n": 98,
+              "avgMfeSigma": 0.618,
+              "avgMaeSigma": 0.716,
+              "netSigma": -0.098,
+              "reachedFullRR": 51,
+              "deltaVsBase": -0.041,
+              "holds": false
+            }
+          }
+        },
+        "dow": {
+          "is": {
+            "0": {
+              "n": 4,
+              "avgMfeSigma": 1.783,
+              "avgMaeSigma": 5.638,
+              "netSigma": -3.855,
+              "reachedFullRR": 50,
+              "deltaVsBase": -3.784,
+              "holds": false
+            },
+            "1": {
+              "n": 227,
+              "avgMfeSigma": 0.499,
+              "avgMaeSigma": 0.645,
+              "netSigma": -0.146,
+              "reachedFullRR": 51.5,
+              "deltaVsBase": -0.075,
+              "holds": false
+            },
+            "2": {
+              "n": 312,
+              "avgMfeSigma": 0.591,
+              "avgMaeSigma": 0.618,
+              "netSigma": -0.027,
+              "reachedFullRR": 52.2,
+              "deltaVsBase": 0.044,
+              "holds": false
+            },
+            "3": {
+              "n": 303,
+              "avgMfeSigma": 0.694,
+              "avgMaeSigma": 0.674,
+              "netSigma": 0.021,
+              "reachedFullRR": 51.8,
+              "deltaVsBase": 0.092,
+              "holds": false
+            },
+            "4": {
+              "n": 288,
+              "avgMfeSigma": 0.537,
+              "avgMaeSigma": 0.608,
+              "netSigma": -0.071,
+              "reachedFullRR": 47.2,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "5": {
+              "n": 255,
+              "avgMfeSigma": 0.66,
+              "avgMaeSigma": 0.766,
+              "netSigma": -0.106,
+              "reachedFullRR": 47.1,
+              "deltaVsBase": -0.035,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 3,
+              "avgMfeSigma": 2.041,
+              "avgMaeSigma": 0.841,
+              "netSigma": 1.2,
+              "reachedFullRR": 66.7,
+              "deltaVsBase": 1.257,
+              "holds": false
+            },
+            "1": {
+              "n": 172,
+              "avgMfeSigma": 0.6,
+              "avgMaeSigma": 0.656,
+              "netSigma": -0.056,
+              "reachedFullRR": 48.8,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "2": {
+              "n": 202,
+              "avgMfeSigma": 0.557,
+              "avgMaeSigma": 0.615,
+              "netSigma": -0.058,
+              "reachedFullRR": 52.5,
+              "deltaVsBase": -0.001,
+              "holds": false
+            },
+            "3": {
+              "n": 186,
+              "avgMfeSigma": 0.608,
+              "avgMaeSigma": 0.509,
+              "netSigma": 0.1,
+              "reachedFullRR": 52.7,
+              "deltaVsBase": 0.157,
+              "holds": false
+            },
+            "4": {
+              "n": 161,
+              "avgMfeSigma": 0.548,
+              "avgMaeSigma": 0.736,
+              "netSigma": -0.188,
+              "reachedFullRR": 45.3,
+              "deltaVsBase": -0.131,
+              "holds": false
+            },
+            "5": {
+              "n": 165,
+              "avgMfeSigma": 0.662,
+              "avgMaeSigma": 0.789,
+              "netSigma": -0.127,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": -0.07,
+              "holds": false
+            }
+          }
+        },
+        "htfTrend": {
+          "is": {
+            "3·with": {
+              "n": 623,
+              "avgMfeSigma": 0.586,
+              "avgMaeSigma": 0.687,
+              "netSigma": -0.101,
+              "reachedFullRR": 47.8,
+              "deltaVsBase": -0.03,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 384,
+              "avgMfeSigma": 0.645,
+              "avgMaeSigma": 0.654,
+              "netSigma": -0.009,
+              "reachedFullRR": 52.6,
+              "deltaVsBase": 0.062,
+              "holds": false
+            },
+            "1·against": {
+              "n": 382,
+              "avgMfeSigma": 0.591,
+              "avgMaeSigma": 0.673,
+              "netSigma": -0.082,
+              "reachedFullRR": 51,
+              "deltaVsBase": -0.011,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·with": {
+              "n": 453,
+              "avgMfeSigma": 0.629,
+              "avgMaeSigma": 0.763,
+              "netSigma": -0.135,
+              "reachedFullRR": 48.6,
+              "deltaVsBase": -0.078,
+              "holds": false
+            },
+            "2·flat": {
+              "n": 148,
+              "avgMfeSigma": 0.58,
+              "avgMaeSigma": 0.509,
+              "netSigma": 0.071,
+              "reachedFullRR": 56.1,
+              "deltaVsBase": 0.128,
+              "holds": false
+            },
+            "1·against": {
+              "n": 288,
+              "avgMfeSigma": 0.562,
+              "avgMaeSigma": 0.562,
+              "netSigma": 0,
+              "reachedFullRR": 49.7,
+              "deltaVsBase": 0.057,
+              "holds": false
+            }
+          }
+        },
+        "momAdx": {
+          "is": {
+            "3·trend": {
+              "n": 610,
+              "avgMfeSigma": 0.549,
+              "avgMaeSigma": 0.689,
+              "netSigma": -0.14,
+              "reachedFullRR": 47.9,
+              "deltaVsBase": -0.069,
+              "holds": false
+            },
+            "1·range": {
+              "n": 249,
+              "avgMfeSigma": 0.737,
+              "avgMaeSigma": 0.735,
+              "netSigma": 0.002,
+              "reachedFullRR": 49,
+              "deltaVsBase": 0.073,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 530,
+              "avgMfeSigma": 0.603,
+              "avgMaeSigma": 0.629,
+              "netSigma": -0.025,
+              "reachedFullRR": 53,
+              "deltaVsBase": 0.046,
+              "holds": false
+            }
+          },
+          "oos": {
+            "3·trend": {
+              "n": 371,
+              "avgMfeSigma": 0.603,
+              "avgMaeSigma": 0.674,
+              "netSigma": -0.071,
+              "reachedFullRR": 51.5,
+              "deltaVsBase": -0.014,
+              "holds": false
+            },
+            "1·range": {
+              "n": 176,
+              "avgMfeSigma": 0.642,
+              "avgMaeSigma": 0.634,
+              "netSigma": 0.008,
+              "reachedFullRR": 50,
+              "deltaVsBase": 0.065,
+              "holds": false
+            },
+            "2·mixed": {
+              "n": 342,
+              "avgMfeSigma": 0.573,
+              "avgMaeSigma": 0.647,
+              "netSigma": -0.075,
+              "reachedFullRR": 48.8,
+              "deltaVsBase": -0.018,
+              "holds": false
+            }
+          }
+        },
+        "dayType": {
+          "is": {
+            "TREND": {
+              "n": 152,
+              "avgMfeSigma": 0.682,
+              "avgMaeSigma": 0.87,
+              "netSigma": -0.187,
+              "reachedFullRR": 44.1,
+              "deltaVsBase": -0.116,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 701,
+              "avgMfeSigma": 0.634,
+              "avgMaeSigma": 0.706,
+              "netSigma": -0.071,
+              "reachedFullRR": 50.4,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 536,
+              "avgMfeSigma": 0.541,
+              "avgMaeSigma": 0.578,
+              "netSigma": -0.037,
+              "reachedFullRR": 51.3,
+              "deltaVsBase": 0.034,
+              "holds": false
+            }
+          },
+          "oos": {
+            "TREND": {
+              "n": 158,
+              "avgMfeSigma": 0.782,
+              "avgMaeSigma": 0.913,
+              "netSigma": -0.131,
+              "reachedFullRR": 48.7,
+              "deltaVsBase": -0.074,
+              "holds": false
+            },
+            "MIXED": {
+              "n": 457,
+              "avgMfeSigma": 0.544,
+              "avgMaeSigma": 0.614,
+              "netSigma": -0.07,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": -0.013,
+              "holds": false
+            },
+            "RANGE": {
+              "n": 274,
+              "avgMfeSigma": 0.586,
+              "avgMaeSigma": 0.578,
+              "netSigma": 0.008,
+              "reachedFullRR": 50.7,
+              "deltaVsBase": 0.065,
+              "holds": false
+            }
+          }
+        },
+        "sigmaPctile": {
+          "is": {
+            "2·normal": {
+              "n": 1372,
+              "avgMfeSigma": 0.603,
+              "avgMaeSigma": 0.673,
+              "netSigma": -0.07,
+              "reachedFullRR": 50.1,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 17,
+              "avgMfeSigma": 0.663,
+              "avgMaeSigma": 0.756,
+              "netSigma": -0.092,
+              "reachedFullRR": 47.1,
+              "deltaVsBase": -0.021,
+              "holds": false
+            }
+          },
+          "oos": {
+            "2·normal": {
+              "n": 861,
+              "avgMfeSigma": 0.587,
+              "avgMaeSigma": 0.648,
+              "netSigma": -0.061,
+              "reachedFullRR": 50.3,
+              "deltaVsBase": -0.004,
+              "holds": false
+            },
+            "3·wide": {
+              "n": 28,
+              "avgMfeSigma": 0.978,
+              "avgMaeSigma": 0.901,
+              "netSigma": 0.077,
+              "reachedFullRR": 46.4,
+              "deltaVsBase": 0.134,
+              "holds": false
+            }
+          }
+        },
+        "divAgree": {
+          "is": {
+            "0": {
+              "n": 1252,
+              "avgMfeSigma": 0.611,
+              "avgMaeSigma": 0.659,
+              "netSigma": -0.048,
+              "reachedFullRR": 50.6,
+              "deltaVsBase": 0.023,
+              "holds": false
+            },
+            "1": {
+              "n": 135,
+              "avgMfeSigma": 0.533,
+              "avgMaeSigma": 0.809,
+              "netSigma": -0.276,
+              "reachedFullRR": 45.2,
+              "deltaVsBase": -0.205,
+              "holds": false
+            },
+            "2": {
+              "n": 2,
+              "avgMfeSigma": 0.37,
+              "avgMaeSigma": 0.738,
+              "netSigma": -0.368,
+              "reachedFullRR": 50,
+              "deltaVsBase": -0.297,
+              "holds": false
+            }
+          },
+          "oos": {
+            "0": {
+              "n": 821,
+              "avgMfeSigma": 0.608,
+              "avgMaeSigma": 0.666,
+              "netSigma": -0.057,
+              "reachedFullRR": 50.1,
+              "deltaVsBase": 0,
+              "holds": false
+            },
+            "1": {
+              "n": 65,
+              "avgMfeSigma": 0.492,
+              "avgMaeSigma": 0.548,
+              "netSigma": -0.056,
+              "reachedFullRR": 50.8,
+              "deltaVsBase": 0.001,
+              "holds": false
+            },
+            "2": {
+              "n": 3,
+              "avgMfeSigma": 0.427,
+              "avgMaeSigma": 0.313,
+              "netSigma": 0.114,
+              "reachedFullRR": 66.7,
+              "deltaVsBase": 0.171,
+              "holds": false
+            }
+          }
+        }
+      }
+    }
+  }
+}
