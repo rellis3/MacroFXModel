@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap } from './levelAtlasVoteReview.js';
 import { summarizeTrades } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -437,7 +437,7 @@ export function mountLevelAtlasRoutes(app, express) {
 
   // GET /api/level-atlas/vote-portfolio?pairs=eurusd,gbpusd,gold,usdjpy,audusd
   //   &minMargin=3&maxConcurrent=1&perDirection=false&weighting=equal|inverse-vol
-  //   &sizing=nav|fixed-risk&riskPct=1
+  //   &sizing=nav|fixed-risk&riskPct=1&maxHeatPct=&targetVol=10
   // Combines MULTIPLE pairs' own vote-trades into ONE portfolio — reads the
   // SAME persisted trade lists `/vote-trades/:instrument` serves (no second
   // compute), applies `applyConcurrencyCap` per pair (the real, quantified
@@ -447,10 +447,10 @@ export function mountLevelAtlasRoutes(app, express) {
   // diversification story visible: each pair's own kept/skipped count,
   // weight, and standalone Sharpe, next to the combined number.
   //
-  // `sizing='nav'` (default) is the original NAV-split model: each pair gets
-  // a fixed fraction of capital (equal or inverse-vol) and its OWN raw price
-  // return (`pnlPct`) is scaled by that fraction. `sizing='fixed-risk'` is
-  // the forward-implementable alternative (2026-08-27): every trade, on
+  // `sizing='nav'` is the original NAV-split model: each pair gets a fixed
+  // fraction of capital (equal or inverse-vol) and its OWN raw price return
+  // (`pnlPct`) is scaled by that fraction. `sizing='fixed-risk'` (default,
+  // 2026-08-27) is the forward-implementable alternative: every trade, on
   // every pair, risks the SAME `riskPct` of account off its OWN stop
   // distance (`riskAdjustTrades`) — no NAV split needed, no need to know
   // trade count/frequency in advance, which a NAV split's weight fractions
@@ -458,6 +458,17 @@ export function mountLevelAtlasRoutes(app, express) {
   // rather than erroring — a stale UI param shouldn't 400) and every pair's
   // combine-weight is forced to 1 (trades already carry their real
   // risk-scaled outcome; a second NAV-style scale-down would double-dilute).
+  //
+  // `maxHeatPct` (fixed-risk mode only, optional) applies `applyPortfolioHeatCap`
+  // ACROSS pairs on top of each pair's own per-pair cap — the gap the
+  // per-pair cap alone leaves open: several different pairs firing at once,
+  // each independently risking `riskPct`, can silently stack simultaneous
+  // exposure well past any single trade's own risk. When set, the response
+  // ALSO includes `statsUncapped` (the same combined series without the
+  // cross-pair budget) so the impact is directly comparable, not just
+  // asserted. `targetVol` (default 10) is a real, adjustable dial on
+  // `portfolioStats`' vol-target scaling — NOT a cap on returns; setting it
+  // above the portfolio's own realized vol LEVERS UP instead of down.
   app.get('/api/level-atlas/vote-portfolio', async (req, res) => {
     try {
       const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'])
@@ -468,6 +479,8 @@ export function mountLevelAtlasRoutes(app, express) {
       const weighting = req.query.weighting === 'inverse-vol' ? 'inverse-vol' : 'equal';
       const sizing = req.query.sizing === 'fixed-risk' ? 'fixed-risk' : 'nav';
       const riskPct = req.query.riskPct ? Number(req.query.riskPct) : 1;
+      const maxHeatPct = (sizing === 'fixed-risk' && req.query.maxHeatPct) ? Number(req.query.maxHeatPct) : null;
+      const targetVol = req.query.targetVol ? Number(req.query.targetVol) : 10;
 
       const perPairTradesRaw = {}, perPair = {}, missing = [];
       for (const pair of pairs) {
@@ -491,13 +504,16 @@ export function mountLevelAtlasRoutes(app, express) {
       // both modes, so the client's R-multiples CSV never has to recompute
       // it (and can't be broken by pnlPct meaning different things per mode).
       // pnlPct itself only gets REPLACED by the risk-scaled figure in
-      // fixed-risk mode; nav mode keeps the original raw price-based %.
+      // fixed-risk mode; nav mode keeps the original raw price-based %. `pair`
+      // is tagged here (not just at the final trades[] step) so a cross-pair
+      // merge (`applyPortfolioHeatCap`) can still tell which pair a trade
+      // came from after flattening.
       const perPairTradesForStats = {};
       for (const sym of Object.keys(perPairTradesRaw)) {
         const adjusted = riskAdjustTrades(perPairTradesRaw[sym], riskPct);
-        perPairTradesForStats[sym] = sizing === 'fixed-risk'
-          ? adjusted
-          : perPairTradesRaw[sym].map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple }));
+        const withPair = (sizing === 'fixed-risk' ? adjusted : perPairTradesRaw[sym].map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple })))
+          .map(t => ({ ...t, pair: sym }));
+        perPairTradesForStats[sym] = withPair;
       }
 
       // ownSharpe MUST use the same daily-return-series Sharpe as the combined
@@ -507,17 +523,54 @@ export function mountLevelAtlasRoutes(app, express) {
       // (e.g. solo EURUSD: portfolioStats 3.19 vs summarizeTrades 2.42), so mixing
       // them in the "naive avg -> combined" callout made part of the apparent
       // diversification benefit a methodology switch, not real diversification.
-      // One Sharpe formula, used everywhere on this page.
+      // One Sharpe formula, used everywhere on this page. Deliberately computed
+      // from the PRE-heat-cap trade list — ownSharpe represents what a pair
+      // would achieve traded ALONE, unaffected by cross-pair capital
+      // competition, which is exactly what makes it the right "naive" baseline
+      // to compare the heat-capped combined result against.
       for (const sym of Object.keys(perPairTradesForStats)) {
         const solo = buildPortfolioDailySeries({ [sym]: perPairTradesForStats[sym] });
-        perPair[sym].ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false }).sharpe : null;
+        perPair[sym].ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false, targetVol }).sharpe : null;
+      }
+
+      // Cross-pair portfolio heat cap — applied AFTER each pair's own cap, on
+      // the merged, globally-chronological trade list. Only meaningful in
+      // fixed-risk mode (NAV mode's weight fractions already cap TOTAL
+      // exposure at 100% by construction, so there's no analogous stacking
+      // gap to close there).
+      let perPairTradesFinal = perPairTradesForStats;
+      let heatCap = null;
+      if (maxHeatPct) {
+        const heatResult = applyPortfolioHeatCap(perPairTradesForStats, { maxHeatPct });
+        if (heatResult) {
+          const byPair = {};
+          for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+          perPairTradesFinal = byPair;
+          heatCap = { maxHeatPct, skippedCount: heatResult.skippedCount, totalCount: heatResult.totalCount };
+          for (const sym of Object.keys(perPair)) {
+            perPair[sym].keptAfterHeat = byPair[sym]?.length ?? 0;
+          }
+        }
       }
 
       const weights = sizing === 'fixed-risk'
-        ? Object.fromEntries(Object.keys(perPairTradesForStats).map(p => [p, 1]))
-        : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTradesForStats) : null);
-      const combined = buildPortfolioDailySeries(perPairTradesForStats, weights ? { weights } : {});
-      const stats = portfolioStats(combined.dailyReturns, { mc: false });
+        ? Object.fromEntries(Object.keys(perPairTradesFinal).map(p => [p, 1]))
+        : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTradesFinal) : null);
+      const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
+      const stats = portfolioStats(combined.dailyReturns, { mc: false, targetVol });
+
+      // When a heat cap is active, also report what the SAME combined series
+      // would have looked like without it — the direct, side-by-side impact
+      // readout, not just an assertion that it helps.
+      let statsUncapped = null;
+      if (heatCap) {
+        const weightsUncapped = sizing === 'fixed-risk'
+          ? Object.fromEntries(Object.keys(perPairTradesForStats).map(p => [p, 1]))
+          : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTradesForStats) : null);
+        const combinedUncapped = buildPortfolioDailySeries(perPairTradesForStats, weightsUncapped ? { weights: weightsUncapped } : {});
+        statsUncapped = portfolioStats(combinedUncapped.dailyReturns, { mc: false, targetVol });
+      }
+
       const naiveAvgSharpe = (() => {
         const ss = Object.values(perPair).map(p => p.ownSharpe).filter(v => v != null);
         return ss.length ? +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(3) : null;
@@ -529,14 +582,14 @@ export function mountLevelAtlasRoutes(app, express) {
         perPair[sym].tradeShare = totalKept > 0 ? +(perPair[sym].kept / totalKept).toFixed(4) : 0;
       }
 
-      const trades = Object.entries(perPairTradesForStats).flatMap(([sym, list]) =>
-        list.map(t => ({ ...t, pair: sym, weight: perPair[sym].weight }))
+      const trades = Object.entries(perPairTradesFinal).flatMap(([sym, list]) =>
+        list.map(t => ({ ...t, weight: perPair[sym].weight }))
       ).sort((a, b) => a.time - b.time);
 
       res.json({
         ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
-        sizing, riskPct,
-        stats, naiveAvgSharpe, days: combined.dates.length,
+        sizing, riskPct, heatCap, targetVol,
+        stats, statsUncapped, naiveAvgSharpe, days: combined.dates.length,
         equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
         perPair, trades,
       });

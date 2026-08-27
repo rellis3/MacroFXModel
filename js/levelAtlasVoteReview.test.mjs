@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -399,6 +399,49 @@ function mkBook(dimSpecs) {
 
   const defaultRisk = riskAdjustTrades([winner]);
   ok('T14 default riskPct is 1', defaultRisk[0].pnlPct === 2, JSON.stringify(defaultRisk[0]));
+}
+
+// ── Test 15: applyConcurrencyCap's heatOf option ────────────────────────────
+{
+  // maxConcurrent=1 with default heatOf still behaves exactly as before (count-based).
+  const plain = applyConcurrencyCap(
+    [{ time: 0, resolveTime: 10, pnlPct: 1, date: 'a' }, { time: 5, resolveTime: 15, pnlPct: 1, date: 'b' }],
+    { maxConcurrent: 1 },
+  );
+  ok('T15 default heatOf=1 leaves count-based behaviour unchanged', plain.kept.length === 1 && plain.skipped.length === 1);
+
+  // A: [0,10) heat 0.5; B: [2,8) heat 0.5 (overlaps A, combined heat exactly 1.0 -> both fit);
+  // C: [3,12) heat 0.6 (overlaps A+B, combined open heat 1.0 + 0.6 = 1.6 -> skipped);
+  // D: [9,15) heat 0.4 (only A still open at t=9 since B resolved at 8 -> 0.5+0.4=0.9 -> kept).
+  const A = { time: 0, resolveTime: 10, heat: 0.5, date: 'A' };
+  const B = { time: 2, resolveTime: 8, heat: 0.5, date: 'B' };
+  const C = { time: 3, resolveTime: 12, heat: 0.6, date: 'C' };
+  const D = { time: 9, resolveTime: 15, heat: 0.4, date: 'D' };
+  const heat = applyConcurrencyCap([A, B, C, D], { maxConcurrent: 1, heatOf: t => t.heat });
+  ok('T15 weighted heat: A, B and D fit the 1.0 budget, C alone is skipped',
+     heat.kept.map(t => t.date).join(',') === 'A,B,D' && heat.skipped.map(t => t.date).join(',') === 'C',
+     JSON.stringify({ kept: heat.kept.map(t => t.date), skipped: heat.skipped.map(t => t.date) }));
+}
+
+// ── Test 16: applyPortfolioHeatCap ──────────────────────────────────────────
+{
+  // pairA's trade [0,10) and pairB's trade [2,8) overlap — each pair's OWN
+  // per-pair cap would pass both (one trade each), but combined they'd risk
+  // 2% at once, which a 1%-max portfolio heat cap must catch.
+  const pairA = [{ time: 0, resolveTime: 10, riskPctUsed: 1, pnlPct: 2, date: 'd1', pair: 'EURUSD' }];
+  const pairB = [{ time: 2, resolveTime: 8, riskPctUsed: 1, pnlPct: -1, date: 'd2', pair: 'GOLD' }];
+
+  const capped = applyPortfolioHeatCap({ EURUSD: pairA, GOLD: pairB }, { maxHeatPct: 1 });
+  ok('T16 1%-max heat cap keeps only the FIRST overlapping trade chronologically', capped.kept.length === 1 && capped.kept[0].pair === 'EURUSD', JSON.stringify(capped.kept));
+  ok('T16 skippedCount/totalCount are correct', capped.skippedCount === 1 && capped.totalCount === 2);
+
+  const wide = applyPortfolioHeatCap({ EURUSD: pairA, GOLD: pairB }, { maxHeatPct: 2 });
+  ok('T16 a 2%-max heat cap allows both overlapping 1% trades', wide.kept.length === 2);
+
+  ok('T16 empty/null input -> null, not a throw', applyPortfolioHeatCap({}) === null && applyPortfolioHeatCap(null) === null);
+
+  ok('T16 a trade with no riskPctUsed falls back to heat 1 (count-based)',
+     applyPortfolioHeatCap({ EURUSD: [{ time: 0, resolveTime: 10, pnlPct: 1, date: 'x' }] }, { maxHeatPct: 1 }).kept.length === 1);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

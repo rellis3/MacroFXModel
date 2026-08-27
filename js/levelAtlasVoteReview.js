@@ -475,21 +475,36 @@ function betDirection(t) {
  * Pure — does not touch `buildBarrierTrades`'s own output or re-derive
  * anything from touches/M1; operates only on the trade list already built.
  *
- *   applyConcurrencyCap(trades, { maxConcurrent, perDirection }) ->
+ * `heatOf(trade)` (2026-08-27) generalizes the budget from a plain POSITION
+ * COUNT to a summed HEAT — default `() => 1` makes `maxConcurrent` mean
+ * exactly what it always meant (an integer position count), unchanged for
+ * every existing caller. Passing a real per-trade risk fraction (e.g.
+ * `t.riskPctUsed` from `riskAdjustTrades`) turns this into a PORTFOLIO HEAT
+ * CAP — `maxConcurrent` then means "max % of account at risk at once" and
+ * a new trade is skipped if adding its own risk would exceed that budget,
+ * even if the position COUNT is small (one fat trade can use up the same
+ * budget as several thin ones). `applyPortfolioHeatCap` below is the
+ * intended entry point for that use — this function itself doesn't care
+ * whether "heat" means one thing or another, it just sums whatever
+ * `heatOf` returns.
+ *
+ *   applyConcurrencyCap(trades, { maxConcurrent, perDirection, heatOf }) ->
  *     { kept, skipped, skippedCount, totalCount, keptSummary: {...summarizeTrades} }
  */
-export function applyConcurrencyCap(trades, { maxConcurrent = 1, perDirection = false } = {}) {
+export function applyConcurrencyCap(trades, { maxConcurrent = 1, perDirection = false, heatOf = () => 1 } = {}) {
   if (!trades?.length) return null;
   const sorted = [...trades].sort((a, b) => a.time - b.time);
-  const openResolveTimes = perDirection ? { long: [], short: [] } : { all: [] };
+  const open = perDirection ? { long: [], short: [] } : { all: [] };
   const kept = [], skipped = [];
   for (const t of sorted) {
     const key = perDirection ? betDirection(t) : 'all';
     // Drop any tracked positions that have already resolved strictly before
     // this trade's own entry time — they're no longer occupying the budget.
-    openResolveTimes[key] = openResolveTimes[key].filter(rt => rt > t.time);
-    if (openResolveTimes[key].length < maxConcurrent) {
-      openResolveTimes[key].push(t.resolveTime);
+    open[key] = open[key].filter(p => p.resolveTime > t.time);
+    const openHeat = open[key].reduce((a, p) => a + p.heat, 0);
+    const thisHeat = heatOf(t);
+    if (openHeat + thisHeat <= maxConcurrent + 1e-9) {
+      open[key].push({ resolveTime: t.resolveTime, heat: thisHeat });
       kept.push(t);
     } else {
       skipped.push(t);
@@ -601,6 +616,33 @@ export function riskAdjustTrades(trades, riskPct = 1) {
   return (trades ?? []).map(t => {
     const stopRiskPct = t.stopPips * t.pip / t.entry * 100;
     const r = stopRiskPct > 1e-9 ? t.pnlPct / stopRiskPct : 0;
-    return { ...t, pnlPct: +(r * riskPct).toFixed(4), rMultiple: +r.toFixed(3) };
+    return { ...t, pnlPct: +(r * riskPct).toFixed(4), rMultiple: +r.toFixed(3), riskPctUsed: riskPct };
   });
+}
+
+/**
+ * Portfolio-level "heat" cap (Van Tharp's term) — the cross-PAIR sibling of
+ * `applyConcurrencyCap`'s per-pair cap. Each pair's own trades are ALREADY
+ * capped independently (one budget per instrument); this catches the gap
+ * that leaves open even after that: nothing stops 5 different pairs each
+ * having a live position at once, each independently risking its own
+ * `riskPctUsed` (from `riskAdjustTrades`), silently stacking to several
+ * times any single trade's risk. Merges every pair's trades into ONE
+ * chronological list and re-applies `applyConcurrencyCap` with `heatOf`
+ * summing REAL risk instead of counting positions — `maxHeatPct` directly
+ * means "never risk more than X% of account across every open position at
+ * once, regardless of which pairs they're on".
+ *
+ * A trade missing `riskPctUsed` (i.e. not run through `riskAdjustTrades` —
+ * NAV-split mode) falls back to heat 1 per trade, which only makes sense
+ * paired with a `maxHeatPct` expressed as a position count in that case;
+ * this function is really intended for fixed-risk-sized trades.
+ *
+ *   applyPortfolioHeatCap({ EURUSD: trades, GOLD: trades, ... }, { maxHeatPct }) ->
+ *     { kept, skipped, skippedCount, totalCount, keptSummary } | null
+ */
+export function applyPortfolioHeatCap(perPairTrades, { maxHeatPct = 3 } = {}) {
+  const merged = Object.values(perPairTrades ?? {}).flat();
+  if (!merged.length) return null;
+  return applyConcurrencyCap(merged, { maxConcurrent: maxHeatPct, heatOf: t => t.riskPctUsed ?? 1 });
 }

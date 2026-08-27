@@ -61,6 +61,11 @@
     </select></label>
     <label id="riskPctWrap">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
   </div>
+  <div class="controls">
+    <label id="heatCapWrap">Portfolio heat cap <input type="checkbox" id="heatCapChk">
+      <input type="number" id="maxHeatPctInput" value="2" step="0.5" min="0.5" style="width:55px" disabled></label>
+    <label>Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
+  </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
 
@@ -85,14 +90,20 @@
   </div>
 </div>
 
+<div class="card callout" id="heatCapCard" style="display:none">
+  <h2>Portfolio heat cap impact — same trades, with vs without the cross-pair budget</h2>
+  <div class="muted" style="margin-bottom:8px">Each pair already caps ITS OWN concurrent positions; this catches what that leaves open — several different pairs firing at once, each independently risking the same %, silently stacking simultaneous exposure. Real before/after, not an assumption.</div>
+  <div id="heatCapCompare" style="overflow-x:auto"></div>
+</div>
+
 <div class="card">
   <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
   <div class="kpi-grid" id="kpiRaw"></div>
 </div>
 
 <div class="card">
-  <h2>If levered to 10% target annual volatility</h2>
-  <div class="muted" style="margin-bottom:10px">Diversification smooths the ride; it doesn't by itself make more money — this shows what the SAME risk-adjusted profile looks like scaled to a chosen volatility target, a real portfolio-construction choice, not a free upgrade.</div>
+  <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
+  <div class="muted" style="margin-bottom:10px">This is a dial YOU set, not a cap the system imposes — it doesn't limit upside, it just shows what the SAME risk-adjusted profile looks like scaled to whatever volatility you're willing to run. Set it above the realized vol below to see leverage UP, not just down.</div>
   <div class="kpi-grid" id="kpiLevered"></div>
 </div>
 
@@ -151,12 +162,18 @@ const weightSel = document.getElementById('weightSel');
 const weightSelWrap = document.getElementById('weightSelWrap');
 const riskPctWrap = document.getElementById('riskPctWrap');
 const riskPctInput = document.getElementById('riskPctInput');
+const heatCapWrap = document.getElementById('heatCapWrap');
+const heatCapChk = document.getElementById('heatCapChk');
+const maxHeatPctInput = document.getElementById('maxHeatPctInput');
+const targetVolInput = document.getElementById('targetVolInput');
 const headerSub = document.getElementById('headerSub');
 
 function syncSizingUI() {
   const fixed = sizingSel.value === 'fixed-risk';
   weightSelWrap.style.display = fixed ? 'none' : '';
   riskPctWrap.style.display = fixed ? '' : 'none';
+  heatCapWrap.style.display = fixed ? '' : 'none';
+  maxHeatPctInput.disabled = !heatCapChk.checked;
 }
 syncSizingUI();
 
@@ -183,13 +200,14 @@ async function loadData() {
   const params = new URLSearchParams({
     pairs: pairs.join(','), minMargin: marginSel.value, maxConcurrent: capSel.value,
     perDirection: perDirChk.checked ? 'true' : 'false', weighting: weightSel.value,
-    sizing: sizingSel.value, riskPct: riskPctInput.value,
+    sizing: sizingSel.value, riskPct: riskPctInput.value, targetVol: targetVolInput.value,
   });
+  if (sizingSel.value === 'fixed-risk' && heatCapChk.checked) params.set('maxHeatPct', maxHeatPctInput.value);
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
-    const sizingDesc = j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)` : `${j.weighting} NAV weighting`;
+    const sizingDesc = j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`;
     headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     // Keep the CSV export panel's own risk% input in sync with the sizing
     // model's riskPct by default (fixed-risk mode) — same knob, avoids the
@@ -208,6 +226,25 @@ function render(j) {
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
 
+  const heatCard = document.getElementById('heatCapCard');
+  if (j.heatCap && j.statsUncapped) {
+    heatCard.style.display = '';
+    const u = j.statsUncapped;
+    const rows = [
+      ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
+      ['CAGR', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Max Drawdown', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Annualised Vol', fmt1(u.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Trades taken', j.heatCap.totalCount, j.heatCap.totalCount - j.heatCap.skippedCount],
+    ];
+    document.getElementById('heatCapCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without cap</th><th class="num">With ${j.heatCap.maxHeatPct}% cap</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">${j.heatCap.skippedCount} of ${j.heatCap.totalCount} trades (${fmt1(j.heatCap.skippedCount / j.heatCap.totalCount * 100)}%) skipped by the cross-pair budget.</div>`;
+  } else {
+    heatCard.style.display = 'none';
+  }
+
   document.getElementById('kpiRaw').innerHTML = [
     kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
     kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'compounded daily'),
@@ -220,6 +257,7 @@ function render(j) {
   ].join('');
 
   const vt = s.volTarget;
+  document.getElementById('targetVolLabel').textContent = vt.target;
   const scale = s.annVol > 0 ? vt.target / s.annVol : null;
   const leveredCards = [
     kpiCard('Target Vol', vt.target + '%', 'blue', 'the chosen scale'),
@@ -308,6 +346,9 @@ perDirChk.addEventListener('change', loadData);
 sizingSel.addEventListener('change', loadData);
 weightSel.addEventListener('change', loadData);
 riskPctInput.addEventListener('change', loadData);
+heatCapChk.addEventListener('change', loadData);
+maxHeatPctInput.addEventListener('change', loadData);
+targetVolInput.addEventListener('change', loadData);
 
 loadData();
 </script>
