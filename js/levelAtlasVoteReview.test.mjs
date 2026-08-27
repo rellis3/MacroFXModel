@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -302,6 +302,39 @@ function mkBook(dimSpecs) {
   ok('T11 a trade with no matching session date -> unmatched, excluded, not a throw', studyOrphan.n === 0 && studyOrphan.unmatched === 1);
 
   ok('T11 no trades / no packed data -> null, not a throw', runExitVariantStudy([], packed) === null && runExitVariantStudy([trade], null) === null);
+}
+
+// ── Test 12: applyConcurrencyCap — the answer to the concurrency finding
+// (346/622 EURUSD margin>=3 trading days have 2+ trades, 279 genuinely
+// overlap in time). Hand-verified timeline, T0 = arbitrary anchor:
+//   t1 (long,  T0     -> T0+100)
+//   t4 (short, T0+30  -> T0+80)   overlaps t1 in TIME, OPPOSITE direction
+//   t2 (long,  T0+50  -> T0+120)  overlaps t1 in TIME, SAME direction
+//   t3 (long,  T0+150 -> T0+200)  opens AFTER t1 has resolved — no overlap
+{
+  const T0 = 1700000000;
+  const t1 = { time: T0, resolveTime: T0 + 100, date: '2022-01-01', side: 'up', decision: 'follow', pnlPct: 0.10 };      // long
+  const t4 = { time: T0 + 30, resolveTime: T0 + 80, date: '2022-01-01', side: 'down', decision: 'follow', pnlPct: 0.05 }; // short
+  const t2 = { time: T0 + 50, resolveTime: T0 + 120, date: '2022-01-01', side: 'up', decision: 'follow', pnlPct: 0.20 }; // long
+  const t3 = { time: T0 + 150, resolveTime: T0 + 200, date: '2022-01-02', side: 'up', decision: 'follow', pnlPct: 0.15 }; // long
+
+  const capped = applyConcurrencyCap([t1, t2, t3, t4], { maxConcurrent: 1, perDirection: false });
+  ok('T12 maxConcurrent=1, global: keeps t1 (first) and t3 (opens after t1 resolved), skips t4/t2 (both overlap t1)',
+     capped.kept === capped.kept && capped.kept.map(t => t.pnlPct).sort().join(',') === [t1.pnlPct, t3.pnlPct].sort().join(','),
+     JSON.stringify({ kept: capped.kept.map(t => t.pnlPct), skipped: capped.skipped.map(t => t.pnlPct) }));
+  ok('T12 skippedCount/totalCount are correct', capped.skippedCount === 2 && capped.totalCount === 4);
+  ok('T12 keptSummary matches a plain summarizeTrades of the KEPT trades only', capped.keptSummary.trades === 2);
+
+  const perDir = applyConcurrencyCap([t1, t2, t3, t4], { maxConcurrent: 1, perDirection: true });
+  ok('T12 perDirection=true: t1 (long) and t4 (short) BOTH kept despite overlapping in time — separate budgets',
+     perDir.kept.some(t => t === t1) && perDir.kept.some(t => t === t4),
+     JSON.stringify(perDir.kept.map(t => t.pnlPct)));
+  ok('T12 perDirection=true: t2 (same direction as t1, still overlapping) is the ONLY one skipped', perDir.skippedCount === 1 && perDir.skipped[0] === t2);
+
+  const wider = applyConcurrencyCap([t1, t2, t3], { maxConcurrent: 2, perDirection: false });
+  ok('T12 maxConcurrent=2 allows t1 AND t2 to coexist (both long, both overlapping, but under the wider cap)', wider.skippedCount === 0 && wider.kept.length === 3, JSON.stringify({ kept: wider.kept.length, skipped: wider.skippedCount }));
+
+  ok('T12 no trades -> null, not a throw', applyConcurrencyCap([]) === null && applyConcurrencyCap(null) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

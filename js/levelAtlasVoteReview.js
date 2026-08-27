@@ -432,3 +432,70 @@ export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger
     ride: summarizeTrades(rows.map(r => r.ridePnl), dates),
   };
 }
+
+/**
+ * Which way a decided touch is actually BETTING, in market terms — needed
+ * because 'fade'/'follow' alone don't say: a fade on an up-touch bets DOWN,
+ * a follow on an up-touch bets UP, and the two other combinations mirror
+ * that. `applyConcurrencyCap`'s `perDirection` mode groups by this, not by
+ * raw side/decision, so a long and a short opened at the same moment are
+ * correctly treated as occupying SEPARATE risk budgets.
+ */
+function betDirection(t) {
+  const withSide = t.decision === 'follow';
+  const isUp = t.side === 'up';
+  return (withSide === isUp) ? 'long' : 'short';
+}
+
+/**
+ * Filters an already-built trade list (from `buildBarrierTrades`) down to
+ * what a REAL, capital-limited account could actually have taken — the
+ * concurrency finding this exists to answer: 346 of 622 EURUSD trading days
+ * (margin≥3) have 2+ trades, and 279 of those genuinely overlap in TIME (a
+ * second trade opens before the first resolves), which every Sharpe number
+ * reported so far silently assumes could run at full size simultaneously.
+ *
+ * At most `maxConcurrent` positions may be open at once; a later-arriving
+ * signal that would exceed the cap is SKIPPED, not merged or extended —
+ * merging into an already-open position (the "same-direction extend" idea)
+ * is a genuinely different, not-yet-built mechanism (it needs a re-walk past
+ * the original resolution point, the same kind of machinery
+ * `runExitVariantStudy` uses, and depends on a properly-tuned trail rule
+ * that study just showed isn't settled yet). This is deliberately the
+ * SIMPLER, more conservative answer first: how much of the reported edge
+ * survives if you just refuse the trades you couldn't actually have
+ * afforded, rather than assuming you can extend your way out of the
+ * conflict. `perDirection:true` tracks long and short exposure on SEPARATE
+ * budgets (a simultaneous long+short isn't the same capital conflict as two
+ * same-direction trades stacking); `perDirection:false` (default) caps
+ * TOTAL concurrent exposure regardless of direction — the more conservative
+ * of the two, appropriate as the default for a single account.
+ *
+ * Pure — does not touch `buildBarrierTrades`'s own output or re-derive
+ * anything from touches/M1; operates only on the trade list already built.
+ *
+ *   applyConcurrencyCap(trades, { maxConcurrent, perDirection }) ->
+ *     { kept, skipped, skippedCount, totalCount, keptSummary: {...summarizeTrades} }
+ */
+export function applyConcurrencyCap(trades, { maxConcurrent = 1, perDirection = false } = {}) {
+  if (!trades?.length) return null;
+  const sorted = [...trades].sort((a, b) => a.time - b.time);
+  const openResolveTimes = perDirection ? { long: [], short: [] } : { all: [] };
+  const kept = [], skipped = [];
+  for (const t of sorted) {
+    const key = perDirection ? betDirection(t) : 'all';
+    // Drop any tracked positions that have already resolved strictly before
+    // this trade's own entry time — they're no longer occupying the budget.
+    openResolveTimes[key] = openResolveTimes[key].filter(rt => rt > t.time);
+    if (openResolveTimes[key].length < maxConcurrent) {
+      openResolveTimes[key].push(t.resolveTime);
+      kept.push(t);
+    } else {
+      skipped.push(t);
+    }
+  }
+  return {
+    kept, skipped, skippedCount: skipped.length, totalCount: trades.length,
+    keptSummary: summarizeTrades(kept.map(t => t.pnlPct), kept.map(t => t.date)),
+  };
+}
