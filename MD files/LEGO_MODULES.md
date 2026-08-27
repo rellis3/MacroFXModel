@@ -2320,6 +2320,40 @@ USDJPY/GOLD, which show mixed signs for the same bucket at different rungs.
 Real, level-specific context; not evidence of a universal "fade near
 events" rule.
 
+**26-pair widen (2026-08-27, `scripts/run_asia_fib_atlas.mjs --headline`)** —
+the follow-up the house rule calls for ("prefer validating what exists over
+adding surface"): do the two cross-instrument headline findings above
+generalize past the original 4 USD-major pairs, or are they an artifact of
+that specific set? Ran the full local 26-pair M1 universe (every FX cross the
+parquet cache covers + gold, `ALL_26_PAIRS` in the script) through the same
+OOS-holding gate, one `(dimKey, bucket)` target per finding, and rolled the
+per-pair held-cell counts up into a single cross-pair verdict (script prints
+this rollup itself; also hand-verified by re-aggregating all 26 per-pair
+result lines independently, since the run had to be resumed pair-by-pair
+across three sandbox container restarts mid-run — matched the script's own
+rollup exactly). Result: **both findings generalize with no exceptions**:
+- **`prevOutcomeSameDay = 'out'` (same-day retest persistence)** — held on
+  **26/26 pairs**, **26/26 same-sign** (positive, i.e. continuation lift, on
+  every single one). Avg effect across held-pairs: **+29.4pp IS / +29.2pp
+  OOS** — actually slightly stronger on average than the original 4-pair
+  read, not weaker. Held-cell fraction ranges widely by pair (12/28 on
+  AUDNZD to 38/38 on GBPCHF) but every pair clears the bar on at least a
+  third of its cells, none at zero.
+- **`sessionHandoff = '5·ny-late-preasia'` (late-NY reversal)** — held on
+  **26/26 pairs**, **26/26 same-sign** (negative, i.e. reversion, on every
+  one). Avg effect across held-pairs: **-19.1pp IS / -21.2pp OOS**, in line
+  with the original 4-pair magnitude.
+
+This is the strongest cross-instrument result in this engine's book so far —
+not "holds on majors," holds on every pair the local cache has, USD-quoted or
+not (EUR/GBP/AUD crosses included), same sign, comparable magnitude. Still
+descriptive per the playbook's own §3.3 discipline (a reference book, not a
+signal search — no after-cost gate, no position sizing, no live wiring) — the
+widen raises confidence the *pattern* is real and general, it does not by
+itself make either finding tradeable. `node --check` passed before the run;
+`--headline` mode adds no engine changes, pure validation tooling
+(`scripts/run_asia_fib_atlas.mjs` only). PR #1345.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
