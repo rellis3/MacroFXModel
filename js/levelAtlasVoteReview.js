@@ -23,6 +23,7 @@
 import { matchLiveContext } from './levelAtlasReport.js';
 import { summarizeTrades } from './metricsCore.js';
 import { simulateExitVariants, bucketM1IntoSessions } from './forecastAnalyser.js';
+import { portfolioStats } from './backtestStats.js';
 
 /**
  * The vote-margin decision for one touch: how many of ITS OWN held
@@ -498,4 +499,82 @@ export function applyConcurrencyCap(trades, { maxConcurrent = 1, perDirection = 
     kept, skipped, skippedCount: skipped.length, totalCount: trades.length,
     keptSummary: summarizeTrades(kept.map(t => t.pnlPct), kept.map(t => t.date)),
   };
+}
+
+// One pair's own daily-summed return series — the SAME convention
+// perLineStrategy.js's own (module-local, unexported) dailySeries already
+// uses: sum a day's trades' pnlPct into ONE observation, so a day with
+// multiple resolving trades isn't double-counted as multiple independent
+// periods (the exact reasoning runBarrierWalkForward's daily Sharpe already
+// applies to one pair — this is the same idea one level up, across pairs).
+function dailySeriesFor(trades) {
+  const m = new Map();
+  for (const t of trades ?? []) m.set(t.date, (m.get(t.date) ?? 0) + t.pnlPct);
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+/**
+ * Combines MULTIPLE pairs' own (already-selected — e.g. minMargin +
+ * `applyConcurrencyCap`) trade lists into ONE portfolio daily return series.
+ * Does NOT decide the weighting policy itself — `weights` (a plain
+ * {pair: fraction} map) is the caller's call; omit it for the simplest,
+ * most transparent "split capital evenly across pairs" model (1/n each), or
+ * pass `inverseVolWeights`' output for a risk-parity blend (this project's
+ * own Multi-Factor Book/Position Sizer already size by vol for exactly this
+ * reason — "same $ risk regardless of the pair's own volatility", not
+ * invented here). A pair missing from `weights` defaults to 0 (excluded,
+ * not an error) so a caller can pass a superset of trade lists and select
+ * which ones count via `weights` without re-filtering the input.
+ *
+ * Feed the result into `js/backtestStats.js`'s `portfolioStats` for the
+ * honest daily-aggregated Sharpe/CAGR/maxDD — same brick every other daily
+ * series in this module already uses, not a new metric.
+ *
+ *   buildPortfolioDailySeries({ EURUSD: trades, GOLD: trades, ... }, { weights }) ->
+ *     { dailyReturns, dates, byPair: {[pair]: {trades, weight}} }
+ */
+export function buildPortfolioDailySeries(perPairTrades, { weights = null } = {}) {
+  const pairs = Object.keys(perPairTrades ?? {});
+  if (!pairs.length) return null;
+  const w = weights ?? Object.fromEntries(pairs.map(p => [p, 1 / pairs.length]));
+
+  const byDate = new Map();
+  const byPair = {};
+  for (const pair of pairs) {
+    const trades = perPairTrades[pair] ?? [];
+    const weight = w[pair] ?? 0;
+    byPair[pair] = { trades: trades.length, weight };
+    for (const [date, pnl] of dailySeriesFor(trades)) {
+      byDate.set(date, (byDate.get(date) ?? 0) + pnl * weight);
+    }
+  }
+  const dates = [...byDate.keys()].sort();
+  return { dailyReturns: dates.map(d => +byDate.get(d).toFixed(4)), dates, byPair };
+}
+
+/**
+ * Inverse-realized-vol weights across pairs — same $ risk regardless of a
+ * pair's own volatility, the SAME sizing convention this project's
+ * Multi-Factor Book/Position Sizer already use, not a new model. Uses each
+ * pair's OWN daily-summed return series' stdev as the vol proxy — the SAME
+ * series `buildPortfolioDailySeries` will combine, so weights and the
+ * series they're applied to are always measuring the same thing. A pair
+ * with ~zero variance (a degenerate/near-empty trade list) gets weight 0
+ * rather than an infinite inverse — excluded, not a divide-by-zero.
+ *
+ *   inverseVolWeights({ EURUSD: trades, ... }) -> { EURUSD: fraction, ... } (sums to 1) | null
+ */
+export function inverseVolWeights(perPairTrades) {
+  const pairs = Object.keys(perPairTrades ?? {});
+  if (!pairs.length) return null;
+  const vols = {};
+  for (const pair of pairs) {
+    const series = dailySeriesFor(perPairTrades[pair]).map(([, pnl]) => pnl);
+    const m = series.length ? series.reduce((a, b) => a + b, 0) / series.length : 0;
+    const variance = series.length ? series.reduce((a, b) => a + (b - m) ** 2, 0) / series.length : 0;
+    vols[pair] = Math.sqrt(variance);
+  }
+  const invVols = Object.fromEntries(pairs.map(p => [p, vols[p] > 1e-9 ? 1 / vols[p] : 0]));
+  const total = Object.values(invVols).reduce((a, b) => a + b, 0);
+  return total > 0 ? Object.fromEntries(pairs.map(p => [p, +(invVols[p] / total).toFixed(4)])) : null;
 }

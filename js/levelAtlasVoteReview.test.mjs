@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -335,6 +335,45 @@ function mkBook(dimSpecs) {
   ok('T12 maxConcurrent=2 allows t1 AND t2 to coexist (both long, both overlapping, but under the wider cap)', wider.skippedCount === 0 && wider.kept.length === 3, JSON.stringify({ kept: wider.kept.length, skipped: wider.skippedCount }));
 
   ok('T12 no trades -> null, not a throw', applyConcurrencyCap([]) === null && applyConcurrencyCap(null) === null);
+}
+
+// ── Test 13: buildPortfolioDailySeries / inverseVolWeights ─────────────────
+{
+  const pairA = [{ date: '2022-01-01', pnlPct: 1.0 }, { date: '2022-01-03', pnlPct: 2.0 }];
+  const pairB = [{ date: '2022-01-02', pnlPct: 4.0 }];
+
+  const eq = buildPortfolioDailySeries({ pairA, pairB });
+  ok('T13 equal weight (default): non-overlapping dates each just scaled by 1/n',
+     JSON.stringify(eq.dates) === JSON.stringify(['2022-01-01', '2022-01-02', '2022-01-03']) &&
+     JSON.stringify(eq.dailyReturns) === JSON.stringify([0.5, 2.0, 1.0]),
+     JSON.stringify(eq));
+  ok('T13 byPair reports each pair\'s own trade count and the weight actually used', eq.byPair.pairA.trades === 2 && eq.byPair.pairA.weight === 0.5 && eq.byPair.pairB.weight === 0.5);
+
+  const sameDay = buildPortfolioDailySeries({ pairA: [{ date: 'd1', pnlPct: 1.0 }], pairB: [{ date: 'd1', pnlPct: 3.0 }] });
+  ok('T13 two pairs firing the SAME day: contributions sum on that date', sameDay.dailyReturns[0] === 2.0, JSON.stringify(sameDay));
+
+  const custom = buildPortfolioDailySeries({ pairA: [{ date: 'd1', pnlPct: 1.0 }], pairB: [{ date: 'd1', pnlPct: 1.0 }] }, { weights: { pairA: 0.8, pairB: 0.2 } });
+  ok('T13 custom weights apply correctly (0.8x1 + 0.2x1 = 1.0)', Math.abs(custom.dailyReturns[0] - 1.0) < 1e-9, JSON.stringify(custom));
+
+  const missingWeight = buildPortfolioDailySeries({ pairA: [{ date: 'd1', pnlPct: 2 }], pairB: [{ date: 'd1', pnlPct: 100 }] }, { weights: { pairA: 1.0 } });
+  ok('T13 a pair missing from weights defaults to 0 (excluded), not an error', missingWeight.dailyReturns[0] === 2.0 && missingWeight.byPair.pairB.weight === 0, JSON.stringify(missingWeight));
+
+  const sameDaySameP = buildPortfolioDailySeries({ pairA: [{ date: 'd1', pnlPct: 1 }, { date: 'd1', pnlPct: 2 }] }, { weights: { pairA: 1 } });
+  ok('T13 same-pair same-day trades are summed FIRST, then weighted (1+2=3, not counted as two separate 1x and 2x periods)', sameDaySameP.dailyReturns[0] === 3 && sameDaySameP.dates.length === 1, JSON.stringify(sameDaySameP));
+
+  ok('T13 empty input -> null, not a throw', buildPortfolioDailySeries({}) === null && buildPortfolioDailySeries(null) === null);
+
+  // Inverse-vol weights: pairA has big swings, pairB is much steadier -> pairB gets the bigger weight.
+  const volatile = Array.from({ length: 10 }, (_, i) => ({ date: `2022-01-${String(i + 1).padStart(2, '0')}`, pnlPct: i % 2 === 0 ? 5 : -5 }));
+  const steady = Array.from({ length: 10 }, (_, i) => ({ date: `2022-01-${String(i + 1).padStart(2, '0')}`, pnlPct: i % 2 === 0 ? 0.5 : -0.5 }));
+  const ivw = inverseVolWeights({ volatile, steady });
+  ok('T13 inverseVolWeights gives the STEADIER pair the bigger weight', ivw.steady > ivw.volatile, JSON.stringify(ivw));
+  ok('T13 inverseVolWeights sum to ~1', Math.abs(ivw.volatile + ivw.steady - 1) < 1e-3, JSON.stringify(ivw));
+
+  const zeroVol = inverseVolWeights({ flat: [{ date: 'd1', pnlPct: 1 }, { date: 'd2', pnlPct: 1 }], volatile });
+  ok('T13 a zero-variance pair gets weight 0 rather than a divide-by-zero blowup', zeroVol.flat === 0 && zeroVol.volatile === 1, JSON.stringify(zeroVol));
+
+  ok('T13 inverseVolWeights empty input -> null, not a throw', inverseVolWeights({}) === null && inverseVolWeights(null) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);
