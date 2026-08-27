@@ -66,6 +66,12 @@
       <input type="number" id="maxHeatPctInput" value="2" step="0.5" min="0.5" style="width:55px" disabled></label>
     <label>Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
   </div>
+  <div class="controls">
+    <label>Drawdown throttle <input type="checkbox" id="throttleChk"></label>
+    <label>Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
+    <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
+    <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+  </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
 
@@ -94,6 +100,12 @@
   <h2>Portfolio heat cap impact — same trades, with vs without the cross-pair budget</h2>
   <div class="muted" style="margin-bottom:8px">Each pair already caps ITS OWN concurrent positions; this catches what that leaves open — several different pairs firing at once, each independently risking the same %, silently stacking simultaneous exposure. Real before/after, not an assumption.</div>
   <div id="heatCapCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="throttleCard" style="display:none">
+  <h2>Drawdown throttle impact — same trades, with vs without de-risking in a drawdown</h2>
+  <div class="muted" style="margin-bottom:8px">Cuts risk-per-trade to a fraction once the portfolio's OWN equity curve breaches a drawdown threshold, restores once it recovers — targets a sustained losing STRETCH over time, which the heat cap above was shown NOT to fix.</div>
+  <div id="throttleCompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card">
@@ -166,6 +178,10 @@ const heatCapWrap = document.getElementById('heatCapWrap');
 const heatCapChk = document.getElementById('heatCapChk');
 const maxHeatPctInput = document.getElementById('maxHeatPctInput');
 const targetVolInput = document.getElementById('targetVolInput');
+const throttleChk = document.getElementById('throttleChk');
+const triggerDDInput = document.getElementById('triggerDDInput');
+const restoreDDInput = document.getElementById('restoreDDInput');
+const throttleMultInput = document.getElementById('throttleMultInput');
 const headerSub = document.getElementById('headerSub');
 
 function syncSizingUI() {
@@ -174,6 +190,10 @@ function syncSizingUI() {
   riskPctWrap.style.display = fixed ? '' : 'none';
   heatCapWrap.style.display = fixed ? '' : 'none';
   maxHeatPctInput.disabled = !heatCapChk.checked;
+  const throttleOn = throttleChk.checked;
+  triggerDDInput.disabled = !throttleOn;
+  restoreDDInput.disabled = !throttleOn;
+  throttleMultInput.disabled = !throttleOn;
 }
 syncSizingUI();
 
@@ -203,11 +223,18 @@ async function loadData() {
     sizing: sizingSel.value, riskPct: riskPctInput.value, targetVol: targetVolInput.value,
   });
   if (sizingSel.value === 'fixed-risk' && heatCapChk.checked) params.set('maxHeatPct', maxHeatPctInput.value);
+  if (throttleChk.checked) {
+    params.set('throttle', 'true');
+    params.set('triggerDD', triggerDDInput.value);
+    params.set('restoreDD', restoreDDInput.value);
+    params.set('throttleMult', throttleMultInput.value);
+  }
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
-    const sizingDesc = j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`;
+    const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
+      + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
     headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     // Keep the CSV export panel's own risk% input in sync with the sizing
     // model's riskPct by default (fixed-risk mode) — same knob, avoids the
@@ -243,6 +270,25 @@ function render(j) {
       <div class="muted" style="margin-top:8px">${j.heatCap.skippedCount} of ${j.heatCap.totalCount} trades (${fmt1(j.heatCap.skippedCount / j.heatCap.totalCount * 100)}%) skipped by the cross-pair budget.</div>`;
   } else {
     heatCard.style.display = 'none';
+  }
+
+  const throttleCard = document.getElementById('throttleCard');
+  if (j.throttle && j.statsNoThrottle) {
+    throttleCard.style.display = '';
+    const n = j.statsNoThrottle;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Max Drawdown', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Calmar', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+    ];
+    document.getElementById('throttleCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without throttle</th><th class="num">With throttle</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Throttled on ${j.throttle.daysThrottled} of ${j.throttle.totalDays} portfolio trading days (${fmt1(j.throttle.daysThrottled / j.throttle.totalDays * 100)}%) — de-risked to ${j.throttle.throttleMult}× below ${j.throttle.triggerDD}% drawdown, restored above ${j.throttle.restoreDD}%.</div>`;
+  } else {
+    throttleCard.style.display = 'none';
   }
 
   document.getElementById('kpiRaw').innerHTML = [
@@ -349,6 +395,10 @@ riskPctInput.addEventListener('change', loadData);
 heatCapChk.addEventListener('change', loadData);
 maxHeatPctInput.addEventListener('change', loadData);
 targetVolInput.addEventListener('change', loadData);
+throttleChk.addEventListener('change', loadData);
+triggerDDInput.addEventListener('change', loadData);
+restoreDDInput.addEventListener('change', loadData);
+throttleMultInput.addEventListener('change', loadData);
 
 loadData();
 </script>

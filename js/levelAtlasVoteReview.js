@@ -646,3 +646,51 @@ export function applyPortfolioHeatCap(perPairTrades, { maxHeatPct = 3 } = {}) {
   if (!merged.length) return null;
   return applyConcurrencyCap(merged, { maxConcurrent: maxHeatPct, heatOf: t => t.riskPctUsed ?? 1 });
 }
+
+/**
+ * Drawdown throttle — reduces risk after the STRATEGY'S OWN realized equity
+ * curve breaches a drawdown threshold, restores it once equity recovers.
+ * Built specifically because `applyPortfolioHeatCap` (a cap on SIMULTANEOUS
+ * exposure) was shown, on real data, to barely dent the portfolio's actual
+ * worst drawdown — that drawdown turned out to be a 19-day, correlated
+ * losing STRETCH across pairs (win rate 45.5% vs 58.9% overall), not a
+ * pile-up of concurrent positions at one moment (see LEGO_MODULES.md). A
+ * cap on concurrency can't fix a sequential-losses problem; this responds
+ * to the pain directly, the way a real trader (or CTA risk desk) would.
+ *
+ * Strictly causal: the multiplier applied to day `i`'s return is decided
+ * from the equity/peak built from days `0..i-1` ONLY (using the ALREADY-
+ * THROTTLED path, since that's the equity a real account would actually
+ * have) — day i's own return can never influence its own sizing. Operates
+ * on the ALREADY-COMBINED portfolio daily series (not individual trades):
+ * since every trade's pnlPct already scales linearly with its own risk% via
+ * `riskAdjustTrades`, scaling a day's SUMMED return by a scalar is
+ * mathematically identical to having risk-adjusted every trade that day
+ * with `riskPct × multiplier` in the first place — no need to re-touch
+ * individual trades.
+ *
+ * `restoreDD` (default 0 — a literal new equity high) is deliberately a
+ * LESS-negative threshold than `triggerDD` (hysteresis) — restoring at the
+ * same level the trigger fired would flip-flop the multiplier on ordinary
+ * day-to-day noise near the boundary.
+ *
+ *   applyDrawdownThrottle(dailyReturns, dates, { triggerDD, restoreDD, throttleMult }) ->
+ *     { dailyReturns, dates, state: [{date, throttled, mult, ddAtDecision}] } | null
+ */
+export function applyDrawdownThrottle(dailyReturns, dates, { triggerDD = -5, restoreDD = 0, throttleMult = 0.5 } = {}) {
+  if (!dailyReturns?.length) return null;
+  let equity = 1, peak = 1, throttled = false;
+  const scaled = [], state = [];
+  for (let i = 0; i < dailyReturns.length; i++) {
+    const ddNow = (equity - peak) / peak * 100;
+    if (!throttled && ddNow <= triggerDD) throttled = true;
+    else if (throttled && ddNow >= restoreDD) throttled = false;
+    const mult = throttled ? throttleMult : 1;
+    const r = dailyReturns[i] * mult;
+    scaled.push(+r.toFixed(4));
+    equity *= (1 + r / 100);
+    if (equity > peak) peak = equity;
+    state.push({ date: dates[i], throttled, mult, ddAtDecision: +ddNow.toFixed(2) });
+  }
+  return { dailyReturns: scaled, dates, state };
+}

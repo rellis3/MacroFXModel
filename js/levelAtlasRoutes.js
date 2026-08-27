@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle } from './levelAtlasVoteReview.js';
 import { summarizeTrades } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -553,22 +553,51 @@ export function mountLevelAtlasRoutes(app, express) {
         }
       }
 
-      const weights = sizing === 'fixed-risk'
-        ? Object.fromEntries(Object.keys(perPairTradesFinal).map(p => [p, 1]))
-        : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTradesFinal) : null);
-      const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
-      const stats = portfolioStats(combined.dailyReturns, { mc: false, targetVol });
+      const buildWeights = perPairTrades => sizing === 'fixed-risk'
+        ? Object.fromEntries(Object.keys(perPairTrades).map(p => [p, 1]))
+        : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null);
 
-      // When a heat cap is active, also report what the SAME combined series
-      // would have looked like without it — the direct, side-by-side impact
-      // readout, not just an assertion that it helps.
+      const weights = buildWeights(perPairTradesFinal);
+      const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
+      const statsBeforeThrottle = portfolioStats(combined.dailyReturns, { mc: false, targetVol });
+
+      // Drawdown throttle — de-risks after the STRATEGY'S OWN realized equity
+      // breaches `triggerDD`, restores once it recovers to `restoreDD`. Built
+      // to target what `maxHeatPct` (a cap on SIMULTANEOUS exposure) was
+      // tested and shown NOT to fix: the portfolio's real worst drawdown was
+      // a sustained, correlated losing STRETCH over time, not a pile-up of
+      // concurrent positions. Applied on the FINAL (post-heat-cap) combined
+      // series — the two features compose rather than compete.
+      const throttleOn = req.query.throttle === 'true';
+      const triggerDD = req.query.triggerDD ? Number(req.query.triggerDD) : -5;
+      const restoreDD = req.query.restoreDD ? Number(req.query.restoreDD) : 0;
+      const throttleMult = req.query.throttleMult ? Number(req.query.throttleMult) : 0.5;
+      let throttle = null, dailyReturnsFinal = combined.dailyReturns, datesFinal = combined.dates;
+      let stats = statsBeforeThrottle, statsNoThrottle = null;
+      if (throttleOn) {
+        const tr = applyDrawdownThrottle(combined.dailyReturns, combined.dates, { triggerDD, restoreDD, throttleMult });
+        if (tr) {
+          dailyReturnsFinal = tr.dailyReturns;
+          stats = portfolioStats(dailyReturnsFinal, { mc: false, targetVol });
+          statsNoThrottle = statsBeforeThrottle;
+          throttle = { triggerDD, restoreDD, throttleMult, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
+        }
+      }
+
+      // When a heat cap is active, also report what the SAME series would
+      // have looked like without it (throttle setting held CONSTANT, so this
+      // isolates the heat cap's own marginal effect) — a direct, side-by-side
+      // impact readout, not just an assertion that it helps.
       let statsUncapped = null;
       if (heatCap) {
-        const weightsUncapped = sizing === 'fixed-risk'
-          ? Object.fromEntries(Object.keys(perPairTradesForStats).map(p => [p, 1]))
-          : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTradesForStats) : null);
+        const weightsUncapped = buildWeights(perPairTradesForStats);
         const combinedUncapped = buildPortfolioDailySeries(perPairTradesForStats, weightsUncapped ? { weights: weightsUncapped } : {});
-        statsUncapped = portfolioStats(combinedUncapped.dailyReturns, { mc: false, targetVol });
+        let uncappedReturns = combinedUncapped.dailyReturns;
+        if (throttleOn) {
+          const trU = applyDrawdownThrottle(uncappedReturns, combinedUncapped.dates, { triggerDD, restoreDD, throttleMult });
+          if (trU) uncappedReturns = trU.dailyReturns;
+        }
+        statsUncapped = portfolioStats(uncappedReturns, { mc: false, targetVol });
       }
 
       const naiveAvgSharpe = (() => {
@@ -588,9 +617,9 @@ export function mountLevelAtlasRoutes(app, express) {
 
       res.json({
         ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
-        sizing, riskPct, heatCap, targetVol,
-        stats, statsUncapped, naiveAvgSharpe, days: combined.dates.length,
-        equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
+        sizing, riskPct, heatCap, targetVol, throttle,
+        stats, statsUncapped, statsNoThrottle, naiveAvgSharpe, days: datesFinal.length,
+        equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,
       });
     } catch (e) {

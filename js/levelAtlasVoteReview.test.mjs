@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -442,6 +442,46 @@ function mkBook(dimSpecs) {
 
   ok('T16 a trade with no riskPctUsed falls back to heat 1 (count-based)',
      applyPortfolioHeatCap({ EURUSD: [{ time: 0, resolveTime: 10, pnlPct: 1, date: 'x' }] }, { maxHeatPct: 1 }).kept.length === 1);
+}
+
+// ── Test 17: applyDrawdownThrottle ──────────────────────────────────────────
+{
+  // Hand-derived scenario, default params (trigger -5%, restore 0%, mult 0.5x):
+  // A +10% -> equity 1.10, peak 1.10, dd was 0 -> not triggered.
+  // B  -8% -> equity 1.012, peak stays 1.10, dd was 0 (pre-B) -> not triggered.
+  // C  -6% -> dd BEFORE C = (1.012-1.10)/1.10*100 = -8.0% <= -5 -> TRIGGERS now;
+  //           this day's own return IS throttled (0.5x) -> scaled -3%, equity 0.98164.
+  // D +20% -> dd before = -10.76%, still throttled -> scaled +10%, equity 1.079804.
+  // E  +4% -> dd before = -1.836%, still throttled (not yet a new high) -> scaled +2%,
+  //           equity 1.1014000..., which IS a new high (>1.10) -> peak updates to it.
+  // F  +3% -> dd before = 0% (AT the new peak) -> restores (>=0) -> mult back to 1x -> scaled +3%.
+  const dates = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const raw = [10, -8, -6, 20, 4, 3];
+  const r = applyDrawdownThrottle(raw, dates);
+  ok('T17 multiplier sequence matches the hand-derived trigger/restore timeline',
+     JSON.stringify(r.state.map(s => s.mult)) === JSON.stringify([1, 1, 0.5, 0.5, 0.5, 1]),
+     JSON.stringify(r.state.map(s => s.mult)));
+  ok('T17 throttled boolean sequence', JSON.stringify(r.state.map(s => s.throttled)) === JSON.stringify([false, false, true, true, true, false]));
+  ok('T17 scaled daily returns match (raw × that day\'s multiplier)', JSON.stringify(r.dailyReturns) === JSON.stringify([10, -8, -3, 10, 2, 3]), JSON.stringify(r.dailyReturns));
+  ok('T17 the trade\'s OWN day return never influences its OWN multiplier (C is throttled using B\'s outcome, not C\'s)', r.state[2].mult === 0.5);
+
+  // Cross-check: recompounding the function's OWN output reproduces the equity
+  // path it internally used to make its decisions (self-consistency, same
+  // discipline as runExitVariantStudy's crossCheck).
+  let eq = 1;
+  for (const d of r.dailyReturns) eq *= (1 + d / 100);
+  ok('T17 recompounding the output matches the hand-derived final equity (~1.13444)', Math.abs(eq - 1.13444208) < 1e-4, eq);
+
+  // A strategy that never draws down 5% should never throttle at all.
+  const noTrigger = applyDrawdownThrottle([1, 1, -1, 1, -2, 1], dates);
+  ok('T17 a drawdown that never breaches the trigger never throttles', noTrigger.state.every(s => !s.throttled && s.mult === 1));
+
+  // Custom params: a tighter trigger (-2%) and a stricter restore (must get
+  // all the way back to +1% above the OLD peak, not just to breakeven).
+  const custom = applyDrawdownThrottle([0, -3, -3, 5, 5], dates.slice(0, 5), { triggerDD: -2, restoreDD: 1, throttleMult: 0.25 });
+  ok('T17 custom triggerDD/restoreDD/throttleMult are honoured (tighter trigger fires sooner)', custom.state[2].throttled === true);
+
+  ok('T17 empty/null input -> null, not a throw', applyDrawdownThrottle([], []) === null && applyDrawdownThrottle(null, null) === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);
