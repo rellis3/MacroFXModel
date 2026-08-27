@@ -13367,11 +13367,27 @@ function _oiBotStabilityChange(hist, key) {
 // summaries). Anchors the planner's GEX neutral band + conviction sizing — the raw
 // sign of net GEX flips on noise around zero; the median gives "is today's |GEX|
 // big FOR THIS BOOK". null when history is too thin (< 5 days) — band stays off.
-function _oiGexMedianAbs(hist, key) {
+// Trailing median |net GEX| for a pair — the scale the planner's conviction ratio is
+// measured against. `useDay` picks the series that matches the book actually being
+// planned: the producer trades the near-dated day expiry when one exists, and a day
+// expiry's GEX is structurally far smaller than the primary's, so dividing one by a
+// median of the other is a category error, not a conservative estimate. Measured
+// 2026-08-27: gold read 0.11x (3.1M day GEX over a 27.5M PRIMARY median) and was forced
+// NEUTRAL with zero zones, while NQ read 2.42x and took the maximum size boost. Against
+// their own day-expiry medians those become 0.17x and 0.88x.
+//
+// Caveat kept deliberately: the day-expiry DTE varies day to day (gold's last eight were
+// 1,1,5,5,3,2,1,2) and a 5-DTE book carries more gamma than a 1-DTE one, so this median
+// still mixes horizons. Bucketing by DTE needs far more history than eight days.
+function _oiGexMedianAbs(hist, key, useDay = false) {
   const pk = _oiHistPairKey(hist, key);
   if (!pk) return null;
-  const vals = Object.keys(hist[pk]).sort().slice(-20)
-    .map(d => hist[pk][d]?.gex).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
+  const dates = Object.keys(hist[pk]).sort().slice(-20);
+  const pick = f => dates.map(d => f(hist[pk][d])).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
+  let vals = useDay ? pick(r => r?.dayExpiryGex) : [];
+  // Fall back to the primary series when the day series is too sparse to be a median —
+  // an older archive, or a stretch of single-expiry pastes.
+  if (vals.length < 5) vals = pick(r => r?.gex);
   if (vals.length < 5) return null;
   const mid = Math.floor(vals.length / 2);
   return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
@@ -13494,7 +13510,7 @@ async function _refreshOIBotZones() {
           return { active: false, note: `charm: ${cDte.toFixed(1)}DTE is not near expiry (charm is negligible past ~${nearDTE}DTE) — not applied` };
         return { active: true, note: `charm from the ${cDte.toFixed(1)}DTE smile (matches the traded expiry)` };
       })();
-      const gexMedianAbs = _oiGexMedianAbs(hist, key);
+      const gexMedianAbs = _oiGexMedianAbs(hist, key, !!dayEx);   // match the book being planned
       const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
       const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
         gexMedianAbs, holdWeights, collectDrops: droppedZones,
