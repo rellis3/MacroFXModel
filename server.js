@@ -13336,9 +13336,24 @@ const OI_BOT_CFG_DEFAULTS = {
   volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
   holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
 };
-function _oiBotStabilityChange(hist, key) {
+// Find a pair's row in `oi_history`. The archive is keyed by oi_store's pair NAMES
+// ('XAU/USD', 'NAS100_USD') while every caller here holds a registry KEY from resolveKey
+// ('gold', 'nq'). Matching by lowercase-and-strip-punctuation only ever worked for the FX
+// pairs, where the two happen to coincide: norm('EUR/USD') === 'eurusd' matches, but
+// norm('XAU/USD') === 'xauusd' never equals 'gold'. So gold and all four indices silently
+// had NO day-over-day data — no gexMedianAbs (conviction sizing and the GEX neutral band
+// off), no classifyOIChange (avoidLiquidating unable to veto, hold-score missing its flow
+// component) — regardless of how much history was archived. Resolve BOTH sides through the
+// registry, and keep the string compare as the fallback for anything unregistered.
+function _oiHistPairKey(hist, key) {
   const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
-  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+  const rk = x => { try { return resolveKey(x) || null; } catch { return null; } };
+  const want = rk(key) || norm(key);
+  const keys = Object.keys(hist || {});
+  return keys.find(k => (rk(k) || norm(k)) === want) ?? keys.find(k => norm(k) === norm(key)) ?? null;
+}
+function _oiBotStabilityChange(hist, key) {
+  const pk = _oiHistPairKey(hist, key);
   if (!pk) return { stability: null, change: null };
   const perPair = hist[pk], dates = Object.keys(perPair).sort();
   const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
@@ -13353,8 +13368,7 @@ function _oiBotStabilityChange(hist, key) {
 // sign of net GEX flips on noise around zero; the median gives "is today's |GEX|
 // big FOR THIS BOOK". null when history is too thin (< 5 days) — band stays off.
 function _oiGexMedianAbs(hist, key) {
-  const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
-  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+  const pk = _oiHistPairKey(hist, key);
   if (!pk) return null;
   const vals = Object.keys(hist[pk]).sort().slice(-20)
     .map(d => hist[pk][d]?.gex).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
