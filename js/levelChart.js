@@ -69,6 +69,16 @@ export const KIND_STYLE = {
   voteEntry:   { color: '#94a3b8', lineStyle: LINE_STYLE.Dashed, lineWidth: 1 },
   voteTarget:  { color: '#10b981', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
   voteStop:    { color: '#f87171', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  // Asia Fib Atlas live page (asia-fib-atlas-live.html) — confidence-colored
+  // fib-extension rungs. "Strong" = the rung's OOS base rate agrees with IS
+  // (matchLiveContext's `sameSignOOS`); "weak" = IS-only or neutral lean.
+  // "out"/continuation vs "back"/reversion per that same book's `leanOf`.
+  fibOutStrong:  { color: '#10b981', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  fibOutWeak:    { color: '#6ee7b7', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
+  fibBackStrong: { color: '#f87171', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  fibBackWeak:   { color: '#fca5a5', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
+  fibNeutral:    { color: '#64748b', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
+  asiaBoxEdge:   { color: '#facc15', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
   _default:    { color: '#9ca3af', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
 };
 

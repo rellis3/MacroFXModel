@@ -333,9 +333,19 @@ export function buildAtlasCard(book) {
  *     -> { key, lean, sameSignOOS, base:{is,oos}, supports:[...], challenges:[...], liveTouch }
  *     -> null if the book has no data for this (side, rung) cell
  */
-export function matchLiveContext(book, liveTouch) {
+// `keyField`/`dimLabels` generalize this past Level Atlas's own `rung` field
+// (2026-08-27) so `asiaFibAtlasRoutes.js` can reuse the SAME matching logic
+// for its `level`-keyed book instead of a second copy — the only thing that
+// genuinely differs between the two engines' live-touch shapes is which
+// field names the cell key and which map labels its dimensions; the
+// base-rate/held-dimension/supports-challenges logic itself is identical by
+// design (both books share the same `{outcome, ...}` record shape on purpose
+// — see `asiaFibAtlasReport.js`'s own header). Default args keep every
+// existing Level Atlas call site byte-identical.
+export function matchLiveContext(book, liveTouch, { keyField = 'rung', dimLabels = DIM_LABEL } = {}) {
   if (!book || !liveTouch) return null;
-  const key = `${liveTouch.side}|${liveTouch.rung}`;
+  const levelValue = liveTouch[keyField];
+  const key = `${liveTouch.side}|${levelValue}`;
   const cell = book.cells?.[key];
   if (!cell) return null;
   const b = cell.base;
@@ -354,7 +364,7 @@ export function matchLiveContext(book, liveTouch) {
     if (!g || !g.holdsOOS) continue;
     const o = dim.oos[bucketKey];
     matched.push({
-      dimKey, dimLabel: DIM_LABEL.get(dimKey) ?? dimKey, bucket: liveValue,
+      dimKey, dimLabel: dimLabels.get(dimKey) ?? dimKey, bucket: liveValue,
       deltaOutIS: g.deltaOut, deltaOutOOS: o?.deltaOut ?? null,
       n: { is: g.n, oos: o?.n ?? 0 },
       favors: g.deltaOut > 0 ? 'out' : 'back',
@@ -370,7 +380,7 @@ export function matchLiveContext(book, liveTouch) {
   const context = lean === 'neutral' ? matched : [];
 
   return {
-    instrument: liveTouch.instrument, side: liveTouch.side, rung: liveTouch.rung, key,
+    instrument: liveTouch.instrument, side: liveTouch.side, rung: levelValue, level: levelValue, key,
     ordinal: liveTouch.ordinal, date: liveTouch.date,
     lean, sameSignOOS,
     base: { out: b.is.outPct, back: b.is.backPct, neither: b.is.neitherPct,
