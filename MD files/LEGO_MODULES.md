@@ -2129,6 +2129,199 @@ edge" discipline.
 
 ---
 
+### 1aq. Asia Fib Atlas engine (2026-08-26) — Level Atlas's sibling for Asia range-extension lines
+
+Requested build: apply Level Atlas's per-touch reference-engine template
+(`MD files/REFERENCE_ENGINE_PLAYBOOK.md` — literally extracted from building
+Level Atlas + Session Path, "the template for the NEXT analysis, whatever it
+turns out to be") to the Asia-range-extension fib lines the "Asia Session Fib
+Retracement" Pine indicator draws (`education/range-extension-levels-notes.md`),
+instead of forecast-ladder lines. Genuinely a different unit from Level Atlas
+per the playbook's §2 rule (don't force a new question into an existing unit):
+one row = one touch of one Asia-range extension rung (a fib multiple outside
+[0,1] — the 0/0.25/0.5/0.75/1 key levels are the range box itself, deliberately
+excluded from the walk), outcome = does price reach the next rung out or
+revert to the one just inside it (the SAME `out`/`back`/`neither` shape Level
+Atlas uses, chosen deliberately so the two books' outcome tables are directly
+comparable and share a report-layer implementation — see below).
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Asia Fib Atlas Engine** | `js/asiaFibAtlasEngine.js` | `asiaFibAtlasWalk(packed, {instrument, assetClass})` → `{touches, coverage}`, `asiaFibAtlasLiveToday`. Composes, copies nothing: `sessionRanges.js` (Asia 00:00-06:00 London + Monday ranges, body hi/lo — "closes=acceptance" per the lesson notes), `fibProjection.js` (the SAME 45-level grid the Pine indicator draws — `RUNGS_ABOVE`/`RUNGS_BELOW` are derived FROM `FIB_LEVELS`, never hand-copied), `confluence-core.js:detectConfluencesCore` (the Pine-Script-matching matcher — `clusterMerge:false`, `priceMode:'lowest'`, the session-range-capped tolerance formula — for the Asia-vs-previous-Asia track, never a local re-derivation), `confluenceFeatures.js` (the same VuManChu/VWAP/ADX/structural-confluence/candle-reject/volume-climax/round-number touch pack Level Atlas uses), `rangeLineAnalyser.js:sessionConfluenceLevels`, `forecastLadder`/`forecastSigma` (Level Atlas's own daily-σ fit, reused for `dayVol` and a genuinely new use — `rangeBudgetUsedPct`, how much of today's TYPICAL day-range is already consumed by the time price reaches this rung, from `education/FORECASTER_WALKTHROUGH_NOTES.md` Part 5), `instrumentRegistry.js:pipSize` (one pip source — fixes the gold 1.0-vs-0.1 inconsistency `rangeFibEngine.js`/`asiaRangeEngine.js` still carry, noted in §3 below). **Deliberately NOT reused**: `levelAtlasEngine.js`'s own `sessionRangeSeries`/`sessionVolBucket` measure a UTC 22:00-07:00 "Asia" — a genuinely different window from this engine's London 00:00-06:00 Asia range, so `asiaVolBucket` here is a small fresh implementation, not a copy of the same formula on different-window data (would have silently mislabelled the vol regime against the wrong session). New context beyond Level Atlas's set: `levelFlipState` (fresh touch vs a retest of a line already body-closed-through earlier the same window — causal running close-extreme, no lookahead), `sessionHandoff` (finer than plain session: Asia-close breakout / London morning / London-NY overlap / NY afternoon / NY-late-pre-Asia).
+
+**Confluence, corrected 2026-08-26 (owner review):** the original Pine indicator runs TWO INDEPENDENT confluence checks — Asia(today) vs Asia(previous day), and Monday(this week) vs Monday(the week before) — and never cross-compares Asia fibs to the Monday ladder. The first shipped version of this engine did exactly that (checked today's Asia rungs against the Monday ladder and folded the result into one conflated `confluenceGrade`) — a real mismatch from the source strategy, not a refinement of it, caught by the owner re-reading the two confluence blocks in the original Pine script side by side. Now three clearly separated fields: `confluenceGrade`/`asiaConfPips` (Asia vs previous Asia ONLY — the core track, matches the indicator exactly), `mondayWeekTightestPips`/`mondayWeekZone` (Monday vs the previous Monday — its own, entirely independent weekly track, computed once per reference cycle and constant for every touch in it — "drawn once, persists the week", verified by a dedicated test), and `mondayCrossPips`/`mondayCrossZone` (does this Asia rung land near the Monday ladder anyway — real, kept as an explicit EXPLORATORY field, never blended into the core grade). Per the owner's own framing: the actual pip gap to the nearest matching prior-cycle level ("the pip confluence of X vs previous X") is the real analytical zone — always reported, never threshold-gated — with the categorical grade kept only as a companion view, one dimension among many, never the sole thing a finding gets attributed to.
+
+Monday's ladder itself is still causally gated exactly like the Pine script's own `is_current_monday ? prev_monday : curr_monday` — a Monday's own touches read the PREVIOUS week's completed Monday, never the current, still-forming one (verified by a white-box test against the actual `sessionRanges` helpers, not a behavioural perturbation — perturbing a Monday's own bars turned out to shift which touches occur that day at all, which broke record-matching before the confluence question could even be asked).
+
+24 unit tests (`js/asiaFibAtlasEngine.test.mjs`) — the causality ones matter most here: the far-future-perturbation test that already caught Level Atlas's dayVol tautology also caught THIS engine's own bug during development (`dayOpen` referenced before its `const` declaration executed — a temporal-dead-zone `ReferenceError` silently swallowed by a `try/catch` around the ladder fit, which made `rangeBudgetUsedPct`/`gapSig` silently null/NaN for every row; `node --check` and the type-free JS runtime both missed it, only running the walk and inspecting null-rates caught it). Two of the "both sides / extreme rung" tests needed a deterministically-constructed price path rather than a bigger random fixture, once a naive "symmetric" generator turned out to still be structurally range-bound at any wiggle amplitude (the SHAPE, not the scale, was the problem) — worth remembering for the next engine's tests that need a rare joint condition. | `scripts/run_asia_fib_atlas.mjs` | 🟢 built + unit-tested; **run against real M1 for EURUSD/GBPUSD/USDJPY/GOLD** (2016-03 to 2026-08, local parquet cache, no network needed — see the real-data findings write-up below the table) |
+| **Asia Fib Atlas Report** | `js/asiaFibAtlasReport.js` | `buildAsiaFibAtlasBook(touches, {rearmFrac})` → per-`(side, level)` cell × dimension book, IS/OOS split, `extractHeldFindings`, `renderAsiaFibBookText`. Imports `annotateHolds` (THE shared OOS-holding gate, REFERENCE_ENGINE_PLAYBOOK.md §3.2 — n≥30 both halves, ≥3pp effect, same sign) straight from `levelAtlasReport.js`, never a second copy. Also newly exports `splitAt`/`tableFor`/`summarizeAll`/`pctiles` FROM `levelAtlasReport.js` (previously private there) — legitimate reuse, not a coincidental resemblance: both engines' outcome records share the exact `{outcome, fadePips, runPips, pullbackFrac, minsToResolve}` shape by deliberate design specifically so the table-building logic could be shared rather than re-derived. 27 context dimensions (vs Level Atlas's ~25) — see the file's own `DIMENSIONS` export for the full list and labels. | `scripts/run_asia_fib_atlas.mjs` | 🟢 built + validated on real 4-instrument data — 2 findings hold OOS on every instrument (see below) |
+
+**What v1 answers vs defers**, per the playbook's own "don't build report/UI
+until the engine's rows earn it" discipline (§4): the engine + OOS-gated
+report layer (the actual "does this context factor hold up" analysis the
+build was requested for) are done. Explicitly deferred, not forgotten:
+routes (async-job `/run`+`/status`+`/card` pattern, mirroring
+`levelAtlasRoutes.js`) and any UI/dashboard page — build these once the book's
+findings on real data are worth serving live, not before. Also flagged as
+natural next layers rather than built now (checked against
+`education/jordan_video_transcripts/JORDAN_VIDEO_INSIGHTS.md`,
+`cross-asset-options-diagnostic-notes.md`, `QUANT_MACRO_LESSONS_1-6.md` during
+scoping): macro-calendar proximity (FOMC/CPI/NFP/OpEx — `calendar_events.csv`
+exists in-repo but its schema/coverage wasn't verified before this build),
+COT positioning (weekly cadence needs its own lag rule, unlike CVOL's daily
+one-day lag), and cross-asset regime (yield-spread rate-of-change, VIX
+regime). Also flagged (2026-08-26, owner discussion): Monday's own ladder
+never gets its OWN touch events here — it's only ever read as context for an
+Asia-rung touch (`mondayWeekTightestPips`/`mondayCrossPips`). A genuine
+"Monday Fib Atlas" — its own unit, one row per touch of a Monday-range
+extension rung, mirroring this engine exactly but for the weekly ladder —
+would need a separate walk; not built, noted here so it isn't lost.
+
+**Real-data run (2026-08-26, `scripts/run_asia_fib_atlas.mjs`)** — the local
+M1 parquet cache (`VolRangeForecaster/data/m1/`, no network needed) has
+2016-03 to 2026-08 for every major pair; ran EURUSD/GBPUSD/USDJPY/GOLD
+(~10.5 years, ~2750 sessions, 44k-110k touches each, 60/40 IS/OOS split).
+Two findings hold OOS on EVERY ONE of the 4 instruments, same sign, similar
+magnitude — genuinely the kind of cross-instrument consistency this
+playbook's §3.2 gate exists to surface, not cherry-picked from one pair:
+- **`prevOutcomeSameDay = 'out'` → strong continuation lift** (+22pp to +42pp
+  vs the cell's own base rate, IS and OOS alike, across nearly every
+  side/level cell on every instrument). Same-day-retest persistence — this is
+  the SAME mechanism Level Atlas's own single cleanest finding is (a
+  session's trending-vs-stuck character persists through a same-day retest),
+  now confirmed on a structurally different line family (range-extension fib
+  rungs, not forecast-ladder rungs). Directly answers the owner's original
+  question ("does price always continue when session range is high") with a
+  real, conditional answer: not unconditionally, but conditioned on an
+  earlier same-day continuation at this exact rung, yes, consistently.
+- **`sessionHandoff = '5·ny-late-preasia'` → strong reversion lift** (-23pp to
+  -40pp on the 'out' rate, i.e. touches late in the NY session are much MORE
+  likely to revert than continue), also consistent across all 4 instruments.
+  Answers the "early in the day" framing from the same original question —
+  it's specifically the LATE end of the trading day, heading into the next
+  Asia, that shows the reversal bias, not "early" as originally guessed.
+
+Both are IS+OOS-consistent, n≥30+ in nearly every cell, cross-instrument —
+worth real trust. This is still descriptive (REFERENCE_ENGINE_PLAYBOOK.md
+§3.3 — a reference book, not a signal search: no after-cost gate has been
+applied, no position sizing). The honest next step, same as Impulse Range
+Engine (§1ap, immediately above): widen to the full 26-pair set and let a
+LATER, separate signal-search exercise decide if either finding survives
+costs.
+
+**Confluence corrected (2026-08-26, owner review)** — the original Pine
+indicator runs Asia-vs-previous-Asia and Monday-vs-previous-Monday as TWO
+INDEPENDENT confluence checks; it never cross-compares Asia fibs to the
+Monday ladder. The first version of this engine did exactly that cross
+comparison and folded it into one conflated `confluenceGrade` — a real
+mismatch from the source strategy. Now three separated fields:
+`confluenceGrade`/`asiaConfPips` (Asia vs previous Asia only, the core
+track), `mondayWeekTightestPips`/`mondayWeekZone` (Monday vs the previous
+Monday, its own independent weekly track — constant for every touch in a
+reference cycle that runs Tuesday through the following Monday inclusive,
+since Monday itself borrows the prior cycle's resolved Monday), and
+`mondayCrossPips`/`mondayCrossZone` (does this Asia rung land near the
+Monday ladder anyway — kept, explicitly exploratory, never blended into the
+core grade). Per the owner's framing, the actual pip gap to the nearest
+matching prior-cycle level is always reported (never threshold-gated) — the
+real zone worth analysing, not a pre-filtered yes/no. **Real-data check**:
+none of the three confluence dimensions produce a single cross-instrument
+law the way the two headline findings above do — real, level-specific
+context (worth keeping in the analysis exactly as the owner asked), but
+scattered by rung and instrument rather than a second universal rule.
+
+**Second round of context added (2026-08-26, "what else, like the
+volatility atlas" + "build the full analysis while I sleep")** — five new
+dimensions, three of them ready-made bricks not previously wired into this
+engine:
+- `ivRegime`/`vrp`/`ivSkewDir` — CVOL implied-vol settle, via `cvolLoader.js`,
+  same one-day-lag discipline as `levelAtlasEngine.js`. A concrete gap this
+  engine had vs. Level Atlas until now.
+- `weeklyPivotZone` — `rangeBiasCore.computeWeeklyPivots` (classic
+  PP/R1/R2/S1/S2), a genuinely separate structural level family from the fib
+  grid, same always-on pip-gap treatment as the confluence tracks.
+- `hurstBucket` — `rangeBiasCore.computeHurst`, trailing 80 daily closes.
+  Carried the known caveat forward rather than hiding it: this exact
+  estimator was dropped from a DIFFERENT context (live entry-conviction
+  voting) after saturating near 0.88 on every tested instrument — wired in
+  fresh here anyway since a touch-level rung question is a genuinely
+  different test of it, not a retry of the same one.
+- `asiaShape` — did the Asia session's OWN formation drive cleanly one way or
+  chop, using the SAME churn thresholds/labels as the existing post-Asia
+  `churn` field but Asia's own close-direction as the reference (no external
+  target line exists for Asia's own shape) — a new formula, not a copy.
+- `swingRegime` — HTF swing structure (CHoCH/BOS) via
+  `rangeBiasCore.featureSwingRegime`, agreeing or conflicting with the
+  range-extension direction (above=short, below=long, per the lesson notes'
+  own framing). Built on a once-per-instrument 30m resample
+  (`barUtils.resamplePacked`, the same brick `confluenceFeatures.
+  createHtfContext` uses for its own HTF series) + a bisect lookup per
+  touch — recomputing the resample per touch would be O(n²) over a
+  multi-year walk.
+
+29 unit tests total (10 new) — the CVOL one mirrors `levelAtlasEngine.
+test.mjs`'s own settle-lag test verbatim (same outlier-injection technique);
+`asiaShape` gets a dedicated causality test (perturbing bars strictly AFTER
+Asia closes must not move it — a different causal boundary than every other
+field in this engine, worth its own proof).
+
+**Real-data check on the five new dimensions (2026-08-26, same 4-instrument
+run)** — mixed and worth reporting exactly as found, per this repo's own
+"report the green honestly and the red honestly" rule:
+- **CVOL (`ivRegime`/`vrp`/`ivSkewDir`) — ZERO held findings on ALL 4
+  instruments.** A genuine, notable null: CVOL's `vrp` is Level Atlas's own
+  standout finding for forecast-line touches (OOS effect usually as strong
+  as IS, "worth the most trust of any single finding" per that engine's own
+  entry above) — and it holds NOTHING for range-extension touches. Not a
+  bug (the settle-lag mechanics are unit-tested and match Level Atlas's own
+  proven pattern exactly) — implied vol/skew genuinely doesn't condition
+  behaviour at a fib rung the way it does at a forecast-ladder rung.
+- **Hurst (`hurstBucket`) — ZERO held findings on ALL 4 instruments.**
+  Consistent with (not identical to — this is a different question) its
+  prior drop from the live entry-conviction aggregate. Honest confirmation
+  rather than a wasted addition, exactly as flagged when it was wired in.
+- **`weeklyPivotZone`** — real findings (7-18 per instrument) but the same
+  scattered-by-rung, no-universal-direction pattern as the confluence
+  tracks above — worth having per-level, not a third cross-instrument law.
+- **`asiaShape`** — modest findings (4-9 per instrument), scattered.
+- **`swingRegime`** — modest findings (4-11 per instrument); `3·agree`
+  recurs across all 4 instruments' held lists more often than the other new
+  dimensions, but even within ONE instrument the sign flips by rung (EURUSD
+  `below|-3.5` agree → +15.7pp IS; `below|-3` agree → -8.5pp IS) — a real,
+  level-specific read, not a fourth universal finding.
+
+Net: the two headline findings from the first real-data run remain the only
+cross-instrument laws in the book. Everything added since (confluence
+tracks + these five) is real, worth keeping per-level exactly as the owner
+asked, but the search for a THIRD universal rule came back empty this
+round — reported plainly, not reframed as a near-miss.
+
+**Macro-calendar proximity added (2026-08-26, same session — closes the gap
+flagged at every prior mention of "macro-calendar proximity" since the very
+first proposal).** `js/calendarLoader.js` reads the real `calendar_events.csv`
+(2014-2026, verified against known FOMC 2pm-ET announcement times to confirm
+`datetime_raw` is UTC) — schedule only (date/time/currency/impact tier), the
+`actual`/`consensus`/`previous` outcome columns are never parsed at all,
+structurally. `macroEventHours`/`macroEventBucket`: hours to the nearest
+`'Major'`-impact event (FOMC/ECB/BoE decisions, NFP, CPI, etc.) in the
+instrument's relevant currencies. Explicitly documented as the ONE field in
+this engine allowed to look in both directions from the touch — a scheduled
+calendar date is public knowledge in advance (unlike price, and a different
+KIND of forward-looking than CVOL's uncertain market-implied read). 4 more
+tests (31 total for the engine).
+
+**Real-data check**: 6-19 held findings per instrument, same scattered-by-
+rung pattern as every other addition tonight except the original two — not a
+third law. Worth flagging as the closest of the new additions to something
+recognizable: EURUSD shows `2·same-day` (near a Major event) with a
+NEGATIVE lift on 4 of its top 6 held rungs — a same-instrument lean toward
+reversion near macro events — but this does not replicate across GBPUSD/
+USDJPY/GOLD, which show mixed signs for the same bucket at different rungs.
+Real, level-specific context; not evidence of a universal "fade near
+events" rule.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
