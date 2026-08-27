@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asia Fib Atlas — Live</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --green:#10b981; --red:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; }
+  select, button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:13px; cursor:pointer; }
+  #status { font-size:11px; color:var(--muted); margin-left:auto; font-family:'DM Mono',monospace; }
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; align-items:flex-start; }
+  #chart { flex:2 1 640px; min-width:320px; height:560px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { flex:1 1 380px; min-width:340px; max-height:560px; overflow-y:auto; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  th, td { text-align:right; padding:4px 6px; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child { text-align:left; }
+  tr.touched { opacity:.55; }
+  tr:hover { background:#161b26; cursor:default; }
+  .lean-continuation { color:var(--green); font-weight:600; }
+  .lean-reversion { color:var(--red); font-weight:600; }
+  .lean-neutral { color:var(--muted); }
+  .pill { display:inline-block; padding:1px 6px; border-radius:10px; font-size:10px; font-weight:600; }
+  .pill.strong { background:rgba(16,185,129,.18); color:var(--green); }
+  .pill.weak { background:rgba(148,163,184,.15); color:var(--muted); }
+  .muted { color:var(--muted); font-size:11px; }
+  .detail { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); padding:6px 0 10px; border-bottom:1px solid var(--line); }
+  .detail b { color:var(--text); }
+  .detail .sup { color:var(--green); }
+  .detail .chal { color:var(--red); }
+  .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:6px; }
+  .legend span { display:flex; align-items:center; gap:4px; }
+  .dot { width:10px; height:3px; display:inline-block; border-radius:2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Asia Fib Atlas — Live</h1>
+  <select id="pair">
+    <option value="EURUSD">EURUSD</option>
+    <option value="GBPUSD">GBPUSD</option>
+    <option value="USDJPY">USDJPY</option>
+    <option value="GOLD">GOLD</option>
+    <option value="AUDUSD">AUDUSD</option>
+    <option value="NZDUSD">NZDUSD</option>
+    <option value="USDCAD">USDCAD</option>
+    <option value="USDCHF">USDCHF</option>
+  </select>
+  <span class="sub">Fib-extension rungs above/below today's Asia range, confidence-scored against the OOS-held reference book.</span>
+  <span id="status">—</span>
+</header>
+<div class="wrap">
+  <div id="chart"></div>
+  <div class="side">
+    <div class="card">
+      <h2>Ladder — nearest rungs to current price</h2>
+      <table>
+        <thead><tr><th>Rung</th><th>Price</th><th>Pips</th><th>Base out%</th><th>OOS out%</th><th>Lean</th><th>Signal</th></tr></thead>
+        <tbody id="ladderBody"><tr><td colspan="7" class="muted">loading…</td></tr></tbody>
+      </table>
+      <div class="legend">
+        <span><i class="dot" style="background:#10b981"></i>continuation (out), IS+OOS agree</span>
+        <span><i class="dot" style="background:#6ee7b7"></i>continuation, weaker</span>
+        <span><i class="dot" style="background:#f87171"></i>reversion (back), IS+OOS agree</span>
+        <span><i class="dot" style="background:#fca5a5"></i>reversion, weaker</span>
+        <span><i class="dot" style="background:#64748b"></i>neutral / no held signal</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="detailTitle">Selected rung</h2>
+      <div id="detail" class="muted">click a row in the ladder for the full breakdown</div>
+    </div>
+    <div class="card muted">
+      Confidence = this rung's own OOS-held base rate, adjusted by whichever
+      of the two dimensions the 26-pair widen check found generalize almost
+      everywhere — <code>prevOutcomeSameDay</code> (did this rung already
+      resolve today) and the current <code>sessionHandoff</code> window —
+      when EITHER independently held OOS (n≥30, ≥3pp, same sign) for this
+      exact rung. Other real, level-specific reads (weekly pivots,
+      structural confluence, macro-event proximity, …) show in the detail
+      panel when present but aren't blended into the ladder color — this is
+      a reference read, not a fitted/backtested joint signal. See
+      <code>MD files/LEGO_MODULES.md</code> §1aq.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+
+const view = createLevelChart(document.getElementById('chart'), { height: 560 });
+const statusEl = document.getElementById('status');
+const pairSel = document.getElementById('pair');
+const ladderBody = document.getElementById('ladderBody');
+const detailEl = document.getElementById('detail');
+const detailTitle = document.getElementById('detailTitle');
+
+let pollTimer = null;
+let lastLadder = [];
+
+function fmtPct(v) { return v == null ? '—' : `${v.toFixed(1)}%`; }
+function fmtPips(v) { return v == null ? '—' : v.toFixed(1); }
+
+function kindFor(r) {
+  if (r.lean === 'neutral' || r.base == null) return 'fibNeutral';
+  const strong = r.sameSignOOS === true;
+  if (r.lean === 'continuation') return strong ? 'fibOutStrong' : 'fibOutWeak';
+  return strong ? 'fibBackStrong' : 'fibBackWeak';
+}
+
+function renderDetail(r) {
+  if (!r) { detailEl.innerHTML = '<span class="muted">click a row in the ladder for the full breakdown</span>'; return; }
+  detailTitle.textContent = `${r.side}|${r.level} @ ${r.price}`;
+  const rows = [];
+  rows.push(`<div class="detail"><b>Base rate</b> (this rung, all history): out ${fmtPct(r.base?.out)} / back ${fmtPct(r.base?.back)} / neither ${fmtPct(r.base?.neither)} — <b>OOS</b> out ${fmtPct(r.base?.outOOS)} / back ${fmtPct(r.base?.backOOS)}</div>`);
+  rows.push(`<div class="detail"><b>Live signals now:</b> prevOutcomeSameDay=${r.prevOutcomeSameDay ?? 'none yet'} · sessionHandoff=${r.sessionHandoff}${r.touchedToday ? ' · touched today' : ' · not touched today'}</div>`);
+  if (r.supports?.length) {
+    rows.push(`<div class="detail"><b class="sup">Supports the lean</b><br>${r.supports.map(s => `${s.dimLabel ?? s.dimKey}=${s.bucket}: Δ${s.deltaOutIS}pp IS / Δ${s.deltaOutOOS ?? '—'}pp OOS (n=${s.n.is}/${s.n.oos})`).join('<br>')}</div>`);
+  }
+  if (r.challenges?.length) {
+    rows.push(`<div class="detail"><b class="chal">Challenges the lean</b><br>${r.challenges.map(s => `${s.dimLabel ?? s.dimKey}=${s.bucket}: Δ${s.deltaOutIS}pp IS / Δ${s.deltaOutOOS ?? '—'}pp OOS (n=${s.n.is}/${s.n.oos})`).join('<br>')}</div>`);
+  }
+  if (r.context?.length) {
+    rows.push(`<div class="detail"><b>Other held reads (base rate is neutral here)</b><br>${r.context.map(s => `${s.dimLabel ?? s.dimKey}=${s.bucket}: Δ${s.deltaOutIS}pp IS`).join('<br>')}</div>`);
+  }
+  if (!r.supports?.length && !r.challenges?.length && !r.context?.length) {
+    rows.push(`<div class="detail muted">No situational dimension currently holds OOS for this exact rung — base rate stands on its own.</div>`);
+  }
+  detailEl.innerHTML = rows.join('');
+}
+
+function renderLadder(ladder, currentPrice) {
+  lastLadder = ladder;
+  const near = ladder.slice(0, 24);
+  ladderBody.innerHTML = near.map((r, i) => {
+    const leanClass = r.lean === 'continuation' ? 'lean-continuation' : r.lean === 'reversion' ? 'lean-reversion' : 'lean-neutral';
+    const signal = (r.supports?.length ?? 0) > 0 ? `<span class="pill strong">${r.supports.length} held</span>` : '<span class="pill weak">base only</span>';
+    return `<tr data-i="${i}" class="${r.touchedToday ? 'touched' : ''}">
+      <td>${r.side}|${r.level}</td>
+      <td>${r.price}</td>
+      <td>${fmtPips(r.distancePips)}</td>
+      <td>${fmtPct(r.base?.out)}</td>
+      <td>${fmtPct(r.base?.outOOS)}</td>
+      <td class="${leanClass}">${r.lean ?? '—'}</td>
+      <td>${signal}</td>
+    </tr>`;
+  }).join('');
+  for (const tr of ladderBody.querySelectorAll('tr[data-i]')) {
+    tr.addEventListener('click', () => renderDetail(near[+tr.dataset.i]));
+  }
+  const levels = near.map(r => ({ price: r.price, kind: kindFor(r), label: `${r.level}${r.touchedToday ? ' ✓' : ''}` }));
+  if (Number.isFinite(currentPrice)) levels.push({ price: currentPrice, kind: 'asiaBoxEdge', label: 'price' });
+  view.setLevels(levels, { showTitle: false });
+}
+
+async function loadCandles(pair) {
+  try {
+    const res = await fetch(`/api/pattern-lab/live-candles/${pair}?tf=1m&count=500`);
+    const j = await res.json();
+    if (j.ok) view.setCandles(j.candles).fit();
+  } catch (e) { console.warn('candles fetch failed', e); }
+}
+
+async function pollLadder(pair) {
+  try {
+    const res = await fetch(`/api/asia-fib-atlas/fastlive/${pair}`);
+    const j = await res.json();
+    if (!j.ok) { statusEl.textContent = `error: ${j.error}`; return; }
+    if (j.warming) { statusEl.textContent = 'warming up (first load can take ~30-90s)…'; return; }
+    const live = j.live;
+    statusEl.textContent = `${pair} · ${live.date ?? '—'} · price ${live.currentPrice ?? '—'} · ${live.sessionHandoff ?? '—'} · book ${j.bookGeneratedAt ? new Date(j.bookGeneratedAt).toLocaleString() : 'not yet built — POST /api/asia-fib-atlas/run'}`;
+    renderLadder(live.ladder ?? [], live.currentPrice);
+  } catch (e) {
+    statusEl.textContent = `poll failed: ${e.message}`;
+  }
+}
+
+function start() {
+  const pair = pairSel.value;
+  if (pollTimer) clearInterval(pollTimer);
+  loadCandles(pair);
+  pollLadder(pair);
+  pollTimer = setInterval(() => { pollLadder(pair); }, 15000);
+  setInterval(() => { loadCandles(pairSel.value); }, 60000);
+}
+
+pairSel.addEventListener('change', start);
+start();
+window.__pageReady = true;   // smoke-test hook
+</script>
+</body>
+</html>

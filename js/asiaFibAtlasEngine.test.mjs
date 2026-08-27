@@ -17,7 +17,7 @@
  * system. These tests exist so that class of bug can't silently return.)
  */
 import assert from 'node:assert/strict';
-import { asiaFibAtlasWalk, asiaFibAtlasLiveToday, RUNGS_ABOVE, RUNGS_BELOW, SIDES } from './asiaFibAtlasEngine.js';
+import { asiaFibAtlasWalk, asiaFibAtlasLiveToday, asiaFibAtlasLiveLadder, sessionHandoffPhase, RUNGS_ABOVE, RUNGS_BELOW, SIDES } from './asiaFibAtlasEngine.js';
 import { buildAsiaSessions, buildMondayRanges, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
 import { majorEventEpochs } from './calendarLoader.js';
 
@@ -581,6 +581,95 @@ t('the calendar loader never exposes the actual/consensus/previous outcome colum
     assert.ok(!('actual' in e) && !('consensus' in e) && !('previous' in e) && !('event' in e),
       'majorEventEpochs() must only ever expose {epoch, ccy} — no outcome/name fields');
     assert.equal(Object.keys(e).sort().join(','), 'ccy,epoch');
+  }
+});
+
+// ── asiaFibAtlasLiveLadder (2026-08-27, the asia-fib-atlas-live.html backer) ─
+t('asiaFibAtlasLiveLadder returns every RUNGS_ABOVE/RUNGS_BELOW rung exactly once, sorted nearest-to-price first', () => {
+  const { ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.equal(ladder.length, RUNGS_ABOVE.length + RUNGS_BELOW.length);
+  const seen = new Set(ladder.map(r => `${r.side}|${r.level}`));
+  for (const lv of RUNGS_ABOVE) assert.ok(seen.has(`above|${lv}`), `missing above|${lv}`);
+  for (const lv of RUNGS_BELOW) assert.ok(seen.has(`below|${lv}`), `missing below|${lv}`);
+  for (let i = 1; i < ladder.length; i++) assert.ok(ladder[i].distance >= ladder[i - 1].distance, 'ladder must be sorted nearest-first');
+});
+
+t('asiaFibAtlasLiveLadder: rung price uses the SAME formula as the walk itself (asia.low + asia.range*level)', () => {
+  const { boundary, ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const r = ladder.find(x => x.side === 'above' && x.level === 2);
+  assert.ok(r, 'expected an above|2 rung');
+  const expected = boundary.asiaLow + boundary.asiaRange * 2;
+  assert.ok(Math.abs(r.price - expected) < 1e-6, `price ${r.price} != asia.low+range*2 (${expected})`);
+});
+
+t('asiaFibAtlasLiveLadder: sessionHandoff on every rung matches sessionHandoffPhase(latest bar hour) — one live signal, not per-rung drift', () => {
+  const { sessionHandoff, ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const expected = sessionHandoffPhase(new Date(P.times[P.n - 1] * 1000).getUTCHours());
+  assert.equal(sessionHandoff, expected);
+  assert.ok(ladder.every(r => r.sessionHandoff === sessionHandoff), 'every rung must carry the SAME current sessionHandoff');
+});
+
+t('asiaFibAtlasLiveLadder: sessionHandoffPhase covers every hour 0-23 with exactly one bucket, boundaries at 5/7/12/16', () => {
+  const buckets = new Set();
+  for (let h = 0; h < 24; h++) buckets.add(sessionHandoffPhase(h));
+  assert.equal(buckets.size, 5);
+  assert.equal(sessionHandoffPhase(4), '5·ny-late-preasia');
+  assert.equal(sessionHandoffPhase(5), '1·asia-close-breakout');
+  assert.equal(sessionHandoffPhase(6), '1·asia-close-breakout');
+  assert.equal(sessionHandoffPhase(7), '2·london-morning');
+  assert.equal(sessionHandoffPhase(11), '2·london-morning');
+  assert.equal(sessionHandoffPhase(12), '3·london-ny-overlap');
+  assert.equal(sessionHandoffPhase(15), '3·london-ny-overlap');
+  assert.equal(sessionHandoffPhase(16), '4·ny-afternoon');
+  assert.equal(sessionHandoffPhase(19), '4·ny-afternoon');
+  assert.equal(sessionHandoffPhase(20), '5·ny-late-preasia');
+});
+
+t('asiaFibAtlasLiveLadder: a rung touched-and-RESOLVED earlier today carries prevOutcomeSameDay forward; an unresolved (neither) touch does not', () => {
+  const { touches, date } = asiaFibAtlasLiveToday(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  const resolved = touches.find(t2 => t2.outcome === 'out' || t2.outcome === 'back');
+  const { ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  if (resolved) {
+    // "Last resolved touch today at this exact rung" — a rung can be
+    // touched more than once in a day (re-arm), so pick the SAME record the
+    // engine itself would (latest by time, resolved only), not just the
+    // first 'out'/'back' anywhere in the array.
+    const sameRungResolved = touches.filter(t2 => t2.side === resolved.side && t2.level === resolved.level && t2.outcome !== 'neither');
+    const lastResolved = sameRungResolved.reduce((a, b) => (a.time > b.time ? a : b));
+    const r = ladder.find(x => x.side === resolved.side && x.level === resolved.level);
+    assert.ok(r, `expected a ladder entry for ${resolved.side}|${resolved.level}`);
+    assert.equal(r.touchedToday, true);
+    assert.equal(r.prevOutcomeSameDay, lastResolved.outcome);
+  }
+  const unresolvedOnly = touches.filter(t2 => t2.outcome === 'neither')
+    .filter(t2 => !touches.some(o => o.side === t2.side && o.level === t2.level && o.outcome !== 'neither'));
+  for (const u of unresolvedOnly) {
+    const r = ladder.find(x => x.side === u.side && x.level === u.level);
+    assert.equal(r?.prevOutcomeSameDay, null, `a purely-unresolved-so-far touch must not fake a resolved signal (${u.side}|${u.level})`);
+  }
+  assert.equal(ladder[0].sessionHandoff, sessionHandoffPhase(new Date(P.times[P.n - 1] * 1000).getUTCHours()));
+  void date;
+});
+
+t('asiaFibAtlasLiveLadder: no-lookahead — bars strictly AFTER the current last bar must not change today\'s ladder', () => {
+  const before = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  // Truncate to the last bar actually used (asiaFibAtlasLiveLadder only ever
+  // reads packed.times[packed.n-1] and everything buildAsiaSessions resolves
+  // from it) then re-extend with FUTURE bars a perturbation would live in —
+  // simplest real proof: shrink packed by 1 bar and confirm the ladder is
+  // unaffected in every field except the (now different) "current" bar itself.
+  const shrunk = { n: P.n - 1, times: P.times.slice(0, -1), opens: P.opens.slice(0, -1),
+    highs: P.highs.slice(0, -1), lows: P.lows.slice(0, -1), closes: P.closes.slice(0, -1), volumes: P.volumes.slice(0, -1) };
+  const after = asiaFibAtlasLiveLadder(shrunk, { instrument: 'EURUSD', assetClass: 'fx' });
+  // Same Asia session/date (removing one M1 bar shouldn't cross a session
+  // boundary this far from the array edges) -> the boundary/ladder PRICES
+  // must be identical; only currentPrice/distance are allowed to differ.
+  if (before.date === after.date) {
+    assert.deepEqual(before.boundary, after.boundary, 'removing a later bar must not change an EARLIER Asia session\'s own range');
+    for (let i = 0; i < before.ladder.length; i++) {
+      const a = before.ladder.find(r => r.side === after.ladder[i].side && r.level === after.ladder[i].level);
+      assert.equal(a.price, after.ladder[i].price, 'rung price must not depend on a later bar');
+    }
   }
 });
 
