@@ -92,15 +92,19 @@
   <div class="muted">
   Every pair here individually shows real edge, but FX crosses are NOT independent bets — many share a currency leg
   (EURUSD/EURJPY/EURGBP all carry EUR exposure, GBPUSD/GBPJPY/GBPAUD all carry GBP, etc.), so a single macro-shock day
-  can move MANY of them the same direction at once. Tested with all 26 selected at 1% fixed risk/trade: one real day
-  (2024-09-06) saw 72 trades resolve simultaneously, realizing a single-day -27% loss, and the full-26 combination's
-  max drawdown over the period was <strong>-97.8%</strong> — an effective wipeout. The portfolio heat cap above does
-  NOT fix this at this scale (tested 2-10% thresholds — it stayed catastrophic) because its "keep whichever trade
-  arrived first" rule becomes close to arbitrary once 26 pairs are competing for a small shared budget, rather than
-  protecting the best trades. A genuinely currency-EXPOSURE-aware risk model (capping net risk per underlying currency,
-  not just per trade count) is the real fix and isn't built yet. Until then: keep total selected pairs modest, size risk
-  down substantially before selecting many pairs together, and don't trust the raw numbers from a large multi-pair
-  selection at 1% risk/trade.
+  can move MANY of them the same direction at once. The 5 weakest, highest-cost pairs (EURNZD/GBPNZD/AUDNZD/AUDCHF/GBPCAD)
+  have been REMOVED from this page entirely — real edge, but not worth their own spread (see the ⚠ warning on their own
+  page, <a href="level-atlas-vote-backtest.html" style="color:#f87171">the single-pair tearsheet</a>). That curation alone
+  is NOT the fix for the risk below — tested with all 26 selected (before removal) at 1% fixed risk/trade: one real day
+  (2024-09-06) saw 72 trades resolve simultaneously, realizing a single-day -27% loss, and the full combination's max
+  drawdown over the period was <strong>-97.8%</strong> — an effective wipeout. Excluding the 5 weak pairs improved
+  Sharpe substantially but STILL left a -70.65% max drawdown from the SAME correlated-stacking effect among the
+  remaining 21. The portfolio heat cap above does NOT fix this at this scale (tested 2-10% thresholds — stayed
+  catastrophic) because its "keep whichever trade arrived first" rule becomes close to arbitrary once many pairs
+  compete for a small shared budget, rather than protecting the best trades. A genuinely currency-EXPOSURE-aware risk
+  model (capping net risk per underlying currency, not just per trade count) is the real fix and isn't built yet.
+  Until then: keep total selected pairs modest, size risk down substantially before selecting many pairs together, and
+  don't trust the raw numbers from a large multi-pair selection at 1% risk/trade.
   </div>
 </div>
 
@@ -177,23 +181,22 @@
 </main>
 
 <script type="module">
-// The full "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
-// already established) — vote-trades generated 2026-08-27 for all 26. Only
-// the original 5 validated pairs are pre-checked; the other 21 are real
-// data, not placeholders, but selecting many of them together needs the
-// caution note below — see MD files/LEGO_MODULES.md for why.
+// The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
+// already established), MINUS 5 pairs removed for real, cost-driven (not a
+// bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
+// EURNZD/GBPNZD/AUDNZD/AUDCHF/GBPCAD (Sharpe 0.02-0.68 vs 1.3+ for everything
+// else — see LEGO_MODULES.md). Real edge, genuinely not worth the spread —
+// removed from selection here rather than just unchecked, per the owner's
+// explicit call; still viewable (with their own warning) on the single-pair
+// tearsheet, level-atlas-vote-backtest.html.
 const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
-  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
-  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'gbpjpy', 'gbpaud',
+  'gbpchf', 'audjpy', 'audcad', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
 const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd']);
-// Found real, cost-driven (not a bug — verified against each pair's own
-// spread), near-zero-Sharpe-after-cost pairs — flagged in the picker, not
-// hidden, since excluding them measurably helped the combined Sharpe.
-const WEAK_HIGH_COST = new Set(['eurnzd', 'gbpnzd', 'audnzd', 'audchf', 'gbpcad']);
 const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
 
 const pairChecksEl = document.getElementById('pairChecks');
-pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}${WEAK_HIGH_COST.has(p) ? ' <span title="Real edge, but near-zero Sharpe after its own spread cost">⚠</span>' : ''}</label>`).join('');
+pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}</label>`).join('');
 
 const marginSel = document.getElementById('marginSel');
 const capSel = document.getElementById('capSel');
