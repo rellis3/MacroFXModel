@@ -247,7 +247,9 @@ function sessionOf(hourUtc) {
 // liquidity London/NY overlap, and the NY-only/late/pre-Asia stretches each
 // have a documented distinct character (education/jordan_video_transcripts —
 // VWAP session-transition entry; VOLATILITY_INTELLIGENCE_NOTES.md §4.4).
-function sessionHandoffPhase(hourUtc) {
+// Exported (2026-08-27) so `asiaFibAtlasLiveLadder` below and the live route
+// can read the CURRENT bucket without re-deriving the same hour cuts.
+export function sessionHandoffPhase(hourUtc) {
   if (hourUtc >= 5 && hourUtc < 7) return '1·asia-close-breakout';
   if (hourUtc >= 7 && hourUtc < 12) return '2·london-morning';
   if (hourUtc >= 12 && hourUtc < 16) return '3·london-ny-overlap';
@@ -785,4 +787,78 @@ export function asiaFibAtlasLiveToday(packed, opts = {}) {
   const lastDate = coverage?.to ?? null;
   const today = lastDate ? touches.filter(t => t.date === lastDate) : [];
   return { touches: today, date: lastDate, coverage };
+}
+
+/**
+ * Live ladder (2026-08-27) — the FULL fib-extension grid for TODAY's Asia
+ * range (every rung, touched or not), each annotated with what a live
+ * confidence lookup needs: current distance from price, plus the two
+ * signals the level-by-level widen check (LEGO_MODULES.md §1aq) found
+ * dominate the OOS-held confidence read at ~73% of levels tested across all
+ * 4 core instruments — `prevOutcomeSameDay` (did THIS exact rung already
+ * resolve today) and the CURRENT `sessionHandoff` bucket. Deliberately does
+ * NOT attempt to replicate this engine's other ~20 touch-time-only context
+ * fields (candleReject, wtState, structConfluence, macroEventBucket, ...)
+ * for rungs that haven't been touched yet — those are only meaningful at the
+ * moment of an actual touch, and faking them live would need a full
+ * feature-computation port (levelAtlasEngine.atlasWalk's `pending` block
+ * does exactly that for its own 3-rung ladder). Building the live score
+ * around the two dimensions the widen check proved general is the honest
+ * v1 scope, not an arbitrary shortcut — the other dimensions stay real,
+ * level-specific reads in the historical book, just not wired into live yet.
+ *
+ * `matchLiveContext` (levelAtlasReport.js, generalized `keyField` 2026-08-27
+ * specifically for this reuse) does the actual base-rate + held-dimension
+ * lookup against a precomputed book — this function only builds the rung
+ * list and the two live signals it needs, so the route layer does:
+ *   const { ladder } = asiaFibAtlasLiveLadder(packed, opts);
+ *   const scored = ladder.map(r => matchLiveContext(book, r, { keyField: 'level', dimLabels: ASIA_DIM_LABEL }));
+ */
+export function asiaFibAtlasLiveLadder(packed, opts = {}) {
+  const { instrument, rearmFrac = 0.3 } = opts;
+  if (!packed?.n) return { date: null, currentPrice: null, sessionHandoff: null, boundary: null, ladder: [] };
+
+  const asiaHrs = opts.asiaHrs ?? 6;
+  const asiaSessions = buildAsiaSessions(packed, 'london', asiaHrs, 5);
+  const asia = asiaSessions.at(-1);
+  if (!asia) return { date: null, currentPrice: null, sessionHandoff: null, boundary: null, ladder: [] };
+
+  const lastBarTime = packed.times[packed.n - 1];
+  const currentPrice = packed.closes[packed.n - 1];
+  const hourUtc = new Date(lastBarTime * 1000).getUTCHours();
+  const currentSessionHandoff = sessionHandoffPhase(hourUtc);
+  const pip = pipSize(instrument ?? '');
+
+  // Today's touches-so-far — only need each rung's LAST resolved outcome
+  // today (the exact `prevOutcomeSameDay` input a NEXT touch at that rung
+  // would carry), reusing the same walk rather than re-deriving it.
+  const { touches: todayTouches, date } = asiaFibAtlasLiveToday(packed, { ...opts, rearmFrac });
+  const lastOutcomeByKey = new Map();
+  for (const t of todayTouches) {
+    if (t.outcome === 'neither') continue;   // unresolved — carries no signal yet
+    lastOutcomeByKey.set(`${t.side}|${t.level}`, t.outcome);
+  }
+
+  const ladder = [];
+  for (const side of SIDES) {
+    const rungLevels = side === 'above' ? RUNGS_ABOVE : RUNGS_BELOW;
+    for (const level of rungLevels) {
+      const price = asia.low + asia.range * level;   // same formula the walk itself uses — never a second derivation
+      const prevOutcomeSameDay = lastOutcomeByKey.get(`${side}|${level}`) ?? null;
+      const dist = Math.abs(currentPrice - price);
+      ladder.push({
+        instrument, side, level, price: +price.toFixed(6), pip,
+        distance: +dist.toFixed(6), distancePips: pip > 0 ? +(dist / pip).toFixed(1) : null,
+        touchedToday: prevOutcomeSameDay != null,
+        prevOutcomeSameDay, sessionHandoff: currentSessionHandoff,
+      });
+    }
+  }
+  ladder.sort((a, b) => a.distance - b.distance);
+
+  return {
+    date, currentPrice: +currentPrice.toFixed(6), sessionHandoff: currentSessionHandoff,
+    boundary: { asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range },
+    ladder,
+  };
 }

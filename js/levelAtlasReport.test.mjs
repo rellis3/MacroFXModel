@@ -317,6 +317,38 @@ t('matchLiveContext attaches the SAME human-readable label DIMENSIONS defines �
   }
 });
 
+t('matchLiveContext({keyField, dimLabels}) generalizes past the `rung` field — Asia Fib Atlas reuse, 2026-08-27', () => {
+  // buildAtlasBook itself is Level-Atlas-specific (always keys by `rung`) —
+  // this test only needs to prove matchLiveContext's OWN generalization, so
+  // it hand-builds a minimal book in the `side|level` shape asiaFibAtlasReport.js's
+  // buildAsiaFibAtlasBook actually produces, rather than depending on either
+  // engine's real book-builder (keeps this file's own isolation — no
+  // cross-engine import). Default behaviour (no opts) stays byte-identical
+  // for every existing Level Atlas call site — proven by every test above
+  // passing unmodified.
+  const book = {
+    cells: {
+      'up|1.5': {
+        base: { is: { outPct: 60, backPct: 30, neitherPct: 10 }, oos: { outPct: 58, backPct: 32, neitherPct: 10 } },
+        dims: { churn: { is: { '1·churned': { deltaOut: 12, n: 80, holdsOOS: true } }, oos: { '1·churned': { deltaOut: 10, n: 40 } } } },
+      },
+    },
+  };
+  const dimLabels = new Map([['churn', 'Custom churn label']]);
+  const live = { instrument: 'TEST', side: 'up', level: 1.5, ordinal: 1, date: '2025-01-01', churn: '1·churned' };
+  const m = matchLiveContext(book, live, { keyField: 'level', dimLabels });
+  assert.ok(m, 'expected a match against the level-keyed cell');
+  assert.equal(m.level, 1.5);
+  assert.equal(m.key, 'up|1.5');
+  const churnMatch = [...m.supports, ...m.challenges].find(x => x.dimKey === 'churn');
+  assert.ok(churnMatch, 'the held churn bucket must surface');
+  assert.equal(churnMatch.dimLabel, 'Custom churn label', 'custom dimLabels map must be honored');
+  // A default-opts call against the SAME level-keyed book must miss (looks
+  // for `liveTouch.rung`, which is undefined here) — proves the default
+  // keyField is still 'rung', unchanged for existing Level Atlas callers.
+  assert.equal(matchLiveContext(book, live), null);
+});
+
 t('leanOf / NOISE_FLOOR are the SAME instance buildAtlasCard uses — no drift between the two entry points', () => {
   assert.equal(leanOf(50, 50 - NOISE_FLOOR + 0.1), 'neutral');
   assert.equal(leanOf(50, 50 - NOISE_FLOOR - 0.1), 'continuation');

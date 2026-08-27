@@ -2321,6 +2321,71 @@ USDJPY/GOLD, which show mixed signs for the same bucket at different rungs.
 Real, level-specific context; not evidence of a universal "fade near
 events" rule.
 
+**26-pair widen (2026-08-27, `scripts/run_asia_fib_atlas.mjs --headline`)** —
+the follow-up the house rule calls for ("prefer validating what exists over
+adding surface"): do the two cross-instrument headline findings above
+generalize past the original 4 USD-major pairs, or are they an artifact of
+that specific set? Ran the full local 26-pair M1 universe (every FX cross the
+parquet cache covers + gold, `ALL_26_PAIRS` in the script) through the same
+OOS-holding gate, one `(dimKey, bucket)` target per finding, and rolled the
+per-pair held-cell counts up into a single cross-pair verdict (script prints
+this rollup itself; also hand-verified by re-aggregating all 26 per-pair
+result lines independently, since the run had to be resumed pair-by-pair
+across three sandbox container restarts mid-run — matched the script's own
+rollup exactly). Result: **both findings generalize with no exceptions**:
+- **`prevOutcomeSameDay = 'out'` (same-day retest persistence)** — held on
+  **26/26 pairs**, **26/26 same-sign** (positive, i.e. continuation lift, on
+  every single one). Avg effect across held-pairs: **+29.4pp IS / +29.2pp
+  OOS** — actually slightly stronger on average than the original 4-pair
+  read, not weaker. Held-cell fraction ranges widely by pair (12/28 on
+  AUDNZD to 38/38 on GBPCHF) but every pair clears the bar on at least a
+  third of its cells, none at zero.
+- **`sessionHandoff = '5·ny-late-preasia'` (late-NY reversal)** — held on
+  **26/26 pairs**, **26/26 same-sign** (negative, i.e. reversion, on every
+  one). Avg effect across held-pairs: **-19.1pp IS / -21.2pp OOS**, in line
+  with the original 4-pair magnitude.
+
+This is the strongest cross-instrument result in this engine's book so far —
+not "holds on majors," holds on every pair the local cache has, USD-quoted or
+not (EUR/GBP/AUD crosses included), same sign, comparable magnitude. Still
+descriptive per the playbook's own §3.3 discipline (a reference book, not a
+signal search — no after-cost gate, no position sizing, no live wiring) — the
+widen raises confidence the *pattern* is real and general, it does not by
+itself make either finding tradeable. `node --check` passed before the run;
+`--headline` mode adds no engine changes, pure validation tooling
+(`scripts/run_asia_fib_atlas.mjs` only). PR #1345.
+
+**Live page built (2026-08-27) — `asia-fib-atlas-live.html`.** Per the owner's
+ask ("can we build it into a page on railway where i can see the info on a
+live candle chart"): the per-level, per-situational confidence read
+discovered in the widen check (§ above — `prevOutcomeSameDay`/`sessionHandoff`
+dominate ~73% of levels' held findings) is now servable live, mirroring Level
+Atlas's own async-job + R2-persist + fast-live-cache architecture exactly —
+no new pattern invented:
+
+| Brick | File | Owns | Status |
+|---|---|---|---|
+| **Live ladder** | `js/asiaFibAtlasEngine.js` `asiaFibAtlasLiveLadder(packed, opts)` | Today's FULL fib grid (all 40 rungs, touched or not — `RUNGS_ABOVE`/`RUNGS_BELOW`, same `asia.low+asia.range*level` formula the walk itself uses), each carrying `prevOutcomeSameDay` (derived from today's touches-so-far via `asiaFibAtlasLiveToday`, last RESOLVED outcome per rung wins) and the CURRENT `sessionHandoff` (now `export`ed — was module-private). Deliberately does NOT replicate this engine's other ~20 touch-time-only fields (candleReject, wtState, macroEventBucket, ...) for untouched rungs — see the function's own header for why building the live score around exactly the two dimensions the widen check proved general is the honest v1 scope, not a shortcut. | 🟢 built + tested |
+| **Generalized confidence matcher** | `js/levelAtlasReport.js` `matchLiveContext(book, liveTouch, {keyField, dimLabels})` | Extended (backward-compatibly — new args default to the OLD `rung`/module-private-`DIM_LABEL` behaviour, every existing Level Atlas call site untouched) so Asia Fib Atlas's `level`-keyed book reuses the SAME base-rate + held-dimension + supports/challenges logic instead of a second copy. This is the reuse the two engines' identical `{outcome, fadePips, runPips, ...}` record shape was deliberately built for (see the original §1aq entry). | 🟢 built + tested (25/25 `levelAtlasReport.test.mjs`, incl. a new test proving the `level`-keyed reuse) |
+| **Routes** | `js/asiaFibAtlasRoutes.js` (new) | `mountAsiaFibAtlasRoutes(app,express)` — `/run`+`/status` (async job, walks full history + gap-fills to now via OANDA, builds the book, persists to R2), `/live` (last stored snapshot), `/fastlive` (warm 180-day bounded-window cache, incrementally topped up, recomputes only on a new M1 bar — same `boundPacked`/`getFastLive` shape as `levelAtlasRoutes.js`, not a copy-paste: re-derived because the ladder/scoring types differ), `/book`, `/book/:instrument/text`. `scoreLadder(book, ladder)` is the one place that flattens `matchLiveContext`'s match object back onto each rung's own price/distance/touchedToday fields (a real bug caught in manual browser testing before commit: the match object doesn't carry the original rung fields at its top level, only nested under `.liveTouch` — every consumer needs the merge, so it's one function, not copy-pasted at each call site). | 🟢 built + manually verified against real M1 (local server, real EURUSD run) |
+| **Page** | `asia-fib-atlas-live.html` (new) | Candlestick chart via `js/levelChart.js` (reused, not re-wired — new `KIND_STYLE` entries added: `fibOutStrong/fibOutWeak/fibBackStrong/fibBackWeak/fibNeutral/asiaBoxEdge`, colour keyed off `lean`+`sameSignOOS`) + a side-panel ladder table + per-rung detail (supports/challenges/other-held-reads). Candles from the existing `/api/pattern-lab/live-candles/:pair` route (reused, not a new candle endpoint). Polls `/api/asia-fib-atlas/fastlive/:instrument` every 15s. | 🟢 built; verified in headless Chromium with a `LightweightCharts` stub (the CDN script itself can't load in this sandbox — same Railway-only constraint as every other `levelChart.js` page, see CLAUDE.md's OANDA note) — page logic (data fetch, ladder render, status line) confirmed working end-to-end against the real local server + real EURUSD data; the CDN chart itself needs a Railway check |
+
+**Scope, stated plainly**: this live score combines a rung's own OOS base
+rate with whichever of the two proven-general dimensions currently applies —
+a simple additive read presented per-dimension (supports/challenges), NOT a
+fitted/backtested joint model. No after-cost gate, no position sizing, no
+claim that acting on it is profitable — this is the reference book made
+live-readable, same discipline as everything else in this section.
+
+Nightly refresh: added as a third leg of the existing `reference-engine-
+rebuild` scheduler in `server.js` (00:30 London, alongside Level Atlas +
+Session Path + Session Handoff) — `REFERENCE_ENGINE_PAIRS` filtered to
+FX+gold (Asia Fib Atlas's own scope, matches the Pine indicator it mirrors),
+not a second hand-maintained pair list. Registered for discoverability per
+CLAUDE.md's house convention: `js/siteApiMap.js` (`#smBody` FX-BT group + the
+`am-row` API listing) + `MD files/SITE_MAP.md` + `js/commandHub.js`'s
+`chubDDvol` menu — NOT `hub.html`.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
