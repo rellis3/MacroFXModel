@@ -1,6 +1,6 @@
 {
-  "status": "no_checkpoint_yet",
+  "status": "no_data_yet",
   "pair": "chfjpy",
-  "now": "2026-08-27T05:48:14.568672+00:00",
-  "note": "still in the Asia session \u2014 first checkpoint (post_asia) at 07:00 UTC"
+  "now": "2026-08-27T07:36:52.834547+00:00",
+  "checkpoint": "post_asia"
 }

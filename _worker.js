@@ -1950,6 +1950,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               // week's, matching the reference spec's flow definition exactly rather than
               // dividing a raw contract change by only this week's open interest.
               specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
+              // Same definition over a 4-WEEK lookback — a month of drift, which separates a
+              // reading that arrived this week from one that has been grinding the same way
+              // since last month. Null for the first four weeks of an instrument's history,
+              // and null on any cached payload written before this field existed (the 7-day
+              // cache is not version-bumped for an additive field) — the UI renders "—".
+              specShareChg4w: (specShare[0] != null && specShare[4] != null) ? +((specShare[0] - specShare[4]) * 100).toFixed(3) : null,
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
@@ -2019,6 +2025,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               // specShare) already has the JPY/CAD/CHF flip baked in, so no extra sign
               // handling is needed here the way weeklyChg below needs it.
               specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
+              // Same definition over a 4-WEEK lookback — a month of drift, which separates a
+              // reading that arrived this week from one that has been grinding the same way
+              // since last month. Null for the first four weeks of an instrument's history,
+              // and null on any cached payload written before this field existed (the 7-day
+              // cache is not version-bumped for an additive field) — the UI renders "—".
+              specShareChg4w: (specShare[0] != null && specShare[4] != null) ? +((specShare[0] - specShare[4]) * 100).toFixed(3) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract quotes

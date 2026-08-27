@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-27T05:55:39.178088+00:00",
+  "generated_at": "2026-08-27T12:20:26.592398+00:00",
   "pairs": [
     {
       "pair": "audcad",
@@ -512,7 +512,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "audnzd",
@@ -683,7 +683,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "audusd",
@@ -854,7 +854,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "cadjpy",
@@ -1196,7 +1196,7 @@
         }
       ],
       "today_outlook_is_live": false,
-      "live_status": "no_checkpoint_yet"
+      "live_status": "no_data_yet"
     },
     {
       "pair": "euraud",

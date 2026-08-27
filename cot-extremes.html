@@ -107,6 +107,78 @@ svg{display:block;width:100%;height:auto;overflow:visible}
   padding-bottom:12px;border-bottom:1px solid var(--line)}
 .kicker b{color:var(--acc)}
 
+/* ── This week's read ───────────────────────────────────────────────────────
+   Lifted wholesale from the OI dashboard's "Today's read" so the two desks
+   explain themselves in the same shape: a headline verdict, then one
+   plain-English sub-read per panel below, so every number is already
+   interpreted before you scroll to it. Lights are NOT directional — green
+   means nothing here argues against your plan, amber means something is
+   changing, red means this contradicts a trade you might be about to take. */
+.rd-top{padding:16px 18px;border-bottom:1px solid var(--line)}
+.rd-reg{font-size:13px;letter-spacing:.11em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.rd-say{font-size:14px;line-height:1.62;color:var(--tx2);margin-top:6px;max-width:104ch}
+.rd-say b{color:var(--tx);font-weight:600}
+.rd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:1px;background:var(--line)}
+.rd{background:var(--bg2);padding:13px 16px}
+.rd-h{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);display:flex;align-items:center;gap:7px}
+.rdot{width:8px;height:8px;border-radius:50%;flex:0 0 8px}
+.rd-v{font-size:14.5px;color:var(--tx);margin-top:5px;line-height:1.45}
+.rd-v b{font-family:var(--mono);font-weight:600}
+.rd-d{font-size:12.5px;color:var(--tx3);margin-top:5px;line-height:1.55}
+.rd-d b{color:var(--tx2)}
+@media(max-width:760px){.rd-grid{grid-template-columns:1fr}}
+
+/* ── Spotlight: the extremes hoisted out of the ledger ──────────────────── */
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--tx3);
+  font-size:11.5px;margin-bottom:14px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px;
+  vertical-align:-1px;font-style:normal}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(166px,1fr));gap:11px}
+.sp{background:var(--bg3);border:1px solid var(--line2);border-left-width:3px;border-radius:6px;
+  padding:11px 13px;cursor:pointer}
+.sp:hover{border-color:var(--acc)}
+.sp-top{display:flex;align-items:center;gap:6px}
+.sp-sym{font-family:var(--mono);font-weight:700;font-size:12.5px;letter-spacing:.04em;color:var(--tx);
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-grp{color:var(--tx3);letter-spacing:.07em;text-transform:uppercase;font-size:9.5px}
+.sp-dot{width:6px;height:6px;border-radius:50%;background:var(--acc);flex:0 0 6px;cursor:help}
+.sp-val{font-family:var(--mono);font-size:21px;font-weight:700;margin-top:8px;line-height:1}
+.sp-lbl{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);margin-top:6px}
+
+/* ── Positioning ledger: every market as a percentile bar, grouped by asset
+   class. The shaded bands at 0-10 and 90-100 are the extreme thresholds
+   themselves, so "how close is this to counting as crowded" is readable off
+   the bar and not only off the number next to it. */
+.lg-sec{margin:0 0 26px}
+.lg-sec:last-of-type{margin-bottom:8px}
+.lg-h{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;padding-bottom:7px;
+  border-bottom:1px solid var(--line);margin-bottom:9px}
+.lg-h b{font-size:15px;font-weight:600;letter-spacing:.03em}
+.lg-h span{color:var(--tx3);font-size:11.5px;font-family:var(--mono)}
+.lg-row{display:grid;grid-template-columns:104px 1fr 76px 76px;align-items:center;gap:12px;
+  padding:3px 0;border-radius:3px}
+.lg-row.hd{color:var(--tx3);font-size:10px;letter-spacing:.07em;text-transform:uppercase;padding-bottom:4px}
+.lg-row.clk{cursor:pointer}
+.lg-row.clk:hover{background:rgba(255,255,255,.035)}
+.lg-nm{font-family:var(--mono);font-size:12px;color:var(--tx2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lg-row.clk:hover .lg-nm{color:var(--tx)}
+.lg-tr{position:relative;height:15px;background:var(--bg3);border-radius:2px}
+.lg-zn{position:absolute;top:0;bottom:0;border-radius:2px}
+.lg-mid{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--line2)}
+.lg-bar{position:absolute;top:2px;bottom:2px;border-radius:1px;opacity:.85}
+.lg-tk{position:absolute;top:-2px;bottom:-2px;width:2px;border-radius:1px}
+.lg-v,.lg-d{font-family:var(--mono);font-size:12px;text-align:right}
+.lg-row.hd .lg-v,.lg-row.hd .lg-d{font-size:10px}
+.lg-d{color:var(--tx3);font-size:11px}
+.lg-ax{position:relative;height:12px}
+.lg-ax span{position:absolute;transform:translateX(-50%);color:var(--tx3);font-size:9.5px;
+  font-family:var(--mono);white-space:nowrap}
+@media(max-width:700px){
+  .lg-row{grid-template-columns:76px 1fr 58px}
+  .lg-d{display:none}
+}
+
 #zoom{display:none;position:fixed;inset:0;background:rgba(4,6,9,.94);z-index:200;padding:34px;overflow:auto}
 #zoom.open{display:block}
 #zoomBox{max-width:1500px;margin:0 auto;background:var(--bg2);border:1px solid var(--line2);border-radius:9px;overflow:hidden}
@@ -150,6 +222,10 @@ const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 const fN  = n => !Number.isFinite(n) ? '—' : Math.abs(n)>=1e6 ? (n/1e6).toFixed(2)+'M'
               : Math.abs(n)>=1000 ? (n/1000).toFixed(0)+'K' : String(Math.round(n));
 const sgn = n => (Number.isFinite(n) && n>0 ? '+' : '');
+// Percentiles here run 0-100 and single digits are common at the crowded-short end,
+// where appending a bare 'th' printed "2th". 11/12/13 keep 'th'.
+const ord = n => { const v = Math.abs(n) % 100, d = v % 10;
+  return n + (v >= 11 && v <= 13 ? 'th' : d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'); };
 
 // Ranking basis. 'share' = net as % of open interest, then ranked — the read that survives
 // open interest itself changing over the window. 'raw' = the old contract-count ranking,
@@ -175,7 +251,6 @@ const HELP = {
   oi:['Open interest','Total contracts outstanding, and its own percentile. The same net position is far more crowded in a thin market than a busy one — which is exactly why the default ranking normalises by it.'],
   wk:['Weekly change','Net contracts added or removed since last week — the direction of travel. A stretched reading still <b>growing</b> is a different situation from one already unwinding.'],
   gross:['Gross L/S ratio','Speculative longs divided by shorts. Above 1 is net long. It ignores position size, so read it beside the net.'],
-  group:['By asset class','Median crowding percentile per group. This is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch.'],
   scatter:['Specs vs commercials','Each dot is one market: speculative crowding across, commercial crowding up.','They should sit near a downward diagonal, because commercials take the other side. A market well <b>off</b> that line means the usual mirror has broken — worth a look, not a signal.'],
   hist:['200-week history','Net positioning over time, with the current reading marked.','A percentile means little without the shape behind it: the 90th after a steady climb is a different situation from the 90th after a spike.'],
   paira:['Reinforcing FX pairs','Flags an FX cross where BOTH legs sit at a 90th/10th-percentile crowding extreme, and the direction reinforces on the cross (e.g. the base crowded long, the quote crowded short) — TWO DIFFERENT currencies\' specs compared to each other.','This is a crowding read, not a trade signal: it says the fuel for more of the same is thin on both sides at once, not which way or when it unwinds. It has not been backtested — treat it as context to combine with price and your own risk process, not a rule to act on alone.'],
@@ -184,6 +259,9 @@ const HELP = {
   persist:['Extreme persistence','How many of the most recent weeks were also a 90th/10th-percentile extreme at the time — each ranked only against its own trailing up-to-156-week window, the same rolling method used for today\'s reading.','A percentile alone can\'t tell a freshly-hit extreme from one that has held for months. Needs at least 52 weeks of trailing history behind a week before ranking it, same floor as the main reading — a market too new to satisfy that just stops the count rather than guessing.'],
   confl:['Confluence','Flags a market where speculators are at a 90th/10th-percentile extreme AND commercials are independently at the opposite extreme, at the same time.','This is the textbook COT contrarian setup — commercials normally sit roughly opposite specs anyway (see the scatter panel), so both hitting their own extreme at once is the strongest version of a "crowded, low-fuel, exposed-to-reversal" read this data can give. Still not a timing signal — it says the setup is textbook, not that it resolves now.'],
   digest:['At a glance','For every currently-crowded market, checks whether commercials confirm it (Confluence) and whether this week\'s flow is still building the same way (Positioning Flow), and counts how many of those independent reads currently agree.','Not a new calculation — every fact shown is already on a panel below this one. This just answers "do the reads on this market agree or fight each other" without averaging that answer away. Never blends across DIFFERENT markets into one board-wide call; each market keeps its own count.'],
+  read:['This week\u2019s read','Plain-English interpretation of every panel on this page, in one place: a headline saying how stretched the board is overall, then one sub-read per panel so each number is already interpreted before you scroll to it.','Reads the same fields the panels do \u2014 it is not a second opinion or a new calculation. The traffic lights are deliberately NOT directional: green means nothing here argues against your plan, amber means something is changing, red means this contradicts a trade you might be about to take. Direction comes from your own system.'],
+  spot:['Spotlight','Every market currently at a 90th/10th-percentile extreme of its own trailing history, most stretched first, so you do not have to scan the full ledger to find them.','A dot marks a market where commercials are independently at their own opposite extreme too \u2014 the Confluence test. Click any card to load that market\u2019s 200-week series at the bottom of the page.'],
+  ledger:['Positioning ledger','Every ranked market as a bar running from the 50th percentile out to where it sits in its OWN trailing range, grouped by asset class with each group\u2019s median in the header.','The shaded bands at each end are the 90th/10th thresholds this page treats as extreme. Grouping is the point: a crowded market inside a group that is all leaning the same way is a shared macro theme rather than an independent bet, and a flat board-wide ranking cannot show you that — it is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch. Replaces the old crowding leaderboard and the separate by-asset-class median table, carrying the contents of both.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
@@ -435,10 +513,7 @@ function eventRisk(big){
   if (EVENTS === false) return '<div class="empty">Could not load the economic calendar.</div>';
 
   const now = Date.now();
-  const upcoming = EVENTS
-    .map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
-    .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
-    .sort((a,b) => a.ms - b.ms);
+  const upcoming = upcomingEvents();
 
   const rows = (DATA.instruments||[]).map(x => {
     const p = pctOf(x), ccy = ccyOf(x);
@@ -474,20 +549,15 @@ function digest(big){
   if (!list.length) return '<div class="empty">Nothing at a 90th/10th percentile extreme right now — no market has enough of a read to summarise.</div>';
 
   if (EVENTS === null) loadEvents();   // fire-and-forget, same shared state as the event-risk panel
-  const now = Date.now();
-  const upcoming = (EVENTS && EVENTS !== 'loading' && EVENTS !== false)
-    ? EVENTS.map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
-        .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
-        .sort((a,b) => a.ms - b.ms)
-    : [];
+  const upcoming = upcomingEvents();
 
   const rows = list.map(x => {
     const p = pctOf(x), wantLong = p >= 90, c = cOf(x);
-    const checks = [{ label: 'Spec crowding', agree: true, txt: (wantLong?'CROWDED LONG':'CROWDED SHORT')+' ('+p+'th pct)' }];
+    const checks = [{ label: 'Spec crowding', agree: true, txt: (wantLong?'CROWDED LONG':'CROWDED SHORT')+' ('+ord(p)+' pct)' }];
     if (c != null) {
       const confirms = wantLong ? c <= 10 : c >= 90;
       checks.push({ label: 'Commercials', agree: confirms,
-        txt: confirms ? 'confluence — also at the opposite extreme ('+c+'th pct)' : 'don\'t confirm ('+c+'th pct — not at the opposite extreme)' });
+        txt: confirms ? 'confluence — also at the opposite extreme ('+ord(c)+' pct)' : 'don\'t confirm ('+ord(c)+' pct — not at the opposite extreme)' });
     }
     if (Number.isFinite(x.specShareChg) && x.specShare != null && x.specShareChg !== 0) {
       const extending = Math.sign(x.specShareChg) === Math.sign(x.specShare);
@@ -595,8 +665,8 @@ function confluence(big){
 
   return kicker + '<table><thead><tr><th>Market</th><th style="text-align:left">Specs</th><th style="text-align:left">Commercials</th></tr></thead><tbody>'
     + rows.map(r => '<tr class="clk" onclick="pick(\''+esc(r.x.sym)+'\')"><td>'+esc(dispSym(r.x))+'</td>'
-      + '<td style="text-align:left;color:'+colFor(r.p)+'"><b>'+(r.dir==='long'?'CROWDED LONG':'CROWDED SHORT')+'</b> ('+r.p+'th)</td>'
-      + '<td style="text-align:left;color:'+colFor(r.c)+'"><b>'+(r.dir==='long'?'CROWDED SHORT':'CROWDED LONG')+'</b> ('+r.c+'th)</td></tr>').join('')
+      + '<td style="text-align:left;color:'+colFor(r.p)+'"><b>'+(r.dir==='long'?'CROWDED LONG':'CROWDED SHORT')+'</b> ('+ord(r.p)+')</td>'
+      + '<td style="text-align:left;color:'+colFor(r.c)+'"><b>'+(r.dir==='long'?'CROWDED SHORT':'CROWDED LONG')+'</b> ('+ord(r.c)+')</td></tr>').join('')
     + '</tbody></table><div class="note">The classic COT contrarian setup: speculators stretched one way, and commercials — who normally take the other side of specs anyway — independently confirming it by sitting at their own opposite extreme too. It doesn\'t call which way or when it turns; it flags where a reversal setup is most textbook right now.</div>';
 }
 
@@ -668,7 +738,7 @@ function oiCrossCheck(big){
       : p>=70 ? 'leaning long, but not stretched enough to call it crowded'
       : p<=30 ? 'leaning short, but not stretched enough to call it crowded'
       : 'roughly neutral — no strong lean either way right now';
-    return '<b>'+esc(dispSym(x))+'</b> is '+word+' ('+p+'th percentile of its own 200-week range — 90+ or 10- is what counts as crowded on this page)';
+    return '<b>'+esc(dispSym(x))+'</b> is '+word+' ('+ord(p)+' percentile of its own 200-week range — 90+ or 10- is what counts as crowded on this page)';
   };
   const wallPhrase = (w, spot, kind) => {
     if (!w) return 'no '+kind+' wall was found in the saved options data for this pair';
@@ -701,48 +771,6 @@ function oiCrossCheck(big){
       }).join('')
     + '</tbody></table><div class="note">COT is weekly <b>futures</b> positioning (who\'s already committed); the walls are dealer <b>options</b> open interest (where hedging flow may cluster) — two separate markets, shown side by side rather than combined. A currency crowded on COT sitting right under a heavy wall is worth noting, not automatically anything.</div>'
     + explainers;
-}
-
-// ── crowding leaderboard: every market ranked, both directions on one axis ──
-function leaderboard(big){
-  const rows = (DATA.instruments||[]).filter(x=>pctOf(x)!=null).sort((a,b)=>pctOf(b)-pctOf(a));
-  if(!rows.length) return '<div class="empty">No instruments.</div>';
-  // LM/RM reserve room for the symbol name and the value label so both stay inside the
-  // viewBox — MID=42%/SPAN=48% of the FULL width put names at a negative x-coordinate,
-  // which is legal SVG (overflow:visible on the <svg>) but got clipped by the panel's own
-  // overflow:hidden, silently dropping every label.
-  const W=1000, rh=big?24:17, H=rows.length*rh+8, LM=95, RM=45;
-  const MID=LM+(W-LM-RM)/2, SPAN=(W-LM-RM)/2-18;
-  let s='<svg viewBox="0 0 '+W+' '+(H+20)+'">';
-  s+='<line class="axis" x1="'+MID+'" y1="0" x2="'+MID+'" y2="'+H+'"/>';
-  [10,30,70,90].forEach(p=>{ const x=MID+((p-50)/50)*SPAN;
-    s+='<line class="gl" x1="'+x+'" y1="0" x2="'+x+'" y2="'+H+'"/>'
-      +'<text class="lbl" x="'+x+'" y="'+(H+14)+'" text-anchor="middle" style="font-size:10px">'+p+'</text>';});
-  rows.forEach((x,i)=>{
-    const p=pctOf(x), y=i*rh+3, bh=rh-4, w=((p-50)/50)*SPAN;
-    s+='<rect x="'+(w>=0?MID:MID+w)+'" y="'+y+'" width="'+(Math.abs(w)||1)+'" height="'+bh
-      +'" fill="'+colFor(p)+'" opacity=".85" rx="1"/>';
-    s+='<text class="lbl" x="'+(MID-SPAN-6)+'" y="'+(y+bh-2)+'" text-anchor="end" style="fill:var(--tx);font-size:'+(big?12:10.5)+'px">'+esc(dispSym(x))+'</text>';
-    s+='<text class="lbl" x="'+(w>=0?MID+w+6:MID+w-6)+'" y="'+(y+bh-2)+'" text-anchor="'+(w>=0?'start':'end')+'" style="font-size:'+(big?12:10.5)+'px">'+p+'</text>';
-  });
-  s+='<text class="lbl" x="'+(MID-SPAN)+'" y="'+(H+14)+'" style="fill:var(--short)">&#9664; crowded SHORT</text>'
-    +'<text class="lbl" x="'+(MID+SPAN)+'" y="'+(H+14)+'" text-anchor="end" style="fill:var(--long)">crowded LONG &#9654;</text></svg>';
-  return s+'<div class="note">Percentile of net positioning in each market\'s own 200-week range, on <b>'
-    +(BASIS==='share'?'net as % of open interest':'raw contract counts')+'</b>. Red = crowded long, green = crowded short. '
-    +'Crowding says the fuel for more of the same is thin; it does not say when it turns.</div>';
-}
-
-function groups(big){
-  const list=(DATA.instruments||[]).filter(x=>pctOf(x)!=null);
-  const gs=[...new Set(list.map(x=>x.group))].map(g=>{
-    const r=list.filter(x=>x.group===g).map(pctOf).sort((a,b)=>a-b);
-    return { g, n:r.length, med: r.length? r[r.length>>1] : null };
-  }).sort((a,b)=>(b.med??0)-(a.med??0));
-  return '<table><thead><tr><th>Group</th><th>Markets</th><th>Median pct</th><th></th></tr></thead><tbody>'
-    + gs.map(x=>'<tr><td>'+esc(x.g)+'</td><td class="muted">'+x.n+'</td>'
-      +'<td style="color:'+colFor(x.med)+'"><b>'+(x.med??'—')+'</b></td>'
-      +'<td style="width:120px"><span class="bar" style="width:'+(x.med||0)+'px;background:'+colFor(x.med)+';opacity:.7"></span></td></tr>').join('')
-    + '</tbody></table>';
 }
 
 function scatter(big){
@@ -829,6 +857,367 @@ function disagree(){
     +'the same contract count is far more crowded than the raw ranking admits.</div>';
 }
 
+// ── asset-class display order and labels ────────────────────────────────────
+// The API's `group` values are lowercase internal keys; these are what a reader
+// sees. Order is deliberately "what moves FX first" rather than alphabetical —
+// FX, then the rates and equity complexes that drive it, then commodities.
+const GRP_ORDER = ['fx','rates','equities','metals','energy','grains','softs','livestock','crypto'];
+const GRP_NAME  = { fx:'FX', rates:'Rates', equities:'Equities', metals:'Metals', energy:'Energy',
+                    grains:'Grains', softs:'Softs', livestock:'Livestock', crypto:'Crypto' };
+const grpRank = g => { const i = GRP_ORDER.indexOf(g); return i < 0 ? 99 : i; };
+
+// Commercial percentile on whichever ranking basis is selected — the same expression
+// three panels below each defined privately as `cOf`. Hoisted so the summary read and
+// those panels cannot drift apart on which basis they rank commercials by.
+const commOf = x => BASIS==='share' ? (x.commSharePct ?? x.commPct) : x.commPct;
+
+// Every market at the page-wide 90th/10th extreme threshold, most stretched first.
+const extremes = () => (DATA.instruments||[])
+  .filter(x => { const p = pctOf(x); return p != null && (p >= 90 || p <= 10); })
+  .sort((a,b) => Math.abs(50-pctOf(b)) - Math.abs(50-pctOf(a)));
+
+// The Confluence panel's exact test, reused rather than re-expressed: specs at one
+// extreme AND commercials independently at the opposite one, same market.
+const hasConfluence = x => { const p = pctOf(x), c = commOf(x);
+  return p != null && c != null && ((p >= 90 && c <= 10) || (p <= 10 && c >= 90)); };
+
+// Upcoming high/medium-impact releases mapped to a currency, soonest first. This filter
+// was written out separately in the event-risk panel and in the digest; one copy so they
+// and the summary read can never name a different "next event" for the same market.
+function upcomingEvents(){
+  if(!EVENTS || EVENTS === 'loading' || EVENTS === false) return [];
+  const now = Date.now();
+  return EVENTS
+    .map(e => ({ ...e, ms: new Date(e.time).getTime(), ccy: CC_TO_CCY[e.country] }))
+    .filter(e => e.ccy && !isNaN(e.ms) && e.ms >= now && ['high','medium'].includes((e.impact??'').toLowerCase()))
+    .sort((a,b) => a.ms - b.ms);
+}
+
+// ── SPOTLIGHT ───────────────────────────────────────────────────────────────
+// The ledger below answers "where does everything sit". This answers the question
+// you actually have on opening the page — "what is stretched right now" — without
+// making you scan 40 rows for it. Same numbers, ranked and hoisted.
+function spotlight(big){
+  const list = extremes();
+  if(!list.length) return '<div class="empty">No market is at a 90th/10th-percentile positioning extreme right now — nothing crowded enough to spotlight.</div>';
+  const shown = list.slice(0, big ? 60 : 12);
+  const legend = '<div class="legend">'
+    + '<span><i style="background:var(--long)"></i>Crowded long (90th percentile or above)</span>'
+    + '<span><i style="background:var(--short)"></i>Crowded short (10th or below)</span>'
+    + '<span><i style="background:var(--acc);border-radius:50%"></i>Commercials confirm — textbook reversal setup</span>'
+    + '<span class="muted">Click a card to load its 200-week history at the bottom of the page</span></div>';
+  const cards = shown.map(x => {
+    const p = pctOf(x), lng = p >= 90, clr = lng ? 'var(--long)' : 'var(--short)';
+    return '<div class="sp" style="border-left-color:'+clr+'" onclick="pick(\''+esc(x.sym)+'\')">'
+      + '<div class="sp-top"><span class="sp-sym">'+esc(dispSym(x))+'</span>'
+      + '<span class="sp-grp">'+esc(GRP_NAME[x.group]||x.group||'')+'</span>'
+      + (hasConfluence(x) ? '<span class="sp-dot" title="Commercials are independently at their own opposite extreme — the textbook contrarian setup. See the Confluence panel."></span>' : '')
+      + '</div><div class="sp-val" style="color:'+clr+'">'+p+'</div>'
+      + '<div class="sp-lbl">'+(lng ? 'extreme long' : 'extreme short')+'</div></div>';
+  }).join('');
+  const ranked = (DATA.instruments||[]).filter(x => pctOf(x) != null).length;
+  const more = (list.length > shown.length)
+    ? ' <b>'+(list.length-shown.length)+'</b> more are also at an extreme — use Enlarge for the full set.' : '';
+  return legend + '<div class="sp-grid">'+cards+'</div>'
+    + '<div class="note"><b>'+list.length+' of '+ranked+'</b> ranked markets sit at a 90th/10th-percentile extreme of their '
+    + '<b>own</b> trailing history — not versus each other — ordered most stretched first. Crowding says the fuel for more of '
+    + 'the same is thin, not that it turns now.'+more+'</div>';
+}
+
+// ── POSITIONING LEDGER ──────────────────────────────────────────────────────
+// Replaces the flat crowding leaderboard AND the separate group-median table,
+// carrying both their contents: every market's percentile with the same colour
+// coding, and each group's median in its header. Grouping is the point — a
+// crowded market inside a group that is ALL leaning the same way is a macro
+// theme, and the flat ranking could not show that without cross-referencing a
+// second panel. The shaded bands at each end are the 90th/10th thresholds
+// themselves, so "how close is this to counting as extreme" is readable off the
+// bar rather than only off the number.
+function ledger(big){
+  const list = (DATA.instruments||[]).filter(x => pctOf(x) != null);
+  if(!list.length) return '<div class="empty">No instrument has enough history to rank yet.</div>';
+
+  const axis = [[0,'0'],[10,'10'],[50,'50th pctile'],[90,'90'],[100,'100']]
+    .map(function(t){ return '<span style="left:'+t[0]+'%">'+t[1]+'</span>'; }).join('');
+
+  const row = x => {
+    const p = pctOf(x), clr = colFor(p), d4 = x.specShareChg4w, sh = x.specShare;
+    const lo = Math.min(p,50), w = Math.abs(p-50);
+    const dTxt = !Number.isFinite(d4) ? '<span class="muted">—</span>'
+      : '<span style="color:'+(d4>0?'var(--long)':d4<0?'var(--short)':'var(--tx3)')+'">'
+        + (d4>0?'&#9650;':d4<0?'&#9660;':'&ndash;')+sgn(d4)+d4.toFixed(1)+'pp</span>';
+    const tip = dispSym(x)+' — '+ord(p)+' percentile'
+      + (sh != null ? ', net '+sgn(sh)+sh+'% of open interest' : '')
+      + (Number.isFinite(x.specShareChg) ? ', '+sgn(x.specShareChg)+x.specShareChg+'pp this week' : '')
+      + '. Click for its 200-week history.';
+    return '<div class="lg-row clk" title="'+esc(tip)+'" onclick="pick(\''+esc(x.sym)+'\')">'
+      + '<div class="lg-nm">'+esc(dispSym(x))+'</div>'
+      + '<div class="lg-tr">'
+      +   '<div class="lg-zn" style="left:0;width:10%;background:rgba(70,184,122,.14)"></div>'
+      +   '<div class="lg-zn" style="left:90%;width:10%;background:rgba(232,97,95,.14)"></div>'
+      +   '<div class="lg-mid" style="left:50%"></div>'
+      +   '<div class="lg-bar" style="left:'+lo+'%;width:'+(w || 0.35)+'%;background:'+clr+'"></div>'
+      +   '<div class="lg-tk" style="left:calc('+p+'% - 1px);background:'+clr+'"></div>'
+      + '</div>'
+      + '<div class="lg-v" style="color:'+clr+'">'+p+'</div>'
+      + '<div class="lg-d">'+dTxt+'</div></div>';
+  };
+
+  const secs = [...new Set(list.map(x => x.group))].sort((a,b) => grpRank(a)-grpRank(b)).map(g => {
+    const rows = list.filter(x => x.group === g).sort((a,b) => pctOf(b)-pctOf(a));
+    const srt = rows.map(pctOf).sort((a,b) => a-b), med = srt[srt.length>>1];
+    // The old "By asset class" table's median, kept here where the markets it summarises
+    // are actually visible — a median of 88 over ten markets and one of 88 over two say
+    // very different things, and the standalone table could not show which you had.
+    const lean = med >= 70 ? 'the whole group leans long' : med <= 30 ? 'the whole group leans short'
+      : 'mixed across the group';
+    return '<div class="lg-sec"><div class="lg-h"><b>'+esc(GRP_NAME[g]||g)+'</b>'
+      + '<span>'+rows.length+' market'+(rows.length===1?'':'s')+' &middot; median '+ord(med)+' &middot; '+lean+'</span></div>'
+      + '<div class="lg-row hd"><div></div><div class="lg-ax">'+axis+'</div>'
+      + '<div class="lg-v">spec pctile</div><div class="lg-d">4wk &Delta;</div></div>'
+      + rows.map(row).join('') + '</div>';
+  }).join('');
+
+  const noDelta = list.every(x => !Number.isFinite(x.specShareChg4w));
+  return secs + '<div class="note">Every ranked market, grouped by asset class. The bar runs from the 50th '
+    + 'percentile out to where that market sits in its <b>own</b> trailing history — not versus the other markets — '
+    + 'on <b>'+(BASIS==='share'?'net position as % of open interest':'raw contract counts')+'</b>. The shaded bands '
+    + 'are the 90th/10th thresholds this page treats as extreme; red = crowded long, green = crowded short. '
+    + '<b>4wk &Delta;</b> is the change in that net share over four weeks, in percentage points — a month of drift, so '
+    + 'a reading that arrived this week reads differently from one that has been grinding the same way since last '
+    + 'month. Group medians answer whether a crowded market is on its own or part of a shared theme.'
+    + (noDelta ? ' <b>The 4-week column is empty because the cached payload predates it</b> — press Refresh CFTC, or wait for the next weekly refresh.' : '')
+    + '</div>';
+}
+
+// ── THIS WEEK'S READ ────────────────────────────────────────────────────────
+// The page shows several hundred numbers across a dozen panels and never says what
+// they add up to. This is the plain-English answer to "what is this report telling
+// me", with one sub-read per panel so every number is already interpreted before you
+// scroll to it. Nothing here is a second opinion — it reads the same fields the
+// panels do and says them in English. Modelled on the OI dashboard's "Today's read"
+// deliberately, so the two desks explain themselves the same way.
+//
+// Traffic lights are NOT directional, same convention as the OI page. Green = nothing
+// here argues against your plan. Amber = something is changing, or needs care. Red =
+// this contradicts a trade you might be about to take. Direction comes from your own
+// system; this only says how far to trust it.
+function _rd(light, panel, headline, detail){
+  const col = light==='ok' ? 'var(--ok)' : light==='warn' ? 'var(--warn)'
+            : light==='bad' ? 'var(--long)' : 'var(--tx3)';
+  return '<div class="rd"><div class="rd-h"><span class="rdot" style="background:'+col+'"></span>'+panel+'</div>'
+    + '<div class="rd-v">'+headline+'</div>'+(detail?'<div class="rd-d">'+detail+'</div>':'')+'</div>';
+}
+
+function thisWeeksRead(){
+  const all = (DATA && DATA.instruments) || [];
+  if(!all.length) return '';
+  const ranked = all.filter(x => pctOf(x) != null);
+  const ext    = extremes();
+  const longs  = ext.filter(x => pctOf(x) >= 90), shorts = ext.filter(x => pctOf(x) <= 10);
+  const rdate  = (all[0] && all[0].reportDate) || DATA.reportDate;
+  const ageD   = rdate ? Math.round((Date.now()-Date.parse(rdate))/864e5) : null;
+  const nm     = x => esc(dispSym(x));
+
+  // ── headline ─────────────────────────────────────────────────────────────
+  // How much of the board is stretched at once. A single crowded market is a story
+  // about that market; a quarter of the board crowded at once is usually one macro
+  // theme wearing several costumes, and those are read differently.
+  const share = ranked.length ? ext.length/ranked.length : 0;
+  const reg = !ranked.length ? 'NOT ENOUGH HISTORY'
+    : !ext.length            ? 'CALM — nothing is stretched'
+    : share >= 0.25          ? 'STRETCHED — much of the board is crowded'
+    : share >= 0.10          ? 'PATCHY — a handful of crowded markets'
+                             : 'QUIET — one or two crowded markets';
+  const regCol = !ranked.length ? 'var(--tx3)' : !ext.length ? 'var(--ok)'
+    : share >= 0.25 ? 'var(--warn)' : 'var(--tx2)';
+  const verdict = !ranked.length
+    ? 'No market has enough trailing history behind it to rank yet.'
+    : !ext.length
+      ? 'Nothing on the board sits at a 90th/10th-percentile extreme of its own history. <b>Positioning is not the constraint this week</b> — whatever you trade, the crowd is not obviously already in the way.'
+      : '<b>'+ext.length+' of '+ranked.length+'</b> ranked markets sit at a 90th/10th-percentile extreme &mdash; <b>'
+        + longs.length+'</b> crowded long, <b>'+shorts.length+'</b> crowded short. '
+        + (share >= 0.25
+            ? 'That is a lot at once, which usually means <b>one shared macro theme</b> rather than that many separate stories &mdash; read the asset-class line below before treating any single one as idiosyncratic.'
+            : 'That is a normal number, so read each on its own rather than as a board-wide theme.');
+
+  let top = '<div class="rd-top"><div class="rd-reg" style="color:'+regCol+'">'+reg+'</div>'
+    + '<div class="rd-say">'+verdict+'</div>';
+
+  if(ext.length){
+    const top3 = ext.slice(0,3).map(x => '<b>'+nm(x)+'</b> ('+ord(pctOf(x))+(pctOf(x)>=90?', long':', short')+')').join(' &middot; ');
+    top += '<div class="rd-say"><b>Most stretched right now:</b> '+top3
+      + '. Those are the readings furthest from their own historical middle, so they are where an unwind would have the least standing in its way.</div>';
+  }
+
+  // Which asset classes lean as a block. This is the question the old group-median
+  // table existed to answer, said in a sentence instead of left as a number to read.
+  const leans = [...new Set(ranked.map(x => x.group))].map(g => {
+    const srt = ranked.filter(x => x.group===g).map(pctOf).sort((a,b)=>a-b);
+    return { g, n: srt.length, med: srt[srt.length>>1] };
+  }).filter(x => x.n >= 2 && (x.med >= 70 || x.med <= 30)).sort((a,b) => Math.abs(50-b.med)-Math.abs(50-a.med));
+  top += '<div class="rd-say"><b>Where the crowd is as a block:</b> '
+    + (leans.length
+        ? leans.map(x => '<b>'+esc(GRP_NAME[x.g]||x.g)+'</b> leans '+(x.med>=70?'long':'short')+' (median '+ord(x.med)+' across '+x.n+')').join(' &middot; ')
+          + '. A whole class leaning one way is one macro position, not '+leans.length+' independent ones — sizing them as separate trades understates the risk actually being carried.'
+        : 'no asset class has a median past the 70th/30th percentile, so nothing is leaning as a block — each crowded market below is its own story.')
+    + '</div>';
+
+  top += '<div class="rd-say"><b>What this can and cannot tell you:</b> COT is a <b>Tuesday</b> snapshot published <b>Friday</b>'
+    + (ageD != null ? ', so what is below is <b>'+ageD+' days old</b>' : '')
+    + '. Positioning moved inside that gap and you cannot see how. Every number here is a <b>crowding conditioner</b> — it says how much fuel is left for more of the same, never when it turns. Nothing on this page is a timing signal or an entry.</div></div>';
+
+  // ── sub-reads, one per panel below ───────────────────────────────────────
+  const sub = [];
+
+  // Spotlight
+  const mostLong = longs[0], mostShort = shorts[0];
+  sub.push(_rd(!ext.length ? 'ok' : share>=0.25 ? 'warn' : 'ok', 'Spotlight',
+    !ext.length ? 'Nothing at an extreme'
+      : (mostLong ? 'Most crowded long <b>'+nm(mostLong)+'</b> ('+ord(pctOf(mostLong))+')' : 'No crowded longs')
+        + ' &middot; ' + (mostShort ? 'most crowded short <b>'+nm(mostShort)+'</b> ('+ord(pctOf(mostShort))+')' : 'no crowded shorts'),
+    !ext.length ? 'No market is near the edge of its own range. There is nothing here to fade, and nothing warning you off a trend trade either.'
+      : 'These are the two ends of the board. Sitting at the 100th percentile does not mean expensive or wrong — it means the position is already on, so the marginal buyer who would push it further has mostly already bought.'));
+
+  // Positioning ledger
+  sub.push(_rd(leans.length ? 'warn' : 'ok', 'Positioning ledger',
+    leans.length ? '<b>'+leans.length+'</b> asset class'+(leans.length===1?'':'es')+' leaning as a block'
+                 : 'No asset class leaning as a block',
+    leans.length
+      ? 'When a whole class sits on one side, the crowded markets inside it are not independent bets — they unwind together. The ledger shows whether your market is the outlier in its group or one of the herd.'
+      : 'Every group has markets on both sides of its own middle, so a crowded market below is idiosyncratic rather than part of a theme. Nothing here argues against a single-market view.'));
+
+  // Confluence
+  const conf = ext.filter(hasConfluence);
+  sub.push(_rd(conf.length ? 'warn' : 'ok', 'Confluence',
+    conf.length ? '<b>'+conf.length+'</b> market'+(conf.length===1?'':'s')+' with commercials confirming: '
+      + conf.slice(0,4).map(nm).join(' &middot; ') + (conf.length>4 ? ' &hellip;' : '')
+      : 'No market has commercials at the opposite extreme',
+    conf.length
+      ? 'Specs stretched one way and commercials — the hedgers who take the other side — independently at their own opposite extreme. This is the strongest version of the crowding read this data supports. It says the setup is textbook, <b>not</b> that it resolves now.'
+      : 'Commercials sit roughly opposite specs as a matter of course, so this only fires when both hit their own extreme at once. Without it, a crowded reading below is one dataset saying one thing rather than two independently agreeing.'));
+
+  // Positioning flow
+  const flowOf = x => (!Number.isFinite(x.specShareChg) || x.specShare == null || x.specShareChg === 0) ? null
+    : (Math.sign(x.specShareChg) === Math.sign(x.specShare) ? 'ext' : 'par');
+  const fl = ext.map(flowOf).filter(Boolean);
+  const nExt = fl.filter(v => v==='ext').length, nPar = fl.filter(v => v==='par').length;
+  const mover = all.filter(x => Number.isFinite(x.specShareChg))
+    .sort((a,b) => Math.abs(b.specShareChg)-Math.abs(a.specShareChg))[0];
+  sub.push(_rd(!fl.length ? 'off' : nExt > nPar ? 'warn' : 'ok', 'Positioning flow',
+    !fl.length ? 'No weekly flow data on the extremes'
+      : '<b>'+nExt+'</b> still extending &middot; <b>'+nPar+'</b> already paring back',
+    (!fl.length ? 'Weekly change is missing for the crowded markets, so building cannot be told from unwinding this week. '
+      : nExt > nPar
+        ? 'Most crowded markets are still <b>getting more crowded</b>. A stretched reading that is still building has not begun to unwind — the extreme can go further before it matters. '
+        : 'More crowded markets are <b>paring back</b> than extending. Positions are being reduced, which is what the start of an unwind looks like — though it looks identical to a pause. ')
+    + (mover ? 'Biggest mover on the whole board: <b>'+nm(mover)+'</b> at '+sgn(mover.specShareChg)+mover.specShareChg+'pp of open interest this week.' : '')));
+
+  // Extreme persistence
+  ext.forEach(x => loadHistFor(x.sym));
+  const streaks = ext.map(x => {
+    const hd = HIST[x.sym];
+    if(hd === undefined || hd === 'loading' || !hd) return null;
+    const s = extremeStreak(hd, pctOf(x) >= 90);
+    return s == null ? null : { x, s };
+  }).filter(Boolean).sort((a,b) => b.s - a.s);
+  const fresh = streaks.filter(r => r.s <= 1);
+  sub.push(_rd(!ext.length || !streaks.length ? 'off' : 'ok', 'Extreme persistence',
+    !ext.length ? 'Nothing at an extreme to measure'
+      : !streaks.length ? 'Measuring — histories still loading'
+      : 'Longest-standing <b>'+nm(streaks[0].x)+'</b> at <b>'+streaks[0].s+'</b> week'+(streaks[0].s===1?'':'s')
+        + (fresh.length ? ' &middot; <b>'+fresh.length+'</b> arrived this week' : ''),
+    !ext.length ? ''
+      : !streaks.length ? 'Each crowded market’s own weekly series has to load before its streak can be walked back week by week.'
+      : 'A percentile cannot tell a freshly-hit extreme from one held for months, and they are different situations: a long-running extreme means the crowd has had time to be proved right, a fresh one has not been tested at all. Both are worth knowing; neither is a signal.'));
+
+  // Event-risk overlay
+  const upc = upcomingEvents();
+  const risky = ext.map(x => { const c = ccyOf(x); if(!c) return null;
+      const e = upc.find(v => v.ccy === c); if(!e) return null;
+      return { x, e, hrs: (e.ms-Date.now())/36e5 }; })
+    .filter(Boolean).sort((a,b) => a.hrs-b.hrs);
+  const soon = risky[0];
+  sub.push(_rd((EVENTS === null || EVENTS === 'loading' || EVENTS === false) ? 'off'
+      : !soon ? 'ok' : soon.hrs <= 24 ? 'bad' : 'warn', 'Event-risk overlay',
+    (EVENTS === null || EVENTS === 'loading') ? 'Loading the calendar'
+      : EVENTS === false ? 'Calendar unavailable'
+      : !soon ? 'No crowded market has a release in the next 3 days'
+      : '<b>'+nm(soon.x)+'</b> into <b>'+esc(soon.e.event||'a release')+'</b> in '
+        + (soon.hrs < 24 ? Math.round(soon.hrs)+'h' : Math.round(soon.hrs/24)+'d'),
+    (EVENTS === null || EVENTS === 'loading' || EVENTS === false) ? ''
+      : !soon ? 'Nothing scheduled is about to force a crowded position to move, so the readings below have no known catalyst on the clock.'
+      : 'A crowded position walking into a scheduled release for its own currency is exposed to a fast move — a one-sided book has nobody left to absorb a surprise. This flags the <b>exposure</b>, not which way the number breaks. '
+        + (soon.hrs <= 24 ? 'Inside 24 hours: if you are about to take this side, that is the thing to size around.' : '')));
+
+  // Reinforcing FX pairs
+  const bySym = {}; ext.filter(x => x.group==='fx').forEach(x => bySym[x.sym] = x);
+  const usdR = usdDerivedReading();
+  if(usdR && (pctOf(usdR) >= 90 || pctOf(usdR) <= 10)) bySym.USD = usdR;
+  const combos = FX_PAIRS.filter(p => { const A = bySym[p[0]], B = bySym[p[1]];
+      if(!A || !B) return false;
+      return (pctOf(A) >= 90) !== (pctOf(B) >= 90); })
+    .map(p => p[0]+p[1]);
+  sub.push(_rd(combos.length ? 'warn' : 'ok', 'Reinforcing FX pairs',
+    combos.length ? '<b>'+combos.length+'</b> cross'+(combos.length===1?'':'es')+' with both legs stretched: '
+        + combos.slice(0,4).map(esc).join(' &middot; ') + (combos.length>4 ? ' &hellip;' : '')
+      : 'No cross has both legs stretched the same way',
+    combos.length
+      ? 'Two different currencies, each crowded, and crowded in the direction that <b>reinforces</b> on the cross between them — so the thin fuel sits on both sides of that one rate at once. Untested here: context to combine with price, never a rule to trade.'
+      : 'Crowded currencies may exist below, but none pair into a cross where both legs push the same way. Read each currency on its own.'));
+
+  // Specs vs commercials
+  const paired = ranked.filter(x => commOf(x) != null);
+  const broken = paired.filter(x => Math.abs(pctOf(x) + commOf(x) - 100) > 40);
+  sub.push(_rd(!paired.length ? 'off' : broken.length ? 'warn' : 'ok', 'Specs vs commercials',
+    !paired.length ? 'No paired commercial data'
+      : broken.length ? '<b>'+broken.length+'</b> market'+(broken.length===1?'':'s')+' off the usual mirror: '
+          + broken.slice(0,4).map(nm).join(' &middot; ') + (broken.length>4 ? ' &hellip;' : '')
+        : 'All '+paired.length+' markets sit near the usual mirror',
+    !paired.length ? ''
+      : broken.length
+        ? 'Commercials normally sit roughly opposite specs, so the two percentiles should add to about 100. Where they do not, the usual relationship has broken — often because hedging demand itself changed rather than because anyone took a view. Worth checking before leaning on a crowding read for those names.'
+        : 'Specs and hedgers are lined up the way they normally are, so the crowding readings below rest on the relationship this data assumes.'));
+
+  // Ranking basis disagreement
+  const gaps = all.filter(x => x.specSharePct != null && x.specPct != null)
+    .map(x => ({ x, gap: Math.abs(x.specSharePct-x.specPct) })).sort((a,b) => b.gap-a.gap);
+  const thin = gaps.filter(r => r.gap >= 20);
+  sub.push(_rd(!gaps.length ? 'off' : thin.length ? 'warn' : 'ok', 'Ranking basis',
+    !gaps.length ? 'OI-normalised ranks not in this payload yet'
+      : thin.length ? '<b>'+thin.length+'</b> market'+(thin.length===1?'':'s')+' rank very differently by basis, worst <b>'+nm(thin[0].x)+'</b> ('+thin[0].gap+' points)'
+        : 'The two ranking bases broadly agree',
+    !gaps.length ? 'They appear after the next COT refresh; until then the page ranks on raw contract counts.'
+      : thin.length
+        ? 'Ranking the raw contract count conflates "more crowded" with "bigger market". Where the two bases disagree by this much, open interest itself has moved — the same position is far more crowded in a thin market than the raw ranking admits. The page defaults to % of OI for exactly this reason; the toggle at the top switches it.'
+        : 'Normalising by open interest barely changes the ranking this week, so the crowding read does not depend on which basis you pick.'));
+
+  // COT vs options
+  const oiPairs = (OISTORE && OISTORE !== 'loading' && OISTORE !== false) ? Object.keys(OISTORE) : [];
+  const stale = oiPairs.filter(p => { const e = OISTORE[p];
+    return e && e.savedAtMs && (Date.now()-e.savedAtMs)/36e5 > 36; }).length;
+  sub.push(_rd((OISTORE === null || OISTORE === 'loading' || OISTORE === false || !oiPairs.length) ? 'off'
+      : stale ? 'warn' : 'ok', 'COT vs options',
+    (OISTORE === null || OISTORE === 'loading') ? 'Loading options positioning'
+      : OISTORE === false ? 'Options positioning unavailable'
+      : !oiPairs.length ? 'No options chain saved yet'
+      : '<b>'+oiPairs.length+'</b> pair'+(oiPairs.length===1?'':'s')+' with a saved chain'
+        + (stale ? ' &middot; <b>'+stale+'</b> over 36h old' : ''),
+    (OISTORE === null || OISTORE === 'loading' || OISTORE === false) ? ''
+      : !oiPairs.length ? 'Paste a CME chain on the OI Analytics page and this week’s futures positioning can be read beside dealer options walls for the same pair.'
+      : 'Weekly futures positioning and dealer options flow are <b>different markets</b>, shown side by side rather than folded into one verdict — they can agree or disagree, and that itself is information. '
+        + (stale ? 'Some of those chains are stale enough that their wall levels may already have moved.' : 'The saved chains are recent enough to read against.')));
+
+  // 200-week history
+  sub.push(_rd(SEL ? 'ok' : 'off', '200-week history',
+    SEL ? 'Showing <b>'+esc(SEL==='US'?'US30Y':SEL)+'</b>' : 'No market selected',
+    SEL ? 'The shape behind a percentile is what gives it meaning: the 90th reached by a steady eight-month climb and the 90th reached by a two-week spike are the same number and completely different situations.'
+        : 'Click any market — a spotlight card, a ledger row, a table row — to load its weekly series at the bottom of the page.'));
+
+  return '<div class="p c12"><h3><span class="grow">This week’s read'+h('read')+'</span></h3>'
+    + '<div class="body" style="padding:0">'+top+'<div class="rd-grid">'+sub.join('')+'</div></div></div>';
+}
+
 async function pick(sym){
   SEL=sym;
   if(!HIST[sym]){
@@ -859,19 +1248,22 @@ function render(){
     +(age!=null?' — the data below is '+age+' days old':'')
     +'. Positioning changes inside that gap and you cannot see it, so treat every number here as a '
     +'<b>crowding / regime conditioner</b>, never as a timing signal.</div>';
-  document.getElementById('main').innerHTML='<div class="grid">'
-    + panel('c12','digest','At a glance — how many reads agree, per market','digest',digest,true)
-    + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
-    + panel('c12','confl','Confluence (specs vs. commercials, same market)','confl',confluence,true)
-    + panel('c7','evr','Event-risk overlay','evrisk',eventRisk,true)
-    + panel('c5','flow','Positioning flow — week over week','flow',flow,true)
+  // Reading order, top to bottom: what does this add up to (the read), what is
+  // stretched (spotlight), where does everything sit (ledger), then the granular
+  // panels each of the read's sub-cards points at, then the raw table last.
+  document.getElementById('main').innerHTML = thisWeeksRead() + '<div class="grid">'
+    + panel('c12','spot','Spotlight \u2014 what is stretched right now','spot',spotlight,true)
+    + panel('c12','ledger','Positioning ledger \u2014 every market, by asset class','ledger',ledger,true)
+    + panel('c12','digest','At a glance \u2014 how many reads agree, per market','digest',digest,true)
+    + panel('c7','confl','Confluence (specs vs. commercials, same market)','confl',confluence,true)
     + panel('c5','persist','Extreme persistence','persist',persistence,true)
-    + panel('c7','oix','COT vs options positioning','oixchk',oiCrossCheck,true)
-    + panel('c7','lead','Crowding leaderboard','pct',leaderboard)
-    + panel('c5','grp','By asset class','group',groups,true)
+    + panel('c7','flow','Positioning flow \u2014 week over week','flow',flow,true)
+    + panel('c5','evr','Event-risk overlay','evrisk',eventRisk,true)
+    + panel('c12','alerts','Reinforcing FX pairs (specs vs. specs, cross-currency)','paira',crowdingCards,true)
     + panel('c7','scat','Specs vs commercials','scatter',scatter)
     + panel('c5','dis','Where the two rankings disagree','basis',disagree,true)
-    + panel('c12','hist','200-week history'+(SEL?' — '+esc(SEL==='US'?'US30Y':SEL):''),'hist',history)
+    + panel('c12','oix','COT vs options positioning','oixchk',oiCrossCheck,true)
+    + panel('c12','hist','200-week history'+(SEL?' \u2014 '+esc(SEL==='US'?'US30Y':SEL):''),'hist',history)
     + panel('c12','all','All markets','spec',allTable,true)
     + '</div>';
 }
