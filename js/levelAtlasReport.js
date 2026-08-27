@@ -75,7 +75,15 @@ const OUTCOMES = ['out', 'back', 'neither'];
 // labels — one definition, DIMENSIONS above.
 const DIM_LABEL = new Map(DIMENSIONS);
 
-function splitAt(touches, frac = 0.6) {
+// Exported (2026-08, alongside asiaFibAtlasEngine's report): these three are
+// generic over ANY touch-shaped record carrying {date, outcome, fadePips,
+// runPips, pullbackFrac, minsToResolve} — nothing here is forecast-ladder
+// specific. asiaFibAtlasReport.js imports them rather than re-deriving the
+// same table-building logic a second time (Lego Principle, MD files/CLAUDE.md
+// §1) — the two engines' outcome records are the SAME shape by deliberate
+// design (see asiaFibAtlasEngine.js's header), so this is a real shared
+// computation, not a coincidental resemblance.
+export function splitAt(touches, frac = 0.6) {
   const sorted = [...touches].sort((a, b) => a.date.localeCompare(b.date));
   const cut = sorted[Math.floor(sorted.length * frac)]?.date;
   return { split: cut, is: touches.filter(t => t.date < cut), oos: touches.filter(t => t.date >= cut) };
@@ -83,7 +91,7 @@ function splitAt(touches, frac = 0.6) {
 
 // Percentiles of a numeric array — a mean hides whether an outcome is "usually
 // fast, occasionally very slow" vs uniformly middling; the book should show both.
-function pctiles(arr, ps = [25, 50, 75]) {
+export function pctiles(arr, ps = [25, 50, 75]) {
   if (!arr.length) return null;
   const s = [...arr].sort((a, b) => a - b);
   const out = {};
@@ -93,7 +101,7 @@ function pctiles(arr, ps = [25, 50, 75]) {
 
 // One dimension's table for one (side, rung, rearmFrac) cell: bucket -> {n, out%, back%, neither%},
 // plus the numeric outcomes (fadePips/runPips/pullbackFrac/minsToResolve — mean AND spread).
-function tableFor(touches, dimKey) {
+export function tableFor(touches, dimKey) {
   const groups = {};
   for (const t of touches) {
     const b = t[dimKey]; if (b == null) continue;
@@ -210,7 +218,7 @@ export function extractHeldFindings(book, { limit = 50 } = {}) {
   return out.sort((a, b) => Math.abs(b.deltaOutIS) - Math.abs(a.deltaOutIS)).slice(0, limit);
 }
 
-function summarizeAll(touches) {
+export function summarizeAll(touches) {
   const fake = touches.map(t => ({ ...t, _all: 'all' }));
   return tableFor(fake, '_all').all;
 }
