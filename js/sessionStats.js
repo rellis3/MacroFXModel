@@ -14,6 +14,15 @@ import fs   from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// The pure London clock lives in its own module so a browser-reachable brick can
+// import it WITHOUT dragging this file's `fs`/`process`/Oanda dependencies into the
+// bundle — that exact chain (volEstimatorAB -> here) killed forecast-reversion.html
+// with "Failed to resolve module specifier \"fs\"". Re-exported so every existing
+// `from './sessionStats.js'` importer of these two names keeps working unchanged.
+// New browser-side callers should import from './londonSession.js' directly.
+import { SESSIONS, _londonParts } from './londonSession.js';
+export { SESSIONS, _londonParts };
+
 const __dirname  = path.dirname(fileURLToPath(import.meta.url));
 const OUTFILE    = path.join(__dirname, '..', 'VolRangeForecaster', 'data', 'session_stats.json');
 
@@ -51,15 +60,9 @@ const INSTRUMENTS = {
   CADJPY:  'CAD_JPY',
 };
 
-// Session windows — London local time [inclusive start, exclusive end).
-// Exported as the single source of truth for London-anchored day/session logic —
-// the forecast-session and estimator-A/B research modules import these so the
-// definitions never drift.
-export const SESSIONS = {
-  asia:   [0,  6],   // 00:00–06:00
-  london: [8,  13],  // 08:00–13:00
-  ny:     [13, 21],  // 13:00–21:00  (US open → NY close)
-};
+// SESSIONS and _londonParts now live in ./londonSession.js and are re-exported at
+// the top of this file — still the single source of truth for London-anchored
+// day/session logic, just one that a browser can import.
 
 const MIN_DAY_BARS     = 12;  // H1 bars required for a valid full trading day
 const MIN_SESSION_BARS =  3;  // H1 bars required for a valid session slice
@@ -133,22 +136,6 @@ export async function _fetchAllH1(instrument, years) {
 
 
 // ── Session consumption calculation ──────────────────────────────────────────
-
-// Reusable London-time formatter
-const _londonFmt = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/London',
-  year:     'numeric', month:  '2-digit', day:  '2-digit',
-  hour:     '2-digit', hour12: false,
-});
-
-export function _londonParts(date) {
-  const parts = _londonFmt.formatToParts(date);
-  const get = t => parts.find(p => p.type === t).value;
-  return {
-    date: `${get('year')}-${get('month')}-${get('day')}`,
-    hour: parseInt(get('hour'), 10),
-  };
-}
 
 function _computeStats(bars) {
   const byDate = new Map();
