@@ -120,8 +120,8 @@
 </div>
 
 <div class="card">
-  <h2>Cumulative portfolio return %</h2>
-  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base (what a real account does). Non-compounded just sums the daily % returns (what a fixed-size bet run every day would show) — the gap between the two lines IS the compounding effect.</div>
+  <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk"></label></h2>
+  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base (what a real account does). Non-compounded just sums the daily % returns (what a fixed-size bet run every day would show) — the gap between the two lines IS the compounding effect. A flat-then-explosive compounded curve on a LINEAR axis is the expected shape of a STABLE growth rate, not evidence it's accelerating — toggle log scale to see the real underlying rate (a constant rate draws as a straight line; only a genuine change in slope means the edge itself changed).</div>
   <canvas id="eqChart"></canvas>
 </div>
 
@@ -182,6 +182,7 @@ const throttleChk = document.getElementById('throttleChk');
 const triggerDDInput = document.getElementById('triggerDDInput');
 const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
+const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
 
 function syncSizingUI() {
@@ -199,6 +200,7 @@ syncSizingUI();
 
 let eqChart = null;
 let lastTrades = [];
+let lastResponse = null;
 
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
@@ -240,6 +242,7 @@ async function loadData() {
     // model's riskPct by default (fixed-risk mode) — same knob, avoids the
     // chart and the $ export silently disagreeing on what "risk %" means.
     if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
+    lastResponse = j;
     render(j);
   } catch (e) {
     headerSub.textContent = `error: ${e.message}`;
@@ -321,23 +324,32 @@ function render(j) {
 
   if (eqChart) eqChart.destroy();
   let eq = 1, sum = 0;
-  const eqCurve = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +((eq - 1) * 100).toFixed(3); });
+  // Equity INDEX (100 = starting capital) alongside the % gain — the index
+  // is always positive (unless a drawdown wipes the account out entirely),
+  // which is what a log-scale axis needs; log(0) / log(negative) is invalid,
+  // so the log view plots the index while the linear view keeps the more
+  // intuitive "% gain" framing.
+  const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
+  const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
   const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
+  const logMode = logScaleChk.checked;
   // Compounding can make the two lines differ by 10-30x+ in scale (real —
   // that gap IS the compounding effect). On a SHARED axis the smaller
   // non-compounded line gets crushed flat and unreadable once the compounded
   // line gets big enough, so it gets its OWN right-hand axis instead — same
-  // data, both curves actually visible.
+  // data, both curves actually visible. Log mode additionally straightens a
+  // STABLE growth rate into a line, so a genuine change in slope (not just
+  // "it's compounding") is what a real acceleration/slowdown looks like.
   eqChart = new Chart(document.getElementById('eqChart'), {
     type: 'line',
     data: { labels: j.equityCurve.map(p => p.date), datasets: [
-      { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+      { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
       { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
     ] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
       scales: {
         x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
-        y: { position: 'left', ticks: { color: '#5b9dff', callback: v => v + '%' }, grid: { color: '#1e2436' }, title: { display: true, text: 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+        y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
         y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
       } },
   });
@@ -426,6 +438,7 @@ throttleChk.addEventListener('change', loadData);
 triggerDDInput.addEventListener('change', loadData);
 restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
+logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
 loadData();
 </script>
