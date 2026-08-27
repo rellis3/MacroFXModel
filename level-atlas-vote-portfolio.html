@@ -44,6 +44,10 @@
 <body>
 <header>
   <h1>Level Atlas Vote Portfolio</h1>
+  <div class="controls">
+    <button id="selectAllBtn" type="button">Select all</button>
+    <button id="selectRecommendedBtn" type="button" title="OOS-validated: this exclusion set was chosen on the first 70% of history and still improved the untouched last 30% (max DD -42.7%→-25.1%, Sharpe 2.36→3.65) — not just an in-sample pick.">Select recommended (excl. 10 correlated-risk pairs)</button>
+  </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
     <label>Min margin <select id="marginSel">
@@ -111,6 +115,19 @@
   don't trust the raw numbers from a large multi-pair selection at 1% risk/trade. Separately, SPX/DOW's own headline
   Sharpe (5.6-5.7) is real but rests on notably LESS validated history than everything else on this page (OOS only
   from mid-2024, roughly half the track record of the other 25 pairs) — treat those two as promising, not proven.
+  <br><br>
+  <strong>"Select recommended" above</strong> unchecks the 10 pairs a leave-one-out analysis found to be the biggest
+  correlated-drawdown contributors (GBPAUD, GBPCHF, USDCAD, AUDCAD, NZDJPY, EURGBP, GBPJPY, NZDUSD, EURJPY, EURCAD —
+  mostly non-USD crosses whose currency exposure overlaps heavily with other selected pairs). This is NOT a claim that
+  those 10 pairs are individually bad — GBPAUD, for instance, has decent standalone Sharpe — only that combining them
+  with the others compounds correlated risk more than it diversifies. Removing a SINGLE one barely helps (the single
+  best candidate only moved max DD from -64.7% to -61.0%) — the exclusion set only works as a GROUP, found by greedily
+  removing the worst contributor and re-checking 10 times. Because that selection process itself risks overfitting to
+  this exact sample (the same trap that broke the drawdown throttle earlier), it was OOS-tested the same way: chosen
+  on the first 70% of history only, then checked against the untouched last 30% — max DD there improved from -42.7%
+  to -25.1% and Sharpe from 2.36 to 3.65, so the pattern holds on data it wasn't picked from. Still an improvement,
+  not a fix — -25% max DD is far better than -65-98%, but nowhere near what the individual 5-pair or 21-pair
+  portfolios showed earlier; the real fix is still the not-yet-built exposure-aware risk model above.
   </div>
 </div>
 
@@ -213,10 +230,28 @@ const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdc
   'gbpchf', 'audjpy', 'audcad', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
   'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
 const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd']);
+// The 10 biggest correlated-drawdown contributors from a leave-one-out study
+// (scripts/leave_one_out_portfolio.mjs) — NOT individually weak (unlike the 5
+// already removed above), just heavily overlapping in currency exposure with
+// other selected pairs. OOS-validated (scripts/oos_validate_pair_selection.mjs):
+// chosen on the first 70% of history, still improved the untouched last 30%
+// (max DD -42.7%→-25.1%, Sharpe 2.36→3.65) — see the warning card below for
+// the full caveat (a real improvement, not a fix for the correlated-risk
+// problem, which still needs a real exposure-aware sizing model).
+const CORRELATED_RISK_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audcad', 'nzdjpy', 'eurgbp', 'gbpjpy', 'nzdusd', 'eurjpy', 'eurcad']);
 const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
 
 const pairChecksEl = document.getElementById('pairChecks');
 pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}</label>`).join('');
+
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = true; });
+  loadData();
+});
+document.getElementById('selectRecommendedBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !CORRELATED_RISK_EXCLUDE.has(el.dataset.pair); });
+  loadData();
+});
 
 const marginSel = document.getElementById('marginSel');
 const capSel = document.getElementById('capSel');
