@@ -466,11 +466,23 @@ export function mountLevelAtlasRoutes(app, express) {
           totalDecided: filtered.length,
           kept: capped?.kept?.length ?? 0,
           skipped: capped?.skippedCount ?? 0,
-          ownSharpe: capped?.keptSummary?.sharpe ?? null,
           ownWinRate: capped?.keptSummary?.winRate ?? null,
         };
       }
       if (!Object.keys(perPairTrades).length) return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
+
+      // ownSharpe MUST use the same daily-return-series Sharpe as the combined
+      // portfolio (portfolioStats) — NOT summarizeTrades' per-trade-annualized
+      // Sharpe (capped.keptSummary.sharpe). Verified the two methods disagree by
+      // ~25-35% on every one of the 5 default pairs even for identical trades
+      // (e.g. solo EURUSD: portfolioStats 3.19 vs summarizeTrades 2.42), so mixing
+      // them in the "naive avg -> combined" callout made part of the apparent
+      // diversification benefit a methodology switch, not real diversification.
+      // One Sharpe formula, used everywhere on this page.
+      for (const sym of Object.keys(perPairTrades)) {
+        const solo = buildPortfolioDailySeries({ [sym]: perPairTrades[sym] });
+        perPair[sym].ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false }).sharpe : null;
+      }
 
       const weights = weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null;
       const combined = buildPortfolioDailySeries(perPairTrades, weights ? { weights } : {});

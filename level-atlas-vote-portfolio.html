@@ -71,7 +71,7 @@
 <div class="card callout">
   <h2>Diversification benefit</h2>
   <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
-    <div><div class="muted">Simple average of each pair's OWN Sharpe (no diversification credit)</div><div class="big" id="naiveSharpe">—</div></div>
+    <div><div class="muted">Simple average of each pair's OWN Sharpe, same daily-return formula as the combined figure (no diversification credit)</div><div class="big" id="naiveSharpe">—</div></div>
     <div style="font-size:22px;color:var(--text3)">→</div>
     <div><div class="muted">Combined portfolio Sharpe</div><div class="big green" id="combinedSharpe">—</div></div>
   </div>
@@ -89,7 +89,8 @@
 </div>
 
 <div class="card">
-  <h2>Cumulative portfolio return % (compounded daily)</h2>
+  <h2>Cumulative portfolio return %</h2>
+  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base (what a real account does). Non-compounded just sums the daily % returns (what a fixed-size bet run every day would show) — the gap between the two lines IS the compounding effect.</div>
   <canvas id="eqChart"></canvas>
 </div>
 
@@ -200,12 +201,16 @@ function render(j) {
   ].join('');
 
   if (eqChart) eqChart.destroy();
-  let eq = 1;
+  let eq = 1, sum = 0;
   const eqCurve = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +((eq - 1) * 100).toFixed(3); });
+  const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
   eqChart = new Chart(document.getElementById('eqChart'), {
     type: 'line',
-    data: { labels: j.equityCurve.map(p => p.date), datasets: [{ label: 'Portfolio cumulative %', data: eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+    data: { labels: j.equityCurve.map(p => p.date), datasets: [
+      { label: 'Compounded %', data: eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5 },
+      { label: 'Non-compounded (sum of daily %)', data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
       scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } } } },
   });
 
