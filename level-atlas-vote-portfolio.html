@@ -13,7 +13,11 @@
   h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
   h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
   .sub { color:var(--muted); font-size:12px; }
-  select, input[type=checkbox] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  select, input[type=checkbox], button, input[type=number] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .export-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .export-note { font-size:11px; color:var(--text3); margin-bottom:4px; }
   .controls { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
   .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
   .pair-check { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:12px; }
@@ -101,6 +105,25 @@
   <div class="barwrap" id="weightBar"></div>
 </div>
 
+<div class="card">
+  <h2>Export constituent trades (<span id="tradeCount">0</span>)</h2>
+  <div class="export-row">
+    <span class="muted">Export:</span>
+    <button id="expReturns">% Returns CSV</button>
+    <button id="expR">R-Multiples CSV</button>
+    <button id="expCash">Currency P&amp;L CSV</button>
+    <label>Account $ <input type="number" id="acctSize" value="10000" step="1000" style="width:80px"></label>
+    <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" style="width:60px"></label>
+  </div>
+  <div class="export-note">
+    Every kept (post concurrency-cap) trade across the selected pairs, tagged with which pair it belongs to and that
+    pair's portfolio weight. % Returns and Currency P&amp;L are WEIGHTED by each trade's pair weight, so summing either
+    column reproduces the portfolio's actual combined result — not single-pair scale. R = pnlPct ÷ (stop distance, gross)
+    is a per-trade ratio and left UNWEIGHTED (weighting both sides of a ratio cancels out). Currency P&amp;L assumes
+    fixed-fractional sizing scaled by pair weight: Risk($) = Account × Risk% × pair weight, PnL($) = R × Risk($).
+  </div>
+</div>
+
 </main>
 
 <script type="module">
@@ -117,6 +140,7 @@ const weightSel = document.getElementById('weightSel');
 const headerSub = document.getElementById('headerSub');
 
 let eqChart = null;
+let lastTrades = [];
 
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
@@ -150,6 +174,8 @@ async function loadData() {
 }
 
 function render(j) {
+  lastTrades = j.trades ?? [];
+  document.getElementById('tradeCount').textContent = lastTrades.length;
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
@@ -192,6 +218,41 @@ function render(j) {
   document.getElementById('weightBar').innerHTML = rows.map(([pair, p]) =>
     `<div class="bar" style="width:${p.weight * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(p.weight * 100)}%"></div>`).join('');
 }
+
+function csvDownload(filename, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function riskPctOf(t) { return t.stopPips * t.pip / t.entry * 100; }
+
+document.getElementById('expReturns').addEventListener('click', () => {
+  const rows = [['Date', 'Pair', 'Return % (weighted)', 'MAE %'], ...lastTrades.map(t =>
+    [t.date, t.pair, (t.pnlPct * t.weight).toFixed(4), (t.maePct != null ? (t.maePct * t.weight).toFixed(4) : '')])];
+  csvDownload('level-atlas-vote-portfolio-returns.csv', rows);
+});
+document.getElementById('expR').addEventListener('click', () => {
+  const rows = [['date', 'pair', 'R', 'MAE (R)'], ...lastTrades.map(t => {
+    const rp = riskPctOf(t);
+    const r = rp > 0 ? t.pnlPct / rp : 0;
+    const maeR = (t.maePct != null && rp > 0) ? t.maePct / rp : '';
+    return [t.date, t.pair, r.toFixed(3), maeR === '' ? '' : maeR.toFixed(3)];
+  })];
+  csvDownload('level-atlas-vote-portfolio-r-multiples.csv', rows);
+});
+document.getElementById('expCash').addEventListener('click', () => {
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
+  const rows = [['Trade Date', 'Pair', 'PnL ($)', 'Risk ($)'], ...lastTrades.map(t => {
+    const rp = riskPctOf(t);
+    const r = rp > 0 ? t.pnlPct / rp : 0;
+    const riskDollars = acct * riskPct / 100 * t.weight;
+    return [t.date, t.pair, (r * riskDollars).toFixed(2), riskDollars.toFixed(2)];
+  })];
+  csvDownload('level-atlas-vote-portfolio-currency-pnl.csv', rows);
+});
 
 pairChecksEl.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);

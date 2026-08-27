@@ -482,11 +482,15 @@ export function mountLevelAtlasRoutes(app, express) {
 
       for (const sym of Object.keys(perPair)) perPair[sym].weight = combined.byPair[sym]?.weight ?? 0;
 
+      const trades = Object.entries(perPairTrades).flatMap(([sym, list]) =>
+        list.map(t => ({ ...t, pair: sym, weight: perPair[sym].weight }))
+      ).sort((a, b) => a.time - b.time);
+
       res.json({
         ok: true, pairs: Object.keys(perPairTrades), missing, minMargin, maxConcurrent, perDirection, weighting,
         stats, naiveAvgSharpe, days: combined.dates.length,
         equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
-        perPair,
+        perPair, trades,
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
