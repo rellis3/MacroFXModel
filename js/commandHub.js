@@ -180,6 +180,7 @@
       <a class="chub-item" href="level-atlas-vote-backtest.html" target="_blank" data-href="level-atlas-vote-backtest.html"><span class="ci-txt">🗳 Level Atlas Vote Backtest</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-atlas-vote-backtest.html')" data-href="level-atlas-vote-backtest.html">☆</button></a>
       <a class="chub-item" href="level-atlas-vote-portfolio.html" target="_blank" data-href="level-atlas-vote-portfolio.html"><span class="ci-txt">🧺 Level Atlas Vote Portfolio</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-atlas-vote-portfolio.html')" data-href="level-atlas-vote-portfolio.html">☆</button></a>
       <a class="chub-item" href="asia-fib-atlas-live.html" target="_blank" data-href="asia-fib-atlas-live.html"><span class="ci-txt">🌏 Asia Fib Atlas — Live</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-fib-atlas-live.html')" data-href="asia-fib-atlas-live.html">☆</button></a>
+      <a class="chub-item" href="asia-fib-atlas-vote-backtest.html" target="_blank" data-href="asia-fib-atlas-vote-backtest.html"><span class="ci-txt">🗳 Asia/Monday Fib Vote Backtest</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('asia-fib-atlas-vote-backtest.html')" data-href="asia-fib-atlas-vote-backtest.html">☆</button></a>
     </div>
   </div>
 

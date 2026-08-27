@@ -237,7 +237,9 @@ function macroEventBucket(hours) {
 // to build the ladder itself; a touch very early in this engine's walk window
 // can still classify as 'Asia' by this clock-time convention even though the
 // Asia RANGE has already closed.
-function sessionOf(hourUtc) {
+// Exported (2026-08-27) so mondayFibAtlasEngine.js can read the SAME session
+// cut instead of a second copy.
+export function sessionOf(hourUtc) {
   if (hourUtc >= 22 || hourUtc < 7) return 'Asia';
   if (hourUtc < 13) return 'London';
   return 'NY';
