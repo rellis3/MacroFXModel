@@ -2386,6 +2386,90 @@ CLAUDE.md's house convention: `js/siteApiMap.js` (`#smBody` FX-BT group + the
 `am-row` API listing) + `MD files/SITE_MAP.md` + `js/commandHub.js`'s
 `chubDDvol` menu — NOT `hub.html`.
 
+**Vote-margin trade backtest (2026-08-27) — `js/asiaFibAtlasVoteReview.js` +
+`scripts/run_asia_fib_atlas_vote_backtest.mjs`.** The owner's own ask: "wait
+for asia to complete, pull the range lines like the indicator, grab the line
+with confluence, when price hits trade what the atlas says — is there a
+profitable trade?" Mirrors `js/levelAtlasVoteReview.js`'s already-validated
+barrier-priced backtest (real fixed target/stop from the touch's own rung
+distances, real spread cost, true walk-forward IS/OOS split) rather than
+inventing a new fill mechanism — `reorientExcursion`/`applyConcurrencyCap`/
+`buildPortfolioDailySeries`/`inverseVolWeights`/`riskAdjustTrades`/
+`applyPortfolioHeatCap`/`applyDrawdownThrottle` are imported straight from
+there, unchanged (engine-agnostic — they operate on an already-built trade
+list's generic shape). What's genuinely adapted, not reused: Level Atlas's
+`rung`/`level`/`open` fields mean something DIFFERENT on an Asia Fib Atlas
+touch (`level` is the fib multiplier there, the raw price here is `price`) —
+blindly reusing Level Atlas's own `buildBarrierTrades` would have silently
+priced every trade off the fib multiplier instead of the real price; this
+module reads the right field and re-outputs Level Atlas's OWN field names so
+every downstream generic function still works unchanged (see the module's
+own header for the full reasoning, and its test file
+`js/asiaFibAtlasVoteReview.test.mjs` for a dedicated regression test proving
+the pnl magnitude is sane, not 4-5 orders of magnitude off).
+
+**The vote is deliberately restricted to `VOTE_DIMS = {prevOutcomeSameDay,
+sessionHandoff}`** — the two dimensions the 26-pair widen check found
+generalize almost everywhere — NOT all ~30 context dimensions the way Level
+Atlas's own (separately validated) vote uses. Voting on every dimension here
+would be exactly the "found a few winners among 70 slices" multiple-testing
+trap this project's own house rules warn against.
+
+**Real-data check (2026-08-27, EURUSD/GBPUSD/USDJPY/GOLD, OOS since each
+pair's own 60/40 split date, real spread cost).** The RAW numbers looked
+absurd (Sharpe 5-22, near-zero drawdown) — and per this repo's own
+Bug-Hunting Rules ("assume code failure first" applies just as hard to a
+result that's too GOOD as one that's null), that was investigated before
+being trusted, not reported. Diagnosis: `prevOutcomeSameDay` is *defined* by
+"another touch already happened today", so trades using it cluster heavily
+on trending days — 87-97% of trading days with any signal had 2+ trades
+firing. Treating those as independent Sharpe observations is the exact same
+correlated-trade inflation `levelAtlasVoteReview`'s own history already
+diagnosed (346/622 EURUSD days, roughly halving that Sharpe) — just far more
+severe here, because this vote's strongest dimension is intrinsically more
+same-day-clustering-prone than Level Atlas's broader dimension set.
+Re-checked with a realistic 1-concurrent-position cap
+(`applyConcurrencyCap`, reused unchanged):
+
+| Pair | margin≥1 (either dim) capped Sharpe | **margin=2 (both agree) capped Sharpe** | margin=2 PF | margin=2 maxDD |
+|---|---|---|---|---|
+| EURUSD | 1.15 ± 0.48 | **3.88 ± 0.48** | 1.66 | -0.58% |
+| GBPUSD | **-1.57 ± 0.46** (negative) | **5.16 ± 0.47** | 1.69 | -0.87% |
+| USDJPY | 3.18 ± 0.49 | **4.77 ± 0.50** | 2.20 | -0.72% |
+| GOLD | 1.12 ± 0.47 | **3.14 ± 0.48** | 2.07 | -1.62% |
+
+Two clean findings, one green and one red, reported plainly per this
+project's own working agreement:
+- **Green: requiring BOTH proven dimensions to agree (margin=2) is real and
+  cross-instrument-consistent.** All 4 pairs positive, all comfortably
+  outside their own Sharpe error bar, PF 1.66-2.20, drawdowns all under 2%,
+  n=551-2362 OOS trades per pair. Still a single-position-at-a-time,
+  single-instrument read (not yet portfolio-combined via
+  `buildPortfolioDailySeries`/`inverseVolWeights`, not yet forward-tested
+  live) — "real and worth building on", not "done, tradeable as-is".
+- **Red: "either dimension alone" (margin≥1) is NOT tradeable.** Negative on
+  GBPUSD (-1.57 Sharpe, -52% maxDD once capped) and marginal-to-noisy
+  elsewhere. The raw uncapped numbers for this exact bucket looked BEST of
+  all (Sharpe up to 21.9) purely from the correlated-trade artifact — the
+  single clearest illustration in this project's own history of why the
+  concurrency cap step is mandatory before trusting any vote-backtest Sharpe.
+- **Red: the owner's own "grab the line with confluence" hypothesis did NOT
+  add value.** Gating margin=2 entries to a tight Asia-vs-previous-Asia zone
+  (≤2 pips, `asiaConfPips`) made the Sharpe WORSE on every single pair
+  (EURUSD 3.88→2.58, GBPUSD 5.16→3.29, USDJPY 4.77→2.13, GOLD 3.14→2.64)
+  while shrinking the sample — confluence is real, level-specific context
+  (per the earlier §1aq real-data checks above) but isn't where THIS
+  particular edge lives; vote margin is what mattered, not zone tightness.
+
+`js/asiaFibAtlasVoteReview.js`: 🟢 built + unit-tested (14 assertions,
+`js/asiaFibAtlasVoteReview.test.mjs`) + validated on real 4-instrument data.
+Deferred, not forgotten (per the two-stage plan the owner agreed to):
+portfolio-combine the 4 pairs' margin=2 trades (reusing
+`buildPortfolioDailySeries`/`inverseVolWeights` unchanged), widen to the
+full 26-pair set the same way the headline findings were widened, and build
+the Monday-ladder sibling (Monday's own touch events have never had their
+own walk — see the earlier "what v1 defers" note above).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
