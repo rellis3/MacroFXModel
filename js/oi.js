@@ -1500,8 +1500,12 @@ export function computeExpiryLevels(strikes, calls, puts, spot, pair, { dte = nu
     .sort((a, b) => b.oi - a.oi).slice(0, numLevels);
   const putWalls = strikes.map((s, i) => ({ strike: s, oi: puts[i] || 0 })).filter(w => w.oi >= minOI)
     .sort((a, b) => b.oi - a.oi).slice(0, numLevels);
-  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c')); w.mult = t.multiple; w.tier = t.tier; }
-  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
+  // `ref` = the biggest wall on that side of this book, so an ISOLATED wall (all
+  // neighbours empty, no multiple definable) is graded by its share of it rather than
+  // waved through as 'strong'. Lists are already sorted by OI, so [0] is the max.
+  const cRef = callWalls[0]?.oi ?? null, pRef = putWalls[0]?.oi ?? null;
+  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c'), { ref: cRef }); w.mult = t.multiple; w.tier = t.tier; }
+  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p'), { ref: pRef }); w.mult = t.multiple; w.tier = t.tier; }
   const maxPain = oiCalcMaxPain(strikes, calls, puts);
   const gexProfile = buildGexProfile(strikes, calls, puts, spot, pair, T, sigmaFn, cs);
   const exposures = oiCalcExposures(strikes, calls, puts, spot, pair, T, sigmaFn);
@@ -2130,8 +2134,9 @@ export async function buildOIEntry({
     const i = sIdx.get(strike); if (i == null) return [];
     return [i - 2, i - 1, i + 1, i + 2].filter(j => byStrike[j]).map(j => byStrike[j][key]);
   };
-  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c')); w.mult = t.multiple; w.tier = t.tier; }
-  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p')); w.mult = t.multiple; w.tier = t.tier; }
+  const cRef = callWalls[0]?.oi ?? null, pRef = putWalls[0]?.oi ?? null;   // see computeExpiryLevels
+  for (const w of callWalls) { const t = wallStrengthTier(w.oi, neigh(w.strike, 'c'), { ref: cRef }); w.mult = t.multiple; w.tier = t.tier; }
+  for (const w of putWalls)  { const t = wallStrengthTier(w.oi, neigh(w.strike, 'p'), { ref: pRef }); w.mult = t.multiple; w.tier = t.tier; }
   const skew = oiSkew(parsed.strikes, parsed.calls, parsed.puts, spot);
 
   // Concentration — top strikes as a % of total OI (concentrated → sharper

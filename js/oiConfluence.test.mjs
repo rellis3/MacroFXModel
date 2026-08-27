@@ -167,7 +167,12 @@ ok('2× → moderate', wallStrengthTier(5600, [2800, 2800]).tier === 'moderate')
 ok('1.5× → weak', wallStrengthTier(4200, [2800, 2800]).tier === 'weak');
 ok('~1× → null tier (no edge)', wallStrengthTier(2900, [2800, 2800]).tier === null);
 ok('multiple reported', wallStrengthTier(9000, [3000]).multiple === 3);
-ok('isolated wall (no neighbours>0) → strong', wallStrengthTier(5000, [0, 0]).tier === 'strong');
+// CHANGED 2026-08-27. This asserted that an isolated wall is 'strong' — dominance over
+// nothing counting as dominance. It graded a live gold leg 33/33 strong, a 9-lot wall
+// included. An isolated wall is now judged on its share of the biggest wall on its own
+// side, and stays 'weak' when there is nothing to compare it against at all.
+ok('isolated wall, biggest on its side → strong', wallStrengthTier(5000, [0, 0], { ref: 5000 }).tier === 'strong');
+ok('isolated wall, no ref → weak, not strong', wallStrengthTier(5000, [0, 0]).tier === 'weak');
 
 console.log('[oiSkew — where the positioning sits]');
 {
@@ -387,6 +392,49 @@ console.log('[oiStoreToLevels — walls scored by the gamma they carry, not size
 
   ok('explicit topWalls still bypasses scoring (back-compat)',
      oiStoreToLevels(inst2, { topWalls: 2 }).filter(l => l.type === 'call_wall').length > 0);
+}
+
+console.log('[wallStrengthTier — an isolated wall is not automatically strong]');
+{
+  // Every neighbour empty makes the multiple undefined, and answering 'strong' meant
+  // dominance over nothing counted as dominance. Not an edge case: on a leg that only
+  // trades the 25-point strikes EVERY wall has empty ±2 neighbours, so a live gold 4-DTE
+  // leg graded 33 of 33 'strong' — a 9-contract wall ranked with a 2,384-contract one.
+  const iso = [0, 0, 0, 0];
+  ok('isolated + no ref → weak, never strong', wallStrengthTier(9, iso).tier === 'weak',
+     JSON.stringify(wallStrengthTier(9, iso)));
+  ok('isolated, tiny vs the book → dropped entirely', wallStrengthTier(9, iso, { ref: 516 }).tier === null);
+  ok('isolated, biggest on its side → strong', wallStrengthTier(516, iso, { ref: 516 }).tier === 'strong');
+  ok('isolated, ~2/3 of the biggest → strong', wallStrengthTier(351, iso, { ref: 516 }).tier === 'strong');
+  ok('isolated, ~1/3 of the biggest → moderate', wallStrengthTier(184, iso, { ref: 516 }).tier === 'moderate');
+  ok('isolated, ~1/5 of the biggest → weak', wallStrengthTier(93, iso, { ref: 516 }).tier === 'weak');
+  ok('no neighbour ratio is invented for an isolated wall',
+     wallStrengthTier(516, iso, { ref: 516 }).multiple === null);
+
+  // The whole leg, graded together: was 20/20 strong.
+  const ois = [351, 85, 438, 76, 79, 27, 322, 516, 87, 383, 495, 184, 116, 33, 152, 93, 125, 139, 125, 9];
+  const ref = Math.max(...ois);
+  const tiers = ois.map(o => wallStrengthTier(o, iso, { ref }).tier);
+  ok('a sparse leg no longer grades every wall strong',
+     tiers.filter(t => t === 'strong').length === 6, `${tiers.filter(t => t === 'strong').length} of ${ois.length} strong`);
+  ok('the smallest walls drop out rather than ranking', tiers.filter(t => t === null).length === 3);
+}
+
+console.log('[wallStrengthTier — dense chains are untouched]');
+{
+  // The 3× rule must be bit-identical wherever neighbours actually exist; `ref` is only
+  // consulted when the multiple cannot be computed.
+  const cases = [[9000, [2000, 3000, 2500, 2800]], [300, [100, 200, 150, 180]], [200, [1, 2, 1, 2]], [500, [0, 500, 0, 600]]];
+  ok('ref does not change a wall that has neighbours',
+     cases.every(([oi, ns]) => {
+       const a = wallStrengthTier(oi, ns), b = wallStrengthTier(oi, ns, { ref: 9000 });
+       return a.tier === b.tier && a.multiple === b.multiple;
+     }));
+  ok('3× rule still grades as documented',
+     wallStrengthTier(9000, [2000, 3000, 2500, 2800]).tier === 'strong'
+     && wallStrengthTier(9000, [2000, 3000, 2500, 2800]).multiple === 3.5);
+  ok('no OI / no neighbours supplied → no tier',
+     wallStrengthTier(0, [1, 2]).tier === null && wallStrengthTier(100, []).tier === null);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);

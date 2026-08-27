@@ -73,11 +73,32 @@ export function nearRoundNumber(price, pip, tolPips = 10) {
 // surrounding strikes, not its absolute size. 1.5× weak · 2× moderate · 3×+ strong.
 // `neighbourOIs` = the OIs at the nearest strikes either side of the wall (the
 // analyser supplies them). Returns { multiple, tier }.
-export function wallStrengthTier(oi, neighbourOIs) {
+//
+// ISOLATED WALLS. When every neighbour is empty the multiple is undefined (divide by
+// zero), and this used to answer 'strong' — dominance over nothing counted as dominance.
+// That is not a rare edge: on a leg that only trades the 25-point strikes EVERY wall has
+// empty ±2 neighbours, so a whole expiry graded strong. Measured on a live gold 4-DTE
+// leg: 33 of 33 walls 'strong', including one holding 9 contracts, ranked identically to
+// a 2,384-contract wall on the neighbouring expiry.
+//
+// So an isolated wall is graded on the only scale left — its size against the biggest
+// wall on its own side of that book, passed in as `ref`. That is deliberately relative,
+// because an absolute floor cannot travel between instruments (gold walls run to
+// thousands, FX to hundreds). Without a `ref` the honest answer is 'weak': it has no
+// neighbours to be a multiple of and nothing to be a share of, so it stays visible but
+// can no longer outrank a wall that earned its tier.
+const _ISO_STRONG = 0.5, _ISO_MODERATE = 0.25, _ISO_WEAK = 0.10;
+export function wallStrengthTier(oi, neighbourOIs, { ref = null } = {}) {
   const ns = (Array.isArray(neighbourOIs) ? neighbourOIs : []).filter(n => Number.isFinite(n) && n >= 0);
   if (!(oi > 0) || !ns.length) return { multiple: null, tier: null };
   const avg = ns.reduce((a, b) => a + b, 0) / ns.length;
-  if (!(avg > 0)) return { multiple: null, tier: 'strong' };    // isolated wall — nothing around it
+  if (!(avg > 0)) {                                             // isolated — nothing around it
+    if (!(Number.isFinite(ref) && ref > 0)) return { multiple: null, tier: 'weak' };
+    const share = oi / ref;
+    const tier = share >= _ISO_STRONG ? 'strong' : share >= _ISO_MODERATE ? 'moderate'
+               : share >= _ISO_WEAK ? 'weak' : null;
+    return { multiple: null, tier };                            // no neighbour ratio exists to report
+  }
   const mult = +(oi / avg).toFixed(2);
   const tier = mult >= 3 ? 'strong' : mult >= 2 ? 'moderate' : mult >= 1.5 ? 'weak' : null;
   return { multiple: mult, tier };
