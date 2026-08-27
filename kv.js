@@ -489,6 +489,27 @@ export async function get(key) {
   return store[key] ?? null;
 }
 
+// Same as get(), but a BACKEND FAILURE THROWS instead of quietly returning null.
+//
+// get() collapses "this key does not exist" and "Cloudflare just failed" into the same
+// null. That is fine for a cache read and catastrophic for a read-modify-write: the
+// caller sees {}, merges today into it, writes it back, and has silently destroyed
+// everything that was there. Measured 2026-08-26: `oi_history` went from ~25 days
+// (407KB) to a single day (16.5KB) in one write, taking conviction sizing and the
+// hold-score flow component down with it, while the per-day `oi_raw_*` keys — which
+// never read-modify-write — were untouched.
+//
+// cfGet already draws the distinction (404 -> null, any other failure -> throw); get()
+// throws it away. Any caller that MERGES into what it reads should use this instead.
+export async function getStrict(key) {
+  if (USE_CF && isCfKey(key)) return await cfGet(key);   // 404 -> null, everything else throws
+  const ttlKey = `__ttl_${key}`;
+  if (store[ttlKey] && Date.now() > store[ttlKey]) {
+    delete store[key]; delete store[ttlKey]; dirty = true; return null;
+  }
+  return store[key] ?? null;
+}
+
 export async function put(key, value, opts = {}) {
   if (USE_CF && isCfKey(key)) {
     try   { await cfPut(key, value, opts); return; }

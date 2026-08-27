@@ -12983,8 +12983,38 @@ async function _snapshotOIHistory(force = false) {
     const store = JSON.parse(raw).data ?? JSON.parse(raw);
     if (!store || typeof store !== 'object') return { n: 0, wrote: false, day: null };
     const day = _rlSessionDate(null);
-    const histRaw = await kv.get('oi_history').catch(() => null);
+    // STRICT read. kv.get() returns null both when a key is absent and when Cloudflare
+    // fails, so a transient outage used to land here as `hist = {}` — and the write at the
+    // bottom then replaced the whole archive with today. That is exactly what emptied this
+    // key on 2026-08-26 (~25 days -> 1). getStrict throws on a backend failure so the two
+    // cases are distinguishable; on a throw we write NOTHING and say so.
+    let histRaw;
+    try {
+      histRaw = await kv.getStrict('oi_history');
+    } catch (e) {
+      console.error(`[oi-history] ABORT: could not read oi_history (${e.message}). `
+        + `Refusing to write — a blind write here would replace the whole archive with today.`);
+      return { n: 0, wrote: false, day, error: `read failed: ${e.message}` };
+    }
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    // Day count as READ, so the write can be checked for shrinkage below. A read that
+    // succeeds but returns truncated/garbled JSON would slip past the strict read above.
+    const _countDays = h => Object.values(h || {})
+      .reduce((a, per) => a + Object.keys(per || {}).length, 0);
+    const _daysBefore = _countDays(hist);
+    let _trimmed = 0;
+    // HIGH-WATER MARK. The strict read above catches a backend FAILURE, but a 404 for a
+    // key that should exist is indistinguishable from a key that never existed — both
+    // legitimately return null, and the shrink check below would then compare against a
+    // baseline of zero and happily write a one-day archive. So remember, out of band, how
+    // big the archive was the last time we wrote it. This sidecar is tiny and rewritten on
+    // every successful write, so it can be recreated by hand if it is ever the thing lost.
+    let _hwm = 0;
+    try {
+      const mRaw = await kv.get('oi_history_meta');
+      const m = mRaw ? (JSON.parse(mRaw).data ?? JSON.parse(mRaw)) : null;
+      if (m && Number.isFinite(m.dayEntries)) _hwm = m.dayEntries;
+    } catch { /* no marker yet — first run, or it was lost; fall through to the count-based check */ }
     // ONE KEY PER DAY (`oi_raw_YYYY-MM-DD`), not one key for all of history.
     // The old `oi_history_raw` accumulated every pair x every day into a single
     // value and kept 365 days. Measured 2026-08-20: 330KB/day across 11 pairs, so
@@ -13011,6 +13041,7 @@ async function _snapshotOIHistory(force = false) {
         const dates = Object.keys(hist[pair]).sort();
         const trim = dates.slice(0, Math.max(0, dates.length - 365));           // keep ~1yr — see _OI_RAW_KEEP_DAYS note above
         for (const d of trim) delete hist[pair][d];
+        _trimmed += trim.length;                                   // the only legitimate way the archive shrinks
         if (trim.length) changed++;                                // a trim is a real change too
         n++;
       }
@@ -13044,7 +13075,29 @@ async function _snapshotOIHistory(force = false) {
     let wrote = false;
     // Nothing new — don't spend a KV write (unless the user explicitly forced one). The two
     // keys write independently so a summary-only change doesn't rewrite the bigger raw blob.
-    if (changed || force) { await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() })); wrote = true; }
+    // SHRINK GUARD. Adding today can only ever grow the archive or leave it the same
+    // size; the one legitimate shrink is the 365-day trim, which is counted. Anything
+    // else means what we read was not what is actually stored, and writing it back would
+    // destroy history that cannot be re-fetched — CME serves none. Fail loudly instead.
+    const _daysAfter = _countDays(hist);
+    const _floor = Math.max(_daysBefore, _hwm) - _trimmed;
+    if (_daysAfter < _floor) {
+      console.error(`[oi-history] ABORT: merge would shrink the archive to ${_daysAfter} day-entries, `
+        + `below the floor of ${_floor} (read ${_daysBefore}, last written ${_hwm}, `
+        + `${_trimmed} legitimate trim(s)). Refusing to write — the read did not return what is stored. `
+        + `The archive is untouched; POST /api/oi-history/backfill to rebuild from oi_raw_* if it really is short.`);
+      return { n, wrote: false, day, error: `shrink guard: ${_daysAfter} < floor ${_floor}` };
+    }
+    if (changed || force) {
+      await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
+      wrote = true;
+      // Refresh the marker only after the archive itself landed, so a failed put can
+      // never lower the floor that protects it.
+      try {
+        await kv.put('oi_history_meta', JSON.stringify({ data: {
+          dayEntries: _daysAfter, pairs: Object.keys(hist).length, at: new Date().toISOString() } }));
+      } catch (e) { console.warn('[oi-history] marker write failed (archive is safe):', e.message); }
+    }
     if (rawChanged || force) { await kv.put(rawDayKey, JSON.stringify({ data: rawDay, timestamp: Date.now() })); wrote = true; }
     if (wrote) console.log(`[oi-history] archived ${n} pair(s), ${changed} summary / ${rawChanged} raw changed → ${day}`);
     return { n, wrote, day, changed, rawChanged };
@@ -13094,6 +13147,109 @@ app.get('/api/oi-history', async (req, res) => {
     res.json({ ok: true, pair: pk || key, dates, history: recent, deltas, curDate, prevDate });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── BACKFILL `oi_history` FROM THE PER-DAY RAW ARCHIVES ──────────────────────
+// `oi_history` is a single accumulating key, so one bad read-modify-write replaces the
+// whole archive with today (measured 2026-08-26: ~25 days -> 1, taking gexMedianAbs and
+// the hold-score flow component down with it). The per-day `oi_raw_YYYY-MM-DD` keys never
+// read-modify-write, so they survived — and they hold the COMPLETE capture (rawOI/rawChg/
+// rawVol/rawIV/rawIVTerm + the spot/futures/basis/dte it was read against).
+//
+// So the summary is reconstructible: push each archived day back through `buildOIEntry` —
+// the same headless analyse `/api/oi/reanalyse` uses, so a restored day is derived by the
+// identical code path as a live one — then summarise it exactly as the nightly snapshot
+// would. `skipLiveQuote` is essential: a 2026-08-20 day must not be re-based onto today's
+// price.
+//
+// GAP-FILL ONLY. A date already present in `oi_history` is never touched, so this can be
+// re-run safely and can never itself become the thing that loses a day.
+//
+//   POST /api/oi-history/backfill            dry run — reports what it WOULD restore
+//   POST /api/oi-history/backfill?commit=1   writes
+app.post('/api/oi-history/backfill', async (req, res) => {
+  const commit = String(req.query.commit || '') === '1';
+  try {
+    // Strict: if we cannot read the archive we must not write one. Rebuilding onto {}
+    // would be the very failure this endpoint exists to repair.
+    let histRaw;
+    try { histRaw = await kv.getStrict('oi_history'); }
+    catch (e) {
+      return res.status(503).json({ ok: false, error: `could not read oi_history (${e.message}) — refusing to rebuild onto an empty archive` });
+    }
+    const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    const countDays = h => Object.values(h || {}).reduce((a, p) => a + Object.keys(p || {}).length, 0);
+    const before = countDays(hist);
+
+    const rawKeys = (await kv.keys('oi_raw_')).filter(k => /^oi_raw_\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+    if (!rawKeys.length) return res.json({ ok: false, error: 'no oi_raw_* archives found — nothing to rebuild from' });
+
+    const added = [], skipped = [], errors = [];
+    for (const key of rawKeys) {
+      const date = key.slice('oi_raw_'.length);
+      let day;
+      try {
+        const dRaw = await kv.getStrict(key);
+        day = dRaw ? (JSON.parse(dRaw).data ?? JSON.parse(dRaw)) : null;
+      } catch (e) { errors.push({ date, error: `read failed: ${e.message}` }); continue; }
+      if (!day || typeof day !== 'object') { errors.push({ date, error: 'unreadable archive' }); continue; }
+
+      for (const [pair, cap] of Object.entries(day)) {
+        if (!cap || !cap.rawOI) { skipped.push({ date, pair, reason: 'no raw ladder' }); continue; }
+        if (hist[pair] && hist[pair][date]) { skipped.push({ date, pair, reason: 'already present' }); continue; }
+        try {
+          const entry = await _oiBuildEntry({
+            pair, rawOI: cap.rawOI,
+            rawChg: cap.rawChg || '', rawVol: cap.rawVol || '',
+            rawIV: cap.rawIV || '', rawIVTerm: cap.rawIVTerm || '',
+            dteRaw:     Number.isFinite(cap.dte)     ? cap.dte     : NaN,
+            spotRaw:    Number.isFinite(cap.spot)    ? cap.spot    : NaN,
+            futuresRaw: Number.isFinite(cap.futures) ? cap.futures : NaN,
+            manualFutures: Number.isFinite(cap.futures),   // pin to the archived futures — do NOT re-base onto today
+            skipLiveQuote: true,
+          });
+          if (!entry || entry.error) { errors.push({ date, pair, error: entry?.error || 'build returned nothing' }); continue; }
+          const summary = _oiHistorySummary(entry);
+          if (!summary) { errors.push({ date, pair, error: 'summary returned nothing' }); continue; }
+          // Keep the ORIGINAL capture time, not the rebuild time — this row describes
+          // that morning's book, and a reader ageing it off savedAtMs must not be told
+          // a 2026-08-20 paste happened today.
+          summary.savedAtMs = Number.isFinite(cap.savedAtMs) ? cap.savedAtMs : summary.savedAtMs;
+          summary.restoredFromRaw = true;                 // provenance: derived, not captured live
+          hist[pair] = hist[pair] || {};
+          hist[pair][date] = summary;
+          added.push({ date, pair, gex: summary.gex, spot: summary.spot });
+        } catch (e) { errors.push({ date, pair, error: e.message }); }
+      }
+    }
+
+    const after = countDays(hist);
+    const result = {
+      ok: true, commit,
+      dayEntries: { before, after, restored: after - before },
+      datesAvailable: rawKeys.map(k => k.slice('oi_raw_'.length)),
+      added: added.length, skipped: skipped.length, errors: errors.length,
+      addedDetail: added, errorDetail: errors.slice(0, 40),
+    };
+    if (!commit) { result.note = 'DRY RUN — nothing written. Re-POST with ?commit=1 to apply.'; return res.json(result); }
+    // Gap-fill can only grow the archive. If it somehow did not, something is wrong and
+    // we do not write — same reasoning as the snapshot's shrink guard.
+    if (after < before) return res.status(500).json({ ok: false, error: `refusing to write: ${before} -> ${after} day-entries` });
+    if (after === before) { result.note = 'nothing to restore — every archived day was already present'; return res.json(result); }
+    await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
+    // Raise the high-water mark with it, or the snapshot job would keep protecting the
+    // OLD, smaller floor and the restored days would look like an anomaly next run.
+    try {
+      await kv.put('oi_history_meta', JSON.stringify({ data: {
+        dayEntries: after, pairs: Object.keys(hist).length, at: new Date().toISOString() } }));
+    } catch (e) { console.warn('[oi-history] marker write failed after backfill:', e.message); }
+    console.log(`[oi-history] BACKFILL wrote ${after - before} day-entries from ${rawKeys.length} raw archive(s) (${before} -> ${after})`);
+    result.note = `written — oi_history now holds ${after} day-entries`;
+    res.json(result);
+  } catch (e) {
+    console.error('[oi-history] backfill failed:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/oi-history/snapshot', async (_req, res) => {
   // force:true — a manual archive must actually write, so it can never look like a no-op.
   try { const r = await _snapshotOIHistory(true); res.json({ ok: !r.error, pairsArchived: r.n, wrote: r.wrote, date: r.day ?? _rlSessionDate(null), summaryChanged: r.changed, rawChanged: r.rawChanged, ...(r.error ? { error: r.error } : {}) }); }
