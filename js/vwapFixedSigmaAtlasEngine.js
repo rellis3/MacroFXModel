@@ -114,6 +114,14 @@ export function vwapFixedSigmaAtlasWalk(packed, {
   historySessions = 20, useMedian = false,   // owner's own config: mean, not median
   measureBars = 20, levels = LEVELS_DEFAULT,
   minLookbackSessions = 25,
+  // 'fixedWindow' (default, byte-identical to the original port): MFE/MAE
+  // over a fixed `measureBars` window, as if a trade were taken — the Pine's
+  // own literal behaviour. 'returnToVwap': the TREND question instead — no
+  // hypothetical trade, no fixed window; does price actually get back to
+  // VWAP before the session ends, when, and does it extend further first —
+  // same outcome shape as js/vwapExtensionAtlasEngine.js, applied to THIS
+  // (fixed-sigma) band instead of that engine's ATR-normalised one.
+  resolutionMode = 'fixedWindow',
 } = {}) {
   const sym = String(instrument).toUpperCase();
   const { n, times, opens, highs, lows, closes, volumes } = packed;
@@ -217,35 +225,95 @@ export function vwapFixedSigmaAtlasWalk(packed, {
   const active = SLOTS.map(() => null);
   const rows = [];
 
+  function pushReturnToVwapRow(s, ev, extra) {
+    rows.push({
+      instrument: sym, assetClass, date: dayKeys[dayOfBar[ev.touchIdx]], side: SLOTS[s].side, level: SLOTS[s].level,
+      touchTime: times[ev.touchIdx], touchHourUtc: new Date(times[ev.touchIdx] * 1000).getUTCHours(),
+      ...ev.context,
+      fixedSigma: +ev.sigma.toFixed(6),
+      peakExtPips: +ev.peakExt.toFixed(6), peakExtSigma: +(ev.peakExt / ev.sigma).toFixed(3),
+      ...extra,
+    });
+  }
+
   for (let k = 2; k < n; k++) {
     const d = dayOfBar[k];
     if (d < minLookbackSessions) continue;
     const newSession = dayOfBar[k - 1] !== d;
-    if (newSession) { for (let s = 0; s < SLOTS.length; s++) active[s] = null; }
+    if (newSession) {
+      for (let s = 0; s < SLOTS.length; s++) {
+        const ev = active[s];
+        if (!ev) continue;
+        // 'fixedWindow' matches the Pine exactly: an event that hasn't
+        // completed its window by session end is simply cancelled, not
+        // recorded (the Pine has no concept of "unresolved"). 'returnToVwap'
+        // is a reference-book question — session end IS a real outcome
+        // (censored, not discarded) and must be recorded, same discipline
+        // as vwapExtensionAtlasEngine.js's `unresolvedAtDayEnd`.
+        if (resolutionMode === 'returnToVwap') {
+          pushReturnToVwapRow(s, ev, { touchedVwapAfter: false, barsToVwapTouch: null, didExtendFurtherFirst: ev.extendedFurther, wentToOppositeSide: false, unresolvedAtDayEnd: true });
+        }
+        active[s] = null;
+      }
+    }
 
     const fixedSigma = fixedSigmaOf[d];
     if (fixedSigma == null || !(fixedSigma > 0)) continue;
 
     // ── update active events (before new events are created — the touch
-    // bar itself never contributes to its own MFE/MAE) ─────────────────
+    // bar itself never contributes to its own outcome) ─────────────────
     for (let s = 0; s < SLOTS.length; s++) {
       const ev = active[s];
       if (!ev) continue;
       const isShort = SLOTS[s].side === 'short';
-      const favourable = isShort ? Math.max(0, ev.entry - lows[k]) : Math.max(0, highs[k] - ev.entry);
-      const adverse = isShort ? Math.max(0, highs[k] - ev.entry) : Math.max(0, ev.entry - lows[k]);
-      if (favourable > ev.mfe) ev.mfe = favourable;
-      if (adverse > ev.mae) ev.mae = adverse;
-      ev.age++;
-      if (ev.age >= measureBars) {
-        rows.push({
-          instrument: sym, assetClass, date: dayKeys[dayOfBar[ev.touchIdx]], side: SLOTS[s].side, level: SLOTS[s].level,
-          touchTime: times[ev.touchIdx], touchHourUtc: new Date(times[ev.touchIdx] * 1000).getUTCHours(),
-          ...ev.context,
-          measureBars,
-          fixedSigma: +ev.sigma.toFixed(6),
-          mfePips: +ev.mfe.toFixed(6), maePips: +ev.mae.toFixed(6),
-          mfeSigma: +(ev.mfe / ev.sigma).toFixed(3), maeSigma: +(ev.mae / ev.sigma).toFixed(3),
+
+      if (resolutionMode === 'fixedWindow') {
+        const favourable = isShort ? Math.max(0, ev.entry - lows[k]) : Math.max(0, highs[k] - ev.entry);
+        const adverse = isShort ? Math.max(0, highs[k] - ev.entry) : Math.max(0, ev.entry - lows[k]);
+        if (favourable > ev.mfe) ev.mfe = favourable;
+        if (adverse > ev.mae) ev.mae = adverse;
+        ev.age++;
+        if (ev.age >= measureBars) {
+          rows.push({
+            instrument: sym, assetClass, date: dayKeys[dayOfBar[ev.touchIdx]], side: SLOTS[s].side, level: SLOTS[s].level,
+            touchTime: times[ev.touchIdx], touchHourUtc: new Date(times[ev.touchIdx] * 1000).getUTCHours(),
+            ...ev.context,
+            measureBars,
+            fixedSigma: +ev.sigma.toFixed(6),
+            mfePips: +ev.mfe.toFixed(6), maePips: +ev.mae.toFixed(6),
+            mfeSigma: +(ev.mfe / ev.sigma).toFixed(3), maeSigma: +(ev.mae / ev.sigma).toFixed(3),
+          });
+          active[s] = null;
+        }
+        continue;
+      }
+
+      // resolutionMode === 'returnToVwap': track signed distance beyond the
+      // touched level, in the SAME direction as the original extension
+      // (positive = still stretched away from VWAP); peak is a causal
+      // running max. Touch = a wick reaching back to that bar's own VWAP.
+      const extNow = isShort ? highs[k] - ev.entry : ev.entry - lows[k];
+      if (extNow > ev.peakExt) { ev.peakExt = extNow; ev.extendedFurther = true; }
+      const touchedVwap = isShort ? lows[k] <= vwapArr[k] : highs[k] >= vwapArr[k];
+      if (touchedVwap) {
+        // Did it continue THROUGH VWAP to the opposite side's OWN level
+        // before the session ends? Scanned forward from here; resolved
+        // lazily the same bar it happens, or left false if the session
+        // ends first (checked at the next newSession cancel/record point —
+        // approximated here by a short forward peek bounded to this
+        // session's remaining bars, consistent with the sibling engine's
+        // same-session-only "wentToOppositeSide" scope).
+        let wentToOppositeSide = false;
+        const oppSide = isShort ? 'long' : 'short';
+        for (let m = k + 1; m < n && dayOfBar[m] === d; m++) {
+          const oppLvl = levelAt(m, oppSide, SLOTS[s].level);
+          if (oppLvl == null) continue;
+          const reached = oppSide === 'short' ? highs[m] >= oppLvl : lows[m] <= oppLvl;
+          if (reached) { wentToOppositeSide = true; break; }
+        }
+        pushReturnToVwapRow(s, ev, {
+          touchedVwapAfter: true, barsToVwapTouch: k - ev.touchIdx,
+          didExtendFurtherFirst: ev.extendedFurther, wentToOppositeSide, unresolvedAtDayEnd: false,
         });
         active[s] = null;
       }
@@ -291,6 +359,7 @@ export function vwapFixedSigmaAtlasWalk(packed, {
 
       active[s] = {
         entry: lvl1, sigma: fixedSigma, touchIdx: k, mfe: 0, mae: 0, age: 0,
+        peakExt: 0, extendedFurther: false,   // used only by resolutionMode:'returnToVwap'
         context: {
           session: sessionOf(hourUtc), dow: dowOf(dayKeys[d]),
           htfTrend: htfTrend.bucket, momAdx: momAdx.bucket,
