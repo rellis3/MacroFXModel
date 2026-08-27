@@ -28,7 +28,7 @@ import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
 import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle } from './levelAtlasVoteReview.js';
-import { summarizeTrades } from './metricsCore.js';
+import { summarizeTrades, maxDrawdownFromPnls } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
@@ -557,6 +557,20 @@ export function mountLevelAtlasRoutes(app, express) {
         ? Object.fromEntries(Object.keys(perPairTrades).map(p => [p, 1]))
         : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null);
 
+      // `portfolioStats`' own `maxDD` is the COMPOUNDED (reinvested) drawdown —
+      // correct for an account that scales position size up with a growing
+      // balance, but `riskAdjustTrades` never actually does that: every trade
+      // risks a CONSTANT `riskPct` of the ORIGINAL notional, never a growing
+      // one. `maxDrawdownFromPnls` (already a Tier-1 brick, `metricsCore.js`)
+      // is the honest complement — a peak-to-trough drawdown on the ADDITIVE
+      // (summed, non-reinvested) path, matching what the "Non-compounded"
+      // equity-curve line already plots, and matching how a trader who does
+      // NOT scale risk up with a growing account actually experiences pain.
+      // Both numbers are real; they answer different questions ("what if I
+      // reinvest" vs "what if I always risk the same fixed amount") and
+      // neither should stand in silently for the other.
+      const withNonCompoundedDD = (statsObj, dailyReturns) => ({ ...statsObj, maxDDNonCompounded: +maxDrawdownFromPnls(dailyReturns).toFixed(2) });
+
       const weights = buildWeights(perPairTradesFinal);
       const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
       const statsBeforeThrottle = portfolioStats(combined.dailyReturns, { mc: false, targetVol });
@@ -573,13 +587,13 @@ export function mountLevelAtlasRoutes(app, express) {
       const restoreDD = req.query.restoreDD ? Number(req.query.restoreDD) : 0;
       const throttleMult = req.query.throttleMult ? Number(req.query.throttleMult) : 0.5;
       let throttle = null, dailyReturnsFinal = combined.dailyReturns, datesFinal = combined.dates;
-      let stats = statsBeforeThrottle, statsNoThrottle = null;
+      let stats = withNonCompoundedDD(statsBeforeThrottle, combined.dailyReturns), statsNoThrottle = null;
       if (throttleOn) {
         const tr = applyDrawdownThrottle(combined.dailyReturns, combined.dates, { triggerDD, restoreDD, throttleMult });
         if (tr) {
           dailyReturnsFinal = tr.dailyReturns;
-          stats = portfolioStats(dailyReturnsFinal, { mc: false, targetVol });
-          statsNoThrottle = statsBeforeThrottle;
+          stats = withNonCompoundedDD(portfolioStats(dailyReturnsFinal, { mc: false, targetVol }), dailyReturnsFinal);
+          statsNoThrottle = withNonCompoundedDD(statsBeforeThrottle, combined.dailyReturns);
           throttle = { triggerDD, restoreDD, throttleMult, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
         }
       }
@@ -597,7 +611,7 @@ export function mountLevelAtlasRoutes(app, express) {
           const trU = applyDrawdownThrottle(uncappedReturns, combinedUncapped.dates, { triggerDD, restoreDD, throttleMult });
           if (trU) uncappedReturns = trU.dailyReturns;
         }
-        statsUncapped = portfolioStats(uncappedReturns, { mc: false, targetVol });
+        statsUncapped = withNonCompoundedDD(portfolioStats(uncappedReturns, { mc: false, targetVol }), uncappedReturns);
       }
 
       const naiveAvgSharpe = (() => {

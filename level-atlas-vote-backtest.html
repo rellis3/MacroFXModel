@@ -538,8 +538,13 @@ function csvDownload(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+// MAE is an UNSIGNED magnitude on the trade object (engine contract — E-ratio
+// = MFE÷MAE needs both positive; see js/levelAtlasVoteReview.js). This export
+// is the one place that flips it negative, matching the CSV convention (an
+// adverse excursion IS a drawdown, so it belongs on the same negative side of
+// zero as a loss) — a display-only sign flip, not a change to what MAE means.
 document.getElementById('expReturns').addEventListener('click', () => {
-  const rows = [['Date', 'Return %', 'MAE %'], ...filteredTrades().map(t => [t.date, t.pnlPct.toFixed(4), (t.maePct ?? '').toString()])];
+  const rows = [['Date', 'Return %', 'MAE %'], ...filteredTrades().map(t => [t.date, t.pnlPct.toFixed(4), t.maePct != null ? (-Math.abs(t.maePct)).toFixed(4) : ''])];
   csvDownload('level-atlas-vote-returns.csv', rows);
 });
 document.getElementById('expR').addEventListener('click', () => {
@@ -547,7 +552,7 @@ document.getElementById('expR').addEventListener('click', () => {
     const riskPct = t.stopPips * t.pip / t.entry * 100;
     const r = riskPct > 0 ? t.pnlPct / riskPct : 0;
     const maeR = (t.maePct != null && riskPct > 0) ? t.maePct / riskPct : '';
-    return [t.date, r.toFixed(3), maeR === '' ? '' : maeR.toFixed(3)];
+    return [t.date, r.toFixed(3), maeR === '' ? '' : (-Math.abs(maeR)).toFixed(3)];
   })];
   csvDownload('level-atlas-vote-r-multiples.csv', rows);
 });

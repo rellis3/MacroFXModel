@@ -260,7 +260,8 @@ function render(j) {
     const rows = [
       ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
       ['CAGR', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
-      ['Max Drawdown', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (compounded)', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(u.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
       ['Annualised Vol', fmt1(u.annVol) + '%', fmt1(s.annVol) + '%'],
       ['Trades taken', j.heatCap.totalCount, j.heatCap.totalCount - j.heatCap.skippedCount],
     ];
@@ -279,7 +280,8 @@ function render(j) {
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
       ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
-      ['Max Drawdown', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
       ['Calmar', fmt2(n.calmar), fmt2(s.calmar)],
       ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
     ];
@@ -294,8 +296,9 @@ function render(j) {
   document.getElementById('kpiRaw').innerHTML = [
     kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
     kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'compounded daily'),
-    kpiCard('Max Drawdown', fmt1(s.maxDD) + '%', 'red', 'compounded equity, peak→trough'),
-    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD|'),
+    kpiCard('Max DD (compounded)', fmt1(s.maxDD) + '%', 'red', 'if you reinvest — risk grows with equity'),
+    kpiCard('Max DD (fixed risk)', fmt1(s.maxDDNonCompounded) + '%', 'red', "if you never reinvest — risk stays at today's %"),
+    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD, compounded|'),
     kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
     kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
     kpiCard('Lag-1 Autocorr', fmt2(s.acf1), '', s.acf1 < 0 ? 'mean-reverting days' : s.acf1 > 0 ? 'clustering days' : 'no persistence'),
@@ -356,9 +359,24 @@ function csvDownload(filename, rows) {
 }
 function riskPctOf(t) { return t.stopPips * t.pip / t.entry * 100; }
 
+// The house convention (MD files/CLAUDE.md) and the external reference
+// importer we cross-check against both expect these 3 LEADING columns
+// exactly, by name and by POSITION — `Date,Return %,MAE %` /
+// `date,R,MAE (R)` / `Trade Date,PnL ($),Risk ($)`. Putting `Pair` in
+// position 2 (as an earlier version of this export did) shifts every
+// column after it, so a positional importer reads the pair NAME where it
+// expects a number — a real, silent import-breaking bug, not just a style
+// nit. `Pair` is now a TRAILING 4th column instead: safe for any importer
+// that reads by name or by the first 3 positions, while still preserving
+// per-pair attribution for anyone reading the extra column.
+// MAE is an UNSIGNED magnitude on the trade object (engine contract — E-ratio
+// = MFE÷MAE needs both positive; see js/levelAtlasVoteReview.js). Both CSV
+// exports below flip it negative, matching the CSV convention (an adverse
+// excursion IS a drawdown, so it belongs on the same negative side of zero
+// as a loss) — a display-only sign flip, not a change to what MAE means.
 document.getElementById('expReturns').addEventListener('click', () => {
-  const rows = [['Date', 'Pair', 'Return % (weighted)', 'MAE %'], ...lastTrades.map(t =>
-    [t.date, t.pair, (t.pnlPct * t.weight).toFixed(4), (t.maePct != null ? (t.maePct * t.weight).toFixed(4) : '')])];
+  const rows = [['Date', 'Return %', 'MAE %', 'Pair'], ...lastTrades.map(t =>
+    [t.date, (t.pnlPct * t.weight).toFixed(4), (t.maePct != null ? (-Math.abs(t.maePct * t.weight)).toFixed(4) : ''), t.pair])];
   csvDownload('level-atlas-vote-portfolio-returns.csv', rows);
 });
 document.getElementById('expR').addEventListener('click', () => {
@@ -368,19 +386,19 @@ document.getElementById('expR').addEventListener('click', () => {
   // here would be WRONG in fixed-risk mode, where t.pnlPct has already been
   // rescaled to the chosen risk% (dividing it by the raw stop-risk% again
   // would double-apply the scaling).
-  const rows = [['date', 'pair', 'R', 'MAE (R)'], ...lastTrades.map(t => {
+  const rows = [['date', 'R', 'MAE (R)', 'pair'], ...lastTrades.map(t => {
     const rp = riskPctOf(t);
     const maeR = (t.maePct != null && rp > 0) ? t.maePct / rp : '';
-    return [t.date, t.pair, t.rMultiple.toFixed(3), maeR === '' ? '' : maeR.toFixed(3)];
+    return [t.date, t.rMultiple.toFixed(3), maeR === '' ? '' : (-Math.abs(maeR)).toFixed(3), t.pair];
   })];
   csvDownload('level-atlas-vote-portfolio-r-multiples.csv', rows);
 });
 document.getElementById('expCash').addEventListener('click', () => {
   const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
   const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
-  const rows = [['Trade Date', 'Pair', 'PnL ($)', 'Risk ($)'], ...lastTrades.map(t => {
+  const rows = [['Trade Date', 'PnL ($)', 'Risk ($)', 'Pair'], ...lastTrades.map(t => {
     const riskDollars = acct * riskPct / 100 * t.weight;
-    return [t.date, t.pair, (t.rMultiple * riskDollars).toFixed(2), riskDollars.toFixed(2)];
+    return [t.date, (t.rMultiple * riskDollars).toFixed(2), riskDollars.toFixed(2), t.pair];
   })];
   csvDownload('level-atlas-vote-portfolio-currency-pnl.csv', rows);
 });
