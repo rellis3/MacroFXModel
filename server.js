@@ -13206,8 +13206,14 @@ app.post('/api/oi-history/backfill', async (req, res) => {
             manualFutures: Number.isFinite(cap.futures),   // pin to the archived futures — do NOT re-base onto today
             skipLiveQuote: true,
           });
+          // buildOIEntry returns a WRAPPER — { inst, parsed, maxPain, basis, ... }. The
+          // analysed record is on `.inst`; summarising the wrapper silently yields a row
+          // of nulls (caught on the first dry run: 77 rows, every gex and spot null).
           if (!entry || entry.error) { errors.push({ date, pair, error: entry?.error || 'build returned nothing' }); continue; }
-          const summary = _oiHistorySummary(entry);
+          if (!entry.inst || !Number.isFinite(entry.inst.spot)) {
+            errors.push({ date, pair, error: 'rebuilt entry has no spot — refusing to archive a null row' }); continue;
+          }
+          const summary = _oiHistorySummary(entry.inst);
           if (!summary) { errors.push({ date, pair, error: 'summary returned nothing' }); continue; }
           // Keep the ORIGINAL capture time, not the rebuild time — this row describes
           // that morning's book, and a reader ageing it off savedAtMs must not be told
