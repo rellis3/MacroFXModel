@@ -1,6 +1,6 @@
 {
-  "status": "no_data_yet",
+  "status": "no_checkpoint_yet",
   "pair": "gold",
-  "now": "2026-08-17T17:27:39.278714+00:00",
-  "checkpoint": "post_overlap"
+  "now": "2026-08-27T05:53:34.572971+00:00",
+  "note": "still in the Asia session \u2014 first checkpoint (post_asia) at 07:00 UTC"
 }
