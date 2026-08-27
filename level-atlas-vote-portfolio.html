@@ -53,9 +53,13 @@
       <option value="1" selected>1 (strictest)</option><option value="2">2</option><option value="3">3</option><option value="99">unlimited</option>
     </select></label>
     <label>Per-direction budget <input type="checkbox" id="perDirChk"></label>
-    <label>Weighting <select id="weightSel">
+    <label>Sizing <select id="sizingSel">
+      <option value="fixed-risk" selected>Fixed % risk / trade</option><option value="nav">NAV split (legacy)</option>
+    </select></label>
+    <label id="weightSelWrap">Weighting <select id="weightSel">
       <option value="equal" selected>Equal (1/n each)</option><option value="inverse-vol">Risk parity (inverse-vol)</option>
     </select></label>
+    <label id="riskPctWrap">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -65,6 +69,10 @@
 <div class="card muted">
   Combines each selected pair's own vote-margin trades (barrier-priced, concurrency-capped per pair) into ONE portfolio —
   reusing <code>js/backtestStats.js</code>'s <code>portfolioStats</code> on the combined daily return series, no new metrics.
+  <strong>Fixed % risk / trade</strong> (default) risks the SAME % of account on every trade off its own real stop distance —
+  no capital-split guess, no need to know trade count/frequency in advance, forward-implementable as-is.
+  <strong>NAV split (legacy)</strong> instead pre-allocates a fixed capital fraction per pair (equal or inverse-vol) and lets
+  each pair's own raw price-return scale within that slice — kept for comparison, but requires deciding weights up front.
   See <code>MD files/LEGO_MODULES.md</code> for the full methodology and per-pair validation.
 </div>
 
@@ -99,7 +107,7 @@
   <table>
     <thead><tr>
       <th>Pair</th><th class="num">Decided (margin gate)</th><th class="num">Kept (after cap)</th><th class="num">Skipped</th>
-      <th class="num">Own win rate</th><th class="num">Own Sharpe</th><th class="num">Portfolio weight</th>
+      <th class="num">Own win rate</th><th class="num">Own Sharpe</th><th class="num" id="weightColHead">Portfolio weight</th>
     </tr></thead>
     <tbody id="perPairBody"></tbody>
   </table>
@@ -117,11 +125,12 @@
     <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" style="width:60px"></label>
   </div>
   <div class="export-note">
-    Every kept (post concurrency-cap) trade across the selected pairs, tagged with which pair it belongs to and that
-    pair's portfolio weight. % Returns and Currency P&amp;L are WEIGHTED by each trade's pair weight, so summing either
-    column reproduces the portfolio's actual combined result — not single-pair scale. R = pnlPct ÷ (stop distance, gross)
-    is a per-trade ratio and left UNWEIGHTED (weighting both sides of a ratio cancels out). Currency P&amp;L assumes
-    fixed-fractional sizing scaled by pair weight: Risk($) = Account × Risk% × pair weight, PnL($) = R × Risk($).
+    Every kept (post concurrency-cap) trade across the selected pairs, tagged with which pair it belongs to. In
+    <strong>Fixed % risk / trade</strong> mode, Return % is already the real risk-scaled outcome (pair weight = 1, a
+    no-op) — Currency P&amp;L's Risk($) = Account × Risk% (the SAME risk% the chart was built with, auto-synced above).
+    In <strong>NAV split</strong> mode, Return %/Currency P&amp;L are scaled by each trade's pair weight so summing
+    either column reproduces the portfolio's combined result. R (both modes) = the trade's own outcome ÷ its own real
+    stop distance — a per-trade ratio, always left unscaled by weight since scaling both sides of a ratio cancels out.
   </div>
 </div>
 
@@ -137,8 +146,19 @@ pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="
 const marginSel = document.getElementById('marginSel');
 const capSel = document.getElementById('capSel');
 const perDirChk = document.getElementById('perDirChk');
+const sizingSel = document.getElementById('sizingSel');
 const weightSel = document.getElementById('weightSel');
+const weightSelWrap = document.getElementById('weightSelWrap');
+const riskPctWrap = document.getElementById('riskPctWrap');
+const riskPctInput = document.getElementById('riskPctInput');
 const headerSub = document.getElementById('headerSub');
+
+function syncSizingUI() {
+  const fixed = sizingSel.value === 'fixed-risk';
+  weightSelWrap.style.display = fixed ? 'none' : '';
+  riskPctWrap.style.display = fixed ? '' : 'none';
+}
+syncSizingUI();
 
 let eqChart = null;
 let lastTrades = [];
@@ -156,18 +176,25 @@ function selectedPairs() {
 }
 
 async function loadData() {
+  syncSizingUI();
   const pairs = selectedPairs();
   if (!pairs.length) { headerSub.textContent = 'select at least one pair'; return; }
   headerSub.textContent = 'loading…';
   const params = new URLSearchParams({
     pairs: pairs.join(','), minMargin: marginSel.value, maxConcurrent: capSel.value,
     perDirection: perDirChk.checked ? 'true' : 'false', weighting: weightSel.value,
+    sizing: sizingSel.value, riskPct: riskPctInput.value,
   });
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
-    headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${j.weighting} weighting · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    const sizingDesc = j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)` : `${j.weighting} NAV weighting`;
+    headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    // Keep the CSV export panel's own risk% input in sync with the sizing
+    // model's riskPct by default (fixed-risk mode) — same knob, avoids the
+    // chart and the $ export silently disagreeing on what "risk %" means.
+    if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
     render(j);
   } catch (e) {
     headerSub.textContent = `error: ${e.message}`;
@@ -193,12 +220,17 @@ function render(j) {
   ].join('');
 
   const vt = s.volTarget;
-  document.getElementById('kpiLevered').innerHTML = [
+  const scale = s.annVol > 0 ? vt.target / s.annVol : null;
+  const leveredCards = [
     kpiCard('Target Vol', vt.target + '%', 'blue', 'the chosen scale'),
     kpiCard('CAGR (levered)', fmt1(vt.cagr) + '%', signClass(vt.cagr), `vs ${fmt1(s.cagr)}% unlevered`),
     kpiCard('Max DD (levered)', fmt1(vt.maxDD) + '%', 'red', `vs ${fmt1(s.maxDD)}% unlevered`),
     kpiCard('Calmar (levered)', fmt2(vt.calmar), '', 'same Sharpe, scaled risk'),
-  ].join('');
+  ];
+  if (j.sizing === 'fixed-risk' && scale != null) {
+    leveredCards.push(kpiCard('Risk % / trade to hit target', fmt2(j.riskPct * scale) + '%', 'amber', `${fmt2(scale)}× today's ${j.riskPct}%/trade`));
+  }
+  document.getElementById('kpiLevered').innerHTML = leveredCards.join('');
 
   if (eqChart) eqChart.destroy();
   let eq = 1, sum = 0;
@@ -214,14 +246,21 @@ function render(j) {
       scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } } } },
   });
 
+  // In fixed-risk mode every pair's combine-`weight` is forced to 1 (no NAV
+  // split), so it's meaningless as a "capital %" — show each pair's share of
+  // TRADE COUNT instead (the natural meaning of "weight" when every trade
+  // already risks the same fixed %).
+  const fixedRisk = j.sizing === 'fixed-risk';
+  document.getElementById('weightColHead').textContent = fixedRisk ? 'Share of trades' : 'Portfolio weight';
   const rows = Object.entries(j.perPair);
+  const shareOf = p => fixedRisk ? p.tradeShare : p.weight;
   document.getElementById('perPairBody').innerHTML = rows.map(([pair, p]) => `
     <tr><td style="color:${PAIR_COLORS[pair] ?? '#cbd5e1'}">${pair}</td>
       <td class="num">${p.totalDecided}</td><td class="num">${p.kept}</td><td class="num muted">${p.skipped}</td>
       <td class="num">${fmt1(p.ownWinRate)}%</td><td class="num">${fmt2(p.ownSharpe)}</td>
-      <td class="num">${fmt1(p.weight * 100)}%</td></tr>`).join('');
+      <td class="num">${fmt1(shareOf(p) * 100)}%</td></tr>`).join('');
   document.getElementById('weightBar').innerHTML = rows.map(([pair, p]) =>
-    `<div class="bar" style="width:${p.weight * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(p.weight * 100)}%"></div>`).join('');
+    `<div class="bar" style="width:${shareOf(p) * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(shareOf(p) * 100)}%"></div>`).join('');
 }
 
 function csvDownload(filename, rows) {
@@ -239,11 +278,16 @@ document.getElementById('expReturns').addEventListener('click', () => {
   csvDownload('level-atlas-vote-portfolio-returns.csv', rows);
 });
 document.getElementById('expR').addEventListener('click', () => {
+  // t.rMultiple comes straight from the server (js/levelAtlasVoteReview.js's
+  // riskAdjustTrades) — invariant to sizing mode, since it's the trade's own
+  // outcome ÷ its own stop-based risk unit. Recomputing R from raw fields
+  // here would be WRONG in fixed-risk mode, where t.pnlPct has already been
+  // rescaled to the chosen risk% (dividing it by the raw stop-risk% again
+  // would double-apply the scaling).
   const rows = [['date', 'pair', 'R', 'MAE (R)'], ...lastTrades.map(t => {
     const rp = riskPctOf(t);
-    const r = rp > 0 ? t.pnlPct / rp : 0;
     const maeR = (t.maePct != null && rp > 0) ? t.maePct / rp : '';
-    return [t.date, t.pair, r.toFixed(3), maeR === '' ? '' : maeR.toFixed(3)];
+    return [t.date, t.pair, t.rMultiple.toFixed(3), maeR === '' ? '' : maeR.toFixed(3)];
   })];
   csvDownload('level-atlas-vote-portfolio-r-multiples.csv', rows);
 });
@@ -251,10 +295,8 @@ document.getElementById('expCash').addEventListener('click', () => {
   const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
   const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
   const rows = [['Trade Date', 'Pair', 'PnL ($)', 'Risk ($)'], ...lastTrades.map(t => {
-    const rp = riskPctOf(t);
-    const r = rp > 0 ? t.pnlPct / rp : 0;
     const riskDollars = acct * riskPct / 100 * t.weight;
-    return [t.date, t.pair, (r * riskDollars).toFixed(2), riskDollars.toFixed(2)];
+    return [t.date, t.pair, (t.rMultiple * riskDollars).toFixed(2), riskDollars.toFixed(2)];
   })];
   csvDownload('level-atlas-vote-portfolio-currency-pnl.csv', rows);
 });
@@ -263,7 +305,9 @@ pairChecksEl.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);
 capSel.addEventListener('change', loadData);
 perDirChk.addEventListener('change', loadData);
+sizingSel.addEventListener('change', loadData);
 weightSel.addEventListener('change', loadData);
+riskPctInput.addEventListener('change', loadData);
 
 loadData();
 </script>

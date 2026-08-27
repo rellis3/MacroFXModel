@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -374,6 +374,31 @@ function mkBook(dimSpecs) {
   ok('T13 a zero-variance pair gets weight 0 rather than a divide-by-zero blowup', zeroVol.flat === 0 && zeroVol.volatile === 1, JSON.stringify(zeroVol));
 
   ok('T13 inverseVolWeights empty input -> null, not a throw', inverseVolWeights({}) === null && inverseVolWeights(null) === null);
+}
+
+// ── Test 14: riskAdjustTrades ───────────────────────────────────────────────
+{
+  // entry=1.0, pip=0.0001, stopPips=25 -> stop risk% = 25*0.0001/1.0*100 = 0.25%.
+  // pnlPct=0.5% is exactly a 2R winner; pnlPct=-0.25% is exactly a 1R loser.
+  const winner = { entry: 1.0, pip: 0.0001, stopPips: 25, pnlPct: 0.5, date: 'd1' };
+  const loser = { entry: 1.0, pip: 0.0001, stopPips: 25, pnlPct: -0.25, date: 'd2' };
+  const adj1 = riskAdjustTrades([winner, loser], 1);
+  ok('T14 2R winner at 1% risk -> pnlPct 2.0%, rMultiple 2', adj1[0].pnlPct === 2 && adj1[0].rMultiple === 2, JSON.stringify(adj1[0]));
+  ok('T14 1R loser at 1% risk -> pnlPct -1.0%, rMultiple -1', adj1[1].pnlPct === -1 && adj1[1].rMultiple === -1, JSON.stringify(adj1[1]));
+
+  const adj2 = riskAdjustTrades([winner], 2.5);
+  ok('T14 same 2R winner at 2.5% risk scales linearly -> pnlPct 5.0%, rMultiple unchanged at 2', adj2[0].pnlPct === 5 && adj2[0].rMultiple === 2, JSON.stringify(adj2[0]));
+
+  ok('T14 non-pnlPct fields (date, etc) pass through unchanged', adj1[0].date === 'd1' && adj1[1].date === 'd2');
+
+  const zeroStop = { entry: 1.0, pip: 0.0001, stopPips: 0, pnlPct: 0.5, date: 'd3' };
+  const adjZero = riskAdjustTrades([zeroStop], 1);
+  ok('T14 zero stop distance -> pnlPct 0, rMultiple 0 (no divide-by-zero blowup)', adjZero[0].pnlPct === 0 && adjZero[0].rMultiple === 0, JSON.stringify(adjZero[0]));
+
+  ok('T14 empty/null input -> empty array, not a throw', riskAdjustTrades([]).length === 0 && riskAdjustTrades(null).length === 0);
+
+  const defaultRisk = riskAdjustTrades([winner]);
+  ok('T14 default riskPct is 1', defaultRisk[0].pnlPct === 2, JSON.stringify(defaultRisk[0]));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

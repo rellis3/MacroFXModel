@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades } from './levelAtlasVoteReview.js';
 import { summarizeTrades } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -437,6 +437,7 @@ export function mountLevelAtlasRoutes(app, express) {
 
   // GET /api/level-atlas/vote-portfolio?pairs=eurusd,gbpusd,gold,usdjpy,audusd
   //   &minMargin=3&maxConcurrent=1&perDirection=false&weighting=equal|inverse-vol
+  //   &sizing=nav|fixed-risk&riskPct=1
   // Combines MULTIPLE pairs' own vote-trades into ONE portfolio — reads the
   // SAME persisted trade lists `/vote-trades/:instrument` serves (no second
   // compute), applies `applyConcurrencyCap` per pair (the real, quantified
@@ -445,6 +446,18 @@ export function mountLevelAtlasRoutes(app, express) {
   // Sharpe/CAGR/maxDD. `perPair` in the response is what makes the
   // diversification story visible: each pair's own kept/skipped count,
   // weight, and standalone Sharpe, next to the combined number.
+  //
+  // `sizing='nav'` (default) is the original NAV-split model: each pair gets
+  // a fixed fraction of capital (equal or inverse-vol) and its OWN raw price
+  // return (`pnlPct`) is scaled by that fraction. `sizing='fixed-risk'` is
+  // the forward-implementable alternative (2026-08-27): every trade, on
+  // every pair, risks the SAME `riskPct` of account off its OWN stop
+  // distance (`riskAdjustTrades`) — no NAV split needed, no need to know
+  // trade count/frequency in advance, which a NAV split's weight fractions
+  // implicitly assume. In this mode `weighting` is ignored (ignoring it
+  // rather than erroring — a stale UI param shouldn't 400) and every pair's
+  // combine-weight is forced to 1 (trades already carry their real
+  // risk-scaled outcome; a second NAV-style scale-down would double-dilute).
   app.get('/api/level-atlas/vote-portfolio', async (req, res) => {
     try {
       const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'])
@@ -453,15 +466,17 @@ export function mountLevelAtlasRoutes(app, express) {
       const maxConcurrent = req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1;
       const perDirection = req.query.perDirection === 'true';
       const weighting = req.query.weighting === 'inverse-vol' ? 'inverse-vol' : 'equal';
+      const sizing = req.query.sizing === 'fixed-risk' ? 'fixed-risk' : 'nav';
+      const riskPct = req.query.riskPct ? Number(req.query.riskPct) : 1;
 
-      const perPairTrades = {}, perPair = {}, missing = [];
+      const perPairTradesRaw = {}, perPair = {}, missing = [];
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
         if (!stored) { missing.push(pair.toUpperCase()); continue; }
         const filtered = stored.trades.filter(t => t.margin >= minMargin);
         const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
         const sym = stored.instrument;
-        perPairTrades[sym] = capped?.kept ?? [];
+        perPairTradesRaw[sym] = capped?.kept ?? [];
         perPair[sym] = {
           totalDecided: filtered.length,
           kept: capped?.kept?.length ?? 0,
@@ -469,7 +484,21 @@ export function mountLevelAtlasRoutes(app, express) {
           ownWinRate: capped?.keptSummary?.winRate ?? null,
         };
       }
-      if (!Object.keys(perPairTrades).length) return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
+      if (!Object.keys(perPairTradesRaw).length) return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
+
+      // `rMultiple` is invariant to sizing scheme (it's the trade's own
+      // realized outcome ÷ its own stop-based risk unit) — always attached,
+      // both modes, so the client's R-multiples CSV never has to recompute
+      // it (and can't be broken by pnlPct meaning different things per mode).
+      // pnlPct itself only gets REPLACED by the risk-scaled figure in
+      // fixed-risk mode; nav mode keeps the original raw price-based %.
+      const perPairTradesForStats = {};
+      for (const sym of Object.keys(perPairTradesRaw)) {
+        const adjusted = riskAdjustTrades(perPairTradesRaw[sym], riskPct);
+        perPairTradesForStats[sym] = sizing === 'fixed-risk'
+          ? adjusted
+          : perPairTradesRaw[sym].map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple }));
+      }
 
       // ownSharpe MUST use the same daily-return-series Sharpe as the combined
       // portfolio (portfolioStats) — NOT summarizeTrades' per-trade-annualized
@@ -479,27 +508,34 @@ export function mountLevelAtlasRoutes(app, express) {
       // them in the "naive avg -> combined" callout made part of the apparent
       // diversification benefit a methodology switch, not real diversification.
       // One Sharpe formula, used everywhere on this page.
-      for (const sym of Object.keys(perPairTrades)) {
-        const solo = buildPortfolioDailySeries({ [sym]: perPairTrades[sym] });
+      for (const sym of Object.keys(perPairTradesForStats)) {
+        const solo = buildPortfolioDailySeries({ [sym]: perPairTradesForStats[sym] });
         perPair[sym].ownSharpe = solo ? portfolioStats(solo.dailyReturns, { mc: false }).sharpe : null;
       }
 
-      const weights = weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null;
-      const combined = buildPortfolioDailySeries(perPairTrades, weights ? { weights } : {});
+      const weights = sizing === 'fixed-risk'
+        ? Object.fromEntries(Object.keys(perPairTradesForStats).map(p => [p, 1]))
+        : (weighting === 'inverse-vol' ? inverseVolWeights(perPairTradesForStats) : null);
+      const combined = buildPortfolioDailySeries(perPairTradesForStats, weights ? { weights } : {});
       const stats = portfolioStats(combined.dailyReturns, { mc: false });
       const naiveAvgSharpe = (() => {
         const ss = Object.values(perPair).map(p => p.ownSharpe).filter(v => v != null);
         return ss.length ? +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(3) : null;
       })();
 
-      for (const sym of Object.keys(perPair)) perPair[sym].weight = combined.byPair[sym]?.weight ?? 0;
+      const totalKept = Object.values(perPair).reduce((a, p) => a + p.kept, 0);
+      for (const sym of Object.keys(perPair)) {
+        perPair[sym].weight = combined.byPair[sym]?.weight ?? 0;
+        perPair[sym].tradeShare = totalKept > 0 ? +(perPair[sym].kept / totalKept).toFixed(4) : 0;
+      }
 
-      const trades = Object.entries(perPairTrades).flatMap(([sym, list]) =>
+      const trades = Object.entries(perPairTradesForStats).flatMap(([sym, list]) =>
         list.map(t => ({ ...t, pair: sym, weight: perPair[sym].weight }))
       ).sort((a, b) => a.time - b.time);
 
       res.json({
-        ok: true, pairs: Object.keys(perPairTrades), missing, minMargin, maxConcurrent, perDirection, weighting,
+        ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
+        sizing, riskPct,
         stats, naiveAvgSharpe, days: combined.dates.length,
         equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
         perPair, trades,

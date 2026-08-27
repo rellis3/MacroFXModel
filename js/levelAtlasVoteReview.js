@@ -578,3 +578,29 @@ export function inverseVolWeights(perPairTrades) {
   const total = Object.values(invVols).reduce((a, b) => a + b, 0);
   return total > 0 ? Object.fromEntries(pairs.map(p => [p, +(invVols[p] / total).toFixed(4)])) : null;
 }
+
+/**
+ * Re-expresses each trade's `pnlPct` as a FIXED FRACTION-OF-ACCOUNT risk
+ * outcome instead of a raw price-move %, using the SAME R-multiple formula
+ * this project already uses in both tearsheets' Currency P&L CSV export
+ * (`stopPips * pip / entry * 100` as the per-trade risk unit — a genuinely
+ * per-trade-varying denominator, not a fixed % of price). `riskPct` is the
+ * % of account risked on EVERY trade regardless of pair or stop distance —
+ * this is what makes cross-pair combination forward-implementable without
+ * needing to know trade count/frequency in advance (see LEGO_MODULES.md):
+ * you don't pre-compute a NAV split, you just risk the same % every trade
+ * and let realized portfolio volatility be whatever it turns out to be.
+ *
+ * Pure re-labelling — does not change win/loss, only the % magnitude. A
+ * trade with zero stop distance (shouldn't occur, but keeps this safe) is
+ * left with pnlPct 0 and rMultiple 0 rather than dividing by zero.
+ *
+ *   riskAdjustTrades(trades, 1) -> same trades, pnlPct replaced by R × 1%, rMultiple added
+ */
+export function riskAdjustTrades(trades, riskPct = 1) {
+  return (trades ?? []).map(t => {
+    const stopRiskPct = t.stopPips * t.pip / t.entry * 100;
+    const r = stopRiskPct > 1e-9 ? t.pnlPct / stopRiskPct : 0;
+    return { ...t, pnlPct: +(r * riskPct).toFixed(4), rMultiple: +r.toFixed(3) };
+  });
+}
