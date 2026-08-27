@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -482,6 +482,40 @@ function mkBook(dimSpecs) {
   ok('T17 custom triggerDD/restoreDD/throttleMult are honoured (tighter trigger fires sooner)', custom.state[2].throttled === true);
 
   ok('T17 empty/null input -> null, not a throw', applyDrawdownThrottle([], []) === null && applyDrawdownThrottle(null, null) === null);
+}
+
+// ── Test 18: applyFadeStopTightening ────────────────────────────────────────
+{
+  const entry = 1.1, pip = 0.0001, stopPips = 20, targetPips = 10;
+  const mk = (decision, win, maePips, i) => ({
+    entry, pip, stopPips, targetPips, decision, win, maePips,
+    date: `2022-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 27)).padStart(2, '0')}`,
+    pnlPct: win ? +(targetPips * pip / entry * 100).toFixed(4) : +(-(stopPips * pip / entry * 100)).toFixed(4),
+  });
+  const fade = [];
+  for (let i = 0; i < 25; i++) fade.push(mk('fade', true, 1 + (i % 19), i));   // 25 winners, real MAE 1..19p
+  for (let i = 0; i < 15; i++) fade.push(mk('fade', false, stopPips, i + 25)); // 15 losers at the full stop
+  const follow = [mk('follow', true, 3, 0), mk('follow', false, stopPips, 1), mk('follow', true, 8, 2)]; // too few to grid, and must stay untouched regardless
+  const trades = [...fade, ...follow];
+
+  const result = applyFadeStopTightening(trades, { minN: 10 });
+  ok('T18 finds a real candidate stop (enough fade winners) and reports it', result.stopPips != null && result.stopPips < stopPips, JSON.stringify({ stopPips: result.stopPips, percentile: result.percentile }));
+  ok('T18 returns the SAME number of trades (re-prices in place, never drops any)', result.trades.length === trades.length);
+
+  const retunedFollow = result.trades.filter(t => t.decision === 'follow');
+  ok('T18 follow trades are COMPLETELY untouched (same pnlPct/win/stopPips as input)', follow.every((orig, i) => retunedFollow[i].pnlPct === orig.pnlPct && retunedFollow[i].win === orig.win && retunedFollow[i].stopPips === orig.stopPips));
+
+  const retunedFade = result.trades.filter(t => t.decision === 'fade');
+  ok('T18 fade trades\' stopPips shrinks to the tighter candidate', retunedFade.every(t => t.stopPips === Math.min(result.stopPips, stopPips)));
+  const flippedCount = retunedFade.filter((t, i) => t.win !== fade[i].win).length;
+  ok('T18 at least one former fade WINNER flips to a loss under the tighter stop (that\'s the whole point — real MAE now exceeds it)', flippedCount > 0, `flipped=${flippedCount}`);
+  ok('T18 a former loser stays a loser (tightening never turns a loss into a win)', retunedFade.filter((t, i) => !fade[i].win).every(t => t.win === false));
+
+  // Not enough fade-winner data anywhere -> returns the ORIGINAL trades unchanged, not a degraded guess.
+  const tooFew = applyFadeStopTightening(follow, { minN: 10 });
+  ok('T18 too few fade winners (none here at all) -> stopPips null, trades unchanged', tooFew.stopPips === null && tooFew.trades === follow);
+
+  ok('T18 empty/null input -> empty trades, not a throw', applyFadeStopTightening([]).trades.length === 0 && applyFadeStopTightening(null).trades.length === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

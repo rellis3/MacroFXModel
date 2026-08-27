@@ -71,6 +71,7 @@
     <label>Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
     <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+    <label>Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -132,6 +133,12 @@
   <h2>Drawdown throttle impact — same trades, with vs without de-risking in a drawdown</h2>
   <div class="muted" style="margin-bottom:8px">Cuts risk-per-trade to a fraction once the portfolio's OWN equity curve breaches a drawdown threshold, restores once it recovers — targets a sustained losing STRETCH over time, which the heat cap above was shown NOT to fix.</div>
   <div id="throttleCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="fadeStopCard" style="display:none">
+  <h2>Fade-stop tightening impact — same trades, with vs without a tighter fade stop</h2>
+  <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only (follow is left untouched — the same analysis found its current stop is already close to right) using each pair's OWN fade-winners' real MAE, never widening. OOS-validated first (93% of pairs improved OOS Sharpe using a stop chosen only from earlier data) before being wired in here — see <code>scripts/oos_validate_fade_stop.mjs</code>.</div>
+  <div id="fadeStopCompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card">
@@ -227,6 +234,7 @@ const throttleChk = document.getElementById('throttleChk');
 const triggerDDInput = document.getElementById('triggerDDInput');
 const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
+const fadeStopChk = document.getElementById('fadeStopChk');
 const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
 
@@ -283,13 +291,15 @@ async function loadData() {
     params.set('restoreDD', restoreDDInput.value);
     params.set('throttleMult', throttleMultInput.value);
   }
+  if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
     if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
-      + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
+      + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '')
+      + (j.fadeStopTighten ? `, fade-stop tightened (${Object.keys(j.fadeStopInfo ?? {}).length} pairs)` : '');
     headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     // Keep the CSV export panel's own risk% input in sync with the sizing
     // model's riskPct by default (fixed-risk mode) — same knob, avoids the
@@ -347,6 +357,29 @@ function render(j) {
       <div class="muted" style="margin-top:8px">Throttled on ${j.throttle.daysThrottled} of ${j.throttle.totalDays} portfolio trading days (${fmt1(j.throttle.daysThrottled / j.throttle.totalDays * 100)}%) — de-risked to ${j.throttle.throttleMult}× below ${j.throttle.triggerDD}% drawdown, restored above ${j.throttle.restoreDD}%.</div>`;
   } else {
     throttleCard.style.display = 'none';
+  }
+
+  const fadeStopCard = document.getElementById('fadeStopCard');
+  if (j.fadeStopTighten && j.statsNoFadeTighten) {
+    fadeStopCard.style.display = '';
+    const n = j.statsNoFadeTighten;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+    ];
+    const info = j.fadeStopInfo ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${v.stopPips} (p${v.percentile})</td></tr>`).join('');
+    document.getElementById('fadeStopCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without tightening</th><th class="num">With tightening</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Tightened fade stop per pair (pips, percentile of that pair's own fade winners' real MAE):</div>
+      <table style="margin-top:4px"><tbody>${infoRows}</tbody></table>`;
+  } else {
+    fadeStopCard.style.display = 'none';
   }
 
   document.getElementById('kpiRaw').innerHTML = [
@@ -491,6 +524,7 @@ throttleChk.addEventListener('change', loadData);
 triggerDDInput.addEventListener('change', loadData);
 restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
+fadeStopChk.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
 loadData();

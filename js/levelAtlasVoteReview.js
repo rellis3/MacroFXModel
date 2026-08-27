@@ -344,6 +344,43 @@ export function runStopStudy(trades, { cost = 0, sliceBy = null, minN = 30, perc
 }
 
 /**
+ * Applies a TIGHTER stop to FADE decisions only, grounded in THIS pair's own
+ * fade-winners' real MAE (via `runStopStudy`) — built after a real,
+ * OOS-validated finding (2026-08-27, `scripts/oos_validate_fade_stop.mjs`):
+ * fade trades' current ladder-geometry stop runs oversized relative to what
+ * winning fades actually need, so avg loss ends up bigger than avg win
+ * despite a healthy win rate. Follow decisions are LEFT UNTOUCHED — the same
+ * analysis found follow's current stop is already close to appropriate
+ * (tightening it mostly hurts), consistent with the ladder's own geometry
+ * (a follow's win structurally has to travel farther than a fade's).
+ *
+ * Deliberately scoped to ONE pair's own trades at a time — the candidate
+ * grid is in raw PIPS, and pip size varies 100x+ across instruments
+ * (EURUSD pip=0.0001 vs GOLD/index pip=1), so pooling trades from DIFFERENT
+ * pairs before gridding would compare apples to oranges (a bug caught and
+ * fixed before this function was written — see LEGO_MODULES.md). Never
+ * WIDENS a stop (`priceAtTighterStop`'s own `Math.min` clamp) and returns
+ * the ORIGINAL trades unchanged if there isn't enough fade-winner data to
+ * trust a candidate (`runStopStudy`'s own `minN` gate) — a pair this can't
+ * help is left exactly as it was, not degraded by a bad small-sample pick.
+ *
+ *   applyFadeStopTightening(trades, { cost, minN, percentiles }) ->
+ *     { trades: [...], stopPips, percentile } | { trades, stopPips: null } (no change made)
+ */
+export function applyFadeStopTightening(trades, { cost = 0, minN = 30, percentiles = [50, 75, 90, 95] } = {}) {
+  if (!trades?.length) return { trades: trades ?? [], stopPips: null, percentile: null };
+  const study = runStopStudy(trades, { cost, sliceBy: t => (t.decision === 'fade' ? 'fade' : null), minN, percentiles });
+  const best = study?.fade?.best;
+  if (!best) return { trades, stopPips: null, percentile: null };
+  const retuned = trades.map(t => {
+    if (t.decision !== 'fade') return t;
+    const priced = priceAtTighterStop(t, best.stopPips, cost);
+    return priced ? { ...t, ...priced, stopPips: Math.min(best.stopPips, t.stopPips) } : t;
+  });
+  return { trades: retuned, stopPips: best.stopPips, percentile: best.p };
+}
+
+/**
  * A/B: the current fixed-rung target/stop vs a chandelier trail / no-cap
  * ride — reusing `forecastAnalyser.js`'s ALREADY-VALIDATED `simulateExitVariants`
  * (the exact exit walker `perLineStrategy.js`'s own exit study already trusts

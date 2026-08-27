@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -481,12 +481,32 @@ export function mountLevelAtlasRoutes(app, express) {
       const riskPct = req.query.riskPct ? Number(req.query.riskPct) : 1;
       const maxHeatPct = (sizing === 'fixed-risk' && req.query.maxHeatPct) ? Number(req.query.maxHeatPct) : null;
       const targetVol = req.query.targetVol ? Number(req.query.targetVol) : 10;
+      // Fade-stop tightening (2026-08-27) — OOS-validated (scripts/oos_validate_fade_stop.mjs,
+      // 93% of pairs improved OOS Sharpe using an IS-only-chosen stop) BEFORE
+      // being wired in here, the same discipline the throttle/heat-cap should
+      // have gotten first. Optional, off by default — not silently changing
+      // the baseline trade pricing everything else on this page was already
+      // validated against.
+      const fadeStopTighten = req.query.fadeStopTighten === 'true';
 
       const perPairTradesRaw = {}, perPair = {}, missing = [];
+      const fadeStopInfo = {};
+      const storedByPair = {};
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
         if (!stored) { missing.push(pair.toUpperCase()); continue; }
-        const filtered = stored.trades.filter(t => t.margin >= minMargin);
+        storedByPair[stored.instrument] = stored;
+        let filtered = stored.trades.filter(t => t.margin >= minMargin);
+        // Deliberately scoped to THIS pair's own trades — the candidate grid
+        // is in raw pips, and pip size varies 100x+ across instruments
+        // (EURUSD pip=0.0001 vs GOLD/index pip=1), so tightening must never
+        // pool trades across pairs before gridding (a bug caught and fixed
+        // before this was built — see LEGO_MODULES.md).
+        if (fadeStopTighten) {
+          const tightened = applyFadeStopTightening(filtered, { cost: stored.cost });
+          filtered = tightened.trades;
+          if (tightened.stopPips != null) fadeStopInfo[stored.instrument] = { stopPips: tightened.stopPips, percentile: tightened.percentile };
+        }
         const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
         const sym = stored.instrument;
         perPairTradesRaw[sym] = capped?.kept ?? [];
@@ -614,6 +634,41 @@ export function mountLevelAtlasRoutes(app, express) {
         statsUncapped = withNonCompoundedDD(portfolioStats(uncappedReturns, { mc: false, targetVol }), uncappedReturns);
       }
 
+      // When fade-stop tightening is on, also report the SAME pipeline
+      // (heat cap + throttle settings held CONSTANT) built from the
+      // UNTIGHTENED trades — isolates tightening's own marginal effect,
+      // same discipline as statsUncapped/statsNoThrottle above.
+      let statsNoFadeTighten = null;
+      if (fadeStopTighten && Object.keys(fadeStopInfo).length) {
+        const untightenedPerPair = {};
+        for (const sym of Object.keys(storedByPair)) {
+          const stored = storedByPair[sym];
+          const filtered = stored.trades.filter(t => t.margin >= minMargin);
+          const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+          const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct);
+          const withPair = (sizing === 'fixed-risk' ? adjusted : (capped?.kept ?? []).map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple })))
+            .map(t => ({ ...t, pair: sym }));
+          untightenedPerPair[sym] = withPair;
+        }
+        let finalUntightened = untightenedPerPair;
+        if (maxHeatPct) {
+          const heatResult = applyPortfolioHeatCap(untightenedPerPair, { maxHeatPct });
+          if (heatResult) {
+            const byPair = {};
+            for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+            finalUntightened = byPair;
+          }
+        }
+        const weightsUntightened = buildWeights(finalUntightened);
+        const combinedUntightened = buildPortfolioDailySeries(finalUntightened, weightsUntightened ? { weights: weightsUntightened } : {});
+        let untightenedReturns = combinedUntightened.dailyReturns;
+        if (throttleOn) {
+          const trU = applyDrawdownThrottle(untightenedReturns, combinedUntightened.dates, { triggerDD, restoreDD, throttleMult });
+          if (trU) untightenedReturns = trU.dailyReturns;
+        }
+        statsNoFadeTighten = withNonCompoundedDD(portfolioStats(untightenedReturns, { mc: false, targetVol }), untightenedReturns);
+      }
+
       const naiveAvgSharpe = (() => {
         const ss = Object.values(perPair).map(p => p.ownSharpe).filter(v => v != null);
         return ss.length ? +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(3) : null;
@@ -632,7 +687,8 @@ export function mountLevelAtlasRoutes(app, express) {
       res.json({
         ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
         sizing, riskPct, heatCap, targetVol, throttle,
-        stats, statsUncapped, statsNoThrottle, naiveAvgSharpe, days: datesFinal.length,
+        fadeStopTighten, fadeStopInfo,
+        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, naiveAvgSharpe, days: datesFinal.length,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,
       });
