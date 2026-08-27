@@ -84,6 +84,12 @@
       <option value="chfjpy">CHFJPY</option>
       <option value="nzdjpy">NZDJPY</option>
       <option value="gold">GOLD</option>
+      <option value="nq">NQ (Nasdaq)</option>
+      <option value="spx">SPX (S&amp;P 500)</option>
+      <option value="dow">DOW</option>
+      <option value="us2000">US2000 (Russell)</option>
+      <option value="de30">DE30 (DAX)</option>
+      <option value="uk100">UK100 (FTSE)</option>
     </select></label>
     <label>Min vote margin <select id="marginSel">
       <option value="1">≥1 (all decided)</option>
@@ -252,9 +258,19 @@ async function loadData() {
     // 26-pair rollout: 5 pairs (EURNZD/GBPNZD/AUDNZD/AUDCHF/GBPCAD) clustered
     // 0.02-0.68, everything else clustered 1.3+ — see LEGO_MODULES.md.
     const qw = document.getElementById('qualityWarning');
+    // splitDate cutoff: most of this project's pairs have an OOS window
+    // starting ~2022 (long local M1 history); a few indices (SPX/DOW) only
+    // have M1 back to mid-2024, so their OOS window — and trade count — is
+    // roughly half the others'. Real edge either way; just less established.
+    const shortHistory = Date.parse(j.splitDate) > Date.parse('2023-06-01');
     if (j.summary && j.summary.sharpe < 1.0) {
       qw.style.display = '';
+      qw.style.background = '#2a1414'; qw.style.borderColor = '#7c2d2d'; qw.style.color = '#f87171';
       qw.textContent = `⚠ Weak edge after cost — Sharpe ${j.summary.sharpe} at margin≥${minMargin} (win rate ${j.summary.winRate}%, n=${j.summary.trades}). Real win rate, but this pair's own spread (${j.cost}%/trade) eats most of the expectancy. Excluded from the default portfolio combination for this reason.`;
+    } else if (shortHistory) {
+      qw.style.display = '';
+      qw.style.background = '#2a2414'; qw.style.borderColor = '#7c6d2d'; qw.style.color = '#fbbf24';
+      qw.textContent = `ℹ Shorter track record — OOS data only from ${j.splitDate} (n=${j.summary?.trades ?? '?'} at margin≥${minMargin}), roughly half the history most other pairs here have. The edge (Sharpe ${j.summary?.sharpe}) is real by the same methodology, just less independently tested yet.`;
     } else {
       qw.style.display = 'none';
     }
