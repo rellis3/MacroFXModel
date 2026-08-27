@@ -87,6 +87,23 @@
   See <code>MD files/LEGO_MODULES.md</code> for the full methodology and per-pair validation.
 </div>
 
+<div class="card" style="border-color:#7c2d2d;background:linear-gradient(135deg,#2a1414,#0e121b)">
+  <h2 style="color:#f87171">⚠ Correlated-currency risk — read before selecting many pairs at once</h2>
+  <div class="muted">
+  Every pair here individually shows real edge, but FX crosses are NOT independent bets — many share a currency leg
+  (EURUSD/EURJPY/EURGBP all carry EUR exposure, GBPUSD/GBPJPY/GBPAUD all carry GBP, etc.), so a single macro-shock day
+  can move MANY of them the same direction at once. Tested with all 26 selected at 1% fixed risk/trade: one real day
+  (2024-09-06) saw 72 trades resolve simultaneously, realizing a single-day -27% loss, and the full-26 combination's
+  max drawdown over the period was <strong>-97.8%</strong> — an effective wipeout. The portfolio heat cap above does
+  NOT fix this at this scale (tested 2-10% thresholds — it stayed catastrophic) because its "keep whichever trade
+  arrived first" rule becomes close to arbitrary once 26 pairs are competing for a small shared budget, rather than
+  protecting the best trades. A genuinely currency-EXPOSURE-aware risk model (capping net risk per underlying currency,
+  not just per trade count) is the real fix and isn't built yet. Until then: keep total selected pairs modest, size risk
+  down substantially before selecting many pairs together, and don't trust the raw numbers from a large multi-pair
+  selection at 1% risk/trade.
+  </div>
+</div>
+
 <div class="card callout">
   <h2>Diversification benefit</h2>
   <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
@@ -160,11 +177,23 @@
 </main>
 
 <script type="module">
-const PAIRS = ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'];
-const PAIR_COLORS = { EURUSD: '#5b9dff', GBPUSD: '#34d399', GOLD: '#fbbf24', USDJPY: '#f87171', AUDUSD: '#a78bfa' };
+// The full "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
+// already established) — vote-trades generated 2026-08-27 for all 26. Only
+// the original 5 validated pairs are pre-checked; the other 21 are real
+// data, not placeholders, but selecting many of them together needs the
+// caution note below — see MD files/LEGO_MODULES.md for why.
+const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
+  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
+const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd']);
+// Found real, cost-driven (not a bug — verified against each pair's own
+// spread), near-zero-Sharpe-after-cost pairs — flagged in the picker, not
+// hidden, since excluding them measurably helped the combined Sharpe.
+const WEAK_HIGH_COST = new Set(['eurnzd', 'gbpnzd', 'audnzd', 'audchf', 'gbpcad']);
+const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
 
 const pairChecksEl = document.getElementById('pairChecks');
-pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" checked data-pair="${p}">${p.toUpperCase()}</label>`).join('');
+pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}${WEAK_HIGH_COST.has(p) ? ' <span title="Real edge, but near-zero Sharpe after its own spread cost">⚠</span>' : ''}</label>`).join('');
 
 const marginSel = document.getElementById('marginSel');
 const capSel = document.getElementById('capSel');
@@ -214,7 +243,14 @@ function selectedPairs() {
   return [...pairChecksEl.querySelectorAll('input:checked')].map(el => el.dataset.pair);
 }
 
+// With 26 selectable pairs, rapid checkbox toggles fire many overlapping
+// fetches — nothing guaranteed they'd RESOLVE in the order they were sent,
+// so a stale, smaller-selection response could land after and silently
+// overwrite a newer one. This sequence counter discards any response that
+// isn't from the MOST RECENTLY STARTED request.
+let loadSeq = 0;
 async function loadData() {
+  const mySeq = ++loadSeq;
   syncSizingUI();
   const pairs = selectedPairs();
   if (!pairs.length) { headerSub.textContent = 'select at least one pair'; return; }
@@ -234,6 +270,7 @@ async function loadData() {
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
+    if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
       + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
@@ -245,7 +282,7 @@ async function loadData() {
     lastResponse = j;
     render(j);
   } catch (e) {
-    headerSub.textContent = `error: ${e.message}`;
+    if (mySeq === loadSeq) headerSub.textContent = `error: ${e.message}`;
   }
 }
 
