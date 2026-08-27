@@ -27,8 +27,9 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights } from './levelAtlasVoteReview.js';
 import { summarizeTrades } from './metricsCore.js';
+import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
@@ -429,6 +430,64 @@ export function mountLevelAtlasRoutes(app, express) {
       const trades = stored.trades.filter(t => t.margin >= minMargin);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
                  splitDate: stored.splitDate, minMargin, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/level-atlas/vote-portfolio?pairs=eurusd,gbpusd,gold,usdjpy,audusd
+  //   &minMargin=3&maxConcurrent=1&perDirection=false&weighting=equal|inverse-vol
+  // Combines MULTIPLE pairs' own vote-trades into ONE portfolio — reads the
+  // SAME persisted trade lists `/vote-trades/:instrument` serves (no second
+  // compute), applies `applyConcurrencyCap` per pair (the real, quantified
+  // answer to "trades aren't independent" — see LEGO_MODULES.md), then
+  // `buildPortfolioDailySeries` + `portfolioStats` for the honest combined
+  // Sharpe/CAGR/maxDD. `perPair` in the response is what makes the
+  // diversification story visible: each pair's own kept/skipped count,
+  // weight, and standalone Sharpe, next to the combined number.
+  app.get('/api/level-atlas/vote-portfolio', async (req, res) => {
+    try {
+      const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'])
+        .map(p => p.trim().toLowerCase()).filter(Boolean);
+      const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 3;
+      const maxConcurrent = req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1;
+      const perDirection = req.query.perDirection === 'true';
+      const weighting = req.query.weighting === 'inverse-vol' ? 'inverse-vol' : 'equal';
+
+      const perPairTrades = {}, perPair = {}, missing = [];
+      for (const pair of pairs) {
+        const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
+        if (!stored) { missing.push(pair.toUpperCase()); continue; }
+        const filtered = stored.trades.filter(t => t.margin >= minMargin);
+        const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+        const sym = stored.instrument;
+        perPairTrades[sym] = capped?.kept ?? [];
+        perPair[sym] = {
+          totalDecided: filtered.length,
+          kept: capped?.kept?.length ?? 0,
+          skipped: capped?.skippedCount ?? 0,
+          ownSharpe: capped?.keptSummary?.sharpe ?? null,
+          ownWinRate: capped?.keptSummary?.winRate ?? null,
+        };
+      }
+      if (!Object.keys(perPairTrades).length) return res.status(404).json({ ok: false, error: `no vote-backtest data for any of: ${pairs.join(',')}`, missing });
+
+      const weights = weighting === 'inverse-vol' ? inverseVolWeights(perPairTrades) : null;
+      const combined = buildPortfolioDailySeries(perPairTrades, weights ? { weights } : {});
+      const stats = portfolioStats(combined.dailyReturns, { mc: false });
+      const naiveAvgSharpe = (() => {
+        const ss = Object.values(perPair).map(p => p.ownSharpe).filter(v => v != null);
+        return ss.length ? +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(3) : null;
+      })();
+
+      for (const sym of Object.keys(perPair)) perPair[sym].weight = combined.byPair[sym]?.weight ?? 0;
+
+      res.json({
+        ok: true, pairs: Object.keys(perPairTrades), missing, minMargin, maxConcurrent, perDirection, weighting,
+        stats, naiveAvgSharpe, days: combined.dates.length,
+        equityCurve: combined.dates.map((d, i) => ({ date: d, dailyReturn: combined.dailyReturns[i] })),
+        perPair,
+      });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level Atlas Vote Portfolio</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
+  .sub { color:var(--muted); font-size:12px; }
+  select, input[type=checkbox] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  .controls { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .pair-check { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:12px; }
+  main { padding:16px 20px 60px; max-width:1300px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi .label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--text3); margin-top:2px; }
+  .green { color:var(--green); } .red { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); }
+  canvas { max-height:320px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  thead th { text-align:left; color:var(--text3); font-weight:500; padding:6px 10px; border-bottom:1px solid var(--line); }
+  thead th.num, td.num { text-align:right; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #182030; }
+  .muted { color:var(--muted); font-size:11px; }
+  .callout { background:linear-gradient(135deg,#132030,#0e121b); border:1px solid #1e3a52; border-radius:8px; padding:14px 16px; }
+  .callout .big { font-size:28px; font-weight:700; }
+  .barwrap { display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:4px; }
+  .bar { height:100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Level Atlas Vote Portfolio</h1>
+  <div class="controls" id="pairChecks"></div>
+  <div class="controls">
+    <label>Min margin <select id="marginSel">
+      <option value="1">≥1</option><option value="2">≥2</option><option value="3" selected>≥3</option><option value="4">≥4</option>
+    </select></label>
+    <label>Max concurrent <select id="capSel">
+      <option value="1" selected>1 (strictest)</option><option value="2">2</option><option value="3">3</option><option value="99">unlimited</option>
+    </select></label>
+    <label>Per-direction budget <input type="checkbox" id="perDirChk"></label>
+    <label>Weighting <select id="weightSel">
+      <option value="equal" selected>Equal (1/n each)</option><option value="inverse-vol">Risk parity (inverse-vol)</option>
+    </select></label>
+  </div>
+  <div class="sub" id="headerSub">loading…</div>
+</header>
+
+<main>
+
+<div class="card muted">
+  Combines each selected pair's own vote-margin trades (barrier-priced, concurrency-capped per pair) into ONE portfolio —
+  reusing <code>js/backtestStats.js</code>'s <code>portfolioStats</code> on the combined daily return series, no new metrics.
+  See <code>MD files/LEGO_MODULES.md</code> for the full methodology and per-pair validation.
+</div>
+
+<div class="card callout">
+  <h2>Diversification benefit</h2>
+  <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
+    <div><div class="muted">Simple average of each pair's OWN Sharpe (no diversification credit)</div><div class="big" id="naiveSharpe">—</div></div>
+    <div style="font-size:22px;color:var(--text3)">→</div>
+    <div><div class="muted">Combined portfolio Sharpe</div><div class="big green" id="combinedSharpe">—</div></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
+  <div class="kpi-grid" id="kpiRaw"></div>
+</div>
+
+<div class="card">
+  <h2>If levered to 10% target annual volatility</h2>
+  <div class="muted" style="margin-bottom:10px">Diversification smooths the ride; it doesn't by itself make more money — this shows what the SAME risk-adjusted profile looks like scaled to a chosen volatility target, a real portfolio-construction choice, not a free upgrade.</div>
+  <div class="kpi-grid" id="kpiLevered"></div>
+</div>
+
+<div class="card">
+  <h2>Cumulative portfolio return % (compounded daily)</h2>
+  <canvas id="eqChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Per-pair breakdown — where the diversification is coming from</h2>
+  <table>
+    <thead><tr>
+      <th>Pair</th><th class="num">Decided (margin gate)</th><th class="num">Kept (after cap)</th><th class="num">Skipped</th>
+      <th class="num">Own win rate</th><th class="num">Own Sharpe</th><th class="num">Portfolio weight</th>
+    </tr></thead>
+    <tbody id="perPairBody"></tbody>
+  </table>
+  <div class="barwrap" id="weightBar"></div>
+</div>
+
+</main>
+
+<script type="module">
+const PAIRS = ['eurusd', 'gbpusd', 'gold', 'usdjpy', 'audusd'];
+const PAIR_COLORS = { EURUSD: '#5b9dff', GBPUSD: '#34d399', GOLD: '#fbbf24', USDJPY: '#f87171', AUDUSD: '#a78bfa' };
+
+const pairChecksEl = document.getElementById('pairChecks');
+pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" checked data-pair="${p}">${p.toUpperCase()}</label>`).join('');
+
+const marginSel = document.getElementById('marginSel');
+const capSel = document.getElementById('capSel');
+const perDirChk = document.getElementById('perDirChk');
+const weightSel = document.getElementById('weightSel');
+const headerSub = document.getElementById('headerSub');
+
+let eqChart = null;
+
+function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
+function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
+function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
+function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
+function kpiCard(label, value, cls, sub) {
+  return `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+
+function selectedPairs() {
+  return [...pairChecksEl.querySelectorAll('input:checked')].map(el => el.dataset.pair);
+}
+
+async function loadData() {
+  const pairs = selectedPairs();
+  if (!pairs.length) { headerSub.textContent = 'select at least one pair'; return; }
+  headerSub.textContent = 'loading…';
+  const params = new URLSearchParams({
+    pairs: pairs.join(','), minMargin: marginSel.value, maxConcurrent: capSel.value,
+    perDirection: perDirChk.checked ? 'true' : 'false', weighting: weightSel.value,
+  });
+  try {
+    const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
+    const j = await res.json();
+    if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
+    headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${j.weighting} weighting · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    render(j);
+  } catch (e) {
+    headerSub.textContent = `error: ${e.message}`;
+  }
+}
+
+function render(j) {
+  const s = j.stats;
+  document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
+  document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
+
+  document.getElementById('kpiRaw').innerHTML = [
+    kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
+    kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'compounded daily'),
+    kpiCard('Max Drawdown', fmt1(s.maxDD) + '%', 'red', 'compounded equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD|'),
+    kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
+    kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
+    kpiCard('Lag-1 Autocorr', fmt2(s.acf1), '', s.acf1 < 0 ? 'mean-reverting days' : s.acf1 > 0 ? 'clustering days' : 'no persistence'),
+    kpiCard('Trading Days', s.days, '', ''),
+  ].join('');
+
+  const vt = s.volTarget;
+  document.getElementById('kpiLevered').innerHTML = [
+    kpiCard('Target Vol', vt.target + '%', 'blue', 'the chosen scale'),
+    kpiCard('CAGR (levered)', fmt1(vt.cagr) + '%', signClass(vt.cagr), `vs ${fmt1(s.cagr)}% unlevered`),
+    kpiCard('Max DD (levered)', fmt1(vt.maxDD) + '%', 'red', `vs ${fmt1(s.maxDD)}% unlevered`),
+    kpiCard('Calmar (levered)', fmt2(vt.calmar), '', 'same Sharpe, scaled risk'),
+  ].join('');
+
+  if (eqChart) eqChart.destroy();
+  let eq = 1;
+  const eqCurve = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +((eq - 1) * 100).toFixed(3); });
+  eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: { labels: j.equityCurve.map(p => p.date), datasets: [{ label: 'Portfolio cumulative %', data: eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } } } },
+  });
+
+  const rows = Object.entries(j.perPair);
+  document.getElementById('perPairBody').innerHTML = rows.map(([pair, p]) => `
+    <tr><td style="color:${PAIR_COLORS[pair] ?? '#cbd5e1'}">${pair}</td>
+      <td class="num">${p.totalDecided}</td><td class="num">${p.kept}</td><td class="num muted">${p.skipped}</td>
+      <td class="num">${fmt1(p.ownWinRate)}%</td><td class="num">${fmt2(p.ownSharpe)}</td>
+      <td class="num">${fmt1(p.weight * 100)}%</td></tr>`).join('');
+  document.getElementById('weightBar').innerHTML = rows.map(([pair, p]) =>
+    `<div class="bar" style="width:${p.weight * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(p.weight * 100)}%"></div>`).join('');
+}
+
+pairChecksEl.addEventListener('change', loadData);
+marginSel.addEventListener('change', loadData);
+capSel.addEventListener('change', loadData);
+perDirChk.addEventListener('change', loadData);
+weightSel.addEventListener('change', loadData);
+
+loadData();
+</script>
+</body>
+</html>

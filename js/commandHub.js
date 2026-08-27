@@ -178,6 +178,7 @@
       <a class="chub-item" href="forecast-book-report.html" target="_blank" data-href="forecast-book-report.html"><span class="ci-txt">📄 Book Report</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-book-report.html')" data-href="forecast-book-report.html">☆</button></a>
       <a class="chub-item" href="forecast-refresh.html" target="_blank" data-href="forecast-refresh.html"><span class="ci-txt">⟳ Data Refresh</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('forecast-refresh.html')" data-href="forecast-refresh.html">☆</button></a>
       <a class="chub-item" href="level-atlas-vote-backtest.html" target="_blank" data-href="level-atlas-vote-backtest.html"><span class="ci-txt">🗳 Level Atlas Vote Backtest</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-atlas-vote-backtest.html')" data-href="level-atlas-vote-backtest.html">☆</button></a>
+      <a class="chub-item" href="level-atlas-vote-portfolio.html" target="_blank" data-href="level-atlas-vote-portfolio.html"><span class="ci-txt">🧺 Level Atlas Vote Portfolio</span><button class="chub-star" onclick="event.preventDefault();event.stopPropagation();chubToggleFav('level-atlas-vote-portfolio.html')" data-href="level-atlas-vote-portfolio.html">☆</button></a>
     </div>
   </div>
 
