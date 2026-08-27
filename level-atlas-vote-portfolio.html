@@ -323,14 +323,23 @@ function render(j) {
   let eq = 1, sum = 0;
   const eqCurve = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +((eq - 1) * 100).toFixed(3); });
   const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
+  // Compounding can make the two lines differ by 10-30x+ in scale (real —
+  // that gap IS the compounding effect). On a SHARED axis the smaller
+  // non-compounded line gets crushed flat and unreadable once the compounded
+  // line gets big enough, so it gets its OWN right-hand axis instead — same
+  // data, both curves actually visible.
   eqChart = new Chart(document.getElementById('eqChart'), {
     type: 'line',
     data: { labels: j.equityCurve.map(p => p.date), datasets: [
-      { label: 'Compounded %', data: eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5 },
-      { label: 'Non-compounded (sum of daily %)', data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5 },
+      { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+      { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
     ] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
-      scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } }, y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } } } },
+      scales: {
+        x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
+        y: { position: 'left', ticks: { color: '#5b9dff', callback: v => v + '%' }, grid: { color: '#1e2436' }, title: { display: true, text: 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+        y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
+      } },
   });
 
   // In fixed-risk mode every pair's combine-`weight` is forced to 1 (no NAV
