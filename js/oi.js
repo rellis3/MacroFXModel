@@ -1219,6 +1219,34 @@ export function oiRefMove(inst, pair) {
   return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
 }
 
+// oiRefMove() ties its distance scale to inst.dte and inst.expectedMove — always the
+// PRIMARY expiry's, because that is what a paste's top-level fields describe. But the
+// bot trades the DAY expiry when one exists (0-3 DTE typically), and every structural
+// distance downstream — the stop buffer, the break-confirmation distance, the
+// "extended from pin" trigger, zone-spacing dedupe, and the reachability check — scales
+// off refMove. Feeding the day book a primary-horizon refMove overstates all of them:
+// on a 25-30 DTE primary against a 1-3 DTE day expiry, the primary move can be 3-5x the
+// day move (√30 ≈ 5.5x √1), so a target scored "reachable" against the primary yardstick
+// can sit several real days of travel away, and a stop sized off it is far wider than
+// the mechanism it is meant to protect actually needs.
+//
+// This gives that expiry's OWN scale: the current at-the-money IV (ivTermStructure.front
+// — the market's live read, not a stale pasted straddle for a different expiry) at the
+// day expiry's own DTE, falling back to the same flat-vol formula oiRefMove uses when no
+// term structure was captured. Never reads inst.expectedMove — that straddle is quoted to
+// the primary expiry and would be exactly the wrong-book mistake this function exists to
+// avoid repeating.
+export function oiRefMoveForDTE(inst, pair, dte) {
+  const spot = inst?.spot;
+  if (!(spot > 0) || !(Number.isFinite(dte) && dte > 0)) return null;
+  const frontIV = inst?.ivTermStructure?.front?.iv;
+  if (Number.isFinite(frontIV) && frontIV > 0) {
+    return { move: spot * (frontIV / 100) * Math.sqrt(dte / 365), source: 'term-structure' };
+  }
+  const sig = oiFlatVol(pair || inst?.pair || '');
+  return { move: spot * sig * Math.sqrt(dte / 365), source: 'flat-vol' };
+}
+
 export function oiGreeks(strike, spot, pair, T = OI_GREEK_T, sigma) {
   if (!(sigma > 0)) sigma = oiFlatVol(pair);   // per-strike IV (v2 smile) when given, else flat vol (v1)
   const d1 = (Math.log(spot/strike) + 0.5*sigma*sigma*T) / (sigma*Math.sqrt(T));

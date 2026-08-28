@@ -251,6 +251,16 @@ export function buildOIZones(inst, price, cfg = {}) {
     slBufferRefFrac = 0.10,        // SL buffer as a fraction of refMove
     breakRefFrac = 0.15,           // decisive-break distance as a fraction of refMove
     extendedRefFrac = 0.25,        // max-pain "extended" threshold as a fraction of refMove
+    // Absolute floor under the SL buffer, in this instrument's own price units (0 = off).
+    // refMove-fraction sizing is right for REACH/trigger checks — a wall genuinely does
+    // reach less far on a 1-DTE book than a 30-DTE one, and shrinking those with a
+    // day-scaled refMove is the whole point. But the stop shares the same refMove input,
+    // and a plain fraction of a much smaller number can undercut what the instrument's own
+    // noise (spread + ordinary wicks) needs to not be stopped out by chop rather than by
+    // the level actually failing. Set per-instrument by the producer (day-scaled refMove
+    // shrank gold's buffer from ~45 to ~8 price units — $0.30 typical spread away, thin);
+    // 0 leaves the pure fraction × refMove behaviour unchanged for every other instrument.
+    minStopAbs = 0,
     // ── GEX conviction (neutral band + sizing) ──────────────────────────────
     // The regime was SIGN-ONLY: a book +0.1% net GEX today and −0.1% tomorrow flipped
     // the whole strategy (fade ↔ follow) on noise around zero. gexMedianAbs (injected
@@ -324,7 +334,7 @@ export function buildOIZones(inst, price, cfg = {}) {
   // Effective structural distances: pip floor + refMove fraction (see above).
   const _ref = Number.isFinite(refMove) && refMove > 0 ? refMove : null;
   const _eff = (pips, frac) => Math.max(pips * pip, (_ref && frac > 0) ? frac * _ref : 0);
-  const buf = _eff(slBufferPips, slBufferRefFrac);
+  const buf = Math.max(_eff(slBufferPips, slBufferRefFrac), minStopAbs > 0 ? minStopAbs : 0);
   const brk = _eff(breakPips, breakRefFrac);
   const ext = _eff(extendedPips, extendedRefFrac);
   const tol = Math.max(buf, pip);

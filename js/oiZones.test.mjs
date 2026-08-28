@@ -563,6 +563,30 @@ console.log('[Day expiry carries its own gamma crossings]');
     || Math.abs(day.gexFlip - day.gexFlips.reduce((m, f) => Math.abs(f.price - 4200) < Math.abs(m.price - 4200) ? f : m).price) < 1e-9);
 }
 
+console.log('[minStopAbs — absolute stop floor, price units]');
+{
+  // Day-scaled refMove correctly shrinks reach/trigger checks (a wall reaches less far
+  // on a 1-DTE book than a 30-DTE one) but shares its input with the SL buffer, which
+  // does not want the same treatment — a stop needs to clear an instrument's own
+  // spread + noise, not just scale with the traded expiry. Measured live: gold's day
+  // refMove shrank the SL buffer from ~45 to ~8 price units against a ~$0.30 typical
+  // spread. minStopAbs floors the buffer without touching refMove or anything reach-
+  // related, so it is opt-in per instrument and changes nothing when unset.
+  const pin = { ...base, exposures: { gex: 5000 } };   // PIN → fade zones
+  const small = buildOIZones(pin, 4200, { ...cfg, refMove: 82.6, slBufferRefFrac: 0.10, minStopAbs: 0 });
+  const floored = buildOIZones(pin, 4200, { ...cfg, refMove: 82.6, slBufferRefFrac: 0.10, minStopAbs: 15 });
+  const sSmall = small.find(z => z.side === 'sell'), sFloored = floored.find(z => z.side === 'sell');
+  ok('unfloored: buf = 0.10 × 82.6 = 8.26', Math.abs((sSmall.sl - sSmall.level) - 8.26) < 0.01, `${sSmall.sl - sSmall.level}`);
+  ok('floored: buf clamped to the floor', Math.abs((sFloored.sl - sFloored.level) - 15) < 0.01, `${sFloored.sl - sFloored.level}`);
+  const wide = buildOIZones(pin, 4200, { ...cfg, refMove: 500, slBufferRefFrac: 0.10, minStopAbs: 15 });
+  const sWide = wide.find(z => z.side === 'sell');
+  ok('floor never SHRINKS an already-wider dynamic buffer (0.10 × 500 = 50)',
+    Math.abs((sWide.sl - sWide.level) - 50) < 0.01, `${sWide.sl - sWide.level}`);
+  ok('minStopAbs omitted entirely → identical to old behaviour (default 0)',
+    JSON.stringify(buildOIZones(pin, 4200, { ...cfg, refMove: 82.6, slBufferRefFrac: 0.10 }))
+    === JSON.stringify(small));
+}
+
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));

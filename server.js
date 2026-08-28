@@ -153,7 +153,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill)
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -13526,12 +13526,37 @@ async function _refreshOIBotZones() {
         return { active: true, note: `charm from the ${cDte.toFixed(1)}DTE smile (matches the traded expiry)` };
       })();
       const gexMedianAbs = _oiGexMedianAbs(hist, key, !!dayEx);   // match the book being planned
+      // DAY-SCALED refMove. oiRefMove() (the field on `inst`) is always measured to the
+      // PRIMARY expiry, because that's what a paste's top-level dte/expectedMove describe.
+      // Every structural distance downstream of refMove -- the stop buffer, the break-
+      // confirmation distance, the "extended from pin" trigger, zone-spacing dedupe, and
+      // the reachability check -- scales off whatever number is passed in here. On a
+      // ~30 DTE primary against a 1-3 DTE day expiry, √30 ≈ 5.5×√1, so feeding the day
+      // book the primary's refMove overstates every one of those by roughly that factor.
+      // Falls back to the primary's own refMove when the day expiry has no spot (should
+      // not happen if dayEx exists, but a fallback here is cheap and this must never
+      // silently become 0/null and switch every distance check off).
+      const dayRefMoveObj = dayEx ? _oiRefMoveForDTE(inst, key, dayEx.dte) : null;
+      const _dayRefMove = dayRefMoveObj?.move ?? inst.refMove?.move ?? null;
+      // Absolute stop-buffer floor, per instrument (price units, 0/absent = off). refMove
+      // shrinking for the day book is correct for reach/trigger checks but can undercut
+      // what an instrument's own spread + ordinary noise needs from a stop — gold's day
+      // refMove buffer fell to ~8 price units against a ~$0.30 typical spread. Keyed by
+      // the same registry key everything else here uses (resolveKey → 'gold', 'nq', ...).
+      const MIN_STOP_ABS = { gold: 15 };     // $15 floor on gold's SL buffer; unset = unfloored
       const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
       const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
-        gexMedianAbs, holdWeights, collectDrops: droppedZones,
+        gexMedianAbs, holdWeights, collectDrops: droppedZones, minStopAbs: MIN_STOP_ABS[key] ?? 0,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
-        expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
-        refMove: inst.refMove?.move ?? null,
+        // expMove is the PRIMARY expiry's straddle band, and reachFlag() prefers it over
+        // refMove whenever it is present -- so passing it through unconditionally would
+        // have made the refMove fix above a no-op for every pair with a pasted smile
+        // (which is most of them): reachability would keep being judged against the
+        // primary's band regardless of which expiry is actually traded. Only pass it on
+        // the primary book; on a day-expiry book this is null, so reachFlag correctly
+        // falls through to the (now day-scaled) refMove branch instead.
+        expMove: (!dayEx && inst.expectedMove) ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
+        refMove: _dayRefMove,
         // Level-ladder + react-at-level nodes: the gamma-flip regime boundary, the GEX-flip,
         // and the vanna-exposure flip, alongside walls/max-pain/vol-magnets on `inst`.
         gammaFlipLevel: Number.isFinite(flip) ? flip : null,
@@ -13572,7 +13597,8 @@ async function _refreshOIBotZones() {
         // (each pair is pasted separately, so staleness is per-pair, not per-plan) and let
         // the bot gate on the CHAIN's age as well as the plan's.
         oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null,
-        refMove: inst.refMove?.move ?? null,                       // shipped for the executor's approach-velocity read
+        refMove: _dayRefMove,                                      // shipped for the executor's approach-velocity read — same day-scaled value the planner used, not the primary's
+        refMoveSource: dayRefMoveObj?.source ?? inst.refMove?.source ?? null,
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
