@@ -25,6 +25,7 @@ import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
+import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
 import { putJSON, getJSON } from './r2Store.js';
@@ -32,6 +33,7 @@ import { assetClassFor } from './forecastAnalyserStore.js';
 import { oandaSymbol } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { fetchM1Range } from './volBacktestEngine.js';
+import { costForPair } from './perLineStrategy.js';
 
 const ASIA_DIM_LABEL = new Map(DIMENSIONS);
 
@@ -66,7 +68,12 @@ function purgeStale() {
   for (const [id, job] of jobs) if (job.startedAt < cutoff) jobs.delete(id);
 }
 
-async function runOne(instrument, { onLog = () => {} } = {}) {
+// Exported (2026-08-27) for scripts/backfill_fib_atlas_vote_trades.mjs — a
+// standalone backfill runner that calls this directly instead of going
+// through the Express server, so a multi-pair backfill isn't competing with
+// server.js's own startup background jobs (forecast auto-warm, volatility
+// bot, etc.) for the single Node thread.
+export async function runOne(instrument, { onLog = () => {} } = {}) {
   const pair = String(instrument).toLowerCase();
   const sym = String(instrument).toUpperCase();
   onLog(`${sym}: loading M1…`);
@@ -92,6 +99,26 @@ async function runOne(instrument, { onLog = () => {} } = {}) {
   const book = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
   if (!book) throw new Error(`${sym}: too few touches to build a book`);
 
+  // Vote-margin trade list (2026-08-27) — the fade/follow-decided,
+  // barrier-priced backtest for the trade-review page (asia-fib-atlas-vote-
+  // backtest.html), same persist-separately-from-the-main-book pattern
+  // Level Atlas's own runOne uses (one row per OOS-decided touch, kept apart
+  // so the page can fetch just this without the full book). Margin can only
+  // be 1 or 2 here (js/asiaFibAtlasVoteReview.js's VOTE_DIMS has exactly 2
+  // members) — both persisted, the page's own minMargin query picks which.
+  let voteSummaryByMargin = null;
+  try {
+    const cost = costForPair(pair, assetClass);
+    const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
+    const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+    voteSummaryByMargin = summaryByMargin;
+    await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
+      instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: book.splitDate,
+      trades: wf1?.trades ?? [],   // margin>=1 superset — the page filters down to margin=2 client-side
+      summaryByMargin,
+    });
+  } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }
+
   // Live ladder off the SAME gap-filled packed data (no second M1 load),
   // scored against the book just built.
   const { date: liveDate, currentPrice, sessionHandoff, boundary, ladder } =
@@ -101,6 +128,11 @@ async function runOne(instrument, { onLog = () => {} } = {}) {
   const result = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
     rearmFrac: DEFAULT_REARM, book,
+    // Surfaced (2026-08-27) so a caller (scripts/backfill_fib_atlas_vote_trades.mjs)
+    // can report real vote-trade counts/Sharpe without a second R2 round-trip —
+    // this is the SAME object already persisted to `${pair}-votetrades.json` above,
+    // just also attached to runOne's own return value.
+    voteSummaryByMargin,
     live: { date: liveDate, currentPrice, sessionHandoff, boundary, ladder: scoredLadder },
     // Raw touches NOT persisted — same reasoning as Level Atlas's own runOne:
     // the aggregated book is the product, re-run to regenerate them.
@@ -257,6 +289,24 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         ok: true, instrument: pair.toUpperCase(), warming: false, bookGeneratedAt: stored?.generatedAt ?? null,
         live: { date: live.date, currentPrice: live.currentPrice, sessionHandoff: live.sessionHandoff, boundary: live.boundary, ladder: scoredLadder },
       });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/asia-fib-atlas/vote-trades/EURUSD[?minMargin=2] — the barrier-
+  // priced OOS trade list for the trade-review page (asia-fib-atlas-vote-
+  // backtest.html). Same contract as `/api/level-atlas/vote-trades/:instrument`
+  // (minMargin filters server-side; summary comes pre-computed per margin).
+  app.get('/api/asia-fib-atlas/vote-trades/:instrument', async (req, res) => {
+    try {
+      const pair = String(req.params.instrument).toLowerCase();
+      const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`);
+      if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
+      const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
+      const trades = stored.trades.filter(t => t.margin >= minMargin);
+      res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
+                 splitDate: stored.splitDate, minMargin, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

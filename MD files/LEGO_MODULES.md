@@ -2463,12 +2463,108 @@ project's own working agreement:
 
 `js/asiaFibAtlasVoteReview.js`: 🟢 built + unit-tested (14 assertions,
 `js/asiaFibAtlasVoteReview.test.mjs`) + validated on real 4-instrument data.
-Deferred, not forgotten (per the two-stage plan the owner agreed to):
-portfolio-combine the 4 pairs' margin=2 trades (reusing
-`buildPortfolioDailySeries`/`inverseVolWeights` unchanged), widen to the
-full 26-pair set the same way the headline findings were widened, and build
-the Monday-ladder sibling (Monday's own touch events have never had their
-own walk — see the earlier "what v1 defers" note above).
+
+**26-pair widen + Monday-ladder sibling (2026-08-27/28) — `js/mondayFibAtlasEngine.js`
++ `js/mondayFibAtlasRoutes.js` + `scripts/backfill_fib_atlas_vote_trades.mjs` +
+`asia-fib-atlas-vote-backtest.html`.** The owner's own follow-up ask: widen the
+4-pair check to all 26 locally-cached pairs, add the Monday ladder's own
+version of the same backtest (it had only ever existed as *context* on Asia
+touches — `mondayCrossPips`/`mondayWeekTightestPips` — never its own walked
+unit), and build a trade-review page (real M1 candles with entry/target/stop
+markers per trade, full tearsheet, CSV export) so results can be inspected
+trade-by-trade instead of just as summary stats — modeled directly on
+`level-atlas-vote-backtest.html`.
+
+**Monday engine, what's genuinely new vs. reused:** the weekly walk window
+(Tuesday 00:00 → the following Monday inclusive, re-derived from Asia Fib
+Atlas's own already-established `mondayForDay`/`isMonday`-redirect logic, not
+guessed) and the barrier-resolution mechanics (mirrored from Asia's own
+proven walk, not imported — the two engines' touches differ in shape:
+Monday's is deliberately leaner, only the vote-relevant fields, not Asia's
+~30-dimension richness). Everything downstream is pure reuse: `buildMondayRanges`,
+`RUNGS_ABOVE`/`RUNGS_BELOW`/`SIDES`/`sessionOf`/`sessionHandoffPhase`/`pipSize`
+from the existing bricks, and — the deliberate Lego win — the walk emits its
+`prevOutcomeSameDay` field with SAME-WEEK (not same-day) carry-forward
+semantics specifically so `js/asiaFibAtlasVoteReview.js`'s existing vote/price/
+barrier logic runs on Monday touches completely unmodified: **zero new
+vote-review code**, only a new record producer. `js/mondayFibAtlasEngine.test.mjs`:
+🟢 8/8 assertions (outcome sanity, required-field contract, rung-price formula,
+walk-window boundary, same-week-only `prevOutcomeSameDay` carry — explicitly
+proven not to leak across weeks, `sessionHandoff` consistency, no-lookahead via
+truncation, graceful degradation on thin history).
+
+A real bug was caught before trusting the widen: `js/asiaFibAtlasRoutes.js`'s
+`runOne` built and persisted the vote-margin summary to R2 correctly but
+silently dropped it from its own return value, so a smoke test's console
+output read "margin=2: n=0" for a pair whose R2 blob actually held 1,812
+real trades — assume-code-failure-first, verified against the R2 blob
+directly before either trusting or discarding the result, then fixed
+(`voteSummaryByMargin` now surfaced on the return value too). Caught before
+it could have been mistaken for a real degenerate result.
+
+**Real-data check, all 26 pairs, both ladders (2026-08-28), concurrency-capped
+(`applyConcurrencyCap({maxConcurrent:1})`, same correction the 4-pair check
+required — raw uncapped Sharpe here again runs 5-12+ from the same same-day-
+clustering artifact, not trusted on its own).** margin=2 (both dimensions
+agree) only, OOS since each pair's own split date, real spread cost:
+
+| | n pairs | capped Sharpe: min | median | max | negative pairs |
+|---|---|---|---|---|---|
+| **Asia** | 26 | -6.02 | 4.18 | 5.92 | **GBPCAD** (-6.02, 50.5% win, PF 0.47, maxDD -27.3%), **GBPNZD** (-1.33, 62.2% win, PF 0.86) |
+| **Monday** | 26 | 1.24 | 3.14 | 5.66 | none |
+
+Total OOS trades: ~63.5k raw (Asia, before capping) / ~10.1k raw (Monday) across
+the 26 pairs combined — Monday's sample is intrinsically smaller (weekly cycles
+vs. daily Asia sessions, so roughly 1/5th the touch density over the same history).
+
+The EURUSD/GBPUSD/USDJPY/GOLD numbers reproduced almost exactly against the
+original 4-pair check (capped Sharpe 3.876/5.162/4.768/3.141 here vs.
+3.88/5.16/4.77/3.14 there) — a clean pipeline-consistency check, not a new
+finding, but worth recording as one: the same code, re-run on a slightly later
+data snapshot, reproduces.
+
+Three findings, reported plainly:
+- **Green: Monday margin=2 is positive on all 26 pairs, no exceptions** —
+  narrower Sharpe range (1.24-5.66) than Asia's, smaller per-pair samples
+  (47-698 OOS trades vs. Asia's 551-3,297), but zero losers at 26-pair scale.
+  The weaker end (GBPAUD 1.24, AUDNZD ~1.25-equivalent) is thin enough
+  (n<200) that it shouldn't be read as strongly proven per-pair, but the
+  cross-pair sign consistency itself — 26/26 positive — is the real signal.
+- **Red: Asia margin=2 is NOT universally positive at 26-pair scale.**
+  GBPCAD is an outright loser (Sharpe -6.02, win rate barely above a coin
+  flip, PF 0.47, a 27% max drawdown once capped — nowhere near the 4-pair
+  check's cleanest cells) and GBPNZD is marginal-negative (-1.33, PF 0.86).
+  Both are GBP crosses with the thinnest liquidity/widest-typical-range
+  profile of the 26 — consistent with (not proof of) the idea that this
+  edge degrades where realistic spread cost eats more of a narrower true
+  edge, but that's a hypothesis for a follow-up check, not a demonstrated
+  cause here. The honest read: **"margin=2 works" was true for the 4 pairs
+  originally checked but is not a universal, instrument-agnostic property of
+  this vote rule** — 24/26 Asia pairs are still solidly positive (median
+  4.18), but per-pair validation before trading a new pair is not optional.
+- **Neutral: the widen didn't change the earlier grid conclusions it retested.**
+  margin≥1 (either dimension alone) and the confluence-gating hypothesis were
+  not re-swept across all 26 here (out of scope for this pass, which targeted
+  margin=2 + the Monday build specifically) — those findings stand as
+  reported in the original 4-pair check above, not re-validated at 26-pair
+  scale.
+
+Still a single-position-at-a-time, single-instrument, single-ladder read —
+**not yet** portfolio-combined across Asia+Monday or across the 26 pairs
+(`buildPortfolioDailySeries`/`inverseVolWeights`, reused unchanged elsewhere,
+would need a cross-pair concurrency budget decision first), and not yet
+forward-tested live. "Real and worth building on for 24/26 Asia pairs and all
+26 Monday pairs" — not "done, tradeable as-is everywhere."
+
+`js/mondayFibAtlasEngine.js`/`js/mondayFibAtlasRoutes.js`: 🟢 built + unit-tested
++ validated on real 26-pair data. `asia-fib-atlas-vote-backtest.html`: 🟢 built,
+Playwright-verified against the real local server + full 26-pair R2 data (both
+ladders load, KPIs/trade table/CSV export all confirmed against live data — the
+underlying `LightweightCharts`/`Chart.js` CDN scripts themselves are blocked in
+this sandbox, same pre-existing constraint as every other chart page here, see
+CLAUDE.md's live-deployment note; page logic itself needs no further check).
+Deferred, not forgotten: portfolio-combine across pairs/ladders, forward-test
+live, and re-sweep margin≥1/confluence-gating at the full 26-pair scale.
 
 ---
 

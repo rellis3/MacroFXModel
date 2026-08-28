@@ -72,6 +72,7 @@ import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
@@ -18589,6 +18590,10 @@ mountSessionHandoffRoutes(app, express);
 // row per touch of an Asia-range fib rung, not a forecast-ladder rung).
 mountAsiaFibAtlasRoutes(app, express);
 
+// ── Monday Fib Atlas — the weekly-ladder sibling, vote-backtest-only scope
+// (see js/mondayFibAtlasEngine.js's header for why it's leaner than Asia's).
+mountMondayFibAtlasRoutes(app, express);
+
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {
   const status = _m1CacheStatus();
@@ -27127,15 +27132,22 @@ if (process.env.OANDA_KEY) {
       if (raw) { const c = JSON.parse(raw); if (typeof c.referenceEngineRebuild === 'boolean') enabled = c.referenceEngineRebuild; }
     } catch (e) { console.error('[reference-engine-rebuild] caps read failed:', e.message); }
     if (!enabled) { console.log('[reference-engine-rebuild] nightly tick — disabled (Caps.referenceEngineRebuild=false or REFERENCE_ENGINE_REBUILD=0)'); return; }
-    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path + Session Handoff + Asia Fib Atlas, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
     try { _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Level Atlas trigger failed:', e.message); }
     try { _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Path trigger failed:', e.message); }
     try { _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Handoff trigger failed:', e.message); }
-    // Asia Fib Atlas is FX/gold-only (Pine indicator's own scope) — filter
-    // the shared pair list rather than adding a second hand-maintained one.
-    try { _startAsiaFibAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s)) }); } catch (e) { console.error('[reference-engine-rebuild] Asia Fib Atlas trigger failed:', e.message); }
+    // Asia/Monday Fib Atlas are FX/gold-only (Pine indicator's own scope) —
+    // filter the shared pair list rather than adding a second hand-maintained
+    // one. Exclusion list uses the SAME canonical 'SPX'/'DOW' spelling
+    // REFERENCE_ENGINE_PAIRS itself now uses (see that array's own comment,
+    // 2026-08-28) — not the stale 'SPX500'/'US30' broker-ticker spelling,
+    // which would silently stop excluding them here once the array's own
+    // entries were renamed.
+    const fibAtlasPairs = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    try { _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }); } catch (e) { console.error('[reference-engine-rebuild] Asia Fib Atlas trigger failed:', e.message); }
+    try { _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }); } catch (e) { console.error('[reference-engine-rebuild] Monday Fib Atlas trigger failed:', e.message); }
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
