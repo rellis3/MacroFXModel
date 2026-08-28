@@ -260,6 +260,7 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
     profitFactor: +profitFactor(daily).toFixed(2),
     winRate: +(winRate(daily) * 100).toFixed(1),        // % of positive trading DAYS
     var95: +histVaR(daily, 0.95).toFixed(3),            // daily % loss at the 95th percentile tail
+    var99: +histVaR(daily, 0.99).toFixed(3),            // daily % loss at the 99th percentile tail
     cvar95: +histCVaR(daily, 0.95).toFixed(3),          // mean daily % loss BEYOND that tail
     // Raw (unscaled, 1× leverage) drawdowns — same math as volTarget but NOT scaled
     // to targetVol. maxDD here == the top-level historical maxDD; MC is the raw tail.

@@ -202,6 +202,7 @@
     <button id="expCash">Currency P&amp;L CSV</button>
     <label>Account $ <input type="number" id="acctSize" value="10000" step="1000" style="width:80px"></label>
     <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" style="width:60px"></label>
+    <button id="perfSummaryBtn">📄 Performance Summary</button>
   </div>
   <div class="export-note">
     Every kept (post concurrency-cap) trade across the selected pairs, tagged with which pair it belongs to. In
@@ -214,6 +215,20 @@
 </div>
 
 </main>
+
+<div id="perfSummaryOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;overflow-y:auto;padding:30px 20px">
+  <div id="perfSummaryReport" style="max-width:700px;margin:0 auto;background:#f7f7f5;color:#1a1a1a;border-radius:10px;overflow:hidden;font-family:'DM Sans',system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="padding:20px 24px;border-bottom:3px solid #1a1a1a;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:22px;font-weight:800">Performance Summary</div>
+        <div id="perfSummarySub1" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+        <div id="perfSummarySub2" style="font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
+      <button id="perfSummaryClose" type="button" style="background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">Close</button>
+    </div>
+    <div id="perfSummaryBody" style="padding:0 24px 24px"></div>
+  </div>
+</div>
 
 <script type="module">
 // The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
@@ -573,6 +588,121 @@ document.getElementById('expCash').addEventListener('click', () => {
     return [t.date, (t.rMultiple * riskDollars).toFixed(2), riskDollars.toFixed(2), t.pair];
   })];
   csvDownload('level-atlas-vote-portfolio-currency-pnl.csv', rows);
+});
+
+// ── Performance Summary report ──────────────────────────────────────────────
+// A single-page, print-style report — deliberately built from stats ALREADY
+// on the page (s.cagrNonCompounded, s.maxDDNonCompounded, s.sharpe, etc. —
+// see the "compounded vs non-compounded" split above for why "no compounding"
+// is the honest framing here) plus a few genuinely NEW derived numbers this
+// report needs that nothing else on the page shows yet:
+//   - monthly buckets (best/worst/avg month, positive/negative month counts)
+//   - max drawdown DURATION (trading days from a peak until a new one) —
+//     distinct from max drawdown SIZE, which the page already has
+//   - PER-TRADE win rate/avg win/avg loss/profit factor — deliberately
+//     different from the page's own day-level win rate/profit factor
+//     (several trades can net to one positive day), the same distinction
+//     the single-pair tearsheet already draws between its own per-trade and
+//     daily-series numbers.
+function monthKey(dateStr) { return dateStr.slice(0, 7); }
+function fmtDateLong(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+function buildPerformanceSummary(j) {
+  const eq = j.equityCurve ?? [];
+  const trades = j.trades ?? [];
+  const s = j.stats;
+
+  const byMonth = new Map();
+  for (const p of eq) byMonth.set(monthKey(p.date), (byMonth.get(monthKey(p.date)) ?? 0) + p.dailyReturn);
+  const monthlySums = [...byMonth.values()];
+  const positiveMonths = monthlySums.filter(v => v > 0).length;
+  const negativeMonths = monthlySums.filter(v => v < 0).length;
+  const bestMonth = monthlySums.length ? Math.max(...monthlySums) : 0;
+  const worstMonth = monthlySums.length ? Math.min(...monthlySums) : 0;
+  const avgMonthly = monthlySums.length ? monthlySums.reduce((a, b) => a + b, 0) / monthlySums.length : 0;
+  const totalReturn = eq.reduce((a, p) => a + p.dailyReturn, 0);
+
+  // Max drawdown DURATION on the ADDITIVE (non-compounded) equity path —
+  // longest run of trading days spent below the running peak before a new one.
+  let cum = 0, peak = 0, peakIdx = 0, maxDur = 0;
+  eq.forEach((p, i) => {
+    cum += p.dailyReturn;
+    if (cum >= peak) { peak = cum; peakIdx = i; } else { maxDur = Math.max(maxDur, i - peakIdx); }
+  });
+
+  const wins = trades.filter(t => t.win), losses = trades.filter(t => !t.win);
+  const avgWin = wins.length ? wins.reduce((a, t) => a + t.pnlPct, 0) / wins.length : 0;
+  const avgLoss = losses.length ? losses.reduce((a, t) => a + t.pnlPct, 0) / losses.length : 0;
+  const avgTrade = trades.length ? trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length : 0;
+  const grossWin = wins.reduce((a, t) => a + t.pnlPct, 0), grossLoss = -losses.reduce((a, t) => a + t.pnlPct, 0);
+  const tradeProfitFactor = grossLoss > 1e-9 ? grossWin / grossLoss : (grossWin > 0 ? 99 : 0);
+  const tradeWinRate = trades.length ? wins.length / trades.length * 100 : 0;
+
+  return {
+    dateFrom: eq[0]?.date, dateTo: eq[eq.length - 1]?.date,
+    totalReturn, annualReturn: s.cagrNonCompounded, monthlyReturn: avgMonthly, avgTrade, bestMonth, worstMonth,
+    annVol: s.annVol, maxDD: s.maxDDNonCompounded, maxDDDurationDays: maxDur,
+    var95: s.var95, var99: s.var99, cvar95: s.cvar95,
+    sharpe: s.sharpe, sortino: s.sortino, calmar: s.calmarNonCompounded, profitFactor: tradeProfitFactor,
+    winRate: tradeWinRate, avgWin, avgLoss, positiveMonths, negativeMonths, totalRoundTrips: trades.length,
+  };
+}
+function perfRow(label, value) {
+  return `<tr><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;color:#374151">${label}</td><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;text-align:right;font-weight:600">${value}</td></tr>`;
+}
+function perfSection(title, rows) {
+  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${rows}</tbody></table>`;
+}
+function renderPerformanceSummary() {
+  if (!lastResponse) return;
+  const r = buildPerformanceSummary(lastResponse);
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  document.getElementById('perfSummarySub1').textContent = `Simple returns on $${acct.toLocaleString()} starting capital · no compounding`;
+  document.getElementById('perfSummarySub2').textContent = `${fmtDateLong(r.dateFrom)} - ${fmtDateLong(r.dateTo)}`;
+  document.getElementById('perfSummaryBody').innerHTML =
+    perfSection('RETURNS', [
+      perfRow('Total Return', fmtPct(r.totalReturn, 2)),
+      perfRow('Annual Return', fmtPct(r.annualReturn, 2)),
+      perfRow('Monthly Return', fmtPct(r.monthlyReturn, 2)),
+      perfRow('Average Trade', fmtPct(r.avgTrade, 2)),
+      perfRow('Best Month', fmtPct(r.bestMonth, 2)),
+      perfRow('Worst Month', fmtPct(r.worstMonth, 2)),
+    ].join('')) +
+    perfSection('RISK', [
+      perfRow('Annual Volatility', fmt2(r.annVol) + '%'),
+      perfRow('Max Drawdown', fmt2(r.maxDD) + '%'),
+      perfRow('Max DD Duration (bdays)', r.maxDDDurationDays),
+      perfRow('VaR (95%)', fmt2(r.var95) + '%'),
+      perfRow('VaR (99%)', fmt2(r.var99) + '%'),
+      perfRow('CVaR (95%)', fmt2(r.cvar95) + '%'),
+    ].join('')) +
+    perfSection('RISK-ADJUSTED PERFORMANCE', [
+      perfRow('Sharpe Ratio', fmt2(r.sharpe)),
+      perfRow('Sortino Ratio', fmt2(r.sortino)),
+      perfRow('Calmar Ratio', fmt2(r.calmar)),
+      perfRow('Profit Factor', fmt2(r.profitFactor)),
+    ].join('')) +
+    perfSection('TRADE STATISTICS', [
+      perfRow('Win Rate', fmt2(r.winRate) + '%'),
+      perfRow('Average Win', fmtPct(r.avgWin, 2)),
+      perfRow('Average Loss', fmtPct(r.avgLoss, 2)),
+      perfRow('Positive Months', r.positiveMonths),
+      perfRow('Negative Months', r.negativeMonths),
+      perfRow('Total Round Trips', r.totalRoundTrips),
+    ].join(''));
+}
+document.getElementById('perfSummaryBtn').addEventListener('click', () => {
+  renderPerformanceSummary();
+  document.getElementById('perfSummaryOverlay').style.display = '';
+});
+document.getElementById('perfSummaryClose').addEventListener('click', () => {
+  document.getElementById('perfSummaryOverlay').style.display = 'none';
+});
+document.getElementById('perfSummaryOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'perfSummaryOverlay') e.currentTarget.style.display = 'none';
 });
 
 pairChecksEl.addEventListener('change', loadData);
