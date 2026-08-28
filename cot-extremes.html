@@ -191,13 +191,13 @@ svg{display:block;width:100%;height:auto;overflow:visible}
   color:var(--tx2);font-size:12.5px;line-height:1.55}
 .xc-read b{color:var(--tx)}
 .pa-sub{font-size:10.5px;color:var(--tx3);margin-top:3px;font-family:var(--mono)}
-.pa-card .pa-stat{flex:1 1 128px}
+.xc-grid .pa-stat{flex:1 1 128px}
 
 /* ── Plain-English lessons ───────────────────────────────────────────────
    A collapsible explainer at the top of every panel. Blue rather than the
    page accent so it reads as teaching furniture and never as data. Native
    <details> so it works on a phone, where a hover tooltip does not exist. */
-.lsn{margin:0 0 16px;border:1px solid rgba(84,168,222,.32);border-radius:6px;
+.lsn{margin:0 0 16px;max-width:96ch;border:1px solid rgba(84,168,222,.32);border-radius:6px;
   background:rgba(84,168,222,.05);overflow:hidden}
 .lsn>summary{cursor:pointer;padding:9px 14px;font-size:11.5px;letter-spacing:.06em;
   text-transform:uppercase;color:var(--neu);font-weight:600;list-style:none;
@@ -209,7 +209,7 @@ svg{display:block;width:100%;height:auto;overflow:visible}
 .lsn-ic{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
   border-radius:50%;border:1px solid currentColor;font-size:10px;font-weight:700;flex:none}
 .lsn-b{padding:4px 16px 15px;font-size:13.5px;line-height:1.7;color:var(--tx2);
-  border-top:1px solid rgba(84,168,222,.2);max-width:96ch}
+  border-top:1px solid rgba(84,168,222,.2)}
 .lsn-b p{margin:12px 0 0}
 .lsn-b b{color:var(--tx);font-weight:600}
 .lsn-b i{color:var(--tx2);font-style:italic}
@@ -1600,7 +1600,7 @@ function thisWeeksRead(){
   const thin = gaps.filter(r => r.gap >= 20);
   sub.push(_rd(!gaps.length ? 'off' : thin.length ? 'warn' : 'ok', 'Ranking basis',
     !gaps.length ? 'OI-normalised ranks not in this payload yet'
-      : thin.length ? '<b>'+thin.length+'</b> market'+(thin.length===1?'':'s')+' rank very differently by basis, worst <b>'+nm(thin[0].x)+'</b> ('+thin[0].gap+' points)'
+      : thin.length ? '<b>'+thin.length+'</b> market'+(thin.length===1?' ranks':'s rank')+' very differently by basis, worst <b>'+nm(thin[0].x)+'</b> ('+thin[0].gap+' points)'
         : 'The two ranking bases broadly agree',
     !gaps.length ? 'They appear after the next COT refresh; until then the page ranks on raw contract counts.'
       : thin.length
