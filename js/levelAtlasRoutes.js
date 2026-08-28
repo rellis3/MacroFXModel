@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -579,8 +579,28 @@ export function mountLevelAtlasRoutes(app, express) {
       const ccyLossGate = req.query.ccyLossGate === 'true';
       const maxDailyLossPct = req.query.maxDailyLossPct ? Number(req.query.maxDailyLossPct) : 1;
 
+      // Fixed-fraction SL tightening (2026-08-28) -- an ALTERNATIVE lever to
+      // fadeStopTighten, OOS-validated separately (analysis/sl_tightening_backtest.mjs:
+      // re-pricing a fade trade's stop to ~0.4-0.6x its current bracket distance
+      // shallowed portfolio maxDD by roughly a third and raised Sharpe/profit
+      // factor, holding on a further out-of-sample slice). Where fadeStopTighten
+      // retunes each pair's stop off ITS OWN winners' MAE percentile, this is a
+      // plain uniform fraction of whatever stop a trade already has -- simpler,
+      // and (per that study) MORE stable IS->OOS than fadeStopTighten alone.
+      // Off by default (null) -- same "don't silently change the validated
+      // baseline" discipline as every other toggle here. Scoped to FADE
+      // decisions only, same as fadeStopTighten -- follow's stop was never
+      // validated as tighten-worthy (applyFadeStopTightening's own doc note).
+      // Composes with fadeStopTighten if both are on (applied second, further
+      // tightening whatever fadeStopTighten already produced) rather than
+      // being mutually exclusive -- priceAtTighterStop's own clamp means
+      // stacking can only ever tighten further, never conflict.
+      const slFraction = (req.query.slFraction && Number(req.query.slFraction) > 0 && Number(req.query.slFraction) < 1)
+        ? Number(req.query.slFraction) : null;
+
       const perPairTradesRaw = {}, perPair = {}, missing = [];
       const fadeStopInfo = {};
+      const slInfo = {};
       const storedByPair = {};
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
@@ -596,6 +616,14 @@ export function mountLevelAtlasRoutes(app, express) {
           const tightened = applyFadeStopTightening(filtered, { cost: stored.cost });
           filtered = tightened.trades;
           if (tightened.stopPips != null) fadeStopInfo[stored.instrument] = { stopPips: tightened.stopPips, percentile: tightened.percentile };
+        }
+        if (slFraction) {
+          filtered = filtered.map(t => {
+            if (t.decision !== 'fade') return t;
+            const priced = priceAtTighterStop(t, t.stopPips * slFraction, stored.cost);
+            return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * slFraction, t.stopPips) } : t;
+          });
+          slInfo[stored.instrument] = { fraction: slFraction };
         }
         const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
         const sym = stored.instrument;
@@ -714,6 +742,17 @@ export function mountLevelAtlasRoutes(app, express) {
         return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
       };
 
+      // Average realized loss, in the SAME risk-adjusted % units pnlPct is
+      // already in for this sizing mode -- the direct answer to "did losses
+      // get smaller," separate from Sharpe/maxDD (which can improve even
+      // when avg loss size doesn't move, e.g. fixed-risk sizing rescales a
+      // tighter declared stop back up to the same target risk per full
+      // stop-out; see analysis/sl_tightening_backtest.mjs's finding).
+      const avgLossPct = perPairDict => {
+        const losers = Object.values(perPairDict).flat().filter(t => !t.win);
+        return losers.length ? +(losers.reduce((a, t) => a + t.pnlPct, 0) / losers.length).toFixed(3) : null;
+      };
+
       const weights = buildWeights(perPairTradesFinal);
       const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
       const statsBeforeThrottle = portfolioStats(combined.dailyReturns, { mc: false, targetVol });
@@ -737,9 +776,11 @@ export function mountLevelAtlasRoutes(app, express) {
           dailyReturnsFinal = tr.dailyReturns;
           stats = withNonCompoundedDD(portfolioStats(dailyReturnsFinal, { mc: false, targetVol }), dailyReturnsFinal);
           statsNoThrottle = withNonCompoundedDD(statsBeforeThrottle, combined.dailyReturns);
+          statsNoThrottle.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
           throttle = { triggerDD, restoreDD, throttleMult, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
         }
       }
+      stats.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
 
       // When a heat cap is active, also report what the SAME series would
       // have looked like without it (throttle setting held CONSTANT, so this
@@ -755,6 +796,7 @@ export function mountLevelAtlasRoutes(app, express) {
           if (trU) uncappedReturns = trU.dailyReturns;
         }
         statsUncapped = withNonCompoundedDD(portfolioStats(uncappedReturns, { mc: false, targetVol }), uncappedReturns);
+        statsUncapped.avgLossRiskAdjPct = avgLossPct(perPairTradesForStats);
       }
 
       // When fade-stop tightening is on, also report the SAME pipeline
@@ -790,6 +832,47 @@ export function mountLevelAtlasRoutes(app, express) {
           if (trU) untightenedReturns = trU.dailyReturns;
         }
         statsNoFadeTighten = withNonCompoundedDD(portfolioStats(untightenedReturns, { mc: false, targetVol }), untightenedReturns);
+        statsNoFadeTighten.avgLossRiskAdjPct = avgLossPct(finalUntightened);
+      }
+
+      // When the fixed-fraction SL tightening is on, also report the SAME
+      // pipeline (fadeStopTighten/heat cap/throttle settings held CONSTANT)
+      // built WITHOUT the fraction repricing -- isolates its own marginal
+      // effect, same discipline as statsNoFadeTighten just above.
+      let statsNoSlFraction = null;
+      if (slFraction && Object.keys(slInfo).length) {
+        const perPairNoSl = {};
+        for (const sym of Object.keys(storedByPair)) {
+          const stored = storedByPair[sym];
+          let filtered = stored.trades.filter(t => t.margin >= minMargin);
+          if (fadeStopTighten) {
+            const tightened = applyFadeStopTightening(filtered, { cost: stored.cost });
+            filtered = tightened.trades;
+          }
+          const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+          const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct);
+          const withPair = (sizing === 'fixed-risk' ? adjusted : (capped?.kept ?? []).map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple })))
+            .map(t => ({ ...t, pair: sym }));
+          perPairNoSl[sym] = withPair;
+        }
+        let finalNoSl = perPairNoSl;
+        if (maxHeatPct) {
+          const heatResult = applyPortfolioHeatCap(perPairNoSl, { maxHeatPct });
+          if (heatResult) {
+            const byPair = {};
+            for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+            finalNoSl = byPair;
+          }
+        }
+        const weightsNoSl = buildWeights(finalNoSl);
+        const combinedNoSl = buildPortfolioDailySeries(finalNoSl, weightsNoSl ? { weights: weightsNoSl } : {});
+        let noSlReturns = combinedNoSl.dailyReturns;
+        if (throttleOn) {
+          const trN = applyDrawdownThrottle(noSlReturns, combinedNoSl.dates, { triggerDD, restoreDD, throttleMult });
+          if (trN) noSlReturns = trN.dailyReturns;
+        }
+        statsNoSlFraction = withNonCompoundedDD(portfolioStats(noSlReturns, { mc: false, targetVol }), noSlReturns);
+        statsNoSlFraction.avgLossRiskAdjPct = avgLossPct(finalNoSl);
       }
 
       // When the currency loss gate is active, also report the SAME pipeline
@@ -815,6 +898,7 @@ export function mountLevelAtlasRoutes(app, express) {
           if (trU) ungatedReturns = trU.dailyReturns;
         }
         statsNoCcyGate = withNonCompoundedDD(portfolioStats(ungatedReturns, { mc: false, targetVol }), ungatedReturns);
+        statsNoCcyGate.avgLossRiskAdjPct = avgLossPct(ungatedPerPair);
       }
 
       const naiveAvgSharpe = (() => {
@@ -836,8 +920,9 @@ export function mountLevelAtlasRoutes(app, express) {
         ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
         sizing, riskPct, heatCap, targetVol, throttle,
         fadeStopTighten, fadeStopInfo,
+        slFraction, slInfo,
         ccyLossGate, ccyGateInfo,
-        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
+        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,
       });

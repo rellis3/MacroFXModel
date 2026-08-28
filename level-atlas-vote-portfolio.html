@@ -76,6 +76,8 @@
     <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
     <label>Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
+    <label>Fixed SL fraction <input type="checkbox" id="slFractionChk">
+      <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
     <label>Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
     <label>Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
   </div>
@@ -158,6 +160,12 @@
   <h2>Fade-stop tightening impact — same trades, with vs without a tighter fade stop</h2>
   <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only (follow is left untouched — the same analysis found its current stop is already close to right) using each pair's OWN fade-winners' real MAE, never widening. OOS-validated first (93% of pairs improved OOS Sharpe using a stop chosen only from earlier data) before being wired in here — see <code>scripts/oos_validate_fade_stop.mjs</code>.</div>
   <div id="fadeStopCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="slFractionCard" style="display:none">
+  <h2>Fixed SL fraction impact — same trades, with vs without a uniform tighter stop</h2>
+  <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only, tightening each trade's OWN existing bracket stop to a fixed fraction of its current distance (composes with fade-stop tightening above if both are on — applied second, on top). OOS-validated first (a real adverse-excursion-timing signal — a fade trade already 75% of the way to its stop goes on to lose ~2x more often than one that isn't, at every time horizon checked) before being wired in here — see <code>analysis/mae_timing_study.mjs</code> and <code>analysis/sl_tightening_backtest.mjs</code>.</div>
+  <div id="slFractionCompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card callout" id="ccyGateCard" style="display:none">
@@ -299,6 +307,8 @@ const triggerDDInput = document.getElementById('triggerDDInput');
 const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
 const fadeStopChk = document.getElementById('fadeStopChk');
+const slFractionChk = document.getElementById('slFractionChk');
+const slFractionInput = document.getElementById('slFractionInput');
 const ccyGateChk = document.getElementById('ccyGateChk');
 const maxDailyLossPctInput = document.getElementById('maxDailyLossPctInput');
 const logScaleChk = document.getElementById('logScaleChk');
@@ -314,6 +324,7 @@ function syncSizingUI() {
   triggerDDInput.disabled = !throttleOn;
   restoreDDInput.disabled = !throttleOn;
   throttleMultInput.disabled = !throttleOn;
+  slFractionInput.disabled = !slFractionChk.checked;
   maxDailyLossPctInput.disabled = !ccyGateChk.checked;
 }
 syncSizingUI();
@@ -359,6 +370,7 @@ async function loadData() {
     params.set('throttleMult', throttleMultInput.value);
   }
   if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
+  if (slFractionChk.checked) params.set('slFraction', slFractionInput.value);
   if (ccyGateChk.checked) {
     params.set('ccyLossGate', 'true');
     params.set('maxDailyLossPct', maxDailyLossPctInput.value);
@@ -452,6 +464,7 @@ function render(j) {
       ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
       ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
       ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
     ];
     const info = j.fadeStopInfo ?? {};
     const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${v.stopPips} (p${v.percentile})</td></tr>`).join('');
@@ -462,6 +475,30 @@ function render(j) {
       <table style="margin-top:4px"><tbody>${infoRows}</tbody></table>`;
   } else {
     fadeStopCard.style.display = 'none';
+  }
+
+  const slFractionCard = document.getElementById('slFractionCard');
+  if (j.slFraction && j.statsNoSlFraction) {
+    slFractionCard.style.display = '';
+    const n = j.statsNoSlFraction;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    document.getElementById('slFractionCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without fraction</th><th class="num">With ${j.slFraction}× fraction</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Risk-adjusted avg loss per trade often barely moves — fixed-risk position sizing rescales up to hit the same target risk when the declared stop tightens. The real effect shows in maxDD and Sharpe/PF above, not in per-trade loss size, unless sizing is deliberately decoupled from the tightened stop.</div>`;
+  } else {
+    slFractionCard.style.display = 'none';
   }
 
   const ccyGateCard = document.getElementById('ccyGateCard');
@@ -761,6 +798,8 @@ triggerDDInput.addEventListener('change', loadData);
 restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
 fadeStopChk.addEventListener('change', loadData);
+slFractionChk.addEventListener('change', loadData);
+slFractionInput.addEventListener('change', loadData);
 ccyGateChk.addEventListener('change', loadData);
 maxDailyLossPctInput.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
