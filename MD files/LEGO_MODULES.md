@@ -2563,7 +2563,68 @@ ladders load, KPIs/trade table/CSV export all confirmed against live data — th
 underlying `LightweightCharts`/`Chart.js` CDN scripts themselves are blocked in
 this sandbox, same pre-existing constraint as every other chart page here, see
 CLAUDE.md's live-deployment note; page logic itself needs no further check).
-Deferred, not forgotten: portfolio-combine across pairs/ladders, forward-test
+
+**Portfolio combine + quant-diagnostics enrichment (2026-08-28).** Owner's own
+follow-up: match this engine's backtest to the depth of `regime-backtest.html`/
+`vol-backtest-v2.html`/`level-atlas-vote-portfolio.html` — full quant-level
+stats, non-compounding results, and both an individual (per-pair, chart-based
+trade review — already existed) and collective (multi-pair combined) view.
+
+- **`js/fibAtlasVotePortfolio.js`** (new) — `buildFibAtlasVotePortfolio(opts)`,
+  a fresh extraction of `js/levelAtlasRoutes.js`'s own `/api/level-atlas/
+  vote-portfolio` route body (same computation, same query-param contract,
+  same response shape) generalized behind a `loadPairVoteTrades(pair)`
+  callback so it's shared by BOTH `js/asiaFibAtlasRoutes.js`'s and
+  `js/mondayFibAtlasRoutes.js`'s new `/vote-portfolio` routes — one core, two
+  R2 prefixes. Reuses `levelAtlasVoteReview.js`'s portfolio bricks
+  (`applyConcurrencyCap`, `buildPortfolioDailySeries`, `inverseVolWeights`,
+  `riskAdjustTrades`, `applyPortfolioHeatCap`, `applyDrawdownThrottle`)
+  completely unchanged — no new portfolio math, only new wiring. Deliberately
+  does NOT include `applyFadeStopTightening` (a separately OOS-validated
+  Level-Atlas-specific feature with no equivalent study run for this engine —
+  silently assuming it transfers would be exactly the kind of unvalidated
+  claim this project's house rules warn against). This is an intentional
+  **duplication, not a migration** — `levelAtlasRoutes.js`'s own route is
+  large, working, and carries its own OOS-validated correlated-risk warnings;
+  migrating it to call this shared function too is flagged here as a real
+  candidate for later, judged riskier to do in the same change that adds a
+  new consumer than to prove the extraction against Asia+Monday first.
+- **`asia-fib-atlas-vote-portfolio.html`** (new) — `level-atlas-vote-
+  portfolio.html`'s sibling: same KPI-grid layout (shared/compounded/
+  non-compounded/levered split, non-compounding stated and computed
+  explicitly per the owner's ask), equity curve with log-scale toggle,
+  heat-cap and drawdown-throttle real A/B comparison cards, per-pair
+  breakdown table, Performance Summary report, and the same 3-schema CSV
+  export (MAE flipped negative at export time). Adds the Asia/Monday toggle;
+  all 26 pairs selectable, unlike Level Atlas's curated 21/26 — **no
+  correlated-risk leave-one-out study has been run for this engine**, so the
+  warning card says that plainly instead of implying a validated exclusion
+  list exists. Verified live: heat cap/throttle A/B, Asia↔Monday toggle,
+  CSV export (6,046 real rows, MAE correctly negative), Performance Summary
+  overlay — all against real 26-pair R2 data.
+- **`asia-fib-atlas-vote-backtest.html`** enriched with `js/backtestStats.js`'s
+  bootstrap (1,000× resample-with-replacement → CI on total return/Sharpe,
+  P(profitable)) and Monte Carlo (1,000× reorder → shuffled-order worst-case
+  drawdown percentiles) battery — the "outcome uncertainty within this
+  sample" diagnostics `regime-backtest.html`/`vol-backtest-v2.html` already
+  had and this page didn't. Explicitly labeled as NOT a substitute for the
+  walk-forward OOS split already applied above (per this project's own
+  house rule: resampling a strategy's own return distribution says nothing
+  about whether the edge generalizes to unseen data) — both describe
+  uncertainty within the realized sample, not OOS generalization.
+
+`js/fibAtlasVotePortfolio.js`: 🟢 built, smoke-tested against real R2 data
+(4-pair Asia portfolio reproduced the exact per-pair numbers the CLI script
+computed independently) and via the live `/vote-portfolio` routes (heat cap:
+44/5,148 trades skipped at 2% cap; throttle: 163/1,021 days throttled at
+-8%/-2%/0.5× — both real, not asserted). `asia-fib-atlas-vote-portfolio.html`
+and the `backtestStats()` enrichment: 🟢 built + Playwright-verified against
+the real local server + full 26-pair R2 data.
+
+Deferred, not forgotten: the correlated-risk leave-one-out study for this
+engine (Level Atlas's own took real analysis, `scripts/leave_one_out_
+portfolio.mjs`, before it could offer a validated "select recommended"
+exclusion set — nothing equivalent has been run here yet), forward-test
 live, and re-sweep margin≥1/confluence-gating at the full 26-pair scale.
 
 ---

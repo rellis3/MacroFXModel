@@ -26,6 +26,7 @@ import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.j
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
+import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
 import { putJSON, getJSON } from './r2Store.js';
@@ -307,6 +308,43 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const trades = stored.trades.filter(t => t.margin >= minMargin);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
                  splitDate: stored.splitDate, minMargin, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/asia-fib-atlas/vote-portfolio?pairs=eurusd,gbpusd,gold,...
+  //   &minMargin=2&maxConcurrent=1&perDirection=false&weighting=equal|inverse-vol
+  //   &sizing=nav|fixed-risk&riskPct=1&maxHeatPct=&targetVol=10
+  //   &throttle=true&triggerDD=-5&restoreDD=0&throttleMult=0.5
+  // Combines MULTIPLE pairs' own Asia vote-trades into ONE portfolio — same
+  // query contract and response shape as `/api/level-atlas/vote-portfolio`,
+  // via the shared `buildFibAtlasVotePortfolio` (see that module's header for
+  // why this is a fresh extraction of that route's logic, not an import of
+  // the route itself). No fade-stop-tightening here — that's a separately
+  // OOS-validated Level Atlas feature with no equivalent study for this engine.
+  app.get('/api/asia-fib-atlas/vote-portfolio', async (req, res) => {
+    try {
+      const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'usdjpy', 'gold'])
+        .map(p => p.trim().toLowerCase()).filter(Boolean);
+      const result = await buildFibAtlasVotePortfolio({
+        pairs,
+        minMargin: req.query.minMargin ? Number(req.query.minMargin) : 2,
+        maxConcurrent: req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1,
+        perDirection: req.query.perDirection === 'true',
+        weighting: req.query.weighting === 'inverse-vol' ? 'inverse-vol' : 'equal',
+        sizing: req.query.sizing === 'nav' ? 'nav' : 'fixed-risk',
+        riskPct: req.query.riskPct ? Number(req.query.riskPct) : 1,
+        maxHeatPct: req.query.maxHeatPct ? Number(req.query.maxHeatPct) : null,
+        targetVol: req.query.targetVol ? Number(req.query.targetVol) : 10,
+        throttleOn: req.query.throttle === 'true',
+        triggerDD: req.query.triggerDD ? Number(req.query.triggerDD) : -5,
+        restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
+        throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
+        loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
+      });
+      if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
+      res.json({ ok: true, ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

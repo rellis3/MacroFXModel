@@ -123,6 +123,12 @@
 </div>
 
 <div class="card">
+  <h2>Outcome uncertainty — bootstrap &amp; Monte Carlo (js/backtestStats.js)</h2>
+  <div class="muted" style="margin-bottom:8px">Bootstrap resamples trades WITH replacement 1,000× — the range of total return / Sharpe consistent with this exact sample, and P(profitable) across those resamples. Monte Carlo instead SHUFFLES the same trades' order 1,000× — the drawdown you could have lived through had the identical trades simply arrived in a different sequence (the total return is unchanged by reordering; only the PATH is). Neither is a substitute for real out-of-sample validation (already applied above via the walk-forward split) — both describe uncertainty WITHIN this one sample, not whether the edge generalizes beyond it.</div>
+  <div class="kpi-grid" id="kpiUncertainty"></div>
+</div>
+
+<div class="card">
   <h2>Cumulative P&amp;L % (trade-by-trade) — additive, not compounded</h2>
   <div class="muted" style="margin-bottom:8px">Each trade's pnl% is summed flat, never reinvested — a fixed-fractional-risk curve, not equity-scaled position sizing. See "Annual Return (linear)" above for the matching non-compounded annualisation; CAGR alongside it assumes reinvestment and is shown for reference only.</div>
   <canvas id="eqChart"></canvas>
@@ -207,7 +213,7 @@
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
 import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
-import { portfolioStats } from './js/backtestStats.js';
+import { portfolioStats, backtestStats } from './js/backtestStats.js';
 
 // Same aggregation js/perLineStrategy.js's own `dailySeries` uses before
 // portfolioStats — days with MULTIPLE trades collapse into ONE return
@@ -313,10 +319,15 @@ function computeStats(trades) {
   // prone to (LEGO_MODULES.md §1aq). `portfolioStats` on the daily-
   // aggregated series collapses same-day trades into one return first.
   const port = portfolioStats(dailySeries(sorted));
+  // Bootstrap (resample with replacement) + Monte Carlo (shuffle order) —
+  // the "outcome uncertainty" battery `js/backtestStats.js` was built for
+  // (see that module's own header). Per-trade pnls, same as `base` above —
+  // deterministic (seeded), so re-running with the same trade list reproduces.
+  const bt = backtestStats(pnls, dates);
 
   return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
     totalPnl: equity, maxDD, equityCurve, grossCurve, cagr, linearAnnualReturn, sortino, calmar: cmr, years,
-    dailySharpe: port.sharpe, dailyDays: port.days, dailyPsr: port.psr,
+    dailySharpe: port.sharpe, dailyDays: port.days, dailyPsr: port.psr, bt,
     sortedDates: sorted.map(t => t.date) };
 }
 
@@ -350,6 +361,22 @@ function renderKpis(s) {
   ].join('');
 }
 function wins_(s) { return Math.round(s.trades * s.winRate / 100); }
+
+function renderUncertaintyKpis(s) {
+  const bt = s.bt;
+  const el = document.getElementById('kpiUncertainty');
+  if (!bt || !bt.trades) { el.innerHTML = '<span class="muted">no trades match these filters</span>'; return; }
+  el.innerHTML = [
+    kpiCard('P(profitable)', fmt1(bt.bootstrap.pPositive * 100) + '%', bt.bootstrap.pPositive >= 0.95 ? 'green' : bt.bootstrap.pPositive >= 0.8 ? 'blue' : 'amber', 'share of 1,000 resamples with total P&L > 0'),
+    kpiCard('Total P&L 90% CI', `${fmtPct(bt.bootstrap.total.p5, 0)} … ${fmtPct(bt.bootstrap.total.p95, 0)}`, '', `bootstrap p5–p95, median ${fmtPct(bt.bootstrap.total.p50, 0)}`),
+    kpiCard('Sharpe 90% CI', `${fmt2(bt.bootstrap.sharpe.p5)} … ${fmt2(bt.bootstrap.sharpe.p95)}`, '', `bootstrap p5–p95, median ${fmt2(bt.bootstrap.sharpe.p50)}`),
+    kpiCard('Payoff ratio', fmt2(bt.payoff), '', 'avg win ÷ |avg loss|, per-trade pnl'),
+    kpiCard('Max DD duration', bt.maxDDdur + ' trades', '', 'longest underwater run'),
+    kpiCard('Monte Carlo worst DD (p95)', '-' + fmt1(Math.abs(bt.montecarlo.maxDD.p95)) + '%', 'amber', 'same trades, shuffled order — 95th-pctile deepest DD'),
+    kpiCard('Monte Carlo worst DD (p99)', '-' + fmt1(Math.abs(bt.montecarlo.maxDD.p99)) + '%', 'red', 'same trades, shuffled order — 99th-pctile deepest DD'),
+    kpiCard('Actual DD vs MC median', fmt1(s.maxDD) + '% vs ' + fmt1(Math.abs(bt.montecarlo.maxDD.p50)) + '%', s.maxDD <= Math.abs(bt.montecarlo.maxDD.p50) ? 'green' : 'amber', 'realized ordering vs the typical reshuffled ordering'),
+  ].join('');
+}
 
 function destroyChart(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
 
@@ -495,8 +522,13 @@ function renderEdgeCost(trades) {
 function applyFiltersAndRender() {
   const rows = filteredTrades();
   const s = computeStats(rows);
-  if (!s) { document.getElementById('kpiPrimary').innerHTML = '<span class="muted">no trades match these filters</span>'; return; }
+  if (!s) {
+    document.getElementById('kpiPrimary').innerHTML = '<span class="muted">no trades match these filters</span>';
+    document.getElementById('kpiUncertainty').innerHTML = '';
+    return;
+  }
   renderKpis(s);
+  renderUncertaintyKpis(s);
   renderEquityChart(s);
   renderEdgeCost(rows);
   renderDecisionTable(rows);
