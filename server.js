@@ -73,6 +73,19 @@ import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from '
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob } from './js/asiaFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
+import {
+  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
+  DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, pickFresher as _laPickFresher,
+  saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
+} from './js/levelAtlasRoutes.js';
+import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTrade, applyFadeStopTightening as _laApplyFadeStopTightening } from './js/levelAtlasVoteReview.js';
+import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } from './js/levelAtlasEngine.js';
+import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
+import { buildLadder as _laBuildLadder } from './js/forecastLadder.js';
+import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js';
+import { resamplePacked as _resamplePacked } from './js/barUtils.js';
+import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
+import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
@@ -13574,6 +13587,271 @@ async function _refreshOIBotZones() {
 setInterval(_refreshOIBotZones, 10 * 60_000);
 setTimeout(_refreshOIBotZones, 60_000);
 
+// ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
+// Replaces `volatility_bot` (retired, left running until the owner stops it —
+// not deleted). Same "server computes + freezes, bot only polls KV" contract
+// as `_refreshOIBotZones` above, but on a much faster cadence: Level Atlas
+// touches are near-real-time (bar-close-driven via `getFastLive`, see that
+// function's own header), not a daily option-chain snapshot.
+//
+// The 17-pair "Select recommended" default mirrors
+// `level-atlas-vote-portfolio.html`'s own PAIRS/CORRELATED_RISK_EXCLUDE
+// (kept in sync by hand — both are small, hand-curated lists; see
+// LEGO_MODULES.md's pair-selection OOS validation for why these 10 are out).
+const VOLATILITY_V2_ALL_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'gbpjpy', 'gbpaud',
+  'gbpchf', 'audjpy', 'audcad', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+  'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
+const VOLATILITY_V2_CORRELATED_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audcad', 'nzdjpy', 'eurgbp', 'gbpjpy', 'nzdusd', 'eurjpy', 'eurcad']);
+const VOLATILITY_V2_DEFAULT_PAIRS = VOLATILITY_V2_ALL_PAIRS.filter(p => !VOLATILITY_V2_CORRELATED_EXCLUDE.has(p));
+
+const VOLATILITY_V2_PLAN_CFG_DEFAULTS = {
+  enabled_pairs: [],          // [] -> VOLATILITY_V2_DEFAULT_PAIRS (the 17-pair "Select recommended" set)
+  minMargin: 3,                // same OOS-validated default as the backtest/portfolio pages
+  fade_stop_tighten: true,     // OOS-validated (scripts/oos_validate_fade_stop.mjs) — see below for how it's applied
+};
+
+// Daily fade-stop-tightening cache — `applyFadeStopTightening` only needs
+// recomputing once per UTC date per pair (its input, the nightly-refreshed
+// votetrades file, only changes once/day); redoing the `runStopStudy` grid
+// math every 45s would be pure waste. Map<'pair|date', {stopPips, percentile}|null>.
+const _volatilityV2FadeStopCache = new Map();
+async function _volatilityV2FadeStopInfo(pair, dateStr) {
+  const cacheKey = `${pair}|${dateStr}`;
+  if (_volatilityV2FadeStopCache.has(cacheKey)) return _volatilityV2FadeStopCache.get(cacheKey);
+  let info = null;
+  try {
+    const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${pair}-votetrades.json`), _laLoadLocalVoteTrades(pair));
+    if (stored) {
+      const filtered = stored.trades.filter(t => t.margin >= VOLATILITY_V2_PLAN_CFG_DEFAULTS.minMargin);
+      const tightened = _laApplyFadeStopTightening(filtered, { cost: stored.cost });
+      if (tightened.stopPips != null) info = { stopPips: tightened.stopPips, percentile: tightened.percentile };
+    }
+  } catch (e) { console.error(`[volatility-v2] fade-stop cache failed for ${pair}:`, e.message); }
+  // Cap growth — only ever a handful of (pair, TODAY) entries alive at once in
+  // practice, but a Railway process that runs for weeks shouldn't accumulate
+  // one entry per pair per day forever.
+  if (_volatilityV2FadeStopCache.size > 500) _volatilityV2FadeStopCache.clear();
+  _volatilityV2FadeStopCache.set(cacheKey, info);
+  return info;
+}
+
+// Prices ONE candidate rung (a `pending`-shaped live record, OR a resolved
+// `touches` record — both carry the same context-dimension fields
+// `voteDecision` votes on) into a tradeable zone. `ladderBySide` (from
+// `rungLevelsForLadder`) supplies `innerDistPips`/`outerDistPips` for a
+// PENDING rung, which — unlike a resolved touch — doesn't carry them
+// (see js/levelAtlasEngine.js's `rungLevelsForLadder` doc for why a
+// not-yet-touched rung is just as priceable, given the same ladder).
+function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten) {
+  let withDist = rec;
+  if (rec.innerDistPips == null) {
+    const lv = ladderBySide[rec.side];
+    if (!lv) return null;
+    const ri = _LA_RUNGS.indexOf(rec.rung);
+    if (ri < 0) return null;
+    const here = lv[ri + 1], inner = lv[ri], outer = lv[ri + 2] ?? null;
+    const rungSpan = Math.abs(here - inner);
+    withDist = { ...rec,
+      innerDistPips: +(rungSpan / rec.pip).toFixed(1),
+      outerDistPips: outer != null ? +(Math.abs(outer - here) / rec.pip).toFixed(1) : null,
+    };
+  }
+  const vd = _laVoteDecision(book, withDist);
+  if (!vd || vd.margin < VOLATILITY_V2_PLAN_CFG_DEFAULTS.minMargin) return null;
+  const priced = _laPriceBarrierTrade(withDist, vd.decision, cost);
+  if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
+
+  const sgn = withDist.side === 'up' ? 1 : -1;
+  const inner = withDist.level - sgn * withDist.innerDistPips * withDist.pip;
+  let outerDistPips = withDist.outerDistPips;
+  // Fade-stop tightening: applied HERE (baked into the plan's SL), not
+  // recomputed bot-side — see js/levelAtlasVoteReview.js's `applyFadeStopTightening`
+  // doc. Its `Math.min(cached, own)` clamp only ever TIGHTENS, never widens.
+  if (fadeStopTighten && vd.decision === 'fade' && fadeStopInfo?.stopPips != null && outerDistPips != null) {
+    outerDistPips = Math.min(fadeStopInfo.stopPips, outerDistPips);
+  }
+  const outer = outerDistPips != null ? withDist.level + sgn * outerDistPips * withDist.pip : null;
+  if (outer == null) return null;   // a follow at the outermost rung — no real stop, don't publish it
+  const tp = vd.decision === 'fade' ? inner : outer;
+  const sl = vd.decision === 'fade' ? outer : inner;
+
+  return {
+    side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
+    entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
+    rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+  };
+}
+
+async function _refreshVolatilityV2Plan() {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    const cfg = { ...VOLATILITY_V2_PLAN_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const enabledPairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length
+      ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
+      : VOLATILITY_V2_DEFAULT_PAIRS;
+
+    const instruments = {};
+    const skipped = {};
+    // Cold-start throttle: `getFastLive` fires each pair's FULL M1 cold-load in
+    // the BACKGROUND (fire-and-forget, non-blocking — see its own doc) and
+    // returns {warming:true} immediately, so a naive loop over all
+    // `enabledPairs` on a fully-cold cache (right after a redeploy, before any
+    // pair has ever been polled) kicks off up to 17 CONCURRENT multi-year M1
+    // loads on the same tick — a thundering herd that drove this producer to
+    // an out-of-memory crash in testing (2026-08-28). A human browsing the
+    // portfolio page warms pairs one at a time as they're viewed; this
+    // producer must not demand all 17 at once. Cap it: once
+    // MAX_CONCURRENT_COLDSTART pairs are already warming, leave the REST
+    // skipped for this tick — they get picked up on a later 45s tick once
+    // the herd has thinned, and every pair only ever pays this cost once
+    // (subsequent calls are cheap/incremental per getFastLive's own doc).
+    const MAX_CONCURRENT_COLDSTART = 3;
+    for (const pair of enabledPairs) {
+      try {
+        if (!_laLiveCache.has(pair) && !_laLiveWarming.has(pair) && _laLiveWarming.size >= MAX_CONCURRENT_COLDSTART) {
+          skipped[pair] = `cold-start throttled (${_laLiveWarming.size} pairs already warming) — picked up on a later tick`;
+          continue;
+        }
+        const live = await _laGetFastLive(pair);
+        if (live.warming) { skipped[pair] = 'warming (cold cache) — try again shortly'; continue; }
+        if (!live.date) { skipped[pair] = 'no live coverage yet'; continue; }
+        const stored = await _r2GetJSON(`${_LA_PREFIX}/${pair}.json`);
+        const book = stored?.books?.[_LA_DEFAULT_REARM];
+        if (!book) { skipped[pair] = 'no stored book — POST /api/level-atlas/run first'; continue; }
+
+        const packed = _laLiveCache.get(pair)?.packed;
+        const assetCls = (() => { try { return _assetClassOf(pair); } catch { return 'fx'; } })();
+        const cost = (() => { try { return _laCostForPair(pair, assetCls); } catch { return 0; } })();
+
+        // Ladder for pricing PENDING (not-yet-touched) rungs — daily bars UP TO
+        // (not including) today, from getFastLive's own bounded, already-warm
+        // packed M1 via resamplePacked (no re-fetch, no OANDA call needed).
+        let ladderBySide = {};
+        if (packed?.n) {
+          const daily = _resamplePacked(packed, 1440).map(b => ({ date: new Date(b.time * 1000).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close }));
+          const todayIdx = daily.findIndex(d => d.date === live.date);
+          const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
+          const todayOpen = todayIdx >= 0 ? daily[todayIdx].open : daily.at(-1)?.open;
+          if (priorDaily.length && todayOpen > 0) {
+            try {
+              const est = _LA_LADDER_PARAMS.pairs?.[pair.toUpperCase()]?.estimator ?? _LA_LADDER_PARAMS.classDefaults?.[assetCls]?.estimator ?? 'yz_30';
+              const sigma = _laForecastSigma(priorDaily, est);
+              if (sigma > 0) {
+                const lad = _laBuildLadder(sigma, { instrument: pair.toUpperCase(), assetClass: assetCls, horizon: 'daily', eventTag: 'none' });
+                ladderBySide = _laRungLevelsForLadder(lad, todayOpen);
+              }
+            } catch (e) { console.error(`[volatility-v2] ladder failed for ${pair}:`, e.message); }
+          }
+        }
+
+        const fadeStopInfo = cfg.fade_stop_tighten ? await _volatilityV2FadeStopInfo(pair, live.date) : null;
+
+        // Only PENDING (not-yet-touched, currently armed) rungs are tradeable —
+        // `touches` (already touched today) are informational only (what
+        // happened already, for the dashboard's "Today's Levels" display);
+        // atlasWalk's own rearm bookkeeping already decides what's currently
+        // armed, which is exactly what `pending` represents.
+        const zones = [];
+        for (const p of (live.pending ?? [])) {
+          if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
+          const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, cfg.fade_stop_tighten);
+          if (!zone) continue;
+          // instanceNum: how many times THIS (side,rung) has already resolved
+          // today — makes the zone_id stable across polls for the CURRENT
+          // armed instance, but distinct from an earlier-today occurrence of
+          // the same rung after a rearm (a genuinely new, separately-
+          // tradeable opportunity, same as the backtest counting each
+          // qualifying touch as its own trade).
+          const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
+          zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
+        }
+        instruments[pair] = { spot: live.pending?.[0]?.currentPrice ?? null, zones, zoneCount: zones.length, fadeStopInfo };
+      } catch (e) {
+        skipped[pair] = `error: ${e.message}`;
+        console.error(`[volatility-v2] ${pair} failed:`, e.message);
+      }
+    }
+
+    // Never publish an empty plan over a good one — a bad tick (every pair
+    // erroring) should leave the bot on its last-known-good plan, not strand
+    // it with zero zones (same discipline volatilityBotProducer.js's own
+    // "refuse to publish an empty universe" uses).
+    if (!Object.keys(instruments).length) {
+      console.error(`[volatility-v2] plan refresh produced 0 instruments (${Object.keys(skipped).length} skipped) — NOT publishing, keeping last good plan`);
+      return 0;
+    }
+
+    await kv.put('volatility_bot_v2_plan', JSON.stringify({
+      data: { strategy: 'level-atlas-vote', generatedAt: new Date().toISOString(), instruments, skipped },
+      timestamp: Date.now(),
+    }));
+    const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
+    console.log(`[volatility-v2] plan refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
+    return Object.keys(instruments).length;
+  } catch (e) { console.error('[volatility-v2] plan refresh failed:', e.message); return 0; }
+}
+// env opt-OUT, defaults on — same convention as REFERENCE_ENGINE_REBUILD above.
+// Useful to disable in a sandbox/dev environment with no OANDA_KEY/R2 creds,
+// where every cold-start pays the full local-parquet-load cost on repeat
+// (nothing to persist a snapshot TO without R2) rather than the cheap R2-
+// snapshot-restore path this producer is designed around in production.
+if (process.env.VOLATILITY_V2_PLAN_REFRESH !== '0') {
+  setInterval(_refreshVolatilityV2Plan, 45_000);
+  setTimeout(_refreshVolatilityV2Plan, 60_000);
+} else {
+  console.log('[volatility-v2] plan refresh disabled (VOLATILITY_V2_PLAN_REFRESH=0)');
+}
+
+// Trade-history rollup — structural copy of `_oiAccumulateTradeLog` above.
+async function _volatilityV2AccumulateTradeLog() {
+  try {
+    const raw = await kv.get('volatility_bot_v2_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('volatility_bot_v2_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
+        date: c.time_open ? new Date(c.time_open * 1000).toISOString().slice(0, 10) : null,
+        zone_id: c.comment ? (String(c.comment).match(/\[([^\]]+)\]/)?.[1] ?? null) : null,
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);
+    await kv.put('volatility_bot_v2_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[volatility-v2] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[volatility-v2] trade-log accumulate failed:', e.message); }
+}
+setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
+setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
+
+// Level Atlas live-cache R2 snapshotting (js/levelAtlasRoutes.js's own doc on
+// `saveAllLiveSnapshots` has the full story) — periodically mirrors every
+// currently-warm pair's bounded M1 window to R2 so a Railway restart can
+// restore-and-gap-fill instead of paying coldStartLiveCache's full
+// multi-year parquet load again. Benefits every Level Atlas consumer
+// (the portfolio page, the tearsheet, volatility_bot_v2's plan producer),
+// not just the bot — fixed at the shared cache, not duplicated per caller.
+// 15 min cadence: frequent enough that a restart's gap-fill catch-up stays
+// small, infrequent enough to be a trivial R2 write volume (R2 has no
+// per-write quota concern the way CF KV does here).
+setInterval(_laSaveAllLiveSnapshots, 15 * 60_000);
+setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
+
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
 // multiple) start as theory priors — they CANNOT be calibrated from theory alone
@@ -26820,12 +27098,26 @@ if (process.env.OANDA_KEY) {
 // pattern already used for a manual /run, just triggered on a timer instead
 // of a curl. BTCUSD is included and expected to keep failing (no M1 archive
 // anywhere — a real, known data gap, not something this job can fix).
+// 'SPX'/'DOW' (NOT 'SPX500'/'US30') — every consumer fed by this list
+// (levelAtlasRoutes/sessionPathRoutes/sessionHandoffRoutes' own startRunJob)
+// persists via a bare `.toLowerCase()`, no instrumentRegistry resolution, so
+// the STRING HERE must already be the canonical lowercase key each engine's
+// OWN readers expect ('spx'/'dow' — matching level-atlas-vote-portfolio.html's
+// PAIRS, the vote-trades bootstrap files, etc.), not a broker/display ticker.
+// 'SPX500'/'US30' silently broke this for both pairs (lowercases to
+// 'spx500'/'us30', which nothing reads) — found + fixed 2026-08-28 while
+// building volatility_bot_v2. NOTE this is NOT the same canonicalization
+// instrumentRegistry.js's resolveKey() performs (resolveKey('DE30')==='dax',
+// which would be WRONG here) — do not "fix" this by routing through
+// resolveKey(). 'CHFJPY' was simply missing from this list entirely (added
+// here) — its stored book/votetrades were never refreshed, static bootstrap
+// only.
 const REFERENCE_ENGINE_PAIRS = [
-  'GOLD', 'NQ', 'SPX500', 'DE30', 'UK100', 'US30', 'US2000',
+  'GOLD', 'NQ', 'SPX', 'DE30', 'UK100', 'DOW', 'US2000',
   'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF',
   'GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY',
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
-  'BTCUSD',
+  'CHFJPY', 'BTCUSD',
 ];
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(0, 30, async () => {
@@ -26841,7 +27133,7 @@ if (process.env.OANDA_KEY) {
     try { _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Handoff trigger failed:', e.message); }
     // Asia Fib Atlas is FX/gold-only (Pine indicator's own scope) — filter
     // the shared pair list rather than adding a second hand-maintained one.
-    try { _startAsiaFibAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX500', 'DE30', 'UK100', 'US30', 'US2000', 'BTCUSD'].includes(s)) }); } catch (e) { console.error('[reference-engine-rebuild] Asia Fib Atlas trigger failed:', e.message); }
+    try { _startAsiaFibAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s)) }); } catch (e) { console.error('[reference-engine-rebuild] Asia Fib Atlas trigger failed:', e.message); }
   });
   console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }

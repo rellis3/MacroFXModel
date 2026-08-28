@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -516,6 +516,125 @@ function mkBook(dimSpecs) {
   ok('T18 too few fade winners (none here at all) -> stopPips null, trades unchanged', tooFew.stopPips === null && tooFew.trades === follow);
 
   ok('T18 empty/null input -> empty trades, not a throw', applyFadeStopTightening([]).trades.length === 0 && applyFadeStopTightening(null).trades.length === 0);
+}
+
+// ── Test 19: currencyLegs / applyCurrencyLossGate ───────────────────────────
+{
+  ok('T19 currencyLegs splits a real FX pair into base/quote', JSON.stringify(currencyLegs('USDJPY')) === JSON.stringify(['USD', 'JPY']));
+  ok('T19 currencyLegs falls back to the symbol itself for a non-FX instrument', JSON.stringify(currencyLegs('GOLD')) === JSON.stringify(['GOLD']));
+
+  const base = 1700000000;
+  // Two JPY-leg losers resolve back-to-back before a third JPY-leg trade opens,
+  // tripping a 2% same-day JPY loss gate; a same-time EURUSD (different legs)
+  // must be unaffected.
+  const trades = [
+    { date: '2024-01-01', pair: 'USDJPY', time: base, resolveTime: base + 100, pnlPct: -1.2 },
+    { date: '2024-01-01', pair: 'CADJPY', time: base + 200, resolveTime: base + 300, pnlPct: -1.1 },
+    { date: '2024-01-01', pair: 'CHFJPY', time: base + 400, resolveTime: base + 500, pnlPct: -1.0 },
+    { date: '2024-01-01', pair: 'EURUSD', time: base + 400, resolveTime: base + 500, pnlPct: -1.0 },
+  ];
+  const g = applyCurrencyLossGate(trades, { maxDailyLossPct: 2 });
+  ok('T19 blocks the 3rd JPY-leg trade once realized JPY loss breaches the threshold', g.kept.length === 3 && g.skipped.length === 1 && g.skipped[0].pair === 'CHFJPY', JSON.stringify({ kept: g.kept.map(t => t.pair), skipped: g.skipped.map(t => t.pair) }));
+  ok('T19 a trade on unrelated currency legs is never blocked by another currency\'s losses', g.kept.some(t => t.pair === 'EURUSD'));
+
+  // No lookahead: a still-OPEN trade's eventual loss must not gate a trade
+  // that opens before it resolves.
+  const trades2 = [
+    { date: '2024-01-01', pair: 'USDJPY', time: base, resolveTime: base + 10000, pnlPct: -3.0 },
+    { date: '2024-01-01', pair: 'CADJPY', time: base + 50, resolveTime: base + 100, pnlPct: -0.5 },
+  ];
+  const g2 = applyCurrencyLossGate(trades2, { maxDailyLossPct: 2 });
+  ok('T19 an unresolved trade never counts toward the tally (no lookahead)', g2.kept.length === 2, `kept=${g2.kept.length}`);
+
+  // Tally resets across calendar dates.
+  const trades3 = [
+    { date: '2024-01-01', pair: 'USDJPY', time: base, resolveTime: base + 10, pnlPct: -3.0 },
+    { date: '2024-01-02', pair: 'CADJPY', time: base + 100000, resolveTime: base + 100010, pnlPct: -0.5 },
+  ];
+  const g3 = applyCurrencyLossGate(trades3, { maxDailyLossPct: 2 });
+  ok('T19 the loss tally resets at the start of each new date', g3.kept.length === 2, `kept=${g3.kept.length}`);
+
+  ok('T19 empty/null input -> empty kept, not a throw', applyCurrencyLossGate([]).kept.length === 0 && applyCurrencyLossGate(null).kept.length === 0);
+}
+
+// ── Test 20: mergeMajorEventWindows / applyNewsProximityThrottle ───────────
+{
+  // Two events 20 min apart with a 30/15 window (50-min-wide each) should
+  // MERGE into one window; a third event far away stays separate.
+  const merged = mergeMajorEventWindows([1000, 1000 + 20 * 60, 1000 + 10000], { preMin: 30, postMin: 15 });
+  ok('T20 overlapping event windows merge into one', merged.length === 2, JSON.stringify(merged));
+  ok('T20 merged window spans from the first event\'s start to the second\'s end', merged[0].start === 1000 - 30 * 60 && merged[0].end === 1000 + 20 * 60 + 15 * 60, JSON.stringify(merged[0]));
+  ok('T20 empty/null epochs -> empty windows, not a throw', mergeMajorEventWindows([]).length === 0 && mergeMajorEventWindows(null).length === 0);
+
+  const windows = mergeMajorEventWindows([10000], { preMin: 30, postMin: 15 }); // window: [8200, 10900]
+  const trades = [
+    { time: 10000, pnlPct: -1.2, riskPctUsed: 1 },   // dead center -> throttled
+    { time: 8200, pnlPct: 0.8, riskPctUsed: 1 },     // exact start (inclusive) -> throttled
+    { time: 10900, pnlPct: -0.5, riskPctUsed: 1 },   // exact end (inclusive) -> throttled
+    { time: 8199, pnlPct: 0.6, riskPctUsed: 1 },     // 1s before window -> untouched
+    { time: 10901, pnlPct: -0.9, riskPctUsed: 1 },   // 1s after window -> untouched
+  ];
+  const result = applyNewsProximityThrottle(trades, { windows, mult: 0.25 });
+  ok('T20 same length in and out', result.length === trades.length);
+  ok('T20 dead-center trade scaled by mult (pnlPct AND riskPctUsed together)', result[0].pnlPct === -0.3 && result[0].riskPctUsed === 0.25 && result[0].newsThrottled === true, JSON.stringify(result[0]));
+  ok('T20 window boundaries are inclusive on both ends', result[1].newsThrottled === true && result[2].newsThrottled === true);
+  ok('T20 trades just outside the window are completely untouched (same object identity)', result[3] === trades[3] && result[4] === trades[4]);
+
+  ok('T20 mult=0 zeroes the trade\'s contribution (the documented block approximation)', applyNewsProximityThrottle([{ time: 10000, pnlPct: -2, riskPctUsed: 1 }], { windows, mult: 0 })[0].pnlPct === 0);
+  ok('T20 no windows -> input returned unchanged, not a throw', applyNewsProximityThrottle(trades, { windows: [] }) === trades);
+  ok('T20 empty/null trades -> empty/null-safe, not a throw', applyNewsProximityThrottle([], { windows }).length === 0 && applyNewsProximityThrottle(null, { windows }).length === 0);
+}
+
+// ── Test 21: betDirection / tradeFactors / applyExposureCap ────────────────
+{
+  ok('T21 follow on an up-touch bets long', betDirection({ decision: 'follow', side: 'up' }) === 'long');
+  ok('T21 fade on a down-touch also bets long (mirrors follow+up)', betDirection({ decision: 'fade', side: 'down' }) === 'long');
+  ok('T21 follow on a down-touch bets short', betDirection({ decision: 'follow', side: 'down' }) === 'short');
+  ok('T21 fade on an up-touch also bets short', betDirection({ decision: 'fade', side: 'up' }) === 'short');
+
+  const eurusdLong = { pair: 'EURUSD', decision: 'follow', side: 'up', riskPctUsed: 1 };
+  ok('T21 tradeFactors splits a long FX pair into +base/-quote', JSON.stringify(tradeFactors(eurusdLong)) === JSON.stringify([{ factor: 'EUR', weight: 1 }, { factor: 'USD', weight: -1 }]));
+  const nqShort = { pair: 'NQ', decision: 'follow', side: 'down', riskPctUsed: 2 };
+  ok('T21 tradeFactors puts every equity index on ONE shared EQUITY_RISK factor, weighted by riskPctUsed', JSON.stringify(tradeFactors(nqShort)) === JSON.stringify([{ factor: 'EQUITY_RISK', weight: -2 }]));
+  const goldLong = { pair: 'GOLD', decision: 'follow', side: 'up', riskPctUsed: 1 };
+  ok('T21 gold gets its OWN factor, separate from the equity-risk cluster', JSON.stringify(tradeFactors(goldLong)) === JSON.stringify([{ factor: 'XAU', weight: 1 }]));
+
+  const base = 1700000000;
+  const mk = (pair, dir, time, resolveTime) => ({
+    pair, time, resolveTime, riskPctUsed: 1, pnlPct: 0, date: '2024-01-01',
+    decision: 'follow', side: dir === 'long' ? 'up' : 'down',
+  });
+  // Long EURUSD (+EUR-USD) then long USDCHF (+USD-CHF) -- these HEDGE on USD
+  // (net USD: -1 + 1 = 0), so both should survive even a tight cap.
+  const hedging = [mk('EURUSD', 'long', base, base + 1000), mk('USDCHF', 'long', base + 10, base + 1000)];
+  const gHedge = applyExposureCap(hedging, { maxNetExposurePct: 1.5 });
+  ok('T21 offsetting trades on the SAME factor (opposite sign) both survive a tight cap', gHedge.kept.length === 2, JSON.stringify({ kept: gHedge.kept.map(t => t.pair), skipped: gHedge.skipped.map(t => t.pair) }));
+
+  // Long USDCHF (+USD) then long USDJPY (+USD) -- these STACK on USD (net
+  // USD: 1 + 1 = 2), the second should be blocked by a cap between 1 and 2.
+  const stacking = [mk('USDCHF', 'long', base, base + 1000), mk('USDJPY', 'long', base + 10, base + 1000)];
+  const gStack = applyExposureCap(stacking, { maxNetExposurePct: 1.5 });
+  ok('T21 same-sign trades on a SHARED factor stack, and the 2nd is blocked once the cap is breached', gStack.kept.length === 1 && gStack.kept[0].pair === 'USDCHF', JSON.stringify({ kept: gStack.kept.map(t => t.pair), skipped: gStack.skipped.map(t => t.pair) }));
+  // The same stacking pair survives a LOOSE cap (>=2).
+  const gStackLoose = applyExposureCap(stacking, { maxNetExposurePct: 2 });
+  ok('T21 the same stacking pair both survive once the cap is loose enough', gStackLoose.kept.length === 2);
+
+  // A still-OPEN trade's exposure counts IMMEDIATELY (unlike applyCurrencyLossGate,
+  // which only reacts to REALIZED losses) -- this is live position risk, not a
+  // reactive daily loss tally.
+  const openLong = mk('USDCHF', 'long', base, base + 100000); // resolves FAR in the future
+  const laterSameSign = mk('USDJPY', 'long', base + 50, base + 60);
+  const gOpen = applyExposureCap([openLong, laterSameSign], { maxNetExposurePct: 1.5 });
+  ok('T21 an OPEN (unresolved) trade\'s exposure blocks a same-sign trade immediately, no lookahead needed', gOpen.kept.length === 1 && gOpen.kept[0].pair === 'USDCHF');
+
+  // Once the first trade RESOLVES, its exposure is released and a later
+  // same-sign trade is free to enter again.
+  const shortLived = mk('USDCHF', 'long', base, base + 100);
+  const afterRelease = mk('USDJPY', 'long', base + 200, base + 300);
+  const gReleased = applyExposureCap([shortLived, afterRelease], { maxNetExposurePct: 1.5 });
+  ok('T21 exposure is released once the position RESOLVES, freeing budget for a later same-sign trade', gReleased.kept.length === 2, JSON.stringify(gReleased.kept.map(t => t.pair)));
+
+  ok('T21 empty/null input -> empty kept, not a throw', applyExposureCap([]).kept.length === 0 && applyExposureCap(null).kept.length === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

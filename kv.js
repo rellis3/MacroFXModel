@@ -190,6 +190,13 @@ const _CF_EXACT = new Set([
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
   'oi_hold_calibration',        // OI hold-score calibration (collecting/active + fitted weights) — derived from oi_bot_trade_log but persisted so the plan producer/banner never see a blank right after a redeploy
   'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
+  'volatility_bot_v2_config',      // Volatility V2 (Level Atlas Vote Portfolio) bot settings — must survive redeploys
+  'volatility_bot_v2_credentials', // Volatility V2 MT5 credentials — must survive redeploys
+  'volatility_bot_v2_plan',        // Volatility V2 live plan (per-instrument fade/follow zones) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
+  'volatility_bot_v2_state',       // Volatility V2 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
+  'volatility_bot_v2_trade_log',   // Volatility V2 resolved closed-trade log (deduped, capped) — give-back/MFE history
+  // NOTE: volatility_bot_v2_status is deliberately NOT here — the bot rewrites it every ~30s
+  // (same reason as oi_bot_status / volatility_bot_status).
   'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need
   // NOTE: oi_bot_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as range_line_bot_status / volatility_bot_status).

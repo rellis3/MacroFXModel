@@ -477,9 +477,12 @@ export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger
  * a follow on an up-touch bets UP, and the two other combinations mirror
  * that. `applyConcurrencyCap`'s `perDirection` mode groups by this, not by
  * raw side/decision, so a long and a short opened at the same moment are
- * correctly treated as occupying SEPARATE risk budgets.
+ * correctly treated as occupying SEPARATE risk budgets. Exported (2026-08-28)
+ * for `tradeFactors`/`applyExposureCap` below — a second consumer that needs
+ * the SAME sign convention (a wrong direction here silently inverts which
+ * trades a factor cap thinks are stacking vs offsetting).
  */
-function betDirection(t) {
+export function betDirection(t) {
   const withSide = t.decision === 'follow';
   const isUp = t.side === 'up';
   return (withSide === isUp) ? 'long' : 'short';
@@ -730,4 +733,254 @@ export function applyDrawdownThrottle(dailyReturns, dates, { triggerDD = -5, res
     state.push({ date: dates[i], throttled, mult, ddAtDecision: +ddNow.toFixed(2) });
   }
   return { dailyReturns: scaled, dates, state };
+}
+
+/**
+ * FX pair -> [base, quote] 3-letter currency legs. Non-FX instruments map to
+ * a single synthetic "currency" (their own symbol) so the gate below can
+ * treat them uniformly without pretending they share USD/EUR/etc exposure
+ * with an actual currency pair.
+ */
+const CCY_LEGS = {
+  EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDJPY: ['USD', 'JPY'], AUDUSD: ['AUD', 'USD'],
+  NZDUSD: ['NZD', 'USD'], USDCAD: ['USD', 'CAD'], USDCHF: ['USD', 'CHF'],
+  EURJPY: ['EUR', 'JPY'], EURGBP: ['EUR', 'GBP'], EURAUD: ['EUR', 'AUD'], EURCAD: ['EUR', 'CAD'], EURCHF: ['EUR', 'CHF'],
+  GBPJPY: ['GBP', 'JPY'], GBPAUD: ['GBP', 'AUD'], GBPCHF: ['GBP', 'CHF'],
+  AUDJPY: ['AUD', 'JPY'], AUDCAD: ['AUD', 'CAD'], CADJPY: ['CAD', 'JPY'], CHFJPY: ['CHF', 'JPY'], NZDJPY: ['NZD', 'JPY'],
+};
+export function currencyLegs(pair) {
+  return CCY_LEGS[pair] ?? [pair];
+}
+
+/**
+ * Daily per-currency loss circuit breaker — a DIFFERENT cut than
+ * `applyPortfolioHeatCap` (caps simultaneous exposure regardless of
+ * instrument) or `applyDrawdownThrottle` (reacts to the strategy's OWN
+ * multi-day equity curve). This reacts to same-day REALIZED losses
+ * concentrated in one currency, e.g. "if today's realized JPY-linked loss
+ * already exceeds 3%, stop opening new JPY-linked trades for the rest of
+ * the day" — built because inspecting the worst portfolio days directly
+ * (2026-08-28) showed no single PAIR ever drives more than ~30% of a bad
+ * day's loss, but a single CURRENCY (usually JPY or USD — the two most
+ * heavily-referenced legs in the traded pair set) often drives 40-80% of it,
+ * spread across several pairs sharing that leg (a classic risk-off JPY
+ * unwind or broad USD move hitting every pair that touches it at once).
+ *
+ * Strictly causal per trade: a candidate trade at time `t.time` is blocked
+ * if any of ITS OWN currency legs already has realized (CLOSED, i.e.
+ * `resolveTime <= t.time`) cumulative loss beyond `-maxDailyLossPct` for
+ * that calendar date — trades still OPEN (not yet resolved) never count
+ * toward the tally, exactly like a real trader can only react to a position
+ * once it's actually closed, not to one still running. Legs are tallied
+ * from KEPT trades only (a blocked trade contributes nothing, having never
+ * been opened). Tallies reset at each new `date`.
+ *
+ * Known, deliberate limitation (see LEGO_MODULES.md): on days where many
+ * pairs enter within the same few minutes (a scheduled macro release, e.g.
+ * the 12:30 UTC cluster on 2024-09-06 / 2023-10-06), this gate can't help —
+ * every trade in the burst is already open, and therefore already exposed,
+ * before any of them resolves and updates a currency's tally. It only
+ * protects against the SLOWER, trickle-across-sessions pattern, which is
+ * the more common of the two shapes among the worst days.
+ *
+ *   applyCurrencyLossGate(trades, { maxDailyLossPct }) ->
+ *     { kept, skipped, skippedCount, totalCount, keptSummary }
+ */
+export function applyCurrencyLossGate(trades, { maxDailyLossPct = 3 } = {}) {
+  if (!trades?.length) return { kept: [], skipped: [], skippedCount: 0, totalCount: 0, keptSummary: null };
+  const byDate = new Map();
+  for (const t of trades) {
+    if (!byDate.has(t.date)) byDate.set(t.date, []);
+    byDate.get(t.date).push(t);
+  }
+  const kept = [], skipped = [];
+  for (const dayTrades of byDate.values()) {
+    const sorted = [...dayTrades].sort((a, b) => a.time - b.time);
+    const tally = {}; // currency -> cumulative REALIZED pnlPct so far today
+    // Event queue: opens (decision points) and closes (tally updates) of
+    // trades already accepted, merged and replayed in time order so a close
+    // that lands before a later open updates the tally in time to gate it.
+    const pending = []; // {resolveTime, legs, pnlPct} for kept, not-yet-resolved trades
+    for (const t of sorted) {
+      // Apply any closes that have happened by this trade's open time.
+      for (let i = pending.length - 1; i >= 0; i--) {
+        if (pending[i].resolveTime <= t.time) {
+          const p = pending.splice(i, 1)[0];
+          for (const c of p.legs) tally[c] = (tally[c] ?? 0) + p.pnlPct;
+        }
+      }
+      const legs = currencyLegs(t.pair ?? t.instrument);
+      const blocked = legs.some(c => (tally[c] ?? 0) <= -maxDailyLossPct);
+      if (blocked) { skipped.push(t); continue; }
+      kept.push(t);
+      pending.push({ resolveTime: t.resolveTime, legs, pnlPct: t.pnlPct });
+    }
+  }
+  return {
+    kept, skipped, skippedCount: skipped.length, totalCount: trades.length,
+    keptSummary: summarizeTrades(kept.map(t => t.pnlPct), kept.map(t => t.date)),
+  };
+}
+
+/**
+ * Merges raw event epochs (seconds, e.g. `calendarLoader.majorEventEpochs()`
+ * mapped to `.epoch`) into sorted, NON-overlapping `[start,end]` windows
+ * (seconds, same units as a trade's `time`/`resolveTime`) — a scheduled news
+ * print routinely produces several simultaneous rows at the identical epoch
+ * (NFP alone tags 2+ "Major" sub-releases at 12:30 UTC), which would
+ * otherwise leave duplicate/overlapping windows for every consumer to
+ * re-handle. Deliberately CURRENCY-BLIND (unlike `eventGateCore.js`'s
+ * per-currency `buildEventWindows`) — built after checking real trade data
+ * (2026-08-28) showed a currency-scoped gate misses a third of THIS
+ * portfolio outright (`pairCcys` returns `[]` for gold and every index) and
+ * still misses FX crosses without a literal USD leg that visibly move on a
+ * USD print anyway (broad risk-sentiment contagion, not FX-pair mechanics).
+ *
+ *   mergeMajorEventWindows(epochs, { preMin, postMin }) -> [{start, end}]
+ */
+export function mergeMajorEventWindows(epochs, { preMin = 30, postMin = 15 } = {}) {
+  if (!epochs?.length) return [];
+  const raw = [...epochs].sort((a, b) => a - b).map(e => ({ start: e - preMin * 60, end: e + postMin * 60 }));
+  const merged = [raw[0]];
+  for (let i = 1; i < raw.length; i++) {
+    const last = merged[merged.length - 1];
+    if (raw[i].start <= last.end) last.end = Math.max(last.end, raw[i].end);
+    else merged.push(raw[i]);
+  }
+  return merged;
+}
+
+/**
+ * Scheduled, CURRENCY-BLIND news-proximity risk throttle — a DIFFERENT
+ * mechanism from `applyCurrencyLossGate` above (which reacts to REALIZED
+ * losses, per currency, after they happen). This instead pre-emptively
+ * shrinks risk on EVERY pair (gold/indices included — see
+ * `mergeMajorEventWindows`'s doc for why currency-scoped coverage isn't
+ * enough here) around a small, KNOWN set of scheduled Major-impact windows —
+ * the schedule itself is public information well in advance, so acting on it
+ * ahead of time is not lookahead (same reasoning `calendarLoader.js`'s own
+ * header gives). Built after checking that trades opened near a Major event
+ * do NOT lose more on average (a clean null on the direct EV hypothesis —
+ * see LEGO_MODULES.md) — the real risk is a rare day where a print moves
+ * many correlated positions the same losing direction AT ONCE, a
+ * variance/tail story a per-trade EV filter can't see but a scheduled
+ * exposure cut can.
+ *
+ * `mult=0` degenerates to a full block (zeroes the trade's contribution) —
+ * a KNOWN approximation, not a true block: it doesn't free the concurrency/
+ * heat budget slot the trade would otherwise have occupied for a different
+ * trade to take. Close enough given every pair here is already capped to 1
+ * concurrent position by `applyConcurrencyCap` upstream, but stated
+ * plainly rather than silently assumed.
+ *
+ * Scales `pnlPct` AND `riskPctUsed` together (not just pnlPct) so a
+ * DOWNSTREAM heat cap — which sums `riskPctUsed` as its budget — correctly
+ * sees the REDUCED risk a throttled trade actually took, not its pre-
+ * throttle size. Windows are PRE-MERGED (`mergeMajorEventWindows`) and
+ * sorted, so membership is a single bisect per trade, not a per-window scan.
+ *
+ *   applyNewsProximityThrottle(trades, { windows, mult }) -> trades (same length, some scaled)
+ */
+export function applyNewsProximityThrottle(trades, { windows = [], mult = 0.3 } = {}) {
+  if (!trades?.length || !windows.length) return trades ?? [];
+  const starts = windows.map(w => w.start);
+  const inWindow = t => {
+    let i = bisectLeft(starts, t);
+    if (i > 0 && t <= windows[i - 1].end) return true;
+    if (i < windows.length && t >= windows[i].start && t <= windows[i].end) return true;
+    return false;
+  };
+  return trades.map(t => {
+    if (!inWindow(t.time)) return t;
+    return { ...t, pnlPct: +(t.pnlPct * mult).toFixed(4), riskPctUsed: +((t.riskPctUsed ?? 1) * mult).toFixed(4), newsThrottled: true };
+  });
+}
+
+function bisectLeft(arr, x) {
+  let lo = 0, hi = arr.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] < x) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+// Equity indices behave as ONE correlated "risk-on/risk-off" cluster
+// regardless of currency denomination (documented on the portfolio page's
+// own correlated-risk card) — deliberately its OWN factor, separate from
+// gold: gold's historical beta to a risk-off shock is often the OPPOSITE
+// sign to equities (flight-to-safety), not the same one, so lumping them
+// together would silently treat a genuine hedge as a stack.
+const EQUITY_RISK_SET = new Set(['NQ', 'SPX', 'DOW', 'US2000', 'DE30', 'UK100']);
+
+/**
+ * Decomposes ONE trade into its signed risk-FACTOR exposure — the piece
+ * `applyPortfolioHeatCap` (gross % regardless of sign or instrument) and
+ * `applyCurrencyLossGate` (reactive to REALIZED loss, not exposure) both
+ * lack: a PRE-TRADE read on which underlying currencies/clusters are
+ * ALREADY stacked, so two trades that HEDGE each other (long EURUSD + long
+ * USDCHF: +EUR-USD and +USD-CHF net to ~0 USD exposure) aren't budgeted the
+ * same as two that STACK (long USDJPY + long USDCHF: +USD twice, real
+ * doubled exposure). FX pairs split into base(+)/quote(-) via
+ * `currencyLegs`, signed by `betDirection`; gold gets its own 'XAU' factor;
+ * the 6 indices share one 'EQUITY_RISK' factor (see above). Each entry's
+ * weight is the trade's OWN `riskPctUsed` (defaults to 1) — a bigger trade
+ * contributes proportionally more exposure, not a flat ±1.
+ *
+ *   tradeFactors(trade) -> [{ factor, weight }]   (weight already signed)
+ */
+export function tradeFactors(t) {
+  const pair = String(t.pair ?? t.instrument ?? '').toUpperCase();
+  const dir = betDirection(t) === 'long' ? 1 : -1;
+  const risk = t.riskPctUsed ?? 1;
+  if (EQUITY_RISK_SET.has(pair)) return [{ factor: 'EQUITY_RISK', weight: dir * risk }];
+  if (pair === 'GOLD') return [{ factor: 'XAU', weight: dir * risk }];
+  const legs = currencyLegs(pair);
+  if (legs.length === 2) return [{ factor: legs[0], weight: dir * risk }, { factor: legs[1], weight: -dir * risk }];
+  return legs.map(f => ({ factor: f, weight: dir * risk }));
+}
+
+/**
+ * Pre-trade NET signed exposure cap — the piece missing from the risk stack
+ * built so far. `applyPortfolioHeatCap` sums gross risk (a long and a short
+ * cost the same budget even though they partly cancel); `applyCurrencyLossGate`
+ * only reacts AFTER a currency has already realized a loss that day. This
+ * instead tracks, continuously and causally, the RUNNING net exposure per
+ * risk factor (`tradeFactors`) across currently-OPEN positions, and blocks a
+ * candidate trade only if accepting it would push ONE OF ITS OWN factors'
+ * net exposure beyond `maxNetExposurePct` — an offsetting trade (opposite
+ * sign on that factor) is free to add EVEN WHEN the account is already
+ * heavily exposed elsewhere; a same-sign stack is the thing this actually
+ * targets.
+ *
+ * Strictly causal, GLOBAL time order (not per-date like the currency loss
+ * gate — exposure is a running position, not a daily-reset tally): a trade
+ * releases its factor contribution only once its OWN `resolveTime` has
+ * passed relative to the candidate being evaluated, exactly like
+ * `applyCurrencyLossGate`'s pending-trade queue.
+ *
+ *   applyExposureCap(trades, { maxNetExposurePct, factorsOf }) ->
+ *     { kept, skipped, skippedCount, totalCount, keptSummary }
+ */
+export function applyExposureCap(trades, { maxNetExposurePct = 3, factorsOf = tradeFactors } = {}) {
+  if (!trades?.length) return { kept: [], skipped: [], skippedCount: 0, totalCount: 0, keptSummary: null };
+  const sorted = [...trades].sort((a, b) => a.time - b.time);
+  const net = {};       // factor -> current net signed exposure from OPEN trades
+  const pending = [];   // {resolveTime, factors} for kept, not-yet-resolved trades
+  const kept = [], skipped = [];
+  for (const t of sorted) {
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (pending[i].resolveTime <= t.time) {
+        const p = pending.splice(i, 1)[0];
+        for (const f of p.factors) net[f.factor] = (net[f.factor] ?? 0) - f.weight;
+      }
+    }
+    const factors = factorsOf(t);
+    const wouldBreach = factors.some(f => Math.abs((net[f.factor] ?? 0) + f.weight) > maxNetExposurePct);
+    if (wouldBreach) { skipped.push(t); continue; }
+    kept.push(t);
+    for (const f of factors) net[f.factor] = (net[f.factor] ?? 0) + f.weight;
+    pending.push({ resolveTime: t.resolveTime, factors });
+  }
+  return {
+    kept, skipped, skippedCount: skipped.length, totalCount: trades.length,
+    keptSummary: summarizeTrades(kept.map(t => t.pnlPct), kept.map(t => t.date)),
+  };
 }

@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -65,8 +65,8 @@ export function pickFresher(r2Data, localData) {
   return Date.parse(r2Data.generatedAt) >= Date.parse(localData.generatedAt) ? r2Data : localData;
 }
 
-const PREFIX = 'level-atlas';
-const DEFAULT_REARM = 0.3;
+export const PREFIX = 'level-atlas';
+export const DEFAULT_REARM = 0.3;
 
 const jobs = new Map();
 function purgeStale() {
@@ -227,11 +227,87 @@ function computeLiveContext(pair, packed) {
   return { date: liveDate, touches: liveTouches, pending: pending ?? [] };
 }
 
+// ── Live-cache R2 snapshotting ────────────────────────────────────────────
+// `liveCache` is in-memory only — wiped on every Railway restart (same
+// "deploy wipes local disk" fact CLAUDE.md documents for AnalogML's M1
+// cache). Without this, EVERY restart pays coldStartLiveCache's full cost
+// again: `loadM1ForPair` reads the FULL multi-year parquet (the actual
+// expense — years of bars, not the 180-day window this cache actually
+// needs) just to immediately throw most of it away via `boundPacked`. Doing
+// that for many pairs at once (a bot polling its whole enabled-pairs list
+// right after a redeploy) is the thundering-herd pattern that drove
+// volatility_bot_v2's plan producer to an OOM crash in testing (2026-08-28,
+// see LEGO_MODULES.md) — a throttle there caps the BLAST RADIUS, but this
+// fixes the actual root cost.
+//
+// So: periodically mirror each warm pair's ALREADY-BOUNDED 180-day window to
+// R2 (mirrors AnalogML/refresh_m1.py's own R2 mirror for the identical
+// problem, via the SAME r2Store helpers `books`/`votetrades` already use —
+// no new persistence pattern introduced). On a cold start, try that snapshot
+// FIRST: it's a small, already-bounded restore + the SAME small gap-fill
+// catch-up `getFastLive` already does on every warm poll — not years of
+// parquet. Falls through to the original `loadM1ForPair` path unchanged if
+// no snapshot exists yet, it fails to parse, or it's too stale to be worth
+// restoring — never worse than before this existed.
+const LIVE_SNAPSHOT_PREFIX = `${PREFIX}/live-snapshot`;
+const MAX_SNAPSHOT_AGE_HOURS = 72;   // beyond this, the gap-fill catch-up isn't meaningfully cheaper than a fresh load — just reload
+
+function packToJSON(packed) {
+  return {
+    n: packed.n,
+    times: Array.from(packed.times), opens: Array.from(packed.opens), highs: Array.from(packed.highs),
+    lows: Array.from(packed.lows), closes: Array.from(packed.closes), volumes: Array.from(packed.volumes),
+  };
+}
+function packFromJSON(obj) {
+  if (!obj || !Number.isFinite(obj.n) || !Array.isArray(obj.times) || !obj.times.length) return null;
+  return {
+    n: obj.n,
+    times: Int32Array.from(obj.times), opens: Float32Array.from(obj.opens), highs: Float32Array.from(obj.highs),
+    lows: Float32Array.from(obj.lows), closes: Float32Array.from(obj.closes), volumes: Float32Array.from(obj.volumes ?? []),
+  };
+}
+
+async function _saveLiveSnapshot(pair) {
+  const entry = liveCache.get(pair);
+  if (!entry?.packed?.n) return false;
+  try {
+    await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    return true;
+  } catch (e) {
+    console.warn(`[level-atlas-live] ${pair}: snapshot save failed — ${e.message}`);
+    return false;
+  }
+}
+
+// Scheduled job body (server.js calls this periodically) — snapshots every
+// CURRENTLY WARM pair in one pass. Cheap: R2 has no write-quota concern like
+// CF KV does (this project's KV comments explicitly protect that quota;
+// R2 doesn't share it), and this only touches pairs already in memory.
+export async function saveAllLiveSnapshots() {
+  let saved = 0;
+  for (const pair of liveCache.keys()) {
+    if (await _saveLiveSnapshot(pair)) saved++;
+  }
+  if (saved) console.log(`[level-atlas-live] snapshotted ${saved} warm pair(s) to R2`);
+  return saved;
+}
+
 async function coldStartLiveCache(pair) {
   const sym = pair.toUpperCase();
   liveWarming.add(pair);
   try {
-    let packed = await loadM1ForPair(pair);
+    let packed = null, fromSnapshot = false;
+    try {
+      const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
+      const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
+      if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
+        const restored = packFromJSON(snap);
+        if (restored?.n) { packed = restored; fromSnapshot = true; }
+      }
+    } catch (e) { console.warn(`[level-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
+
+    if (!packed) packed = await loadM1ForPair(pair);
     if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
     if (process.env.OANDA_KEY) {
       try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 }); }
@@ -240,7 +316,7 @@ async function coldStartLiveCache(pair) {
     const bounded = boundPacked(packed, LIVE_WINDOW_DAYS);
     const result = computeLiveContext(pair, bounded);
     liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], result });
-    console.log(`[level-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window)`);
+    console.log(`[level-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
     console.error(`[level-atlas-live] ${sym}: cold start failed — ${e.message}`);
   } finally {
@@ -302,7 +378,7 @@ function startRunJob({ instruments }) {
 }
 
 // Exported for js/levelAtlasRoutes.test.mjs only — not part of the route API.
-export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob };
+export { boundPacked, getFastLive, liveCache, liveWarming, startRunJob, loadLocalVoteTrades, packToJSON, packFromJSON };
 
 /** Mount all /api/level-atlas/* routes. */
 export function mountLevelAtlasRoutes(app, express) {
@@ -489,6 +565,20 @@ export function mountLevelAtlasRoutes(app, express) {
       // validated against.
       const fadeStopTighten = req.query.fadeStopTighten === 'true';
 
+      // Per-currency daily loss gate (2026-08-28) — OOS-validated
+      // (scripts/oos_validate_currency_loss_gate.mjs: IS-chosen 1% cap
+      // improved EVERY OOS metric — Sharpe +0.23, annVol -8.7pp, maxDD
+      // +4.69pp, CVaR95 +2.08pp) BEFORE being wired in, same discipline as
+      // fade-stop tightening. Built because inspecting the worst portfolio
+      // days directly showed no single PAIR ever drives more than ~30% of a
+      // bad day's loss, but a single CURRENCY (usually JPY or USD, the two
+      // most heavily-referenced legs in the pair set) often drives 40-80% of
+      // it. Off by default — not silently changing the baseline everything
+      // else on this page was validated against. `maxDailyLossPct` defaults
+      // to the OOS-validated 1% only when the gate is actually engaged.
+      const ccyLossGate = req.query.ccyLossGate === 'true';
+      const maxDailyLossPct = req.query.maxDailyLossPct ? Number(req.query.maxDailyLossPct) : 1;
+
       const perPairTradesRaw = {}, perPair = {}, missing = [];
       const fadeStopInfo = {};
       const storedByPair = {};
@@ -571,6 +661,22 @@ export function mountLevelAtlasRoutes(app, express) {
             perPair[sym].keptAfterHeat = byPair[sym]?.length ?? 0;
           }
         }
+      }
+
+      // Per-currency daily loss gate — applied AFTER the heat cap (both are
+      // cross-pair overlays on the same merged, chronological trade list;
+      // they compose rather than compete, same layering as heat cap ->
+      // throttle below). Causal per LEG.time/resolveTime (see
+      // applyCurrencyLossGate's own doc) — never touches which pair a trade
+      // belongs to, only whether it fires at all.
+      let ccyGateInfo = null;
+      if (ccyLossGate) {
+        const merged = Object.values(perPairTradesFinal).flat();
+        const gated = applyCurrencyLossGate(merged, { maxDailyLossPct });
+        const byPair = {};
+        for (const t of gated.kept) (byPair[t.pair] ??= []).push(t);
+        perPairTradesFinal = byPair;
+        ccyGateInfo = { maxDailyLossPct, skippedCount: gated.skippedCount, totalCount: gated.totalCount };
       }
 
       const buildWeights = perPairTrades => sizing === 'fixed-risk'
@@ -686,6 +792,31 @@ export function mountLevelAtlasRoutes(app, express) {
         statsNoFadeTighten = withNonCompoundedDD(portfolioStats(untightenedReturns, { mc: false, targetVol }), untightenedReturns);
       }
 
+      // When the currency loss gate is active, also report the SAME pipeline
+      // (heat cap/throttle/fade-stop settings held CONSTANT) built from the
+      // UNGATED trades — isolates the gate's own marginal effect, same
+      // discipline as statsUncapped/statsNoThrottle/statsNoFadeTighten above.
+      let statsNoCcyGate = null;
+      if (ccyGateInfo) {
+        let ungatedPerPair = perPairTradesForStats;
+        if (maxHeatPct) {
+          const heatResult = applyPortfolioHeatCap(perPairTradesForStats, { maxHeatPct });
+          if (heatResult) {
+            const byPair = {};
+            for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+            ungatedPerPair = byPair;
+          }
+        }
+        const weightsUngated = buildWeights(ungatedPerPair);
+        const combinedUngated = buildPortfolioDailySeries(ungatedPerPair, weightsUngated ? { weights: weightsUngated } : {});
+        let ungatedReturns = combinedUngated.dailyReturns;
+        if (throttleOn) {
+          const trU = applyDrawdownThrottle(ungatedReturns, combinedUngated.dates, { triggerDD, restoreDD, throttleMult });
+          if (trU) ungatedReturns = trU.dailyReturns;
+        }
+        statsNoCcyGate = withNonCompoundedDD(portfolioStats(ungatedReturns, { mc: false, targetVol }), ungatedReturns);
+      }
+
       const naiveAvgSharpe = (() => {
         const ss = Object.values(perPair).map(p => p.ownSharpe).filter(v => v != null);
         return ss.length ? +(ss.reduce((a, b) => a + b, 0) / ss.length).toFixed(3) : null;
@@ -705,7 +836,8 @@ export function mountLevelAtlasRoutes(app, express) {
         ok: true, pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
         sizing, riskPct, heatCap, targetVol, throttle,
         fadeStopTighten, fadeStopInfo,
-        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, naiveAvgSharpe, days: datesFinal.length,
+        ccyLossGate, ccyGateInfo,
+        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,
       });

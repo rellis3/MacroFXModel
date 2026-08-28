@@ -47,6 +47,34 @@ import { pipSize } from './instrumentRegistry.js';
 export const RUNGS = ['p50', 'p75', 'p90'];
 export const SIDES = ['up', 'down'];   // up = O-H rungs, down = O-L rungs
 
+/**
+ * Converts one day's already-built ladder quantiles (`buildLadder`'s output —
+ * per-side `{p50,p75,p90}` % distances from the session open) into actual
+ * PRICE levels for both sides: `{up: [open, p50px, p75px, p90px], down: [...]}`.
+ * Extracted (2026-08-28) from `atlasWalk`'s own per-day loop so a SECOND
+ * consumer (`volatility_bot_v2`'s live plan producer, `server.js`) can derive
+ * a live rung's `innerDistPips`/`outerDistPips` the exact same way a resolved
+ * backtest touch does — those distances are a pure function of the ladder
+ * (`rungSpan = |lv[i+1]-lv[i]|`), not of the touch/outcome, so a not-yet-
+ * touched ("pending") rung is just as prices-able as a resolved one, given
+ * the same ladder. Never call this on stale/no-lookahead-violating inputs —
+ * `lad` must come from `sigma` forecast off data STRICTLY BEFORE today, same
+ * as everywhere else in this file.
+ *
+ *   rungLevelsForLadder(lad, open) -> { up: number[]|undefined, down: number[]|undefined }
+ */
+export function rungLevelsForLadder(lad, open) {
+  const out = {};
+  for (const s of SIDES) {
+    const isU = s === 'up';
+    const q2 = isU ? lad.oh : lad.ol;
+    if (!(q2?.p50 && q2?.p75 && q2?.p90)) continue;
+    const sg = isU ? 1 : -1;
+    out[s] = [open, ...RUNGS.map(r => open * (1 + sg * q2[r] / 100))];
+  }
+  return out;
+}
+
 // ── Session classification — SAME boundaries as forecastAnalyser.classifySession,
 // re-derived here (not imported — it's private there) so this module can also
 // build a per-session REALIZED-RANGE series, which that function doesn't do.
@@ -355,14 +383,11 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     // (rung-first-touch is re-arm-independent) — powers `otherSideTouchedBefore`
     // without a second ordinal-tracking walk, and lets the main loop below just
     // read `lvBySide[side]` instead of recomputing it per re-arm iteration.
-    const lvBySide = {}, firstTouchBySide = {};
+    const lvBySide = rungLevelsForLadder(lad, open);
+    const firstTouchBySide = {};
     for (const s of SIDES) {
-      const isU = s === 'up';
-      const q2 = isU ? lad.oh : lad.ol;
-      if (!(q2.p50 && q2.p75 && q2.p90)) continue;
-      const sg = isU ? 1 : -1;
-      lvBySide[s] = [open, ...RUNGS.map(r => open * (1 + sg * q2[r] / 100))];
-      firstTouchBySide[s] = firstTouchTimes(bars, lvBySide[s], isU);
+      if (!lvBySide[s]) continue;
+      firstTouchBySide[s] = firstTouchTimes(bars, lvBySide[s], s === 'up');
     }
 
     for (const side of SIDES) {

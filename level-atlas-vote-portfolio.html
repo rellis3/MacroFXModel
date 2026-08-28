@@ -76,6 +76,8 @@
     <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
     <label>Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
+    <label>Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
+    <label>Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -156,6 +158,12 @@
   <h2>Fade-stop tightening impact — same trades, with vs without a tighter fade stop</h2>
   <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only (follow is left untouched — the same analysis found its current stop is already close to right) using each pair's OWN fade-winners' real MAE, never widening. OOS-validated first (93% of pairs improved OOS Sharpe using a stop chosen only from earlier data) before being wired in here — see <code>scripts/oos_validate_fade_stop.mjs</code>.</div>
   <div id="fadeStopCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="ccyGateCard" style="display:none">
+  <h2>Currency daily loss gate impact — same trades, with vs without the circuit breaker</h2>
+  <div class="muted" style="margin-bottom:8px">Blocks new trades in a currency (e.g. JPY, USD) for the rest of the day once that currency's REALIZED loss that day already breaches the threshold — built after inspecting the worst portfolio days showed no single pair drives more than ~30% of a bad day's loss, but a single currency often drives 40-80% of it. OOS-validated first (IS-chosen 1% cap improved EVERY OOS metric — Sharpe, vol, max DD, and CVaR — not just Sharpe) before being wired in here — see <code>scripts/oos_validate_currency_loss_gate.mjs</code>. Strictly causal: only counts a trade's loss once it has actually CLOSED, never one still open.</div>
+  <div id="ccyGateCompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card">
@@ -291,6 +299,8 @@ const triggerDDInput = document.getElementById('triggerDDInput');
 const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
 const fadeStopChk = document.getElementById('fadeStopChk');
+const ccyGateChk = document.getElementById('ccyGateChk');
+const maxDailyLossPctInput = document.getElementById('maxDailyLossPctInput');
 const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
 
@@ -304,6 +314,7 @@ function syncSizingUI() {
   triggerDDInput.disabled = !throttleOn;
   restoreDDInput.disabled = !throttleOn;
   throttleMultInput.disabled = !throttleOn;
+  maxDailyLossPctInput.disabled = !ccyGateChk.checked;
 }
 syncSizingUI();
 
@@ -348,6 +359,10 @@ async function loadData() {
     params.set('throttleMult', throttleMultInput.value);
   }
   if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
+  if (ccyGateChk.checked) {
+    params.set('ccyLossGate', 'true');
+    params.set('maxDailyLossPct', maxDailyLossPctInput.value);
+  }
   try {
     const res = await fetch(`/api/level-atlas/vote-portfolio?${params}`);
     const j = await res.json();
@@ -355,7 +370,8 @@ async function loadData() {
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
       + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '')
-      + (j.fadeStopTighten ? `, fade-stop tightened (${Object.keys(j.fadeStopInfo ?? {}).length} pairs)` : '');
+      + (j.fadeStopTighten ? `, fade-stop tightened (${Object.keys(j.fadeStopInfo ?? {}).length} pairs)` : '')
+      + (j.ccyGateInfo ? `, currency loss gate ${j.ccyGateInfo.maxDailyLossPct}%` : '');
     headerSub.textContent = `${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     // Keep the CSV export panel's own risk% input in sync with the sizing
     // model's riskPct by default (fixed-risk mode) — same knob, avoids the
@@ -446,6 +462,31 @@ function render(j) {
       <table style="margin-top:4px"><tbody>${infoRows}</tbody></table>`;
   } else {
     fadeStopCard.style.display = 'none';
+  }
+
+  const ccyGateCard = document.getElementById('ccyGateCard');
+  if (j.ccyGateInfo && j.statsNoCcyGate) {
+    ccyGateCard.style.display = '';
+    const n = j.statsNoCcyGate;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['CVaR 95%', fmt2(n.cvar95) + '%', fmt2(s.cvar95) + '%'],
+      ['Trades taken', j.ccyGateInfo.totalCount, j.ccyGateInfo.totalCount - j.ccyGateInfo.skippedCount],
+    ];
+    document.getElementById('ccyGateCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without gate</th><th class="num">With ${j.ccyGateInfo.maxDailyLossPct}% gate</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">${j.ccyGateInfo.skippedCount} of ${j.ccyGateInfo.totalCount} trades (${fmt1(j.ccyGateInfo.skippedCount / j.ccyGateInfo.totalCount * 100)}%) blocked by the currency loss gate.</div>`;
+  } else {
+    ccyGateCard.style.display = 'none';
   }
 
   document.getElementById('kpiShared').innerHTML = [
@@ -720,6 +761,8 @@ triggerDDInput.addEventListener('change', loadData);
 restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
 fadeStopChk.addEventListener('change', loadData);
+ccyGateChk.addEventListener('change', loadData);
+maxDailyLossPctInput.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
 loadData();

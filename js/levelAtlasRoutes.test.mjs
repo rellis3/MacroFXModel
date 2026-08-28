@@ -8,7 +8,7 @@
  *   node js/levelAtlasRoutes.test.mjs
  */
 import assert from 'node:assert/strict';
-import { boundPacked, getFastLive, liveCache, liveWarming, pickFresher } from './levelAtlasRoutes.js';
+import { boundPacked, getFastLive, liveCache, liveWarming, pickFresher, packToJSON, packFromJSON } from './levelAtlasRoutes.js';
 
 let passed = 0;
 const results = [];
@@ -111,6 +111,45 @@ await t('pickFresher falls back to whichever source exists when the other is nul
   assert.equal(pickFresher(null, { v: 'local' }).v, 'local');
   assert.equal(pickFresher({ v: 'r2' }, null).v, 'r2');
   assert.equal(pickFresher(null, null), null);
+});
+
+// packToJSON/packFromJSON — the R2 live-cache snapshot round-trip (2026-08-28,
+// see coldStartLiveCache's own doc for why this exists: skip loadM1ForPair's
+// full multi-year parquet load on a Railway restart by restoring the
+// already-bounded 180-day window from R2 instead). Typed arrays don't
+// survive JSON.stringify/parse as anything useful on their own, so this pair
+// must round-trip losslessly (a precision bug here would silently corrupt
+// every restored pair's price history).
+await t('packToJSON/packFromJSON round-trips a packed M1 object exactly', () => {
+  const packed = {
+    n: 4,
+    times: Int32Array.from([1000, 1060, 1120, 1180]),
+    opens: Float32Array.from([1.1001, 1.1002, 1.0998, 1.1005]),
+    highs: Float32Array.from([1.1010, 1.1012, 1.1000, 1.1009]),
+    lows: Float32Array.from([1.0995, 1.0999, 1.0990, 1.1001]),
+    closes: Float32Array.from([1.1002, 1.0998, 1.1005, 1.1004]),
+    volumes: Float32Array.from([120, 85, 200, 60]),
+  };
+  const restored = packFromJSON(packToJSON(packed));
+  assert.equal(restored.n, packed.n);
+  assert.deepEqual(Array.from(restored.times), Array.from(packed.times));
+  // Float32 round-trips exactly through a plain JS number array (the JSON
+  // step) as long as both ends parse back into the SAME Float32 precision —
+  // Float32Array.from() re-quantizes, so this must be an EXACT match, not
+  // an approximate one.
+  assert.deepEqual(Array.from(restored.opens), Array.from(packed.opens));
+  assert.deepEqual(Array.from(restored.closes), Array.from(packed.closes));
+  assert.equal(restored.times.constructor, Int32Array);
+  assert.equal(restored.opens.constructor, Float32Array);
+});
+await t('packFromJSON rejects a missing/malformed snapshot instead of returning garbage', () => {
+  assert.equal(packFromJSON(null), null);
+  assert.equal(packFromJSON({}), null);
+  assert.equal(packFromJSON({ n: 4, times: [] }), null);   // n says 4 but times is empty
+});
+await t('packFromJSON tolerates a missing volumes column (defaults to empty, not a throw)', () => {
+  const restored = packFromJSON({ n: 1, times: [1000], opens: [1.1], highs: [1.1], lows: [1.1], closes: [1.1] });
+  assert.equal(restored.volumes.length, 0);
 });
 
 console.log(results.join('\n'));
