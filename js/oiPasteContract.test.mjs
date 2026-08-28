@@ -447,6 +447,45 @@ console.log('[downstream wiring — export, indicator, bot]');
 // ── The Settlements table mixes WEEKLY and MONTHLY products (regression, 2026-07-30) ──
 // Reported on gold: the smile hint said "paste expiry G4TQ6 (25/08/2026, 27 DTE)" while the
 // QuikStrike PRODUCT (OG) tabs offered only OG5N6 / OGU6 / OGV6 / OGX6 / OGZ6 / OGF7 / …
+// ─────────────────────────────────────────────────────────────────────────────
+// 10b. FULL-BOOK CROSS-CHECK ON THE EXPORT — the "NEAR flip (unstable)" line names
+//      a fragile regime but never says WHY. fullBookGex (every expiry, each weighted
+//      by its own DTE + IV — the ripple, correctly blended) already answers that: does
+//      the wider book back up the single-expiry read, or is it a local wobble sitting
+//      on a different medium-term picture? The dashboard's Full-book GEX panel has run
+//      this check for a while; the exported indicator never carried it.
+// ─────────────────────────────────────────────────────────────────────────────
+console.log('[export — full-book agree/disagree cross-check]');
+{
+  const mk = (gex, fb) => ({
+    spot: 4079, basis: 0.27, refMove: { move: 103.3, source: 'implied' },
+    maxPain: 4199.73, gammaFlip: 3659.73,
+    callWall: 4299.73, putWall: 3999.73,
+    callWalls: [{ strike: 4299.73, oi: 3188, tier: 'strong' }],
+    putWalls: [{ strike: 3999.73, oi: 4171, tier: 'strong' }],
+    savedAt: '28/07/2026, 09:00:00', exposures: { gex },
+    fullBook: fb,
+  });
+  const agrees = mk(-3.4e6, { gex: -1.1e6, flip: 4060.5, regime: 'BREAKOUT', nExpiries: 12 });
+  const disagrees = mk(-3.4e6, { gex: 2.2e6, flip: 4110.2, regime: 'PIN', nExpiries: 12 });
+  const none = mk(-3.4e6, null);
+
+  const txtAgree = buildOILevelText({ 'XAU/USD': agrees }, { generated: 'test' });
+  const txtDisagree = buildOILevelText({ 'XAU/USD': disagrees }, { generated: 'test' });
+  const txtNone = buildOILevelText({ 'XAU/USD': none }, { generated: 'test' });
+
+  ok('full-book line appears when fullBook is present',
+    /full-book \(12 expiries\) flip 4060\.50/.test(txtAgree));
+  ok('same regime sign → AGREES, no warning symbol',
+    /flip 4060\.50 · regime BREAKOUT — AGREES/.test(txtAgree) && !txtAgree.includes('⚠'));
+  ok('opposite regime sign → DISAGREES, flagged',
+    /flip 4110\.20 · regime PIN — ⚠ DISAGREES/.test(txtDisagree));
+  ok('no fullBook (single-expiry paste) → line omitted, not blank or thrown',
+    !txtNone.includes('full-book'));
+  ok('the near-term flip line itself is unaffected either way',
+    txtAgree.match(/^· flip /m)?.[0] === txtNone.match(/^· flip /m)?.[0]);
+}
+
 // G4TQ6 is a real CME code, but a WEEKLY — a different product, under a different tab. The
 // hint was unactionable: it named something the user could not select.
 //

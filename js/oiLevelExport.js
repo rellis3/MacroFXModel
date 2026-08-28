@@ -194,6 +194,26 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     const flip = Number.isFinite(inst.gammaFlip) ? inst.gammaFlip : gammaFlip(gexProfile);
     const dist = distanceToFlip(inst.spot, flip);          // no ATR here → % based
     if (dist) lines.push(`· flip ${px(flip).toFixed(dp)} · spot ${dist.pct >= 0 ? '+' : ''}${dist.pct}% → ${dist.side === 'positive' ? '+gamma (pin/dampen)' : dist.side === 'negative' ? '−gamma (breakout)' : 'at flip'}${dist.near ? ' · NEAR flip (unstable)' : ''}`);
+    // Full-book cross-check: the flip/regime line above is ONE expiry's own gamma. Blending
+    // every expiry into one number is the wrong read for a trade closing in a day or two — a
+    // wide, weak far-dated plateau can drag a blended crossing away from where the strong
+    // near-term spike actually sits (the ripple: near-expiry gamma is a tall spike, far-expiry
+    // a shallow plateau). So the single-expiry flip stays the one to trade off. But "NEAR flip
+    // (unstable)" above means the regime call is fragile, and this is the one thing that says
+    // WHY: does the wider book (every expiry, each weighted by its own DTE + IV — fullBookGex)
+    // agree, or is the near-term read a local wobble sitting on a different medium-term picture?
+    // Same agree/disagree check the dashboard's Full-book GEX panel already runs, now on the
+    // indicator too — previously computed but never exported.
+    const fb = inst.fullBook;
+    if (fb && Number.isFinite(fb.gex)) {
+      const single = inst.exposures?.gex;
+      const fbPin = fb.gex > 0, singlePin = Number.isFinite(single) ? single > 0 : null;
+      const agree = singlePin == null ? null : (fbPin === singlePin);
+      const flipTxt = Number.isFinite(fb.flip) ? px(fb.flip).toFixed(dp) : '—';
+      lines.push(`· full-book (${fb.nExpiries} expiries) flip ${flipTxt} · regime ${fb.regime}`
+        + (agree == null ? '' : agree ? ' — AGREES with the traded expiry'
+                                       : ' — ⚠ DISAGREES with the traded expiry (other expiries pull the other way, treat the regime as low-confidence)'));
+    }
     // GEX regime BANDS (spot terms unless futures): the LOCAL PIN/BREAKOUT map so the indicator
     // can shade WHERE the book pins vs breaks — the net-GEX sign the regime word uses is a
     // whole-book average that hides short-gamma pockets. Emits the base regime (below the lowest
