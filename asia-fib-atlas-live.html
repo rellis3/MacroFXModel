@@ -8,22 +8,30 @@
 <style>
   :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --green:#10b981; --red:#f87171; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
-  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; display:flex; flex-direction:column; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; flex:0 0 auto; }
   h1 { margin:0; font-size:16px; font-weight:600; }
   .sub { color:var(--muted); font-size:12px; }
   select, button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:13px; cursor:pointer; }
   #status { font-size:11px; color:var(--muted); margin-left:auto; font-family:'DM Mono',monospace; }
-  .wrap { display:flex; gap:16px; padding:16px 20px; flex-wrap:wrap; align-items:flex-start; }
-  #chart { flex:2 1 640px; min-width:320px; height:560px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
-  .side { flex:1 1 380px; min-width:340px; max-height:560px; overflow-y:auto; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+  /* Stretch to fill whatever viewport height is left below the header instead
+     of a fixed 560px box — on a tall monitor the old fixed height left a wall
+     of empty space below the ladder card (the actual bug behind "why is this
+     page using only a small scrolling section"). */
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex:1 1 auto; min-height:0; }
+  #chart { flex:2 1 640px; min-width:320px; height:100%; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { flex:1 1 380px; min-width:340px; height:100%; overflow-y:auto; display:flex; flex-direction:column; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; flex:0 0 auto; }
+  .card.grow { flex:1 1 auto; min-height:0; overflow-y:auto; }
   .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
   table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
   th, td { text-align:right; padding:4px 6px; border-bottom:1px solid var(--line); }
   th:first-child, td:first-child { text-align:left; }
   tr.touched { opacity:.55; }
-  tr:hover { background:#161b26; cursor:default; }
+  tr:hover { background:#161b26; cursor:pointer; }
+  tr.selected { background:#1e2a44; }
+  tr.selected td:first-child { color:#facc15; font-weight:600; }
   .lean-continuation { color:var(--green); font-weight:600; }
   .lean-reversion { color:var(--red); font-weight:600; }
   .lean-neutral { color:var(--muted); }
@@ -59,10 +67,18 @@
 <div class="wrap">
   <div id="chart"></div>
   <div class="side">
-    <div class="card">
+    <div class="card grow">
       <h2>Ladder — nearest rungs to current price</h2>
+      <div class="muted" style="margin-bottom:8px;">
+        Click a row to highlight it on the chart. <b>What "out"/"back" mean:</b>
+        once price actually reaches a rung, does it usually keep extending
+        AWAY from the Asia range (<b>out</b> = continuation) or snap BACK
+        toward it (<b>back</b> = reversion)? "Base%" is that rung's all-time
+        rate; "OOS%" is the same stat measured only on data held out of the
+        original fit — trust OOS over Base when they disagree.
+      </div>
       <table>
-        <thead><tr><th>Rung</th><th>Price</th><th>Pips</th><th>Base out%</th><th>OOS out%</th><th>Lean</th><th>Signal</th></tr></thead>
+        <thead><tr><th>Rung</th><th>Price</th><th>Pips</th><th>Continue% (all)</th><th>Continue% (OOS)</th><th>Lean</th><th>Signal</th></tr></thead>
         <tbody id="ladderBody"><tr><td colspan="7" class="muted">loading…</td></tr></tbody>
       </table>
       <div class="legend">
@@ -71,11 +87,12 @@
         <span><i class="dot" style="background:#f87171"></i>reversion (back), IS+OOS agree</span>
         <span><i class="dot" style="background:#fca5a5"></i>reversion, weaker</span>
         <span><i class="dot" style="background:#64748b"></i>neutral / no held signal</span>
+        <span><i class="dot" style="background:#f8fafc"></i>current live price (chart)</span>
       </div>
     </div>
     <div class="card">
       <h2 id="detailTitle">Selected rung</h2>
-      <div id="detail" class="muted">click a row in the ladder for the full breakdown</div>
+      <div id="detail" class="muted">click a row in the ladder for the full breakdown, and — if price actually reaches this rung — what history says happens next</div>
     </div>
     <div class="card muted">
       Confidence = this rung's own OOS-held base rate, adjusted by whichever
@@ -88,25 +105,49 @@
       panel when present but aren't blended into the ladder color — this is
       a reference read, not a fitted/backtested joint signal. See
       <code>MD files/LEGO_MODULES.md</code> §1aq.
+      <br><br>
+      <b>This page is the Asia-range ladder only.</b> The Monday-range ladder
+      uses the same underlying idea (fib-extension rungs off a range, scored
+      by held OOS dimensions) but currently only exists as a historical
+      backtest, not this kind of live "what's near price right now" view —
+      see the Asia/Monday toggle on
+      <a href="asia-fib-atlas-vote-backtest.html" style="color:var(--accent)">the vote-backtest page</a>
+      for Monday's numbers. A live Monday ladder page would be a separate
+      build (same routes pattern, just no live route exists yet for it), not
+      something already here to switch on.
     </div>
   </div>
 </div>
 
 <script type="module">
 import { createLevelChart } from './js/levelChart.js';
+import { priceDigits } from './js/instrumentRegistry.js';
 
-const view = createLevelChart(document.getElementById('chart'), { height: 560 });
 const statusEl = document.getElementById('status');
 const pairSel = document.getElementById('pair');
 const ladderBody = document.getElementById('ladderBody');
 const detailEl = document.getElementById('detail');
 const detailTitle = document.getElementById('detailTitle');
 
+// Recreated per pair (not just per page load) so the price axis always shows
+// the RIGHT number of decimals for whatever pair is selected — JPY crosses
+// (2-3 digits) vs. everything else (4-5) need different precision, and
+// Lightweight-Charts doesn't support changing it on a live series.
+let view = null;
+let digits = 5;
+function buildChart(pair) {
+  if (view) view.destroy();
+  digits = priceDigits(pair);
+  view = createLevelChart(document.getElementById('chart'), { height: 560, priceDigits: digits });
+}
+
 let pollTimer = null;
 let lastLadder = [];
+let selectedIdx = null;
 
 function fmtPct(v) { return v == null ? '—' : `${v.toFixed(1)}%`; }
 function fmtPips(v) { return v == null ? '—' : v.toFixed(1); }
+function fmtPrice(v) { return Number.isFinite(v) ? v.toFixed(digits) : '—'; }
 
 function kindFor(r) {
   if (r.lean === 'neutral' || r.base == null) return 'fibNeutral';
@@ -117,8 +158,14 @@ function kindFor(r) {
 
 function renderDetail(r) {
   if (!r) { detailEl.innerHTML = '<span class="muted">click a row in the ladder for the full breakdown</span>'; return; }
-  detailTitle.textContent = `${r.side}|${r.level} @ ${r.price}`;
+  detailTitle.textContent = `${r.side}|${r.level} @ ${fmtPrice(r.price)}`;
   const rows = [];
+  const whatHappens = r.lean === 'continuation'
+    ? `If price reaches ${fmtPrice(r.price)}, history leans <b class="lean-continuation">continuation</b> — price has tended to keep extending past this rung rather than snap back.`
+    : r.lean === 'reversion'
+      ? `If price reaches ${fmtPrice(r.price)}, history leans <b class="lean-reversion">reversion</b> — price has tended to reverse back toward the Asia range rather than extend further.`
+      : `If price reaches ${fmtPrice(r.price)}, history shows no clear lean either way for this rung — treat it as a level to watch, not a signal.`;
+  rows.push(`<div class="detail">${whatHappens}</div>`);
   rows.push(`<div class="detail"><b>Base rate</b> (this rung, all history): out ${fmtPct(r.base?.out)} / back ${fmtPct(r.base?.back)} / neither ${fmtPct(r.base?.neither)} — <b>OOS</b> out ${fmtPct(r.base?.outOOS)} / back ${fmtPct(r.base?.backOOS)}</div>`);
   rows.push(`<div class="detail"><b>Live signals now:</b> prevOutcomeSameDay=${r.prevOutcomeSameDay ?? 'none yet'} · sessionHandoff=${r.sessionHandoff}${r.touchedToday ? ' · touched today' : ' · not touched today'}</div>`);
   if (r.supports?.length) {
@@ -136,15 +183,41 @@ function renderDetail(r) {
   detailEl.innerHTML = rows.join('');
 }
 
+let lastCurrentPrice = null;
+
+// Redraws the chart's price lines from the current ladder, overriding the
+// selected row (if any) to the bold 'selected' style — this + the matching
+// '.selected' row class is the chart<->table link: click a row, see exactly
+// which line on the chart it is.
+function renderLevels(near, currentPrice) {
+  const levels = near.map((r, i) => ({
+    price: r.price,
+    kind: i === selectedIdx ? 'selected' : kindFor(r),
+    label: `${r.side}|${r.level}${r.touchedToday ? ' ✓' : ''}`,
+  }));
+  if (Number.isFinite(currentPrice)) levels.push({ price: currentPrice, kind: 'livePrice', label: `price ${fmtPrice(currentPrice)}` });
+  view.setLevels(levels, { showTitle: false });
+}
+
+function selectRow(near, i) {
+  selectedIdx = i;
+  renderDetail(near[i]);
+  renderLevels(near, lastCurrentPrice);
+  for (const tr of ladderBody.querySelectorAll('tr[data-i]')) {
+    tr.classList.toggle('selected', +tr.dataset.i === i);
+  }
+}
+
 function renderLadder(ladder, currentPrice) {
   lastLadder = ladder;
+  lastCurrentPrice = currentPrice;
   const near = ladder.slice(0, 24);
   ladderBody.innerHTML = near.map((r, i) => {
     const leanClass = r.lean === 'continuation' ? 'lean-continuation' : r.lean === 'reversion' ? 'lean-reversion' : 'lean-neutral';
     const signal = (r.supports?.length ?? 0) > 0 ? `<span class="pill strong">${r.supports.length} held</span>` : '<span class="pill weak">base only</span>';
-    return `<tr data-i="${i}" class="${r.touchedToday ? 'touched' : ''}">
+    return `<tr data-i="${i}" class="${r.touchedToday ? 'touched' : ''}${i === selectedIdx ? ' selected' : ''}">
       <td>${r.side}|${r.level}</td>
-      <td>${r.price}</td>
+      <td>${fmtPrice(r.price)}</td>
       <td>${fmtPips(r.distancePips)}</td>
       <td>${fmtPct(r.base?.out)}</td>
       <td>${fmtPct(r.base?.outOOS)}</td>
@@ -153,17 +226,16 @@ function renderLadder(ladder, currentPrice) {
     </tr>`;
   }).join('');
   for (const tr of ladderBody.querySelectorAll('tr[data-i]')) {
-    tr.addEventListener('click', () => renderDetail(near[+tr.dataset.i]));
+    tr.addEventListener('click', () => selectRow(near, +tr.dataset.i));
   }
-  const levels = near.map(r => ({ price: r.price, kind: kindFor(r), label: `${r.level}${r.touchedToday ? ' ✓' : ''}` }));
-  if (Number.isFinite(currentPrice)) levels.push({ price: currentPrice, kind: 'asiaBoxEdge', label: 'price' });
-  view.setLevels(levels, { showTitle: false });
+  renderLevels(near, currentPrice);
 }
 
 async function loadCandles(pair) {
   try {
     const res = await fetch(`/api/pattern-lab/live-candles/${pair}?tf=1m&count=500`);
     const j = await res.json();
+    if (pair !== pairSel.value) return;   // a slow response for a pair we've since switched away from
     if (j.ok) view.setCandles(j.candles).fit();
   } catch (e) { console.warn('candles fetch failed', e); }
 }
@@ -172,10 +244,11 @@ async function pollLadder(pair) {
   try {
     const res = await fetch(`/api/asia-fib-atlas/fastlive/${pair}`);
     const j = await res.json();
+    if (pair !== pairSel.value) return;   // guard against an out-of-order late response overwriting a newer pair's display
     if (!j.ok) { statusEl.textContent = `error: ${j.error}`; return; }
     if (j.warming) { statusEl.textContent = 'warming up (first load can take ~30-90s)…'; return; }
     const live = j.live;
-    statusEl.textContent = `${pair} · ${live.date ?? '—'} · price ${live.currentPrice ?? '—'} · ${live.sessionHandoff ?? '—'} · book ${j.bookGeneratedAt ? new Date(j.bookGeneratedAt).toLocaleString() : 'not yet built — POST /api/asia-fib-atlas/run'}`;
+    statusEl.textContent = `${pair} · ${live.date ?? '—'} · price ${fmtPrice(live.currentPrice)} · ${live.sessionHandoff ?? '—'} · book ${j.bookGeneratedAt ? new Date(j.bookGeneratedAt).toLocaleString() : 'not yet built — POST /api/asia-fib-atlas/run'}`;
     renderLadder(live.ladder ?? [], live.currentPrice);
   } catch (e) {
     statusEl.textContent = `poll failed: ${e.message}`;
@@ -185,6 +258,9 @@ async function pollLadder(pair) {
 function start() {
   const pair = pairSel.value;
   if (pollTimer) clearInterval(pollTimer);
+  selectedIdx = null;
+  renderDetail(null);
+  buildChart(pair);
   loadCandles(pair);
   pollLadder(pair);
   pollTimer = setInterval(() => { pollLadder(pair); }, 15000);

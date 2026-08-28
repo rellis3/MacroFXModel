@@ -79,6 +79,15 @@ export const KIND_STYLE = {
   fibBackWeak:   { color: '#fca5a5', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
   fibNeutral:    { color: '#64748b', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
   asiaBoxEdge:   { color: '#facc15', lineStyle: LINE_STYLE.Solid,  lineWidth: 2 },
+  // The live/current price marker (asia-fib-atlas-live.html and any other
+  // ladder-style page) — deliberately distinct from asiaBoxEdge's yellow so
+  // "where is price now" is never visually confusable with an actual session
+  // range boundary. White + widest line = always the most prominent line on
+  // the chart, by design (found confusing when it shared asiaBoxEdge's color).
+  livePrice:   { color: '#f8fafc', lineStyle: LINE_STYLE.Dashed, lineWidth: 2 },
+  // A ladder row the user clicked — re-rendered with this style on top of its
+  // real kind so the chart↔table link is visible (asia-fib-atlas-live.html).
+  selected:    { color: '#facc15', lineStyle: LINE_STYLE.Solid,  lineWidth: 4 },
   _default:    { color: '#9ca3af', lineStyle: LINE_STYLE.Dotted, lineWidth: 1 },
 };
 
@@ -144,9 +153,19 @@ export function createLevelChart(container, opts = {}) {
     ...DARK,
     ...(opts.chartOptions ?? {}),
   });
+  // Lightweight-Charts defaults the price axis to 2-decimal precision, which
+  // silently truncates every FX quote (1.16424 renders as "1.16") unless a
+  // caller opts in to the right precision for its instrument. Pass
+  // `opts.priceDigits` (from instrumentRegistry.js's `priceDigits(pair)`) on
+  // any page quoting real prices — undefined keeps the old 2-decimal default
+  // so existing callers that never hit this are untouched.
+  const priceFormat = Number.isFinite(opts.priceDigits)
+    ? { type: 'price', precision: opts.priceDigits, minMove: 1 / 10 ** opts.priceDigits }
+    : undefined;
   const series = chart.addCandlestickSeries({
     upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
     wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    ...(priceFormat ? { priceFormat } : {}),
     ...(opts.candleColors ?? {}),
   });
 
