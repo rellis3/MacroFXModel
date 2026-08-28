@@ -290,4 +290,12 @@ group so the working nav only shows what is in use.
 - `system-yield-curve.html` title says "VIX Regime Rotation" — filename/content mismatch.
 - `cog-standalone/cog-replay.html` duplicates root `cog-replay.html` and will drift.
 - The stray third-party guide that sat in `.claude/COG_OIdashboard/` has been moved to `archive/`.
-- `volatility-classifier-standalone.html` needs local `VolRangeForecaster/data/m1/` files; it never records a verdict — candidate for deletion or a proper run.
+- `volatility-classifier-standalone.html` is **dead in a browser**, not merely awkward to run: its inline
+  module imports `loadM1ForPair` from `js/volBacktestM1Engine.js`, which statically imports `fs`,
+  `hyparquet` and `@aws-sdk/client-s3`. A browser cannot resolve a bare specifier, so the WHOLE entry
+  module is discarded and the page renders inert — verified headless 2026-08-27. Its own error text
+  ("Check VolRangeForecaster/data/m1/ directory") shows it was written against Node, and it has a
+  single WIP commit, so it has most likely never run. Fixing it means moving the classifier compute
+  server-side behind the house async-job route pattern (the loader MUST run on the server), leaving
+  the page a thin client — a real build, not a patch. Still a candidate for deletion; it records no
+  verdict. Pinned meanwhile by `js/browserModuleGraph.contract.test.mjs`'s `KNOWN_BROKEN` list.
