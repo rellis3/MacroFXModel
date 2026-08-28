@@ -165,3 +165,79 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
     coverage: { from: mondayRanges[minLookback]?.date, to: mondayRanges.at(-1)?.date, weeks: mondayRanges.length - minLookback },
   };
 }
+
+/**
+ * mondayFibAtlasLiveToday(packed, opts) -> { touches, mondayDate, coverage }
+ *
+ * This WEEK's touches-so-far — mirrors `asiaFibAtlasLiveToday`'s exact
+ * pattern (re-walk, filter down to the latest reference cycle) but keyed by
+ * `mondayDate` (the governing Monday) instead of calendar `date`, since a
+ * single reference week spans up to 7 different calendar dates.
+ */
+export function mondayFibAtlasLiveToday(packed, opts = {}) {
+  const { touches } = mondayFibAtlasWalk(packed, { ...opts, rearmFracs: [opts.rearmFrac ?? 0.3] });
+  const mondayRanges = buildMondayRanges(packed, 'london');
+  const lastMondayDate = mondayRanges.at(-1)?.date ?? null;
+  const thisWeek = lastMondayDate ? touches.filter(t => t.mondayDate === lastMondayDate) : [];
+  return { touches: thisWeek, mondayDate: lastMondayDate };
+}
+
+/**
+ * Live ladder (2026-08-28) — Asia Fib Atlas's own `asiaFibAtlasLiveLadder`,
+ * mirrored for the weekly Monday range: the full fib-extension grid for the
+ * CURRENT reference week's Monday range, each rung annotated with distance
+ * from live price and this engine's own two live signals (`prevOutcomeSameDay`
+ * — reused field name, means "already resolved earlier THIS WEEK" here — and
+ * the current `sessionHandoff` bucket). Deliberately keeps `touchedToday` as
+ * the field name too (not `touchedThisWeek`) so `asia-fib-atlas-live.html`'s
+ * existing row-dimming/CSS logic works unchanged on either ladder — same
+ * reused-field-name trick this whole engine is built around (see the module
+ * header). `matchLiveContext(book, liveTouch, {keyField:'level', dimLabels})`
+ * does the actual scoring against a precomputed Monday book, unchanged — it
+ * already reads whatever dims are present, and this book only ever carries
+ * the two Monday touches populate.
+ */
+export function mondayFibAtlasLiveLadder(packed, opts = {}) {
+  const { instrument, rearmFrac = 0.3 } = opts;
+  if (!packed?.n) return { date: null, currentPrice: null, sessionHandoff: null, boundary: null, ladder: [] };
+
+  const mondayRanges = buildMondayRanges(packed, 'london');
+  const mon = mondayRanges.at(-1);
+  if (!mon) return { date: null, currentPrice: null, sessionHandoff: null, boundary: null, ladder: [] };
+
+  const lastBarTime = packed.times[packed.n - 1];
+  const currentPrice = packed.closes[packed.n - 1];
+  const hourUtc = new Date(lastBarTime * 1000).getUTCHours();
+  const currentSessionHandoff = sessionHandoffPhase(hourUtc);
+  const pip = pipSize(instrument ?? '');
+
+  const { touches: weekTouches, mondayDate } = mondayFibAtlasLiveToday(packed, { ...opts, rearmFrac });
+  const lastOutcomeByKey = new Map();
+  for (const t of weekTouches) {
+    if (t.outcome === 'neither') continue;   // unresolved — carries no signal yet
+    lastOutcomeByKey.set(`${t.side}|${t.level}`, t.outcome);
+  }
+
+  const ladder = [];
+  for (const side of SIDES) {
+    const rungLevels = side === 'above' ? RUNGS_ABOVE : RUNGS_BELOW;
+    for (const level of rungLevels) {
+      const price = mon.low + mon.range * level;   // same formula the walk itself uses — never a second derivation
+      const prevOutcomeSameDay = lastOutcomeByKey.get(`${side}|${level}`) ?? null;
+      const dist = Math.abs(currentPrice - price);
+      ladder.push({
+        instrument, side, level, price: +price.toFixed(6), pip,
+        distance: +dist.toFixed(6), distancePips: pip > 0 ? +(dist / pip).toFixed(1) : null,
+        touchedToday: prevOutcomeSameDay != null,
+        prevOutcomeSameDay, sessionHandoff: currentSessionHandoff,
+      });
+    }
+  }
+  ladder.sort((a, b) => a.distance - b.distance);
+
+  return {
+    date: mondayDate, currentPrice: +currentPrice.toFixed(6), sessionHandoff: currentSessionHandoff,
+    boundary: { mondayHigh: mon.high, mondayLow: mon.low, mondayRange: mon.range },
+    ladder,
+  };
+}

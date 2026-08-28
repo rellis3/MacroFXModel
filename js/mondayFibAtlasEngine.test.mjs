@@ -11,7 +11,7 @@
  * asiaFibAtlasEngine.test.mjs (deterministic, no Math.random()).
  */
 import assert from 'node:assert/strict';
-import { mondayFibAtlasWalk } from './mondayFibAtlasEngine.js';
+import { mondayFibAtlasWalk, mondayFibAtlasLiveToday, mondayFibAtlasLiveLadder } from './mondayFibAtlasEngine.js';
 import { buildMondayRanges } from './sessionRanges.js';
 import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionHandoffPhase } from './asiaFibAtlasEngine.js';
 
@@ -137,6 +137,74 @@ t('an instrument with too little history (fewer weeks than minLookback) degrades
   const { touches, coverage } = mondayFibAtlasWalk(tiny, { instrument: 'EURUSD', assetClass: 'fx' });
   assert.equal(touches.length, 0);
   assert.equal(coverage, null);
+});
+
+// ── mondayFibAtlasLiveToday / mondayFibAtlasLiveLadder (2026-08-28) —
+// the live-ladder pair added for the asia-fib-atlas-live.html Asia/Monday
+// toggle, mirroring asiaFibAtlasEngine.js's own asiaFibAtlasLiveToday/
+// asiaFibAtlasLiveLadder tests. ──
+
+t('mondayFibAtlasLiveToday returns only touches from the LATEST reference week (by mondayDate, not calendar date)', () => {
+  const { touches, mondayDate } = mondayFibAtlasLiveToday(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.ok(mondayDate, 'expected a governing mondayDate');
+  assert.ok(touches.length > 0, 'expected at least some touches in the latest week');
+  for (const t2 of touches) assert.equal(t2.mondayDate, mondayDate);
+});
+
+t('mondayFibAtlasLiveLadder returns every RUNGS_ABOVE/RUNGS_BELOW rung exactly once, sorted nearest-to-price first', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.equal(live.ladder.length, RUNGS_ABOVE.length + RUNGS_BELOW.length);
+  for (let i = 1; i < live.ladder.length; i++) assert.ok(live.ladder[i].distance >= live.ladder[i - 1].distance);
+  const seen = new Set(live.ladder.map(r => `${r.side}|${r.level}`));
+  assert.equal(seen.size, live.ladder.length, 'no duplicate rungs');
+});
+
+t('mondayFibAtlasLiveLadder: rung price uses the SAME formula as the walk itself (mon.low + mon.range*level)', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const mondayRanges = buildMondayRanges(P, 'london');
+  const mon = mondayRanges.at(-1);
+  const r = live.ladder.find(x => x.side === 'above' && x.level === 2);
+  const expected = mon.low + mon.range * 2;
+  assert.ok(Math.abs(r.price - expected) < 1e-6, `price ${r.price} != mon.low+range*2 (${expected})`);
+});
+
+t('mondayFibAtlasLiveLadder: sessionHandoff on every rung matches sessionHandoffPhase(latest bar hour) — one live signal, not per-rung drift', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const hourUtc = new Date(P.times[P.n - 1] * 1000).getUTCHours();
+  const expected = sessionHandoffPhase(hourUtc);
+  for (const r of live.ladder) assert.equal(r.sessionHandoff, expected);
+});
+
+t('mondayFibAtlasLiveLadder: a rung already resolved earlier THIS reference week carries prevOutcomeSameDay/touchedToday forward; an unresolved (neither) or a DIFFERENT week does not', () => {
+  const live = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const { touches: weekTouches, mondayDate } = mondayFibAtlasLiveToday(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const lastResolvedByKey = new Map();
+  for (const t2 of weekTouches) if (t2.outcome !== 'neither') lastResolvedByKey.set(`${t2.side}|${t2.level}`, t2.outcome);
+  let checkedSome = false;
+  for (const r of live.ladder) {
+    const expected = lastResolvedByKey.get(`${r.side}|${r.level}`) ?? null;
+    assert.equal(r.prevOutcomeSameDay, expected);
+    assert.equal(r.touchedToday, expected != null);
+    if (expected != null) checkedSome = true;
+  }
+  assert.ok(checkedSome, 'expected at least one rung already resolved this week to actually exercise the carry-forward path');
+  assert.ok(mondayDate, 'sanity: a governing week was found at all');
+});
+
+t('mondayFibAtlasLiveLadder is a pure function of its input — same packed series in, byte-identical ladder out', () => {
+  const cut = P.n - 500;
+  const shrunk = { n: cut, times: P.times.slice(0, cut), opens: P.opens.slice(0, cut),
+    highs: P.highs.slice(0, cut), lows: P.lows.slice(0, cut), closes: P.closes.slice(0, cut), volumes: P.volumes.slice(0, cut) };
+  const a = mondayFibAtlasLiveLadder(shrunk, { instrument: 'EURUSD', assetClass: 'fx' });
+  const b = mondayFibAtlasLiveLadder(shrunk, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.deepEqual(a, b);
+});
+
+t('mondayFibAtlasLiveLadder on too-thin history degrades to an empty ladder, not a throw', () => {
+  const tiny = packedM1(60 * 24 * 3);
+  const live = mondayFibAtlasLiveLadder(tiny, { instrument: 'EURUSD', assetClass: 'fx' });
+  assert.equal(live.date, null);
+  assert.equal(live.ladder.length, 0);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);
