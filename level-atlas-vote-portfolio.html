@@ -160,7 +160,13 @@
 
 <div class="card">
   <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
-  <div class="kpi-grid" id="kpiRaw"></div>
+  <div class="muted" style="margin-bottom:10px">Sharpe, Sortino, profit factor, win rate, vol, skew/kurtosis and VaR/CVaR are computed straight off the daily-return DISTRIBUTION — they're the SAME number either way, reinvesting or not. Only CAGR, max drawdown, and Calmar genuinely differ by that assumption, so those three are split out below instead of picking one silently.</div>
+  <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
+  <div class="kpi-grid" id="kpiShared"></div>
+  <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
+  <div class="kpi-grid" id="kpiCompounded"></div>
+  <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <div class="kpi-grid" id="kpiNonCompounded"></div>
 </div>
 
 <div class="card">
@@ -361,9 +367,12 @@ function render(j) {
     const rows = [
       ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
       ['Sortino', fmt2(u.sortino), fmt2(s.sortino)],
-      ['CAGR', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['CAGR (compounded)', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(u.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
       ['Max DD (compounded)', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
       ['Max DD (fixed risk)', fmt1(u.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(u.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(u.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
       ['Annualised Vol', fmt1(u.annVol) + '%', fmt1(s.annVol) + '%'],
       ['Trades taken', j.heatCap.totalCount, j.heatCap.totalCount - j.heatCap.skippedCount],
     ];
@@ -382,10 +391,12 @@ function render(j) {
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
       ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
-      ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
       ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
       ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
-      ['Calmar', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
       ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
     ];
     document.getElementById('throttleCompare').innerHTML = `
@@ -403,10 +414,12 @@ function render(j) {
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
       ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
-      ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
       ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
       ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
-      ['Calmar', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
       ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
     ];
     const info = j.fadeStopInfo ?? {};
@@ -420,13 +433,9 @@ function render(j) {
     fadeStopCard.style.display = 'none';
   }
 
-  document.getElementById('kpiRaw').innerHTML = [
+  document.getElementById('kpiShared').innerHTML = [
     kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
     kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
-    kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'compounded daily'),
-    kpiCard('Max DD (compounded)', fmt1(s.maxDD) + '%', 'red', 'if you reinvest — risk grows with equity'),
-    kpiCard('Max DD (fixed risk)', fmt1(s.maxDDNonCompounded) + '%', 'red', "if you never reinvest — risk stays at today's %"),
-    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD, compounded|'),
     kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
     kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),
     kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
@@ -436,6 +445,18 @@ function render(j) {
     kpiCard('CVaR 95%', fmt2(s.cvar95) + '%', 'red', 'mean daily loss BEYOND that tail'),
     kpiCard('Lag-1 Autocorr', fmt2(s.acf1), '', s.acf1 < 0 ? 'mean-reverting days' : s.acf1 > 0 ? 'clustering days' : 'no persistence'),
     kpiCard('Trading Days', s.days, '', ''),
+  ].join('');
+
+  document.getElementById('kpiCompounded').innerHTML = [
+    kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'reinvested daily'),
+    kpiCard('Max Drawdown', fmt1(s.maxDD) + '%', 'red', 'compounded equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD|'),
+  ].join('');
+
+  document.getElementById('kpiNonCompounded').innerHTML = [
+    kpiCard('Annualised Return', fmt1(s.cagrNonCompounded) + '%', signClass(s.cagrNonCompounded), 'sum of daily %, ÷ years — never reinvested'),
+    kpiCard('Max Drawdown', fmt1(s.maxDDNonCompounded) + '%', 'red', 'additive equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmarNonCompounded), '', 'annualised return / |max DD|'),
   ].join('');
 
   const vt = s.volTarget;

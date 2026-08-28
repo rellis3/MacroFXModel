@@ -589,7 +589,24 @@ export function mountLevelAtlasRoutes(app, express) {
       // Both numbers are real; they answer different questions ("what if I
       // reinvest" vs "what if I always risk the same fixed amount") and
       // neither should stand in silently for the other.
-      const withNonCompoundedDD = (statsObj, dailyReturns) => ({ ...statsObj, maxDDNonCompounded: +maxDrawdownFromPnls(dailyReturns).toFixed(2) });
+      // Most of `portfolioStats`' own numbers (Sharpe, Sortino, annVol, skew,
+      // profit factor, win rate, VaR/CVaR) are already computed straight off
+      // the raw daily-return DISTRIBUTION — they don't change under a
+      // compounding assumption at all. Only CAGR, max DD, and Calmar
+      // genuinely differ (compounded = reinvest into a growing balance vs
+      // fixed-risk = risk a constant % of the ORIGINAL notional every trade,
+      // matching what `riskAdjustTrades` actually does). `cagrNonCompounded`
+      // is the arithmetic-mean daily return annualized (sum, not product) —
+      // the SAME "sum of daily %" convention the equity chart's own
+      // non-compounded line already plots — paired with the ALREADY-EXISTING
+      // `maxDrawdownFromPnls` for a genuine like-for-like Calmar on that basis.
+      const withNonCompoundedDD = (statsObj, dailyReturns) => {
+        const maxDDNonCompounded = +maxDrawdownFromPnls(dailyReturns).toFixed(2);
+        const years = dailyReturns.length / 252; // same periodsPerYear convention portfolioStats defaults to
+        const cagrNonCompounded = years > 0 ? +(dailyReturns.reduce((s, r) => s + r, 0) / years).toFixed(2) : 0;
+        const calmarNonCompounded = maxDDNonCompounded < 0 ? +(cagrNonCompounded / Math.abs(maxDDNonCompounded)).toFixed(2) : 0;
+        return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
+      };
 
       const weights = buildWeights(perPairTradesFinal);
       const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
