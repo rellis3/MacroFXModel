@@ -360,6 +360,7 @@ function render(j) {
     const u = j.statsUncapped;
     const rows = [
       ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(u.sortino), fmt2(s.sortino)],
       ['CAGR', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Max DD (compounded)', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
       ['Max DD (fixed risk)', fmt1(u.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
@@ -380,6 +381,7 @@ function render(j) {
     const n = j.statsNoThrottle;
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
       ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
       ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
@@ -400,6 +402,7 @@ function render(j) {
     const n = j.statsNoFadeTighten;
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
       ['CAGR', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
       ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
@@ -419,12 +422,18 @@ function render(j) {
 
   document.getElementById('kpiRaw').innerHTML = [
     kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
+    kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
     kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'compounded daily'),
     kpiCard('Max DD (compounded)', fmt1(s.maxDD) + '%', 'red', 'if you reinvest — risk grows with equity'),
     kpiCard('Max DD (fixed risk)', fmt1(s.maxDDNonCompounded) + '%', 'red', "if you never reinvest — risk stays at today's %"),
     kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD, compounded|'),
+    kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
+    kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),
     kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
     kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
+    kpiCard('Excess Kurtosis', fmt2(s.excessKurt), '', s.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal'),
+    kpiCard('VaR 95%', fmt2(s.var95) + '%', 'red', 'daily loss at the 95th-pctile tail'),
+    kpiCard('CVaR 95%', fmt2(s.cvar95) + '%', 'red', 'mean daily loss BEYOND that tail'),
     kpiCard('Lag-1 Autocorr', fmt2(s.acf1), '', s.acf1 < 0 ? 'mean-reverting days' : s.acf1 > 0 ? 'clustering days' : 'no persistence'),
     kpiCard('Trading Days', s.days, '', ''),
   ].join('');
