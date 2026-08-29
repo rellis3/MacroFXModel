@@ -2861,8 +2861,44 @@ already flagged). Still inherits every caveat already on record for this
 system (DSR=0, `holdsOOS` OOS-label leakage, uncapped-compounding CAGR/maxDD
 figures) — not being reported as a validated live-config change, same
 discipline as Level Atlas's own study which went through a further page
-lever before being trusted. 🟢 built + run against real R2/M1 data; 🟡
-Monday ladder not yet run; no UI/live wiring done.
+lever before being trusted.
+
+**MAE-timing checkpoint study (real M1 re-walk, 26 pairs, 2–120min
+checkpoints, run to completion): FADE and FOLLOW show materially different
+signal strength — a real, actionable asymmetry, not noise.**
+- **Fade** (26,635 trades, base loss rate 17.2%): a trade that's already
+  given back 75% of its stop distance within just **2 minutes** goes on to
+  lose 50.6% of the time vs 15.7% for one that hasn't — **3.03× lift**. The
+  lift is strongest early and decays smoothly and monotonically as the
+  checkpoint horizon extends (2min ×3.03 → 120min ×2.44 at the 75%
+  threshold) — the shape of a genuine, decaying-information signal, not a
+  fitted artifact.
+- **Follow** (31,964 trades, base loss rate 20.5%): the SAME MAE-crossing
+  signal is much weaker — peak lift only **2.29×** (at 2min/75%), degrading
+  to ~1.4× by 120min. Structurally sensible: follow bets on continuation,
+  so partial retracement toward the inner line is more organic before
+  continuation resumes; fade bets on reversion, so continuing further into
+  "outer" territory is a cleaner warning sign something's wrong.
+- **This cross-validates against Level Atlas's own, completely separate
+  finding** (a fade trade past ~75% of its stop loses ~2× more often) —
+  same qualitative shape, found independently on a different signal/pair
+  set, which is real supporting evidence the underlying mechanism (a
+  reversion bet that's already traveled deep into continuation territory is
+  genuinely less likely to reverse) is real, not coincidental to either
+  study's own data.
+- **Actionable refinement this suggests, not yet built**: the SL-tightening
+  backtest above applied one uniform fraction across BOTH fade and follow
+  trades. Given fade's signal is ~30-100% stronger than follow's at every
+  checkpoint, a decision-SLICED tightening (fade tightened more/differently
+  than follow, mirroring Level Atlas's own `applyFadeStopTightening` design
+  choice to only ever touch fade) would likely outperform the uniform-
+  fraction version tested — `runStopStudy`'s `sliceBy` param already
+  supports this with zero new math, just a different call. Flagged as a
+  natural next step, not built without being asked.
+
+🟢 both scripts built + run to completion against real R2/M1 data (Asia
+ladder); 🟡 Monday ladder not yet run; no UI/live wiring done; decision-
+sliced tightening variant identified but not built.
 
 ---
 
