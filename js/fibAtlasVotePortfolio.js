@@ -66,14 +66,23 @@ export async function buildFibAtlasVotePortfolio({
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
   loadPairVoteTrades,
 }) {
+  // Each iteration is one "constituent" of the combined portfolio — normally
+  // one pair (groupKey defaults to the R2 blob's own `instrument`), but a
+  // caller combining Asia+Monday on the SAME pair can have `loadPairVoteTrades`
+  // return a distinct `groupKey` (e.g. "EURUSD (Asia)"/"EURUSD (Monday)") and
+  // a `ladder` tag per stored blob — everything below (concurrency cap, heat
+  // cap, weighting, stats) already treats "constituent" generically, so two
+  // ladders on one pair combine exactly like two different pairs do, with
+  // zero new math. `groupKey` is optional and unused by the existing
+  // single-ladder routes, so this is fully backward compatible.
   const perPairTradesRaw = {}, perPair = {}, missing = [];
   for (const pair of pairs) {
     const stored = await loadPairVoteTrades(pair);
     if (!stored) { missing.push(pair.toUpperCase()); continue; }
     const filtered = stored.trades.filter(t => t.margin >= minMargin);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
-    const sym = stored.instrument;
-    perPairTradesRaw[sym] = capped?.kept ?? [];
+    const sym = stored.groupKey ?? stored.instrument;
+    perPairTradesRaw[sym] = (capped?.kept ?? []).map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
     perPair[sym] = {
       totalDecided: filtered.length,
       kept: capped?.kept?.length ?? 0,

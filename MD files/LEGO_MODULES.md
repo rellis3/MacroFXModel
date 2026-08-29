@@ -2627,6 +2627,70 @@ portfolio.mjs`, before it could offer a validated "select recommended"
 exclusion set — nothing equivalent has been run here yet), forward-test
 live, and re-sweep margin≥1/confluence-gating at the full 26-pair scale.
 
+**2026-08-29 — honest Deflated Sharpe Ratio finding (owner flagged the
+Sharpe/CAGR numbers as implausibly high — correctly).** Ran
+`deflatedSharpe` (`js/backtestStats.js`, already built, never previously
+applied to this vote-margin system) against the real 26-pair × 2-ladder ×
+{margin≥1, margin≥2} grid (104 trials with usable daily-return series,
+pulled from real R2 data, concurrency-capped the same way the live pages
+do). Result: the headline EURUSD Asia margin≥2 config's own per-observation
+Sharpe (0.373) does **not** clear the expected best-of-104-by-chance bar
+(0.931) — `dsr: 0`. Even the single best trial across all 104 (Monday
+NZDUSD margin≥2, per-obs Sharpe 1.146) only reaches `dsr: 0.795`, short of
+the ~0.95 usually wanted before trusting a selected-after-search Sharpe.
+This is a **lower bound** on the true correction, not the full picture —
+the vote rule itself (`prevOutcomeSameDay` + `sessionHandoff`) was
+originally selected from a ~30-context-dimension × 26-pair search earlier
+in the project with no trial-Sharpe log kept, so the real search space is
+larger and unlogged; 104 is only the grid this check could reconstruct.
+Ruled out simpler explanations first and confirmed they're NOT the cause:
+`priceBarrierTrade`'s fade/follow PnL math (no sign error), `PAIR_COST_PCT`
+(real non-zero cost, e.g. EURUSD ≈0.87 pips round-trip, correctly
+subtracted once), and same-day trade clustering (the single biggest burst
+day, EURUSD 2025-04-02 at 27 trades, was 15W/12L — genuinely mixed, not a
+one-directional sweep masquerading as many independent trades). Separately,
+Asia Fib Atlas trades far more densely than Level Atlas's own EURUSD
+(median duration 13min/~3.25 trades-per-day vs Level Atlas's 116min/~1.9
+trades-per-day) — a real structural contributor to the raw Sharpe gap
+between the two engines, on top of the multiple-testing risk above. Net:
+**the high Sharpe/CAGR numbers on this system's pages are not yet shown to
+survive selection bias** — treat them as an unvalidated, likely-optimistic
+upper bound until a proper walk-forward OOS split or a fuller trial log
+says otherwise, not as a bug to fix or a result to feature.
+
+**Same date — Asia+Monday "combine" portfolio option**
+(`js/fibAtlasVotePortfolio.js`, `js/asiaFibAtlasRoutes.js`,
+`asia-fib-atlas-vote-portfolio.html`), built to let the owner see the
+concurrency impact directly rather than guess at it. `buildFibAtlasVote
+Portfolio`'s per-constituent grouping key was generalized from always
+`stored.instrument` to an optional `stored.groupKey` override (defaults
+to the old behavior — fully backward compatible, no change for either
+single-ladder route) — so a caller can hand it "EURUSD (Asia)" and "EURUSD
+(Monday)" as two separate constituents of ONE portfolio, sharing the same
+concurrency cap / heat cap / weighting machinery every other constituent
+already goes through, with zero new combination math (Lego Principle
+compliant: this is a parameterization of an existing brick, not a new
+one). New route `GET /api/asia-fib-atlas/vote-portfolio-combined?pairs=
+...&ladders=asia,monday` builds the constituent list as `pair|ladder`
+keys and tags each loaded blob with `groupKey`/`ladder` before handing it
+to the shared builder. New "Both (combined)" toggle added alongside the
+existing Asia/Monday toggle on `asia-fib-atlas-vote-portfolio.html`.
+Verified live (real server, real R2 data, Playwright + curl): 5 default
+pairs → 10 per-pair rows (both ladders per pair), CSV export correctly
+labels all 10 constituent strings. **The combined Sharpe (9.42) is HIGHER
+than either ladder alone** — this reinforces the DSR finding above rather
+than allaying it (stacking more of a same-family, densely-trading,
+search-selected rule does not look like diversification benefit). A
+direct heat-cap A/B (2-pair test, `maxHeatPct=1` forcing a shared 1%
+budget across both pairs AND both ladders) barely moved the number (6.15
+uncapped → 6.11 capped, 316/4,179 trades skipped) — cross-ladder/cross-pair
+concurrency stacking is **not** the dominant driver of the inflated
+Sharpe; the multiple-testing/search-selection explanation above is.
+🟢 built, `node --check` clean, live-verified; 🟡 not yet a validated
+result — same OOS/DSR caveat as the rest of this section applies with
+extra force here since combining only compounds the underlying
+selection-bias risk.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
