@@ -37,6 +37,15 @@
 // layer itself (see LEGO_MODULES.md's 2026-08-29 holdsOOS entry -- a
 // separate question from whether tightening the stop helps, conditional on
 // whatever trades exist).
+//
+// DECISION filter (2026-08-29, added after the MAE-timing checkpoint study
+// found fade's give-back-predicts-loss signal is 30-100% stronger than
+// follow's at every checkpoint -- the earlier uniform fade+follow run
+// likely undersold what fade alone supports and over-touched follow's much
+// weaker signal): DECISION=fade|follow|all selects which decisions this
+// run's trade pool includes, mirroring Level Atlas's own
+// applyFadeStopTightening design choice to only ever tighten fade. Default
+// 'all' keeps the original uniform behaviour for comparison.
 import { getJSON } from '../js/r2Store.js';
 import {
   applyConcurrencyCap, riskAdjustTrades, buildPortfolioDailySeries,
@@ -50,6 +59,7 @@ import { RANGE_FIB_INSTRUMENTS } from '../js/rangeFibEngine.js';
 const LADDER = (process.env.LADDER || 'asia').toLowerCase();
 const LADDER_PREFIX = { asia: 'asia-fib-atlas', monday: 'monday-fib-atlas' };
 const MIN_MARGIN = Number(process.env.MIN_MARGIN || 2), MAX_CONCURRENT = 1, RISK_PCT = 1, COST = 0;
+const DECISION = (process.env.DECISION || 'all').toLowerCase(); // 'all' | 'fade' | 'follow'
 const FRACTIONS = [1.0, 0.90, 0.75, 0.60, 0.50, 0.40, 0.25];
 const HEAT_CAPS = [1, 2, 3]; // % of NAV, simultaneous
 const PAIRS = RANGE_FIB_INSTRUMENTS;
@@ -59,13 +69,13 @@ async function loadTrades(pair) {
   if (!prefix) throw new Error(`LADDER must be asia|monday, got "${LADDER}"`);
   const stored = await getJSON(`${prefix}/${pair}-votetrades.json`);
   if (!stored) return [];
-  const filtered = stored.trades.filter(t => t.margin >= MIN_MARGIN);
+  const filtered = stored.trades.filter(t => t.margin >= MIN_MARGIN && (DECISION === 'all' || t.decision === DECISION));
   const capped = applyConcurrencyCap(filtered, { maxConcurrent: MAX_CONCURRENT });
   return (capped?.kept ?? []).map(t => ({ ...t, pair: stored.instrument }));
 }
 
 async function main() {
-  console.log(`Fib Atlas SL-tightening backtest — ladder=${LADDER}  minMargin=${MIN_MARGIN}\n`);
+  console.log(`Fib Atlas SL-tightening backtest — ladder=${LADDER}  minMargin=${MIN_MARGIN}  decision=${DECISION}\n`);
   const byPair = {};
   for (const p of PAIRS) byPair[p] = await loadTrades(p);
   const allTrades = Object.values(byPair).flat().sort((a, b) => a.time - b.time);
