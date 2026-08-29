@@ -20,6 +20,7 @@
       <strong>How to read the status badge on each lesson.</strong> <span class="tl-status concept" style="margin-right:6px">CONCEPT</span> means the idea is explained here — treat it as background knowledge, not a claim about this project's own build status. Nothing on this page is a trading signal, and nothing here has cleared a real out-of-sample bar just by being explained well — a method is not a strategy until it's tested.
     </div>
     <a class="tl-gloss-hero-link" href="glossary.html">🔎 Lost in the Greek letters? Open the Notation Glossary</a>
+    <div id="tl-progress-summary" class="tl-progress-summary" hidden></div>
   </div>
 
   <div class="tl-diff-filter" role="group" aria-label="Filter lessons by difficulty">
@@ -867,6 +868,63 @@
   });
 
   applyFilter('all');
+})();
+</script>
+<script>
+(function(){
+  // Paints per-card progress rings from the same localStorage key
+  // theory-lab/assets/progress.js writes on every lesson page. Per-browser
+  // only — no account, no server, nothing sent anywhere.
+  var STORAGE_KEY = 'theoryLabProgress';
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) {}
+
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.tl-card'));
+  var totalCards = cards.length;
+  var started = 0, completed = 0;
+
+  cards.forEach(function(card){
+    var href = card.getAttribute('href') || '';
+    var m = href.match(/lessons\/([a-z0-9-]+)\.html/i);
+    if (!m) return;
+    var rec = store[m[1]];
+    if (!rec || !rec.percent) return;
+
+    var toprow = card.querySelector('.tl-card-toprow');
+    if (!toprow) return;
+
+    started++;
+    var pct = Math.max(0, Math.min(100, Math.round(rec.percent)));
+    if (pct >= 100) completed++;
+    var color = pct >= 100 ? 'var(--green)' : 'var(--blue)';
+
+    var wrap = document.createElement('span');
+    wrap.className = 'tl-card-progress';
+    wrap.innerHTML =
+      '<span class="tl-card-ring" style="background:conic-gradient(' + color + ' ' + pct + '%, var(--s3) 0)">' +
+        '<span class="tl-card-ring-num">' + pct + '</span>' +
+      '</span>' +
+      (pct >= 100 ? '<span class="tl-card-complete-pill">✓ Done</span>' : '');
+    toprow.appendChild(wrap);
+  });
+
+  if (started > 0) {
+    var summary = document.getElementById('tl-progress-summary');
+    if (summary) {
+      summary.hidden = false;
+      summary.innerHTML =
+        '<span>📖 <strong>' + completed + ' of ' + totalCards + '</strong> lessons complete on this device · ' + started + ' started</span>' +
+        '<button type="button" id="tl-progress-reset">Reset my progress</button>';
+      var resetBtn = document.getElementById('tl-progress-reset');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function(){
+          if (!confirm('Clear your reading progress for every Theory Lab lesson on this device? This cannot be undone.')) return;
+          try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+          location.reload();
+        });
+      }
+    }
+  }
 })();
 </script>
 </body>
