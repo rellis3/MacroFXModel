@@ -56,6 +56,12 @@ function loadLocalVoteTrades(pair) {
   catch { return null; }
 }
 
+// Same pattern, for the separately-built p90 trade list (scripts/build_p90_votetrades.mjs).
+function loadLocalP90VoteTrades(pair) {
+  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-p90votetrades.json`), 'utf8')); }
+  catch { return null; }
+}
+
 // Exported for js/levelAtlasRoutes.test.mjs — pure, so the "compare
 // generatedAt, don't assume one source always wins" logic is checkable
 // without mocking R2 or the filesystem.
@@ -598,9 +604,26 @@ export function mountLevelAtlasRoutes(app, express) {
       const slFraction = (req.query.slFraction && Number(req.query.slFraction) > 0 && Number(req.query.slFraction) < 1)
         ? Number(req.query.slFraction) : null;
 
+      // p90 rung inclusion (2026-08-29) -- the outermost ladder rung, EXCLUDED
+      // everywhere else (excludeRungs: ['p90'] default) because a fade there
+      // has no real stop in the 3-rung ladder. Validated separately
+      // (analysis/p90_empirical_outer_backtest.mjs): voteDecision can't fire
+      // at all for p90 (sample too thin for any dimension to clear the book's
+      // own OOS-holding bar), so this is UNCONDITIONAL fade -- every p90
+      // touch -- priced against each pair's own empirical 90th-percentile
+      // continuation distance (scripts/build_p90_votetrades.mjs), not a vote
+      // margin. Real per-pair spread cost killed the tighter percentiles
+      // (p75's OOS Sharpe went negative) -- only p90 held up on portfolio
+      // Sharpe, per-trade Sharpe, AND a cross-pair heat-cap sensitivity
+      // check, so that's the ONLY percentile persisted/offered here, not a
+      // tunable grid. Off by default -- same baseline-preserving discipline
+      // as every other toggle on this page.
+      const includeP90 = req.query.includeP90 === 'true';
+
       const perPairTradesRaw = {}, perPair = {}, missing = [];
       const fadeStopInfo = {};
       const slInfo = {};
+      const p90Info = {};
       const storedByPair = {};
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
@@ -624,6 +647,18 @@ export function mountLevelAtlasRoutes(app, express) {
             return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * slFraction, t.stopPips) } : t;
           });
           slInfo[stored.instrument] = { fraction: slFraction };
+        }
+        // Merged in AFTER fadeStopTighten/slFraction -- both are validated
+        // for the p50/p75 vote-trade population specifically and were never
+        // tested against p90's unconditional trades, so p90 passes through
+        // untouched by either lever rather than silently inheriting a
+        // tightening rule fit on a different population.
+        if (includeP90) {
+          const p90Stored = pickFresher(await getJSON(`${PREFIX}/${pair}-p90votetrades.json`), loadLocalP90VoteTrades(pair));
+          if (p90Stored?.trades?.length) {
+            filtered = filtered.concat(p90Stored.trades);
+            p90Info[stored.instrument] = { stopPips: p90Stored.stopPipsByPair, percentile: p90Stored.percentile, tradesAdded: p90Stored.trades.length };
+          }
         }
         const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
         const sym = stored.instrument;
@@ -753,6 +788,26 @@ export function mountLevelAtlasRoutes(app, express) {
         return losers.length ? +(losers.reduce((a, t) => a + t.pnlPct, 0) / losers.length).toFixed(3) : null;
       };
 
+      // A bare Sharpe point estimate on a few years of data invites exactly
+      // the "is this better than the best system ever" reaction it deserves
+      // -- it's a point in the middle of a real, often-wide uncertainty band,
+      // not a precise measurement. sharpeSE (summarizeTrades, already the
+      // project's one Sharpe-honesty brick, metricsCore.js) gives the actual
+      // standard error on the SAME combined trade list the daily-return
+      // Sharpe above is built from, so every stats object gets a real 95% CI
+      // attached, not just a second, unrelated-looking number.
+      const withSharpeCI = (statsObj, perPairDict) => {
+        const all = Object.values(perPairDict).flat();
+        if (all.length < 5) return statsObj;
+        const st = summarizeTrades(all.map(t => t.pnlPct), all.map(t => t.date));
+        return {
+          ...statsObj,
+          perTradeSharpe: st.sharpe, perTradeSharpeSE: st.sharpeSE,
+          sharpeCI95: st.sharpeSE != null ? [+(st.sharpe - 1.96 * st.sharpeSE).toFixed(2), +(st.sharpe + 1.96 * st.sharpeSE).toFixed(2)] : null,
+          minTrackYears: st.minTrackYears,
+        };
+      };
+
       const weights = buildWeights(perPairTradesFinal);
       const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
       const statsBeforeThrottle = portfolioStats(combined.dailyReturns, { mc: false, targetVol });
@@ -777,10 +832,12 @@ export function mountLevelAtlasRoutes(app, express) {
           stats = withNonCompoundedDD(portfolioStats(dailyReturnsFinal, { mc: false, targetVol }), dailyReturnsFinal);
           statsNoThrottle = withNonCompoundedDD(statsBeforeThrottle, combined.dailyReturns);
           statsNoThrottle.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
+          statsNoThrottle = withSharpeCI(statsNoThrottle, perPairTradesFinal);
           throttle = { triggerDD, restoreDD, throttleMult, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
         }
       }
       stats.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
+      stats = withSharpeCI(stats, perPairTradesFinal);
 
       // When a heat cap is active, also report what the SAME series would
       // have looked like without it (throttle setting held CONSTANT, so this
@@ -797,6 +854,7 @@ export function mountLevelAtlasRoutes(app, express) {
         }
         statsUncapped = withNonCompoundedDD(portfolioStats(uncappedReturns, { mc: false, targetVol }), uncappedReturns);
         statsUncapped.avgLossRiskAdjPct = avgLossPct(perPairTradesForStats);
+        statsUncapped = withSharpeCI(statsUncapped, perPairTradesForStats);
       }
 
       // When fade-stop tightening is on, also report the SAME pipeline
@@ -833,6 +891,7 @@ export function mountLevelAtlasRoutes(app, express) {
         }
         statsNoFadeTighten = withNonCompoundedDD(portfolioStats(untightenedReturns, { mc: false, targetVol }), untightenedReturns);
         statsNoFadeTighten.avgLossRiskAdjPct = avgLossPct(finalUntightened);
+        statsNoFadeTighten = withSharpeCI(statsNoFadeTighten, finalUntightened);
       }
 
       // When the fixed-fraction SL tightening is on, also report the SAME
@@ -873,6 +932,55 @@ export function mountLevelAtlasRoutes(app, express) {
         }
         statsNoSlFraction = withNonCompoundedDD(portfolioStats(noSlReturns, { mc: false, targetVol }), noSlReturns);
         statsNoSlFraction.avgLossRiskAdjPct = avgLossPct(finalNoSl);
+        statsNoSlFraction = withSharpeCI(statsNoSlFraction, finalNoSl);
+      }
+
+      // When p90 is included, also report the SAME pipeline (fadeStopTighten/
+      // slFraction/heat cap/throttle settings held CONSTANT) built WITHOUT
+      // the p90 trades merged in -- isolates p90's own marginal effect, same
+      // discipline as statsNoFadeTighten/statsNoSlFraction above.
+      let statsNoP90 = null;
+      if (includeP90 && Object.keys(p90Info).length) {
+        const perPairNoP90 = {};
+        for (const sym of Object.keys(storedByPair)) {
+          const stored = storedByPair[sym];
+          let filtered = stored.trades.filter(t => t.margin >= minMargin);
+          if (fadeStopTighten) {
+            const tightened = applyFadeStopTightening(filtered, { cost: stored.cost });
+            filtered = tightened.trades;
+          }
+          if (slFraction) {
+            filtered = filtered.map(t => {
+              if (t.decision !== 'fade') return t;
+              const priced = priceAtTighterStop(t, t.stopPips * slFraction, stored.cost);
+              return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * slFraction, t.stopPips) } : t;
+            });
+          }
+          const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+          const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct);
+          const withPair = (sizing === 'fixed-risk' ? adjusted : (capped?.kept ?? []).map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple })))
+            .map(t => ({ ...t, pair: sym }));
+          perPairNoP90[sym] = withPair;
+        }
+        let finalNoP90 = perPairNoP90;
+        if (maxHeatPct) {
+          const heatResult = applyPortfolioHeatCap(perPairNoP90, { maxHeatPct });
+          if (heatResult) {
+            const byPair = {};
+            for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+            finalNoP90 = byPair;
+          }
+        }
+        const weightsNoP90 = buildWeights(finalNoP90);
+        const combinedNoP90 = buildPortfolioDailySeries(finalNoP90, weightsNoP90 ? { weights: weightsNoP90 } : {});
+        let noP90Returns = combinedNoP90.dailyReturns;
+        if (throttleOn) {
+          const trN = applyDrawdownThrottle(noP90Returns, combinedNoP90.dates, { triggerDD, restoreDD, throttleMult });
+          if (trN) noP90Returns = trN.dailyReturns;
+        }
+        statsNoP90 = withNonCompoundedDD(portfolioStats(noP90Returns, { mc: false, targetVol }), noP90Returns);
+        statsNoP90.avgLossRiskAdjPct = avgLossPct(finalNoP90);
+        statsNoP90 = withSharpeCI(statsNoP90, finalNoP90);
       }
 
       // When the currency loss gate is active, also report the SAME pipeline
@@ -899,6 +1007,7 @@ export function mountLevelAtlasRoutes(app, express) {
         }
         statsNoCcyGate = withNonCompoundedDD(portfolioStats(ungatedReturns, { mc: false, targetVol }), ungatedReturns);
         statsNoCcyGate.avgLossRiskAdjPct = avgLossPct(ungatedPerPair);
+        statsNoCcyGate = withSharpeCI(statsNoCcyGate, ungatedPerPair);
       }
 
       const naiveAvgSharpe = (() => {
@@ -921,8 +1030,9 @@ export function mountLevelAtlasRoutes(app, express) {
         sizing, riskPct, heatCap, targetVol, throttle,
         fadeStopTighten, fadeStopInfo,
         slFraction, slInfo,
+        includeP90, p90Info,
         ccyLossGate, ccyGateInfo,
-        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
+        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoP90, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,
       });

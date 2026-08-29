@@ -66,8 +66,8 @@
     <label id="riskPctWrap">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
   </div>
   <div class="controls">
-    <label id="heatCapWrap">Portfolio heat cap <input type="checkbox" id="heatCapChk">
-      <input type="number" id="maxHeatPctInput" value="2" step="0.5" min="0.5" style="width:55px" disabled></label>
+    <label id="heatCapWrap">Portfolio heat cap <input type="checkbox" id="heatCapChk" checked>
+      <input type="number" id="maxHeatPctInput" value="1" step="0.5" min="0.5" style="width:55px"></label>
     <label>Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
   </div>
   <div class="controls">
@@ -78,6 +78,7 @@
     <label>Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
     <label>Fixed SL fraction <input type="checkbox" id="slFractionChk">
       <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
+    <label>Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
     <label>Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
     <label>Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
   </div>
@@ -94,6 +95,11 @@
   <strong>NAV split (legacy)</strong> instead pre-allocates a fixed capital fraction per pair (equal or inverse-vol) and lets
   each pair's own raw price-return scale within that slice — kept for comparison, but requires deciding weights up front.
   See <code>MD files/LEGO_MODULES.md</code> for the full methodology and per-pair validation.
+  <strong>Portfolio heat cap now defaults ON at 1%</strong> (2026-08-29) — without it, every pair independently risks its
+  target % SIMULTANEOUSLY with no shared account-wide ceiling, which manufactures diversification benefit no real account
+  actually has (uncapped Sharpe on this book ran 3.6-4.0; a realistic 1% simultaneous-exposure cap brings it to ~2.0-2.7,
+  the range worth trusting). Uncheck it to see the old, inflated uncapped number for comparison — the "Without cap" column
+  below always shows both side by side.
 </div>
 
 <div class="card" style="border-color:#7c2d2d;background:linear-gradient(135deg,#2a1414,#0e121b)">
@@ -166,6 +172,12 @@
   <h2>Fixed SL fraction impact — same trades, with vs without a uniform tighter stop</h2>
   <div class="muted" style="margin-bottom:8px">Re-prices FADE decisions only, tightening each trade's OWN existing bracket stop to a fixed fraction of its current distance (composes with fade-stop tightening above if both are on — applied second, on top). OOS-validated first (a real adverse-excursion-timing signal — a fade trade already 75% of the way to its stop goes on to lose ~2x more often than one that isn't, at every time horizon checked) before being wired in here — see <code>analysis/mae_timing_study.mjs</code> and <code>analysis/sl_tightening_backtest.mjs</code>.</div>
   <div id="slFractionCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="p90Card" style="display:none">
+  <h2>p90 rung impact — same portfolio, with vs without the outermost ladder rung</h2>
+  <div class="muted" style="margin-bottom:8px">p90 is excluded everywhere else (excludeRungs: ['p90']) because a fade there has no real stop in the 3-rung ladder — and its sample is too thin for the normal vote-margin mechanic to ever fire (checked directly: 0 votes across hundreds of OOS touches). This trades it UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance (the real distance price travels once it clears p90, fit on in-sample data only). Real per-pair spread cost killed the tighter percentiles tested (p75's OOS Sharpe went negative) — only the 90th held up on portfolio Sharpe, per-trade Sharpe, and a cross-pair heat-cap sensitivity check, so that's the only percentile offered here, not a tunable grid. See <code>analysis/p90_empirical_outer_backtest.mjs</code> and <code>scripts/build_p90_votetrades.mjs</code>.</div>
+  <div id="p90Compare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card callout" id="ccyGateCard" style="display:none">
@@ -309,6 +321,7 @@ const throttleMultInput = document.getElementById('throttleMultInput');
 const fadeStopChk = document.getElementById('fadeStopChk');
 const slFractionChk = document.getElementById('slFractionChk');
 const slFractionInput = document.getElementById('slFractionInput');
+const includeP90Chk = document.getElementById('includeP90Chk');
 const ccyGateChk = document.getElementById('ccyGateChk');
 const maxDailyLossPctInput = document.getElementById('maxDailyLossPctInput');
 const logScaleChk = document.getElementById('logScaleChk');
@@ -336,6 +349,7 @@ let lastResponse = null;
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
 function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
+function ciStr(o) { return o?.sharpeCI95 ? `[${fmt2(o.sharpeCI95[0])}, ${fmt2(o.sharpeCI95[1])}]` : '—'; }
 function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
 function kpiCard(label, value, cls, sub) {
   return `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
@@ -371,6 +385,7 @@ async function loadData() {
   }
   if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
   if (slFractionChk.checked) params.set('slFraction', slFractionInput.value);
+  if (includeP90Chk.checked) params.set('includeP90', 'true');
   if (ccyGateChk.checked) {
     params.set('ccyLossGate', 'true');
     params.set('maxDailyLossPct', maxDailyLossPctInput.value);
@@ -409,6 +424,7 @@ function render(j) {
     const u = j.statsUncapped;
     const rows = [
       ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(u), ciStr(s)],
       ['Sortino', fmt2(u.sortino), fmt2(s.sortino)],
       ['CAGR (compounded)', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Annualised Return (fixed risk)', fmt1(u.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
@@ -433,6 +449,7 @@ function render(j) {
     const n = j.statsNoThrottle;
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
       ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
       ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
@@ -456,6 +473,7 @@ function render(j) {
     const n = j.statsNoFadeTighten;
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
       ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
       ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
@@ -483,6 +501,7 @@ function render(j) {
     const n = j.statsNoSlFraction;
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
       ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
       ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
@@ -501,12 +520,41 @@ function render(j) {
     slFractionCard.style.display = 'none';
   }
 
+  const p90Card = document.getElementById('p90Card');
+  if (j.includeP90 && j.statsNoP90) {
+    p90Card.style.display = '';
+    const n = j.statsNoP90;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Profit Factor', fmt2(n.profitFactor), fmt2(s.profitFactor)],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    const info = j.p90Info ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${v.stopPips} pips (p${v.percentile} of runPips)</td><td class="num">${v.tradesAdded}</td></tr>`).join('');
+    document.getElementById('p90Compare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without p90</th><th class="num">With p90</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">p90 stop distance per pair (fit on in-sample data, frozen — not re-fit per request) and OOS trades added:</div>
+      <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Stop</th><th class="num">Trades added</th></tr></thead><tbody>${infoRows}</tbody></table>`;
+  } else {
+    p90Card.style.display = 'none';
+  }
+
   const ccyGateCard = document.getElementById('ccyGateCard');
   if (j.ccyGateInfo && j.statsNoCcyGate) {
     ccyGateCard.style.display = '';
     const n = j.statsNoCcyGate;
     const rows = [
       ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
       ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
       ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
       ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
@@ -527,7 +575,15 @@ function render(j) {
   }
 
   document.getElementById('kpiShared').innerHTML = [
-    kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
+    kpiCard('Sharpe', fmt2(s.sharpe),
+      // Colored by the LOWER bound of the 95% CI, not the point estimate — a
+      // point estimate of 2.7 on a couple years of data can still have a CI
+      // lower bound near 1 (a solid-but-unremarkable system) or near 0 (not
+      // distinguishable from no edge at all). A single bare Sharpe number
+      // invites exactly the "is this better than the best system ever"
+      // reaction it deserves; the CI is the honest version of this card.
+      (s.sharpeCI95?.[0] >= 1.5) ? 'green' : (s.sharpeCI95?.[0] >= 0) ? 'blue' : 'red',
+      s.sharpeCI95 ? `95% CI [${fmt2(s.sharpeCI95[0])}, ${fmt2(s.sharpeCI95[1])}] · PSR ${fmt2(s.psr)}` : `PSR ${fmt2(s.psr)}`),
     kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
     kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
     kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),
@@ -800,6 +856,7 @@ throttleMultInput.addEventListener('change', loadData);
 fadeStopChk.addEventListener('change', loadData);
 slFractionChk.addEventListener('change', loadData);
 slFractionInput.addEventListener('change', loadData);
+includeP90Chk.addEventListener('change', loadData);
 ccyGateChk.addEventListener('change', loadData);
 maxDailyLossPctInput.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
