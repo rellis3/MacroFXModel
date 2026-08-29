@@ -2941,6 +2941,49 @@ sliced tightening variant identified but not built.
   RELATIVE comparisons (tightened vs baseline, capped vs uncapped) are the
   honest part of this result.
 
+**Selection-rule fix + combined-lever stack (2026-08-29, re-run after fixing
+the rule flaw above).** `fib_atlas_sl_tightening_backtest.mjs`'s selection
+rule changed from "tightest fraction clearing a 90%-of-baseline floor" to
+"among fractions that improve maxDD over baseline, the one with the highest
+IS Sharpe" — now correctly picks **frac=0.9** (not 0.4). Also added
+`applyDrawdownThrottle` (already built in `levelAtlasVoteReview.js`, not
+previously used in this analysis — a different lever from the heat cap: it
+reacts to the strategy's OWN realized drawdown rather than capping
+simultaneous exposure) and a combined-stack test on OOS:
+
+| variant | closed maxDD | intraday MTM maxDD | Sharpe |
+|---|---|---|---|
+| baseline (untightened) | -99.45% | -443.88% | -1.87 |
+| frac=0.9 alone | -39.02% | -43.46% | 5.68 |
+| + 2% heat cap | -27.27% | — | 5.09 |
+| + drawdown throttle | -23.02% | — | **6.16** (best Sharpe in the stack) |
+| + both together | **-16.58%** | — | 5.56 |
+
+**Net: stacking all three levers takes closed maxDD from -99.45% to
+-16.58% — roughly a 6× reduction — while Sharpe goes from negative to
+strongly positive.** Two things make this more trustworthy than the
+baseline's own headline number, not just smaller: (1) at frac=0.9 the
+closed-trade and intraday-MTM drawdown figures nearly converge (-39.02% vs
+-43.46%, vs baseline's -99.45% vs -443.88%) — tightening the stop doesn't
+just improve the reported number, it makes the reported number closer to
+the REAL path, which is a genuine methodological improvement, not just a
+flattering statistic; (2) the OOS Sharpe confidence intervals for baseline
+[-4.678,-1.921] and frac=0.9 [6.835,9.734] (per-trade bootstrap basis)
+don't overlap at all.
+
+**Still true and unresolved**: this stack operates on the SAME fade trades
+already flagged with DSR=0 and `holdsOOS` OOS-label leakage — this result
+answers "given the trades this system currently generates, how much can
+drawdown be cut," not "does the underlying edge survive selection-bias
+correction." Those are separate questions; this section doesn't resolve
+the second one. Also unresolved: whether the OOS Sharpe jump at the very
+first tightening step is broad-based or driven by a handful of tail
+trades (flagged above, not checked). 🟢 rule fix + stack built, run to
+completion (Asia, fade); 🟡 not yet wired into any live page/route — this
+is still an analysis-script result, not a change to
+`js/asiaFibAtlasVoteReview.js` or any page's actual numbers; Monday ladder
+and follow-decision stack not yet run.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
