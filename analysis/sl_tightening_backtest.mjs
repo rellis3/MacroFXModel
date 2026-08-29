@@ -20,21 +20,33 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   applyConcurrencyCap, riskAdjustTrades, buildPortfolioDailySeries,
-  priceAtTighterStop, applyFadeStopTightening,
+  priceAtTighterStop, applyFadeStopTightening, applyPortfolioHeatCap,
 } from '../js/levelAtlasVoteReview.js';
 import { portfolioStats } from '../js/backtestStats.js';
+import { summarizeTrades } from '../js/metricsCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(__dirname, 'output', 'level-atlas-vote-trades');
-const MIN_MARGIN = 3, MAX_CONCURRENT = 1, RISK_PCT = 0.5, COST = 0; // matches volatility_bot_v2 DEFAULT_CFG risk_pct
+const MIN_MARGIN = 3, MAX_CONCURRENT = 1, RISK_PCT = 0.5; // matches volatility_bot_v2 DEFAULT_CFG risk_pct
+const MAX_HEAT_PCT = 1; // realistic account-wide simultaneous exposure cap, same as the p90 verification pass
 const FRACTIONS = [1.0, 0.90, 0.75, 0.60, 0.50, 0.40, 0.25]; // 1.0 = baseline, unchanged
 
 // The "Select recommended" 17-pair live set.
 const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'usdchf', 'euraud', 'eurchf',
   'audjpy', 'cadjpy', 'chfjpy', 'gold', 'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
 
+// Real per-pair cost, keyed here as we load each file -- the base votetrades
+// files already have a real cost baked into their OWN pnlPct (checked
+// directly: eurusd's is 0.008, not 0), but the re-pricing functions below
+// (priceAtTighterStop/applyFadeStopTightening) were being called with a
+// hardcoded COST=0 -- meaning every TIGHTENED variant got re-priced cost-free
+// while the untouched baseline kept its real cost. That's a real bug: it
+// biased every comparison in this file in favor of tightening. Fixed by
+// threading each pair's own stored `cost` through the re-pricing calls too.
+const costByPair = {};
 function loadFadeTrades(pair) {
   const raw = JSON.parse(fs.readFileSync(path.join(DIR, `${pair}-votetrades.json`), 'utf8'));
+  costByPair[pair] = raw.cost ?? 0;
   const filtered = raw.trades.filter(t => t.margin >= MIN_MARGIN && t.decision === 'fade');
   const capped = applyConcurrencyCap(filtered, { maxConcurrent: MAX_CONCURRENT });
   return capped.kept.map(t => ({ ...t, pair: raw.instrument }));
@@ -61,7 +73,7 @@ function applyFraction(perPair, fraction) {
   const out = {};
   for (const p of PAIRS) {
     out[p] = perPair[p].map(t => {
-      const priced = priceAtTighterStop(t, t.stopPips * fraction, COST);
+      const priced = priceAtTighterStop(t, t.stopPips * fraction, costByPair[p]);
       return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * fraction, t.stopPips) } : t;
     });
   }
@@ -73,22 +85,32 @@ function applyFraction(perPair, fraction) {
 function applyLiveTightening(perPair) {
   const out = {};
   for (const p of PAIRS) {
-    const { trades } = applyFadeStopTightening(perPair[p], { cost: COST, minN: 30 });
+    const { trades } = applyFadeStopTightening(perPair[p], { cost: costByPair[p], minN: 30 });
     out[p] = trades;
   }
   return out;
 }
 
-function statsFor(perPair) {
+// heatCap=true applies the SAME realistic account-wide exposure cap the p90
+// verification pass used -- uncapped, every pair independently risks its
+// full target % simultaneously with no shared ceiling, which manufactures
+// diversification benefit no real account has.
+function statsFor(perPair, { heatCap = false } = {}) {
   const riskAdj = {};
-  let allRisk = [];
-  for (const p of PAIRS) {
-    const r = riskAdjustTrades(perPair[p], RISK_PCT);
-    riskAdj[p] = r;
-    allRisk.push(...r);
+  for (const p of PAIRS) riskAdj[p] = riskAdjustTrades(perPair[p], RISK_PCT);
+
+  let final = riskAdj;
+  if (heatCap) {
+    const heatResult = applyPortfolioHeatCap(riskAdj, { maxHeatPct: MAX_HEAT_PCT });
+    if (heatResult) {
+      final = {};
+      for (const t of heatResult.kept) (final[t.pair] ??= []).push(t);
+    }
   }
-  const weights = Object.fromEntries(PAIRS.map(p => [p, 1]));
-  const combined = buildPortfolioDailySeries(riskAdj, { weights });
+  const allRisk = Object.values(final).flat();
+
+  const weights = Object.fromEntries(Object.keys(final).map(p => [p, 1]));
+  const combined = buildPortfolioDailySeries(final, { weights });
   const ps = portfolioStats(combined.dailyReturns, { mc: false });
 
   const losers = allRisk.filter(t => !t.win);
@@ -100,10 +122,14 @@ function statsFor(perPair) {
   const rawLosers = Object.values(perPair).flat().filter(t => !t.win);
   const avgLossRawPct = rawLosers.length ? rawLosers.reduce((a, t) => a + Math.abs(t.pnlPct), 0) / rawLosers.length : null;
 
+  const st = allRisk.length >= 5 ? summarizeTrades(allRisk.map(t => t.pnlPct), allRisk.map(t => t.date)) : null;
+  const sharpeCI95 = st?.sharpeSE != null ? [+(st.sharpe - 1.96 * st.sharpeSE).toFixed(2), +(st.sharpe + 1.96 * st.sharpeSE).toFixed(2)] : null;
+
   return {
     trades: allRisk.length,
     winRate: +(allRisk.filter(t => t.win).length / allRisk.length * 100).toFixed(1),
-    sharpe: ps.sharpe, maxDD: ps.maxDD, cagr: ps.cagr, annVol: ps.annVol, cvar95: ps.cvar95,
+    perTradeWinRate: st?.winRate ?? null,
+    sharpe: ps.sharpe, sharpeCI95, psr: ps.psr, maxDD: ps.maxDD, cagr: ps.cagr, annVol: ps.annVol, cvar95: ps.cvar95,
     avgLossRiskAdjPct: avgLossRiskAdjPct != null ? +avgLossRiskAdjPct.toFixed(3) : null,
     avgWinRiskAdjPct: avgWinRiskAdjPct != null ? +avgWinRiskAdjPct.toFixed(3) : null,
     avgLossRawPct: avgLossRawPct != null ? +avgLossRawPct.toFixed(4) : null,
@@ -115,23 +141,24 @@ function statsFor(perPair) {
   };
 }
 
+function ciStr(s) { return s.sharpeCI95 ? `[${s.sharpeCI95[0]}, ${s.sharpeCI95[1]}]` : '—'; }
 function printRow(label, s) {
   console.log([
     label.padEnd(16),
     String(s.trades).padStart(6),
     (s.winRate + '%').padStart(7),
     String(s.sharpe).padStart(7),
+    ciStr(s).padStart(14),
     (s.maxDD + '%').padStart(8),
-    (s.cagr + '%').padStart(8),
     String(s.profitFactor).padStart(6),
     (s.avgLossRiskAdjPct + '%').padStart(10),
-    (s.avgLossRawPct + '%').padStart(10),
+    (s.avgWinRiskAdjPct + '%').padStart(10),
   ].join('  '));
 }
 function header() {
   console.log([
     'variant'.padEnd(16), 'trades'.padStart(6), 'winRate'.padStart(7), 'sharpe'.padStart(7),
-    'maxDD'.padStart(8), 'CAGR'.padStart(8), 'PF'.padStart(6), 'avgLoss(riskAdj)'.padStart(10), 'avgLoss(raw%)'.padStart(10),
+    'sharpeCI95'.padStart(14), 'maxDD'.padStart(8), 'PF'.padStart(6), 'avgLoss(riskAdj)'.padStart(10), 'avgWin(riskAdj)'.padStart(10),
   ].join('  '));
 }
 
@@ -171,3 +198,14 @@ for (const f of FRACTIONS) {
   if (f === 1.0) continue;
   printRow(`frac=${f}`, statsFor(applyFraction(oosByPair, f)));
 }
+
+// ── Verification pass: the p90 rung work found the SAME uncapped-heat
+// convention this file also uses inflates portfolio Sharpe well beyond what
+// any real account (unlimited simultaneous margin across 17 pairs) could
+// achieve. Re-checking OOS baseline vs the chosen fraction under a realistic
+// 1% account-wide exposure cap -- the honest number, not the uncapped one.
+console.log(`\n──── Verification: realistic ${MAX_HEAT_PCT}% account-wide heat cap, OOS ────`);
+header();
+printRow('baseline (capped)', statsFor(oosByPair, { heatCap: true }));
+printRow('live-tighten (capped)', statsFor(applyLiveTightening(oosByPair), { heatCap: true }));
+if (chosen) printRow(`frac=${chosen.f} (capped)`, statsFor(applyFraction(oosByPair, chosen.f), { heatCap: true }));
