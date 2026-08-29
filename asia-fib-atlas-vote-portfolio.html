@@ -419,25 +419,37 @@ function render(j) {
   }
   document.getElementById('kpiLevered').innerHTML = leveredCards.join('');
 
-  if (eqChart) eqChart.destroy();
-  let eq = 1, sum = 0;
-  const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
-  const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
-  const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
-  const logMode = logScaleChk.checked;
-  eqChart = new Chart(document.getElementById('eqChart'), {
-    type: 'line',
-    data: { labels: j.equityCurve.map(p => p.date), datasets: [
-      { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
-      { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
-    ] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
-      scales: {
-        x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
-        y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
-        y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
-      } },
-  });
+  // new Chart(...) throws synchronously if the Chart.js CDN script didn't
+  // load (blocked network/ad-blocker/proxy) — this used to be called
+  // unguarded in the middle of render(j), so that throw aborted everything
+  // after it (the per-pair breakdown table, weight bar), even though those
+  // have no dependency on the chart. Caught here the same way
+  // asia-fib-atlas-vote-backtest.html's own chart calls are.
+  try {
+    if (eqChart) eqChart.destroy();
+    let eq = 1, sum = 0;
+    const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
+    const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
+    const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
+    const logMode = logScaleChk.checked;
+    eqChart = new Chart(document.getElementById('eqChart'), {
+      type: 'line',
+      data: { labels: j.equityCurve.map(p => p.date), datasets: [
+        { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
+          y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+          y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
+        } },
+    });
+  } catch (e) {
+    console.warn('Chart.js unavailable:', e.message);
+    const el = document.getElementById('eqChart');
+    if (el?.parentElement) { const div = document.createElement('div'); div.className = 'muted'; div.style.padding = '12px'; div.textContent = 'Chart library failed to load (blocked script) — equity curve unavailable, KPIs and per-pair table below are unaffected.'; el.replaceWith(div); }
+  }
 
   const fixedRisk = j.sizing === 'fixed-risk';
   document.getElementById('weightColHead').textContent = fixedRisk ? 'Share of trades' : 'Portfolio weight';
