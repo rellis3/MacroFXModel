@@ -50,6 +50,7 @@
   <div class="seg" id="ladderSeg">
     <button data-v="asia" class="active">Asia</button>
     <button data-v="monday">Monday</button>
+    <button data-v="combined" title="Both ladders combined — the SAME pair can have an Asia position and a Monday position open at once, each shown as its own row below">Both (combined)</button>
   </div>
   <div class="controls">
     <button id="selectAllBtn" type="button">Select all</button>
@@ -309,14 +310,21 @@ async function loadData() {
     params.set('restoreDD', restoreDDInput.value);
     params.set('throttleMult', throttleMultInput.value);
   }
+  // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
+  // a Monday constituent, so the same pair can have both open at once —
+  // js/asiaFibAtlasRoutes.js's /vote-portfolio-combined) instead of the
+  // single-ladder /vote-portfolio this page otherwise uses.
+  const combined = ladder === 'combined';
+  const url = combined ? `/api/asia-fib-atlas/vote-portfolio-combined?ladders=asia,monday&${params}` : `/api/${apiPrefix()}/vote-portfolio?${params}`;
   try {
-    const res = await fetch(`/api/${apiPrefix()}/vote-portfolio?${params}`);
+    const res = await fetch(url);
     const j = await res.json();
     if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
     if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
       + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
-    headerSub.textContent = `${ladder === 'monday' ? 'Monday' : 'Asia'} ladder · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    const ladderDesc = combined ? 'Asia+Monday combined (same pair can have both open at once)' : (ladder === 'monday' ? 'Monday' : 'Asia') + ' ladder';
+    headerSub.textContent = `${ladderDesc} · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
     lastResponse = j;
     render(j);
@@ -419,25 +427,37 @@ function render(j) {
   }
   document.getElementById('kpiLevered').innerHTML = leveredCards.join('');
 
-  if (eqChart) eqChart.destroy();
-  let eq = 1, sum = 0;
-  const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
-  const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
-  const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
-  const logMode = logScaleChk.checked;
-  eqChart = new Chart(document.getElementById('eqChart'), {
-    type: 'line',
-    data: { labels: j.equityCurve.map(p => p.date), datasets: [
-      { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
-      { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
-    ] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
-      scales: {
-        x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
-        y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
-        y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
-      } },
-  });
+  // new Chart(...) throws synchronously if the Chart.js CDN script didn't
+  // load (blocked network/ad-blocker/proxy) — this used to be called
+  // unguarded in the middle of render(j), so that throw aborted everything
+  // after it (the per-pair breakdown table, weight bar), even though those
+  // have no dependency on the chart. Caught here the same way
+  // asia-fib-atlas-vote-backtest.html's own chart calls are.
+  try {
+    if (eqChart) eqChart.destroy();
+    let eq = 1, sum = 0;
+    const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
+    const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
+    const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
+    const logMode = logScaleChk.checked;
+    eqChart = new Chart(document.getElementById('eqChart'), {
+      type: 'line',
+      data: { labels: j.equityCurve.map(p => p.date), datasets: [
+        { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
+          y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+          y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
+        } },
+    });
+  } catch (e) {
+    console.warn('Chart.js unavailable:', e.message);
+    const el = document.getElementById('eqChart');
+    if (el?.parentElement) { const div = document.createElement('div'); div.className = 'muted'; div.style.padding = '12px'; div.textContent = 'Chart library failed to load (blocked script) — equity curve unavailable, KPIs and per-pair table below are unaffected.'; el.replaceWith(div); }
+  }
 
   const fixedRisk = j.sizing === 'fixed-risk';
   document.getElementById('weightColHead').textContent = fixedRisk ? 'Share of trades' : 'Portfolio weight';
@@ -460,7 +480,7 @@ function csvDownload(filename, rows) {
   URL.revokeObjectURL(url);
 }
 function riskPctOf(t) { return t.stopPips * t.pip / t.entry * 100; }
-function csvPrefix() { return `${apiPrefix()}-vote-portfolio`; }
+function csvPrefix() { return ladder === 'combined' ? 'fib-atlas-combined-vote-portfolio' : `${apiPrefix()}-vote-portfolio`; }
 
 // Same 3-schema, `Pair` as a TRAILING 4th column convention as
 // level-atlas-vote-portfolio.html (see that page's own comment for why —
@@ -543,7 +563,8 @@ function renderPerformanceSummary() {
   if (!lastResponse) return;
   const r = buildPerformanceSummary(lastResponse);
   const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
-  document.getElementById('perfSummarySub1').textContent = `${ladder === 'monday' ? 'Monday' : 'Asia'} ladder — simple returns on $${acct.toLocaleString()} starting capital · no compounding`;
+  const ladderLabel = ladder === 'combined' ? 'Asia+Monday combined' : (ladder === 'monday' ? 'Monday' : 'Asia');
+  document.getElementById('perfSummarySub1').textContent = `${ladderLabel} — simple returns on $${acct.toLocaleString()} starting capital · no compounding`;
   document.getElementById('perfSummarySub2').textContent = `${fmtDateLong(r.dateFrom)} - ${fmtDateLong(r.dateTo)}`;
   document.getElementById('perfSummaryBody').innerHTML =
     perfSection('RETURNS', [
@@ -593,7 +614,7 @@ ladderSegEl.addEventListener('click', (e) => {
   if (!btn || btn.dataset.v === ladder) return;
   ladder = btn.dataset.v;
   for (const b of ladderSegEl.querySelectorAll('button')) b.classList.toggle('active', b === btn);
-  pageTitle.textContent = ladder === 'monday' ? 'Monday Fib Atlas Vote Portfolio' : 'Asia Fib Atlas Vote Portfolio';
+  pageTitle.textContent = ladder === 'combined' ? 'Asia+Monday Fib Atlas Vote Portfolio (combined)' : ladder === 'monday' ? 'Monday Fib Atlas Vote Portfolio' : 'Asia Fib Atlas Vote Portfolio';
   loadData();
 });
 

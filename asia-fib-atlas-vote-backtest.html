@@ -235,7 +235,21 @@ const tradeCountEl = document.getElementById('tradeCount');
 const chartMeta = document.getElementById('chartMeta');
 const ecHurdle = document.getElementById('ecHurdle');
 
-const view = createLevelChart(document.getElementById('chart'), { height: 420 });
+// createLevelChart throws synchronously if the LightweightCharts CDN script
+// didn't load (blocked network, ad-blocker, corporate proxy) — since this was
+// a top-level statement, that exception used to abort this ENTIRE module,
+// so the trade table/KPIs/CSV export (which have no dependency on the chart)
+// silently never rendered either. Caught here so a blocked chart script only
+// costs the chart itself, not the whole page — found live: a real report of
+// "the chart AND the trade list both never loaded" traced back to exactly
+// this failure mode.
+let view = null;
+try {
+  view = createLevelChart(document.getElementById('chart'), { height: 420 });
+} catch (e) {
+  console.warn('chart library unavailable:', e.message);
+  document.getElementById('chart').innerHTML = '<div class="muted" style="padding:20px">Chart library failed to load (blocked script) — trade table and stats below are unaffected.</div>';
+}
 
 let ladder = 'asia';
 let allTrades = [];
@@ -380,30 +394,54 @@ function renderUncertaintyKpis(s) {
 
 function destroyChart(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
 
+// `new Chart(...)` throws synchronously if the Chart.js CDN script didn't
+// load (blocked network/ad-blocker/proxy) — since renderEquityChart/
+// renderBarChart used to be called unguarded in the middle of
+// applyFiltersAndRender's sequential render calls, that throw used to abort
+// EVERYTHING after it in that sequence, including renderTradeTable — so a
+// blocked chart script silently killed the trade table too, even though it
+// has no dependency on Chart.js. Reproduced live and fixed here the same way
+// as the LightweightCharts guard above (which fixes the SEPARATE candlestick
+// chart's own crash) — every canvas-drawing call is now individually caught.
+function chartFallback(canvasEl, msg) {
+  if (!canvasEl?.parentElement) return;
+  const div = document.createElement('div');
+  div.className = 'muted'; div.style.padding = '12px'; div.textContent = msg;
+  canvasEl.replaceWith(div);
+}
+
 function renderEquityChart(s) {
   destroyChart('eq');
-  const labels = s.equityCurve.map(p => new Date(p.t * 1000).toISOString().slice(0, 10));
-  charts.eq = new Chart(document.getElementById('eqChart'), {
-    type: 'line',
-    data: { labels, datasets: [
-      { label: 'Net P&L %', data: s.equityCurve.map(p => p.v), borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .2, pointRadius: 0, borderWidth: 1.5 },
-      { label: 'Gross (pre-spread) %', data: s.grossCurve, borderColor: '#5a6380', borderDash: [4, 3], fill: false, tension: .2, pointRadius: 0, borderWidth: 1 },
-    ] },
-    options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#1e2436' } }, y: { ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } } }, plugins: { legend: { labels: { color: '#94a3b8' } } } },
-  });
+  const el = document.getElementById('eqChart');
+  if (!el) return;
+  try {
+    const labels = s.equityCurve.map(p => new Date(p.t * 1000).toISOString().slice(0, 10));
+    charts.eq = new Chart(el, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: 'Net P&L %', data: s.equityCurve.map(p => p.v), borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .2, pointRadius: 0, borderWidth: 1.5 },
+        { label: 'Gross (pre-spread) %', data: s.grossCurve, borderColor: '#5a6380', borderDash: [4, 3], fill: false, tension: .2, pointRadius: 0, borderWidth: 1 },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#1e2436' } }, y: { ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } } }, plugins: { legend: { labels: { color: '#94a3b8' } } } },
+    });
+  } catch (e) { console.warn('Chart.js unavailable:', e.message); chartFallback(el, 'Chart library failed to load (blocked script) — equity curve unavailable, stats above are unaffected.'); }
 }
 
 function renderBarChart(canvasId, key, labels, values, colorFn) {
   destroyChart(key);
-  charts[key] = new Chart(document.getElementById(canvasId), {
-    type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: values.map(v => colorFn ? colorFn(v) : '#34d399') }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#5a6380' }, grid: { display: false } },
-        y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } },
-      } },
-  });
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+  try {
+    charts[key] = new Chart(el, {
+      type: 'bar',
+      data: { labels, datasets: [{ data: values, backgroundColor: values.map(v => colorFn ? colorFn(v) : '#34d399') }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#5a6380' }, grid: { display: false } },
+          y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } },
+        } },
+    });
+  } catch (e) { console.warn('Chart.js unavailable:', e.message); chartFallback(el, 'Chart library failed to load (blocked script).'); }
 }
 
 function renderDowAndHour(trades) {
@@ -573,6 +611,7 @@ function priceLinesFor(t) {
 async function loadTradeChart(t) {
   selectedTrade = t;
   renderTradeTable(filteredTrades());
+  if (!view) { chartMeta.textContent = 'chart library unavailable — trade details below are still accurate'; return; }
   const pair = pairSel.value, bufferSecs = 4 * 3600;
   const fromDate = new Date((t.time - bufferSecs) * 1000).toISOString().slice(0, 10);
   const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);

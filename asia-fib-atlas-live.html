@@ -174,9 +174,18 @@ function rangeWord() { return ladder === 'monday' ? 'Monday' : 'Asia'; }
 let view = null;
 let digits = 5;
 function buildChart(pair) {
-  if (view) view.destroy();
+  if (view) { try { view.destroy(); } catch { /* ignore */ } view = null; }
   digits = priceDigits(pair);
-  view = createLevelChart(document.getElementById('chart'), { height: 560, priceDigits: digits });
+  // createLevelChart throws synchronously if the LightweightCharts CDN
+  // script didn't load (blocked network/ad-blocker/proxy) — caught here so
+  // that failure only costs the chart, not the rest of start() (the ladder
+  // poll, candle load, interval timers) which have no dependency on it.
+  try {
+    view = createLevelChart(document.getElementById('chart'), { height: 560, priceDigits: digits });
+  } catch (e) {
+    console.warn('chart library unavailable:', e.message);
+    document.getElementById('chart').innerHTML = '<div class="muted" style="padding:20px">Chart library failed to load (blocked script) — the ladder table and detail panel are unaffected.</div>';
+  }
 }
 
 let pollTimer = null;
@@ -234,7 +243,7 @@ function renderLevels(near, currentPrice) {
     label: `${r.side}|${r.level}${r.touchedToday ? ' ✓' : ''}`,
   }));
   if (Number.isFinite(currentPrice)) levels.push({ price: currentPrice, kind: 'livePrice', label: `price ${fmtPrice(currentPrice)}` });
-  view.setLevels(levels, { showTitle: false });
+  if (view) view.setLevels(levels, { showTitle: false });
 }
 
 function selectRow(near, i) {
@@ -274,7 +283,7 @@ async function loadCandles(pair) {
     const res = await fetch(`/api/pattern-lab/live-candles/${pair}?tf=1m&count=500`);
     const j = await res.json();
     if (pair !== pairSel.value) return;   // a slow response for a pair we've since switched away from
-    if (j.ok) view.setCandles(j.candles).fit();
+    if (j.ok && view) view.setCandles(j.candles).fit();
   } catch (e) { console.warn('candles fetch failed', e); }
 }
 

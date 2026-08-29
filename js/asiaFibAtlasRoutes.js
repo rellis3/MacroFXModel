@@ -350,6 +350,55 @@ export function mountAsiaFibAtlasRoutes(app, express) {
     }
   });
 
+  // GET /api/asia-fib-atlas/vote-portfolio-combined?pairs=eurusd,gbpusd&ladders=asia,monday&...
+  // Same params as /vote-portfolio, plus `ladders` (comma list, default
+  // both) — combines EACH selected pair's Asia AND Monday trades as
+  // SEPARATE constituents ("EURUSD (Asia)"/"EURUSD (Monday)"), so the SAME
+  // pair can have an Asia position and a Monday position open at once, and
+  // the existing `maxHeatPct`/`throttle` machinery (built for cross-PAIR
+  // stacking) now also governs cross-LADDER stacking on one pair — no new
+  // math, `buildFibAtlasVotePortfolio`'s constituent concept was already
+  // generic (see its own header). Answers the owner's own question: what's
+  // the impact of letting both ladders trade the same pair simultaneously,
+  // and what does constraining that concurrency do to the result.
+  app.get('/api/asia-fib-atlas/vote-portfolio-combined', async (req, res) => {
+    try {
+      const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'usdjpy', 'gold'])
+        .map(p => p.trim().toLowerCase()).filter(Boolean);
+      const ladders = (req.query.ladders ? String(req.query.ladders).split(',') : ['asia', 'monday'])
+        .map(l => l.trim().toLowerCase()).filter(l => l === 'asia' || l === 'monday');
+      const LADDER_PREFIX = { asia: PREFIX, monday: 'monday-fib-atlas' };
+      const LADDER_LABEL = { asia: 'Asia', monday: 'Monday' };
+      // One constituent key per (pair, ladder) combination actually requested.
+      const constituentKeys = pairs.flatMap(pair => ladders.map(ladder => `${pair}|${ladder}`));
+      const result = await buildFibAtlasVotePortfolio({
+        pairs: constituentKeys,
+        minMargin: req.query.minMargin ? Number(req.query.minMargin) : 2,
+        maxConcurrent: req.query.maxConcurrent ? Number(req.query.maxConcurrent) : 1,
+        perDirection: req.query.perDirection === 'true',
+        weighting: req.query.weighting === 'inverse-vol' ? 'inverse-vol' : 'equal',
+        sizing: req.query.sizing === 'nav' ? 'nav' : 'fixed-risk',
+        riskPct: req.query.riskPct ? Number(req.query.riskPct) : 1,
+        maxHeatPct: req.query.maxHeatPct ? Number(req.query.maxHeatPct) : null,
+        targetVol: req.query.targetVol ? Number(req.query.targetVol) : 10,
+        throttleOn: req.query.throttle === 'true',
+        triggerDD: req.query.triggerDD ? Number(req.query.triggerDD) : -5,
+        restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
+        throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
+        loadPairVoteTrades: async constituentKey => {
+          const [pair, ladder] = constituentKey.split('|');
+          const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);
+          if (!stored) return null;
+          return { ...stored, groupKey: `${stored.instrument} (${LADDER_LABEL[ladder]})`, ladder };
+        },
+      });
+      if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
+      res.json({ ok: true, ladders, ...result });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /api/asia-fib-atlas/book/EURUSD — the FULL book (every dimension,
   // all buckets) for a drill-down page.
   app.get('/api/asia-fib-atlas/book/:instrument', async (req, res) => {
