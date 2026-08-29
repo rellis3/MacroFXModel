@@ -49,7 +49,7 @@
 import { getJSON } from '../js/r2Store.js';
 import {
   applyConcurrencyCap, riskAdjustTrades, buildPortfolioDailySeries,
-  priceAtTighterStop, applyPortfolioHeatCap,
+  priceAtTighterStop, applyPortfolioHeatCap, applyDrawdownThrottle,
 } from '../js/levelAtlasVoteReview.js';
 import { portfolioStats, backtestStats } from '../js/backtestStats.js';
 import { skewness, histCVaR } from '../js/metricsCore.js';
@@ -107,7 +107,7 @@ async function main() {
 
   function flatten(perPair) { return Object.values(perPair).flat(); }
 
-  function statsFor(perPair, { heatCapPct = null } = {}) {
+  function statsFor(perPair, { heatCapPct = null, throttle = null } = {}) {
     const riskAdj = {};
     for (const p of PAIRS) riskAdj[p] = riskAdjustTrades(perPair[p], RISK_PCT).map(t => ({ ...t, pair: p }));
     let finalByPair = riskAdj, heatSkipped = null;
@@ -122,7 +122,20 @@ async function main() {
     }
     const weights = Object.fromEntries(PAIRS.map(p => [p, 1]));
     const combined = buildPortfolioDailySeries(finalByPair, { weights });
-    const ps = portfolioStats(combined.dailyReturns, { mc: false });
+    // Drawdown throttle (2026-08-29) — a DIFFERENT lever from the heat cap:
+    // heat cap limits SIMULTANEOUS exposure at any one instant; the throttle
+    // reacts to the strategy's OWN realized equity curve breaching a
+    // drawdown threshold and de-risks until it recovers — built specifically
+    // because a heat cap alone was shown (on Level Atlas's real data) to
+    // barely dent a drawdown driven by a correlated LOSING STRETCH rather
+    // than a pile-up of concurrent positions. Applied AFTER combining to
+    // daily returns (its own contract — see levelAtlasVoteReview.js).
+    let dailyFinal = combined.dailyReturns;
+    if (throttle) {
+      const tr = applyDrawdownThrottle(combined.dailyReturns, combined.dates, throttle);
+      if (tr) dailyFinal = tr.dailyReturns;
+    }
+    const ps = portfolioStats(dailyFinal, { mc: false });
 
     const allRisk = flatten(finalByPair);
     const losers = allRisk.filter(t => !t.win);
@@ -212,12 +225,21 @@ async function main() {
     console.log('\n✓ IS Sharpe has an interior peak across the fraction grid (not monotonic) — a real trade-off, not an edge-of-grid artifact.');
   }
 
-  const sharpeFloor = isBaseline.sharpe * 0.9;
-  const eligible = isRows.filter(r => r.sharpe >= sharpeFloor && r.maxDD > isBaseline.maxDD).sort((a, b) => a.f - b.f);
-  const chosen = eligible[0] ?? null;
+  // Selection rule v2 (2026-08-29, fixed after the fade-only run showed the
+  // v1 rule — "tightest fraction clearing a 90%-of-baseline floor" — picks
+  // the TIGHTEST eligible fraction, not the BEST one. When baseline's own
+  // Sharpe is weak, that floor is trivial to clear and the rule just walks
+  // to the far edge of the grid, even when a looser fraction dominates it
+  // on every axis (this happened: frac=0.4 was chosen over frac=0.75/0.9,
+  // which beat it on Sharpe, maxDD, AND win-rate preserved — see
+  // LEGO_MODULES.md's 2026-08-29 fade-only entry). Pre-stated rule NOW:
+  // among fractions that improve maxDD over baseline, pick the one with the
+  // HIGHEST IS Sharpe — maximize, don't just clear a floor.
+  const eligible = isRows.filter(r => r.maxDD > isBaseline.maxDD);
+  const chosen = eligible.length ? eligible.reduce((best, r) => (r.sharpe > best.sharpe ? r : best)) : null;
   console.log(chosen
-    ? `\nChosen (pre-stated rule: tightest fraction with IS Sharpe >= 90% of baseline [${sharpeFloor.toFixed(2)}] AND lower maxDD): fraction=${chosen.f}\n`
-    : `\nNo fraction cleared the pre-stated bar (IS Sharpe >= 90% of baseline AND lower maxDD) — none frozen for OOS.\n`);
+    ? `\nChosen (pre-stated rule v2: among fractions with lower maxDD than baseline, the one with the HIGHEST IS Sharpe): fraction=${chosen.f}\n`
+    : `\nNo fraction improved maxDD over baseline — none frozen for OOS.\n`);
 
   console.log('──── OUT-OF-SAMPLE (fraction frozen from IS, applied unchanged) ────');
   header();
@@ -241,6 +263,24 @@ async function main() {
       const sc = statsFor(applyFraction(oosByPair, chosen.f), { heatCapPct: cap });
       console.log(`${String(cap).padStart(3)}%    frac=${chosen.f}     ${String(sc.trades).padStart(6)}   ${String(sc.sharpe).padStart(6)}   ${(sc.maxDD + '%').padStart(7)}   ${sc.heatSkipped ? `${sc.heatSkipped.skipped}/${sc.heatSkipped.total}` : '—'}`);
     }
+  }
+
+  // Combined-lever stack (2026-08-29): how far do these actually push
+  // drawdown down when STACKED, not tested one at a time? chosen fraction
+  // alone -> + a 2% heat cap -> + a drawdown throttle (trigger -5%,
+  // restore 0%, half-size while throttled — the same defaults
+  // fibAtlasVotePortfolio.js's own route exposes) -> all three together.
+  console.log('\n──── Combined lever stack on OOS (chosen fraction + heat cap + drawdown throttle) ────');
+  header();
+  const THROTTLE_OPTS = { triggerDD: -5, restoreDD: 0, throttleMult: 0.5 };
+  if (chosen) {
+    printRow('baseline', oosBaseline);
+    printRow(`frac=${chosen.f}`, oosChosen);
+    printRow(`+heatCap2%`, statsFor(applyFraction(oosByPair, chosen.f), { heatCapPct: 2 }));
+    printRow(`+throttle`, statsFor(applyFraction(oosByPair, chosen.f), { throttle: THROTTLE_OPTS }));
+    printRow(`+both`, statsFor(applyFraction(oosByPair, chosen.f), { heatCapPct: 2, throttle: THROTTLE_OPTS }));
+  } else {
+    console.log('(no fraction was chosen — skipping the combined stack)');
   }
 
   // Step 7: Sharpe confidence interval, not a bare point estimate — from
