@@ -307,6 +307,54 @@ async function main() {
   for (const [label, s] of [['baseline', oosBaseline], ...(oosChosen ? [[`frac=${chosen.f}`, oosChosen]] : [])]) {
     console.log(`  ${label.padEnd(12)} closed maxDD=${s.closedMaxDD}%   intraday MTM maxDD=${s.mtmMaxDD}%   coverage=${s.mtmCoverage}   medianDur=${s.medianDurationMin}min`);
   }
+
+  // Tail-contribution check (2026-08-29, flagged in LEGO_MODULES.md as
+  // unchecked): does baseline's OOS Sharpe collapse and frac=0.9's fix come
+  // from a BROAD shift across many losers, or from a small number of
+  // outsized tail losses that even a light tightening happens to clip? Rank
+  // baseline's OOS losers by size and report how much of TOTAL realized
+  // loss the worst 1%/5%/10% of them account for — a concentrated tail
+  // (a small % of trades carrying most of the loss) means the fix is
+  // real but narrow (clip a few catastrophes); a flat contribution curve
+  // means it's genuinely broad-based.
+  console.log('\n──── Tail-contribution check: how concentrated is baseline\'s OOS loss? ────');
+  {
+    const allBaseRisk = [];
+    for (const p of PAIRS) allBaseRisk.push(...riskAdjustTrades(oosByPair[p], RISK_PCT));
+    const losers = allBaseRisk.filter(t => !t.win).map(t => t.pnlPct).sort((a, b) => a - b); // most negative first
+    const totalLoss = -losers.reduce((s, x) => s + x, 0);
+    if (losers.length && totalLoss > 0) {
+      for (const pct of [1, 5, 10, 25]) {
+        const n = Math.max(1, Math.round(losers.length * pct / 100));
+        const worstSum = -losers.slice(0, n).reduce((s, x) => s + x, 0);
+        console.log(`  worst ${String(pct).padStart(2)}% of losers (n=${n}/${losers.length}) account for ${(worstSum / totalLoss * 100).toFixed(1)}% of total realized loss`);
+      }
+      const worstSingle = -losers[0];
+      console.log(`  single worst loser: ${worstSingle.toFixed(4)}% (${(worstSingle / totalLoss * 100).toFixed(2)}% of total loss on its own)`);
+    } else {
+      console.log('  no losing trades found in this slice — nothing to rank.');
+    }
+  }
+
+  // Finer heat-cap x throttle-trigger sweep (2026-08-29) — how much further
+  // can OOS maxDD actually be pushed down past the -16.58% found with one
+  // fixed combo (2% cap, trigger -5%)? Sweeps both knobs together on the
+  // chosen fraction, reports the minimum found and its Sharpe cost.
+  if (chosen) {
+    console.log('\n──── Finer heat-cap x throttle sweep on chosen fraction (OOS) — looking for the actual floor ────');
+    console.log('cap%   triggerDD   sharpe   maxDD      trades');
+    const CAPS2 = [1, 2, 3, 5];
+    const TRIGGERS = [-2, -5, -8];
+    let best = null;
+    for (const cap of CAPS2) {
+      for (const trig of TRIGGERS) {
+        const s = statsFor(applyFraction(oosByPair, chosen.f), { heatCapPct: cap, throttle: { triggerDD: trig, restoreDD: 0, throttleMult: 0.5 } });
+        console.log(`${String(cap).padStart(3)}%   ${String(trig).padStart(9)}%   ${String(s.sharpe).padStart(6)}   ${(s.maxDD + '%').padStart(7)}   ${String(s.trades).padStart(6)}`);
+        if (!best || s.maxDD > best.s.maxDD) best = { cap, trig, s };
+      }
+    }
+    if (best) console.log(`\nShallowest maxDD found: ${best.s.maxDD}% at heatCap=${best.cap}% / triggerDD=${best.trig}% (Sharpe ${best.s.sharpe})`);
+  }
 }
 
 main();
