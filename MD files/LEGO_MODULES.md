@@ -2739,6 +2739,46 @@ provenance). Findings, and what came of each:
   do not treat this caveat as resolved OR as confirmed-serious until it's
   actually run.
 
+**2026-08-29 — Fib Atlas leave-one-out study (stage 1: Asia only), and a
+red flag, not a result.** Owner asked for a "select strongest pairs" feature
+like Level Atlas's own (`level-atlas-vote-portfolio.html`'s "Select
+recommended" button). Confirmed first what that button actually is: NOT a
+live computation — a hardcoded 10-pair exclusion `Set`
+(`level-atlas-vote-portfolio.html:275`), the transcribed output of a manual,
+three-stage process (`scripts/leave_one_out_portfolio.mjs`'s greedy
+forward-elimination on maxDD → manual transcription → a SEPARATE OOS
+validation pass, `scripts/oos_validate_pair_selection.mjs`, before the
+button shipped). Built `analysis/fib_atlas_leave_one_out.mjs`, the Asia/
+Monday/combined-ladder sibling — same shared bricks
+(`applyConcurrencyCap`/`riskAdjustTrades`/`buildPortfolioDailySeries`/
+`portfolioStats`), same method, reading from R2 instead of a local dump,
+`LADDER=asia|monday|combined` env var (combined tags each pair's two
+ladders as separate constituents, same `groupKey` convention as
+`/vote-portfolio-combined`).
+
+**Ran stage 1 (Asia, all 26 pairs, minMargin≥2, no heat cap — R2-only, runs
+fine in this sandbox).** Baseline (all 26, equal-weight, COMPOUNDED —
+this script mirrors Level Atlas's own convention of not applying
+`withNonCompoundedDD`, so these are internal ranking diagnostics, not the
+headline non-compounded numbers the live page shows): Sharpe 2.78, maxDD
+**-99.43%**, CAGR 1905%. Greedy removal of 20/26 pairs (keeping only
+USDJPY/AUDUSD/NZDUSD/USDCHF/EURJPY/AUDJPY) lifts Sharpe to **11.02** and
+cuts maxDD to -8.5%. **This is not being reported as a usable "strongest
+pairs" set.** Two things it actually shows: (1) the -99% uncapped baseline
+maxDD confirms unconstrained 26-pair stacking is a real correlated-risk
+problem here, same as it was for Level Atlas (motivating the same kind of
+study); (2) Sharpe climbing from 2.78 to 11+ by handpicking 6 of 26 pairs,
+run on a trade series ALREADY shown not to survive Deflated-Sharpe
+correction (DSR=0, this section's 2026-08-29 entry above) and already shown
+to have OOS-label leakage in its own dimension selection (`holdsOOS`
+finding, same date) — is exactly the shape of further overfitting, not
+evidence of 6 genuinely stronger pairs. Level Atlas's own equivalent step
+was independently OOS-validated before it was trusted; this one has not
+been, and given the two compounding selection-bias findings already on
+record for this system, that validation step matters more here than it did
+there. **Not proceeding to Monday/combined runs or any UI button without
+that validation** — flagged to the owner rather than assumed.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
