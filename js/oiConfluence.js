@@ -73,11 +73,32 @@ export function nearRoundNumber(price, pip, tolPips = 10) {
 // surrounding strikes, not its absolute size. 1.5× weak · 2× moderate · 3×+ strong.
 // `neighbourOIs` = the OIs at the nearest strikes either side of the wall (the
 // analyser supplies them). Returns { multiple, tier }.
-export function wallStrengthTier(oi, neighbourOIs) {
+//
+// ISOLATED WALLS. When every neighbour is empty the multiple is undefined (divide by
+// zero), and this used to answer 'strong' — dominance over nothing counted as dominance.
+// That is not a rare edge: on a leg that only trades the 25-point strikes EVERY wall has
+// empty ±2 neighbours, so a whole expiry graded strong. Measured on a live gold 4-DTE
+// leg: 33 of 33 walls 'strong', including one holding 9 contracts, ranked identically to
+// a 2,384-contract wall on the neighbouring expiry.
+//
+// So an isolated wall is graded on the only scale left — its size against the biggest
+// wall on its own side of that book, passed in as `ref`. That is deliberately relative,
+// because an absolute floor cannot travel between instruments (gold walls run to
+// thousands, FX to hundreds). Without a `ref` the honest answer is 'weak': it has no
+// neighbours to be a multiple of and nothing to be a share of, so it stays visible but
+// can no longer outrank a wall that earned its tier.
+const _ISO_STRONG = 0.5, _ISO_MODERATE = 0.25, _ISO_WEAK = 0.10;
+export function wallStrengthTier(oi, neighbourOIs, { ref = null } = {}) {
   const ns = (Array.isArray(neighbourOIs) ? neighbourOIs : []).filter(n => Number.isFinite(n) && n >= 0);
   if (!(oi > 0) || !ns.length) return { multiple: null, tier: null };
   const avg = ns.reduce((a, b) => a + b, 0) / ns.length;
-  if (!(avg > 0)) return { multiple: null, tier: 'strong' };    // isolated wall — nothing around it
+  if (!(avg > 0)) {                                             // isolated — nothing around it
+    if (!(Number.isFinite(ref) && ref > 0)) return { multiple: null, tier: 'weak' };
+    const share = oi / ref;
+    const tier = share >= _ISO_STRONG ? 'strong' : share >= _ISO_MODERATE ? 'moderate'
+               : share >= _ISO_WEAK ? 'weak' : null;
+    return { multiple: null, tier };                            // no neighbour ratio exists to report
+  }
   const mult = +(oi / avg).toFixed(2);
   const tier = mult >= 3 ? 'strong' : mult >= 2 ? 'moderate' : mult >= 1.5 ? 'weak' : null;
   return { multiple: mult, tier };
@@ -498,11 +519,56 @@ function _relevance(strike, spot, refMove, k) {
   return 1 / (1 + Math.pow(Math.abs(strike - spot) / R, 12));
 }
 
-function _selectWalls(list, { topWalls, minTier, maxWalls, minShare, spot, refMove, nearK }) {
+// GAMMA-WEIGHTED WALL SCORE.
+//
+// `_relevance` above is a distance guess: one radius (nearK x refMove) applied to every
+// wall regardless of which expiry it belongs to. That is the wrong shape, because how
+// far a wall reaches depends on its DTE. Measured on gold at 25% vol, per-contract gamma
+// as a share of that expiry's own at-the-money gamma:
+//
+//        dist     1DTE    3DTE    7DTE   30DTE   90DTE
+//        +100    27.8%   65.7%   84.1%   96.8%   99.6%
+//        +200     0.7%   18.9%   49.6%   86.3%   96.6%
+//        +300     0.0%    2.5%   21.0%   71.2%   91.2%
+//        +500     0.0%    0.0%    1.5%   39.1%   75.6%
+//
+// Near expiry is a tall narrow spike; far expiry is a shorter, much wider plateau. At
+// +300 a 30DTE contract carries ~8,700x the gamma of a 1DTE one. So a single radius
+// necessarily does both wrong things at once: it keeps dead near-expiry walls inside the
+// radius and cuts live far-expiry walls outside it. On the live book that meant the
+// export drawing 1DTE walls 500 points out (10,234 contracts, ~zero gamma) as though
+// they were levels.
+//
+// gexProfile already holds callGex/putGex per strike — literally oi x gamma x mult x spot
+// for that book's own DTE and vol — so the ripple is already computed. Score by it and
+// the horizon handles itself: no radius to pick, no DTE to thread through, and a strong
+// far 30DTE wall keeps its place while a dead 1DTE wall loses it.
+//
+// All-or-nothing fallback: a quota-trimmed record can lose gexProfile, and mixing gamma
+// scores with size scores would compare two different units. If ANY wall cannot be
+// scored by gamma the whole list reverts to the old size x distance behaviour.
+function _wallScores(arr, { gexProfile, side, spot, refMove, nearK }) {
+  const gp = Array.isArray(gexProfile) ? gexProfile : null;
+  if (gp && gp.length) {
+    const key = side === 'put' ? 'putGex' : 'callGex';
+    const out = [];
+    for (const w of arr) {
+      const row = gp.find(r => r && Math.abs(r.strike - w?.strike) < 1e-9);
+      const g = row ? Math.abs(row[key]) : NaN;
+      if (!Number.isFinite(g)) { out.length = 0; break; }         // incomplete profile → fall back
+      out.push(g);
+    }
+    if (out.length === arr.length && out.some(x => x > 0)) return out;
+  }
+  return arr.map(w => (w?.oi || 0) * _relevance(w?.strike, spot, refMove, nearK));
+}
+
+function _selectWalls(list, { topWalls, minTier, maxWalls, minShare, spot, refMove, nearK, gexProfile, side }) {
   const arr = Array.isArray(list) ? list : [];
   if (Number.isFinite(topWalls)) return arr.slice(0, topWalls);   // explicit count wins (back-compat)
   const minRank = _TIER_RANK[minTier] ?? 2;
-  const scored = arr.map(w => ({ w, score: (w?.oi || 0) * _relevance(w?.strike, spot, refMove, nearK) }));
+  const sc = _wallScores(arr, { gexProfile, side, spot, refMove, nearK });
+  const scored = arr.map((w, i) => ({ w, score: sc[i] }));
   const maxScore = scored.reduce((m, x) => Math.max(m, x.score), 0);
   const floor = maxScore * (Number.isFinite(minShare) ? minShare : 0.3);
   const keep = scored
@@ -530,18 +596,18 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
   // identically. Hold them to the same size floor: if the nearest thing above spot
   // isn't actually a wall, the honest answer is that there is no near call wall, not
   // a line pretending there is one.
-  const headOK = (list, strike) => {
+  const headOK = (list, strike, gp, side) => {
     if (Number.isFinite(topWalls)) return true;                 // explicit-count callers keep old behaviour
-    const sc = list.map(w => (w?.oi || 0) * _relevance(w?.strike, spot, refMove, nearK));
+    const sc = _wallScores(list, { gexProfile: gp, side, spot, refMove, nearK });
     const maxScore = sc.reduce((m, x) => Math.max(m, x), 0);
     const i = list.findIndex(w => w.strike === strike);
     return !maxScore || (i >= 0 && sc[i] >= maxScore * (Number.isFinite(minShare) ? minShare : 0.3));
   };
-  if (headOK(cw, inst.callWall)) push(inst.callWall, 'call_wall', cw.find(w => w.strike === inst.callWall)?.tier ?? null);
-  if (headOK(pw, inst.putWall)) push(inst.putWall, 'put_wall', pw.find(w => w.strike === inst.putWall)?.tier ?? null);
-  for (const w of _selectWalls(cw, wallOpts)) push(w?.strike, 'call_wall', w?.tier ?? null);
-  for (const w of _selectWalls(pw, wallOpts)) push(w?.strike, 'put_wall', w?.tier ?? null);
   const gp = Array.isArray(inst.gexProfile) ? inst.gexProfile : [];
+  if (headOK(cw, inst.callWall, gp, 'call')) push(inst.callWall, 'call_wall', cw.find(w => w.strike === inst.callWall)?.tier ?? null);
+  if (headOK(pw, inst.putWall, gp, 'put')) push(inst.putWall, 'put_wall', pw.find(w => w.strike === inst.putWall)?.tier ?? null);
+  for (const w of _selectWalls(cw, { ...wallOpts, gexProfile: gp, side: 'call' })) push(w?.strike, 'call_wall', w?.tier ?? null);
+  for (const w of _selectWalls(pw, { ...wallOpts, gexProfile: gp, side: 'put' })) push(w?.strike, 'put_wall', w?.tier ?? null);
   // ONE source for the flip. This used to be an inline copy of the first-sign-change
   // scan — the same logic `gammaFlip` had before it was fixed — so the export and
   // /api/oi-levels kept emitting the old, tail-latching, strike-snapped value long
@@ -594,12 +660,12 @@ export function oiStoreToLevels(inst, { topWalls = null, minTier = "moderate", m
       if (!(Number.isFinite(price) && price > 0)) return;
       const l = { price: +price, type }; if (tier) l.tier = tier; if (dte != null) l.dte = dte; out.push(l);
     };
-    dpush(dayEx.maxPain, 'max_pain');
-    if (headOK(dcw, dayEx.callWall)) dpush(dayEx.callWall, 'call_wall', dcw.find(w => w.strike === dayEx.callWall)?.tier ?? null);
-    if (headOK(dpw, dayEx.putWall)) dpush(dayEx.putWall, 'put_wall', dpw.find(w => w.strike === dayEx.putWall)?.tier ?? null);
-    for (const w of _selectWalls(dcw, wallOpts)) dpush(w?.strike, 'call_wall', w?.tier ?? null);
-    for (const w of _selectWalls(dpw, wallOpts)) dpush(w?.strike, 'put_wall', w?.tier ?? null);
     const dgp = Array.isArray(dayEx.gexProfile) ? dayEx.gexProfile : [];
+    dpush(dayEx.maxPain, 'max_pain');
+    if (headOK(dcw, dayEx.callWall, dgp, 'call')) dpush(dayEx.callWall, 'call_wall', dcw.find(w => w.strike === dayEx.callWall)?.tier ?? null);
+    if (headOK(dpw, dayEx.putWall, dgp, 'put')) dpush(dayEx.putWall, 'put_wall', dpw.find(w => w.strike === dayEx.putWall)?.tier ?? null);
+    for (const w of _selectWalls(dcw, { ...wallOpts, gexProfile: dgp, side: 'call' })) dpush(w?.strike, 'call_wall', w?.tier ?? null);
+    for (const w of _selectWalls(dpw, { ...wallOpts, gexProfile: dgp, side: 'put' })) dpush(w?.strike, 'put_wall', w?.tier ?? null);
     dpush(Number.isFinite(dayEx.gammaFlip) ? dayEx.gammaFlip : gammaFlip(dgp, inst.spot), 'gamma_flip');
   }
 

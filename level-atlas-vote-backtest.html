@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Level Atlas Vote Backtest</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
+  .sub { color:var(--muted); font-size:12px; }
+  select, button, input[type=number], input[type=range] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  main { padding:16px 20px 60px; max-width:1500px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi .label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--text3); margin-top:2px; }
+  .green { color:var(--green); } .red { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); }
+  .kpi-grid.secondary .value { font-size:17px; }
+  canvas { max-height:280px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:11px; }
+  thead th { position:sticky; top:0; background:var(--panel); text-align:left; color:var(--text3); font-weight:500; padding:4px 8px; border-bottom:1px solid var(--line); }
+  thead th.num, td.num { text-align:right; }
+  tbody td { padding:3px 8px; border-bottom:1px solid #182030; white-space:nowrap; }
+  .dims-wrap { display:flex; flex-wrap:wrap; gap:18px; }
+  .dim-block { flex:1; min-width:230px; }
+  .dim-block h3 { font-size:11px; font-weight:700; color:var(--text2); margin:0 0 4px; }
+  .dim-foot { font-size:10px; margin-top:4px; padding:0 4px; }
+  .ec-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+  #tradeTableWrap { max-height:420px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  tbody tr:hover { background:#182030; cursor:pointer; }
+  tbody tr.selected { background:#1f2b45; }
+  th[data-k] { cursor:pointer; user-select:none; }
+  .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); padding:6px 2px 0; flex-wrap:wrap; }
+  .legend span { display:inline-flex; align-items:center; gap:5px; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  #chart { height:420px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns:1fr; } }
+  .export-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .export-note { font-size:11px; color:var(--text3); margin-bottom:10px; }
+  .muted { color:var(--muted); font-size:11px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Level Atlas Vote Backtest</h1>
+  <div class="controls">
+    <label>Pair <select id="pairSel">
+      <option value="eurusd">EURUSD</option>
+      <option value="gbpusd">GBPUSD</option>
+      <option value="usdjpy">USDJPY</option>
+      <option value="audusd">AUDUSD</option>
+      <option value="nzdusd">NZDUSD</option>
+      <option value="usdcad">USDCAD</option>
+      <option value="usdchf">USDCHF</option>
+      <option value="eurjpy">EURJPY</option>
+      <option value="eurgbp">EURGBP</option>
+      <option value="euraud">EURAUD</option>
+      <option value="eurcad">EURCAD</option>
+      <option value="eurchf">EURCHF</option>
+      <option value="eurnzd">EURNZD</option>
+      <option value="gbpjpy">GBPJPY</option>
+      <option value="gbpaud">GBPAUD</option>
+      <option value="gbpcad">GBPCAD</option>
+      <option value="gbpchf">GBPCHF</option>
+      <option value="gbpnzd">GBPNZD</option>
+      <option value="audjpy">AUDJPY</option>
+      <option value="audnzd">AUDNZD</option>
+      <option value="audcad">AUDCAD</option>
+      <option value="audchf">AUDCHF</option>
+      <option value="cadjpy">CADJPY</option>
+      <option value="chfjpy">CHFJPY</option>
+      <option value="nzdjpy">NZDJPY</option>
+      <option value="gold">GOLD</option>
+      <option value="nq">NQ (Nasdaq)</option>
+      <option value="spx">SPX (S&amp;P 500)</option>
+      <option value="dow">DOW</option>
+      <option value="us2000">US2000 (Russell)</option>
+      <option value="de30">DE30 (DAX)</option>
+      <option value="uk100">UK100 (FTSE)</option>
+    </select></label>
+    <label>Min vote margin <select id="marginSel">
+      <option value="1">≥1 (all decided)</option>
+      <option value="2">≥2</option>
+      <option value="3" selected>≥3</option>
+      <option value="4">≥4</option>
+    </select></label>
+    <label>Decision <select id="decSel"><option value="all">all</option><option value="fade">fade</option><option value="follow">follow</option></select></label>
+    <label>Outcome <select id="outSel"><option value="all">all</option><option value="win">wins</option><option value="loss">losses</option></select></label>
+  </div>
+  <div class="sub" id="headerSub">loading…</div>
+  <div id="qualityWarning" style="display:none;margin-top:8px;padding:8px 12px;border-radius:6px;background:#2a1414;border:1px solid #7c2d2d;color:#f87171;font-size:12px"></div>
+</header>
+
+<main>
+
+<div class="card muted">
+  Barrier-priced OOS backtest: fade/follow decided by a touch's own Level Atlas context vote, priced against the REAL fixed
+  target/stop (not the best/worst point the path reached). Trades aren't strictly independent — the same instrument can have
+  overlapping/same-day touches across rungs — so the Sharpe below is likely an upper bound on what's actually achievable; no
+  concurrent-position sizing policy exists yet. See <code>MD files/LEGO_MODULES.md</code> for the full methodology.
+</div>
+
+<div class="card">
+  <h2>Performance summary</h2>
+  <div class="kpi-grid" id="kpiPrimary"></div>
+  <div class="kpi-grid secondary" id="kpiSecondary" style="margin-top:10px"></div>
+</div>
+
+<div class="card">
+  <h2>Cumulative P&amp;L % (trade-by-trade) — additive, not compounded</h2>
+  <div class="muted" style="margin-bottom:8px">Each trade's pnl% is summed flat, never reinvested — a fixed-fractional-risk curve, not equity-scaled position sizing. See "Annual Return (linear)" above for the matching non-compounded annualisation; CAGR alongside it assumes reinvestment and is shown for reference only.</div>
+  <canvas id="eqChart"></canvas>
+</div>
+
+<div class="card" id="edgeCostCard">
+  <h2>Edge &amp; cost diagnostics — gross (pre-spread) vs net, and where per-trade edge beats the spread</h2>
+  <div class="ec-summary" id="ecSummary"></div>
+  <div style="margin-bottom:10px;font-size:11px;color:var(--text2)">
+    Spread hurdle (pips, round-trip): <input type="number" id="ecHurdle" value="1.2" step="0.1" min="0" style="width:70px">
+    <span class="muted">A bucket is tradeable when its gross P&amp;L per trade clears this spread.</span>
+  </div>
+  <div class="dims-wrap" id="ecBuckets"></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Performance by decision</h2>
+    <table id="decisionTable"><thead><tr><th>Decision</th><th class="num">N</th><th class="num">Win%</th><th class="num">Avg P&amp;L%</th><th class="num">PF</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="card">
+    <h2>Performance by session</h2>
+    <table id="sessionTable"><thead><tr><th>Session</th><th class="num">N</th><th class="num">Win%</th><th class="num">Avg P&amp;L%</th><th class="num">PF</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Win rate by day of week</h2>
+    <canvas id="dowChart"></canvas>
+  </div>
+  <div class="card">
+    <h2>Win rate by hour (UTC)</h2>
+    <canvas id="hourChart"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Monthly P&amp;L %</h2>
+  <canvas id="monthChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Trade detail — real M1 candles</h2>
+  <div id="chart"></div>
+  <div class="legend">
+    <span><span class="dot" style="background:#94a3b8"></span>entry</span>
+    <span><span class="dot" style="background:#10b981"></span>target</span>
+    <span><span class="dot" style="background:#f87171"></span>stop</span>
+  </div>
+  <div class="sub" id="chartMeta" style="padding-top:6px">Click a trade in the table below to load its chart.</div>
+</div>
+
+<div class="card">
+  <h2>Trade log (<span id="tradeCount">0</span>)</h2>
+  <div class="export-row">
+    <span class="muted">Export:</span>
+    <button id="expReturns">% Returns CSV</button>
+    <button id="expR">R-Multiples CSV</button>
+    <button id="expCash">Currency P&amp;L CSV</button>
+    <label>Account $ <input type="number" id="acctSize" value="10000" step="1000" style="width:80px"></label>
+    <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" style="width:60px"></label>
+  </div>
+  <div class="export-note">
+    R = pnlPct ÷ (stop distance, gross) — a genuinely per-trade-varying risk unit (each trade's stop distance differs), not a
+    fixed % of equity. Currency P&amp;L assumes fixed-fractional sizing: Risk($) = Account × Risk% (constant per trade), PnL($) = R × Risk($).
+  </div>
+  <div id="tradeTableWrap">
+    <table id="tradeTable">
+      <thead><tr>
+        <th data-k="date">Date</th><th data-k="side">Side</th><th data-k="rung">Rung</th><th data-k="session">Session</th>
+        <th data-k="decision">Dec</th><th data-k="margin">Marg</th><th data-k="win">Res</th><th data-k="pnlPct">PnL%</th>
+      </tr></thead>
+      <tbody id="tradeBody"></tbody>
+    </table>
+  </div>
+</div>
+
+</main>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
+import { portfolioStats } from './js/backtestStats.js';
+
+// Same aggregation js/perLineStrategy.js's own `dailySeries` uses before
+// portfolioStats — days with MULTIPLE trades (overlapping/same-day touches
+// across rungs, which this trade list genuinely has) collapse into ONE
+// return observation instead of being counted as N independent periods.
+function dailySeries(trades) {
+  const m = new Map();
+  for (const t of trades) m.set(t.date, (m.get(t.date) || 0) + t.pnlPct);
+  return [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, p]) => p);
+}
+
+const pairSel = document.getElementById('pairSel');
+const marginSel = document.getElementById('marginSel');
+const decSel = document.getElementById('decSel');
+const outSel = document.getElementById('outSel');
+const headerSub = document.getElementById('headerSub');
+const tradeBody = document.getElementById('tradeBody');
+const tradeCountEl = document.getElementById('tradeCount');
+const chartMeta = document.getElementById('chartMeta');
+const ecHurdle = document.getElementById('ecHurdle');
+
+const view = createLevelChart(document.getElementById('chart'), { height: 420 });
+
+let allTrades = [];
+let cost = 0;
+let sortKey = 'date', sortDir = -1;
+let selectedTrade = null;
+const charts = {};
+
+function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
+function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
+function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
+function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
+function isoToEpoch(iso) { return Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000); }
+
+async function loadData() {
+  const pair = pairSel.value, minMargin = marginSel.value;
+  headerSub.textContent = 'loading…';
+  document.getElementById('kpiPrimary').innerHTML = '<span class="muted">loading…</span>';
+  try {
+    const res = await fetch(`/api/level-atlas/vote-trades/${pair}?minMargin=${minMargin}`);
+    const j = await res.json();
+    if (!j.ok) { headerSub.textContent = `no data: ${j.error}`; document.getElementById('kpiPrimary').innerHTML = '<span class="muted">no data yet — run /api/level-atlas/run for this pair</span>'; return; }
+    allTrades = j.trades;
+    cost = j.cost;
+    headerSub.textContent = `${j.instrument} · split ${j.splitDate} (OOS only) · cost ${j.cost}%/trade · generated ${new Date(j.generatedAt).toLocaleDateString()}`;
+    // Dynamic, not a hardcoded pair list — computed fresh from THIS pair's own
+    // summary at THIS margin gate, so it correctly follows whatever margin the
+    // user has selected and automatically covers any future pair too. Threshold
+    // (Sharpe < 1.0, trade-annualized summarizeTrades basis — the same field
+    // this endpoint already returns) chosen from a real, visible gap in the
+    // 26-pair rollout: 5 pairs (EURNZD/GBPNZD/AUDNZD/AUDCHF/GBPCAD) clustered
+    // 0.02-0.68, everything else clustered 1.3+ — see LEGO_MODULES.md.
+    const qw = document.getElementById('qualityWarning');
+    // splitDate cutoff: most of this project's pairs have an OOS window
+    // starting ~2022 (long local M1 history); a few indices (SPX/DOW) only
+    // have M1 back to mid-2024, so their OOS window — and trade count — is
+    // roughly half the others'. Real edge either way; just less established.
+    const shortHistory = Date.parse(j.splitDate) > Date.parse('2023-06-01');
+    if (j.summary && j.summary.sharpe < 1.0) {
+      qw.style.display = '';
+      qw.style.background = '#2a1414'; qw.style.borderColor = '#7c2d2d'; qw.style.color = '#f87171';
+      qw.textContent = `⚠ Weak edge after cost — Sharpe ${j.summary.sharpe} at margin≥${minMargin} (win rate ${j.summary.winRate}%, n=${j.summary.trades}). Real win rate, but this pair's own spread (${j.cost}%/trade) eats most of the expectancy. Excluded from the default portfolio combination for this reason.`;
+    } else if (shortHistory) {
+      qw.style.display = '';
+      qw.style.background = '#2a2414'; qw.style.borderColor = '#7c6d2d'; qw.style.color = '#fbbf24';
+      qw.textContent = `ℹ Shorter track record — OOS data only from ${j.splitDate} (n=${j.summary?.trades ?? '?'} at margin≥${minMargin}), roughly half the history most other pairs here have. The edge (Sharpe ${j.summary?.sharpe}) is real by the same methodology, just less independently tested yet.`;
+    } else {
+      qw.style.display = 'none';
+    }
+    renderAll();
+  } catch (e) {
+    headerSub.textContent = `error: ${e.message}`;
+  }
+}
+
+function filteredTrades() {
+  const dec = decSel.value, out = outSel.value;
+  return allTrades.filter(t => (dec === 'all' || t.decision === dec) && (out === 'all' || (out === 'win') === t.win));
+}
+
+// ── Core stats — reuses js/metricsCore.js's summarizeTrades/sortinoRatio/calmar
+// (the project's ONE shared metrics brick, per CLAUDE.md's Lego Principle) for
+// everything it already covers; CAGR/avgWin/avgLoss/consecutive streaks aren't
+// in that brick (they're presentation-layer aggregation, not shared math) so
+// are computed directly here, same formulas as this site's regime-backtest.html.
+function computeStats(trades) {
+  if (!trades.length) return null;
+  const sorted = [...trades].sort((a, b) => a.resolveTime - b.resolveTime);
+  const pnls = sorted.map(t => t.pnlPct), dates = sorted.map(t => t.date);
+  const base = summarizeTrades(pnls, dates);
+
+  const wins = sorted.filter(t => t.win), losses = sorted.filter(t => !t.win);
+  const grossWin = wins.reduce((s, t) => s + t.pnlPct, 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnlPct, 0));
+  const avgWin = wins.length ? grossWin / wins.length : 0;
+  const avgLoss = losses.length ? grossLoss / losses.length : 0;
+
+  let maxCW = 0, maxCL = 0, cw = 0, cl = 0;
+  for (const t of sorted) { if (t.win) { cw++; cl = 0; maxCW = Math.max(maxCW, cw); } else { cl++; cw = 0; maxCL = Math.max(maxCL, cl); } }
+
+  let equity = 0, peak = 0, maxDD = 0;
+  const equityCurve = sorted.map(t => { equity += t.pnlPct; peak = Math.max(peak, equity); maxDD = Math.max(maxDD, peak - equity); return { t: t.resolveTime, v: equity }; });
+  let gEq = 0;
+  const grossCurve = sorted.map(t => { gEq += t.pnlPct + cost; return gEq; });
+
+  const firstT = sorted[0].date, lastT = sorted[sorted.length - 1].date;
+  const years = Math.max((Date.parse(lastT) - Date.parse(firstT)) / (365.25 * 864e5), 1 / 52);
+  // CAGR treats the additive total (equity — a flat sum of each trade's
+  // pnlPct, NEVER reinvested trade-to-trade) as if it were ONE compounded
+  // return over the period, which quietly assumes gains get reinvested —
+  // something this fixed-fractional-risk trade list doesn't actually do.
+  // `linearAnnualReturn` (totalPnl / years) makes no such assumption — the
+  // two SHOULD read close together at these return sizes but diverge fast
+  // at outsized ones; report both rather than pick one silently.
+  const cagr = (Math.pow(1 + equity / 100, 1 / years) - 1) * 100;
+  const linearAnnualReturn = equity / years;
+  const sortino = sortinoRatio(pnls, base.tradesPerYr);
+  const cmr = calmarRatio(cagr, maxDD);
+
+  // `base.sharpe` (from summarizeTrades) annualises by sqrt(trades/year=277
+  // here) — treating every touch as an independent period. Multiple rungs on
+  // the SAME instrument can touch on the SAME day (this trade list genuinely
+  // has that), so that count overstates independent observations and inflates
+  // Sharpe. `portfolioStats` on the DAILY-aggregated series (same brick +
+  // convention js/perLineStrategy.js's own portfolio Sharpe already uses)
+  // collapses same-day trades into one return first — the honest number.
+  const port = portfolioStats(dailySeries(sorted));
+
+  return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
+    totalPnl: equity, maxDD, equityCurve, grossCurve, cagr, linearAnnualReturn, sortino, calmar: cmr, years,
+    dailySharpe: port.sharpe, dailyDays: port.days, dailyPsr: port.psr,
+    sortedDates: sorted.map(t => t.date) };
+}
+
+function kpiCard(label, value, cls, sub) {
+  return `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+
+function renderKpis(s) {
+  document.getElementById('kpiPrimary').innerHTML = [
+    kpiCard('Win Rate', fmt1(s.winRate) + '%', s.winRate >= 50 ? 'green' : 'amber', `${s.trades - Math.round(s.trades * (1 - s.winRate / 100))}W / ${Math.round(s.trades * (1 - s.winRate / 100))}L of ${s.trades}`),
+    kpiCard('Profit Factor', s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'amber' : 'red', 'gross win / gross loss'),
+    kpiCard('Sharpe Ratio (daily)', fmt2(s.dailySharpe), s.dailySharpe >= 2 ? 'green' : s.dailySharpe >= 1 ? 'blue' : 'amber', `THE honest one — ${s.dailyDays} trading days, PSR ${fmt2(s.dailyPsr)}`),
+    kpiCard('Sharpe (per-trade)', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, 'amber', 'OPTIMISTIC — treats same-day touches as independent'),
+    kpiCard('Max Drawdown', '-' + fmt1(s.maxDD) + '%', 'red', 'cumulative peak→trough'),
+    kpiCard('Total P&L %', fmtPct(s.totalPnl), signClass(s.totalPnl), 'additive sum, NOT compounded'),
+    kpiCard('CAGR', fmt1(s.cagr) + '%', s.cagr >= 15 ? 'green' : s.cagr >= 0 ? 'amber' : 'red', 'annualised, ASSUMES compounding'),
+    kpiCard('Annual Return (linear)', fmt1(s.linearAnnualReturn) + '%', signClass(s.linearAnnualReturn), 'total P&L ÷ years — NOT compounded'),
+    kpiCard('Sortino', fmt2(s.sortino), '', 'downside-adjusted'),
+    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / max DD'),
+    kpiCard('Reward : Risk', fmt2(s.rr), '', 'avg win / avg loss'),
+  ].join('');
+  document.getElementById('kpiSecondary').innerHTML = [
+    kpiCard('Total Trades', s.trades),
+    kpiCard('Wins', wins_(s)), kpiCard('Losses', s.trades - wins_(s)),
+    kpiCard('Expectancy / trade', fmtPct(s.expectancy, 3) + '/trade', signClass(s.expectancy)),
+    kpiCard('Avg Win', '+' + fmt1(s.avgWin) + '%', 'green'),
+    kpiCard('Avg Loss', '-' + fmt1(s.avgLoss) + '%', 'red'),
+    kpiCard('Max Consec. Wins', s.maxCW),
+    kpiCard('Max Consec. Losses', s.maxCL),
+    kpiCard('Min track record (yrs)', s.minTrackYears ?? '—', '', 'to trust Sharpe>0 @95%'),
+  ].join('');
+}
+function wins_(s) { return Math.round(s.trades * s.winRate / 100); }
+
+function destroyChart(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
+
+function renderEquityChart(s) {
+  destroyChart('eq');
+  const labels = s.equityCurve.map(p => new Date(p.t * 1000).toISOString().slice(0, 10));
+  charts.eq = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: 'Net P&L %', data: s.equityCurve.map(p => p.v), borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: true, tension: .2, pointRadius: 0, borderWidth: 1.5 },
+      { label: 'Gross (pre-spread) %', data: s.grossCurve, borderColor: '#5a6380', borderDash: [4, 3], fill: false, tension: .2, pointRadius: 0, borderWidth: 1 },
+    ] },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { color: '#1e2436' } }, y: { ticks: { color: '#5a6380' }, grid: { color: '#1e2436' } } }, plugins: { legend: { labels: { color: '#94a3b8' } } } },
+  });
+}
+
+function renderBarChart(canvasId, key, labels, values, colorFn) {
+  destroyChart(key);
+  charts[key] = new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: values.map(v => colorFn ? colorFn(v) : '#34d399') }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5a6380' }, grid: { display: false } },
+        y: { ticks: { color: '#5a6380', callback: v => v + '%' }, grid: { color: '#1e2436' } },
+      } },
+  });
+}
+
+function renderDowAndHour(trades) {
+  const dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const byDow = Array.from({ length: 7 }, () => ({ n: 0, w: 0 }));
+  const byHour = Array.from({ length: 24 }, () => ({ n: 0, w: 0 }));
+  for (const t of trades) {
+    const d = new Date(t.time * 1000);
+    const dow = d.getUTCDay(), hr = d.getUTCHours();
+    byDow[dow].n++; if (t.win) byDow[dow].w++;
+    byHour[hr].n++; if (t.win) byHour[hr].w++;
+  }
+  renderBarChart('dowChart', 'dow', dowNames, byDow.map(b => b.n ? +(b.w / b.n * 100).toFixed(1) : 0));
+  renderBarChart('hourChart', 'hour', Array.from({ length: 24 }, (_, i) => i + 'h'), byHour.map(b => b.n ? +(b.w / b.n * 100).toFixed(1) : 0));
+}
+
+function renderMonthly(trades) {
+  const byMonth = new Map();
+  for (const t of trades) {
+    const k = t.date.slice(0, 7);
+    byMonth.set(k, (byMonth.get(k) || 0) + t.pnlPct);
+  }
+  const keys = [...byMonth.keys()].sort();
+  renderBarChart('monthChart', 'month', keys, keys.map(k => +byMonth.get(k).toFixed(2)), v => v >= 0 ? '#34d399' : '#f87171');
+}
+
+function renderDecisionTable(trades) {
+  const groups = { fade: [], follow: [] };
+  for (const t of trades) (groups[t.decision] ??= []).push(t);
+  const rows = Object.entries(groups).filter(([, ts]) => ts.length).map(([dec, ts]) => {
+    const w = ts.filter(t => t.win).length;
+    const gw = ts.filter(t => t.win).reduce((s, t) => s + t.pnlPct, 0);
+    const gl = Math.abs(ts.filter(t => !t.win).reduce((s, t) => s + t.pnlPct, 0));
+    const avg = ts.reduce((s, t) => s + t.pnlPct, 0) / ts.length;
+    const pf = gl > 0 ? gw / gl : (gw > 0 ? 99 : 0);
+    return `<tr><td>${dec}</td><td class="num">${ts.length}</td><td class="num">${fmt1(w / ts.length * 100)}%</td><td class="num ${signClass(avg)}">${fmtPct(avg, 3)}</td><td class="num">${pf >= 99 ? '∞' : fmt2(pf)}</td></tr>`;
+  });
+  document.querySelector('#decisionTable tbody').innerHTML = rows.join('');
+}
+
+function renderSessionTable(trades) {
+  const groups = new Map();
+  for (const t of trades) { const k = t.session ?? '—'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  const rows = [...groups.entries()].map(([sess, ts]) => {
+    const w = ts.filter(t => t.win).length;
+    const gw = ts.filter(t => t.win).reduce((s, t) => s + t.pnlPct, 0);
+    const gl = Math.abs(ts.filter(t => !t.win).reduce((s, t) => s + t.pnlPct, 0));
+    const avg = ts.reduce((s, t) => s + t.pnlPct, 0) / ts.length;
+    const pf = gl > 0 ? gw / gl : (gw > 0 ? 99 : 0);
+    return { sess, n: ts.length, w, avg, pf };
+  }).sort((a, b) => b.n - a.n);
+  document.querySelector('#sessionTable tbody').innerHTML = rows.map(r =>
+    `<tr><td>${r.sess}</td><td class="num">${r.n}</td><td class="num">${fmt1(r.w / r.n * 100)}%</td><td class="num ${signClass(r.avg)}">${fmtPct(r.avg, 3)}</td><td class="num">${r.pf >= 99 ? '∞' : fmt2(r.pf)}</td></tr>`
+  ).join('');
+}
+
+// ── Edge & cost diagnostics — mirrors this site's regime-backtest.html
+// (same "gross vs net, spread-hurdle-clearing bucket" concept), reusing each
+// trade's own real pip/entry fields rather than a second cost model.
+function renderEdgeCost(trades) {
+  if (!trades.length) { document.getElementById('ecSummary').innerHTML = ''; document.getElementById('ecBuckets').innerHTML = '<span class="muted">no trades</span>'; return; }
+  const hurdlePips = parseFloat(ecHurdle.value) || 0;
+  const T = trades.map(t => ({ t, gross: t.pnlPct + cost, hcost: hurdlePips * t.pip / t.entry * 100 }));
+  const N = T.length;
+  const grossTot = T.reduce((s, x) => s + x.gross, 0);
+  const netTot = trades.reduce((s, t) => s + t.pnlPct, 0);
+  const costTot = grossTot - netTot;
+  const hCostTot = T.reduce((s, x) => s + x.hcost, 0);
+  const projNet = grossTot - hCostTot;
+  const grossBp = grossTot / N * 100, hurdleBp = hCostTot / N * 100;
+  const times = trades.map(t => t.time);
+  const days = Math.max(1, (Math.max(...times) - Math.min(...times)) / 86400);
+  const perDay = N / days;
+  const budget = hurdleBp > 0 ? grossTot / (hurdleBp / 100) : Infinity;
+  const sgn = v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
+
+  document.getElementById('ecSummary').innerHTML = [
+    kpiCard('Gross P&L (pre-spread)', sgn(grossTot), grossTot >= 0 ? 'green' : 'red', `${grossBp.toFixed(3)} bp / trade`),
+    kpiCard('Net P&L (actual)', sgn(netTot), netTot >= 0 ? 'green' : 'red', 'spread already deducted'),
+    kpiCard('Total spread drag', '-' + Math.abs(costTot).toFixed(1) + '%', 'red', `${(costTot / N * 100).toFixed(3)} bp / trade`),
+    kpiCard('Trades / day', perDay.toFixed(1), 'blue', `${N.toLocaleString()} trades · ${Math.round(days)}d`),
+    kpiCard(`Projected net @ ${hurdlePips}p`, sgn(projNet), projNet >= 0 ? 'green' : 'red', `hurdle ${hurdleBp.toFixed(3)} bp / trade`),
+    kpiCard('Break-even trade budget', isFinite(budget) ? Math.round(budget).toLocaleString() : '∞', budget >= N ? 'green' : 'red', `you traded ${N.toLocaleString()}`),
+  ].join('');
+
+  const MIN_N = 20;
+  const bucketize = (keyFn, order) => {
+    const m = new Map();
+    T.forEach(x => { const k = keyFn(x.t); if (k == null) return; if (!m.has(k)) m.set(k, { k, n: 0, gross: 0, hcost: 0 }); const b = m.get(k); b.n++; b.gross += x.gross; b.hcost += x.hcost; });
+    return order ? order.filter(k => m.has(k)).map(k => m.get(k)) : [...m.values()].sort((a, b) => (b.gross / b.n) - (a.gross / a.n));
+  };
+  const sessionOrder = ['Asia', 'London', 'NY'];
+  const dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dims = [
+    { title: 'By UTC hour', rows: bucketize(t => new Date(t.time * 1000).getUTCHours(), [...Array(24).keys()]) },
+    { title: 'By session', rows: bucketize(t => t.session ?? '—', sessionOrder) },
+    { title: 'By vote margin', rows: bucketize(t => t.margin >= 6 ? '6+' : String(t.margin), ['1', '2', '3', '4', '5', '6+']) },
+    { title: 'By decision', rows: bucketize(t => t.decision, ['fade', 'follow']) },
+    { title: 'By side', rows: bucketize(t => t.side, ['up', 'down']) },
+    { title: 'By day of week', rows: bucketize(t => new Date(t.time * 1000).getUTCDay(), [1, 2, 3, 4, 5, 0, 6]).map(b => ({ ...b, k: dowNames[b.k] })) },
+  ];
+  const renderDim = d => {
+    let clearN = 0, clearT = 0, clearG = 0, clearH = 0;
+    const rows = d.rows.map(b => {
+      const gpt = b.gross / b.n * 100, hpt = b.hcost / b.n * 100;
+      const clears = gpt > hpt && b.n >= MIN_N;
+      if (clears) { clearN++; clearT += b.n; clearG += b.gross; clearH += b.hcost; }
+      const col = clears ? 'green' : (b.n < MIN_N ? '' : 'red');
+      return `<tr><td>${b.k}</td><td class="num">${b.n}</td><td class="num ${b.gross >= 0 ? 'green' : 'red'}">${(b.gross >= 0 ? '+' : '') + b.gross.toFixed(1)}%</td><td class="num">${gpt.toFixed(2)}</td><td class="num ${col}">${clears ? '✓' : (b.n < MIN_N ? '·' : '✗')}</td></tr>`;
+    }).join('');
+    const foot = clearN
+      ? `<div class="dim-foot green">Tradeable subset: ${clearN} bucket(s), ${clearT.toLocaleString()} trades · projected net @ ${hurdlePips}p ${((clearG - clearH) >= 0 ? '+' : '') + (clearG - clearH).toFixed(1)}%</div>`
+      : `<div class="dim-foot muted">No bucket (≥${MIN_N} trades) clears the ${hurdlePips}p hurdle.</div>`;
+    return `<div class="dim-block"><h3>${d.title}</h3><table><thead><tr><th>Bucket</th><th class="num">N</th><th class="num">Gross</th><th class="num" title="gross P&L per trade, bp">bp/tr</th><th class="num">vs</th></tr></thead><tbody>${rows}</tbody></table>${foot}</div>`;
+  };
+  document.getElementById('ecBuckets').innerHTML = dims.map(renderDim).join('');
+}
+
+function applyFiltersAndRender() {
+  const rows = filteredTrades();
+  const s = computeStats(rows);
+  if (!s) { document.getElementById('kpiPrimary').innerHTML = '<span class="muted">no trades match these filters</span>'; return; }
+  renderKpis(s);
+  renderEquityChart(s);
+  renderEdgeCost(rows);
+  renderDecisionTable(rows);
+  renderSessionTable(rows);
+  renderDowAndHour(rows);
+  renderMonthly(rows);
+  renderTradeTable(rows);
+}
+
+function renderTradeTable(rows) {
+  const sorted = rows.slice().sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : (av - bv);
+    return cmp * sortDir;
+  });
+  tradeCountEl.textContent = sorted.length;
+  tradeBody.innerHTML = sorted.map((t, i) => `
+    <tr data-i="${i}" class="${t === selectedTrade ? 'selected' : ''}">
+      <td>${t.date}</td><td>${t.side}</td><td>${t.rung}</td><td>${t.session ?? '—'}</td>
+      <td>${t.decision}</td><td>${t.margin}</td>
+      <td class="${t.win ? 'green' : 'red'}">${t.win ? 'WIN' : 'LOSS'}</td>
+      <td class="${signClass(t.pnlPct)}">${fmtPct(t.pnlPct, 3)}</td>
+    </tr>`).join('');
+  [...tradeBody.querySelectorAll('tr')].forEach(tr => tr.addEventListener('click', () => loadTradeChart(sorted[+tr.dataset.i])));
+}
+
+function priceLinesFor(t) {
+  const isUp = t.side === 'up';
+  const contSign = isUp ? 1 : -1;
+  const targetSign = t.decision === 'fade' ? -contSign : contSign;
+  const stopSign = t.decision === 'fade' ? contSign : -contSign;
+  return [
+    { price: t.entry, kind: 'voteEntry', label: `entry ${t.entry.toFixed(5)}` },
+    { price: t.entry + targetSign * t.targetPips * t.pip, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
+    { price: t.entry + stopSign * t.stopPips * t.pip, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
+  ];
+}
+
+async function loadTradeChart(t) {
+  selectedTrade = t;
+  renderTradeTable(filteredTrades());
+  const pair = pairSel.value, bufferSecs = 4 * 3600;
+  const fromDate = new Date((t.time - bufferSecs) * 1000).toISOString().slice(0, 10);
+  const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
+  chartMeta.textContent = `Loading ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate}…`;
+  try {
+    const res = await fetch(`/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`);
+    const j = await res.json();
+    if (!j.ok || !j.candles?.length) { chartMeta.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
+    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    view.setCandles(bars);
+    view.setLevels(priceLinesFor(t), { showTitle: true });
+    view.series.setMarkers([
+      { time: t.time, position: 'inBar', color: '#94a3b8', shape: 'circle', text: `entry ${t.decision}/${t.side}` },
+      { time: t.resolveTime, position: t.win ? 'belowBar' : 'aboveBar', color: t.win ? '#10b981' : '#f87171', shape: t.win ? 'arrowUp' : 'arrowDown', text: `${t.win ? 'WIN' : 'LOSS'} ${t.pnlPct.toFixed(3)}%` },
+    ]);
+    view.fit();
+    chartMeta.textContent = `${t.date} · ${t.side} ${t.rung} · ${t.decision} (margin ${t.margin}) · ${t.win ? 'WIN' : 'LOSS'} ${fmtPct(t.pnlPct, 3)} · target ${t.targetPips}p / stop ${t.stopPips}p`;
+  } catch (e) {
+    chartMeta.textContent = `error loading candles: ${e.message}`;
+  }
+}
+
+function csvDownload(filename, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// MAE is an UNSIGNED magnitude on the trade object (engine contract — E-ratio
+// = MFE÷MAE needs both positive; see js/levelAtlasVoteReview.js). This export
+// is the one place that flips it negative, matching the CSV convention (an
+// adverse excursion IS a drawdown, so it belongs on the same negative side of
+// zero as a loss) — a display-only sign flip, not a change to what MAE means.
+document.getElementById('expReturns').addEventListener('click', () => {
+  const rows = [['Date', 'Return %', 'MAE %'], ...filteredTrades().map(t => [t.date, t.pnlPct.toFixed(4), t.maePct != null ? (-Math.abs(t.maePct)).toFixed(4) : ''])];
+  csvDownload('level-atlas-vote-returns.csv', rows);
+});
+document.getElementById('expR').addEventListener('click', () => {
+  const rows = [['date', 'R', 'MAE (R)'], ...filteredTrades().map(t => {
+    const riskPct = t.stopPips * t.pip / t.entry * 100;
+    const r = riskPct > 0 ? t.pnlPct / riskPct : 0;
+    const maeR = (t.maePct != null && riskPct > 0) ? t.maePct / riskPct : '';
+    return [t.date, r.toFixed(3), maeR === '' ? '' : (-Math.abs(maeR)).toFixed(3)];
+  })];
+  csvDownload('level-atlas-vote-r-multiples.csv', rows);
+});
+document.getElementById('expCash').addEventListener('click', () => {
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
+  const riskDollars = acct * riskPct / 100;
+  const rows = [['Trade Date', 'PnL ($)', 'Risk ($)'], ...filteredTrades().map(t => {
+    const tradeRiskPct = t.stopPips * t.pip / t.entry * 100;
+    const r = tradeRiskPct > 0 ? t.pnlPct / tradeRiskPct : 0;
+    return [t.date, (r * riskDollars).toFixed(2), riskDollars.toFixed(2)];
+  })];
+  csvDownload('level-atlas-vote-currency-pnl.csv', rows);
+});
+
+document.querySelectorAll('#tradeTable thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    sortDir = (sortKey === k) ? -sortDir : -1;
+    sortKey = k;
+    renderTradeTable(filteredTrades());
+  });
+});
+
+function renderAll() { applyFiltersAndRender(); }
+
+pairSel.addEventListener('change', loadData);
+marginSel.addEventListener('change', loadData);
+decSel.addEventListener('change', applyFiltersAndRender);
+outSel.addEventListener('change', applyFiltersAndRender);
+ecHurdle.addEventListener('change', () => renderEdgeCost(filteredTrades()));
+
+loadData();
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@ import { createTouchFeatures, TOUCH_DEFAULTS } from './touchFeatures.js';
 import { extractTouches, buildPolicy, tradePnl, pnlFor, runPerLine, runRigor, runSensitivity, costForPair, buildSurvivors } from './perLineStrategy.js';
 import { backtestStats, portfolioStats, deflatedSharpe } from './backtestStats.js';
 import { computeBands } from './forecastCore.js';
+import { computeCogBands } from './cogBands.js';
 import { buildVolatilityPlan } from './volatilityBotPlan.js';
 import { refreshVolatilityPlan } from './volatilityBotProducer.js';
 import { bucketM1IntoSessions } from './forecastAnalyser.js';
@@ -376,8 +377,24 @@ console.log('[volatilityBotPlan]');
   const plan = buildVolatilityPlan(book, volByPair);
   ok('volatility plan: universe = survivors WITH live vol only', plan.universe.length === 2 && plan.universe.includes('eurusd') && !plan.universe.includes('gbpcad'));
   ok('volatility plan: drops skip cells, keeps fade/follow', plan.policy['HL50_up|3·spike']?.decision === 'fade' && plan.policy['HL75_dn|2·med']?.decision === 'follow' && !('OC50_up|1·grind' in plan.policy));
+  // The bot migrated to COG geometry on 2026-07-22 (buildVolatilityPlan's bandMode
+  // defaults to 'cog'); this assertion still named computeBands and had been failing
+  // ever since — 0.00936 vs 0.00773 on hl50. A permanently-red test hides real
+  // regressions, so BOTH modes are now pinned: the default against COG, and the
+  // 'feller' escape hatch against computeBands, so neither can drift unnoticed.
+  const cog = computeCogBands(1.10, 0.006, 'fx');
+  ok('volatility plan: default bandMode matches canonical computeCogBands',
+     near(plan.pairs.eurusd.hl50, +cog.hl50.toFixed(8), 1e-9) && near(plan.pairs.eurusd.ocMed, +cog.ocMed.toFixed(8), 1e-9));
+  const fellerPlan = buildVolatilityPlan(book, volByPair, { bandMode: 'feller' });
   const b = computeBands(1.10, 0.006, 'fx');
-  ok('volatility plan: band fractions match canonical computeBands', near(plan.pairs.eurusd.hl50, +b.hl50.toFixed(8), 1e-9) && near(plan.pairs.eurusd.ocMed, +b.ocMed.toFixed(8), 1e-9));
+  ok('volatility plan: bandMode feller still matches canonical computeBands',
+     near(fellerPlan.pairs.eurusd.hl50, +b.hl50.toFixed(8), 1e-9) && near(fellerPlan.pairs.eurusd.ocMed, +b.ocMed.toFixed(8), 1e-9));
+  // The two geometries must actually differ — if a future edit made computeCogBands
+  // delegate to computeBands, both assertions above would pass while the migration
+  // documented in CLAUDE.md had been silently reverted.
+  ok('volatility plan: COG and Feller geometries are genuinely different',
+     Math.abs(plan.pairs.eurusd.hl50 - fellerPlan.pairs.eurusd.hl50) > 1e-6);
+  ok('volatility plan: records which geometry it used', plan.bandMode === 'cog' && fellerPlan.bandMode === 'feller');
   ok('volatility plan: carries locked config (margin 0.01, approachVel)', plan.marginPct === 0.01 && plan.conditions[0] === 'approachVel');
   ok('volatility plan: throws without a book', (() => { try { buildVolatilityPlan(null, {}); return false; } catch { return true; } })());
 }

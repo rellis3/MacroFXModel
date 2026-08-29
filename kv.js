@@ -190,6 +190,13 @@ const _CF_EXACT = new Set([
   'oi_bot_trade_log',           // OI resolved closed-trade log (deduped, capped) — give-back/MFE history; same durability need as range_line_trade_log
   'oi_hold_calibration',        // OI hold-score calibration (collecting/active + fitted weights) — derived from oi_bot_trade_log but persisted so the plan producer/banner never see a blank right after a redeploy
   'oi_bot_state',               // OI bot one-shot state (entered zones + features per plan) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
+  'volatility_bot_v2_config',      // Volatility V2 (Level Atlas Vote Portfolio) bot settings — must survive redeploys
+  'volatility_bot_v2_credentials', // Volatility V2 MT5 credentials — must survive redeploys
+  'volatility_bot_v2_plan',        // Volatility V2 live plan (per-instrument fade/follow zones) — keep last good plan across a redeploy; the worker's /api/kv/get serves it to the executor
+  'volatility_bot_v2_state',       // Volatility V2 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
+  'volatility_bot_v2_trade_log',   // Volatility V2 resolved closed-trade log (deduped, capped) — give-back/MFE history
+  // NOTE: volatility_bot_v2_status is deliberately NOT here — the bot rewrites it every ~30s
+  // (same reason as oi_bot_status / volatility_bot_status).
   'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need
   // NOTE: oi_bot_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as range_line_bot_status / volatility_bot_status).
@@ -482,6 +489,27 @@ export async function get(key) {
     try   { return await cfGet(key); }
     catch (e) { console.error(`[KV] CF get failed (${key}):`, e.message); return null; }
   }
+  const ttlKey = `__ttl_${key}`;
+  if (store[ttlKey] && Date.now() > store[ttlKey]) {
+    delete store[key]; delete store[ttlKey]; dirty = true; return null;
+  }
+  return store[key] ?? null;
+}
+
+// Same as get(), but a BACKEND FAILURE THROWS instead of quietly returning null.
+//
+// get() collapses "this key does not exist" and "Cloudflare just failed" into the same
+// null. That is fine for a cache read and catastrophic for a read-modify-write: the
+// caller sees {}, merges today into it, writes it back, and has silently destroyed
+// everything that was there. Measured 2026-08-26: `oi_history` went from ~25 days
+// (407KB) to a single day (16.5KB) in one write, taking conviction sizing and the
+// hold-score flow component down with it, while the per-day `oi_raw_*` keys — which
+// never read-modify-write — were untouched.
+//
+// cfGet already draws the distinction (404 -> null, any other failure -> throw); get()
+// throws it away. Any caller that MERGES into what it reads should use this instead.
+export async function getStrict(key) {
+  if (USE_CF && isCfKey(key)) return await cfGet(key);   // 404 -> null, everything else throws
   const ttlKey = `__ttl_${key}`;
   if (store[ttlKey] && Date.now() > store[ttlKey]) {
     delete store[key]; delete store[ttlKey]; dirty = true; return null;

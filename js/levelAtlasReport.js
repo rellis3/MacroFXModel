@@ -75,7 +75,15 @@ const OUTCOMES = ['out', 'back', 'neither'];
 // labels — one definition, DIMENSIONS above.
 const DIM_LABEL = new Map(DIMENSIONS);
 
-function splitAt(touches, frac = 0.6) {
+// Exported (2026-08, alongside asiaFibAtlasEngine's report): these three are
+// generic over ANY touch-shaped record carrying {date, outcome, fadePips,
+// runPips, pullbackFrac, minsToResolve} — nothing here is forecast-ladder
+// specific. asiaFibAtlasReport.js imports them rather than re-deriving the
+// same table-building logic a second time (Lego Principle, MD files/CLAUDE.md
+// §1) — the two engines' outcome records are the SAME shape by deliberate
+// design (see asiaFibAtlasEngine.js's header), so this is a real shared
+// computation, not a coincidental resemblance.
+export function splitAt(touches, frac = 0.6) {
   const sorted = [...touches].sort((a, b) => a.date.localeCompare(b.date));
   const cut = sorted[Math.floor(sorted.length * frac)]?.date;
   return { split: cut, is: touches.filter(t => t.date < cut), oos: touches.filter(t => t.date >= cut) };
@@ -83,7 +91,7 @@ function splitAt(touches, frac = 0.6) {
 
 // Percentiles of a numeric array — a mean hides whether an outcome is "usually
 // fast, occasionally very slow" vs uniformly middling; the book should show both.
-function pctiles(arr, ps = [25, 50, 75]) {
+export function pctiles(arr, ps = [25, 50, 75]) {
   if (!arr.length) return null;
   const s = [...arr].sort((a, b) => a - b);
   const out = {};
@@ -93,7 +101,7 @@ function pctiles(arr, ps = [25, 50, 75]) {
 
 // One dimension's table for one (side, rung, rearmFrac) cell: bucket -> {n, out%, back%, neither%},
 // plus the numeric outcomes (fadePips/runPips/pullbackFrac/minsToResolve — mean AND spread).
-function tableFor(touches, dimKey) {
+export function tableFor(touches, dimKey) {
   const groups = {};
   for (const t of touches) {
     const b = t[dimKey]; if (b == null) continue;
@@ -210,7 +218,7 @@ export function extractHeldFindings(book, { limit = 50 } = {}) {
   return out.sort((a, b) => Math.abs(b.deltaOutIS) - Math.abs(a.deltaOutIS)).slice(0, limit);
 }
 
-function summarizeAll(touches) {
+export function summarizeAll(touches) {
   const fake = touches.map(t => ({ ...t, _all: 'all' }));
   return tableFor(fake, '_all').all;
 }
@@ -325,9 +333,19 @@ export function buildAtlasCard(book) {
  *     -> { key, lean, sameSignOOS, base:{is,oos}, supports:[...], challenges:[...], liveTouch }
  *     -> null if the book has no data for this (side, rung) cell
  */
-export function matchLiveContext(book, liveTouch) {
+// `keyField`/`dimLabels` generalize this past Level Atlas's own `rung` field
+// (2026-08-27) so `asiaFibAtlasRoutes.js` can reuse the SAME matching logic
+// for its `level`-keyed book instead of a second copy — the only thing that
+// genuinely differs between the two engines' live-touch shapes is which
+// field names the cell key and which map labels its dimensions; the
+// base-rate/held-dimension/supports-challenges logic itself is identical by
+// design (both books share the same `{outcome, ...}` record shape on purpose
+// — see `asiaFibAtlasReport.js`'s own header). Default args keep every
+// existing Level Atlas call site byte-identical.
+export function matchLiveContext(book, liveTouch, { keyField = 'rung', dimLabels = DIM_LABEL } = {}) {
   if (!book || !liveTouch) return null;
-  const key = `${liveTouch.side}|${liveTouch.rung}`;
+  const levelValue = liveTouch[keyField];
+  const key = `${liveTouch.side}|${levelValue}`;
   const cell = book.cells?.[key];
   if (!cell) return null;
   const b = cell.base;
@@ -346,7 +364,7 @@ export function matchLiveContext(book, liveTouch) {
     if (!g || !g.holdsOOS) continue;
     const o = dim.oos[bucketKey];
     matched.push({
-      dimKey, dimLabel: DIM_LABEL.get(dimKey) ?? dimKey, bucket: liveValue,
+      dimKey, dimLabel: dimLabels.get(dimKey) ?? dimKey, bucket: liveValue,
       deltaOutIS: g.deltaOut, deltaOutOOS: o?.deltaOut ?? null,
       n: { is: g.n, oos: o?.n ?? 0 },
       favors: g.deltaOut > 0 ? 'out' : 'back',
@@ -362,7 +380,7 @@ export function matchLiveContext(book, liveTouch) {
   const context = lean === 'neutral' ? matched : [];
 
   return {
-    instrument: liveTouch.instrument, side: liveTouch.side, rung: liveTouch.rung, key,
+    instrument: liveTouch.instrument, side: liveTouch.side, rung: levelValue, level: levelValue, key,
     ordinal: liveTouch.ordinal, date: liveTouch.date,
     lean, sameSignOOS,
     base: { out: b.is.outPct, back: b.is.backPct, neither: b.is.neitherPct,

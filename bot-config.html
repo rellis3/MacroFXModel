@@ -487,6 +487,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="poshedgebot" onclick="switchTab('poshedgebot')" style="color:#10b981" id="phbTabBtn">🛡 Pos Hedge</button>
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
     <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
+    <button class="tab-btn" data-tab="volatilityv2" onclick="switchTab('volatilityv2')" style="color:#38bdf8" id="vb2TabBtn">🗳 Vote Atlas</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
     <button class="tab-btn" data-tab="oibot" onclick="switchTab('oibot')" style="color:#4dd0e1" id="oiTabBtn">🧲 OI Gamma</button>
     <button class="tab-btn" data-tab="yieldspread" onclick="switchTab('yieldspread')" style="color:#f472b6" id="ysTabBtn">🧮 Yield-Spread</button>
@@ -3772,6 +3773,210 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
 
   </div><!-- /tab-volatility -->
 
+  <!-- ══════════════════════════════════════════════════════ VOLATILITY V2 (LEVEL ATLAS VOTE) TAB -->
+  <div class="tab-pane" id="tab-volatilityv2">
+
+    <div class="bot-banner" style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.28)">
+      <div class="bot-banner-icon">🗳</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#38bdf8">Vote Atlas Bot — Level Atlas Vote Portfolio</div>
+        <div class="bot-banner-sub">Replaces Volatility (above, left running until you stop it) · fade/follow vote at each rung's touch, priced against the real ladder distances · OOS-validated fade-stop tightening + currency loss gate · volatility_bot_v2/volatility_bot_v2.py</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="level-atlas-vote-portfolio.html" target="_blank" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #38bdf8;border-radius:7px;color:#38bdf8;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtest</button>
+        </a>
+        <button style="background:#38bdf8;border:none;border-radius:7px;color:#00202e;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveVb2Config();saveVb2Creds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- How it decides -->
+    <details class="card" style="padding:0;margin-bottom:14px">
+      <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#38bdf8;list-style:none">
+        ▸ How the bot decides &amp; what each status means <span style="color:var(--text3);font-weight:400">(read this if the table looks confusing)</span>
+      </summary>
+      <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--text2)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The day, start to finish</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li>The <b>server</b> maintains a rolling live window of price for each enabled pair and refreshes a plan (<code>volatility_bot_v2_plan</code>) roughly every 45 seconds — one entry per pair per currently-armed rung (p50/p75), each already voted (fade/follow) and priced (entry/SL/TP) against the real ladder distances. This bot never re-derives a vote or a level — the plan does.</li>
+          <li>The bot watches live price against each zone's entry. When price reaches it, it opens ONE bracketed position (broker-enforced SL+TP straight from the plan).</li>
+          <li><b>One entry per zone.</b> A rung that re-arms later in the session gets a genuinely new zone id from the plan — that's a new, separately-tradeable opportunity, not a re-fire of the same one.</li>
+          <li>Before every entry the bot checks, in order: kill switch → plan freshness → daily/monthly drawdown lockout → <b>currency loss gate</b> (below) → stack guard (no redundant same-direction pile-up) → portfolio risk budget.</li>
+        </ol>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The currency loss gate</div>
+        <p style="margin:0 0 10px">OOS-validated on its own (Sharpe/vol/maxDD/CVaR all improved together on a held-out slice) before being wired in. Tracks THIS bot's own realized P&amp;L per currency, live, reset at UTC midnight — once a currency's realized loss today breaches the threshold, new trades touching that currency are blocked for the rest of the day (existing positions are untouched). This is bot-side state, not something the server plan can carry, because it depends on this bot's own fills.</p>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Fade-stop tightening</div>
+        <p style="margin:0">Applied by the SERVER when it builds the plan — a fade zone's stop may already be tightened toward entry using that pair's own historically-validated MAE percentile. There's nothing for the bot to recompute; the toggle below just controls whether the server applies it.</p>
+      </div>
+    </details>
+
+    <!-- Live status -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#38bdf8">Live Status</span>
+        <span id="vb2LiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="vb2LiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="vb2LiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadVb2LiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
+        <span>Open positions: <b id="vb2OpenN">—</b></span>
+        <span>Today's trades: <b id="vb2TradesN">—</b></span>
+        <span>Live universe: <b id="vb2UniN">—</b></span>
+        <span>Currency gate: <b id="vb2GateN" style="color:var(--text3)">—</b></span>
+        <span style="margin-left:auto">Plan: <b id="vb2PlanAge">—</b></span>
+      </div>
+    </div>
+
+    <!-- Open positions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#38bdf8">Open Positions</span>
+        <span class="bot-banner-sub" style="margin:0">what the bot is holding right now</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Dir</th>
+              <th style="padding:6px 10px;text-align:right">Lots</th>
+              <th style="padding:6px 10px;text-align:right">Open</th>
+              <th style="padding:6px 10px;text-align:right">Live</th>
+              <th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="vb2OpenBody">
+            <tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Today's levels & live decisions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#38bdf8">Today's Levels &amp; Live Decisions</span>
+        <span class="bot-banner-sub" style="margin:0">one row per currently-armed rung — fade/follow, margin, and the priced entry/SL/TP</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:right">Entry</th>
+              <th style="padding:6px 10px;text-align:right">SL</th>
+              <th style="padding:6px 10px;text-align:right">TP</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Rationale</th>
+            </tr>
+          </thead>
+          <tbody id="vb2LinesBody">
+            <tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Run the bot to see today's levels</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below — this strategy has NO live track record yet, backtest + OOS only.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Paper trade (default) — point --url at this dashboard:
+python volatility_bot_v2/volatility_bot_v2.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python volatility_bot_v2/volatility_bot_v2.py)
+
+# 2) Go live on MT5 (after saving credentials below + a clean paper run):
+python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;</pre>
+      <div class="bot-banner-sub" style="margin-top:8px">The plan is server-computed and refreshes every ~45s (near-real-time, not a daily artifact like the other bots) — the pair list below controls which pairs the SERVER builds zones for, not just which ones this bot watches. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and network to the dashboard; live prices come from MT5, so paper fills need an MT5 terminal (or the dashboard-price fallback if enabled).</div>
+    </div>
+
+    <!-- Pair universe -->
+    <div class="card">
+      <div class="card-title">Pairs</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Which pairs the SERVER builds live zones for — same universe as the <a href="level-atlas-vote-portfolio.html" style="color:#38bdf8">backtest page</a>'s picker. "Select recommended" excludes the 10 pairs the correlated-drawdown study found (see the backtest page for the full methodology).</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" onclick="vb2SelectAllPairs()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:5px 12px;font-size:11px;cursor:pointer">Select all</button>
+        <button type="button" onclick="vb2SelectRecommendedPairs()" style="background:transparent;border:1px solid #38bdf8;border-radius:6px;color:#38bdf8;padding:5px 12px;font-size:11px;cursor:pointer">Select recommended</button>
+      </div>
+      <div id="vb2PairChecks" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px 10px;font-size:12px"></div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Controls ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="form-row"><span class="form-lbl">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="vb2_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+        <div class="form-row"><span class="form-lbl">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl">Risk % / trade</span><input type="number" id="vb2_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max lot</span><input type="number" id="vb2_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max open positions</span><input type="number" id="vb2_max_open" min="1" max="40" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Max spread (pips)</span><input type="number" id="vb2_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Risk overlays</div>
+        <div class="form-row"><span class="form-lbl">Currency loss gate</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_ccy_loss_gate"> on</label></div>
+        <div class="form-row"><span class="form-lbl">↳ Max daily loss / currency %</span><input type="number" id="vb2_max_daily_loss_pct" min="0.1" max="20" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Fade-stop tightening <small>server-side, see explainer above</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_fade_stop_tighten"> on</label></div>
+        <div class="form-row"><span class="form-lbl">Portfolio heat cap % <small>0 = off</small></span><input type="number" id="vb2_max_open_risk_pct" min="0" max="50" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Stack guard</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb2_stack_guard"> on</label></div>
+        <div class="form-row"><span class="form-lbl">↳ Stack guard pips</span><input type="number" id="vb2_stack_guard_pips" min="0" max="100" step="1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
+        <div class="form-row"><span class="form-lbl">Price tick <small>local watch</small></span><input type="number" id="vb2_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Status push</span><input type="number" id="vb2_status_secs" min="10" max="300" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Plan re-pull <small>plan itself refreshes ~45s server-side</small></span><input type="number" id="vb2_plan_secs" min="15" max="3600" step="15" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl">Plan max age (hours) <small>fail-closed on new entries beyond this</small></span><input type="number" id="vb2_plan_max_age_hours" min="0.1" max="24" step="0.1" style="width:80px"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#38bdf8;color:#00202e" onclick="saveVb2Config()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetVb2Defaults()">Reset Defaults</button>
+          <span id="vb2SaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Account</div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="vb2_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="vb2_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="vb2_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="vb2_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#38bdf8;color:#00202e" onclick="saveVb2Creds()">Save Credentials</button>
+          <span id="vb2CredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">volatility_bot_v2_credentials</code>). The bot reads them on connect when paper trade is OFF. Flip to live only after a paper run looks right.</div>
+      </div>
+    </div>
+
+    <!-- ── Broker index symbols ────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Broker Symbols — Indices</div>
+      <div class="bot-banner-sub" style="margin-bottom:10px">Brokers name the index CFDs differently. Set what YOUR MT5 broker calls each one (leave blank to use the built-in default in brackets). FX pairs and gold resolve automatically.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        <div class="form-row"><span class="form-lbl">NASDAQ 100 <small>nq</small></span><input type="text" id="vb2_sym_nq" placeholder="USTECH100" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">S&amp;P 500 <small>spx</small></span><input type="text" id="vb2_sym_spx" placeholder="SP500" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">DAX 40 <small>de30</small></span><input type="text" id="vb2_sym_de30" placeholder="GER40" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Dow 30 <small>dow</small></span><input type="text" id="vb2_sym_dow" placeholder="US30" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Russell 2000 <small>us2000</small></span><input type="text" id="vb2_sym_us2000" placeholder="US2000" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">UK 100 <small>uk100</small></span><input type="text" id="vb2_sym_uk100" placeholder="UK100" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Gold <small>gold</small></span><input type="text" id="vb2_sym_gold" placeholder="XAUUSD" style="width:140px;text-align:left"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="btn-save" style="background:#38bdf8;color:#00202e" onclick="saveVb2Config()">Save Symbols</button>
+        <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh (no restart needed for FX; restart needed for live index trades)</span>
+      </div>
+    </div>
+
+  </div><!-- /tab-volatilityv2 -->
+
   <!-- ══════════════════════════════════════════════════════ RANGE-LINE TAB -->
   <div class="tab-pane" id="tab-rangeline">
 
@@ -5402,6 +5607,7 @@ const TAB_BOT_KEY_MAP = {
   poshedgebot: 'position_hedge_bot_status',
   macroequity: 'macro_equity_bot_status',
   volatility:  ['volatility_bot_status', 'volatility_ride_status'],
+  volatilityv2: 'volatility_bot_v2_status',
   rangeline:   'range_line_bot_status',
   oibot:       'oi_bot_status',
   yieldspread:    'yield_spread_status',
@@ -6767,6 +6973,7 @@ const _POS_BOTS = [
   { key: 'regime_bot_v7_status',      label: 'Regime V7', color: '#14b8a6', bg: '#042f2e',  bd: '#0f766e', paper: false },
   { key: 'macro_equity_bot_status',   label: 'MacroEquity', color: '#818cf8', bg: '#1e1b4b', bd: '#4338ca', paper: false },
   { key: 'volatility_bot_status',     label: 'Volatility',  color: '#e0a93b', bg: '#292100', bd: '#78610a', paper: true },
+  { key: 'volatility_bot_v2_status',  label: 'Vote Atlas',  color: '#38bdf8', bg: '#062233', bd: '#0369a1', paper: true },
   { key: 'volatility_ride_status',    label: 'Vol-Ride',    color: '#f0b64b', bg: '#2c2400', bd: '#8a6d0c', paper: true },
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
   { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },

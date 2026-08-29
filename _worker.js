@@ -57,6 +57,8 @@ function isAllowedKVKey(key) {
   const EXACT = new Set(['fred', 'fred2', 'oi_store', 'oi_store_py', 'oi_expect_log', 'oi_auto_target', 'oi_sweep_last', 'journal_store', 'journal_replay_store', 'journal_running_totals', 'cot_data', 'ifo_data', 'surprise_index', 'events_today', 'sentiment', 'bot_config', 'bot_status', 'bot_credentials', 'bot_override', 'backtestsystem_status', 'backtestsystem_credentials', 'backtestsystem_live_config', 'backtestsystem_journal', 'regime_bot_config', 'regime_bot_credentials', 'regime_bot_status', 'regime_bot_v2_config', 'regime_bot_v2_credentials', 'regime_bot_v2_status', 'rgv2_force_unlock', 'regime_bot_v4_config', 'regime_bot_v4_credentials', 'regime_bot_v4_status', 'rgv4_force_unlock', 'regime_bot_v7_config', 'regime_bot_v7_credentials', 'regime_bot_v7_status', 'rgv7_force_unlock', 'regime_bot_v7_audit_log', 'gold_bot_status', 'gold_bot_config', 'gold_bot_credentials', 'dyn_anchor_config', 'dyn_anchor_credentials', 'dyn_anchor_status', 'dyn_anchor_forecast', 'da_force_unlock', 'hedge_alerts_cache', 'hedge_audit_log', 'wt_winrate_v1', 'macro_equity_config', 'macro_equity_credentials', 'macro_equity_bot_status', 'hedge_bot_config', 'hedge_bot_credentials', 'hedge_bot_status', 'nq_qmr_status', 'nq_qmr_config', 'nq_qmr_audit', 'spx_qmr_status', 'spx_qmr_config', 'spx_qmr_audit', 'dow_qmr_status', 'dow_qmr_config', 'dow_qmr_audit', 'dax_qmr_status', 'dax_qmr_config', 'dax_qmr_audit', 'nq_qmr_validation', 'spx_qmr_validation', 'dow_qmr_validation', 'dax_qmr_validation', 'cog_signal_log', 'cog_shadow_log', 'zone_audit_history', 'volatility_bot_config', 'volatility_bot_credentials', 'volatility_bot_status', 'volatility_bot_plan', 'volatility_bot_audit_log', 'vol_force_unlock', 'range_line_bot_config', 'range_line_bot_credentials', 'range_line_bot_status', 'range_line_bot_plan', 'range_line_confluence', 'range_line_oi_live', 'range_line_oi', 'oi_history', 'range_line_bot_audit_log', 'rl_force_unlock', 'yield_spread_config', 'yield_spread_credentials', 'yield_spread_status', 'yield_spread_plan', 'yield_spread_audit', 'ys_force_unlock',
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
     'oi_bot_state', 'oi_hold_calibration',
+    'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
+    'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
@@ -981,6 +983,8 @@ export default {
             // One-shot state (double-entry protection across bot restarts) + the
             // hold-score calibration — both must outlive the 48h market-data TTL.
             'oi_bot_state', 'oi_hold_calibration',
+            'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_plan',
+            'volatility_bot_v2_state', 'volatility_bot_v2_trade_log',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
             // These were allowed through isAllowedKVKey and marked persistent in
@@ -1023,7 +1027,7 @@ export default {
           // which merges via its own /api/bot/status endpoint below). A bot left
           // out still shows live positions but loses every closed trade the
           // moment it exits — silently, since nothing errors.
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -1950,6 +1954,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               // week's, matching the reference spec's flow definition exactly rather than
               // dividing a raw contract change by only this week's open interest.
               specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
+              // Same definition over a 4-WEEK lookback — a month of drift, which separates a
+              // reading that arrived this week from one that has been grinding the same way
+              // since last month. Null for the first four weeks of an instrument's history,
+              // and null on any cached payload written before this field existed (the 7-day
+              // cache is not version-bumped for an additive field) — the UI renders "—".
+              specShareChg4w: (specShare[0] != null && specShare[4] != null) ? +((specShare[0] - specShare[4]) * 100).toFixed(3) : null,
               grossRatio: mmS(cur) > 0 ? +(mmL(cur) / mmS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               weeklyChg: pi(cur.change_in_m_money_long_all ?? cur.chg_mm_long) - pi(cur.change_in_m_money_short_all ?? cur.chg_mm_short),
@@ -2019,6 +2029,12 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
               // specShare) already has the JPY/CAD/CHF flip baked in, so no extra sign
               // handling is needed here the way weeklyChg below needs it.
               specShareChg: (specShare[0] != null && specShare[1] != null) ? +((specShare[0] - specShare[1]) * 100).toFixed(3) : null,
+              // Same definition over a 4-WEEK lookback — a month of drift, which separates a
+              // reading that arrived this week from one that has been grinding the same way
+              // since last month. Null for the first four weeks of an instrument's history,
+              // and null on any cached payload written before this field existed (the 7-day
+              // cache is not version-bumped for an additive field) — the UI renders "—".
+              specShareChg4w: (specShare[0] != null && specShare[4] != null) ? +((specShare[0] - specShare[4]) * 100).toFixed(3) : null,
               grossRatio: levS(cur) > 0 ? +(levL(cur) / levS(cur)).toFixed(2) : null,
               openInterest: oiSer[0], oiPct: eh ? pctRank(h(oiSer), oiSer[0]) : null,
               // Flipped the same way as specNet above: JPY/CAD/CHF's CME contract quotes
@@ -2303,7 +2319,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const to   = url.searchParams.get('to')   || from;
         // Keep in step with STATUS_KEYS in /api/kv/set — a key written but not
         // read back here is history that exists in KV and never reaches the page.
-        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'];
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'];
         const dates = [];
         const startD = new Date(from + 'T00:00:00Z');
         const endD   = new Date(to   + 'T00:00:00Z');

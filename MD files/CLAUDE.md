@@ -161,7 +161,10 @@ unless that is explicitly the task.
    version running.
 7. **A/B on the OOS card** against the incumbent. Ship the comparison, not just
    the new equity curve.
-8. **Link it from `hub.html`** so it's discoverable.
+8. **Make it discoverable** — add it to `js/siteApiMap.js`'s Site Map/API Map
+   modal (+ `SITE_MAP.md`) and, if it belongs on the always-visible top bar,
+   the right category in `js/commandHub.js`. **Not `hub.html`** — see the
+   house-conventions note below.
 9. **Update `LEGO_MODULES.md`.** If you added or changed a brick, record it (row,
    status, consumers, why) — and add any new copy you couldn't yet retire to the
    candidate/known-drift tables. The registry is part of "done" (Lego Principle 6).
@@ -266,19 +269,40 @@ Apply these to any new signal, Python throwaway or JS engine alike.
     the same number. Either use a per-trade-varying risk unit (e.g. that
     period's realized vol) or note plainly that R and % Return are redundant
     here.
-- **`index.html` is THE Dashboard** — the primary landing page. `hub.html` is a
-  secondary link index. New user-facing features/links belong on **`index.html`**
-  (and the specific page they extend, e.g. the vol-bot lives on `bot-config.html`),
-  **not** on `hub.html`. Do not add things to `hub.html` unless explicitly asked.
-- **`hub.html` is NOT the site's real navigation hub, despite an earlier session
-  declaring it that.** `today.html`'s 🗺 **Site Map** (and 🔌 API Map) — powered by
-  `js/siteApiMap.js`, reference doc `MD files/SITE_MAP.md` — is the actual,
-  actively-used shortcut hub for discovering every page on the site (searchable,
-  grouped, kept current). When registering a new page for discoverability, add it
-  to `js/siteApiMap.js`'s `#smBody` (pick the right group, e.g. `WIP —
-  Work in Progress`) **and** the matching row in `SITE_MAP.md` — not `hub.html`.
-  Verify by opening the target page directly (`file://` works — the Site Map
-  modal is static content, no server needed) and confirming the entry renders.
+- **`hub.html` IS NOT A USEFUL PAGE. DO NOT TOUCH IT, EVEN IF A REQUEST SOUNDS
+  LIKE IT MIGHT MEAN HUB.HTML.** The owner has said this multiple times, the
+  second time in frustration at a session (this one) that defaulted to it
+  anyway when asked to add a link to "the shortcut menu bar." `index.html` is
+  THE Dashboard — the primary landing page. New user-facing features/links
+  belong on **`index.html`** (and the specific page they extend, e.g. the
+  vol-bot lives on `bot-config.html`). If a request is ambiguous about WHERE a
+  link/shortcut should go, ask — don't guess hub.html. There are TWO real,
+  actively-used navigation surfaces, both on `today.html`, and they are NOT
+  the same thing:
+  1. **🗺 Site Map / 🔌 API Map (modal)** — `js/siteApiMap.js`, reference doc
+     `MD files/SITE_MAP.md`. A full searchable reference of every page with a
+     description, opened by clicking the button — NOT visible until clicked.
+     Register a new page here for discoverability: add it to `#smBody` (pick
+     the right group, e.g. `WIP — Work in Progress`) **and** the matching row
+     in `SITE_MAP.md`.
+  2. **Command Hub (the persistent top dropdown bar)** — `js/commandHub.js`,
+     rendered into `<div id="commandHub">` at the very top of `today.html`,
+     ABOVE the page header — the row of pill buttons (`★ Favs ▾ Live ▾ Vol ▾
+     FX BT ▾ Research ▾ Equity ▾ Gold ▾ Systems ▾ Learn ▾ WIP ▾ 🗄 Archived ▾`)
+     that's ALWAYS VISIBLE, no click needed to see the bar itself (only to open
+     a dropdown). THIS is almost certainly what "the shortcut menu bar" or "the
+     menu bar under Vol/WIP/etc." means in casual conversation, not the Site
+     Map modal. Each `chub-dd` block is its own hand-maintained list of
+     `chub-item` links — add a new page inside the matching category's
+     `<div class="chub-menu">` (e.g. `chubDDvol` for Vol & Forecast).
+  Both are hand-maintained, independent lists (plus `hub.html`'s own cards,
+  which exist as an artifact of the earlier "hub.html is the hub" mistake) —
+  adding a page to one does NOT add it to the others; check which one was
+  actually meant before editing, and verify the edit by actually opening the
+  page (`file://` works for both — this is all static content, no server
+  needed) and confirming the entry renders, the way a prior session found out
+  the hard way that a link "added" to the wrong file renders nowhere the user
+  can see it.
 - **Data**: OANDA D1 via `fetchD1` (needs `OANDA_KEY`); M1 via `loadM1ForPair`
   (R2 / parquet / Drive). OANDA is reachable in Railway, not in the sandbox
   (expect 403 locally — that's environment, not a bug).

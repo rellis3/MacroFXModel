@@ -13,7 +13,7 @@
  * Reuses metricsCore for the shared metric definitions. Pure, unit-tested.
  */
 
-import { sortinoRatio, profitFactor, maxDrawdownFromPnls } from './metricsCore.js';
+import { sortinoRatio, profitFactor, maxDrawdownFromPnls, winRate, histVaR, histCVaR } from './metricsCore.js';
 import { mulberry32, blockResample } from './statsCore.js';
 
 const sum  = a => a.reduce((s, x) => s + x, 0);
@@ -236,16 +236,32 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
   // short samples, negative skew and fat tails.
   const { skew, kurt } = skewKurt(daily);
   const psr = probabilisticSharpe(sd > 1e-9 ? m / sd : 0, n, skew, kurt, 0);
+  // Reused, not reinvented (Lego Principle) — `sortinoRatio`/`profitFactor`/
+  // `winRate`/`histVaR`/`histCVaR` are the SAME metricsCore.js bricks the
+  // per-trade `backtestStats()` above already uses; this just applies them to
+  // the DAILY series instead of per-trade pnls, the same way `sharpe`/`annVol`
+  // already are in this function — one set of metric definitions, not two.
+  // Day-level `winRate`/`profitFactor` mean "% of positive trading days" and
+  // "gross positive days ÷ gross negative days" — a real, standard portfolio
+  // read, distinct from (and usually higher than) a per-trade win rate, since
+  // several trades can net out to one positive day.
   return {
     days: n,
     sharpe: +sharpe.toFixed(2),
+    sortino: +sortinoRatio(daily, periodsPerYear).toFixed(2),
     psr,
     skew: +skew.toFixed(2),
+    excessKurt: +(kurt - 3).toFixed(2),
     acf1: +acf1.toFixed(3),
     annVol: +annVol.toFixed(2),
     cagr:   +cagr.toFixed(2),
     maxDD:  +maxDD.toFixed(2),                          // RAW (1×, unscaled) historical DD
     calmar: maxDD < 0 ? +(cagr / Math.abs(maxDD)).toFixed(2) : 0,
+    profitFactor: +profitFactor(daily).toFixed(2),
+    winRate: +(winRate(daily) * 100).toFixed(1),        // % of positive trading DAYS
+    var95: +histVaR(daily, 0.95).toFixed(3),            // daily % loss at the 95th percentile tail
+    var99: +histVaR(daily, 0.99).toFixed(3),            // daily % loss at the 99th percentile tail
+    cvar95: +histCVaR(daily, 0.95).toFixed(3),          // mean daily % loss BEYOND that tail
     // Raw (unscaled, 1× leverage) drawdowns — same math as volTarget but NOT scaled
     // to targetVol. maxDD here == the top-level historical maxDD; MC is the raw tail.
     ...(rawMc ? { raw: { maxDD: +maxDD.toFixed(2), mcMaxDD: rawMc.mcMaxDD, mcMaxDDBlock: rawMc.mcMaxDDBlock } } : {}),

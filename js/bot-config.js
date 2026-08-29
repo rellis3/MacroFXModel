@@ -3651,6 +3651,199 @@ async function loadVbLiveStatus() {
 window.saveVbConfig = saveVbConfig; window.resetVbDefaults = resetVbDefaults;
 window.saveVbCreds = saveVbCreds; window.loadVbLiveStatus = loadVbLiveStatus;
 
+// ══════════════════════════════════════════════════════════════════════════
+// volatility_bot_v2 (Level Atlas Vote Portfolio) — mirrors the Vb-prefixed
+// block above exactly, adapted for a checkbox-array pair picker (matching
+// level-atlas-vote-portfolio.html's own picker) instead of the other bots'
+// free-text `enabled_pairs` override, and a per-zone (not per-line) levels
+// table (the plan ships one row per currently-armed rung, not 6 fixed bands
+// per pair).
+// ══════════════════════════════════════════════════════════════════════════
+
+// Same universe/exclusion set as level-atlas-vote-portfolio.html's own
+// PAIRS/CORRELATED_RISK_EXCLUDE (hand-kept in sync — both small, curated
+// lists) and server.js's VOLATILITY_V2_ALL_PAIRS/_CORRELATED_EXCLUDE.
+const VB2_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'gbpjpy', 'gbpaud',
+  'gbpchf', 'audjpy', 'audcad', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+  'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
+const VB2_CORRELATED_RISK_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audcad', 'nzdjpy', 'eurgbp', 'gbpjpy', 'nzdusd', 'eurjpy', 'eurcad']);
+// "Select recommended" default (all pairs minus the 10 correlated-risk exclusions).
+const VB2_DEFAULT_CHECKED = new Set(VB2_PAIRS.filter(p => !VB2_CORRELATED_RISK_EXCLUDE.has(p)));
+const VB2_INDEX_KEYS = ['nq', 'spx', 'de30', 'dow', 'us2000', 'uk100', 'gold'];
+
+const VB2_DEFAULTS = {
+  paper_mode: true, kill_switch: false, risk_pct: 1.0, max_lot: 2.0, max_open: 12,
+  max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 45,
+  enabled_pairs: [...VB2_DEFAULT_CHECKED],
+  ccy_loss_gate: true, max_daily_loss_pct: 1.0,
+  fade_stop_tighten: true, max_open_risk_pct: 2.0,
+  stack_guard: true, stack_guard_pips: 5,
+  plan_max_age_hours: 1,
+  broker_symbols: {},
+};
+let _vb2Cfg = { ...VB2_DEFAULTS };
+let _vb2LastStatus = null;
+
+function _vb2RenderPairChecks() {
+  const el = document.getElementById('vb2PairChecks');
+  if (!el) return;
+  const checked = new Set(_vb2Cfg.enabled_pairs?.length ? _vb2Cfg.enabled_pairs : VB2_DEFAULT_CHECKED);
+  el.innerHTML = VB2_PAIRS.map(p => `<label style="display:flex;align-items:center;gap:5px;padding:3px 0"><input type="checkbox" data-vb2-pair="${p}" ${checked.has(p) ? 'checked' : ''}>${p.toUpperCase()}</label>`).join('');
+}
+function _vb2ReadPairChecks() {
+  const boxes = document.querySelectorAll('#vb2PairChecks input[data-vb2-pair]');
+  return Array.from(boxes).filter(b => b.checked).map(b => b.dataset.vb2Pair);
+}
+function vb2SelectAllPairs() {
+  document.querySelectorAll('#vb2PairChecks input[data-vb2-pair]').forEach(b => { b.checked = true; });
+}
+function vb2SelectRecommendedPairs() {
+  document.querySelectorAll('#vb2PairChecks input[data-vb2-pair]').forEach(b => { b.checked = !VB2_CORRELATED_RISK_EXCLUDE.has(b.dataset.vb2Pair); });
+}
+
+function renderVb2Form() {
+  const chk = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
+  const set = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+  chk('vb2_paper_mode',  _vb2Cfg.paper_mode ?? true);
+  chk('vb2_kill_switch', _vb2Cfg.kill_switch);
+  set('vb2_risk_pct',            _vb2Cfg.risk_pct            ?? VB2_DEFAULTS.risk_pct);
+  set('vb2_max_lot',             _vb2Cfg.max_lot             ?? VB2_DEFAULTS.max_lot);
+  set('vb2_max_open',            _vb2Cfg.max_open            ?? VB2_DEFAULTS.max_open);
+  set('vb2_max_spread_pips',     _vb2Cfg.max_spread_pips     ?? VB2_DEFAULTS.max_spread_pips);
+  chk('vb2_ccy_loss_gate',       _vb2Cfg.ccy_loss_gate ?? true);
+  set('vb2_max_daily_loss_pct',  _vb2Cfg.max_daily_loss_pct  ?? VB2_DEFAULTS.max_daily_loss_pct);
+  chk('vb2_fade_stop_tighten',   _vb2Cfg.fade_stop_tighten ?? true);
+  set('vb2_max_open_risk_pct',   _vb2Cfg.max_open_risk_pct  ?? VB2_DEFAULTS.max_open_risk_pct);
+  chk('vb2_stack_guard',         _vb2Cfg.stack_guard ?? true);
+  set('vb2_stack_guard_pips',    _vb2Cfg.stack_guard_pips   ?? VB2_DEFAULTS.stack_guard_pips);
+  set('vb2_tick_secs',           _vb2Cfg.tick_secs          ?? VB2_DEFAULTS.tick_secs);
+  set('vb2_status_secs',         _vb2Cfg.status_secs        ?? VB2_DEFAULTS.status_secs);
+  set('vb2_plan_secs',           _vb2Cfg.plan_secs          ?? VB2_DEFAULTS.plan_secs);
+  set('vb2_plan_max_age_hours',  _vb2Cfg.plan_max_age_hours ?? VB2_DEFAULTS.plan_max_age_hours);
+  const syms = _vb2Cfg.broker_symbols || {};
+  VB2_INDEX_KEYS.forEach(k => { const e = document.getElementById(`vb2_sym_${k}`); if (e) e.value = syms[k] ?? ''; });
+  _vb2RenderPairChecks();
+}
+
+function readVb2Form() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  _vb2Cfg.paper_mode           = !!document.getElementById('vb2_paper_mode')?.checked;
+  _vb2Cfg.kill_switch          = !!document.getElementById('vb2_kill_switch')?.checked;
+  _vb2Cfg.risk_pct             = num('vb2_risk_pct', VB2_DEFAULTS.risk_pct);
+  _vb2Cfg.max_lot              = num('vb2_max_lot', VB2_DEFAULTS.max_lot);
+  _vb2Cfg.max_open             = Math.round(num('vb2_max_open', VB2_DEFAULTS.max_open));
+  _vb2Cfg.max_spread_pips      = num('vb2_max_spread_pips', VB2_DEFAULTS.max_spread_pips);
+  _vb2Cfg.ccy_loss_gate        = !!document.getElementById('vb2_ccy_loss_gate')?.checked;
+  _vb2Cfg.max_daily_loss_pct   = num('vb2_max_daily_loss_pct', VB2_DEFAULTS.max_daily_loss_pct);
+  _vb2Cfg.fade_stop_tighten    = !!document.getElementById('vb2_fade_stop_tighten')?.checked;
+  _vb2Cfg.max_open_risk_pct    = num('vb2_max_open_risk_pct', VB2_DEFAULTS.max_open_risk_pct);
+  _vb2Cfg.stack_guard          = !!document.getElementById('vb2_stack_guard')?.checked;
+  _vb2Cfg.stack_guard_pips     = num('vb2_stack_guard_pips', VB2_DEFAULTS.stack_guard_pips);
+  _vb2Cfg.tick_secs            = Math.round(num('vb2_tick_secs', VB2_DEFAULTS.tick_secs));
+  _vb2Cfg.status_secs          = Math.round(num('vb2_status_secs', VB2_DEFAULTS.status_secs));
+  _vb2Cfg.plan_secs            = Math.round(num('vb2_plan_secs', VB2_DEFAULTS.plan_secs));
+  _vb2Cfg.plan_max_age_hours   = num('vb2_plan_max_age_hours', VB2_DEFAULTS.plan_max_age_hours);
+  _vb2Cfg.enabled_pairs        = _vb2ReadPairChecks();
+  const syms = {};
+  VB2_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb2_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _vb2Cfg.broker_symbols = syms;
+}
+
+async function loadVb2Config() {
+  try { const stored = await kvGet('volatility_bot_v2_config'); if (stored) _vb2Cfg = { ...VB2_DEFAULTS, ...stored }; renderVb2Form(); } catch (e) {}
+}
+async function saveVb2Config() {
+  readVb2Form();
+  const el = document.getElementById('vb2SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('volatility_bot_v2_config', _vb2Cfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#38bdf8'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetVb2Defaults() {
+  _vb2Cfg = { ...VB2_DEFAULTS }; renderVb2Form();
+  const el = document.getElementById('vb2SaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadVb2Creds() { try { _applyCredsToForm(await kvGet('volatility_bot_v2_credentials'), 'vb2_', 'vb2_mt5_password'); } catch (e) {} }
+async function saveVb2Creds() { await _saveCreds('volatility_bot_v2_credentials', 'vb2_', 'vb2_mt5_password', 'vb2CredsStatus'); }
+
+async function loadVb2LiveStatus() {
+  const ageEl = document.getElementById('vb2LiveAge'), modeEl = document.getElementById('vb2LiveMode');
+  const balEl = document.getElementById('vb2LiveBal'), openEl = document.getElementById('vb2OpenN');
+  const uniEl = document.getElementById('vb2UniN'), gateEl = document.getElementById('vb2GateN');
+  try {
+    const [st, planWrap] = await Promise.all([kvGet('volatility_bot_v2_status'), kvGet('volatility_bot_v2_plan')]);
+    _vb2LastStatus = st || null;
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; return; }
+    if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+    if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+    if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+    const positions = st.mt5_positions || [];
+    if (openEl) openEl.textContent = positions.length;
+    const tradesEl = document.getElementById('vb2TradesN');
+    if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
+    if (uniEl)  uniEl.textContent  = (st.universe || []).length;
+    if (gateEl) {
+      const tally = st.ccy_gate?.tally || {};
+      const blocked = Object.entries(tally).filter(([, v]) => v <= -(_vb2Cfg.max_daily_loss_pct ?? 1));
+      gateEl.textContent = blocked.length ? blocked.map(([c, v]) => `${c} ${v.toFixed(1)}%`).join(', ') : 'clear';
+      gateEl.style.color = blocked.length ? 'var(--red)' : 'var(--text3)';
+    }
+    const pa = document.getElementById('vb2PlanAge');
+    if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';
+
+    const openBody = document.getElementById('vb2OpenBody');
+    if (openBody) {
+      if (!positions.length) {
+        openBody.innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>';
+      } else {
+        const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+        openBody.innerHTML = positions.map(p => {
+          const buy = (p.direction || '').toUpperCase() === 'BUY';
+          const pnl = +(p.profit || 0);
+          return `<tr>
+            <td style="padding:5px 10px;font-weight:600;text-align:left">${(p.symbol || '?').toUpperCase()}</td>
+            <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+            <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+            <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+            <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    const body = document.getElementById('vb2LinesBody');
+    if (body) {
+      const rows = st.lines || [];
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no zones yet — waiting for the live plan</td></tr>';
+      } else {
+        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+        const STATUS_COLOR = { entered: 'var(--green)', armed: 'var(--text2)' };
+        body.innerHTML = rows.map(r => `<tr>
+            <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
+            <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
+            <td style="padding:5px 10px;text-align:left">${r.rung || '—'}</td>
+            <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
+            <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+            <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
+            <td style="padding:5px 10px;text-align:left;color:${STATUS_COLOR[r.status] || 'var(--text3)'}">${r.status === 'entered' ? '▶ entered' : (r.status || '—')}</td>
+            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
+          </tr>`).join('');
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+}
+
+window.saveVb2Config = saveVb2Config; window.resetVb2Defaults = resetVb2Defaults;
+window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus;
+window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
+
 // ── Forecast drift vs reference ───────────────────────────────────────────────
 // For each live-universe pair, call /api/forecast-drift/:pair (plan lines vs the
 // recalibrated reference forecaster) and render the per-line % drift. A large negative
@@ -3852,6 +4045,11 @@ document.querySelector('.tab-btn[data-tab="volatility"]')?.addEventListener('cli
 loadVbConfig();
 loadVbCreds();
 loadVbLiveStatus();
+
+document.querySelector('.tab-btn[data-tab="volatilityv2"]')?.addEventListener('click', loadVb2LiveStatus);
+loadVb2Config();
+loadVb2Creds();
+loadVb2LiveStatus();
 
 // ── Range-Line Bot config (mirrors the volatility bot) ────────────────────────
 const RL_DEFAULTS = {

@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asia Fib Atlas — Live</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --line:#1f2937; --text:#cbd5e1; --muted:#64748b; --accent:#5b9dff; --green:#10b981; --red:#f87171; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; display:flex; flex-direction:column; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; flex:0 0 auto; }
+  h1 { margin:0; font-size:16px; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; }
+  select, button { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:13px; cursor:pointer; }
+  .seg { display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .seg button { border:none; border-radius:0; background:#1e293b; }
+  .seg button.active { background:var(--accent); color:#0b0e14; font-weight:600; }
+  #status { font-size:11px; color:var(--muted); margin-left:auto; font-family:'DM Mono',monospace; }
+  /* Stretch to fill whatever viewport height is left below the header instead
+     of a fixed 560px box — on a tall monitor the old fixed height left a wall
+     of empty space below the ladder card (the actual bug behind "why is this
+     page using only a small scrolling section"). */
+  .wrap { display:flex; gap:16px; padding:16px 20px; flex:1 1 auto; min-height:0; }
+  #chart { flex:2 1 640px; min-width:320px; height:100%; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+  .side { flex:1 1 380px; min-width:340px; height:100%; overflow-y:auto; display:flex; flex-direction:column; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:12px; flex:0 0 auto; }
+  .card.grow { flex:1 1 auto; min-height:0; overflow-y:auto; }
+  .card h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  th, td { text-align:right; padding:4px 6px; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child { text-align:left; }
+  tr.touched { opacity:.55; }
+  tr:hover { background:#161b26; cursor:pointer; }
+  tr.selected { background:#1e2a44; }
+  tr.selected td:first-child { color:#facc15; font-weight:600; }
+  .lean-continuation { color:var(--green); font-weight:600; }
+  .lean-reversion { color:var(--red); font-weight:600; }
+  .lean-neutral { color:var(--muted); }
+  .pill { display:inline-block; padding:1px 6px; border-radius:10px; font-size:10px; font-weight:600; }
+  .pill.strong { background:rgba(16,185,129,.18); color:var(--green); }
+  .pill.weak { background:rgba(148,163,184,.15); color:var(--muted); }
+  .muted { color:var(--muted); font-size:11px; }
+  .detail { font-family:'DM Mono',monospace; font-size:11px; color:var(--muted); padding:6px 0 10px; border-bottom:1px solid var(--line); }
+  .detail b { color:var(--text); }
+  .detail .sup { color:var(--green); }
+  .detail .chal { color:var(--red); }
+  .legend { display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:6px; }
+  .legend span { display:flex; align-items:center; gap:4px; }
+  .dot { width:10px; height:3px; display:inline-block; border-radius:2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="pageTitle">Asia Fib Atlas — Live</h1>
+  <div class="seg" id="ladderSeg">
+    <button data-v="asia" class="active">Asia</button>
+    <button data-v="monday">Monday</button>
+  </div>
+  <select id="pair">
+    <option value="EURUSD">EURUSD</option>
+    <option value="GBPUSD">GBPUSD</option>
+    <option value="USDJPY">USDJPY</option>
+    <option value="AUDUSD">AUDUSD</option>
+    <option value="NZDUSD">NZDUSD</option>
+    <option value="USDCAD">USDCAD</option>
+    <option value="USDCHF">USDCHF</option>
+    <option value="EURJPY">EURJPY</option>
+    <option value="EURGBP">EURGBP</option>
+    <option value="EURAUD">EURAUD</option>
+    <option value="EURCAD">EURCAD</option>
+    <option value="EURCHF">EURCHF</option>
+    <option value="EURNZD">EURNZD</option>
+    <option value="GBPJPY">GBPJPY</option>
+    <option value="GBPAUD">GBPAUD</option>
+    <option value="GBPCAD">GBPCAD</option>
+    <option value="GBPCHF">GBPCHF</option>
+    <option value="GBPNZD">GBPNZD</option>
+    <option value="AUDJPY">AUDJPY</option>
+    <option value="AUDNZD">AUDNZD</option>
+    <option value="AUDCAD">AUDCAD</option>
+    <option value="AUDCHF">AUDCHF</option>
+    <option value="CADJPY">CADJPY</option>
+    <option value="CHFJPY">CHFJPY</option>
+    <option value="NZDJPY">NZDJPY</option>
+    <option value="GOLD">GOLD</option>
+  </select>
+  <span class="sub" id="pageSub">Fib-extension rungs above/below today's Asia range, confidence-scored against the OOS-held reference book.</span>
+  <span id="status">—</span>
+</header>
+<div class="wrap">
+  <div id="chart"></div>
+  <div class="side">
+    <div class="card grow">
+      <h2>Ladder — nearest rungs to current price</h2>
+      <div class="muted" style="margin-bottom:8px;">
+        Click a row to highlight it on the chart. <b>What "out"/"back" mean:</b>
+        once price actually reaches a rung, does it usually keep extending
+        AWAY from the <span id="rangeWordA">Asia</span> range (<b>out</b> = continuation) or snap BACK
+        toward it (<b>back</b> = reversion)? "Base%" is that rung's all-time
+        rate; "OOS%" is the same stat measured only on data held out of the
+        original fit — trust OOS over Base when they disagree.
+      </div>
+      <table>
+        <thead><tr><th>Rung</th><th>Price</th><th>Pips</th><th>Continue% (all)</th><th>Continue% (OOS)</th><th>Lean</th><th>Signal</th></tr></thead>
+        <tbody id="ladderBody"><tr><td colspan="7" class="muted">loading…</td></tr></tbody>
+      </table>
+      <div class="legend">
+        <span><i class="dot" style="background:#10b981"></i>continuation (out), IS+OOS agree</span>
+        <span><i class="dot" style="background:#6ee7b7"></i>continuation, weaker</span>
+        <span><i class="dot" style="background:#f87171"></i>reversion (back), IS+OOS agree</span>
+        <span><i class="dot" style="background:#fca5a5"></i>reversion, weaker</span>
+        <span><i class="dot" style="background:#64748b"></i>neutral / no held signal</span>
+        <span><i class="dot" style="background:#f8fafc"></i>current live price (chart)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2 id="detailTitle">Selected rung</h2>
+      <div id="detail" class="muted">click a row in the ladder for the full breakdown, and — if price actually reaches this rung — what history says happens next</div>
+    </div>
+    <div class="card muted">
+      Confidence = this rung's own OOS-held base rate, adjusted by whichever
+      of the two dimensions the 26-pair widen check found generalize almost
+      everywhere — <code>prevOutcomeSameDay</code> (did this rung already
+      resolve <span id="periodWordC">today</span>) and the current
+      <code>sessionHandoff</code> window — when EITHER independently held OOS
+      (n≥30, ≥3pp, same sign) for this exact rung. Other real, level-specific
+      reads (weekly pivots, structural confluence, macro-event proximity, …)
+      show in the detail panel when present but aren't blended into the
+      ladder color — this is a reference read, not a fitted/backtested joint
+      signal. See <code>MD files/LEGO_MODULES.md</code> §1aq.
+      <br><br>
+      <b>Asia vs Monday toggle:</b> Asia's range re-forms once a session
+      (daily); Monday's range re-forms once a week and stays fixed all week —
+      so "already resolved" on the Monday ladder means "earlier THIS WEEK",
+      not today specifically. Same fib-grid idea, same OOS-held scoring, two
+      different range clocks. Cross-instrument backtest results for both
+      ladders (26 pairs, concurrency-capped) are in
+      <a href="asia-fib-atlas-vote-backtest.html" style="color:var(--accent)">the vote-backtest page</a>.
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createLevelChart } from './js/levelChart.js';
+import { priceDigits } from './js/instrumentRegistry.js';
+
+const statusEl = document.getElementById('status');
+const pairSel = document.getElementById('pair');
+const ladderBody = document.getElementById('ladderBody');
+const detailEl = document.getElementById('detail');
+const detailTitle = document.getElementById('detailTitle');
+const pageTitle = document.getElementById('pageTitle');
+const pageSub = document.getElementById('pageSub');
+const ladderSegEl = document.getElementById('ladderSeg');
+
+// 'asia' or 'monday' — which reference ladder is showing. Monday's own live
+// route mirrors Asia's exactly (mondayFibAtlasRoutes.js's /fastlive), just a
+// different API prefix and a "this week" instead of "today" framing (a
+// Monday range only re-forms once a week, so "touched today" would be
+// misleading — the underlying field is still `touchedToday`/`prevOutcomeSameDay`
+// by design, see mondayFibAtlasEngine.js's header on why that field name is
+// deliberately reused rather than renamed).
+let ladder = 'asia';
+function apiPrefix() { return ladder === 'monday' ? 'monday-fib-atlas' : 'asia-fib-atlas'; }
+function periodWord() { return ladder === 'monday' ? 'this week' : 'today'; }
+function rangeWord() { return ladder === 'monday' ? 'Monday' : 'Asia'; }
+
+// Recreated per pair (not just per page load) so the price axis always shows
+// the RIGHT number of decimals for whatever pair is selected — JPY crosses
+// (2-3 digits) vs. everything else (4-5) need different precision, and
+// Lightweight-Charts doesn't support changing it on a live series.
+let view = null;
+let digits = 5;
+function buildChart(pair) {
+  if (view) { try { view.destroy(); } catch { /* ignore */ } view = null; }
+  digits = priceDigits(pair);
+  // createLevelChart throws synchronously if the LightweightCharts CDN
+  // script didn't load (blocked network/ad-blocker/proxy) — caught here so
+  // that failure only costs the chart, not the rest of start() (the ladder
+  // poll, candle load, interval timers) which have no dependency on it.
+  try {
+    view = createLevelChart(document.getElementById('chart'), { height: 560, priceDigits: digits });
+  } catch (e) {
+    console.warn('chart library unavailable:', e.message);
+    document.getElementById('chart').innerHTML = '<div class="muted" style="padding:20px">Chart library failed to load (blocked script) — the ladder table and detail panel are unaffected.</div>';
+  }
+}
+
+let pollTimer = null;
+let lastLadder = [];
+let selectedIdx = null;
+
+function fmtPct(v) { return v == null ? '—' : `${v.toFixed(1)}%`; }
+function fmtPips(v) { return v == null ? '—' : v.toFixed(1); }
+function fmtPrice(v) { return Number.isFinite(v) ? v.toFixed(digits) : '—'; }
+
+function kindFor(r) {
+  if (r.lean === 'neutral' || r.base == null) return 'fibNeutral';
+  const strong = r.sameSignOOS === true;
+  if (r.lean === 'continuation') return strong ? 'fibOutStrong' : 'fibOutWeak';
+  return strong ? 'fibBackStrong' : 'fibBackWeak';
+}
+
+function renderDetail(r) {
+  if (!r) { detailEl.innerHTML = '<span class="muted">click a row in the ladder for the full breakdown</span>'; return; }
+  detailTitle.textContent = `${r.side}|${r.level} @ ${fmtPrice(r.price)}`;
+  const rows = [];
+  const whatHappens = r.lean === 'continuation'
+    ? `If price reaches ${fmtPrice(r.price)}, history leans <b class="lean-continuation">continuation</b> — price has tended to keep extending past this rung rather than snap back.`
+    : r.lean === 'reversion'
+      ? `If price reaches ${fmtPrice(r.price)}, history leans <b class="lean-reversion">reversion</b> — price has tended to reverse back toward the ${rangeWord()} range rather than extend further.`
+      : `If price reaches ${fmtPrice(r.price)}, history shows no clear lean either way for this rung — treat it as a level to watch, not a signal.`;
+  rows.push(`<div class="detail">${whatHappens}</div>`);
+  rows.push(`<div class="detail"><b>Base rate</b> (this rung, all history): out ${fmtPct(r.base?.out)} / back ${fmtPct(r.base?.back)} / neither ${fmtPct(r.base?.neither)} — <b>OOS</b> out ${fmtPct(r.base?.outOOS)} / back ${fmtPct(r.base?.backOOS)}</div>`);
+  rows.push(`<div class="detail"><b>Live signals now:</b> last resolved outcome ${periodWord()}=${r.prevOutcomeSameDay ?? 'none yet'} · sessionHandoff=${r.sessionHandoff}${r.touchedToday ? ` · touched ${periodWord()}` : ` · not touched ${periodWord()}`}</div>`);
+  if (r.supports?.length) {
+    rows.push(`<div class="detail"><b class="sup">Supports the lean</b><br>${r.supports.map(s => `${s.dimLabel ?? s.dimKey}=${s.bucket}: Δ${s.deltaOutIS}pp IS / Δ${s.deltaOutOOS ?? '—'}pp OOS (n=${s.n.is}/${s.n.oos})`).join('<br>')}</div>`);
+  }
+  if (r.challenges?.length) {
+    rows.push(`<div class="detail"><b class="chal">Challenges the lean</b><br>${r.challenges.map(s => `${s.dimLabel ?? s.dimKey}=${s.bucket}: Δ${s.deltaOutIS}pp IS / Δ${s.deltaOutOOS ?? '—'}pp OOS (n=${s.n.is}/${s.n.oos})`).join('<br>')}</div>`);
+  }
+  if (r.context?.length) {
+    rows.push(`<div class="detail"><b>Other held reads (base rate is neutral here)</b><br>${r.context.map(s => `${s.dimLabel ?? s.dimKey}=${s.bucket}: Δ${s.deltaOutIS}pp IS`).join('<br>')}</div>`);
+  }
+  if (!r.supports?.length && !r.challenges?.length && !r.context?.length) {
+    rows.push(`<div class="detail muted">No situational dimension currently holds OOS for this exact rung — base rate stands on its own.</div>`);
+  }
+  detailEl.innerHTML = rows.join('');
+}
+
+let lastCurrentPrice = null;
+
+// Redraws the chart's price lines from the current ladder, overriding the
+// selected row (if any) to the bold 'selected' style — this + the matching
+// '.selected' row class is the chart<->table link: click a row, see exactly
+// which line on the chart it is.
+function renderLevels(near, currentPrice) {
+  const levels = near.map((r, i) => ({
+    price: r.price,
+    kind: i === selectedIdx ? 'selected' : kindFor(r),
+    label: `${r.side}|${r.level}${r.touchedToday ? ' ✓' : ''}`,
+  }));
+  if (Number.isFinite(currentPrice)) levels.push({ price: currentPrice, kind: 'livePrice', label: `price ${fmtPrice(currentPrice)}` });
+  if (view) view.setLevels(levels, { showTitle: false });
+}
+
+function selectRow(near, i) {
+  selectedIdx = i;
+  renderDetail(near[i]);
+  renderLevels(near, lastCurrentPrice);
+  for (const tr of ladderBody.querySelectorAll('tr[data-i]')) {
+    tr.classList.toggle('selected', +tr.dataset.i === i);
+  }
+}
+
+function renderLadder(ladder, currentPrice) {
+  lastLadder = ladder;
+  lastCurrentPrice = currentPrice;
+  const near = ladder.slice(0, 24);
+  ladderBody.innerHTML = near.map((r, i) => {
+    const leanClass = r.lean === 'continuation' ? 'lean-continuation' : r.lean === 'reversion' ? 'lean-reversion' : 'lean-neutral';
+    const signal = (r.supports?.length ?? 0) > 0 ? `<span class="pill strong">${r.supports.length} held</span>` : '<span class="pill weak">base only</span>';
+    return `<tr data-i="${i}" class="${r.touchedToday ? 'touched' : ''}${i === selectedIdx ? ' selected' : ''}">
+      <td>${r.side}|${r.level}</td>
+      <td>${fmtPrice(r.price)}</td>
+      <td>${fmtPips(r.distancePips)}</td>
+      <td>${fmtPct(r.base?.out)}</td>
+      <td>${fmtPct(r.base?.outOOS)}</td>
+      <td class="${leanClass}">${r.lean ?? '—'}</td>
+      <td>${signal}</td>
+    </tr>`;
+  }).join('');
+  for (const tr of ladderBody.querySelectorAll('tr[data-i]')) {
+    tr.addEventListener('click', () => selectRow(near, +tr.dataset.i));
+  }
+  renderLevels(near, currentPrice);
+}
+
+async function loadCandles(pair) {
+  try {
+    const res = await fetch(`/api/pattern-lab/live-candles/${pair}?tf=1m&count=500`);
+    const j = await res.json();
+    if (pair !== pairSel.value) return;   // a slow response for a pair we've since switched away from
+    if (j.ok && view) view.setCandles(j.candles).fit();
+  } catch (e) { console.warn('candles fetch failed', e); }
+}
+
+async function pollLadder(pair, forLadder) {
+  try {
+    const res = await fetch(`/api/${apiPrefix()}/fastlive/${pair}`);
+    const j = await res.json();
+    if (pair !== pairSel.value || forLadder !== ladder) return;   // guard against a stale response for a pair/ladder we've since switched away from
+    if (!j.ok) { statusEl.textContent = `error: ${j.error}`; return; }
+    if (j.warming) { statusEl.textContent = 'warming up (first load can take ~30-90s)…'; return; }
+    const live = j.live;
+    statusEl.textContent = `${pair} · ${live.date ?? '—'} · price ${fmtPrice(live.currentPrice)} · ${live.sessionHandoff ?? '—'} · book ${j.bookGeneratedAt ? new Date(j.bookGeneratedAt).toLocaleString() : `not yet built — POST /api/${apiPrefix()}/run`}`;
+    renderLadder(live.ladder ?? [], live.currentPrice);
+  } catch (e) {
+    statusEl.textContent = `poll failed: ${e.message}`;
+  }
+}
+
+function updateHeaderCopy() {
+  pageTitle.textContent = ladder === 'monday' ? 'Monday Fib Atlas — Live' : 'Asia Fib Atlas — Live';
+  pageSub.textContent = ladder === 'monday'
+    ? "Fib-extension rungs above/below this week's Monday range, confidence-scored against the OOS-held reference book."
+    : "Fib-extension rungs above/below today's Asia range, confidence-scored against the OOS-held reference book.";
+  document.getElementById('rangeWordA').textContent = rangeWord();
+  document.getElementById('periodWordC').textContent = periodWord();
+}
+
+function start() {
+  const pair = pairSel.value;
+  const forLadder = ladder;
+  if (pollTimer) clearInterval(pollTimer);
+  selectedIdx = null;
+  renderDetail(null);
+  updateHeaderCopy();
+  buildChart(pair);
+  // Clear any stale ladder from the PREVIOUS pair/ladder immediately — a cold
+  // cache can take up to ~90s to warm (real M1 load + gap-fill), and leaving
+  // the old table up during that wait reads as live data for the new
+  // selection when it's actually still the old one (found while testing the
+  // Monday toggle: switching ladder/pair showed the prior pair's rows under
+  // a "warming up" status for the whole warm window).
+  lastLadder = []; lastCurrentPrice = null;
+  ladderBody.innerHTML = '<tr><td colspan="7" class="muted">loading…</td></tr>';
+  loadCandles(pair);
+  pollLadder(pair, forLadder);
+  pollTimer = setInterval(() => { pollLadder(pair, forLadder); }, 15000);
+  setInterval(() => { loadCandles(pairSel.value); }, 60000);
+}
+
+pairSel.addEventListener('change', start);
+ladderSegEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-v]');
+  if (!btn || btn.dataset.v === ladder) return;
+  ladder = btn.dataset.v;
+  for (const b of ladderSegEl.querySelectorAll('button')) b.classList.toggle('active', b === btn);
+  start();
+});
+start();
+window.__pageReady = true;   // smoke-test hook
+</script>
+</body>
+</html>

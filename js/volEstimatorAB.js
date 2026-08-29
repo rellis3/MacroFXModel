@@ -25,7 +25,10 @@
  */
 
 import { yzVolSeries, BM_P50, BM_P75, HN_P50, HN_P75, ASSET_PARAMS } from './volBacktestEngine.js';
-import { _londonParts } from './sessionStats.js';
+// From the PURE clock module, not './sessionStats.js' — that file statically imports
+// `fs`, and this module is composed by engines a browser page loads, where a bare
+// 'fs' specifier is a fatal module-resolution error, not a warning.
+import { _londonParts } from './londonSession.js';
 
 function _toDate(t) {
   if (t instanceof Date) return t;

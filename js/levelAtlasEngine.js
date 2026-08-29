@@ -47,6 +47,34 @@ import { pipSize } from './instrumentRegistry.js';
 export const RUNGS = ['p50', 'p75', 'p90'];
 export const SIDES = ['up', 'down'];   // up = O-H rungs, down = O-L rungs
 
+/**
+ * Converts one day's already-built ladder quantiles (`buildLadder`'s output —
+ * per-side `{p50,p75,p90}` % distances from the session open) into actual
+ * PRICE levels for both sides: `{up: [open, p50px, p75px, p90px], down: [...]}`.
+ * Extracted (2026-08-28) from `atlasWalk`'s own per-day loop so a SECOND
+ * consumer (`volatility_bot_v2`'s live plan producer, `server.js`) can derive
+ * a live rung's `innerDistPips`/`outerDistPips` the exact same way a resolved
+ * backtest touch does — those distances are a pure function of the ladder
+ * (`rungSpan = |lv[i+1]-lv[i]|`), not of the touch/outcome, so a not-yet-
+ * touched ("pending") rung is just as prices-able as a resolved one, given
+ * the same ladder. Never call this on stale/no-lookahead-violating inputs —
+ * `lad` must come from `sigma` forecast off data STRICTLY BEFORE today, same
+ * as everywhere else in this file.
+ *
+ *   rungLevelsForLadder(lad, open) -> { up: number[]|undefined, down: number[]|undefined }
+ */
+export function rungLevelsForLadder(lad, open) {
+  const out = {};
+  for (const s of SIDES) {
+    const isU = s === 'up';
+    const q2 = isU ? lad.oh : lad.ol;
+    if (!(q2?.p50 && q2?.p75 && q2?.p90)) continue;
+    const sg = isU ? 1 : -1;
+    out[s] = [open, ...RUNGS.map(r => open * (1 + sg * q2[r] / 100))];
+  }
+  return out;
+}
+
 // ── Session classification — SAME boundaries as forecastAnalyser.classifySession,
 // re-derived here (not imported — it's private there) so this module can also
 // build a per-session REALIZED-RANGE series, which that function doesn't do.
@@ -355,14 +383,11 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
     // (rung-first-touch is re-arm-independent) — powers `otherSideTouchedBefore`
     // without a second ordinal-tracking walk, and lets the main loop below just
     // read `lvBySide[side]` instead of recomputing it per re-arm iteration.
-    const lvBySide = {}, firstTouchBySide = {};
+    const lvBySide = rungLevelsForLadder(lad, open);
+    const firstTouchBySide = {};
     for (const s of SIDES) {
-      const isU = s === 'up';
-      const q2 = isU ? lad.oh : lad.ol;
-      if (!(q2.p50 && q2.p75 && q2.p90)) continue;
-      const sg = isU ? 1 : -1;
-      lvBySide[s] = [open, ...RUNGS.map(r => open * (1 + sg * q2[r] / 100))];
-      firstTouchBySide[s] = firstTouchTimes(bars, lvBySide[s], isU);
+      if (!lvBySide[s]) continue;
+      firstTouchBySide[s] = firstTouchTimes(bars, lvBySide[s], s === 'up');
     }
 
     for (const side of SIDES) {
@@ -413,8 +438,26 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               if (isUp ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; resolveIdx = j; break; }
             }
             const pullbackFrac = rungSpan > 0 ? Math.min(1, Math.abs(here - deepest) / rungSpan) : null;
-            const fadePips = (here - deepest) / pip * sgn * -1;   // +ve = gave back distance from the touch
+            // `deepest` only ever moves AWAY from `here` in the retracement
+            // direction (down for isUp, up for isDown), so (here-deepest) is
+            // >=0 for isUp and <=0 for isDown — `* sgn` alone already lands on
+            // "+ve = gave back distance"; a stray extra `* -1` here used to
+            // flip that, making fadePips <=0 on BOTH sides (verified
+            // algebraically and against real data: every fade-decision touch
+            // in js/levelAtlasVoteReview.js's real-pair run showed NEGATIVE
+            // mean MFE even in 90%+-win-rate subgroups — the tell that this
+            // was a sign bug, not a real risk/reward asymmetry).
+            const fadePips = (here - deepest) / pip * sgn;   // +ve = gave back distance from the touch
             const runPips  = (extreme - here) / pip * sgn;        // +ve = extended further past the touch
+            // FIXED distances from the touch to each real barrier — known at
+            // the moment of touch, before outcome resolves, so this is what an
+            // actual bracket order (target/stop) would be priced against.
+            // Distinct from fadePips/runPips, which measure how far price
+            // ACTUALLY travelled (the best/worst point reached) — useful for
+            // an MFE/MAE excursion check, but not the same as a fixed-target
+            // trade's real payoff (see js/levelAtlasVoteReview.js's `priceBarrierTrade`).
+            const innerDistPips = rungSpan / pip;
+            const outerDistPips = outer != null ? Math.abs(outer - here) / pip : null;
             const minsToResolve = resolveTime != null ? (resolveTime - bar.time) / 60 : null;
             const minsIntoSession = (bar.time - bars[0].time) / 60;
             // Same fix as sessionSpanMins above, same bug shape: must be
@@ -490,11 +533,13 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe, prevSessionVol,
               churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               otherSideTouchedBefore,
-              level: +here.toFixed(6), pip,
+              level: +here.toFixed(6), pip, open,
+              time: bar.time, resolveTime,
               outcome, resolveIdx,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),
+              innerDistPips: +innerDistPips.toFixed(1), outerDistPips: outerDistPips != null ? +outerDistPips.toFixed(1) : null,
               approachVel: feats.approachVel?.bucket ?? null,
               approachER: feats.approachER?.bucket ?? null,
               wtState: feats.wtState?.bucket ?? null,
@@ -634,7 +679,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             dayVol, asiaVol: asiaVolSafe, londonVol: londonVolSafe, prevSessionVol,
             churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
             otherSideTouchedBefore,
-            level: +here.toFixed(6), pip,
+            level: +here.toFixed(6), pip, open,
             distance: +dist.toFixed(6), distancePips: +(dist / pip).toFixed(1),
             distancePct: bar.close > 0 ? +(dist / bar.close * 100).toFixed(3) : null,
             currentPrice: +bar.close.toFixed(6),

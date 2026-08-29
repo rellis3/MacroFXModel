@@ -71,7 +71,22 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
+import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
+import {
+  getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
+  DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, pickFresher as _laPickFresher,
+  saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
+} from './js/levelAtlasRoutes.js';
+import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTrade, applyFadeStopTightening as _laApplyFadeStopTightening } from './js/levelAtlasVoteReview.js';
+import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } from './js/levelAtlasEngine.js';
+import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
+import { buildLadder as _laBuildLadder } from './js/forecastLadder.js';
+import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js';
+import { resamplePacked as _resamplePacked } from './js/barUtils.js';
+import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
+import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
@@ -138,7 +153,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill)
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -12983,8 +12998,38 @@ async function _snapshotOIHistory(force = false) {
     const store = JSON.parse(raw).data ?? JSON.parse(raw);
     if (!store || typeof store !== 'object') return { n: 0, wrote: false, day: null };
     const day = _rlSessionDate(null);
-    const histRaw = await kv.get('oi_history').catch(() => null);
+    // STRICT read. kv.get() returns null both when a key is absent and when Cloudflare
+    // fails, so a transient outage used to land here as `hist = {}` — and the write at the
+    // bottom then replaced the whole archive with today. That is exactly what emptied this
+    // key on 2026-08-26 (~25 days -> 1). getStrict throws on a backend failure so the two
+    // cases are distinguishable; on a throw we write NOTHING and say so.
+    let histRaw;
+    try {
+      histRaw = await kv.getStrict('oi_history');
+    } catch (e) {
+      console.error(`[oi-history] ABORT: could not read oi_history (${e.message}). `
+        + `Refusing to write — a blind write here would replace the whole archive with today.`);
+      return { n: 0, wrote: false, day, error: `read failed: ${e.message}` };
+    }
     const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    // Day count as READ, so the write can be checked for shrinkage below. A read that
+    // succeeds but returns truncated/garbled JSON would slip past the strict read above.
+    const _countDays = h => Object.values(h || {})
+      .reduce((a, per) => a + Object.keys(per || {}).length, 0);
+    const _daysBefore = _countDays(hist);
+    let _trimmed = 0;
+    // HIGH-WATER MARK. The strict read above catches a backend FAILURE, but a 404 for a
+    // key that should exist is indistinguishable from a key that never existed — both
+    // legitimately return null, and the shrink check below would then compare against a
+    // baseline of zero and happily write a one-day archive. So remember, out of band, how
+    // big the archive was the last time we wrote it. This sidecar is tiny and rewritten on
+    // every successful write, so it can be recreated by hand if it is ever the thing lost.
+    let _hwm = 0;
+    try {
+      const mRaw = await kv.get('oi_history_meta');
+      const m = mRaw ? (JSON.parse(mRaw).data ?? JSON.parse(mRaw)) : null;
+      if (m && Number.isFinite(m.dayEntries)) _hwm = m.dayEntries;
+    } catch { /* no marker yet — first run, or it was lost; fall through to the count-based check */ }
     // ONE KEY PER DAY (`oi_raw_YYYY-MM-DD`), not one key for all of history.
     // The old `oi_history_raw` accumulated every pair x every day into a single
     // value and kept 365 days. Measured 2026-08-20: 330KB/day across 11 pairs, so
@@ -13011,6 +13056,7 @@ async function _snapshotOIHistory(force = false) {
         const dates = Object.keys(hist[pair]).sort();
         const trim = dates.slice(0, Math.max(0, dates.length - 365));           // keep ~1yr — see _OI_RAW_KEEP_DAYS note above
         for (const d of trim) delete hist[pair][d];
+        _trimmed += trim.length;                                   // the only legitimate way the archive shrinks
         if (trim.length) changed++;                                // a trim is a real change too
         n++;
       }
@@ -13044,7 +13090,29 @@ async function _snapshotOIHistory(force = false) {
     let wrote = false;
     // Nothing new — don't spend a KV write (unless the user explicitly forced one). The two
     // keys write independently so a summary-only change doesn't rewrite the bigger raw blob.
-    if (changed || force) { await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() })); wrote = true; }
+    // SHRINK GUARD. Adding today can only ever grow the archive or leave it the same
+    // size; the one legitimate shrink is the 365-day trim, which is counted. Anything
+    // else means what we read was not what is actually stored, and writing it back would
+    // destroy history that cannot be re-fetched — CME serves none. Fail loudly instead.
+    const _daysAfter = _countDays(hist);
+    const _floor = Math.max(_daysBefore, _hwm) - _trimmed;
+    if (_daysAfter < _floor) {
+      console.error(`[oi-history] ABORT: merge would shrink the archive to ${_daysAfter} day-entries, `
+        + `below the floor of ${_floor} (read ${_daysBefore}, last written ${_hwm}, `
+        + `${_trimmed} legitimate trim(s)). Refusing to write — the read did not return what is stored. `
+        + `The archive is untouched; POST /api/oi-history/backfill to rebuild from oi_raw_* if it really is short.`);
+      return { n, wrote: false, day, error: `shrink guard: ${_daysAfter} < floor ${_floor}` };
+    }
+    if (changed || force) {
+      await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
+      wrote = true;
+      // Refresh the marker only after the archive itself landed, so a failed put can
+      // never lower the floor that protects it.
+      try {
+        await kv.put('oi_history_meta', JSON.stringify({ data: {
+          dayEntries: _daysAfter, pairs: Object.keys(hist).length, at: new Date().toISOString() } }));
+      } catch (e) { console.warn('[oi-history] marker write failed (archive is safe):', e.message); }
+    }
     if (rawChanged || force) { await kv.put(rawDayKey, JSON.stringify({ data: rawDay, timestamp: Date.now() })); wrote = true; }
     if (wrote) console.log(`[oi-history] archived ${n} pair(s), ${changed} summary / ${rawChanged} raw changed → ${day}`);
     return { n, wrote, day, changed, rawChanged };
@@ -13094,6 +13162,115 @@ app.get('/api/oi-history', async (req, res) => {
     res.json({ ok: true, pair: pk || key, dates, history: recent, deltas, curDate, prevDate });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── BACKFILL `oi_history` FROM THE PER-DAY RAW ARCHIVES ──────────────────────
+// `oi_history` is a single accumulating key, so one bad read-modify-write replaces the
+// whole archive with today (measured 2026-08-26: ~25 days -> 1, taking gexMedianAbs and
+// the hold-score flow component down with it). The per-day `oi_raw_YYYY-MM-DD` keys never
+// read-modify-write, so they survived — and they hold the COMPLETE capture (rawOI/rawChg/
+// rawVol/rawIV/rawIVTerm + the spot/futures/basis/dte it was read against).
+//
+// So the summary is reconstructible: push each archived day back through `buildOIEntry` —
+// the same headless analyse `/api/oi/reanalyse` uses, so a restored day is derived by the
+// identical code path as a live one — then summarise it exactly as the nightly snapshot
+// would. `skipLiveQuote` is essential: a 2026-08-20 day must not be re-based onto today's
+// price.
+//
+// GAP-FILL ONLY. A date already present in `oi_history` is never touched, so this can be
+// re-run safely and can never itself become the thing that loses a day.
+//
+//   POST /api/oi-history/backfill            dry run — reports what it WOULD restore
+//   POST /api/oi-history/backfill?commit=1   writes
+app.post('/api/oi-history/backfill', async (req, res) => {
+  const commit = String(req.query.commit || '') === '1';
+  try {
+    // Strict: if we cannot read the archive we must not write one. Rebuilding onto {}
+    // would be the very failure this endpoint exists to repair.
+    let histRaw;
+    try { histRaw = await kv.getStrict('oi_history'); }
+    catch (e) {
+      return res.status(503).json({ ok: false, error: `could not read oi_history (${e.message}) — refusing to rebuild onto an empty archive` });
+    }
+    const hist = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : {};
+    const countDays = h => Object.values(h || {}).reduce((a, p) => a + Object.keys(p || {}).length, 0);
+    const before = countDays(hist);
+
+    const rawKeys = (await kv.keys('oi_raw_')).filter(k => /^oi_raw_\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+    if (!rawKeys.length) return res.json({ ok: false, error: 'no oi_raw_* archives found — nothing to rebuild from' });
+
+    const added = [], skipped = [], errors = [];
+    for (const key of rawKeys) {
+      const date = key.slice('oi_raw_'.length);
+      let day;
+      try {
+        const dRaw = await kv.getStrict(key);
+        day = dRaw ? (JSON.parse(dRaw).data ?? JSON.parse(dRaw)) : null;
+      } catch (e) { errors.push({ date, error: `read failed: ${e.message}` }); continue; }
+      if (!day || typeof day !== 'object') { errors.push({ date, error: 'unreadable archive' }); continue; }
+
+      for (const [pair, cap] of Object.entries(day)) {
+        if (!cap || !cap.rawOI) { skipped.push({ date, pair, reason: 'no raw ladder' }); continue; }
+        if (hist[pair] && hist[pair][date]) { skipped.push({ date, pair, reason: 'already present' }); continue; }
+        try {
+          const entry = await _oiBuildEntry({
+            pair, rawOI: cap.rawOI,
+            rawChg: cap.rawChg || '', rawVol: cap.rawVol || '',
+            rawIV: cap.rawIV || '', rawIVTerm: cap.rawIVTerm || '',
+            dteRaw:     Number.isFinite(cap.dte)     ? cap.dte     : NaN,
+            spotRaw:    Number.isFinite(cap.spot)    ? cap.spot    : NaN,
+            futuresRaw: Number.isFinite(cap.futures) ? cap.futures : NaN,
+            manualFutures: Number.isFinite(cap.futures),   // pin to the archived futures — do NOT re-base onto today
+            skipLiveQuote: true,
+          });
+          // buildOIEntry returns a WRAPPER — { inst, parsed, maxPain, basis, ... }. The
+          // analysed record is on `.inst`; summarising the wrapper silently yields a row
+          // of nulls (caught on the first dry run: 77 rows, every gex and spot null).
+          if (!entry || entry.error) { errors.push({ date, pair, error: entry?.error || 'build returned nothing' }); continue; }
+          if (!entry.inst || !Number.isFinite(entry.inst.spot)) {
+            errors.push({ date, pair, error: 'rebuilt entry has no spot — refusing to archive a null row' }); continue;
+          }
+          const summary = _oiHistorySummary(entry.inst);
+          if (!summary) { errors.push({ date, pair, error: 'summary returned nothing' }); continue; }
+          // Keep the ORIGINAL capture time, not the rebuild time — this row describes
+          // that morning's book, and a reader ageing it off savedAtMs must not be told
+          // a 2026-08-20 paste happened today.
+          summary.savedAtMs = Number.isFinite(cap.savedAtMs) ? cap.savedAtMs : summary.savedAtMs;
+          summary.restoredFromRaw = true;                 // provenance: derived, not captured live
+          hist[pair] = hist[pair] || {};
+          hist[pair][date] = summary;
+          added.push({ date, pair, gex: summary.gex, spot: summary.spot });
+        } catch (e) { errors.push({ date, pair, error: e.message }); }
+      }
+    }
+
+    const after = countDays(hist);
+    const result = {
+      ok: true, commit,
+      dayEntries: { before, after, restored: after - before },
+      datesAvailable: rawKeys.map(k => k.slice('oi_raw_'.length)),
+      added: added.length, skipped: skipped.length, errors: errors.length,
+      addedDetail: added, errorDetail: errors.slice(0, 40),
+    };
+    if (!commit) { result.note = 'DRY RUN — nothing written. Re-POST with ?commit=1 to apply.'; return res.json(result); }
+    // Gap-fill can only grow the archive. If it somehow did not, something is wrong and
+    // we do not write — same reasoning as the snapshot's shrink guard.
+    if (after < before) return res.status(500).json({ ok: false, error: `refusing to write: ${before} -> ${after} day-entries` });
+    if (after === before) { result.note = 'nothing to restore — every archived day was already present'; return res.json(result); }
+    await kv.put('oi_history', JSON.stringify({ data: hist, timestamp: Date.now() }));
+    // Raise the high-water mark with it, or the snapshot job would keep protecting the
+    // OLD, smaller floor and the restored days would look like an anomaly next run.
+    try {
+      await kv.put('oi_history_meta', JSON.stringify({ data: {
+        dayEntries: after, pairs: Object.keys(hist).length, at: new Date().toISOString() } }));
+    } catch (e) { console.warn('[oi-history] marker write failed after backfill:', e.message); }
+    console.log(`[oi-history] BACKFILL wrote ${after - before} day-entries from ${rawKeys.length} raw archive(s) (${before} -> ${after})`);
+    result.note = `written — oi_history now holds ${after} day-entries`;
+    res.json(result);
+  } catch (e) {
+    console.error('[oi-history] backfill failed:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/oi-history/snapshot', async (_req, res) => {
   // force:true — a manual archive must actually write, so it can never look like a no-op.
   try { const r = await _snapshotOIHistory(true); res.json({ ok: !r.error, pairsArchived: r.n, wrote: r.wrote, date: r.day ?? _rlSessionDate(null), summaryChanged: r.changed, rawChanged: r.rawChanged, ...(r.error ? { error: r.error } : {}) }); }
@@ -13174,9 +13351,24 @@ const OI_BOT_CFG_DEFAULTS = {
   volMagnetMinShare: 0.25,           // a magnet needs ≥ this share of the strongest magnet's volume to be a node
   holdScore: true,                   // wall hold-score (react-vs-blow-through) stamped on zones, sizes fades
 };
-function _oiBotStabilityChange(hist, key) {
+// Find a pair's row in `oi_history`. The archive is keyed by oi_store's pair NAMES
+// ('XAU/USD', 'NAS100_USD') while every caller here holds a registry KEY from resolveKey
+// ('gold', 'nq'). Matching by lowercase-and-strip-punctuation only ever worked for the FX
+// pairs, where the two happen to coincide: norm('EUR/USD') === 'eurusd' matches, but
+// norm('XAU/USD') === 'xauusd' never equals 'gold'. So gold and all four indices silently
+// had NO day-over-day data — no gexMedianAbs (conviction sizing and the GEX neutral band
+// off), no classifyOIChange (avoidLiquidating unable to veto, hold-score missing its flow
+// component) — regardless of how much history was archived. Resolve BOTH sides through the
+// registry, and keep the string compare as the fallback for anything unregistered.
+function _oiHistPairKey(hist, key) {
   const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
-  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+  const rk = x => { try { return resolveKey(x) || null; } catch { return null; } };
+  const want = rk(key) || norm(key);
+  const keys = Object.keys(hist || {});
+  return keys.find(k => (rk(k) || norm(k)) === want) ?? keys.find(k => norm(k) === norm(key)) ?? null;
+}
+function _oiBotStabilityChange(hist, key) {
+  const pk = _oiHistPairKey(hist, key);
   if (!pk) return { stability: null, change: null };
   const perPair = hist[pk], dates = Object.keys(perPair).sort();
   const cur = perPair[dates[dates.length - 1]], prev = perPair[dates[dates.length - 2]];
@@ -13190,12 +13382,27 @@ function _oiBotStabilityChange(hist, key) {
 // summaries). Anchors the planner's GEX neutral band + conviction sizing — the raw
 // sign of net GEX flips on noise around zero; the median gives "is today's |GEX|
 // big FOR THIS BOOK". null when history is too thin (< 5 days) — band stays off.
-function _oiGexMedianAbs(hist, key) {
-  const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
-  const pk = Object.keys(hist || {}).find(k => norm(k) === norm(key));
+// Trailing median |net GEX| for a pair — the scale the planner's conviction ratio is
+// measured against. `useDay` picks the series that matches the book actually being
+// planned: the producer trades the near-dated day expiry when one exists, and a day
+// expiry's GEX is structurally far smaller than the primary's, so dividing one by a
+// median of the other is a category error, not a conservative estimate. Measured
+// 2026-08-27: gold read 0.11x (3.1M day GEX over a 27.5M PRIMARY median) and was forced
+// NEUTRAL with zero zones, while NQ read 2.42x and took the maximum size boost. Against
+// their own day-expiry medians those become 0.17x and 0.88x.
+//
+// Caveat kept deliberately: the day-expiry DTE varies day to day (gold's last eight were
+// 1,1,5,5,3,2,1,2) and a 5-DTE book carries more gamma than a 1-DTE one, so this median
+// still mixes horizons. Bucketing by DTE needs far more history than eight days.
+function _oiGexMedianAbs(hist, key, useDay = false) {
+  const pk = _oiHistPairKey(hist, key);
   if (!pk) return null;
-  const vals = Object.keys(hist[pk]).sort().slice(-20)
-    .map(d => hist[pk][d]?.gex).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
+  const dates = Object.keys(hist[pk]).sort().slice(-20);
+  const pick = f => dates.map(d => f(hist[pk][d])).filter(g => Number.isFinite(g) && g !== 0).map(Math.abs).sort((a, b) => a - b);
+  let vals = useDay ? pick(r => r?.dayExpiryGex) : [];
+  // Fall back to the primary series when the day series is too sparse to be a median —
+  // an older archive, or a stretch of single-expiry pastes.
+  if (vals.length < 5) vals = pick(r => r?.gex);
   if (vals.length < 5) return null;
   const mid = Math.floor(vals.length / 2);
   return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
@@ -13318,13 +13525,38 @@ async function _refreshOIBotZones() {
           return { active: false, note: `charm: ${cDte.toFixed(1)}DTE is not near expiry (charm is negligible past ~${nearDTE}DTE) — not applied` };
         return { active: true, note: `charm from the ${cDte.toFixed(1)}DTE smile (matches the traded expiry)` };
       })();
-      const gexMedianAbs = _oiGexMedianAbs(hist, key);
+      const gexMedianAbs = _oiGexMedianAbs(hist, key, !!dayEx);   // match the book being planned
+      // DAY-SCALED refMove. oiRefMove() (the field on `inst`) is always measured to the
+      // PRIMARY expiry, because that's what a paste's top-level dte/expectedMove describe.
+      // Every structural distance downstream of refMove -- the stop buffer, the break-
+      // confirmation distance, the "extended from pin" trigger, zone-spacing dedupe, and
+      // the reachability check -- scales off whatever number is passed in here. On a
+      // ~30 DTE primary against a 1-3 DTE day expiry, √30 ≈ 5.5×√1, so feeding the day
+      // book the primary's refMove overstates every one of those by roughly that factor.
+      // Falls back to the primary's own refMove when the day expiry has no spot (should
+      // not happen if dayEx exists, but a fallback here is cheap and this must never
+      // silently become 0/null and switch every distance check off).
+      const dayRefMoveObj = dayEx ? _oiRefMoveForDTE(inst, key, dayEx.dte) : null;
+      const _dayRefMove = dayRefMoveObj?.move ?? inst.refMove?.move ?? null;
+      // Absolute stop-buffer floor, per instrument (price units, 0/absent = off). refMove
+      // shrinking for the day book is correct for reach/trigger checks but can undercut
+      // what an instrument's own spread + ordinary noise needs from a stop — gold's day
+      // refMove buffer fell to ~8 price units against a ~$0.30 typical spread. Keyed by
+      // the same registry key everything else here uses (resolveKey → 'gold', 'nq', ...).
+      const MIN_STOP_ABS = { gold: 15 };     // $15 floor on gold's SL buffer; unset = unfloored
       const droppedZones = [];               // planner-side drops (minRR / spacing) — legible blanks
       const zones = stale ? [] : buildOIZones(tradeInst, inst.spot, { ...cfg, pip, stability, change, fallbackTpR,
-        gexMedianAbs, holdWeights, collectDrops: droppedZones,
+        gexMedianAbs, holdWeights, collectDrops: droppedZones, minStopAbs: MIN_STOP_ABS[key] ?? 0,
         nearFlip: !!dist?.near, regimeWarning: drift?.toward ? `flip migrating toward spot (${drift.fromDate}→${drift.toDate}) — regime change loading` : null,
-        expMove: inst.expectedMove ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
-        refMove: inst.refMove?.move ?? null,
+        // expMove is the PRIMARY expiry's straddle band, and reachFlag() prefers it over
+        // refMove whenever it is present -- so passing it through unconditionally would
+        // have made the refMove fix above a no-op for every pair with a pasted smile
+        // (which is most of them): reachability would keep being judged against the
+        // primary's band regardless of which expiry is actually traded. Only pass it on
+        // the primary book; on a day-expiry book this is null, so reachFlag correctly
+        // falls through to the (now day-scaled) refMove branch instead.
+        expMove: (!dayEx && inst.expectedMove) ? { upper: inst.expectedMove.upper, lower: inst.expectedMove.lower } : null,
+        refMove: _dayRefMove,
         // Level-ladder + react-at-level nodes: the gamma-flip regime boundary, the GEX-flip,
         // and the vanna-exposure flip, alongside walls/max-pain/vol-magnets on `inst`.
         gammaFlipLevel: Number.isFinite(flip) ? flip : null,
@@ -13365,7 +13597,8 @@ async function _refreshOIBotZones() {
         // (each pair is pasted separately, so staleness is per-pair, not per-plan) and let
         // the bot gate on the CHAIN's age as well as the plan's.
         oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null,
-        refMove: inst.refMove?.move ?? null,                       // shipped for the executor's approach-velocity read
+        refMove: _dayRefMove,                                      // shipped for the executor's approach-velocity read — same day-scaled value the planner used, not the primary's
+        refMoveSource: dayRefMoveObj?.source ?? inst.refMove?.source ?? null,
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)
         gammaFlow, termStructure: Array.isArray(inst.termStructure) ? inst.termStructure : null,
         greeksFlow: inst.greeksFlow ?? null, expectedMove: inst.expectedMove ?? null,
@@ -13380,6 +13613,271 @@ async function _refreshOIBotZones() {
 }
 setInterval(_refreshOIBotZones, 10 * 60_000);
 setTimeout(_refreshOIBotZones, 60_000);
+
+// ── volatility_bot_v2 (Level Atlas Vote Portfolio) plan producer ─────────────
+// Replaces `volatility_bot` (retired, left running until the owner stops it —
+// not deleted). Same "server computes + freezes, bot only polls KV" contract
+// as `_refreshOIBotZones` above, but on a much faster cadence: Level Atlas
+// touches are near-real-time (bar-close-driven via `getFastLive`, see that
+// function's own header), not a daily option-chain snapshot.
+//
+// The 17-pair "Select recommended" default mirrors
+// `level-atlas-vote-portfolio.html`'s own PAIRS/CORRELATED_RISK_EXCLUDE
+// (kept in sync by hand — both are small, hand-curated lists; see
+// LEGO_MODULES.md's pair-selection OOS validation for why these 10 are out).
+const VOLATILITY_V2_ALL_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'gbpjpy', 'gbpaud',
+  'gbpchf', 'audjpy', 'audcad', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+  'nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'];
+const VOLATILITY_V2_CORRELATED_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audcad', 'nzdjpy', 'eurgbp', 'gbpjpy', 'nzdusd', 'eurjpy', 'eurcad']);
+const VOLATILITY_V2_DEFAULT_PAIRS = VOLATILITY_V2_ALL_PAIRS.filter(p => !VOLATILITY_V2_CORRELATED_EXCLUDE.has(p));
+
+const VOLATILITY_V2_PLAN_CFG_DEFAULTS = {
+  enabled_pairs: [],          // [] -> VOLATILITY_V2_DEFAULT_PAIRS (the 17-pair "Select recommended" set)
+  minMargin: 3,                // same OOS-validated default as the backtest/portfolio pages
+  fade_stop_tighten: true,     // OOS-validated (scripts/oos_validate_fade_stop.mjs) — see below for how it's applied
+};
+
+// Daily fade-stop-tightening cache — `applyFadeStopTightening` only needs
+// recomputing once per UTC date per pair (its input, the nightly-refreshed
+// votetrades file, only changes once/day); redoing the `runStopStudy` grid
+// math every 45s would be pure waste. Map<'pair|date', {stopPips, percentile}|null>.
+const _volatilityV2FadeStopCache = new Map();
+async function _volatilityV2FadeStopInfo(pair, dateStr) {
+  const cacheKey = `${pair}|${dateStr}`;
+  if (_volatilityV2FadeStopCache.has(cacheKey)) return _volatilityV2FadeStopCache.get(cacheKey);
+  let info = null;
+  try {
+    const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${pair}-votetrades.json`), _laLoadLocalVoteTrades(pair));
+    if (stored) {
+      const filtered = stored.trades.filter(t => t.margin >= VOLATILITY_V2_PLAN_CFG_DEFAULTS.minMargin);
+      const tightened = _laApplyFadeStopTightening(filtered, { cost: stored.cost });
+      if (tightened.stopPips != null) info = { stopPips: tightened.stopPips, percentile: tightened.percentile };
+    }
+  } catch (e) { console.error(`[volatility-v2] fade-stop cache failed for ${pair}:`, e.message); }
+  // Cap growth — only ever a handful of (pair, TODAY) entries alive at once in
+  // practice, but a Railway process that runs for weeks shouldn't accumulate
+  // one entry per pair per day forever.
+  if (_volatilityV2FadeStopCache.size > 500) _volatilityV2FadeStopCache.clear();
+  _volatilityV2FadeStopCache.set(cacheKey, info);
+  return info;
+}
+
+// Prices ONE candidate rung (a `pending`-shaped live record, OR a resolved
+// `touches` record — both carry the same context-dimension fields
+// `voteDecision` votes on) into a tradeable zone. `ladderBySide` (from
+// `rungLevelsForLadder`) supplies `innerDistPips`/`outerDistPips` for a
+// PENDING rung, which — unlike a resolved touch — doesn't carry them
+// (see js/levelAtlasEngine.js's `rungLevelsForLadder` doc for why a
+// not-yet-touched rung is just as priceable, given the same ladder).
+function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten) {
+  let withDist = rec;
+  if (rec.innerDistPips == null) {
+    const lv = ladderBySide[rec.side];
+    if (!lv) return null;
+    const ri = _LA_RUNGS.indexOf(rec.rung);
+    if (ri < 0) return null;
+    const here = lv[ri + 1], inner = lv[ri], outer = lv[ri + 2] ?? null;
+    const rungSpan = Math.abs(here - inner);
+    withDist = { ...rec,
+      innerDistPips: +(rungSpan / rec.pip).toFixed(1),
+      outerDistPips: outer != null ? +(Math.abs(outer - here) / rec.pip).toFixed(1) : null,
+    };
+  }
+  const vd = _laVoteDecision(book, withDist);
+  if (!vd || vd.margin < VOLATILITY_V2_PLAN_CFG_DEFAULTS.minMargin) return null;
+  const priced = _laPriceBarrierTrade(withDist, vd.decision, cost);
+  if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
+
+  const sgn = withDist.side === 'up' ? 1 : -1;
+  const inner = withDist.level - sgn * withDist.innerDistPips * withDist.pip;
+  let outerDistPips = withDist.outerDistPips;
+  // Fade-stop tightening: applied HERE (baked into the plan's SL), not
+  // recomputed bot-side — see js/levelAtlasVoteReview.js's `applyFadeStopTightening`
+  // doc. Its `Math.min(cached, own)` clamp only ever TIGHTENS, never widens.
+  if (fadeStopTighten && vd.decision === 'fade' && fadeStopInfo?.stopPips != null && outerDistPips != null) {
+    outerDistPips = Math.min(fadeStopInfo.stopPips, outerDistPips);
+  }
+  const outer = outerDistPips != null ? withDist.level + sgn * outerDistPips * withDist.pip : null;
+  if (outer == null) return null;   // a follow at the outermost rung — no real stop, don't publish it
+  const tp = vd.decision === 'fade' ? inner : outer;
+  const sl = vd.decision === 'fade' ? outer : inner;
+
+  return {
+    side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
+    entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
+    rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+  };
+}
+
+async function _refreshVolatilityV2Plan() {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    const cfg = { ...VOLATILITY_V2_PLAN_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const enabledPairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length
+      ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
+      : VOLATILITY_V2_DEFAULT_PAIRS;
+
+    const instruments = {};
+    const skipped = {};
+    // Cold-start throttle: `getFastLive` fires each pair's FULL M1 cold-load in
+    // the BACKGROUND (fire-and-forget, non-blocking — see its own doc) and
+    // returns {warming:true} immediately, so a naive loop over all
+    // `enabledPairs` on a fully-cold cache (right after a redeploy, before any
+    // pair has ever been polled) kicks off up to 17 CONCURRENT multi-year M1
+    // loads on the same tick — a thundering herd that drove this producer to
+    // an out-of-memory crash in testing (2026-08-28). A human browsing the
+    // portfolio page warms pairs one at a time as they're viewed; this
+    // producer must not demand all 17 at once. Cap it: once
+    // MAX_CONCURRENT_COLDSTART pairs are already warming, leave the REST
+    // skipped for this tick — they get picked up on a later 45s tick once
+    // the herd has thinned, and every pair only ever pays this cost once
+    // (subsequent calls are cheap/incremental per getFastLive's own doc).
+    const MAX_CONCURRENT_COLDSTART = 3;
+    for (const pair of enabledPairs) {
+      try {
+        if (!_laLiveCache.has(pair) && !_laLiveWarming.has(pair) && _laLiveWarming.size >= MAX_CONCURRENT_COLDSTART) {
+          skipped[pair] = `cold-start throttled (${_laLiveWarming.size} pairs already warming) — picked up on a later tick`;
+          continue;
+        }
+        const live = await _laGetFastLive(pair);
+        if (live.warming) { skipped[pair] = 'warming (cold cache) — try again shortly'; continue; }
+        if (!live.date) { skipped[pair] = 'no live coverage yet'; continue; }
+        const stored = await _r2GetJSON(`${_LA_PREFIX}/${pair}.json`);
+        const book = stored?.books?.[_LA_DEFAULT_REARM];
+        if (!book) { skipped[pair] = 'no stored book — POST /api/level-atlas/run first'; continue; }
+
+        const packed = _laLiveCache.get(pair)?.packed;
+        const assetCls = (() => { try { return _assetClassOf(pair); } catch { return 'fx'; } })();
+        const cost = (() => { try { return _laCostForPair(pair, assetCls); } catch { return 0; } })();
+
+        // Ladder for pricing PENDING (not-yet-touched) rungs — daily bars UP TO
+        // (not including) today, from getFastLive's own bounded, already-warm
+        // packed M1 via resamplePacked (no re-fetch, no OANDA call needed).
+        let ladderBySide = {};
+        if (packed?.n) {
+          const daily = _resamplePacked(packed, 1440).map(b => ({ date: new Date(b.time * 1000).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close }));
+          const todayIdx = daily.findIndex(d => d.date === live.date);
+          const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
+          const todayOpen = todayIdx >= 0 ? daily[todayIdx].open : daily.at(-1)?.open;
+          if (priorDaily.length && todayOpen > 0) {
+            try {
+              const est = _LA_LADDER_PARAMS.pairs?.[pair.toUpperCase()]?.estimator ?? _LA_LADDER_PARAMS.classDefaults?.[assetCls]?.estimator ?? 'yz_30';
+              const sigma = _laForecastSigma(priorDaily, est);
+              if (sigma > 0) {
+                const lad = _laBuildLadder(sigma, { instrument: pair.toUpperCase(), assetClass: assetCls, horizon: 'daily', eventTag: 'none' });
+                ladderBySide = _laRungLevelsForLadder(lad, todayOpen);
+              }
+            } catch (e) { console.error(`[volatility-v2] ladder failed for ${pair}:`, e.message); }
+          }
+        }
+
+        const fadeStopInfo = cfg.fade_stop_tighten ? await _volatilityV2FadeStopInfo(pair, live.date) : null;
+
+        // Only PENDING (not-yet-touched, currently armed) rungs are tradeable —
+        // `touches` (already touched today) are informational only (what
+        // happened already, for the dashboard's "Today's Levels" display);
+        // atlasWalk's own rearm bookkeeping already decides what's currently
+        // armed, which is exactly what `pending` represents.
+        const zones = [];
+        for (const p of (live.pending ?? [])) {
+          if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
+          const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, cfg.fade_stop_tighten);
+          if (!zone) continue;
+          // instanceNum: how many times THIS (side,rung) has already resolved
+          // today — makes the zone_id stable across polls for the CURRENT
+          // armed instance, but distinct from an earlier-today occurrence of
+          // the same rung after a rearm (a genuinely new, separately-
+          // tradeable opportunity, same as the backtest counting each
+          // qualifying touch as its own trade).
+          const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
+          zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
+        }
+        instruments[pair] = { spot: live.pending?.[0]?.currentPrice ?? null, zones, zoneCount: zones.length, fadeStopInfo };
+      } catch (e) {
+        skipped[pair] = `error: ${e.message}`;
+        console.error(`[volatility-v2] ${pair} failed:`, e.message);
+      }
+    }
+
+    // Never publish an empty plan over a good one — a bad tick (every pair
+    // erroring) should leave the bot on its last-known-good plan, not strand
+    // it with zero zones (same discipline volatilityBotProducer.js's own
+    // "refuse to publish an empty universe" uses).
+    if (!Object.keys(instruments).length) {
+      console.error(`[volatility-v2] plan refresh produced 0 instruments (${Object.keys(skipped).length} skipped) — NOT publishing, keeping last good plan`);
+      return 0;
+    }
+
+    await kv.put('volatility_bot_v2_plan', JSON.stringify({
+      data: { strategy: 'level-atlas-vote', generatedAt: new Date().toISOString(), instruments, skipped },
+      timestamp: Date.now(),
+    }));
+    const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
+    console.log(`[volatility-v2] plan refreshed · ${Object.keys(instruments).length} instruments · ${total} zones`);
+    return Object.keys(instruments).length;
+  } catch (e) { console.error('[volatility-v2] plan refresh failed:', e.message); return 0; }
+}
+// env opt-OUT, defaults on — same convention as REFERENCE_ENGINE_REBUILD above.
+// Useful to disable in a sandbox/dev environment with no OANDA_KEY/R2 creds,
+// where every cold-start pays the full local-parquet-load cost on repeat
+// (nothing to persist a snapshot TO without R2) rather than the cheap R2-
+// snapshot-restore path this producer is designed around in production.
+if (process.env.VOLATILITY_V2_PLAN_REFRESH !== '0') {
+  setInterval(_refreshVolatilityV2Plan, 45_000);
+  setTimeout(_refreshVolatilityV2Plan, 60_000);
+} else {
+  console.log('[volatility-v2] plan refresh disabled (VOLATILITY_V2_PLAN_REFRESH=0)');
+}
+
+// Trade-history rollup — structural copy of `_oiAccumulateTradeLog` above.
+async function _volatilityV2AccumulateTradeLog() {
+  try {
+    const raw = await kv.get('volatility_bot_v2_status').catch(() => null);
+    if (!raw) return;
+    const status = JSON.parse(raw).data ?? JSON.parse(raw);
+    const closed = status?.today_closed_trades || [];
+    if (!closed.length) return;
+    const logRaw = await kv.get('volatility_bot_v2_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    const seen = new Set(log.map(t => t.position_id ?? t.ticket));
+    let added = 0;
+    for (const c of closed) {
+      const id = c.position_id ?? c.ticket;
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      log.push({
+        position_id: id, symbol: c.symbol, direction: c.direction,
+        key: (() => { try { return resolveKey(c.symbol) || String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } catch { return String(c.symbol || '').toLowerCase().replace(/[/_]/g, ''); } })(),
+        open_price: c.open_price, close_price: c.close_price, profit: c.profit,
+        reason: c.reason, time_open: c.time_open, time_close: c.time_close,
+        mfe_pips: c.mfe_pips ?? null, mae_pips: c.mae_pips ?? null,
+        date: c.time_open ? new Date(c.time_open * 1000).toISOString().slice(0, 10) : null,
+        zone_id: c.comment ? (String(c.comment).match(/\[([^\]]+)\]/)?.[1] ?? null) : null,
+      });
+      added++;
+    }
+    if (!added) return;
+    if (log.length > 5000) log.splice(0, log.length - 5000);
+    await kv.put('volatility_bot_v2_trade_log', JSON.stringify({ data: log, timestamp: Date.now() }));
+    console.log(`[volatility-v2] trade log +${added} (${log.length} total)`);
+  } catch (e) { console.error('[volatility-v2] trade-log accumulate failed:', e.message); }
+}
+setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
+setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
+
+// Level Atlas live-cache R2 snapshotting (js/levelAtlasRoutes.js's own doc on
+// `saveAllLiveSnapshots` has the full story) — periodically mirrors every
+// currently-warm pair's bounded M1 window to R2 so a Railway restart can
+// restore-and-gap-fill instead of paying coldStartLiveCache's full
+// multi-year parquet load again. Benefits every Level Atlas consumer
+// (the portfolio page, the tearsheet, volatility_bot_v2's plan producer),
+// not just the bot — fixed at the shared cache, not duplicated per caller.
+// 15 min cadence: frequent enough that a restart's gap-fill catch-up stays
+// small, infrequent enough to be a trivial R2 write volume (R2 has no
+// per-write quota concern the way CF KV does here).
+setInterval(_laSaveAllLiveSnapshots, 15 * 60_000);
+setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
@@ -18113,6 +18611,14 @@ mountLevelAtlasRoutes(app, express);
 // reaches this band" — see js/sessionPathEngine.js.
 mountSessionPathRoutes(app, express);
 mountSessionHandoffRoutes(app, express);
+
+// ── Asia Fib Atlas — the range-extension-line sibling reference book (one
+// row per touch of an Asia-range fib rung, not a forecast-ladder rung).
+mountAsiaFibAtlasRoutes(app, express);
+
+// ── Monday Fib Atlas — the weekly-ladder sibling, vote-backtest-only scope
+// (see js/mondayFibAtlasEngine.js's header for why it's leaner than Asia's).
+mountMondayFibAtlasRoutes(app, express);
 
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {
@@ -26623,12 +27129,26 @@ if (process.env.OANDA_KEY) {
 // pattern already used for a manual /run, just triggered on a timer instead
 // of a curl. BTCUSD is included and expected to keep failing (no M1 archive
 // anywhere — a real, known data gap, not something this job can fix).
+// 'SPX'/'DOW' (NOT 'SPX500'/'US30') — every consumer fed by this list
+// (levelAtlasRoutes/sessionPathRoutes/sessionHandoffRoutes' own startRunJob)
+// persists via a bare `.toLowerCase()`, no instrumentRegistry resolution, so
+// the STRING HERE must already be the canonical lowercase key each engine's
+// OWN readers expect ('spx'/'dow' — matching level-atlas-vote-portfolio.html's
+// PAIRS, the vote-trades bootstrap files, etc.), not a broker/display ticker.
+// 'SPX500'/'US30' silently broke this for both pairs (lowercases to
+// 'spx500'/'us30', which nothing reads) — found + fixed 2026-08-28 while
+// building volatility_bot_v2. NOTE this is NOT the same canonicalization
+// instrumentRegistry.js's resolveKey() performs (resolveKey('DE30')==='dax',
+// which would be WRONG here) — do not "fix" this by routing through
+// resolveKey(). 'CHFJPY' was simply missing from this list entirely (added
+// here) — its stored book/votetrades were never refreshed, static bootstrap
+// only.
 const REFERENCE_ENGINE_PAIRS = [
-  'GOLD', 'NQ', 'SPX500', 'DE30', 'UK100', 'US30', 'US2000',
+  'GOLD', 'NQ', 'SPX', 'DE30', 'UK100', 'DOW', 'US2000',
   'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'NZDUSD', 'USDCAD', 'USDCHF',
   'GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY',
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
-  'BTCUSD',
+  'CHFJPY', 'BTCUSD',
 ];
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(0, 30, async () => {
@@ -26638,12 +27158,22 @@ if (process.env.OANDA_KEY) {
       if (raw) { const c = JSON.parse(raw); if (typeof c.referenceEngineRebuild === 'boolean') enabled = c.referenceEngineRebuild; }
     } catch (e) { console.error('[reference-engine-rebuild] caps read failed:', e.message); }
     if (!enabled) { console.log('[reference-engine-rebuild] nightly tick — disabled (Caps.referenceEngineRebuild=false or REFERENCE_ENGINE_REBUILD=0)'); return; }
-    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path + Session Handoff, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    console.log(`[reference-engine-rebuild] nightly tick firing — Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, ${REFERENCE_ENGINE_PAIRS.length} instruments`);
     try { _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Level Atlas trigger failed:', e.message); }
     try { _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Path trigger failed:', e.message); }
     try { _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }); } catch (e) { console.error('[reference-engine-rebuild] Session Handoff trigger failed:', e.message); }
+    // Asia/Monday Fib Atlas are FX/gold-only (Pine indicator's own scope) —
+    // filter the shared pair list rather than adding a second hand-maintained
+    // one. Exclusion list uses the SAME canonical 'SPX'/'DOW' spelling
+    // REFERENCE_ENGINE_PAIRS itself now uses (see that array's own comment,
+    // 2026-08-28) — not the stale 'SPX500'/'US30' broker-ticker spelling,
+    // which would silently stop excluding them here once the array's own
+    // entries were renamed.
+    const fibAtlasPairs = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    try { _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }); } catch (e) { console.error('[reference-engine-rebuild] Asia Fib Atlas trigger failed:', e.message); }
+    try { _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }); } catch (e) { console.error('[reference-engine-rebuild] Monday Fib Atlas trigger failed:', e.message); }
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.

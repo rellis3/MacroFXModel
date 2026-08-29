@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asia/Monday Fib Atlas Vote Portfolio</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0b0e14; --panel:#11151f; --panel2:#0e121b; --line:#1e2436; --text:#cbd5e1; --text2:#94a3b8; --text3:#5a6380; --muted:#64748b; --accent:#5b9dff; --green:#34d399; --red:#f87171; --amber:#fbbf24; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 'DM Sans',system-ui,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:16px; font-weight:600; white-space:nowrap; }
+  h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text2); }
+  .sub { color:var(--muted); font-size:12px; }
+  select, input[type=checkbox], button, input[type=number] { background:#1e293b; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12px; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .seg { display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .seg button { border:none; border-radius:0; background:#1e293b; padding:6px 12px; }
+  .seg button.active { background:var(--accent); color:#0b0e14; font-weight:600; }
+  .export-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+  .export-note { font-size:11px; color:var(--text3); margin-bottom:4px; }
+  .controls { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .controls label { font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .pair-check { display:flex; align-items:center; gap:4px; font-family:'DM Mono',monospace; font-size:12px; }
+  main { padding:16px 20px 60px; max-width:1300px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .kpi .label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.04em; }
+  .kpi .value { font-size:22px; font-weight:700; margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--text3); margin-top:2px; }
+  .green { color:var(--green); } .red { color:var(--red); } .amber { color:var(--amber); } .blue { color:var(--blue); }
+  canvas { max-height:320px; }
+  table { width:100%; border-collapse:collapse; font-family:'DM Mono',monospace; font-size:12px; }
+  thead th { text-align:left; color:var(--text3); font-weight:500; padding:6px 10px; border-bottom:1px solid var(--line); }
+  thead th.num, td.num { text-align:right; }
+  tbody td { padding:6px 10px; border-bottom:1px solid #182030; }
+  .muted { color:var(--muted); font-size:11px; }
+  .callout { background:linear-gradient(135deg,#132030,#0e121b); border:1px solid #1e3a52; border-radius:8px; padding:14px 16px; }
+  .callout .big { font-size:28px; font-weight:700; }
+  .barwrap { display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:4px; }
+  .bar { height:100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="pageTitle">Asia Fib Atlas Vote Portfolio</h1>
+  <div class="seg" id="ladderSeg">
+    <button data-v="asia" class="active">Asia</button>
+    <button data-v="monday">Monday</button>
+    <button data-v="combined" title="Both ladders combined — the SAME pair can have an Asia position and a Monday position open at once, each shown as its own row below">Both (combined)</button>
+  </div>
+  <div class="controls">
+    <button id="selectAllBtn" type="button">Select all</button>
+    <button id="selectDefaultBtn" type="button">Reset to default 5</button>
+  </div>
+  <div class="controls" id="pairChecks"></div>
+  <div class="controls">
+    <label>Min margin <select id="marginSel">
+      <option value="1">≥1</option><option value="2" selected>≥2</option>
+    </select></label>
+    <label>Max concurrent <select id="capSel">
+      <option value="1" selected>1 (strictest)</option><option value="2">2</option><option value="3">3</option><option value="99">unlimited</option>
+    </select></label>
+    <label>Per-direction budget <input type="checkbox" id="perDirChk"></label>
+    <label>Sizing <select id="sizingSel">
+      <option value="fixed-risk" selected>Fixed % risk / trade</option><option value="nav">NAV split (legacy)</option>
+    </select></label>
+    <label id="weightSelWrap">Weighting <select id="weightSel">
+      <option value="equal" selected>Equal (1/n each)</option><option value="inverse-vol">Risk parity (inverse-vol)</option>
+    </select></label>
+    <label id="riskPctWrap">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
+  </div>
+  <div class="controls">
+    <label id="heatCapWrap">Portfolio heat cap <input type="checkbox" id="heatCapChk">
+      <input type="number" id="maxHeatPctInput" value="2" step="0.5" min="0.5" style="width:55px" disabled></label>
+    <label>Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
+  </div>
+  <div class="controls">
+    <label>Drawdown throttle <input type="checkbox" id="throttleChk"></label>
+    <label>Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
+    <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
+    <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+  </div>
+  <div class="sub" id="headerSub">loading…</div>
+</header>
+
+<main>
+
+<div class="card muted">
+  Combines each selected pair's own vote-margin trades (barrier-priced, concurrency-capped per pair) into ONE portfolio —
+  reusing <code>js/backtestStats.js</code>'s <code>portfolioStats</code> on the combined daily return series via the SAME
+  shared combiner (<code>js/fibAtlasVotePortfolio.js</code>) <code>level-atlas-vote-portfolio.html</code> established, no
+  new metrics. <strong>Fixed % risk / trade</strong> (default) risks the SAME % of account on every trade off its own
+  real stop distance — no capital-split guess, forward-implementable as-is. <strong>NAV split (legacy)</strong> instead
+  pre-allocates a fixed capital fraction per pair (equal or inverse-vol) and lets each pair's own raw price-return scale
+  within that slice. Toggle Asia/Monday above to combine either ladder's trades — see
+  <a href="asia-fib-atlas-vote-backtest.html" style="color:var(--accent)">the single-pair tearsheet</a> for the
+  per-instrument, per-trade chart review, and <code>MD files/LEGO_MODULES.md</code> §1aq for the full methodology.
+</div>
+
+<div class="card" style="border-color:#7c2d2d;background:linear-gradient(135deg,#2a1414,#0e121b)">
+  <h2 style="color:#f87171">⚠ Correlated risk — read before selecting many pairs at once</h2>
+  <div class="muted">
+  Every pair here individually shows real edge on its own tearsheet, but FX pairs are NOT independent bets — many share
+  a currency leg (EURUSD/EURJPY/EURGBP all carry EUR exposure, GBPUSD/GBPJPY/GBPAUD all carry GBP, etc.), so a single
+  macro-shock day can move many selected pairs the same direction at once. <code>level-atlas-vote-portfolio.html</code>'s
+  own leave-one-out study found this effect large enough there to produce a -97.8% max drawdown with all 26 pairs
+  selected at 1% fixed risk before any mitigation. <strong>That same leave-one-out / correlated-risk study has NOT been
+  run for this Asia/Monday portfolio yet</strong> — there is no validated exclusion list to offer here, and it would be
+  dishonest to imply one exists by omission. Until it is: keep total selected pairs modest, size risk down before
+  selecting many pairs together, watch the heat-cap and drawdown-throttle A/B comparisons below (both real, both
+  computed on THIS engine's own trades) rather than trusting the raw uncapped number, and don't treat a large
+  many-pair combination's headline Sharpe/CAGR as more real than the single-pair numbers it's built from.
+  </div>
+</div>
+
+<div class="card callout">
+  <h2>Diversification benefit</h2>
+  <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
+    <div><div class="muted">Simple average of each pair's OWN Sharpe, same daily-return formula as the combined figure (no diversification credit)</div><div class="big" id="naiveSharpe">—</div></div>
+    <div style="font-size:22px;color:var(--text3)">→</div>
+    <div><div class="muted">Combined portfolio Sharpe</div><div class="big green" id="combinedSharpe">—</div></div>
+  </div>
+</div>
+
+<div class="card callout" id="heatCapCard" style="display:none">
+  <h2>Portfolio heat cap impact — same trades, with vs without the cross-pair budget</h2>
+  <div class="muted" style="margin-bottom:8px">Each pair already caps ITS OWN concurrent positions; this catches what that leaves open — several different pairs firing at once, each independently risking the same %, silently stacking simultaneous exposure. Real before/after, not an assumption.</div>
+  <div id="heatCapCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="throttleCard" style="display:none">
+  <h2>Drawdown throttle impact — same trades, with vs without de-risking in a drawdown</h2>
+  <div class="muted" style="margin-bottom:8px">Cuts risk-per-trade to a fraction once the portfolio's OWN equity curve breaches a drawdown threshold, restores once it recovers — targets a sustained losing STRETCH over time, which the heat cap above does not fix.</div>
+  <div id="throttleCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card">
+  <h2>Portfolio summary (raw — capital split across pairs, not levered)</h2>
+  <div class="muted" style="margin-bottom:10px">Sharpe, Sortino, profit factor, win rate, vol, skew/kurtosis and VaR/CVaR are computed straight off the daily-return DISTRIBUTION — they're the SAME number either way, reinvesting or not. Only CAGR, max drawdown, and Calmar genuinely differ by that assumption, so those three are split out below instead of picking one silently.</div>
+  <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
+  <div class="kpi-grid" id="kpiShared"></div>
+  <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
+  <div class="kpi-grid" id="kpiCompounded"></div>
+  <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <div class="kpi-grid" id="kpiNonCompounded"></div>
+</div>
+
+<div class="card">
+  <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
+  <div class="muted" style="margin-bottom:10px">This is a dial YOU set, not a cap the system imposes — it doesn't limit upside, it just shows what the SAME risk-adjusted profile looks like scaled to whatever volatility you're willing to run. Set it above the realized vol below to see leverage UP, not just down.</div>
+  <div class="kpi-grid" id="kpiLevered"></div>
+</div>
+
+<div class="card">
+  <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk"></label></h2>
+  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base (what a real account does). Non-compounded just sums the daily % returns (what a fixed-size bet run every day would show) — the gap between the two lines IS the compounding effect. Toggle log scale to see the real underlying rate (a constant rate draws as a straight line).</div>
+  <canvas id="eqChart"></canvas>
+</div>
+
+<div class="card">
+  <h2>Per-pair breakdown — where the diversification is coming from</h2>
+  <table>
+    <thead><tr>
+      <th>Pair</th><th class="num">Decided (margin gate)</th><th class="num">Kept (after cap)</th><th class="num">Skipped</th>
+      <th class="num">Own win rate</th><th class="num">Own Sharpe</th><th class="num" id="weightColHead">Portfolio weight</th>
+    </tr></thead>
+    <tbody id="perPairBody"></tbody>
+  </table>
+  <div class="barwrap" id="weightBar"></div>
+</div>
+
+<div class="card">
+  <h2>Export constituent trades (<span id="tradeCount">0</span>)</h2>
+  <div class="export-row">
+    <span class="muted">Export:</span>
+    <button id="expReturns">% Returns CSV</button>
+    <button id="expR">R-Multiples CSV</button>
+    <button id="expCash">Currency P&amp;L CSV</button>
+    <label>Account $ <input type="number" id="acctSize" value="10000" step="1000" style="width:80px"></label>
+    <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1" style="width:60px"></label>
+    <button id="perfSummaryBtn">📄 Performance Summary</button>
+  </div>
+  <div class="export-note">
+    Every kept (post concurrency-cap) trade across the selected pairs, tagged with which pair it belongs to. In
+    <strong>Fixed % risk / trade</strong> mode, Return % is already the real risk-scaled outcome (pair weight = 1, a
+    no-op) — Currency P&amp;L's Risk($) = Account × Risk% (the SAME risk% the chart was built with, auto-synced above).
+    In <strong>NAV split</strong> mode, Return %/Currency P&amp;L are scaled by each trade's pair weight so summing
+    either column reproduces the portfolio's combined result. R (both modes) = the trade's own outcome ÷ its own real
+    stop distance — a per-trade ratio, always left unscaled by weight since scaling both sides of a ratio cancels out.
+  </div>
+</div>
+
+</main>
+
+<div id="perfSummaryOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;overflow-y:auto;padding:30px 20px">
+  <div id="perfSummaryReport" style="max-width:700px;margin:0 auto;background:#f7f7f5;color:#1a1a1a;border-radius:10px;overflow:hidden;font-family:'DM Sans',system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="padding:20px 24px;border-bottom:3px solid #1a1a1a;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="font-size:22px;font-weight:800">Performance Summary</div>
+        <div id="perfSummarySub1" style="font-size:12px;color:#6b7280;margin-top:6px"></div>
+        <div id="perfSummarySub2" style="font-size:12px;color:#6b7280;margin-top:2px"></div>
+      </div>
+      <button id="perfSummaryClose" type="button" style="background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">Close</button>
+    </div>
+    <div id="perfSummaryBody" style="padding:0 24px 24px"></div>
+  </div>
+</div>
+
+<script type="module">
+// All 26 locally-cached pairs both Fib Atlas ladders were widened to (same
+// list scripts/backfill_fib_atlas_vote_trades.mjs uses) — no exclusions here,
+// unlike level-atlas-vote-portfolio.html's curated 21/26, since no
+// correlated-risk leave-one-out study has been run for this engine yet (see
+// the warning card above).
+const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
+  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
+const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'usdjpy', 'gold', 'audusd']);
+const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
+
+let ladder = 'asia';
+function apiPrefix() { return ladder === 'monday' ? 'monday-fib-atlas' : 'asia-fib-atlas'; }
+
+const pairChecksEl = document.getElementById('pairChecks');
+pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}</label>`).join('');
+
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = true; });
+  loadData();
+});
+document.getElementById('selectDefaultBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = DEFAULT_CHECKED.has(el.dataset.pair); });
+  loadData();
+});
+
+const pageTitle = document.getElementById('pageTitle');
+const ladderSegEl = document.getElementById('ladderSeg');
+const marginSel = document.getElementById('marginSel');
+const capSel = document.getElementById('capSel');
+const perDirChk = document.getElementById('perDirChk');
+const sizingSel = document.getElementById('sizingSel');
+const weightSel = document.getElementById('weightSel');
+const weightSelWrap = document.getElementById('weightSelWrap');
+const riskPctWrap = document.getElementById('riskPctWrap');
+const riskPctInput = document.getElementById('riskPctInput');
+const heatCapWrap = document.getElementById('heatCapWrap');
+const heatCapChk = document.getElementById('heatCapChk');
+const maxHeatPctInput = document.getElementById('maxHeatPctInput');
+const targetVolInput = document.getElementById('targetVolInput');
+const throttleChk = document.getElementById('throttleChk');
+const triggerDDInput = document.getElementById('triggerDDInput');
+const restoreDDInput = document.getElementById('restoreDDInput');
+const throttleMultInput = document.getElementById('throttleMultInput');
+const logScaleChk = document.getElementById('logScaleChk');
+const headerSub = document.getElementById('headerSub');
+
+function syncSizingUI() {
+  const fixed = sizingSel.value === 'fixed-risk';
+  weightSelWrap.style.display = fixed ? 'none' : '';
+  riskPctWrap.style.display = fixed ? '' : 'none';
+  heatCapWrap.style.display = fixed ? '' : 'none';
+  maxHeatPctInput.disabled = !heatCapChk.checked;
+  const throttleOn = throttleChk.checked;
+  triggerDDInput.disabled = !throttleOn;
+  restoreDDInput.disabled = !throttleOn;
+  throttleMultInput.disabled = !throttleOn;
+}
+syncSizingUI();
+
+let eqChart = null;
+let lastTrades = [];
+let lastResponse = null;
+
+function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
+function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
+function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
+function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
+function kpiCard(label, value, cls, sub) {
+  return `<div class="kpi"><div class="label">${label}</div><div class="value ${cls || ''}">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
+}
+
+function selectedPairs() {
+  return [...pairChecksEl.querySelectorAll('input:checked')].map(el => el.dataset.pair);
+}
+
+// With 26 selectable pairs (and an Asia/Monday toggle on top), rapid control
+// changes fire many overlapping fetches — this sequence counter discards any
+// response that isn't from the MOST RECENTLY STARTED request (same guard
+// level-atlas-vote-portfolio.html already uses).
+let loadSeq = 0;
+async function loadData() {
+  const mySeq = ++loadSeq;
+  syncSizingUI();
+  const pairs = selectedPairs();
+  if (!pairs.length) { headerSub.textContent = 'select at least one pair'; return; }
+  headerSub.textContent = 'loading…';
+  const params = new URLSearchParams({
+    pairs: pairs.join(','), minMargin: marginSel.value, maxConcurrent: capSel.value,
+    perDirection: perDirChk.checked ? 'true' : 'false', weighting: weightSel.value,
+    sizing: sizingSel.value, riskPct: riskPctInput.value, targetVol: targetVolInput.value,
+  });
+  if (sizingSel.value === 'fixed-risk' && heatCapChk.checked) params.set('maxHeatPct', maxHeatPctInput.value);
+  if (throttleChk.checked) {
+    params.set('throttle', 'true');
+    params.set('triggerDD', triggerDDInput.value);
+    params.set('restoreDD', restoreDDInput.value);
+    params.set('throttleMult', throttleMultInput.value);
+  }
+  // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
+  // a Monday constituent, so the same pair can have both open at once —
+  // js/asiaFibAtlasRoutes.js's /vote-portfolio-combined) instead of the
+  // single-ladder /vote-portfolio this page otherwise uses.
+  const combined = ladder === 'combined';
+  const url = combined ? `/api/asia-fib-atlas/vote-portfolio-combined?ladders=asia,monday&${params}` : `/api/${apiPrefix()}/vote-portfolio?${params}`;
+  try {
+    const res = await fetch(url);
+    const j = await res.json();
+    if (mySeq !== loadSeq) return; // a newer request has since started — drop this stale response
+    if (!j.ok) { headerSub.textContent = `error: ${j.error}`; return; }
+    const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
+      + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
+    const ladderDesc = combined ? 'Asia+Monday combined (same pair can have both open at once)' : (ladder === 'monday' ? 'Monday' : 'Asia') + ' ladder';
+    headerSub.textContent = `${ladderDesc} · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
+    lastResponse = j;
+    render(j);
+  } catch (e) {
+    if (mySeq === loadSeq) headerSub.textContent = `error: ${e.message}`;
+  }
+}
+
+function render(j) {
+  lastTrades = j.trades ?? [];
+  document.getElementById('tradeCount').textContent = lastTrades.length;
+  const s = j.stats;
+  document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
+  document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
+
+  const heatCard = document.getElementById('heatCapCard');
+  if (j.heatCap && j.statsUncapped) {
+    heatCard.style.display = '';
+    const u = j.statsUncapped;
+    const rows = [
+      ['Sharpe', fmt2(u.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(u.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(u.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(u.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(u.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(u.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(u.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(u.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(u.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Trades taken', j.heatCap.totalCount, j.heatCap.totalCount - j.heatCap.skippedCount],
+    ];
+    document.getElementById('heatCapCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without cap</th><th class="num">With ${j.heatCap.maxHeatPct}% cap</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">${j.heatCap.skippedCount} of ${j.heatCap.totalCount} trades (${fmt1(j.heatCap.skippedCount / j.heatCap.totalCount * 100)}%) skipped by the cross-pair budget.</div>`;
+  } else {
+    heatCard.style.display = 'none';
+  }
+
+  const throttleCard = document.getElementById('throttleCard');
+  if (j.throttle && j.statsNoThrottle) {
+    throttleCard.style.display = '';
+    const n = j.statsNoThrottle;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Annualised Return (fixed risk)', fmt1(n.cagrNonCompounded) + '%', fmt1(s.cagrNonCompounded) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Calmar (compounded)', fmt2(n.calmar), fmt2(s.calmar)],
+      ['Calmar (fixed risk)', fmt2(n.calmarNonCompounded), fmt2(s.calmarNonCompounded)],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+    ];
+    document.getElementById('throttleCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without throttle</th><th class="num">With throttle</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Throttled on ${j.throttle.daysThrottled} of ${j.throttle.totalDays} portfolio trading days (${fmt1(j.throttle.daysThrottled / j.throttle.totalDays * 100)}%) — de-risked to ${j.throttle.throttleMult}× below ${j.throttle.triggerDD}% drawdown, restored above ${j.throttle.restoreDD}%.</div>`;
+  } else {
+    throttleCard.style.display = 'none';
+  }
+
+  document.getElementById('kpiShared').innerHTML = [
+    kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
+    kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
+    kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
+    kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),
+    kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
+    kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
+    kpiCard('Excess Kurtosis', fmt2(s.excessKurt), '', s.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal'),
+    kpiCard('VaR 95%', fmt2(s.var95) + '%', 'red', 'daily loss at the 95th-pctile tail'),
+    kpiCard('CVaR 95%', fmt2(s.cvar95) + '%', 'red', 'mean daily loss BEYOND that tail'),
+    kpiCard('Lag-1 Autocorr', fmt2(s.acf1), '', s.acf1 < 0 ? 'mean-reverting days' : s.acf1 > 0 ? 'clustering days' : 'no persistence'),
+    kpiCard('Trading Days', s.days, '', ''),
+  ].join('');
+
+  document.getElementById('kpiCompounded').innerHTML = [
+    kpiCard('CAGR', fmt1(s.cagr) + '%', signClass(s.cagr), 'reinvested daily'),
+    kpiCard('Max Drawdown', fmt1(s.maxDD) + '%', 'red', 'compounded equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmar), '', 'CAGR / |max DD|'),
+  ].join('');
+
+  document.getElementById('kpiNonCompounded').innerHTML = [
+    kpiCard('Annualised Return', fmt1(s.cagrNonCompounded) + '%', signClass(s.cagrNonCompounded), 'sum of daily %, ÷ years — never reinvested'),
+    kpiCard('Max Drawdown', fmt1(s.maxDDNonCompounded) + '%', 'red', 'additive equity, peak→trough'),
+    kpiCard('Calmar', fmt2(s.calmarNonCompounded), '', 'annualised return / |max DD|'),
+  ].join('');
+
+  const vt = s.volTarget;
+  document.getElementById('targetVolLabel').textContent = vt.target;
+  const scale = s.annVol > 0 ? vt.target / s.annVol : null;
+  const leveredCards = [
+    kpiCard('Target Vol', vt.target + '%', 'blue', 'the chosen scale'),
+    kpiCard('CAGR (levered)', fmt1(vt.cagr) + '%', signClass(vt.cagr), `vs ${fmt1(s.cagr)}% unlevered`),
+    kpiCard('Max DD (levered)', fmt1(vt.maxDD) + '%', 'red', `vs ${fmt1(s.maxDD)}% unlevered`),
+    kpiCard('Calmar (levered)', fmt2(vt.calmar), '', 'same Sharpe, scaled risk'),
+  ];
+  if (j.sizing === 'fixed-risk' && scale != null) {
+    leveredCards.push(kpiCard('Risk % / trade to hit target', fmt2(j.riskPct * scale) + '%', 'amber', `${fmt2(scale)}× today's ${j.riskPct}%/trade`));
+  }
+  document.getElementById('kpiLevered').innerHTML = leveredCards.join('');
+
+  // new Chart(...) throws synchronously if the Chart.js CDN script didn't
+  // load (blocked network/ad-blocker/proxy) — this used to be called
+  // unguarded in the middle of render(j), so that throw aborted everything
+  // after it (the per-pair breakdown table, weight bar), even though those
+  // have no dependency on the chart. Caught here the same way
+  // asia-fib-atlas-vote-backtest.html's own chart calls are.
+  try {
+    if (eqChart) eqChart.destroy();
+    let eq = 1, sum = 0;
+    const eqIndex = j.equityCurve.map(p => { eq *= (1 + p.dailyReturn / 100); return +(eq * 100).toFixed(3); });
+    const eqCurve = eqIndex.map(v => +(v - 100).toFixed(3));
+    const sumCurve = j.equityCurve.map(p => { sum += p.dailyReturn; return +sum.toFixed(3); });
+    const logMode = logScaleChk.checked;
+    eqChart = new Chart(document.getElementById('eqChart'), {
+      type: 'line',
+      data: { labels: j.equityCurve.map(p => p.date), datasets: [
+        { label: `Compounded % (final ${fmt1(eqCurve[eqCurve.length - 1])}%)`, data: logMode ? eqIndex : eqCurve, borderColor: '#5b9dff', backgroundColor: 'rgba(91,157,255,.08)', fill: !logMode, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y' },
+        { label: `Non-compounded (final ${fmt1(sumCurve[sumCurve.length - 1])}%)`, data: sumCurve, borderColor: '#fbbf24', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
+          y: { type: logMode ? 'logarithmic' : 'linear', position: 'left', ticks: { color: '#5b9dff', callback: v => logMode ? Number(v).toLocaleString() : (v + '%') }, grid: { color: '#1e2436' }, title: { display: true, text: logMode ? 'Compounded (equity index — 100 = start)' : 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+          y1: { position: 'right', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
+        } },
+    });
+  } catch (e) {
+    console.warn('Chart.js unavailable:', e.message);
+    const el = document.getElementById('eqChart');
+    if (el?.parentElement) { const div = document.createElement('div'); div.className = 'muted'; div.style.padding = '12px'; div.textContent = 'Chart library failed to load (blocked script) — equity curve unavailable, KPIs and per-pair table below are unaffected.'; el.replaceWith(div); }
+  }
+
+  const fixedRisk = j.sizing === 'fixed-risk';
+  document.getElementById('weightColHead').textContent = fixedRisk ? 'Share of trades' : 'Portfolio weight';
+  const rows = Object.entries(j.perPair);
+  const shareOf = p => fixedRisk ? p.tradeShare : p.weight;
+  document.getElementById('perPairBody').innerHTML = rows.map(([pair, p]) => `
+    <tr><td style="color:${PAIR_COLORS[pair] ?? '#cbd5e1'}">${pair}</td>
+      <td class="num">${p.totalDecided}</td><td class="num">${p.kept}</td><td class="num muted">${p.skipped}</td>
+      <td class="num">${fmt1(p.ownWinRate)}%</td><td class="num">${fmt2(p.ownSharpe)}</td>
+      <td class="num">${fmt1(shareOf(p) * 100)}%</td></tr>`).join('');
+  document.getElementById('weightBar').innerHTML = rows.map(([pair, p]) =>
+    `<div class="bar" style="width:${shareOf(p) * 100}%;background:${PAIR_COLORS[pair] ?? '#5a6380'}" title="${pair}: ${fmt1(shareOf(p) * 100)}%"></div>`).join('');
+}
+
+function csvDownload(filename, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function riskPctOf(t) { return t.stopPips * t.pip / t.entry * 100; }
+function csvPrefix() { return ladder === 'combined' ? 'fib-atlas-combined-vote-portfolio' : `${apiPrefix()}-vote-portfolio`; }
+
+// Same 3-schema, `Pair` as a TRAILING 4th column convention as
+// level-atlas-vote-portfolio.html (see that page's own comment for why —
+// a positional importer must never have the pair name land where it expects
+// a number). MAE flipped negative at export time, same house convention.
+document.getElementById('expReturns').addEventListener('click', () => {
+  const rows = [['Date', 'Return %', 'MAE %', 'Pair'], ...lastTrades.map(t =>
+    [t.date, (t.pnlPct * t.weight).toFixed(4), (t.maePct != null ? (-Math.abs(t.maePct * t.weight)).toFixed(4) : ''), t.pair])];
+  csvDownload(`${csvPrefix()}-returns.csv`, rows);
+});
+document.getElementById('expR').addEventListener('click', () => {
+  const rows = [['date', 'R', 'MAE (R)', 'pair'], ...lastTrades.map(t => {
+    const rp = riskPctOf(t);
+    const maeR = (t.maePct != null && rp > 0) ? t.maePct / rp : '';
+    return [t.date, t.rMultiple.toFixed(3), maeR === '' ? '' : (-Math.abs(maeR)).toFixed(3), t.pair];
+  })];
+  csvDownload(`${csvPrefix()}-r-multiples.csv`, rows);
+});
+document.getElementById('expCash').addEventListener('click', () => {
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  const riskPct = parseFloat(document.getElementById('riskPct').value) || 1;
+  const rows = [['Trade Date', 'PnL ($)', 'Risk ($)', 'Pair'], ...lastTrades.map(t => {
+    const riskDollars = acct * riskPct / 100 * t.weight;
+    return [t.date, (t.rMultiple * riskDollars).toFixed(2), riskDollars.toFixed(2), t.pair];
+  })];
+  csvDownload(`${csvPrefix()}-currency-pnl.csv`, rows);
+});
+
+function monthKey(dateStr) { return dateStr.slice(0, 7); }
+function fmtDateLong(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+function buildPerformanceSummary(j) {
+  const eq = j.equityCurve ?? [];
+  const trades = j.trades ?? [];
+  const s = j.stats;
+
+  const byMonth = new Map();
+  for (const p of eq) byMonth.set(monthKey(p.date), (byMonth.get(monthKey(p.date)) ?? 0) + p.dailyReturn);
+  const monthlySums = [...byMonth.values()];
+  const positiveMonths = monthlySums.filter(v => v > 0).length;
+  const negativeMonths = monthlySums.filter(v => v < 0).length;
+  const bestMonth = monthlySums.length ? Math.max(...monthlySums) : 0;
+  const worstMonth = monthlySums.length ? Math.min(...monthlySums) : 0;
+  const avgMonthly = monthlySums.length ? monthlySums.reduce((a, b) => a + b, 0) / monthlySums.length : 0;
+  const totalReturn = eq.reduce((a, p) => a + p.dailyReturn, 0);
+
+  let cum = 0, peak = 0, peakIdx = 0, maxDur = 0;
+  eq.forEach((p, i) => {
+    cum += p.dailyReturn;
+    if (cum >= peak) { peak = cum; peakIdx = i; } else { maxDur = Math.max(maxDur, i - peakIdx); }
+  });
+
+  const wins = trades.filter(t => t.win), losses = trades.filter(t => !t.win);
+  const avgWin = wins.length ? wins.reduce((a, t) => a + t.pnlPct, 0) / wins.length : 0;
+  const avgLoss = losses.length ? losses.reduce((a, t) => a + t.pnlPct, 0) / losses.length : 0;
+  const avgTrade = trades.length ? trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length : 0;
+  const grossWin = wins.reduce((a, t) => a + t.pnlPct, 0), grossLoss = -losses.reduce((a, t) => a + t.pnlPct, 0);
+  const tradeProfitFactor = grossLoss > 1e-9 ? grossWin / grossLoss : (grossWin > 0 ? 99 : 0);
+  const tradeWinRate = trades.length ? wins.length / trades.length * 100 : 0;
+
+  return {
+    dateFrom: eq[0]?.date, dateTo: eq[eq.length - 1]?.date,
+    totalReturn, annualReturn: s.cagrNonCompounded, monthlyReturn: avgMonthly, avgTrade, bestMonth, worstMonth,
+    annVol: s.annVol, maxDD: s.maxDDNonCompounded, maxDDDurationDays: maxDur,
+    var95: s.var95, var99: s.var99, cvar95: s.cvar95,
+    sharpe: s.sharpe, sortino: s.sortino, calmar: s.calmarNonCompounded, profitFactor: tradeProfitFactor,
+    winRate: tradeWinRate, avgWin, avgLoss, positiveMonths, negativeMonths, totalRoundTrips: trades.length,
+  };
+}
+function perfRow(label, value) {
+  return `<tr><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;color:#374151">${label}</td><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;text-align:right;font-weight:600">${value}</td></tr>`;
+}
+function perfSection(title, rows) {
+  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${rows}</tbody></table>`;
+}
+function renderPerformanceSummary() {
+  if (!lastResponse) return;
+  const r = buildPerformanceSummary(lastResponse);
+  const acct = parseFloat(document.getElementById('acctSize').value) || 10000;
+  const ladderLabel = ladder === 'combined' ? 'Asia+Monday combined' : (ladder === 'monday' ? 'Monday' : 'Asia');
+  document.getElementById('perfSummarySub1').textContent = `${ladderLabel} — simple returns on $${acct.toLocaleString()} starting capital · no compounding`;
+  document.getElementById('perfSummarySub2').textContent = `${fmtDateLong(r.dateFrom)} - ${fmtDateLong(r.dateTo)}`;
+  document.getElementById('perfSummaryBody').innerHTML =
+    perfSection('RETURNS', [
+      perfRow('Total Return', fmtPct(r.totalReturn, 2)),
+      perfRow('Annual Return', fmtPct(r.annualReturn, 2)),
+      perfRow('Monthly Return', fmtPct(r.monthlyReturn, 2)),
+      perfRow('Average Trade', fmtPct(r.avgTrade, 2)),
+      perfRow('Best Month', fmtPct(r.bestMonth, 2)),
+      perfRow('Worst Month', fmtPct(r.worstMonth, 2)),
+    ].join('')) +
+    perfSection('RISK', [
+      perfRow('Annual Volatility', fmt2(r.annVol) + '%'),
+      perfRow('Max Drawdown', fmt2(r.maxDD) + '%'),
+      perfRow('Max DD Duration (bdays)', r.maxDDDurationDays),
+      perfRow('VaR (95%)', fmt2(r.var95) + '%'),
+      perfRow('VaR (99%)', fmt2(r.var99) + '%'),
+      perfRow('CVaR (95%)', fmt2(r.cvar95) + '%'),
+    ].join('')) +
+    perfSection('RISK-ADJUSTED PERFORMANCE', [
+      perfRow('Sharpe Ratio', fmt2(r.sharpe)),
+      perfRow('Sortino Ratio', fmt2(r.sortino)),
+      perfRow('Calmar Ratio', fmt2(r.calmar)),
+      perfRow('Profit Factor', fmt2(r.profitFactor)),
+    ].join('')) +
+    perfSection('TRADE STATISTICS', [
+      perfRow('Win Rate', fmt2(r.winRate) + '%'),
+      perfRow('Average Win', fmtPct(r.avgWin, 2)),
+      perfRow('Average Loss', fmtPct(r.avgLoss, 2)),
+      perfRow('Positive Months', r.positiveMonths),
+      perfRow('Negative Months', r.negativeMonths),
+      perfRow('Total Round Trips', r.totalRoundTrips),
+    ].join(''));
+}
+document.getElementById('perfSummaryBtn').addEventListener('click', () => {
+  renderPerformanceSummary();
+  document.getElementById('perfSummaryOverlay').style.display = '';
+});
+document.getElementById('perfSummaryClose').addEventListener('click', () => {
+  document.getElementById('perfSummaryOverlay').style.display = 'none';
+});
+document.getElementById('perfSummaryOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'perfSummaryOverlay') e.currentTarget.style.display = 'none';
+});
+
+ladderSegEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-v]');
+  if (!btn || btn.dataset.v === ladder) return;
+  ladder = btn.dataset.v;
+  for (const b of ladderSegEl.querySelectorAll('button')) b.classList.toggle('active', b === btn);
+  pageTitle.textContent = ladder === 'combined' ? 'Asia+Monday Fib Atlas Vote Portfolio (combined)' : ladder === 'monday' ? 'Monday Fib Atlas Vote Portfolio' : 'Asia Fib Atlas Vote Portfolio';
+  loadData();
+});
+
+pairChecksEl.addEventListener('change', loadData);
+marginSel.addEventListener('change', loadData);
+capSel.addEventListener('change', loadData);
+perDirChk.addEventListener('change', loadData);
+sizingSel.addEventListener('change', loadData);
+weightSel.addEventListener('change', loadData);
+riskPctInput.addEventListener('change', loadData);
+heatCapChk.addEventListener('change', loadData);
+maxHeatPctInput.addEventListener('change', loadData);
+targetVolInput.addEventListener('change', loadData);
+throttleChk.addEventListener('change', loadData);
+triggerDDInput.addEventListener('change', loadData);
+restoreDDInput.addEventListener('change', loadData);
+throttleMultInput.addEventListener('change', loadData);
+logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
+
+loadData();
+window.__pageReady = true;   // smoke-test hook
+</script>
+</body>
+</html>
