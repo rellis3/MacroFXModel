@@ -79,6 +79,8 @@
     <label>Fixed SL fraction <input type="checkbox" id="slFractionChk">
       <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
     <label>Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
+    <label>Prop daily DD limit <input type="checkbox" id="propDDLimitChk">
+      <input type="number" id="propDDLimitInput" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
     <label>Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
     <label>Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
   </div>
@@ -178,6 +180,12 @@
   <h2>p90 rung impact — same portfolio, with vs without the outermost ladder rung</h2>
   <div class="muted" style="margin-bottom:8px">p90 is excluded everywhere else (excludeRungs: ['p90']) because a fade there has no real stop in the 3-rung ladder — and its sample is too thin for the normal vote-margin mechanic to ever fire (checked directly: 0 votes across hundreds of OOS touches). This trades it UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance (the real distance price travels once it clears p90, fit on in-sample data only). Real per-pair spread cost killed the tighter percentiles tested (p75's OOS Sharpe went negative) — only the 90th held up on portfolio Sharpe, per-trade Sharpe, and a cross-pair heat-cap sensitivity check, so that's the only percentile offered here, not a tunable grid. See <code>analysis/p90_empirical_outer_backtest.mjs</code> and <code>scripts/build_p90_votetrades.mjs</code>.</div>
   <div id="p90Compare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="intradayMAECard" style="display:none">
+  <h2>Intraday MAE — worst point reached WITHIN a day, not just the net result</h2>
+  <div class="muted" style="margin-bottom:8px">Every other number on this page is an end-of-day net result. That hides a real risk for a prop account with an intraday drawdown rule: 6 losses followed by 2 big wins can net a fine-looking day while still breaching a hard intraday limit before those wins arrive. This reconstructs each day's running equity path (trades ordered by entry time) and reports the worst point reached mid-day, across the whole backtest.</div>
+  <div id="intradayMAECompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card callout" id="ccyGateCard" style="display:none">
@@ -322,6 +330,8 @@ const fadeStopChk = document.getElementById('fadeStopChk');
 const slFractionChk = document.getElementById('slFractionChk');
 const slFractionInput = document.getElementById('slFractionInput');
 const includeP90Chk = document.getElementById('includeP90Chk');
+const propDDLimitChk = document.getElementById('propDDLimitChk');
+const propDDLimitInput = document.getElementById('propDDLimitInput');
 const ccyGateChk = document.getElementById('ccyGateChk');
 const maxDailyLossPctInput = document.getElementById('maxDailyLossPctInput');
 const logScaleChk = document.getElementById('logScaleChk');
@@ -338,6 +348,7 @@ function syncSizingUI() {
   restoreDDInput.disabled = !throttleOn;
   throttleMultInput.disabled = !throttleOn;
   slFractionInput.disabled = !slFractionChk.checked;
+  propDDLimitInput.disabled = !propDDLimitChk.checked;
   maxDailyLossPctInput.disabled = !ccyGateChk.checked;
 }
 syncSizingUI();
@@ -386,6 +397,7 @@ async function loadData() {
   if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
   if (slFractionChk.checked) params.set('slFraction', slFractionInput.value);
   if (includeP90Chk.checked) params.set('includeP90', 'true');
+  if (propDDLimitChk.checked) params.set('propDDLimit', propDDLimitInput.value);
   if (ccyGateChk.checked) {
     params.set('ccyLossGate', 'true');
     params.set('maxDailyLossPct', maxDailyLossPctInput.value);
@@ -548,6 +560,23 @@ function render(j) {
     p90Card.style.display = 'none';
   }
 
+  const intradayMAECard = document.getElementById('intradayMAECard');
+  if (j.intradayMAE) {
+    intradayMAECard.style.display = '';
+    const im = j.intradayMAE;
+    const breachRow = im.breachedCount != null
+      ? `<div class="muted" style="margin-top:8px">At a ${im.propDDLimit}% daily DD limit: <strong style="color:${im.breachedCount > 0 ? '#f87171' : '#4ade80'}">${im.breachedCount} of ${im.totalDays}</strong> days would have breached it intraday at some point — regardless of how each day ultimately closed.</div>`
+      : `<div class="muted" style="margin-top:8px">Set "Prop daily DD limit" above to check how many days would have breached a specific intraday threshold.</div>`;
+    const worstRows = im.worstDays.map(d => `<tr><td>${d.date}</td><td class="num" style="color:#f87171">${fmt1(d.mae)}%</td><td class="num" style="color:${d.netResult >= 0 ? '#4ade80' : '#f87171'}">${fmtPct(d.netResult)}</td><td class="num">${d.trades}</td></tr>`).join('');
+    document.getElementById('intradayMAECompare').innerHTML = `
+      <div class="kpi" style="display:inline-block"><div class="label">Worst intraday MAE ever</div><div class="value" style="color:#f87171">${fmt1(im.worstDayMAEPct)}%</div><div class="sub">${im.worstDayDate}</div></div>
+      ${breachRow}
+      <div class="muted" style="margin-top:8px">10 worst intraday excursions (MAE = deepest running loss reached mid-day; Net = how the day actually closed):</div>
+      <table style="margin-top:4px"><thead><tr><th>Date</th><th class="num">Intraday MAE</th><th class="num">Net result</th><th class="num">Trades</th></tr></thead><tbody>${worstRows}</tbody></table>`;
+  } else {
+    intradayMAECard.style.display = 'none';
+  }
+
   const ccyGateCard = document.getElementById('ccyGateCard');
   if (j.ccyGateInfo && j.statsNoCcyGate) {
     ccyGateCard.style.display = '';
@@ -586,7 +615,9 @@ function render(j) {
       s.sharpeCI95 ? `95% CI [${fmt2(s.sharpeCI95[0])}, ${fmt2(s.sharpeCI95[1])}] · PSR ${fmt2(s.psr)}` : `PSR ${fmt2(s.psr)}`),
     kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
     kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
-    kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),
+    kpiCard('Win Rate (days)', fmt1(s.winRate) + '%', '', '% of positive trading days — NOT per-trade (a losing trade can still land on a net-positive day)'),
+    kpiCard('Win Rate (trades)', s.perTradeWinRate != null ? fmt1(s.perTradeWinRate) + '%' : '—', '', 'traditional per-trade win rate — usually lower than the day-based one above'),
+    kpiCard('Worst Intraday MAE', j.intradayMAE?.worstDayMAEPct != null ? fmt1(j.intradayMAE.worstDayMAEPct) + '%' : '—', j.intradayMAE?.worstDayMAEPct < -1 ? 'red' : '', j.intradayMAE?.worstDayDate ? `worst point WITHIN a day, ${j.intradayMAE.worstDayDate} — a losses-then-wins day can breach this before recovering` : 'deepest running loss reached mid-day, before any same-day recovery'),
     kpiCard('Annualised Vol', fmt1(s.annVol) + '%', '', 'realised, unlevered'),
     kpiCard('Skew', fmt2(s.skew), '', 'daily return distribution'),
     kpiCard('Excess Kurtosis', fmt2(s.excessKurt), '', s.excessKurt > 0 ? 'fatter tails than normal' : 'thinner tails than normal'),
@@ -857,6 +888,8 @@ fadeStopChk.addEventListener('change', loadData);
 slFractionChk.addEventListener('change', loadData);
 slFractionInput.addEventListener('change', loadData);
 includeP90Chk.addEventListener('change', loadData);
+propDDLimitChk.addEventListener('change', loadData);
+propDDLimitInput.addEventListener('change', loadData);
 ccyGateChk.addEventListener('change', loadData);
 maxDailyLossPctInput.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });

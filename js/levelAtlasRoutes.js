@@ -805,8 +805,59 @@ export function mountLevelAtlasRoutes(app, express) {
           perTradeSharpe: st.sharpe, perTradeSharpeSE: st.sharpeSE,
           sharpeCI95: st.sharpeSE != null ? [+(st.sharpe - 1.96 * st.sharpeSE).toFixed(2), +(st.sharpe + 1.96 * st.sharpeSE).toFixed(2)] : null,
           minTrackYears: st.minTrackYears,
+          // The KPI "Win Rate" elsewhere on this page is `portfolioStats`'
+          // own field -- % of positive trading DAYS, not trades (several
+          // losing trades can still net a positive day). This is the
+          // traditional, per-TRADE win rate people actually mean when they
+          // say "win rate" -- the same summarizeTrades call already gives it
+          // to us, just wasn't being surfaced.
+          perTradeWinRate: st.winRate,
         };
       };
+
+      // Intraday MAE / prop-account drawdown check (2026-08-29): every stat
+      // on this page so far is an END-OF-DAY net result -- 6 losses then 2
+      // big wins nets a fine-looking day, but a prop account with a hard
+      // intraday drawdown rule would have been blown out BEFORE those wins
+      // arrived, regardless of how the day finished. This reconstructs each
+      // day's running equity path (trades ordered by entry time -- the same
+      // date-bucketing convention dailySeriesFor already uses elsewhere on
+      // this page, so this isn't a new assumption, just applying the
+      // existing one at intraday granularity) and reports the worst point
+      // reached WITHIN any single day, not just the day's net result.
+      // Caveat, stated plainly: a trade is bucketed to its ENTRY date same
+      // as everywhere else on this page, even though some barrier trades
+      // resolve on a later date -- exactly precise same-day sequencing would
+      // need resolve-time-aware position tracking, which nothing on this
+      // page does today.
+      function computeIntradayMAE(perPairDict, propDDLimit) {
+        const all = Object.values(perPairDict).flat();
+        const byDate = new Map();
+        for (const t of all) {
+          if (!byDate.has(t.date)) byDate.set(t.date, []);
+          byDate.get(t.date).push(t);
+        }
+        const dailyMAEs = [];
+        for (const [date, dayTrades] of byDate) {
+          const sorted = [...dayTrades].sort((a, b) => a.time - b.time);
+          let running = 0, dayMin = 0;
+          for (const t of sorted) {
+            running += t.pnlPct;
+            if (running < dayMin) dayMin = running;
+          }
+          dailyMAEs.push({ date, mae: +dayMin.toFixed(3), netResult: +running.toFixed(3), trades: sorted.length });
+        }
+        dailyMAEs.sort((a, b) => a.mae - b.mae); // worst first
+        const worst = dailyMAEs[0] ?? null;
+        const breached = propDDLimit != null ? dailyMAEs.filter(d => d.mae <= propDDLimit) : null;
+        return {
+          worstDayMAEPct: worst?.mae ?? null, worstDayDate: worst?.date ?? null,
+          worstDays: dailyMAEs.slice(0, 10), // top-10 worst intraday excursions, for the callout table
+          totalDays: dailyMAEs.length,
+          ...(propDDLimit != null ? { propDDLimit, breachedCount: breached.length, breachedDays: breached.slice(0, 20) } : {}),
+        };
+      }
+      const propDDLimit = req.query.propDDLimit ? -Math.abs(Number(req.query.propDDLimit)) : null;
 
       const weights = buildWeights(perPairTradesFinal);
       const combined = buildPortfolioDailySeries(perPairTradesFinal, weights ? { weights } : {});
@@ -838,6 +889,7 @@ export function mountLevelAtlasRoutes(app, express) {
       }
       stats.avgLossRiskAdjPct = avgLossPct(perPairTradesFinal);
       stats = withSharpeCI(stats, perPairTradesFinal);
+      const intradayMAE = computeIntradayMAE(perPairTradesFinal, propDDLimit);
 
       // When a heat cap is active, also report what the SAME series would
       // have looked like without it (throttle setting held CONSTANT, so this
@@ -1033,6 +1085,7 @@ export function mountLevelAtlasRoutes(app, express) {
         includeP90, p90Info,
         ccyLossGate, ccyGateInfo,
         stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoP90, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
+        intradayMAE,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,
       });
