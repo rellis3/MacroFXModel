@@ -487,6 +487,44 @@ descriptive structure in these books, real as it is, does not convert into an
 after-cost entry by gating touches. The books' honest use is expectations and
 exits around edges that exist elsewhere, not entry generation.
 
+### 9a. Addendum (2026-08-27) — ±3σ only, gated on raw WaveTrend sign vs zero
+
+Owner's follow-up, gold only, pre-registered before running: same mechanics
+(entry next bar open, TP=VWAP-at-touch frozen, SL=1.5×ATR15m, 240min cap, one
+trade/day, costs on) restricted to the **±3σ band alone** (not pooled with
+2σ), tested "regardless" (V0) against a new gate — `requireMomentumAgree`:
+fade only when the RAW WaveTrend oscillator is still on the **same side of
+zero** as the extension at the touch (sell only if wt1>0 at an upper touch,
+buy only if wt1<0 at a lower touch) — the opposite bet from V2's `wtState=
+2·neutral` gate above, which requires momentum to already be UN-extended.
+Engine: `js/stackedFadeV1Engine.js`'s new `requireMomentumAgree` config
+(reuses the same touch rows, now carrying `wtStateValue` — raw wt1 — added
+alongside the existing `wtState` bucket). Runner: `scripts/
+run_third_band_momentum_fade.mjs`.
+
+| variant | OOS n | OOS mean | OOS t | OOS win% | OOS gross |
+|---|---|---|---|---|---|
+| V0 band-3-only (regardless) | 460 | −0.0321% | −1.68 | 37.0% | **−0.0121%** |
+| V-momentum (wt1 agrees) | 457 | −0.0329% | −1.72 | 37.2% | **−0.0129%** |
+
+**Verdict: NULL, both variants — consistent with, not a new instance beyond,
+§9's standing null.** Two things worth stating plainly rather than burying:
+
+1. **The momentum-agree gate barely filters anything** (pool 1,260 → 1,243,
+   ~1.3%) — because a fresh, genuine 3σ extension almost always already has
+   the raw oscillator on the same side as the move (that's what a momentum
+   oscillator does during a real extension). As specified, this condition is
+   close to a no-op against the unconditional population, not a distinguishing
+   filter the way `wtState=2·neutral` was — so it isn't really testing a
+   separate hypothesis from V0 here, and the near-identical numbers above
+   reflect that, not a coincidence.
+2. **Restricting to 3σ alone is gross-negative even before costs**
+   (−0.012 to −0.013%), unlike the pooled 2σ+3σ V0 baseline earlier in this
+   section (gross +0.012%, lost only to costs). The raw price path around an
+   isolated 3σ touch loses money on this exact entry/exit geometry, not just
+   after transaction costs — a materially different (worse) statement than
+   the pooled result, worth knowing on its own.
+
 ## 10. σ-definition A/B — the frozen unit wins
 
 Same touch walk (`sigmaMode` in the engine; default path pinned unchanged by

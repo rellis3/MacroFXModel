@@ -379,6 +379,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
               approachVel: feats.approachVel?.bucket ?? null,
               approachER: feats.approachER?.bucket ?? null,
               wtState: feats.wtState?.bucket ?? null,
+              wtStateValue: feats.wtState?.value ?? null,   // raw wt1 at touch — sign-vs-zero gates need this, not just the ob/os bucket
               wtMtf: feats.wtMtf?.bucket ?? null,
               wtSlow: feats.wtSlow?.bucket ?? null,
               momAdx: feats.momAdx?.bucket ?? null,
