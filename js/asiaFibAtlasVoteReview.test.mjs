@@ -15,6 +15,27 @@
 // (applyConcurrencyCap etc.) work unchanged; (4) the confluenceOnly gate
 // filters correctly; (5) voteCache memoizes by touch identity and is safe
 // to share across a grid search (same result with/without it).
+//
+// (2026-08-29) Also proves the lookahead-safety property specific to THIS
+// module (the engine layer that PRODUCES touch.prevOutcomeSameDay/
+// sessionHandoff already has its own no-lookahead tests —
+// asiaFibAtlasEngine.test.mjs/mondayFibAtlasEngine.test.mjs — this file
+// covers the vote-decision layer on top, which had no dedicated check
+// before): (6) voteDecision's direction is driven ONLY by the book's IS
+// deltaOut, never the OOS deltaOut, for a touch being scored; (7)
+// buildBarrierTrades excludes a touch dated before book.splitDate even when
+// every other filter would otherwise admit it. T16 additionally
+// DOCUMENTS (does not newly introduce) an existing, deliberate design
+// property worth naming plainly: matchLiveContext's `holdsOOS` gate
+// (levelAtlasReport.js's annotateHolds, shared by every reference-engine
+// book including this one) is computed by comparing the IS and OOS halves
+// of the SAME split this module later trades against — i.e. the dimension-
+// selection step already looked at the OOS labels before the "OOS backtest"
+// runs on them. That is not a bug in this module (the vote correctly does
+// what the book tells it to) but it is a real reason the book's IS/OOS
+// split cannot be read as a clean, never-touched holdout on its own — see
+// LEGO_MODULES.md's 2026-08-29 Deflated Sharpe entry, which this mechanism
+// helps explain.
 
 import assert from 'node:assert/strict';
 import { voteDecision, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, VOTE_DIMS } from './asiaFibAtlasVoteReview.js';
@@ -153,6 +174,68 @@ function mkBook(dimSpecs) {
   ok('T14 voteCache does not change the underlying decision (margin=1 pass and margin=2 pass agree on win/pnl for the same touch)',
     trades1.length === 1 && trades2.length === 1 && trades1[0].pnlPct === trades2[0].pnlPct, JSON.stringify({ trades1, trades2 }));
   void vdUncached1;
+}
+
+// ── Lookahead safety (2026-08-29) ───────────────────────────────────────────
+{
+  // T15: direction comes from IS deltaOut only. Two books, identical IS
+  // stats (favours 'out'), but OOS deltaOut flipped to the OPPOSITE sign in
+  // one of them. If voteDecision's direction were ever influenced by the OOS
+  // reading (a live signal-time decision peeking at data that, for a real
+  // live touch, doesn't exist yet), the two books would disagree. They must not.
+  function mkBookIndependentISOOS(dimKey, bucket, isFavorsOut, oosFavorsOut) {
+    return {
+      splitDate: '2022-01-01',
+      cells: { 'above|1.5': { base: { is: { outPct: 50, backPct: 50 }, oos: { outPct: 50, backPct: 50 } },
+        dims: { [dimKey]: {
+          is: { [bucket]: { deltaOut: isFavorsOut ? 5 : -5, n: 40, holdsOOS: true } },
+          oos: { [bucket]: { deltaOut: oosFavorsOut ? 4 : -4, n: 35 } },
+        } } } },
+    };
+  }
+  const bookOOSAgrees = mkBookIndependentISOOS('prevOutcomeSameDay', 'out', true, true);
+  const bookOOSDisagrees = mkBookIndependentISOOS('prevOutcomeSameDay', 'out', true, false);
+  const touch15 = { side: 'above', level: 1.5, prevOutcomeSameDay: 'out' };
+  const vdAgrees = voteDecision(bookOOSAgrees, touch15);
+  const vdDisagrees = voteDecision(bookOOSDisagrees, touch15);
+  ok('T15 voteDecision direction is driven by IS deltaOut only — flipping the OOS-half deltaOut sign (same IS stats, same holdsOOS) must not change the decision',
+    vdAgrees?.decision === 'follow' && vdDisagrees?.decision === 'follow' && vdAgrees.margin === vdDisagrees.margin,
+    JSON.stringify({ vdAgrees, vdDisagrees }));
+
+  // T16: matchLiveContext's holdsOOS gate gates the dimension entirely — a
+  // bucket with holdsOOS:false contributes NO vote, even with a large IS
+  // deltaOut. This is the book's existing, correct behaviour; the point of
+  // this test is to make explicit (and pin against silent drift) that the
+  // vote is conditioned on a flag computed FROM the OOS split itself
+  // (annotateHolds compares IS vs OOS deltaOut sign — see this file's header
+  // note above and LEGO_MODULES.md's 2026-08-29 entry).
+  const bookHoldsFalse = {
+    splitDate: '2022-01-01',
+    cells: { 'above|1.5': { base: { is: { outPct: 50, backPct: 50 }, oos: { outPct: 50, backPct: 50 } },
+      dims: { prevOutcomeSameDay: {
+        is: { out: { deltaOut: 9, n: 40, holdsOOS: false } },   // large IS effect, but did NOT hold OOS
+        oos: { out: { deltaOut: -1, n: 35 } },
+      } } } },
+  };
+  ok('T16 a dimension bucket with holdsOOS:false contributes no vote even with a large IS effect — the vote is gated by a flag derived from the OOS split, not by IS strength alone',
+    voteDecision(bookHoldsFalse, touch15) === null);
+
+  // T17: a touch dated BEFORE book.splitDate must never reach buildBarrierTrades'
+  // output, even when every other filter (rearmFrac, margin, confluence) would
+  // otherwise admit it — the one guard standing between "OOS-only" and
+  // silently grading the backtest on IS touches too.
+  const book17 = mkBook([['prevOutcomeSameDay', 'out', true], ['sessionHandoff', '2·london-morning', true]]);
+  const touchesBoundary = [
+    { instrument: 'EURUSD', date: '2021-12-31', time: 1000, resolveTime: 1100, rearmFrac: 0.3, side: 'above', level: 1.5,
+      price: 1.16863, pip: 0.0001, innerDistPips: 8, outerDistPips: 15, outcome: 'out', fadePips: 3, runPips: 15,
+      prevOutcomeSameDay: 'out', sessionHandoff: '2·london-morning', asiaConfPips: 1.2 },   // 1 day BEFORE splitDate
+    { instrument: 'EURUSD', date: '2022-01-01', time: 1000, resolveTime: 1100, rearmFrac: 0.3, side: 'above', level: 1.5,
+      price: 1.17, pip: 0.0001, innerDistPips: 8, outerDistPips: 15, outcome: 'out', fadePips: 3, runPips: 15,
+      prevOutcomeSameDay: 'out', sessionHandoff: '2·london-morning', asiaConfPips: 1.2 },   // exactly ON splitDate
+  ];
+  const tradesBoundary = buildBarrierTrades(touchesBoundary, book17, { rearmFrac: 0.3, cost: 0, minMargin: 1 });
+  ok('T17 a touch dated before book.splitDate is excluded; a touch dated exactly on splitDate is included (>=, not >)',
+    tradesBoundary?.length === 1 && tradesBoundary[0].date === '2022-01-01', JSON.stringify(tradesBoundary));
 }
 
 console.log(`\n${failures === 0 ? 'all passed' : failures + ' FAILURES'}`);
