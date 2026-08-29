@@ -2691,6 +2691,54 @@ result — same OOS/DSR caveat as the rest of this section applies with
 extra force here since combining only compounds the underlying
 selection-bias risk.
 
+**2026-08-29 — DF-01 education-lesson review, and a structural mechanism
+found behind the DSR=0 finding above.** Owner asked for the Fib Atlas
+backtest to be checked against `education/data-foundations-notes.md`'s
+data-governance principles (look-ahead, survivorship, revision blindspot,
+provenance). Findings, and what came of each:
+
+- **Look-ahead — the vote-decision layer (`js/asiaFibAtlasVoteReview.js`)
+  had no dedicated test of its own**, unlike the engine/walk layer
+  (`asiaFibAtlasEngine.js`'s NO-LOOKAHEAD CONTRACT + truncation tests). Added
+  three tests to `js/asiaFibAtlasVoteReview.test.mjs` (T15-T17, 🟢 17/17
+  passing): `voteDecision`'s direction is driven by the book's IS `deltaOut`
+  only, never the OOS half (T15); `buildBarrierTrades` excludes any touch
+  dated before `book.splitDate`, `>=` not `>` (T17). **T16 surfaced something
+  bigger than a unit-test gap**: `matchLiveContext`'s `holdsOOS` gate (from
+  `levelAtlasReport.js`'s `annotateHolds`, shared by every reference-engine
+  book including this one) only lets a dimension bucket vote if its IS-period
+  effect had the SAME SIGN in the OOS half of the SAME split this module then
+  trades against (`annotateHolds`: `Math.sign(dIS) === Math.sign(dOOS)`).
+  That means the dimension-selection step (which of ~30 context dimensions,
+  narrowed to `prevOutcomeSameDay`/`sessionHandoff` by the §1aq widen check)
+  already looked at the OOS labels before the "OOS backtest" is run and
+  reported on those same labels — the 40% holdout was never a clean,
+  never-touched holdout in the first place. This isn't a bug in
+  `asiaFibAtlasVoteReview.js` (the vote correctly does what the book tells
+  it) and isn't newly introduced by T16 — T16 documents an existing,
+  deliberate design property so it can't silently drift. It is, however, a
+  concrete mechanism explaining WHY the Deflated Sharpe check above found
+  DSR=0: the "OOS" trades were partly selected using their own outcomes.
+  **Not fixed here** — a real fix needs a genuinely held-out third slice (or
+  walk-forward re-validation across several splits), which is a bigger,
+  separately-scoped follow-up, not a test addition.
+- **Provenance — OANDA is a single retail broker's mid-price stream, not a
+  consolidated tape**, and nothing in the fetch code (`volBacktestEngine.js`,
+  `tradeLabDataSource.js`, `volBacktestM1Engine.js`) acknowledges that. Built
+  `analysis/oanda_provenance_check.mjs`: samples real recorded touches for a
+  pair/ladder from R2 (the OANDA side, no re-fetch needed) and checks, minute
+  by minute, whether a second vendor (Twelve Data) confirms the same
+  touch/no-touch call and how far its price sits from OANDA's at that moment
+  — a direct test of whether broker-specific quote noise is a live risk for
+  a system trading tight intraday stops (median hold ~13min), not just a
+  documentation gap. **Built and `node --check` clean, but UNRUN** — this
+  sandbox has no `TWELVE_KEY` and blocks outbound HTTPS to both
+  `api.twelvedata.com` and OANDA (confirmed via direct `curl`, both return
+  connection failures), so the live comparison needs to run on Railway (or
+  anywhere both R2 and Twelve Data are reachable). 🟡 no result exists yet —
+  do not treat this caveat as resolved OR as confirmed-serious until it's
+  actually run.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
