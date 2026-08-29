@@ -2900,6 +2900,47 @@ signal strength — a real, actionable asymmetry, not noise.**
 ladder); 🟡 Monday ladder not yet run; no UI/live wiring done; decision-
 sliced tightening variant identified but not built.
 
+**Fade-only SL-tightening re-run (2026-08-29, `DECISION=fade` added to
+`fib_atlas_sl_tightening_backtest.mjs`)** — confirms the asymmetry mattered:
+- **Direction is real and strong.** Fade-only baseline (untightened) OOS:
+  Sharpe -1.87 (daily) / -3.377 (per-trade), bootstrap 90% CI [-4.678,
+  -1.921], P(profitable)=0 — genuinely, robustly negative in this OOS
+  window. Every tested tighter fraction flips this to positive: frac=0.4
+  (the pre-stated rule's pick) OOS Sharpe +2.3, CI [2.136, 5.002],
+  P(profitable)=1. The CIs don't overlap — real signal, not point-estimate
+  noise. Survives the heat-cap stress test too (baseline stays negative,
+  frac=0.4 stays positive, at 1/2/3% caps alike).
+- **But the pre-stated selection rule picked a worse point than several
+  untested-by-the-rule alternatives in its own grid — a real flaw in the
+  rule, not the data.** The rule ("tightest fraction with IS Sharpe ≥90% of
+  baseline AND lower maxDD") picks the TIGHTEST fraction that clears a
+  floor, not the BEST one. Baseline's IS Sharpe was weak (0.52), so the 90%
+  floor (0.47) was trivial to clear — nearly every fraction cleared it, so
+  the rule just walked to the tightest one whose maxDD also beat baseline
+  (0.4). But frac=0.9 and 0.75 **dominate 0.4 on every axis** in this same
+  table: OOS Sharpe 5.68/5.16 vs 2.3, OOS maxDD -39%/-37.5% vs -91.85%,
+  trade-win-rate preserved at 74.5%/70.5% vs only 52.8% at the chosen
+  fraction. **By inspection, 0.75-0.9 is the better choice** — this should
+  be fixed in the rule itself (pick the point maximizing Sharpe subject to
+  the maxDD-improves constraint, not the tightest one clearing a floor)
+  before trusting an auto-selected fraction from this script again.
+- **One more thing worth flagging, not yet checked**: OOS Sharpe jumps
+  enormously at the VERY FIRST step of tightening (baseline -1.87 →
+  frac=0.9 already +5.68) then decays smoothly as the stop tightens
+  further. That shape — a huge one-time jump then gradual decay, rather
+  than a smooth curve from the start — is consistent with a small number of
+  extreme tail-loss trades in this specific OOS window (2025-03-04 onward)
+  getting cut by even a LIGHT tightening; it does not by itself prove the
+  effect is broad-based. Worth checking directly (how many baseline losers
+  are outsized) before leaning on the magnitude of the jump — not done
+  here, flagged for whoever picks this up next.
+- Absolute CAGR/maxDD figures throughout (IS CAGR in the thousands of
+  percent, closed maxDD near -99%, intraday MTM maxDD past -400%) are the
+  SAME uncapped 26-pair-fixed-risk-compounding artifact already on record
+  elsewhere in this section — not to be read as real, tradable numbers; the
+  RELATIVE comparisons (tightened vs baseline, capped vs uncapped) are the
+  honest part of this result.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
