@@ -2779,6 +2779,91 @@ record for this system, that validation step matters more here than it did
 there. **Not proceeding to Monday/combined runs or any UI button without
 that validation** — flagged to the owner rather than assumed.
 
+**2026-08-29 — Fib Atlas SL-tightening study, replicating Level Atlas's own
+9-step methodology (`analysis/mae_timing_study.mjs` /
+`analysis/sl_tightening_backtest.mjs`) on the Asia ladder.** Owner asked for
+the same rigor applied to Fib Atlas's own stop/target logic. Built two
+scripts, reusing every brick unchanged (zero new backtest math):
+`analysis/fib_atlas_mae_timing_study.mjs` (checkpoint-based MAE-timing —
+same M1-walk method, geometry algebra verified against
+`asiaFibAtlasEngine.js`'s own `fadePips`/`runPips`/`outcome` construction
+before writing it, checkpoints shortened to 2–120min to match this system's
+much faster resolution than Level Atlas's) and
+`analysis/fib_atlas_sl_tightening_backtest.mjs` (`priceAtTighterStop` /
+`applyPortfolioHeatCap` / `portfolioStats` / `backtestStats`, all imported
+unchanged from `levelAtlasVoteReview.js`/`backtestStats.js` — Fib Atlas's
+trade shape already carries every field they expect). Also reused
+`js/intradayDrawdown.js`'s `intradayMtmDrawdown`/`tradeTimingStats`
+(existing, tested Tier-1 bricks, not written for this) for the
+intraday/concurrency-aware drawdown step — zero adaptation needed, Fib
+Atlas's `time`/`resolveTime`/`pnlPct`/`maePct` fields map directly.
+
+**Real, self-caught bug worth recording**: the first draft's Sharpe-CI line
+paired `portfolioStats`' daily-aggregated Sharpe (this codebase's own
+"honest" concurrency-aware figure) with a confidence interval bootstrapped
+from `backtestStats`' PER-TRADE-annualized Sharpe — two different bases
+under one label. Fixed before reporting: the CI section now prints
+`backtestStats`' own point estimate next to its own CI, explicitly labeled
+as a different basis from the daily Sharpe in the headline tables. Exactly
+the kind of "sophisticated-looking noise with false precision" this
+project's own house rules and the DF-01 lesson both warn about — caught by
+re-reading the output, not by assumption.
+
+**Ran stage 1 (Asia, 26 pairs, minMargin≥2, fresh 70/30 IS/OOS split
+`2025-02-20`, uncapped/compounded — same "internal ranking diagnostic, not
+the headline number" caveat as the leave-one-out study above applies to
+every CAGR/maxDD figure below):**
+- IS fraction grid has a real interior peak (not monotonic) — Sharpe rises
+  from baseline 3.69 to a peak of 10.8 at frac=0.9, then falls through
+  frac=0.75 (8.64), 0.6 (5.23), 0.5 (2.33), and goes NEGATIVE at 0.4/0.25 —
+  a genuine trade-off curve, not a "wider stop always wins" or "tighter
+  stop always wins" artifact.
+- Pre-stated rule (tightest fraction with IS Sharpe ≥90% of baseline AND
+  lower maxDD, frozen before looking at OOS) chose **frac=0.6**.
+- **OOS: baseline collapsed (Sharpe 3.69 IS → 0.94 OOS, a ~75% drop —
+  another data point for this system's already-flagged overfitting risk),
+  while frac=0.6 barely moved (5.23 IS → 4.96 OOS).** The tightened variant
+  generalized far better than the untouched baseline did. maxDD: baseline
+  -98.56% OOS vs frac=0.6's -73.19% OOS — a real reduction, same direction
+  the owner's own worked example described.
+- **Heat-cap sweep is the loudest finding.** At a 1% simultaneous-exposure
+  cap, 9,665 of 15,744 OOS trades (61%) never get taken at all — this
+  system is trading far too densely for any realistic single-account risk
+  budget to hold more than a third of its signals. Capped Sharpe still
+  favors tightening at every cap level tested (1/2/3%): baseline 0.5→0.94→0.98,
+  frac=0.6 2.03→3.49→4.30.
+- **Sharpe CI (bootstrap, per-trade basis, OOS)**: baseline 90% CI
+  [0.368, 3.175] — genuinely wide, spans weak to strong; frac=0.6 90% CI
+  [6.202, 8.907] — tighter and higher, though still inheriting this
+  system's whole-session overfitting caveats (DSR=0, `holdsOOS` leakage) —
+  a narrow CI on a contaminated series is not the same claim as a narrow CI
+  on a validated one.
+- **Per-trade vs per-day win rate genuinely diverge**, confirming the
+  owner's own point: OOS baseline 74.1% (trades) vs 58.4% (days); frac=0.6
+  57.5% (trades) vs 65.7% (days) — tightening LOWERS the per-trade win rate
+  (more, smaller stop-outs) while RAISING the per-day win rate (fewer bad
+  days net negative overall).
+- **Intraday MTM drawdown is far worse than the closed-trade figure
+  already shown**: baseline closed maxDD -98.56% vs intraday MTM
+  -332.7% — the uncapped, concurrency-stacked mark-to-market path breaches
+  -100% because fixed-fractional risk across 26 simultaneously-open pairs
+  has no ceiling without a heat cap. frac=0.6 narrows this too (closed
+  -73.19% → MTM -112.2%), consistent with the DD-reduction story but a
+  reminder the "closed" figures everywhere above still understate the real
+  path.
+
+**Net read**: tightening the stop by a real, IS-frozen fraction (0.6×) shows
+a genuine, OOS-consistent drawdown reduction and — notably — generalized
+IS→OOS far better than the untouched baseline, which is itself informative
+about where this system's overfitting risk concentrates (less in "should
+the stop be tighter", more in the vote-decision/pair-selection layers
+already flagged). Still inherits every caveat already on record for this
+system (DSR=0, `holdsOOS` OOS-label leakage, uncapped-compounding CAGR/maxDD
+figures) — not being reported as a validated live-config change, same
+discipline as Level Atlas's own study which went through a further page
+lever before being trusted. 🟢 built + run against real R2/M1 data; 🟡
+Monday ladder not yet run; no UI/live wiring done.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
