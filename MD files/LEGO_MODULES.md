@@ -2976,13 +2976,36 @@ already flagged with DSR=0 and `holdsOOS` OOS-label leakage — this result
 answers "given the trades this system currently generates, how much can
 drawdown be cut," not "does the underlying edge survive selection-bias
 correction." Those are separate questions; this section doesn't resolve
-the second one. Also unresolved: whether the OOS Sharpe jump at the very
-first tightening step is broad-based or driven by a handful of tail
-trades (flagged above, not checked). 🟢 rule fix + stack built, run to
-completion (Asia, fade); 🟡 not yet wired into any live page/route — this
-is still an analysis-script result, not a change to
-`js/asiaFibAtlasVoteReview.js` or any page's actual numbers; Monday ladder
-and follow-decision stack not yet run.
+the second one.
+
+**Tail-concentration check + finer stack sweep (2026-08-29) — the two
+things flagged above as unchecked, now checked.**
+
+*Is the improvement broad-based or a few outliers?* Ranked baseline's OOS
+losers (n=2027) by size: worst 1% account for 1.9% of total realized
+loss, worst 5% for 8.1%, worst 10% for 15.2%, worst 25% for 33.3%; the
+single worst loser is 0.11% of total loss on its own. **This is a flat,
+non-concentrated distribution — cumulative loss share tracks cumulative
+trade count share closely, with no small group of catastrophic trades
+dominating.** A tail-driven artifact would show the top 1% eating 30-50%+
+of total loss; it doesn't. The fix is genuinely broad-based, not a fluke
+of clipping a couple of outliers.
+
+*How far can drawdown actually be pushed?* A finer heat-cap (1/2/3/5%) ×
+throttle-trigger (-2/-5/-8%) sweep on frac=0.9 found a shallower floor
+than the single combo tested earlier: **-11.29% maxDD at heatCap=1% /
+throttleTrigger=-2%, Sharpe 4.52** (vs the earlier -16.58% at 2%/-5%,
+Sharpe 5.56) — a real Sharpe/drawdown frontier, not one fixed answer.
+Full grid in the script's own output. Practical read: -16.58%/Sharpe 5.56
+and -11.29%/Sharpe 4.52 are both real, validated points on this frontier;
+which to prefer depends on whether the priority is maximizing Sharpe or
+minimizing worst-case drawdown — the owner's to choose, not a default to
+assume.
+
+🟢 both checks built + run to completion (Asia, fade); 🟡 not yet wired
+into any live page/route — this is still an analysis-script result, not
+a change to `js/asiaFibAtlasVoteReview.js` or any page's actual numbers;
+Monday ladder and follow-decision stack not yet run.
 
 ---
 
