@@ -500,3 +500,120 @@ Everything in this bank is a framework rather than a signal, and that is a delib
 That is the test worth applying to any education, including this. Ask whether what you are being given gets weaker as more people receive it. If it does, either it is not what it claims to be, or you are receiving it late.
 
 ---
+
+## Lesson 5 — The Sample You Were Shown
+
+You have formed a picture of what is possible from everything you have seen. But who chose what you got to see? The sample was not random. Once you see how it was filtered, a great deal of what felt achievable starts to look different.
+
+### The result that reached you
+
+Out of four hundred people running one losing method, this is the one you would have seen.
+
+Interactive demo: cumulative result (percent) over 60 trades. This is the best performer out of 400 people running the identical method, at 60 trades. Up 27%. This is the point at which the course gets sold, the account gets posted, and the story gets told.
+
+**Carry it forward**
+
+Nobody selected this result dishonestly. It selected itself. The person up at sixty trades is the one with something worth posting, so they post, and everyone else stays quiet. You then form your sense of what is normal from the small group that had a reason to speak.
+
+*Simulated data. Generated to show the relationship clearly. Not taken from any market, account or track record.*
+
+### How the sample gets filtered
+
+- **Only winners have a reason to speak** — A losing month generates no screenshot and no thread. Silence is not neutral, it is a filter.
+- **Failures leave the market entirely** — People who stopped are no longer in the forums, so the population you observe is made of survivors.
+- **Teaching material shows what worked** — Examples are chosen after the outcome is known, which makes them illustrations rather than evidence.
+- **Algorithms amplify the extremes** — The most striking results travel furthest, so what you see is drawn from the tail rather than the middle.
+
+Every one of these filters points the same way, and none of them requires anybody to lie.
+
+The effect compounds. A result has to be good to be posted, good to be shared, and good to be recommended by a feed. By the time something reaches you it has passed three separate filters, each selecting for the same thing.
+
+So the population you observe is not the population that exists. You are looking at the right hand tail and forming an average from it.
+
+**Why you were taught it this way**
+
+Because the filtered version is the only version anybody can see, including the people teaching. They are also looking at the same tail, drawing the same conclusions and honestly reporting what appears to be true from where they stand. Survivorship is not a lie somebody told you. It is a distortion nobody can see from inside.
+
+**Where this needs qualifying**
+
+Filtered does not mean fabricated. Most of the results you have seen probably happened exactly as shown, and treating everything as fake is its own error.
+
+The problem is not authenticity, it is representativeness. A real result from the top one percent tells you almost nothing about what the method does on average, and the average is what you would be signing up for.
+
+### What the whole population looks like
+
+The same method, but now you can see everybody running it.
+
+Interactive demo (slider: cumulative result percent vs. trades taken, 10–1000 trades, new-group-of-traders reset): After 50 trades, 18.5% of these 600 traders are showing a profit. Every one of them is running the same method, and that method loses 0.2 percent per trade on average. At this stage the winners look skilled, sound confident, and have screenshots.
+
+This is the view nobody gets. Move the slider and watch the group thin out, then remember that at any point along that line, the handful still above zero are the only ones producing content. Every judgement you have made about what is achievable was formed from those few, and never from this chart.
+
+*Simulated data. Generated to show the relationship clearly. Not taken from any market, account or track record.*
+
+### What this does to your expectations
+
+- **It sets the bar in the wrong place** — You compare yourself to the tail and conclude the gap is skill, when much of it is selection.
+- **It makes methods look reliable** — A method that fails most people still produces a steady stream of impressive individual results.
+- **It hides the base rate** — Without knowing how many attempted, a count of successes cannot tell you a probability.
+- **It shortens your patience** — Seeing rapid results everywhere makes an ordinary, slower path feel like failure.
+
+The most damaging effect is on the denominator. You can see the successes clearly and you cannot see how many people it took to produce them, so you cannot form a rate.
+
+Ask for the denominator whenever it matters. How many students, how many accounts, over what period, and how many stopped. The number is rarely available, and its absence is the most informative thing about the claim.
+
+This also changes what you should conclude about your own results. If you are behind the people you see, that comparison is against a filtered sample, not against the field.
+
+**Apply this here as well**
+
+The same filter operates on anything posted in this community, including member results. People post when something went well, and that is human rather than dishonest.
+
+So read them the way this lesson describes. Ask what period they cover, what the worst stretch looked like, and how many people are not posting. A result is worth far more when you know what it sits inside.
+
+It is also worth remembering the reverse. If you are behind what you see in a results channel, you are comparing yourself against the people who had a reason to speak that week.
+
+### The sample you see and the sample that exists
+
+Both are real. Only one of them is informative.
+
+**What reaches you (selected):**
+- Results good enough to be worth posting
+- Chosen after the outcome was known
+- Amplified for being striking
+- No denominator attached
+- Drawn from the tail of the distribution
+
+**What would inform you (representative):**
+- Every attempt, including the abandoned ones
+- Recorded before the outcome was known
+- Reported regardless of how it turned out
+- Stated as a rate out of a known total
+- Drawn from the whole distribution
+
+The right column is what a track record is for. It commits in advance, reports everything, and carries a denominator, which is why it is worth more than any number of impressive individual results.
+
+It is also why so few exist. Producing one costs you the option of only showing the good periods, and that option is worth a great deal to anybody selling.
+
+When you find a source that publishes the whole distribution rather than the highlights, you have found something rare, and you should weigh it accordingly.
+
+### What to carry forward
+
+01. The results that reach you passed several filters, each selecting for the same thing.
+02. Silence is a filter. Losing periods generate no content, so the record is one sided by default.
+03. Filtered is not the same as fake. The problem is representativeness, not authenticity.
+04. Ask for the denominator. Its absence is usually the most informative part of a claim.
+05. If you are behind what you see, you are comparing yourself against a tail rather than a field.
+
+**Before you close this**
+
+One sentence. What will you do differently because of this series? (Prompt for the reader to write it in their own words.)
+
+**What this now lets you do**
+- Read any set of results and ask immediately how many attempts produced them.
+- Judge your own progress against a realistic distribution rather than a curated one.
+- Recognise a genuine track record by what it costs the author to publish.
+
+**End of this series — where this leaves you**
+
+Five lessons, one argument. Most of what you met first was selected for spreading rather than working, it could not answer where it came from or who pays, and the evidence you judged it by was filtered before it reached you. None of that was your fault, and all of it is now checkable. So what would you need to see before believing the next thing? The rest of the bank is that answer.
+
+---
