@@ -3672,12 +3672,21 @@ const VB2_CORRELATED_RISK_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audc
 const VB2_DEFAULT_CHECKED = new Set(VB2_PAIRS.filter(p => !VB2_CORRELATED_RISK_EXCLUDE.has(p)));
 const VB2_INDEX_KEYS = ['nq', 'spx', 'de30', 'dow', 'us2000', 'uk100', 'gold'];
 
+// 2026-08-30 live-vs-backtest parity audit: risk_pct/max_open_risk_pct/
+// fade_stop_tighten had drifted from (or were never set to) the validated
+// "Load best config (least drawdown)" values on level-atlas-vote-portfolio.html
+// -- fixed here, plus four new fields (max_concurrent_per_pair, the four
+// throttle_* fields, early_exit/early_exit_threshold) for levers that were
+// validated in the backtest but had never been implemented live at all.
 const VB2_DEFAULTS = {
-  paper_mode: true, kill_switch: false, risk_pct: 1.0, max_lot: 2.0, max_open: 12,
+  paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
+  max_concurrent_per_pair: 1,
   max_spread_pips: 1.0, tick_secs: 3, status_secs: 30, plan_secs: 45,
   enabled_pairs: [...VB2_DEFAULT_CHECKED],
   ccy_loss_gate: true, max_daily_loss_pct: 1.0,
-  fade_stop_tighten: true, max_open_risk_pct: 2.0,
+  fade_stop_tighten: false, max_open_risk_pct: 1.0,
+  early_exit: true, early_exit_threshold: 0.4,
+  throttle_enabled: true, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
   stack_guard: true, stack_guard_pips: 5,
   plan_max_age_hours: 1,
   broker_symbols: {},
@@ -3710,11 +3719,18 @@ function renderVb2Form() {
   set('vb2_risk_pct',            _vb2Cfg.risk_pct            ?? VB2_DEFAULTS.risk_pct);
   set('vb2_max_lot',             _vb2Cfg.max_lot             ?? VB2_DEFAULTS.max_lot);
   set('vb2_max_open',            _vb2Cfg.max_open            ?? VB2_DEFAULTS.max_open);
+  set('vb2_max_concurrent_per_pair', _vb2Cfg.max_concurrent_per_pair ?? VB2_DEFAULTS.max_concurrent_per_pair);
   set('vb2_max_spread_pips',     _vb2Cfg.max_spread_pips     ?? VB2_DEFAULTS.max_spread_pips);
   chk('vb2_ccy_loss_gate',       _vb2Cfg.ccy_loss_gate ?? true);
   set('vb2_max_daily_loss_pct',  _vb2Cfg.max_daily_loss_pct  ?? VB2_DEFAULTS.max_daily_loss_pct);
-  chk('vb2_fade_stop_tighten',   _vb2Cfg.fade_stop_tighten ?? true);
+  chk('vb2_fade_stop_tighten',   _vb2Cfg.fade_stop_tighten ?? VB2_DEFAULTS.fade_stop_tighten);
   set('vb2_max_open_risk_pct',   _vb2Cfg.max_open_risk_pct  ?? VB2_DEFAULTS.max_open_risk_pct);
+  chk('vb2_early_exit',          _vb2Cfg.early_exit ?? VB2_DEFAULTS.early_exit);
+  set('vb2_early_exit_threshold', _vb2Cfg.early_exit_threshold ?? VB2_DEFAULTS.early_exit_threshold);
+  chk('vb2_throttle_enabled',    _vb2Cfg.throttle_enabled ?? VB2_DEFAULTS.throttle_enabled);
+  set('vb2_throttle_trigger_dd', _vb2Cfg.throttle_trigger_dd ?? VB2_DEFAULTS.throttle_trigger_dd);
+  set('vb2_throttle_restore_dd', _vb2Cfg.throttle_restore_dd ?? VB2_DEFAULTS.throttle_restore_dd);
+  set('vb2_throttle_mult',       _vb2Cfg.throttle_mult ?? VB2_DEFAULTS.throttle_mult);
   chk('vb2_stack_guard',         _vb2Cfg.stack_guard ?? true);
   set('vb2_stack_guard_pips',    _vb2Cfg.stack_guard_pips   ?? VB2_DEFAULTS.stack_guard_pips);
   set('vb2_tick_secs',           _vb2Cfg.tick_secs          ?? VB2_DEFAULTS.tick_secs);
@@ -3733,11 +3749,18 @@ function readVb2Form() {
   _vb2Cfg.risk_pct             = num('vb2_risk_pct', VB2_DEFAULTS.risk_pct);
   _vb2Cfg.max_lot              = num('vb2_max_lot', VB2_DEFAULTS.max_lot);
   _vb2Cfg.max_open             = Math.round(num('vb2_max_open', VB2_DEFAULTS.max_open));
+  _vb2Cfg.max_concurrent_per_pair = Math.round(num('vb2_max_concurrent_per_pair', VB2_DEFAULTS.max_concurrent_per_pair));
   _vb2Cfg.max_spread_pips      = num('vb2_max_spread_pips', VB2_DEFAULTS.max_spread_pips);
   _vb2Cfg.ccy_loss_gate        = !!document.getElementById('vb2_ccy_loss_gate')?.checked;
   _vb2Cfg.max_daily_loss_pct   = num('vb2_max_daily_loss_pct', VB2_DEFAULTS.max_daily_loss_pct);
   _vb2Cfg.fade_stop_tighten    = !!document.getElementById('vb2_fade_stop_tighten')?.checked;
   _vb2Cfg.max_open_risk_pct    = num('vb2_max_open_risk_pct', VB2_DEFAULTS.max_open_risk_pct);
+  _vb2Cfg.early_exit           = !!document.getElementById('vb2_early_exit')?.checked;
+  _vb2Cfg.early_exit_threshold = num('vb2_early_exit_threshold', VB2_DEFAULTS.early_exit_threshold);
+  _vb2Cfg.throttle_enabled     = !!document.getElementById('vb2_throttle_enabled')?.checked;
+  _vb2Cfg.throttle_trigger_dd  = num('vb2_throttle_trigger_dd', VB2_DEFAULTS.throttle_trigger_dd);
+  _vb2Cfg.throttle_restore_dd  = num('vb2_throttle_restore_dd', VB2_DEFAULTS.throttle_restore_dd);
+  _vb2Cfg.throttle_mult        = num('vb2_throttle_mult', VB2_DEFAULTS.throttle_mult);
   _vb2Cfg.stack_guard          = !!document.getElementById('vb2_stack_guard')?.checked;
   _vb2Cfg.stack_guard_pips     = num('vb2_stack_guard_pips', VB2_DEFAULTS.stack_guard_pips);
   _vb2Cfg.tick_secs            = Math.round(num('vb2_tick_secs', VB2_DEFAULTS.tick_secs));

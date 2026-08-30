@@ -13632,10 +13632,33 @@ const VOLATILITY_V2_ALL_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd
 const VOLATILITY_V2_CORRELATED_EXCLUDE = new Set(['gbpaud', 'gbpchf', 'usdcad', 'audcad', 'nzdjpy', 'eurgbp', 'gbpjpy', 'nzdusd', 'eurjpy', 'eurcad']);
 const VOLATILITY_V2_DEFAULT_PAIRS = VOLATILITY_V2_ALL_PAIRS.filter(p => !VOLATILITY_V2_CORRELATED_EXCLUDE.has(p));
 
+// minMargin is intentionally NOT a field here -- it used to be merged from
+// this object but read from the hardcoded constant below instead (a dead
+// config field, found 2026-08-30 auditing live-vs-backtest parity). The
+// value (3) already matches the validated default; removing the field
+// avoids implying a configurability that doesn't exist.
+const VOLATILITY_V2_MIN_MARGIN = 3; // same OOS-validated default as the backtest/portfolio pages
 const VOLATILITY_V2_PLAN_CFG_DEFAULTS = {
   enabled_pairs: [],          // [] -> VOLATILITY_V2_DEFAULT_PAIRS (the 17-pair "Select recommended" set)
-  minMargin: 3,                // same OOS-validated default as the backtest/portfolio pages
-  fade_stop_tighten: true,     // OOS-validated (scripts/oos_validate_fade_stop.mjs) — see below for how it's applied
+  // Found 2026-08-30 auditing live-vs-backtest parity: fade-stop tightening
+  // retunes a fade trade's DECLARED stop, which fixed-fractional sizing then
+  // sizes UP against -- the SAME implicit-leverage mechanism later found to
+  // mostly explain the "Fixed SL fraction" lever's inflated backtest numbers
+  // (analysis/sl_tightening_backtest.mjs). Never independently cleared of
+  // that risk. Defaulted OFF to match level-atlas-vote-portfolio.html's
+  // "Load best config (least drawdown)" preset, which also has it off.
+  fade_stop_tighten: false,
+  // Cuts a fade trade short if the real price crosses this fraction of its
+  // ORIGINAL (unchanged) stop distance before it would otherwise resolve --
+  // position sizing stays anchored to the full distance (see sizingSl on
+  // the zone below), so this is NOT the same leverage-conflation risk as
+  // fade_stop_tighten. Validated: analysis/early_exit_no_releverage_backtest.mjs
+  // (avg win provably unaffected, avg loss + drawdown genuinely reduced,
+  // real peak at 0.4 consistent IS/OOS -- the one lever from that whole
+  // investigation NOT flagged as suspect). ON to match the validated
+  // "best config" preset.
+  early_exit: true,
+  early_exit_threshold: 0.4,
 };
 
 // Daily fade-stop-tightening cache — `applyFadeStopTightening` only needs
@@ -13650,7 +13673,7 @@ async function _volatilityV2FadeStopInfo(pair, dateStr) {
   try {
     const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${pair}-votetrades.json`), _laLoadLocalVoteTrades(pair));
     if (stored) {
-      const filtered = stored.trades.filter(t => t.margin >= VOLATILITY_V2_PLAN_CFG_DEFAULTS.minMargin);
+      const filtered = stored.trades.filter(t => t.margin >= VOLATILITY_V2_MIN_MARGIN);
       const tightened = _laApplyFadeStopTightening(filtered, { cost: stored.cost });
       if (tightened.stopPips != null) info = { stopPips: tightened.stopPips, percentile: tightened.percentile };
     }
@@ -13670,7 +13693,7 @@ async function _volatilityV2FadeStopInfo(pair, dateStr) {
 // PENDING rung, which — unlike a resolved touch — doesn't carry them
 // (see js/levelAtlasEngine.js's `rungLevelsForLadder` doc for why a
 // not-yet-touched rung is just as priceable, given the same ladder).
-function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten) {
+function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold) {
   let withDist = rec;
   if (rec.innerDistPips == null) {
     const lv = ladderBySide[rec.side];
@@ -13685,7 +13708,7 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
     };
   }
   const vd = _laVoteDecision(book, withDist);
-  if (!vd || vd.margin < VOLATILITY_V2_PLAN_CFG_DEFAULTS.minMargin) return null;
+  if (!vd || vd.margin < VOLATILITY_V2_MIN_MARGIN) return null;
   const priced = _laPriceBarrierTrade(withDist, vd.decision, cost);
   if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
 
@@ -13701,11 +13724,23 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
   const outer = outerDistPips != null ? withDist.level + sgn * outerDistPips * withDist.pip : null;
   if (outer == null) return null;   // a follow at the outermost rung — no real stop, don't publish it
   const tp = vd.decision === 'fade' ? inner : outer;
-  const sl = vd.decision === 'fade' ? outer : inner;
+  // `sizingSl` ALWAYS carries the full, untightened stop distance — position
+  // sizing must be computed off this, never off a tightened bracket, or
+  // fixed-fractional sizing sizes UP to compensate (the exact leverage
+  // mechanism that discredited "Fixed SL fraction" and made fade_stop_tighten
+  // suspect too; see this function's callers' doc). `sl` is the ACTUAL
+  // broker bracket price, which early exit may tighten below sizingSl for
+  // fade decisions -- the bot must size off sizingSl and bracket off sl.
+  const sizingSl = vd.decision === 'fade' ? outer : inner;
+  let sl = sizingSl;
+  if (earlyExit && vd.decision === 'fade' && outerDistPips != null) {
+    const cutDistPips = outerDistPips * earlyExitThreshold;
+    sl = withDist.level + sgn * cutDistPips * withDist.pip;
+  }
 
   return {
     side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
-    entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), tp: +tp.toFixed(6),
+    entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
     rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
   };
 }
@@ -13782,7 +13817,7 @@ async function _refreshVolatilityV2Plan() {
         const zones = [];
         for (const p of (live.pending ?? [])) {
           if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
-          const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, cfg.fade_stop_tighten);
+          const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, cfg.fade_stop_tighten, cfg.early_exit, cfg.early_exit_threshold ?? 0.4);
           if (!zone) continue;
           // instanceNum: how many times THIS (side,rung) has already resolved
           // today — makes the zone_id stable across polls for the CURRENT

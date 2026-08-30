@@ -47,6 +47,7 @@ from pylego.costs import expected_fill, max_spread             # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
 from volatility_bot_v2.engine import VoteSession, stack_conflict  # noqa: E402
 from volatility_bot_v2.currency_gate import CurrencyLossGate    # noqa: E402
+from volatility_bot_v2.drawdown_throttle import DrawdownThrottle  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("volatility_bot_v2")
@@ -69,9 +70,13 @@ DEFAULT_CFG = {
     "kill_switch": False,
     "paper_mode": True,             # HARDCODED default, not just config default — this strategy has ZERO
                                      # live track record (backtest + OOS only); never start a fresh bot live.
-    "risk_pct": 1.0,                # matches the OOS-validated backtest sizing (riskAdjustTrades)
+    "risk_pct": 0.5,                # matches the OOS-validated backtest sizing (riskAdjustTrades) --
+                                     # was 1.0 until 2026-08-30's live-vs-backtest parity audit found this
+                                     # bot had drifted to DOUBLE the validated risk per trade.
     "max_lot": 2.0,
     "max_open": 12,
+    "max_concurrent_per_pair": 1,   # matches the backtest's applyConcurrencyCap(maxConcurrent=1) -- added
+                                     # 2026-08-30, the audit found this bot had NO per-pair cap at all.
     # RiskGuard — daily/monthly DD lockout + per-pair entry cooldown (blocks NEW
     # entries only; the broker-enforced SL/TP always run).
     "ddlimit": 3.0,
@@ -93,7 +98,8 @@ DEFAULT_CFG = {
     "max_daily_loss_pct": 1.0,
     # Portfolio risk budget: sum of open risk-to-SL (% of balance) across this
     # bot's book, capped BEFORE entry — same concept as oi_bot's max_open_risk_pct.
-    "max_open_risk_pct": 2.0,       # 0 = off
+    "max_open_risk_pct": 1.0,       # 0 = off -- was 2.0 until 2026-08-30's parity audit found this
+                                     # bot had drifted to DOUBLE the validated 1% account-wide heat cap.
     # Stack guard: refuse a second same-instrument, same-direction entry within
     # stack_guard_pips of one already open (two zones near the same level cluster
     # are one bet, not two).
@@ -105,6 +111,20 @@ DEFAULT_CFG = {
     # so a stale one should halt NEW entries fast, not tolerate a whole day of drift.
     "plan_max_age_hours": 1,
     "paper_spread_pips": {},
+    # Drawdown throttle — added 2026-08-30 (live-vs-backtest parity audit
+    # found this lever, validated in analysis/drawdown_throttle_backtest.mjs,
+    # had never been implemented live at all). De-risks (scales risk_pct by
+    # throttle_mult) once this bot's OWN realized-balance drawdown from its
+    # running peak breaches throttle_trigger_dd, restores full size once it
+    # recovers to throttle_restore_dd. Different from RiskGuard above: this
+    # is a gradual size multiplier reacting to a SUSTAINED losing stretch
+    # over the bot's whole life (never resets), not a binary daily/monthly
+    # lockout. Validated: ~40% shallower drawdown both IS and OOS, at a
+    # real, disclosed Sharpe/CAGR cost -- see drawdown_throttle.py's own doc.
+    "throttle_enabled": True,
+    "throttle_trigger_dd": -8.0,
+    "throttle_restore_dd": -2.0,
+    "throttle_mult": 0.25,
 }
 
 # Broker symbol routing (identity stays shared; routing is local). Config can
@@ -218,7 +238,7 @@ def _instr_lines(plan, sessions):
     return out
 
 
-def build_status(cfg, broker, plan, paper, sessions, ccy_gate):
+def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None):
     bal = broker.account_balance()
     return {
         "running": True,
@@ -232,6 +252,7 @@ def build_status(cfg, broker, plan, paper, sessions, ccy_gate):
         "today_closed_trades": broker.serialize_closed_trades(),
         "lines": _instr_lines(plan, sessions or {}),
         "ccy_gate": ccy_gate.snapshot(),
+        "throttle": throttle.snapshot() if throttle is not None else None,
     }
 
 
@@ -269,6 +290,9 @@ def run(base_url: str, force_live: bool) -> None:
     guard_blocks: dict[str, str | None] = {}
     ccy_gate = CurrencyLossGate(max_daily_loss_pct=float(cfg.get("max_daily_loss_pct", 1.0)))
     ccy_blocks: dict[str, str | None] = {}
+    throttle = DrawdownThrottle()
+    throttle.sync_cfg(cfg)
+    throttle_was_on = False
 
     sessions: dict[str, VoteSession] = {}
     reject_until: dict[str, float] = {}
@@ -291,6 +315,7 @@ def run(base_url: str, force_live: bool) -> None:
             risk_ledger[int(k)] = float(v)
         except (TypeError, ValueError):
             pass
+    throttle.restore(saved_state.get("throttle"))  # running peak must survive a restart
 
     def _save_state() -> None:
         try:
@@ -298,6 +323,7 @@ def run(base_url: str, force_live: bool) -> None:
                 "generatedAt": (plan or {}).get("generatedAt"),
                 "entered": {i: sorted(s.entered) for i, s in sessions.items()},
                 "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
+                "throttle": throttle.snapshot(),
             })
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
@@ -366,13 +392,19 @@ def run(base_url: str, force_live: bool) -> None:
                 _apply_paper_spreads(broker, cfg)
                 guard.sync_cfg(cfg)
                 ccy_gate.max_daily_loss_pct = float(cfg.get("max_daily_loss_pct", 1.0))
+                throttle.sync_cfg(cfg)
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
-                status = build_status(cfg, broker, plan, paper, sessions, ccy_gate)
+                status = build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle)
                 kv.put_status("volatility_bot_v2_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
+            # Persist throttle/risk_ledger/entered state on this cadence too,
+            # not just after a fill -- otherwise the throttle's running peak
+            # (and its throttled/not-throttled state) only survives a restart
+            # if one happened to land right after a trade.
+            _save_state()
             last_status = nowt
 
         # (c) Tight loop: feed quotes, run barriers, take entries.
@@ -400,6 +432,14 @@ def run(base_url: str, force_live: bool) -> None:
             if bal:
                 guard.update_balance(bal)
             guard_bal = bal if bal else 1_000_000.0
+            size_mult = throttle.update(bal) if cfg.get("throttle_enabled", True) else 1.0
+            if (size_mult < 1.0) != throttle_was_on:
+                throttle_was_on = size_mult < 1.0
+                if throttle_was_on:
+                    log.warning(f"DRAWDOWN THROTTLE: engaged — sizing at {size_mult:g}x "
+                                f"until balance recovers to {throttle.restore_dd}% from peak")
+                else:
+                    log.info("DRAWDOWN THROTTLE: recovered — full size resumed")
 
             age = _plan_age_hours(plan, nowt)
             max_age = float(cfg.get("plan_max_age_hours", 1) or 0)
@@ -433,6 +473,16 @@ def run(base_url: str, force_live: bool) -> None:
                 open_tickets = {p.get("ticket") for p in open_book}
                 for t in [t for t in risk_ledger if t not in open_tickets]:
                     risk_ledger.pop(t, None)
+                # Per-pair concurrency cap — matches the backtest's
+                # applyConcurrencyCap(maxConcurrent=1): a pair with an
+                # existing open position gets NO new entries considered this
+                # tick, regardless of side/rung, until that position closes.
+                # Added 2026-08-30 (parity audit found this bot had no
+                # per-pair cap at all, only a global max_open).
+                pair_sym_set = {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}
+                open_for_pair = sum(1 for p in open_book if p.get("symbol") in pair_sym_set)
+                if open_for_pair >= cfg.get("max_concurrent_per_pair", 1):
+                    continue
                 guard_why = guard.block_reason(guard_bal, instr)
                 log_block_transition(log, guard_blocks, instr, guard_why)
                 if guard_why:
@@ -449,7 +499,7 @@ def run(base_url: str, force_live: bool) -> None:
                         continue
 
                 stack_on = bool(cfg.get("stack_guard", True))
-                sym_set = {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}
+                sym_set = pair_sym_set
                 stack_d = _stack_dist(cfg, instr)
 
                 for spec in sess.decide(px, tol=_tol(cfg, instr)):
@@ -470,7 +520,16 @@ def run(base_url: str, force_live: bool) -> None:
                                          f"{cfg.get('stack_guard_pips', 5)}p; would be one bet")
                             continue
                     exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
-                    lots = size_for(instr, bal, cfg.get("risk_pct", 1.0), exp_px - spec["sl"], cfg.get("max_lot", 2.0))
+                    # Size off `sizingSl` (the FULL, untightened stop distance
+                    # the plan always carries), never the possibly-tighter
+                    # `sl` bracket — sizing off a tightened stop is the exact
+                    # implicit-leverage mechanism that discredited "Fixed SL
+                    # fraction" and made fade_stop_tighten suspect (both
+                    # retune the declared stop AND let sizing react to it).
+                    # `size_mult` applies the drawdown throttle's de-risking
+                    # on top, independent of the stop distance used.
+                    sizing_dist = exp_px - spec.get("sizingSl", spec["sl"])
+                    lots = size_for(instr, bal, cfg.get("risk_pct", 1.0) * size_mult, sizing_dist, cfg.get("max_lot", 2.0))
                     risk_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
                     cand_risk = _position_risk_pct(instr, lots, exp_px, spec["sl"], bal) if bal else 0.0
                     if risk_cap > 0 and bal:
