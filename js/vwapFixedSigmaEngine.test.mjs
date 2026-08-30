@@ -14,6 +14,7 @@
 
 import { fixedSigmaWalk, sessionRmsFromVwap, computeFixedSigmaByDate, DEFAULT_CFG } from './vwapFixedSigmaEngine.js';
 import { computeSessionVwap } from './vwapReversionEngine.js';
+import { buildTradeWinBook, extractHeldFindings } from './vwapFixedSigmaReport.js';
 
 let failures = 0;
 function assert(cond, msg) {
@@ -333,6 +334,41 @@ console.log('9. bandWalk rejection-vs-walking; regimeState/wtRegimeState wiring'
   assert(withPmo.length > 0, 'pmoValue populates on real touches');
   assert(withPmo.every(t => t.pmoState === (t.pmoValue > t.pmoSignal ? '2·above-signal' : '1·below-signal')),
     'pmoState is exactly pmoValue vs pmoSignal, never a mismatched bucket');
+
+  // rsiValue/rsiState wiring (2026-08-30): populates on real touches, bounded
+  // [0,100], and rsiState is exactly the side-oriented overbought/oversold
+  // read (never a mismatched bucket for a given side+value).
+  const withRsi = touches.filter(t => t.rsiValue != null);
+  assert(withRsi.length > 0, 'rsiValue populates on real touches');
+  assert(withRsi.every(t => t.rsiValue >= 0 && t.rsiValue <= 100), 'rsiValue is bounded [0,100]');
+  assert(withRsi.every(t => {
+    const isUp = t.side === 'up';
+    const expected = (isUp ? t.rsiValue >= 70 : t.rsiValue <= 30) ? '3·extended'
+      : (isUp ? t.rsiValue <= 30 : t.rsiValue >= 70) ? '1·counter' : '2·neutral';
+    return t.rsiState === expected;
+  }), 'rsiState is exactly the side-oriented RSI read, never a mismatched bucket');
+}
+
+// buildTradeWinBook / extractHeldFindings (2026-08-30, synthetic): a
+// dimension that perfectly predicts win/loss must hold OOS; an uncorrelated
+// one must not.
+{
+  const base = Date.UTC(2024, 0, 1) / 86400000;
+  const rows = [];
+  for (let i = 0; i < 200; i++) {
+    const date = new Date((base + i) * 86400000).toISOString().slice(0, 10);
+    const testDim = i % 2 === 0 ? 'A' : 'B';         // perfectly predicts win, evenly spread
+    const noise = (i * 7) % 3 === 0 ? 'X' : 'Y';     // uncorrelated with win
+    rows.push({ date, testDim, noise, win: testDim === 'A' });
+  }
+  const book = buildTradeWinBook(rows, { cellKey: 'test', dimList: [['testDim', 'test dim'], ['noise', 'noise dim']] });
+  assert(book != null, 'buildTradeWinBook returns a book for a populated row set');
+  const held = extractHeldFindings(book, { limit: 100 });
+  const testHolds = held.filter(h => h.dimKey === 'testDim');
+  assert(testHolds.length === 2, 'a dimension that perfectly predicts win/loss holds OOS, both buckets');
+  assert(testHolds.every(h => h.n.is >= 30 && h.n.oos >= 30), 'held findings clear the n>=30-both-halves gate');
+  const noiseHolds = held.filter(h => h.dimKey === 'noise');
+  assert(noiseHolds.length === 0, 'an uncorrelated dimension does not hold');
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

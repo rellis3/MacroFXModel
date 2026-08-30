@@ -1421,6 +1421,116 @@ family).
 Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
 developing` (V3-V6 now included by default).
 
+## 19. Culling bad trades from the fade's own outcomes — the closest result in the study, still null (2026-08-30)
+
+**Why:** the owner asked directly to analyse every ±3σ developing-band touch's
+REALIZED trade outcome (not the touch-race/return-to-VWAP proxies §7/§15
+already scanned) against every context dimension built so far — session,
+volatility, VuManChu/WaveTrend, RSI, everything — to find what separates a
+winning fade from a losing one and cull the rest. This is a genuinely
+different question from every prior gate test: those asked "does adding
+condition X to the entry improve the trade," one condition (or a small
+named combo) at a time, pre-chosen from theory. This asks "of everything
+already logged on the touch row, what actually correlates with THIS TRADE'S
+own win/loss" — an open scan, not a single hypothesis.
+
+**New capability:** `rsiState`/`rsiValue` — RSI(14) Wilder, the one thing
+the owner explicitly asked for and the one indicator missing from the touch
+context — wired into `vwapFixedSigmaEngine.js` the same causal, per-session-
+reset way as `pmo`/`atr14`/`wt1` (2 new engine tests). `buildTradeWinBook` in
+`vwapFixedSigmaReport.js` — a new book type reusing the SAME `annotateHolds`
+OOS-hold gate and `DIMENSIONS` list as every other book in this study, but
+reading a realized trade's `win` boolean (net%>0) instead of the touch race
+or return-to-VWAP outcome (4 new tests on synthetic data: a perfectly
+predictive dimension holds, an uncorrelated one doesn't). Two new analysis
+runners: `scripts/run_fade_trade_conditions.mjs` (the open scan + a
+permutation baseline + cross-instrument replication check) and
+`scripts/run_fade_trade_cull.mjs` (turns the scan's survivors into an actual
+gated trade and re-measures OOS expectancy — the step that decides whether
+any of this is real, not just descriptive).
+
+### 19.1 The open scan — real structure, not noise
+
+V0 baseline fade (band=3, developing bands, no gates — the same config
+already null 9 times over), every trade joined back to its full touch
+context, scanned across all ~29 `DIMENSIONS`:
+
+| instrument | held findings (n≥30 both halves, |Δ|≥3pp, same sign) | permutation baseline (20 shuffles) |
+|---|---|---|
+| gold | 49 | mean 7.6, range 0–12 |
+| EURUSD | 39 | mean 8.4, range 2–16 |
+| GBPUSD | 27 | mean 8.3, range 2–16 |
+| USDJPY | 31 | mean 8.3, range 3–14 |
+
+All four instruments clear their noise ceiling by a wide margin — this is
+real, dimension-conditioned structure in win/loss, not chance. Five themes
+replicate on ALL FOUR instruments, same sign, OOS:
+
+| dimension | condition | effect | OOS Δ win-rate (n) |
+|---|---|---|---|
+| `session` | London | **worse** | gold −13.6 (82), EURUSD −16.8 (140), GBPUSD −13.2 (121), USDJPY −12.1 (105) |
+| `sessionPos` | 2·mid (mid-session touch) | **worse** | gold −18.8 (89), EURUSD −13.7 (105), GBPUSD −8.3 (78), USDJPY −8.2 (128) |
+| `rangeConsumed` | 2·mid (day's range not yet exhausted) | **worse** | gold −19.5 (72), EURUSD −16.1 (70), GBPUSD −19.9 (52), USDJPY −12.8 (116) |
+| `rangeConf` | 1·asia (near an Asia-range level) | **worse** | gold −30.8 (34), EURUSD −11.1 (59), GBPUSD −22.9 (57), USDJPY −15.4 (47) |
+| `approachER` | 1·choppy (inefficient approach into the band) | **better** | EURUSD +10.4 (148), GBPUSD +10.6 (166), USDJPY +8.4 (174); held on gold too (part of its 49) but not among the top-15 printed, exact magnitude not captured |
+
+The `rsiState='3·extended'` dimension the owner specifically asked about
+(RSI overbought at an up-touch / oversold at a down-touch) is real but only
+3/4: gold −12.1 (275), EURUSD −7.3 (355), USDJPY −8.1 (319), not held on
+GBPUSD — an extended RSI at the touch predicts a WORSE outcome, consistent
+with "don't fade into momentum that's still accelerating," but not the
+cleanest of the five above.
+
+### 19.2 Does culling on these actually flip the trade? No — but it's the closest result in the whole study
+
+Pre-registered before running: minimal-DOF first (each AVOID lever alone),
+then the 4 AVOIDs stacked, then + `approachER='1·choppy'` on top. Same
+house bar as every trade test: OOS t>2, n≥30, positive gross, same sign
+IS/OOS. Stated prior: genuinely open — richest cross-validated signal set
+in the study, but every prior "descriptive lift → trade edge" bet here has
+failed.
+
+| instrument | V0 baseline OOS t | V6 (4 avoids stacked) OOS t | V7 (avoids + choppy) OOS t | best single lever |
+|---|---|---|---|---|
+| gold | −6.70 | −6.42 | **−3.42** | choppy alone: −3.19 |
+| EURUSD | −4.74 | −4.79 | **−2.93** | choppy alone: −2.11 |
+| GBPUSD | −2.43 | −2.29 | **−1.47** | avoid-AsiaConf alone: −1.70 |
+| USDJPY | −3.73 | −2.33 | **−1.68** | avoid-midRangeConsumed alone: −2.84 |
+
+**Every variant, on every instrument, stays negative — but `approachER=
+'1·choppy'` alone, and the combined V7 filter, cut gold's t-stat roughly in
+half (−6.70→−3.2/−3.4) and bring GBPUSD/USDJPY within sight of zero
+(−1.47/−1.68), the closest any configuration in this entire study has come
+to the pre-registered bar.** Win rate rises substantially and consistently
+everywhere (e.g. GBPUSD V7: 54.5%→66.3%) — but mean/gross P&L stays
+negative on every instrument in every variant: losers still lose more than
+winners win, even in the filtered pool. Same mechanism as §18's
+partial-retracement finding, now hitting the WIN RATE side instead —
+a real, useful, cross-instrument-replicated signal that shrinks the loss
+without ever crossing into profit.
+
+**Caveat, stated plainly:** `approachER` was FOUND by the same open scan
+whose "OOS" half then gets reused as the trade test's own OOS period (both
+use the same 60/40 chronological split). This is not a fully independent
+third sample — the filter's discovery already had partial visibility into
+the period later used to "confirm" it. A genuinely independent check would
+need data past the archive's own end (2026-08-20) or a walk-forward scheme
+where the filter is picked on strictly earlier data only. Flagged, not
+corrected for here — read the closeness-to-positive above as informative,
+not as validated.
+
+**Verdict:** tenth failed conversion of a real descriptive signal into a
+trading edge on this idea shape — but the most informative one. The
+mechanism (approach efficiency, not band depth or momentum direction) is
+new ground, distinct from everything gated on before, and it moved every
+instrument the same direction by a meaningful amount without flipping any
+of them. If anything in this whole 19-section study deserves a genuinely
+independent forward check when more data exists past 2026-08-20, it is
+this filter, not any of the nine that came before it.
+
+Runners: `scripts/run_fade_trade_conditions.mjs gold eurusd gbpusd usdjpy
+--perms 20`, `scripts/run_fade_trade_cull.mjs gold eurusd gbpusd usdjpy`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1493,6 +1603,27 @@ rate cleanly and monotonically but does NOT improve expectancy — on 3/4
 instruments OOS t gets WORSE as the target shrinks, the mirror image of
 §14a's stop-tightness finding from the other leg of the trade. The combined
 variant produced gold's least-negative OOS t of the whole study (−2.96,
-still solidly null). Eighth/ninth null on this idea shape. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+still solidly null). Eighth/ninth null on this idea shape. §19 added
+`rsiValue`/`rsiState` (RSI(14) Wilder, per-session-reset, same convention as
+`pmo`/`atr14`/`wt1`, +2 engine tests) and `buildTradeWinBook` to
+`vwapFixedSigmaReport.js` — a new book type reusing the SAME `annotateHolds`
+gate as every other book, reading a REALIZED trade's win/loss instead of the
+touch race/return proxy (+4 tests, synthetic). Two new runners: an open scan
+across all ~29 `DIMENSIONS` against realized trade outcome (permutation-
+baselined, cross-instrument-checked) and a follow-up that turns the scan's
+cross-validated survivors into an actual gated trade. Result: real,
+non-mechanical structure (49/39/27/31 held findings vs a permutation floor
+of ~8 on each of gold/EURUSD/GBPUSD/USDJPY) — five themes replicate on all
+4 instruments (avoid London session, avoid mid-session touches, avoid
+mid-range-consumed days, avoid Asia-range confluence, prefer a choppy/
+inefficient approach into the band). Turning the two strongest (choppy
+approach, and the 4 avoids stacked) into an actual trade: win rate rises
+substantially and consistently everywhere, and gold's OOS t roughly halves
+(−6.70→−3.2/−3.4) — the closest any configuration in this whole study has
+come to the pre-registered bar — but EVERY variant on EVERY instrument
+stays negative; losers still outsize winners even in the filtered pool.
+Flagged explicitly: the filter's own discovery reused the same chronological
+period later tested as its OOS, not a fully independent third sample.
+Tenth null on this idea shape, the most informative one. Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.
