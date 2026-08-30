@@ -76,6 +76,61 @@ export function sharpeStdError(sharpeAnnual, nPeriods, periodsPerYear = 252) {
   return Math.sqrt((periodsPerYear + (sharpeAnnual * sharpeAnnual) / 2) / nPeriods);
 }
 
+// Newey-West (1987) HAC-adjusted Sharpe — for when `sharpeStdError` above
+// isn't the real problem. That formula (and the naive Sharpe itself) both
+// ASSUME the return series is i.i.d.; when returns are POSITIVELY
+// autocorrelated (a "good day/week" tends to be followed by another), the
+// naive sample variance understates the true variance of the return-
+// generating process, so both the point estimate and its CI come out too
+// optimistic — the CI just gets the WRONG width around a Sharpe that's
+// itself already inflated (built 2026-08-30, after Fib Atlas's own
+// portfolio pages showed Sharpe >10 in production and the owner correctly
+// didn't trust it — see LEGO_MODULES.md; confirmed on real EURUSD Asia data
+// that daily Sharpe 8.63 falls to 5.63 at weekly and 4.94 at monthly
+// aggregation, and this function's own long-run-variance correction at a
+// comparable ~45-day bandwidth independently lands on 4.90 — two different
+// methods agreeing is real cross-validation, not a coincidence).
+//
+// long-run variance = gamma_0 + 2 * sum_{k=1..L} w(k) * gamma_k, gamma_k the
+// sample autocovariance at lag k, w(k) the Bartlett kernel (1 - k/(L+1)).
+// `bandwidth` defaults to Newey-West's own rule of thumb,
+// floor(4*(T/100)^(2/9)) — the textbook-recommended L for this sample size.
+// A LARGER bandwidth captures more real serial dependence (matches the
+// weekly/monthly figures above at L≈45) but grows statistically unreliable
+// as L approaches a meaningful fraction of T (estimating an autocovariance
+// at lag 120 from a 552-observation sample is thin, noisy evidence) — so
+// this is reported as a POINT with an explicit bandwidth, not a single
+// "true" number; callers wanting the sensitivity should sweep `bandwidth`
+// themselves (see `analysis/fib_atlas_autocorr_sharpe.mjs`'s own sweep for
+// exactly this — the Sharpe kept declining out to L=120 without a clear
+// plateau, meaning autocorrelation alone does not fully explain Fib Atlas's
+// still-elevated headline Sharpe; there is a real, separate, unresolved
+// residual beyond what this correction accounts for).
+//
+//   neweyWestSharpe(dailyReturns, periodsPerYear=252, bandwidth=null) ->
+//     { sharpeNaive, sharpeNW, bandwidth, varianceInflation, n }
+export function neweyWestSharpe(returns, periodsPerYear = 252, bandwidth = null) {
+  const n = returns?.length ?? 0;
+  if (n < 2) return { sharpeNaive: 0, sharpeNW: 0, bandwidth: 0, varianceInflation: 1, n };
+  const L = bandwidth ?? Math.max(1, Math.floor(4 * Math.pow(n / 100, 2 / 9)));
+  const mean = returns.reduce((a, b) => a + b, 0) / n;
+  const autocov = k => {
+    let s = 0;
+    for (let i = 0; i < n - k; i++) s += (returns[i] - mean) * (returns[i + k] - mean);
+    return s / n;
+  };
+  const gamma0 = autocov(0);
+  let lrv = gamma0;
+  for (let k = 1; k <= Math.min(L, n - 1); k++) lrv += 2 * (1 - k / (L + 1)) * autocov(k);
+  lrv = Math.max(lrv, 1e-12); // a pathological negative HAC estimate is a degenerate input, not a real "infinite Sharpe"
+  const sharpeNaive = gamma0 > 1e-12 ? mean / Math.sqrt(gamma0) * Math.sqrt(periodsPerYear) : 0;
+  const sharpeNW = mean / Math.sqrt(lrv) * Math.sqrt(periodsPerYear);
+  return {
+    sharpeNaive: +sharpeNaive.toFixed(2), sharpeNW: +sharpeNW.toFixed(2),
+    bandwidth: L, varianceInflation: gamma0 > 1e-12 ? +(lrv / gamma0).toFixed(2) : 1, n,
+  };
+}
+
 // Minimum Track Record Length (Bailey & López de Prado 2012): how many YEARS of
 // live returns are needed before `sharpeAnnual` is statistically distinguishable
 // from `benchmark` (default 0) at the confidence implied by `z` (default 1.645 =

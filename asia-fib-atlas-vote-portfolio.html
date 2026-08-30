@@ -456,7 +456,8 @@ function render(j) {
   }
 
   document.getElementById('kpiShared').innerHTML = [
-    kpiCard('Sharpe', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)}`),
+    kpiCard('Sharpe (naive)', fmt2(s.sharpe), s.sharpe >= 2 ? 'green' : s.sharpe >= 1 ? 'blue' : 'amber', `PSR ${fmt2(s.psr)} — assumes independent days, see next card`),
+    kpiCard('Sharpe (autocorr-adjusted)', s.sharpeHAC ? fmt2(s.sharpeHAC.sharpeNW) : '—', 'amber', s.sharpeHAC ? `Newey-West, bandwidth ${s.sharpeHAC.bandwidth}d — ${fmt2(s.sharpeHAC.varianceInflation)}× variance vs naive; a WIDER window corrects further still, no clean plateau found — trust this as an upper bound, not the final number` : ''),
     kpiCard('Sortino', fmt2(s.sortino), s.sortino >= 2 ? 'green' : s.sortino >= 1 ? 'blue' : 'amber', 'downside-deviation-only Sharpe'),
     kpiCard('Profit Factor', fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross up-days ÷ gross down-days'),
     kpiCard('Win Rate', fmt1(s.winRate) + '%', '', '% of positive trading days'),

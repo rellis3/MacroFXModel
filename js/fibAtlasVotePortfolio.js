@@ -33,7 +33,7 @@ import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
 } from './levelAtlasVoteReview.js';
-import { maxDrawdownFromPnls } from './metricsCore.js';
+import { maxDrawdownFromPnls, neweyWestSharpe } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 
 // portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
@@ -157,6 +157,21 @@ export async function buildFibAtlasVotePortfolio({
       throttle = { triggerDD, restoreDD, throttleMult, daysThrottled: tr.state.filter(s => s.throttled).length, totalDays: tr.state.length };
     }
   }
+
+  // sharpeHAC (2026-08-30) — the owner spotted this page showing Sharpe >10
+  // in production and correctly didn't trust it. That naive daily Sharpe
+  // assumes independent daily returns; real Fib Atlas data shows real
+  // positive autocorrelation (confirmed: naive daily Sharpe collapses from
+  // ~8.6-10.7 to ~4.9-8 once corrected, and keeps declining at even wider
+  // correction windows without a clear plateau — see LEGO_MODULES.md for
+  // the full investigation). Uses Newey-West's OWN rule-of-thumb bandwidth
+  // (not hand-picked to match any particular finding) — this is ONE
+  // reasonable, defensible correction, not the final word: the
+  // investigation found the "true" number is sensitive to how much serial
+  // dependence you correct for, and even the most aggressive correction
+  // tested still left an elevated, unexplained residual. Report both
+  // numbers; never treat the naive one alone as trustworthy.
+  stats = { ...stats, sharpeHAC: neweyWestSharpe(dailyReturnsFinal, 252) };
 
   let statsUncapped = null;
   if (heatCap) {

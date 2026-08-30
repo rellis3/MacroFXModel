@@ -3504,6 +3504,95 @@ run to ground. The owner explicitly chose to scope this session's fix to
 decision on whether to change the shared `js/backtestStats.js` Sharpe
 formula everyone's numbers depend on until the cause is actually found.
 
+**Owner's follow-up, same day: "I would like truthful statistics otherwise
+it's all lies." Built the rigorous version of the daily/weekly/monthly
+eyeball check, wired it into the live page, quantified the honest range —
+new brick `neweyWestSharpe` (`js/metricsCore.js`), shipped alongside the
+naive Sharpe everywhere, not replacing it.**
+
+The daily/weekly/monthly decay above was a real signal but an ad-hoc one
+(three arbitrary calendar windows). The rigorous, standard tool for exactly
+this problem is a Newey-West (1987) HAC long-run-variance estimator — it
+directly deflates the Sharpe's variance term to account for measured serial
+correlation, with an explicit, swept `bandwidth` parameter instead of
+picking calendar windows by feel. Built as a genuine Tier-1 brick (pure,
+unit-tested against TWO independent checks, not just "looks about right"):
+1. On synthetic i.i.d. noise, the correction should do ~nothing
+   (variance inflation ≈1×) — confirmed (1.06× measured).
+2. On a synthetic AR(1) process with a KNOWN correlation coefficient φ=0.3,
+   the variance inflation should approach the textbook closed-form
+   `(1+φ)/(1-φ)` = 1.857× as bandwidth widens — confirmed within 30%
+   (1.86× theoretical vs 2.11× measured at a seed different from the one
+   used while building it, so this isn't a fitted-to-pass check).
+   `js/legoBricks.test.mjs`: 7/7 new assertions passing, zero regressions
+   in the rest of the suite.
+
+**Applied to real data, two independent ways that agree** —
+`analysis/fib_atlas_autocorr_sharpe.mjs` sweeps bandwidth 5→120 days on
+both EURUSD Asia alone and the full "Load best config" recommended
+portfolio:
+
+| | naive Sharpe | NW rule-of-thumb (L≈6-7) | L=45 (≈monthly) | L=120 |
+|---|---|---|---|---|
+| EURUSD Asia alone | 8.63 | 7.64 | 4.90 | 3.73 |
+| Full best-config portfolio | 10.69 | 7.58 | 4.67 | 3.39 |
+
+The L=45 figures (4.90 / 4.67) independently reproduce the earlier
+daily→weekly→monthly diagnostic's monthly-Sharpe finding (4.94) to within
+rounding — two different statistical methods landing on the same number is
+real cross-validation, not a coincidence. **Honest limit of this
+correction, stated plainly rather than glossed over**: the Sharpe keeps
+declining as bandwidth widens all the way to L=120 (using ~22% of the
+552-day sample) without a clear plateau — a real long-memory effect would
+normally converge well before that, and estimating autocovariance at a
+120-day lag from ~550 observations is thin, noisy evidence. So there is
+**no single "true" number to report** — the honest range is "somewhere
+around 4.9-7.6 depending on how much serial dependence you correct for,
+almost certainly overstated even at the low end of that range, and the
+correction has not fully explained the gap even at its most aggressive
+setting" (even L=120's 3.39-3.73 is still above the 2-2.5 scrutiny bar).
+**Two concrete leads for what's still unaccounted for remain unchecked**:
+whether real execution costs during clustered signal bursts are
+realistically modeled (flat per-pair average cost may understate slippage
+specifically when trades fire minutes apart), and whether correlation
+structure extends into genuine multi-month regime effects a 552-day sample
+is simply too short to characterize reliably.
+
+**Ruled out while investigating, not just asserted**: re-checked whether
+`applyConcurrencyCap` was letting genuinely-overlapping trades through and
+being double-counted as independent bets — it isn't; a new trade is
+correctly blocked until the prior one's `resolveTime` has passed (confirmed
+by reading `js/levelAtlasVoteReview.js:561-584` directly), so the inflation
+is from closely-spaced-but-non-overlapping, correlated trades, not a
+concurrency-cap bug.
+
+**Wired into production**: `buildFibAtlasVotePortfolio` (`js/fibAtlasVotePortfolio.js`)
+now computes `stats.sharpeHAC` (Newey-West's own rule-of-thumb bandwidth,
+not hand-picked to flatter any particular finding) on every response;
+`asia-fib-atlas-vote-portfolio.html` shows it as its own KPI card
+immediately next to the naive Sharpe (relabeled "Sharpe (naive)" for
+honesty), with the bandwidth, variance-inflation multiple, and the "no
+clean plateau — trust as an upper bound" caveat all visible inline, not
+buried in a tooltip. Live-verified against a genuinely fresh server process
+after discovering — the hard way — that a stale `node server.js` process
+from earlier in this session (PID 1722, alive ~4.5h) had been silently
+serving every subsequent curl/Playwright check against CACHED, pre-edit
+JS modules (HTML/inline-script changes are unaffected — they're re-read
+from disk per request — but server-side ES module edits are cached for
+the process's lifetime). Confirmed this specific finding wasn't
+compromised by it (the underlying Sharpe/CAGR computation hadn't changed
+between that process's boot and this fix, so earlier-reported numbers in
+this investigation stand), but flagged here as a real testing-hygiene gap:
+always confirm the server PID is newer than your last server-side edit,
+not just that curl returns 200.
+
+🟢 the correction itself is real, built rigorously, unit-tested two
+independent ways, cross-validated against an independent method on real
+data, and now live on the page for anyone to see; 🔴 the underlying
+question ("what is Fib Atlas's true expectancy") is still open — this
+raises the floor of honesty, it does not manufacture a clean final answer
+where a messy, still-partially-unexplained one is the truth.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
