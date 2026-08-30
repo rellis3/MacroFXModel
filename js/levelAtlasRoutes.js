@@ -28,7 +28,7 @@ import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
 import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop } from './levelAtlasVoteReview.js';
-import { summarizeTrades, maxDrawdownFromPnls } from './metricsCore.js';
+import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
@@ -59,6 +59,12 @@ function loadLocalVoteTrades(pair) {
 // Same pattern, for the separately-built p90 trade list (scripts/build_p90_votetrades.mjs).
 function loadLocalP90VoteTrades(pair) {
   try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-p90votetrades.json`), 'utf8')); }
+  catch { return null; }
+}
+
+// Same pattern, for the no-releverage early-exit trade list (scripts/build_early_exit_votetrades.mjs).
+function loadLocalEarlyExitVoteTrades(pair) {
+  try { return JSON.parse(fs.readFileSync(path.join(VOTE_TRADES_DIR, `${pair}-earlyexit-votetrades.json`), 'utf8')); }
   catch { return null; }
 }
 
@@ -620,16 +626,61 @@ export function mountLevelAtlasRoutes(app, express) {
       // as every other toggle on this page.
       const includeP90 = req.query.includeP90 === 'true';
 
+      // No-releverage early exit (2026-08-29) -- built after discovering
+      // slFraction's own backtest was mostly an implicit-leverage artifact:
+      // tightening the DECLARED stop let fixed-fractional sizing size UP
+      // every trade (winners included), so avg win more than doubled while
+      // avg loss barely moved. This is the corrected version: position
+      // sizing stays anchored to each trade's ORIGINAL, unchanged stopPips
+      // (a winner's risk-adjusted pnlPct is mathematically IDENTICAL on or
+      // off), and only the exit trigger changes -- if the real M1 path
+      // shows adverse excursion crossing 40% of the ORIGINAL stop distance
+      // before the trade would normally resolve, exit there instead (a
+      // genuinely smaller realized loss). Validated: avg win held flat
+      // (0.509%->0.508%), avg loss and drawdown genuinely improved, and the
+      // threshold grid has a REAL peak at 0.4, consistent in both IS and
+      // OOS -- the opposite of the runaway-with-no-peak shape that
+      // discredited the p90 percentile grid. That said: even the correctly
+      // -computed Sharpe CI ([5.79, 9.51] at a realistic 1% heat cap, OOS)
+      // sits entirely above any believable range for a real strategy --
+      // trust the SHAPE (smaller losses, shallower drawdown), not the
+      // Sharpe number itself. Only threshold=0.4 is persisted/offered here,
+      // not a tunable grid, same discipline as p90.
+      const earlyExit = req.query.earlyExit === 'true';
+
       const perPairTradesRaw = {}, perPair = {}, missing = [];
       const fadeStopInfo = {};
       const slInfo = {};
       const p90Info = {};
+      const earlyExitInfo = {};
       const storedByPair = {};
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${PREFIX}/${pair}-votetrades.json`), loadLocalVoteTrades(pair));
         if (!stored) { missing.push(pair.toUpperCase()); continue; }
         storedByPair[stored.instrument] = stored;
         let filtered = stored.trades.filter(t => t.margin >= minMargin);
+        // Swapped in BEFORE fadeStopTighten/slFraction -- both retune
+        // stopPips off winner-MAE percentiles or a raw fraction, neither
+        // validated against a population where some trades were already
+        // re-priced by the early-exit rule. Matched by entry `time` (unique
+        // per pair) against the pre-computed OOS re-priced trades -- only
+        // fade, margin>=3, OOS trades exist in that file (same filter this
+        // route already applies), so IS-period and follow trades pass
+        // through as the ORIGINAL stored trade, untouched.
+        if (earlyExit) {
+          const eeStored = pickFresher(await getJSON(`${PREFIX}/${pair}-earlyexit-votetrades.json`), loadLocalEarlyExitVoteTrades(pair));
+          if (eeStored?.trades?.length) {
+            const byTime = new Map(eeStored.trades.map(t => [t.time, t]));
+            let repriced = 0;
+            filtered = filtered.map(t => {
+              const ee = byTime.get(t.time);
+              if (!ee) return t;
+              if (ee.pnlPct !== t.pnlPct) repriced++;
+              return ee;
+            });
+            earlyExitInfo[stored.instrument] = { threshold: eeStored.threshold, tradesReprised: repriced };
+          }
+        }
         // Deliberately scoped to THIS pair's own trades — the candidate grid
         // is in raw pips, and pip size varies 100x+ across instruments
         // (EURUSD pip=0.0001 vs GOLD/index pip=1), so tightening must never
@@ -791,20 +842,30 @@ export function mountLevelAtlasRoutes(app, express) {
       // A bare Sharpe point estimate on a few years of data invites exactly
       // the "is this better than the best system ever" reaction it deserves
       // -- it's a point in the middle of a real, often-wide uncertainty band,
-      // not a precise measurement. sharpeSE (summarizeTrades, already the
-      // project's one Sharpe-honesty brick, metricsCore.js) gives the actual
-      // standard error on the SAME combined trade list the daily-return
-      // Sharpe above is built from, so every stats object gets a real 95% CI
-      // attached, not just a second, unrelated-looking number.
+      // not a precise measurement.
+      //
+      // BUG FOUND AND FIXED (2026-08-29): this used to build the CI from
+      // summarizeTrades' PER-TRADE Sharpe/SE while `statsObj.sharpe` itself
+      // is portfolioStats' DAILY-return-basis Sharpe -- this file's own
+      // vote-portfolio route already documents (see the ownSharpe comment
+      // below) that the two methods disagree by 25-35% even on IDENTICAL
+      // trades. The "95% CI" was never actually centered on the number
+      // shown next to it. Fixed: sharpeStdError computed on the SAME basis
+      // (daily returns, statsObj.days, 252/yr) the headline Sharpe uses.
       const withSharpeCI = (statsObj, perPairDict) => {
         const all = Object.values(perPairDict).flat();
-        if (all.length < 5) return statsObj;
+        if (all.length < 5 || !(statsObj.days > 1)) return statsObj;
+        const se = sharpeStdError(statsObj.sharpe, statsObj.days, 252);
+        const sharpeCI95 = isFinite(se) ? [+(statsObj.sharpe - 1.96 * se).toFixed(2), +(statsObj.sharpe + 1.96 * se).toFixed(2)] : null;
+        const mtry = minTrackRecordLength(statsObj.sharpe, { periodsPerYear: 252, skew: statsObj.skew ?? 0, kurt: (statsObj.excessKurt ?? 0) + 3 });
+        // summarizeTrades is still the right tool for perTradeSharpe/perTradeWinRate
+        // themselves -- those are DELIBERATELY the per-trade metric, just no
+        // longer used to build the CI around the (different) daily-basis Sharpe.
         const st = summarizeTrades(all.map(t => t.pnlPct), all.map(t => t.date));
         return {
           ...statsObj,
           perTradeSharpe: st.sharpe, perTradeSharpeSE: st.sharpeSE,
-          sharpeCI95: st.sharpeSE != null ? [+(st.sharpe - 1.96 * st.sharpeSE).toFixed(2), +(st.sharpe + 1.96 * st.sharpeSE).toFixed(2)] : null,
-          minTrackYears: st.minTrackYears,
+          sharpeCI95, minTrackYears: isFinite(mtry) ? +mtry.toFixed(2) : null,
           // The KPI "Win Rate" elsewhere on this page is `portfolioStats`'
           // own field -- % of positive trading DAYS, not trades (several
           // losing trades can still net a positive day). This is the
@@ -1035,6 +1096,54 @@ export function mountLevelAtlasRoutes(app, express) {
         statsNoP90 = withSharpeCI(statsNoP90, finalNoP90);
       }
 
+      // When the no-releverage early exit is on, also report the SAME
+      // pipeline (fadeStopTighten/slFraction/p90/heat cap/throttle settings
+      // held CONSTANT) built WITHOUT the early-exit swap -- isolates its own
+      // marginal effect, same discipline as statsNoP90 above.
+      let statsNoEarlyExit = null;
+      if (earlyExit && Object.keys(earlyExitInfo).length) {
+        const perPairNoEE = {};
+        for (const sym of Object.keys(storedByPair)) {
+          const stored = storedByPair[sym];
+          let filtered = stored.trades.filter(t => t.margin >= minMargin);
+          if (fadeStopTighten) {
+            const tightened = applyFadeStopTightening(filtered, { cost: stored.cost });
+            filtered = tightened.trades;
+          }
+          if (slFraction) {
+            filtered = filtered.map(t => {
+              if (t.decision !== 'fade') return t;
+              const priced = priceAtTighterStop(t, t.stopPips * slFraction, stored.cost);
+              return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * slFraction, t.stopPips) } : t;
+            });
+          }
+          const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+          const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct);
+          const withPair = (sizing === 'fixed-risk' ? adjusted : (capped?.kept ?? []).map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple })))
+            .map(t => ({ ...t, pair: sym }));
+          perPairNoEE[sym] = withPair;
+        }
+        let finalNoEE = perPairNoEE;
+        if (maxHeatPct) {
+          const heatResult = applyPortfolioHeatCap(perPairNoEE, { maxHeatPct });
+          if (heatResult) {
+            const byPair = {};
+            for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+            finalNoEE = byPair;
+          }
+        }
+        const weightsNoEE = buildWeights(finalNoEE);
+        const combinedNoEE = buildPortfolioDailySeries(finalNoEE, weightsNoEE ? { weights: weightsNoEE } : {});
+        let noEEReturns = combinedNoEE.dailyReturns;
+        if (throttleOn) {
+          const trN = applyDrawdownThrottle(noEEReturns, combinedNoEE.dates, { triggerDD, restoreDD, throttleMult });
+          if (trN) noEEReturns = trN.dailyReturns;
+        }
+        statsNoEarlyExit = withNonCompoundedDD(portfolioStats(noEEReturns, { mc: false, targetVol }), noEEReturns);
+        statsNoEarlyExit.avgLossRiskAdjPct = avgLossPct(finalNoEE);
+        statsNoEarlyExit = withSharpeCI(statsNoEarlyExit, finalNoEE);
+      }
+
       // When the currency loss gate is active, also report the SAME pipeline
       // (heat cap/throttle/fade-stop settings held CONSTANT) built from the
       // UNGATED trades — isolates the gate's own marginal effect, same
@@ -1083,8 +1192,9 @@ export function mountLevelAtlasRoutes(app, express) {
         fadeStopTighten, fadeStopInfo,
         slFraction, slInfo,
         includeP90, p90Info,
+        earlyExit, earlyExitInfo,
         ccyLossGate, ccyGateInfo,
-        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoP90, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
+        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoP90, statsNoEarlyExit, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
         intradayMAE,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,

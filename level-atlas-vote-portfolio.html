@@ -79,6 +79,7 @@
     <label>Fixed SL fraction <input type="checkbox" id="slFractionChk">
       <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
     <label>Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
+    <label>Early exit (no re-leverage) <input type="checkbox" id="earlyExitChk"></label>
     <label>Prop daily DD limit <input type="checkbox" id="propDDLimitChk">
       <input type="number" id="propDDLimitInput" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
     <label>Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
@@ -180,6 +181,15 @@
   <h2>p90 rung impact — same portfolio, with vs without the outermost ladder rung</h2>
   <div class="muted" style="margin-bottom:8px">p90 is excluded everywhere else (excludeRungs: ['p90']) because a fade there has no real stop in the 3-rung ladder — and its sample is too thin for the normal vote-margin mechanic to ever fire (checked directly: 0 votes across hundreds of OOS touches). This trades it UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance (the real distance price travels once it clears p90, fit on in-sample data only). Real per-pair spread cost killed the tighter percentiles tested (p75's OOS Sharpe went negative) — only the 90th held up on portfolio Sharpe, per-trade Sharpe, and a cross-pair heat-cap sensitivity check, so that's the only percentile offered here, not a tunable grid. See <code>analysis/p90_empirical_outer_backtest.mjs</code> and <code>scripts/build_p90_votetrades.mjs</code>.</div>
   <div id="p90Compare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="earlyExitCard" style="display:none">
+  <h2>Early exit (no re-leverage) — same fade trades, with vs without cutting likely losers short</h2>
+  <div class="muted" style="margin-bottom:8px">
+    Built after finding the "Fixed SL fraction" lever above was mostly an implicit-leverage artifact — tightening the DECLARED stop let fixed-fractional sizing size UP every trade (winners included), so avg win more than doubled while avg loss barely moved. This is the corrected version: position sizing stays anchored to each trade's ORIGINAL, unchanged stop (a winner's risk-adjusted result is mathematically identical on or off), and only the exit trigger changes — if the real M1 path shows a fade trade crossing 40% of its original stop distance before it would normally resolve, it exits there instead, a genuinely smaller realized loss. Unlike the p90/SL-fraction grids, this one has a real peak (same threshold, both in-sample and out-of-sample) instead of running to the edge of the tested range.
+    <strong style="color:#f87171">That said: even correctly computed, this lever's own Sharpe 95% CI sits entirely above any believable range for a real strategy (~[5.8, 9.5] at a realistic 1% heat cap). Trust the shape of the result below — avg win unchanged, avg loss and drawdown genuinely reduced — not the Sharpe number itself.</strong>
+  </div>
+  <div id="earlyExitCompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card callout" id="intradayMAECard" style="display:none">
@@ -330,6 +340,7 @@ const fadeStopChk = document.getElementById('fadeStopChk');
 const slFractionChk = document.getElementById('slFractionChk');
 const slFractionInput = document.getElementById('slFractionInput');
 const includeP90Chk = document.getElementById('includeP90Chk');
+const earlyExitChk = document.getElementById('earlyExitChk');
 const propDDLimitChk = document.getElementById('propDDLimitChk');
 const propDDLimitInput = document.getElementById('propDDLimitInput');
 const ccyGateChk = document.getElementById('ccyGateChk');
@@ -397,6 +408,7 @@ async function loadData() {
   if (fadeStopChk.checked) params.set('fadeStopTighten', 'true');
   if (slFractionChk.checked) params.set('slFraction', slFractionInput.value);
   if (includeP90Chk.checked) params.set('includeP90', 'true');
+  if (earlyExitChk.checked) params.set('earlyExit', 'true');
   if (propDDLimitChk.checked) params.set('propDDLimit', propDDLimitInput.value);
   if (ccyGateChk.checked) {
     params.set('ccyLossGate', 'true');
@@ -558,6 +570,32 @@ function render(j) {
       <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Stop</th><th class="num">Trades added</th></tr></thead><tbody>${infoRows}</tbody></table>`;
   } else {
     p90Card.style.display = 'none';
+  }
+
+  const earlyExitCard = document.getElementById('earlyExitCard');
+  if (j.earlyExit && j.statsNoEarlyExit) {
+    earlyExitCard.style.display = '';
+    const n = j.statsNoEarlyExit;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Profit Factor', fmt2(n.profitFactor), fmt2(s.profitFactor)],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    const info = j.earlyExitInfo ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">${(v.threshold * 100).toFixed(0)}%</td><td class="num">${v.tradesReprised}</td></tr>`).join('');
+    document.getElementById('earlyExitCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without early exit</th><th class="num">With early exit</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Threshold (% of the ORIGINAL, unchanged stop distance) and OOS trades cut short per pair:</div>
+      <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Threshold</th><th class="num">Trades cut short</th></tr></thead><tbody>${infoRows}</tbody></table>`;
+  } else {
+    earlyExitCard.style.display = 'none';
   }
 
   const intradayMAECard = document.getElementById('intradayMAECard');
@@ -888,6 +926,7 @@ fadeStopChk.addEventListener('change', loadData);
 slFractionChk.addEventListener('change', loadData);
 slFractionInput.addEventListener('change', loadData);
 includeP90Chk.addEventListener('change', loadData);
+earlyExitChk.addEventListener('change', loadData);
 propDDLimitChk.addEventListener('change', loadData);
 propDDLimitInput.addEventListener('change', loadData);
 ccyGateChk.addEventListener('change', loadData);

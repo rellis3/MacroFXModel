@@ -23,7 +23,7 @@ import {
   priceAtTighterStop, applyFadeStopTightening, applyPortfolioHeatCap,
 } from '../js/levelAtlasVoteReview.js';
 import { portfolioStats } from '../js/backtestStats.js';
-import { summarizeTrades } from '../js/metricsCore.js';
+import { sharpeStdError, summarizeTrades } from '../js/metricsCore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIR = path.join(__dirname, 'output', 'level-atlas-vote-trades');
@@ -122,8 +122,17 @@ function statsFor(perPair, { heatCap = false } = {}) {
   const rawLosers = Object.values(perPair).flat().filter(t => !t.win);
   const avgLossRawPct = rawLosers.length ? rawLosers.reduce((a, t) => a + Math.abs(t.pnlPct), 0) / rawLosers.length : null;
 
+  // BUG FOUND AND FIXED (2026-08-29): this used to build the CI from
+  // summarizeTrades' PER-TRADE Sharpe/SE while `ps.sharpe` is portfolioStats'
+  // DAILY-basis Sharpe -- documented elsewhere in this codebase to disagree
+  // by 25-35% even on identical trades. Fixed: SE computed on the SAME basis
+  // (daily returns, ps.days, 252/yr) the headline Sharpe actually uses.
+  const se = ps.days > 1 ? sharpeStdError(ps.sharpe, ps.days, 252) : Infinity;
+  const sharpeCI95 = isFinite(se) ? [+(ps.sharpe - 1.96 * se).toFixed(2), +(ps.sharpe + 1.96 * se).toFixed(2)] : null;
+  // perTradeWinRate is deliberately a DIFFERENT metric (traditional per-trade
+  // win rate, not portfolioStats' day-based one) -- summarizeTrades is the
+  // right tool for THIS, just no longer used to build the Sharpe CI above.
   const st = allRisk.length >= 5 ? summarizeTrades(allRisk.map(t => t.pnlPct), allRisk.map(t => t.date)) : null;
-  const sharpeCI95 = st?.sharpeSE != null ? [+(st.sharpe - 1.96 * st.sharpeSE).toFixed(2), +(st.sharpe + 1.96 * st.sharpeSE).toFixed(2)] : null;
 
   return {
     trades: allRisk.length,
