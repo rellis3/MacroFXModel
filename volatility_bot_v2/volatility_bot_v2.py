@@ -299,6 +299,17 @@ def run(base_url: str, force_live: bool) -> None:
     stack_skips: dict[str, int] = {}
     budget_skips: dict[str, bool] = {}
     warned_missing: dict[str, bool] = {}
+    missing_since: dict[str, float] = {}
+    # A pair being absent from the FIRST plan snapshot(s) after a restart is
+    # normal, not a typo -- the plan producer cold-start-throttles to only 3
+    # pairs warming concurrently (server.js _refreshVolatilityV2Plan's own
+    # doc: a full multi-year M1 load per pair, capped to avoid an OOM crash),
+    # so with 17 enabled pairs it can take several 45s ticks for all of them
+    # to appear. Found 2026-08-30: this bot warned "will never trade" for
+    # MOST of the universe on every redeploy (which happens on every git
+    # push), because the original check fired on the very first miss. Now it
+    # only warns once a pair has been missing continuously for this long.
+    MISSING_GRACE_SECS = 900
     plan = None
     last_plan = last_status = 0.0
     plan_age_blocked = False
@@ -455,10 +466,16 @@ def run(base_url: str, force_live: bool) -> None:
             for instr in enabled:
                 sess = sessions.get(instr)
                 if sess is None:
-                    if instr not in _plan_instruments(plan) and not warned_missing.get(instr):
-                        warned_missing[instr] = True
-                        log.warning(f"enabled pair {instr!r} is not in the plan — it will never trade "
-                                    f"(typo in enabled_pairs, or the plan producer skipped it?)")
+                    if instr in _plan_instruments(plan):
+                        missing_since.pop(instr, None)
+                    else:
+                        first_seen = missing_since.setdefault(instr, nowt)
+                        if nowt - first_seen > MISSING_GRACE_SECS and not warned_missing.get(instr):
+                            warned_missing[instr] = True
+                            log.warning(f"enabled pair {instr!r} still not in the plan after "
+                                        f"{MISSING_GRACE_SECS / 60:.0f}min — check for a typo in "
+                                        f"enabled_pairs, or that the plan producer isn't skipping it "
+                                        f"(GET volatility_bot_v2_plan's 'skipped' field for the reason)")
                     continue
                 px = quotes.price(instr) if quotes is not None else broker.price(instr)
                 if px is None:
