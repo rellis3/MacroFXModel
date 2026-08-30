@@ -188,3 +188,54 @@ Lessons are logged below over time as condensed notes, grouped under their serie
 **Next in series:** Evaluating Trading Education — if a claim can't be tested, what should be done with it?
 
 ---
+
+### Lesson 2 — Evaluating Trading Education
+
+**Core argument:** Vague-sounding performance claims (a headline win rate, a stated monthly return, a single dramatic account result) are structured so they can never be shown wrong — and a claim that can't be wrong isn't evidence of anything, no matter how persuasive it sounds.
+
+**Chart 1 — decoding four common claims:** Four tappable claims are shown, each revealing an explanation of what it would actually require to be true. In summary:
+- A high, smooth monthly return claim implies outperforming the best professional funds in the world without their resources — and a real edge that good would be capacity-limited and worth protecting quietly rather than teaching.
+- A dramatic single-account turnaround (e.g., 1,000 into 100,000) implies extreme position sizing that wipes out the large majority of accounts attempting it — you're being shown the rare survivor, and the fact that it's being taught undercuts the claim that it's repeatable.
+- Pairing a very high win rate with a high average return per trade is flagged as internally inconsistent — a high win rate is normally bought by capping wins and risking rare large losses, so claiming both sides at once usually means a short/cherry-picked sample or losses not yet realized.
+- "Guaranteed returns, fully risk-managed" is flagged as self-contradictory — a guarantee implies certainty about the future that risk management exists specifically because nobody has.
+- Common thread: none of the four claims states a period, sample size, or denominator, which is what lets them be repeated indefinitely without ever being falsified.
+
+**What a real claim needs to contain (four elements):** a stated sample (how many occurrences, over what period, across what conditions), a fixed definition of what counts as a "win," both sides of the result (average win vs. average loss, and the worst stretch — not just the total), and costs included (spread/commission/slippage, since these decide most marginal edges). Framed as the same standard from the first "four questions" lesson, now applied to people/claims rather than charts: an untested, uncountable claim is a story rather than evidence, and the fix is to ask for the denominator (how many trades/students, over how long).
+
+**Chart 2 — what a win rate implies:** A curve plots the average-win-to-average-loss ratio needed to break even against win rate (30–95%, via slider). At a high win rate like 87%, the average win only needs to be a small fraction (~0.15x) of the average loss to break even — illustrating that a win rate alone is close to meaningless without the size of wins/losses attached, which is exactly why it's an easy number to advertise.
+
+**Red flags named directly:** guaranteed returns (markets are probabilistic, so a guarantee is either a misunderstanding or dishonest); only winning examples shown (every real strategy has losing stretches, so their total absence implies after-the-fact selection); returns quoted as a fixed rate rather than a range (implies a repeatability no real sample ever supports); and unverifiable records (a screenshot without third-party verification is a claim, not a record).
+
+**Marketing vs. teaching contrast table:** "optimised to sell" (results without a sample, losses absent/explained away, returns as a rate, a small-to-large account as the headline, vague/proprietary process) vs. "optimised to teach" (sample size and period stated, losses and drawdowns shown, uncertainty quantified, no urgency to decide immediately, method explained clearly enough to check). The distinguishing feature is framed as falsifiability, not tone — teaching gives enough detail to potentially disagree with; marketing gives a conclusion.
+
+**This lesson's own four questions** (a version specific to evaluating education/claims): how large is the sample; can the method actually be backtested (if it's too subjective, it can't be validated); where does it fail (if no failure modes are ever discussed, they likely haven't been measured); and how is the money actually made (the business model shapes what the content is optimised to do).
+
+- Notably, the lesson explicitly turns these questions back on itself/the course/case studies published in the same bank — stating that if this material ever fails its own standard (no stated sample, hidden losses, undisclosed incentive), that's a failure of the material, not the standard, since a framework that exempts its own author isn't a real framework.
+
+**Next in series:** Signal Decay and Market Efficiency — assuming something passes all four questions and is a real, measured edge, how long does it keep working, and what determines that?
+
+---
+
+### Lesson 3 — Signal Decay and Market Efficiency
+
+**Core argument:** A genuine, well-measured edge still has a shelf life — the same relationship that pays a handful of people for years gets competed away in months once thousands act on it, because it was right and got discovered, not because it was wrong.
+
+**Chart 1 — decay speed vs. number of participants:** A curve plots "edge remaining" (%) against months since discovery, with a slider for how many participants are acting on the same signal (10 to 10,000). At the low end (10 participants), roughly half the edge is gone by ~7.8 months and only ~4% remains after three years — the shape of the decay curve stays the same as the slider moves, but the speed changes dramatically: a signal traded by a handful can persist for years, while the same signal traded by thousands collapses in months.
+
+**The lifecycle of an edge (four stages):** discovery (someone identifies a relationship price isn't yet reflecting) → exploitation (capital moves in while the relationship still pays, and pays best here) → publication (the idea spreads via research, courses, or visible returns) → decay (enough capital arrives that the mispricing gets corrected and the edge thins). Framed as: the real question isn't whether an edge decays, but how fast and whether it's noticed — each added participant takes a share of the same mispricing, and this is what "market efficiency" means in practice (not that prices are always right, but that profitable errors get corrected once enough capital targets them).
+
+**What actually removes an edge (four mechanisms):** competition (more capital chasing the same mispricing divides it further), arbitrage (professionals continuously search out and remove mispricings), adaptation (counterparties learn — a strategy predictable enough to describe is predictable enough to trade against), and regime change (a rule fitted to one environment can simply stop applying in a different one). Framed with the arithmetic point that aggregate outperformance across all participants nets to zero before costs and negative after them.
+
+**Chart 2 — how much size an edge can carry:** A curve plots net edge (basis points, after market impact) against position size as a percentage of daily volume (0–25%, via slider). At a modest 2% of daily volume, gross edge of 40 bps nets down to ~35 bps after impact — still profitable, but every additional unit of size costs more than the last, illustrating that an edge isn't just a rate, it has a capacity ceiling where the trader's own execution starts eating the edge.
+
+**Crowding under stress (four effects):** correlated positions (many participants holding the same trade effectively become one position rather than several); liquidity evaporation (in stress, everyone reaches for the same exit, which is narrower than the entrance); amplified drawdowns (unwinding pushes price further against the position, forcing further unwinding); and capacity constraint (a more crowded trade absorbs less new capital before the return disappears). Practical implication drawn: correlation across one's *own* strategies matters more than any single strategy's volatility, since several crowded positions can behave as one under stress.
+
+**What decays quickly vs. what lasts (contrast):** decays quickly — simple/easy to describe, published widely, works at any size, no structural reason to persist, depends on one market condition. Lasts longer — hard to replicate/execute, capacity-constrained by design, rooted in structure or behaviour, has an identifiable counterparty being compensated, survives more than one regime. The practical test offered: ask what would have to change for the edge to stop paying — if that can't be answered, the reason it pays isn't actually known.
+
+- Qualification: decay isn't the same as outright disappearance, and rates vary hugely — some well-documented risk premia have persisted for decades despite being published, because the underlying structural reason (e.g., a risk institutions still can't or won't hold) didn't go away. What compresses quickly is specifically the kind of edge that only required someone to *notice* it, with no deeper structural reason behind it.
+
+**What to carry forward (paraphrased):** edges decay precisely because they work and attract capital; decay speed tracks participation, not idea quality; every edge has a size where the trader's own market impact exceeds the edge; crowded positions look independent until stress reveals they're correlated; and the practical habit is to always ask why an edge should exist, treating "no answer" as itself informative.
+
+**Next in series:** Market Efficiency and Information — if edges decay wherever competition arrives, where is competition thinnest, and can someone of ordinary size actually operate there?
+
+---
