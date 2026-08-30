@@ -3208,11 +3208,75 @@ backtest/strategy logic:
    pure/portable contract worth a new module for two callers; noted here so
    the duplication is visible, not silent.
 
-Not fully verifiable from this sandbox (R2/Railway aren't reachable here —
-see `CLAUDE.md`'s live-deployment note), so this is the best-evidenced fix
-given the code, not a confirmed-reproduced one; if "Failed to fetch" recurs
-after this deploy, the next diagnostic step is checking Railway's own request
-logs for the candles route's actual response time on the failing pair.
+Correction to the note directly above: R2 turned out to be reachable from this
+sandbox after all (a real cold load was measured live — see the follow-up
+entry immediately below), so the retry/de-dup mechanism itself WAS
+end-to-end-verified, not just reasoned about. Only OANDA is blocked here
+(confirmed `403 Host not in allowlist`), which matters for the next entry.
+
+**Follow-up (2026-08-30, same day) — "no candle data for `<recent dates>`"
+is a DIFFERENT bug than the one above, and it's structural, not a timing
+race.** The owner hit this immediately after the fix above: clicking a trade
+from the last 2-3 days returned a clean `ok:true` response with zero candles,
+not a network error. Root cause, confirmed by inspection (no writer to the
+`m1/` R2 prefix exists anywhere in this repo — grepped for it): **the R2/local
+M1 parquet archive this whole route family reads is a manually re-backfilled
+snapshot with no scheduled refresh job**, so a trade dated more recently than
+whenever someone last ran a backfill has no data there at all — not a
+timezone/broker-time offset, as first suspected; the archive genuinely stops
+partway through history and a chart-on-click for anything past that point
+will always come back empty, forever, until the next manual backfill (which
+itself only pushes the same cliff a bit further out).
+
+**Fix: gap-fill the archive's missing TAIL directly from OANDA**, per the
+owner's own suggestion — `fetchOandaM1Candles` + `getM1CandleWindow`
+(`server.js`, right after `getM1Cached`). Deliberately narrow, not a general
+"switch to OANDA" — three real constraints matter here, all handled:
+1. **OANDA candles silently truncates past ~5000 bars/request** — no error,
+   just fewer candles than requested, which would render a wrong-looking
+   truncated chart with no visible warning. So the fallback is capped at
+   `OANDA_M1_GAP_CAP_MIN = 3500` minutes (≈2.4 days) — comfortably under the
+   truncation point with margin, and comfortably wider than `loadTradeChart`'s
+   actual window (one trade ± 4h).
+2. **Tail-only, never a substitute for R2 on a wide historical window** — the
+   gap-fill only fires for the portion of the requested range PAST the
+   archive's last bar (`toTs > archiveLastTs`), starting from
+   `max(fromTs, archiveLastTs + 60)`. A normal multi-year backtest-viewer
+   window against a well-archived pair never touches OANDA at all — verified
+   live (`liveFilled:false`, same candle count as before the change, on an
+   older date range against the running server).
+3. **A pair with NO archive at all** (not just a stale tail) still falls
+   back to OANDA, but ONLY if the requested window is small enough to clear
+   the same cap — otherwise it returns the honest 404 it always did, rather
+   than silently truncating a huge OANDA request into a wrong chart.
+
+Verified two ways, since OANDA itself is unreachable from this sandbox
+(confirmed `403 Host not in allowlist: api-fxtrade.oanda.com` — the
+documented sandbox-vs-Railway network gap, not a code bug; direct
+symbol-resolution + URL-construction check against the real OANDA endpoint
+confirmed the request itself is well-formed): (a) a standalone unit test of
+the merge/cap logic against synthetic archive+OANDA data (4 cases: archive
+fully covers the window → OANDA never called; stale tail → gap call starts
+exactly one bar past the archive's last bar and merges in; archive entirely
+missing + small window → OANDA fallback used; archive entirely missing +
+huge window → capped, OANDA never called, avoiding a silently-truncated
+chart) — all 4 passed; (b) live re-verification against the running server
+that an OLDER, already-archived date range is completely unaffected
+(`liveFilled:false`, identical candle count to before this change). The
+OANDA half of the new code path itself is Railway-only-testable, same as
+every other OANDA-dependent route in this codebase — flagged, not silently
+assumed to work.
+
+Also folded the near-duplicate `/api/vol-backtest/candles/:pair` and
+`/api/zscore-backtest/candles/:pair` handlers onto the one new
+`getM1CandleWindow` helper (previously each had its own copy of the archive
+window-slice loop) — removes a second copy of logic that would otherwise
+need the same gap-fill patched into it twice.
+
+🟢 unit-verified (merge/cap logic) + partially live-verified (archive path
+unaffected, R2 side confirmed working end-to-end); 🟡 the OANDA gap-fill
+itself needs a real trade-chart click on Railway to fully confirm, same
+sandbox limitation as every other OANDA-dependent feature here.
 
 ---
 

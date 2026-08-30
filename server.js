@@ -23036,20 +23036,9 @@ app.get('/api/zscore-backtest/candles/:pair', async (req, res) => {
   const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
   const { from, to } = req.query;
   try {
-    const packed = await getM1Cached(pair);
-    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
-    const { n, times, opens, highs, lows, closes } = packed;
-
-    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
-    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
-    const candles = [];
-    for (let i = 0; i < n && candles.length < 20000; i++) {
-      const t = times[i];
-      if (t >= fromTs && t <= toTs) {
-        candles.push({ time: new Date(t * 1000).toISOString().substring(0, 19), open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
-      }
-    }
-    res.json({ ok: true, pair, n: candles.length, candles });
+    const { candles, liveFilled } = await getM1CandleWindow(pair, from, to);
+    if (!candles.length) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} ${from ?? ''}…${to ?? ''} — check R2 credentials/local parquet, or OANDA_KEY for recent data` });
+    res.json({ ok: true, pair, n: candles.length, candles, liveFilled });
   } catch (e) {
     console.error('[zscore-backtest/candles]', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -24484,25 +24473,78 @@ async function getM1Cached(pair) {
   return p;
 }
 
-app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
-  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const { from, to } = req.query;
-  try {
-    const packed = await getM1Cached(pair);
-    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
-    const { n, times, opens, highs, lows, closes } = packed;
+// Gap-fill the archive's missing TAIL straight from OANDA (2026-08-30) — the
+// R2/local M1 parquet is a periodically, MANUALLY re-backfilled snapshot
+// (no scheduled refresh job exists for this `m1/` R2 prefix — see
+// LEGO_MODULES.md), so any trade dated more recently than the last backfill
+// has no archived data at all, which is what "no candle data for
+// <recent dates>" actually means (not a timezone/broker-time offset).
+// Deliberately TAIL-ONLY and capped at OANDA_M1_GAP_CAP_MIN (≈2.4 days) —
+// this fills exactly the small, recent gap a chart-on-click ever needs
+// (loadTradeChart's window is one trade ± 4h), never substitutes for R2 on
+// a wide historical window: OANDA's candles endpoint silently truncates
+// past ~5000 bars per request, so blindly falling back for an
+// archive-missing PAIR (not just a missing recent tail) over a multi-year
+// backtest window would return a truncated, wrong-looking chart instead of
+// an honest "no data" — the cap keeps this fallback to cases where it's
+// actually correct.
+const OANDA_M1_GAP_CAP_MIN = 3500;
 
-    // Unpack only the requested date window — avoids allocating millions of objects
-    const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
-    const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
-    const candles = [];
+async function fetchOandaM1Candles(pairKey, fromTs, toTs) {
+  if (!process.env.OANDA_KEY) return [];
+  let osym;
+  try { osym = oandaSymbol(pairKey); } catch { return []; }
+  const url = `${_oandaBaseMe()}/v3/instruments/${encodeURIComponent(osym)}/candles`
+    + `?granularity=M1&price=M&from=${encodeURIComponent(new Date(fromTs * 1000).toISOString())}`
+    + `&to=${encodeURIComponent(new Date(toTs * 1000).toISOString())}`;
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (j.candles ?? [])
+      .filter(c => c.complete !== false && c.mid)
+      .map(c => ({ time: c.time.slice(0, 19), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+  } catch (e) {
+    console.warn(`[candles] OANDA gap-fill failed for ${pairKey}: ${e.message}`);
+    return [];
+  }
+}
+
+// Shared window-builder for both candle routes below — archive slice +
+// OANDA tail gap-fill, one place instead of two copies.
+async function getM1CandleWindow(pair, from, to) {
+  const packed = await getM1Cached(pair);
+  const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
+  const toTs   = to   ? Math.floor(new Date(to   + 'T23:59:59Z').getTime() / 1000) : 2_000_000_000;
+  const candles = [];
+  if (packed) {
+    const { n, times, opens, highs, lows, closes } = packed;
     for (let i = 0; i < n && candles.length < 20000; i++) {
       const t = times[i];
       if (t >= fromTs && t <= toTs) {
         candles.push({ time: new Date(t * 1000).toISOString().substring(0, 19), open: opens[i], high: highs[i], low: lows[i], close: closes[i] });
       }
     }
-    res.json({ ok: true, pair, n: candles.length, candles });
+  }
+  const archiveLastTs = packed?.n ? packed.times[packed.n - 1] : null;
+  let liveFilled = false;
+  if (toTs > (archiveLastTs ?? -Infinity)) {
+    const gapFrom = archiveLastTs != null ? Math.max(fromTs, archiveLastTs + 60) : fromTs;
+    if ((toTs - gapFrom) / 60 <= OANDA_M1_GAP_CAP_MIN) {
+      const liveCandles = await fetchOandaM1Candles(pair, gapFrom, toTs);
+      if (liveCandles.length) { candles.push(...liveCandles); liveFilled = true; }
+    }
+  }
+  return { candles, liveFilled };
+}
+
+app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
+  const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const { from, to } = req.query;
+  try {
+    const { candles, liveFilled } = await getM1CandleWindow(pair, from, to);
+    if (!candles.length) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} ${from ?? ''}…${to ?? ''} — check R2 credentials/local parquet, or OANDA_KEY for recent data` });
+    res.json({ ok: true, pair, n: candles.length, candles, liveFilled });
   } catch (e) {
     console.error('[candles]', e.message);
     res.status(500).json({ ok: false, error: e.message });
