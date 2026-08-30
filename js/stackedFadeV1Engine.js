@@ -119,6 +119,12 @@ export const DEFAULT_CFG = {
   requireMomentumAgree: false,  // sell only if wt1>0 at an upper touch, buy only if wt1<0 at a lower touch
   requirePmoAgree: false,       // same shape, reading pmoValue instead of raw wt1
   requireBandSlopeExpanding: false,   // bandSlope='3·expanding' at touch (§12/§13's cross-market-real dim)
+  requireApproachSpike: false,  // approachVel='3·spike' at touch — Crabel's "the stretch": a fast, overextended
+                                  // drive INTO the level, the other half (with candleReject) of a real discretionary
+                                  // exhaustion read, not just "price touched a number"
+  tpRetraceFrac: 1.0,        // 'fade' only: target this fraction of the distance from entry back to VWAP
+                              // (1.0 = VWAP itself, unchanged default; 0.5 = halfway back — a partial
+                              // retracement target instead of the full round trip)
   followSlSigma: 1.0,        // 'follow' only: SL sits this many σ back from the touched band toward VWAP
                               // (TP stays fixed at +1σ out — smaller values widen R:R, e.g. 0.5 -> 2:1)
   confirmTfMinutes: 1,       // 'follow' only: require a CLOSE beyond the touched band before entering —
@@ -145,6 +151,7 @@ export function runStackedFade(packed, touches, cfg = {}) {
     .filter(t => !c.requirePmoAgree
       || (t.pmoValue != null && (t.side === 'up' ? t.pmoValue > 0 : t.pmoValue < 0)))
     .filter(t => !c.requireBandSlopeExpanding || t.bandSlope === '3·expanding')
+    .filter(t => !c.requireApproachSpike || t.approachVel === '3·spike')
     .sort((a, b) => a.epoch - b.epoch);
 
   const trades = [], records = [];
@@ -199,7 +206,12 @@ export function runStackedFade(packed, touches, cfg = {}) {
       sl = t.vwapAtTouch + followSgn * (t.band - c.followSlSigma) * t.fixedSigma;
       if ((tp - entry) * followSgn <= 0 || (entry - sl) * followSgn <= 0) continue;   // entry not between SL and TP
     } else {
-      tp = t.vwapAtTouch;
+      // tpRetraceFrac=1.0 (default): tp = entry + 1.0*(vwapAtTouch-entry) =
+      // vwapAtTouch, unchanged (sign-agnostic — vwapAtTouch/entry already
+      // encode direction, no need for sgn here). <1.0: a partial retracement
+      // — the same distance scaled down, still oriented toward VWAP from
+      // entry, never past it.
+      tp = entry + c.tpRetraceFrac * (t.vwapAtTouch - entry);
       if ((entry - tp) * sgn <= 0) continue;          // VWAP not on the profitable side
       const atr = causalAtr(packed, dayStart, packed.times[entryIdx], c);
       if (!atr) continue;
@@ -233,5 +245,6 @@ export function runStackedFade(packed, touches, cfg = {}) {
                    requireMomentumAgree: c.requireMomentumAgree,
                    requirePmoAgree: c.requirePmoAgree,
                    requireBandSlopeExpanding: c.requireBandSlopeExpanding,
+                   requireApproachSpike: c.requireApproachSpike, tpRetraceFrac: c.tpRetraceFrac,
                    followSlSigma: c.followSlSigma, confirmTfMinutes: c.confirmTfMinutes } } };
 }

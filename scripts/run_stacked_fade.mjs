@@ -41,6 +41,10 @@ for (const pair of list) {
         ['V1-dev (not-NY × not-overlap, §15)', { bands, excludeNY: true, excludeOverlap: true }],
         ['V1-dev band-3-only', { bands: [3], excludeNY: true, excludeOverlap: true }],
         ['V2-dev band-3-only + PMO agree', { bands: [3], requirePmoAgree: true }],
+        ['V3-dev band-3 + exhaustion (reject × spike)', { bands: [3], requireReject: true, requireApproachSpike: true }],
+        ['V4-dev band-3 + tpRetrace 0.75', { bands: [3], tpRetraceFrac: 0.75 }],
+        ['V5-dev band-3 + tpRetrace 0.5', { bands: [3], tpRetraceFrac: 0.5 }],
+        ['V6-dev band-3 + exhaustion × tpRetrace 0.5', { bands: [3], requireReject: true, requireApproachSpike: true, tpRetraceFrac: 0.5 }],
       ]
     : [
         ['V0 baseline (no gates)', { bands }],

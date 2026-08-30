@@ -1333,6 +1333,94 @@ momentum oscillator asks the question. Seventh null on this idea shape.
 Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
 developing` (now includes the PMO-gated variant by default).
 
+## 18. What might a real trader be doing differently — exhaustion confirmation and a partial-retracement target (2026-08-30)
+
+**Why:** the owner asked how a colleague might actually be trading this and
+getting entries. Two mechanisms brought in as outside domain knowledge, both
+genuinely untested here before now: (A) real discretionary "exhaustion"
+confirmation — a fast, overextended drive into the level (Crabel's "the
+stretch") THAT THEN gets rejected, not just a touch; (B) a partial
+retracement target instead of a full round trip to VWAP, since the return
+book (§7/§15) already shows the full round trip is the minority outcome past
+2σ.
+
+**Pre-registered before running:** same house bar. Stated prior: mixed.
+Idea A is close in spirit to gates already tested null (`requireReject`
+alone, §9; `requireMomentumAgree`, §9a) — combining two conditions mostly
+just shrinks the pool further and adds multiple-testing risk, so no clean
+win expected. Idea B is the first test in this whole study to touch the TP
+construction itself (every prior test only varied the stop or the entry
+filter) — a genuinely open question.
+
+**New engine capability**, both on `action:'fade'`: `requireApproachSpike`
+(`approachVel==='3·spike'` at touch — the other half of Crabel's exhaustion
+read, paired with the existing `requireReject`) and `tpRetraceFrac` (target
+`entry + frac×(vwapAtTouch − entry)`; `1.0` = unchanged VWAP target, `0.5` =
+halfway back). 4 new tests (a sign/algebra bug in the first draft of the
+`tpRetraceFrac` formula — using `sgn` where none was needed — was caught by
+the `0.5` test itself, before it ever touched real data). Runner gained V3
+(band-3 + exhaustion: reject × spike), V4/V5 (band-3 + tpRetrace 0.75/0.5),
+V6 (exhaustion × tpRetrace 0.5, "everything combined").
+
+### 18.1 Exhaustion confirmation (V3) — mixed, still null everywhere
+
+Pool shrinks hard (~85-87% of touches removed — much more selective than
+`requireReject` alone's ~9-12%, since both conditions must now co-occur):
+
+| instrument | V0-dev band-3 OOS t | V3 (exhaustion) OOS t | n (OOS) |
+|---|---|---|---|
+| gold | −6.70 | −3.31 | 189 |
+| EURUSD | −4.74 | −3.81 | 200 |
+| GBPUSD | −2.43 | **−3.42** | 226 |
+| USDJPY | −3.73 | −2.48 | 181 |
+
+Less negative on 3/4 instruments, worse on GBPUSD — no instrument gets
+anywhere near positive, and the smaller pool makes the IS half noticeably
+noisier (gold IS t only −1.04 on n=282). Same sign both halves everywhere,
+so it's a real (if weak) effect, not a fluke — just not a large enough one
+to matter.
+
+### 18.2 Partial retracement target (V4/V5) — win rate rises cleanly, expectancy does not
+
+| instrument | tpRetraceFrac | win% | OOS t |
+|---|---|---|---|
+| gold | 1.0 → 0.75 → 0.5 | 51% → 55% → 61% | −6.70 → −6.35 → −5.44 |
+| EURUSD | 1.0 → 0.75 → 0.5 | 52% → 57% → 59% | −4.74 → −5.17 → −4.25 |
+| GBPUSD | 1.0 → 0.75 → 0.5 | 55% → 59% → 63% | −2.43 → **−3.03 → −4.16** |
+| USDJPY | 1.0 → 0.75 → 0.5 | 47% → 53% → 60% | −3.73 → −3.81 → −4.08 |
+
+The win-rate rise is real, monotonic, and cross-instrument — a smaller
+target genuinely gets hit more often, exactly as the mechanism predicts.
+**It does not convert to better expectancy — on 3/4 instruments (all but
+gold) OOS t gets WORSE, not better, as the target shrinks.** This is the
+mirror image of §14a's stop-tightness sweep (there, the STOP shrank with
+the TP fixed; here the TP shrinks with the STOP fixed) and reaches the same
+conclusion from the other side: shrinking one leg of the trade while
+holding the other fixed moves R:R down faster than the higher win rate
+makes up for it.
+
+### 18.3 Combined (V6) — gold's least-bad result in the whole study, still solidly null
+
+`requireReject × requireApproachSpike × tpRetraceFrac:0.5` on gold: OOS t
+**−2.96** (IS t −2.76, n=189/282) — the closest ANY fade configuration in
+this entire study has come to the t>2 bar on gold, and still comfortably on
+the wrong side of it. EURUSD/GBPUSD/USDJPY do not improve the same way
+(−4.4/−3.54/−2.49) — not a cross-instrument finding, and not being reported
+as one. Stated plainly: this is still a clear null, reported honestly as
+the closest cell rather than omitted, not as a lead.
+
+**Verdict:** neither idea works, and the reason each fails is informative,
+not just "no." Real discretionary confirmation signals (approach speed +
+rejection) shrink the pool without fixing the expectancy problem. A nearer
+target hits more often but the stop was never the limiting factor — the
+R:R geometry, not the entry trigger or the target distance alone, is what's
+been wrong in every fade configuration tested across this whole study.
+Ninth null on this idea shape (eighth from V3, ninth from V4/V5/V6 as one
+family).
+
+Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
+developing` (V3-V6 now included by default).
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1391,6 +1479,20 @@ from no gate on the full pre-registered cross-instrument structure (barely
 filters the pool — a genuine deep-band touch is already almost always
 momentum-aligned by construction), the same conclusion §9a already reached
 with WaveTrend's own version of this gate. Seventh null on this idea shape.
-Registered in `LEGO_MODULES.md`. No routes/UI — per the
+§18 added `requireApproachSpike` (Crabel's "the stretch" — a fast drive into
+the level, paired with the existing `requireReject` for a real discretionary
+exhaustion read) and `tpRetraceFrac` (a partial-retracement TP instead of
+the full round trip to VWAP — the first test in this study to touch the TP
+construction rather than only the stop) to `stackedFadeV1Engine.js` (+4
+tests; a sign/algebra bug in the first draft of the TP formula was caught by
+its own test before touching real data). Both null on the full pre-registered
+cross-instrument structure: the exhaustion filter is mixed and small
+(shrinks the pool ~85-90%, moves OOS t less negative on 3/4 instruments,
+worse on GBPUSD, none positive); the partial-retracement target raises win
+rate cleanly and monotonically but does NOT improve expectancy — on 3/4
+instruments OOS t gets WORSE as the target shrinks, the mirror image of
+§14a's stop-tightness finding from the other leg of the trade. The combined
+variant produced gold's least-negative OOS t of the whole study (−2.96,
+still solidly null). Eighth/ninth null on this idea shape. Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.
