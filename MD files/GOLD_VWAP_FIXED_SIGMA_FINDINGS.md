@@ -815,6 +815,72 @@ pairs, essentially always. A data-coverage limit, not a failed replication —
 the comparison this specific check runs simply isn't testable on FX majors
 as framed.
 
+## 14. The with-trend trade test (2026-08-30) — null, the fifth in this study
+
+Owner's direct request: "test a with-trend entry not fade." The natural
+trade-level follow-up to §12/§13 — `bandSlope='3·expanding'` is the single
+best-corroborated descriptive finding in this whole effort (real,
+cross-market on 4 instruments), and it says continuation, not reversion, so
+this tests entering WITH the extension instead of fading it.
+
+**Mechanics**: `js/stackedFadeV1Engine.js` gained `action:'fade'|'follow'` as
+a parameter of the existing entry primitive (CLAUDE.md Lego Principle #2 —
+not a new engine). `action:'follow'`: enter WITH the touch direction
+(up-touch → BUY, dn-touch → SELL — the opposite of fade's mapping); TP = the
+(band+1)σ level as of the touch (frozen); SL = the (band−1)σ level as of the
+touch (frozen) — literally the same symmetric next-band-out/one-band-back
+race `fixedSigmaWalk`'s own descriptive out/back outcome already measures,
+now run as a costed trade. Same 240min cap, one trade/day, costs on as every
+other trade test here. Two variants, pre-registered before running: V0-follow
+(regardless) and V-expanding (gated on `bandSlope='3·expanding'`).
+
+**Pre-registered bar**: OOS t>2, positive mean, n≥30, positive gross, on gold
+AND replicating in the same direction on ≥2/3 FX majors. Stated plainly
+beforehand: TP and SL are both ~1×fixedSigma from the touched band by
+construction (entry sits at the band) — a roughly symmetric 1:1 R:R, so this
+needs a real win-rate edge above ~50% (plus a little for costs), not just
+"more likely than not to continue a bit." Four prior trade-level tests in
+this study (§6, §8b, §9, §9a) were all null; this is the best-corroborated
+descriptive finding tried yet, but the standing base rate is still null.
+
+**Result (gold + EURUSD/GBPUSD/USDJPY, OOS = last 40%):**
+
+| instrument | variant | OOS n | OOS mean | OOS t | OOS win% | OOS gross |
+|---|---|---|---|---|---|---|
+| gold | V0-follow | 855 | −0.0284% | −2.94 | 48.3% | −0.0084% |
+| gold | V-expanding | 618 | −0.0176% | −1.49 | 49.8% | +0.0024% |
+| EURUSD | V0-follow | 825 | −0.0178% | −3.75 | 48.1% | −0.0058% |
+| EURUSD | V-expanding | 537 | −0.0206% | −3.42 | 47.1% | −0.0086% |
+| GBPUSD | V0-follow | 822 | −0.0124% | −2.30 | 50.2% | −0.0004% |
+| GBPUSD | V-expanding | 513 | −0.0040% | −0.59 | 53.4% | +0.0080% |
+| USDJPY | V0-follow | 748 | −0.0081% | −1.37 | 49.2% | +0.0039% |
+| USDJPY | V-expanding | 509 | −0.0029% | −0.40 | 51.9% | +0.0091% |
+
+**Verdict: NULL against the pre-registered bar, every variant, every
+instrument — the fifth trade-level test in this study to come back null.**
+No cell reaches OOS t>2. V0-follow (regardless) is clearly negative
+everywhere (t −1.37 to −3.75).
+
+One thing worth reporting precisely rather than folding into a flat "null":
+**the `bandSlope=expanding` gate moves every single instrument in the right
+direction versus its own V0-follow** — less negative OOS t (gold −2.94→−1.49,
+GBPUSD −2.30→−0.59, USDJPY −1.37→−0.40; EURUSD is the one instrument where it
+gets worse, −3.75→−3.42, still an improvement in t though the mean ticks
+down), win rate up 1.5-4pp on 3 of 4, and gross turns positive on 3 of 4
+(gold, GBPUSD, USDJPY — EURUSD stays negative). That is the descriptive
+finding showing up in the trade data, honestly — it just isn't large enough
+to clear a ~1:1 R:R geometry plus costs anywhere. The geometry, not
+necessarily the entry signal, is the likely limiter here — the same
+conclusion §6's own exit-geometry pivot reached for the continuation trade
+tested there. Not tried: a wider TP / tighter SL (asymmetric R:R) or a
+trailing exit instead of the fixed next-band-out target, which is the
+natural next pivot per the "structural mutation, not a verdict" rule — not
+attempted here, not claimed to work.
+
+New tests: 5 in `js/stackedFadeV1Engine.test.mjs` (direction mapping, TP/SL
+band-math correctness, the `requireBandSlopeExpanding` gate, fade-mode
+backward-compat). Runner: `scripts/run_trend_follow.mjs`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -834,5 +900,8 @@ control check and permutation baseline), cross-instrument sweep
 §11/§12's `rangeConsumed`/`regimeState`/`bandSlope`). Stage-2 trade test
 `js/vwapImpulseEntryV1Engine.js` (+ tests) with runner
 `scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
-harness. Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook,
-the rows + book are the deliverable until something needs a live view.
+harness. `js/stackedFadeV1Engine.js` (§9/§9a) gained `action:'fade'|'follow'`
+(§14, +5 tests) — 'follow' is the with-trend trade on `bandSlope=expanding`,
+runner `scripts/run_trend_follow.mjs`, also null on gold + 3 FX majors.
+Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook, the rows +
+book are the deliverable until something needs a live view.
