@@ -15,7 +15,7 @@ A running collection of education content, logged as condensed summary notes for
   2. Evaluating Trading Education
   3. Signal Decay and Market Efficiency
   4. Market Efficiency and Information
-- **Series 02 — Risk Before Return** (4 lessons)
+- **Series 02 — Risk Before Return** (4 lessons) — logging in progress.
   1. The Mathematics of Drawdown
   2. Risk of Ruin
   3. Position Sizing and the Hidden Bet
@@ -268,5 +268,25 @@ Pattern drawn out: competition tracks capacity, and capacity tracks size — the
 **What to carry forward (paraphrased):** efficiency is a gradient, so the relevant question is where a given market sits, not whether market efficiency is true in some absolute sense; public information gets priced faster than a person can act on it, so speed isn't an available edge; competition tracks capacity, so it thins out where large participants can't fit; a longer time horizon is a genuine, usable advantage since an individual's constraints differ from an institution's; and an edge that requires assembling data has effort itself as its durability.
 
 **Series close (end of "Where Technical Analysis Underperforms"):** Four lessons build one argument — that an unmeasurable claim can't be trusted, and an easy edge won't last. Framed as solving half the problem (recognizing what's real and where it can still be found); the other half — staying solvent long enough to actually be paid by real edges — is left for the next series.
+
+---
+
+## Series: Risk Before Return
+
+### Lesson 1 — The Mathematics of Drawdown
+
+**Core argument:** A loss and the gain needed to recover it are not symmetric — the required recovery percentage grows faster than the loss itself, which is why professional risk limits look conservative from the outside: they're not just avoiding losses, they're staying inside a range where recovery stays arithmetic rather than becoming a multi-year project.
+
+**Chart 1 — recovery required vs. drawdown taken:** A curve plots the gain needed to get back to breakeven against the size of drawdown taken (5–90%, via slider). The relationship is nonlinear and accelerates sharply: a 20% drawdown needs ~25% to recover, but a 50% drawdown needs a full 100%, and a 70% drawdown needs ~233% — the curve goes vertical because the recovery percentage is being calculated on a smaller base than the one that was lost.
+
+**Why the two numbers diverge (four reasons):** the base changes (the loss was taken on the original, larger account; the recovery has to be earned on the smaller one left behind); compounding cuts both ways (the same mechanism that grows an account quickly makes losses expensive to undo); time is a hidden cost (a deep drawdown needs not just a bigger gain but a longer period to produce it); and the capacity to recover falls (a smaller account means each correct decision is worth less in absolute money). Worked example: recovering from a 50% drawdown at a 20%/year return rate takes nearly four years just to get back to the starting level — nothing wrong with the strategy itself, just that the size of the loss changed what it could still do in a reasonable timeframe. Framed as the reason professional risk limits look conservative: not fear of losses per se, but staying inside the range where recovery remains arithmetic rather than a multi-year project. Practical rule stated: cap the loss at a level the strategy's edge can realistically recover from in a reasonable time, then size positions to respect that cap.
+
+**Chart 2 — time spent under water:** An equity curve paired with a "time spent below the previous high" chart, using the same underlying edge each run (52% win rate, wins and losses of equal size) with a "run it again" button to reshuffle the sequence. One run shows a worst drawdown of ~13%, but 90% of the time spent below a previous equity high, with the longest such stretch running 182 trades. Point illustrated: every reshuffled sequence has the identical positive expectancy and win rate — what changes is only the *order* of results, and that order determines how deep the drawdowns go and how long the strategy spends "underwater," which is the part rarely advertised even for a genuinely profitable system.
+
+**What a drawdown costs beyond the number itself (four effects):** judgement degrades (decisions made while trying to recover are rarely the disciplined decisions the system called for); rules get broken (the urge to increase size is strongest exactly when doing so is most dangerous); constraints bind (a hard drawdown limit on a funded account doesn't care about the underlying edge — it just ends the account); and capital leaves (external investors tend to withdraw during drawdowns, shrinking the very base the recovery depends on). Framed as: the arithmetic is only half the problem — the other half is that a drawdown changes behaviour, and that behavioural change is what turns an otherwise survivable loss into a terminal one (e.g., a trailing drawdown limit can close an account during an ordinary losing streak regardless of how good the underlying edge is). The practical reframing offered: the relevant question isn't just how much can be made, but how much can be lost before the thing producing the edge becomes unavailable.
+
+**What to carry forward (paraphrased):** a loss and its recovery are different numbers, and the gap between them widens the further the drawdown goes; a 50% loss needs a 100% gain to recover, which is a multi-year project rather than a quick rebound; the same underlying edge can produce very different-looking equity paths purely from the order results occur in; even a genuinely positive-expectancy strategy spends much of its life below a previous equity high; and the practical habit is to cap losses at a level the edge can realistically recover from, then size to respect that cap.
+
+**Next in series:** Risk of Ruin — if drawdown depth determines what's recoverable, how likely is it to reach a depth that isn't? Framed as a calculable number rather than a matter of opinion.
 
 ---
