@@ -3102,6 +3102,184 @@ app.get('/api/events', async (_req, res) => {
   } catch (e) { res.json({ ok: false, reason: e.message, events: [] }); }
 });
 
+// ── COT board-wide AI analysis ────────────────────────────────────────────────
+// cot-extremes.html's "This week's read" panel is a deterministic, rule-based
+// restatement of the same JSON this reads — never a second opinion, just English
+// for numbers already on the page. This is the actual second opinion: the same
+// Anthropic-grounded pattern the per-pair drawer analysis and the morning brief
+// already use (buildAnalysisPrompt / _buildMorningBrief), scoped to the whole COT
+// board instead of one pair or the cross-asset macro tape, and asked to go one
+// step further than the rule-based read is willing to — name expected moves and
+// candidate trades, each with a stated invalidation. Cached per COT report date
+// (COT only refreshes weekly) so "Generate" doesn't refire the model every visit.
+const _COT_ANALYSIS_KV = 'cot_analysis_v1';
+let _cotAnalysisRunning = false;
+// Mirrors cot-extremes.html's own FX_PAIRS / GRP_NAME / CC_TO_CCY / ccyOf exactly —
+// this page has no shared module (plain script), so these are duplicated by hand;
+// keep both copies in sync if the instrument set changes.
+const _COT_FX_PAIRS = [
+  ['EUR','USD'],['GBP','USD'],['AUD','USD'],['NZD','USD'],['USD','CAD'],['USD','CHF'],
+  ['EUR','GBP'],['EUR','AUD'],['EUR','CAD'],['EUR','CHF'],['EUR','NZD'],
+  ['AUD','NZD'],['AUD','CAD'],['AUD','CHF'],['GBP','AUD'],['GBP','CAD'],['GBP','CHF'],['GBP','NZD'],
+  ['USD','JPY'],['EUR','JPY'],['GBP','JPY'],['AUD','JPY'],['CAD','JPY'],['CHF','JPY'],['NZD','JPY'],
+];
+const _COT_GRP_NAME = { fx:'FX', rates:'Rates', equities:'Equities', metals:'Metals', energy:'Energy', grains:'Grains', softs:'Softs', livestock:'Livestock', crypto:'Crypto' };
+const _COT_CC_TO_CCY = { US:'USD', EU:'EUR', DE:'EUR', FR:'EUR', IT:'EUR', ES:'EUR', GB:'GBP', UK:'GBP', JP:'JPY', CH:'CHF', AU:'AUD', CA:'CAD', NZ:'NZD' };
+const _COT_CCY_TO_CC = Object.entries(_COT_CC_TO_CCY).reduce((m, [cc, ccy]) => ((m[ccy] ||= []).push(cc), m), {});
+const _cotCcyOf = x => x.group === 'fx' ? x.sym : (['TU','TY','US'].includes(x.sym) ? 'USD' : null);
+
+async function _buildCotAnalysis() {
+  const key = process.env.ANT_KEY;
+  if (!key) throw new Error('ANT_KEY not configured');
+  const raw = await kv.get(COT_KV.extremes);
+  if (!raw) throw new Error('No COT data cached yet — load cot-extremes.html once (or hit Refresh CFTC) first.');
+  const cd = JSON.parse(raw);
+  const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+  const all = (Array.isArray(arr) ? arr : []).filter(x => x && x.sym);
+  if (!all.length) throw new Error('COT payload has no instruments');
+  const reportDate = all[0]?.reportDate ?? cd.data?.reportDate ?? null;
+
+  const pctOf = x => x.specSharePct ?? x.specPct;
+  const commOf = x => x.commSharePct ?? x.commPct;
+  const ranked = all.filter(x => pctOf(x) != null);
+  const ext = ranked.filter(x => pctOf(x) >= 90 || pctOf(x) <= 10)
+    .sort((a, b) => Math.abs(50 - pctOf(b)) - Math.abs(50 - pctOf(a)));
+
+  // Confluence: commercials independently at their own opposite extreme — the
+  // strongest version of this data's read (same test as the page's Confluence panel).
+  const confluence = new Set(ext.filter(x => { const c = commOf(x); return c != null && (pctOf(x) >= 90 ? c <= 10 : c >= 90); }));
+
+  // Flow: still extending the existing crowd vs already paring back (same sign
+  // comparison as the page's Positioning Flow panel).
+  const flowOf = x => (!Number.isFinite(x.specShareChg) || x.specShare == null || x.specShareChg === 0) ? null
+    : (Math.sign(x.specShareChg) === Math.sign(x.specShare) ? 'extending' : 'paring');
+
+  // Asset-class leans — a whole class leaning together is one macro position, not several.
+  const leans = [...new Set(ranked.map(x => x.group))].map(g => {
+    const srt = ranked.filter(x => x.group === g).map(pctOf).sort((a, b) => a - b);
+    return { g, n: srt.length, med: srt[srt.length >> 1] };
+  }).filter(x => x.n >= 2 && (x.med >= 70 || x.med <= 30));
+
+  // Reinforcing FX crosses — both legs individually at a 90th/10th extreme, direction
+  // reinforcing on the cross between them (same test as the page's Reinforcing FX Pairs panel).
+  const bySym = {}; ext.filter(x => x.group === 'fx').forEach(x => bySym[x.sym] = x);
+  const combos = _COT_FX_PAIRS.filter(([b, q]) => { const A = bySym[b], B = bySym[q];
+    return A && B && (pctOf(A) >= 90) !== (pctOf(B) >= 90); }).map(([b, q]) => b + q);
+
+  // Event risk — crowded FX/Treasury markets walking into a scheduled release for
+  // their own currency in the next 3 days (same window as the page's own overlay).
+  let eventLines = [];
+  try {
+    const evRes = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+    if (evRes.ok) {
+      const now = Date.now();
+      const upcoming = evRes.events.filter(e => ['high', 'medium'].includes(e.impact) && e.ms >= now && e.ms - now <= 3 * 86400e3);
+      eventLines = ext.map(x => {
+        const ccy = _cotCcyOf(x); if (!ccy) return null;
+        const countries = _COT_CCY_TO_CC[ccy] || [];
+        const e = upcoming.find(v => countries.includes(v.country));
+        if (!e) return null;
+        const hrs = Math.round((e.ms - now) / 3.6e6);
+        return `${x.sym} (${pctOf(x) >= 90 ? 'crowded long' : 'crowded short'}) → ${e.event} in ${hrs < 24 ? hrs + 'h' : Math.round(hrs / 24) + 'd'} (${e.impact} impact)`;
+      }).filter(Boolean);
+    }
+  } catch {}
+
+  // Cross-asset backdrop — same FRED cache the morning brief reads, for the dollar-regime context.
+  let macroLine = '';
+  try {
+    const fredRaw = await kv.get(_FRED_DASH_KV);
+    const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
+    const g = k => fred?.[k]?.value, gp = k => fred?.[k]?.prev;
+    if (g('dxy') != null) {
+      macroLine = `VIX ${g('vix')} (prev ${gp('vix')}) · DXY ${g('dxy')} (prev ${gp('dxy')}) · US 2Y ${g('us2y')} · US10Y ${g('us10y')} · HY spread ${g('hy')}% (prev ${gp('hy')}%)`;
+    }
+  } catch {}
+
+  const nm = x => x.sym === 'US' ? 'US30Y' : x.sym;
+  const rows = ext.map(x => {
+    const p = pctOf(x), c = commOf(x), f = flowOf(x);
+    return `${nm(x)} [${_COT_GRP_NAME[x.group] || x.group}] — spec crowding ${p}th pctile (${p >= 90 ? 'crowded LONG' : 'crowded SHORT'}), net ${x.specShare != null ? (x.specShare > 0 ? '+' : '') + x.specShare + '% of OI' : 'n/a'}`
+      + `${Number.isFinite(x.specShareChg) ? `, ${x.specShareChg > 0 ? '+' : ''}${x.specShareChg}pp this wk` : ''}`
+      + `${c != null ? `, commercials ${c}th pctile` : ''}${f ? `, ${f} this week` : ''}${confluence.has(x) ? ', COMMERCIAL CONFLUENCE' : ''}`;
+  }).join('\n');
+
+  const ageD = reportDate ? Math.round((Date.now() - Date.parse(reportDate)) / 864e5) : null;
+
+  const prompt = `You are a positioning analyst writing the WEEKLY COT (Commitments of Traders) BRIEF for an FX/macro desk. You are given this week's CFTC positioning read across ${ranked.length} markets (FX, rates, metals, energy, equities). Your job is to go further than a mechanical percentile read: say what this positioning backdrop means for the week ahead — which crowded markets are the ones actually worth watching, what an unwind or continuation would look like, and name specific trade ideas where the data supports one. Be direct and specific; do not hedge every sentence, but do NOT overstate confidence beyond what the data supports.
+
+=== REPORT DATE ===
+${reportDate ?? 'unknown'}${ageD != null ? ` (${ageD} days old — COT is a Tuesday snapshot released the following Friday; positioning has moved since, you cannot see how)` : ''}
+
+=== MARKETS AT A 90TH/10TH-PERCENTILE CROWDING EXTREME (net position as % of open interest, ranked against each market's own trailing ~3-year history) ===
+${rows || '(none — nothing on the board is stretched this week)'}
+
+=== ASSET-CLASS LEANS (median percentile past 70th/30th across the group) ===
+${leans.length ? leans.map(x => `${_COT_GRP_NAME[x.g] || x.g}: median ${x.med}th across ${x.n} markets`).join('\n') : '(no asset class leans as a block this week)'}
+
+=== REINFORCING FX CROSSES (both legs individually crowded, direction reinforces on the cross) ===
+${combos.length ? combos.join(', ') : '(none this week)'}
+
+=== EVENT RISK — crowded markets walking into a scheduled release for their own currency in the next 3 days ===
+${eventLines.length ? eventLines.join('\n') : '(none flagged)'}
+${macroLine ? `\n=== CROSS-ASSET BACKDROP ===\n${macroLine}\n` : ''}
+RULES:
+- Ground every claim in the data above. Never invent a level, a catalyst, or a number you were not given.
+- COT is a crowding conditioner, not a timing signal — a crowded reading says the fuel for more of the same is thin, never when or whether it turns. Frame trade ideas accordingly: as candidates worth watching / sizing around, not certainties.
+- Commercial confluence (spec crowded one way, commercials independently at their own opposite extreme) is the strongest version of this data's read — weight it accordingly when picking trade ideas.
+- A market still EXTENDING an already-stretched position has not begun to unwind; one PARING back looks like the start of an unwind, though it can also just be a pause — say which each trade idea assumes.
+- If nothing on the board clears the bar for a real trade idea, say so plainly and return an empty tradeIdeas array rather than forcing one.
+- Every trade idea needs a stated invalidation (what would prove the idea wrong) — an idea with no invalidation is not usable.
+
+Respond with ONLY valid JSON, no markdown:
+{"headline":"one-sentence front-page read of this week's positioning","verdict":"STRETCHED|PATCHY|QUIET|CALM","weeklyTheme":"2-4 sentences on the dominant theme this week — is this one macro position wearing several costumes, or unrelated idiosyncratic crowding","marketNotes":[{"market":"symbol from the list above","direction":"CROWDED LONG|CROWDED SHORT","note":"1-2 sentences: what this specific reading means and what to watch for"}],"tradeIdeas":[{"market":"symbol","direction":"LONG|SHORT","thesis":"fade the crowd|ride the flow|event-driven","confidence":"LOW|MEDIUM|HIGH","rationale":"2-3 sentences citing the specific data behind it","invalidation":"what would prove this wrong"}],"riskWarnings":["short warnings"],"tldr":"one-line bottom line for the week"}`;
+
+  const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6', max_tokens: 3200,
+      system: 'You ALWAYS respond with valid complete JSON only — no markdown, no backticks. Ground every claim strictly in the provided data; never invent levels, catalysts, or figures.',
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!antRes.ok) throw new Error(`Anthropic ${antRes.status}: ${(await antRes.text()).slice(0, 300)}`);
+  const antData = await antRes.json();
+  if (antData.stop_reason === 'max_tokens') throw new Error('response truncated — try again');
+  const clean = (antData.content?.[0]?.text ?? '').replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  const analysis = JSON.parse(clean);
+  const payload = { analysis, generatedAt: new Date().toISOString(), reportDate, marketCount: ranked.length, extremeCount: ext.length };
+  await kv.put(_COT_ANALYSIS_KV, JSON.stringify(payload)).catch(() => {});
+  return payload;
+}
+app.get('/api/cot-analysis', async (_req, res) => {
+  try {
+    const raw = await kv.get(_COT_ANALYSIS_KV);
+    if (!raw) return res.json({ ok: false, error: 'No AI analysis yet — click Generate.' });
+    const payload = JSON.parse(raw);
+    // Flag staleness against the CURRENT COT cache so the UI can tell "generated
+    // from last week's report" from "generated from what's on screen right now"
+    // without re-running the model just to find out.
+    let currentReportDate = null;
+    try {
+      const cotRaw = await kv.get(COT_KV.extremes);
+      if (cotRaw) {
+        const cd = JSON.parse(cotRaw);
+        const arr = cd.data?.instruments ?? cd.data ?? cd.instruments ?? [];
+        currentReportDate = (Array.isArray(arr) ? arr : [])[0]?.reportDate ?? null;
+      }
+    } catch {}
+    res.json({ ok: true, ...payload, cached: true, stale: !!(currentReportDate && payload.reportDate && currentReportDate !== payload.reportDate) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/cot-analysis', async (_req, res) => {
+  if (_cotAnalysisRunning) return res.status(409).json({ ok: false, error: 'a COT analysis is already generating' });
+  _cotAnalysisRunning = true;
+  try { res.json({ ok: true, ...(await _buildCotAnalysis()) }); }
+  catch (e) { res.status(/ANT_KEY/.test(e.message) ? 503 : 500).json({ ok: false, error: e.message }); }
+  finally { _cotAnalysisRunning = false; }
+});
+
 // ── Auto-generation config + scheduler (Morning Brief + selected per-pair AI) ──
 // User-controlled from brief-config.html: turn the Morning Brief auto-refresh on/
 // off, and tick which pairs get an auto per-pair analysis each morning (the ones
