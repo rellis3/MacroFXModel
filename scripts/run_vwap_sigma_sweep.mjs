@@ -15,12 +15,18 @@
  *   T1  race outcome, Asia vs NY out-rate at ±1σ (gold: Asia −, NY +)
  *   T2  race outcome, grind vs spike approach at ±1σ (gold: grind −)
  *   T3  race outcome, touch-bar reject vs accept at ±2σ (gold: reject −)
- * plus the held-findings counts of both books.
+ *   T4  race outcome ±2-3σ: rangeConsumed high vs low (gold: high + — continuation,
+ *       counter to the naive "exhaustion → reversion" read, §11)
+ *   T5  race outcome ±2-3σ: regimeState 3·trend×3·expanding vs base (gold: + —
+ *       the one cell that matched the owner's own screenshot hypothesis, §12)
+ *   R4  return outcome ±2-3σ: bandSlope expanding vs stable/contracting (gold:
+ *       expanding + — real but counter-intuitive, §12)
+ * plus the held-findings counts of all three books (race, return, band-walk).
  */
 
 import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import { fixedSigmaWalk } from '../js/vwapFixedSigmaEngine.js';
-import { buildFixedSigmaBook, buildVwapReturnBook, extractHeldFindings,
+import { buildFixedSigmaBook, buildVwapReturnBook, buildBandWalkBook, extractHeldFindings,
          returnedWithin, returnEligible } from '../js/vwapFixedSigmaReport.js';
 
 const pairs = process.argv.slice(2).filter(a => !a.startsWith('-'));
@@ -40,6 +46,7 @@ for (const pair of list) {
 
   const firsts = touches.filter(t => t.ordinal === 1);
   const deepEl = firsts.filter(t => (t.band === 2 || t.band === 3) && returnEligible(t));
+  const deep23 = firsts.filter(t => t.band === 2 || t.band === 3);
   const b1 = firsts.filter(t => t.band === 1);
   const b2 = firsts.filter(t => t.band === 2);
 
@@ -49,8 +56,12 @@ for (const pair of list) {
   console.log(`  T1 ±1σ race out%: Asia ${fmt(outRate(b1, t => t.session === 'Asia'))}  NY ${fmt(outRate(b1, t => t.session === 'NY'))}   [gold: Asia<NY]`);
   console.log(`  T2 ±1σ race out%: grind ${fmt(outRate(b1, t => t.approachVel === '1·grind'))}  spike ${fmt(outRate(b1, t => t.approachVel === '3·spike'))}   [gold: grind<spike; control opposite]`);
   console.log(`  T3 ±2σ race out%: reject ${fmt(outRate(b2, t => t.candleReject === '3·reject'))}  accept ${fmt(outRate(b2, t => t.candleReject === '1·accept'))}   [gold: reject<accept]`);
+  console.log(`  T4 ±2-3σ race out%: rangeConsumed high ${fmt(outRate(deep23, t => t.rangeConsumed === '3·high'))}  low ${fmt(outRate(deep23, t => t.rangeConsumed === '1·low'))}   [gold: high>low, §11]`);
+  console.log(`  T5 ±2-3σ race out%: regimeState 3·trend×3·expanding ${fmt(outRate(deep23, t => t.regimeState === '3·trend×3·expanding'))}  vs all ${fmt(outRate(deep23, () => true))}   [gold: cell>base, §12]`);
+  console.log(`  R4 ±2-3σ return≤240m: bandSlope expanding ${fmt(rate(deepEl, t => t.bandSlope === '3·expanding'))}  stable/contracting ${fmt(rate(deepEl, t => t.bandSlope !== '3·expanding' && t.bandSlope != null))}   [gold: expanding>stable/contracting, §12]`);
 
   const race = extractHeldFindings(buildFixedSigmaBook(touches, { firstTouchOnly: true }), { limit: 10000 });
   const ret = extractHeldFindings(buildVwapReturnBook(touches), { limit: 10000 });
-  console.log(`  held findings: race book ${race.length}, return book ${ret.length}`);
+  const walk = extractHeldFindings(buildBandWalkBook(touches), { limit: 10000 });
+  console.log(`  held findings: race book ${race.length}, return book ${ret.length}, band-walk book ${walk.length}`);
 }

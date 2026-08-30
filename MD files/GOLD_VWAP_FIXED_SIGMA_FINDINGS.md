@@ -765,6 +765,56 @@ information test (AUC/information-gain) for the VuManChu-last question,
 which would need a genuinely different, heavier method than this project's
 bucket/delta/control style.
 
+## 13. Cross-instrument replication of §11-12 (2026-08-30)
+
+Per the standing discipline ("gold-only" has burned this study before — the
+WT-neutral-returns finding, §7b), the two headline §11/§12 findings checked
+against EURUSD/GBPUSD/USDJPY before either is trusted further. Pre-named
+checks (T4/T5/R4), added to `scripts/run_vwap_sigma_sweep.mjs` alongside the
+existing R1-3/T1-3 replication set — same script, same discipline, not a new
+fishing pass.
+
+**`bandSlope` (§12) replicates cleanly, on all three majors, same direction,
+similar-to-larger magnitude than gold:**
+
+| | gold | EURUSD | GBPUSD | USDJPY |
+|---|---|---|---|---|
+| return≤240m: expanding | — | 49.1% (n=1869) | 49.3% (n=1760) | 47.9% (n=1841) |
+| return≤240m: stable/contracting | — | 38.6% (n=1692) | 38.1% (n=1767) | 39.3% (n=1464) |
+| gap | +7 to +11pp (per-cell) | **+10.5pp** | **+11.2pp** | **+8.6pp** |
+
+This is now the single best-corroborated NEW finding from the last two
+sessions' work — real on 4 independent instruments, not gold-specific,
+counter to naive intuition on all four: expanding volatility means MORE
+return to VWAP, not less.
+
+**`regimeState=3·trend×3·expanding` (§12's headline, the one cell that
+matched the owner's own screenshot hypothesis) does NOT clearly replicate:**
+
+| | gold (OOS) | EURUSD | GBPUSD | USDJPY |
+|---|---|---|---|---|
+| cell out% vs base | **+3.7 to +9.5pp** | 28.4% vs 29.5% (−1.1) | 30.4% vs 31.1% (−0.7) | 33.6% vs 31.0% (+2.6) |
+
+Two of three majors show it flat-to-slightly-negative; USDJPY shows a small
+positive, well under gold's own magnitude. Read straight: this looks
+gold-specific (or at minimum, not robust), the same pattern already seen for
+the WaveTrend-neutral-returns finding in §7b — a momentum-flavoured
+conditioning result surviving on gold but not generalising, while the pure
+volatility-expansion signal (`bandSlope` alone) does generalise. **Do not
+treat `regimeState`'s trend×expanding cell as validated going forward** —
+it is reported here specifically to correct the impression §12 may have
+given.
+
+**`rangeConsumed` high-vs-low (§11) could not be checked this way** — the
+"low" (<0.5× expected range) bucket is essentially unpopulated at the
+±2-3σ FX-major touch population (n=3 on EURUSD/GBPUSD, n=3 on USDJPY,
+against thousands in the "high" bucket): FX pairs trade a much narrower
+range relative to their own σ than gold, so by the time price reaches a
+deep band the day's typical range is already mostly spent, on these three
+pairs, essentially always. A data-coverage limit, not a failed replication —
+the comparison this specific check runs simply isn't testable on FX majors
+as framed.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -779,7 +829,9 @@ forward-scan OUTCOME, not a context dim), +1 test), report
 `buildVwapReturnBook`'s exact shape), runner `scripts/run_gold_vwap_sigma.mjs`,
 controls `scripts/run_gold_vwap_sigma_controls.mjs` (§11+§12's dims added to
 the ±1σ/±2-3σ race and return control checks, plus a new band-walk-outcome
-control check and permutation baseline). Stage-2 trade test
+control check and permutation baseline), cross-instrument sweep
+`scripts/run_vwap_sigma_sweep.mjs` (§13 added T4/T5/R4 pre-named checks for
+§11/§12's `rangeConsumed`/`regimeState`/`bandSlope`). Stage-2 trade test
 `js/vwapImpulseEntryV1Engine.js` (+ tests) with runner
 `scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
 harness. Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook,
