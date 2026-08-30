@@ -242,7 +242,7 @@ export function simulateVwapSession(bars, spec) {
     // against vwap[k-1], no same-bar lookahead).
     const ref = (k) => vwap[k - 1];
     const { confirmTfMinutes = 1, minCrossSigma = 0, requireTrendRegime = false,
-            adxThreshold = 25, excludeSession = null } = spec;
+            adxThreshold = 25, excludeSession = null, stopSigma = 0 } = spec;
     const dayStart0 = bars[0].time - (bars[0].time % DAY);
     const adx = requireTrendRegime ? adxWilder(bars, 14) : null;
 
@@ -294,9 +294,41 @@ export function simulateVwapSession(bars, spec) {
     if (revIdx >= 0) { exitIdx = revIdx; exitPx = bars[revIdx].close; outcome = 'reverse_cross'; }
 
     const sgn = isBuyCross ? 1 : -1;
+    const sEntry = sd[entryIdx];
+
+    // stopSigma (2026-08-30, owner's follow-up): opt-in, default off. This mode
+    // never had a stop at all — walk the real intrabar path (wicks, not closes,
+    // same "actual path" discipline as the MAE below) for the FIRST bar that
+    // reaches entryPx ± stopSigma·σ, and exit there if it comes before the
+    // natural exit above. NOTE this is a real forward walk, not a retroactive
+    // cap on the realized trade — capping post-hoc off MAE can only ever make
+    // pnl same-or-worse (MAE is measured off wicks, the natural exit off
+    // closes, so MAE >= the natural exit's adverse move by construction) and
+    // so can never honestly show whether a stop *helps*. A stop can only be
+    // tested honestly by simulating the early exit forward.
+    if (stopSigma > 0 && sEntry > 0) {
+      const stopLevel = sgn > 0 ? entryPx - stopSigma * sEntry : entryPx + stopSigma * sEntry;
+      for (let m = entryIdx + 1; m <= exitIdx; m++) {
+        const hit = sgn > 0 ? bars[m].low <= stopLevel : bars[m].high >= stopLevel;
+        if (hit) { exitIdx = m; exitPx = stopLevel; outcome = 'stopped'; break; }
+      }
+    }
+
+    // MAE: walk the REALIZED path entry->exit (whatever exit was actually used
+    // above) for the worst adverse excursion, in σ units (reusing
+    // computeSessionVwap's own sd[] at entry, this study's standard scale) —
+    // diagnostic regardless of whether stopSigma is active.
+    let maePrice = 0;
+    for (let m = entryIdx + 1; m <= exitIdx; m++) {
+      const adverse = sgn > 0 ? (entryPx - bars[m].low) : (bars[m].high - entryPx);
+      if (adverse > maePrice) maePrice = adverse;
+    }
+    const maeSigma = sEntry > 0 ? +(maePrice / sEntry).toFixed(3) : null;
+
     const net = ((exitPx - entryPx) / entryPx) * 100 * sgn - costPct;
     return { filled: true, side: isBuyCross ? 'BUY' : 'SELL', outcome, mode,
       pnl_pct: +net.toFixed(5), entry: +entryPx.toFixed(6), exit: +exitPx.toFixed(6),
+      maePrice: +maePrice.toFixed(6), maeSigma,
       fill_time: bars[entryIdx + 1].time, exit_time: bars[exitIdx].time };
   }
 
@@ -331,7 +363,8 @@ export function runVwapReversion(packed, opts = {}) {
       if (passFrom && passTo) {
         const t = simulateVwapSession(sess, spec);
         records.push({ date: d, filled: t.filled, pnl_pct: t.pnl_pct,
-                       side: t.side, outcome: t.outcome, mode: t.mode });
+                       side: t.side, outcome: t.outcome, mode: t.mode,
+                       entry: t.entry, maePrice: t.maePrice, maeSigma: t.maeSigma });
       }
     }
     sess = [];

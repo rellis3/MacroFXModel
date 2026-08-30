@@ -9,6 +9,8 @@ logs/fade_trade_conditions_stdout.txt
 logs/fade_trade_cull_stdout.txt
 logs/vwap_trend_cross_stdout.txt
 logs/vwap_trend_cross_filters_stdout.txt
+logs/vwap_trend_cross_sigma_sweep_stdout.txt
+logs/vwap_trend_cross_mae_diagnostic_stdout.txt
 education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 vmcResearch/data/*.parquet

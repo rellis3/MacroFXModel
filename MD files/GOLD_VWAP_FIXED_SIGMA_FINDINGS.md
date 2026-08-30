@@ -1664,6 +1664,110 @@ Eleventh null on VWAP idea shapes in this codebase's work, and — like
 Runner: `scripts/run_vwap_trend_cross_filters.mjs gold eurusd gbpusd
 usdjpy`.
 
+## 22. Pushing `minCrossSigma` further, and does a stop-loss fix the fat tail? Two more nulls, one a caught-before-reporting methodology bug (2026-08-30)
+
+**Why:** the owner said "keep going." §21 found `minCrossSigma` the one
+filter moving every instrument the same (improving) direction, tested only
+at 0.5/1.0σ — worth pushing further to see if the improvement continues,
+plateaus, or reverses. Separately: `vwap_trend_cross` has never had a
+stop-loss at all, unlike every fade-family test in this study — worth
+checking whether that's (also) a fat-tail-risk problem before drawing any
+further conclusions. New runners `scripts/run_vwap_trend_cross_sigma_sweep.mjs`
+and `scripts/run_vwap_trend_cross_mae_diagnostic.mjs`. Engine gained real
+MAE tracking (`maePrice`/`maeSigma`, walked off the actual OHLC path,
+entry→exit) and a `stopSigma` param on `vwap_trend_cross` (opt-in, default
+off, +2 tests: 46 total).
+
+### 22a — `minCrossSigma` pushed to 1.5/2.0/2.5/3.0: superficially consistent OOS gains that fail the same-sign check on every single cell
+
+**Pre-registered before running:** same house bar (OOS t>2, n≥30, positive
+gross, same sign IS/OOS, gold + ≥2/3 FX majors). Stated prior: genuinely
+open — §21 showed a monotonic direction only through 1.0σ; whether it
+continues past that point was unknown either way.
+
+**Result: on the raw OOS numbers alone, EURUSD and USDJPY look like they
+found something — multiple consecutive σ-steps of positive OOS mean/t,
+peaking at USDJPY 2.5σ (OOS t **+1.24**, gross +0.0514%). Checking the
+pre-registered same-sign bar kills every one of them.**
+
+| | 1.5σ | 2.0σ | 2.5σ | 3.0σ |
+|---|---|---|---|---|
+| gold IS / OOS t | −2.08 / −2.75 | −0.62 / −2.92 | +0.05 / −1.83 | +0.21 / −0.97 |
+| EURUSD IS / OOS t | −1.81 / **+0.15** | −1.08 / **+0.81** | −1.48 / **+0.41** | −0.43 / **+0.24** |
+| GBPUSD IS / OOS t | −0.53 / −1.32 | −1.65 / **+0.07** | −1.51 / −0.34 | −0.54 / **+0.49** |
+| USDJPY IS / OOS t | −0.40 / **+0.55** | −0.11 / **+0.93** | −0.69 / **+1.24** | −0.15 / **+0.75** |
+
+Every bolded OOS-positive cell sits opposite a negative IS mean at the same
+σ — the exact IS/OOS sign-flip noise signature this study has repeatedly
+flagged as disqualifying (§14, §14b, §18): chance resolving differently
+across the two halves, not a stable effect. EURUSD and USDJPY show this at
+EVERY σ level from 1.5 through 3.0 without exception; GBPUSD's pattern is
+additionally inconsistent cell-to-cell (2.0σ and 3.0σ flip, 1.5σ and 2.5σ
+don't). None of the three passes the pre-registered same-sign bar at any
+level tested. Gold does not even get the superficial positive OOS —
+pushing past 1.0σ makes it **monotonically worse** (OOS mean −0.0289% →
+−0.0991% at 2.5σ, t −2.84 → −2.92), the opposite direction from the FX
+majors, ruling out a universal "go to higher σ" story. Trade counts also
+collapse fast (gold OOS n=20 at 3.0σ, under the n≥30 floor; others 68-116).
+
+**Verdict:** twelfth null. Worth stating plainly because the raw numbers
+alone (multiple consecutive improving OOS steps, real economic magnitude)
+are exactly the shape that would look like a real finding without checking
+the same-sign bar — this is precisely why that check is pre-registered
+before running, not applied selectively after seeing a good number.
+
+### 22b — does a stop-loss fix the fat tail? A caught methodology bug, then a clean, honest null
+
+`vwap_trend_cross` rides to the opposite cross or session end with no stop
+at all — a structural gap unique to this mode in the whole study. Two
+questions, at `minCrossSigma=1.0` (§21's highest threshold with genuine,
+non-sign-flipped negative results on all 4 instruments): (1) descriptively,
+do losers show bigger adverse excursions than winners; (2) does adding a
+real stop recover a tradeable edit.
+
+**Descriptive MAE (σ units, walked off the real OHLC path):** losers show
+meaningfully larger adverse excursions than winners on all 4 instruments —
+winners mean 0.74-0.82σ (p50 0.61-0.73σ), losers mean 1.80-1.96σ (p50
+1.58-1.60σ). Real and consistent, but close to tautological: a trade that
+ends up a loser has, close to by definition, traveled further against the
+position at its worst point than one that ends up a winner. Stated
+honestly as descriptive, not causal, evidence.
+
+**Testing the causal question required catching my own bug first.** The
+first version of this diagnostic tried to answer "would a stop help" by
+retroactively capping each trade's realized pnl at its own recorded MAE.
+That approach is invalid by construction: `maePrice` is measured off
+intrabar wicks (low/high) while the natural exit is measured off closes, so
+`maePrice` is always ≥ the adverse move implied by the natural exit — a
+retroactive cap can therefore only ever make pnl same-or-worse, and can
+NEVER show a stop helping even if one genuinely would. Caught before being
+reported (per CLAUDE.md's "assume code failure first" rule) and fixed the
+honest way: a real `stopSigma` param on `vwap_trend_cross` that walks the
+path FORWARD from entry and exits the moment price wicks past entryPx ±
+stopSigma·σ, the same convention every other stop-based mode in this study
+already uses.
+
+**Result with the real forward-walked stop, `stopSigma` ∈
+{1,1.5,2,2.5,3,4,5}, `minCrossSigma=1.0`: no stop level crosses the
+pre-registered bar, or meaningfully improves on the no-stop baseline, on
+any of the 4 instruments.** Gold and GBPUSD stay solidly negative and
+statistically significant at every level tested (OOS t roughly −1.9 to
+−3.8) — the stop does not rescue either, and on gold it sometimes makes the
+t-stat MORE negative (variance shrinks with the mean). EURUSD and USDJPY's
+already-near-zero, not-significant baseline OOS (t −0.72 / −0.54) stays
+near-zero-to-negative at every stop level tried — no flip to a genuine
+positive.
+
+**Verdict:** clean, honest null, and it answers §20/§21's open question
+directly — this is a slow-bleed/weak-signal problem (many small
+negative-EV trades), not a fat-tail blow-up a stop-loss can fix. The larger
+MAE on losers is real but does not translate into an exploitable stop.
+Thirteenth null on this idea shape.
+
+Runners: `scripts/run_vwap_trend_cross_sigma_sweep.mjs gold eurusd gbpusd
+usdjpy`, `scripts/run_vwap_trend_cross_mae_diagnostic.mjs gold eurusd gbpusd
+usdjpy`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1790,6 +1894,25 @@ still-null mechanism — a lot of the whipsaw is trivial near-VWAP noise a
 (gold at confirm=15m, USDJPY at minCrossSigma=0.5) do not replicate
 cross-instrument and are flagged, not promoted, matching this study's
 standing discipline. Eleventh null, again the one that narrows down why.
+§22 pushed `minCrossSigma` further (1.5-3.0σ) and added real MAE tracking
+(`maePrice`/`maeSigma`, walked off the actual OHLC path) plus a `stopSigma`
+opt-in param to `vwap_trend_cross` (+2 tests, 46 total). Twelfth null:
+EURUSD/USDJPY show multiple consecutive σ-steps of apparently-positive OOS
+(up to USDJPY +1.24t at 2.5σ) that look like a real finding on the raw
+numbers alone, but EVERY one of those cells is a negative-IS/positive-OOS
+sign flip — the disqualifying noise signature this study has repeatedly
+flagged (§14/§14b/§18) — and gold moves the opposite, more-negative
+direction at the same thresholds. Thirteenth null: a real forward-walked
+stop (`stopSigma`, engine-level; a first retroactive-cap version was caught
+as mathematically invalid before being reported — MAE is measured off
+wicks, the natural exit off closes, so a cap can only make pnl same-or-worse
+by construction, never show a stop helping) does not rescue any instrument
+at `minCrossSigma=1.0` — gold/GBPUSD stay significantly negative at every
+level, EURUSD/USDJPY's near-zero baseline stays near-zero-to-negative.
+Losers do show larger MAE than winners (real, consistent, but close to
+tautological), yet it doesn't translate into an exploitable stop — a
+slow-bleed/weak-signal null, not a fat-tail one, per §20's original
+diagnosis.
 Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.
