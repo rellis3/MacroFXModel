@@ -655,17 +655,131 @@ liquidity-pool levels (brief §9 — no such data source exists in this repo;
 the structural-level question this project CAN answer is already covered by
 §8's Asia/Monday range-fib null). None of the above is claimed as done.
 
+## 12. Regime state, band walking, and VuManChu tested last (2026-08-30)
+
+Direct follow-up to §11, driven by the owner's screenshots of a large gold
+break: the concern that a naive "-3σ ⇒ fade to VWAP" rule is dangerous
+exactly when the band itself is part of an expanding, trending distribution,
+not a rotational extreme. Three more additions to the same engine (still no
+new engine, no ML pipeline — the project's existing bucket/delta/random-walk-
+control method, applied to new fields):
+
+- **`bandSlope`** — a SHORT causal ATR(14, this session's own bars only)
+  rate of change over the last 30min, as % change — "is realized volatility
+  expanding right now." Deliberately NOT the frozen `fixedSigma` (locked for
+  the whole session by design) and NOT the cumulative session-long developing
+  σ already in the engine (too smoothed by session-end to move fast) — a
+  fresh, short-window read, reusing `indicatorCore.js`'s existing `atrWilder`
+  brick.
+- **`regimeState`** — `momAdx × bandSlope`, one combined cell (contracting/
+  stable/expanding × range/mixed/trend) — the minimal-DOF regime read the
+  owner asked for. Deliberately NOT a named 4-state ("Reversion/Expansion/
+  Exhaustion/Neutral") classifier — that would be fitting labels to cells
+  before knowing what they do; the raw combo is reported and interpreted
+  from what the data shows, not the reverse.
+- **`wtRegimeState`** — `regimeState × wtState`, VuManChu layered ON TOP,
+  specifically to test the owner's "test VuManChu last" instruction: does it
+  add anything once momentum and volatility-expansion are already known?
+- **`bandWalk`** (a new OUTCOME, not a context dimension) — literal "does
+  price stay beyond a lenient (k−0.3)σ threshold for consecutive bars after
+  the touch" (rejection vs. walking the band), computed in the SAME forward
+  scan the race/return outcomes already use — no extra pass. Threshold
+  10+ consecutive bars = "walking." A new `buildBandWalkBook` in
+  `vwapFixedSigmaReport.js` mirrors `buildVwapReturnBook` exactly (same
+  cells/dims/holds-gate), reading THIS outcome instead. Touch-time context
+  dimensions are valid predictors of it (strictly causal); the race/return
+  outcomes are never used to predict it — that would be circular, since both
+  read the same forward window.
+
+### Band-walk sanity check — it measures what it claims to
+
+Before trusting anything conditioned on it: `candleReject=3·reject` shows
+the single largest band-walk deltas in the whole run (up|1 −18.4pp IS /
+−14.2pp OOS, similarly at up|2/up|3/dn|1/dn|3) — a rejection wick at the
+touch bar predicting LESS subsequent walking is exactly what "rejection"
+should mean, and the control's own candleReject delta on the walk outcome is
+near zero (Δ−2.7 at n=39). That internal coherence, not just the OOS gate,
+is why the outcome is trusted enough to build on.
+
+### `bandSlope` is real, and points opposite to naive intuition
+
+Checked against the control on all three books (race, return, band-walk),
+`bandSlope`'s own control deltas sit near zero everywhere (|Δ| mostly <4pp)
+— unlike `vwapSlope` in §11, this one is NOT mechanical. What it shows,
+consistently across cells and BOTH sides, on the RETURN-to-VWAP outcome:
+
+| bucket | gold pattern (OOS, multiple cells) | control (±2-3σ, matched bucket) |
+|---|---|---|
+| `3·expanding` | **+3.8 to +7.2pp** (up\|2/3, dn\|2/3) | −1.0 |
+| `2·stable` | **−5.4 to −10.5pp** (up\|1-4, dn\|1-2) | +0.4 |
+| `1·contracting` | **−6.5 to −14.9pp** (up\|2/3, dn\|2) | −0.5 |
+
+Reading it straight: **expanding realized volatility correlates with MORE
+return-to-VWAP, not less; stable/contracting volatility correlates with
+LESS.** This is the opposite of "the bands are expanding, therefore price
+won't come back" — it does not confirm the naive worry from the screenshots
+as stated, at least on this metric. Two honesty notes: (1) this measures
+short-window (30min) volatility velocity, NOT the cumulative range-consumed
+metric from §11 — the two were NOT tested jointly, and §11's own finding
+(high range-consumed → more continuation) is a different, not necessarily
+contradictory, statement about a different quantity; reconciling them is
+flagged as unfinished, not swept under a single story. (2) `regimeState`'s
+own `3·trend×3·expanding` cell shows the clearest owner-hypothesis-shaped
+result: real (sign-flipped vs. the control, which shows Δ−9.9 to −16.0 at
+the SAME cell across checks) and POSITIVE on gold (+3.7 to +9.5pp
+continuation, +6.6 to +7.2pp return) — trending momentum WITH expanding
+volatility is the one combination that behaves like real, gold-specific
+continuation, distinct from and opposite to what the control's own
+mechanical shape would predict for that cell. That is the closest this pass
+comes to validating the screenshots' concern, and it is real, not the
+volatility-slope story alone.
+
+### VuManChu tested last: honestly inconclusive, not "it helps"
+
+`wtRegimeState` (the 3-way combo) nominally holds more findings than
+`regimeState` alone, but it also tests roughly 2× the number of distinct
+cells (up to 18 vs. 9 per side/band) — under this study's own permutation-
+baseline logic (§ Control 2: ~50% of *any* held finding here is chance at
+this cell count), testing more, thinner cells produces more nominal
+survivors without that being evidence of real incremental value. A few
+individual `wtRegimeState` cells DO show a bigger excess over their control
+counterpart than `regimeState` alone at the same momentum×volatility
+combination, but this pass did not build the matched-cell-count statistical
+comparison needed to say that cleanly (that would be the honest way to
+answer "how much does VuManChu add," and is flagged as unfinished, not
+claimed). Read plainly: **no clear evidence VuManChu adds real value on top
+of momentum+volatility-expansion here** — consistent with, not contradicting,
+§3/§7b's standing finding that WaveTrend conditioning on gold is thin.
+
+### What this does and doesn't answer
+
+Covers band-slope/expansion-rate (brief's band-behaviour ask) and band-
+walking (brief's "REALLY add this" ask) with the same control discipline as
+everything else here. Still NOT built: a named, validated 4-state regime
+classifier (deliberately — see above); the "earliest identifiable point"
+question (this pass reads regime AT the touch, which is the earliest causal
+point available at a touch — finding leading indicators BEFORE a touch even
+happens is a different, harder question, not attempted); a joint
+bandSlope×rangeConsumed interaction; and a real statistical incremental-
+information test (AUC/information-gain) for the VuManChu-last question,
+which would need a genuinely different, heavier method than this project's
+bucket/delta/control style.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
 `computeFixedSigmaByDate` so trade-level engines share the identical band
 unit, equivalence-tested; §11 added `vwapSlope`/`rangeConsumed`/
-`momRangeMatrix` the same causal way, +2 tests), report
+`momRangeMatrix` the same causal way, +2 tests; §12 added `bandSlope`
+(new `atrWilder` import)/`regimeState`/`wtRegimeState`/`bandWalk` (a new
+forward-scan OUTCOME, not a context dim), +1 test), report
 `js/vwapFixedSigmaReport.js` (imports the shared `annotateHolds` gate from
-`levelAtlasReport.js`; §11's 3 new dims registered in `DIMENSIONS`), runner
-`scripts/run_gold_vwap_sigma.mjs`, controls
-`scripts/run_gold_vwap_sigma_controls.mjs` (§11's 3 new dims added to both
-the ±1σ and ±2-3σ control checks). Stage-2 trade test
+`levelAtlasReport.js`; §11+§12's dims registered in `DIMENSIONS`; §12 added
+`buildBandWalkBook`/`walkedEnough`/`WALK_THRESHOLD_BARS` mirroring
+`buildVwapReturnBook`'s exact shape), runner `scripts/run_gold_vwap_sigma.mjs`,
+controls `scripts/run_gold_vwap_sigma_controls.mjs` (§11+§12's dims added to
+the ±1σ/±2-3σ race and return control checks, plus a new band-walk-outcome
+control check and permutation baseline). Stage-2 trade test
 `js/vwapImpulseEntryV1Engine.js` (+ tests) with runner
 `scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
 harness. Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook,

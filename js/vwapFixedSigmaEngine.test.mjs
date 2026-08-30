@@ -284,5 +284,49 @@ console.log('8. rangeConsumed causality; vwapSlope direction');
     `steadily-ramping-up VWAP reads '3·with' (positive slopeSig) on an up-side touch, got ${rampUpTouch?.vwapSlope}/${rampUpTouch?.vwapSlopeSig}`);
 }
 
+// ── 9. bandWalk (rejection vs walking) + regimeState wiring (2026-08-30) ────
+console.log('9. bandWalk rejection-vs-walking; regimeState/wtRegimeState wiring');
+{
+  const warm = Array.from({ length: 12 }, () => wiggleDay(100, 1, 400));
+
+  // "Walking": jump past +1σ then STAY well beyond a lenient in-band
+  // threshold (vwap+0.7σ ≈ 100.7) for the rest of the day.
+  const walkDay = [];
+  for (let m = 0; m < 100; m++) walkDay.push(100);
+  for (let m = 0; m < 3; m++) walkDay.push(100 + (m + 1) / 3 * 1.5);
+  for (let m = 0; m < 297; m++) walkDay.push(101.6);
+
+  // "Rejection": same jump, then SNAPS straight back inside on the very next bar.
+  const rejectDay = [];
+  for (let m = 0; m < 100; m++) rejectDay.push(100);
+  for (let m = 0; m < 3; m++) rejectDay.push(100 + (m + 1) / 3 * 1.5);
+  for (let m = 0; m < 297; m++) rejectDay.push(100.0);
+
+  const packed = packDays([...warm, walkDay, rejectDay]);
+  const opts = { instrument: 'TEST', minHistory: 10, minBarsPerDay: 300 };
+  const { touches } = fixedSigmaWalk(packed, opts);
+  const walkDate = new Date((BASE_T + 12 * DAY) * 1000).toISOString().slice(0, 10);
+  const rejectDate = new Date((BASE_T + 13 * DAY) * 1000).toISOString().slice(0, 10);
+  const walkT = touches.filter(t => t.date === walkDate && t.side === 'up' && t.band === 1)[0];
+  const rejectT = touches.filter(t => t.date === rejectDate && t.side === 'up' && t.band === 1)[0];
+  assert(walkT && rejectT, 'both the walking day and the rejecting day registered a +1σ up touch');
+  assert(walkT.bandWalk === '3·walking' && walkT.walkBarsBeyond >= 9,
+    `sustained post-touch extension reads '3·walking' (got ${walkT?.bandWalk}, walkBarsBeyond=${walkT?.walkBarsBeyond})`);
+  assert(rejectT.bandWalk === '1·reject-fast' && rejectT.walkBarsBeyond <= 2,
+    `an immediate snap-back reads '1·reject-fast' (got ${rejectT?.bandWalk}, walkBarsBeyond=${rejectT?.walkBarsBeyond})`);
+  assert(walkT.walkBarsBeyond > rejectT.walkBarsBeyond, 'the walking day accumulated materially more walkBarsBeyond than the rejecting day');
+
+  // regimeState/wtRegimeState wiring: present whenever their component
+  // buckets are, and correctly composed (not silently dropping a factor).
+  const withRegime = touches.filter(t => t.regimeState != null);
+  assert(withRegime.length > 0, 'regimeState populates on real touches');
+  assert(withRegime.every(t => t.regimeState === `${t.momAdx}×${t.bandSlope}`),
+    'regimeState is exactly momAdx×bandSlope, never a mismatched combination');
+  const withWtRegime = touches.filter(t => t.wtRegimeState != null);
+  assert(withWtRegime.length > 0, 'wtRegimeState populates on real touches');
+  assert(withWtRegime.every(t => t.wtRegimeState === `${t.regimeState}×${t.wtState}`),
+    'wtRegimeState is exactly regimeState×wtState (VuManChu layered on top)');
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

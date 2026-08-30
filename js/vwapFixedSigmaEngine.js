@@ -63,6 +63,7 @@
 
 import { computeSessionVwap } from './vwapReversionEngine.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
+import { atrWilder } from './indicatorCore.js';
 import { pipSize } from './instrumentRegistry.js';
 import { _buildAsiaSessions, _buildMondayRanges } from './rangeFibEngine.js';
 import { calcFibs } from './fibProjection.js';
@@ -198,6 +199,24 @@ export const DEFAULT_CFG = {
   // (distinct from `vwapDrift`, which is drift since the SESSION OPEN) —
   // normalised by fixedSigma, oriented to the touch side.
   vwapSlopeWin: 30,
+  // ── Regime state (2026-08-30) ────────────────────────────────────────────
+  // bandSlope: rate of change of a SHORT causal ATR(14, this session's own
+  // bars) over the last `vwapSlopeWin` minutes (relative %) — "is realized
+  // volatility expanding RIGHT NOW", deliberately NOT the frozen fixedSigma
+  // (locked for the whole session by design) and NOT the cumulative
+  // session-long developing σ (too smoothed by session-end to move fast).
+  // regimeState = momAdx × bandSlope (a minimal-DOF momentum×volatility-
+  // expansion combo — reuses the existing dowSession/momRangeMatrix combo
+  // pattern, not a new bespoke classifier). wtRegimeState layers VuManChu
+  // ON TOP, so its incremental value can be read against regimeState alone.
+  bandSlopeExpandPct: 0.15, bandSlopeContractPct: -0.15,
+  // bandWalk: does price stay beyond a lenient (k-bandWalkTol)·σ threshold
+  // for consecutive bars right after the touch — "rejection" vs "walking
+  // the band" — an OUTCOME (like MFE/MAE), computed in the same forward
+  // scan, never used as a predictor of the race/return outcome (that would
+  // be circular — they're reading the same forward path).
+  bandWalkTol: 0.3,
+  walkThresholdBars: 10,
 };
 
 /**
@@ -296,6 +315,10 @@ export function fixedSigmaWalk(packed, opts = {}) {
       const dow = dowOf(bars[0].time);
 
       const wt1 = cfg.liteContext ? null : tf.wtSeries(bars);
+      // Short causal ATR, reset fresh each session (same convention as wt1) —
+      // NOT liteContext-gated: it's a local computation, same contract as
+      // vwapDrift/rangeConsumed/vwapSlope.
+      const atr14 = atrWilder(bars, 14);
 
       // Per-(side,band) day state. maxBand/first-touch maps reflect bars
       // strictly BEFORE the bar being processed (merged at end of each bar).
@@ -330,6 +353,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
             let outcome = 'neither', resolveTime = null;
             let vwapTime = null, reentryTime = null;
             let mfe = 0, mae = 0, windowClose = null, windowBars = 0;
+            let walkBarsBeyond = 0, stillWalking = true;   // band-walk OUTCOME (rejection vs acceptance)
             const winEnd = j + cfg.measureBars;
             for (let m = j; m < bars.length; m++) {
               const vRef = vwap[m - 1];
@@ -347,6 +371,11 @@ export function fixedSigmaWalk(packed, opts = {}) {
                   && (isUp ? bars[m].close < vRef + sgn * k * sm : bars[m].close > vRef + sgn * k * sm)) {
                 reentryTime = bars[m].time;
               }
+              if (m > j && stillWalking) {   // consecutive bars staying beyond a lenient in-band threshold
+                const walkThresh = vRef + sgn * (k - cfg.bandWalkTol) * sm;
+                const stillBeyond = isUp ? bars[m].low >= walkThresh : bars[m].high <= walkThresh;
+                if (stillBeyond) walkBarsBeyond++; else stillWalking = false;
+              }
               if (m > j && m <= winEnd) {   // MFE/MAE window: bar AFTER touch onward
                 const fav = isUp ? (entry - bars[m].low) : (bars[m].high - entry);
                 const adv = isUp ? (bars[m].high - entry) : (entry - bars[m].low);
@@ -354,7 +383,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
                 if (adv > mae) mae = adv;
                 windowClose = bars[m].close; windowBars = m - j;
               }
-              if (outcome !== 'neither' && vwapTime != null && reentryTime != null && m > winEnd) break;
+              if (outcome !== 'neither' && vwapTime != null && reentryTime != null && !stillWalking && m > winEnd) break;
             }
 
             // Context at the touch (feature pack + day/bar-local reads).
@@ -371,6 +400,11 @@ export function fixedSigmaWalk(packed, opts = {}) {
             const rangeConsumedRatio = rangeExpected > 0 ? totalTravel / rangeExpected : null;
             const slopeWinStart = j - 1 - cfg.vwapSlopeWin;
             const slopeSig = slopeWinStart >= 0 ? (vwap[j - 1] - vwap[slopeWinStart]) / s1 * sgn : null;
+            const bandSlopeRatio = (slopeWinStart >= 0 && atr14[slopeWinStart] > 0)
+              ? (atr14[j - 1] - atr14[slopeWinStart]) / atr14[slopeWinStart] : null;
+            const bandSlopeBucket = bandSlopeRatio == null ? null
+              : bandSlopeRatio < cfg.bandSlopeContractPct ? '1·contracting'
+              : bandSlopeRatio > cfg.bandSlopeExpandPct ? '3·expanding' : '2·stable';
             const otherMax = maxBand[isUp ? 'dn' : 'up'];
             const sameMax = maxBand[side];
             const ladderStep = k - sameMax;
@@ -407,6 +441,14 @@ export function fixedSigmaWalk(packed, opts = {}) {
               momRangeMatrix: (feats.momAdx?.bucket && rangeConsumedRatio != null)
                 ? `${feats.momAdx.bucket}×${rangeConsumedRatio < 0.5 ? '1·low' : rangeConsumedRatio < 0.85 ? '2·mid' : rangeConsumedRatio < 1.2 ? '3·high' : '4·exhausted'}`
                 : null,
+              bandSlope: bandSlopeBucket,
+              bandSlopeRatio: bandSlopeRatio != null ? +bandSlopeRatio.toFixed(3) : null,
+              regimeState: (feats.momAdx?.bucket && bandSlopeBucket)
+                ? `${feats.momAdx.bucket}×${bandSlopeBucket}` : null,
+              wtRegimeState: (feats.momAdx?.bucket && bandSlopeBucket && feats.wtState?.bucket)
+                ? `${feats.momAdx.bucket}×${bandSlopeBucket}×${feats.wtState.bucket}` : null,
+              bandWalk: walkBarsBeyond <= 2 ? '1·reject-fast' : walkBarsBeyond <= 8 ? '2·brief' : '3·walking',
+              walkBarsBeyond,
               rangeConf: cfg.liteContext ? null
                 : nearAsia && nearMon ? '3·both' : nearMon ? '2·monday' : nearAsia ? '1·asia' : '0·none',
               approachVel: feats.approachVel?.bucket ?? null,

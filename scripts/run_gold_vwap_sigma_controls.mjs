@@ -24,7 +24,7 @@
 
 import { readFileSync } from 'node:fs';
 import { fixedSigmaWalk } from '../js/vwapFixedSigmaEngine.js';
-import { buildFixedSigmaBook, buildVwapReturnBook, extractHeldFindings, returnedWithin, returnEligible, RETURN_HORIZON_MINS } from '../js/vwapFixedSigmaReport.js';
+import { buildFixedSigmaBook, buildVwapReturnBook, buildBandWalkBook, extractHeldFindings, returnedWithin, returnEligible, walkedEnough, WALK_THRESHOLD_BARS, RETURN_HORIZON_MINS } from '../js/vwapFixedSigmaReport.js';
 
 const args = process.argv.slice(2);
 const touchesFile = args.includes('--touches') ? args[args.indexOf('--touches') + 1] : 'logs/gold_vwap_sigma_touches.json';
@@ -54,7 +54,7 @@ console.log('── Control 1: driftless random walk through the identical engin
   const deep = firsts.filter(t => (t.band === 2 || t.band === 3) && returnEligible(t));
   const dBase = deep.filter(t => returnedWithin(t)).length / deep.length * 100;
   console.log(`  ±2-3σ RETURN-outcome deltas on the control (base ${dBase.toFixed(1)}%):`);
-  for (const dim of ['wtState', 'volRegime', 'approachVel', 'churn', 'candleReject', 'wtMtf', 'vwapSlope', 'rangeConsumed', 'momRangeMatrix']) {
+  for (const dim of ['wtState', 'volRegime', 'approachVel', 'churn', 'candleReject', 'wtMtf', 'vwapSlope', 'rangeConsumed', 'momRangeMatrix', 'bandSlope', 'regimeState']) {
     const groups = {};
     for (const t of deep) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, hit: 0 }); g.n++; if (returnedWithin(t)) g.hit++; }
     console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
@@ -63,7 +63,7 @@ console.log('── Control 1: driftless random walk through the identical engin
   const b1 = firsts.filter(t => t.band === 1);
   const base = b1.filter(t => t.outcome === 'out').length / b1.length * 100;
   console.log(`  ±1σ context deltas on the control (any match to gold ⇒ mechanical, not market):`);
-  for (const dim of ['vwapDrift', 'churn', 'approachVel', 'otherSideMaxBand', 'sessionPos', 'candleReject', 'vwapSlope', 'rangeConsumed', 'momRangeMatrix']) {
+  for (const dim of ['vwapDrift', 'churn', 'approachVel', 'otherSideMaxBand', 'sessionPos', 'candleReject', 'vwapSlope', 'rangeConsumed', 'momRangeMatrix', 'bandSlope', 'regimeState']) {
     const groups = {};
     for (const t of b1) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, out: 0 }); g.n++; if (t.outcome === 'out') g.out++; }
     console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
@@ -75,11 +75,24 @@ console.log('── Control 1: driftless random walk through the identical engin
   const b23 = firsts.filter(t => t.band === 2 || t.band === 3);
   const base23 = b23.filter(t => t.outcome === 'out').length / b23.length * 100;
   console.log(`  ±2-3σ RACE-outcome ('out') deltas on the control (base ${base23.toFixed(1)}%):`);
-  for (const dim of ['vwapSlope', 'rangeConsumed', 'momRangeMatrix']) {
+  for (const dim of ['vwapSlope', 'rangeConsumed', 'momRangeMatrix', 'bandSlope', 'regimeState', 'wtRegimeState']) {
     const groups = {};
     for (const t of b23) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, out: 0 }); g.n++; if (t.outcome === 'out') g.out++; }
     console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
       .map(([b, g]) => `${b} n=${g.n} Δ${(g.out / g.n * 100 - base23).toFixed(1)}`).join('  '));
+  }
+
+  // Band-walk outcome on the control — a random walk has no real "acceptance"
+  // vs "rejection" either, so any context-dim delta the control reproduces on
+  // the walk outcome is mechanical the same way as above.
+  const elAll = firsts.filter(t => t.walkBarsBeyond != null);
+  const walkBase = elAll.filter(t => walkedEnough(t)).length / elAll.length * 100;
+  console.log(`  band-walk (>=${WALK_THRESHOLD_BARS} bars) deltas on the control (base ${walkBase.toFixed(1)}%):`);
+  for (const dim of ['bandSlope', 'regimeState', 'momAdx', 'wtState', 'candleReject']) {
+    const groups = {};
+    for (const t of elAll) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, hit: 0 }); g.n++; if (walkedEnough(t)) g.hit++; }
+    console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
+      .map(([b, g]) => `${b} n=${g.n} Δ${(g.hit / g.n * 100 - walkBase).toFixed(1)}`).join('  '));
   }
 }
 
@@ -135,4 +148,29 @@ console.log(`\n── Control 2: permutation baseline (${nPerms} shuffles of ${t
   retCounts.sort((a, b) => a - b);
   const retMean = retCounts.reduce((s, v) => s + v, 0) / retCounts.length;
   console.log(`  return-book permutation survivors: mean ${retMean.toFixed(1)}, range ${retCounts[0]}–${retCounts[retCounts.length - 1]}`);
+
+  // ── 4. Same permutation baseline for the BAND-WALK book ───────────────────
+  // Shuffle walkBarsBeyond within each (side,band) cell.
+  const realWalk = extractHeldFindings(buildBandWalkBook(touches), { limit: 10000 }).length;
+  console.log(`\n  band-walk book real held findings: ${realWalk}`);
+  const walkCounts = [];
+  for (let p = 0; p < nPerms; p++) {
+    const rnd = mulberry32(9000 + p);
+    const byCell = new Map();
+    for (const t of firsts) {
+      if (t.walkBarsBeyond == null) continue;
+      const k = `${t.side}|${t.band}`;
+      (byCell.get(k) ?? byCell.set(k, []).get(k)).push(t);
+    }
+    const shuffled = [];
+    for (const arr of byCell.values()) {
+      const outs = arr.map(t => t.walkBarsBeyond);
+      for (let i = outs.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [outs[i], outs[j]] = [outs[j], outs[i]]; }
+      arr.forEach((t, i) => shuffled.push({ ...t, walkBarsBeyond: outs[i] }));
+    }
+    walkCounts.push(extractHeldFindings(buildBandWalkBook(shuffled), { limit: 10000 }).length);
+  }
+  walkCounts.sort((a, b) => a - b);
+  const walkMean = walkCounts.reduce((s, v) => s + v, 0) / walkCounts.length;
+  console.log(`  band-walk book permutation survivors: mean ${walkMean.toFixed(1)}, range ${walkCounts[0]}–${walkCounts[walkCounts.length - 1]}`);
 }

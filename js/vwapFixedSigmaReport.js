@@ -29,6 +29,9 @@ export const DIMENSIONS = [
   ['churn', 'How price got here: one-sided drive vs two-sided churn'],
   ['rangeConsumed', "Today's range-so-far ÷ the trailing-session median expected range"],
   ['momRangeMatrix', 'Momentum (1h ADX) × range-consumed combined cell'],
+  ['bandSlope', 'Short causal ATR(14) rate of change over the last 30min — is realized vol expanding right now'],
+  ['regimeState', 'Momentum (1h ADX) × bandSlope combined cell — the minimal-DOF regime read'],
+  ['wtRegimeState', 'regimeState × WaveTrend state — VuManChu layered ON TOP, for incremental-value testing'],
   ['otherSideMaxBand', 'Deepest band already tagged on the OPPOSITE side today'],
   ['ladderStep', 'Band progression: retest / orderly next step / jump'],
   ['rangeConf', 'Touch at an Asia/Monday range-fib level (rangeFibEngine ranges)'],
@@ -214,6 +217,79 @@ export function buildVwapReturnBook(touches, { firstTouchOnly = true, horizonMin
     }
   }
   return { instrument, splitDate: split, firstTouchOnly, outcome: `returnedWithin${horizonMins}m`, horizonMins, cells };
+}
+
+// ── The BAND-WALK book — rejection vs acceptance/walking ─────────────────────
+// "Does price stay beyond the touched band for consecutive bars (walking) or
+// snap back inside almost immediately (rejection)?" Same touch rows, cells,
+// dimensions, shared holds gate — outcome is `walkedEnough` (walkBarsBeyond
+// >= walkThresholdBars), the literal band-walk question, not the out/back
+// race or the return-to-VWAP rate. DIMENSIONS context fields are all
+// touch-time (causal, strictly before this forward-looking outcome), so
+// there is no circularity reusing them here — but the race/return OUTCOME
+// fields are never read as predictors of this book (that WOULD be circular,
+// both measure the same forward path).
+export const WALK_THRESHOLD_BARS = 10;
+
+export function walkedEnough(t, thresholdBars = WALK_THRESHOLD_BARS) {
+  return t.walkBarsBeyond != null && t.walkBarsBeyond >= thresholdBars;
+}
+
+function tableForWalk(touches, dimKey, thresholdBars = WALK_THRESHOLD_BARS) {
+  const groups = {};
+  for (const t of touches) {
+    const b = t[dimKey]; if (b == null) continue;
+    const g = (groups[b] ??= { n: 0, hits: 0, wbb: [] });
+    g.n++;
+    if (walkedEnough(t, thresholdBars)) g.hits++;
+    if (t.walkBarsBeyond != null) g.wbb.push(t.walkBarsBeyond);
+  }
+  const out = {};
+  for (const [b, g] of Object.entries(groups)) {
+    const s = [...g.wbb].sort((x, y) => x - y);
+    out[b] = {
+      n: g.n,
+      outPct: +(g.hits / g.n * 100).toFixed(1),      // = walked->=threshold rate
+      medWalkBars: s.length ? s[s.length >> 1] : null,
+    };
+  }
+  return out;
+}
+
+function summarizeAllWalk(touches, thresholdBars) {
+  const fake = touches.map(t => ({ ...t, _all: 'all' }));
+  return tableForWalk(fake, '_all', thresholdBars).all;
+}
+
+/**
+ * buildBandWalkBook(touches, { firstTouchOnly }) — cells (side, band), every
+ * dimension bucketed against the band-walk rate, IS/OOS, holds-gated.
+ */
+export function buildBandWalkBook(touches, { firstTouchOnly = true, thresholdBars = WALK_THRESHOLD_BARS } = {}) {
+  const pool = firstTouchOnly ? touches.filter(t => t.ordinal === 1) : touches;
+  if (!pool.length) return null;
+  const { split, is, oos } = splitAt(pool);
+  const instrument = pool[0].instrument;
+  const cells = {};
+  const bands = [...new Set(pool.map(t => t.band))].sort((a, b) => a - b);
+  for (const side of ['up', 'dn']) {
+    for (const band of bands) {
+      const key = `${side}|${band}`;
+      const cellIS = is.filter(t => t.side === side && t.band === band);
+      const cellOOS = oos.filter(t => t.side === side && t.band === band);
+      if (!cellIS.length) continue;
+      const base = { is: summarizeAllWalk(cellIS, thresholdBars), oos: cellOOS.length ? summarizeAllWalk(cellOOS, thresholdBars) : null };
+      const dims = {};
+      for (const [dimKey] of DIMENSIONS) {
+        const tIs = tableForWalk(cellIS, dimKey, thresholdBars), tOos = tableForWalk(cellOOS, dimKey, thresholdBars);
+        if (!Object.keys(tIs).length) continue;
+        dims[dimKey] = { is: tIs, oos: tOos };
+      }
+      if (base.oos) annotateHolds(dims, base.is, base.oos);
+      cells[key] = { n: { is: cellIS.length, oos: cellOOS.length }, base, dims };
+    }
+  }
+  return { instrument, splitDate: split, firstTouchOnly, outcome: `walkedBeyond${thresholdBars}bars`, thresholdBars, cells };
 }
 
 /** Every holds-gated finding across the book, biggest |effect| first. */
