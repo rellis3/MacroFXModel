@@ -7,7 +7,7 @@
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC, mulberry32, blockResample, blockBootstrapIC } from './statsCore.js';
 import { atrWilder, adxWilder, ema, rsiWilder, pmo } from './indicatorCore.js';
-import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR } from './metricsCore.js';
+import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR, neweyWestSharpe } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
 import { summarize } from './honestForecastEngine.js';
@@ -642,6 +642,54 @@ console.log('[metricsCore — Sharpe honesty]');
      minTrackRecordLength(0.3, { benchmark: 0.3 }) === Infinity && minTrackRecordLength(-0.2) === Infinity);
   ok('negative skew / fat tails lengthen the required track record',
      minTrackRecordLength(0.5, { skew: -1, kurt: 6 }) > minTrackRecordLength(0.5));
+}
+
+// neweyWestSharpe — the autocorrelation-adjusted Sharpe brick, built after
+// Fib Atlas's own live portfolio page showed a >10 Sharpe the owner
+// correctly didn't trust (LEGO_MODULES.md 2026-08-30). Checked two ways:
+// (1) on genuinely i.i.d. noise, the HAC correction should do ~nothing;
+// (2) on a synthetic AR(1) series with a KNOWN correlation coefficient phi,
+// the variance-inflation factor should approach the textbook closed-form
+// (1+phi)/(1-phi) as bandwidth grows — this is the standard derivation
+// (long-run variance = gamma_0 * sum of phi^k over all lags), not a
+// made-up number to fit the implementation.
+console.log('[metricsCore — Newey-West HAC-adjusted Sharpe]');
+{
+  const rand = mulberry32(777);
+  const iid = Array.from({ length: 3000 }, () => (rand() - 0.5) * 2 + 0.03);
+  const rIID = neweyWestSharpe(iid, 252, 10);
+  ok('i.i.d. series: HAC correction stays close to naive (variance inflation ~1)',
+     rIID.varianceInflation > 0.7 && rIID.varianceInflation < 1.4, `inflation=${rIID.varianceInflation}x`);
+  ok('i.i.d. series: adjusted Sharpe stays within 30% of naive',
+     Math.abs(rIID.sharpeNW - rIID.sharpeNaive) / Math.abs(rIID.sharpeNaive) < 0.3);
+
+  // Synthetic AR(1), phi=0.3, long series + wide bandwidth so the Bartlett-
+  // truncated estimate has room to approach the untruncated theoretical value.
+  const phi = 0.3, n = 20000;
+  const ar1 = [0];
+  const rand2 = mulberry32(2024);
+  for (let i = 1; i < n; i++) ar1.push(phi * ar1[i - 1] + (rand2() - 0.5) * 2 + 0.01);
+  const theoreticalInflation = (1 + phi) / (1 - phi); // = 1.857
+  const rAR1 = neweyWestSharpe(ar1, 252, 300);
+  ok('AR(1) phi=0.3: measured variance inflation is within 30% of the theoretical (1+phi)/(1-phi)',
+     Math.abs(rAR1.varianceInflation - theoreticalInflation) / theoreticalInflation < 0.3,
+     `theoretical=${theoreticalInflation.toFixed(2)}x measured=${rAR1.varianceInflation}x`);
+  ok('AR(1) positive autocorrelation → HAC-adjusted Sharpe is LOWER than naive (real correction, not noise)',
+     rAR1.sharpeNW < rAR1.sharpeNaive);
+
+  // A wider bandwidth should capture MORE of a real long-memory effect →
+  // variance inflation should be monotonically non-decreasing in L for a
+  // process with genuinely positive autocorrelation at every lag (AR(1)).
+  const infl5 = neweyWestSharpe(ar1, 252, 5).varianceInflation;
+  const infl50 = neweyWestSharpe(ar1, 252, 50).varianceInflation;
+  const infl200 = neweyWestSharpe(ar1, 252, 200).varianceInflation;
+  ok('wider bandwidth captures more of a real AR(1) effect (monotonic in L)', infl5 <= infl50 && infl50 <= infl200);
+
+  ok('bandwidth defaults to the Newey-West rule of thumb when omitted',
+     neweyWestSharpe(ar1, 252).bandwidth === Math.max(1, Math.floor(4 * Math.pow(n / 100, 2 / 9))));
+  ok('degenerate input (n<2) returns zeros, not a throw or NaN',
+     JSON.stringify(neweyWestSharpe([1], 252)) === JSON.stringify({ sharpeNaive: 0, sharpeNW: 0, bandwidth: 0, varianceInflation: 1, n: 1 })
+     && JSON.stringify(neweyWestSharpe([], 252)) === JSON.stringify({ sharpeNaive: 0, sharpeNW: 0, bandwidth: 0, varianceInflation: 1, n: 0 }));
 }
 
 // skewness / excessKurtosis / histVaR / histCVaR — distribution shape & tail.
