@@ -125,3 +125,112 @@ Moving from one column to the other is the single largest change available to yo
 *Why Some People Still Make Money* — So if these approaches cannot work, why do you keep seeing people profit with them? That is a fair question, and the answer is the most useful thing in this series.
 
 ---
+
+## Lesson 2 — Why Some People Still Make Money
+
+If these approaches have no edge, why do you keep seeing people profit with them? It is a fair question and it deserves a real answer, because the answer is the most useful idea in this series. Nothing here requires anyone to be lying.
+
+### Six hundred people, one losing method
+
+Every trader here runs the same approach. It loses 0.2 percent per trade on average.
+
+Interactive demo (slider: cumulative result percent vs. trades taken, 10–1000 trades):
+
+After 50 trades, 18.3% of these 600 traders are showing a profit. Every one of them is running the same method, and that method loses 0.2 percent per trade on average. At this stage the winners look skilled, sound confident, and have screenshots.
+
+At fifty trades a large group is showing a profit. They are not doing anything different from the others, and nothing about the method changed. Keep moving the slider and watch the group thin out. The ones still up at the start are not the skilled ones. They are the ones the distribution happened to favour first.
+
+*Simulated data. Generated to show the relationship clearly. Not taken from any market, account or track record.*
+
+### What variance actually means
+
+- **The average is not what happens** — It is what happens on average. Individual runs scatter widely around it.
+- **Spread is the second number** — Two methods with the same average produce very different experiences if one swings harder.
+- **Small samples are mostly spread** — Over a few dozen trades the scatter is larger than the average, so the average is invisible.
+- **It cuts both ways** — The same spread that produces a lucky run produces the collapse that follows it.
+
+Flip a fair coin twenty times and you might get fourteen heads. That is variance. The coin is not biased, the sample is just small enough that chance dominates what you see.
+
+Trading results behave the same way. If a method loses a small amount per trade on average but the individual results swing widely, then over fifty trades a good number of people will be up, purely because the swings landed favourably for them.
+
+This is why the number of trades matters more than the size of the profit. A large gain over a short sample tells you about the spread. It tells you almost nothing about the average, and the average is the part that decides where you finish.
+
+**Why you were taught it this way**
+
+Because variance is invisible and skill is a better story. When somebody is up after fifty trades, both they and everyone watching reach for the explanation that flatters them, and nobody has the counterfactual in front of them. The five hundred people running the same method who are down do not post, and were never asked.
+
+### What happens to the winner
+
+This is the best performer out of four hundred people running the identical losing method.
+
+Interactive demo (cumulative result percent over 60 trades): this is the best performer out of 400 people running the identical method, at 60 trades. Up 23%. This is the point at which the course gets sold, the account gets posted, and the story gets told.
+
+**Carry it forward**
+
+The early run is real money and a real screenshot. It is also the point where confidence peaks, where the account gets posted, and where a course starts to look like a good idea. Carry the same person forward and the method underneath asserts itself. Nothing went wrong later. Nothing was ever right earlier.
+
+*Simulated data. Generated to show the relationship clearly. Not taken from any market, account or track record.*
+
+### Why it does not persist
+
+- **The average asserts itself** — As the sample grows, results converge toward the true expected value. There is no mechanism that prevents this.
+- **Drift compounds quietly** — A small negative expectancy repeated thousands of times overwhelms any early gain.
+- **The run was the evidence** — The winning stretch was treated as proof, when it was the thing that needed explaining.
+- **Nothing changed at the turn** — People search for what they did differently. Usually the answer is nothing at all.
+
+A result reverts toward its true mean because the true mean was always what was generating it. The early run was not a different regime. It was the same distribution, sampled briefly.
+
+This is why the long term drift wins. Each trade carries the same small negative expectation, and repetition converts a small number into a large one. The short term profit is a temporary displacement. The drift is the direction.
+
+It also explains the emotional shape of it. People are most confident, most willing to increase size, and most willing to pay for more of the same, at precisely the point where the sample is smallest and the evidence weakest.
+
+**Where this needs qualifying**
+
+Not every winning run is luck, and the point here is not that profit is always an illusion. Some people do hold a real edge, and their results look similar early on precisely because a short sample cannot separate the two.
+
+That is the honest position. Over fifty trades you cannot distinguish a good method from a fortunate one, and neither can the person holding it. The way out is a larger sample, an out of sample test, and a stated reason the return should exist.
+
+### Variance and edge
+
+They produce the same screenshot and opposite futures.
+
+**A lucky run:**
+- Small number of trades
+- Large swings in both directions
+- No explanation for who is paying
+- Cannot be reproduced deliberately
+- Reverts toward the true mean as the sample grows
+- Does not persist
+
+**An edge:**
+- Large number of observations
+- Result survives out of sample testing
+- Names the participant on the other side
+- Repeatable by anyone applying the rule
+- Converges toward the expected value rather than away from it
+- Persists while the reason holds
+
+Over a short window these two are indistinguishable, which is the entire problem. You cannot tell them apart by looking at the profit, because both produce profit.
+
+You separate them by asking the questions from the first lesson. How many observations, what is the reasoning, who is paying. A lucky run cannot answer any of them, and it does not need to in order to feel convincing.
+
+So when a result looks good, the useful reflex is not to celebrate or to copy it. It is to ask how much sample sits behind it, and what would have to be true for it to continue.
+
+### What to carry forward
+
+01. Variance is the spread around the average, and over small samples it is larger than the average.
+02. A losing method produces plenty of profitable short runs. Those runs are what you get shown.
+03. Results revert toward the true mean because the true mean was generating them all along.
+04. A small negative expectancy repeated thousands of times overwhelms any early gain.
+05. Profit over a short window is evidence of spread, not evidence of edge.
+
+**What this now lets you do**
+- Read someone else's result and ask for the sample size before drawing any conclusion.
+- Recognise your own good run as a sample rather than a verdict.
+- Explain to someone else why their winning streak proves less than it appears to.
+
+**Next in this series**
+
+*Who Is Actually Paying You* — If profit without an edge is just the distribution being generous, then where does real profit come from? Somebody has to be on the other side of it, and that is the next question.
+
+---
