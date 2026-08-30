@@ -881,6 +881,54 @@ New tests: 5 in `js/stackedFadeV1Engine.test.mjs` (direction mapping, TP/SL
 band-math correctness, the `requireBandSlopeExpanding` gate, fade-mode
 backward-compat). Runner: `scripts/run_trend_follow.mjs`.
 
+### §14a — tightening the stop (2026-08-30) — the specific mechanism tested, and why it fails
+
+Owner's direct follow-up to the null result above: *"if this works it
+reacts to the band very quick, so the SL should be small"* — a concrete,
+testable mechanical hypothesis, not a vibe. `followSlSigma` added to
+`stackedFadeV1Engine.js` (default 1.0 = the §14 baseline's ~1:1 R:R); TP
+stays fixed at the next band out, only the stop distance changes. Swept
+1.0σ / 0.75σ / 0.5σ (~2:1 R:R) / 0.25σ (~4:1 R:R) × the two §14 gates × gold
++ EURUSD/GBPUSD/USDJPY = 32 cells, pre-registered before running, every cell
+printed (not just the best-looking one — §9's own V2 "best conditions" cell
+was the worst OOS cell of that test, the standing reminder for why).
+
+**Result: zero of 32 cells clear the bar.** Not close, either — no cell
+reaches OOS t>2, and gross P&L (before costs) only turns marginally
+positive at the tightest stops on 2 of 4 instruments (gold, USDJPY), never
+enough to offset the loss of statistical significance from the tiny sample
+that "wins."
+
+**The mechanism, stated plainly because it's the useful part of this
+result**: tightening the stop does mechanically improve R:R exactly as
+expected — but the win rate collapses FASTER than R:R improves, on every
+single instrument, at every step of the sweep:
+
+| SL distance | R:R | gold OOS win% | EURUSD | GBPUSD | USDJPY |
+|---|---|---|---|---|---|
+| 1.0σ (baseline) | 1:1 | 48.3% | 48.1% | 50.2% | 49.2% |
+| 0.5σ | 2:1 | 33.6% | 36.8% | 35.5% | 37.6% |
+| 0.25σ | 4:1 | 23.9% | 23.3% | 22.2% | 26.2% |
+
+At 4:1 R:R, a ~25% win rate would still be a real edge (breakeven is ~20%
+before costs) — but this study's own §12/§13 finding was never "continuation
+confirms almost immediately, rarely revisiting the entry area first"; it was
+"expanding volatility correlates with somewhat more continuation than a
+random walk." A ~1σ move — even a "does eventually continue" one — routinely
+wicks back through a 0.25σ stop first; the stop doesn't know the difference
+between "this reverses" and "this continues after one more push through my
+level." **The owner's intuition (fast-reacting moves want tight stops) is
+directionally sound in general, but this specific price action doesn't
+confirm fast enough, on this timeframe, for a stop that tight to survive
+the noise long enough to find out.** A genuinely different construction —
+requiring some confirmation (a closed bar beyond the touch, not just a
+touch) before entering, rather than tightening the exit on the same
+immediate-touch entry — is the structural mutation this result points at;
+not attempted here.
+
+2 new tests (`followSlSigma` band-math correctness, an inverted-SL config
+rejected not mispriced). Runner: `scripts/run_trend_follow_sl_sweep.mjs`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -902,6 +950,9 @@ control check and permutation baseline), cross-instrument sweep
 `scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
 harness. `js/stackedFadeV1Engine.js` (§9/§9a) gained `action:'fade'|'follow'`
 (§14, +5 tests) — 'follow' is the with-trend trade on `bandSlope=expanding`,
-runner `scripts/run_trend_follow.mjs`, also null on gold + 3 FX majors.
+runner `scripts/run_trend_follow.mjs`, also null on gold + 3 FX majors; §14a
+added `followSlSigma` (+2 tests) to sweep stop tightness (runner
+`scripts/run_trend_follow_sl_sweep.mjs`) — also null, all 32 cells, with a
+diagnosed mechanism (win-rate collapses faster than R:R improves).
 Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook, the rows +
 book are the deliverable until something needs a live view.

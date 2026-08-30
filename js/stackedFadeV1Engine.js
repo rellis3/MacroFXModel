@@ -25,6 +25,14 @@
  *     Motivated by §12/§13: `bandSlope='3·expanding'` is the one dimension
  *     that showed real, non-mechanical, CROSS-MARKET-replicated continuation
  *     (not reversion) at deep bands — gate with `requireBandSlopeExpanding`.
+ *     `followSlSigma` (2026-08-30, owner's follow-up: "if this works it
+ *     reacts to the band very quick, so the SL should be small") — the
+ *     original 1.0 made TP/SL a ~1:1 R:R by construction (both exactly 1σ
+ *     from entry); a smaller value tightens the stop only (TP stays fixed at
+ *     the next band out), widening R:R (e.g. 0.5 → ~2:1) — a genuine
+ *     hypothesis, not yet validated: does a real continuation confirm fast
+ *     enough that a tight stop rarely gets clipped by noise before the move
+ *     shows itself?
  *
  * Gates (fade-side, from earlier passes):
  *   V0 baseline — no gates (the named benchmark floor)
@@ -76,6 +84,8 @@ export const DEFAULT_CFG = {
   requireWtNeutral: false,   // V2 gate (gold-only finding)
   requireMomentumAgree: false,  // sell only if wt1>0 at an upper touch, buy only if wt1<0 at a lower touch
   requireBandSlopeExpanding: false,   // bandSlope='3·expanding' at touch (§12/§13's cross-market-real dim)
+  followSlSigma: 1.0,        // 'follow' only: SL sits this many σ back from the touched band toward VWAP
+                              // (TP stays fixed at +1σ out — smaller values widen R:R, e.g. 0.5 -> 2:1)
   horizonMins: 240,
   atrTfMin: 15, atrPeriod: 14, slAtrMult: 1.5, ctxLookbackDays: 2,
   costPct: 0.020,
@@ -117,7 +127,7 @@ export function runStackedFade(packed, touches, cfg = {}) {
       // is w.r.t. the FOLLOW direction: +1 for an up-touch continuing up.
       const followSgn = t.side === 'up' ? 1 : -1;
       tp = t.vwapAtTouch + followSgn * (t.band + 1) * t.fixedSigma;
-      sl = t.vwapAtTouch + followSgn * (t.band - 1) * t.fixedSigma;
+      sl = t.vwapAtTouch + followSgn * (t.band - c.followSlSigma) * t.fixedSigma;
       if ((tp - entry) * followSgn <= 0 || (entry - sl) * followSgn <= 0) continue;   // entry not between SL and TP
     } else {
       tp = t.vwapAtTouch;
@@ -151,5 +161,6 @@ export function runStackedFade(packed, touches, cfg = {}) {
            meta: { pool: pool.length, cfg: { action: c.action, bands: c.bands, excludeNY: c.excludeNY,
                    requireReject: c.requireReject, requireWtNeutral: c.requireWtNeutral,
                    requireMomentumAgree: c.requireMomentumAgree,
-                   requireBandSlopeExpanding: c.requireBandSlopeExpanding } } };
+                   requireBandSlopeExpanding: c.requireBandSlopeExpanding,
+                   followSlSigma: c.followSlSigma } } };
 }

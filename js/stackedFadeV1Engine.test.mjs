@@ -201,5 +201,26 @@ t('requireBandSlopeExpanding: includes a touch whose bandSlope IS expanding', ()
   assert.equal(trades.length, 1);
 });
 
+t("followSlSigma: tightening the stop moves SL closer to entry, TP unchanged (widens R:R)", () => {
+  // vwap=100, band=2, σ=1 -> TP fixed at 103 regardless; SL at (band-followSlSigma)σ.
+  const touch = followTouchFor({ side: 'up' });
+  const packed = buildQuietPacked({ entryPx: 102 });
+  const wide = runStackedFade(packed, [touch], { action: 'follow', followSlSigma: 1.0 }).trades[0];   // SL=101 (original)
+  const tight = runStackedFade(packed, [touch], { action: 'follow', followSlSigma: 0.5 }).trades[0];  // SL=101.5
+  assert.ok(Math.abs(wide.tp - 103) < 1e-6 && Math.abs(tight.tp - 103) < 1e-6, 'TP is unaffected by followSlSigma');
+  assert.ok(Math.abs(wide.sl - 101) < 1e-6, `default followSlSigma=1.0 keeps the original SL=101, got ${wide.sl}`);
+  assert.ok(Math.abs(tight.sl - 101.5) < 1e-6, `followSlSigma=0.5 moves SL to 101.5 (closer to entry), got ${tight.sl}`);
+  assert.ok(tight.sl > wide.sl, 'a smaller followSlSigma must move the stop CLOSER to entry, not further');
+});
+
+t('followSlSigma: an SL config that lands on the wrong side of entry is rejected, not silently mis-priced', () => {
+  // band=1, vwap=100, σ=1 -> entry~101. followSlSigma=-1 -> SL=(1-(-1))σ=2σ=102,
+  // ABOVE entry for a BUY -- a nonsensical stop that must be filtered, not traded.
+  const touch = followTouchFor({ side: 'up', band: 1 });
+  const packed = buildQuietPacked({ entryPx: 101 });
+  const { trades } = runStackedFade(packed, [touch], { action: 'follow', followSlSigma: -1 });
+  assert.equal(trades.length, 0, 'an SL config that lands on the wrong side of entry must be rejected, not traded');
+});
+
 console.log(`${passed} passed`);
 process.exit(process.exitCode || 0);
