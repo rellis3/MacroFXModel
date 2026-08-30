@@ -69,6 +69,12 @@
  *     gate, but usable on the fade side too (as the null-hypothesis check:
  *     does fading INTO an expanding band lose worse, as §12/§13 imply it
  *     should?).
+ *   requirePmoAgree (2026-08-30, owner's request — "only enter if momentum is
+ *     high or low to correspond to the +3/-3 touch") — same sign-vs-zero
+ *     shape as requireMomentumAgree, reading PMO instead of raw WaveTrend:
+ *     sell only if `pmoValue>0` at an upper-band touch, buy only if
+ *     `pmoValue<0` at a lower-band touch (momentum still extended the same
+ *     direction as the band at the moment of touch).
  *
  * Mechanics (pinned, mirroring the return book's own measurement):
  *   • touch must have ≥240 min of session remaining (returnEligible)
@@ -111,6 +117,7 @@ export const DEFAULT_CFG = {
   requireReject: false,      // V1/V2 gate
   requireWtNeutral: false,   // V2 gate (gold-only finding)
   requireMomentumAgree: false,  // sell only if wt1>0 at an upper touch, buy only if wt1<0 at a lower touch
+  requirePmoAgree: false,       // same shape, reading pmoValue instead of raw wt1
   requireBandSlopeExpanding: false,   // bandSlope='3·expanding' at touch (§12/§13's cross-market-real dim)
   followSlSigma: 1.0,        // 'follow' only: SL sits this many σ back from the touched band toward VWAP
                               // (TP stays fixed at +1σ out — smaller values widen R:R, e.g. 0.5 -> 2:1)
@@ -135,6 +142,8 @@ export function runStackedFade(packed, touches, cfg = {}) {
     .filter(t => !c.requireWtNeutral || t.wtState === '2·neutral')
     .filter(t => !c.requireMomentumAgree
       || (t.wtStateValue != null && (t.side === 'up' ? t.wtStateValue > 0 : t.wtStateValue < 0)))
+    .filter(t => !c.requirePmoAgree
+      || (t.pmoValue != null && (t.side === 'up' ? t.pmoValue > 0 : t.pmoValue < 0)))
     .filter(t => !c.requireBandSlopeExpanding || t.bandSlope === '3·expanding')
     .sort((a, b) => a.epoch - b.epoch);
 
@@ -222,6 +231,7 @@ export function runStackedFade(packed, touches, cfg = {}) {
                    excludeOverlap: c.excludeOverlap,
                    requireReject: c.requireReject, requireWtNeutral: c.requireWtNeutral,
                    requireMomentumAgree: c.requireMomentumAgree,
+                   requirePmoAgree: c.requirePmoAgree,
                    requireBandSlopeExpanding: c.requireBandSlopeExpanding,
                    followSlSigma: c.followSlSigma, confirmTfMinutes: c.confirmTfMinutes } } };
 }

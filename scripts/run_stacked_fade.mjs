@@ -40,6 +40,7 @@ for (const pair of list) {
         ['V0-dev band-3-only', { bands: [3] }],
         ['V1-dev (not-NY × not-overlap, §15)', { bands, excludeNY: true, excludeOverlap: true }],
         ['V1-dev band-3-only', { bands: [3], excludeNY: true, excludeOverlap: true }],
+        ['V2-dev band-3-only + PMO agree', { bands: [3], requirePmoAgree: true }],
       ]
     : [
         ['V0 baseline (no gates)', { bands }],

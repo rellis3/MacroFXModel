@@ -1250,6 +1250,89 @@ tested, and not being sold here as likely to succeed.
 Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
 developing`.
 
+## 17. PMO momentum-agree gate, and a live-recompute 2026 gold walkthrough (2026-08-30)
+
+**Why:** two follow-ups from the owner in one exchange. First, "let's just
+play and see what happens" — walk gold through the exact system described:
+recompute VWAP and the ±3σ developing bands on every 1m candle close, enter
+on contact (fade toward VWAP), SL = 1.5×ATR computed **on the 1m chart**
+(not the 15m ATR §16 used). Second: "what about adding this in and only
+entering if momentum is high or low to correspond to the +3/-3 [touch]" —
+gate the fade to only fire when momentum is still extended the same
+direction as the touch, using the Price Momentum Oscillator (Carl Swenlin),
+an indicator not previously in this codebase.
+
+### 17.1 The 2026 walkthrough, 1m-based stop
+
+Same trade as §16 (developing ±3σ, fade to VWAP, `bands:[3]`), restricted to
+2026-01-02→2026-08-20 (the available 2026 data), with `atrTfMin:1` instead of
+§16's `atrTfMin:15`.
+
+**Result: −7.00% cumulative (compounded), 153 trades, win rate 25.5%** —
+worse than §16's already-null 15-minute-ATR version (which ran 51% win rate
+on the same idea). Mechanism: a 1-minute ATR is a much smaller number than a
+15-minute ATR (14 minutes of realized range vs. 14×15), so `1.5×` it produces
+a materially tighter stop in real price terms. Win rate falling from ~51% to
+~25% matches §14a's own diagnosed mechanism on a different trade: a stop set
+below the market's ordinary pre-reversion noise gets clipped constantly
+before the real move can play out.
+
+### 17.2 PMO — a new Tier-1 primitive
+
+Not previously in this codebase (checked). Implemented per the standard
+Swenlin spec in `js/indicatorCore.js`: two custom-smoothed EMA passes
+(`k=2/length`, distinct from `ema()`'s own `k=2/(length+1)` — does not reuse
+`ema()` for those stages) over the 1-bar ROC ×10, then a **standard** `ema()`
+for the signal line. Default params 35/20/10 (Swenlin's originals). Hand-
+verified against a frozen from-spec reference copy in `legoBricks.test.mjs`
+(bit-for-bit), plus uptrend-positive/downtrend-negative sanity checks.
+
+Wired into `vwapFixedSigmaEngine.js` the same way `atr14`/`wt1` already are —
+computed fresh per session on that session's own M1 closes (no cross-session
+carry, matching the "continuously recalculated live" system the owner
+described), read as-of-prior-close (`pmoRes.pmo[j-1]`, no lookahead into the
+touch bar). New touch fields `pmoValue`/`pmoSignal`/`pmoState` (the last
+registered in `DIMENSIONS` for descriptive use). New `requirePmoAgree` gate
+in `stackedFadeV1Engine.js`, the same sign-vs-zero shape as the existing
+WaveTrend-based `requireMomentumAgree` (§9a): sell only if `pmoValue>0` at an
+upper touch, buy only if `pmoValue<0` at a lower touch. 4 new engine/gate
+tests + 2 indicator tests, all passing.
+
+### 17.3 Does it help? No — checked on the 2026 sample AND the full pre-registered structure
+
+2026 gold only, both ATR bases, `bands:[3]`:
+
+| | trades | win% | cumulative net |
+|---|---|---|---|
+| no PMO gate (1m ATR) | 153 | 25.5% | −7.00% |
+| + requirePmoAgree (1m ATR) | 145 | 24.8% | −6.93% |
+| no PMO gate (15m ATR) | 136 | 47.8% | −10.22% |
+| + requirePmoAgree (15m ATR) | 130 | 46.2% | −11.00% |
+
+The gate barely filters the pool (only ~7-9% of touches removed) and moves
+the result slightly WORSE, not better, in both stop regimes — a small
+sample, so checked against the full pre-registered structure (§16's V0-dev
+band-3-only vs a new V2-dev band-3-only + PMO variant, all years,
+gold + 3 FX majors, 15m ATR):
+
+| instrument | V0-dev band-3 OOS t | V2-dev + PMO OOS t |
+|---|---|---|
+| gold | −6.70 | −6.27 |
+| EURUSD | −4.74 | −4.64 |
+| GBPUSD | −2.43 | −2.20 |
+| USDJPY | −3.73 | −3.78 |
+
+Statistically indistinguishable, both directions, no instrument moved
+meaningfully either way. **Same conclusion §9a already reached with
+WaveTrend's own momentum-agree gate**: at a genuine deep-band extension,
+momentum is already almost always pointed the same direction as the
+extension by construction — "is momentum still extended the same way"
+barely distinguishes anything at this depth, regardless of which named
+momentum oscillator asks the question. Seventh null on this idea shape.
+
+Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
+developing` (now includes the PMO-gated variant by default).
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1292,6 +1375,22 @@ fade-to-VWAP trade test, pre-registered and run on gold + 3 FX majors: NULL,
 every variant, worst (most negative) OOS t-stats of any trade test in this
 study; the fixed-ATR stop checked and ruled out as an obvious miscalibration,
 leaving a fat losing tail on deep-touch days as the leading unproven
-explanation. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+explanation. §17 added `pmo` (Price Momentum Oscillator, Carl Swenlin — a new
+indicator, not previously in this codebase) to `js/indicatorCore.js` (+3
+tests, frozen-reference bit-for-bit check), wired it causally into
+`vwapFixedSigmaEngine.js` (`pmoValue`/`pmoSignal`/`pmoState`, +2 tests, same
+per-session-reset convention as `wt1`/`atr14`) and registered `pmoState` in
+`DIMENSIONS`; new `requirePmoAgree` gate in `stackedFadeV1Engine.js` (+4
+tests) mirroring `requireMomentumAgree`'s sign-vs-zero shape. Also ran a 2026
+gold-only walkthrough of the exact `atrTfMin:1` (1-minute ATR stop) version
+of §16's trade, per the owner's request. Both null: the 2026 1m-ATR
+walkthrough is worse than §16's 15m-ATR version (win rate 25.5% vs 51%,
+−7.0% cumulative) because the tighter 1m-based stop clips ordinary noise
+before reversion plays out; the PMO gate is statistically indistinguishable
+from no gate on the full pre-registered cross-instrument structure (barely
+filters the pool — a genuine deep-band touch is already almost always
+momentum-aligned by construction), the same conclusion §9a already reached
+with WaveTrend's own version of this gate. Seventh null on this idea shape.
+Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.

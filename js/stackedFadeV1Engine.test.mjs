@@ -122,6 +122,39 @@ t('requireMomentumAgree: a touch missing wtStateValue (null) is excluded, not si
   assert.equal(trades.length, 0);
 });
 
+t('requirePmoAgree: upper-band touch with pmoValue>0 (agrees) fires a SELL', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: -5 }), pmoValue: 3 };
+  const { trades, meta } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(meta.pool, 1);
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].side, 'SELL');
+});
+
+t('requirePmoAgree: upper-band touch with pmoValue<0 (disagrees) is excluded entirely', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: -5 }), pmoValue: -3 };
+  const { trades, meta } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
+t('requirePmoAgree: lower-band touch with pmoValue<0 (agrees) fires a BUY', () => {
+  const packed = buildPacked({ side: 'dn', entryPx: 101, tpPx: 103 });
+  const touch = { ...touchFor({ side: 'dn', wtStateValue: 5 }), pmoValue: -3 };
+  const { trades } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].side, 'BUY');
+});
+
+t('requirePmoAgree: a touch missing pmoValue (null) is excluded, not silently included', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: -5 }), pmoValue: null };
+  const { trades, meta } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
 t('excludeOverlap: a touch with overlapWindow=true is excluded', () => {
   const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
   const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), overlapWindow: true };

@@ -326,6 +326,13 @@ console.log('9. bandWalk rejection-vs-walking; regimeState/wtRegimeState wiring'
   assert(withWtRegime.length > 0, 'wtRegimeState populates on real touches');
   assert(withWtRegime.every(t => t.wtRegimeState === `${t.regimeState}×${t.wtState}`),
     'wtRegimeState is exactly regimeState×wtState (VuManChu layered on top)');
+
+  // pmoValue/pmoSignal/pmoState wiring (2026-08-30): populates on real
+  // touches, and pmoState is exactly the sign of pmoValue vs pmoSignal.
+  const withPmo = touches.filter(t => t.pmoValue != null);
+  assert(withPmo.length > 0, 'pmoValue populates on real touches');
+  assert(withPmo.every(t => t.pmoState === (t.pmoValue > t.pmoSignal ? '2·above-signal' : '1·below-signal')),
+    'pmoState is exactly pmoValue vs pmoSignal, never a mismatched bucket');
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

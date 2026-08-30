@@ -32,6 +32,7 @@ export const DIMENSIONS = [
   ['bandSlope', 'Short causal ATR(14) rate of change over the last 30min — is realized vol expanding right now'],
   ['regimeState', 'Momentum (1h ADX) × bandSlope combined cell — the minimal-DOF regime read'],
   ['wtRegimeState', 'regimeState × WaveTrend state — VuManChu layered ON TOP, for incremental-value testing'],
+  ['pmoState', 'PMO (Price Momentum Oscillator) vs its own signal line, at touch'],
   ['otherSideMaxBand', 'Deepest band already tagged on the OPPOSITE side today'],
   ['ladderStep', 'Band progression: retest / orderly next step / jump'],
   ['rangeConf', 'Touch at an Asia/Monday range-fib level (rangeFibEngine ranges)'],

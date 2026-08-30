@@ -6,7 +6,7 @@
 
 import { bisect, extractBars, resampleTo, bodyRange, calcATR } from './barUtils.js';
 import { rollingZScore, rollingPercentile, rollingZAt, linregSlope, ewma, stdev, rankData, spearman, rankIC, mulberry32, blockResample, blockBootstrapIC } from './statsCore.js';
-import { atrWilder, adxWilder, ema, rsiWilder } from './indicatorCore.js';
+import { atrWilder, adxWilder, ema, rsiWilder, pmo } from './indicatorCore.js';
 import { summarizeTrades, sharpeRatio, maxDrawdownFromPnls, profitFactor, winRate, sharpeStdError, minTrackRecordLength, skewness, excessKurtosis, histVaR, histCVaR } from './metricsCore.js';
 import { FIB_LEVELS, calcFibs } from './fibProjection.js';
 import { instrument, pipSize, resolveKey, INSTRUMENT_KEYS } from './instrumentRegistry.js';
@@ -132,6 +132,36 @@ ok('adxWilder in [0,100]', Array.from(adxWilder(bars, 14)).every(v => v >= 0 && 
 ok('ema responds to step', (() => { const e = ema([0, 0, 0, 10, 10, 10, 10, 10, 10, 10], 3); return e[e.length - 1] > 5 && e[0] === 0; })());
 const rsi = rsiWilder(closes.slice(0, 200), 14).filter(Number.isFinite);
 ok('rsiWilder in [0,100]', rsi.length > 0 && rsi.every(v => v >= 0 && v <= 100));
+
+// PMO (Price Momentum Oscillator, Carl Swenlin) — frozen reference: the custom
+// k=2/length smoothing (NOT ema()'s 2/(length+1)) applied twice to the 1-bar
+// ROC×10, then a STANDARD ema() for the signal line, copied verbatim from the
+// spec (not from pmo()'s own source) so the golden test can't drift with it.
+function refPmo(values, length1 = 35, length2 = 20, signalLength = 10) {
+  const n = values.length;
+  const roc = new Array(n).fill(0);
+  for (let i = 1; i < n; i++) {
+    const prev = +values[i - 1], cur = +values[i];
+    roc[i] = prev !== 0 ? ((cur - prev) / prev) * 100 : 0;
+  }
+  const k1 = 2 / length1, k2 = 2 / length2;
+  const s1 = new Array(n); s1[0] = roc[0];
+  for (let i = 1; i < n; i++) s1[i] = k1 * roc[i] + (1 - k1) * s1[i - 1];
+  const scaled = s1.map(v => v * 10);
+  const pmoLine = new Array(n); pmoLine[0] = scaled[0];
+  for (let i = 1; i < n; i++) pmoLine[i] = k2 * scaled[i] + (1 - k2) * pmoLine[i - 1];
+  const ks = 2 / (signalLength + 1);
+  const sig = new Array(n); sig[0] = pmoLine[0];
+  for (let i = 1; i < n; i++) sig[i] = ks * pmoLine[i] + (1 - ks) * sig[i - 1];
+  return { pmo: pmoLine, signal: sig };
+}
+const pmoUpSeries = Array.from({ length: 100 }, (_, i) => 100 + i * 0.5 + Math.sin(i / 7));
+const pmoRef = refPmo(pmoUpSeries), pmoOut = pmo(pmoUpSeries);
+ok('pmo matches frozen reference impl bit-for-bit', pmoOut.pmo.every((v, i) => near(v, pmoRef.pmo[i], 1e-9))
+  && pmoOut.signal.every((v, i) => near(v, pmoRef.signal[i], 1e-9)));
+ok('pmo is positive during a sustained uptrend', pmoOut.pmo[pmoOut.pmo.length - 1] > 0);
+const pmoDownSeries = Array.from({ length: 100 }, (_, i) => 200 - i * 0.5 + Math.sin(i / 7));
+ok('pmo is negative during a sustained downtrend', pmo(pmoDownSeries).pmo[99] < 0);
 
 console.log('[metricsCore]');
 // FROZEN reference: the ORIGINAL honestForecastEngine.summarize body, copied
