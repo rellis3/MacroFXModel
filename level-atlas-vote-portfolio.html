@@ -45,45 +45,46 @@
 <header>
   <h1>Level Atlas Vote Portfolio</h1>
   <div class="controls">
-    <button id="selectAllBtn" type="button">Select all</button>
+    <button id="selectAllBtn" type="button" title="Selects all 27 tracked pairs, including the 10 correlated-risk ones excluded by 'Select recommended' below — combining highly-correlated pairs overstates diversification benefit.">Select all</button>
     <button id="selectRecommendedBtn" type="button" title="OOS-validated: this exclusion set was chosen on the first 70% of history and still improved the untouched last 30% (max DD -42.7%→-25.1%, Sharpe 2.36→3.65) — not just an in-sample pick.">Select recommended (excl. 10 correlated-risk pairs)</button>
+    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Applies every lever this session actually validated, tuned for LEAST drawdown: recommended pairs, margin≥3, max concurrent 1, fixed 0.5% risk/trade, 1% portfolio heat cap ON, currency loss gate ON at 1% (OOS-validated on its own), drawdown throttle ON at trigger -8% / restore -2% / ×0.25 (~40% shallower DD both IS and OOS, at a real Sharpe/CAGR cost — genuine insurance, not free), early exit (no re-leverage) ON (the one stop lever with a provably clean mechanism). Turns OFF: Fixed SL fraction and Include p90 (real but not drawdown-favoring), and Fade-stop tightening (never independently cleared of the same leverage-conflation risk that discredited SL fraction).">⚡ Load best config (least drawdown)</button>
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
-    <label>Min margin <select id="marginSel">
+    <label title="Only trades where the vote-margin (supporting minus challenging dimensions) meets this bar are taken. Higher = fewer, higher-conviction trades — this is the primary edge filter everything else builds on top of.">Min margin <select id="marginSel">
       <option value="1">≥1</option><option value="2">≥2</option><option value="3" selected>≥3</option><option value="4">≥4</option>
     </select></label>
-    <label>Max concurrent <select id="capSel">
+    <label title="How many overlapping open positions ONE pair can hold at once. 1 (strictest) means a new touch on a pair is skipped entirely while an earlier trade on that same pair is still open — higher values let them stack, which increases trade count but also concentration risk per pair.">Max concurrent <select id="capSel">
       <option value="1" selected>1 (strictest)</option><option value="2">2</option><option value="3">3</option><option value="99">unlimited</option>
     </select></label>
-    <label>Per-direction budget <input type="checkbox" id="perDirChk"></label>
-    <label>Sizing <select id="sizingSel">
+    <label title="When on, up-side and down-side trades on the same pair get SEPARATE concurrency budgets instead of sharing one — lets a pair hold one long AND one short at once rather than the second one blocking the first.">Per-direction budget <input type="checkbox" id="perDirChk"></label>
+    <label title="Fixed % risk/trade: every trade risks the SAME % of account off its OWN real stop distance — no capital-split guess needed, forward-implementable as-is (what the live bot actually does). NAV split (legacy): pre-allocates a fixed capital fraction per pair up front and lets each pair's raw price return scale within that slice — kept for comparison only.">Sizing <select id="sizingSel">
       <option value="fixed-risk" selected>Fixed % risk / trade</option><option value="nav">NAV split (legacy)</option>
     </select></label>
-    <label id="weightSelWrap">Weighting <select id="weightSel">
+    <label id="weightSelWrap" title="NAV-split mode only. Equal: every pair gets the same capital slice (1/n). Risk parity: pairs with lower realized volatility get a bigger slice, higher-vol pairs a smaller one — aims to equalize each pair's risk CONTRIBUTION rather than its capital share.">Weighting <select id="weightSel">
       <option value="equal" selected>Equal (1/n each)</option><option value="inverse-vol">Risk parity (inverse-vol)</option>
     </select></label>
-    <label id="riskPctWrap">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
+    <label id="riskPctWrap" title="Fixed-risk mode only: the % of account risked on EVERY trade, sized off that trade's own stop distance. Higher = bigger positions, proportionally bigger Sharpe/CAGR/drawdown all at once — this is leverage, not free edge.">Risk % / trade <input type="number" id="riskPctInput" value="1" step="0.1" min="0.1" style="width:60px"></label>
   </div>
   <div class="controls">
-    <label id="heatCapWrap">Portfolio heat cap <input type="checkbox" id="heatCapChk" checked>
+    <label id="heatCapWrap" title="Caps TOTAL simultaneous exposure across ALL pairs combined, on top of each pair's own cap above. Without this, every pair independently risks its full % at once with no shared ceiling — manufacturing diversification benefit no real account actually has. Defaults ON at 1% (realistic) because the uncapped number was found to be inflated 3.6-4.0 Sharpe vs a believable ~2.0-2.7 capped.">Portfolio heat cap <input type="checkbox" id="heatCapChk" checked>
       <input type="number" id="maxHeatPctInput" value="1" step="0.5" min="0.5" style="width:55px"></label>
-    <label>Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
+    <label title="Rescales the whole return series to this annualized volatility for the 'Vol Target' row in the stats card — a display/comparison lens, not a change to which trades are taken.">Target annual vol % <input type="number" id="targetVolInput" value="10" step="1" min="1" style="width:55px"></label>
   </div>
   <div class="controls">
-    <label>Drawdown throttle <input type="checkbox" id="throttleChk"></label>
-    <label>Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
-    <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
-    <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
-    <label>Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
-    <label>Fixed SL fraction <input type="checkbox" id="slFractionChk">
+    <label title="De-risks (scales position size down) once the STRATEGY'S OWN realized equity drawdown breaches Trigger DD%, restores full size once it recovers to Restore DD%. Targets a sustained losing STRETCH over time — a different risk than the Portfolio heat cap above, which only caps a pile-up of SIMULTANEOUS positions.">Drawdown throttle <input type="checkbox" id="throttleChk"></label>
+    <label title="The drawdown level (negative %) that switches the throttle ON, de-risking future trades until recovery.">Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
+    <label title="The drawdown level (negative %, closer to zero than Trigger DD) that switches the throttle back OFF, restoring full position size.">Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
+    <label title="Position-size multiplier applied while throttled — e.g. 0.5 means half-size trades until the equity recovers to Restore DD%.">Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+    <label title="Retunes each pair's FADE stop to a percentile of that pair's own winning fade trades' real adverse excursion (never widens). OOS-validated, but found this session to interact with position sizing in ways not fully isolated from the leverage effect 'Fixed SL fraction' has — read that one's caveat too before trusting this in combination.">Fade-stop tightening <input type="checkbox" id="fadeStopChk"></label>
+    <label title="Tightens every fade trade's DECLARED stop to this fraction of its current distance. IMPORTANT: found this session to be MOSTLY an implicit-leverage artifact — a smaller declared stop makes fixed-risk sizing size UP every trade (winners included), so avg win roughly doubled while avg loss barely moved. Real drawdown improvement from this alone is modest (~13% shallower), far less than the Sharpe number suggests. 'Early exit (no re-leverage)' below is the corrected version — prefer that one.">Fixed SL fraction <input type="checkbox" id="slFractionChk">
       <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
-    <label>Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
-    <label>Early exit (no re-leverage) <input type="checkbox" id="earlyExitChk"></label>
-    <label>Prop daily DD limit <input type="checkbox" id="propDDLimitChk">
+    <label title="Adds the outermost ladder rung (p90), excluded everywhere else because it has no real stop in the 3-rung ladder and its vote-margin never clears the confidence bar (checked directly: 0 votes across hundreds of touches). Traded UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance. Modest, believable improvement on the full book (Sharpe 3.63→3.99) — not dramatic.">Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
+    <label title="The corrected version of 'Fixed SL fraction': position sizing stays anchored to each trade's ORIGINAL, unchanged stop (a winner's result is mathematically IDENTICAL on or off), and only the exit trigger changes — cuts a fade trade short if the real price path crosses 40% of its original stop distance before it would normally resolve. Avg win genuinely unaffected, avg loss and drawdown genuinely reduced. CAUTION: even so, this lever's own Sharpe still looks implausibly high (95% CI entirely above any believable range for a real strategy) — trust the shape of the improvement, not the Sharpe number.">Early exit (no re-leverage) <input type="checkbox" id="earlyExitChk"></label>
+    <label title="Not a trading rule — a DIAGNOSTIC. Reconstructs each day's running equity path (trades in entry order) and flags days where the account would have breached this % drawdown intraday at some point, even if the day closed fine. A day with 6 losses then 2 big wins can net positive while still blowing a hard prop-firm intraday limit before the wins arrive — this catches that, nothing else on this page does.">Prop daily DD limit <input type="checkbox" id="propDDLimitChk">
       <input type="number" id="propDDLimitInput" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
-    <label>Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
-    <label>Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
+    <label title="Blocks a new trade if the currency it's exposed to (e.g. taking a 3rd JPY-leg trade after JPY has already lost this much today) has already realized this much loss today across the whole book. Built after finding no single PAIR ever drives more than ~30% of a bad day's loss, but a single CURRENCY (usually JPY or USD) often drives 40-80% of it — this catches concentration risk the per-pair/heat caps above can't see.">Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
+    <label title="The per-currency daily realized-loss threshold (% of account) that trips the gate above.">Max daily loss / currency % <input type="number" id="maxDailyLossPctInput" value="1" step="0.5" min="0.5" style="width:55px" disabled></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -932,6 +933,35 @@ propDDLimitInput.addEventListener('change', loadData);
 ccyGateChk.addEventListener('change', loadData);
 maxDailyLossPctInput.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
+
+// One-click preset: every lever actually validated this session, tuned for
+// LEAST drawdown specifically (not generic "best Sharpe") -- see the
+// button's own title attribute above for the full reasoning per lever.
+// Sets values directly (not via .click()/dispatched events) then calls
+// loadData() exactly once at the end, so this doesn't fire a fetch per field.
+document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !CORRELATED_RISK_EXCLUDE.has(el.dataset.pair); });
+  marginSel.value = '3';
+  capSel.value = '1';
+  perDirChk.checked = false;
+  sizingSel.value = 'fixed-risk';
+  riskPctInput.value = '0.5';
+  heatCapChk.checked = true;
+  maxHeatPctInput.value = '1';
+  throttleChk.checked = true;
+  triggerDDInput.value = '-8';
+  restoreDDInput.value = '-2';
+  throttleMultInput.value = '0.25';
+  fadeStopChk.checked = false;
+  slFractionChk.checked = false;
+  slFractionInput.value = '0.5';
+  includeP90Chk.checked = false;
+  earlyExitChk.checked = true;
+  propDDLimitChk.checked = false;
+  ccyGateChk.checked = true;
+  maxDailyLossPctInput.value = '1';
+  loadData();
+});
 
 loadData();
 </script>
