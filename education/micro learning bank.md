@@ -234,3 +234,139 @@ So when a result looks good, the useful reflex is not to celebrate or to copy it
 *Who Is Actually Paying You* — If profit without an edge is just the distribution being generous, then where does real profit come from? Somebody has to be on the other side of it, and that is the next question.
 
 ---
+
+## Lesson 3 — Who Is Actually Paying You
+
+Money does not appear in a market. Every pound you take home was handed over by another participant, for a reason that made sense to them. So who is it, and why do they keep doing it? Name them and you understand your own strategy. Fail to name them and you are hoping.
+
+### Where a return actually comes from
+
+Four sources. Three of them can name the person paying.
+
+Interactive demo (tabs: Risk premium / Liquidity provision / Information advantage / A chart pattern), each rated across the same four rows:
+
+**Risk premium**
+- Who is on the other side — Someone who does not want to hold the risk and pays to pass it on.
+- Why they keep paying — Hedgers, pension funds and insurers have mandates and liabilities. Transferring unwanted exposure is worth paying for.
+- Does it persist — Persists, because the need does not go away. It is compensation rather than a mistake.
+- Can you reach it — Reachable. It requires patience and the ability to hold through the drawdowns that justify the payment.
+
+**Liquidity provision**
+- Who is on the other side — Someone who needs to trade now and accepts a worse price for immediacy.
+- Why they keep paying — Forced sellers, index rebalances and redemptions all create urgency, and urgency is expensive.
+- Does it persist — Persists in pockets, though competition compresses it wherever it is easy to reach.
+- Can you reach it — Partly reachable. At small size, in neglected instruments, on a slower clock than the professionals.
+
+**Information advantage**
+- Who is on the other side — Someone trading on a worse picture of the same situation.
+- Why they keep paying — Assembling data that others have not bothered to gather takes work, and the work is the barrier.
+- Does it persist — Persists while the effort barrier holds. Decays quickly once the data becomes convenient.
+- Can you reach it — Reachable, but only through building rather than watching.
+
+**A chart pattern**
+- Who is on the other side — Nobody identifiable. No participant is being compensated for anything.
+- Why they keep paying — There is no mechanism. The shape describes what price did, not why anybody would keep paying.
+- Does it persist — Nothing to persist. There was never a source, only a description.
+- Can you reach it — Not reachable, because there is nothing there to reach.
+
+*Named counterparty. That is what makes the return something you can expect to continue rather than something you hope repeats. No counterparty, no source — every other row on this page collapses once the first one is empty.*
+
+These are examples of structures that exist, so you can start to recognise the shape of a real answer. A risk premium names the hedger who wants the exposure gone. Liquidity provision names the seller who needed out today. A chart pattern names nobody. In practice a systematic model often cannot identify the individual on the other side either, which the next few slides deal with honestly.
+
+### The sources that actually exist
+
+- **Compensation for risk** — Somebody pays to transfer an exposure they are unwilling or unable to hold.
+- **Payment for immediacy** — Somebody needs to trade now and accepts a worse price to get it done.
+- **Better information** — Somebody is acting on a worse picture of the same situation than you assembled.
+- **A structural constraint** — Somebody is forced to act by a rule, a mandate or a deadline rather than by choice.
+
+Every durable return traces back to one of these four, and each names a counterparty. That is not a coincidence. A return is a transfer, so somebody has to be on the other end of it.
+
+Notice what all four have in common. The person paying has a reason to continue paying. The hedger still has the liability next quarter. The forced seller will be forced again. That is what makes the return repeatable rather than lucky.
+
+Now apply it in reverse. If a method cannot name who pays, it is not describing a source of money. It is describing a shape that money sometimes made.
+
+**Why you were taught it this way**
+
+Because naming the counterparty is uncomfortable for anyone selling a method. The moment you say who pays and why, you invite the obvious next question of whether that reason still holds, and whether a person your size can reach it. It is far easier to teach a shape than to defend a source, and the shape sells to a much larger audience.
+
+### What the group takes home
+
+Every participant in one distribution. Move the costs.
+
+Interactive demo: a bell curve of "where participants finish" (group average, percent, roughly -6% to +6%) against a breakeven line, with a slider from "no costs" to "2% in costs". With costs of 0.00% per participant, the group as a whole finishes at 0.00% and roughly 50% end above breakeven. Before costs the whole thing is a transfer. Half do well, half do badly, and nothing is created.
+
+Before costs the whole thing is a transfer. What one participant gains another lost, and the group as a whole finishes exactly where it started. Add realistic costs and the entire distribution slides left. Nobody traded worse than they did a moment ago. The group is simply paying for the privilege of participating, and that payment is the reason the average participant loses.
+
+*Simulated data. Generated to show the relationship clearly. Not taken from any market, account or track record.*
+
+### What this rules out
+
+- **Returns from watching harder** — Attention is not a source. Nobody is compensated for having looked more closely at a chart.
+- **Returns from complexity** — Adding indicators does not add counterparties. It adds ways to describe the same price.
+- **Returns from conviction** — Certainty is not a payment mechanism. The person on the other side is equally certain.
+- **Returns from effort alone** — Work is required, but it only pays where it produces one of the four sources.
+
+This is the test that removes most of what is taught, and it removes it quickly.
+
+Take any method you have been shown and ask who is on the other side and why they keep paying. Most cannot answer, and the inability to answer is not a gap in the explanation. It is the explanation.
+
+It also tells you where to spend your effort. Work that assembles data nobody else bothered with creates an information source. Work that lets you hold a risk others cannot creates a premium. Work that refines your reading of a shape creates nothing, however diligent it is.
+
+### Where this gets harder
+
+- **Alpha rarely names a person** — A systematic model identifies a repeating feature in flow or behaviour. You infer the class of participant, not the individual.
+- **The mechanism is the claim** — What you can state is the structural reason: a constraint, a mandate, or a behaviour that recurs for the same cause.
+- **Statistics carry the rest** — Where the counterparty cannot be observed directly, out of sample evidence does the work the story cannot.
+- **Separating it from noise is hard** — A small real edge and a lucky sample look identical over short windows, and telling them apart is most of the work.
+
+Naming a specific counterparty is the clearest case, not the only one. A great deal of genuine quantitative alpha cannot point to a person. It identifies a structural feature that repeats, and then demonstrates that it persists across large samples, out of sample, and across more than one regime.
+
+So the requirement is not certainty about who pays. It is that a mechanism can be stated, tested, and shown to fail under conditions you specify in advance. A shape offers none of those three, which is the distinction that matters.
+
+And this is genuinely difficult. Distinguishing a small persistent edge from an interesting run of noise is one of the harder problems in the field. It is why the professional answer is rarely conviction, and usually a distribution, a confidence interval, and a stated willingness to be wrong.
+
+Treat the four sources as a map of the structures that exist rather than a checklist to complete. Once you can see the structures, you start recognising which category something might belong to, and what evidence would settle it.
+
+### A shape and a source
+
+The difference decides whether a result can continue.
+
+**A shape (describes):**
+- Names no counterparty
+- Explains what price did
+- Cannot say why it would happen again
+- Survives on examples
+- Fails the moment you ask who pays
+
+**A source (explains):**
+- Names who is on the other side
+- Explains why they keep paying
+- Predicts the conditions under which it stops
+- Survives measurement
+- Tells you when to expect less of it
+
+The right column can tell you when it will stop working, which is the strongest sign that something is real.
+
+A source knows its own failure conditions. If the hedgers disappear, or the constraint is lifted, or enough capital arrives to compete for the same payment, the return compresses and you can see it coming.
+
+A shape cannot fail in advance. It can only be reinterpreted afterwards, which is the loop from the very first lesson in this bank.
+
+### What to carry forward
+
+01. A return is a transfer. Somebody handed it over, for a reason that made sense to them.
+02. There are four real sources: risk compensation, immediacy, information, and structural constraint.
+03. Before costs the group nets to zero. After costs it nets to negative, which is the average outcome.
+04. If a method can name neither a counterparty nor a testable mechanism, it is describing a shape.
+05. Effort only pays where it creates one of the four sources. Elsewhere it is diligence with no mechanism.
+
+**What this now lets you do**
+- Interrogate any strategy in one question, by asking who pays and why they continue.
+- Direct your effort toward work that creates a source rather than refining a description.
+- Predict when a real edge will weaken, by watching whether the reason behind it still holds.
+
+**Next in this series**
+
+*The Conflict of Interest* — If the structural question is this decisive, why does almost nothing you were shown ever ask it? The answer is not conspiracy. It is what the business model selects for.
+
+---
