@@ -42,7 +42,7 @@ import { portfolioStats } from './backtestStats.js';
 // (non-reinvested) drawdown/return on the same series. Same reasoning and
 // same two Tier-1 bricks (`maxDrawdownFromPnls`, arithmetic-mean annualising)
 // levelAtlasRoutes.js's own `/vote-portfolio` route already uses.
-function withNonCompoundedDD(statsObj, dailyReturns) {
+export function withNonCompoundedDD(statsObj, dailyReturns) {
   const maxDDNonCompounded = +maxDrawdownFromPnls(dailyReturns).toFixed(2);
   const years = dailyReturns.length / 252;
   const cagrNonCompounded = years > 0 ? +(dailyReturns.reduce((s, r) => s + r, 0) / years).toFixed(2) : 0;
