@@ -121,6 +121,39 @@ export function adxWilder(bars, n = 14) {
   return out;
 }
 
+// ── PMO — Price Momentum Oscillator (Carl Swenlin) ───────────────────────────
+// Two-stage custom-smoothed EMA of the 1-bar ROC, ×10, then a STANDARD ema()
+// for the signal line. The custom smoothing factor is k = 2/length (NOT
+// ema()'s k = 2/(length+1)) — a different constant, so this does not reuse
+// ema() for stages 1-2. Standard params (35/20/10) are typically applied to
+// daily closes; here `values` is whatever series the caller passes (this repo
+// runs it fresh per session on M1 closes, matching wtSeries/atrWilder's own
+// per-session-reset convention — see vwapFixedSigmaEngine.js).
+function emaCustomK(values, k) {
+  const out = new Array(values.length);
+  out[0] = num(values[0]);
+  for (let i = 1; i < values.length; i++) {
+    const v = num(values[i]);
+    out[i] = Number.isFinite(v) ? k * v + (1 - k) * out[i - 1] : out[i - 1];
+  }
+  return out;
+}
+
+export function pmo(values, length1 = 35, length2 = 20, signalLength = 10) {
+  const n = values.length;
+  const roc = new Array(n).fill(0);
+  for (let i = 1; i < n; i++) {
+    const prev = num(values[i - 1]), cur = num(values[i]);
+    roc[i] = (Number.isFinite(prev) && prev !== 0 && Number.isFinite(cur))
+      ? ((cur - prev) / prev) * 100 : 0;
+  }
+  const smoothed1 = emaCustomK(roc, 2 / length1);
+  const scaled = smoothed1.map(v => v * 10);
+  const pmoLine = emaCustomK(scaled, 2 / length2);
+  const signal = ema(pmoLine, signalLength);
+  return { pmo: pmoLine, signal };
+}
+
 // ── RSI — Wilder smoothing ───────────────────────────────────────────────────
 // Returns a Float64Array of RSI(0..100) aligned to closes (NaN until seeded).
 export function rsiWilder(closes, n = 14) {

@@ -122,6 +122,88 @@ t('requireMomentumAgree: a touch missing wtStateValue (null) is excluded, not si
   assert.equal(trades.length, 0);
 });
 
+t('requirePmoAgree: upper-band touch with pmoValue>0 (agrees) fires a SELL', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: -5 }), pmoValue: 3 };
+  const { trades, meta } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(meta.pool, 1);
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].side, 'SELL');
+});
+
+t('requirePmoAgree: upper-band touch with pmoValue<0 (disagrees) is excluded entirely', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: -5 }), pmoValue: -3 };
+  const { trades, meta } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
+t('requirePmoAgree: lower-band touch with pmoValue<0 (agrees) fires a BUY', () => {
+  const packed = buildPacked({ side: 'dn', entryPx: 101, tpPx: 103 });
+  const touch = { ...touchFor({ side: 'dn', wtStateValue: 5 }), pmoValue: -3 };
+  const { trades } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(trades.length, 1);
+  assert.equal(trades[0].side, 'BUY');
+});
+
+t('requirePmoAgree: a touch missing pmoValue (null) is excluded, not silently included', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: -5 }), pmoValue: null };
+  const { trades, meta } = runStackedFade(packed, [touch], { requirePmoAgree: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
+t('requireApproachSpike: a touch with approachVel=3·spike fires', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), approachVel: '3·spike' };
+  const { trades, meta } = runStackedFade(packed, [touch], { requireApproachSpike: true });
+  assert.equal(meta.pool, 1);
+  assert.equal(trades.length, 1);
+});
+
+t('requireApproachSpike: a touch with approachVel=1·grind is excluded', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), approachVel: '1·grind' };
+  const { trades, meta } = runStackedFade(packed, [touch], { requireApproachSpike: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
+t('tpRetraceFrac=1.0 (default): fade TP is exactly vwapAtTouch, unchanged', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });   // vwapAtTouch=99
+  const touch = touchFor({ side: 'up', wtStateValue: +5 });
+  const { trades } = runStackedFade(packed, [touch], {});
+  assert.ok(Math.abs(trades[0].tp - 99) < 1e-6, `tp should be vwapAtTouch=99, got ${trades[0].tp}`);
+});
+
+t('tpRetraceFrac=0.5: fade TP sits halfway between entry and vwapAtTouch, SL unchanged', () => {
+  // up-touch (SELL): entry~101 (next bar open), vwapAtTouch=99 -> half-retrace tp=100.
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 100 });
+  const touch = touchFor({ side: 'up', wtStateValue: +5 });
+  const full = runStackedFade(packed, [touch], { tpRetraceFrac: 1.0 });
+  const half = runStackedFade(packed, [touch], { tpRetraceFrac: 0.5 });
+  assert.ok(Math.abs(half.trades[0].tp - 100) < 1e-6, `half-retrace tp should be 100 (halfway to vwap=99 from entry=101), got ${half.trades[0].tp}`);
+  assert.ok(Math.abs(full.trades[0].sl - half.trades[0].sl) < 1e-6, 'SL is unaffected by tpRetraceFrac');
+});
+
+t('excludeOverlap: a touch with overlapWindow=true is excluded', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), overlapWindow: true };
+  const { trades, meta } = runStackedFade(packed, [touch], { excludeOverlap: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
+t('excludeOverlap: a touch with overlapWindow=false still fires', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), overlapWindow: false };
+  const { trades, meta } = runStackedFade(packed, [touch], { excludeOverlap: true });
+  assert.equal(meta.pool, 1);
+  assert.equal(trades.length, 1);
+});
+
 // ── action:'follow' (2026-08-30) — with-trend, next-band-out target ─────────
 // Quiet packed data where the entry bar just fills (open=entry) and price
 // stays near entry for the rest of the window (walkBars returns 'open',

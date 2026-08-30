@@ -32,6 +32,8 @@ export const DIMENSIONS = [
   ['bandSlope', 'Short causal ATR(14) rate of change over the last 30min — is realized vol expanding right now'],
   ['regimeState', 'Momentum (1h ADX) × bandSlope combined cell — the minimal-DOF regime read'],
   ['wtRegimeState', 'regimeState × WaveTrend state — VuManChu layered ON TOP, for incremental-value testing'],
+  ['pmoState', 'PMO (Price Momentum Oscillator) vs its own signal line, at touch'],
+  ['rsiState', 'RSI(14), oriented to the touch side (overbought at up-touch / oversold at down-touch = extended)'],
   ['otherSideMaxBand', 'Deepest band already tagged on the OPPOSITE side today'],
   ['ladderStep', 'Band progression: retest / orderly next step / jump'],
   ['rangeConf', 'Touch at an Asia/Monday range-fib level (rangeFibEngine ranges)'],
@@ -290,6 +292,55 @@ export function buildBandWalkBook(touches, { firstTouchOnly = true, thresholdBar
     }
   }
   return { instrument, splitDate: split, firstTouchOnly, outcome: `walkedBeyond${thresholdBars}bars`, thresholdBars, cells };
+}
+
+// ── The TRADE-WIN book — which conditions predict a REALIZED win vs loss ────
+// (2026-08-30, owner's request: "analyse every touch of the band to find
+// trends as to when a trade is good vs bad... cull the bad trades"). Unlike
+// buildFixedSigmaBook (touch race outcome) and buildVwapReturnBook (returns
+// to VWAP within a horizon), this reads the ACTUAL costed trade's win/loss —
+// the caller runs a trade engine (e.g. runStackedFade) and joins each trade's
+// full touch context back on (date/side/band match), attaching a `win`
+// boolean (net%>0). Deliberately pooled across sides, not split into
+// cells — every DIMENSIONS bucket is already side-oriented (extended/
+// counter, with/against), the same convention that lets buildFixedSigmaBook
+// pool up/dn touches meaningfully.
+function tableForTradeWin(rows, dimKey) {
+  const groups = {};
+  for (const r of rows) {
+    const b = r[dimKey]; if (b == null) continue;
+    const g = (groups[b] ??= { n: 0, wins: 0 });
+    g.n++; if (r.win) g.wins++;
+  }
+  const out = {};
+  for (const [b, g] of Object.entries(groups)) out[b] = { n: g.n, outPct: +(g.wins / g.n * 100).toFixed(1) };
+  return out;
+}
+
+function summarizeAllTradeWin(rows) {
+  const fake = rows.map(r => ({ ...r, _all: 'all' }));
+  return tableForTradeWin(fake, '_all').all;
+}
+
+/**
+ * buildTradeWinBook(rows, { cellKey, dimList }) — rows are realized trades
+ * with their originating touch's context joined on plus a `win` boolean and
+ * a `date` field (for the IS/OOS split). Returns the SAME `{cells}` shape as
+ * buildFixedSigmaBook (one entry, keyed by `cellKey`) so `extractHeldFindings`
+ * works unmodified.
+ */
+export function buildTradeWinBook(rows, { cellKey = 'pooled', dimList = DIMENSIONS } = {}) {
+  if (!rows?.length) return null;
+  const { split, is, oos } = splitAt(rows);
+  const dims = {};
+  for (const [dimKey] of dimList) {
+    const tIs = tableForTradeWin(is, dimKey), tOos = tableForTradeWin(oos, dimKey);
+    if (!Object.keys(tIs).length) continue;
+    dims[dimKey] = { is: tIs, oos: tOos };
+  }
+  const base = { is: summarizeAllTradeWin(is), oos: oos.length ? summarizeAllTradeWin(oos) : null };
+  if (base.oos) annotateHolds(dims, base.is, base.oos);
+  return { splitDate: split, cells: { [cellKey]: { n: { is: is.length, oos: oos.length }, base, dims } } };
 }
 
 /** Every holds-gated finding across the book, biggest |effect| first. */

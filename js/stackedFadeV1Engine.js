@@ -53,6 +53,11 @@
  *   V1 core     — touch NOT in the NY session AND touch-bar candleReject
  *                 = '3·reject'  (both replicated on all 4 instruments, §7c)
  *   V2 gold+WT  — V1 AND wtState = '2·neutral' (the gold-only WT finding)
+ *   excludeOverlap (2026-08-30, §15's own held finding) — drop touches during
+ *     the London/NY overlap window (`overlapWindow===true` on the touch row),
+ *     separate from `excludeNY` (session-bucketed, not the same window) —
+ *     §15's return/band-walk books found this window suppresses reversion
+ *     specifically for the developing (self-widening) band unit.
  *   requireMomentumAgree (2026-08-27) — the OPPOSITE bet from V2: fade only
  *     when the raw WT1 oscillator is STILL on the extension's own side of
  *     zero at the touch (sell only if wt1>0 at an upper-band touch, buy only
@@ -64,6 +69,12 @@
  *     gate, but usable on the fade side too (as the null-hypothesis check:
  *     does fading INTO an expanding band lose worse, as §12/§13 imply it
  *     should?).
+ *   requirePmoAgree (2026-08-30, owner's request — "only enter if momentum is
+ *     high or low to correspond to the +3/-3 touch") — same sign-vs-zero
+ *     shape as requireMomentumAgree, reading PMO instead of raw WaveTrend:
+ *     sell only if `pmoValue>0` at an upper-band touch, buy only if
+ *     `pmoValue<0` at a lower-band touch (momentum still extended the same
+ *     direction as the band at the moment of touch).
  *
  * Mechanics (pinned, mirroring the return book's own measurement):
  *   • touch must have ≥240 min of session remaining (returnEligible)
@@ -102,10 +113,18 @@ export const DEFAULT_CFG = {
   action: 'fade',            // 'fade' (toward VWAP) | 'follow' (with-trend, next band out)
   bands: [2, 3],
   excludeNY: false,          // V1/V2 gate
+  excludeOverlap: false,     // §15's own held finding: drop London/NY overlap touches
   requireReject: false,      // V1/V2 gate
   requireWtNeutral: false,   // V2 gate (gold-only finding)
   requireMomentumAgree: false,  // sell only if wt1>0 at an upper touch, buy only if wt1<0 at a lower touch
+  requirePmoAgree: false,       // same shape, reading pmoValue instead of raw wt1
   requireBandSlopeExpanding: false,   // bandSlope='3·expanding' at touch (§12/§13's cross-market-real dim)
+  requireApproachSpike: false,  // approachVel='3·spike' at touch — Crabel's "the stretch": a fast, overextended
+                                  // drive INTO the level, the other half (with candleReject) of a real discretionary
+                                  // exhaustion read, not just "price touched a number"
+  tpRetraceFrac: 1.0,        // 'fade' only: target this fraction of the distance from entry back to VWAP
+                              // (1.0 = VWAP itself, unchanged default; 0.5 = halfway back — a partial
+                              // retracement target instead of the full round trip)
   followSlSigma: 1.0,        // 'follow' only: SL sits this many σ back from the touched band toward VWAP
                               // (TP stays fixed at +1σ out — smaller values widen R:R, e.g. 0.5 -> 2:1)
   confirmTfMinutes: 1,       // 'follow' only: require a CLOSE beyond the touched band before entering —
@@ -124,11 +143,15 @@ export function runStackedFade(packed, touches, cfg = {}) {
   const pool = touches
     .filter(t => t.ordinal === 1 && c.bands.includes(t.band) && returnEligible(t, c.horizonMins))
     .filter(t => !c.excludeNY || t.session !== 'NY')
+    .filter(t => !c.excludeOverlap || t.overlapWindow !== true)
     .filter(t => !c.requireReject || t.candleReject === '3·reject')
     .filter(t => !c.requireWtNeutral || t.wtState === '2·neutral')
     .filter(t => !c.requireMomentumAgree
       || (t.wtStateValue != null && (t.side === 'up' ? t.wtStateValue > 0 : t.wtStateValue < 0)))
+    .filter(t => !c.requirePmoAgree
+      || (t.pmoValue != null && (t.side === 'up' ? t.pmoValue > 0 : t.pmoValue < 0)))
     .filter(t => !c.requireBandSlopeExpanding || t.bandSlope === '3·expanding')
+    .filter(t => !c.requireApproachSpike || t.approachVel === '3·spike')
     .sort((a, b) => a.epoch - b.epoch);
 
   const trades = [], records = [];
@@ -183,7 +206,12 @@ export function runStackedFade(packed, touches, cfg = {}) {
       sl = t.vwapAtTouch + followSgn * (t.band - c.followSlSigma) * t.fixedSigma;
       if ((tp - entry) * followSgn <= 0 || (entry - sl) * followSgn <= 0) continue;   // entry not between SL and TP
     } else {
-      tp = t.vwapAtTouch;
+      // tpRetraceFrac=1.0 (default): tp = entry + 1.0*(vwapAtTouch-entry) =
+      // vwapAtTouch, unchanged (sign-agnostic — vwapAtTouch/entry already
+      // encode direction, no need for sgn here). <1.0: a partial retracement
+      // — the same distance scaled down, still oriented toward VWAP from
+      // entry, never past it.
+      tp = entry + c.tpRetraceFrac * (t.vwapAtTouch - entry);
       if ((entry - tp) * sgn <= 0) continue;          // VWAP not on the profitable side
       const atr = causalAtr(packed, dayStart, packed.times[entryIdx], c);
       if (!atr) continue;
@@ -212,8 +240,11 @@ export function runStackedFade(packed, touches, cfg = {}) {
 
   return { trades, records,
            meta: { pool: pool.length, cfg: { action: c.action, bands: c.bands, excludeNY: c.excludeNY,
+                   excludeOverlap: c.excludeOverlap,
                    requireReject: c.requireReject, requireWtNeutral: c.requireWtNeutral,
                    requireMomentumAgree: c.requireMomentumAgree,
+                   requirePmoAgree: c.requirePmoAgree,
                    requireBandSlopeExpanding: c.requireBandSlopeExpanding,
+                   requireApproachSpike: c.requireApproachSpike, tpRetraceFrac: c.tpRetraceFrac,
                    followSlSigma: c.followSlSigma, confirmTfMinutes: c.confirmTfMinutes } } };
 }

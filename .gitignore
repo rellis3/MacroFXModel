@@ -2,6 +2,11 @@ node_modules/
 /data/
 logs/dev/
 logs/fixed/
+logs/stacked_fade_developing_stdout.txt
+logs/stacked_fade_pmo_stdout.txt
+logs/stacked_fade_retrace_stdout.txt
+logs/fade_trade_conditions_stdout.txt
+logs/fade_trade_cull_stdout.txt
 education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 vmcResearch/data/*.parquet

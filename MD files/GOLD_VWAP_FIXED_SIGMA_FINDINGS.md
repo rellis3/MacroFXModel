@@ -1157,6 +1157,380 @@ Runners: `scripts/run_gold_vwap_sigma.mjs --sigma-mode developing`,
 `scripts/run_gold_vwap_sigma_controls.mjs --sigma-mode developing --touches
 logs/dev/gold_vwap_sigma_touches.json`.
 
+## 16. The developing-band fade-to-VWAP trade test (2026-08-30) — null, the sixth on this idea shape
+
+**Why:** the owner asked directly — "I would like from this analysis we build
+a tradable system if you think that's possible... vwap out and then band
+back to vwap." That is exactly `stackedFadeV1Engine.js`'s existing
+`action:'fade'` trade (entry on a band touch, TP=VWAP as of touch, SL=1.5×
+ATR15m), which has already been tested five times under `sigmaMode:
+'fixedRms'` (§9 V0/V1/V2, §9a's two variants) and come back null every time.
+It had never been run under `sigmaMode:'developing'` — the band unit the
+owner has been asking about since the screenshot, and the one §15 found the
+strongest non-mechanical descriptive signal in (334 OOS-held return-book
+findings, the most of any book in this whole study). Worth a real, honest
+test on that basis alone, not because the prior result should be assumed
+different this time.
+
+**Pre-registered before running:** same house bar as every trade test in
+this study — OOS t>2, same sign IS/OOS, n≥30, positive gross (pre-cost) P&L,
+on gold (the bar-defining instrument), ideally replicating on ≥2/3 FX
+majors. **Stated prior:** skeptical. fixedRms's own return book (108 held
+findings, called "the strongest structure in the study" at the time) also
+failed to convert into an edge on this identical trade shape — a strong
+descriptive book has already been shown once not to guarantee this. No
+reason yet to expect developing bands are different, only that they hadn't
+been tried.
+
+**Engine change:** one new gate, `excludeOverlap` (drops `overlapWindow===
+true` touches — the London/NY overlap window §15's return AND band-walk
+books both independently flagged as suppressing reversion for the
+developing unit; distinct from the existing `excludeNY`, which buckets by
+session label, not this specific window). 2 new tests. Runner
+`run_stacked_fade.mjs` gained `--sigma-mode`/`--bands` flags (default
+`fixedRms`/`[2,3]`, unchanged prior behavior) and a `sigmaMode==='developing'`
+variant set: V0-dev (baseline, bands 2+3 pooled), V0-dev band-3-only
+(matching the owner's own "3 band" framing earlier in this thread), V1-dev
+(`excludeNY` AND `excludeOverlap` — §15's one cross-validated real theme),
+V1-dev band-3-only.
+
+**Result: NULL, every variant, all 4 instruments — the worst (most
+negative) t-stats of any trade test in this study.**
+
+| instrument | V0-dev (2σ+3σ) OOS t | V0-dev 3σ-only OOS t | V1-dev OOS t | V1-dev 3σ-only OOS t |
+|---|---|---|---|---|
+| gold | −6.15 | −6.70 | −5.86 | −6.62 |
+| EURUSD | −6.42 | −4.74 | −6.04 | −4.86 |
+| GBPUSD | −2.92 | −2.43 | −5.21 | −2.04 |
+| USDJPY | −5.83 | −3.73 | −6.08 | −4.30 |
+
+Every single cell is significantly NEGATIVE, not just non-significant —
+this isn't "no edge found," it's "this specific configuration reliably
+loses money," on 16/16 cells. Win rate is actually decent (51–61%, better
+than a coin flip) but expectancy is still net negative even before
+costs on most cells (gold and USDJPY gross P&L negative outright; EURUSD/
+GBPUSD gross barely positive, 0.0001–0.0067%, nowhere near enough to
+survive real costs). The `excludeOverlap`+`excludeNY` gate (V1-dev) — the
+one theme §15 found real and OOS-held — barely moves any cell: real, but
+far too small next to a fundamentally negative expectancy to flip anything.
+
+**Bug-hunted before accepting the null (per house discipline — assume code
+failure first):** checked whether the fixed `1.5×ATR15m` stop (unchanged
+from the fixedRms version) is simply mis-scaled against developing bands'
+much larger, session-dependent σ. It is not the obvious culprit: sampled at
+gold's ±3σ touches, the stop distance runs a median **3.24×** that touch's
+own developing σ (p25 1.96×, p75 5.28×) — comparably wide to, or wider
+than, the median MAE a genuine WINNING fade needs to survive before
+reverting (1.88σ, from the descriptive check in this same conversation).
+The stop is not obviously clipping winners early. The more likely mechanism,
+consistent with §15's own finding that continuation strengthens with band
+depth specifically because a deep developing-band touch marks a session
+that has already built real, expanding realized range: when a developing-
+band fade DOES lose, the adverse move is drawn from that same fat, still-
+expanding tail — a stop and target sized for the "normal" case does not
+respect how much worse the losing tail gets exactly on the days this signal
+is deepest. This was not separately isolated (would need a dedicated
+MAE-triggered or volatility-scaled exit test, not yet built) — noted as the
+lead candidate explanation, not proven.
+
+**Verdict, plainly:** "band out, then trade it back to VWAP" has now failed
+six independent tests across both band units, several gates, and two
+distinct exit/target constructions (fixed-ATR stop here; the with-trend
+race-based exit in §14 family). The underlying descriptive structure this
+study found — reversion is real, mechanical near VWAP but genuinely
+non-mechanical at depth, especially away from NY/overlap sessions — is not
+in dispute; it is the trade's cost/R:R geometry against realistic stops
+that has not converted it into an edge, in any configuration tried so far.
+Per the "Pivot or Pivot" rule, this is not "the idea doesn't work" so much
+as "every geometry tried on this idea doesn't work" — a volatility-scaled
+or MAE-triggered exit (rather than a fixed ATR multiple) is the next
+structural mutation this specific diagnosis points at, not yet built or
+tested, and not being sold here as likely to succeed.
+
+Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
+developing`.
+
+## 17. PMO momentum-agree gate, and a live-recompute 2026 gold walkthrough (2026-08-30)
+
+**Why:** two follow-ups from the owner in one exchange. First, "let's just
+play and see what happens" — walk gold through the exact system described:
+recompute VWAP and the ±3σ developing bands on every 1m candle close, enter
+on contact (fade toward VWAP), SL = 1.5×ATR computed **on the 1m chart**
+(not the 15m ATR §16 used). Second: "what about adding this in and only
+entering if momentum is high or low to correspond to the +3/-3 [touch]" —
+gate the fade to only fire when momentum is still extended the same
+direction as the touch, using the Price Momentum Oscillator (Carl Swenlin),
+an indicator not previously in this codebase.
+
+### 17.1 The 2026 walkthrough, 1m-based stop
+
+Same trade as §16 (developing ±3σ, fade to VWAP, `bands:[3]`), restricted to
+2026-01-02→2026-08-20 (the available 2026 data), with `atrTfMin:1` instead of
+§16's `atrTfMin:15`.
+
+**Result: −7.00% cumulative (compounded), 153 trades, win rate 25.5%** —
+worse than §16's already-null 15-minute-ATR version (which ran 51% win rate
+on the same idea). Mechanism: a 1-minute ATR is a much smaller number than a
+15-minute ATR (14 minutes of realized range vs. 14×15), so `1.5×` it produces
+a materially tighter stop in real price terms. Win rate falling from ~51% to
+~25% matches §14a's own diagnosed mechanism on a different trade: a stop set
+below the market's ordinary pre-reversion noise gets clipped constantly
+before the real move can play out.
+
+### 17.2 PMO — a new Tier-1 primitive
+
+Not previously in this codebase (checked). Implemented per the standard
+Swenlin spec in `js/indicatorCore.js`: two custom-smoothed EMA passes
+(`k=2/length`, distinct from `ema()`'s own `k=2/(length+1)` — does not reuse
+`ema()` for those stages) over the 1-bar ROC ×10, then a **standard** `ema()`
+for the signal line. Default params 35/20/10 (Swenlin's originals). Hand-
+verified against a frozen from-spec reference copy in `legoBricks.test.mjs`
+(bit-for-bit), plus uptrend-positive/downtrend-negative sanity checks.
+
+Wired into `vwapFixedSigmaEngine.js` the same way `atr14`/`wt1` already are —
+computed fresh per session on that session's own M1 closes (no cross-session
+carry, matching the "continuously recalculated live" system the owner
+described), read as-of-prior-close (`pmoRes.pmo[j-1]`, no lookahead into the
+touch bar). New touch fields `pmoValue`/`pmoSignal`/`pmoState` (the last
+registered in `DIMENSIONS` for descriptive use). New `requirePmoAgree` gate
+in `stackedFadeV1Engine.js`, the same sign-vs-zero shape as the existing
+WaveTrend-based `requireMomentumAgree` (§9a): sell only if `pmoValue>0` at an
+upper touch, buy only if `pmoValue<0` at a lower touch. 4 new engine/gate
+tests + 2 indicator tests, all passing.
+
+### 17.3 Does it help? No — checked on the 2026 sample AND the full pre-registered structure
+
+2026 gold only, both ATR bases, `bands:[3]`:
+
+| | trades | win% | cumulative net |
+|---|---|---|---|
+| no PMO gate (1m ATR) | 153 | 25.5% | −7.00% |
+| + requirePmoAgree (1m ATR) | 145 | 24.8% | −6.93% |
+| no PMO gate (15m ATR) | 136 | 47.8% | −10.22% |
+| + requirePmoAgree (15m ATR) | 130 | 46.2% | −11.00% |
+
+The gate barely filters the pool (only ~7-9% of touches removed) and moves
+the result slightly WORSE, not better, in both stop regimes — a small
+sample, so checked against the full pre-registered structure (§16's V0-dev
+band-3-only vs a new V2-dev band-3-only + PMO variant, all years,
+gold + 3 FX majors, 15m ATR):
+
+| instrument | V0-dev band-3 OOS t | V2-dev + PMO OOS t |
+|---|---|---|
+| gold | −6.70 | −6.27 |
+| EURUSD | −4.74 | −4.64 |
+| GBPUSD | −2.43 | −2.20 |
+| USDJPY | −3.73 | −3.78 |
+
+Statistically indistinguishable, both directions, no instrument moved
+meaningfully either way. **Same conclusion §9a already reached with
+WaveTrend's own momentum-agree gate**: at a genuine deep-band extension,
+momentum is already almost always pointed the same direction as the
+extension by construction — "is momentum still extended the same way"
+barely distinguishes anything at this depth, regardless of which named
+momentum oscillator asks the question. Seventh null on this idea shape.
+
+Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
+developing` (now includes the PMO-gated variant by default).
+
+## 18. What might a real trader be doing differently — exhaustion confirmation and a partial-retracement target (2026-08-30)
+
+**Why:** the owner asked how a colleague might actually be trading this and
+getting entries. Two mechanisms brought in as outside domain knowledge, both
+genuinely untested here before now: (A) real discretionary "exhaustion"
+confirmation — a fast, overextended drive into the level (Crabel's "the
+stretch") THAT THEN gets rejected, not just a touch; (B) a partial
+retracement target instead of a full round trip to VWAP, since the return
+book (§7/§15) already shows the full round trip is the minority outcome past
+2σ.
+
+**Pre-registered before running:** same house bar. Stated prior: mixed.
+Idea A is close in spirit to gates already tested null (`requireReject`
+alone, §9; `requireMomentumAgree`, §9a) — combining two conditions mostly
+just shrinks the pool further and adds multiple-testing risk, so no clean
+win expected. Idea B is the first test in this whole study to touch the TP
+construction itself (every prior test only varied the stop or the entry
+filter) — a genuinely open question.
+
+**New engine capability**, both on `action:'fade'`: `requireApproachSpike`
+(`approachVel==='3·spike'` at touch — the other half of Crabel's exhaustion
+read, paired with the existing `requireReject`) and `tpRetraceFrac` (target
+`entry + frac×(vwapAtTouch − entry)`; `1.0` = unchanged VWAP target, `0.5` =
+halfway back). 4 new tests (a sign/algebra bug in the first draft of the
+`tpRetraceFrac` formula — using `sgn` where none was needed — was caught by
+the `0.5` test itself, before it ever touched real data). Runner gained V3
+(band-3 + exhaustion: reject × spike), V4/V5 (band-3 + tpRetrace 0.75/0.5),
+V6 (exhaustion × tpRetrace 0.5, "everything combined").
+
+### 18.1 Exhaustion confirmation (V3) — mixed, still null everywhere
+
+Pool shrinks hard (~85-87% of touches removed — much more selective than
+`requireReject` alone's ~9-12%, since both conditions must now co-occur):
+
+| instrument | V0-dev band-3 OOS t | V3 (exhaustion) OOS t | n (OOS) |
+|---|---|---|---|
+| gold | −6.70 | −3.31 | 189 |
+| EURUSD | −4.74 | −3.81 | 200 |
+| GBPUSD | −2.43 | **−3.42** | 226 |
+| USDJPY | −3.73 | −2.48 | 181 |
+
+Less negative on 3/4 instruments, worse on GBPUSD — no instrument gets
+anywhere near positive, and the smaller pool makes the IS half noticeably
+noisier (gold IS t only −1.04 on n=282). Same sign both halves everywhere,
+so it's a real (if weak) effect, not a fluke — just not a large enough one
+to matter.
+
+### 18.2 Partial retracement target (V4/V5) — win rate rises cleanly, expectancy does not
+
+| instrument | tpRetraceFrac | win% | OOS t |
+|---|---|---|---|
+| gold | 1.0 → 0.75 → 0.5 | 51% → 55% → 61% | −6.70 → −6.35 → −5.44 |
+| EURUSD | 1.0 → 0.75 → 0.5 | 52% → 57% → 59% | −4.74 → −5.17 → −4.25 |
+| GBPUSD | 1.0 → 0.75 → 0.5 | 55% → 59% → 63% | −2.43 → **−3.03 → −4.16** |
+| USDJPY | 1.0 → 0.75 → 0.5 | 47% → 53% → 60% | −3.73 → −3.81 → −4.08 |
+
+The win-rate rise is real, monotonic, and cross-instrument — a smaller
+target genuinely gets hit more often, exactly as the mechanism predicts.
+**It does not convert to better expectancy — on 3/4 instruments (all but
+gold) OOS t gets WORSE, not better, as the target shrinks.** This is the
+mirror image of §14a's stop-tightness sweep (there, the STOP shrank with
+the TP fixed; here the TP shrinks with the STOP fixed) and reaches the same
+conclusion from the other side: shrinking one leg of the trade while
+holding the other fixed moves R:R down faster than the higher win rate
+makes up for it.
+
+### 18.3 Combined (V6) — gold's least-bad result in the whole study, still solidly null
+
+`requireReject × requireApproachSpike × tpRetraceFrac:0.5` on gold: OOS t
+**−2.96** (IS t −2.76, n=189/282) — the closest ANY fade configuration in
+this entire study has come to the t>2 bar on gold, and still comfortably on
+the wrong side of it. EURUSD/GBPUSD/USDJPY do not improve the same way
+(−4.4/−3.54/−2.49) — not a cross-instrument finding, and not being reported
+as one. Stated plainly: this is still a clear null, reported honestly as
+the closest cell rather than omitted, not as a lead.
+
+**Verdict:** neither idea works, and the reason each fails is informative,
+not just "no." Real discretionary confirmation signals (approach speed +
+rejection) shrink the pool without fixing the expectancy problem. A nearer
+target hits more often but the stop was never the limiting factor — the
+R:R geometry, not the entry trigger or the target distance alone, is what's
+been wrong in every fade configuration tested across this whole study.
+Ninth null on this idea shape (eighth from V3, ninth from V4/V5/V6 as one
+family).
+
+Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
+developing` (V3-V6 now included by default).
+
+## 19. Culling bad trades from the fade's own outcomes — the closest result in the study, still null (2026-08-30)
+
+**Why:** the owner asked directly to analyse every ±3σ developing-band touch's
+REALIZED trade outcome (not the touch-race/return-to-VWAP proxies §7/§15
+already scanned) against every context dimension built so far — session,
+volatility, VuManChu/WaveTrend, RSI, everything — to find what separates a
+winning fade from a losing one and cull the rest. This is a genuinely
+different question from every prior gate test: those asked "does adding
+condition X to the entry improve the trade," one condition (or a small
+named combo) at a time, pre-chosen from theory. This asks "of everything
+already logged on the touch row, what actually correlates with THIS TRADE'S
+own win/loss" — an open scan, not a single hypothesis.
+
+**New capability:** `rsiState`/`rsiValue` — RSI(14) Wilder, the one thing
+the owner explicitly asked for and the one indicator missing from the touch
+context — wired into `vwapFixedSigmaEngine.js` the same causal, per-session-
+reset way as `pmo`/`atr14`/`wt1` (2 new engine tests). `buildTradeWinBook` in
+`vwapFixedSigmaReport.js` — a new book type reusing the SAME `annotateHolds`
+OOS-hold gate and `DIMENSIONS` list as every other book in this study, but
+reading a realized trade's `win` boolean (net%>0) instead of the touch race
+or return-to-VWAP outcome (4 new tests on synthetic data: a perfectly
+predictive dimension holds, an uncorrelated one doesn't). Two new analysis
+runners: `scripts/run_fade_trade_conditions.mjs` (the open scan + a
+permutation baseline + cross-instrument replication check) and
+`scripts/run_fade_trade_cull.mjs` (turns the scan's survivors into an actual
+gated trade and re-measures OOS expectancy — the step that decides whether
+any of this is real, not just descriptive).
+
+### 19.1 The open scan — real structure, not noise
+
+V0 baseline fade (band=3, developing bands, no gates — the same config
+already null 9 times over), every trade joined back to its full touch
+context, scanned across all ~29 `DIMENSIONS`:
+
+| instrument | held findings (n≥30 both halves, |Δ|≥3pp, same sign) | permutation baseline (20 shuffles) |
+|---|---|---|
+| gold | 49 | mean 7.6, range 0–12 |
+| EURUSD | 39 | mean 8.4, range 2–16 |
+| GBPUSD | 27 | mean 8.3, range 2–16 |
+| USDJPY | 31 | mean 8.3, range 3–14 |
+
+All four instruments clear their noise ceiling by a wide margin — this is
+real, dimension-conditioned structure in win/loss, not chance. Five themes
+replicate on ALL FOUR instruments, same sign, OOS:
+
+| dimension | condition | effect | OOS Δ win-rate (n) |
+|---|---|---|---|
+| `session` | London | **worse** | gold −13.6 (82), EURUSD −16.8 (140), GBPUSD −13.2 (121), USDJPY −12.1 (105) |
+| `sessionPos` | 2·mid (mid-session touch) | **worse** | gold −18.8 (89), EURUSD −13.7 (105), GBPUSD −8.3 (78), USDJPY −8.2 (128) |
+| `rangeConsumed` | 2·mid (day's range not yet exhausted) | **worse** | gold −19.5 (72), EURUSD −16.1 (70), GBPUSD −19.9 (52), USDJPY −12.8 (116) |
+| `rangeConf` | 1·asia (near an Asia-range level) | **worse** | gold −30.8 (34), EURUSD −11.1 (59), GBPUSD −22.9 (57), USDJPY −15.4 (47) |
+| `approachER` | 1·choppy (inefficient approach into the band) | **better** | EURUSD +10.4 (148), GBPUSD +10.6 (166), USDJPY +8.4 (174); held on gold too (part of its 49) but not among the top-15 printed, exact magnitude not captured |
+
+The `rsiState='3·extended'` dimension the owner specifically asked about
+(RSI overbought at an up-touch / oversold at a down-touch) is real but only
+3/4: gold −12.1 (275), EURUSD −7.3 (355), USDJPY −8.1 (319), not held on
+GBPUSD — an extended RSI at the touch predicts a WORSE outcome, consistent
+with "don't fade into momentum that's still accelerating," but not the
+cleanest of the five above.
+
+### 19.2 Does culling on these actually flip the trade? No — but it's the closest result in the whole study
+
+Pre-registered before running: minimal-DOF first (each AVOID lever alone),
+then the 4 AVOIDs stacked, then + `approachER='1·choppy'` on top. Same
+house bar as every trade test: OOS t>2, n≥30, positive gross, same sign
+IS/OOS. Stated prior: genuinely open — richest cross-validated signal set
+in the study, but every prior "descriptive lift → trade edge" bet here has
+failed.
+
+| instrument | V0 baseline OOS t | V6 (4 avoids stacked) OOS t | V7 (avoids + choppy) OOS t | best single lever |
+|---|---|---|---|---|
+| gold | −6.70 | −6.42 | **−3.42** | choppy alone: −3.19 |
+| EURUSD | −4.74 | −4.79 | **−2.93** | choppy alone: −2.11 |
+| GBPUSD | −2.43 | −2.29 | **−1.47** | avoid-AsiaConf alone: −1.70 |
+| USDJPY | −3.73 | −2.33 | **−1.68** | avoid-midRangeConsumed alone: −2.84 |
+
+**Every variant, on every instrument, stays negative — but `approachER=
+'1·choppy'` alone, and the combined V7 filter, cut gold's t-stat roughly in
+half (−6.70→−3.2/−3.4) and bring GBPUSD/USDJPY within sight of zero
+(−1.47/−1.68), the closest any configuration in this entire study has come
+to the pre-registered bar.** Win rate rises substantially and consistently
+everywhere (e.g. GBPUSD V7: 54.5%→66.3%) — but mean/gross P&L stays
+negative on every instrument in every variant: losers still lose more than
+winners win, even in the filtered pool. Same mechanism as §18's
+partial-retracement finding, now hitting the WIN RATE side instead —
+a real, useful, cross-instrument-replicated signal that shrinks the loss
+without ever crossing into profit.
+
+**Caveat, stated plainly:** `approachER` was FOUND by the same open scan
+whose "OOS" half then gets reused as the trade test's own OOS period (both
+use the same 60/40 chronological split). This is not a fully independent
+third sample — the filter's discovery already had partial visibility into
+the period later used to "confirm" it. A genuinely independent check would
+need data past the archive's own end (2026-08-20) or a walk-forward scheme
+where the filter is picked on strictly earlier data only. Flagged, not
+corrected for here — read the closeness-to-positive above as informative,
+not as validated.
+
+**Verdict:** tenth failed conversion of a real descriptive signal into a
+trading edge on this idea shape — but the most informative one. The
+mechanism (approach efficiency, not band depth or momentum direction) is
+new ground, distinct from everything gated on before, and it moved every
+instrument the same direction by a meaningful amount without flipping any
+of them. If anything in this whole 19-section study deserves a genuinely
+independent forward check when more data exists past 2026-08-20, it is
+this filter, not any of the nine that came before it.
+
+Runners: `scripts/run_fade_trade_conditions.mjs gold eurusd gbpusd usdjpy
+--perms 20`, `scripts/run_fade_trade_cull.mjs gold eurusd gbpusd usdjpy`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1192,6 +1566,64 @@ to both `scripts/run_gold_vwap_sigma.mjs` and `scripts/run_gold_vwap_sigma_
 controls.mjs` — no engine/report changes, `sigmaMode` was already wired
 through `fixedSigmaWalk` and the book builders are unit-agnostic; this closes
 the gap that the random-walk control could not previously be run matched to
-developing mode. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+developing mode. §16 added `excludeOverlap` to `stackedFadeV1Engine.js`
+(+2 tests) and `--sigma-mode`/`--bands` flags to `scripts/run_stacked_fade.mjs`
+(default `fixedRms`/`[2,3]`, unchanged prior behavior) — the developing-band
+fade-to-VWAP trade test, pre-registered and run on gold + 3 FX majors: NULL,
+every variant, worst (most negative) OOS t-stats of any trade test in this
+study; the fixed-ATR stop checked and ruled out as an obvious miscalibration,
+leaving a fat losing tail on deep-touch days as the leading unproven
+explanation. §17 added `pmo` (Price Momentum Oscillator, Carl Swenlin — a new
+indicator, not previously in this codebase) to `js/indicatorCore.js` (+3
+tests, frozen-reference bit-for-bit check), wired it causally into
+`vwapFixedSigmaEngine.js` (`pmoValue`/`pmoSignal`/`pmoState`, +2 tests, same
+per-session-reset convention as `wt1`/`atr14`) and registered `pmoState` in
+`DIMENSIONS`; new `requirePmoAgree` gate in `stackedFadeV1Engine.js` (+4
+tests) mirroring `requireMomentumAgree`'s sign-vs-zero shape. Also ran a 2026
+gold-only walkthrough of the exact `atrTfMin:1` (1-minute ATR stop) version
+of §16's trade, per the owner's request. Both null: the 2026 1m-ATR
+walkthrough is worse than §16's 15m-ATR version (win rate 25.5% vs 51%,
+−7.0% cumulative) because the tighter 1m-based stop clips ordinary noise
+before reversion plays out; the PMO gate is statistically indistinguishable
+from no gate on the full pre-registered cross-instrument structure (barely
+filters the pool — a genuine deep-band touch is already almost always
+momentum-aligned by construction), the same conclusion §9a already reached
+with WaveTrend's own version of this gate. Seventh null on this idea shape.
+§18 added `requireApproachSpike` (Crabel's "the stretch" — a fast drive into
+the level, paired with the existing `requireReject` for a real discretionary
+exhaustion read) and `tpRetraceFrac` (a partial-retracement TP instead of
+the full round trip to VWAP — the first test in this study to touch the TP
+construction rather than only the stop) to `stackedFadeV1Engine.js` (+4
+tests; a sign/algebra bug in the first draft of the TP formula was caught by
+its own test before touching real data). Both null on the full pre-registered
+cross-instrument structure: the exhaustion filter is mixed and small
+(shrinks the pool ~85-90%, moves OOS t less negative on 3/4 instruments,
+worse on GBPUSD, none positive); the partial-retracement target raises win
+rate cleanly and monotonically but does NOT improve expectancy — on 3/4
+instruments OOS t gets WORSE as the target shrinks, the mirror image of
+§14a's stop-tightness finding from the other leg of the trade. The combined
+variant produced gold's least-negative OOS t of the whole study (−2.96,
+still solidly null). Eighth/ninth null on this idea shape. §19 added
+`rsiValue`/`rsiState` (RSI(14) Wilder, per-session-reset, same convention as
+`pmo`/`atr14`/`wt1`, +2 engine tests) and `buildTradeWinBook` to
+`vwapFixedSigmaReport.js` — a new book type reusing the SAME `annotateHolds`
+gate as every other book, reading a REALIZED trade's win/loss instead of the
+touch race/return proxy (+4 tests, synthetic). Two new runners: an open scan
+across all ~29 `DIMENSIONS` against realized trade outcome (permutation-
+baselined, cross-instrument-checked) and a follow-up that turns the scan's
+cross-validated survivors into an actual gated trade. Result: real,
+non-mechanical structure (49/39/27/31 held findings vs a permutation floor
+of ~8 on each of gold/EURUSD/GBPUSD/USDJPY) — five themes replicate on all
+4 instruments (avoid London session, avoid mid-session touches, avoid
+mid-range-consumed days, avoid Asia-range confluence, prefer a choppy/
+inefficient approach into the band). Turning the two strongest (choppy
+approach, and the 4 avoids stacked) into an actual trade: win rate rises
+substantially and consistently everywhere, and gold's OOS t roughly halves
+(−6.70→−3.2/−3.4) — the closest any configuration in this whole study has
+come to the pre-registered bar — but EVERY variant on EVERY instrument
+stays negative; losers still outsize winners even in the filtered pool.
+Flagged explicitly: the filter's own discovery reused the same chronological
+period later tested as its OOS, not a fully independent third sample.
+Tenth null on this idea shape, the most informative one. Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.

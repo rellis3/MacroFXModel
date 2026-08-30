@@ -63,7 +63,7 @@
 
 import { computeSessionVwap } from './vwapReversionEngine.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
-import { atrWilder } from './indicatorCore.js';
+import { atrWilder, pmo, rsiWilder } from './indicatorCore.js';
 import { pipSize } from './instrumentRegistry.js';
 import { _buildAsiaSessions, _buildMondayRanges } from './rangeFibEngine.js';
 import { calcFibs } from './fibProjection.js';
@@ -319,6 +319,15 @@ export function fixedSigmaWalk(packed, opts = {}) {
       // NOT liteContext-gated: it's a local computation, same contract as
       // vwapDrift/rangeConsumed/vwapSlope.
       const atr14 = atrWilder(bars, 14);
+      // PMO (owner's request, 2026-08-30 — "only enter if momentum is high or
+      // low to correspond to the +3/-3 touch"), reset fresh each session on
+      // this session's own closes (same per-session-reset convention as
+      // wt1/atr14 — the "continuously recalculated live" system the owner
+      // described, not a cross-session carry). Standard params (35/20/10).
+      const pmoRes = pmo(bars.map(b => b.close));
+      // RSI(14) Wilder, same per-session-reset convention (owner's request,
+      // 2026-08-30 — "RSI is overbought above x", one of the trend-cull dims).
+      const rsi14 = rsiWilder(bars.map(b => b.close), 14);
 
       // Per-(side,band) day state. maxBand/first-touch maps reflect bars
       // strictly BEFORE the bar being processed (merged at end of each bar).
@@ -457,6 +466,17 @@ export function fixedSigmaWalk(packed, opts = {}) {
               wtStateValue: feats.wtState?.value ?? null,   // raw wt1 at touch — sign-vs-zero gates need this, not just the ob/os bucket
               wtMtf: feats.wtMtf?.bucket ?? null,
               wtSlow: feats.wtSlow?.bucket ?? null,
+              pmoValue: Number.isFinite(pmoRes.pmo[j - 1]) ? +pmoRes.pmo[j - 1].toFixed(4) : null,
+              pmoSignal: Number.isFinite(pmoRes.signal[j - 1]) ? +pmoRes.signal[j - 1].toFixed(4) : null,
+              pmoState: !Number.isFinite(pmoRes.pmo[j - 1]) ? null
+                : pmoRes.pmo[j - 1] > pmoRes.signal[j - 1] ? '2·above-signal' : '1·below-signal',
+              // RSI(14), oriented to the touch side same as wtState's own
+              // convention: 'extended' = overbought at an up-touch / oversold
+              // at a down-touch (stretched WITH the move that got here).
+              rsiValue: Number.isFinite(rsi14[j - 1]) ? +rsi14[j - 1].toFixed(2) : null,
+              rsiState: !Number.isFinite(rsi14[j - 1]) ? null
+                : (isUp ? rsi14[j - 1] >= 70 : rsi14[j - 1] <= 30) ? '3·extended'
+                : (isUp ? rsi14[j - 1] <= 30 : rsi14[j - 1] >= 70) ? '1·counter' : '2·neutral',
               momAdx: feats.momAdx?.bucket ?? null,
               htfTrend: feats.htfTrend?.bucket ?? null,
               volClimax: feats.volClimax?.bucket ?? null,
