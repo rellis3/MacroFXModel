@@ -3176,6 +3176,80 @@ against real data; 🟢 backtest + portfolio page toggles wired and defaulted
 off; 🟡 live-viewer wiring genuinely out of scope until stop-distance display
 is built there first.
 
+**Correction (2026-08-30, later same day) — the fade-stop-tightening lever's
+avg-win-unchanged claim was checked on the WRONG pipeline stage; corrected
+here rather than left standing.** The owner asked directly whether SL
+decreases had ever been checked for a leverage-in-disguise effect. An
+earlier in-session check (this file's own "Fib Atlas cost-efficiency
+filter" investigation, task confirming stop-tightening coverage) compared
+avg win/loss via the single-pair `/vote-trades/:instrument` route with and
+without `stopTightenFrac` — that route does **not** call `riskAdjustTrades`,
+so it never exercises the actual position-sizing math the live portfolio
+Sharpe/maxDD numbers are built on. Re-checked the correct way — tighten
+the stop on RAW trades first, THEN `riskAdjustTrades` (the real
+`buildFibAtlasVotePortfolio` order) — and **avg win moves too**, not just
+avg loss: OOS, frac=0.9, fade-only: avg win 0.4198%→0.4683% (+11.6%), avg
+loss -1.4344%→-1.00% (-30%).
+
+**Why, mechanically**: `riskAdjustTrades` (`js/levelAtlasVoteReview.js`)
+sizes every trade so `t.stopPips` maps to exactly `riskPct`% risk
+(`r = t.pnlPct / stopRiskPct`, then `× riskPct`) — and `applyFadeStopFraction`
+shrinks `t.stopPips` on EVERY eligible fade row unconditionally (win or
+loss), not just the ones that actually get stopped out at the tighter
+level. A smaller `stopRiskPct` denominator scales up BOTH legs of that
+trade under fixed-fractional sizing, not just the newly-created losses.
+
+**Is this "fake"?** Not automatically — it's the standard Van Tharp
+fixed-fractional convention (risk the same % per trade off THAT trade's
+own stop distance), and this project already documents `riskAdjustTrades`
+as the deliberate sizing model throughout (`withNonCompoundedDD`'s own
+header). A genuinely tighter, still-valid stop legitimately lets a real
+account size bigger for the same $ risk. But it does mean: (1) this
+session's own stated bar for "clean, no leverage-in-disguise" ("avg win
+flat, avg loss shrinks") was not actually met here, and was reported as
+met based on a check run on the wrong pipeline stage — a real error,
+corrected now rather than left uncorrected; (2) part of the reported
+Sharpe/maxDD improvement from stop-tightening reflects bigger effective
+position size, not purely avoided bad losses, which also means more
+sensitivity to real-world slippage if the tighter stop doesn't fill
+exactly where assumed. Not re-litigating whether to keep the fade lever
+live — it still flips a robustly-negative OOS Sharpe positive and the
+sign/direction finding stands — but the "clean" framing needed fixing.
+
+**Fib Atlas SL-tightening study — follow decision, run for the first time
+(2026-08-30)** — direct answer to the owner's own follow-up question
+("have we calculated MAE/MFE for potential SL placement" on follow
+trades). `DECISION=follow` was already supported by
+`fib_atlas_sl_tightening_backtest.mjs` (added 2026-08-29 alongside
+`DECISION=fade`) but had never actually been run — the MAE-timing
+checkpoint study measured follow's signal (weaker than fade's, 2.29× peak
+lift vs 3.03×, but real) and flagged a follow-side tightening backtest as
+a natural next step, not yet built. It required zero new code, just the
+missing invocation:
+
+| | IS Sharpe | OOS Sharpe (daily) | OOS closed maxDD | OOS intraday MTM maxDD |
+|---|---|---|---|---|
+| baseline (follow, untightened) | 5.99 | 5.17 | -37.55% | -50.83% |
+| frac=0.9 (chosen) | 10.38 | 9.65 | -17.99% | -22.75% |
+
+Genuine interior peak in the IS fraction grid (not monotonic — passes the
+"never peaks" check), OOS Sharpe CIs don't overlap [6.221,9.028] vs
+[13.576,16.362] (per-trade basis), tail loss is broad-based not
+concentrated (worst 1% of OOS losers account for only 1.9% of total
+loss). **Same leverage-in-disguise caveat as fade above applies here too,
+checked directly, not assumed**: OOS avg win 0.7424%→0.8240% (+11.0%),
+avg loss -1.4288%→-1.00% (-30%) — real, but partly a fixed-fractional
+resizing effect, not a pure risk-reduction-only result.
+
+🟢 real, direction-consistent OOS result (same shape as the already-live
+fade lever: Sharpe roughly doubles, maxDD roughly halves), methodologically
+sound (interior peak, non-overlapping CIs, broad-based tail check). 🟡
+NOT wired into the page — the leverage-in-disguise question above needs a
+decision (keep the fixed-fractional sizing convention as-is and treat this
+as legitimate, or test a version that resizes only the stop-out leg) before
+either this or the live fade lever's sizing story is presented as fully
+settled; that decision belongs to the owner, not a default to assume.
+
 **Bug fix (2026-08-30) — "error loading candles: Failed to fetch" when
 clicking a trade row on this page's chart.** Root-caused, not guessed:
 `/api/vol-backtest/candles/:pair` (`server.js`) does a synchronous cold R2
@@ -3592,6 +3666,281 @@ data, and now live on the page for anyone to see; 🔴 the underlying
 question ("what is Fib Atlas's true expectancy") is still open — this
 raises the floor of honesty, it does not manufacture a clean final answer
 where a messy, still-partially-unexplained one is the truth.
+
+---
+
+### Fib Atlas cost-efficiency filter — fixes the avg-win-vs-avg-loss asymmetry (2026-08-30)
+
+**The owner's own observation** (reading the live portfolio page): avg win
++0.37%, avg loss -0.55% — winners noticeably smaller than losers, worth
+worrying about even after the Newey-West Sharpe work above, since a real
+sizing/edge asymmetry is a different problem than an inflated Sharpe.
+
+**Root-caused, not just described.** First hypothesis (narrow targets /
+wide stops — a structural ladder design issue) was checked directly against
+the data and was WRONG: target:stop pip ratio is ≈1.00 at nearly every
+rung. The real cause, found by reading `priceBarrierTrade`
+(`js/asiaFibAtlasVoteReview.js:98`): `cost` is subtracted as a FLAT amount
+from every trade's `pnlPct` regardless of win/loss. Combined with near-1:1
+target:stop design, this mechanically shrinks small-pip-distance winners'
+edge far more (in relative terms) than it deepens losses. Confirmed
+empirically by reconstructing gross (pre-cost) win/loss: gross avg
+win/loss ratio ≈1.02 (essentially symmetric, as the pip ratio predicts) vs.
+net (as-displayed) ratio ≈0.67 — the entire asymmetry is a transaction-cost
+artifact, not a target/stop redesign issue. Average cost (~0.017%) eats
+~21% of the average gross win on its own, more on the smallest rungs
+(gross wins as low as 0.009–0.028% before cost).
+
+**Lever tested**: a pure selection gate — skip trades whose gross target
+move doesn't clear a minimum multiple of that pair's own round-trip cost
+(`applyCostEfficiencyFilter` in `js/levelAtlasVoteReview.js`, reused
+by Level Atlas's engine-agnostic trade shape). No stop repricing, no
+resizing — so unlike a stop-tightening lever there's no leverage-in-disguise
+question to check.
+
+`analysis/fib_atlas_cost_efficiency_filter.mjs` — 70/30 IS/OOS freeze,
+pre-stated rule: maximize IS Sharpe (chosen because the goal here is fixing
+the edge itself, a different objective than the shallowest-maxDD rule used
+for other levers), grid `[1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]`×cost-ratio.
+
+| Ladder | Chosen ratio | OOS baseline Sharpe / maxDD / W:L ratio | OOS chosen Sharpe / maxDD / W:L ratio |
+|---|---|---|---|
+| Asia (`LADDER=asia`) | ≥3x | 6.66 / -39.24% / 0.47 | 13.64 / -14.96% / 0.67 |
+| Monday (`LADDER=monday`) | ≥4x | 10.54 / -7.1% / 0.66 | 10.51 / -5.44% / 0.76 |
+
+Asia's result is the strong one (maxDD roughly halved, Sharpe doubled);
+Monday's is real but modest (Sharpe flat, maxDD meaningfully shallower) —
+reported both honestly rather than leading with only the better number.
+
+**Wired into production**: `applyCostEfficiencyFilter(trades, cost,
+minCostRatio)` (new shared brick, `js/levelAtlasVoteReview.js`) → threaded
+through `buildFibAtlasVotePortfolio`'s new `minCostRatio` param
+(`js/fibAtlasVotePortfolio.js`, applied to each pair BEFORE the
+concurrency cap since it's a pure pre-cap selection gate) → `minCostRatio`
+query param on `js/asiaFibAtlasRoutes.js` and `js/mondayFibAtlasRoutes.js`'s
+`/vote-trades/:instrument`, `/vote-portfolio`, and (Asia only)
+`/vote-portfolio-combined` routes, mirroring the existing `stopTightenFrac`
+plumbing exactly. `asia-fib-atlas-vote-portfolio.html` gets a new "Cost-
+efficiency filter" checkbox (default OFF) next to "Tighten fade stop", with
+the OOS numbers above in its tooltip; the ladder toggle auto-switches the
+ratio sent (3x Asia, 4x Monday — combined mode reuses Asia's ratio, same
+precedent as `recommendedExcludeFor` reusing Asia's exclusion set for
+combined mode, since Asia is the dominant risk driver). "Load best config"
+now also enables this toggle. The per-pair table's Skipped column shows a
+`(+N cost)` suffix (with a tooltip) when the filter drops trades, so the
+existing Decided/Kept/Skipped columns stay honestly reconciled instead of
+silently not summing.
+
+Live-verified via Playwright against a freshly-started `node server.js`
+(explicitly checked no stale process was running first, after the
+Newey-West investigation's own testing-hygiene lesson above): manual
+toggle sends `minCostRatio=3` on Asia and `minCostRatio=4` after switching
+to Monday; "Load best config" checks the box and includes `minCostRatio=3`
+alongside the other validated levers; per-pair `costFilteredOut` count
+reconciles correctly against `totalDecided`/`kept`/`skipped`; zero page
+errors.
+
+🟢 root cause found and confirmed empirically (not just hypothesized);
+lever is a pure selection gate (no sizing/leverage question); real OOS
+improvement on both ladders, strong on Asia and modest-but-real on Monday;
+wired end-to-end with default-off opt-in, matching house convention. 🟡
+combined-mode's ratio is NOT independently validated — it borrows Asia's
+ratio by analogy to an existing precedent, not its own OOS test.
+
+---
+
+### Fib Atlas entry-priority ordering under the heat cap — tested, correctly NOT shipped (2026-08-30)
+
+**The owner's own suggestion** ("could we analyse a different order to
+enter the trades in the portfolio?") as a candidate fix for the same
+avg-win-vs-avg-loss observation. Diagnosed first, not assumed: the merged,
+margin-filtered Asia book has 857 real same-entry-timestamp contention
+groups (up to 14 pairs firing at once — same Fib Atlas session-boundary
+evaluation across pairs), where `applyConcurrencyCap`'s admission order
+fell back to plain array order (whichever pair happened to load first) —
+arbitrary, not economically motivated, exactly where a shared heat budget
+gets contested.
+
+Added a new opt-in `priorityOf` param to `applyConcurrencyCap` and
+`applyPortfolioHeatCap` (`js/levelAtlasVoteReview.js`): a `trade -> number`
+scorer that breaks ties ONLY among trades sharing the EXACT SAME entry
+`time`, never reordering trades at different times (that would defer an
+earlier trade's admission on the hope a better one shows up later — a live
+system can't do that; simultaneous ties are the one case reordering is
+causally free, since every candidate is already known at that instant).
+`undefined`/omitted keeps today's behavior exactly — checked, zero
+regression to any existing caller.
+
+**Two candidate priority signals tested, both empirically, neither guessed:**
+- **`margin`** (the natural first candidate — "prioritize higher-conviction
+  trades"): confirmed a **structural no-op**. Every one of the 857
+  contention groups has a UNIFORM margin across all its simultaneous
+  members (margin reflects a session-wide vote shared by every pair firing
+  at that instant, not a per-pair-varying score) — diffing admitted-trade
+  sets at 5 heat-cap levels (1/2/3/5/10%) showed zero differing admissions
+  at every level. Not a bug in the mechanism (verified correct on a
+  synthetic example first) — genuinely nothing to reorder.
+- **`asiaConfPips`** (the Asia-vs-previous-Asia confluence distance already
+  stored per trade — `js/asiaFibAtlasVoteReview.js`'s own
+  `confluenceOnly` filter treats SMALLER values as tighter/stronger
+  confluence, so priority sorts ascending): does vary within 853/857
+  groups and DOES change admission (195 differing trades at heatCap=1%,
+  the frozen BEST_CONFIG value) — a real lever, not a no-op. But on the
+  full already-validated pipeline (recommended pairs, cost-efficiency
+  filter ≥3x, fade-stop-tighten 0.9x, heat cap+throttle at BEST_CONFIG),
+  **IS Sharpe went DOWN** (14.83 → 14.65, `analysis/
+  fib_atlas_entry_priority_backtest.mjs`). Pre-stated rule (maximize IS
+  Sharpe) was not met, so — per this project's own discipline — it was
+  **not** carried to OOS despite OOS happening to look slightly better
+  (16.15 → 16.48); trusting a post-hoc OOS number after failing the
+  pre-stated IS gate is exactly the cherry-picking this methodology exists
+  to prevent.
+
+**Not wired into the page.** No config toggle added — there is nothing
+validated to expose. The `priorityOf` plumbing itself is kept (harmless,
+backward-compatible, unit-tested via the two scripts above, zero
+regression to `legoBricks.test.mjs`) as a real extension point should a
+future, genuinely-varying, pre-outcome conviction signal turn up — but it
+should not be presented as "done" beyond that.
+
+🟢 diagnosed rigorously (contention quantified before touching code, both
+candidate signals checked empirically rather than assumed to work);
+mechanism built correctly and unit-verified on a synthetic case before
+trusting real-data results. 🔴 the lever itself is a clean null on this
+book with the two most natural signals available — reported honestly
+rather than shipped anyway or reframed as a partial win.
+
+---
+
+### Fib Atlas trailing/continuation exit for follow-wins — validated, NOT yet wired live (2026-08-30)
+
+**The owner's own suggestion**: "if we are trading a level which will
+continue the same direction we move to, sl etc and don't close and open a
+trade?" — today's `follow` trades close at a FIXED target the instant
+price first touches the next rung out (`asiaFibAtlasEngine.js`'s walk
+loop breaks the moment `outcome='out'` fires); nothing lets a genuinely
+continuing move run further. This is the only lever tried this session
+that needed a real M1 re-walk, not just reprocessing the already-built
+touch JSON — the stored touch record's `mfePips`/`maePips` only cover the
+excursion up through the FIRST resolution bar, nothing about what price
+did afterward. Confirmed M1 bars ARE loadable in this sandbox
+(`loadM1ForPair`, R2 parquet, ~25s/pair) before committing to the build —
+this is cached data, not the live-OANDA fetch CLAUDE.md flags as
+sandbox-blocked.
+
+**Design (minimal-DOF, one tunable)**: applies ONLY to `decision==='follow'
+&& win===true` trades — exactly "the level kept going the direction we bet
+on." Fade trades and follow LOSSES are completely untouched (zero
+interaction with the already-shipped fade-stop-tightening lever, which
+only ever touches fade rows). From the resolution bar, walks M1 forward
+tracking a trailing stop that only ever ratchets in the favorable
+direction, initialized AT the original fixed-target price — so the worst
+case is byte-identical to today's exit (an instant reversal loses nothing)
+and the best case captures a real continuation. `givebackFrac` (how much
+of the peak excursion beyond the original target gets given back before
+the trail fires) is the one new tunable. Bounded to the trade's own
+calendar `date` (forced close at day-end if never stopped out), keeping
+every trade same-day — matches this project's existing daily-return-series
+convention and avoids open-ended multi-day holds this system was never
+built to carry.
+
+**Correctness point specific to this lever**: the trail lengthens
+`resolveTime` for touched trades, which the per-pair `applyConcurrencyCap`
+(max 1 concurrent) must see BEFORE deciding which trades survive — the
+pipeline order here is trail-first-then-concurrency-cap, the reverse of
+every other lever this session, specifically so a trade the corrected
+(longer) occupancy window would have blocked can't slip through on the
+strength of its original (shorter) window.
+
+`analysis/fib_atlas_trailing_continuation_backtest.mjs` — full recommended
+Asia pair set, on top of the already-shipped pipeline (cost-efficiency
+filter ≥3x, fade-stop-tighten 0.9x, heat cap+throttle at frozen
+BEST_CONFIG). Pre-stated rule: maximize IS Sharpe. First grid
+`[0.2..0.8]` picked the edge value (0.2, the tightest tested) — recognized
+as this project's own "curve that never peaks" red flag and NOT trusted
+without checking further, so the grid was extended down to `[0.02..0.15]`
+before freezing anything. The extended run showed a genuine PLATEAU
+(IS Sharpe 16.62/16.60/16.56/16.52 for 0.02/0.05/0.1/0.15 — differences
+inside the Sharpe CI noise band) followed by a smooth, real decline as
+giveback loosens toward 0.8 — a legitimate interior optimum region, not a
+runaway hugging the search boundary.
+
+| | IS Sharpe | OOS Sharpe | OOS maxDD | OOS avg win | OOS avg loss | OOS PF |
+|---|---|---|---|---|---|---|
+| baseline | 14.83 | 16.15 | -3.16% | 0.4159% | -0.5584% | 16.59 |
+| giveback=0.02 (chosen) | 16.62 | 16.73 | -3.16% | 0.4667% | -0.5584% | 24.49 |
+
+**Leverage-in-disguise check, done explicitly, not assumed**: OOS avg
+loss is byte-identical (-0.5584% both) — no stop or sizing change touched
+losing or fade trades, exactly as designed. OOS maxDD is also unchanged
+(-3.16% both). Only avg win moved (+12.2% relative) and profit factor
+improved materially (16.59 → 24.49) — real risk-neutral upside, not
+leverage in disguise.
+
+**WIRED INTO THE LIVE PAGE (2026-08-30, after an explicit go-ahead) — a
+genuinely different wiring shape than every other lever this session.**
+Every other validated lever (cost-efficiency filter, fade-stop-tighten,
+heat cap, throttle) operates purely on the ALREADY-STORED
+`{pair}-votetrades.json` at READ time — cheap enough for a request-time
+query-param toggle. This lever needs M1 bars (~25s/pair to load) to
+compute the trailed exit, not viable at interactive request time, so it's
+split into two bricks (`js/levelAtlasVoteReview.js`):
+`applyTrailingContinuation(trades, packed, {givebackFrac, cost})` runs
+GENERATION-time inside each ladder's `runOne` (`js/asiaFibAtlasRoutes.js`,
+`js/mondayFibAtlasRoutes.js`), off the SAME gap-filled `packed` M1 bars
+already loaded for the walk (no second fetch) — bakes
+`trailedPnlPct`/`trailedPnlPips`/`trailedResolveTime` onto follow-win rows
+before persisting; `applyStoredContinuationExit(trades, on)` is the cheap
+READ-time swap (no M1 access) wired through `buildFibAtlasVotePortfolio`
+and both ladders' `/vote-trades`, `/vote-portfolio`, and (Asia)
+`/vote-portfolio-combined` routes via a `continuationExit` query param,
+applied BEFORE `applyConcurrencyCap` (the trailed, possibly-longer
+occupancy window must be in place before that function decides survivors,
+not after). `asia-fib-atlas-vote-portfolio.html` gets a default-off
+"Trailing/continuation exit" toggle, included in "Load best config".
+
+**Production regeneration — a real incident, not a clean rollout.** Wiring
+this live required baking the trailed fields into every pair's stored
+`{pair}-votetrades.json` (26 pairs × 2 ladders = 52 runs via
+`scripts/backfill_fib_atlas_vote_trades.mjs`, each running the FULL
+`asiaFibAtlasWalk`/`mondayFibAtlasWalk`, not just the trailing step —
+~150s/pair for Asia, ~20s/pair for Monday). Run as ONE long-lived Node
+process for all 52, it got **OOM-killed by the container's memcg** partway
+through (confirmed via `dmesg`: `oom-kill` on the node PID at ~8.45GB RSS)
+after 40/52 runs — accumulated per-pair M1 decode/walk memory was never
+being reclaimed across pairs. The killed process's exit code, observed
+through a `| tee` pipe, read as `0` (that's `tee`'s own exit code, not
+node's — a real trap: **never trust a piped command's reported exit code
+as the upstream command's**, check the actual process/output instead).
+Diagnosed via `dmesg | grep oom`, then fixed by re-running each remaining
+pair as its OWN short-lived subprocess (`node scripts/backfill_fib_atlas_
+vote_trades.mjs <pair>` in a loop) so the OS fully reclaims memory between
+pairs — the standard mitigation for exactly this shape of per-item memory
+growth, rather than debugging the leak's source inside a long-running
+process. A direct R2 coverage sweep (not log-line counting, which the
+`tee`-masked exit code showed can't be trusted) caught one more gap the
+first remediation pass missed (`monday-fib-atlas/audcad`, whose Monday leg
+never started before the kill) before declaring done. Final state,
+independently verified: **52/52 pair-ladder combinations carry trailed
+fields, 0 missing, 0 stale.**
+
+Live-verified end-to-end via Playwright against a freshly-restarted server
+(restarted again after merging in an unrelated same-day `main` push that
+touched `server.js`, per this session's own stale-process discipline):
+the toggle works correctly with the full recommended pair set selected on
+BOTH ladders, and "Load best config" enables it — zero page errors.
+
+🟢 real, validated, honestly-checked result: strong OOS Sharpe/PF
+improvement, zero leverage-in-disguise (avg loss and maxDD both
+unchanged), the initial edge-of-grid pick was caught and re-tested rather
+than shipped, and the extended grid confirmed a genuine plateau rather
+than a runaway curve; now fully wired and live, with full, independently-
+verified data coverage across every pair and both ladders. 🟡 an OOM
+killed the first regeneration attempt partway through — caught via
+`dmesg`, not the (misleading) reported exit code, and fully recovered
+with a per-pair-subprocess remediation plus a from-scratch coverage
+re-check — a real incident during this rollout, recorded here rather than
+smoothed over.
 
 ---
 
