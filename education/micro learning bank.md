@@ -10,7 +10,7 @@ A running collection of education content, logged as condensed summary notes for
   3. Who Is Actually Paying You
   4. The Conflict of Interest
   5. The Sample You Were Shown
-- **Series 01 — Where Technical Analysis Underperforms** (4 lessons) — logging in progress.
+- **Series 01 — Where Technical Analysis Underperforms** (4 lessons) — logged below, complete.
   1. Why Chart Patterns Underperform
   2. Evaluating Trading Education
   3. Signal Decay and Market Efficiency
@@ -237,5 +237,36 @@ Lessons are logged below over time as condensed notes, grouped under their serie
 **What to carry forward (paraphrased):** edges decay precisely because they work and attract capital; decay speed tracks participation, not idea quality; every edge has a size where the trader's own market impact exceeds the edge; crowded positions look independent until stress reveals they're correlated; and the practical habit is to always ask why an edge should exist, treating "no answer" as itself informative.
 
 **Next in series:** Market Efficiency and Information — if edges decay wherever competition arrives, where is competition thinnest, and can someone of ordinary size actually operate there?
+
+---
+
+### Lesson 4 — Market Efficiency and Information
+
+**Core argument:** Competition for any given edge scales with capacity, so the places large, well-resourced participants can't or won't operate are exactly where an individual isn't automatically outgunned — that's a narrower opportunity set than most marketing implies, but a real one.
+
+**Chart 1 — how fast public information gets priced:** A curve plots the share of a price move already reflected against seconds since a release (0–60s, via slider). By 3 seconds after release, roughly 85% of the move is already priced in — illustrating that reacting to a headline isn't a viable strategy, since by the time a person reads, decides, and clicks, the information is already in the price; competing on that timescale means competing with systems measured in microseconds.
+
+**Efficiency in plain terms (four points):** past prices are already heavily examined (anything visible in historical data has been looked at by many); public information (filings, releases, news) gets incorporated faster than a person can act on it; genuinely private information isn't legally available as a strategy; and the practical reading offered is that markets are efficient enough that easy profits are rare, but not so efficient that skill is worthless. Framed as a gradient rather than a binary — different markets sit at different points on it, and the same market moves along it over time. The strongest form of the efficiency idea (even private information being priced) is rejected; weaker forms hold up reasonably well. Practical implication: without an edge in speed, data, capital, or method, a trader won't get paid regardless of chart-reading skill.
+
+**Where an individual cannot compete (four resource-based barriers):** speed (latency is bought with hardware and proximity — decided before a trade is even placed); data (institutions can buy and clean datasets an individual can't access); capital (some strategies only work at scale or require a balance sheet); execution (better fills are a real, persistent edge, but come from infrastructure). Framed as knowing where you structurally lose being more useful than a list of things to try — the mistake isn't being small, it's competing in arenas where being large is the whole advantage.
+
+**Chart 2 — where competition sits by market type:** An interactive slider ("less efficient" to "highly efficient") shown for five market categories, each with who's on the other side, what the available data looks like, and what that implies:
+- **Large-cap index** (highly efficient) — every institution on earth, continuously; data universal/free/instant; edge measured in fractions of a basis point, bought with infrastructure.
+- **Major FX** (highly efficient) — banks, macro funds, execution algorithms; deep, heavily modelled liquidity; directional edge scarce, what persists tends to be structural/flow-driven.
+- **Government bonds** (contested/moderate) — central banks, primary dealers, systematic macro; well-researched but policy-driven; edge exists in framework and time horizon rather than speed.
+- **Small-cap equity** (less efficient) — fewer analysts, many funds too large to bother; patchy, slower-traveling coverage; real inefficiency that persists because it's capacity-constrained by design.
+- **Niche spreads** (least efficient) — specialists only, and not many; data has to be assembled rather than downloaded (the barrier itself); where an individual can genuinely compete because effort is the moat.
+
+Pattern drawn out: competition tracks capacity, and capacity tracks size — the places large participants can't fit tend to be exactly the places where data must be assembled rather than simply downloaded.
+
+**What is actually left for an individual (four sources):** horizon (not required to trade today, unlike many institutions with reporting/liability constraints); neglect (instruments/relationships nobody covers because covering them doesn't pay a large fund); assembly (an edge built from public data that must be gathered and combined before it says anything); behaviour (a structural reason for a return to exist when someone is compensated for taking on a risk they don't want). Horizon is called out as the most underrated (a fund reporting quarterly can't hold through a drawdown an individual can — a difference in constraints, not skill), and assembly the most durable (effort as the barrier decays much more slowly than an easily-copied idea).
+
+**Two ways to compete (contrast):** contests you lose, decided by resources — reacting to news, trading only the most liquid instruments, anything decided by latency, strategies needing scale, signals everyone can already see. Contests you can enter, decided by constraints — longer holding periods, neglected instruments, data requiring assembly, capacity-limited opportunities, risk others are unwilling to hold. Framed as different games rather than different skill levels — most retail effort is spent in the losing column (real work, just outresourced at exactly the thing being contested), and moving to the other column is slower and less exciting, which is exactly why it stays available.
+
+**Self-check questions posed** (not scored, just for reflection): why reacting to news releases rarely works for an individual (most of the move is priced before a person can act); what tends to make a market less efficient (fewer participants, and data that must be assembled rather than downloaded); which advantage is genuinely available to an individual (a longer holding period, since nobody forces an individual to report quarterly).
+
+**What to carry forward (paraphrased):** efficiency is a gradient, so the relevant question is where a given market sits, not whether market efficiency is true in some absolute sense; public information gets priced faster than a person can act on it, so speed isn't an available edge; competition tracks capacity, so it thins out where large participants can't fit; a longer time horizon is a genuine, usable advantage since an individual's constraints differ from an institution's; and an edge that requires assembling data has effort itself as its durability.
+
+**Series close (end of "Where Technical Analysis Underperforms"):** Four lessons build one argument — that an unmeasurable claim can't be trusted, and an easy edge won't last. Framed as solving half the problem (recognizing what's real and where it can still be found); the other half — staying solvent long enough to actually be paid by real edges — is left for the next series.
 
 ---
