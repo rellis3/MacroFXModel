@@ -63,6 +63,7 @@
     <label>Ladder <div class="seg" id="ladderSeg">
       <button data-v="asia" class="active">Asia</button>
       <button data-v="monday">Monday</button>
+      <button data-v="combined" title="Both ladders' trades merged into one sorted list, tagged by ladder — the SAME pair can have an Asia trade and a Monday trade open at once, each kept as its own row (mirrors the portfolio page's 'Both (combined)' mode)">Both</button>
     </div></label>
     <label>Pair <select id="pairSel">
       <option value="eurusd">EURUSD</option>
@@ -114,7 +115,9 @@
   the one shown to hold up cross-instrument</b>; see <code>MD files/LEGO_MODULES.md</code> §1aq for the full
   methodology and the correlated-trade trap this default was chosen to avoid. The Monday ladder is the SAME vote
   logic on a weekly-persisting range (drawn once, active the following Tue→Mon) — see
-  <code>js/mondayFibAtlasEngine.js</code> for why it ships a leaner context set than Asia's.
+  <code>js/mondayFibAtlasEngine.js</code> for why it ships a leaner context set than Asia's. <b>Both</b> merges each
+  ladder's own trades for this pair into one sorted list (each row tagged Asia/Monday) — the same pair can have an
+  Asia trade and a Monday trade open at once, this view does not de-dupe or net them against each other.
 </div>
 
 <div class="card">
@@ -201,7 +204,7 @@
   <div id="tradeTableWrap">
     <table id="tradeTable">
       <thead><tr>
-        <th data-k="date">Date</th><th data-k="side">Side</th><th data-k="rung">Rung</th><th data-k="session">Session</th>
+        <th data-k="ladder">Ladder</th><th data-k="date">Date</th><th data-k="side">Side</th><th data-k="rung">Rung</th><th data-k="session">Session</th>
         <th data-k="decision">Dec</th><th data-k="margin">Marg</th><th data-k="win">Res</th><th data-k="pnlPct">PnL%</th>
       </tr></thead>
       <tbody id="tradeBody"></tbody>
@@ -267,21 +270,65 @@ function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
 function isoToEpoch(iso) { return Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000); }
 
 function apiPrefix() { return ladder === 'asia' ? '/api/asia-fib-atlas' : '/api/monday-fib-atlas'; }
-function csvPrefix() { return ladder === 'asia' ? 'asia-fib-atlas-vote' : 'monday-fib-atlas-vote'; }
+function csvPrefix() { return ladder === 'combined' ? 'fib-atlas-combined-vote' : ladder === 'asia' ? 'asia-fib-atlas-vote' : 'monday-fib-atlas-vote'; }
+
+// Fetches ONE ladder's vote-trades and tags every trade with which ladder it
+// came from — used directly for single-ladder mode, and twice (in parallel)
+// for combined mode below.
+async function fetchLadderTrades(ladderTag, pair, minMargin, stopTightenQS) {
+  const prefix = ladderTag === 'asia' ? '/api/asia-fib-atlas' : '/api/monday-fib-atlas';
+  const res = await fetch(`${prefix}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}`);
+  const j = await res.json();
+  return { ladderTag, ...j, trades: j.ok ? j.trades.map(t => ({ ...t, ladder: ladderTag })) : [] };
+}
 
 async function loadData() {
   const pair = pairSel.value, minMargin = marginSel.value;
   headerSub.textContent = 'loading…';
   document.getElementById('kpiPrimary').innerHTML = '<span class="muted">loading…</span>';
+  const qw = document.getElementById('qualityWarning');
   try {
     const stopTightenQS = stopTightenChk.checked ? '&stopTightenFrac=0.9' : '';
+
+    // Combined mode merges BOTH ladders' own trades for this pair into one
+    // sorted list, tagged by ladder — the trade-level analogue of the
+    // portfolio page's "Both (combined)" mode (same pair can have an Asia
+    // trade AND a Monday trade open at once, so this is a genuine merge, not
+    // a de-dupe). No shared per-ladder `summary` to check against here, so
+    // the weak-edge quality warning below is skipped in this mode — every
+    // KPI/chart on the page still recomputes straight from the merged
+    // `allTrades`, so nothing downstream is missing, just that one early
+    // heads-up.
+    if (ladder === 'combined') {
+      const [asia, monday] = await Promise.all([
+        fetchLadderTrades('asia', pair, minMargin, stopTightenQS),
+        fetchLadderTrades('monday', pair, minMargin, stopTightenQS),
+      ]);
+      const loaded = [asia, monday].filter(l => l.ok);
+      if (!loaded.length) {
+        headerSub.textContent = `no data: ${asia.error || monday.error}`;
+        document.getElementById('kpiPrimary').innerHTML = `<span class="muted">no data yet — run POST /api/asia-fib-atlas/run and /api/monday-fib-atlas/run for this pair</span>`;
+        return;
+      }
+      allTrades = loaded.flatMap(l => l.trades).sort((a, b) => a.time - b.time);
+      cost = loaded[0].cost;
+      const missingLadder = loaded.length === 1 ? (asia.ok ? 'Monday' : 'Asia') : null;
+      const costsDiffer = loaded.length === 2 && asia.cost !== monday.cost;
+      headerSub.textContent = `Asia+Monday combined · ${loaded[0].instrument} · ${allTrades.length} trades`
+        + (missingLadder ? ` · ⚠ ${missingLadder} ladder has no data for this pair` : '')
+        + ` · cost ${cost}%/trade${costsDiffer ? ` (⚠ ladders disagree — using Asia's)` : ''}`
+        + ` · generated ${new Date(loaded[0].generatedAt).toLocaleDateString()}`;
+      qw.style.display = 'none';
+      renderAll();
+      return;
+    }
+
     const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `no data: ${j.error}`; document.getElementById('kpiPrimary').innerHTML = `<span class="muted">no data yet — run POST ${apiPrefix()}/run for this pair</span>`; return; }
-    allTrades = j.trades;
+    allTrades = j.trades.map(t => ({ ...t, ladder }));
     cost = j.cost;
     headerSub.textContent = `${ladder === 'asia' ? 'Asia' : 'Monday'} · ${j.instrument} · split ${j.splitDate} (OOS only) · cost ${j.cost}%/trade · generated ${new Date(j.generatedAt).toLocaleDateString()}`;
-    const qw = document.getElementById('qualityWarning');
     if (j.summary && j.summary.sharpe < 1.0) {
       qw.style.display = '';
       qw.style.background = '#2a1414'; qw.style.borderColor = '#7c2d2d'; qw.style.color = '#f87171';
@@ -588,6 +635,7 @@ function renderTradeTable(rows) {
   tradeCountEl.textContent = sorted.length;
   tradeBody.innerHTML = sorted.map((t, i) => `
     <tr data-i="${i}" class="${t === selectedTrade ? 'selected' : ''}">
+      <td>${t.ladder === 'monday' ? 'Monday' : 'Asia'}</td>
       <td>${t.date}</td><td>${t.side}</td><td>${t.rung}</td><td>${t.session ?? '—'}</td>
       <td>${t.decision}</td><td>${t.margin}</td>
       <td class="${t.win ? 'green' : 'red'}">${t.win ? 'WIN' : 'LOSS'}</td>

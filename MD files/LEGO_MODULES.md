@@ -3278,6 +3278,42 @@ unaffected, R2 side confirmed working end-to-end); 🟡 the OANDA gap-fill
 itself needs a real trade-chart click on Railway to fully confirm, same
 sandbox limitation as every other OANDA-dependent feature here.
 
+**"Both (combined)" trade view added to `asia-fib-atlas-vote-backtest.html`
+(2026-08-30) — the owner asked why the trade-review page only had Asia/Monday
+when the portfolio page also has a combined mode.** Honest answer, not a
+deliberate design choice: this page was modeled directly on
+`level-atlas-vote-backtest.html`, which has no Asia/Monday duality to
+combine; when the Monday ladder was added later it just got the same binary
+toggle, and nobody retrofitted a merged view at the trade level. Added a
+third `ladderSeg` button (`data-v="combined"`) that fetches BOTH ladders'
+`/vote-trades/:pair` in parallel (`fetchLadderTrades`, tags every trade with
+`ladder:'asia'|'monday'`), merges into one list sorted by `t.time`, and
+renders through the exact same `renderAll`/KPI/chart pipeline every other
+mode already uses — no new stats math, this is a genuine merge (an Asia
+trade and a Monday trade on the same pair can both be open at once, so it's
+not a de-dupe), mirroring the trade-level analogue of the portfolio page's
+own "Both (combined)" semantics. Trade table gained a `Ladder` column (works
+with the existing click-to-sort header handler for free — no new sort code
+needed) so merged rows stay identifiable; CSV exports keep their fixed
+3-schema contract unchanged (no new column) since `filteredTrades()` already
+flows through the tagged, merged `allTrades` regardless of mode.
+
+Live-verified via Playwright against a running server (EURUSD): combined
+mode returned exactly 1,794 (Asia) + 221 (Monday) = 2,015 trades, matching
+each ladder's own standalone count with no double-counting or drops;
+default sort interleaves both ladders' most-recent trades chronologically;
+sorting by the new Ladder column groups into exactly 2 runs; the
+decision-filter dropdown correctly re-filters the merged set (985 fade
+trades); switching back to a single ladder reverts cleanly (1,794 rows,
+per-ladder `summary` quality warning restored); zero page errors throughout.
+Per-ladder `summary.sharpe` quality warning is deliberately skipped in
+combined mode (there's no single merged `summary` to check) — the same
+weak-edge signal is still visible in the KPI cards below, which already
+recompute straight from `allTrades`, so nothing is actually missing.
+
+🟢 built + live-verified end-to-end (merge counts, sort, filter, chart-click
+integration) via Playwright against a running server.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
