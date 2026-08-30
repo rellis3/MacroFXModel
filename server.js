@@ -13745,6 +13745,69 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
   };
 }
 
+// One instrument's current vote-decision preview: what the plan producer
+// would zone up RIGHT NOW for each pending (not-yet-touched) rung — same
+// fade/follow/margin/entry/sl/tp computation `_refreshVolatilityV2Plan` uses
+// for the live bot, extracted so a read-only caller (the vote-preview route
+// below, used by vol-forecast-v2.html and today.html's per-pair Vol section)
+// can ask about ANY instrument the Level Atlas engine covers, not just the
+// bot's own `enabled_pairs` universe. Pure read: never writes `volatility_bot_v2_plan`.
+async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, earlyExit = false, earlyExitThreshold = 0.4 } = {}) {
+  const live = await _laGetFastLive(pair);
+  if (live.warming) return { skipped: 'warming (cold cache) — try again shortly' };
+  if (!live.date) return { skipped: 'no live coverage yet' };
+  const stored = await _r2GetJSON(`${_LA_PREFIX}/${pair}.json`);
+  const book = stored?.books?.[_LA_DEFAULT_REARM];
+  if (!book) return { skipped: 'no stored book — POST /api/level-atlas/run first' };
+
+  const packed = _laLiveCache.get(pair)?.packed;
+  const assetCls = (() => { try { return _assetClassOf(pair); } catch { return 'fx'; } })();
+  const cost = (() => { try { return _laCostForPair(pair, assetCls); } catch { return 0; } })();
+
+  // Ladder for pricing PENDING (not-yet-touched) rungs — daily bars UP TO
+  // (not including) today, from getFastLive's own bounded, already-warm
+  // packed M1 via resamplePacked (no re-fetch, no OANDA call needed).
+  let ladderBySide = {};
+  if (packed?.n) {
+    const daily = _resamplePacked(packed, 1440).map(b => ({ date: new Date(b.time * 1000).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close }));
+    const todayIdx = daily.findIndex(d => d.date === live.date);
+    const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
+    const todayOpen = todayIdx >= 0 ? daily[todayIdx].open : daily.at(-1)?.open;
+    if (priorDaily.length && todayOpen > 0) {
+      try {
+        const est = _LA_LADDER_PARAMS.pairs?.[pair.toUpperCase()]?.estimator ?? _LA_LADDER_PARAMS.classDefaults?.[assetCls]?.estimator ?? 'yz_30';
+        const sigma = _laForecastSigma(priorDaily, est);
+        if (sigma > 0) {
+          const lad = _laBuildLadder(sigma, { instrument: pair.toUpperCase(), assetClass: assetCls, horizon: 'daily', eventTag: 'none' });
+          ladderBySide = _laRungLevelsForLadder(lad, todayOpen);
+        }
+      } catch (e) { console.error(`[volatility-v2] ladder failed for ${pair}:`, e.message); }
+    }
+  }
+
+  const fadeStopInfo = fadeStopTighten ? await _volatilityV2FadeStopInfo(pair, live.date) : null;
+
+  // Only PENDING (not-yet-touched, currently armed) rungs are tradeable —
+  // `touches` (already touched today) are informational only (what happened
+  // already, for the dashboard's "Today's Levels" display); atlasWalk's own
+  // rearm bookkeeping already decides what's currently armed, which is
+  // exactly what `pending` represents.
+  const zones = [];
+  for (const p of (live.pending ?? [])) {
+    if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
+    const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold);
+    if (!zone) continue;
+    // instanceNum: how many times THIS (side,rung) has already resolved
+    // today — makes the zone_id stable across polls for the CURRENT armed
+    // instance, but distinct from an earlier-today occurrence of the same
+    // rung after a rearm (a genuinely new, separately-tradeable opportunity,
+    // same as the backtest counting each qualifying touch as its own trade).
+    const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
+    zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
+  }
+  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo };
+}
+
 async function _refreshVolatilityV2Plan() {
   try {
     const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
@@ -13775,60 +13838,11 @@ async function _refreshVolatilityV2Plan() {
           skipped[pair] = `cold-start throttled (${_laLiveWarming.size} pairs already warming) — picked up on a later tick`;
           continue;
         }
-        const live = await _laGetFastLive(pair);
-        if (live.warming) { skipped[pair] = 'warming (cold cache) — try again shortly'; continue; }
-        if (!live.date) { skipped[pair] = 'no live coverage yet'; continue; }
-        const stored = await _r2GetJSON(`${_LA_PREFIX}/${pair}.json`);
-        const book = stored?.books?.[_LA_DEFAULT_REARM];
-        if (!book) { skipped[pair] = 'no stored book — POST /api/level-atlas/run first'; continue; }
-
-        const packed = _laLiveCache.get(pair)?.packed;
-        const assetCls = (() => { try { return _assetClassOf(pair); } catch { return 'fx'; } })();
-        const cost = (() => { try { return _laCostForPair(pair, assetCls); } catch { return 0; } })();
-
-        // Ladder for pricing PENDING (not-yet-touched) rungs — daily bars UP TO
-        // (not including) today, from getFastLive's own bounded, already-warm
-        // packed M1 via resamplePacked (no re-fetch, no OANDA call needed).
-        let ladderBySide = {};
-        if (packed?.n) {
-          const daily = _resamplePacked(packed, 1440).map(b => ({ date: new Date(b.time * 1000).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close }));
-          const todayIdx = daily.findIndex(d => d.date === live.date);
-          const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
-          const todayOpen = todayIdx >= 0 ? daily[todayIdx].open : daily.at(-1)?.open;
-          if (priorDaily.length && todayOpen > 0) {
-            try {
-              const est = _LA_LADDER_PARAMS.pairs?.[pair.toUpperCase()]?.estimator ?? _LA_LADDER_PARAMS.classDefaults?.[assetCls]?.estimator ?? 'yz_30';
-              const sigma = _laForecastSigma(priorDaily, est);
-              if (sigma > 0) {
-                const lad = _laBuildLadder(sigma, { instrument: pair.toUpperCase(), assetClass: assetCls, horizon: 'daily', eventTag: 'none' });
-                ladderBySide = _laRungLevelsForLadder(lad, todayOpen);
-              }
-            } catch (e) { console.error(`[volatility-v2] ladder failed for ${pair}:`, e.message); }
-          }
-        }
-
-        const fadeStopInfo = cfg.fade_stop_tighten ? await _volatilityV2FadeStopInfo(pair, live.date) : null;
-
-        // Only PENDING (not-yet-touched, currently armed) rungs are tradeable —
-        // `touches` (already touched today) are informational only (what
-        // happened already, for the dashboard's "Today's Levels" display);
-        // atlasWalk's own rearm bookkeeping already decides what's currently
-        // armed, which is exactly what `pending` represents.
-        const zones = [];
-        for (const p of (live.pending ?? [])) {
-          if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
-          const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, cfg.fade_stop_tighten, cfg.early_exit, cfg.early_exit_threshold ?? 0.4);
-          if (!zone) continue;
-          // instanceNum: how many times THIS (side,rung) has already resolved
-          // today — makes the zone_id stable across polls for the CURRENT
-          // armed instance, but distinct from an earlier-today occurrence of
-          // the same rung after a rearm (a genuinely new, separately-
-          // tradeable opportunity, same as the backtest counting each
-          // qualifying touch as its own trade).
-          const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
-          zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
-        }
-        instruments[pair] = { spot: live.pending?.[0]?.currentPrice ?? null, zones, zoneCount: zones.length, fadeStopInfo };
+        const preview = await _volatilityV2InstrumentPreview(pair, {
+          fadeStopTighten: cfg.fade_stop_tighten, earlyExit: cfg.early_exit, earlyExitThreshold: cfg.early_exit_threshold ?? 0.4,
+        });
+        if (preview.skipped) { skipped[pair] = preview.skipped; continue; }
+        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo };
       } catch (e) {
         skipped[pair] = `error: ${e.message}`;
         console.error(`[volatility-v2] ${pair} failed:`, e.message);

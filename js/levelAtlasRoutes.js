@@ -27,13 +27,13 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, applyCurrencyLossGate, priceAtTighterStop, voteDecision } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
 import { putJSON, getJSON, listKeys } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
-import { instrument as instrumentMeta, oandaSymbol } from './instrumentRegistry.js';
+import { instrument as instrumentMeta, oandaSymbol, resolveKey } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { fetchM1Range } from './volBacktestEngine.js';
 import fs from 'fs';
@@ -454,10 +454,55 @@ export function mountLevelAtlasRoutes(app, express) {
       if (live.warming) return res.json({ ok: true, instrument: pair.toUpperCase(), warming: true, live: { date: null, touches: [], pending: [] } });
       const stored = await getJSON(`${PREFIX}/${pair}.json`);
       const book = stored?.books?.[DEFAULT_REARM] ?? null;
-      const matchedTouches = book ? live.touches.map(t => ({ touch: t, match: matchLiveContext(book, t) })) : live.touches.map(t => ({ touch: t, match: null }));
-      const matchedPending = book ? live.pending.map(t => ({ touch: t, match: matchLiveContext(book, t) })) : live.pending.map(t => ({ touch: t, match: null }));
+      // `decision` is the SAME fade/follow/margin call volatility_bot_v2's live
+      // plan producer trades off (js/levelAtlasVoteReview.js's `voteDecision`,
+      // margin<3 or a tied vote both come back null -- "no decision", not a
+      // default). Added 2026-08-30 so vol-forecast-v2.html and today.html's
+      // per-pair Vol section can show "what would the bot do at this line
+      // right now" without duplicating the vote logic -- it's a LIVE, rolling
+      // read off the current bar's context, not a locked-in forecast: it can
+      // still shift before the level is actually touched.
+      const matchedTouches = book ? live.touches.map(t => ({ touch: t, match: matchLiveContext(book, t), decision: voteDecision(book, t) })) : live.touches.map(t => ({ touch: t, match: null, decision: null }));
+      const matchedPending = book ? live.pending.map(t => ({ touch: t, match: matchLiveContext(book, t), decision: voteDecision(book, t) })) : live.pending.map(t => ({ touch: t, match: null, decision: null }));
       res.json({ ok: true, instrument: pair.toUpperCase(), warming: false, bookGeneratedAt: stored?.generatedAt ?? null,
                  live: { date: live.date, touches: matchedTouches, pending: matchedPending } });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/level-atlas/vote-preview?instruments=EUR/USD,XAU/USD,GBPUSD —
+  // batched version of the `decision` field above for a page that shows MANY
+  // instruments at once (vol-forecast-v2.html's grid) rather than one drawer
+  // at a time — avoids one HTTP round-trip per card. Accepts any alias
+  // `resolveKey` understands (display form, OANDA form, MT5 form, or the
+  // bare canonical key already used by /fastlive) so the caller doesn't need
+  // its own second copy of the Level-Atlas-key mapping. Per pair, only the
+  // PENDING (not-yet-touched) rungs are returned — that's the only thing a
+  // "what would happen at this line" panel cares about; already-touched
+  // rungs are resolving/resolved, not a live decision anymore.
+  app.get('/api/level-atlas/vote-preview', async (req, res) => {
+    try {
+      const raw = String(req.query.instruments || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!raw.length) return res.status(400).json({ ok: false, error: 'instruments query param required (comma-separated)' });
+      const instruments = {};
+      const skipped = {};
+      for (const alias of raw) {
+        const pair = resolveKey(alias) || String(alias).toLowerCase().replace(/[^a-z0-9]/g, '');
+        try {
+          const live = await getFastLive(pair);
+          if (live.warming) { skipped[alias] = 'warming (cold cache) — try again shortly'; continue; }
+          if (!live.date) { skipped[alias] = 'no live coverage yet'; continue; }
+          const stored = await getJSON(`${PREFIX}/${pair}.json`);
+          const book = stored?.books?.[DEFAULT_REARM] ?? null;
+          const pending = (live.pending ?? [])
+            .filter(t => t.rung !== 'p90')   // no outer rung to price against — excluded everywhere else too
+            .map(t => ({ side: t.side, rung: t.rung, level: t.level, currentPrice: t.currentPrice,
+                         decision: book ? voteDecision(book, t) : null }));
+          instruments[pair] = { instrument: pair, date: live.date, pending };
+        } catch (e) { skipped[alias] = `error: ${e.message}`; }
+      }
+      res.json({ ok: true, instruments, skipped });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

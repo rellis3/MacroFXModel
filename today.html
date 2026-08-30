@@ -923,6 +923,14 @@
     <h3 class="help" title="The volatility cone: where this market's CURRENT volatility ranks inside its own history, over four lookback windows. Each dot is a percentile (0 = quietest it's been, 100 = wildest). Dots sliding RIGHT as the window shortens = vol is building; sliding LEFT = cooling off. Context for sizing and stop width — not a direction signal."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Volatility cone — is vol building or cooling?</span></h3>
     <div class="dr-sec-body"><div id="drCone"></div></div>
   </div>
+  <div class="dr-sec" id="drVoteSec" data-seckey="vote" style="display:none">
+    <h3 class="help" title="What the Level Atlas vote-margin decision currently reads for each untouched line ahead: FADE bets on retracement, CONTINUE bets on breaking through, based on how many of the line's own live context readings (session, approach speed, candle rejection, etc.) agree. This is the SAME decision volatility_bot_v2 trades live off — a rolling read off the current bar, not a locked-in forecast, so it can still shift before price actually reaches the line.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Live Vote Decision — what would happen at each line</span>
+      <span class="chip neu" style="font-size:9px">live · can shift before touch</span>
+    </h3>
+    <div class="hint" style="margin:2px 0 6px">Not a locked-in call — a live read. Recomputed from the current bar's own context every few seconds; "bot would trade this" means the margin already clears volatility_bot_v2's own live threshold (≥3).</div>
+    <div class="dr-sec-body"><div id="drVote"><span class="muted">loading…</span></div></div>
+  </div>
   <div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
     <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
     <div class="dr-sec-body"><div id="drPath"></div></div>
@@ -5145,12 +5153,41 @@ function _atlasHeadline(candidates) {
 // re-fetches the FULL section, not just distance. `warming:true` on a cold
 // server-side cache: keep whatever's already on screen (don't blank it out
 // on a transient state) and just try again next tick.
+// Vol-tab companion to the Read-tab Atlas section above — SAME fetch (no
+// second round-trip), just a different cut of it: only the untouched
+// (pending) lines, badged fade/continue/no-decision via the `decision` field
+// js/levelAtlasRoutes.js's /fastlive route now attaches (2026-08-30), reusing
+// the exact voteDecision() call volatility_bot_v2's live plan producer trades
+// off. Deliberately ignores `touches` (already resolving/resolved — not a
+// forward decision anymore).
+function _voteChip(d) {
+  if (!d) return { cls: 'neu', label: '🪙 No decision (tied vote)' };
+  const strong = d.margin >= 3;   // VOLATILITY_V2_MIN_MARGIN — the live bot's own trading threshold
+  const arrow = d.decision === 'follow' ? '↗' : '↘';
+  const word = d.decision === 'follow' ? 'Continue' : 'Fade';
+  return { cls: d.decision === 'follow' ? 'range' : 'bear', label: `${arrow} ${word} (margin ${d.margin}${strong ? ' — bot would trade this' : ''})` };
+}
+function renderDrVote(j) {
+  const sec = $('drVoteSec'), box = $('drVote');
+  if (!sec || !box) return;
+  const pending = (j?.live?.pending ?? []).filter(p => p.decision !== undefined);
+  if (!j?.ok || !pending.length) { sec.style.display = 'none'; return; }
+  box.innerHTML = pending.map(p => {
+    const t = p.touch;
+    const sideArrow = t.side === 'up' ? '▲' : '▼';
+    const chip = _voteChip(p.decision);
+    return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))}) `
+      + `<span class="muted">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span> — <span class="chip ${chip.cls}">${chip.label}</span></div>`;
+  }).join('');
+  sec.style.display = 'block';
+}
 async function loadDrawerAtlas(r) {
   const sec = $('drAtlasSec'), box = $('drAtlas');
   let j;
   try { j = await jget(`/api/level-atlas/fastlive/${encodeURIComponent(r.name)}`); }
-  catch { if (!_atlasSym) sec.style.display = 'none'; return; }
+  catch { if (!_atlasSym) sec.style.display = 'none'; const vs = $('drVoteSec'); if (vs) vs.style.display = 'none'; return; }
   if (j?.warming) return;   // cache still warming up server-side — leave the section as-is, try again next tick
+  renderDrVote(j);
   _atlasSym = null; _atlasPending = [];
   const live = j?.live;
   if (!j?.ok || (!live?.touches?.length && !live?.pending?.length)) { sec.style.display = 'none'; return; }

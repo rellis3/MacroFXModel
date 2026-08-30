@@ -724,6 +724,7 @@
     <button class="v2-tool-btn" id="vfRefDataBtn"         onclick="toggleRefPanel()">Ref Data</button>
     <button class="v2-tool-btn" id="vfSessionComputeBtn"  onclick="triggerSessionStats()">Session Stats</button>
     <button class="v2-tool-btn" id="vfLevelAlertsBtn"     onclick="toggleLevelAlerts()">🔔 Level Alerts</button>
+    <button class="v2-tool-btn" id="vfVoteBtn"            onclick="toggleVotePanel()" title="What the Level Atlas vote-margin decision currently reads for every instrument's untouched lines: FADE bets on retracement, CONTINUE bets on breaking through. The SAME decision volatility_bot_v2 trades live off — a rolling read off the current bar, not a locked-in forecast.">🗳️ Vote Decisions</button>
     <button class="v2-tool-btn" id="vfHelpBtn"            onclick="toggleHelp()">? Help</button>
     <button class="v2-tool-btn" id="vfChartLevelBtn"     onclick="toggleChartLevelMode()" title="Cycle the chart's forecast lines: Forecast → COG → Bot → Forecast/COG Weekly → Forecast/COG Monthly. Forecast draws the fitted ladder (O-H / O-L at p50/p75/p90, each meaning what it says); weekly and monthly use their OWN fitted widths, not √-scaled daily ones. Bot draws the Volatility Bot's ACTUAL frozen plan lines (open + 8 levels from /api/volatility-bot/plan), anchored at the bot's own frozen open — so you see exactly what it trades and can confirm the levels don't move intraday. Weekly and monthly are point-in-time forecasts — the Monday (×√5) / month-start (×√20) forecast, anchored on that period's opening price and held for the whole period. Monthly uses daily candles. Remembered across page loads (stored in your browser).">📐 Chart: Forecast</button>
     <a class="v2-tool-btn" href="forecast-replay.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center" title="Open the Forecast Replay chart — pick a pair + date range and see every session's forecast lines (H/C±/L median &amp; 75th) anchored on that day's open, vs the realized high/low, on one scrollable/zoomable chart.">📊 Replay</a>
@@ -929,6 +930,17 @@
       <div style="color:var(--text3);margin-bottom:6px">Recent alerts (this server session)</div>
       <div id="vlaRecent" style="color:var(--text3);font-size:10px;line-height:1.6">None yet.</div>
     </div>
+  </div>
+</div>
+
+<!-- LIVE VOTE DECISIONS PANEL -->
+<div class="v2-panel" id="vfVotePanel" style="display:none">
+  <div class="v2-panel-nav">
+    <span class="v2-panel-title">🗳️ Live Vote Decisions</span>
+    <span class="v2-panel-sub">What each untouched line would do RIGHT NOW — same voteDecision() call volatility_bot_v2 trades off. A rolling read off the current bar, not a locked-in forecast; it can still shift before price actually reaches the line.</span>
+  </div>
+  <div style="padding:10px 18px;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">
+    <div id="vfVoteBody"><span style="color:var(--text3)">loading…</span></div>
   </div>
 </div>
 
@@ -3439,6 +3451,62 @@ function toggleProfile() {
   const shown=panel.style.display!=='none';
   panel.style.display=shown?'none':''; btn.classList.toggle('active',!shown);
   if (!shown&&!currentProfile) document.getElementById('vfProfileChart').innerHTML='<div style="padding:20px;font-size:11px;color:var(--text2);line-height:1.6"><strong>No profile data yet.</strong><br><br>Click <strong>⟳ Session Stats</strong> to compute the hourly vol profile.<br>Takes ~3–5 minutes once computed.</div>';
+}
+
+// ── Live vote decisions ───────────────────────────────────────────────────────
+// One /api/level-atlas/vote-preview call for every instrument this page
+// already shows (currentForecast.instruments), rather than one request per
+// card — same voteDecision() the volatility_bot_v2 plan producer trades off,
+// via js/levelAtlasRoutes.js's batch route (2026-08-30). Polled only while
+// the panel is open (VOTE_POLL_MS) — the underlying decision only changes on
+// a new M1 bar close server-side, so anything faster just wastes requests.
+const VOTE_POLL_MS = 15000;
+let _voteTimer = null;
+function toggleVotePanel() {
+  const panel = document.getElementById('vfVotePanel'), btn = document.getElementById('vfVoteBtn');
+  const shown = panel.style.display !== 'none';
+  panel.style.display = shown ? 'none' : ''; btn.classList.toggle('active', !shown);
+  if (_voteTimer) { clearInterval(_voteTimer); _voteTimer = null; }
+  if (!shown) {
+    loadVotePreview();
+    _voteTimer = setInterval(loadVotePreview, VOTE_POLL_MS);
+  }
+}
+function _voteChip(d) {
+  if (!d) return { color: 'var(--text3)', label: '🪙 No decision' };
+  const strong = d.margin >= 3;   // VOLATILITY_V2_MIN_MARGIN -- the live bot's own trading threshold
+  const word = d.decision === 'follow' ? 'Continue' : 'Fade';
+  const arrow = d.decision === 'follow' ? '↗' : '↘';
+  return { color: strong ? (d.decision === 'follow' ? 'var(--green)' : 'var(--red)') : 'var(--text2)',
+           label: `${arrow} ${word} (margin ${d.margin})${strong ? ' — bot would trade this' : ''}` };
+}
+async function loadVotePreview() {
+  const box = document.getElementById('vfVoteBody');
+  const names = Object.keys(currentForecast?.instruments || {});
+  if (!names.length) { box.innerHTML = '<span style="color:var(--text3)">No forecast loaded yet.</span>'; return; }
+  try {
+    const r = await fetch(`/api/level-atlas/vote-preview?instruments=${encodeURIComponent(names.join(','))}`);
+    const d = await r.json();
+    if (!d.ok) { box.innerHTML = `<span style="color:var(--text3)">${d.error || 'failed to load'}</span>`; return; }
+    const rows = [];
+    for (const [pair, inst] of Object.entries(d.instruments || {})) {
+      for (const p of (inst.pending || [])) rows.push({ pair, ...p });
+    }
+    if (!rows.length) { box.innerHTML = '<span style="color:var(--text3)">No untouched lines with live coverage right now.</span>'; return; }
+    rows.sort((a, b) => (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
+    box.innerHTML = `<table style="width:100%;border-collapse:collapse">
+      <tr style="color:var(--text3);text-align:left;border-bottom:1px solid var(--border)">
+        <th style="padding:4px 8px 4px 0">Pair</th><th style="padding:4px 8px">Side</th><th style="padding:4px 8px">Rung</th><th style="padding:4px 8px">Decision</th>
+      </tr>` + rows.map(row => {
+        const chip = _voteChip(row.decision);
+        return `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:4px 8px 4px 0">${row.pair.toUpperCase()}</td>
+          <td style="padding:4px 8px">${row.side === 'up' ? '▲' : '▼'}</td>
+          <td style="padding:4px 8px">${row.rung}</td>
+          <td style="padding:4px 8px;color:${chip.color}">${chip.label}</td>
+        </tr>`;
+      }).join('') + `</table>`;
+  } catch (e) { box.innerHTML = `<span style="color:var(--text3)">${e.message}</span>`; }
 }
 
 // ── Level proximity alerts ────────────────────────────────────────────────────
