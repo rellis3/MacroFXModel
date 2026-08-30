@@ -20,6 +20,7 @@ import { buildFixedSigmaBook, extractHeldFindings, bandCoverage, renderBookText 
 const args = process.argv.slice(2);
 const outDir = args.includes('--out') ? args[args.indexOf('--out') + 1] : 'logs';
 const firstTouchOnly = !args.includes('--all-touches');
+const sigmaMode = args.includes('--sigma-mode') ? args[args.indexOf('--sigma-mode') + 1] : 'fixedRms';
 
 console.log('Loading gold M1 parquet (R2 → local disk fallback)…');
 const t0 = Date.now();
@@ -27,9 +28,9 @@ const packed = await loadM1ForPair('gold');
 if (!packed?.n) { console.error('No gold M1 data available.'); process.exit(1); }
 console.log(`  ${packed.n.toLocaleString()} bars, ${new Date(packed.times[0] * 1000).toISOString().slice(0, 10)} → ${new Date(packed.times[packed.n - 1] * 1000).toISOString().slice(0, 10)}  (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
-console.log('Walking fixed-sigma bands…');
+console.log(`Walking fixed-sigma bands… (sigmaMode=${sigmaMode})`);
 const t1 = Date.now();
-const { touches, coverage } = fixedSigmaWalk(packed, { instrument: 'gold', assetClass: 'commodity' });
+const { touches, coverage } = fixedSigmaWalk(packed, { instrument: 'gold', assetClass: 'commodity', sigmaMode });
 console.log(`  ${touches.length.toLocaleString()} touch records over ${coverage.daysWalked} sessions (${((Date.now() - t1) / 1000).toFixed(1)}s)`);
 console.log(`  coverage: ${coverage.from} → ${coverage.to} (${coverage.daysSkippedWarmup} warm-up sessions skipped)`);
 

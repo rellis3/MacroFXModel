@@ -487,6 +487,44 @@ descriptive structure in these books, real as it is, does not convert into an
 after-cost entry by gating touches. The books' honest use is expectations and
 exits around edges that exist elsewhere, not entry generation.
 
+### 9a. Addendum (2026-08-27) — ±3σ only, gated on raw WaveTrend sign vs zero
+
+Owner's follow-up, gold only, pre-registered before running: same mechanics
+(entry next bar open, TP=VWAP-at-touch frozen, SL=1.5×ATR15m, 240min cap, one
+trade/day, costs on) restricted to the **±3σ band alone** (not pooled with
+2σ), tested "regardless" (V0) against a new gate — `requireMomentumAgree`:
+fade only when the RAW WaveTrend oscillator is still on the **same side of
+zero** as the extension at the touch (sell only if wt1>0 at an upper touch,
+buy only if wt1<0 at a lower touch) — the opposite bet from V2's `wtState=
+2·neutral` gate above, which requires momentum to already be UN-extended.
+Engine: `js/stackedFadeV1Engine.js`'s new `requireMomentumAgree` config
+(reuses the same touch rows, now carrying `wtStateValue` — raw wt1 — added
+alongside the existing `wtState` bucket). Runner: `scripts/
+run_third_band_momentum_fade.mjs`.
+
+| variant | OOS n | OOS mean | OOS t | OOS win% | OOS gross |
+|---|---|---|---|---|---|
+| V0 band-3-only (regardless) | 460 | −0.0321% | −1.68 | 37.0% | **−0.0121%** |
+| V-momentum (wt1 agrees) | 457 | −0.0329% | −1.72 | 37.2% | **−0.0129%** |
+
+**Verdict: NULL, both variants — consistent with, not a new instance beyond,
+§9's standing null.** Two things worth stating plainly rather than burying:
+
+1. **The momentum-agree gate barely filters anything** (pool 1,260 → 1,243,
+   ~1.3%) — because a fresh, genuine 3σ extension almost always already has
+   the raw oscillator on the same side as the move (that's what a momentum
+   oscillator does during a real extension). As specified, this condition is
+   close to a no-op against the unconditional population, not a distinguishing
+   filter the way `wtState=2·neutral` was — so it isn't really testing a
+   separate hypothesis from V0 here, and the near-identical numbers above
+   reflect that, not a coincidence.
+2. **Restricting to 3σ alone is gross-negative even before costs**
+   (−0.012 to −0.013%), unlike the pooled 2σ+3σ V0 baseline earlier in this
+   section (gross +0.012%, lost only to costs). The raw price path around an
+   isolated 3σ touch loses money on this exact entry/exit geometry, not just
+   after transaction costs — a materially different (worse) statement than
+   the pooled result, worth knowing on its own.
+
 ## 10. σ-definition A/B — the frozen unit wins
 
 Same touch walk (`sigmaMode` in the engine; default path pinned unchanged by
@@ -525,15 +563,635 @@ non-momentum × reject-candle — stacks several selections, so it needs
 pre-registration and a multiple-testing-aware read before anyone believes a
 good number from it.
 
+## 11. VWAP slope, range-consumed, and momentum×range interaction (2026-08-30)
+
+Owner's request, framed as a research question ("when is VWAP a magnet vs an
+origin for expansion"), not an indicator search: three dimensions genuinely
+NOT in §1-10, added the same way every other dimension here is — as causal,
+prior-history-only fields on the SAME `fixedSigmaWalk()` touch rows, read
+through the SAME `annotateHolds` gate, and — the part that matters most —
+checked against the SAME random-walk control that already caught two
+mechanical artifacts in this study (§2, §7 point 1).
+
+- **`vwapSlope`** — VWAP's own trailing rate of change over the last 30min
+  (distinct from the already-existing `vwapDrift`, which is drift since the
+  *session open*), σ-normalised, oriented to the touch side.
+- **`rangeConsumed`** — today's realized high-low range so far ÷ the
+  trailing-20-session median of PRIOR sessions' own full-day range (banked
+  the identical causal way `fixedSigma` itself is — a volatility-exhaustion
+  read, deliberately NOT a raw "% of session elapsed" feature, since that
+  exact shape produced the fake `sessionPos` clock-truncation finding §7
+  point 1 already had to catch and fix). Buckets: low (<0.5×) / mid
+  (0.5-0.85×) / high (0.85-1.2×) / exhausted (>1.2×).
+- **`momRangeMatrix`** — `momAdx` (existing 1h-ADX trend/range bucket) ×
+  `rangeConsumed`, combined into one cell the exact way `dowSession` already
+  combines `dow`×`session` — the 2×2-style matrix the owner asked for,
+  reusing the book's existing machinery rather than a bespoke report.
+
+### Result: `vwapSlope` is mechanical — the control reproduces it almost exactly
+
+| check | gold Δ (IS/OOS or race/return) | control Δ |
+|---|---|---|
+| ±1σ race, `vwapSlope=3·with` | −15.8 / −14.3 (up\|1) | **−15.2** |
+| ±2-3σ return, `vwapSlope=3·with` | +10.8 / +5.3 (up\|1, band 1 shown; ±2-3 pooled below) | **+9.7** |
+
+The random walk — which has no real reversion by construction — reproduces
+gold's own delta almost bar-for-bar in both directions. This is the same
+class of artifact `vwapDrift`/`churn` were already found to partly carry: a
+VWAP that has been sloping toward the touch side moves the BAND itself
+toward price at the same time (band = vwap + kσ), so a "touch" needs less
+real extension to register — a coordinate effect, not a market one.
+**`vwapSlope` is reported here as tested-and-explained-away, not promoted.**
+
+### Result: `rangeConsumed` / `momRangeMatrix` show a real, non-mechanical excess — specifically at DEEP bands, and specifically in the CONTINUATION direction
+
+The shallow-band (±1σ) reading is mixed: `rangeConsumed=2·mid` at up|1 holds
+on gold (IS+13.6/OOS+9.9) but the control shows the same-direction Δ+6.0 at
+that exact bucket — roughly 60% of gold's OOS number is mechanical, leaving
+a modest possible real excess, not a clean read.
+
+**At ±2-3σ it separates cleanly:**
+
+| finding (gold, OOS-held) | gold Δ (IS/OOS) | control Δ (same bucket) |
+|---|---|---|
+| `rangeConsumed=3·high`, dn\|2 (race, 'out') | +17.7 / **+6.5** | **−0.1** |
+| `momRangeMatrix=1·range×3·high`, dn\|2 (race) | +31.0 / **+7.3** | **+1.4** |
+| `momRangeMatrix=3·trend×3·high`, dn\|2 (race) | +8.9 / **+9.5** | **−6.8** (sign-flipped) |
+| `rangeConsumed=4·exhausted`, up\|3 (race) | +13.4 / **+5.8** | −4.0 (±2-3σ pooled; opposite sign) |
+
+Three of these are the specific, non-obvious kind of finding this project
+treats as strongest: gold's OOS delta is either far above a near-zero
+control (rangeConsumed=high, momRangeMatrix=1·range×3·high) or the OPPOSITE
+SIGN from the control (momRangeMatrix=3·trend×3·high, rangeConsumed=
+exhausted) — the same "cleanest genuinely-gold" signature §3 found for the
+grind-approach dimension. `momRangeMatrix=3·trend×2·mid` at up|1, by
+contrast, is NOT real — the control shows Δ+12.2 against gold's own
+OOS+10.7, essentially matched — a reminder that the matrix is real cell-by-
+cell, not as a blanket "momentum × range works."
+
+**Reading it straight, and directly against the owner's own hypothesis**:
+the brief guessed "high range consumption + extreme VWAP deviation → mean
+reversion." What the data actually shows, where it's real, is the OPPOSITE —
+a deep band reached after most of the session's typical range is already
+used up **continues MORE, not less**, beyond what a random walk's own
+volatility-clustering would predict. Consistent with a "the day is already
+trending/expansion-shaped" read rather than an "exhaustion" read — but
+stated as what the data shows, not fit to the momentum-lifecycle framing
+after the fact.
+
+### What this does and doesn't answer from the owner's fuller brief
+
+This covers the "range exhaustion" (§4 of the brief) and "VWAP geometry
+slope" (§3) questions specifically, cross-checked the honest way. It does
+**not** yet build: the full sequential band-by-band path reconstruction
+(brief §8 — this book records first-touch + peak/return per band, not a
+walked VWAP→1σ→2σ→3σ timeline with inter-band velocity); a formal
+incremental-information/ablation table (brief §12 — the held-findings list
+above is the closest existing analogue, dimension-by-dimension, but not a
+cumulative baseline→+X→+Y stack); a 5-stage Momentum Lifecycle classifier
+(brief §6 — `dayTypeCore.js`'s existing trend-vs-reversion score is the
+nearest built brick, not that specific framework); or options/gamma/
+liquidity-pool levels (brief §9 — no such data source exists in this repo;
+the structural-level question this project CAN answer is already covered by
+§8's Asia/Monday range-fib null). None of the above is claimed as done.
+
+## 12. Regime state, band walking, and VuManChu tested last (2026-08-30)
+
+Direct follow-up to §11, driven by the owner's screenshots of a large gold
+break: the concern that a naive "-3σ ⇒ fade to VWAP" rule is dangerous
+exactly when the band itself is part of an expanding, trending distribution,
+not a rotational extreme. Three more additions to the same engine (still no
+new engine, no ML pipeline — the project's existing bucket/delta/random-walk-
+control method, applied to new fields):
+
+- **`bandSlope`** — a SHORT causal ATR(14, this session's own bars only)
+  rate of change over the last 30min, as % change — "is realized volatility
+  expanding right now." Deliberately NOT the frozen `fixedSigma` (locked for
+  the whole session by design) and NOT the cumulative session-long developing
+  σ already in the engine (too smoothed by session-end to move fast) — a
+  fresh, short-window read, reusing `indicatorCore.js`'s existing `atrWilder`
+  brick.
+- **`regimeState`** — `momAdx × bandSlope`, one combined cell (contracting/
+  stable/expanding × range/mixed/trend) — the minimal-DOF regime read the
+  owner asked for. Deliberately NOT a named 4-state ("Reversion/Expansion/
+  Exhaustion/Neutral") classifier — that would be fitting labels to cells
+  before knowing what they do; the raw combo is reported and interpreted
+  from what the data shows, not the reverse.
+- **`wtRegimeState`** — `regimeState × wtState`, VuManChu layered ON TOP,
+  specifically to test the owner's "test VuManChu last" instruction: does it
+  add anything once momentum and volatility-expansion are already known?
+- **`bandWalk`** (a new OUTCOME, not a context dimension) — literal "does
+  price stay beyond a lenient (k−0.3)σ threshold for consecutive bars after
+  the touch" (rejection vs. walking the band), computed in the SAME forward
+  scan the race/return outcomes already use — no extra pass. Threshold
+  10+ consecutive bars = "walking." A new `buildBandWalkBook` in
+  `vwapFixedSigmaReport.js` mirrors `buildVwapReturnBook` exactly (same
+  cells/dims/holds-gate), reading THIS outcome instead. Touch-time context
+  dimensions are valid predictors of it (strictly causal); the race/return
+  outcomes are never used to predict it — that would be circular, since both
+  read the same forward window.
+
+### Band-walk sanity check — it measures what it claims to
+
+Before trusting anything conditioned on it: `candleReject=3·reject` shows
+the single largest band-walk deltas in the whole run (up|1 −18.4pp IS /
+−14.2pp OOS, similarly at up|2/up|3/dn|1/dn|3) — a rejection wick at the
+touch bar predicting LESS subsequent walking is exactly what "rejection"
+should mean, and the control's own candleReject delta on the walk outcome is
+near zero (Δ−2.7 at n=39). That internal coherence, not just the OOS gate,
+is why the outcome is trusted enough to build on.
+
+### `bandSlope` is real, and points opposite to naive intuition
+
+Checked against the control on all three books (race, return, band-walk),
+`bandSlope`'s own control deltas sit near zero everywhere (|Δ| mostly <4pp)
+— unlike `vwapSlope` in §11, this one is NOT mechanical. What it shows,
+consistently across cells and BOTH sides, on the RETURN-to-VWAP outcome:
+
+| bucket | gold pattern (OOS, multiple cells) | control (±2-3σ, matched bucket) |
+|---|---|---|
+| `3·expanding` | **+3.8 to +7.2pp** (up\|2/3, dn\|2/3) | −1.0 |
+| `2·stable` | **−5.4 to −10.5pp** (up\|1-4, dn\|1-2) | +0.4 |
+| `1·contracting` | **−6.5 to −14.9pp** (up\|2/3, dn\|2) | −0.5 |
+
+Reading it straight: **expanding realized volatility correlates with MORE
+return-to-VWAP, not less; stable/contracting volatility correlates with
+LESS.** This is the opposite of "the bands are expanding, therefore price
+won't come back" — it does not confirm the naive worry from the screenshots
+as stated, at least on this metric. Two honesty notes: (1) this measures
+short-window (30min) volatility velocity, NOT the cumulative range-consumed
+metric from §11 — the two were NOT tested jointly, and §11's own finding
+(high range-consumed → more continuation) is a different, not necessarily
+contradictory, statement about a different quantity; reconciling them is
+flagged as unfinished, not swept under a single story. (2) `regimeState`'s
+own `3·trend×3·expanding` cell shows the clearest owner-hypothesis-shaped
+result: real (sign-flipped vs. the control, which shows Δ−9.9 to −16.0 at
+the SAME cell across checks) and POSITIVE on gold (+3.7 to +9.5pp
+continuation, +6.6 to +7.2pp return) — trending momentum WITH expanding
+volatility is the one combination that behaves like real, gold-specific
+continuation, distinct from and opposite to what the control's own
+mechanical shape would predict for that cell. That is the closest this pass
+comes to validating the screenshots' concern, and it is real, not the
+volatility-slope story alone.
+
+### VuManChu tested last: honestly inconclusive, not "it helps"
+
+`wtRegimeState` (the 3-way combo) nominally holds more findings than
+`regimeState` alone, but it also tests roughly 2× the number of distinct
+cells (up to 18 vs. 9 per side/band) — under this study's own permutation-
+baseline logic (§ Control 2: ~50% of *any* held finding here is chance at
+this cell count), testing more, thinner cells produces more nominal
+survivors without that being evidence of real incremental value. A few
+individual `wtRegimeState` cells DO show a bigger excess over their control
+counterpart than `regimeState` alone at the same momentum×volatility
+combination, but this pass did not build the matched-cell-count statistical
+comparison needed to say that cleanly (that would be the honest way to
+answer "how much does VuManChu add," and is flagged as unfinished, not
+claimed). Read plainly: **no clear evidence VuManChu adds real value on top
+of momentum+volatility-expansion here** — consistent with, not contradicting,
+§3/§7b's standing finding that WaveTrend conditioning on gold is thin.
+
+### What this does and doesn't answer
+
+Covers band-slope/expansion-rate (brief's band-behaviour ask) and band-
+walking (brief's "REALLY add this" ask) with the same control discipline as
+everything else here. Still NOT built: a named, validated 4-state regime
+classifier (deliberately — see above); the "earliest identifiable point"
+question (this pass reads regime AT the touch, which is the earliest causal
+point available at a touch — finding leading indicators BEFORE a touch even
+happens is a different, harder question, not attempted); a joint
+bandSlope×rangeConsumed interaction; and a real statistical incremental-
+information test (AUC/information-gain) for the VuManChu-last question,
+which would need a genuinely different, heavier method than this project's
+bucket/delta/control style.
+
+## 13. Cross-instrument replication of §11-12 (2026-08-30)
+
+Per the standing discipline ("gold-only" has burned this study before — the
+WT-neutral-returns finding, §7b), the two headline §11/§12 findings checked
+against EURUSD/GBPUSD/USDJPY before either is trusted further. Pre-named
+checks (T4/T5/R4), added to `scripts/run_vwap_sigma_sweep.mjs` alongside the
+existing R1-3/T1-3 replication set — same script, same discipline, not a new
+fishing pass.
+
+**`bandSlope` (§12) replicates cleanly, on all three majors, same direction,
+similar-to-larger magnitude than gold:**
+
+| | gold | EURUSD | GBPUSD | USDJPY |
+|---|---|---|---|---|
+| return≤240m: expanding | — | 49.1% (n=1869) | 49.3% (n=1760) | 47.9% (n=1841) |
+| return≤240m: stable/contracting | — | 38.6% (n=1692) | 38.1% (n=1767) | 39.3% (n=1464) |
+| gap | +7 to +11pp (per-cell) | **+10.5pp** | **+11.2pp** | **+8.6pp** |
+
+This is now the single best-corroborated NEW finding from the last two
+sessions' work — real on 4 independent instruments, not gold-specific,
+counter to naive intuition on all four: expanding volatility means MORE
+return to VWAP, not less.
+
+**`regimeState=3·trend×3·expanding` (§12's headline, the one cell that
+matched the owner's own screenshot hypothesis) does NOT clearly replicate:**
+
+| | gold (OOS) | EURUSD | GBPUSD | USDJPY |
+|---|---|---|---|---|
+| cell out% vs base | **+3.7 to +9.5pp** | 28.4% vs 29.5% (−1.1) | 30.4% vs 31.1% (−0.7) | 33.6% vs 31.0% (+2.6) |
+
+Two of three majors show it flat-to-slightly-negative; USDJPY shows a small
+positive, well under gold's own magnitude. Read straight: this looks
+gold-specific (or at minimum, not robust), the same pattern already seen for
+the WaveTrend-neutral-returns finding in §7b — a momentum-flavoured
+conditioning result surviving on gold but not generalising, while the pure
+volatility-expansion signal (`bandSlope` alone) does generalise. **Do not
+treat `regimeState`'s trend×expanding cell as validated going forward** —
+it is reported here specifically to correct the impression §12 may have
+given.
+
+**`rangeConsumed` high-vs-low (§11) could not be checked this way** — the
+"low" (<0.5× expected range) bucket is essentially unpopulated at the
+±2-3σ FX-major touch population (n=3 on EURUSD/GBPUSD, n=3 on USDJPY,
+against thousands in the "high" bucket): FX pairs trade a much narrower
+range relative to their own σ than gold, so by the time price reaches a
+deep band the day's typical range is already mostly spent, on these three
+pairs, essentially always. A data-coverage limit, not a failed replication —
+the comparison this specific check runs simply isn't testable on FX majors
+as framed.
+
+## 14. The with-trend trade test (2026-08-30) — null, the fifth in this study
+
+Owner's direct request: "test a with-trend entry not fade." The natural
+trade-level follow-up to §12/§13 — `bandSlope='3·expanding'` is the single
+best-corroborated descriptive finding in this whole effort (real,
+cross-market on 4 instruments), and it says continuation, not reversion, so
+this tests entering WITH the extension instead of fading it.
+
+**Mechanics**: `js/stackedFadeV1Engine.js` gained `action:'fade'|'follow'` as
+a parameter of the existing entry primitive (CLAUDE.md Lego Principle #2 —
+not a new engine). `action:'follow'`: enter WITH the touch direction
+(up-touch → BUY, dn-touch → SELL — the opposite of fade's mapping); TP = the
+(band+1)σ level as of the touch (frozen); SL = the (band−1)σ level as of the
+touch (frozen) — literally the same symmetric next-band-out/one-band-back
+race `fixedSigmaWalk`'s own descriptive out/back outcome already measures,
+now run as a costed trade. Same 240min cap, one trade/day, costs on as every
+other trade test here. Two variants, pre-registered before running: V0-follow
+(regardless) and V-expanding (gated on `bandSlope='3·expanding'`).
+
+**Pre-registered bar**: OOS t>2, positive mean, n≥30, positive gross, on gold
+AND replicating in the same direction on ≥2/3 FX majors. Stated plainly
+beforehand: TP and SL are both ~1×fixedSigma from the touched band by
+construction (entry sits at the band) — a roughly symmetric 1:1 R:R, so this
+needs a real win-rate edge above ~50% (plus a little for costs), not just
+"more likely than not to continue a bit." Four prior trade-level tests in
+this study (§6, §8b, §9, §9a) were all null; this is the best-corroborated
+descriptive finding tried yet, but the standing base rate is still null.
+
+**Result (gold + EURUSD/GBPUSD/USDJPY, OOS = last 40%):**
+
+| instrument | variant | OOS n | OOS mean | OOS t | OOS win% | OOS gross |
+|---|---|---|---|---|---|---|
+| gold | V0-follow | 855 | −0.0284% | −2.94 | 48.3% | −0.0084% |
+| gold | V-expanding | 618 | −0.0176% | −1.49 | 49.8% | +0.0024% |
+| EURUSD | V0-follow | 825 | −0.0178% | −3.75 | 48.1% | −0.0058% |
+| EURUSD | V-expanding | 537 | −0.0206% | −3.42 | 47.1% | −0.0086% |
+| GBPUSD | V0-follow | 822 | −0.0124% | −2.30 | 50.2% | −0.0004% |
+| GBPUSD | V-expanding | 513 | −0.0040% | −0.59 | 53.4% | +0.0080% |
+| USDJPY | V0-follow | 748 | −0.0081% | −1.37 | 49.2% | +0.0039% |
+| USDJPY | V-expanding | 509 | −0.0029% | −0.40 | 51.9% | +0.0091% |
+
+**Verdict: NULL against the pre-registered bar, every variant, every
+instrument — the fifth trade-level test in this study to come back null.**
+No cell reaches OOS t>2. V0-follow (regardless) is clearly negative
+everywhere (t −1.37 to −3.75).
+
+One thing worth reporting precisely rather than folding into a flat "null":
+**the `bandSlope=expanding` gate moves every single instrument in the right
+direction versus its own V0-follow** — less negative OOS t (gold −2.94→−1.49,
+GBPUSD −2.30→−0.59, USDJPY −1.37→−0.40; EURUSD is the one instrument where it
+gets worse, −3.75→−3.42, still an improvement in t though the mean ticks
+down), win rate up 1.5-4pp on 3 of 4, and gross turns positive on 3 of 4
+(gold, GBPUSD, USDJPY — EURUSD stays negative). That is the descriptive
+finding showing up in the trade data, honestly — it just isn't large enough
+to clear a ~1:1 R:R geometry plus costs anywhere. The geometry, not
+necessarily the entry signal, is the likely limiter here — the same
+conclusion §6's own exit-geometry pivot reached for the continuation trade
+tested there. Not tried: a wider TP / tighter SL (asymmetric R:R) or a
+trailing exit instead of the fixed next-band-out target, which is the
+natural next pivot per the "structural mutation, not a verdict" rule — not
+attempted here, not claimed to work.
+
+New tests: 5 in `js/stackedFadeV1Engine.test.mjs` (direction mapping, TP/SL
+band-math correctness, the `requireBandSlopeExpanding` gate, fade-mode
+backward-compat). Runner: `scripts/run_trend_follow.mjs`.
+
+### §14a — tightening the stop (2026-08-30) — the specific mechanism tested, and why it fails
+
+Owner's direct follow-up to the null result above: *"if this works it
+reacts to the band very quick, so the SL should be small"* — a concrete,
+testable mechanical hypothesis, not a vibe. `followSlSigma` added to
+`stackedFadeV1Engine.js` (default 1.0 = the §14 baseline's ~1:1 R:R); TP
+stays fixed at the next band out, only the stop distance changes. Swept
+1.0σ / 0.75σ / 0.5σ (~2:1 R:R) / 0.25σ (~4:1 R:R) × the two §14 gates × gold
++ EURUSD/GBPUSD/USDJPY = 32 cells, pre-registered before running, every cell
+printed (not just the best-looking one — §9's own V2 "best conditions" cell
+was the worst OOS cell of that test, the standing reminder for why).
+
+**Result: zero of 32 cells clear the bar.** Not close, either — no cell
+reaches OOS t>2, and gross P&L (before costs) only turns marginally
+positive at the tightest stops on 2 of 4 instruments (gold, USDJPY), never
+enough to offset the loss of statistical significance from the tiny sample
+that "wins."
+
+**The mechanism, stated plainly because it's the useful part of this
+result**: tightening the stop does mechanically improve R:R exactly as
+expected — but the win rate collapses FASTER than R:R improves, on every
+single instrument, at every step of the sweep:
+
+| SL distance | R:R | gold OOS win% | EURUSD | GBPUSD | USDJPY |
+|---|---|---|---|---|---|
+| 1.0σ (baseline) | 1:1 | 48.3% | 48.1% | 50.2% | 49.2% |
+| 0.5σ | 2:1 | 33.6% | 36.8% | 35.5% | 37.6% |
+| 0.25σ | 4:1 | 23.9% | 23.3% | 22.2% | 26.2% |
+
+At 4:1 R:R, a ~25% win rate would still be a real edge (breakeven is ~20%
+before costs) — but this study's own §12/§13 finding was never "continuation
+confirms almost immediately, rarely revisiting the entry area first"; it was
+"expanding volatility correlates with somewhat more continuation than a
+random walk." A ~1σ move — even a "does eventually continue" one — routinely
+wicks back through a 0.25σ stop first; the stop doesn't know the difference
+between "this reverses" and "this continues after one more push through my
+level." **The owner's intuition (fast-reacting moves want tight stops) is
+directionally sound in general, but this specific price action doesn't
+confirm fast enough, on this timeframe, for a stop that tight to survive
+the noise long enough to find out.** A genuinely different construction —
+requiring some confirmation (a closed bar beyond the touch, not just a
+touch) before entering, rather than tightening the exit on the same
+immediate-touch entry — is the structural mutation this result points at;
+not attempted here.
+
+2 new tests (`followSlSigma` band-math correctness, an inverted-SL config
+rejected not mispriced). Runner: `scripts/run_trend_follow_sl_sweep.mjs`.
+
+### §14b — the closed-candle confirmation (2026-08-30) — still null, but the texture changed
+
+Owner's direct follow-up to §14a: *"let's look at the 1m closed candle...
+all this was meant to be on an ultra low timeframe like 1m/3m"* — the exact
+structural mutation §14a itself pointed at. `stackedFadeV1Engine.js` gained
+`confirmTfMinutes` (reusing `vwapExtensionAtlasEngine.js`'s own "closes not
+wicks" day-aligned bucket-close convention, not reinventing it): at the new
+default of 1, the touch bar's OWN close — not just its wick — must already
+be beyond the band before entering; at 3, wait for the enclosing 3-minute
+bucket's own close instead. TP/SL geometry is unchanged from §14/§14a
+(next band out / one band back, `followSlSigma=1.0`) — only the entry
+trigger changes. Pre-registered before running: same bar as §14/§14a.
+
+**Result: still null — no cell clears OOS t>2 — but for the first time in
+this whole with-trend line, win rate jumps meaningfully and two cells turn
+OOS-positive:**
+
+| instrument | gate, confirm | OOS n | OOS mean | OOS t | OOS win% |
+|---|---|---|---|---|---|
+| gold | V-expanding, 1m | 332 | −0.0395% | −2.38 | 54.8% |
+| gold | V-expanding, 3m | 320 | −0.0199% | −1.26 | 60.6% |
+| GBPUSD | V-expanding, 1m | 302 | **+0.0039%** | **+0.45** | 63.2% |
+| USDJPY | V-expanding, 1m | 286 | **+0.0084%** | **+0.92** | 64.3% |
+
+Win rates across EVERY cell in this run sit at 53-66%, up from 48-53% in
+§14/§14a — the confirmation filter is doing exactly what it was meant to:
+removing the touches that were noise (a wick with no real follow-through).
+That part of the intuition is confirmed.
+
+**But two honesty checks both say not to trust the "improvement" as a
+finding:**
+1. **Gold — the instrument this entire study is built on — does NOT
+   improve.** It stays clearly negative (OOS t −2.38 to −3.19) across every
+   variant tried, the worst performer of the four. The two cells that turn
+   positive (GBPUSD, USDJPY) are secondary replication instruments; this
+   study's own pre-registered bar requires gold to clear it, which it does
+   not, so the bar is not met regardless of what the FX pairs show.
+2. **The "improved" cells show the exact IS/OOS sign-flip this study has
+   learned to distrust** — GBPUSD V-expanding/1m: IS t −2.12, OOS t +0.45;
+   USDJPY V-expanding/1m: IS t −0.77, OOS t +0.92. A result that is negative
+   in-sample and only turns positive out-of-sample is the same illusory-
+   effect signature as the more familiar IS-good/OOS-bad flip §9's own
+   near-misses showed — not a stable effect resolving differently in two
+   halves, chance resolving differently in two halves.
+
+**Read straight: the with-trend idea has now been tested six ways (§9's
+sibling trade tests aside) — unconditional, gated on the one real cross-
+market descriptive finding, with a swept stop, and now with closed-candle
+confirmation — and gold has not cleared the bar in any of them.** The
+closed-candle filter is a real, working improvement to trade QUALITY (fewer
+noise entries, meaningfully higher win rate) without yet being an edge.
+
+2 new tests (the 1m-wick-vs-close distinction, the 3m bucket-close timing).
+Runner: `scripts/run_trend_follow_confirm.mjs`.
+
+## 15. Developing (self-widening) bands — momentum vs reversion, control-matched (2026-08-30)
+
+**Why:** the owner shared a TradingView screenshot of gold with bands visibly
+narrow before ~15:00 then widening sharply after a large drop, and asked
+directly which construction this whole study has been testing. Answer, given
+plainly at the time: everything in §1–14b uses `sigmaMode:'fixedRms'` — the
+owner's own Pine indicator, σ frozen at session open from the trailing
+20-session mean RMS. The screenshot shows the *other* engine mode,
+`sigmaMode:'developing'` (classic self-widening bands, `sd[m-1]` recomputed
+bar-by-bar from the session's own cumulative dispersion, gated by
+`developingWarmupBars`), which had only ever been aggregate-checked once
+before (§10 — one excess number per band depth, not a dimension-conditioned
+book). The owner then asked directly: **does reversion happen from the
+developing bands, or the opposite — momentum from VWAP to a band?**
+
+**Method:** identical pipeline to §1–14b, run under the other mode. Both
+runner scripts needed a `--sigma-mode` flag added first (`run_gold_vwap_
+sigma.mjs`, `run_gold_vwap_sigma_controls.mjs` — the random-walk control's
+`fixedSigmaWalk` call had no override before this, so a developing-mode
+control could not previously be run matched to a developing-mode gold book;
+this is now fixed and reusable). No engine or report code changed — `sigmaMode`
+was already wired through `fixedSigmaWalk`, and `buildFixedSigmaBook`/
+`buildVwapReturnBook`/`buildBandWalkBook` are unit-agnostic. Gold M1,
+2016-01-04→2026-08-20, 2744 sessions, 315k touch records (vs 146k under
+fixedRms on the same data — developing tags far more days per band, see
+below). Control: the same seeded driftless random walk (800 days), run
+through the identical engine with `sigmaMode:'developing'` — the correct
+apples-to-apples baseline this specific question needs.
+
+### 15.1 Coverage — developing bands are touched far more often
+
+| band | fixedRms tag% (either side) | developing tag% |
+|---|---|---|
+| 1σ | 82% | **98%** |
+| 2σ | 48% | **94%** |
+| 3σ | 24% | **75%** |
+| 4σ | 12% | 33% |
+| 5σ | 6% | 11% |
+
+Expected and mechanical: a band that widens with the day's own realized range
+is, by construction, touched by the day's own realized range far more
+reliably than a band frozen from *prior* sessions. This alone is why §10
+flagged developing bands as "mostly measuring themselves" — the question is
+whether anything real survives underneath that self-reference.
+
+### 15.2 The race book (out-to-next-band vs back-one-band) — gold vs the matched control
+
+| band | control out% (random walk, developing) | gold out% IS/OOS (pooled ±) |
+|---|---|---|
+| ±1σ | 40.6% | 41–43% / 42–43% |
+| ±2σ | 26.1% | 28% / 26% |
+| ±3σ | 10.6% | 20–21% / 20% |
+| ±4σ | 8.2% | 24–29% / 20–23% |
+| ±5σ | 4.0% | 30–35% / 24–29% |
+| ±6σ | *(n<20, unpopulated)* | 42–52% / 35–53% |
+| ±7σ | *(n<20, unpopulated)* | 45–58% / 44–47% |
+
+**Two regimes, cleanly split by depth:**
+- **±1–2σ: gold ≈ the random walk almost exactly.** The "reversion" seen
+  here (57–74% back-rate) is real in the sense that it happens, but it is
+  **mechanical, not a market fact** — a driftless synthetic walk run through
+  the identical self-widening band produces the same rate. This directly
+  reconfirms §10's "developing mostly measures itself," now shown depth-by-
+  depth instead of as one pooled number.
+- **±3σ and deeper: gold decisively diverges, and it diverges toward
+  momentum, not reversion.** The control's out-rate *decays* monotonically
+  as bands deepen (40.6→26.1→10.6→8.2→4.0 — a random walk gets less and less
+  likely to keep going the deeper/rarer the excursion, exactly as diffusion
+  predicts). Gold's out-rate does the opposite past ±2σ: it bottoms around
+  ±3σ then **rises** with depth, reaching 2–4× the control's rate by ±4–5σ
+  and 10×+ by ±6–7σ (bands too rare for the control to even populate
+  n≥20 — meaning a random walk essentially never produces an excursion this
+  large that then keeps going, while gold does it on 2–5% of all sessions).
+  **This is the non-mechanical finding: once a developing-band touch is deep
+  enough to mean the session has genuinely built real, unusual intraday
+  range, continuation past that band beats reversion back to VWAP, and does
+  so more the deeper it goes.**
+
+### 15.3 The return book (back to VWAP within 240min) — gold vs the matched control
+
+| band | control ret% | gold ret% (pooled ±, IS≈OOS) |
+|---|---|---|
+| ±1σ | 93.1% | 95–97% |
+| ±2σ | 83.4% | 90–92% |
+| ±3σ | 71.5% | 84–86% |
+| ±4σ | 66.5% | 74–79% |
+| ±5σ | 84.0% *(n=25, unreliable)* | 57–62% |
+
+Gold's return-to-VWAP rate is *higher* than the matched control at every
+populated depth (+7 to +15pp), not lower — reversion-to-VWAP is somewhat
+*more* reliable in real gold than a bare random walk predicts, at the same
+time the race book shows continuation-past-the-band is also more likely than
+the control predicts. **These are not contradictory.** A driftless random
+walk has no session shape and no volatility clustering; real gold does — so
+real sessions produce more of *both* full round-trips back to VWAP *and*
+breakouts past the next band than idle, unclustered noise would, because a
+"quiet mechanical" day and a "genuine trend/range-expansion" day are both
+real regimes a flat random walk can't distinguish. (Note: this reads
+noticeably larger than §10's earlier aggregate developing-mode return excess
+of +2.9–4.1pp; §10's own control call had no `--sigma-mode` plumbing at the
+time, so it is unclear that check was matched to developing mode the way
+this one now is. Treat this section, run on the fixed/reusable pipeline, as
+superseding §10's developing-mode row rather than trying to reconcile the two
+numbers.)
+
+### 15.4 Held findings vs the permutation noise floor
+
+| book | real held findings | permutation baseline (20 shuffles) |
+|---|---|---|
+| race (out/back) | 107 | mean 58.1, range 41–80 |
+| return (to VWAP) | **334** | mean 43.8, range 35–56 |
+| band-walk (≥10 bars beyond) | 98 | mean 10.8, range 5–17 |
+
+All three clear their noise ceiling by a wide margin (race: 107 > max 80;
+return: 334 ≫ max 56; band-walk: 98 ≫ max 17) — there is real,
+dimension-conditioned structure here, well beyond what shuffling the same
+touch pool produces by chance. As always: an *individual* survivor cell is
+still no better than a coin flip to be noise (race book: ~54%, same math as
+§3) — only themes that repeat across cells/sides/dims below are read as real.
+
+### 15.5 The one clear, cross-validated theme: session + room-to-run beats reversion
+
+The return book (reversion suppressed) and the band-walk book (continuation
+raised) point at the **same conditions**, independently, at ±2–4σ, on both
+sides, OOS:
+
+| dimension | condition | return-book Δ (OOS) | band-walk Δ (OOS) |
+|---|---|---|---|
+| session | NY | −27 to −48pp | +14 to +20pp |
+| overlapWindow | London/NY overlap | −29 to −47pp | +14 to +28pp |
+| rangeConsumed | 2·mid (day's range not yet exhausted) | −25 to −36pp | +16 to +20pp |
+
+n runs 30–140 both halves, same sign both halves, well past the 3pp gate.
+**Read plainly:** when a developing-band touch happens during the NY session
+or the London/NY overlap, and the day hasn't yet consumed its typical
+realized range, price is substantially *less* likely to snap back to VWAP
+within 4 hours and substantially *more* likely to keep walking past the
+band — real momentum, concentrated in the session where liquidity/trend
+formation is highest and in days that still have "room" left to trend. This
+is the opposite of a naive "price is far from VWAP, fade it back" read, in
+exactly the conditions where it would be most tempting to fade.
+
+### 15.6 Verdict, plainly — answering the owner's question directly
+
+**Both happen, cleanly separated by depth and condition, not blended:**
+- **Unconditionally, reversion is still the base-rate-dominant outcome at
+  every band depth** (back-rate 57–90%+ before the extreme tail) — most
+  touches do fall back one band or return to VWAP rather than running to the
+  next band.
+- **But most of that reversion, specifically near VWAP (±1–2σ), is a
+  mechanical artifact of the band's own construction**, not a market fact —
+  a driftless random walk run through the same self-widening band shows
+  the same rate.
+- **The real, non-mechanical signal in developing bands is momentum, not
+  reversion**, and it shows up in two specific places: (1) depth — ±3σ and
+  beyond, where continuation-past-the-band beats the matched control by a
+  widening margin the deeper it goes; and (2) condition — NY-session/overlap
+  touches on days that haven't yet used up their typical range, where both
+  books agree continuation dominates reversion out-of-sample.
+
+**This is still descriptive/structural, not a trade-level result.** No trade
+test has been run under `sigmaMode:'developing'` — every trade-level test in
+§6/§9/§14/§14a/§14b (five in a row, all null) used fixedRms bands. Per house
+discipline, this section is not a claim that a developing-band momentum trade
+would work; it is a control-checked description of what the touches actually
+do, which is what the owner explicitly asked for this time ("a research
+problem, not an indicator problem"). Whether a trade-shaped test survives on
+top of it is a separate, not-yet-run question.
+
+Runners: `scripts/run_gold_vwap_sigma.mjs --sigma-mode developing`,
+`scripts/run_gold_vwap_sigma_controls.mjs --sigma-mode developing --touches
+logs/dev/gold_vwap_sigma_touches.json`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
 `computeFixedSigmaByDate` so trade-level engines share the identical band
-unit, equivalence-tested), report `js/vwapFixedSigmaReport.js` (imports the
-shared `annotateHolds` gate from `levelAtlasReport.js`), runner
-`scripts/run_gold_vwap_sigma.mjs`, controls
-`scripts/run_gold_vwap_sigma_controls.mjs`. Stage-2 trade test
+unit, equivalence-tested; §11 added `vwapSlope`/`rangeConsumed`/
+`momRangeMatrix` the same causal way, +2 tests; §12 added `bandSlope`
+(new `atrWilder` import)/`regimeState`/`wtRegimeState`/`bandWalk` (a new
+forward-scan OUTCOME, not a context dim), +1 test), report
+`js/vwapFixedSigmaReport.js` (imports the shared `annotateHolds` gate from
+`levelAtlasReport.js`; §11+§12's dims registered in `DIMENSIONS`; §12 added
+`buildBandWalkBook`/`walkedEnough`/`WALK_THRESHOLD_BARS` mirroring
+`buildVwapReturnBook`'s exact shape), runner `scripts/run_gold_vwap_sigma.mjs`,
+controls `scripts/run_gold_vwap_sigma_controls.mjs` (§11+§12's dims added to
+the ±1σ/±2-3σ race and return control checks, plus a new band-walk-outcome
+control check and permutation baseline), cross-instrument sweep
+`scripts/run_vwap_sigma_sweep.mjs` (§13 added T4/T5/R4 pre-named checks for
+§11/§12's `rangeConsumed`/`regimeState`/`bandSlope`). Stage-2 trade test
 `js/vwapImpulseEntryV1Engine.js` (+ tests) with runner
 `scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
-harness. Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook,
-the rows + book are the deliverable until something needs a live view.
+harness. `js/stackedFadeV1Engine.js` (§9/§9a) gained `action:'fade'|'follow'`
+(§14, +5 tests) — 'follow' is the with-trend trade on `bandSlope=expanding`,
+runner `scripts/run_trend_follow.mjs`, also null on gold + 3 FX majors; §14a
+added `followSlSigma` (+2 tests) to sweep stop tightness (runner
+`scripts/run_trend_follow_sl_sweep.mjs`) — also null, all 32 cells, with a
+diagnosed mechanism (win-rate collapses faster than R:R improves); §14b
+added `confirmTfMinutes` (+2 tests, reusing `vwapExtensionAtlasEngine.js`'s
+own closes-not-wicks bucket-close convention) — still null on gold (the
+bar-defining instrument), though win rate improves meaningfully everywhere
+and two secondary instruments turn OOS-positive with an IS/OOS sign-flip
+flagged as noise, not a finding. Runner `scripts/run_trend_follow_confirm.mjs`.
+§15 added a `--sigma-mode` CLI flag (default `fixedRms`, unchanged behavior)
+to both `scripts/run_gold_vwap_sigma.mjs` and `scripts/run_gold_vwap_sigma_
+controls.mjs` — no engine/report changes, `sigmaMode` was already wired
+through `fixedSigmaWalk` and the book builders are unit-agnostic; this closes
+the gap that the random-walk control could not previously be run matched to
+developing mode. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+playbook, the rows + book are the deliverable until something needs a live
+view.

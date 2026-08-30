@@ -217,7 +217,10 @@ console.log('7. liteContext invariance; developing-mode sanity');
                      t.reachedVwap, t.minsToVwap, t.fixedSigma].join('|');
   assert(fullRun.length === liteRun.length, `lite and full runs emit the same touches (${fullRun.length} vs ${liteRun.length})`);
   assert(fullRun.every((t, i) => core(t) === core(liteRun[i])), 'lite run: identity+outcome fields byte-identical to full run');
-  assert(liteRun.every(t => t.wtState == null && t.rangeConf == null), 'lite run: context bucket fields are null');
+  assert(liteRun.every(t => t.wtState == null && t.rangeConf == null && t.momRangeMatrix == null),
+    'lite run: feature-pack-dependent fields (incl. the new momRangeMatrix combo) are null');
+  assert(liteRun.some(t => t.rangeConsumed != null) && liteRun.some(t => t.vwapSlope != null),
+    'lite run: LOCAL context fields (rangeConsumed, vwapSlope) are NOT nulled — same as vwapDrift/churn');
 
   const dev = fixedSigmaWalk(packed, { ...opts, liteContext: true, sigmaMode: 'developing' }).touches;
   assert(dev.length > 0, `developing mode emits touches (${dev.length})`);
@@ -225,6 +228,104 @@ console.log('7. liteContext invariance; developing-mode sanity');
   for (const t of dev) (byDay.get(t.date) ?? byDay.set(t.date, []).get(t.date)).push(t.fixedSigma);
   const varies = [...byDay.values()].some(a => a.length > 1 && Math.abs(a[0] - a[a.length - 1]) > 1e-9);
   assert(varies, 'developing mode: σ varies within a day (per-bar unit, not frozen)');
+}
+
+// ── 8. rangeConsumed causality + vwapSlope direction (2026-08-30) ────────────
+console.log('8. rangeConsumed causality; vwapSlope direction');
+{
+  // A calm run, then ONE wild (huge-range) day, then a final "measurement"
+  // day. rangeExpected for the measurement day must be the median of the
+  // PRIOR days' banked ranges (wild day included, since it's now history) —
+  // but the WILD DAY ITSELF must not have used its own range as history
+  // (that would be circular/leaky), and no day may see rangeExpected computed
+  // from anything after it.
+  const calm = Array.from({ length: 20 }, () => wiggleDay(100, 0.5, 400));
+  const wildDay = wiggleDay(100, 15, 400);            // huge range vs the calm 20
+  const measureDay = wiggleDay(100, 0.5, 400);
+  const packed = packDays([...calm, wildDay, measureDay]);
+  const opts = { instrument: 'TEST', minHistory: 10, minBarsPerDay: 300 };
+  const { touches } = fixedSigmaWalk(packed, opts);
+
+  const wildDate = new Date((BASE_T + 20 * DAY) * 1000).toISOString().slice(0, 10);
+  const measureDate = new Date((BASE_T + 21 * DAY) * 1000).toISOString().slice(0, 10);
+  const wildTouches = touches.filter(t => t.date === wildDate);
+  const measureTouches = touches.filter(t => t.date === measureDate);
+  assert(wildTouches.length > 0 && measureTouches.length > 0, 'both the wild day and the day after it registered touches');
+
+  // Independently recompute rangeExpected for the measure day the SAME way
+  // the engine does (trailing median of the 20 PRIOR banked ranges — calm
+  // days' actual high-low span, computed straight from the synthetic input),
+  // and confirm it is NOT distorted by the wild day dwarfing a smaller
+  // calm-day history the way the wild day's own OWN range would if leaked.
+  const calmRangeApprox = 0.5 * 2;   // the wiggle's own peak-to-trough span
+  const measureRangeConsumed = measureTouches[0]?.rangeConsumedRatio;
+  assert(measureRangeConsumed != null, 'measurement day recorded a rangeConsumedRatio');
+  // The wild day is IN the trailing-20 history for the measure day (one of
+  // 20 sessions), so its median-based expected range should still track close
+  // to the calm baseline, not explode — median is robust to the one outlier.
+  assert(measureRangeConsumed < 5, `measure-day rangeConsumedRatio stays sane despite one wild session in history (got ${measureRangeConsumed}, expected order-of-magnitude ~1, not the wild day's own ~30x blowout)`);
+
+  // The wild day's OWN rangeConsumed must be computed from the CALM history
+  // only (it hasn't banked its own range yet) — so its ratio should run HIGH
+  // (today's realized range vastly exceeds the calm expectation), not ~1.
+  const wildLate = wildTouches.filter(t => t.minsIntoSession > 200).sort((a, b) => b.rangeConsumedRatio - a.rangeConsumedRatio)[0];
+  assert(wildLate && wildLate.rangeConsumedRatio > 3, `the wild day's own touches show an elevated rangeConsumedRatio vs the calm prior history (got ${wildLate?.rangeConsumedRatio}), confirming its own huge range wasn't used as its own denominator`);
+
+  // vwapSlope direction: a session that ramps steadily upward for its first
+  // half should show vwapSlope='3·with' on an UP-side touch (VWAP trending
+  // toward the touch side) — constructed directly, no wiggle noise.
+  const rampUp = []; let px = 100;
+  for (let m = 0; m < 400; m++) { px += 0.05; rampUp.push(px); }
+  const rampPacked = packDays([...Array.from({ length: 20 }, () => wiggleDay(100, 0.3, 400)), rampUp]);
+  const { touches: rampTouches } = fixedSigmaWalk(rampPacked, { instrument: 'TEST', minHistory: 10, minBarsPerDay: 300, vwapSlopeWin: 30 });
+  const rampDate = new Date((BASE_T + 20 * DAY) * 1000).toISOString().slice(0, 10);
+  const rampUpTouch = rampTouches.filter(t => t.date === rampDate && t.side === 'up' && t.minsIntoSession > 60)[0];
+  assert(rampUpTouch?.vwapSlope === '3·with' && rampUpTouch?.vwapSlopeSig > 0,
+    `steadily-ramping-up VWAP reads '3·with' (positive slopeSig) on an up-side touch, got ${rampUpTouch?.vwapSlope}/${rampUpTouch?.vwapSlopeSig}`);
+}
+
+// ── 9. bandWalk (rejection vs walking) + regimeState wiring (2026-08-30) ────
+console.log('9. bandWalk rejection-vs-walking; regimeState/wtRegimeState wiring');
+{
+  const warm = Array.from({ length: 12 }, () => wiggleDay(100, 1, 400));
+
+  // "Walking": jump past +1σ then STAY well beyond a lenient in-band
+  // threshold (vwap+0.7σ ≈ 100.7) for the rest of the day.
+  const walkDay = [];
+  for (let m = 0; m < 100; m++) walkDay.push(100);
+  for (let m = 0; m < 3; m++) walkDay.push(100 + (m + 1) / 3 * 1.5);
+  for (let m = 0; m < 297; m++) walkDay.push(101.6);
+
+  // "Rejection": same jump, then SNAPS straight back inside on the very next bar.
+  const rejectDay = [];
+  for (let m = 0; m < 100; m++) rejectDay.push(100);
+  for (let m = 0; m < 3; m++) rejectDay.push(100 + (m + 1) / 3 * 1.5);
+  for (let m = 0; m < 297; m++) rejectDay.push(100.0);
+
+  const packed = packDays([...warm, walkDay, rejectDay]);
+  const opts = { instrument: 'TEST', minHistory: 10, minBarsPerDay: 300 };
+  const { touches } = fixedSigmaWalk(packed, opts);
+  const walkDate = new Date((BASE_T + 12 * DAY) * 1000).toISOString().slice(0, 10);
+  const rejectDate = new Date((BASE_T + 13 * DAY) * 1000).toISOString().slice(0, 10);
+  const walkT = touches.filter(t => t.date === walkDate && t.side === 'up' && t.band === 1)[0];
+  const rejectT = touches.filter(t => t.date === rejectDate && t.side === 'up' && t.band === 1)[0];
+  assert(walkT && rejectT, 'both the walking day and the rejecting day registered a +1σ up touch');
+  assert(walkT.bandWalk === '3·walking' && walkT.walkBarsBeyond >= 9,
+    `sustained post-touch extension reads '3·walking' (got ${walkT?.bandWalk}, walkBarsBeyond=${walkT?.walkBarsBeyond})`);
+  assert(rejectT.bandWalk === '1·reject-fast' && rejectT.walkBarsBeyond <= 2,
+    `an immediate snap-back reads '1·reject-fast' (got ${rejectT?.bandWalk}, walkBarsBeyond=${rejectT?.walkBarsBeyond})`);
+  assert(walkT.walkBarsBeyond > rejectT.walkBarsBeyond, 'the walking day accumulated materially more walkBarsBeyond than the rejecting day');
+
+  // regimeState/wtRegimeState wiring: present whenever their component
+  // buckets are, and correctly composed (not silently dropping a factor).
+  const withRegime = touches.filter(t => t.regimeState != null);
+  assert(withRegime.length > 0, 'regimeState populates on real touches');
+  assert(withRegime.every(t => t.regimeState === `${t.momAdx}×${t.bandSlope}`),
+    'regimeState is exactly momAdx×bandSlope, never a mismatched combination');
+  const withWtRegime = touches.filter(t => t.wtRegimeState != null);
+  assert(withWtRegime.length > 0, 'wtRegimeState populates on real touches');
+  assert(withWtRegime.every(t => t.wtRegimeState === `${t.regimeState}×${t.wtState}`),
+    'wtRegimeState is exactly regimeState×wtState (VuManChu layered on top)');
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

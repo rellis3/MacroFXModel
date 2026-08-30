@@ -1,5 +1,7 @@
 node_modules/
 /data/
+logs/dev/
+logs/fixed/
 education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 vmcResearch/data/*.parquet
