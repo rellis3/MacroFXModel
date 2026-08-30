@@ -53,6 +53,11 @@
  *   V1 core     — touch NOT in the NY session AND touch-bar candleReject
  *                 = '3·reject'  (both replicated on all 4 instruments, §7c)
  *   V2 gold+WT  — V1 AND wtState = '2·neutral' (the gold-only WT finding)
+ *   excludeOverlap (2026-08-30, §15's own held finding) — drop touches during
+ *     the London/NY overlap window (`overlapWindow===true` on the touch row),
+ *     separate from `excludeNY` (session-bucketed, not the same window) —
+ *     §15's return/band-walk books found this window suppresses reversion
+ *     specifically for the developing (self-widening) band unit.
  *   requireMomentumAgree (2026-08-27) — the OPPOSITE bet from V2: fade only
  *     when the raw WT1 oscillator is STILL on the extension's own side of
  *     zero at the touch (sell only if wt1>0 at an upper-band touch, buy only
@@ -102,6 +107,7 @@ export const DEFAULT_CFG = {
   action: 'fade',            // 'fade' (toward VWAP) | 'follow' (with-trend, next band out)
   bands: [2, 3],
   excludeNY: false,          // V1/V2 gate
+  excludeOverlap: false,     // §15's own held finding: drop London/NY overlap touches
   requireReject: false,      // V1/V2 gate
   requireWtNeutral: false,   // V2 gate (gold-only finding)
   requireMomentumAgree: false,  // sell only if wt1>0 at an upper touch, buy only if wt1<0 at a lower touch
@@ -124,6 +130,7 @@ export function runStackedFade(packed, touches, cfg = {}) {
   const pool = touches
     .filter(t => t.ordinal === 1 && c.bands.includes(t.band) && returnEligible(t, c.horizonMins))
     .filter(t => !c.excludeNY || t.session !== 'NY')
+    .filter(t => !c.excludeOverlap || t.overlapWindow !== true)
     .filter(t => !c.requireReject || t.candleReject === '3·reject')
     .filter(t => !c.requireWtNeutral || t.wtState === '2·neutral')
     .filter(t => !c.requireMomentumAgree
@@ -212,6 +219,7 @@ export function runStackedFade(packed, touches, cfg = {}) {
 
   return { trades, records,
            meta: { pool: pool.length, cfg: { action: c.action, bands: c.bands, excludeNY: c.excludeNY,
+                   excludeOverlap: c.excludeOverlap,
                    requireReject: c.requireReject, requireWtNeutral: c.requireWtNeutral,
                    requireMomentumAgree: c.requireMomentumAgree,
                    requireBandSlopeExpanding: c.requireBandSlopeExpanding,

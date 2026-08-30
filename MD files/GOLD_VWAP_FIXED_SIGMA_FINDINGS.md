@@ -1157,6 +1157,99 @@ Runners: `scripts/run_gold_vwap_sigma.mjs --sigma-mode developing`,
 `scripts/run_gold_vwap_sigma_controls.mjs --sigma-mode developing --touches
 logs/dev/gold_vwap_sigma_touches.json`.
 
+## 16. The developing-band fade-to-VWAP trade test (2026-08-30) — null, the sixth on this idea shape
+
+**Why:** the owner asked directly — "I would like from this analysis we build
+a tradable system if you think that's possible... vwap out and then band
+back to vwap." That is exactly `stackedFadeV1Engine.js`'s existing
+`action:'fade'` trade (entry on a band touch, TP=VWAP as of touch, SL=1.5×
+ATR15m), which has already been tested five times under `sigmaMode:
+'fixedRms'` (§9 V0/V1/V2, §9a's two variants) and come back null every time.
+It had never been run under `sigmaMode:'developing'` — the band unit the
+owner has been asking about since the screenshot, and the one §15 found the
+strongest non-mechanical descriptive signal in (334 OOS-held return-book
+findings, the most of any book in this whole study). Worth a real, honest
+test on that basis alone, not because the prior result should be assumed
+different this time.
+
+**Pre-registered before running:** same house bar as every trade test in
+this study — OOS t>2, same sign IS/OOS, n≥30, positive gross (pre-cost) P&L,
+on gold (the bar-defining instrument), ideally replicating on ≥2/3 FX
+majors. **Stated prior:** skeptical. fixedRms's own return book (108 held
+findings, called "the strongest structure in the study" at the time) also
+failed to convert into an edge on this identical trade shape — a strong
+descriptive book has already been shown once not to guarantee this. No
+reason yet to expect developing bands are different, only that they hadn't
+been tried.
+
+**Engine change:** one new gate, `excludeOverlap` (drops `overlapWindow===
+true` touches — the London/NY overlap window §15's return AND band-walk
+books both independently flagged as suppressing reversion for the
+developing unit; distinct from the existing `excludeNY`, which buckets by
+session label, not this specific window). 2 new tests. Runner
+`run_stacked_fade.mjs` gained `--sigma-mode`/`--bands` flags (default
+`fixedRms`/`[2,3]`, unchanged prior behavior) and a `sigmaMode==='developing'`
+variant set: V0-dev (baseline, bands 2+3 pooled), V0-dev band-3-only
+(matching the owner's own "3 band" framing earlier in this thread), V1-dev
+(`excludeNY` AND `excludeOverlap` — §15's one cross-validated real theme),
+V1-dev band-3-only.
+
+**Result: NULL, every variant, all 4 instruments — the worst (most
+negative) t-stats of any trade test in this study.**
+
+| instrument | V0-dev (2σ+3σ) OOS t | V0-dev 3σ-only OOS t | V1-dev OOS t | V1-dev 3σ-only OOS t |
+|---|---|---|---|---|
+| gold | −6.15 | −6.70 | −5.86 | −6.62 |
+| EURUSD | −6.42 | −4.74 | −6.04 | −4.86 |
+| GBPUSD | −2.92 | −2.43 | −5.21 | −2.04 |
+| USDJPY | −5.83 | −3.73 | −6.08 | −4.30 |
+
+Every single cell is significantly NEGATIVE, not just non-significant —
+this isn't "no edge found," it's "this specific configuration reliably
+loses money," on 16/16 cells. Win rate is actually decent (51–61%, better
+than a coin flip) but expectancy is still net negative even before
+costs on most cells (gold and USDJPY gross P&L negative outright; EURUSD/
+GBPUSD gross barely positive, 0.0001–0.0067%, nowhere near enough to
+survive real costs). The `excludeOverlap`+`excludeNY` gate (V1-dev) — the
+one theme §15 found real and OOS-held — barely moves any cell: real, but
+far too small next to a fundamentally negative expectancy to flip anything.
+
+**Bug-hunted before accepting the null (per house discipline — assume code
+failure first):** checked whether the fixed `1.5×ATR15m` stop (unchanged
+from the fixedRms version) is simply mis-scaled against developing bands'
+much larger, session-dependent σ. It is not the obvious culprit: sampled at
+gold's ±3σ touches, the stop distance runs a median **3.24×** that touch's
+own developing σ (p25 1.96×, p75 5.28×) — comparably wide to, or wider
+than, the median MAE a genuine WINNING fade needs to survive before
+reverting (1.88σ, from the descriptive check in this same conversation).
+The stop is not obviously clipping winners early. The more likely mechanism,
+consistent with §15's own finding that continuation strengthens with band
+depth specifically because a deep developing-band touch marks a session
+that has already built real, expanding realized range: when a developing-
+band fade DOES lose, the adverse move is drawn from that same fat, still-
+expanding tail — a stop and target sized for the "normal" case does not
+respect how much worse the losing tail gets exactly on the days this signal
+is deepest. This was not separately isolated (would need a dedicated
+MAE-triggered or volatility-scaled exit test, not yet built) — noted as the
+lead candidate explanation, not proven.
+
+**Verdict, plainly:** "band out, then trade it back to VWAP" has now failed
+six independent tests across both band units, several gates, and two
+distinct exit/target constructions (fixed-ATR stop here; the with-trend
+race-based exit in §14 family). The underlying descriptive structure this
+study found — reversion is real, mechanical near VWAP but genuinely
+non-mechanical at depth, especially away from NY/overlap sessions — is not
+in dispute; it is the trade's cost/R:R geometry against realistic stops
+that has not converted it into an edge, in any configuration tried so far.
+Per the "Pivot or Pivot" rule, this is not "the idea doesn't work" so much
+as "every geometry tried on this idea doesn't work" — a volatility-scaled
+or MAE-triggered exit (rather than a fixed ATR multiple) is the next
+structural mutation this specific diagnosis points at, not yet built or
+tested, and not being sold here as likely to succeed.
+
+Runner: `scripts/run_stacked_fade.mjs gold eurusd gbpusd usdjpy --sigma-mode
+developing`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1192,6 +1285,13 @@ to both `scripts/run_gold_vwap_sigma.mjs` and `scripts/run_gold_vwap_sigma_
 controls.mjs` — no engine/report changes, `sigmaMode` was already wired
 through `fixedSigmaWalk` and the book builders are unit-agnostic; this closes
 the gap that the random-walk control could not previously be run matched to
-developing mode. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+developing mode. §16 added `excludeOverlap` to `stackedFadeV1Engine.js`
+(+2 tests) and `--sigma-mode`/`--bands` flags to `scripts/run_stacked_fade.mjs`
+(default `fixedRms`/`[2,3]`, unchanged prior behavior) — the developing-band
+fade-to-VWAP trade test, pre-registered and run on gold + 3 FX majors: NULL,
+every variant, worst (most negative) OOS t-stats of any trade test in this
+study; the fixed-ATR stop checked and ruled out as an obvious miscalibration,
+leaving a fat losing tail on deep-touch days as the leading unproven
+explanation. Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.

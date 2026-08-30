@@ -122,6 +122,22 @@ t('requireMomentumAgree: a touch missing wtStateValue (null) is excluded, not si
   assert.equal(trades.length, 0);
 });
 
+t('excludeOverlap: a touch with overlapWindow=true is excluded', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), overlapWindow: true };
+  const { trades, meta } = runStackedFade(packed, [touch], { excludeOverlap: true });
+  assert.equal(meta.pool, 0);
+  assert.equal(trades.length, 0);
+});
+
+t('excludeOverlap: a touch with overlapWindow=false still fires', () => {
+  const packed = buildPacked({ side: 'up', entryPx: 101, tpPx: 99 });
+  const touch = { ...touchFor({ side: 'up', wtStateValue: +5 }), overlapWindow: false };
+  const { trades, meta } = runStackedFade(packed, [touch], { excludeOverlap: true });
+  assert.equal(meta.pool, 1);
+  assert.equal(trades.length, 1);
+});
+
 // ── action:'follow' (2026-08-30) — with-trend, next-band-out target ─────────
 // Quiet packed data where the entry bar just fills (open=entry) and price
 // stays near entry for the rest of the window (walkBars returns 'open',
