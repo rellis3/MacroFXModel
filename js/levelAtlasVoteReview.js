@@ -293,6 +293,33 @@ export function priceAtTighterStop(trade, candidateStopPips, cost) {
 }
 
 /**
+ * Apply a FIXED stop-tightening fraction to FADE trades only, leaving follow
+ * trades untouched — the exact shape validated for the Fib Atlas engines
+ * (analysis/fib_atlas_sl_tightening_backtest.mjs, 2026-08-29): fade's give-
+ * back-predicts-loss signal is 30-100% stronger than follow's at every
+ * checkpoint (analysis/fib_atlas_mae_timing_study.mjs), so tightening is
+ * only applied where it was actually shown to help. `frac` is the fraction
+ * of the trade's OWN stopPips to use as the new (tighter) stop, e.g. 0.9 —
+ * `null`/`1` is a no-op passthrough. Engine-agnostic (reuses
+ * `priceAtTighterStop` unchanged): works on Level Atlas's own trade shape or
+ * Fib Atlas's, since `buildBarrierTrades` deliberately outputs the same
+ * field names. `cost=0` by default because repricing an already-built trade
+ * is the SAME trade exiting earlier, not a new one — the real cost is
+ * already baked into its original `pnlPct` (see asiaFibAtlasRoutes.js's
+ * `/run` build step), so re-applying cost here would double-charge it.
+ *
+ *   applyFadeStopFraction(trades, frac, cost=0) -> trades (same shape, fade rows repriced)
+ */
+export function applyFadeStopFraction(trades, frac, cost = 0) {
+  if (!trades?.length || frac == null || frac >= 1) return trades ?? [];
+  return trades.map(t => {
+    if (t.decision !== 'fade' || t.maePips == null) return t;
+    const priced = priceAtTighterStop(t, t.stopPips * frac, cost);
+    return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * frac, t.stopPips) } : t;
+  });
+}
+
+/**
  * The stop/target study: does a TIGHTER stop, grounded in this trade list's
  * OWN real winners'-MAE percentiles (never invented — the exact grid-grounding
  * discipline `perLineStrategy.js`'s `runStopStudy` already uses), beat the

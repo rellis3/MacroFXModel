@@ -3124,6 +3124,58 @@ unrelated to this check (the original dimension search's provenance, the
 entry-order/fill-assumption question, and OOS-validating any pair-selection
 narrowing) — see this section's earlier entries.
 
+**Fade-stop-tightening wired into production (2026-08-30) — the SL-tightening
+finding above (frac=0.9, fade-only) stops being an analysis-script result and
+becomes a real, callable feature.** New Tier-1 brick `applyFadeStopFraction`
+(`js/levelAtlasVoteReview.js`, immediately after `priceAtTighterStop`, unit
+tests in `js/levelAtlasVoteReview.test.mjs` "T22"): applies a FIXED
+stop-tightening fraction to `decision==='fade'` trades only, leaving `follow`
+completely untouched (per the MAE-timing checkpoint study above — fade's
+give-back-predicts-loss signal is 30-100% stronger than follow's at every
+checkpoint, so tightening is only applied where it was actually shown to
+help). `null`/`1` is a documented no-op passthrough, so every existing caller
+is unaffected by default.
+
+Threaded through the full call chain: `js/fibAtlasVotePortfolio.js`'s
+`buildFibAtlasVotePortfolio` gained a `stopTightenFrac` param (applied per
+constituent, after that pair's own concurrency cap, before risk-adjust/heat-
+cap/throttle — same order the validating backtest used); both
+`js/asiaFibAtlasRoutes.js` and `js/mondayFibAtlasRoutes.js` read
+`stopTightenFrac` off the query string on `/vote-trades/:instrument`,
+`/vote-portfolio`, and (Asia only) `/vote-portfolio-combined`, and pass it
+through unchanged. Live-verified end-to-end via curl against a running
+`server.js`: fade trade count is unchanged (repricing, not filtering), fade
+winRate drops under tightening as expected (79.0% vs baseline), and — the
+important correctness check — **follow winRate is byte-identical between the
+baseline and tightened calls (75.7% both ways)**, confirming the
+`decision!=='fade'` early-return really does leave follow trades untouched
+end-to-end, not just in the unit test.
+
+UI wiring: `asia-fib-atlas-vote-backtest.html` gained a "Tighten fade stop
+(0.9×)" checkbox next to the margin selector, appending `&stopTightenFrac=0.9`
+to the `/vote-trades/:pair` fetch when checked (CSV export needs no separate
+change — it reads from the already-fetched, already-tightened `allTrades`
+array). `asia-fib-atlas-vote-portfolio.html` got the same checkbox mirroring
+its existing heat-cap/throttle control pattern exactly (checkbox + `params.set`
++ change-listener), applying to `/vote-portfolio` and the combined-ladder
+route alike. Both pages default OFF (no behavior change unless the owner
+opts in).
+
+**Deliberately NOT wired: `asia-fib-atlas-live.html` (the live viewer).**
+Checked rather than assumed — `renderLadder` (line ~258) and the ladder it
+renders (`asiaFibAtlasLiveLadder`, `js/asiaFibAtlasEngine.js`) only ever
+compute `distancePips`/`lean`/support-challenge signals per rung; there is no
+stop/target-distance concept anywhere on the live ladder today, unlike
+backtest `touch` records (`innerDistPips`/`outerDistPips`). There is nothing
+for the tightening feature to attach to without first building a separate,
+new feature (adding a stop-distance field to the live ladder rungs) — flagged
+as a real scope gap, not silently skipped or faked.
+
+🟢 backend (brick + both routes + portfolio builder) live-verified end-to-end
+against real data; 🟢 backtest + portfolio page toggles wired and defaulted
+off; 🟡 live-viewer wiring genuinely out of scope until stop-distance display
+is built there first.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

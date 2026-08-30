@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -635,6 +635,31 @@ function mkBook(dimSpecs) {
   ok('T21 exposure is released once the position RESOLVES, freeing budget for a later same-sign trade', gReleased.kept.length === 2, JSON.stringify(gReleased.kept.map(t => t.pair)));
 
   ok('T21 empty/null input -> empty kept, not a throw', applyExposureCap([]).kept.length === 0 && applyExposureCap(null).kept.length === 0);
+}
+
+// ── applyFadeStopFraction (2026-08-29) ──────────────────────────────────────
+// Validated for both Fib Atlas ladders (analysis/fib_atlas_sl_tightening_
+// backtest.mjs, LEGO_MODULES.md) -- fade-only, frac of the trade's OWN
+// stopPips, a thin wrapper around priceAtTighterStop.
+{
+  const entry = 1.1000, pip = 0.0001, stopPips = 20;
+  // Under the tighter (0.9x -> 18p) stop: untouched, keeps its original win/pnlPct.
+  const fadeUnder = { decision: 'fade', entry, pip, stopPips, maePips: 10, win: true, pnlPct: 0.5 };
+  // Past the tighter stop but not the original 20p: flips to a loss at the tighter stop.
+  const fadeOver = { decision: 'fade', entry, pip, stopPips, maePips: 19, win: true, pnlPct: 0.9 };
+  // A follow trade with the SAME maePips as fadeOver must be completely untouched --
+  // only fade decisions get tightened (the validated, checkpoint-study-backed asymmetry).
+  const followOver = { decision: 'follow', entry, pip, stopPips, maePips: 19, win: true, pnlPct: 0.9 };
+
+  const out = applyFadeStopFraction([fadeUnder, fadeOver, followOver], 0.9);
+  ok('T22 fade trade under the tighter stop keeps its original win/pnlPct (stopPips still updates to the tighter value, per priceAtTighterStop\'s own contract)', out[0].win === true && out[0].pnlPct === 0.5 && Math.abs(out[0].stopPips - stopPips * 0.9) < 1e-9);
+  const expectedSPct = +(-(stopPips * 0.9 * pip / entry * 100)).toFixed(4);
+  ok('T22 fade trade past the tighter stop flips to a loss AT the tighter stop', out[1].win === false && out[1].pnlPct === expectedSPct && Math.abs(out[1].stopPips - stopPips * 0.9) < 1e-9, JSON.stringify(out[1]));
+  ok('T22 follow trade is completely untouched regardless of maePips -- only fade is tightened', out[2].win === true && out[2].pnlPct === 0.9 && out[2].stopPips === stopPips);
+
+  ok('T22 frac=null is a no-op passthrough (same array, unchanged)', applyFadeStopFraction([fadeOver], null)[0].win === true);
+  ok('T22 frac=1 is a no-op passthrough', applyFadeStopFraction([fadeOver], 1)[0].win === true);
+  ok('T22 empty/null input -> empty array, not a throw', applyFadeStopFraction([], 0.9).length === 0 && applyFadeStopFraction(null, 0.9).length === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

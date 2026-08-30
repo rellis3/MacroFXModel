@@ -31,7 +31,7 @@
  */
 import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
-  riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle,
+  riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
 } from './levelAtlasVoteReview.js';
 import { maxDrawdownFromPnls } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
@@ -57,13 +57,22 @@ function withNonCompoundedDD(statsObj, dailyReturns) {
  * opts: { pairs, minMargin=2, maxConcurrent=1, perDirection=false,
  *   weighting='equal'|'inverse-vol', sizing='fixed-risk'|'nav', riskPct=1,
  *   maxHeatPct=null, targetVol=10, throttleOn=false, triggerDD=-5,
- *   restoreDD=0, throttleMult=0.5, loadPairVoteTrades }
+ *   restoreDD=0, throttleMult=0.5, stopTightenFrac=null, loadPairVoteTrades }
+ *
+ * `stopTightenFrac` (2026-08-29): validated by analysis/
+ * fib_atlas_sl_tightening_backtest.mjs (see LEGO_MODULES.md) — tightens FADE
+ * decisions' stop to this fraction of their native distance (e.g. 0.9),
+ * leaving follow trades untouched. Applied AFTER each constituent's own
+ * concurrency cap (same order the validating backtest used), BEFORE risk-
+ * adjustment/heat-cap/throttle — a no-op when null/1, so every existing
+ * caller is unaffected.
  */
 export async function buildFibAtlasVotePortfolio({
   pairs, minMargin = 2, maxConcurrent = 1, perDirection = false,
   weighting = 'equal', sizing = 'fixed-risk', riskPct = 1,
   maxHeatPct = null, targetVol = 10,
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
+  stopTightenFrac = null,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -81,8 +90,9 @@ export async function buildFibAtlasVotePortfolio({
     if (!stored) { missing.push(pair.toUpperCase()); continue; }
     const filtered = stored.trades.filter(t => t.margin >= minMargin);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+    const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac);
     const sym = stored.groupKey ?? stored.instrument;
-    perPairTradesRaw[sym] = (capped?.kept ?? []).map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
+    perPairTradesRaw[sym] = tightened.map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
     perPair[sym] = {
       totalDecided: filtered.length,
       kept: capped?.kept?.length ?? 0,
