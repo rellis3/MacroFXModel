@@ -7,6 +7,7 @@ logs/stacked_fade_pmo_stdout.txt
 logs/stacked_fade_retrace_stdout.txt
 logs/fade_trade_conditions_stdout.txt
 logs/fade_trade_cull_stdout.txt
+logs/vwap_trend_cross_stdout.txt
 education/jordan_trade_geometry/data/*.occurrences.json
 VolRangeForecaster/data/*.parquet
 vmcResearch/data/*.parquet

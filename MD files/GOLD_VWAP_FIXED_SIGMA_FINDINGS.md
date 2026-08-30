@@ -1531,6 +1531,75 @@ this filter, not any of the nine that came before it.
 Runners: `scripts/run_fade_trade_conditions.mjs gold eurusd gbpusd usdjpy
 --perms 20`, `scripts/run_fade_trade_cull.mjs gold eurusd gbpusd usdjpy`.
 
+## 20. VWAP as a trend filter, not a reversion target — the first non-band idea tested (2026-08-30)
+
+**Why:** the owner pushed back on the running conclusion from §1-19 ("never
+trade VWAP") — correctly. Everything tested so far was one specific,
+narrow bet: price stretches away from VWAP, fade it back. The owner asked
+to test the opposite standalone idea — trade WITH VWAP's own directional
+read ("only go long while price is above VWAP"), not a confluence layer on
+another system, a genuinely different mechanism on its own. This is the
+first idea in the whole 20-section study that isn't anchored to a σ-band at
+all.
+
+**New capability:** `mode:'vwap_trend_cross'` on `vwapReversionEngine.js`'s
+existing "ONE VWAP entry primitive" (already had `band_fade`/`vwap_bounce`/
+`band_follow` — this is the fourth mode on the SAME function, not a new
+engine, per Lego Principle #2). First fresh CLOSE-based cross of session
+VWAP each day enters in that direction; exits on the first opposite cross,
+or session end if none comes. No σ-band, no stop/target — the minimal-DOF
+version (nothing to overfit). Its exit is a moving level (VWAP itself), so
+it computes its own fill directly rather than handing a static order to the
+shared `walkBars` — a different fill contract, not a duplicate of the
+shared one. +4 tests (rides a clean ramp to session close, exits on the
+first reversal not session end, `dir` filter skips the wrong-direction
+cross, no false trigger on a flat day). New runner
+`scripts/run_vwap_trend_cross.mjs`.
+
+**Pre-registered before running:** same house bar as every trade test —
+OOS t>2, n≥30, positive gross, same sign IS/OOS, gold + ≥2/3 FX majors.
+Stated prior: genuinely open — no direct precedent either way, though every
+fade construction failed for the same reason (a capped winner against an
+uncapped-feeling loser), and a trend bet has the opposite shape in
+principle — a reason for honest curiosity, not a prediction.
+
+**Result: NULL, decisively, all 4 instruments, all 3 direction variants —
+but for a completely different reason than every fade test in this study.**
+
+| instrument | fill rate | OOS gross (both dir) | OOS t (both dir) |
+|---|---|---|---|
+| gold | 3173/3304 (96%) | +0.0008% | −3.05 |
+| EURUSD | 3280/3318 (99%) | −0.0014% | −12.01 |
+| GBPUSD | 3268/3318 (98%) | −0.0027% | −14.68 |
+| USDJPY | 3265/3318 (98%) | −0.0050% | −8.08 |
+
+Win rate is 9–12% everywhere — not because the direction call is
+systematically wrong, but because a bare, unconfirmed VWAP cross fires on
+**nearly every single session** (96–99% fill rate) and whipsaws
+immediately most of the time. **Gross P&L (before costs) is essentially
+ZERO on every instrument, both signs, tiny magnitudes (−0.005% to
++0.009%)** — the raw "which side of VWAP did price just cross to" carries
+no directional information at this frequency; it's a coin flip. The huge,
+statistically extreme t-stats (down to −25, the most negative of anything
+in this whole study) come from trade COUNT, not effect size: ~1,900–2,000
+OOS trades per instrument means even a hair of cost drag on a true
+coin-flip compounds into a "significant" loss — significance here measures
+sample size, not a real edge working against you.
+
+**This is a different failure mode from §1-19, worth naming precisely.**
+Every fade test failed because the R:R geometry was wrong (losers bigger
+than winners, even after culling for real conditions in §19). This fails
+because the raw signal itself carries no information — a bare same-day
+VWAP cross isn't a "setup," it's daily market noise dressed as a signal.
+Per the "Pivot or Pivot" rule: the structural mutation this diagnosis
+points at is a CONFIRMATION filter — require the cross to hold for N bars,
+or clear VWAP by a minimum distance, before trusting it as real, cutting
+the ~97% fill rate down toward something that might actually separate
+trend days from chop. Not yet built or tested — flagged as the honest next
+step for this specific idea, not sold as likely to work.
+
+Runner: `scripts/run_vwap_trend_cross.mjs gold eurusd gbpusd usdjpy`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1624,6 +1693,23 @@ come to the pre-registered bar — but EVERY variant on EVERY instrument
 stays negative; losers still outsize winners even in the filtered pool.
 Flagged explicitly: the filter's own discovery reused the same chronological
 period later tested as its OOS, not a fully independent third sample.
-Tenth null on this idea shape, the most informative one. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+Tenth null on this idea shape, the most informative one. §20 added a fourth
+mode, `vwap_trend_cross`, to `vwapReversionEngine.js`'s existing "ONE VWAP
+entry primitive" (already had `band_fade`/`vwap_bounce`/`band_follow`) — the
+first idea in the whole study NOT anchored to a σ-band: trade WITH VWAP's
+own directional read (the owner's "only go long while price is above VWAP"),
+first fresh close-based cross of session VWAP each day enters, exits on the
+opposite cross or session end, no stop/target (+4 tests). New runner
+`scripts/run_vwap_trend_cross.mjs`. Result: NULL, decisively, all 4
+instruments, all 3 direction variants — but for a genuinely different
+reason than every band-fade test: gross P&L is essentially ZERO on every
+instrument (a coin flip, not a wrong-direction bet), win rate 9-12%
+everywhere because a bare cross fires on 96-99% of ALL sessions and
+whipsaws immediately most of the time; the extreme OOS t-stats (down to
+−25, the most negative of anything in the study) come from trade COUNT on
+a near-daily-frequency signal, not effect size. Diagnosed structural
+mutation this points at (not built): a confirmation filter (hold N bars, or
+clear VWAP by a minimum distance) to separate real trend days from the
+~97% that are just noise. Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.

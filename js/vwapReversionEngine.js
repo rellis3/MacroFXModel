@@ -16,6 +16,21 @@
  *   control) band_follow — break THROUGH the band, target the next band out. The
  *                    "trend day" continuation control. If fade wins, this should
  *                    lose; running it keeps us honest about which side pays.
+ *   D) vwap_trend_cross (2026-08-30, owner's request) — "only go long while
+ *                    price is above VWAP": trade WITH VWAP's own directional
+ *                    read, not against it — the standalone-system counterpart
+ *                    to band_fade's reversion bet, and the one VWAP idea in
+ *                    this whole study that ISN'T anchored to a σ-band at all.
+ *                    First fresh CLOSE-based cross of VWAP each session ->
+ *                    enter in that direction; exit on the first opposite
+ *                    cross, or session end if none comes. No σ/band, no
+ *                    TP/SL — the trend read alone decides the exit, the
+ *                    minimal-DOF version per CLAUDE.md's own staging rule
+ *                    (a bare cross rule has nothing to overfit). Its exit is
+ *                    a moving level (VWAP itself), not a static price, so it
+ *                    computes its own fill directly rather than handing a
+ *                    static order to `walkBars` — a different fill CONTRACT,
+ *                    not a re-implementation of the shared one.
  *
  * All three are ONE entry primitive parameterised by {location, action} — not three
  * bespoke legs (Lego Principle 2). The fill walker (`walkBars`) and the IS/OOS
@@ -178,6 +193,33 @@ export function simulateVwapSession(bars, spec) {
     }
   }
 
+  if (mode === 'vwap_trend_cross') {
+    // Trade WITH VWAP's own read: first fresh close-based cross each session
+    // enters; exit on the first opposite cross or session end. `ref(k)` is
+    // the SAME lagged-level convention as upB/dnB above (bar k tested
+    // against vwap[k-1], no same-bar lookahead).
+    const ref = (k) => vwap[k - 1];
+    let entryIdx = null, isBuyCross = null;
+    for (let k = warmupBars; k < n; k++) {
+      const now = bars[k].close - ref(k), prev = bars[k - 1].close - ref(k - 1);
+      if (now > 0 && prev <= 0 && wantLong) { entryIdx = k; isBuyCross = true; break; }
+      if (now < 0 && prev >= 0 && wantShort) { entryIdx = k; isBuyCross = false; break; }
+    }
+    if (entryIdx == null || entryIdx + 1 >= n) return noFill;
+    const entryPx = bars[entryIdx + 1].open;
+    let exitIdx = n - 1, exitPx = bars[n - 1].close, outcome = 'session_close';
+    for (let m = entryIdx + 1; m < n; m++) {
+      const now = bars[m].close - ref(m), prev = bars[m - 1].close - ref(m - 1);
+      const reversedAgainst = isBuyCross ? (now < 0 && prev >= 0) : (now > 0 && prev <= 0);
+      if (reversedAgainst) { exitIdx = m; exitPx = bars[m].close; outcome = 'reverse_cross'; break; }
+    }
+    const sgn = isBuyCross ? 1 : -1;
+    const net = ((exitPx - entryPx) / entryPx) * 100 * sgn - costPct;
+    return { filled: true, side: isBuyCross ? 'BUY' : 'SELL', outcome, mode,
+      pnl_pct: +net.toFixed(5), entry: +entryPx.toFixed(6), exit: +exitPx.toFixed(6),
+      fill_time: bars[entryIdx + 1].time, exit_time: bars[exitIdx].time };
+  }
+
   if (!order) return noFill;
 
   // Hand the frozen order to the shared fill walker over the remaining bars.
@@ -238,6 +280,7 @@ export function compareVwapModes(packed, opts = {}) {
     vwap_bounce: { mode: 'vwap_bounce' },
     band_follow: { mode: 'band_follow' },
     band_fade_nocost: { mode: 'band_fade', costPct: 0, slipPct: 0 },  // cost floor
+    vwap_trend_cross: { mode: 'vwap_trend_cross' },
   };
   const out = {};
   for (const [name, m] of Object.entries(modes)) {
@@ -247,4 +290,4 @@ export function compareVwapModes(packed, opts = {}) {
   return out;
 }
 
-export const VWAP_MODES = ['band_fade', 'vwap_bounce', 'band_follow'];
+export const VWAP_MODES = ['band_fade', 'vwap_bounce', 'band_follow', 'vwap_trend_cross'];

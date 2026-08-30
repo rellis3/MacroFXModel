@@ -74,10 +74,42 @@ function warmup() {
 // ── 5) Flat day (σ=0) → no fill (no lookahead / no degenerate trigger) ────────
 {
   const bars = Array.from({ length: 100 }, (_, i) => flat(i * 60, 100));
-  for (const mode of ['band_fade', 'vwap_bounce', 'band_follow']) {
+  for (const mode of ['band_fade', 'vwap_bounce', 'band_follow', 'vwap_trend_cross']) {
     const r = simulateVwapSession(bars, { mode });
     ok(!r.filled, `flat day → no ${mode} trade`);
   }
+}
+
+// ── 7) vwap_trend_cross (2026-08-30): rides a monotonic ramp to session close ──
+{
+  const bars = Array.from({ length: 40 }, (_, i) => flat(i * 60, 100));   // flat warmup, VWAP=100, σ=0
+  let t = 40 * 60;
+  for (let i = 0; i < 20; i++) { const v = 100.05 + i * 0.02; bars.push(bar(t, v, v + 0.01, v - 0.005, v)); t += 60; }
+  const r = simulateVwapSession(bars, { mode: 'vwap_trend_cross', costPct: 0.012 });
+  ok(r.filled, 'vwap_trend_cross: filled on a clean upward cross');
+  ok(r.side === 'BUY', 'vwap_trend_cross: bought the upward cross (trading WITH VWAP, not against it)');
+  ok(r.outcome === 'session_close', `vwap_trend_cross: no reversal -> rides to session close (got ${r.outcome})`);
+  ok(r.pnl_pct > 0, `vwap_trend_cross: positive net pnl on a sustained one-way ramp (got ${r.pnl_pct})`);
+}
+
+// ── 8) vwap_trend_cross: exits on the FIRST opposite cross, not session end ────
+{
+  const bars = Array.from({ length: 40 }, (_, i) => flat(i * 60, 100));
+  let t = 40 * 60;
+  for (let i = 0; i < 10; i++) { const v = 100.05 + i * 0.02; bars.push(bar(t, v, v + 0.01, v - 0.005, v)); t += 60; }   // ramp up -> BUY
+  for (let i = 0; i < 10; i++) { const v = 100.20 - i * 0.05; bars.push(bar(t, v, v + 0.005, v - 0.01, v)); t += 60; }  // sharp reversal down
+  const r = simulateVwapSession(bars, { mode: 'vwap_trend_cross', costPct: 0.012 });
+  ok(r.filled && r.side === 'BUY', 'vwap_trend_cross(reversal): filled long on the initial up-cross');
+  ok(r.outcome === 'reverse_cross', `vwap_trend_cross(reversal): exits on the opposite cross, not session end (got ${r.outcome})`);
+}
+
+// ── 9) vwap_trend_cross: dir filter skips a cross of the excluded direction ────
+{
+  const bars = Array.from({ length: 40 }, (_, i) => flat(i * 60, 100));
+  let t = 40 * 60;
+  for (let i = 0; i < 20; i++) { const v = 100.05 + i * 0.02; bars.push(bar(t, v, v + 0.01, v - 0.005, v)); t += 60; }
+  const r = simulateVwapSession(bars, { mode: 'vwap_trend_cross', dir: 'short', costPct: 0.012 });
+  ok(!r.filled, 'vwap_trend_cross: dir=short skips an upward-only cross session (no_fill, not a mismatched trade)');
 }
 
 // ── 6) runVwapReversion buckets by session and emits dated records ────────────
