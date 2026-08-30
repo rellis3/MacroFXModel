@@ -929,6 +929,61 @@ not attempted here.
 2 new tests (`followSlSigma` band-math correctness, an inverted-SL config
 rejected not mispriced). Runner: `scripts/run_trend_follow_sl_sweep.mjs`.
 
+### §14b — the closed-candle confirmation (2026-08-30) — still null, but the texture changed
+
+Owner's direct follow-up to §14a: *"let's look at the 1m closed candle...
+all this was meant to be on an ultra low timeframe like 1m/3m"* — the exact
+structural mutation §14a itself pointed at. `stackedFadeV1Engine.js` gained
+`confirmTfMinutes` (reusing `vwapExtensionAtlasEngine.js`'s own "closes not
+wicks" day-aligned bucket-close convention, not reinventing it): at the new
+default of 1, the touch bar's OWN close — not just its wick — must already
+be beyond the band before entering; at 3, wait for the enclosing 3-minute
+bucket's own close instead. TP/SL geometry is unchanged from §14/§14a
+(next band out / one band back, `followSlSigma=1.0`) — only the entry
+trigger changes. Pre-registered before running: same bar as §14/§14a.
+
+**Result: still null — no cell clears OOS t>2 — but for the first time in
+this whole with-trend line, win rate jumps meaningfully and two cells turn
+OOS-positive:**
+
+| instrument | gate, confirm | OOS n | OOS mean | OOS t | OOS win% |
+|---|---|---|---|---|---|
+| gold | V-expanding, 1m | 332 | −0.0395% | −2.38 | 54.8% |
+| gold | V-expanding, 3m | 320 | −0.0199% | −1.26 | 60.6% |
+| GBPUSD | V-expanding, 1m | 302 | **+0.0039%** | **+0.45** | 63.2% |
+| USDJPY | V-expanding, 1m | 286 | **+0.0084%** | **+0.92** | 64.3% |
+
+Win rates across EVERY cell in this run sit at 53-66%, up from 48-53% in
+§14/§14a — the confirmation filter is doing exactly what it was meant to:
+removing the touches that were noise (a wick with no real follow-through).
+That part of the intuition is confirmed.
+
+**But two honesty checks both say not to trust the "improvement" as a
+finding:**
+1. **Gold — the instrument this entire study is built on — does NOT
+   improve.** It stays clearly negative (OOS t −2.38 to −3.19) across every
+   variant tried, the worst performer of the four. The two cells that turn
+   positive (GBPUSD, USDJPY) are secondary replication instruments; this
+   study's own pre-registered bar requires gold to clear it, which it does
+   not, so the bar is not met regardless of what the FX pairs show.
+2. **The "improved" cells show the exact IS/OOS sign-flip this study has
+   learned to distrust** — GBPUSD V-expanding/1m: IS t −2.12, OOS t +0.45;
+   USDJPY V-expanding/1m: IS t −0.77, OOS t +0.92. A result that is negative
+   in-sample and only turns positive out-of-sample is the same illusory-
+   effect signature as the more familiar IS-good/OOS-bad flip §9's own
+   near-misses showed — not a stable effect resolving differently in two
+   halves, chance resolving differently in two halves.
+
+**Read straight: the with-trend idea has now been tested six ways (§9's
+sibling trade tests aside) — unconditional, gated on the one real cross-
+market descriptive finding, with a swept stop, and now with closed-candle
+confirmation — and gold has not cleared the bar in any of them.** The
+closed-candle filter is a real, working improvement to trade QUALITY (fewer
+noise entries, meaningfully higher win rate) without yet being an edge.
+
+2 new tests (the 1m-wick-vs-close distinction, the 3m bucket-close timing).
+Runner: `scripts/run_trend_follow_confirm.mjs`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -953,6 +1008,11 @@ harness. `js/stackedFadeV1Engine.js` (§9/§9a) gained `action:'fade'|'follow'`
 runner `scripts/run_trend_follow.mjs`, also null on gold + 3 FX majors; §14a
 added `followSlSigma` (+2 tests) to sweep stop tightness (runner
 `scripts/run_trend_follow_sl_sweep.mjs`) — also null, all 32 cells, with a
-diagnosed mechanism (win-rate collapses faster than R:R improves).
+diagnosed mechanism (win-rate collapses faster than R:R improves); §14b
+added `confirmTfMinutes` (+2 tests, reusing `vwapExtensionAtlasEngine.js`'s
+own closes-not-wicks bucket-close convention) — still null on gold (the
+bar-defining instrument), though win rate improves meaningfully everywhere
+and two secondary instruments turn OOS-positive with an IS/OOS sign-flip
+flagged as noise, not a finding. Runner `scripts/run_trend_follow_confirm.mjs`.
 Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook, the rows +
 book are the deliverable until something needs a live view.

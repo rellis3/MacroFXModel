@@ -29,10 +29,24 @@
  *     reacts to the band very quick, so the SL should be small") — the
  *     original 1.0 made TP/SL a ~1:1 R:R by construction (both exactly 1σ
  *     from entry); a smaller value tightens the stop only (TP stays fixed at
- *     the next band out), widening R:R (e.g. 0.5 → ~2:1) — a genuine
- *     hypothesis, not yet validated: does a real continuation confirm fast
- *     enough that a tight stop rarely gets clipped by noise before the move
- *     shows itself?
+ *     the next band out), widening R:R (e.g. 0.5 → ~2:1). Swept null (§14a):
+ *     win rate collapses faster than R:R improves at every step — a stop
+ *     doesn't know "this reverses" from "this continues after one more wick
+ *     through my level."
+ *     `confirmTfMinutes` (2026-08-30, owner's next follow-up — "let's look
+ *     at the 1m closed candle... this was meant to be on an ultra-low
+ *     timeframe like 1m/3m") — the structural mutation §14a's own result
+ *     pointed at: require a CLOSE beyond the touched band, not just the wick
+ *     that defines the touch, before entering — the exact "closes not
+ *     wicks" convention `vwapExtensionAtlasEngine.js`'s own `confirmTfMinutes`
+ *     already established for this repo, reused here (same day-aligned
+ *     bucket-close definition), not reinvented. Default 1 = the touch bar's
+ *     OWN close must already be beyond the level (a real, if small, change
+ *     from the unconfirmed original — a wick-only touch whose bar closes
+ *     back inside no longer qualifies); 3 = wait for the enclosing 3-minute
+ *     bucket's close instead. Unconfirmed touches are skipped, not traded —
+ *     entry shifts to the bar right after the CONFIRMING close, not the
+ *     original touch.
  *
  * Gates (fade-side, from earlier passes):
  *   V0 baseline — no gates (the named benchmark floor)
@@ -76,6 +90,14 @@ import { bisect } from './barUtils.js';
 
 const DAY = 86400;
 
+// Same day-aligned "is this bar the close of an N-minute bucket" convention
+// as vwapExtensionAtlasEngine.js's confirmTfMinutes — reused, not reinvented.
+function isBucketCloseAt(barTime, dayStart, confirmTfMinutes) {
+  if (confirmTfMinutes <= 1) return true;
+  const minuteOfDay = Math.round((barTime - dayStart) / 60);
+  return ((minuteOfDay + 1) % confirmTfMinutes) === 0;
+}
+
 export const DEFAULT_CFG = {
   action: 'fade',            // 'fade' (toward VWAP) | 'follow' (with-trend, next band out)
   bands: [2, 3],
@@ -86,6 +108,10 @@ export const DEFAULT_CFG = {
   requireBandSlopeExpanding: false,   // bandSlope='3·expanding' at touch (§12/§13's cross-market-real dim)
   followSlSigma: 1.0,        // 'follow' only: SL sits this many σ back from the touched band toward VWAP
                               // (TP stays fixed at +1σ out — smaller values widen R:R, e.g. 0.5 -> 2:1)
+  confirmTfMinutes: 1,       // 'follow' only: require a CLOSE beyond the touched band before entering —
+                              // 1 = the touch bar's own close; >1 = wait for that day-aligned N-minute
+                              // bucket's own close (same convention as vwapExtensionAtlasEngine.js).
+                              // An unconfirmed touch is skipped, not traded.
   horizonMins: 240,
   atrTfMin: 15, atrPeriod: 14, slAtrMult: 1.5, ctxLookbackDays: 2,
   costPct: 0.020,
@@ -109,16 +135,43 @@ export function runStackedFade(packed, touches, cfg = {}) {
   let lastDate = null;
   for (const t of pool) {
     if (t.date === lastDate) continue;              // one trade per day: first qualifying
-    // Entry bar = first bar strictly after the touch bar.
-    const entryIdx = bisect(packed.times, t.epoch + 1);
-    if (entryIdx >= packed.n) continue;
-    const entry = packed.opens[entryIdx];
     const isFollow = c.action === 'follow';
     // fade: 'dn' touch (below VWAP) = long back up. follow: 'up' touch = long
     // (continuation with the extension) — the opposite mapping.
     const isBuy = isFollow ? t.side === 'up' : t.side === 'dn';
     const sgn = isBuy ? -1 : 1;                     // + = stretch above VWAP (fade's own orientation)
     const dayStart = t.epoch - (t.epoch % DAY);
+
+    let entryIdx;
+    if (isFollow && c.confirmTfMinutes > 1) {
+      // Wait for the enclosing N-minute bucket's own CLOSE beyond the
+      // touched band — a wick-only touch whose bucket closes back inside is
+      // NOT traded. Scan forward from the touch bar to that bucket's close.
+      const followSgn = t.side === 'up' ? 1 : -1;
+      const level = t.vwapAtTouch + followSgn * t.band * t.fixedSigma;
+      const touchBarIdx = bisect(packed.times, t.epoch);
+      let confirmBarIdx = -1;
+      for (let m = touchBarIdx; m < packed.n && m < touchBarIdx + c.confirmTfMinutes + 2; m++) {
+        if (isBucketCloseAt(packed.times[m], dayStart, c.confirmTfMinutes)) { confirmBarIdx = m; break; }
+      }
+      if (confirmBarIdx < 0) continue;                                        // ran off the day, no bucket close found
+      if ((packed.closes[confirmBarIdx] - level) * followSgn < 0) continue;   // bucket closed back inside — not confirmed
+      entryIdx = bisect(packed.times, packed.times[confirmBarIdx] + 1);
+    } else if (isFollow) {
+      // confirmTfMinutes<=1: the touch bar's OWN close must already be
+      // beyond the band (not just its wick) — "closes not wicks" at the
+      // native 1m resolution.
+      const followSgn = t.side === 'up' ? 1 : -1;
+      const level = t.vwapAtTouch + followSgn * t.band * t.fixedSigma;
+      const touchBarIdx = bisect(packed.times, t.epoch);
+      if (touchBarIdx >= packed.n || (packed.closes[touchBarIdx] - level) * followSgn < 0) continue;
+      entryIdx = bisect(packed.times, t.epoch + 1);
+    } else {
+      entryIdx = bisect(packed.times, t.epoch + 1);   // fade: unchanged, entry at the bar right after the touch
+    }
+    if (entryIdx >= packed.n) continue;
+    const entry = packed.opens[entryIdx];
+
     let tp, sl;
     if (isFollow) {
       // Same frozen-band construction fixedSigmaWalk's own out/back race
@@ -162,5 +215,5 @@ export function runStackedFade(packed, touches, cfg = {}) {
                    requireReject: c.requireReject, requireWtNeutral: c.requireWtNeutral,
                    requireMomentumAgree: c.requireMomentumAgree,
                    requireBandSlopeExpanding: c.requireBandSlopeExpanding,
-                   followSlSigma: c.followSlSigma } } };
+                   followSlSigma: c.followSlSigma, confirmTfMinutes: c.confirmTfMinutes } } };
 }

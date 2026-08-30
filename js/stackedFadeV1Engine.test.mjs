@@ -142,6 +142,11 @@ function buildQuietPacked({ entryPx, testDayIdx = 3, nDays = 4 }) {
       volumes[i] = 10;
     }
   }
+  // Touch bar (minute 60) also closes at entryPx — satisfies the new
+  // confirmTfMinutes<=1 default (the touch bar's OWN close must already be
+  // beyond the band, not just its wick) for every existing 'follow' test.
+  const touchIdx = testDayIdx * barsPerDay + 60;
+  opens[touchIdx] = entryPx; highs[touchIdx] = entryPx + 0.03; lows[touchIdx] = entryPx - 0.03; closes[touchIdx] = entryPx;
   const fillIdx = testDayIdx * barsPerDay + 61;
   opens[fillIdx] = entryPx; highs[fillIdx] = entryPx + 0.03; lows[fillIdx] = entryPx - 0.03; closes[fillIdx] = entryPx;
   return { n, times, opens, highs, lows, closes, volumes };
@@ -211,6 +216,35 @@ t("followSlSigma: tightening the stop moves SL closer to entry, TP unchanged (wi
   assert.ok(Math.abs(wide.sl - 101) < 1e-6, `default followSlSigma=1.0 keeps the original SL=101, got ${wide.sl}`);
   assert.ok(Math.abs(tight.sl - 101.5) < 1e-6, `followSlSigma=0.5 moves SL to 101.5 (closer to entry), got ${tight.sl}`);
   assert.ok(tight.sl > wide.sl, 'a smaller followSlSigma must move the stop CLOSER to entry, not further');
+});
+
+// ── confirmTfMinutes (2026-08-30) — "look at the 1m/3m closed candle" ───────
+t("confirmTfMinutes=1 (default): a touch that WICKS beyond the band but CLOSES back inside is not traded", () => {
+  const touch = followTouchFor({ side: 'up' });   // level = 102
+  const packed = buildQuietPacked({ entryPx: 102 });
+  // Override the touch bar (minute 60) to wick to 102.05 but close back at 100.5 -- below the level.
+  const touchIdx = 3 * 1440 + 60;
+  packed.highs[touchIdx] = 102.05; packed.closes[touchIdx] = 100.5; packed.opens[touchIdx] = 100.4;
+  const { trades } = runStackedFade(packed, [touch], { action: 'follow' });
+  assert.equal(trades.length, 0, 'a wick-only touch (close back inside the band) must not be traded');
+});
+
+t("confirmTfMinutes=3: waits for the enclosing 3-minute bucket's own close, not the touch bar's", () => {
+  // dayStart-aligned 3m buckets close when (minuteOfDay+1)%3===0 -- for a
+  // touch at minute 60, that's minute 62 (60,61,62 form one bucket).
+  const touch = followTouchFor({ side: 'up' });   // level = 102, epoch = minute 60
+  const packed = buildQuietPacked({ entryPx: 102 });
+  const touchIdx = 3 * 1440 + 60, bucketCloseIdx = 3 * 1440 + 62, entryIdx = 3 * 1440 + 63;
+  // Touch bar itself closes back inside (would fail confirmTfMinutes=1) --
+  // but the bucket's OWN close (minute 62) is beyond the level.
+  packed.closes[touchIdx] = 100.5; packed.opens[touchIdx] = 100.4;
+  packed.closes[bucketCloseIdx] = 102.2; packed.highs[bucketCloseIdx] = 102.3; packed.lows[bucketCloseIdx] = 100.2;
+  packed.opens[entryIdx] = 102.5; packed.highs[entryIdx] = 102.6; packed.lows[entryIdx] = 102.4; packed.closes[entryIdx] = 102.5;
+  const oneMin = runStackedFade(packed, [touch], { action: 'follow', confirmTfMinutes: 1 });
+  assert.equal(oneMin.trades.length, 0, 'sanity: this same touch fails confirmTfMinutes=1 (its own close is inside)');
+  const threeMin = runStackedFade(packed, [touch], { action: 'follow', confirmTfMinutes: 3 });
+  assert.equal(threeMin.trades.length, 1, 'confirmTfMinutes=3 confirms off the bucket close instead');
+  assert.ok(Math.abs(threeMin.trades[0].entry - 102.5) < 1e-6, `entry should be the bar AFTER the confirming bucket close (minute 63), got ${threeMin.trades[0].entry}`);
 });
 
 t('followSlSigma: an SL config that lands on the wrong side of entry is rejected, not silently mis-priced', () => {
