@@ -3803,30 +3803,70 @@ losing or fade trades, exactly as designed. OOS maxDD is also unchanged
 improved materially (16.59 → 24.49) — real risk-neutral upside, not
 leverage in disguise.
 
-**NOT wired into the live page — a genuinely different wiring shape than
-every other lever this session.** Every other validated lever
-(cost-efficiency filter, fade-stop-tighten, heat cap, throttle) operates
-purely on the ALREADY-STORED `{pair}-votetrades.json` at READ time — cheap
-enough for a request-time query-param toggle. This lever needs M1 bars
-(~25s/pair to load) to compute the trailed exit, which is not viable at
-interactive request time. Wiring it live means baking the trailed
-exit into the STORED trade JSON at GENERATION time instead — i.e.
-extending the `/api/asia-fib-atlas/run` batch job (`js/asiaFibAtlasRoutes.js`,
-the same one that writes `{pair}-votetrades.json` via `putJSON`) to also
-compute and persist the trailed variant, then regenerating that stored
-data for every pair. That is a materially bigger, more consequential
-action than anything else this session touched — a production R2 data
-rewrite underlying the live page for every pair, not a read-time route
-edit — so it was deliberately NOT done without checking in first.
+**WIRED INTO THE LIVE PAGE (2026-08-30, after an explicit go-ahead) — a
+genuinely different wiring shape than every other lever this session.**
+Every other validated lever (cost-efficiency filter, fade-stop-tighten,
+heat cap, throttle) operates purely on the ALREADY-STORED
+`{pair}-votetrades.json` at READ time — cheap enough for a request-time
+query-param toggle. This lever needs M1 bars (~25s/pair to load) to
+compute the trailed exit, not viable at interactive request time, so it's
+split into two bricks (`js/levelAtlasVoteReview.js`):
+`applyTrailingContinuation(trades, packed, {givebackFrac, cost})` runs
+GENERATION-time inside each ladder's `runOne` (`js/asiaFibAtlasRoutes.js`,
+`js/mondayFibAtlasRoutes.js`), off the SAME gap-filled `packed` M1 bars
+already loaded for the walk (no second fetch) — bakes
+`trailedPnlPct`/`trailedPnlPips`/`trailedResolveTime` onto follow-win rows
+before persisting; `applyStoredContinuationExit(trades, on)` is the cheap
+READ-time swap (no M1 access) wired through `buildFibAtlasVotePortfolio`
+and both ladders' `/vote-trades`, `/vote-portfolio`, and (Asia)
+`/vote-portfolio-combined` routes via a `continuationExit` query param,
+applied BEFORE `applyConcurrencyCap` (the trailed, possibly-longer
+occupancy window must be in place before that function decides survivors,
+not after). `asia-fib-atlas-vote-portfolio.html` gets a default-off
+"Trailing/continuation exit" toggle, included in "Load best config".
+
+**Production regeneration — a real incident, not a clean rollout.** Wiring
+this live required baking the trailed fields into every pair's stored
+`{pair}-votetrades.json` (26 pairs × 2 ladders = 52 runs via
+`scripts/backfill_fib_atlas_vote_trades.mjs`, each running the FULL
+`asiaFibAtlasWalk`/`mondayFibAtlasWalk`, not just the trailing step —
+~150s/pair for Asia, ~20s/pair for Monday). Run as ONE long-lived Node
+process for all 52, it got **OOM-killed by the container's memcg** partway
+through (confirmed via `dmesg`: `oom-kill` on the node PID at ~8.45GB RSS)
+after 40/52 runs — accumulated per-pair M1 decode/walk memory was never
+being reclaimed across pairs. The killed process's exit code, observed
+through a `| tee` pipe, read as `0` (that's `tee`'s own exit code, not
+node's — a real trap: **never trust a piped command's reported exit code
+as the upstream command's**, check the actual process/output instead).
+Diagnosed via `dmesg | grep oom`, then fixed by re-running each remaining
+pair as its OWN short-lived subprocess (`node scripts/backfill_fib_atlas_
+vote_trades.mjs <pair>` in a loop) so the OS fully reclaims memory between
+pairs — the standard mitigation for exactly this shape of per-item memory
+growth, rather than debugging the leak's source inside a long-running
+process. A direct R2 coverage sweep (not log-line counting, which the
+`tee`-masked exit code showed can't be trusted) caught one more gap the
+first remediation pass missed (`monday-fib-atlas/audcad`, whose Monday leg
+never started before the kill) before declaring done. Final state,
+independently verified: **52/52 pair-ladder combinations carry trailed
+fields, 0 missing, 0 stale.**
+
+Live-verified end-to-end via Playwright against a freshly-restarted server
+(restarted again after merging in an unrelated same-day `main` push that
+touched `server.js`, per this session's own stale-process discipline):
+the toggle works correctly with the full recommended pair set selected on
+BOTH ladders, and "Load best config" enables it — zero page errors.
 
 🟢 real, validated, honestly-checked result: strong OOS Sharpe/PF
 improvement, zero leverage-in-disguise (avg loss and maxDD both
 unchanged), the initial edge-of-grid pick was caught and re-tested rather
 than shipped, and the extended grid confirmed a genuine plateau rather
-than a runaway curve. 🟡 not yet wired into production — that requires a
-data-generation-time change and a full regeneration of stored trade data,
-a bigger and more consequential step than any other lever this session,
-correctly held for an explicit decision rather than done unilaterally.
+than a runaway curve; now fully wired and live, with full, independently-
+verified data coverage across every pair and both ladders. 🟡 an OOM
+killed the first regeneration attempt partway through — caught via
+`dmesg`, not the (misleading) reported exit code, and fully recovered
+with a per-pair-subprocess remediation plus a from-scratch coverage
+re-check — a real incident during this rollout, recorded here rather than
+smoothed over.
 
 ---
 
