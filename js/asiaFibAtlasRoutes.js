@@ -114,15 +114,17 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
     const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
     voteSummaryByMargin = summaryByMargin;
-    // Trailing/continuation exit (2026-08-30, validated — see LEGO_MODULES.md's
-    // fib_atlas_trailing_continuation_backtest.mjs entry) — adds
-    // trailedPnlPct/trailedPnlPips/trailedResolveTime to follow-win rows
-    // ONLY, off the SAME gap-filled `packed` M1 bars already loaded above
-    // for the walk (no second M1 fetch). Read-time routes toggle base vs.
-    // trailed cheaply via `applyStoredContinuationExit` — see that
-    // function's own doc for why this must be generation-time, not
-    // request-time (M1 access is too slow to do live).
-    const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost });
+    // Trailing/continuation exit (2026-08-30, validated for follow, then
+    // extended to fade the same day — see LEGO_MODULES.md's
+    // fib_atlas_trailing_continuation_backtest.mjs entry, DECISION=fade/all
+    // runs) — adds trailedPnlPct/trailedPnlPips/trailedResolveTime to
+    // WINNING rows on BOTH decisions, off the SAME gap-filled `packed` M1
+    // bars already loaded above for the walk (no second M1 fetch).
+    // Read-time routes toggle base vs. trailed cheaply via
+    // `applyStoredContinuationExit` — see that function's own doc for why
+    // this must be generation-time, not request-time (M1 access is too
+    // slow to do live).
+    const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
     await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
       instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: book.splitDate,
       trades: trailedTrades,   // margin>=1 superset — the page filters down to margin=2 client-side

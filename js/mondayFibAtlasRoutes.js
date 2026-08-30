@@ -76,11 +76,15 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
   const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
 
-  // Trailing/continuation exit (2026-08-30, validated for Monday too — see
-  // LEGO_MODULES.md's fib_atlas_trailing_continuation_backtest.mjs entry),
-  // same as Asia's own runOne, off the SAME gap-filled `packed` M1 bars
-  // already loaded above.
-  const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost });
+  // Trailing/continuation exit (2026-08-30; genuinely LADDER=monday
+  // validated the same day, after an earlier version of this comment
+  // claimed "validated for Monday too" when the analysis script actually
+  // had no LADDER support yet and had only ever run on Asia — caught and
+  // fixed, not left standing. See LEGO_MODULES.md's
+  // fib_atlas_trailing_continuation_backtest.mjs entry, LADDER=monday
+  // DECISION=all run), same as Asia's own runOne, off the SAME gap-filled
+  // `packed` M1 bars already loaded above.
+  const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
   const voteResult = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
     cost, splitDate: book.splitDate,
