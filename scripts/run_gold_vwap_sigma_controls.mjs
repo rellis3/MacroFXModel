@@ -29,14 +29,15 @@ import { buildFixedSigmaBook, buildVwapReturnBook, buildBandWalkBook, extractHel
 const args = process.argv.slice(2);
 const touchesFile = args.includes('--touches') ? args[args.indexOf('--touches') + 1] : 'logs/gold_vwap_sigma_touches.json';
 const nPerms = args.includes('--perms') ? +args[args.indexOf('--perms') + 1] : 20;
+const sigmaMode = args.includes('--sigma-mode') ? args[args.indexOf('--sigma-mode') + 1] : 'fixedRms';
 
 import { mulberry32, syntheticRandomWalkPacked } from '../js/syntheticWalk.js';
 
 // ── 1. Random-walk control ───────────────────────────────────────────────────
-console.log('── Control 1: driftless random walk through the identical engine ──');
+console.log(`── Control 1: driftless random walk through the identical engine (sigmaMode=${sigmaMode}) ──`);
 {
   const packed = syntheticRandomWalkPacked({ seed: 7, days: 800 });
-  const { touches } = fixedSigmaWalk(packed, { instrument: 'TEST', minHistory: 10 });
+  const { touches } = fixedSigmaWalk(packed, { instrument: 'TEST', minHistory: 10, sigmaMode });
   const firsts = touches.filter(t => t.ordinal === 1);
   console.log(`  ${firsts.length} first touches over 800 synthetic days`);
   for (const k of [1, 2, 3, 4, 5, 6, 7]) {

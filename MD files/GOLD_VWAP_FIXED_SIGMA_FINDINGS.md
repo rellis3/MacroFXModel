@@ -984,6 +984,179 @@ noise entries, meaningfully higher win rate) without yet being an edge.
 2 new tests (the 1m-wick-vs-close distinction, the 3m bucket-close timing).
 Runner: `scripts/run_trend_follow_confirm.mjs`.
 
+## 15. Developing (self-widening) bands — momentum vs reversion, control-matched (2026-08-30)
+
+**Why:** the owner shared a TradingView screenshot of gold with bands visibly
+narrow before ~15:00 then widening sharply after a large drop, and asked
+directly which construction this whole study has been testing. Answer, given
+plainly at the time: everything in §1–14b uses `sigmaMode:'fixedRms'` — the
+owner's own Pine indicator, σ frozen at session open from the trailing
+20-session mean RMS. The screenshot shows the *other* engine mode,
+`sigmaMode:'developing'` (classic self-widening bands, `sd[m-1]` recomputed
+bar-by-bar from the session's own cumulative dispersion, gated by
+`developingWarmupBars`), which had only ever been aggregate-checked once
+before (§10 — one excess number per band depth, not a dimension-conditioned
+book). The owner then asked directly: **does reversion happen from the
+developing bands, or the opposite — momentum from VWAP to a band?**
+
+**Method:** identical pipeline to §1–14b, run under the other mode. Both
+runner scripts needed a `--sigma-mode` flag added first (`run_gold_vwap_
+sigma.mjs`, `run_gold_vwap_sigma_controls.mjs` — the random-walk control's
+`fixedSigmaWalk` call had no override before this, so a developing-mode
+control could not previously be run matched to a developing-mode gold book;
+this is now fixed and reusable). No engine or report code changed — `sigmaMode`
+was already wired through `fixedSigmaWalk`, and `buildFixedSigmaBook`/
+`buildVwapReturnBook`/`buildBandWalkBook` are unit-agnostic. Gold M1,
+2016-01-04→2026-08-20, 2744 sessions, 315k touch records (vs 146k under
+fixedRms on the same data — developing tags far more days per band, see
+below). Control: the same seeded driftless random walk (800 days), run
+through the identical engine with `sigmaMode:'developing'` — the correct
+apples-to-apples baseline this specific question needs.
+
+### 15.1 Coverage — developing bands are touched far more often
+
+| band | fixedRms tag% (either side) | developing tag% |
+|---|---|---|
+| 1σ | 82% | **98%** |
+| 2σ | 48% | **94%** |
+| 3σ | 24% | **75%** |
+| 4σ | 12% | 33% |
+| 5σ | 6% | 11% |
+
+Expected and mechanical: a band that widens with the day's own realized range
+is, by construction, touched by the day's own realized range far more
+reliably than a band frozen from *prior* sessions. This alone is why §10
+flagged developing bands as "mostly measuring themselves" — the question is
+whether anything real survives underneath that self-reference.
+
+### 15.2 The race book (out-to-next-band vs back-one-band) — gold vs the matched control
+
+| band | control out% (random walk, developing) | gold out% IS/OOS (pooled ±) |
+|---|---|---|
+| ±1σ | 40.6% | 41–43% / 42–43% |
+| ±2σ | 26.1% | 28% / 26% |
+| ±3σ | 10.6% | 20–21% / 20% |
+| ±4σ | 8.2% | 24–29% / 20–23% |
+| ±5σ | 4.0% | 30–35% / 24–29% |
+| ±6σ | *(n<20, unpopulated)* | 42–52% / 35–53% |
+| ±7σ | *(n<20, unpopulated)* | 45–58% / 44–47% |
+
+**Two regimes, cleanly split by depth:**
+- **±1–2σ: gold ≈ the random walk almost exactly.** The "reversion" seen
+  here (57–74% back-rate) is real in the sense that it happens, but it is
+  **mechanical, not a market fact** — a driftless synthetic walk run through
+  the identical self-widening band produces the same rate. This directly
+  reconfirms §10's "developing mostly measures itself," now shown depth-by-
+  depth instead of as one pooled number.
+- **±3σ and deeper: gold decisively diverges, and it diverges toward
+  momentum, not reversion.** The control's out-rate *decays* monotonically
+  as bands deepen (40.6→26.1→10.6→8.2→4.0 — a random walk gets less and less
+  likely to keep going the deeper/rarer the excursion, exactly as diffusion
+  predicts). Gold's out-rate does the opposite past ±2σ: it bottoms around
+  ±3σ then **rises** with depth, reaching 2–4× the control's rate by ±4–5σ
+  and 10×+ by ±6–7σ (bands too rare for the control to even populate
+  n≥20 — meaning a random walk essentially never produces an excursion this
+  large that then keeps going, while gold does it on 2–5% of all sessions).
+  **This is the non-mechanical finding: once a developing-band touch is deep
+  enough to mean the session has genuinely built real, unusual intraday
+  range, continuation past that band beats reversion back to VWAP, and does
+  so more the deeper it goes.**
+
+### 15.3 The return book (back to VWAP within 240min) — gold vs the matched control
+
+| band | control ret% | gold ret% (pooled ±, IS≈OOS) |
+|---|---|---|
+| ±1σ | 93.1% | 95–97% |
+| ±2σ | 83.4% | 90–92% |
+| ±3σ | 71.5% | 84–86% |
+| ±4σ | 66.5% | 74–79% |
+| ±5σ | 84.0% *(n=25, unreliable)* | 57–62% |
+
+Gold's return-to-VWAP rate is *higher* than the matched control at every
+populated depth (+7 to +15pp), not lower — reversion-to-VWAP is somewhat
+*more* reliable in real gold than a bare random walk predicts, at the same
+time the race book shows continuation-past-the-band is also more likely than
+the control predicts. **These are not contradictory.** A driftless random
+walk has no session shape and no volatility clustering; real gold does — so
+real sessions produce more of *both* full round-trips back to VWAP *and*
+breakouts past the next band than idle, unclustered noise would, because a
+"quiet mechanical" day and a "genuine trend/range-expansion" day are both
+real regimes a flat random walk can't distinguish. (Note: this reads
+noticeably larger than §10's earlier aggregate developing-mode return excess
+of +2.9–4.1pp; §10's own control call had no `--sigma-mode` plumbing at the
+time, so it is unclear that check was matched to developing mode the way
+this one now is. Treat this section, run on the fixed/reusable pipeline, as
+superseding §10's developing-mode row rather than trying to reconcile the two
+numbers.)
+
+### 15.4 Held findings vs the permutation noise floor
+
+| book | real held findings | permutation baseline (20 shuffles) |
+|---|---|---|
+| race (out/back) | 107 | mean 58.1, range 41–80 |
+| return (to VWAP) | **334** | mean 43.8, range 35–56 |
+| band-walk (≥10 bars beyond) | 98 | mean 10.8, range 5–17 |
+
+All three clear their noise ceiling by a wide margin (race: 107 > max 80;
+return: 334 ≫ max 56; band-walk: 98 ≫ max 17) — there is real,
+dimension-conditioned structure here, well beyond what shuffling the same
+touch pool produces by chance. As always: an *individual* survivor cell is
+still no better than a coin flip to be noise (race book: ~54%, same math as
+§3) — only themes that repeat across cells/sides/dims below are read as real.
+
+### 15.5 The one clear, cross-validated theme: session + room-to-run beats reversion
+
+The return book (reversion suppressed) and the band-walk book (continuation
+raised) point at the **same conditions**, independently, at ±2–4σ, on both
+sides, OOS:
+
+| dimension | condition | return-book Δ (OOS) | band-walk Δ (OOS) |
+|---|---|---|---|
+| session | NY | −27 to −48pp | +14 to +20pp |
+| overlapWindow | London/NY overlap | −29 to −47pp | +14 to +28pp |
+| rangeConsumed | 2·mid (day's range not yet exhausted) | −25 to −36pp | +16 to +20pp |
+
+n runs 30–140 both halves, same sign both halves, well past the 3pp gate.
+**Read plainly:** when a developing-band touch happens during the NY session
+or the London/NY overlap, and the day hasn't yet consumed its typical
+realized range, price is substantially *less* likely to snap back to VWAP
+within 4 hours and substantially *more* likely to keep walking past the
+band — real momentum, concentrated in the session where liquidity/trend
+formation is highest and in days that still have "room" left to trend. This
+is the opposite of a naive "price is far from VWAP, fade it back" read, in
+exactly the conditions where it would be most tempting to fade.
+
+### 15.6 Verdict, plainly — answering the owner's question directly
+
+**Both happen, cleanly separated by depth and condition, not blended:**
+- **Unconditionally, reversion is still the base-rate-dominant outcome at
+  every band depth** (back-rate 57–90%+ before the extreme tail) — most
+  touches do fall back one band or return to VWAP rather than running to the
+  next band.
+- **But most of that reversion, specifically near VWAP (±1–2σ), is a
+  mechanical artifact of the band's own construction**, not a market fact —
+  a driftless random walk run through the same self-widening band shows
+  the same rate.
+- **The real, non-mechanical signal in developing bands is momentum, not
+  reversion**, and it shows up in two specific places: (1) depth — ±3σ and
+  beyond, where continuation-past-the-band beats the matched control by a
+  widening margin the deeper it goes; and (2) condition — NY-session/overlap
+  touches on days that haven't yet used up their typical range, where both
+  books agree continuation dominates reversion out-of-sample.
+
+**This is still descriptive/structural, not a trade-level result.** No trade
+test has been run under `sigmaMode:'developing'` — every trade-level test in
+§6/§9/§14/§14a/§14b (five in a row, all null) used fixedRms bands. Per house
+discipline, this section is not a claim that a developing-band momentum trade
+would work; it is a control-checked description of what the touches actually
+do, which is what the owner explicitly asked for this time ("a research
+problem, not an indicator problem"). Whether a trade-shaped test survives on
+top of it is a separate, not-yet-run question.
+
+Runners: `scripts/run_gold_vwap_sigma.mjs --sigma-mode developing`,
+`scripts/run_gold_vwap_sigma_controls.mjs --sigma-mode developing --touches
+logs/dev/gold_vwap_sigma_touches.json`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1014,5 +1187,11 @@ own closes-not-wicks bucket-close convention) — still null on gold (the
 bar-defining instrument), though win rate improves meaningfully everywhere
 and two secondary instruments turn OOS-positive with an IS/OOS sign-flip
 flagged as noise, not a finding. Runner `scripts/run_trend_follow_confirm.mjs`.
-Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook, the rows +
-book are the deliverable until something needs a live view.
+§15 added a `--sigma-mode` CLI flag (default `fixedRms`, unchanged behavior)
+to both `scripts/run_gold_vwap_sigma.mjs` and `scripts/run_gold_vwap_sigma_
+controls.mjs` — no engine/report changes, `sigmaMode` was already wired
+through `fixedSigmaWalk` and the book builders are unit-agnostic; this closes
+the gap that the random-walk control could not previously be run matched to
+developing mode. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+playbook, the rows + book are the deliverable until something needs a live
+view.
