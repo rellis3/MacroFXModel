@@ -19,6 +19,20 @@
  *     hard-coded to 5m/15m/30m.
  */
 
+// ── Day-aligned bucket-close test ────────────────────────────────────────────
+// Is `barTime` the CLOSE of a `confirmTfMinutes`-minute bucket, day-aligned to
+// `dayStart`? The "closes not wicks" confirmation convention — extracted
+// 2026-08-30 after a third independent caller needed it (`stackedFadeV1Engine.js`
+// and `vwapExtensionAtlasEngine.js` each carried their own byte-identical
+// private copy; `vwapReversionEngine.js`'s `vwap_trend_cross` mode is the third).
+// confirmTfMinutes<=1 means "no confirmation" — every bar closes its own
+// (1-minute) bucket, so this always returns true.
+export function isBucketCloseAt(barTime, dayStart, confirmTfMinutes) {
+  if (confirmTfMinutes <= 1) return true;
+  const minuteOfDay = Math.round((barTime - dayStart) / 60);
+  return ((minuteOfDay + 1) % confirmTfMinutes) === 0;
+}
+
 // ── Binary search ────────────────────────────────────────────────────────────
 // First index i where times[i] >= target. O(log N).
 export function bisect(times, target) {

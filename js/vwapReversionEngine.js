@@ -16,6 +16,51 @@
  *   control) band_follow — break THROUGH the band, target the next band out. The
  *                    "trend day" continuation control. If fade wins, this should
  *                    lose; running it keeps us honest about which side pays.
+ *   D) vwap_trend_cross (2026-08-30, owner's request) — "only go long while
+ *                    price is above VWAP": trade WITH VWAP's own directional
+ *                    read, not against it — the standalone-system counterpart
+ *                    to band_fade's reversion bet, and the one VWAP idea in
+ *                    this whole study that ISN'T anchored to a σ-band at all.
+ *                    First fresh CLOSE-based cross of VWAP each session ->
+ *                    enter in that direction; exit on the first opposite
+ *                    cross, or session end if none comes. No σ/band, no
+ *                    TP/SL — the trend read alone decides the exit, the
+ *                    minimal-DOF version per CLAUDE.md's own staging rule
+ *                    (a bare cross rule has nothing to overfit). Its exit is
+ *                    a moving level (VWAP itself), not a static price, so it
+ *                    computes its own fill directly rather than handing a
+ *                    static order to `walkBars` — a different fill CONTRACT,
+ *                    not a re-implementation of the shared one.
+ *
+ *                    vwap_trend_cross's own §20 result was null because a
+ *                    bare 1-bar cross fires on ~97% of ALL sessions and
+ *                    whipsaws immediately most of the time (win rate 9-12%,
+ *                    gross P&L ≈ 0) — not because the direction call was
+ *                    wrong. Four confirmation filters (2026-08-30, owner's
+ *                    follow-up "how would we filter out [the noise]") test
+ *                    that diagnosis directly, each opt-in via `spec`,
+ *                    composable, default off (byte-identical when omitted):
+ *                      • `confirmTfMinutes` — wait for an N-minute bucket's
+ *                        own CLOSE to still be beyond VWAP (the same
+ *                        "closes not wicks" convention as `band_follow`'s
+ *                        confirmation, now shared via `barUtils.isBucketCloseAt`
+ *                        after this became its third caller).
+ *                      • `minCrossSigma` — the close must clear VWAP by at
+ *                        least this many σ (reusing `computeSessionVwap`'s
+ *                        own `sd[]`, no new vol math) — a thin band, honestly
+ *                        named as one.
+ *                      • `requireTrendRegime` (+ `adxThreshold`, default 25)
+ *                        — causal ADX(14) on this session's own bars must
+ *                        already read trending at the moment of the cross
+ *                        (`indicatorCore.adxWilder`, reused not re-derived).
+ *                      • `excludeSession` — skip crosses during a given UTC
+ *                        session bucket (the local `sessionOf` duplicate is
+ *                        the established, documented pattern — 6 other files
+ *                        already carry their own private copy).
+ *                    All four apply at the CONFIRMED trigger bar, and the
+ *                    exit scan (opposite cross) applies the same
+ *                    `confirmTfMinutes` confirmation so entry and exit read
+ *                    noise the same way.
  *
  * All three are ONE entry primitive parameterised by {location, action} — not three
  * bespoke legs (Lego Principle 2). The fill walker (`walkBars`) and the IS/OOS
@@ -37,12 +82,24 @@
 
 import { walkBars } from './forecastCore.js';
 import { summarizeSplit } from './honestForecastEngine.js';
+import { isBucketCloseAt } from './barUtils.js';
+import { adxWilder } from './indicatorCore.js';
 
 // ── Default frictions (% of price), matching forecastCore's fx defaults ──────
 const DEFAULT_COST_PCT = 0.012;   // round-trip spread+commission
 const DEFAULT_SLIP_PCT = 0.006;   // per-side slippage on stop/breakout entries
 
 const DAY = 86400;
+
+// Same 3-way session labels the rest of the repo uses (levelAtlasEngine) — a
+// local copy is the established, documented pattern here (levelAtlasEngine.js,
+// sessionPathEngine.js, vwapExtensionAtlasEngine.js, vwapFixedSigmaEngine.js,
+// vwapFixedSigmaAtlasEngine.js each already carry their own).
+function sessionOf(hourUtc) {
+  if (hourUtc >= 22 || hourUtc < 7) return 'Asia';
+  if (hourUtc < 13) return 'London';
+  return 'NY';
+}
 
 // ── Session bucketing (horizon anchor) ───────────────────────────────────────
 // Returns an integer bucket id from an epoch-seconds timestamp.
@@ -178,6 +235,103 @@ export function simulateVwapSession(bars, spec) {
     }
   }
 
+  if (mode === 'vwap_trend_cross') {
+    // Trade WITH VWAP's own read: first fresh close-based cross each session
+    // enters; exit on the first opposite cross or session end. `ref(k)` is
+    // the SAME lagged-level convention as upB/dnB above (bar k tested
+    // against vwap[k-1], no same-bar lookahead).
+    const ref = (k) => vwap[k - 1];
+    const { confirmTfMinutes = 1, minCrossSigma = 0, requireTrendRegime = false,
+            adxThreshold = 25, excludeSession = null, stopSigma = 0 } = spec;
+    const dayStart0 = bars[0].time - (bars[0].time % DAY);
+    const adx = requireTrendRegime ? adxWilder(bars, 14) : null;
+
+    // Confirmed cross at-or-after bar k0: the raw 1-bar sign flip, then (if
+    // confirmTfMinutes>1) the enclosing bucket's own CLOSE must still be on
+    // that side ("closes not wicks" — a wick-only flip is not a real cross).
+    // Returns the confirmed bar index, or -1 if none was found from k0 on.
+    function confirmedCrossFrom(k0, wantUp) {
+      for (let k = k0; k < n; k++) {
+        const now = bars[k].close - ref(k), prev = bars[k - 1].close - ref(k - 1);
+        const rawCross = wantUp ? (now > 0 && prev <= 0) : (now < 0 && prev >= 0);
+        if (!rawCross) continue;
+        if (confirmTfMinutes <= 1) return k;
+        let confirmIdx = -1;
+        for (let m = k; m < n && m < k + confirmTfMinutes + 2; m++) {
+          if (isBucketCloseAt(bars[m].time, dayStart0, confirmTfMinutes)) { confirmIdx = m; break; }
+        }
+        if (confirmIdx < 0) return -1;                                    // ran off the session
+        const stillOnSide = wantUp ? (bars[confirmIdx].close - ref(confirmIdx) > 0)
+                                     : (bars[confirmIdx].close - ref(confirmIdx) < 0);
+        if (stillOnSide) return confirmIdx;
+        k = confirmIdx;                                                   // wick-only -- resume scanning after the bucket
+      }
+      return -1;
+    }
+
+    let entryIdx = null, isBuyCross = null, k = warmupBars;
+    while (k < n) {
+      const upIdx = wantLong ? confirmedCrossFrom(k, true) : -1;
+      const dnIdx = wantShort ? confirmedCrossFrom(k, false) : -1;
+      const idx = upIdx < 0 ? dnIdx : dnIdx < 0 ? upIdx : Math.min(upIdx, dnIdx);
+      if (idx < 0) break;
+      const isUp = idx === upIdx;
+
+      if (minCrossSigma > 0) {
+        const s = sd[idx - 1];
+        if (!(s > 0) || Math.abs(bars[idx].close - ref(idx)) < minCrossSigma * s) { k = idx + 1; continue; }
+      }
+      if (requireTrendRegime && !(adx[idx - 1] >= adxThreshold)) { k = idx + 1; continue; }
+      if (excludeSession && sessionOf(new Date(bars[idx].time * 1000).getUTCHours()) === excludeSession) { k = idx + 1; continue; }
+
+      entryIdx = idx; isBuyCross = isUp; break;
+    }
+    if (entryIdx == null || entryIdx + 1 >= n) return noFill;
+
+    const entryPx = bars[entryIdx + 1].open;
+    let exitIdx = n - 1, exitPx = bars[n - 1].close, outcome = 'session_close';
+    const revIdx = confirmedCrossFrom(entryIdx + 1, !isBuyCross);
+    if (revIdx >= 0) { exitIdx = revIdx; exitPx = bars[revIdx].close; outcome = 'reverse_cross'; }
+
+    const sgn = isBuyCross ? 1 : -1;
+    const sEntry = sd[entryIdx];
+
+    // stopSigma (2026-08-30, owner's follow-up): opt-in, default off. This mode
+    // never had a stop at all — walk the real intrabar path (wicks, not closes,
+    // same "actual path" discipline as the MAE below) for the FIRST bar that
+    // reaches entryPx ± stopSigma·σ, and exit there if it comes before the
+    // natural exit above. NOTE this is a real forward walk, not a retroactive
+    // cap on the realized trade — capping post-hoc off MAE can only ever make
+    // pnl same-or-worse (MAE is measured off wicks, the natural exit off
+    // closes, so MAE >= the natural exit's adverse move by construction) and
+    // so can never honestly show whether a stop *helps*. A stop can only be
+    // tested honestly by simulating the early exit forward.
+    if (stopSigma > 0 && sEntry > 0) {
+      const stopLevel = sgn > 0 ? entryPx - stopSigma * sEntry : entryPx + stopSigma * sEntry;
+      for (let m = entryIdx + 1; m <= exitIdx; m++) {
+        const hit = sgn > 0 ? bars[m].low <= stopLevel : bars[m].high >= stopLevel;
+        if (hit) { exitIdx = m; exitPx = stopLevel; outcome = 'stopped'; break; }
+      }
+    }
+
+    // MAE: walk the REALIZED path entry->exit (whatever exit was actually used
+    // above) for the worst adverse excursion, in σ units (reusing
+    // computeSessionVwap's own sd[] at entry, this study's standard scale) —
+    // diagnostic regardless of whether stopSigma is active.
+    let maePrice = 0;
+    for (let m = entryIdx + 1; m <= exitIdx; m++) {
+      const adverse = sgn > 0 ? (entryPx - bars[m].low) : (bars[m].high - entryPx);
+      if (adverse > maePrice) maePrice = adverse;
+    }
+    const maeSigma = sEntry > 0 ? +(maePrice / sEntry).toFixed(3) : null;
+
+    const net = ((exitPx - entryPx) / entryPx) * 100 * sgn - costPct;
+    return { filled: true, side: isBuyCross ? 'BUY' : 'SELL', outcome, mode,
+      pnl_pct: +net.toFixed(5), entry: +entryPx.toFixed(6), exit: +exitPx.toFixed(6),
+      maePrice: +maePrice.toFixed(6), maeSigma,
+      fill_time: bars[entryIdx + 1].time, exit_time: bars[exitIdx].time };
+  }
+
   if (!order) return noFill;
 
   // Hand the frozen order to the shared fill walker over the remaining bars.
@@ -209,7 +363,8 @@ export function runVwapReversion(packed, opts = {}) {
       if (passFrom && passTo) {
         const t = simulateVwapSession(sess, spec);
         records.push({ date: d, filled: t.filled, pnl_pct: t.pnl_pct,
-                       side: t.side, outcome: t.outcome, mode: t.mode });
+                       side: t.side, outcome: t.outcome, mode: t.mode,
+                       entry: t.entry, maePrice: t.maePrice, maeSigma: t.maeSigma });
       }
     }
     sess = [];
@@ -238,6 +393,7 @@ export function compareVwapModes(packed, opts = {}) {
     vwap_bounce: { mode: 'vwap_bounce' },
     band_follow: { mode: 'band_follow' },
     band_fade_nocost: { mode: 'band_fade', costPct: 0, slipPct: 0 },  // cost floor
+    vwap_trend_cross: { mode: 'vwap_trend_cross' },
   };
   const out = {};
   for (const [name, m] of Object.entries(modes)) {
@@ -247,4 +403,4 @@ export function compareVwapModes(packed, opts = {}) {
   return out;
 }
 
-export const VWAP_MODES = ['band_fade', 'vwap_bounce', 'band_follow'];
+export const VWAP_MODES = ['band_fade', 'vwap_bounce', 'band_follow', 'vwap_trend_cross'];
