@@ -588,12 +588,24 @@ export function betDirection(t) {
  * whether "heat" means one thing or another, it just sums whatever
  * `heatOf` returns.
  *
- *   applyConcurrencyCap(trades, { maxConcurrent, perDirection, heatOf }) ->
+ * `priorityOf` (2026-08-30, optional — see LEGO_MODULES.md's Fib Atlas
+ * entry-priority-ordering entry): a `trade -> number` scorer used ONLY to
+ * break ties among trades sharing the EXACT SAME entry `time` (higher
+ * score wins the earlier admission slot); `undefined`/omitted keeps the
+ * original array order for those ties (backward-compatible, zero behavior
+ * change for every existing caller). Deliberately NEVER reorders trades at
+ * DIFFERENT times — that would mean deferring an earlier trade's admission
+ * decision on the hope a better one shows up later, which a live system
+ * can't do (look-ahead). Same-timestamp ties are the one case where
+ * reordering is causally free: every trade in that batch is already known
+ * at that instant, so choosing among them isn't using future information.
+ *
+ *   applyConcurrencyCap(trades, { maxConcurrent, perDirection, heatOf, priorityOf }) ->
  *     { kept, skipped, skippedCount, totalCount, keptSummary: {...summarizeTrades} }
  */
-export function applyConcurrencyCap(trades, { maxConcurrent = 1, perDirection = false, heatOf = () => 1 } = {}) {
+export function applyConcurrencyCap(trades, { maxConcurrent = 1, perDirection = false, heatOf = () => 1, priorityOf = null } = {}) {
   if (!trades?.length) return null;
-  const sorted = [...trades].sort((a, b) => a.time - b.time);
+  const sorted = [...trades].sort((a, b) => a.time - b.time || (priorityOf ? priorityOf(b) - priorityOf(a) : 0));
   const open = perDirection ? { long: [], short: [] } : { all: [] };
   const kept = [], skipped = [];
   for (const t of sorted) {
@@ -738,13 +750,19 @@ export function riskAdjustTrades(trades, riskPct = 1) {
  * paired with a `maxHeatPct` expressed as a position count in that case;
  * this function is really intended for fixed-risk-sized trades.
  *
- *   applyPortfolioHeatCap({ EURUSD: trades, GOLD: trades, ... }, { maxHeatPct }) ->
+ * `priorityOf` (2026-08-30, optional): passed straight through to
+ * `applyConcurrencyCap` — see that function's own doc. This is the level
+ * where entry-priority ordering actually matters for this engine: real
+ * contention is cross-pair (many Fib Atlas lines evaluate at the same
+ * session-open timestamp), not within one pair's own trade list.
+ *
+ *   applyPortfolioHeatCap({ EURUSD: trades, GOLD: trades, ... }, { maxHeatPct, priorityOf }) ->
  *     { kept, skipped, skippedCount, totalCount, keptSummary } | null
  */
-export function applyPortfolioHeatCap(perPairTrades, { maxHeatPct = 3 } = {}) {
+export function applyPortfolioHeatCap(perPairTrades, { maxHeatPct = 3, priorityOf = null } = {}) {
   const merged = Object.values(perPairTrades ?? {}).flat();
   if (!merged.length) return null;
-  return applyConcurrencyCap(merged, { maxConcurrent: maxHeatPct, heatOf: t => t.riskPctUsed ?? 1 });
+  return applyConcurrencyCap(merged, { maxConcurrent: maxHeatPct, heatOf: t => t.riskPctUsed ?? 1, priorityOf });
 }
 
 /**

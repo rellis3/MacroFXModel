@@ -3675,6 +3675,69 @@ ratio by analogy to an existing precedent, not its own OOS test.
 
 ---
 
+### Fib Atlas entry-priority ordering under the heat cap — tested, correctly NOT shipped (2026-08-30)
+
+**The owner's own suggestion** ("could we analyse a different order to
+enter the trades in the portfolio?") as a candidate fix for the same
+avg-win-vs-avg-loss observation. Diagnosed first, not assumed: the merged,
+margin-filtered Asia book has 857 real same-entry-timestamp contention
+groups (up to 14 pairs firing at once — same Fib Atlas session-boundary
+evaluation across pairs), where `applyConcurrencyCap`'s admission order
+fell back to plain array order (whichever pair happened to load first) —
+arbitrary, not economically motivated, exactly where a shared heat budget
+gets contested.
+
+Added a new opt-in `priorityOf` param to `applyConcurrencyCap` and
+`applyPortfolioHeatCap` (`js/levelAtlasVoteReview.js`): a `trade -> number`
+scorer that breaks ties ONLY among trades sharing the EXACT SAME entry
+`time`, never reordering trades at different times (that would defer an
+earlier trade's admission on the hope a better one shows up later — a live
+system can't do that; simultaneous ties are the one case reordering is
+causally free, since every candidate is already known at that instant).
+`undefined`/omitted keeps today's behavior exactly — checked, zero
+regression to any existing caller.
+
+**Two candidate priority signals tested, both empirically, neither guessed:**
+- **`margin`** (the natural first candidate — "prioritize higher-conviction
+  trades"): confirmed a **structural no-op**. Every one of the 857
+  contention groups has a UNIFORM margin across all its simultaneous
+  members (margin reflects a session-wide vote shared by every pair firing
+  at that instant, not a per-pair-varying score) — diffing admitted-trade
+  sets at 5 heat-cap levels (1/2/3/5/10%) showed zero differing admissions
+  at every level. Not a bug in the mechanism (verified correct on a
+  synthetic example first) — genuinely nothing to reorder.
+- **`asiaConfPips`** (the Asia-vs-previous-Asia confluence distance already
+  stored per trade — `js/asiaFibAtlasVoteReview.js`'s own
+  `confluenceOnly` filter treats SMALLER values as tighter/stronger
+  confluence, so priority sorts ascending): does vary within 853/857
+  groups and DOES change admission (195 differing trades at heatCap=1%,
+  the frozen BEST_CONFIG value) — a real lever, not a no-op. But on the
+  full already-validated pipeline (recommended pairs, cost-efficiency
+  filter ≥3x, fade-stop-tighten 0.9x, heat cap+throttle at BEST_CONFIG),
+  **IS Sharpe went DOWN** (14.83 → 14.65, `analysis/
+  fib_atlas_entry_priority_backtest.mjs`). Pre-stated rule (maximize IS
+  Sharpe) was not met, so — per this project's own discipline — it was
+  **not** carried to OOS despite OOS happening to look slightly better
+  (16.15 → 16.48); trusting a post-hoc OOS number after failing the
+  pre-stated IS gate is exactly the cherry-picking this methodology exists
+  to prevent.
+
+**Not wired into the page.** No config toggle added — there is nothing
+validated to expose. The `priorityOf` plumbing itself is kept (harmless,
+backward-compatible, unit-tested via the two scripts above, zero
+regression to `legoBricks.test.mjs`) as a real extension point should a
+future, genuinely-varying, pre-outcome conviction signal turn up — but it
+should not be presented as "done" beyond that.
+
+🟢 diagnosed rigorously (contention quantified before touching code, both
+candidate signals checked empirically rather than assumed to work);
+mechanism built correctly and unit-verified on a synthetic case before
+trusting real-data results. 🔴 the lever itself is a clean null on this
+book with the two most natural signals available — reported honestly
+rather than shipped anyway or reframed as a partial win.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
