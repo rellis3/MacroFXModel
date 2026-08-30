@@ -370,3 +370,133 @@ A shape cannot fail in advance. It can only be reinterpreted afterwards, which i
 *The Conflict of Interest* — If the structural question is this decisive, why does almost nothing you were shown ever ask it? The answer is not conspiracy. It is what the business model selects for.
 
 ---
+
+## Lesson 4 — The Conflict of Interest
+
+If somebody genuinely held an edge, why would they sell it to you? Not because they are dishonest. Because of what selling it does to the edge, and what it is worth compared with simply using it. Once you follow that arithmetic, most of what you were shown explains itself.
+
+### Sell the edge, or trade it
+
+The same edge, valued two ways. Move the capacity and the return.
+
+Interactive demo: cumulative value of the same edge over five years, two lines — "Trade it privately" and "Sell it, which also ends it" — with sliders for capacity (100k to 10M) and return (8% a year to 40%).
+
+An edge with capacity of 2,000,000 returning 20% a year produces 2,976,640 over five years, privately, with nobody competing for it. Selling it to 1 percent of an audience of 10,000 at 300 produces 30,000 once, and hands the edge to everyone who bought it. To match the trading figure you would need an audience of 992,213 buyers, and you would still have destroyed the thing you were selling.
+
+An edge is capacity limited. It supports a certain amount of capital and no more, which is precisely what makes it valuable. Trading it privately compounds and nobody competes for it. Selling it produces one payment and hands the method to everyone who bought, which is the fastest way to destroy the thing you were selling. The arithmetic is rarely close, and that is the honest answer to why real edges are not for sale.
+
+Now follow that where it leads. If holding an edge privately is worth this much more than selling it, then practically everything offered publicly never held an edge to begin with. That is not cynicism. It is what the arithmetic implies about who would be willing to sell. And the small fraction that genuinely did hold something have been decaying from the moment they were published, along the sequence on the next slide. So the two possibilities are that it never worked, or that it worked and no longer does. Both end in the same place for the person who bought it.
+
+*Simulated data. Generated to show the relationship clearly. Not taken from any market, account or track record.*
+
+### Why exclusivity is the asset
+
+- **Alpha is capacity dependent** — An edge supports a limited amount of capital. Beyond that, your own participation removes it.
+- **Exclusivity preserves it** — The fewer participants acting on a signal, the longer the mispricing survives.
+- **Diffusion destroys it** — Publishing does not dilute an edge gradually. It accelerates its decay toward zero.
+- **Allocators check this** — Professional due diligence asks whether a process is proprietary and capacity aware, not only what it returned.
+
+The value of an edge and the number of people using it move in opposite directions. That single relationship explains most of the structure of this industry.
+
+It also explains what does get sold. If exclusivity is what makes an edge valuable, then anything genuinely valuable is worth more unpublished. What reaches the public is therefore selected from what remains once that filter has been applied.
+
+None of this requires anyone to act in bad faith. Somebody with a real, capacity limited edge simply has no commercial reason to distribute it, and that is enough to shape the entire market for education.
+
+Which leaves only two explanations for anything on public sale. Either it never contained an edge, which is true of the overwhelming majority, or it contained one and the act of selling it started the decay. The first is far more common. The second is only a matter of timing.
+
+**Why you were taught it this way**
+
+Because the alternative explanation is far more flattering to everyone involved. It is more comfortable to believe that a generous expert is sharing a working method than to work through what sharing it would cost them. The buyer wants it to be true, the seller has no reason to correct it, and the arithmetic never comes up.
+
+### What publishing does to an edge
+
+Assume for a moment that the strategy genuinely worked at the start.
+
+01. **Edge exists** — A genuine inefficiency is identified by a small number of participants.
+02. **It is published** — The method is shared through courses, videos or posts.
+03. **Adoption spreads** — Thousands act on the same signal at the same moment.
+04. **The market adapts** — Price incorporates the signal earlier, and the mispricing shrinks.
+05. **Edge eliminated** — What remains is negative after transaction costs.
+
+This sequence runs in one direction and does not reverse. The timeline varies from months to years, but the destination does not change.
+
+Notice where the buyer enters. By the time a method has been packaged and marketed well enough to reach you, it has already travelled through the first three stages. You are buying access to something at the point where its remaining value is smallest.
+
+This is what people mean when they say markets are competitive. Not that they are rigged, but that a known inefficiency attracts capital until it is no longer worth having.
+
+**Why we do it this way here**
+
+This is exactly why the case studies published here show the results and the reasoning, and never the construction. The specification of a working system is the valuable part of it, and publishing that would do to those systems precisely what this lesson describes.
+
+Protecting it is not secrecy for its own sake. It is the only thing that keeps them worth having, and a system that has been given away is no longer a system anyone benefits from, including the people who were shown it.
+
+So the standard here is to show what a real process looks like, what it produced, and how to judge whether it holds up, while keeping the one part that decay would destroy. If somebody ever hands you the full specification of a live system, this lesson is the reason to ask why.
+
+### Why most never held an edge at all
+
+- **Curve fitting** — Parameters tuned against history until the backtest looks profitable, with no out of sample validation.
+- **Selective presentation** — Winning periods shown, losing periods omitted, and the strategy itself chosen because it looked good.
+- **No economic basis** — No macro driver, no flow logic, no structural reason. A pattern matched against noise.
+- **Built in hindsight** — Constructed so that it appears accurate looking backwards, then packaged for release.
+
+The decay story assumes the method once worked. Most did not.
+
+A strategy assembled by optimising against past data will always show an attractive equity curve, because that is what it was built to do. The curve is the output of the fitting process rather than evidence of anything.
+
+This is why the moment of application feels so strange. The accuracy disappears immediately, not gradually, because it was never present in live conditions. It was engineered afterwards to appear that way.
+
+**Where this needs qualifying**
+
+Not everything public is worthless, and this is not an argument for secrecy as a mark of quality. Plenty of genuinely useful material is public: research, methodology, risk frameworks, and the mathematics in this bank.
+
+The distinction is between teaching how to think and selling a specific signal. Frameworks improve with more people using them. Signals do not, and that is the difference worth holding on to.
+
+### Where you sit in the chain
+
+The same information, at two different points in its life.
+
+**At the back (receiving):**
+- Acting on ideas that have already spread
+- Reacting to what price has already done
+- No way to assess whether an edge remains
+- Working from material selected for marketing
+- Competing with everyone else who was sold the same thing
+
+**At the front (producing):**
+- Working from drivers rather than from descriptions
+- Validating a thesis before capital is committed
+- Monitoring decay and adjusting capacity
+- Building frameworks rather than buying signals
+- Holding something because of why it works, not because it worked
+
+The difference is not intelligence or capital. It is position in the chain.
+
+Everything in the left column follows from receiving finished conclusions. Everything in the right follows from being able to produce them, which is a slower and less exciting process and the reason so few people make the move.
+
+That move is what the rest of this bank is for. Not another signal, but the framework that lets you judge one.
+
+### What to carry forward
+
+01. An edge is capacity limited, and that limitation is what makes it worth having.
+02. Only two explanations exist for a public system: it never held an edge, or selling it began the decay.
+03. Exclusivity preserves an edge. Publication accelerates its decay toward zero.
+04. Trading a real edge privately is worth far more than selling it, which answers why real edges are rarely for sale.
+05. Most public strategies never held an edge. The equity curve was the output of fitting, not evidence.
+06. Frameworks improve as more people use them. Signals do not, which is the distinction worth keeping.
+
+**What this now lets you do**
+- Ask of any strategy for sale what the seller gains by selling rather than trading it.
+- Separate material that teaches you to think from material that sells you a signal.
+- Judge where in the decay sequence something sits before you spend time on it.
+
+**Next in this series**
+
+*The Sample You Were Shown* — If incentives decide what gets produced, they also decide what reaches you. So what happened to all the results you never saw, and what would they have told you?
+
+**Back to the bank — why this bank exists in the form it does**
+
+Everything in this bank is a framework rather than a signal, and that is a deliberate consequence of this lesson. A framework improves as more people hold it. Nothing here decays because you learned it.
+
+That is the test worth applying to any education, including this. Ask whether what you are being given gets weaker as more people receive it. If it does, either it is not what it claims to be, or you are receiving it late.
+
+---
