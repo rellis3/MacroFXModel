@@ -112,6 +112,76 @@ function warmup() {
   ok(!r.filled, 'vwap_trend_cross: dir=short skips an upward-only cross session (no_fill, not a mismatched trade)');
 }
 
+// ── 10) vwap_trend_cross confirmTfMinutes: skips a whipsaw, picks up the later real ramp ──
+{
+  const bars = Array.from({ length: 40 }, (_, i) => flat(i * 60, 100));
+  let t = 40 * 60;
+  bars.push(bar(t, 100.00, 100.06, 100.00, 100.05)); t += 60;   // bar40: raw cross up
+  bars.push(bar(t, 100.05, 100.05, 99.90, 99.95)); t += 60;     // bar41 (3m bucket close for bar40): whipsaws back down
+  bars.push(bar(t, 99.95, 99.95, 99.85, 99.90)); t += 60;       // bar42: stays down
+  for (let i = 0; i < 20; i++) { const v = 100.05 + i * 0.05; bars.push(bar(t, v, v + 0.02, v - 0.01, v)); t += 60; }  // genuine sustained ramp
+
+  // dir:'long' isolates the up-cross read -- the SAME whipsaw bar also
+  // satisfies its own (separately confirmable) down-cross read, which would
+  // otherwise win the race by occurring earlier than the later up-move.
+  const unconfirmed = simulateVwapSession(bars, { mode: 'vwap_trend_cross', dir: 'long', confirmTfMinutes: 1, costPct: 0.012 });
+  ok(unconfirmed.filled && unconfirmed.side === 'BUY', 'confirmTfMinutes=1 (default): fires on the raw whipsaw cross');
+  ok(unconfirmed.outcome === 'reverse_cross', `confirmTfMinutes=1: the whipsaw itself reverses fast (got ${unconfirmed.outcome})`);
+
+  const confirmed = simulateVwapSession(bars, { mode: 'vwap_trend_cross', dir: 'long', confirmTfMinutes: 3, costPct: 0.012 });
+  ok(confirmed.filled && confirmed.side === 'BUY', 'confirmTfMinutes=3: still fills, on the later confirmed cross');
+  ok(confirmed.entry > unconfirmed.entry, 'confirmTfMinutes=3: entry is LATER (post-whipsaw) than the unconfirmed version, not the same bar');
+}
+
+// ── 11) vwap_trend_cross minCrossSigma: skips a tiny cross, takes a clear one ──
+// warmupBars:40 skips the ENTIRE alternating-warmup region -- warmup()'s own
+// ±0.02 alternation flips sign every single bar (fine for band tests, which
+// only look at the touch-bar wick; a raw close-vs-vwap cross reader picks up
+// that alternation itself as spurious "crosses" if the scan starts inside it).
+{
+  const bars = warmup();   // alternating ±0.02 around 100 -> VWAP=100, σ=0.02
+  let t = 40 * 60;
+  bars.push(bar(t, 100.00, 100.02, 99.99, 100.01)); t += 60;    // tiny cross: +0.01 ≈ 0.5σ
+  for (let i = 0; i < 10; i++) { bars.push(flat(t, 100.01)); t += 60; }   // holds just above, never a big move
+  const r0 = simulateVwapSession(bars, { mode: 'vwap_trend_cross', dir: 'long', warmupBars: 40, minCrossSigma: 1.0, costPct: 0.012 });
+  ok(!r0.filled, 'minCrossSigma=1.0: a sub-σ cross (+0.01 ≈ 0.5σ) is skipped, not traded');
+
+  const bars2 = warmup();
+  let t2 = 40 * 60;
+  bars2.push(bar(t2, 100.00, 100.07, 99.99, 100.06)); t2 += 60;   // clear cross: +0.06 = 3σ
+  for (let i = 0; i < 10; i++) { bars2.push(flat(t2, 100.06)); t2 += 60; }
+  const r1 = simulateVwapSession(bars2, { mode: 'vwap_trend_cross', dir: 'long', warmupBars: 40, minCrossSigma: 1.0, costPct: 0.012 });
+  ok(r1.filled && r1.side === 'BUY', 'minCrossSigma=1.0: a clear 3σ cross still fires');
+}
+
+// ── 12) vwap_trend_cross requireTrendRegime: gate wiring, threshold 0 vs impossible ──
+// adxThreshold:0 always passes (ADX>=0 by construction) -- proves the gate is
+// wired and reads a real (if still-warming-up) ADX value, without needing to
+// hand-tune Wilder-smoothed ADX's own lag to a precise magnitude.
+{
+  const bars = Array.from({ length: 60 }, (_, i) => flat(i * 60, 100));
+  let t = 60 * 60;
+  for (let i = 0; i < 30; i++) { const v = 100.05 + i * 0.05; bars.push(bar(t, v, v + 0.02, v - 0.01, v)); t += 60; }
+  const easy = simulateVwapSession(bars, { mode: 'vwap_trend_cross', requireTrendRegime: true, adxThreshold: 0, costPct: 0.012 });
+  ok(easy.filled, 'requireTrendRegime with a trivial threshold (0) still fires on a real trend');
+  const impossible = simulateVwapSession(bars, { mode: 'vwap_trend_cross', requireTrendRegime: true, adxThreshold: 999, costPct: 0.012 });
+  ok(!impossible.filled, 'requireTrendRegime with an impossible threshold (999) suppresses the trade entirely');
+}
+
+// ── 13) vwap_trend_cross excludeSession: a cross inside the excluded session is skipped ──
+{
+  // Bars start at epoch 0 -> every bar lands in UTC hour 0 ('Asia', per this
+  // file's own sessionOf boundaries), so excludeSession='Asia' must suppress
+  // an otherwise-valid cross entirely.
+  const bars = Array.from({ length: 40 }, (_, i) => flat(i * 60, 100));
+  let t = 40 * 60;
+  for (let i = 0; i < 20; i++) { const v = 100.05 + i * 0.02; bars.push(bar(t, v, v + 0.01, v - 0.005, v)); t += 60; }
+  const excluded = simulateVwapSession(bars, { mode: 'vwap_trend_cross', excludeSession: 'Asia', costPct: 0.012 });
+  ok(!excluded.filled, "excludeSession='Asia': suppresses a cross that happens during that session");
+  const notExcluded = simulateVwapSession(bars, { mode: 'vwap_trend_cross', excludeSession: 'London', costPct: 0.012 });
+  ok(notExcluded.filled, "excludeSession='London': unaffected when the cross happens in a different session");
+}
+
 // ── 6) runVwapReversion buckets by session and emits dated records ────────────
 {
   // Two UTC days of warmup-style bars.

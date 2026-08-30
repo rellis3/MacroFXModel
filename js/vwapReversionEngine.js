@@ -32,6 +32,36 @@
  *                    static order to `walkBars` — a different fill CONTRACT,
  *                    not a re-implementation of the shared one.
  *
+ *                    vwap_trend_cross's own §20 result was null because a
+ *                    bare 1-bar cross fires on ~97% of ALL sessions and
+ *                    whipsaws immediately most of the time (win rate 9-12%,
+ *                    gross P&L ≈ 0) — not because the direction call was
+ *                    wrong. Four confirmation filters (2026-08-30, owner's
+ *                    follow-up "how would we filter out [the noise]") test
+ *                    that diagnosis directly, each opt-in via `spec`,
+ *                    composable, default off (byte-identical when omitted):
+ *                      • `confirmTfMinutes` — wait for an N-minute bucket's
+ *                        own CLOSE to still be beyond VWAP (the same
+ *                        "closes not wicks" convention as `band_follow`'s
+ *                        confirmation, now shared via `barUtils.isBucketCloseAt`
+ *                        after this became its third caller).
+ *                      • `minCrossSigma` — the close must clear VWAP by at
+ *                        least this many σ (reusing `computeSessionVwap`'s
+ *                        own `sd[]`, no new vol math) — a thin band, honestly
+ *                        named as one.
+ *                      • `requireTrendRegime` (+ `adxThreshold`, default 25)
+ *                        — causal ADX(14) on this session's own bars must
+ *                        already read trending at the moment of the cross
+ *                        (`indicatorCore.adxWilder`, reused not re-derived).
+ *                      • `excludeSession` — skip crosses during a given UTC
+ *                        session bucket (the local `sessionOf` duplicate is
+ *                        the established, documented pattern — 6 other files
+ *                        already carry their own private copy).
+ *                    All four apply at the CONFIRMED trigger bar, and the
+ *                    exit scan (opposite cross) applies the same
+ *                    `confirmTfMinutes` confirmation so entry and exit read
+ *                    noise the same way.
+ *
  * All three are ONE entry primitive parameterised by {location, action} — not three
  * bespoke legs (Lego Principle 2). The fill walker (`walkBars`) and the IS/OOS
  * reporter (`summarizeSplit`) are IMPORTED from the baseplate, never re-implemented.
@@ -52,12 +82,24 @@
 
 import { walkBars } from './forecastCore.js';
 import { summarizeSplit } from './honestForecastEngine.js';
+import { isBucketCloseAt } from './barUtils.js';
+import { adxWilder } from './indicatorCore.js';
 
 // ── Default frictions (% of price), matching forecastCore's fx defaults ──────
 const DEFAULT_COST_PCT = 0.012;   // round-trip spread+commission
 const DEFAULT_SLIP_PCT = 0.006;   // per-side slippage on stop/breakout entries
 
 const DAY = 86400;
+
+// Same 3-way session labels the rest of the repo uses (levelAtlasEngine) — a
+// local copy is the established, documented pattern here (levelAtlasEngine.js,
+// sessionPathEngine.js, vwapExtensionAtlasEngine.js, vwapFixedSigmaEngine.js,
+// vwapFixedSigmaAtlasEngine.js each already carry their own).
+function sessionOf(hourUtc) {
+  if (hourUtc >= 22 || hourUtc < 7) return 'Asia';
+  if (hourUtc < 13) return 'London';
+  return 'NY';
+}
 
 // ── Session bucketing (horizon anchor) ───────────────────────────────────────
 // Returns an integer bucket id from an epoch-seconds timestamp.
@@ -199,20 +241,58 @@ export function simulateVwapSession(bars, spec) {
     // the SAME lagged-level convention as upB/dnB above (bar k tested
     // against vwap[k-1], no same-bar lookahead).
     const ref = (k) => vwap[k - 1];
-    let entryIdx = null, isBuyCross = null;
-    for (let k = warmupBars; k < n; k++) {
-      const now = bars[k].close - ref(k), prev = bars[k - 1].close - ref(k - 1);
-      if (now > 0 && prev <= 0 && wantLong) { entryIdx = k; isBuyCross = true; break; }
-      if (now < 0 && prev >= 0 && wantShort) { entryIdx = k; isBuyCross = false; break; }
+    const { confirmTfMinutes = 1, minCrossSigma = 0, requireTrendRegime = false,
+            adxThreshold = 25, excludeSession = null } = spec;
+    const dayStart0 = bars[0].time - (bars[0].time % DAY);
+    const adx = requireTrendRegime ? adxWilder(bars, 14) : null;
+
+    // Confirmed cross at-or-after bar k0: the raw 1-bar sign flip, then (if
+    // confirmTfMinutes>1) the enclosing bucket's own CLOSE must still be on
+    // that side ("closes not wicks" — a wick-only flip is not a real cross).
+    // Returns the confirmed bar index, or -1 if none was found from k0 on.
+    function confirmedCrossFrom(k0, wantUp) {
+      for (let k = k0; k < n; k++) {
+        const now = bars[k].close - ref(k), prev = bars[k - 1].close - ref(k - 1);
+        const rawCross = wantUp ? (now > 0 && prev <= 0) : (now < 0 && prev >= 0);
+        if (!rawCross) continue;
+        if (confirmTfMinutes <= 1) return k;
+        let confirmIdx = -1;
+        for (let m = k; m < n && m < k + confirmTfMinutes + 2; m++) {
+          if (isBucketCloseAt(bars[m].time, dayStart0, confirmTfMinutes)) { confirmIdx = m; break; }
+        }
+        if (confirmIdx < 0) return -1;                                    // ran off the session
+        const stillOnSide = wantUp ? (bars[confirmIdx].close - ref(confirmIdx) > 0)
+                                     : (bars[confirmIdx].close - ref(confirmIdx) < 0);
+        if (stillOnSide) return confirmIdx;
+        k = confirmIdx;                                                   // wick-only -- resume scanning after the bucket
+      }
+      return -1;
+    }
+
+    let entryIdx = null, isBuyCross = null, k = warmupBars;
+    while (k < n) {
+      const upIdx = wantLong ? confirmedCrossFrom(k, true) : -1;
+      const dnIdx = wantShort ? confirmedCrossFrom(k, false) : -1;
+      const idx = upIdx < 0 ? dnIdx : dnIdx < 0 ? upIdx : Math.min(upIdx, dnIdx);
+      if (idx < 0) break;
+      const isUp = idx === upIdx;
+
+      if (minCrossSigma > 0) {
+        const s = sd[idx - 1];
+        if (!(s > 0) || Math.abs(bars[idx].close - ref(idx)) < minCrossSigma * s) { k = idx + 1; continue; }
+      }
+      if (requireTrendRegime && !(adx[idx - 1] >= adxThreshold)) { k = idx + 1; continue; }
+      if (excludeSession && sessionOf(new Date(bars[idx].time * 1000).getUTCHours()) === excludeSession) { k = idx + 1; continue; }
+
+      entryIdx = idx; isBuyCross = isUp; break;
     }
     if (entryIdx == null || entryIdx + 1 >= n) return noFill;
+
     const entryPx = bars[entryIdx + 1].open;
     let exitIdx = n - 1, exitPx = bars[n - 1].close, outcome = 'session_close';
-    for (let m = entryIdx + 1; m < n; m++) {
-      const now = bars[m].close - ref(m), prev = bars[m - 1].close - ref(m - 1);
-      const reversedAgainst = isBuyCross ? (now < 0 && prev >= 0) : (now > 0 && prev <= 0);
-      if (reversedAgainst) { exitIdx = m; exitPx = bars[m].close; outcome = 'reverse_cross'; break; }
-    }
+    const revIdx = confirmedCrossFrom(entryIdx + 1, !isBuyCross);
+    if (revIdx >= 0) { exitIdx = revIdx; exitPx = bars[revIdx].close; outcome = 'reverse_cross'; }
+
     const sgn = isBuyCross ? 1 : -1;
     const net = ((exitPx - entryPx) / entryPx) * 100 * sgn - costPct;
     return { filled: true, side: isBuyCross ? 'BUY' : 'SELL', outcome, mode,

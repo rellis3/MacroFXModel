@@ -97,17 +97,9 @@
 import { causalAtr } from './vwapImpulseEntryV1Engine.js';
 import { returnEligible } from './vwapFixedSigmaReport.js';
 import { walkBars } from './forecastCore.js';
-import { bisect } from './barUtils.js';
+import { bisect, isBucketCloseAt } from './barUtils.js';
 
 const DAY = 86400;
-
-// Same day-aligned "is this bar the close of an N-minute bucket" convention
-// as vwapExtensionAtlasEngine.js's confirmTfMinutes — reused, not reinvented.
-function isBucketCloseAt(barTime, dayStart, confirmTfMinutes) {
-  if (confirmTfMinutes <= 1) return true;
-  const minuteOfDay = Math.round((barTime - dayStart) / 60);
-  return ((minuteOfDay + 1) % confirmTfMinutes) === 0;
-}
 
 export const DEFAULT_CFG = {
   action: 'fade',            // 'fade' (toward VWAP) | 'follow' (with-trend, next band out)

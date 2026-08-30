@@ -1600,6 +1600,70 @@ step for this specific idea, not sold as likely to work.
 
 Runner: `scripts/run_vwap_trend_cross.mjs gold eurusd gbpusd usdjpy`.
 
+## 21. Do the confirmation filters fix §20's whipsaw problem? Mostly no, one honest partial exception (2026-08-30)
+
+**Why:** the owner asked "how would we filter out [the whipsaw noise]," then
+to just build the candidates and see. Four filters, each opt-in on
+`vwap_trend_cross`, composable, default off: `confirmTfMinutes` (wait for an
+N-minute bucket's own close, reusing the "closes not wicks" convention, now
+extracted to `barUtils.isBucketCloseAt` since this is its third caller —
+`stackedFadeV1Engine.js` migrated to the shared version too, behavior
+unchanged, regression-tested), `minCrossSigma` (require the close to clear
+VWAP by a minimum number of σ, reusing `computeSessionVwap`'s own `sd[]`),
+`requireTrendRegime` (causal ADX(14) on the session's own bars must already
+read trending, via `indicatorCore.adxWilder`), `excludeSession` (skip a
+given UTC session). +7 tests. New runner
+`scripts/run_vwap_trend_cross_filters.mjs`.
+
+**Pre-registered before running:** same house bar. Stated prior: genuinely
+open — §20 found gross P&L ≈0 on the raw signal, so a filter that mostly
+cuts trade COUNT would just reduce the (illusory) significance of a
+near-zero number, unless the filtered subset hides a real edge under the
+noise. Ten variants (each filter alone at 1-2 settings, one combination),
+gold + 3 FX majors, all printed.
+
+**Result: no filter crosses the pre-registered bar on any instrument. But
+the filters are NOT equally uninformative — they falsify part of §20's own
+diagnosis and point at a real, if still-null, mechanism.**
+
+- **`confirmTfMinutes` barely reduces trade count at all** (even at 15
+  minutes, fill rate only drops ~3-7pp from baseline's 96-99%). This
+  falsifies the "1-bar noise" half of §20's diagnosis: most crosses hold for
+  at least 15 minutes before eventually reversing — the whipsaw resolves
+  over a LONGER horizon (hours) than any reasonable bucket-close window can
+  filter, not in the first few bars.
+- **`minCrossSigma` is the one filter that moves EVERY instrument the same
+  direction — toward less-negative, not mixed.** At 1.0σ: gold OOS t
+  −3.05→−2.84, EURUSD −12.01→−0.72, GBPUSD −14.68→−2.48, USDJPY −8.08→−0.54.
+  Real, consistent, cross-instrument, and STILL not one instrument crosses
+  zero — a genuine partial mechanism (a lot of the whipsaw is trivial,
+  near-VWAP noise a σ-threshold correctly screens out), not a fix.
+- **`requireTrendRegime` (ADX) makes gold WORSE** (OOS t −3.05→−9.24 at
+  adx≥20) while modestly helping the FX majors — mixed, not promoted.
+- **`excludeSession='London'` does almost nothing** — fill rate barely
+  moves, confirming the whipsaw isn't concentrated in one session the way
+  §19's fade-side finding was.
+- **Two single-instrument near-zero results, flagged and NOT promoted,
+  matching this study's standing discipline**: gold at `confirmTfMinutes:15`
+  (OOS t **+0.28**, gross +0.0234% — the first positive OOS mean anywhere in
+  this whole VWAP study) does not replicate on any FX major (EURUSD −7.67,
+  GBPUSD −7.06, USDJPY −3.2 at the same setting); USDJPY at
+  `minCrossSigma:0.5` (OOS t −0.02) does not replicate on gold/EURUSD/GBPUSD
+  either. Both read exactly like the gold-only/single-instrument pattern
+  this study has flagged and NOT trusted repeatedly (§7b, §13) — noted
+  honestly, not sold as a lead.
+
+**Verdict:** the diagnosis from §20 was half right. The problem isn't
+mostly 1-bar wick noise (confirmation timing barely matters) — it's that a
+large share of VWAP crosses are simply too small/close to be real
+directional information, which `minCrossSigma` correctly, consistently
+identifies across every instrument without yet finding an edge underneath.
+Eleventh null on VWAP idea shapes in this codebase's work, and — like
+§19 — one that narrows down WHY rather than just confirming the null again.
+
+Runner: `scripts/run_vwap_trend_cross_filters.mjs gold eurusd gbpusd
+usdjpy`.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
@@ -1710,6 +1774,22 @@ whipsaws immediately most of the time; the extreme OOS t-stats (down to
 a near-daily-frequency signal, not effect size. Diagnosed structural
 mutation this points at (not built): a confirmation filter (hold N bars, or
 clear VWAP by a minimum distance) to separate real trend days from the
-~97% that are just noise. Registered in `LEGO_MODULES.md`. No routes/UI — per the
+~97% that are just noise. §21 built all four candidate filters as opt-in
+`vwap_trend_cross` params: `confirmTfMinutes` (extracted to shared
+`barUtils.isBucketCloseAt`, its third caller — `stackedFadeV1Engine.js`
+migrated too, regression-tested unchanged), `minCrossSigma` (reuses
+`computeSessionVwap`'s own `sd[]`), `requireTrendRegime` (new `adxWilder`
+import), `excludeSession` (+7 tests). Result: none cross the pre-registered
+bar, but `confirmTfMinutes` barely reduces trade count even at 15 minutes —
+falsifying the "1-bar noise" half of §20's own diagnosis — while
+`minCrossSigma` is the one filter that moves EVERY instrument the same
+direction (less negative, not mixed: EURUSD OOS t −12.01→−0.72, GBPUSD
+−14.68→−2.48, USDJPY −8.08→−0.54, gold −3.05→−2.84 at 1.0σ), a real if
+still-null mechanism — a lot of the whipsaw is trivial near-VWAP noise a
+σ-threshold correctly screens out. Two single-instrument near-zero results
+(gold at confirm=15m, USDJPY at minCrossSigma=0.5) do not replicate
+cross-instrument and are flagged, not promoted, matching this study's
+standing discipline. Eleventh null, again the one that narrows down why.
+Registered in `LEGO_MODULES.md`. No routes/UI — per the
 playbook, the rows + book are the deliverable until something needs a live
 view.
