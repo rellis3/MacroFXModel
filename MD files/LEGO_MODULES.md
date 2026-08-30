@@ -3176,6 +3176,44 @@ against real data; 🟢 backtest + portfolio page toggles wired and defaulted
 off; 🟡 live-viewer wiring genuinely out of scope until stop-distance display
 is built there first.
 
+**Bug fix (2026-08-30) — "error loading candles: Failed to fetch" when
+clicking a trade row on this page's chart.** Root-caused, not guessed:
+`/api/vol-backtest/candles/:pair` (`server.js`) does a synchronous cold R2
+M1-parquet load (~28 MB/pair unpacked) on a cache miss, and its `m1CandleCache`
+LRU was capped at only **3** pairs — but that ONE cache is shared **site-wide**
+across every chart-on-click page (`vol-backtest.html`, `zscore-backtest`
+routes, pattern-lab, AND both `asia-fib-atlas-vote-backtest.html` and
+`level-atlas-vote-backtest.html`), so normal cross-page/cross-pair usage
+thrashes it constantly, forcing a cold load on nearly every click. A cold load
+slow enough to outrun the reverse-proxy's request timeout drops the
+connection before a response is sent, which `fetch()` surfaces as a bare
+`TypeError: Failed to fetch` — the **exact same failure mode already
+documented and fixed for the FOMC/labor-market page** (`server.js`'s own
+comment at the labor-market refresh route: "there's no reason to risk the
+same bare 'Failed to fetch' the FOMC page hit"). Two-part fix, no new
+backtest/strategy logic:
+1. `M1_CACHE_MAX` bumped 3→6 (`server.js`) — cuts cross-page/cross-pair
+   thrashing under normal use (~+140 MB worst-case RSS, judged acceptable).
+2. Both `asia-fib-atlas-vote-backtest.html` and `level-atlas-vote-backtest.html`
+   (identical `loadTradeChart` bug, same route) gained a `fetchJsonWithRetry`
+   wrapper: one automatic retry, ~1.5s later, on a network-level fetch
+   failure. This works because the server-side load isn't tied to the
+   client's connection — no `req.on('close')` abort listener exists on this
+   route, so a dropped connection still lets the R2 load finish and populate
+   the cache; the retry's second request lands on that now-warm cache and
+   returns fast. Kept as page-local glue (duplicated in both files, ~15
+   lines) rather than extracted to a shared module — `loadTradeChart` already
+   differs fade/follow-vs-up/down between the two pages, and per this file's
+   own brick criteria a DOM-driven, page-specific UI retry wrapper isn't a
+   pure/portable contract worth a new module for two callers; noted here so
+   the duplication is visible, not silent.
+
+Not fully verifiable from this sandbox (R2/Railway aren't reachable here —
+see `CLAUDE.md`'s live-deployment note), so this is the best-evidenced fix
+given the code, not a confirmed-reproduced one; if "Failed to fetch" recurs
+after this deploy, the next diagnostic step is checking Railway's own request
+logs for the candles route's actual response time on the failing pair.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

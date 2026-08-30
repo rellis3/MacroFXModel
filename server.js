@@ -23036,15 +23036,8 @@ app.get('/api/zscore-backtest/candles/:pair', async (req, res) => {
   const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
   const { from, to } = req.query;
   try {
-    if (!m1CandleCache.has(pair)) {
-      if (m1CandleCache.size >= M1_CACHE_MAX) {
-        m1CandleCache.delete(m1CandleCache.keys().next().value);
-      }
-      const packed = await loadM1ForPair(pair);
-      if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
-      m1CandleCache.set(pair, packed);
-    }
-    const packed = m1CandleCache.get(pair);
+    const packed = await getM1Cached(pair);
+    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
     const { n, times, opens, highs, lows, closes } = packed;
 
     const fromTs = from ? Math.floor(new Date(from + 'T00:00:00Z').getTime() / 1000) : 0;
@@ -24449,23 +24442,54 @@ app.get('/api/dyn-anchor-forecast', async (req, res) => {
 
 // M1 candlestick endpoint — returns filtered bars for chart rendering.
 // Cache stores TypedArrays (~28 MB/pair) not objects (~350 MB/pair) to avoid OOM.
-// LRU: max 3 pairs in memory at once.
+// LRU: max 6 pairs in memory at once (bumped from 3 on 2026-08-30 — this ONE
+// cache is shared site-wide across every chart-on-click page: vol-backtest,
+// zscore-backtest, pattern-lab, AND both Fib Atlas / Level Atlas vote-backtest
+// review pages, so 3 slots thrashed constantly under normal cross-pair
+// clicking, forcing a cold synchronous R2 parquet load on nearly every click.
+// A cold load that outruns the reverse-proxy's request timeout is exactly the
+// "bare Failed to fetch" failure mode already documented+fixed for the FOMC
+// page below — this bump is the cheap mitigation; see loadTradeChart's retry
+// in the vote-backtest pages for the client-side half of the fix).
+//
+// `getM1Cached` (2026-08-30) — the one loader all three of this route family's
+// consumers now call, replacing 3 copies of an identical, buggy
+// check-then-load block: without de-duping in-flight loads, a client retry
+// (or two pages hitting the same cold pair at once) fired a SECOND full R2
+// load in parallel with the first, each ~11s in this sandbox — so a retry
+// could just as easily race a still-loading pair and time out again. Now a
+// second caller for the same pair awaits the SAME promise instead of
+// re-fetching, so any retry (client- or cross-page-driven) always resolves
+// as soon as the one in-flight load finishes, never restarts it.
 const m1CandleCache = new Map();
-const M1_CACHE_MAX  = 3;
+const m1LoadPromises = new Map();
+const M1_CACHE_MAX  = 6;
+
+async function getM1Cached(pair) {
+  if (m1CandleCache.has(pair)) return m1CandleCache.get(pair);
+  if (m1LoadPromises.has(pair)) return m1LoadPromises.get(pair);
+  const p = (async () => {
+    try {
+      const packed = await loadM1ForPair(pair);
+      if (packed) {
+        if (m1CandleCache.size >= M1_CACHE_MAX) m1CandleCache.delete(m1CandleCache.keys().next().value);
+        m1CandleCache.set(pair, packed);
+      }
+      return packed;
+    } finally {
+      m1LoadPromises.delete(pair);
+    }
+  })();
+  m1LoadPromises.set(pair, p);
+  return p;
+}
 
 app.get('/api/vol-backtest/candles/:pair', async (req, res) => {
   const pair = req.params.pair.toLowerCase().replace(/[^a-z0-9]/g, '');
   const { from, to } = req.query;
   try {
-    if (!m1CandleCache.has(pair)) {
-      if (m1CandleCache.size >= M1_CACHE_MAX) {
-        m1CandleCache.delete(m1CandleCache.keys().next().value);
-      }
-      const packed = await loadM1ForPair(pair);
-      if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
-      m1CandleCache.set(pair, packed);
-    }
-    const packed = m1CandleCache.get(pair);
+    const packed = await getM1Cached(pair);
+    if (!packed) return res.status(404).json({ ok: false, error: `No M1 data for ${pair} — check R2 credentials or local parquet files` });
     const { n, times, opens, highs, lows, closes } = packed;
 
     // Unpack only the requested date window — avoids allocating millions of objects
@@ -24504,13 +24528,7 @@ function plNormalizeTf(tf) {
 }
 
 async function plGetPacked(pair) {
-  if (!m1CandleCache.has(pair)) {
-    if (m1CandleCache.size >= M1_CACHE_MAX) m1CandleCache.delete(m1CandleCache.keys().next().value);
-    const packed = await loadM1ForPair(pair);
-    if (!packed) return null;
-    m1CandleCache.set(pair, packed);
-  }
-  return m1CandleCache.get(pair);
+  return getM1Cached(pair);
 }
 
 app.get('/api/pattern-lab/instruments', (_req, res) => {

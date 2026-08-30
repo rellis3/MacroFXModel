@@ -611,6 +611,28 @@ function priceLinesFor(t) {
   ];
 }
 
+// The candle cache behind this route is shared site-wide across every
+// chart-on-click page, so a pair not recently viewed anywhere else is often a
+// cold miss — a synchronous multi-MB R2 parquet load that can outrun a
+// reverse-proxy's request timeout and surface to fetch() as a bare network
+// error ("Failed to fetch"), even though the server-side load keeps running
+// and finishes populating the cache regardless of the dropped connection
+// (same failure mode already hit on the FOMC page — see server.js's
+// m1CandleCache comment). One retry after a short delay almost always lands
+// on the now-warm cache.
+async function fetchJsonWithRetry(url, { retries = 1, delayMs = 1500, onRetry } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      if (attempt >= retries) throw e;
+      onRetry?.();
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+}
+
 async function loadTradeChart(t) {
   selectedTrade = t;
   renderTradeTable(filteredTrades());
@@ -620,8 +642,10 @@ async function loadTradeChart(t) {
   const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
   chartMeta.textContent = `Loading ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate}…`;
   try {
-    const res = await fetch(`/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`);
-    const j = await res.json();
+    const j = await fetchJsonWithRetry(
+      `/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`,
+      { onRetry: () => { chartMeta.textContent = `retrying ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate} (first load of this pair can be slow)…`; } }
+    );
     if (!j.ok || !j.candles?.length) { chartMeta.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
     const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
     view.setCandles(bars);
