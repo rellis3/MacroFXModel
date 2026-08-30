@@ -3051,6 +3051,46 @@ two different problems with two different fixes, both real.
 do not generalize a one-pair result to "the system is validated" until they
 are.
 
+**Extended to all 26 pairs (2026-08-29) — the EURUSD result generalizes,
+broadly and consistently.** Same procedure (own M1 walk, own fresh 50/25/25
+train/validate/test split, unchanged `voteDecision`/`priceBarrierTrade`) run
+independently per pair. Result: **26/26 pairs** show a positive held-out
+TEST-slice Sharpe with <50% seen→unseen degradation. Mean degradation across
+all 26: **4.1%** (vs EURUSD's own 18.8% — EURUSD turned out to be one of the
+*weaker* generalizers, not a cherry-picked best case). Several pairs show
+**negative** degradation — held-out Sharpe higher than the data the selection
+process could see (EURGBP -11.6%, GBPCHF -16.1%, GBPNZD -17.5%) — the
+mixed sign across pairs (some positive degradation, some negative) is itself
+informative: a uniform regime-shift artifact would push every pair the same
+direction; this doesn't.
+
+**One number NOT to trust as-is**: the pooled cross-pair Sharpe (56.8,
+CI [55.6, 58.1]) naively concatenates all 26 pairs' per-trade returns and
+lets `backtestStats` annualize by trade count — the SAME per-trade-
+independence-assumption inflation already flagged repeatedly this session
+(compare the SL-tightening script's own explicit warning about mixing
+`portfolioStats`' daily-aggregated Sharpe with `backtestStats`' per-trade
+one). Many of these 26 pairs' touches are concurrent/correlated on the same
+calendar days; treating 37,651 pooled trades as independent bets is not
+honest. **The real signal here is the per-pair degradation pattern, not the
+pooled Sharpe number** — do not quote 56.8 as an achievable or even
+meaningful figure.
+
+**Updated read on "is this a strategy killer": no — this is now the
+strongest evidence this session has produced that the vote rule
+(`prevOutcomeSameDay`+`sessionHandoff`, margin≥2) captures something real,
+not fitted noise.** It does not retroactively validate the original,
+unreproducible dimension search that chose those two dimensions — that
+provenance question stays permanently unresolved. But it does show that the
+rule AS IT NOW STANDS, evaluated the honest way (frozen, never-touched final
+slice, dimension-trust decided on a separate slice from the judge), holds up
+consistently across the full 26-pair universe, not just the one pair this
+session had focused on. Monday ladder still untested — the natural next
+extension, not yet run.
+
+🟢 all 26 Asia pairs run to completion, real M1 data; 🟡 Monday ladder still
+not run; pooled-Sharpe caveat noted so it isn't mis-quoted downstream.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
