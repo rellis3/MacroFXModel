@@ -3738,6 +3738,98 @@ rather than shipped anyway or reframed as a partial win.
 
 ---
 
+### Fib Atlas trailing/continuation exit for follow-wins — validated, NOT yet wired live (2026-08-30)
+
+**The owner's own suggestion**: "if we are trading a level which will
+continue the same direction we move to, sl etc and don't close and open a
+trade?" — today's `follow` trades close at a FIXED target the instant
+price first touches the next rung out (`asiaFibAtlasEngine.js`'s walk
+loop breaks the moment `outcome='out'` fires); nothing lets a genuinely
+continuing move run further. This is the only lever tried this session
+that needed a real M1 re-walk, not just reprocessing the already-built
+touch JSON — the stored touch record's `mfePips`/`maePips` only cover the
+excursion up through the FIRST resolution bar, nothing about what price
+did afterward. Confirmed M1 bars ARE loadable in this sandbox
+(`loadM1ForPair`, R2 parquet, ~25s/pair) before committing to the build —
+this is cached data, not the live-OANDA fetch CLAUDE.md flags as
+sandbox-blocked.
+
+**Design (minimal-DOF, one tunable)**: applies ONLY to `decision==='follow'
+&& win===true` trades — exactly "the level kept going the direction we bet
+on." Fade trades and follow LOSSES are completely untouched (zero
+interaction with the already-shipped fade-stop-tightening lever, which
+only ever touches fade rows). From the resolution bar, walks M1 forward
+tracking a trailing stop that only ever ratchets in the favorable
+direction, initialized AT the original fixed-target price — so the worst
+case is byte-identical to today's exit (an instant reversal loses nothing)
+and the best case captures a real continuation. `givebackFrac` (how much
+of the peak excursion beyond the original target gets given back before
+the trail fires) is the one new tunable. Bounded to the trade's own
+calendar `date` (forced close at day-end if never stopped out), keeping
+every trade same-day — matches this project's existing daily-return-series
+convention and avoids open-ended multi-day holds this system was never
+built to carry.
+
+**Correctness point specific to this lever**: the trail lengthens
+`resolveTime` for touched trades, which the per-pair `applyConcurrencyCap`
+(max 1 concurrent) must see BEFORE deciding which trades survive — the
+pipeline order here is trail-first-then-concurrency-cap, the reverse of
+every other lever this session, specifically so a trade the corrected
+(longer) occupancy window would have blocked can't slip through on the
+strength of its original (shorter) window.
+
+`analysis/fib_atlas_trailing_continuation_backtest.mjs` — full recommended
+Asia pair set, on top of the already-shipped pipeline (cost-efficiency
+filter ≥3x, fade-stop-tighten 0.9x, heat cap+throttle at frozen
+BEST_CONFIG). Pre-stated rule: maximize IS Sharpe. First grid
+`[0.2..0.8]` picked the edge value (0.2, the tightest tested) — recognized
+as this project's own "curve that never peaks" red flag and NOT trusted
+without checking further, so the grid was extended down to `[0.02..0.15]`
+before freezing anything. The extended run showed a genuine PLATEAU
+(IS Sharpe 16.62/16.60/16.56/16.52 for 0.02/0.05/0.1/0.15 — differences
+inside the Sharpe CI noise band) followed by a smooth, real decline as
+giveback loosens toward 0.8 — a legitimate interior optimum region, not a
+runaway hugging the search boundary.
+
+| | IS Sharpe | OOS Sharpe | OOS maxDD | OOS avg win | OOS avg loss | OOS PF |
+|---|---|---|---|---|---|---|
+| baseline | 14.83 | 16.15 | -3.16% | 0.4159% | -0.5584% | 16.59 |
+| giveback=0.02 (chosen) | 16.62 | 16.73 | -3.16% | 0.4667% | -0.5584% | 24.49 |
+
+**Leverage-in-disguise check, done explicitly, not assumed**: OOS avg
+loss is byte-identical (-0.5584% both) — no stop or sizing change touched
+losing or fade trades, exactly as designed. OOS maxDD is also unchanged
+(-3.16% both). Only avg win moved (+12.2% relative) and profit factor
+improved materially (16.59 → 24.49) — real risk-neutral upside, not
+leverage in disguise.
+
+**NOT wired into the live page — a genuinely different wiring shape than
+every other lever this session.** Every other validated lever
+(cost-efficiency filter, fade-stop-tighten, heat cap, throttle) operates
+purely on the ALREADY-STORED `{pair}-votetrades.json` at READ time — cheap
+enough for a request-time query-param toggle. This lever needs M1 bars
+(~25s/pair to load) to compute the trailed exit, which is not viable at
+interactive request time. Wiring it live means baking the trailed
+exit into the STORED trade JSON at GENERATION time instead — i.e.
+extending the `/api/asia-fib-atlas/run` batch job (`js/asiaFibAtlasRoutes.js`,
+the same one that writes `{pair}-votetrades.json` via `putJSON`) to also
+compute and persist the trailed variant, then regenerating that stored
+data for every pair. That is a materially bigger, more consequential
+action than anything else this session touched — a production R2 data
+rewrite underlying the live page for every pair, not a read-time route
+edit — so it was deliberately NOT done without checking in first.
+
+🟢 real, validated, honestly-checked result: strong OOS Sharpe/PF
+improvement, zero leverage-in-disguise (avg loss and maxDD both
+unchanged), the initial edge-of-grid pick was caught and re-tested rather
+than shipped, and the extended grid confirmed a genuine plateau rather
+than a runaway curve. 🟡 not yet wired into production — that requires a
+data-generation-time change and a full regeneration of stored trade data,
+a bigger and more consequential step than any other lever this session,
+correctly held for an explicit decision rather than done unilaterally.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
