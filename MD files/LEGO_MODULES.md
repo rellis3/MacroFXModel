@@ -2976,13 +2976,307 @@ already flagged with DSR=0 and `holdsOOS` OOS-label leakage — this result
 answers "given the trades this system currently generates, how much can
 drawdown be cut," not "does the underlying edge survive selection-bias
 correction." Those are separate questions; this section doesn't resolve
-the second one. Also unresolved: whether the OOS Sharpe jump at the very
-first tightening step is broad-based or driven by a handful of tail
-trades (flagged above, not checked). 🟢 rule fix + stack built, run to
-completion (Asia, fade); 🟡 not yet wired into any live page/route — this
-is still an analysis-script result, not a change to
-`js/asiaFibAtlasVoteReview.js` or any page's actual numbers; Monday ladder
-and follow-decision stack not yet run.
+the second one.
+
+**Tail-concentration check + finer stack sweep (2026-08-29) — the two
+things flagged above as unchecked, now checked.**
+
+*Is the improvement broad-based or a few outliers?* Ranked baseline's OOS
+losers (n=2027) by size: worst 1% account for 1.9% of total realized
+loss, worst 5% for 8.1%, worst 10% for 15.2%, worst 25% for 33.3%; the
+single worst loser is 0.11% of total loss on its own. **This is a flat,
+non-concentrated distribution — cumulative loss share tracks cumulative
+trade count share closely, with no small group of catastrophic trades
+dominating.** A tail-driven artifact would show the top 1% eating 30-50%+
+of total loss; it doesn't. The fix is genuinely broad-based, not a fluke
+of clipping a couple of outliers.
+
+*How far can drawdown actually be pushed?* A finer heat-cap (1/2/3/5%) ×
+throttle-trigger (-2/-5/-8%) sweep on frac=0.9 found a shallower floor
+than the single combo tested earlier: **-11.29% maxDD at heatCap=1% /
+throttleTrigger=-2%, Sharpe 4.52** (vs the earlier -16.58% at 2%/-5%,
+Sharpe 5.56) — a real Sharpe/drawdown frontier, not one fixed answer.
+Full grid in the script's own output. Practical read: -16.58%/Sharpe 5.56
+and -11.29%/Sharpe 4.52 are both real, validated points on this frontier;
+which to prefer depends on whether the priority is maximizing Sharpe or
+minimizing worst-case drawdown — the owner's to choose, not a default to
+assume.
+
+🟢 both checks built + run to completion (Asia, fade); 🟡 not yet wired
+into any live page/route — this is still an analysis-script result, not
+a change to `js/asiaFibAtlasVoteReview.js` or any page's actual numbers;
+Monday ladder and follow-decision stack not yet run.
+
+**Held-out (train/validate/test) validation — the definitive follow-up to
+DSR=0/`holdsOOS` (2026-08-29), and the first genuinely reassuring result on
+the core edge question.** Built `analysis/fib_atlas_holdout_validation.mjs`:
+inserts a real THIRD slice the book's own IS/OOS split doesn't have — TRAIN
+(first 50% by date) builds cell stats, VALIDATE (next 25%) decides which
+dimension buckets hold via the same `annotateHolds` gate `holdsOOS` uses
+live, TEST (final 25%, never touched by ANY check this session — DSR,
+leave-one-out, SL-tightening all operated on the book's existing OOS half)
+gets the frozen, completely unchanged `voteDecision`/`priceBarrierTrade` run
+once. Zero new decision logic — same rule, same functions, a cleaner split.
+
+**Run for EURUSD (95,980 total touches, 2016-2026): TEST slice (2023-10-24
+onward, 483 trades) — Sharpe 5.95, bootstrap 90% CI [4.708, 7.169],
+P(profitable)=1.** More important than the point estimate: the direct
+seen-vs-unseen comparison. The SAME frozen rule's per-observation Sharpe on
+TRAIN+VALIDATE (the data its selection process could see) was 0.5576; on
+TEST (genuinely never seen) it was 0.4526 — an **18.8% degradation**, sign
+preserved, no collapse. Compare this to what real overfitting looks like
+elsewhere in this exact system: the SL-tightening study's own untightened
+baseline went from IS Sharpe +0.52 to OOS Sharpe **-1.87** (a sign flip and
+~460% relative collapse) on the SAME kind of IS→OOS transition. An 18.8%
+degradation with the sign intact is the shape of a real, if modest, effect
+— not the shape of fitted noise evaporating out of sample.
+
+**What this does and doesn't settle.** This is genuinely better news for
+EURUSD Asia's core vote rule than anything found so far this session — the
+DSR=0 finding's implicit worry (that the rule is indistinguishable from the
+best of ~104 chance draws) looks less likely to be the whole story once the
+selection step is honestly isolated from the judge. It does NOT retroactively
+validate the original, unlogged ~30-dimension search that chose
+`prevOutcomeSameDay`/`sessionHandoff` in the first place (unreproducible, so
+untestable directly) — it shows that the RESULT of that process, re-validated
+honestly on one pair, holds up. It is also ONE pair tested ONCE — extending
+to the other 25 (and Monday) is the natural next step before trusting this
+as a system-wide verdict rather than an EURUSD-Asia-specific one. And it says
+nothing new about the SEPARATE, already-answered portfolio-drawdown question
+(the -99%/-16.58% numbers above come from combining many pairs at uncapped
+risk, a structural concurrency issue, not a selection-bias one) — these are
+two different problems with two different fixes, both real.
+
+🟢 built + run for EURUSD; 🟡 other 25 pairs and Monday ladder not yet run —
+do not generalize a one-pair result to "the system is validated" until they
+are.
+
+**Extended to all 26 pairs (2026-08-29) — the EURUSD result generalizes,
+broadly and consistently.** Same procedure (own M1 walk, own fresh 50/25/25
+train/validate/test split, unchanged `voteDecision`/`priceBarrierTrade`) run
+independently per pair. Result: **26/26 pairs** show a positive held-out
+TEST-slice Sharpe with <50% seen→unseen degradation. Mean degradation across
+all 26: **4.1%** (vs EURUSD's own 18.8% — EURUSD turned out to be one of the
+*weaker* generalizers, not a cherry-picked best case). Several pairs show
+**negative** degradation — held-out Sharpe higher than the data the selection
+process could see (EURGBP -11.6%, GBPCHF -16.1%, GBPNZD -17.5%) — the
+mixed sign across pairs (some positive degradation, some negative) is itself
+informative: a uniform regime-shift artifact would push every pair the same
+direction; this doesn't.
+
+**One number NOT to trust as-is**: the pooled cross-pair Sharpe (56.8,
+CI [55.6, 58.1]) naively concatenates all 26 pairs' per-trade returns and
+lets `backtestStats` annualize by trade count — the SAME per-trade-
+independence-assumption inflation already flagged repeatedly this session
+(compare the SL-tightening script's own explicit warning about mixing
+`portfolioStats`' daily-aggregated Sharpe with `backtestStats`' per-trade
+one). Many of these 26 pairs' touches are concurrent/correlated on the same
+calendar days; treating 37,651 pooled trades as independent bets is not
+honest. **The real signal here is the per-pair degradation pattern, not the
+pooled Sharpe number** — do not quote 56.8 as an achievable or even
+meaningful figure.
+
+**Updated read on "is this a strategy killer": no — this is now the
+strongest evidence this session has produced that the vote rule
+(`prevOutcomeSameDay`+`sessionHandoff`, margin≥2) captures something real,
+not fitted noise.** It does not retroactively validate the original,
+unreproducible dimension search that chose those two dimensions — that
+provenance question stays permanently unresolved. But it does show that the
+rule AS IT NOW STANDS, evaluated the honest way (frozen, never-touched final
+slice, dimension-trust decided on a separate slice from the judge), holds up
+consistently across the full 26-pair universe, not just the one pair this
+session had focused on. Monday ladder still untested — the natural next
+extension, not yet run.
+
+🟢 all 26 Asia pairs run to completion, real M1 data; 🟡 Monday ladder still
+not run; pooled-Sharpe caveat noted so it isn't mis-quoted downstream.
+
+**Monday ladder extended (2026-08-29) — same result, second independent
+confirmation.** Added `LADDER=asia|monday` to
+`fib_atlas_holdout_validation.mjs` (drop-in: `mondayFibAtlasWalk` has the
+identical `(packed,{instrument,rearmFracs})→{touches}` contract and touch
+shape as `asiaFibAtlasWalk` — `mondayFibAtlasRoutes.js` already reuses
+`buildAsiaFibAtlasBook` unchanged, confirming the shapes match). Ran all 26
+pairs on Monday: **26/26 again show positive held-out Sharpe with <50%
+degradation.** Mean degradation 9.1% (vs Asia's 4.1% — higher but still far
+from the >100%/sign-flip signature of real overfitting seen elsewhere in
+this system). Trade counts are smaller (weekly range vs daily — e.g. NZDUSD
+n=41, GBPAUD n=38, both still P(profitable)>0.99) and noisier at the
+extremes (GBPJPY 46.8% degradation, the weakest link but still under the
+50% bar; GBPCAD -44.4%, the held-out slice doing much BETTER than seen,
+likely small-n noise in the other direction). Same pooled-Sharpe caveat
+applies (24.5 pooled figure inherits the same per-trade-independence
+inflation — not a real number).
+
+**Combined verdict across both ladders, all 52 pair×ladder combinations
+tested**: every single one shows the rule generalizing to genuinely
+untouched data. Two independent ladders (different range definition, Asia
+daily vs Monday weekly, built from the same shared book/vote machinery but
+walked on structurally different windows) both clear the bar with the same
+qualitative shape (modest single-digit-to-teens % degradation, mixed sign
+across pairs, no collapse). This is now real, repeated, cross-ladder
+confirmation — not a one-off result on one pair or one ladder.
+
+🟢 both ladders, all 26 pairs, run to completion against real M1 data. This
+line of investigation (the held-out validation) is complete for the
+Asia+Monday vote rule as it currently stands; what remains unresolved is
+unrelated to this check (the original dimension search's provenance, the
+entry-order/fill-assumption question, and OOS-validating any pair-selection
+narrowing) — see this section's earlier entries.
+
+**Fade-stop-tightening wired into production (2026-08-30) — the SL-tightening
+finding above (frac=0.9, fade-only) stops being an analysis-script result and
+becomes a real, callable feature.** New Tier-1 brick `applyFadeStopFraction`
+(`js/levelAtlasVoteReview.js`, immediately after `priceAtTighterStop`, unit
+tests in `js/levelAtlasVoteReview.test.mjs` "T22"): applies a FIXED
+stop-tightening fraction to `decision==='fade'` trades only, leaving `follow`
+completely untouched (per the MAE-timing checkpoint study above — fade's
+give-back-predicts-loss signal is 30-100% stronger than follow's at every
+checkpoint, so tightening is only applied where it was actually shown to
+help). `null`/`1` is a documented no-op passthrough, so every existing caller
+is unaffected by default.
+
+Threaded through the full call chain: `js/fibAtlasVotePortfolio.js`'s
+`buildFibAtlasVotePortfolio` gained a `stopTightenFrac` param (applied per
+constituent, after that pair's own concurrency cap, before risk-adjust/heat-
+cap/throttle — same order the validating backtest used); both
+`js/asiaFibAtlasRoutes.js` and `js/mondayFibAtlasRoutes.js` read
+`stopTightenFrac` off the query string on `/vote-trades/:instrument`,
+`/vote-portfolio`, and (Asia only) `/vote-portfolio-combined`, and pass it
+through unchanged. Live-verified end-to-end via curl against a running
+`server.js`: fade trade count is unchanged (repricing, not filtering), fade
+winRate drops under tightening as expected (79.0% vs baseline), and — the
+important correctness check — **follow winRate is byte-identical between the
+baseline and tightened calls (75.7% both ways)**, confirming the
+`decision!=='fade'` early-return really does leave follow trades untouched
+end-to-end, not just in the unit test.
+
+UI wiring: `asia-fib-atlas-vote-backtest.html` gained a "Tighten fade stop
+(0.9×)" checkbox next to the margin selector, appending `&stopTightenFrac=0.9`
+to the `/vote-trades/:pair` fetch when checked (CSV export needs no separate
+change — it reads from the already-fetched, already-tightened `allTrades`
+array). `asia-fib-atlas-vote-portfolio.html` got the same checkbox mirroring
+its existing heat-cap/throttle control pattern exactly (checkbox + `params.set`
++ change-listener), applying to `/vote-portfolio` and the combined-ladder
+route alike. Both pages default OFF (no behavior change unless the owner
+opts in).
+
+**Deliberately NOT wired: `asia-fib-atlas-live.html` (the live viewer).**
+Checked rather than assumed — `renderLadder` (line ~258) and the ladder it
+renders (`asiaFibAtlasLiveLadder`, `js/asiaFibAtlasEngine.js`) only ever
+compute `distancePips`/`lean`/support-challenge signals per rung; there is no
+stop/target-distance concept anywhere on the live ladder today, unlike
+backtest `touch` records (`innerDistPips`/`outerDistPips`). There is nothing
+for the tightening feature to attach to without first building a separate,
+new feature (adding a stop-distance field to the live ladder rungs) — flagged
+as a real scope gap, not silently skipped or faked.
+
+🟢 backend (brick + both routes + portfolio builder) live-verified end-to-end
+against real data; 🟢 backtest + portfolio page toggles wired and defaulted
+off; 🟡 live-viewer wiring genuinely out of scope until stop-distance display
+is built there first.
+
+**Bug fix (2026-08-30) — "error loading candles: Failed to fetch" when
+clicking a trade row on this page's chart.** Root-caused, not guessed:
+`/api/vol-backtest/candles/:pair` (`server.js`) does a synchronous cold R2
+M1-parquet load (~28 MB/pair unpacked) on a cache miss, and its `m1CandleCache`
+LRU was capped at only **3** pairs — but that ONE cache is shared **site-wide**
+across every chart-on-click page (`vol-backtest.html`, `zscore-backtest`
+routes, pattern-lab, AND both `asia-fib-atlas-vote-backtest.html` and
+`level-atlas-vote-backtest.html`), so normal cross-page/cross-pair usage
+thrashes it constantly, forcing a cold load on nearly every click. A cold load
+slow enough to outrun the reverse-proxy's request timeout drops the
+connection before a response is sent, which `fetch()` surfaces as a bare
+`TypeError: Failed to fetch` — the **exact same failure mode already
+documented and fixed for the FOMC/labor-market page** (`server.js`'s own
+comment at the labor-market refresh route: "there's no reason to risk the
+same bare 'Failed to fetch' the FOMC page hit"). Two-part fix, no new
+backtest/strategy logic:
+1. `M1_CACHE_MAX` bumped 3→6 (`server.js`) — cuts cross-page/cross-pair
+   thrashing under normal use (~+140 MB worst-case RSS, judged acceptable).
+2. Both `asia-fib-atlas-vote-backtest.html` and `level-atlas-vote-backtest.html`
+   (identical `loadTradeChart` bug, same route) gained a `fetchJsonWithRetry`
+   wrapper: one automatic retry, ~1.5s later, on a network-level fetch
+   failure. This works because the server-side load isn't tied to the
+   client's connection — no `req.on('close')` abort listener exists on this
+   route, so a dropped connection still lets the R2 load finish and populate
+   the cache; the retry's second request lands on that now-warm cache and
+   returns fast. Kept as page-local glue (duplicated in both files, ~15
+   lines) rather than extracted to a shared module — `loadTradeChart` already
+   differs fade/follow-vs-up/down between the two pages, and per this file's
+   own brick criteria a DOM-driven, page-specific UI retry wrapper isn't a
+   pure/portable contract worth a new module for two callers; noted here so
+   the duplication is visible, not silent.
+
+Correction to the note directly above: R2 turned out to be reachable from this
+sandbox after all (a real cold load was measured live — see the follow-up
+entry immediately below), so the retry/de-dup mechanism itself WAS
+end-to-end-verified, not just reasoned about. Only OANDA is blocked here
+(confirmed `403 Host not in allowlist`), which matters for the next entry.
+
+**Follow-up (2026-08-30, same day) — "no candle data for `<recent dates>`"
+is a DIFFERENT bug than the one above, and it's structural, not a timing
+race.** The owner hit this immediately after the fix above: clicking a trade
+from the last 2-3 days returned a clean `ok:true` response with zero candles,
+not a network error. Root cause, confirmed by inspection (no writer to the
+`m1/` R2 prefix exists anywhere in this repo — grepped for it): **the R2/local
+M1 parquet archive this whole route family reads is a manually re-backfilled
+snapshot with no scheduled refresh job**, so a trade dated more recently than
+whenever someone last ran a backfill has no data there at all — not a
+timezone/broker-time offset, as first suspected; the archive genuinely stops
+partway through history and a chart-on-click for anything past that point
+will always come back empty, forever, until the next manual backfill (which
+itself only pushes the same cliff a bit further out).
+
+**Fix: gap-fill the archive's missing TAIL directly from OANDA**, per the
+owner's own suggestion — `fetchOandaM1Candles` + `getM1CandleWindow`
+(`server.js`, right after `getM1Cached`). Deliberately narrow, not a general
+"switch to OANDA" — three real constraints matter here, all handled:
+1. **OANDA candles silently truncates past ~5000 bars/request** — no error,
+   just fewer candles than requested, which would render a wrong-looking
+   truncated chart with no visible warning. So the fallback is capped at
+   `OANDA_M1_GAP_CAP_MIN = 3500` minutes (≈2.4 days) — comfortably under the
+   truncation point with margin, and comfortably wider than `loadTradeChart`'s
+   actual window (one trade ± 4h).
+2. **Tail-only, never a substitute for R2 on a wide historical window** — the
+   gap-fill only fires for the portion of the requested range PAST the
+   archive's last bar (`toTs > archiveLastTs`), starting from
+   `max(fromTs, archiveLastTs + 60)`. A normal multi-year backtest-viewer
+   window against a well-archived pair never touches OANDA at all — verified
+   live (`liveFilled:false`, same candle count as before the change, on an
+   older date range against the running server).
+3. **A pair with NO archive at all** (not just a stale tail) still falls
+   back to OANDA, but ONLY if the requested window is small enough to clear
+   the same cap — otherwise it returns the honest 404 it always did, rather
+   than silently truncating a huge OANDA request into a wrong chart.
+
+Verified two ways, since OANDA itself is unreachable from this sandbox
+(confirmed `403 Host not in allowlist: api-fxtrade.oanda.com` — the
+documented sandbox-vs-Railway network gap, not a code bug; direct
+symbol-resolution + URL-construction check against the real OANDA endpoint
+confirmed the request itself is well-formed): (a) a standalone unit test of
+the merge/cap logic against synthetic archive+OANDA data (4 cases: archive
+fully covers the window → OANDA never called; stale tail → gap call starts
+exactly one bar past the archive's last bar and merges in; archive entirely
+missing + small window → OANDA fallback used; archive entirely missing +
+huge window → capped, OANDA never called, avoiding a silently-truncated
+chart) — all 4 passed; (b) live re-verification against the running server
+that an OLDER, already-archived date range is completely unaffected
+(`liveFilled:false`, identical candle count to before this change). The
+OANDA half of the new code path itself is Railway-only-testable, same as
+every other OANDA-dependent route in this codebase — flagged, not silently
+assumed to work.
+
+Also folded the near-duplicate `/api/vol-backtest/candles/:pair` and
+`/api/zscore-backtest/candles/:pair` handlers onto the one new
+`getM1CandleWindow` helper (previously each had its own copy of the archive
+window-slice loop) — removes a second copy of logic that would otherwise
+need the same gap-fill patched into it twice.
+
+🟢 unit-verified (merge/cap logic) + partially live-verified (archive path
+unaffected, R2 side confirmed working end-to-end); 🟡 the OANDA gap-fill
+itself needs a real trade-chart click on Railway to fully confirm, same
+sandbox limitation as every other OANDA-dependent feature here.
 
 ---
 

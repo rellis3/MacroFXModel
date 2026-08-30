@@ -96,6 +96,7 @@
       <option value="1">≥1 (either signal)</option>
       <option value="2" selected>=2 (both agree)</option>
     </select></label>
+    <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs)">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
     <label>Decision <select id="decSel"><option value="all">all</option><option value="fade">fade</option><option value="follow">follow</option></select></label>
     <label>Outcome <select id="outSel"><option value="all">all</option><option value="win">wins</option><option value="loss">losses</option></select></label>
   </div>
@@ -227,6 +228,7 @@ function dailySeries(trades) {
 const ladderSeg = document.getElementById('ladderSeg');
 const pairSel = document.getElementById('pairSel');
 const marginSel = document.getElementById('marginSel');
+const stopTightenChk = document.getElementById('stopTightenChk');
 const decSel = document.getElementById('decSel');
 const outSel = document.getElementById('outSel');
 const headerSub = document.getElementById('headerSub');
@@ -272,7 +274,8 @@ async function loadData() {
   headerSub.textContent = 'loading…';
   document.getElementById('kpiPrimary').innerHTML = '<span class="muted">loading…</span>';
   try {
-    const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}`);
+    const stopTightenQS = stopTightenChk.checked ? '&stopTightenFrac=0.9' : '';
+    const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `no data: ${j.error}`; document.getElementById('kpiPrimary').innerHTML = `<span class="muted">no data yet — run POST ${apiPrefix()}/run for this pair</span>`; return; }
     allTrades = j.trades;
@@ -608,6 +611,28 @@ function priceLinesFor(t) {
   ];
 }
 
+// The candle cache behind this route is shared site-wide across every
+// chart-on-click page, so a pair not recently viewed anywhere else is often a
+// cold miss — a synchronous multi-MB R2 parquet load that can outrun a
+// reverse-proxy's request timeout and surface to fetch() as a bare network
+// error ("Failed to fetch"), even though the server-side load keeps running
+// and finishes populating the cache regardless of the dropped connection
+// (same failure mode already hit on the FOMC page — see server.js's
+// m1CandleCache comment). One retry after a short delay almost always lands
+// on the now-warm cache.
+async function fetchJsonWithRetry(url, { retries = 1, delayMs = 1500, onRetry } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      if (attempt >= retries) throw e;
+      onRetry?.();
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+}
+
 async function loadTradeChart(t) {
   selectedTrade = t;
   renderTradeTable(filteredTrades());
@@ -617,8 +642,10 @@ async function loadTradeChart(t) {
   const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
   chartMeta.textContent = `Loading ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate}…`;
   try {
-    const res = await fetch(`/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`);
-    const j = await res.json();
+    const j = await fetchJsonWithRetry(
+      `/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`,
+      { onRetry: () => { chartMeta.textContent = `retrying ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate} (first load of this pair can be slow)…`; } }
+    );
     if (!j.ok || !j.candles?.length) { chartMeta.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
     const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
     view.setCandles(bars);
@@ -692,6 +719,7 @@ ladderSeg.querySelectorAll('button').forEach(btn => {
 });
 pairSel.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);
+stopTightenChk.addEventListener('change', loadData);
 decSel.addEventListener('change', applyFiltersAndRender);
 outSel.addEventListener('change', applyFiltersAndRender);
 ecHurdle.addEventListener('change', () => renderEdgeCost(filteredTrades()));

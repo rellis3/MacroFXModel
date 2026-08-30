@@ -26,6 +26,7 @@ import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.j
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
+import { applyFadeStopFraction } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
@@ -295,19 +296,29 @@ export function mountAsiaFibAtlasRoutes(app, express) {
     }
   });
 
-  // GET /api/asia-fib-atlas/vote-trades/EURUSD[?minMargin=2] — the barrier-
-  // priced OOS trade list for the trade-review page (asia-fib-atlas-vote-
-  // backtest.html). Same contract as `/api/level-atlas/vote-trades/:instrument`
-  // (minMargin filters server-side; summary comes pre-computed per margin).
+  // GET /api/asia-fib-atlas/vote-trades/EURUSD[?minMargin=2&stopTightenFrac=0.9]
+  // — the barrier-priced OOS trade list for the trade-review page
+  // (asia-fib-atlas-vote-backtest.html). Same contract as
+  // `/api/level-atlas/vote-trades/:instrument` (minMargin filters server-
+  // side; summary comes pre-computed per margin). `stopTightenFrac`
+  // (2026-08-29, validated — see LEGO_MODULES.md's fib_atlas_sl_tightening_
+  // backtest.mjs entries) tightens FADE trades' stop to that fraction of
+  // their native distance via the shared `applyFadeStopFraction`; omitted
+  // (or 1) leaves the response identical to before this was added. The
+  // pre-computed `summary` field is deliberately NOT re-derived when
+  // tightened (it's the untightened baseline's own stored summary) — the
+  // page's own client-side stats already recompute from `trades`.
   app.get('/api/asia-fib-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
       const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`);
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
-      const trades = stored.trades.filter(t => t.margin >= minMargin);
+      const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
+      const filtered = stored.trades.filter(t => t.margin >= minMargin);
+      const trades = applyFadeStopFraction(filtered, stopTightenFrac);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -316,13 +327,14 @@ export function mountAsiaFibAtlasRoutes(app, express) {
   // GET /api/asia-fib-atlas/vote-portfolio?pairs=eurusd,gbpusd,gold,...
   //   &minMargin=2&maxConcurrent=1&perDirection=false&weighting=equal|inverse-vol
   //   &sizing=nav|fixed-risk&riskPct=1&maxHeatPct=&targetVol=10
-  //   &throttle=true&triggerDD=-5&restoreDD=0&throttleMult=0.5
+  //   &throttle=true&triggerDD=-5&restoreDD=0&throttleMult=0.5&stopTightenFrac=0.9
   // Combines MULTIPLE pairs' own Asia vote-trades into ONE portfolio — same
   // query contract and response shape as `/api/level-atlas/vote-portfolio`,
   // via the shared `buildFibAtlasVotePortfolio` (see that module's header for
   // why this is a fresh extraction of that route's logic, not an import of
-  // the route itself). No fade-stop-tightening here — that's a separately
-  // OOS-validated Level Atlas feature with no equivalent study for this engine.
+  // the route itself). `stopTightenFrac` (2026-08-29) is now validated for
+  // this engine too — see LEGO_MODULES.md's fib_atlas_sl_tightening_
+  // backtest.mjs entries — and threaded straight through.
   app.get('/api/asia-fib-atlas/vote-portfolio', async (req, res) => {
     try {
       const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : ['eurusd', 'gbpusd', 'usdjpy', 'gold'])
@@ -341,6 +353,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         triggerDD: req.query.triggerDD ? Number(req.query.triggerDD) : -5,
         restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
+        stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
@@ -385,6 +398,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         triggerDD: req.query.triggerDD ? Number(req.query.triggerDD) : -5,
         restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
+        stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         loadPairVoteTrades: async constituentKey => {
           const [pair, ladder] = constituentKey.split('|');
           const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);

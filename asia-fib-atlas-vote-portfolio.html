@@ -83,6 +83,7 @@
     <label>Trigger DD % <input type="number" id="triggerDDInput" value="-8" step="1" max="-1" style="width:55px" disabled></label>
     <label>Restore DD % <input type="number" id="restoreDDInput" value="-2" step="1" max="0" style="width:55px" disabled></label>
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
+    <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs)">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -255,6 +256,7 @@ const throttleChk = document.getElementById('throttleChk');
 const triggerDDInput = document.getElementById('triggerDDInput');
 const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
+const stopTightenChk = document.getElementById('stopTightenChk');
 const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
 
@@ -310,6 +312,7 @@ async function loadData() {
     params.set('restoreDD', restoreDDInput.value);
     params.set('throttleMult', throttleMultInput.value);
   }
+  if (stopTightenChk.checked) params.set('stopTightenFrac', '0.9');
   // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
   // a Monday constituent, so the same pair can have both open at once —
   // js/asiaFibAtlasRoutes.js's /vote-portfolio-combined) instead of the
@@ -632,6 +635,7 @@ throttleChk.addEventListener('change', loadData);
 triggerDDInput.addEventListener('change', loadData);
 restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
+stopTightenChk.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
 loadData();

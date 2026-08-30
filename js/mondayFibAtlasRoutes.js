@@ -12,6 +12,7 @@ import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder } from './mondayFibAtlasEn
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
+import { applyFadeStopFraction } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { putJSON, getJSON } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
@@ -245,16 +246,22 @@ export function mountMondayFibAtlasRoutes(app, express) {
     }
   });
 
-  // GET /api/monday-fib-atlas/vote-trades/EURUSD[?minMargin=2]
+  // GET /api/monday-fib-atlas/vote-trades/EURUSD[?minMargin=2&stopTightenFrac=0.9]
+  // `stopTightenFrac` (2026-08-29, validated for Monday too — see
+  // LEGO_MODULES.md's fib_atlas_sl_tightening_backtest.mjs LADDER=monday
+  // entry) mirrors Asia's own route exactly, via the shared
+  // `applyFadeStopFraction`.
   app.get('/api/monday-fib-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
       const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`);
       if (!stored) return res.status(404).json({ ok: false, error: `no Monday vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
-      const trades = stored.trades.filter(t => t.margin >= minMargin);
+      const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
+      const filtered = stored.trades.filter(t => t.margin >= minMargin);
+      const trades = applyFadeStopFraction(filtered, stopTightenFrac);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -281,6 +288,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
         triggerDD: req.query.triggerDD ? Number(req.query.triggerDD) : -5,
         restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
+        stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
