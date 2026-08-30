@@ -12,7 +12,7 @@ import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder } from './mondayFibAtlasEn
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
-import { applyFadeStopFraction, applyCostEfficiencyFilter } from './levelAtlasVoteReview.js';
+import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { putJSON, getJSON } from './r2Store.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
@@ -76,10 +76,15 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
   const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
 
+  // Trailing/continuation exit (2026-08-30, validated for Monday too — see
+  // LEGO_MODULES.md's fib_atlas_trailing_continuation_backtest.mjs entry),
+  // same as Asia's own runOne, off the SAME gap-filled `packed` M1 bars
+  // already loaded above.
+  const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost });
   const voteResult = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
     cost, splitDate: book.splitDate,
-    trades: wf1?.trades ?? [],
+    trades: trailedTrades,
     summaryByMargin,
   };
   await putJSON(`${PREFIX}/${pair}-votetrades.json`, voteResult);
@@ -262,11 +267,13 @@ export function mountMondayFibAtlasRoutes(app, express) {
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
       const minCostRatio = req.query.minCostRatio ? Number(req.query.minCostRatio) : null;
-      const marginFiltered = stored.trades.filter(t => t.margin >= minMargin);
+      const continuationExit = req.query.continuationExit === 'true';
+      const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
+      const marginFiltered = swapped.filter(t => t.margin >= minMargin);
       const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -295,6 +302,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
+        continuationExit: req.query.continuationExit === 'true',
         loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });

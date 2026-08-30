@@ -87,6 +87,7 @@
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
     <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs)">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
     <label title="Skip trades whose gross target doesn't clear the pair's own round-trip cost by the chosen multiple — fixes the flat-cost-subtraction bias that shrinks small-target winners disproportionately. OOS-validated (analysis/fib_atlas_cost_efficiency_filter.mjs): Asia ratio>=3x took OOS Sharpe 6.66->13.64, maxDD -39.24%->-14.96%; Monday ratio>=4x took OOS maxDD -7.1%->-5.44% (Sharpe roughly flat, 10.54->10.51). Threshold auto-switches with the ladder toggle above.">Cost-efficiency filter <input type="checkbox" id="costEfficiencyChk"></label>
+    <label title="Instead of closing a winning follow trade at its fixed target the instant price touches the next rung, trail a stop that only ratchets favorably (floored at the original target, so the worst case is identical to today's exit) — lets a genuine continuation run further. Fade trades and follow LOSSES are completely untouched. OOS-validated (analysis/fib_atlas_trailing_continuation_backtest.mjs): Sharpe 16.15->16.73, avg win +12% relative, avg loss and maxDD byte-identical (no leverage-in-disguise).">Trailing/continuation exit <input type="checkbox" id="continuationExitChk"></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -294,6 +295,7 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   riskPctInput.value = '0.5';
   stopTightenChk.checked = true;
   costEfficiencyChk.checked = true;
+  continuationExitChk.checked = true;
   const cfg = BEST_CONFIG[ladder]; // no ?? fallback -- monday's explicit `null` must NOT silently reuse asia's config
   if (cfg) {
     heatCapChk.checked = true;
@@ -331,6 +333,7 @@ const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
 const stopTightenChk = document.getElementById('stopTightenChk');
 const costEfficiencyChk = document.getElementById('costEfficiencyChk');
+const continuationExitChk = document.getElementById('continuationExitChk');
 const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
 
@@ -388,6 +391,7 @@ async function loadData() {
   }
   if (stopTightenChk.checked) params.set('stopTightenFrac', '0.9');
   if (costEfficiencyChk.checked) params.set('minCostRatio', String(costRatioFor(ladder)));
+  if (continuationExitChk.checked) params.set('continuationExit', 'true');
   // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
   // a Monday constituent, so the same pair can have both open at once —
   // js/asiaFibAtlasRoutes.js's /vote-portfolio-combined) instead of the
@@ -714,6 +718,7 @@ restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
 stopTightenChk.addEventListener('change', loadData);
 costEfficiencyChk.addEventListener('change', loadData);
+continuationExitChk.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
 loadData();

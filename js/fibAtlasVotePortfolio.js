@@ -32,7 +32,7 @@
 import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
-  applyCostEfficiencyFilter,
+  applyCostEfficiencyFilter, applyStoredContinuationExit,
 } from './levelAtlasVoteReview.js';
 import { maxDrawdownFromPnls, neweyWestSharpe } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
@@ -74,13 +74,25 @@ export function withNonCompoundedDD(statsObj, dailyReturns) {
  * BEFORE the concurrency cap (a filtered-out trade should never occupy a
  * concurrency slot either — matches the order the validating backtest
  * used). `null`/`<=1` is a no-op passthrough.
+ *
+ * `continuationExit` (2026-08-30): validated by analysis/
+ * fib_atlas_trailing_continuation_backtest.mjs (see LEGO_MODULES.md) — when
+ * true, swaps in the PRE-COMPUTED `trailedPnlPct`/`trailedResolveTime`
+ * fields (baked into the stored trade JSON at generation time, since this
+ * lever needs real M1 access — see `applyTrailingContinuation`'s own doc)
+ * for `decision==='follow' && win===true` rows. Applied via
+ * `applyStoredContinuationExit`, BEFORE the concurrency cap — the trailed
+ * (possibly longer) `resolveTime` must be in place before that function
+ * decides which trades survive the per-pair cap, or a trade the corrected
+ * occupancy window would block could slip through on its original, shorter
+ * window. `false` (default) is a no-op passthrough.
  */
 export async function buildFibAtlasVotePortfolio({
   pairs, minMargin = 2, maxConcurrent = 1, perDirection = false,
   weighting = 'equal', sizing = 'fixed-risk', riskPct = 1,
   maxHeatPct = null, targetVol = 10,
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
-  stopTightenFrac = null, minCostRatio = null,
+  stopTightenFrac = null, minCostRatio = null, continuationExit = false,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -96,7 +108,12 @@ export async function buildFibAtlasVotePortfolio({
   for (const pair of pairs) {
     const stored = await loadPairVoteTrades(pair);
     if (!stored) { missing.push(pair.toUpperCase()); continue; }
-    const marginFiltered = stored.trades.filter(t => t.margin >= minMargin);
+    // Continuation-exit swap MUST happen before applyConcurrencyCap -- that
+    // function decides survivors off `resolveTime`, and the trailed
+    // (possibly longer) occupancy window has to be in place before that
+    // decision, not applied after. See applyStoredContinuationExit's own doc.
+    const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
+    const marginFiltered = swapped.filter(t => t.margin >= minMargin);
     const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
     const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac);

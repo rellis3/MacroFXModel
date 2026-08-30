@@ -24,6 +24,7 @@ import { matchLiveContext } from './levelAtlasReport.js';
 import { summarizeTrades } from './metricsCore.js';
 import { simulateExitVariants, bucketM1IntoSessions } from './forecastAnalyser.js';
 import { portfolioStats } from './backtestStats.js';
+import { bisect } from './barUtils.js';
 
 /**
  * The vote-margin decision for one touch: how many of ITS OWN held
@@ -350,6 +351,102 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
     const targetPnlPct = t.targetPips * t.pip / t.entry * 100;
     return targetPnlPct / cost >= minCostRatio;
   });
+}
+
+/**
+ * Trailing/continuation exit for `decision==='follow' && win===true` rows
+ * (2026-08-30 — the owner's own suggestion: "if we are trading a level
+ * which will continue the same direction we move to, sl etc and don't
+ * close and open a trade?"). OOS-validated on the Fib Atlas engines
+ * (analysis/fib_atlas_trailing_continuation_backtest.mjs; see
+ * LEGO_MODULES.md): OOS Sharpe 16.15->16.73, avg win +12% relative, avg
+ * loss and maxDD BYTE-IDENTICAL (no leverage-in-disguise — fade rows and
+ * follow LOSSES are never touched).
+ *
+ * Unlike every other lever in this file, this one needs the real M1 path
+ * PAST the trade's own resolution — the stored `mfePips`/`maePips` only
+ * cover the excursion up through the first barrier hit. So this is a
+ * GENERATION-TIME brick (called once, inside each engine's own `runOne`
+ * where `packed` M1 bars are already loaded for the walk — no second M1
+ * fetch), not a request-time one: it ADDS `trailedPnlPct`/`trailedPnlPips`/
+ * `trailedResolveTime` fields to eligible rows (everything else passes
+ * through unchanged) so the read-time routes can cheaply pick base vs.
+ * trailed per request via a toggle, with zero M1 access at request time.
+ *
+ * From the trade's own `resolveTime` bar, walks `packed` forward tracking
+ * a trailing stop that only ever ratchets in the FAVORABLE direction
+ * (`side==='above'` favors new highs, `'below'` favors new lows),
+ * initialized AT the trade's own original fixed-target price — so the
+ * worst case (an instant reversal) is IDENTICAL to the untrailed exit, and
+ * `pnlPips` is explicitly floored at the original `targetPips` as a second
+ * belt-and-braces guarantee. `givebackFrac` (validated at 0.02 — see the
+ * analysis script's own header for why the grid was extended before
+ * trusting this value, not just taking the first grid's edge pick) is how
+ * much of the peak excursion beyond that original target gets given back
+ * before the trail fires. Bounded to the trade's own calendar `date`
+ * (forced mark-to-close at day-end if never stopped out) — every trade
+ * stays same-day, matching `dailySeriesFor`'s one-observation-per-day
+ * convention elsewhere in this file.
+ *
+ * A trade whose exact resolution bar can't be located in `packed` (stale/
+ * gapped M1, or the trade predates this pair's stored M1 window) is left
+ * with no trailed fields — a silent no-op for that ONE row at read time
+ * (falls back to the base exit), not a thrown error for the whole batch.
+ *
+ * `cost` is the SAME flat per-pair round-trip cost `priceBarrierTrade`
+ * already subtracts from every trade's base `pnlPct` — passed straight
+ * through here (not re-derived from the base `pnlPct`) so the trailed
+ * figure is charged cost exactly once, the same as the base figure.
+ *
+ *   applyTrailingContinuation(trades, packed, { givebackFrac, cost }) ->
+ *     trades (same shape, follow-win rows gain trailedPnlPct/trailedPnlPips/trailedResolveTime)
+ */
+export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0 } = {}) {
+  if (!trades?.length || !packed?.times?.length) return trades ?? [];
+  const { times, highs, lows, closes } = packed;
+  return trades.map(t => {
+    if (t.decision !== 'follow' || !t.win) return t;
+    const isAbove = t.side === 'above';
+    const sgn = isAbove ? 1 : -1;
+    const outer = t.entry + sgn * t.targetPips * t.pip;
+    const idx = bisect(times, t.resolveTime);
+    if (idx >= times.length || times[idx] !== t.resolveTime) return t; // can't locate the exact bar -- leave untrailed
+    const boundary = Date.parse(t.date + 'T00:00:00Z') / 1000 + 86400;
+    let runExtreme = outer, exitTime = t.resolveTime, exitPrice = outer;
+    for (let j = idx; j < times.length && times[j] < boundary; j++) {
+      const fwd = isAbove ? highs[j] : lows[j];
+      const bwd = isAbove ? lows[j] : highs[j];
+      if (isAbove ? fwd > runExtreme : fwd < runExtreme) runExtreme = fwd;
+      const trailStop = runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
+      if (isAbove ? bwd <= trailStop : bwd >= trailStop) { exitTime = times[j]; exitPrice = trailStop; break; }
+      exitTime = times[j]; exitPrice = closes[j]; // forced mark-to-close at day-end if never stopped out
+    }
+    const pnlPips = Math.max((exitPrice - t.entry) / t.pip * sgn, t.targetPips); // floor: never worse than the original fixed exit
+    const trailedPnlPct = +(pnlPips * t.pip / t.entry * 100 - cost).toFixed(4);
+    return { ...t, trailedPnlPips: +pnlPips.toFixed(1), trailedPnlPct, trailedResolveTime: exitTime };
+  });
+}
+
+/**
+ * READ-TIME counterpart to `applyTrailingContinuation` above — swaps the
+ * pre-computed `trailedPnlPct`/`trailedPnlPips`/`trailedResolveTime`
+ * fields (stored on the row by the generation-time brick) into the row's
+ * live `pnlPct`/`pnlPips`/`resolveTime` when `on` is true. No M1 access,
+ * no computation — just a field swap, cheap enough for a request-time
+ * toggle. Call this BEFORE `applyConcurrencyCap`: that function reads
+ * `resolveTime` to decide which trades survive the per-pair cap, and the
+ * (possibly longer) trailed occupancy window must be in place before that
+ * decision, not applied after — the same correctness point
+ * `analysis/fib_atlas_trailing_continuation_backtest.mjs` documents. A row
+ * with no trailed fields (couldn't be trailed at generation time) passes
+ * through unchanged either way.
+ *
+ *   applyStoredContinuationExit(trades, on) -> trades (same shape)
+ */
+export function applyStoredContinuationExit(trades, on) {
+  if (!trades?.length || !on) return trades ?? [];
+  return trades.map(t => t.trailedPnlPct == null ? t
+    : { ...t, pnlPct: t.trailedPnlPct, pnlPips: t.trailedPnlPips, resolveTime: t.trailedResolveTime });
 }
 
 /**
