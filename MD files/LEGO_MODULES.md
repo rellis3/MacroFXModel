@@ -3942,6 +3942,94 @@ with a per-pair-subprocess remediation plus a from-scratch coverage
 re-check — a real incident during this rollout, recorded here rather than
 smoothed over.
 
+**Extended to fade wins too (2026-08-30, same day) — the owner's own
+follow-up question: "why have we not tested both sides of the line for
+the continuation or fade?"** A fair miss — the lever above only ever
+covered `decision==='follow'`, with no principled reason fade couldn't
+get the same "let a genuine winner keep running" treatment.
+
+`applyTrailingContinuation` generalized (still one function, still
+backward-compatible — `decisions` defaults to `['follow']` so every
+existing caller is unaffected) to accept a `decisions` list. The sign math
+needed real care, not a copy-paste: fade and follow on the SAME `side` are
+MIRROR IMAGES, not the same direction — a 'follow' win on `side==='above'`
+runs favorably toward new HIGHS (away from the range), while a 'fade' win
+on that SAME side runs favorably toward new LOWS (back toward the range).
+`awaySgn` (the natural "away from range" direction implied by `side`)
+now flips for fade, doesn't for follow. **Verified on synthetic bars
+before trusting real data** (the same discipline used for the
+entry-priority-ordering lever's synthetic check) — traced the exact
+bar-by-bar arithmetic for all four `{decision, side}` combinations,
+confirming each captures genuine continuation in ITS OWN correct favorable
+direction, not a sign-flipped copy of another decision's.
+
+`analysis/fib_atlas_trailing_continuation_backtest.mjs` also refactored to
+IMPORT the shared brick instead of carrying its own private, now-stale
+copy of the trailing-walk math (a real Lego-principle violation this
+review caught and fixed, not left to drift) — and gained a `DECISION`
+env var (`follow` default | `fade` | `all`) plus `LADDER` support (see
+below). Same pipeline, same pre-stated rule (maximize IS Sharpe), same
+70/30 split:
+
+| DECISION | IS Sharpe (baseline→chosen) | OOS Sharpe | OOS maxDD | OOS avg win | OOS avg loss |
+|---|---|---|---|---|---|
+| follow only (re-run, unchanged from original) | 14.92→16.71 | 15.38→16.28 | -4.43%→-3.16% | 0.4152%→0.4677% | -0.5578% both |
+| fade only (new) | 14.92→17.14 | 15.38→16.33 | -4.43%→-2.65% | 0.4152%→0.5084% | -0.5578%→-0.558% |
+| both together (new, one shared giveback) | 14.92→17.12 | 15.38→16.05 | -4.43%→-2.64% | 0.4152%→0.5146% | -0.5578%→-0.558% |
+
+Fade's own IS fraction grid is a genuine, non-edge-of-search PLATEAU
+(17.09–17.14 across nearly the entire giveback range 0.02–0.5, only
+declining at the loosest values tested) — a different, arguably even more
+robust shape than follow's own sharper peak-then-decay curve, and not
+sensitive to the exact giveback chosen. Leverage-in-disguise check done
+the same way as follow's: avg loss essentially untouched throughout (this
+lever never touches `stopPips`, so it doesn't interact with
+`riskAdjustTrades`' per-trade sizing the way the SL-tightening levers do
+— see the correction entry above).
+
+**`LADDER` support added the same pass — closing a real gap this review
+found, not just adding fade.** The original follow-only script had NO
+`LADDER` env var (hardcoded to Asia's own R2 prefix), which meant an
+earlier wiring comment in `js/mondayFibAtlasRoutes.js` claiming the
+follow lever was **"validated for Monday too"** was never actually true —
+it had simply never been run there. Caught while reading that comment for
+this fade extension, fixed by adding real `LADDER=asia|monday` support
+(mirroring `fib_atlas_sl_tightening_backtest.mjs`'s own pattern — Monday
+gets no pair exclusion, per its own failed exclusion study, and no frozen
+heat-cap/throttle, since `BEST_BY_LADDER.monday` stays `null` rather than
+silently borrowing Asia's) and actually running `LADDER=monday
+DECISION=all`: OOS Sharpe 11.54→12.05, maxDD -3.3%→-2.79%, avg win
++10.3%, avg loss unchanged — genuinely positive, the same shape as Asia
+though more modest. The false comment is now corrected in place.
+
+**Wired into production, both decisions, both ladders**: `js/asiaFibAtlasRoutes.js`
+and `js/mondayFibAtlasRoutes.js`'s `runOne` now call
+`applyTrailingContinuation(..., { cost, decisions: ['fade', 'follow'] })`
+(giveback still 0.02, the brick's own default — chosen because it's
+simultaneously follow's own IS-optimal value AND squarely inside fade's
+flat plateau, so one shared value serves both well rather than being a
+compromise). The page's own toggle (`asia-fib-atlas-vote-portfolio.html`)
+relabeled "Trailing/continuation exit (both sides)" with the updated
+numbers in its tooltip — no new checkbox, no new query param, the
+EXISTING `continuationExit` toggle now just does more because the
+underlying stored data carries trailed fields for both decisions. All 52
+pair-ladder combinations regenerated again (same per-pair-subprocess
+approach the OOM incident above taught, applied from the start this time
+— see this entry's own commit for the coverage re-verification).
+
+🟢 a fair question, answered properly rather than defensively: real,
+positive OOS result on fade (arguably the more robust of the two shapes —
+a genuine plateau, not a sharp peak), a genuinely different-signed sign
+computation verified correct on synthetic data before trusting it on
+real prices, a private-code duplication caught and fixed while already in
+the file, AND a previously-unnoticed FALSE "validated for Monday"
+claim caught and corrected rather than left standing. 🟡 the single
+shared `givebackFrac=0.02` is a good value for both decisions on Asia
+specifically (verified); Monday was validated with `DECISION=all` only
+(not fade-alone or follow-alone in isolation there), which is what
+actually ships, so that's not a gap — flagging only that Monday's
+per-decision breakdown, unlike Asia's, wasn't separately examined.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

@@ -354,14 +354,21 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
 }
 
 /**
- * Trailing/continuation exit for `decision==='follow' && win===true` rows
+ * Trailing/continuation exit for WINNING rows — originally follow-only
  * (2026-08-30 — the owner's own suggestion: "if we are trading a level
  * which will continue the same direction we move to, sl etc and don't
- * close and open a trade?"). OOS-validated on the Fib Atlas engines
- * (analysis/fib_atlas_trailing_continuation_backtest.mjs; see
+ * close and open a trade?"), generalized the same day to fade wins too
+ * (the owner's own follow-up: "why have we not tested both sides of the
+ * line for the continuation or fade?" — a fair miss, fade had no reason
+ * to be excluded from "let a winner keep running" once follow's own
+ * version tested clean). OOS-validated on the Fib Atlas engines for
+ * follow (analysis/fib_atlas_trailing_continuation_backtest.mjs; see
  * LEGO_MODULES.md): OOS Sharpe 16.15->16.73, avg win +12% relative, avg
- * loss and maxDD BYTE-IDENTICAL (no leverage-in-disguise — fade rows and
- * follow LOSSES are never touched).
+ * loss and maxDD BYTE-IDENTICAL (no leverage-in-disguise — this lever
+ * never touches `stopPips`, unlike the SL-tightening levers, so it
+ * doesn't interact with `riskAdjustTrades`' per-trade sizing the way
+ * those do). Fade side not yet separately validated — see the fade-decision
+ * entry in LEGO_MODULES.md for whatever that run found.
  *
  * Unlike every other lever in this file, this one needs the real M1 path
  * PAST the trade's own resolution — the stored `mfePips`/`maePips` only
@@ -374,19 +381,25 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
  * trailed per request via a toggle, with zero M1 access at request time.
  *
  * From the trade's own `resolveTime` bar, walks `packed` forward tracking
- * a trailing stop that only ever ratchets in the FAVORABLE direction
- * (`side==='above'` favors new highs, `'below'` favors new lows),
- * initialized AT the trade's own original fixed-target price — so the
- * worst case (an instant reversal) is IDENTICAL to the untrailed exit, and
- * `pnlPips` is explicitly floored at the original `targetPips` as a second
- * belt-and-braces guarantee. `givebackFrac` (validated at 0.02 — see the
- * analysis script's own header for why the grid was extended before
- * trusting this value, not just taking the first grid's edge pick) is how
- * much of the peak excursion beyond that original target gets given back
- * before the trail fires. Bounded to the trade's own calendar `date`
- * (forced mark-to-close at day-end if never stopped out) — every trade
- * stays same-day, matching `dailySeriesFor`'s one-observation-per-day
- * convention elsewhere in this file.
+ * a trailing stop that only ever ratchets in the FAVORABLE direction for
+ * THIS trade's own decision — for a 'follow' win on `side==='above'`,
+ * favorable is new highs (price keeps running away from the range); for a
+ * 'fade' win on the SAME `side==='above'`, favorable is the OPPOSITE, new
+ * lows (price keeps reverting back toward the range) — fade and follow on
+ * the same side are mirror images, not the same direction, so the sign is
+ * decision-dependent, not side-dependent alone (`awaySgn` = the natural
+ * "away from range" direction from `side`; fade flips it, follow doesn't).
+ * The trail is initialized AT the trade's own original fixed-target price
+ * — so the worst case (an instant reversal) is IDENTICAL to the untrailed
+ * exit, and `pnlPips` is explicitly floored at the original `targetPips`
+ * as a second belt-and-braces guarantee. `givebackFrac` (validated at 0.02
+ * for follow — see the analysis script's own header for why the grid was
+ * extended before trusting this value, not just taking the first grid's
+ * edge pick) is how much of the peak excursion beyond that original
+ * target gets given back before the trail fires. Bounded to the trade's
+ * own calendar `date` (forced mark-to-close at day-end if never stopped
+ * out) — every trade stays same-day, matching `dailySeriesFor`'s
+ * one-observation-per-day convention elsewhere in this file.
  *
  * A trade whose exact resolution bar can't be located in `packed` (stale/
  * gapped M1, or the trade predates this pair's stored M1 window) is left
@@ -398,27 +411,27 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
  * through here (not re-derived from the base `pnlPct`) so the trailed
  * figure is charged cost exactly once, the same as the base figure.
  *
- *   applyTrailingContinuation(trades, packed, { givebackFrac, cost }) ->
- *     trades (same shape, follow-win rows gain trailedPnlPct/trailedPnlPips/trailedResolveTime)
+ *   applyTrailingContinuation(trades, packed, { givebackFrac, cost, decisions }) ->
+ *     trades (same shape, eligible winning rows gain trailedPnlPct/trailedPnlPips/trailedResolveTime)
  */
-export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0 } = {}) {
+export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0, decisions = ['follow'] } = {}) {
   if (!trades?.length || !packed?.times?.length) return trades ?? [];
   const { times, highs, lows, closes } = packed;
   return trades.map(t => {
-    if (t.decision !== 'follow' || !t.win) return t;
-    const isAbove = t.side === 'above';
-    const sgn = isAbove ? 1 : -1;
+    if (!decisions.includes(t.decision) || !t.win) return t;
+    const awaySgn = t.side === 'above' ? 1 : -1; // "away from range" direction implied by which side the rung is on
+    const sgn = t.decision === 'follow' ? awaySgn : -awaySgn; // fade's favorable direction mirrors follow's
     const outer = t.entry + sgn * t.targetPips * t.pip;
     const idx = bisect(times, t.resolveTime);
     if (idx >= times.length || times[idx] !== t.resolveTime) return t; // can't locate the exact bar -- leave untrailed
     const boundary = Date.parse(t.date + 'T00:00:00Z') / 1000 + 86400;
     let runExtreme = outer, exitTime = t.resolveTime, exitPrice = outer;
     for (let j = idx; j < times.length && times[j] < boundary; j++) {
-      const fwd = isAbove ? highs[j] : lows[j];
-      const bwd = isAbove ? lows[j] : highs[j];
-      if (isAbove ? fwd > runExtreme : fwd < runExtreme) runExtreme = fwd;
+      const fwd = sgn > 0 ? highs[j] : lows[j];
+      const bwd = sgn > 0 ? lows[j] : highs[j];
+      if (sgn > 0 ? fwd > runExtreme : fwd < runExtreme) runExtreme = fwd;
       const trailStop = runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
-      if (isAbove ? bwd <= trailStop : bwd >= trailStop) { exitTime = times[j]; exitPrice = trailStop; break; }
+      if (sgn > 0 ? bwd <= trailStop : bwd >= trailStop) { exitTime = times[j]; exitPrice = trailStop; break; }
       exitTime = times[j]; exitPrice = closes[j]; // forced mark-to-close at day-end if never stopped out
     }
     const pnlPips = Math.max((exitPrice - t.entry) / t.pip * sgn, t.targetPips); // floor: never worse than the original fixed exit
