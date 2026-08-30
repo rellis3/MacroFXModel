@@ -3448,6 +3448,62 @@ own study failed OOS); 🟡 absolute Sharpe/CAGR magnitudes not trustworthy,
 same caveat as Level Atlas's own most aggressive lever — trust the direction
 of each finding, not the specific number.
 
+**Owner spotted the numbers in production and correctly didn't trust them
+(2026-08-30, same day) — a real display bug fixed, plus a real diagnostic
+finding on the deeper "why is Sharpe still ~10-13" question.** Screenshots
+from the live "Both (combined)" mode showed CAGR (compounded) 12,719.8% and
+a cumulative-return chart hitting 21,579,187,477,344.9% — flagged
+immediately as implausible, not explained away.
+
+**Display bug, fixed**: `asia-fib-atlas-vote-portfolio.html`'s "if you
+reinvest (compounded)" card and chart were presented as co-equal with the
+"if you don't reinvest" (additive) card, with no warning that compounding
+is a hypothetical this engine's actual sizing (`riskAdjustTrades`, fixed %
+of ORIGINAL capital, never reinvested) does not run — at hundreds of
+trades/year, compounding a real edge daily for years is mathematically
+guaranteed to explode into meaningless numbers regardless of whether the
+strategy is good or bad, so displaying it as a headline invites exactly
+this reaction. The page's own chart caption also wrongly called compounding
+"what a real account does" — backwards for this sizing model. Fixed: a
+blunt warning callout on the compounded section pointing to the
+non-compounded numbers as the ones that actually match the engine's sizing;
+corrected chart caption; log-scale defaulted ON for the chart (a linear plot
+of exponential compounding is unreadable regardless of whether the edge
+underneath is real). Live-verified via Playwright + screenshot.
+
+**Deeper finding, NOT yet fixed — the non-compounded numbers are ALSO still
+implausible.** Even after the display fix and even with "Load best config"
+applied (Asia, all validated mitigations on), the honest additive numbers
+are Sharpe 10.72, Annualised Return 340.9%, maxDD -6.1% — still far outside
+anything achievable live. Root-caused, not hand-waved: pulled real EURUSD
+Asia data (1,794 margin≥2 trades) and found **60% of trades fire within 2
+hours of the previous one on the SAME pair** — the Fib ladder's multiple
+rungs (25/50/75/90%) mean one underlying price move often trips several
+"trades" in a row, which are not independent bets even though each is
+counted as one for annualization purposes. Ran the standard diagnostic
+(does Sharpe hold up at coarser aggregation windows, or collapse toward
+something believable): **daily Sharpe 8.63 → weekly 5.63 → monthly 4.94**
+on the SAME EURUSD Asia series — a real, meaningful decline, confirming
+genuine inflation from treating correlated/clustered trades as independent.
+But this only PARTIALLY explains the gap: even the most conservative
+(monthly) view is still ~5, well past the "Sharpe above ~2-2.5 draws real
+scrutiny" bar this project's own convention sets. Something beyond
+daily/weekly clustering is still unaccounted for — next candidates to check
+(not yet done): cost/slippage realism given how tightly trades cluster in
+time (rapid-fire signals on nearby rungs may see materially worse real
+fills than the backtest's per-pair-average cost assumes), and whether the
+~400 trades/year figure itself double-counts genuinely-overlapping barrier
+resolutions rather than independent entries.
+
+🔴 the core "is the headline Sharpe real" question is NOT resolved — this is
+an open, actively-investigated finding, not a closed one. Do not trust any
+Sharpe/CAGR number from this engine (or, by the same unverified-until-
+checked logic, Level Atlas's) as a real expectancy estimate until this is
+run to ground. The owner explicitly chose to scope this session's fix to
+(a) the display bug and (b) starting the root-cause dig, deferring a
+decision on whether to change the shared `js/backtestStats.js` Sharpe
+formula everyone's numbers depend on until the cause is actually found.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

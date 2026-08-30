@@ -151,8 +151,10 @@
   <h2 style="margin-top:4px">Distribution &amp; risk-adjusted (same either way)</h2>
   <div class="kpi-grid" id="kpiShared"></div>
   <h2 style="margin-top:14px">If you reinvest (compounded — risk grows with equity)</h2>
+  <div class="muted" style="margin-bottom:8px;color:#f87171">⚠ Hypothetical, not a projection. This engine actually sizes every trade at a FIXED % of your ORIGINAL capital (never reinvested) — see <code>js/levelAtlasVoteReview.js</code>'s <code>riskAdjustTrades</code>. Compounding is a different, unused sizing model shown for reference only; at this trade frequency it mechanically explodes into numbers with no real-world meaning (no account, execution venue, or market can actually absorb ever-growing size at this rate) — a huge CAGR here is a property of exponential math, not evidence the strategy is unusually good. <strong>The "if you don't reinvest" numbers below are what this engine's own sizing model actually produces — trust those.</strong></div>
   <div class="kpi-grid" id="kpiCompounded"></div>
   <h2 style="margin-top:14px">If you don't reinvest (fixed risk — same % of ORIGINAL capital every trade)</h2>
+  <div class="muted" style="margin-bottom:8px">This matches how the engine actually sizes trades (<code>riskAdjustTrades</code>) — the honest, decision-relevant numbers.</div>
   <div class="kpi-grid" id="kpiNonCompounded"></div>
 </div>
 
@@ -163,8 +165,8 @@
 </div>
 
 <div class="card">
-  <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk"></label></h2>
-  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base (what a real account does). Non-compounded just sums the daily % returns (what a fixed-size bet run every day would show) — the gap between the two lines IS the compounding effect. Toggle log scale to see the real underlying rate (a constant rate draws as a straight line).</div>
+  <h2>Cumulative portfolio return % <label style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px">Log scale (compounded) <input type="checkbox" id="logScaleChk" checked></label></h2>
+  <div class="muted" style="margin-bottom:10px">Compounded reinvests each day's % return into the next day's base — a hypothetical this engine does NOT actually run (see the warning above; real sizing is fixed-%-of-original-capital, matching the non-compounded line). Non-compounded sums the daily % returns — what this engine's own fixed-fractional sizing actually produces, and the one to trust. Log scale defaults ON because a linear plot of exponential compounding is unreadable (a hockey stick) regardless of whether the underlying edge is real — toggle off to see the raw curve.</div>
   <canvas id="eqChart"></canvas>
 </div>
 
