@@ -3091,6 +3091,39 @@ extension, not yet run.
 🟢 all 26 Asia pairs run to completion, real M1 data; 🟡 Monday ladder still
 not run; pooled-Sharpe caveat noted so it isn't mis-quoted downstream.
 
+**Monday ladder extended (2026-08-29) — same result, second independent
+confirmation.** Added `LADDER=asia|monday` to
+`fib_atlas_holdout_validation.mjs` (drop-in: `mondayFibAtlasWalk` has the
+identical `(packed,{instrument,rearmFracs})→{touches}` contract and touch
+shape as `asiaFibAtlasWalk` — `mondayFibAtlasRoutes.js` already reuses
+`buildAsiaFibAtlasBook` unchanged, confirming the shapes match). Ran all 26
+pairs on Monday: **26/26 again show positive held-out Sharpe with <50%
+degradation.** Mean degradation 9.1% (vs Asia's 4.1% — higher but still far
+from the >100%/sign-flip signature of real overfitting seen elsewhere in
+this system). Trade counts are smaller (weekly range vs daily — e.g. NZDUSD
+n=41, GBPAUD n=38, both still P(profitable)>0.99) and noisier at the
+extremes (GBPJPY 46.8% degradation, the weakest link but still under the
+50% bar; GBPCAD -44.4%, the held-out slice doing much BETTER than seen,
+likely small-n noise in the other direction). Same pooled-Sharpe caveat
+applies (24.5 pooled figure inherits the same per-trade-independence
+inflation — not a real number).
+
+**Combined verdict across both ladders, all 52 pair×ladder combinations
+tested**: every single one shows the rule generalizing to genuinely
+untouched data. Two independent ladders (different range definition, Asia
+daily vs Monday weekly, built from the same shared book/vote machinery but
+walked on structurally different windows) both clear the bar with the same
+qualitative shape (modest single-digit-to-teens % degradation, mixed sign
+across pairs, no collapse). This is now real, repeated, cross-ladder
+confirmation — not a one-off result on one pair or one ladder.
+
+🟢 both ladders, all 26 pairs, run to completion against real M1 data. This
+line of investigation (the held-out validation) is complete for the
+Asia+Monday vote rule as it currently stands; what remains unresolved is
+unrelated to this check (the original dimension search's provenance, the
+entry-order/fill-assumption question, and OOS-validating any pair-selection
+narrowing) — see this section's earlier entries.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
