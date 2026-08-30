@@ -144,9 +144,19 @@ svg{display:block;width:100%;height:auto;overflow:visible}
   border:1px solid rgba(232,150,60,.28);color:var(--warn);font-size:12.5px;line-height:1.55}
 .ai-warn{margin-top:14px;padding:10px 13px;border-radius:5px;background:rgba(232,150,60,.08);
   border:1px solid rgba(232,150,60,.28);color:var(--warn);font-size:12.5px;line-height:1.6}
+.ai-warn-list{margin:0;padding-left:18px}
+.ai-warn-list li{margin:3px 0}
+.ai-warn-list li:first-child{margin-top:0}
 .ai-inval{margin-top:9px;padding-left:12px;border-left:2px solid var(--line2);color:var(--tx3);font-size:12.5px;line-height:1.55}
 .ai-inval b{color:var(--tx2)}
 .ai-meta{margin-top:16px;color:var(--tx3);font-size:11px;line-height:1.6}
+/* One card per THEME (a cluster of crowded markets sharing a macro logic), not per
+   market — the per-market numbers already live in the ledger/spotlight panels below,
+   so this stays a handful of cards even when a dozen markets are stretched at once. */
+.ai-theme{background:var(--bg3);border:1px solid var(--line2);border-radius:7px;padding:12px 14px;margin-bottom:9px}
+.ai-theme-hd{font-size:13px;font-weight:650;color:var(--tx);margin-bottom:6px}
+.ai-theme-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px}
+.ai-theme-chips .pill{margin-left:0;font-family:var(--mono)}
 
 /* ── Spotlight: the extremes hoisted out of the ledger ──────────────────── */
 .legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--tx3);
@@ -329,7 +339,7 @@ const HELP = {
   spot:['Spotlight','Every market currently at a 90th/10th-percentile extreme of its own trailing history, most stretched first, so you do not have to scan the full ledger to find them.','A dot marks a market where commercials are independently at their own opposite extreme too \u2014 the Confluence test. Click any card to load that market\u2019s 200-week series at the bottom of the page.'],
   ledger:['Positioning ledger','Every ranked market as a bar running from the 50th percentile out to where it sits in its OWN trailing range, grouped by asset class with each group\u2019s median in the header.','The shaded bands at each end are the 90th/10th thresholds this page treats as extreme. Grouping is the point: a crowded market inside a group that is all leaning the same way is a shared macro theme rather than an independent bet, and a flat board-wide ranking cannot show you that — it is what tells you whether one crowded market is idiosyncratic or part of a board-wide risk-on / risk-off stretch. Replaces the old crowding leaderboard and the separate by-asset-class median table, carrying the contents of both.'],
   oixchk:['COT vs options positioning','Two separate datasets shown side by side for any pair with saved options data: COT\'s weekly futures positioning per currency leg, and the nearest put/call open-interest wall from a manually-pasted CME options chain.','Deliberately not combined into one verdict — futures positioning and dealer options flow are different markets that can agree or disagree. Options data is only as fresh as the last paste on the OI Analytics page, so check the age column.'],
-  aianalysis:['AI Analysis','An LLM opinion on the same data — headline, per-market notes and trade ideas — generated on demand, not recalculated on every visit.','This is a genuine second opinion, not a restatement like "This week’s read" below. It can be wrong. Treat it the same as any other opinion on the desk: read the reasoning, not just the verdict.'],
+  aianalysis:['AI Analysis','An LLM opinion on the same data — headline, crowded markets grouped into a handful of themes, and trade ideas — generated on demand, not recalculated on every visit.','This is a genuine second opinion, not a restatement like "This week’s read" below. It can be wrong. Treat it the same as any other opinion on the desk: read the reasoning, not just the verdict.'],
 };
 const h = k => HELP[k] ? '<i class="h" data-k="'+k+'">?</i>' : '';
 
@@ -410,8 +420,9 @@ aianalysis: {
      + 'summary.',
   how: [
     'Click <b>Generate</b>. It reads the current extremes, confluence, flow, reinforcing crosses, event risk and '
-    + 'macro backdrop already on this page, and returns a headline, a market-by-market note, and — where the data '
-    + 'clears the bar — trade ideas with a rationale and an invalidation.',
+    + 'macro backdrop already on this page, groups the crowded markets into a handful of THEMES (a shared macro '
+    + 'logic connecting several markets, not one entry per market), and — where the data clears the bar — up to 3 '
+    + 'trade ideas with a rationale and an invalidation.',
     'Cached per COT report date, so it does not re-run on every page load. A <b>Refresh</b> banner appears once a '
     + 'newer report has landed than the one the cached read was generated from.',
   ],
@@ -1487,24 +1498,28 @@ function cotAiPanel(){
 
   let body;
   if (busy) {
-    body = '<div class="empty">Reading this week\'s positioning across the board — headline, per-market notes '
+    body = '<div class="empty">Reading this week\'s positioning across the board — headline, themed read '
       + 'and trade ideas take about 15–20s.</div>';
   } else if (!has) {
     body = (err && !/no ai analysis yet/i.test(err) ? '<div class="ai-warn">'+esc(err)+'</div>' : '')
       + '<div class="empty">No AI read generated for this week\'s report yet. Click <b>Generate</b> for a full '
-      + 'board-wide take — expected moves, market notes and trade ideas — grounded in the same data as the rest '
-      + 'of this page.</div>';
+      + 'board-wide take — expected moves grouped by theme, and trade ideas — grounded in the same data as the '
+      + 'rest of this page.</div>';
   } else {
     const genDate = COT_AI.generatedAt ? new Date(COT_AI.generatedAt).toLocaleString() : null;
     const staleNote = COT_AI.stale
       ? '<div class="ai-stale">A newer COT report has landed since this read was generated — click <b>Refresh</b> for an up-to-date take.</div>'
       : '';
-    const notes = (a.marketNotes||[]).filter(n => n && n.market).map(n => {
-      const long = /LONG/i.test(n.direction||'');
-      return '<div class="pa-card '+(long?'long':'short')+'" style="margin-bottom:8px">'
-        + '<div class="pa-head"><span class="pa-pair">'+esc(n.market)+'</span>'
-        + '<span class="pa-badge" style="color:'+(long?'var(--long)':'var(--short)')+'">'+esc(n.direction||'')+'</span></div>'
-        + (n.note ? '<div class="xc-read" style="margin-top:8px;padding-top:0;border-top:0">'+esc(n.note)+'</div>' : '')
+    // Grouped by theme (e.g. "long duration across the curve", "the ag long complex"),
+    // not one card per crowded market — that per-instrument detail is already the
+    // ledger/spotlight panels below; this is meant to be the synthesis those panels
+    // don't do, so it stays short even when a dozen markets are stretched at once.
+    const themes = (a.themes||[]).filter(t => t && t.read).map(t => {
+      const chips = (t.markets||[]).filter(Boolean).map(m => '<span class="pill" style="color:var(--tx2)">'+esc(m)+'</span>').join('');
+      return '<div class="ai-theme">'
+        + (t.theme ? '<div class="ai-theme-hd">'+esc(t.theme)+'</div>' : '')
+        + (chips ? '<div class="ai-theme-chips">'+chips+'</div>' : '')
+        + '<div class="xc-read" style="margin-top:0;padding-top:0;border-top:0">'+esc(t.read)+'</div>'
         + '</div>';
     }).join('');
     const trades = (a.tradeIdeas||[]).filter(t => t && t.market).map(t => {
@@ -1523,10 +1538,10 @@ function cotAiPanel(){
       + (a.headline ? '<div class="rd-say" style="margin-top:0"><b>'+esc(a.headline)+'</b></div>' : '')
       + (a.weeklyTheme ? '<div class="rd-say">'+esc(a.weeklyTheme)+'</div>' : '')
       + staleNote
-      + (notes ? '<div class="ai-sub">Market-by-market</div>'+notes : '')
+      + (themes ? '<div class="ai-sub">By theme</div>'+themes : '')
       + (trades ? '<div class="ai-sub">Trade ideas</div>'+trades
           : '<div class="note">No trade idea cleared the bar this week, per the AI read.</div>')
-      + (a.riskWarnings && a.riskWarnings.length ? '<div class="ai-warn">'+a.riskWarnings.filter(Boolean).map(esc).join(' &middot; ')+'</div>' : '')
+      + (a.riskWarnings && a.riskWarnings.length ? '<div class="ai-warn"><ul class="ai-warn-list">'+a.riskWarnings.filter(Boolean).map(w => '<li>'+esc(w)+'</li>').join('')+'</ul></div>' : '')
       + (a.tldr ? '<div class="rd-say" style="margin-top:14px"><b>Bottom line:</b> '+esc(a.tldr)+'</div>' : '')
       + '<div class="ai-meta">'+(genDate?'Generated '+genDate+' · ':'')+'report '+(esc(COT_AI.reportDate)||'—')
       +   ' · AI opinion grounded in this page\'s own data — not a backtested signal, and a separate read from the '
