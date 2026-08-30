@@ -3595,6 +3595,86 @@ where a messy, still-partially-unexplained one is the truth.
 
 ---
 
+### Fib Atlas cost-efficiency filter — fixes the avg-win-vs-avg-loss asymmetry (2026-08-30)
+
+**The owner's own observation** (reading the live portfolio page): avg win
++0.37%, avg loss -0.55% — winners noticeably smaller than losers, worth
+worrying about even after the Newey-West Sharpe work above, since a real
+sizing/edge asymmetry is a different problem than an inflated Sharpe.
+
+**Root-caused, not just described.** First hypothesis (narrow targets /
+wide stops — a structural ladder design issue) was checked directly against
+the data and was WRONG: target:stop pip ratio is ≈1.00 at nearly every
+rung. The real cause, found by reading `priceBarrierTrade`
+(`js/asiaFibAtlasVoteReview.js:98`): `cost` is subtracted as a FLAT amount
+from every trade's `pnlPct` regardless of win/loss. Combined with near-1:1
+target:stop design, this mechanically shrinks small-pip-distance winners'
+edge far more (in relative terms) than it deepens losses. Confirmed
+empirically by reconstructing gross (pre-cost) win/loss: gross avg
+win/loss ratio ≈1.02 (essentially symmetric, as the pip ratio predicts) vs.
+net (as-displayed) ratio ≈0.67 — the entire asymmetry is a transaction-cost
+artifact, not a target/stop redesign issue. Average cost (~0.017%) eats
+~21% of the average gross win on its own, more on the smallest rungs
+(gross wins as low as 0.009–0.028% before cost).
+
+**Lever tested**: a pure selection gate — skip trades whose gross target
+move doesn't clear a minimum multiple of that pair's own round-trip cost
+(`applyCostEfficiencyFilter` in `js/levelAtlasVoteReview.js`, reused
+by Level Atlas's engine-agnostic trade shape). No stop repricing, no
+resizing — so unlike a stop-tightening lever there's no leverage-in-disguise
+question to check.
+
+`analysis/fib_atlas_cost_efficiency_filter.mjs` — 70/30 IS/OOS freeze,
+pre-stated rule: maximize IS Sharpe (chosen because the goal here is fixing
+the edge itself, a different objective than the shallowest-maxDD rule used
+for other levers), grid `[1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]`×cost-ratio.
+
+| Ladder | Chosen ratio | OOS baseline Sharpe / maxDD / W:L ratio | OOS chosen Sharpe / maxDD / W:L ratio |
+|---|---|---|---|
+| Asia (`LADDER=asia`) | ≥3x | 6.66 / -39.24% / 0.47 | 13.64 / -14.96% / 0.67 |
+| Monday (`LADDER=monday`) | ≥4x | 10.54 / -7.1% / 0.66 | 10.51 / -5.44% / 0.76 |
+
+Asia's result is the strong one (maxDD roughly halved, Sharpe doubled);
+Monday's is real but modest (Sharpe flat, maxDD meaningfully shallower) —
+reported both honestly rather than leading with only the better number.
+
+**Wired into production**: `applyCostEfficiencyFilter(trades, cost,
+minCostRatio)` (new shared brick, `js/levelAtlasVoteReview.js`) → threaded
+through `buildFibAtlasVotePortfolio`'s new `minCostRatio` param
+(`js/fibAtlasVotePortfolio.js`, applied to each pair BEFORE the
+concurrency cap since it's a pure pre-cap selection gate) → `minCostRatio`
+query param on `js/asiaFibAtlasRoutes.js` and `js/mondayFibAtlasRoutes.js`'s
+`/vote-trades/:instrument`, `/vote-portfolio`, and (Asia only)
+`/vote-portfolio-combined` routes, mirroring the existing `stopTightenFrac`
+plumbing exactly. `asia-fib-atlas-vote-portfolio.html` gets a new "Cost-
+efficiency filter" checkbox (default OFF) next to "Tighten fade stop", with
+the OOS numbers above in its tooltip; the ladder toggle auto-switches the
+ratio sent (3x Asia, 4x Monday — combined mode reuses Asia's ratio, same
+precedent as `recommendedExcludeFor` reusing Asia's exclusion set for
+combined mode, since Asia is the dominant risk driver). "Load best config"
+now also enables this toggle. The per-pair table's Skipped column shows a
+`(+N cost)` suffix (with a tooltip) when the filter drops trades, so the
+existing Decided/Kept/Skipped columns stay honestly reconciled instead of
+silently not summing.
+
+Live-verified via Playwright against a freshly-started `node server.js`
+(explicitly checked no stale process was running first, after the
+Newey-West investigation's own testing-hygiene lesson above): manual
+toggle sends `minCostRatio=3` on Asia and `minCostRatio=4` after switching
+to Monday; "Load best config" checks the box and includes `minCostRatio=3`
+alongside the other validated levers; per-pair `costFilteredOut` count
+reconciles correctly against `totalDecided`/`kept`/`skipped`; zero page
+errors.
+
+🟢 root cause found and confirmed empirically (not just hypothesized);
+lever is a pure selection gate (no sizing/leverage question); real OOS
+improvement on both ladders, strong on Asia and modest-but-real on Monday;
+wired end-to-end with default-off opt-in, matching house convention. 🟡
+combined-mode's ratio is NOT independently validated — it borrows Asia's
+ratio by analogy to an existing precedent, not its own OOS test.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a

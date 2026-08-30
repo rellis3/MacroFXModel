@@ -26,7 +26,7 @@ import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.j
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
-import { applyFadeStopFraction } from './levelAtlasVoteReview.js';
+import { applyFadeStopFraction, applyCostEfficiencyFilter } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
@@ -304,10 +304,17 @@ export function mountAsiaFibAtlasRoutes(app, express) {
   // (2026-08-29, validated — see LEGO_MODULES.md's fib_atlas_sl_tightening_
   // backtest.mjs entries) tightens FADE trades' stop to that fraction of
   // their native distance via the shared `applyFadeStopFraction`; omitted
-  // (or 1) leaves the response identical to before this was added. The
-  // pre-computed `summary` field is deliberately NOT re-derived when
-  // tightened (it's the untightened baseline's own stored summary) — the
-  // page's own client-side stats already recompute from `trades`.
+  // (or 1) leaves the response identical to before this was added.
+  // `minCostRatio` (2026-08-30, validated — see LEGO_MODULES.md's
+  // fib_atlas_cost_efficiency_filter.mjs entry) drops trades whose gross
+  // target doesn't clear that multiple of the pair's own round-trip cost,
+  // via the shared `applyCostEfficiencyFilter`, applied BEFORE stop-
+  // tightening (pure selection gate, order vs. tightening doesn't matter
+  // for this filter since it only reads `targetPips`/`entry`, never
+  // touched by tightening). The pre-computed `summary` field is
+  // deliberately NOT re-derived when tightened/filtered (it's the
+  // untouched baseline's own stored summary) — the page's own client-side
+  // stats already recompute from `trades`.
   app.get('/api/asia-fib-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
@@ -315,10 +322,12 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
-      const filtered = stored.trades.filter(t => t.margin >= minMargin);
+      const minCostRatio = req.query.minCostRatio ? Number(req.query.minCostRatio) : null;
+      const marginFiltered = stored.trades.filter(t => t.margin >= minMargin);
+      const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac);
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -354,6 +363,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
+        minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
         loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
@@ -399,6 +409,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         restoreDD: req.query.restoreDD ? Number(req.query.restoreDD) : 0,
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
+        minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
         loadPairVoteTrades: async constituentKey => {
           const [pair, ladder] = constituentKey.split('|');
           const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);

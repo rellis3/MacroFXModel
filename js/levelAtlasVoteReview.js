@@ -320,6 +320,39 @@ export function applyFadeStopFraction(trades, frac, cost = 0) {
 }
 
 /**
+ * Cost-efficiency filter (2026-08-30) — OOS-validated on the Fib Atlas
+ * engines (analysis/fib_atlas_cost_efficiency_filter.mjs; see
+ * LEGO_MODULES.md) after the SAME `t.pnlPct`-includes-a-flat-`cost`
+ * convention `priceBarrierTrade` uses turned out to be the actual driver
+ * of a reported "avg win way smaller than avg loss" finding — gross
+ * (pre-cost) wins and losses were symmetric (target:stop ~1:1 by design);
+ * cost subtracted as a flat amount off every trade regardless of outcome
+ * mechanically shrinks small-target-distance winners far more than it
+ * deepens losses in relative terms. This filter just stops TAKING the
+ * trades where that effect dominates — a pure selection gate (fewer
+ * trades, none resized), so unlike a stop-repricing lever there's no
+ * leverage-in-disguise question to check: position sizing is untouched.
+ *
+ * `minCostRatio` is how many multiples of the trade's OWN gross target
+ * move must clear its pair's round-trip `cost` to be kept, e.g. 3 means
+ * "only take trades whose target is worth >= 3x what the round trip
+ * costs". `cost` here is the SAME per-pair constant `priceBarrierTrade`
+ * already subtracts (`stored.cost` from the R2 blob) — NOT re-fetched or
+ * re-derived, just reused as the ratio's denominator. `null`/`<= 1` is a
+ * no-op passthrough (a ratio of 1 already describes today's status quo:
+ * any trade with a nominally-positive gross target is taken).
+ *
+ *   applyCostEfficiencyFilter(trades, cost, minCostRatio) -> trades (subset, unchanged shape)
+ */
+export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
+  if (!trades?.length || minCostRatio == null || minCostRatio <= 1 || !(cost > 0)) return trades ?? [];
+  return trades.filter(t => {
+    const targetPnlPct = t.targetPips * t.pip / t.entry * 100;
+    return targetPnlPct / cost >= minCostRatio;
+  });
+}
+
+/**
  * The stop/target study: does a TIGHTER stop, grounded in this trade list's
  * OWN real winners'-MAE percentiles (never invented — the exact grid-grounding
  * discipline `perLineStrategy.js`'s `runStopStudy` already uses), beat the

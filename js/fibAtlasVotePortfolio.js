@@ -32,6 +32,7 @@
 import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
+  applyCostEfficiencyFilter,
 } from './levelAtlasVoteReview.js';
 import { maxDrawdownFromPnls, neweyWestSharpe } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
@@ -66,13 +67,20 @@ export function withNonCompoundedDD(statsObj, dailyReturns) {
  * concurrency cap (same order the validating backtest used), BEFORE risk-
  * adjustment/heat-cap/throttle — a no-op when null/1, so every existing
  * caller is unaffected.
+ *
+ * `minCostRatio` (2026-08-30): validated by analysis/
+ * fib_atlas_cost_efficiency_filter.mjs (see LEGO_MODULES.md) — a pure
+ * SELECTION gate (drops trades outright, resizes nothing), so applied
+ * BEFORE the concurrency cap (a filtered-out trade should never occupy a
+ * concurrency slot either — matches the order the validating backtest
+ * used). `null`/`<=1` is a no-op passthrough.
  */
 export async function buildFibAtlasVotePortfolio({
   pairs, minMargin = 2, maxConcurrent = 1, perDirection = false,
   weighting = 'equal', sizing = 'fixed-risk', riskPct = 1,
   maxHeatPct = null, targetVol = 10,
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
-  stopTightenFrac = null,
+  stopTightenFrac = null, minCostRatio = null,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -88,13 +96,15 @@ export async function buildFibAtlasVotePortfolio({
   for (const pair of pairs) {
     const stored = await loadPairVoteTrades(pair);
     if (!stored) { missing.push(pair.toUpperCase()); continue; }
-    const filtered = stored.trades.filter(t => t.margin >= minMargin);
+    const marginFiltered = stored.trades.filter(t => t.margin >= minMargin);
+    const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
     const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac);
     const sym = stored.groupKey ?? stored.instrument;
     perPairTradesRaw[sym] = tightened.map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
     perPair[sym] = {
-      totalDecided: filtered.length,
+      totalDecided: marginFiltered.length,
+      costFilteredOut: marginFiltered.length - filtered.length,
       kept: capped?.kept?.length ?? 0,
       skipped: capped?.skippedCount ?? 0,
       ownWinRate: capped?.keptSummary?.winRate ?? null,
