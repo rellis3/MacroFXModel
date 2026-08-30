@@ -170,7 +170,7 @@ If these approaches have no edge, why do you keep seeing people profit with them
 
 Every trader here runs the same approach. It loses 0.2 percent per trade on average.
 
-Interactive demo (slider: cumulative result percent vs. trades taken, 10–1000 trades):
+**How the graph works:** A line chart plots cumulative result (percent, y-axis) against trades taken (x-axis). Six hundred simulated traders are each drawn as a thin line, all starting at zero and following the same underlying method — one that loses 0.2% per trade on average. A slider under the chart moves the number of trades taken from 10 up to 1000; as it's dragged forward, the bundle of lines fans out (variance), and the lines above the zero line thin out over time as the negative average asserts itself. A counter reports what percentage of the 600 are currently above breakeven at the slider's position.
 
 After 50 trades, 18.3% of these 600 traders are showing a profit. Every one of them is running the same method, and that method loses 0.2 percent per trade on average. At this stage the winners look skilled, sound confident, and have screenshots.
 
@@ -199,7 +199,9 @@ Because variance is invisible and skill is a better story. When somebody is up a
 
 This is the best performer out of four hundred people running the identical losing method.
 
-Interactive demo (cumulative result percent over 60 trades): this is the best performer out of 400 people running the identical method, at 60 trades. Up 23%. This is the point at which the course gets sold, the account gets posted, and the story gets told.
+**How the graph works:** A single line chart tracks one trader's cumulative result (percent) across 60 trades. This line is singled out as the best performer among the same population of 400 people running the identical, negative-expectancy method from the previous chart. It climbs fairly steadily to finish up 23% at trade 60 — the outcome selected because, among 400 identical attempts, someone finishes at the top purely by the spread of variance.
+
+This is the best performer out of 400 people running the identical method, at 60 trades. Up 23%. This is the point at which the course gets sold, the account gets posted, and the story gets told.
 
 **Carry it forward**
 
@@ -279,7 +281,7 @@ Money does not appear in a market. Every pound you take home was handed over by 
 
 Four sources. Three of them can name the person paying.
 
-Interactive demo (tabs: Risk premium / Liquidity provision / Information advantage / A chart pattern), each rated across the same four rows:
+**How this works:** Four tabs let you switch between the sources — Risk premium, Liquidity provision, Information advantage, and A chart pattern. Selecting a tab fills in the same four rows underneath it (who is on the other side, why they keep paying, does it persist, can you reach it) with the answer specific to that source, so the four are directly comparable side by side. Each row is colour-coded: the first three sources show green/positive answers throughout, while "A chart pattern" turns every row red, since it cannot answer any of the four.
 
 **Risk premium**
 - Who is on the other side — Someone who does not want to hold the risk and pays to pass it on.
@@ -330,7 +332,9 @@ Because naming the counterparty is uncomfortable for anyone selling a method. Th
 
 Every participant in one distribution. Move the costs.
 
-Interactive demo: a bell curve of "where participants finish" (group average, percent, roughly -6% to +6%) against a breakeven line, with a slider from "no costs" to "2% in costs". With costs of 0.00% per participant, the group as a whole finishes at 0.00% and roughly 50% end above breakeven. Before costs the whole thing is a transfer. Half do well, half do badly, and nothing is created.
+**How the graph works:** A bell-shaped distribution curve shows where every participant in the group finishes (x-axis: group average result, roughly -6% to +6%), with a vertical line marking breakeven. A slider moves the assumed trading cost per participant from 0% up to 2%. At zero cost the curve sits centred exactly on breakeven, with roughly half the area above it and half below — a pure transfer among participants. As the slider adds cost, the entire curve shifts left (toward losses) without changing shape, and the reported "percent ending above breakeven" figure falls accordingly.
+
+With costs of 0.00% per participant, the group as a whole finishes at 0.00% and roughly 50% end above breakeven. Before costs the whole thing is a transfer. Half do well, half do badly, and nothing is created.
 
 Before costs the whole thing is a transfer. What one participant gains another lost, and the group as a whole finishes exactly where it started. Add realistic costs and the entire distribution slides left. Nobody traded worse than they did a moment ago. The group is simply paying for the privilege of participating, and that payment is the reason the average participant loses.
 
@@ -415,7 +419,7 @@ If somebody genuinely held an edge, why would they sell it to you? Not because t
 
 The same edge, valued two ways. Move the capacity and the return.
 
-Interactive demo: cumulative value of the same edge over five years, two lines — "Trade it privately" and "Sell it, which also ends it" — with sliders for capacity (100k to 10M) and return (8% a year to 40%).
+**How the graph works:** A line chart plots cumulative value in currency over a five-year horizon (Now through Year 5). Two lines are compared: one showing the edge compounded privately (curving upward as it's reinvested year over year), the other showing the one-time payout from selling it to a small slice of a buyer audience (flat after the initial sale, since the edge is destroyed the moment it's distributed). Two sliders let you vary the assumed capacity of the edge (100k to 10M) and its annual return (8% to 40%); moving them redraws both lines and updates the figures underneath comparing the two outcomes, plus the buyer-audience size that would be needed for the one-time sale to match the compounding total.
 
 An edge with capacity of 2,000,000 returning 20% a year produces 2,976,640 over five years, privately, with nobody competing for it. Selling it to 1 percent of an audience of 10,000 at 300 produces 30,000 once, and hands the edge to everyone who bought it. To match the trading figure you would need an audience of 992,213 buyers, and you would still have destroyed the thing you were selling.
 
@@ -545,7 +549,9 @@ You have formed a picture of what is possible from everything you have seen. But
 
 Out of four hundred people running one losing method, this is the one you would have seen.
 
-Interactive demo: cumulative result (percent) over 60 trades. This is the best performer out of 400 people running the identical method, at 60 trades. Up 27%. This is the point at which the course gets sold, the account gets posted, and the story gets told.
+**How the graph works:** Same construction as the "best performer" chart in Lesson 2 — a single line tracking cumulative result (percent) over 60 trades for the top finisher out of 400 people running one identical, losing method. The line trends upward with some noise, ending at +27% at trade 60. A "carry it forward" control extends the same line further in time, showing the position reverting toward the population's true negative average once the sample grows.
+
+This is the best performer out of 400 people running the identical method, at 60 trades. Up 27%. This is the point at which the course gets sold, the account gets posted, and the story gets told.
 
 **Carry it forward**
 
@@ -580,7 +586,9 @@ The problem is not authenticity, it is representativeness. A real result from th
 
 The same method, but now you can see everybody running it.
 
-Interactive demo (slider: cumulative result percent vs. trades taken, 10–1000 trades, new-group-of-traders reset): After 50 trades, 18.5% of these 600 traders are showing a profit. Every one of them is running the same method, and that method loses 0.2 percent per trade on average. At this stage the winners look skilled, sound confident, and have screenshots.
+**How the graph works:** Same construction as the population chart in Lesson 2 — 600 individual lines, each tracking one simulated trader's cumulative result (percent) against trades taken, all running the same method that loses 0.2% per trade on average. The slider moves from 10 to 1000 trades taken; a "new group of traders" button reseeds the simulation with a fresh 600. At any point on the slider, lines are coloured by whether that trader currently sits above (green) or below (red) breakeven, and a running count reports what share are currently in profit.
+
+After 50 trades, 18.5% of these 600 traders are showing a profit. Every one of them is running the same method, and that method loses 0.2 percent per trade on average. At this stage the winners look skilled, sound confident, and have screenshots.
 
 This is the view nobody gets. Move the slider and watch the group thin out, then remember that at any point along that line, the handful still above zero are the only ones producing content. Every judgement you have made about what is achievable was formed from those few, and never from this chart.
 
@@ -664,7 +672,7 @@ Show one chart to three experienced analysts and you will get three readings. So
 
 Below is a single price series. Choose how to read it.
 
-Interactive demo (tabs: Ascending wedge / Rising channel / Cup and handle), same candlestick price series (D1–D24, price roughly 34–88) with a different analyst line drawn over it each time:
+**How this works:** A candlestick chart shows one fixed price series (D1 to D24, price roughly 34 to 88) that never changes. Three tabs — Ascending wedge, Rising channel, Cup and handle — each overlay a different hand-drawn technical pattern on top of the identical candles, plus a directional call (bearish, neutral, bullish respectively). Switching tabs redraws only the overlay lines; the underlying candles are pixel-for-pixel the same series in all three views.
 
 - **Ascending wedge** — Bearish. The range is narrowing into an apex.
 - **Rising channel** — Neutral. An orderly trend with no directional call.
@@ -695,7 +703,7 @@ It is simpler to teach. A named shape fits in a caption and looks like knowledge
 
 Here is the same market, cut at the moment a decision had to be made. Call it.
 
-Interactive demo: a candlestick price series (D1 to NOW, price roughly 33–69) cut off at the decision point, with three options to choose:
+**How this works:** A candlestick chart runs from D1 to a point marked "NOW", where the series is cut off mid-formation — the same ambiguous setup an analyst would face in real time, before the outcome is known. Three clickable options let you guess what happens next (breaks upward, reverses hard, or goes sideways); selecting one is a self-test rather than something the chart itself can answer, since the cut-off point genuinely admits more than one continuation.
 - It breaks upward and the trend continues
 - It reverses hard and gives the move back
 - It goes sideways in a tight range
@@ -721,7 +729,7 @@ Ask traders to identify patterns in real time, before resolution, and accuracy f
 
 Every bar below is randomised. Generate as many series as you want and keep looking.
 
-Interactive demo: a randomised candlestick series (Bar 1 to Bar 45, value roughly 90–146) with a "generate another series" button. Series generated: 1. Every bar is randomised. No trend, no participants, no information.
+**How this works:** A candlestick chart displays 45 bars of purely randomised price data (value roughly 90–146), generated fresh with no underlying trend, participant behaviour, or real information behind it. A "generate another series" button reruns the randomisation and redraws a completely new, equally random set of bars, incrementing a counter of how many series have been generated. The exercise is to keep clicking and notice that recognisable-looking chart patterns keep appearing anyway, purely by chance.
 
 You will keep seeing patterns here, because you are the one supplying them. This data is randomised, so there is no structure to read and nothing to be right about. Anything you find is being forced onto the data rather than drawn from it. If a formation appears this easily in noise, finding it on a real chart carries no significance on its own.
 
@@ -774,7 +782,9 @@ What it found is the useful part. Once a pattern is defined precisely enough to 
 
 Drag to change how many times a strategy has been observed.
 
-Interactive demo: a bell curve of "measured edge per trade" (roughly -8% to +10%) with a "no edge" line at 0%, and a slider from 5 to 1000 observations. At 5 observations: true value plausibly between -6.7% and 9.1%. Zero sits inside that range, so this result is indistinguishable from luck.
+**How the graph works:** A bell-shaped confidence curve is plotted over "measured edge per trade" (roughly -8% to +10%), with a vertical dashed line marking zero ("no edge"). A horizontal bar under the curve marks the plausible range for the strategy's true edge given the current sample size. A slider moves the number of observations from 5 up to 1000; as it increases, the curve narrows and the plausible range shrinks around the measured value. At low observation counts the range comfortably straddles zero, meaning the result can't be distinguished from luck; at high observation counts the range narrows enough to exclude zero, which is what turns a measured number into evidence of a genuine edge.
+
+At 5 observations: true value plausibly between -6.7% and 9.1%. Zero sits inside that range, so this result is indistinguishable from luck.
 
 At five examples almost anything looks like an edge. The number of observations is what separates a finding from a story.
 
