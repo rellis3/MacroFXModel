@@ -2,9 +2,45 @@
 
 A running collection of education content pasted in for reference. Entries are appended in the order received, as documentation only — no added opinion, interpretation, or bias.
 
+## Course structure (source: Colez Trades / C.OG)
+
+- **Start Here — Why Public Approaches Fail** (5 lessons) — logged below.
+  1. Why None of It Worked
+  2. Why Some People Still Make Money
+  3. Who Is Actually Paying You
+  4. The Conflict of Interest
+  5. The Sample You Were Shown
+- **Series 01 — Where Technical Analysis Underperforms** (4 lessons)
+  1. Why Chart Patterns Underperform
+  2. Evaluating Trading Education
+  3. Signal Decay and Market Efficiency
+  4. Market Efficiency and Information
+- **Series 02 — Risk Before Return** (4 lessons)
+  1. The Mathematics of Drawdown
+  2. Risk of Ruin
+  3. Position Sizing and the Hidden Bet
+  4. Correlation and the Diversification Illusion
+- **Series 03 — The Instruments** (5 lessons)
+  1. The Equity Curve
+  2. Return Figures
+  3. Drawdown and Time Under Water
+  4. Sharpe, Sortino and Related Metrics
+  5. Monte Carlo and the Heatmap
+- **Series 04 — What Data Can and Cannot Tell You** (6 lessons)
+  1. The Overfitting Machine
+  2. Why Searching Harder Makes It Worse
+  3. Normal Is the Exception
+  4. Validation, in Order of Severity
+  5. Volatility Drag
+  6. Convex and Concave
+
+Lessons are pasted in and logged below over time, grouped under their series.
+
 ---
 
-## Lesson 1 — Why None of It Worked
+## Series: Why Public Approaches Fail
+
+### Lesson 1 — Why None of It Worked
 
 Have you ever wondered why, no matter how many public approaches you try, you end up in the same place? The answer is not effort and it is not discipline. It is that most of what is taught was never capable of working. This lesson puts a number on what that has already cost you, and gives you the minute long test that would have caught it.
 
@@ -126,7 +162,7 @@ Moving from one column to the other is the single largest change available to yo
 
 ---
 
-## Lesson 2 — Why Some People Still Make Money
+### Lesson 2 — Why Some People Still Make Money
 
 If these approaches have no edge, why do you keep seeing people profit with them? It is a fair question and it deserves a real answer, because the answer is the most useful idea in this series. Nothing here requires anyone to be lying.
 
@@ -235,7 +271,7 @@ So when a result looks good, the useful reflex is not to celebrate or to copy it
 
 ---
 
-## Lesson 3 — Who Is Actually Paying You
+### Lesson 3 — Who Is Actually Paying You
 
 Money does not appear in a market. Every pound you take home was handed over by another participant, for a reason that made sense to them. So who is it, and why do they keep doing it? Name them and you understand your own strategy. Fail to name them and you are hoping.
 
@@ -371,7 +407,7 @@ A shape cannot fail in advance. It can only be reinterpreted afterwards, which i
 
 ---
 
-## Lesson 4 — The Conflict of Interest
+### Lesson 4 — The Conflict of Interest
 
 If somebody genuinely held an edge, why would they sell it to you? Not because they are dishonest. Because of what selling it does to the edge, and what it is worth compared with simply using it. Once you follow that arithmetic, most of what you were shown explains itself.
 
@@ -501,7 +537,7 @@ That is the test worth applying to any education, including this. Ask whether wh
 
 ---
 
-## Lesson 5 — The Sample You Were Shown
+### Lesson 5 — The Sample You Were Shown
 
 You have formed a picture of what is possible from everything you have seen. But who chose what you got to see? The sample was not random. Once you see how it was filtered, a great deal of what felt achievable starts to look different.
 
