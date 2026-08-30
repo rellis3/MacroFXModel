@@ -3314,6 +3314,140 @@ recompute straight from `allTrades`, so nothing is actually missing.
 🟢 built + live-verified end-to-end (merge counts, sort, filter, chart-click
 integration) via Playwright against a running server.
 
+**"Select recommended" + "Load best config" ported to Fib Atlas (2026-08-30)
+— the owner asked for level-atlas-vote-portfolio.html's own two buttons and
+underlying methodology applied to `asia-fib-atlas-vote-portfolio.html`, after
+an independent audit (below) found several of Level Atlas's own levers
+riding on thinner evidence than their tooltips implied.** Not a copy-paste —
+Fib Atlas's own data was run through the SAME two-stage process from
+scratch, and it did NOT reproduce Level Atlas's shape uniformly.
+
+*Audit of Level Atlas's own buttons first* (two research agents, each given
+the owner's exact methodology checklist and told to gather evidence, not
+render a verdict): **"Select recommended"** is genuinely solid — the
+-42.7%→-25.1% maxDD / 2.36→3.65 Sharpe OOS claim reproduces exactly on a
+fresh run of `scripts/oos_validate_pair_selection.mjs`, true 70/30 IS-only
+freeze confirmed in code, and a later gate-aware re-run that found a
+different, IS-better set correctly failed OOS and was NOT adopted — a real
+negative result respected, not cherry-picked. **"Load best config"** is more
+mixed: drawdown throttle and early exit's underlying MECHANISM are both
+genuinely clean (real IS/OOS trade-off for the former; avg-win-flat/avg-loss-
+shrinks for the latter, ruling out leverage-in-disguise) — but early exit's
+SHIPPED value (0.4) doesn't match its own script's pre-stated frozen rule's
+output (0.9), chosen instead by peeking at where IS and OOS curves both
+peaked; the currency loss gate was optimized for Sharpe-robustness, not
+"least drawdown" (its own grid's shallowest-IS-maxDD cap is 3%, not the
+shipped 1%), and was validated at RISK_PCT=1 not the button's actual 0.5;
+the 1% portfolio heat cap has no dedicated grid/freeze test at the button's
+own settings at all — it's an always-on background assumption borrowed from
+other scripts' own configs; and margin≥3, the foundational filter everything
+else sits on, has no independent validation anywhere in scope. None of this
+is dishonest — the correctly-killed negative findings (Fixed SL fraction's
+confirmed leverage-in-disguise avgWin≈2×/avgLoss-flat; fade-stop tightening
+correctly left unproven because its own script never separates avg win/loss
+at all) show the process works — but roughly half the levers in "best
+config" haven't actually cleared the bar their own tooltip implies.
+
+*Building the Fib Atlas equivalent, stage 1 (pair selection)* —
+`analysis/fib_atlas_oos_validate_pair_selection.mjs`, same 70/30-freeze
+method as Level Atlas's own script, run for Asia/Monday/combined via
+`LADDER=asia|monday|combined`. One deliberate improvement over the Level
+Atlas reference the audit above flagged: that script's stopping count
+(`STOP_AT_N=17`) was eyeballed off the FULL-SAMPLE elimination curve before
+the split was even applied — indirect OOS exposure. Here the stop is a
+PRE-STATED rule evaluated on the IS slice alone (keep removing while IS
+Sharpe ≥ 90% of baseline). **First run at a hardcoded floor of 8 constituents
+hit that floor in every ladder mode without the Sharpe rule ever binding** —
+exactly the checklist's own "curve that never peaks" red flag (leave-one-out-
+on-maxDD mechanically looks better as a book concentrates into fewer, larger
+idiosyncratic bets, a different effect from real correlated-risk removal).
+Floor raised to 60% of the starting universe (proportionate to Level Atlas's
+own 63% retention), chosen before re-running, not fit to whatever looked
+best. Real, honest results at that floor:
+- **Asia**: PASSED — 10 pairs excluded (`gbpcad, gbpchf, eurcad, gbpnzd,
+  eurchf, audchf, chfjpy, eurnzd, gbpjpy, eurjpy`), OOS maxDD -98.57%→-39.24%.
+  Asia's unmitigated baseline is genuinely severe (all-26-pair OOS maxDD
+  -98.57%, essentially catastrophic) so this is a real, substantial, if
+  still-deep fix — heat cap/throttle below do more of the actual work.
+- **Monday**: **FAILED** — the same procedure on Monday's own book made OOS
+  maxDD WORSE (-7.1%→-10.21%). Correctly NOT shipped: Monday's baseline is
+  already far shallower than Asia's (little room/need to "fix"), and greedy
+  elimination past the one dominant contributor (removing GBPCAD alone
+  already resolves nearly all of Monday's own IS drawdown) chases noise in a
+  tight, low-signal band that doesn't generalize. No exclusion applied to
+  Monday in the shipped button — an empty set, not a fabricated one.
+- **Combined**: PASSED — 21 constituents excluded (mostly Asia-side, plus a
+  few Monday pairs), OOS maxDD -93.55%→-31.34%.
+
+*Stage 2 (best-config levers)* — `analysis/fib_atlas_best_config_backtest.mjs`,
+mirroring `analysis/drawdown_throttle_backtest.mjs`'s exact rigor (pre-stated
+rule: shallowest IS maxDD with Sharpe ≥90% of baseline; daily-basis Sharpe
+CI; real per-pair cost) but on the FULL blended book (fade+follow, not an
+isolated slice — closing exactly the gap the audit found in the EARLIER,
+narrower `fib_atlas_sl_tightening_backtest.mjs` sweep, which was Asia+fade
+only). The already-validated 0.9× fade-stop tightening is applied as a fixed
+baseline throughout (not re-tested — it already cleared its own bar).
+**A real bug was caught building this, not shipped**: the first draft
+defined `RISK_PCT` but never actually called `riskAdjustTrades`, silently
+skipping position sizing entirely — produced a -1.41% maxDD / Sharpe 12.5
+result that should have been distrusted on sight (exactly the checklist's
+own "Sharpe above ~2-2.5 draws real scrutiny" bar) and was caught before use,
+not after. **A second, structural issue found even after that fix**:
+`portfolioStats`' own `maxDD`/`cagr` assume reinvestment (compounding);
+`riskAdjustTrades` never actually compounds (constant % of ORIGINAL notional
+every trade) — at Fib Atlas's much higher trade density than Level Atlas's,
+this exploded into a nonsensical 12,315% CAGR. `js/fibAtlasVotePortfolio.js`
+already built the fix for exactly this (`withNonCompoundedDD`, additive
+drawdown/return via `maxDrawdownFromPnls`) for the LIVE route — now exported
+and reused here rather than re-derived. **Level Atlas's own validation
+scripts use bare, uncorrected `portfolioStats()` throughout** — flagged, not
+fixed (out of scope for this file), but worth knowing their absolute
+CAGR/maxDD figures likely carry the same compounding-assumption distortion,
+just less visibly since Level Atlas's own trade density is lower.
+
+Even after both fixes, absolute Sharpe (~9-13) and CAGR (~300-650%,
+additive) stay implausibly high — consistent with, not worse than, the
+"trust the shape, not the number" caveat this session already established
+for Level Atlas's own early-exit lever (self-flagged CI [5.79,9.51], "above
+any believable range"). The RELATIVE, frozen-rule-selected finding is still
+trustworthy (the selection rule compares to baseline, not an absolute
+number) and shows the same genuine trade-off checklist point K asks for —
+Asia OOS: baseline Sharpe 10.82/maxDD -8.55%/CAGR 470.81% → chosen (heatCap
+1%, trigger -3%, mult 0.25) Sharpe 9.39/maxDD -5.19%/CAGR 284.34% — shallower
+drawdown at a real Sharpe/CAGR cost, not a free win. Combined OOS: baseline
+maxDD -6.68% → chosen (heatCap 2%) -6.31%, a smaller but real improvement
+(combined's baseline is already shallower since Monday dilutes Asia's more
+volatile book). Monday was NOT independently re-validated for its own
+throttle/heat-cap here (time-boxed; its baseline is already comparatively
+low-risk) — the shipped button leaves heat cap and throttle OFF for Monday
+rather than reusing Asia's untested-on-Monday numbers.
+
+**Wired into `asia-fib-atlas-vote-portfolio.html`**: both new buttons are
+ladder-aware. "Select recommended" applies Asia's 10-pair exclusion for
+asia/combined modes, and correctly selects ALL pairs (no exclusion) for
+monday. "⚡ Load best config" applies margin≥2/cap=1/0.5% fixed risk/fade-
+stop-tighten=ON everywhere, plus heat-cap+throttle at the ladder-specific
+frozen values for asia (1%/-3%/0.25×) and combined (2%/-3%/0.25×) — and
+deliberately leaves heat cap and throttle OFF for monday rather than
+guessing. **A real bug caught in this wiring, not shipped**: the lookup
+`BEST_CONFIG[ladder] ?? BEST_CONFIG.asia` silently fell back to Asia's
+config for Monday, because `??` treats an explicit `null` (Monday's "not
+validated" marker) the same as a missing key — exactly the kind of silent
+fabrication this whole effort exists to avoid. Fixed to a plain lookup with
+no fallback. Live-verified via Playwright: Asia/Monday/Combined pair
+exclusion and lever values all match the intended, validated numbers after
+the fix; zero page errors; Asia's full config resolves in ~8s against real
+R2 data with the complete expected description string. The page's own
+correlated-risk warning card was rewritten to state all of this plainly,
+Monday's failed attempt included — not silently dropped now that Asia has
+one.
+
+🟢 Asia + Combined pair-selection and lever validation done, wired, live-
+verified; 🟡 Monday deliberately left without a fabricated equivalent (its
+own study failed OOS); 🟡 absolute Sharpe/CAGR magnitudes not trustworthy,
+same caveat as Level Atlas's own most aggressive lever — trust the direction
+of each finding, not the specific number.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

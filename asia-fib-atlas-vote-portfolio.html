@@ -55,6 +55,8 @@
   <div class="controls">
     <button id="selectAllBtn" type="button">Select all</button>
     <button id="selectDefaultBtn" type="button">Reset to default 5</button>
+    <button id="selectRecommendedBtn" type="button" title="OOS-validated on THIS engine's own data (analysis/fib_atlas_oos_validate_pair_selection.mjs): exclusion set chosen on the first 70% of history, frozen, still improved the untouched last 30%. Asia: 10 pairs excluded, OOS maxDD -98.6%→-39.2%. Monday's OWN exclusion attempt FAILED OOS (maxDD got WORSE, -7.1%→-10.2%) so no exclusion is applied there — correctly not shipped, not silently reused from Asia.">Select recommended</button>
+    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Applies every lever validated on THIS engine's OWN full blended portfolio (fade+follow, not an isolated slice) via analysis/fib_atlas_best_config_backtest.mjs: recommended pairs, margin≥2, max concurrent 1, fixed 0.5% risk/trade, portfolio heat cap ON (1% Asia / 2% combined), drawdown throttle ON (trigger -3%/restore -2%/×0.25 — a real Sharpe/CAGR cost for a shallower drawdown, both IS and OOS, not a free win), fade-stop tightening ON at 0.9× (already held-out validated earlier). CAUTION: absolute Sharpe/CAGR figures behind this (Sharpe ~9-13) are almost certainly inflated versus real live expectancy — same caveat Level Atlas's own early-exit lever carries — trust the DIRECTION (throttle+cap trade Sharpe/CAGR for shallower drawdown) not the specific numbers. Monday ladder: pairs/margin/sizing/fade-stop applied, heat cap and throttle left OFF — not independently validated for Monday's own book yet.">⚡ Load best config (least drawdown)</button>
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
@@ -107,14 +109,18 @@
   <div class="muted">
   Every pair here individually shows real edge on its own tearsheet, but FX pairs are NOT independent bets — many share
   a currency leg (EURUSD/EURJPY/EURGBP all carry EUR exposure, GBPUSD/GBPJPY/GBPAUD all carry GBP, etc.), so a single
-  macro-shock day can move many selected pairs the same direction at once. <code>level-atlas-vote-portfolio.html</code>'s
-  own leave-one-out study found this effect large enough there to produce a -97.8% max drawdown with all 26 pairs
-  selected at 1% fixed risk before any mitigation. <strong>That same leave-one-out / correlated-risk study has NOT been
-  run for this Asia/Monday portfolio yet</strong> — there is no validated exclusion list to offer here, and it would be
-  dishonest to imply one exists by omission. Until it is: keep total selected pairs modest, size risk down before
-  selecting many pairs together, watch the heat-cap and drawdown-throttle A/B comparisons below (both real, both
-  computed on THIS engine's own trades) rather than trusting the raw uncapped number, and don't treat a large
-  many-pair combination's headline Sharpe/CAGR as more real than the single-pair numbers it's built from.
+  macro-shock day can move many selected pairs the same direction at once. <strong>Update (2026-08-30): this engine's
+  OWN leave-one-out + OOS-validation study is now done</strong> (<code>analysis/fib_atlas_oos_validate_pair_selection.mjs</code>,
+  same method as <code>level-atlas-vote-portfolio.html</code>'s own — 70/30 split, exclusion set frozen on the first 70%,
+  checked unchanged on the untouched last 30%). <strong>Asia</strong>'s baseline is genuinely severe (-98.6% OOS maxDD,
+  all 26 pairs, no other mitigation) and a 10-pair exclusion measurably fixes it (OOS maxDD -98.6%→-39.2%) — real, but
+  still deep; heat cap/throttle/fade-stop below do more of the actual work. <strong>Monday's own exclusion attempt
+  FAILED OOS</strong> (maxDD got WORSE, -7.1%→-10.2%) and is correctly NOT applied there — Monday's baseline is already
+  far shallower than Asia's, so there's nothing this particular fix needed to solve. "Select recommended" and "⚡ Load
+  best config" above apply these findings automatically, ladder-aware. One more honest caveat: the Sharpe numbers this
+  produces (routinely 9-13 once combined/de-risked) are almost certainly inflated versus real live expectancy — the
+  same "trust the shape, not the number" caveat Level Atlas's own most aggressive levers carry — treat the DIRECTION of
+  each finding as the result, not the specific absolute Sharpe.
   </div>
 </div>
 
@@ -223,6 +229,28 @@ const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdc
 const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'usdjpy', 'gold', 'audusd']);
 const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
 
+// OOS-validated (analysis/fib_atlas_oos_validate_pair_selection.mjs, 70/30
+// split, exclusion frozen on IS, checked unchanged on OOS) correlated-risk
+// exclusion — Asia only. Monday's own exclusion attempt FAILED OOS (maxDD
+// got WORSE, -7.1%->-10.2%), so it deliberately gets an EMPTY set here
+// rather than reusing Asia's or fabricating one that wasn't shown to help.
+const ASIA_RECOMMENDED_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy']);
+const MONDAY_RECOMMENDED_EXCLUDE = new Set();
+function recommendedExcludeFor(currentLadder) {
+  // combined mode reuses Asia's set -- Asia is the dominant risk driver
+  // (its baseline maxDD is far worse than Monday's), and the combined-mode
+  // OOS study's own exclusion list was itself predominantly Asia-side pairs.
+  return currentLadder === 'monday' ? MONDAY_RECOMMENDED_EXCLUDE : ASIA_RECOMMENDED_EXCLUDE;
+}
+// analysis/fib_atlas_best_config_backtest.mjs's frozen, OOS-checked choice
+// (pre-stated rule: shallowest IS maxDD with Sharpe >= 90% of baseline) --
+// same trigger/mult for both ladder modes this run, heat cap differs.
+const BEST_CONFIG = {
+  asia:     { heatCapPct: 1, triggerDD: -3, restoreDD: -2, throttleMult: 0.25 },
+  combined: { heatCapPct: 2, triggerDD: -3, restoreDD: -2, throttleMult: 0.25 },
+  monday:   null, // not independently validated for Monday's own book yet -- leave heat cap/throttle OFF, don't guess
+};
+
 let ladder = 'asia';
 function apiPrefix() { return ladder === 'monday' ? 'monday-fib-atlas' : 'asia-fib-atlas'; }
 
@@ -235,6 +263,41 @@ document.getElementById('selectAllBtn').addEventListener('click', () => {
 });
 document.getElementById('selectDefaultBtn').addEventListener('click', () => {
   pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = DEFAULT_CHECKED.has(el.dataset.pair); });
+  loadData();
+});
+document.getElementById('selectRecommendedBtn').addEventListener('click', () => {
+  const exclude = recommendedExcludeFor(ladder);
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !exclude.has(el.dataset.pair); });
+  loadData();
+});
+// One-click preset: every lever validated on THIS engine's own full
+// blended portfolio this session -- see the button's own title attribute
+// for the full reasoning and the "trust the shape, not the number" caveat.
+// Sets values directly (not via .click()/dispatched events) then calls
+// loadData() exactly once at the end.
+document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
+  const exclude = recommendedExcludeFor(ladder);
+  pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !exclude.has(el.dataset.pair); });
+  marginSel.value = '2';
+  capSel.value = '1';
+  perDirChk.checked = false;
+  sizingSel.value = 'fixed-risk';
+  riskPctInput.value = '0.5';
+  stopTightenChk.checked = true;
+  const cfg = BEST_CONFIG[ladder]; // no ?? fallback -- monday's explicit `null` must NOT silently reuse asia's config
+  if (cfg) {
+    heatCapChk.checked = true;
+    maxHeatPctInput.value = String(cfg.heatCapPct);
+    throttleChk.checked = true;
+    triggerDDInput.value = String(cfg.triggerDD);
+    restoreDDInput.value = String(cfg.restoreDD);
+    throttleMultInput.value = String(cfg.throttleMult);
+  } else {
+    // Monday: not independently validated -- leave OFF rather than guess.
+    heatCapChk.checked = false;
+    throttleChk.checked = false;
+  }
+  syncSizingUI();
   loadData();
 });
 
