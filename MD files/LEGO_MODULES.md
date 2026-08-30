@@ -3176,6 +3176,80 @@ against real data; 🟢 backtest + portfolio page toggles wired and defaulted
 off; 🟡 live-viewer wiring genuinely out of scope until stop-distance display
 is built there first.
 
+**Correction (2026-08-30, later same day) — the fade-stop-tightening lever's
+avg-win-unchanged claim was checked on the WRONG pipeline stage; corrected
+here rather than left standing.** The owner asked directly whether SL
+decreases had ever been checked for a leverage-in-disguise effect. An
+earlier in-session check (this file's own "Fib Atlas cost-efficiency
+filter" investigation, task confirming stop-tightening coverage) compared
+avg win/loss via the single-pair `/vote-trades/:instrument` route with and
+without `stopTightenFrac` — that route does **not** call `riskAdjustTrades`,
+so it never exercises the actual position-sizing math the live portfolio
+Sharpe/maxDD numbers are built on. Re-checked the correct way — tighten
+the stop on RAW trades first, THEN `riskAdjustTrades` (the real
+`buildFibAtlasVotePortfolio` order) — and **avg win moves too**, not just
+avg loss: OOS, frac=0.9, fade-only: avg win 0.4198%→0.4683% (+11.6%), avg
+loss -1.4344%→-1.00% (-30%).
+
+**Why, mechanically**: `riskAdjustTrades` (`js/levelAtlasVoteReview.js`)
+sizes every trade so `t.stopPips` maps to exactly `riskPct`% risk
+(`r = t.pnlPct / stopRiskPct`, then `× riskPct`) — and `applyFadeStopFraction`
+shrinks `t.stopPips` on EVERY eligible fade row unconditionally (win or
+loss), not just the ones that actually get stopped out at the tighter
+level. A smaller `stopRiskPct` denominator scales up BOTH legs of that
+trade under fixed-fractional sizing, not just the newly-created losses.
+
+**Is this "fake"?** Not automatically — it's the standard Van Tharp
+fixed-fractional convention (risk the same % per trade off THAT trade's
+own stop distance), and this project already documents `riskAdjustTrades`
+as the deliberate sizing model throughout (`withNonCompoundedDD`'s own
+header). A genuinely tighter, still-valid stop legitimately lets a real
+account size bigger for the same $ risk. But it does mean: (1) this
+session's own stated bar for "clean, no leverage-in-disguise" ("avg win
+flat, avg loss shrinks") was not actually met here, and was reported as
+met based on a check run on the wrong pipeline stage — a real error,
+corrected now rather than left uncorrected; (2) part of the reported
+Sharpe/maxDD improvement from stop-tightening reflects bigger effective
+position size, not purely avoided bad losses, which also means more
+sensitivity to real-world slippage if the tighter stop doesn't fill
+exactly where assumed. Not re-litigating whether to keep the fade lever
+live — it still flips a robustly-negative OOS Sharpe positive and the
+sign/direction finding stands — but the "clean" framing needed fixing.
+
+**Fib Atlas SL-tightening study — follow decision, run for the first time
+(2026-08-30)** — direct answer to the owner's own follow-up question
+("have we calculated MAE/MFE for potential SL placement" on follow
+trades). `DECISION=follow` was already supported by
+`fib_atlas_sl_tightening_backtest.mjs` (added 2026-08-29 alongside
+`DECISION=fade`) but had never actually been run — the MAE-timing
+checkpoint study measured follow's signal (weaker than fade's, 2.29× peak
+lift vs 3.03×, but real) and flagged a follow-side tightening backtest as
+a natural next step, not yet built. It required zero new code, just the
+missing invocation:
+
+| | IS Sharpe | OOS Sharpe (daily) | OOS closed maxDD | OOS intraday MTM maxDD |
+|---|---|---|---|---|
+| baseline (follow, untightened) | 5.99 | 5.17 | -37.55% | -50.83% |
+| frac=0.9 (chosen) | 10.38 | 9.65 | -17.99% | -22.75% |
+
+Genuine interior peak in the IS fraction grid (not monotonic — passes the
+"never peaks" check), OOS Sharpe CIs don't overlap [6.221,9.028] vs
+[13.576,16.362] (per-trade basis), tail loss is broad-based not
+concentrated (worst 1% of OOS losers account for only 1.9% of total
+loss). **Same leverage-in-disguise caveat as fade above applies here too,
+checked directly, not assumed**: OOS avg win 0.7424%→0.8240% (+11.0%),
+avg loss -1.4288%→-1.00% (-30%) — real, but partly a fixed-fractional
+resizing effect, not a pure risk-reduction-only result.
+
+🟢 real, direction-consistent OOS result (same shape as the already-live
+fade lever: Sharpe roughly doubles, maxDD roughly halves), methodologically
+sound (interior peak, non-overlapping CIs, broad-based tail check). 🟡
+NOT wired into the page — the leverage-in-disguise question above needs a
+decision (keep the fixed-fractional sizing convention as-is and treat this
+as legitimate, or test a version that resizes only the stop-out leg) before
+either this or the live fade lever's sizing story is presented as fully
+settled; that decision belongs to the owner, not a default to assume.
+
 **Bug fix (2026-08-30) — "error loading candles: Failed to fetch" when
 clicking a trade row on this page's chart.** Root-caused, not guessed:
 `/api/vol-backtest/candles/:pair` (`server.js`) does a synchronous cold R2
