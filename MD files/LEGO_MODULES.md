@@ -3007,6 +3007,50 @@ into any live page/route — this is still an analysis-script result, not
 a change to `js/asiaFibAtlasVoteReview.js` or any page's actual numbers;
 Monday ladder and follow-decision stack not yet run.
 
+**Held-out (train/validate/test) validation — the definitive follow-up to
+DSR=0/`holdsOOS` (2026-08-29), and the first genuinely reassuring result on
+the core edge question.** Built `analysis/fib_atlas_holdout_validation.mjs`:
+inserts a real THIRD slice the book's own IS/OOS split doesn't have — TRAIN
+(first 50% by date) builds cell stats, VALIDATE (next 25%) decides which
+dimension buckets hold via the same `annotateHolds` gate `holdsOOS` uses
+live, TEST (final 25%, never touched by ANY check this session — DSR,
+leave-one-out, SL-tightening all operated on the book's existing OOS half)
+gets the frozen, completely unchanged `voteDecision`/`priceBarrierTrade` run
+once. Zero new decision logic — same rule, same functions, a cleaner split.
+
+**Run for EURUSD (95,980 total touches, 2016-2026): TEST slice (2023-10-24
+onward, 483 trades) — Sharpe 5.95, bootstrap 90% CI [4.708, 7.169],
+P(profitable)=1.** More important than the point estimate: the direct
+seen-vs-unseen comparison. The SAME frozen rule's per-observation Sharpe on
+TRAIN+VALIDATE (the data its selection process could see) was 0.5576; on
+TEST (genuinely never seen) it was 0.4526 — an **18.8% degradation**, sign
+preserved, no collapse. Compare this to what real overfitting looks like
+elsewhere in this exact system: the SL-tightening study's own untightened
+baseline went from IS Sharpe +0.52 to OOS Sharpe **-1.87** (a sign flip and
+~460% relative collapse) on the SAME kind of IS→OOS transition. An 18.8%
+degradation with the sign intact is the shape of a real, if modest, effect
+— not the shape of fitted noise evaporating out of sample.
+
+**What this does and doesn't settle.** This is genuinely better news for
+EURUSD Asia's core vote rule than anything found so far this session — the
+DSR=0 finding's implicit worry (that the rule is indistinguishable from the
+best of ~104 chance draws) looks less likely to be the whole story once the
+selection step is honestly isolated from the judge. It does NOT retroactively
+validate the original, unlogged ~30-dimension search that chose
+`prevOutcomeSameDay`/`sessionHandoff` in the first place (unreproducible, so
+untestable directly) — it shows that the RESULT of that process, re-validated
+honestly on one pair, holds up. It is also ONE pair tested ONCE — extending
+to the other 25 (and Monday) is the natural next step before trusting this
+as a system-wide verdict rather than an EURUSD-Asia-specific one. And it says
+nothing new about the SEPARATE, already-answered portfolio-drawdown question
+(the -99%/-16.58% numbers above come from combining many pairs at uncapped
+risk, a structural concurrency issue, not a selection-bias one) — these are
+two different problems with two different fixes, both real.
+
+🟢 built + run for EURUSD; 🟡 other 25 pairs and Monday ladder not yet run —
+do not generalize a one-pair result to "the system is validated" until they
+are.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
