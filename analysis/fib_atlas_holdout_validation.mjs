@@ -37,6 +37,7 @@
 // EURUSD-specific, per LEGO_MODULES.md's own stated caveat on the first run.
 import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import { asiaFibAtlasWalk } from '../js/asiaFibAtlasEngine.js';
+import { mondayFibAtlasWalk } from '../js/mondayFibAtlasEngine.js';
 import { splitAt, tableFor, summarizeAll, annotateHolds } from '../js/levelAtlasReport.js';
 import { voteDecision, priceBarrierTrade } from '../js/asiaFibAtlasVoteReview.js';
 import { backtestStats } from '../js/backtestStats.js';
@@ -46,6 +47,13 @@ const PAIRS = process.env.PAIRS ? process.env.PAIRS.split(',').map(p => p.trim()
 const REARM_FRAC = 0.3;
 const MIN_MARGIN = Number(process.env.MIN_MARGIN || 2);
 const VOTE_DIMS = ['prevOutcomeSameDay', 'sessionHandoff'];
+// LADDER (2026-08-29): 'asia' (default) or 'monday'. mondayFibAtlasWalk has
+// the exact same (packed, {instrument, rearmFracs}) -> {touches} contract as
+// asiaFibAtlasWalk (same touch record shape too -- confirmed by
+// mondayFibAtlasRoutes.js already reusing buildAsiaFibAtlasBook unchanged
+// for Monday's own book), so this is a drop-in swap, not new logic.
+const LADDER = (process.env.LADDER || 'asia').toLowerCase();
+const WALK = LADDER === 'monday' ? mondayFibAtlasWalk : asiaFibAtlasWalk;
 
 function mean(a) { return a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0; }
 function stdev(a) { const m = mean(a); return a.length > 1 ? Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)) : 0; }
@@ -53,7 +61,7 @@ function stdev(a) { const m = mean(a); return a.length > 1 ? Math.sqrt(a.reduce(
 async function runForPair(pair) {
   const packed = await loadM1ForPair(pair);
   if (!packed) { console.log(`  ${pair}: no M1 data, skipping`); return null; }
-  const { touches } = asiaFibAtlasWalk(packed, { instrument: pair.toUpperCase(), rearmFracs: [REARM_FRAC] });
+  const { touches } = WALK(packed, { instrument: pair.toUpperCase(), rearmFracs: [REARM_FRAC] });
   const pool = touches.filter(t => t.rearmFrac === REARM_FRAC);
 
   const half = splitAt(pool, 0.5);
@@ -119,7 +127,7 @@ async function runForPair(pair) {
 }
 
 async function main() {
-  console.log(`Fib Atlas held-out (train/validate/test) validation — ${PAIRS.length} pair(s)  minMargin=${MIN_MARGIN}\n`);
+  console.log(`Fib Atlas held-out (train/validate/test) validation — ladder=${LADDER}  ${PAIRS.length} pair(s)  minMargin=${MIN_MARGIN}\n`);
   const results = [];
   for (const pair of PAIRS) {
     console.log(`Running ${pair}...`);
