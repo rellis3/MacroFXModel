@@ -563,14 +563,109 @@ non-momentum × reject-candle — stacks several selections, so it needs
 pre-registration and a multiple-testing-aware read before anyone believes a
 good number from it.
 
+## 11. VWAP slope, range-consumed, and momentum×range interaction (2026-08-30)
+
+Owner's request, framed as a research question ("when is VWAP a magnet vs an
+origin for expansion"), not an indicator search: three dimensions genuinely
+NOT in §1-10, added the same way every other dimension here is — as causal,
+prior-history-only fields on the SAME `fixedSigmaWalk()` touch rows, read
+through the SAME `annotateHolds` gate, and — the part that matters most —
+checked against the SAME random-walk control that already caught two
+mechanical artifacts in this study (§2, §7 point 1).
+
+- **`vwapSlope`** — VWAP's own trailing rate of change over the last 30min
+  (distinct from the already-existing `vwapDrift`, which is drift since the
+  *session open*), σ-normalised, oriented to the touch side.
+- **`rangeConsumed`** — today's realized high-low range so far ÷ the
+  trailing-20-session median of PRIOR sessions' own full-day range (banked
+  the identical causal way `fixedSigma` itself is — a volatility-exhaustion
+  read, deliberately NOT a raw "% of session elapsed" feature, since that
+  exact shape produced the fake `sessionPos` clock-truncation finding §7
+  point 1 already had to catch and fix). Buckets: low (<0.5×) / mid
+  (0.5-0.85×) / high (0.85-1.2×) / exhausted (>1.2×).
+- **`momRangeMatrix`** — `momAdx` (existing 1h-ADX trend/range bucket) ×
+  `rangeConsumed`, combined into one cell the exact way `dowSession` already
+  combines `dow`×`session` — the 2×2-style matrix the owner asked for,
+  reusing the book's existing machinery rather than a bespoke report.
+
+### Result: `vwapSlope` is mechanical — the control reproduces it almost exactly
+
+| check | gold Δ (IS/OOS or race/return) | control Δ |
+|---|---|---|
+| ±1σ race, `vwapSlope=3·with` | −15.8 / −14.3 (up\|1) | **−15.2** |
+| ±2-3σ return, `vwapSlope=3·with` | +10.8 / +5.3 (up\|1, band 1 shown; ±2-3 pooled below) | **+9.7** |
+
+The random walk — which has no real reversion by construction — reproduces
+gold's own delta almost bar-for-bar in both directions. This is the same
+class of artifact `vwapDrift`/`churn` were already found to partly carry: a
+VWAP that has been sloping toward the touch side moves the BAND itself
+toward price at the same time (band = vwap + kσ), so a "touch" needs less
+real extension to register — a coordinate effect, not a market one.
+**`vwapSlope` is reported here as tested-and-explained-away, not promoted.**
+
+### Result: `rangeConsumed` / `momRangeMatrix` show a real, non-mechanical excess — specifically at DEEP bands, and specifically in the CONTINUATION direction
+
+The shallow-band (±1σ) reading is mixed: `rangeConsumed=2·mid` at up|1 holds
+on gold (IS+13.6/OOS+9.9) but the control shows the same-direction Δ+6.0 at
+that exact bucket — roughly 60% of gold's OOS number is mechanical, leaving
+a modest possible real excess, not a clean read.
+
+**At ±2-3σ it separates cleanly:**
+
+| finding (gold, OOS-held) | gold Δ (IS/OOS) | control Δ (same bucket) |
+|---|---|---|
+| `rangeConsumed=3·high`, dn\|2 (race, 'out') | +17.7 / **+6.5** | **−0.1** |
+| `momRangeMatrix=1·range×3·high`, dn\|2 (race) | +31.0 / **+7.3** | **+1.4** |
+| `momRangeMatrix=3·trend×3·high`, dn\|2 (race) | +8.9 / **+9.5** | **−6.8** (sign-flipped) |
+| `rangeConsumed=4·exhausted`, up\|3 (race) | +13.4 / **+5.8** | −4.0 (±2-3σ pooled; opposite sign) |
+
+Three of these are the specific, non-obvious kind of finding this project
+treats as strongest: gold's OOS delta is either far above a near-zero
+control (rangeConsumed=high, momRangeMatrix=1·range×3·high) or the OPPOSITE
+SIGN from the control (momRangeMatrix=3·trend×3·high, rangeConsumed=
+exhausted) — the same "cleanest genuinely-gold" signature §3 found for the
+grind-approach dimension. `momRangeMatrix=3·trend×2·mid` at up|1, by
+contrast, is NOT real — the control shows Δ+12.2 against gold's own
+OOS+10.7, essentially matched — a reminder that the matrix is real cell-by-
+cell, not as a blanket "momentum × range works."
+
+**Reading it straight, and directly against the owner's own hypothesis**:
+the brief guessed "high range consumption + extreme VWAP deviation → mean
+reversion." What the data actually shows, where it's real, is the OPPOSITE —
+a deep band reached after most of the session's typical range is already
+used up **continues MORE, not less**, beyond what a random walk's own
+volatility-clustering would predict. Consistent with a "the day is already
+trending/expansion-shaped" read rather than an "exhaustion" read — but
+stated as what the data shows, not fit to the momentum-lifecycle framing
+after the fact.
+
+### What this does and doesn't answer from the owner's fuller brief
+
+This covers the "range exhaustion" (§4 of the brief) and "VWAP geometry
+slope" (§3) questions specifically, cross-checked the honest way. It does
+**not** yet build: the full sequential band-by-band path reconstruction
+(brief §8 — this book records first-touch + peak/return per band, not a
+walked VWAP→1σ→2σ→3σ timeline with inter-band velocity); a formal
+incremental-information/ablation table (brief §12 — the held-findings list
+above is the closest existing analogue, dimension-by-dimension, but not a
+cumulative baseline→+X→+Y stack); a 5-stage Momentum Lifecycle classifier
+(brief §6 — `dayTypeCore.js`'s existing trend-vs-reversion score is the
+nearest built brick, not that specific framework); or options/gamma/
+liquidity-pool levels (brief §9 — no such data source exists in this repo;
+the structural-level question this project CAN answer is already covered by
+§8's Asia/Monday range-fib null). None of the above is claimed as done.
+
 ## Status
 
 Engine `js/vwapFixedSigmaEngine.js` (+ tests; also exports `groupUtcDays` /
 `computeFixedSigmaByDate` so trade-level engines share the identical band
-unit, equivalence-tested), report `js/vwapFixedSigmaReport.js` (imports the
-shared `annotateHolds` gate from `levelAtlasReport.js`), runner
+unit, equivalence-tested; §11 added `vwapSlope`/`rangeConsumed`/
+`momRangeMatrix` the same causal way, +2 tests), report
+`js/vwapFixedSigmaReport.js` (imports the shared `annotateHolds` gate from
+`levelAtlasReport.js`; §11's 3 new dims registered in `DIMENSIONS`), runner
 `scripts/run_gold_vwap_sigma.mjs`, controls
-`scripts/run_gold_vwap_sigma_controls.mjs`. Stage-2 trade test
+`scripts/run_gold_vwap_sigma_controls.mjs` (§11's 3 new dims added to both
+the ±1σ and ±2-3σ control checks). Stage-2 trade test
 `js/vwapImpulseEntryV1Engine.js` (+ tests) with runner
 `scripts/run_gold_vwap_impulse.mjs` — null, kept as a costed, reproducible
 harness. Registered in `LEGO_MODULES.md`. No routes/UI — per the playbook,

@@ -184,6 +184,20 @@ export const DEFAULT_CFG = {
   // identity + outcome fields. An invariance test pins that outcomes are
   // identical with it on or off.
   liteContext: false,
+  // ── Range-consumed + VWAP-slope dimensions (2026-08-30) ─────────────────────
+  // rangeConsumed: today's realized high-low range SO FAR at the touch, ÷ the
+  // trailing-`historySessions` median of PRIOR sessions' own full-day range —
+  // a volatility-exhaustion read, deliberately built the same causal way as
+  // fixedSigma (prior sessions only) so it does NOT inherit the clock-
+  // truncation trap the return book's own header warns about for raw
+  // time-into-session features (a "% of session elapsed" feature is
+  // mechanically smaller early in the day; realized range consumed is a
+  // volatility fact, not a clock fact, though the two will still correlate —
+  // read it alongside `session`/`sessionPos`, don't conflate them).
+  // vwapSlope: VWAP's own trailing rate of change over `vwapSlopeWin` minutes
+  // (distinct from `vwapDrift`, which is drift since the SESSION OPEN) —
+  // normalised by fixedSigma, oriented to the touch side.
+  vwapSlopeWin: 30,
 };
 
 /**
@@ -226,6 +240,7 @@ export function fixedSigmaWalk(packed, opts = {}) {
   };
 
   const rmsAll = [];        // every completed session's RMS, in walk order
+  const rangeAll = [];      // every completed session's full-day (high-low) range, in walk order
   const d1 = [];            // completed D1 bars, for sigmaMode 'forecast'
   const touches = [];
   let prevDayClose = null;
@@ -243,6 +258,11 @@ export function fixedSigmaWalk(packed, opts = {}) {
     const fs = rmsAll.length >= cfg.minHistory
       ? (cfg.useMedian ? median(histWin) : histWin.reduce((s, v) => s + v, 0) / histWin.length)
       : null;
+
+    // Expected full-day range for TODAY: strictly-prior sessions only (same
+    // causal shape as fixedSigma) — the denominator for `rangeConsumed`.
+    const rangeHistWin = rangeAll.slice(-cfg.historySessions);
+    const rangeExpected = rangeAll.length >= cfg.minHistory ? median(rangeHistWin) : null;
 
     // σ under the selected mode (all strictly causal — see DEFAULT_CFG note).
     let fsForecast = null;
@@ -348,6 +368,9 @@ export function fixedSigmaWalk(packed, opts = {}) {
             const dirTravel = isUp ? (runHi - open) : (open - runLo);
             const churnRatio = totalTravel > 0 ? Math.min(1, Math.max(0, dirTravel / totalTravel)) : null;
             const driftSig = (vwap[j - 1] - open) / s1 * sgn;   // + = VWAP drifted toward the touch side
+            const rangeConsumedRatio = rangeExpected > 0 ? totalTravel / rangeExpected : null;
+            const slopeWinStart = j - 1 - cfg.vwapSlopeWin;
+            const slopeSig = slopeWinStart >= 0 ? (vwap[j - 1] - vwap[slopeWinStart]) / s1 * sgn : null;
             const otherMax = maxBand[isUp ? 'dn' : 'up'];
             const sameMax = maxBand[side];
             const ladderStep = k - sameMax;
@@ -374,6 +397,16 @@ export function fixedSigmaWalk(packed, opts = {}) {
               churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
               otherSideMaxBand: otherMax === 0 ? '0·none' : otherMax >= 3 ? '3+·deep' : String(otherMax),
               ladderStep: ladderStep <= 0 ? '1·retest' : ladderStep === 1 ? '2·step' : '3·jump',
+              rangeConsumed: rangeConsumedRatio == null ? null
+                : rangeConsumedRatio < 0.5 ? '1·low' : rangeConsumedRatio < 0.85 ? '2·mid'
+                : rangeConsumedRatio < 1.2 ? '3·high' : '4·exhausted',
+              rangeConsumedRatio: rangeConsumedRatio != null ? +rangeConsumedRatio.toFixed(3) : null,
+              vwapSlope: slopeSig == null ? null
+                : Math.abs(slopeSig) < 0.15 ? '2·flat' : slopeSig > 0 ? '3·with' : '1·against',
+              vwapSlopeSig: slopeSig != null ? +slopeSig.toFixed(3) : null,
+              momRangeMatrix: (feats.momAdx?.bucket && rangeConsumedRatio != null)
+                ? `${feats.momAdx.bucket}×${rangeConsumedRatio < 0.5 ? '1·low' : rangeConsumedRatio < 0.85 ? '2·mid' : rangeConsumedRatio < 1.2 ? '3·high' : '4·exhausted'}`
+                : null,
               rangeConf: cfg.liteContext ? null
                 : nearAsia && nearMon ? '3·both' : nearMon ? '2·monday' : nearAsia ? '1·asia' : '0·none',
               approachVel: feats.approachVel?.bucket ?? null,
@@ -409,11 +442,12 @@ export function fixedSigmaWalk(packed, opts = {}) {
       daysSkippedWarmup++;
     }
 
-    // Bank THIS session's RMS + D1 bar strictly after its walk — never before.
+    // Bank THIS session's RMS + range + D1 bar strictly after its walk — never before.
     const rms = sessionRmsFromVwap(bars, vwap);
     if (rms != null && rms > 0) rmsAll.push(rms);
     let dHi = -Infinity, dLo = Infinity;
     for (const b of bars) { if (b.high > dHi) dHi = b.high; if (b.low < dLo) dLo = b.low; }
+    if (dHi > dLo) rangeAll.push(dHi - dLo);
     d1.push({ date, open, high: dHi, low: dLo, close: bars[bars.length - 1].close });
     prevDayClose = bars[bars.length - 1].close;
   }

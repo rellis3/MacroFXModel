@@ -54,7 +54,7 @@ console.log('── Control 1: driftless random walk through the identical engin
   const deep = firsts.filter(t => (t.band === 2 || t.band === 3) && returnEligible(t));
   const dBase = deep.filter(t => returnedWithin(t)).length / deep.length * 100;
   console.log(`  ±2-3σ RETURN-outcome deltas on the control (base ${dBase.toFixed(1)}%):`);
-  for (const dim of ['wtState', 'volRegime', 'approachVel', 'churn', 'candleReject', 'wtMtf']) {
+  for (const dim of ['wtState', 'volRegime', 'approachVel', 'churn', 'candleReject', 'wtMtf', 'vwapSlope', 'rangeConsumed', 'momRangeMatrix']) {
     const groups = {};
     for (const t of deep) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, hit: 0 }); g.n++; if (returnedWithin(t)) g.hit++; }
     console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
@@ -63,11 +63,23 @@ console.log('── Control 1: driftless random walk through the identical engin
   const b1 = firsts.filter(t => t.band === 1);
   const base = b1.filter(t => t.outcome === 'out').length / b1.length * 100;
   console.log(`  ±1σ context deltas on the control (any match to gold ⇒ mechanical, not market):`);
-  for (const dim of ['vwapDrift', 'churn', 'approachVel', 'otherSideMaxBand', 'sessionPos', 'candleReject']) {
+  for (const dim of ['vwapDrift', 'churn', 'approachVel', 'otherSideMaxBand', 'sessionPos', 'candleReject', 'vwapSlope', 'rangeConsumed', 'momRangeMatrix']) {
     const groups = {};
     for (const t of b1) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, out: 0 }); g.n++; if (t.outcome === 'out') g.out++; }
     console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
       .map(([b, g]) => `${b} n=${g.n} Δ${(g.out / g.n * 100 - base).toFixed(1)}`).join('  '));
+  }
+  // ±2-3σ RACE-outcome ('out') deltas — the gold held-findings run showed
+  // rangeConsumed/momRangeMatrix/vwapSlope surviving specifically at these
+  // deeper bands (dn|2, up|1, up|3), not just ±1σ, so check there directly.
+  const b23 = firsts.filter(t => t.band === 2 || t.band === 3);
+  const base23 = b23.filter(t => t.outcome === 'out').length / b23.length * 100;
+  console.log(`  ±2-3σ RACE-outcome ('out') deltas on the control (base ${base23.toFixed(1)}%):`);
+  for (const dim of ['vwapSlope', 'rangeConsumed', 'momRangeMatrix']) {
+    const groups = {};
+    for (const t of b23) { const b = t[dim]; if (b == null) continue; const g = (groups[b] ??= { n: 0, out: 0 }); g.n++; if (t.outcome === 'out') g.out++; }
+    console.log(`    ${dim.padEnd(17)} ` + Object.entries(groups).sort()
+      .map(([b, g]) => `${b} n=${g.n} Δ${(g.out / g.n * 100 - base23).toFixed(1)}`).join('  '));
   }
 }
 
