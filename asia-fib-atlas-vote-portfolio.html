@@ -173,9 +173,11 @@
   trade's own odds, since a day nets positive easily even off a modest per-trade edge. This card answers "is a random
   individual trade actually a good bet" directly: computed straight off <code>js/metricsCore.js</code>'s
   <code>summarizeTrades</code> (same brick <a href="asia-fib-atlas-vote-backtest.html" style="color:var(--accent)">the single-pair tearsheet</a>
-  uses), no daily pooling at all. Sharpe here treats every trade as its own independent bet (annualised by
-  √trades/year) — genuinely optimistic when trades cluster in time, same caveat the single-pair page's own
-  "Sharpe (per-trade)" carries; the day-level Sharpe above remains the one to size risk from.
+  uses), no daily pooling at all. The Sharpe tile below shows the UN-annualized, single-trade figure (mean ÷ stdev of
+  one trade's own pnl) as the headline — the annualized version (multiplying by √trades/year, shown in that tile's own
+  sub-text) is easy to mistake for "this system is incredible" when it's really just a large multiplier applied to a
+  much more modest number, especially at Fib Atlas's trade frequency (thousands/year). The day-level Sharpe above
+  remains the one to size real risk from either way — this card is about individual trade quality, not portfolio risk.
   </div>
   <div class="kpi-grid" id="kpiPerTrade"></div>
   <h2 style="margin-top:14px">Per-trade equity curve (cumulative, chronological order)</h2>
@@ -445,10 +447,18 @@ function computePerTradeStats(trades) {
   const sortino = sortinoRatio(pnls, base.tradesPerYr);
   const calmarNonCompounded = calmarRatio(cagrNonCompounded, addMaxDD);
   const calmarCompounded = calmarRatio(cagrCompounded, compMaxDDFrac * 100);
+  // Un-annualized per-trade Sharpe (2026-08-31) -- `base.sharpe` multiplies
+  // this by √tradesPerYr, same convention summarizeTrades always uses, and
+  // at Fib Atlas's trade frequency (thousands/yr) that multiplier alone can
+  // turn a genuinely modest mean/stdev ratio into a headline number that
+  // reads as "best system ever" even though nothing about the underlying
+  // trades changed. Exact inverse of summarizeTrades' own annSharpe formula
+  // -- no re-derivation of mean/stdev, just undoing its multiplier.
+  const rawTradeSharpe = base.tradesPerYr > 0 ? base.sharpe / Math.sqrt(base.tradesPerYr) : base.sharpe;
 
   return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
     addCurve, compCurve, addMaxDD, compMaxDDPct: compMaxDDFrac * 100,
-    cagrNonCompounded, cagrCompounded, sortino, calmarNonCompounded, calmarCompounded, years,
+    cagrNonCompounded, cagrCompounded, sortino, calmarNonCompounded, calmarCompounded, years, rawTradeSharpe,
     tradesPerDay: dates.length / new Set(dates).size };
 }
 
@@ -461,7 +471,7 @@ function renderPerTradeKpis(s) {
   el.innerHTML = [
     kpiCard('Win Rate (per-trade)', fmt1(s.winRate) + '%', s.winRate >= 50 ? 'green' : 'amber', `${wins}W / ${s.trades - wins}L of ${s.trades}`),
     kpiCard('Profit Factor (per-trade)', s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross win $ / gross loss $, individual trades'),
-    kpiCard('Sharpe (per-trade)', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, 'amber', 'annualised by √trades/yr — OPTIMISTIC, treats every trade as independent'),
+    kpiCard('Sharpe (single trade)', fmt2(s.rawTradeSharpe), s.rawTradeSharpe >= 0.5 ? 'blue' : 'amber', `mean ÷ stdev of ONE trade's own pnl, NOT annualized — the honest scale. Annualizing this by √trades/yr (${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)} at ~${fmt1(s.tradesPerYr)} trades/yr) is how a high-frequency book manufactures a huge "Sharpe" — same trades, same edge, just multiplied by a big number.`),
     kpiCard('Sortino (per-trade)', fmt2(s.sortino), '', 'downside-deviation-only'),
     kpiCard('Avg Win', '+' + fmt2(s.avgWin) + '%', 'green', ''),
     kpiCard('Avg Loss', '-' + fmt2(s.avgLoss) + '%', 'red', ''),
