@@ -4650,6 +4650,91 @@ now genuinely re-validated, on top of chandelierMult and concurrency
 mode from the earlier follow-ups. Still outstanding: pair-selection
 exclusion set (not yet walk-forward-checked at all).
 
+### Follow-up 3: same corrected check extended to Monday and COMBINED — the mode the owner will actually trade (2026-08-31)
+
+The above was Asia-only. Direct owner ask: "asia, monday and then both,
+as I imagine both is what I will trade and both is where all the high
+numbers are coming from." Found first, by reading the shipped code
+rather than assuming: `costRatioFor(ladder)` sends **4x for Monday**,
+not 3x — a value never touched by the Asia-only corrections above — and
+combined mode sends **Asia's 3x uniformly to both ladders' legs**
+(confirmed in `asiaFibAtlasRoutes.js`'s `/vote-portfolio-combined`:
+`minCostRatio` is ONE global param, no per-ladder branch — the client's
+own comment already flags this as "NOT independently validated").
+`chandelierMult` is NOT affected — it's baked into each stored trade at
+generation time per ladder (3 Asia / 1.5 Monday), so combined mode
+already applies the right mult per leg regardless of the request-level
+params; only cost-ratio/stop-frac ride on one shared value.
+
+`analysis/fib_atlas_full_config_pooled_oos.mjs` (new — generalizes the
+day-pooled + per-trade pooled-OOS method to `LADDER=asia|monday|combined`;
+combined loads BOTH ladders' data per pair as separate constituents
+`PAIR_ASIA`/`PAIR_MONDAY`, matching the live route exactly), wider grid
+this time (ratio up to 5, not just 3):
+
+**Cost-efficiency ratio, per-trade PF / raw Sharpe:**
+
+| Ratio | Asia | Monday | Combined |
+|---|---|---|---|
+| 1 (no filter) | 2.77 / 0.455 | 2.80 / 0.490 | 2.76 / 0.456 |
+| 2 | 2.86 / 0.471 | 2.86 / 0.501 | 2.84 / 0.470 |
+| **3 (Asia/combined shipped)** | 2.96 / 0.488 | 2.93 / **0.512** | 2.92 / 0.485 |
+| **4 (Monday shipped)** | 3.04 / 0.507 | 2.90 / 0.510 | 2.99 / 0.501 |
+| 5 | 3.07 / **0.521** | 2.91 / 0.511 | 3.00 / **0.511** |
+
+Asia and Combined: per-trade edge keeps climbing all the way to ratio=5
+in this wider grid — shipped ratio=3 is solid and clearly beats loose
+filtering, but is NOT the ceiling of what was tested (trades drop from
+~10-12k to ~6-8k at ratio=5, a real capacity trade-off, not yet weighed).
+🟡 flagging as a legitimate, second-order "could tighten further"
+option — NOT a red flag like the retracted finding above, since 3 is
+already solidly ahead of the loose end; just possibly short of optimal.
+Monday: per-trade Sharpe peaks at ratio=3 (0.512), narrowly ahead of the
+shipped 4x (0.510) and 5x (0.511) — all three are within noise of each
+other (PF 2.90-2.93, Sharpe 0.510-0.512). 🟢 Monday's shipped 4x is fine,
+not urgent to change; 3x is a marginal, noise-level alternative.
+
+**Stop-tighten fraction, per-trade PF / raw Sharpe — clean interior peak
+at 0.9 on ALL THREE modes, no exceptions:**
+
+| Fraction | Asia | Monday | Combined |
+|---|---|---|---|
+| 1.0 (off) | 2.76 / 0.461 | 2.86 / 0.505 | 2.76 / 0.462 |
+| **0.9 (shipped)** | **2.96 / 0.488** | **2.90 / 0.510** | **2.92 / 0.485** |
+| 0.75 | 2.96 / 0.484 | 2.74 / 0.477 | 2.90 / 0.477 |
+| 0.6 | 2.91 / 0.469 | 2.63 / 0.447 | 2.84 / 0.459 |
+
+🟢 **0.9 is the per-trade peak (or a dead-even tie for it) on Asia,
+Monday, AND Combined independently.** This is the cleanest, most
+consistent confirmation of the whole exercise — no ladder disagrees, no
+change warranted anywhere.
+
+**On "combined is where the high numbers come from"**: confirmed
+structurally, not newly broken. Combined's day-pooled CAGR/Sharpe track
+Asia's almost exactly at every ratio (e.g. day-pooled Sharpe 18.2 Asia
+vs 18.51 combined at ratio=3) because combined is ~80% Asia-leg trade
+volume + ~20% Monday-leg by count (12,496 combined vs 10,405 Asia-only
+at ratio=3) — Asia is the dominant risk driver, same conclusion this
+doc already reached for pair-exclusion and cost-ratio precedent. The
+extreme non-compounded headline % figures are the SAME high-trade-
+frequency accounting artifact already explained to the owner directly
+(annual return ≈ trades/yr × avg edge/trade, thousands of trades summed
+off a fixed reference capital) — confirmed present in combined at the
+same magnitude as Asia alone, not a new or worse mechanism.
+
+🟢 **Net position after this pass**: chandelierMult, concurrency mode,
+cost-efficiency ratio, and stop-tighten fraction are now checked with
+the corrected (day-pooled + per-trade) method across Asia, Monday, AND
+Combined. Stop-tighten fraction is fully confirmed everywhere.
+Cost-efficiency ratio is confirmed-solid everywhere, with a legitimate
+(not urgent) "could go tighter" option flagged for Asia/Combined only.
+🟡 **Still not walk-forward-checked**: pair-selection exclusion set, and
+concurrency mode specifically IN combined mode (held fixed at hedgeOnly
+this pass rather than re-tested blocked-vs-hedgeOnly on the 32-stream
+combined universe — the single-split check that originally confirmed
+hedge-only covered Asia and Monday separately, not combined's own
+constituent mix).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
