@@ -213,7 +213,30 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
                                      ivByDate = null, pendingRearmFrac = null, liveWindowDays = null } = {}) {
   const sym = String(instrument).toUpperCase();
   const sessions = bucketM1IntoSessions(packed, 'Europe/London');
-  const dates = [...sessions.keys()].sort().filter(d => (sessions.get(d)?.length ?? 0) >= 200);
+  const _allDates = [...sessions.keys()].sort();
+  // The 200-bar floor exists to protect `d1` (the day-level OHLC array every
+  // OTHER day's forecastSigma/dayVol/prevCloseLoc reads via d1.slice(0,i))
+  // from a genuinely gappy/short HISTORICAL day (holiday, data outage)
+  // quietly understating that day's true range and corrupting every later
+  // day's vol estimate. It was never meant to gate the LIVE/in-progress
+  // day itself — nothing downstream ever reads d1.slice(0, dates.length),
+  // so the chronologically last date is never used to inform any OTHER
+  // day's stats, and every per-day stat (sigma/lad/dayVol/prevCloseLoc) is
+  // ALREADY computed from d1.slice(0, i) — strictly PRIOR days, never this
+  // day's own bar count. Found 2026-08-31: bundling this floor onto the
+  // live day too meant the plan producer stayed frozen on YESTERDAY's
+  // sealed session (same zones, same "current price") for the first ~200
+  // minutes of every single live day, missing real overnight opportunity
+  // (an early-morning touch, e.g. shortly after midnight London, simply
+  // wasn't visible yet) — not a data-quality problem, just this filter
+  // applied somewhere it was never protecting anything. Always includes
+  // the last date now, however few bars it has (as few as 1, the moment
+  // the anchor bar completes) — the per-touch context features below
+  // (wt1/churn/session-position) already degrade gracefully to null on
+  // thin data, the same handling every other optional context dimension
+  // in this file already gets.
+  const _lastDate = _allDates.at(-1);
+  const dates = _allDates.filter(d => (sessions.get(d)?.length ?? 0) >= 200 || d === _lastDate);
   if (dates.length <= minLookback) return { touches: [], coverage: null };
   // `liveWindowDays` — everything in the per-day context block (sigma,
   // dayVol, ivRegime, confLevels, htf features) only ever reads a BOUNDED
