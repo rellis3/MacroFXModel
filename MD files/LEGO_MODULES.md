@@ -4368,6 +4368,155 @@ save. The drawdown throttle can stay as a dormant tail-risk backstop
 (it costs nothing when it never fires) but its own value under this
 pipeline is unconfirmed, not proven.
 
+### CORRECTION: "stacking" was a real duplicate-counting bug, not a genuine improvement (2026-08-31)
+
+The chandelier+stacking work above was wired into production, then the
+owner spotted an unbelievable live result on the portfolio page (PF
+133.53, 94.1% win rate, 7186.7% non-compounded annual return) and
+pushed back hard rather than accepting it — exactly right. Auditing it
+found a real bug, plus a second, separate false alarm along the way;
+both are recorded honestly below.
+
+**The real bug: "stacking" was counting one market move as two trades.**
+`maxConcurrent=2` was tested with `perDirection:false` (the default),
+which allows TWO SAME-DIRECTION positions on one pair at once. In
+practice: two adjacent fib rungs touched minutes apart during the SAME
+real continuation both survived the cap, and because the chandelier
+exit extends both to ride the SAME underlying move, they resolved at
+the IDENTICAL timestamp with the IDENTICAL `pnlPct` — one real market
+event, paid out as two independently-sized (0.5% risk each) trades.
+Quantified directly on the live Asia "best config" pull before any fix:
+**4,534 (pair, resolveTime) groups had 2+ trades; the "extra" (2nd+)
+trades in those groups contributed 27.1% of total win PnL.** That's the
+single largest driver of the inflated headline numbers — not the
+chandelier exit itself, and not a chandelier-only defect (the SAME
+mechanism would apply to any wide, extendable exit combined with
+same-direction stacking).
+
+**The fix**: `applyConcurrencyCap`'s existing `perDirection:true` option
+(already built for Level Atlas, unmodified here) tracks long/short
+budgets SEPARATELY — at `maxConcurrent:1`, that means at most 1 long
+AND 1 short per pair simultaneously (a genuine hedge is still allowed)
+but same-direction pyramiding is now STRUCTURALLY impossible, not just
+discouraged. `analysis/fib_atlas_chandelier_exit_backtest.mjs`'s STEP 3
+was rewritten around a `duplicateContamination()` diagnostic that
+re-measures the same (pair, resolveTime) collision rate on every run,
+so the fix is proven each time, not just asserted once:
+
+| | OOS duplicate trades | % of win PnL |
+|---|---|---|
+| Asia, ORIGINAL (maxConcurrent=2, perDirection=false) | — | **27.1%** (live pull) |
+| Asia, FIXED (maxConcurrent=1, perDirection=true, "hedgeOnly") | 71/4,578 | **1.37%** |
+| Monday, FIXED (same) | 16/1,664 | **1.42%** |
+
+**Re-tested, corrected OOS numbers, chandelier exit's own frozen mult, full IS/OOS discipline:**
+
+| | Asia OOS Sharpe | Asia maxDD | Monday OOS Sharpe | Monday maxDD |
+|---|---|---|---|---|
+| blocked (maxConcurrent=1, no hedge) | 19.47 | -2.43% | 12.85 | -2.57% |
+| hedgeOnly (the fix) | 19.49 | -2.43% | 13.07 | -2.57% |
+| OOS trades gained by allowing a hedge | +4 (3711→3715) | | +17 (1647→1664) | |
+
+**Second finding along the way: the earlier "stacking beats blocked"
+result was almost entirely the bug, not a real effect.** Once corrected,
+hedge-only is statistically indistinguishable from plain blocked on
+both ladders (Sharpe moves by ~0.02-0.2, trade count moves by single
+digits to tens). Shipped anyway since it's free — zero downside, the
+tiny genuine-hedge upside — but the story is now "stacking doesn't
+meaningfully help," not "stacking is a further OOS win," which is what
+was reported before this correction.
+
+**A second scare that was NOT a bug — recorded so it isn't re-litigated.**
+Before finding the above, the owner also asked to verify parameter-sweep
+methodology (~10 levers this session, all effectively validated against
+overlapping windows of the SAME 70/30 calendar split — a real, still-open
+multi-testing risk, see the note left in this file for whoever picks
+that up next) and cross-pair correlation in the win-rate sample
+(same-day, same-direction trades across correlated pairs pooled as if
+independent). Both were checked with real numbers: same-day cross-pair
+overdispersion measured only 1.14x (modest, not dramatic); the
+day-level "94.1% win rate" badge on the dashboard was separately found
+to be a DIFFERENT statistic than per-trade win rate (day-level = fraction
+of trading days the whole pooled portfolio closed net positive; true
+per-trade win rate is ~72%) — a metric-labeling confusion on this
+session's own part, corrected in conversation, not a data problem.
+Separately, an apparent core-engine anomaly (69.6% per-trade win rate
+when the target is FARTHER than the stop — geometrically it should be
+well under 50% with no edge) survived four independent falsification
+attempts (same-bar look-ahead, inner/outer rung mislabeling, one-trend-
+sliced-into-many-trades, pair-specific bad data) and held STABLE across
+5 independent, non-overlapping ~1-year chunks of 2021-2026 history
+(66-72% every year, including the earliest year that predates this
+whole session and the most recent year past nearly every lever's own
+tuning cutoff) — current read: probably a genuine, structurally
+persistent momentum characteristic of fib-touch events (a touch can
+only happen by having just crossed the prior rung, so touches are
+inherently momentum-conditioned), not a bug, though the exact mechanism
+was never pinned down and this is not 100% certain.
+
+🟢 the duplicate-counting bug was real, is now fixed, and the fix is
+self-verifying (`duplicateContamination()` reruns the check every time,
+not a one-off manual audit). 🟢 the corrected numbers (Asia OOS Sharpe
+19.47/19.49, Monday 12.85/13.07 — chandelier's own real, unchanged win)
+are believable in a way PF 133 / 94.1% never was. 🔴 do not trust the
+absolute PF (still 42 on Asia, 11 on Monday in the corrected live pull —
+elevated, plausible given the robustness-tested touch-momentum effect,
+but still not validated as tradeable at that magnitude) or Sharpe as
+real-world expectancy; trust the DIRECTION. 🟡 the ~10-lever
+same-overlapping-OOS-window multi-testing risk from the parameter-sweep
+audit remains genuinely open — not fixed by this correction, and worth
+a dedicated pass (e.g. a fresh walk-forward re-validation of the FULL
+stacked pipeline, not lever-by-lever) before trusting this book much
+further.
+
+### Follow-up: walk-forward validation of the chandelierMult choice (2026-08-31)
+
+Direct answer to "is the ~10-lever OOS-overlap risk actually still the
+reason for the false numbers, and does chasing it change the config?"
+No on the first (the false numbers were the duplicate-counting bug
+above, fully explained and fixed) — but the owner asked to chase the
+overlap risk anyway to see if it changes anything, specifically for the
+chandelier exit (the newest, highest-leverage, most-recently-chosen
+parameter, picked last after seeing many other levers' own OOS results
+on the same shared window).
+
+**Method** (`analysis/fib_atlas_chandelier_walkforward.mjs`, new): a
+single 70/30 split only shows whether ONE split likes a choice; it
+can't distinguish a real, stable edge from a choice that fits one
+specific stretch. A walk-forward with 3 independent, non-overlapping,
+EXPANDING-window folds can — each fold re-picks chandelierMult fresh
+from its OWN fit-only slice (never reusing an earlier fold's choice or
+peeking at its own test window), so a mult that wins across genuinely
+different chunks of history is real evidence, not a repeat of the same
+question.
+
+**Result: perfectly stable on both ladders.**
+
+| | Fold 1 | Fold 2 | Fold 3 | Shipped |
+|---|---|---|---|---|
+| Asia chosen mult | 3 | 3 | 3 | 3 |
+| Monday chosen mult | 1.5 | 1.5 | 1.5 | 1.5 |
+
+Every fold, on both ladders, independently re-derived the SAME mult
+already shipped — no fold ever disagreed. OOS improvement was also
+consistent across every fold (not just the specific split everyone
+happened to share), e.g. Asia: baseline Sharpe 13.15/15.86/14.74 across
+the 3 folds' own test windows → mult=3 Sharpe 19.95/20.06/19.96 every
+time, maxDD improving in all 3; Monday: baseline Sharpe
+11.52/12.06/11.33 → mult=1.5 Sharpe 12.91/13.45/12.83 every time.
+
+🟢 the chandelierMult choice itself is NOT an artifact of the one
+shared 70/30 split — it independently re-emerges from 3 genuinely
+different, non-overlapping historical stretches on both ladders. This
+is real evidence against the specific overfitting worry that prompted
+the check. 🟡 this only tests ONE parameter (chandelierMult) at the
+concurrency=blocked setting — it does not re-validate the other ~9
+levers (cost-efficiency ratio, stop-tighten fraction, pair-selection
+exclusion, etc.) the same way, so the broader "many levers, one shared
+window" methodology risk is narrowed, not fully closed. The pattern
+(`fib_atlas_chandelier_walkforward.mjs`) is reusable for any other
+single-parameter lever that's worth the same check.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

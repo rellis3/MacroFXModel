@@ -56,7 +56,7 @@
     <button id="selectAllBtn" type="button">Select all</button>
     <button id="selectDefaultBtn" type="button">Reset to default 5</button>
     <button id="selectRecommendedBtn" type="button" title="OOS-validated on THIS engine's own data (analysis/fib_atlas_oos_validate_pair_selection.mjs): exclusion set chosen on the first 70% of history, frozen, still improved the untouched last 30%. Asia: 10 pairs excluded, OOS maxDD -98.6%→-39.2%. Monday's OWN exclusion attempt FAILED OOS (maxDD got WORSE, -7.1%→-10.2%) so no exclusion is applied there — correctly not shipped, not silently reused from Asia.">Select recommended</button>
-    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Updated 2026-08-31 after the chandelier-exit + heat-cap platform review (see LEGO_MODULES.md). Applies every lever validated on THIS engine's OWN full blended portfolio (fade+follow, not an isolated slice): recommended pairs, margin≥2, fade-stop tightening ON at 0.9×, cost-efficiency filter ON, chandelier (ATR-trailed) continuation exit ON (Asia 3x ATR / Monday 1.5x ATR, analysis/fib_atlas_chandelier_exit_backtest.mjs — real OOS win, Asia Sharpe 15.33->19.47 maxDD -4.51%->-2.43%, Monday Sharpe 11.39->12.85 maxDD -3.11%->-2.57%), max concurrent 2 (stacking — a second same-pair trade may open while a chandelier-held winner is still running; further OOS win on top: Asia maxDD ->-1.93%, Monday maxDD ->-1.93%), fixed 0.5% risk/trade. Portfolio heat cap and drawdown throttle left OFF — re-tested under this new pipeline on both ladders and found to NOT improve OOS drawdown at any tested setting (tight caps made it WORSE), not just left off for lack of validation. CAUTION: absolute Sharpe/CAGR figures behind this are almost certainly inflated versus real live expectancy — trust the DIRECTION, not the specific numbers.">⚡ Load best config (least drawdown)</button>
+    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Corrected 2026-08-31 after a live pull showed an unbelievable PF 133 / 94% win rate, traced to a real duplicate-counting bug (see LEGO_MODULES.md's correction entry). Applies every lever validated on THIS engine's OWN full blended portfolio (fade+follow, not an isolated slice): recommended pairs, margin≥2, fade-stop tightening ON at 0.9×, cost-efficiency filter ON, chandelier (ATR-trailed) continuation exit ON (Asia 3x ATR / Monday 1.5x ATR, analysis/fib_atlas_chandelier_exit_backtest.mjs — real OOS win, Asia Sharpe 15.33->19.47 maxDD -4.51%->-2.43%, Monday Sharpe 11.39->12.85 maxDD -3.11%->-2.57%), max concurrent 1 with per-direction budgets ON (a genuine HEDGE may open opposite an existing position, but same-direction pyramiding is structurally blocked — the OLD default here, max concurrent 2 with no direction split, let two same-direction touches on one pair both ride the SAME underlying move and get paid twice: confirmed on live data at 27.1% of total win PnL, cut to ~1% by this fix; the hedge-only re-test found only a negligible, real +4 to +17 trades over plain blocked, not the earlier inflated 'stacking' win), fixed 0.5% risk/trade. Portfolio heat cap and drawdown throttle left OFF — re-tested under this pipeline on both ladders and found to NOT improve OOS drawdown at any tested setting (tight caps made it WORSE). CAUTION: absolute Sharpe/PF/CAGR figures behind this are still almost certainly inflated versus real live expectancy — trust the DIRECTION, not the specific numbers.">⚡ Load best config (least drawdown)</button>
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
@@ -306,8 +306,25 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   const exclude = recommendedExcludeFor(ladder);
   pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !exclude.has(el.dataset.pair); });
   marginSel.value = '2';
-  capSel.value = '2';   // stacking -- analysis/fib_atlas_chandelier_exit_backtest.mjs's "test all 2", real OOS win on top of the chandelier exit alone, both ladders
-  perDirChk.checked = false;
+  // maxConcurrent=1 + perDirection=true ("hedge-only") -- 2026-08-31
+  // correction: the ORIGINAL "stacking" default here was maxConcurrent=2/
+  // perDirection=false, which allows TWO SAME-DIRECTION trades on one pair
+  // at once. That let adjacent fib rungs touched minutes apart during ONE
+  // real continuation both survive the cap and both get chandelier-extended
+  // to the SAME move, resolving at the identical timestamp with the
+  // identical pnlPct -- one real market event paid out twice (27.1% of
+  // total win PnL on a live pull was exactly these duplicates -- see
+  // LEGO_MODULES.md's 2026-08-31 correction entry). perDirection=true fixes
+  // this at the root: at most 1 long AND 1 short per pair, so same-direction
+  // pyramiding is structurally impossible, while a genuine hedge (opposite
+  // direction) is still allowed. Re-tested after the fix: hedge-only is
+  // statistically indistinguishable from plain blocked (OOS Sharpe 19.47 vs
+  // 19.49, +4 trades) -- the earlier "stacking improves things further"
+  // finding was almost entirely the duplication bug, not a real effect.
+  // Shipped anyway since it's free (zero downside, the tiny genuine-hedge
+  // upside) and was already built and validated.
+  capSel.value = '1';
+  perDirChk.checked = true;
   sizingSel.value = 'fixed-risk';
   riskPctInput.value = '0.5';
   stopTightenChk.checked = true;
@@ -315,9 +332,9 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   continuationExitSel.value = 'chandelier';
   // Heat cap + throttle both left OFF -- see this file's own comment above
   // this button (the 2026-08-31 heat-cap platform review): neither improved
-  // OOS drawdown once the chandelier exit + stacking are running, on
-  // EITHER ladder, independently re-checked. Not a guess, not "not
-  // validated yet" -- actively re-tested and found not to help.
+  // OOS drawdown once the chandelier exit is running, on EITHER ladder,
+  // independently re-checked. Not a guess, not "not validated yet" --
+  // actively re-tested and found not to help.
   heatCapChk.checked = false;
   throttleChk.checked = false;
   syncSizingUI();
