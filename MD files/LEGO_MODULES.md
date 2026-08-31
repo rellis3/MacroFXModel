@@ -4517,6 +4517,71 @@ window" methodology risk is narrowed, not fully closed. The pattern
 (`fib_atlas_chandelier_walkforward.mjs`) is reusable for any other
 single-parameter lever that's worth the same check.
 
+### Follow-up 2: walk-forward on the 3 remaining single-split levers — one real finding (2026-08-31)
+
+Direct continuation of the above, prompted by the owner asking "are you
+comfortable this backtest is ready to become a live bot?" — answer was
+no, specifically because most levers were still only single-split
+validated. This closes 3 more of them
+(`analysis/fib_atlas_remaining_levers_walkforward.mjs`, Asia, same 3
+expanding-window folds as the chandelierMult check, same rule: re-derive
+each lever fresh from ONLY that fold's fit data, chandelierMult held
+fixed at the already-validated 3):
+
+| Lever | Shipped | Fold 1 | Fold 2 | Fold 3 | Verdict |
+|---|---|---|---|---|---|
+| Cost-efficiency ratio | 3 | 3 | **1** | **1** | 🔴 NOT stable |
+| Stop-tighten fraction | 0.9 | 0.75 | 0.75 | 0.75 | 🟡 stable, but **≠ shipped** |
+| Concurrency mode | hedgeOnly | hedgeOnly | hedgeOnly | hedgeOnly | 🟢 confirmed stable |
+
+**Concurrency mode (hedgeOnly): now genuinely confirmed**, not just
+"statistically indistinguishable" on the one split — every fold
+independently re-picked it, by the same razor-thin margin each time
+(fit Sharpe +0.01 to +0.02 over blocked). No change needed.
+
+**Cost-efficiency ratio=3: the real finding, and it's not comfortable.**
+Ratio=1 is a no-op (`applyCostEfficiencyFilter` returns trades unchanged
+for minCostRatio<=1 — see its own doc) — so folds 2 and 3 are saying
+"no filter at all" beat the shipped 3x filter on FIT data, and the gap
+carries into OOS too: fold 2's shipped(3) OOS Sharpe 17.66 vs the
+fold's own honestly-chosen ratio=1 OOS Sharpe 19.32; fold 3's shipped(3)
+18.37 vs ratio=1's 20.86. Only fold 1 (the earliest, shortest-history
+fold) still preferred 3, and even there the margin over ratio=1 is thin
+(fit Sharpe 17.51 vs 16.75). The original single-split finding that
+picked 3x was real for ITS split, but does not generalize — this reads
+as the ratio=3 threshold being fit to a specific stretch, not a stable
+characteristic of the cost-efficiency logic itself (that logic's own
+premise — flat cost eats small-distance wins disproportionately — is
+still probably true; the SPECIFIC 3x cutoff is what doesn't hold up).
+**Not shipped as a fix yet — flagging for the owner's call**: loosen the
+ratio, drop the filter, or re-derive it as a genuinely time-varying/
+per-pair threshold instead of one fixed global multiple.
+
+**Stop-tighten fraction: walk-forward's answer (0.75) differs from
+shipped (0.9), consistently.** Every fold independently chose 0.75 over
+0.9 from fit-only data — a real, stable disagreement with the shipped
+value, not a coin-flip. OOS is more mixed than the "stable" label alone
+suggests: frac=0.75 beat shipped(0.9) OOS Sharpe in folds 1-2 (19.00 vs
+18.87; 18.05 vs 17.66) but shipped(0.9) narrowly won fold 3 (18.37 vs
+17.94). Net read: 0.75 is the more defensible fit-derived choice and
+performs at least comparably OOS everywhere it was checked — worth
+updating, but the practical difference between 0.75 and 0.9 here is
+modest (Sharpe moves by ~0.1-0.4 either direction), unlike the
+cost-ratio finding above which is the one that actually changes the
+"is this ready for capital" answer.
+
+🔴 **Net effect on the ~10-lever OOS-overlap risk**: narrowed further
+(6 of ~10 levers now walk-forward-checked: chandelierMult, concurrency
+mode, cost-efficiency ratio, stop-tighten fraction, plus the earlier
+chandelier-exit-exists-at-all result folded into the chandelierMult
+run), but NOT closed, and the cost-efficiency ratio result is a genuine
+red flag, not a null: the shipped value underperformed a fold-honest
+alternative by a non-trivial OOS Sharpe margin in 2 of 3 folds. Still
+outstanding: pair-selection exclusion set, and the risk/heat-cap-off /
+throttle-off decisions (both already independently re-tested and found
+not to help post-chandelier per the 2026-08-31 heat-cap platform review
+above, so lower priority than the cost-ratio finding).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
