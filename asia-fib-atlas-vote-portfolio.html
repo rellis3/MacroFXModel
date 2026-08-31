@@ -164,6 +164,24 @@
   <div class="kpi-grid" id="kpiNonCompounded"></div>
 </div>
 
+<div class="card" style="border-color:#3a4a2e;background:linear-gradient(135deg,#1a2414,#0e121b)">
+  <h2 style="color:#a3e635">Per-trade stats — same trades, computed off INDIVIDUAL wins/losses (2026-08-31)</h2>
+  <div class="muted" style="margin-bottom:10px">
+  Everything above pools every day's trades (~<span id="tradesPerDayLabel">—</span>/day on average) into ONE daily
+  return before computing Sharpe/win-rate/profit-factor — that's the right basis for portfolio risk (it reflects the
+  real correlation across same-day trades), but it makes win rate and profit factor look far stronger than any SINGLE
+  trade's own odds, since a day nets positive easily even off a modest per-trade edge. This card answers "is a random
+  individual trade actually a good bet" directly: computed straight off <code>js/metricsCore.js</code>'s
+  <code>summarizeTrades</code> (same brick <a href="asia-fib-atlas-vote-backtest.html" style="color:var(--accent)">the single-pair tearsheet</a>
+  uses), no daily pooling at all. Sharpe here treats every trade as its own independent bet (annualised by
+  √trades/year) — genuinely optimistic when trades cluster in time, same caveat the single-pair page's own
+  "Sharpe (per-trade)" carries; the day-level Sharpe above remains the one to size risk from.
+  </div>
+  <div class="kpi-grid" id="kpiPerTrade"></div>
+  <h2 style="margin-top:14px">Per-trade equity curve (cumulative, chronological order)</h2>
+  <canvas id="tradeEqChart" style="max-height:280px"></canvas>
+</div>
+
 <div class="card">
   <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
   <div class="muted" style="margin-bottom:10px">This is a dial YOU set, not a cap the system imposes — it doesn't limit upside, it just shows what the SAME risk-adjusted profile looks like scaled to whatever volatility you're willing to run. Set it above the realized vol below to see leverage UP, not just down.</div>
@@ -226,6 +244,7 @@
 </div>
 
 <script type="module">
+import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
 // All 26 locally-cached pairs both Fib Atlas ladders were widened to (same
 // list scripts/backfill_fib_atlas_vote_trades.mjs uses) — no exclusions here,
 // unlike level-atlas-vote-portfolio.html's curated 21/26, since no
@@ -379,8 +398,112 @@ function syncSizingUI() {
 syncSizingUI();
 
 let eqChart = null;
+let tradeEqChart = null;
 let lastTrades = [];
 let lastResponse = null;
+
+// ── Per-trade stats (2026-08-31) — same brick + method
+// asia-fib-atlas-vote-backtest.html's own `computeStats` already uses
+// (js/metricsCore.js's `summarizeTrades`), applied to the PORTFOLIO's
+// combined/kept trade list instead of one pair's own. See this file's own
+// card comment above for why this is a genuinely different question from
+// the day-pooled KPIs above it, not a duplicate.
+function computePerTradeStats(trades) {
+  if (!trades.length) return null;
+  const sorted = [...trades].sort((a, b) => a.resolveTime - b.resolveTime);
+  const pnls = sorted.map(t => t.pnlPct), dates = sorted.map(t => t.date);
+  const base = summarizeTrades(pnls, dates);
+
+  const wins = sorted.filter(t => t.win), losses = sorted.filter(t => !t.win);
+  const grossWin = wins.reduce((s, t) => s + t.pnlPct, 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnlPct, 0));
+  const avgWin = wins.length ? grossWin / wins.length : 0;
+  const avgLoss = losses.length ? grossLoss / losses.length : 0;
+
+  let maxCW = 0, maxCL = 0, cw = 0, cl = 0;
+  for (const t of sorted) { if (t.win) { cw++; cl = 0; maxCW = Math.max(maxCW, cw); } else { cl++; cw = 0; maxCL = Math.max(maxCL, cl); } }
+
+  // Non-compounded (additive, matches this engine's real fixed-fractional
+  // sizing) AND compounded (hypothetical reinvestment) equity curves, both
+  // built trade-by-trade in chronological order -- same both-modes split
+  // the day-level card above already uses, just at trade resolution.
+  let addEq = 0, addPeak = 0, addMaxDD = 0;
+  let compEq = 100, compPeak = 100, compMaxDDFrac = 0;
+  const addCurve = [], compCurve = [];
+  for (const t of sorted) {
+    addEq += t.pnlPct; addPeak = Math.max(addPeak, addEq); addMaxDD = Math.min(addMaxDD, addEq - addPeak);
+    compEq *= (1 + t.pnlPct / 100); compPeak = Math.max(compPeak, compEq);
+    if (compPeak > 0) compMaxDDFrac = Math.min(compMaxDDFrac, (compEq - compPeak) / compPeak);
+    addCurve.push({ t: t.resolveTime, v: +addEq.toFixed(3) });
+    compCurve.push({ t: t.resolveTime, v: +(compEq - 100).toFixed(3) });
+  }
+
+  const firstD = sorted[0].date, lastD = sorted[sorted.length - 1].date;
+  const years = Math.max((Date.parse(lastD) - Date.parse(firstD)) / (365.25 * 864e5), 1 / 52);
+  const cagrNonCompounded = addEq / years;
+  const cagrCompounded = (Math.pow(compEq / 100, 1 / years) - 1) * 100;
+  const sortino = sortinoRatio(pnls, base.tradesPerYr);
+  const calmarNonCompounded = calmarRatio(cagrNonCompounded, addMaxDD);
+  const calmarCompounded = calmarRatio(cagrCompounded, compMaxDDFrac * 100);
+
+  return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
+    addCurve, compCurve, addMaxDD, compMaxDDPct: compMaxDDFrac * 100,
+    cagrNonCompounded, cagrCompounded, sortino, calmarNonCompounded, calmarCompounded, years,
+    tradesPerDay: dates.length / new Set(dates).size };
+}
+
+function renderPerTradeKpis(s) {
+  const tradesPerDayLabel = document.getElementById('tradesPerDayLabel');
+  if (tradesPerDayLabel) tradesPerDayLabel.textContent = s ? fmt1(s.tradesPerDay) : '—';
+  const el = document.getElementById('kpiPerTrade');
+  if (!s) { el.innerHTML = '<span class="muted">no trades</span>'; return; }
+  const wins = Math.round(s.trades * s.winRate / 100);
+  el.innerHTML = [
+    kpiCard('Win Rate (per-trade)', fmt1(s.winRate) + '%', s.winRate >= 50 ? 'green' : 'amber', `${wins}W / ${s.trades - wins}L of ${s.trades}`),
+    kpiCard('Profit Factor (per-trade)', s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross win $ / gross loss $, individual trades'),
+    kpiCard('Sharpe (per-trade)', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, 'amber', 'annualised by √trades/yr — OPTIMISTIC, treats every trade as independent'),
+    kpiCard('Sortino (per-trade)', fmt2(s.sortino), '', 'downside-deviation-only'),
+    kpiCard('Avg Win', '+' + fmt2(s.avgWin) + '%', 'green', ''),
+    kpiCard('Avg Loss', '-' + fmt2(s.avgLoss) + '%', 'red', ''),
+    kpiCard('Reward : Risk', fmt2(s.rr), '', 'avg win / avg loss'),
+    kpiCard('Expectancy / trade', fmt2(s.expectancy) + '%', signClass(s.expectancy), 'mean pnl per trade'),
+    kpiCard('Annualised Return (fixed risk)', fmt1(s.cagrNonCompounded) + '%', signClass(s.cagrNonCompounded), 'sum of trade %, ÷ years — never reinvested'),
+    kpiCard('Max Drawdown (fixed risk)', fmt1(s.addMaxDD) + '%', 'red', 'additive equity, peak→trough'),
+    kpiCard('Calmar (fixed risk)', fmt2(s.calmarNonCompounded), '', ''),
+    kpiCard('CAGR (compounded)', fmt1(s.cagrCompounded) + '%', signClass(s.cagrCompounded), 'HYPOTHETICAL — reinvesting after every trade, not real sizing; explodes even faster than the day-level compounded figure since there are many more trades/yr than days/yr. Trust "Annualised Return (fixed risk)" above instead.'),
+    kpiCard('Max Drawdown (compounded)', fmt1(s.compMaxDDPct) + '%', 'red', ''),
+    kpiCard('Calmar (compounded)', fmt2(s.calmarCompounded), '', 'inherits the hypothetical CAGR above — same caveat'),
+    kpiCard('Max Consec. Wins', s.maxCW, '', ''),
+    kpiCard('Max Consec. Losses', s.maxCL, '', ''),
+    kpiCard('Min track record (yrs)', s.minTrackYears ?? '—', '', 'to trust Sharpe>0 @95%'),
+  ].join('');
+}
+
+function renderTradeEquityChart(s) {
+  if (tradeEqChart) { tradeEqChart.destroy(); tradeEqChart = null; }
+  const el = document.getElementById('tradeEqChart');
+  if (!el) return;
+  if (!s) { return; }
+  try {
+    const labels = s.addCurve.map(p => new Date(p.t * 1000).toISOString().slice(0, 10));
+    tradeEqChart = new Chart(el, {
+      type: 'line',
+      data: { labels, datasets: [
+        { label: `Non-compounded % (final ${fmt1(s.addCurve[s.addCurve.length - 1].v)}%)`, data: s.addCurve.map(p => p.v), borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,.08)', fill: true, tension: .15, pointRadius: 0, borderWidth: 1.5, yAxisID: 'y1' },
+        { label: `Compounded % (final ${fmt1(s.compCurve[s.compCurve.length - 1].v)}%)`, data: s.compCurve.map(p => p.v), borderColor: '#5b9dff', backgroundColor: 'transparent', borderDash: [4, 3], fill: false, tension: .15, pointRadius: 0, borderWidth: 1, yAxisID: 'y' },
+      ] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, labels: { color: '#94a3b8', boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#5a6380', maxTicksLimit: 12 }, grid: { display: false } },
+          y1: { position: 'left', ticks: { color: '#fbbf24', callback: v => v + '%' }, grid: { color: '#1e2436' }, title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } } },
+          y: { position: 'right', ticks: { color: '#5b9dff', callback: v => v + '%' }, grid: { display: false }, title: { display: true, text: 'Compounded %', color: '#5b9dff', font: { size: 10 } } },
+        } },
+    });
+  } catch (e) {
+    console.warn('Chart.js unavailable:', e.message);
+    if (el?.parentElement) { const div = document.createElement('div'); div.className = 'muted'; div.style.padding = '12px'; div.textContent = 'Chart library failed to load (blocked script) — trade equity curve unavailable, KPIs above are unaffected.'; el.replaceWith(div); }
+  }
+}
 
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
@@ -523,6 +646,13 @@ function render(j) {
     kpiCard('Max Drawdown', fmt1(s.maxDDNonCompounded) + '%', 'red', 'additive equity, peak→trough'),
     kpiCard('Calmar', fmt2(s.calmarNonCompounded), '', 'annualised return / |max DD|'),
   ].join('');
+
+  // Per-trade card (2026-08-31) -- pure function of lastTrades, no server
+  // round-trip needed; recomputed on every render() the same as the
+  // day-level cards above.
+  const perTradeStats = computePerTradeStats(lastTrades);
+  renderPerTradeKpis(perTradeStats);
+  renderTradeEquityChart(perTradeStats);
 
   const vt = s.volTarget;
   document.getElementById('targetVolLabel').textContent = vt.target;
