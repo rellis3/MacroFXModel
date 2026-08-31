@@ -3689,11 +3689,22 @@ const VB2_DEFAULTS = {
   throttle_enabled: true, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
   stack_guard: true, stack_guard_pips: 5,
   plan_max_age_hours: 1,
+  // 2026-08-31: flattens open positions before the strategy's own session
+  // close (Europe/London midnight) instead of letting them run into the
+  // next day unbounded — measured to meaningfully shrink live drawdown
+  // (Sharpe 1.49->1.52, maxDD -26.34%->-21.81% across all 17 pairs,
+  // cost-inclusive) vs. no EOD close at all. Buffer is configurable since a
+  // broker's own rollover can land a few minutes before the real close.
+  eod_close_enabled: true, eod_close_buffer_mins: 5,
   broker_symbols: {},
   // 2026-08-31: replaces the old vol-forecast level-proximity Telegram alerts
   // (now off by default, see vol-forecast-v2.html) — entered/skipped/rejected
-  // decisions + SL/TP close outcomes, defaulting to that SAME bot/chat.
-  tg_enabled: true, tg_token: '', tg_chat_id: '',
+  // decisions + SL/TP close outcomes. Real token/chat baked in as the actual
+  // default (not blank) after a "Reset Defaults" + "Save" wiped the live
+  // config's tg fields to blank once already — see server.js's
+  // _restoreVolatilityV2Config doc. A blank default here is what let that
+  // happen silently; a real default can't be silently blanked the same way.
+  tg_enabled: true, tg_token: '8470462785:AAEBm4okIKQrj7CGytRHJdrZ_gdtHih5chA', tg_chat_id: '8397861902',
 };
 let _vb2Cfg = { ...VB2_DEFAULTS };
 let _vb2LastStatus = null;
@@ -3741,6 +3752,8 @@ function renderVb2Form() {
   set('vb2_status_secs',         _vb2Cfg.status_secs        ?? VB2_DEFAULTS.status_secs);
   set('vb2_plan_secs',           _vb2Cfg.plan_secs          ?? VB2_DEFAULTS.plan_secs);
   set('vb2_plan_max_age_hours',  _vb2Cfg.plan_max_age_hours ?? VB2_DEFAULTS.plan_max_age_hours);
+  chk('vb2_eod_close_enabled',   _vb2Cfg.eod_close_enabled ?? VB2_DEFAULTS.eod_close_enabled);
+  set('vb2_eod_close_buffer_mins', _vb2Cfg.eod_close_buffer_mins ?? VB2_DEFAULTS.eod_close_buffer_mins);
   chk('vb2_tg_enabled',          _vb2Cfg.tg_enabled ?? VB2_DEFAULTS.tg_enabled);
   set('vb2_tg_token',            _vb2Cfg.tg_token ?? '');
   set('vb2_tg_chat_id',          _vb2Cfg.tg_chat_id ?? '');
@@ -3774,6 +3787,8 @@ function readVb2Form() {
   _vb2Cfg.status_secs          = Math.round(num('vb2_status_secs', VB2_DEFAULTS.status_secs));
   _vb2Cfg.plan_secs            = Math.round(num('vb2_plan_secs', VB2_DEFAULTS.plan_secs));
   _vb2Cfg.plan_max_age_hours   = num('vb2_plan_max_age_hours', VB2_DEFAULTS.plan_max_age_hours);
+  _vb2Cfg.eod_close_enabled    = !!document.getElementById('vb2_eod_close_enabled')?.checked;
+  _vb2Cfg.eod_close_buffer_mins = Math.round(num('vb2_eod_close_buffer_mins', VB2_DEFAULTS.eod_close_buffer_mins));
   _vb2Cfg.tg_enabled           = !!document.getElementById('vb2_tg_enabled')?.checked;
   _vb2Cfg.tg_token             = (document.getElementById('vb2_tg_token')?.value || '').trim();
   _vb2Cfg.tg_chat_id           = (document.getElementById('vb2_tg_chat_id')?.value || '').trim();
@@ -3804,6 +3819,12 @@ async function testVb2Telegram() {
   } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
 function resetVb2Defaults() {
+  // Confirm before wiping the WHOLE form (risk sizing, broker symbols,
+  // Telegram, everything) back to hardcoded defaults — added 2026-08-31
+  // after exactly this reset-then-save sequence blanked a live bot's
+  // max_lot/broker_symbols/Telegram config with no warning beyond the
+  // easy-to-miss "click Save to apply" status text.
+  if (!confirm('Reset ALL Vote Atlas config fields (risk sizing, broker symbols, Telegram, everything) back to defaults? This does not save until you click Save Config, but will overwrite anything currently loaded once you do.')) return;
   _vb2Cfg = { ...VB2_DEFAULTS }; renderVb2Form();
   const el = document.getElementById('vb2SaveStatus');
   if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
@@ -3865,6 +3886,11 @@ async function loadVb2LiveStatus() {
     if (planGateEl) {
       if (st.plan_age_blocked) { planGateEl.textContent = '⚠ BLOCKED — plan stale, no new entries'; planGateEl.style.color = 'var(--red)'; }
       else { planGateEl.textContent = 'fresh'; planGateEl.style.color = 'var(--green)'; }
+    }
+    const eodGateEl = document.getElementById('vb2EodGate');
+    if (eodGateEl) {
+      if (st.eod_close_blocked) { eodGateEl.textContent = '⚠ FLATTENING — session close, no new entries'; eodGateEl.style.color = 'var(--red)'; }
+      else { eodGateEl.textContent = 'clear'; eodGateEl.style.color = 'var(--green)'; }
     }
     const pa = document.getElementById('vb2PlanAge');
     if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';

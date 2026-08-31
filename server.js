@@ -22959,41 +22959,68 @@ async function loadVolLevelCreds() {
   return null;
 }
 
-// One-time migration (2026-08-31): volatility_bot_v2's own Telegram alerts
-// (entered/skipped/rejected + SL/TP close outcomes, with the actual vote
-// decision + margin/confidence behind each one — see its DEFAULT_CFG tg_*
-// doc) replace this loop's job. Two one-off actions, both idempotent and
-// both run once at boot:
-//   1. Copy this loop's token/chatId into volatility_bot_v2_config's own
-//      tg_token/tg_chat_id, so the SAME physical bot/chat keeps being used —
-//      no new bot to create in BotFather, no token to re-paste. Never
-//      overwrites a tg_token the operator has since set on the bot's own
-//      config page.
-//   2. Force this loop's own `enabled` back to false in KV, in case it had
-//      been switched on — its alerts are informational-only (no enter/skip
-//      decision, no confidence, no close outcome) and are now superseded.
-//      NOT deleted: `/preview` and `/scan` still work for inspecting the
-//      alert copy, and the "Dedicated Telegram bot" panel on
-//      vol-forecast-v2.html still manages the token/chatId this now feeds
-//      into volatility_bot_v2 — just switched off as a live alert source.
-async function _migrateVolLevelAlertsToV2() {
+// Known-good Telegram bot/chat for volatility_bot_v2's own alerts (2026-08-31)
+// — hardcoded here rather than sourced from the vol-level bot's own creds
+// (what the original version of this function did) because the operator
+// supplied these directly, after finding the live config had reverted to
+// defaults (see _restoreVolatilityV2Config's own doc below).
+const VOLATILITY_V2_TG_TOKEN   = '8470462785:AAEBm4okIKQrj7CGytRHJdrZ_gdtHih5chA';
+const VOLATILITY_V2_TG_CHAT_ID = '8397861902';
+
+// One-time repair (2026-08-31): volatility_bot_v2's live config was found
+// reverted to its hardcoded JS form defaults for max_lot (10 -> 2) and
+// broker_symbols (7 real MT5 overrides -> {}) — almost certainly a "Reset
+// Defaults" + "Save" on the config page (2 clicks resets the WHOLE form, not
+// just whatever field was actually being edited), not a server-side wipe.
+// This repair is narrowly guarded per field: it only overwrites a value that
+// is STILL sitting at the exact wiped-to-default signature, so a deploy of
+// this can never clobber anything genuinely changed since. Runs once at
+// boot; a no-op forever after the first successful repair.
+//
+// Also fixes a latent bug this function's PREVIOUS version had: reading via
+// `kv.get(...).catch(() => null)` collapses "the key doesn't exist" and "the
+// read just failed" into the same null — if that fires here, treating it as
+// "config is empty" and writing back a near-empty object is the EXACT
+// failure shape suspected of having caused this incident in the first
+// place. A failed/absent read now aborts the whole function untouched,
+// rather than assuming empty-and-safe-to-overwrite (a live bot's config
+// existing is the normal case; a null read is far more likely transient).
+async function _restoreVolatilityV2Config() {
   try {
     const v2Raw = await kv.get('volatility_bot_v2_config').catch(() => null);
-    const v2 = v2Raw ? (JSON.parse(v2Raw).data ?? JSON.parse(v2Raw)) : {};
-    if (!(v2.tg_token && v2.tg_chat_id)) {
-      const creds = await loadVolLevelCreds();
-      if (creds) {
-        await kv.put('volatility_bot_v2_config', JSON.stringify({ ...v2, tg_token: creds.token, tg_chat_id: creds.chatId }));
-        console.log('[VOLATILITY-V2] Telegram credentials copied from the superseded vol-level alert bot');
-      }
+    if (!v2Raw) return;
+    const v2 = JSON.parse(v2Raw).data ?? JSON.parse(v2Raw);
+    const next = { ...v2 };
+    const changedKeys = [];
+    if (next.max_lot === 2) { next.max_lot = 10; changedKeys.push('max_lot'); }
+    if (!next.broker_symbols || Object.keys(next.broker_symbols).length === 0) {
+      next.broker_symbols = { nq: 'US100', spx: 'US500', de30: 'DE40', dow: 'US30', us2000: 'US2000', uk100: 'UK100', gold: 'XAUUSD' };
+      changedKeys.push('broker_symbols');
     }
+    if (!next.tg_token || !next.tg_chat_id) {
+      next.tg_token = VOLATILITY_V2_TG_TOKEN;
+      next.tg_chat_id = VOLATILITY_V2_TG_CHAT_ID;
+      next.tg_enabled = next.tg_enabled ?? true;
+      changedKeys.push('tg_token/tg_chat_id');
+    }
+    if (changedKeys.length) {
+      await kv.put('volatility_bot_v2_config', JSON.stringify(next));
+      console.log(`[VOLATILITY-V2] one-time config repair applied: ${changedKeys.join(', ')}`);
+    }
+  } catch (e) {
+    console.error('[VOLATILITY-V2] config repair failed:', e.message);
+  }
+  // Vol-level alert loop stays force-disabled regardless (superseded by
+  // volatility_bot_v2's own Telegram alerts — see its own doc). Kept as its
+  // own try/catch so a config-repair failure above never blocks this.
+  try {
     const cfg = await loadVolLevelCfg();
     if (cfg.enabled) {
       await kv.put(VOL_LEVEL_CFG_KEY, JSON.stringify({ ...cfg, enabled: false }));
       console.log('[VOL-LEVEL-ALERT] disabled — superseded by volatility_bot_v2\'s own Telegram alerts');
     }
   } catch (e) {
-    console.error('[VOLATILITY-V2] vol-level alert migration failed:', e.message);
+    console.error('[VOL-LEVEL-ALERT] disable check failed:', e.message);
   }
 }
 
@@ -27351,7 +27378,7 @@ async function runHMM5mTraining(pairs) {
 await kv.load();
 await reloadConfig();
 await reloadLevels();
-_migrateVolLevelAlertsToV2().catch(e => console.error('[VOLATILITY-V2] Telegram migration error:', e.message));
+_restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
 
 // Load any previously trained V2 params from KV on startup
 try {

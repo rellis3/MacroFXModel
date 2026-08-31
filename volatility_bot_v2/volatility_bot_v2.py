@@ -32,8 +32,9 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -127,6 +128,34 @@ DEFAULT_CFG = {
     "throttle_restore_dd": -2.0,
     "throttle_mult": 0.25,
 
+    # End-of-day close — added 2026-08-31 after measuring the actual live-vs-
+    # backtest gap this creates: the validated backtest only ever scores a
+    # touch that resolves (hits target or stop) within its OWN entry session
+    # (js/levelAtlasEngine.js's atlasWalk walks `sessions.get(date)`, ONE
+    # day's bars — a touch that doesn't resolve by then is dropped from the
+    # sample entirely, never scored as a win, loss, or EOD mark). This bot
+    # had NO such boundary — a position just sat on its original SL/TP
+    # indefinitely, for real, until one was eventually hit, sometimes days
+    # later. Measured impact (analysis/neither_population_*.mjs, cost-
+    # inclusive, all 17 pairs, real re-walked outcomes not estimates):
+    # running with no EOD close at all (this bot's actual prior behavior)
+    # measured Sharpe 1.49 / maxDD -26.34% vs the validated 2.01 / -17.76%;
+    # flattening at session close instead measured Sharpe 1.52 / maxDD
+    # -21.81% — meaningfully shallower drawdown and higher CAGR, so this is
+    # a real, quantified improvement over prior behavior (though it does NOT
+    # fully close the gap to the validated numbers — that gap is a permanent
+    # cost of the touches that just don't resolve same-day, not a bug this
+    # lever fixes away).
+    #
+    # Kill time is computed from the strategy's OWN day boundary (Europe/
+    # London midnight — the exact boundary bucketM1IntoSessions uses, DST-
+    # aware via zoneinfo, not a fixed UTC clock time that would drift wrong
+    # across DST changes), minus `eod_close_buffer_mins` — configurable
+    # rather than hardcoded, since a broker can roll its own session/rollover
+    # a few minutes earlier than the exchange's real close.
+    "eod_close_enabled": True,
+    "eod_close_buffer_mins": 5,
+
     # Telegram — entered/skipped/rejected decisions + SL/TP close outcomes.
     # Added 2026-08-31, REPLACING the old vol-forecast level-proximity alert
     # (js/volLevelAlertCore.js's checkVolLevelAlertsNow — informational-only,
@@ -135,12 +164,14 @@ DEFAULT_CFG = {
     # Same own-dedicated-token convention as oi_bot's tg_token/tg_chat_id
     # (plain per-bot KV config field, not the shared-fallback machinery in
     # pylego/telegram.py — this bot's config KV key already carries MT5
-    # creds at the same trust level). Defaults to the SAME physical Telegram
-    # bot the superseded vol-level alerts used (paste its token/chatId here
-    # once on the config page) — no new bot needs creating in BotFather.
+    # creds at the same trust level). Real token/chat baked in as the actual
+    # default (not blank) after a "Reset Defaults" + "Save" wiped the live
+    # config's tg fields once already -- see server.js's
+    # _restoreVolatilityV2Config doc; a blank default is what let that happen
+    # silently.
     "tg_enabled": True,
-    "tg_token": "",
-    "tg_chat_id": "",
+    "tg_token": "8470462785:AAEBm4okIKQrj7CGytRHJdrZ_gdtHih5chA",
+    "tg_chat_id": "8397861902",
 }
 
 # Broker symbol routing (identity stays shared; routing is local). Config can
@@ -209,6 +240,21 @@ def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot
 
 def _plan_instruments(plan: dict) -> dict:
     return ((plan or {}).get("instruments")) or {}
+
+
+_LONDON_TZ = ZoneInfo("Europe/London")
+
+
+def _eod_kill_epoch(now_epoch: float, buffer_mins: float) -> float:
+    """Epoch of today's EOD-close kill time: `buffer_mins` before the next
+    Europe/London midnight — the strategy's own day boundary (matches
+    js/levelAtlasEngine.js's atlasWalk, which buckets touches via
+    `bucketM1IntoSessions(packed, 'Europe/London')`). DST-aware via zoneinfo
+    rather than a fixed UTC clock time, which would silently drift an hour
+    wrong every time the UK's clocks change."""
+    now_ldn = datetime.fromtimestamp(now_epoch, _LONDON_TZ)
+    next_midnight = (now_ldn.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1))
+    return (next_midnight - timedelta(minutes=buffer_mins)).timestamp()
 
 
 def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
@@ -321,7 +367,7 @@ def _fmt_close_alert(instr: str, row: dict, mode_tag: str) -> str:
 
 
 def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None,
-                  guard=None, risk_ledger=None, plan_age_blocked=False):
+                  guard=None, risk_ledger=None, plan_age_blocked=False, eod_close_blocked=False):
     bal = broker.account_balance()
     open_risk_pct = round(sum((risk_ledger or {}).values()), 2)
     heat_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
@@ -346,6 +392,7 @@ def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None,
         "portfolio_heat_pct": open_risk_pct,
         "portfolio_heat_cap_pct": heat_cap,
         "plan_age_blocked": bool(plan_age_blocked),
+        "eod_close_blocked": bool(eod_close_blocked),
     }
 
 
@@ -438,6 +485,8 @@ def run(base_url: str, force_live: bool) -> None:
     plan = None
     last_plan = last_status = 0.0
     plan_age_blocked = False
+    eod_close_blocked = False
+    eod_closed_tickets: set[int] = set()
     risk_ledger: dict[int, float] = {}
     sym_key: dict[str, str] = {}      # broker-symbol spelling -> canonical key (currency gate lookups)
     tg_entry_msgid: dict[int, int] = {}   # ticket/position_id -> the entry alert's Telegram message_id (for reply-threading the close alert)
@@ -583,7 +632,8 @@ def run(base_url: str, force_live: bool) -> None:
                 log.warning(f"ai_alert_cfg fetch failed: {e} (Telegram master switch check skipped this cycle)")
             try:
                 status = build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle,
-                                       guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked)
+                                       guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked,
+                                       eod_close_blocked=eod_close_blocked)
                 kv.put_status("volatility_bot_v2_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
@@ -651,6 +701,33 @@ def run(base_url: str, force_live: bool) -> None:
                 else:
                     log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
+            # EOD close — see DEFAULT_CFG's own doc for why. Blocks NEW
+            # entries for the remainder of the window (same fail-closed
+            # style as the plan-age gate) and flattens every currently open
+            # position, once each (eod_closed_tickets dedupes so a stuck
+            # close attempt — e.g. a transient broker error — retries next
+            # tick without re-closing an already-flattened position).
+            eod_on = bool(cfg.get("eod_close_enabled", True))
+            eod_block = eod_on and nowt >= _eod_kill_epoch(nowt, float(cfg.get("eod_close_buffer_mins", 5) or 0))
+            if eod_block != eod_close_blocked:
+                eod_close_blocked = eod_block
+                if eod_block:
+                    log.warning(f"EOD CLOSE: within {cfg.get('eod_close_buffer_mins', 5)}min of session close — "
+                                f"flattening open positions, NEW entries blocked until the next session.")
+                else:
+                    eod_closed_tickets.clear()
+                    log.info("EOD CLOSE: new session — entries resumed")
+            if eod_close_blocked:
+                for p in broker.serialize_open_positions():
+                    tk = p.get("ticket")
+                    if tk in eod_closed_tickets:
+                        continue
+                    pair = sym_key.get(p.get("symbol")) or str(p.get("symbol", "")).lower()
+                    if broker.stop(tk, pair, paper, reason="eod_close"):
+                        eod_closed_tickets.add(tk)
+                        log.info(f"EOD CLOSE: {pair} ticket {tk} flattened")
+                        _record_decision(pair, "closed", reason=f"eod_close: {cfg.get('eod_close_buffer_mins', 5)}min buffer")
+
             for instr in enabled:
                 sess = sessions.get(instr)
                 if sess is None:
@@ -669,6 +746,8 @@ def run(base_url: str, force_live: bool) -> None:
                 if px is None:
                     continue
                 if plan_age_blocked:
+                    continue
+                if eod_close_blocked:
                     continue
                 if not broker.tradable(instr):
                     continue
