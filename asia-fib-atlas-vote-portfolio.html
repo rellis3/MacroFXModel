@@ -173,9 +173,11 @@
   trade's own odds, since a day nets positive easily even off a modest per-trade edge. This card answers "is a random
   individual trade actually a good bet" directly: computed straight off <code>js/metricsCore.js</code>'s
   <code>summarizeTrades</code> (same brick <a href="asia-fib-atlas-vote-backtest.html" style="color:var(--accent)">the single-pair tearsheet</a>
-  uses), no daily pooling at all. Sharpe here treats every trade as its own independent bet (annualised by
-  √trades/year) — genuinely optimistic when trades cluster in time, same caveat the single-pair page's own
-  "Sharpe (per-trade)" carries; the day-level Sharpe above remains the one to size risk from.
+  uses), no daily pooling at all. The Sharpe tile below shows the UN-annualized, single-trade figure (mean ÷ stdev of
+  one trade's own pnl) as the headline — the annualized version (multiplying by √trades/year, shown in that tile's own
+  sub-text) is easy to mistake for "this system is incredible" when it's really just a large multiplier applied to a
+  much more modest number, especially at Fib Atlas's trade frequency (thousands/year). The day-level Sharpe above
+  remains the one to size real risk from either way — this card is about individual trade quality, not portfolio risk.
   </div>
   <div class="kpi-grid" id="kpiPerTrade"></div>
   <h2 style="margin-top:14px">Per-trade equity curve (cumulative, chronological order)</h2>
@@ -445,10 +447,18 @@ function computePerTradeStats(trades) {
   const sortino = sortinoRatio(pnls, base.tradesPerYr);
   const calmarNonCompounded = calmarRatio(cagrNonCompounded, addMaxDD);
   const calmarCompounded = calmarRatio(cagrCompounded, compMaxDDFrac * 100);
+  // Un-annualized per-trade Sharpe (2026-08-31) -- `base.sharpe` multiplies
+  // this by √tradesPerYr, same convention summarizeTrades always uses, and
+  // at Fib Atlas's trade frequency (thousands/yr) that multiplier alone can
+  // turn a genuinely modest mean/stdev ratio into a headline number that
+  // reads as "best system ever" even though nothing about the underlying
+  // trades changed. Exact inverse of summarizeTrades' own annSharpe formula
+  // -- no re-derivation of mean/stdev, just undoing its multiplier.
+  const rawTradeSharpe = base.tradesPerYr > 0 ? base.sharpe / Math.sqrt(base.tradesPerYr) : base.sharpe;
 
   return { ...base, avgWin, avgLoss, rr: avgLoss > 0 ? avgWin / avgLoss : 0, maxCW, maxCL,
     addCurve, compCurve, addMaxDD, compMaxDDPct: compMaxDDFrac * 100,
-    cagrNonCompounded, cagrCompounded, sortino, calmarNonCompounded, calmarCompounded, years,
+    cagrNonCompounded, cagrCompounded, sortino, calmarNonCompounded, calmarCompounded, years, rawTradeSharpe,
     tradesPerDay: dates.length / new Set(dates).size };
 }
 
@@ -461,7 +471,7 @@ function renderPerTradeKpis(s) {
   el.innerHTML = [
     kpiCard('Win Rate (per-trade)', fmt1(s.winRate) + '%', s.winRate >= 50 ? 'green' : 'amber', `${wins}W / ${s.trades - wins}L of ${s.trades}`),
     kpiCard('Profit Factor (per-trade)', s.profitFactor >= 99 ? '∞' : fmt2(s.profitFactor), s.profitFactor >= 1.5 ? 'green' : s.profitFactor >= 1 ? 'blue' : 'red', 'gross win $ / gross loss $, individual trades'),
-    kpiCard('Sharpe (per-trade)', `${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)}`, 'amber', 'annualised by √trades/yr — OPTIMISTIC, treats every trade as independent'),
+    kpiCard('Sharpe (single trade)', fmt2(s.rawTradeSharpe), s.rawTradeSharpe >= 0.5 ? 'blue' : 'amber', `mean ÷ stdev of ONE trade's own pnl, NOT annualized — the honest scale. Annualizing this by √trades/yr (${fmt2(s.sharpe)}±${fmt2(s.sharpeSE)} at ~${fmt1(s.tradesPerYr)} trades/yr) is how a high-frequency book manufactures a huge "Sharpe" — same trades, same edge, just multiplied by a big number.`),
     kpiCard('Sortino (per-trade)', fmt2(s.sortino), '', 'downside-deviation-only'),
     kpiCard('Avg Win', '+' + fmt2(s.avgWin) + '%', 'green', ''),
     kpiCard('Avg Loss', '-' + fmt2(s.avgLoss) + '%', 'red', ''),
@@ -760,6 +770,13 @@ function buildPerformanceSummary(j) {
   const eq = j.equityCurve ?? [];
   const trades = j.trades ?? [];
   const s = j.stats;
+  // Per-trade figures reuse the SAME brick as the per-trade card above
+  // (2026-08-31) instead of the sheet's own separate hand-rolled copy --
+  // that old copy computed win rate/PF/avg win/loss from individual trades
+  // but paired them with the day-POOLED Sharpe/Sortino/Calmar from `s`,
+  // silently mixing two different statistical bases on one row. Now both
+  // bases are shown, each internally consistent and clearly labeled.
+  const pt = computePerTradeStats(trades);
 
   const byMonth = new Map();
   for (const p of eq) byMonth.set(monthKey(p.date), (byMonth.get(monthKey(p.date)) ?? 0) + p.dailyReturn);
@@ -777,28 +794,24 @@ function buildPerformanceSummary(j) {
     if (cum >= peak) { peak = cum; peakIdx = i; } else { maxDur = Math.max(maxDur, i - peakIdx); }
   });
 
-  const wins = trades.filter(t => t.win), losses = trades.filter(t => !t.win);
-  const avgWin = wins.length ? wins.reduce((a, t) => a + t.pnlPct, 0) / wins.length : 0;
-  const avgLoss = losses.length ? losses.reduce((a, t) => a + t.pnlPct, 0) / losses.length : 0;
   const avgTrade = trades.length ? trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length : 0;
-  const grossWin = wins.reduce((a, t) => a + t.pnlPct, 0), grossLoss = -losses.reduce((a, t) => a + t.pnlPct, 0);
-  const tradeProfitFactor = grossLoss > 1e-9 ? grossWin / grossLoss : (grossWin > 0 ? 99 : 0);
-  const tradeWinRate = trades.length ? wins.length / trades.length * 100 : 0;
 
   return {
     dateFrom: eq[0]?.date, dateTo: eq[eq.length - 1]?.date,
     totalReturn, annualReturn: s.cagrNonCompounded, monthlyReturn: avgMonthly, avgTrade, bestMonth, worstMonth,
     annVol: s.annVol, maxDD: s.maxDDNonCompounded, maxDDDurationDays: maxDur,
     var95: s.var95, var99: s.var99, cvar95: s.cvar95,
-    sharpe: s.sharpe, sortino: s.sortino, calmar: s.calmarNonCompounded, profitFactor: tradeProfitFactor,
-    winRate: tradeWinRate, avgWin, avgLoss, positiveMonths, negativeMonths, totalRoundTrips: trades.length,
+    portfolioSharpe: s.sharpe, portfolioSortino: s.sortino, portfolioCalmar: s.calmarNonCompounded,
+    tradeSharpe: pt?.rawTradeSharpe ?? 0, tradeSortino: pt?.sortino ?? 0, tradeCalmar: pt?.calmarNonCompounded ?? 0,
+    profitFactor: pt?.profitFactor ?? 0, winRate: pt?.winRate ?? 0, avgWin: pt?.avgWin ?? 0, avgLoss: -(pt?.avgLoss ?? 0),
+    positiveMonths, negativeMonths, totalRoundTrips: trades.length,
   };
 }
 function perfRow(label, value) {
   return `<tr><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;color:#374151">${label}</td><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;text-align:right;font-weight:600">${value}</td></tr>`;
 }
-function perfSection(title, rows) {
-  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}</div>
+function perfSection(title, rows, note) {
+  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}${note ? `<div style="font-size:10px;font-weight:400;letter-spacing:normal;color:#9db4d4;margin-top:2px">${note}</div>` : ''}</div>
     <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${rows}</tbody></table>`;
 }
 function renderPerformanceSummary() {
@@ -816,29 +829,32 @@ function renderPerformanceSummary() {
       perfRow('Average Trade', fmtPct(r.avgTrade, 2)),
       perfRow('Best Month', fmtPct(r.bestMonth, 2)),
       perfRow('Worst Month', fmtPct(r.worstMonth, 2)),
+      perfRow('Positive Months', r.positiveMonths),
+      perfRow('Negative Months', r.negativeMonths),
     ].join('')) +
-    perfSection('RISK', [
+    perfSection('PORTFOLIO RISK', [
       perfRow('Annual Volatility', fmt2(r.annVol) + '%'),
       perfRow('Max Drawdown', fmt2(r.maxDD) + '%'),
       perfRow('Max DD Duration (bdays)', r.maxDDDurationDays),
       perfRow('VaR (95%)', fmt2(r.var95) + '%'),
       perfRow('VaR (99%)', fmt2(r.var99) + '%'),
       perfRow('CVaR (95%)', fmt2(r.cvar95) + '%'),
-    ].join('')) +
-    perfSection('RISK-ADJUSTED PERFORMANCE', [
-      perfRow('Sharpe Ratio', fmt2(r.sharpe)),
-      perfRow('Sortino Ratio', fmt2(r.sortino)),
-      perfRow('Calmar Ratio', fmt2(r.calmar)),
+    ].join(''), 'daily returns, all open positions pooled — the real correlation basis for sizing/DD') +
+    perfSection('PORTFOLIO RISK-ADJUSTED', [
+      perfRow('Sharpe Ratio', fmt2(r.portfolioSharpe)),
+      perfRow('Sortino Ratio', fmt2(r.portfolioSortino)),
+      perfRow('Calmar Ratio', fmt2(r.portfolioCalmar)),
+    ].join(''), 'same day-pooled basis as above — valid for capital sizing, NOT a per-trade hit rate') +
+    perfSection('PER-TRADE STATISTICS', [
+      perfRow('Sharpe (single trade)', fmt2(r.tradeSharpe)),
+      perfRow('Sortino (per-trade)', fmt2(r.tradeSortino)),
+      perfRow('Calmar (per-trade)', fmt2(r.tradeCalmar)),
       perfRow('Profit Factor', fmt2(r.profitFactor)),
-    ].join('')) +
-    perfSection('TRADE STATISTICS', [
       perfRow('Win Rate', fmt2(r.winRate) + '%'),
       perfRow('Average Win', fmtPct(r.avgWin, 2)),
       perfRow('Average Loss', fmtPct(r.avgLoss, 2)),
-      perfRow('Positive Months', r.positiveMonths),
-      perfRow('Negative Months', r.negativeMonths),
       perfRow('Total Round Trips', r.totalRoundTrips),
-    ].join(''));
+    ].join(''), 'individual wins/losses, chronological order — Sharpe here is raw (mean ÷ stdev of ONE trade), not annualized. Sortino/Calmar ride the same additive per-trade curve as the dashboard\'s per-trade card and can run large from trade overlap, not a real edge multiplier — Sharpe (single trade) above is the one honest headline number here.');
 }
 document.getElementById('perfSummaryBtn').addEventListener('click', () => {
   renderPerformanceSummary();
