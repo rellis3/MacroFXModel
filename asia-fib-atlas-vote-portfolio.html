@@ -184,6 +184,24 @@
   <canvas id="tradeEqChart" style="max-height:280px"></canvas>
 </div>
 
+<div class="card" id="walkForwardCard" style="border-color:#3a2e4a;background:linear-gradient(135deg,#1e1424,#0e0e1b)">
+  <h2 style="color:#c084fc">Walk-Forward OOS — most recent 60% of history only (2026-08-31)</h2>
+  <div class="muted" style="margin-bottom:10px">
+  Every card above uses the FULL history shown in the header, which mixes data levers here (chandelier mult,
+  cost-efficiency ratio, stop-tighten fraction) were originally chosen against with data they weren't. This card
+  re-slices the SAME trades/daily series to just <span id="wfDaysLabel">—</span> days from <span id="wfCutoffLabel">—</span>
+  onward — the union of the 3 non-overlapping expanding-window test folds validated this session
+  (<code>analysis/fib_atlas_*_pooled_oos.mjs</code>, see <code>LEGO_MODULES.md</code>'s 2026-08-31 follow-ups), which is
+  mathematically the same as pooling all 3 folds' own held-out OOS performance. Nothing is re-optimized here — the
+  CURRENT shipped config is just evaluated honestly on the slice least likely to have been peeked at. Shows both bases
+  (day-pooled portfolio risk AND per-trade edge) since this session found they can disagree.
+  </div>
+  <h3 style="margin:6px 0 4px;font-size:13px;color:#9ca3af">Portfolio (day-pooled)</h3>
+  <div class="kpi-grid" id="kpiWfDay"></div>
+  <h3 style="margin:14px 0 4px;font-size:13px;color:#9ca3af">Per-trade (individual wins/losses)</h3>
+  <div class="kpi-grid" id="kpiWfTrade"></div>
+</div>
+
 <div class="card">
   <h2>If levered to <span id="targetVolLabel">10</span>% target annual volatility</h2>
   <div class="muted" style="margin-bottom:10px">This is a dial YOU set, not a cap the system imposes — it doesn't limit upside, it just shows what the SAME risk-adjusted profile looks like scaled to whatever volatility you're willing to run. Set it above the realized vol below to see leverage UP, not just down.</div>
@@ -515,6 +533,34 @@ function renderTradeEquityChart(s) {
   }
 }
 
+// Walk-Forward OOS card (2026-08-31) -- server pre-computes this (see
+// js/fibAtlasVotePortfolio.js's own comment for why re-slicing to the last
+// 60% of history is mathematically identical to pooling the 3 validated
+// walk-forward folds' own test windows), this just renders it.
+function renderWalkForwardOOS(wf) {
+  const dayEl = document.getElementById('kpiWfDay'), tradeEl = document.getElementById('kpiWfTrade');
+  document.getElementById('wfDaysLabel').textContent = wf ? wf.days : '—';
+  document.getElementById('wfCutoffLabel').textContent = wf ? fmtDateLong(wf.cutoffDate) : '—';
+  if (!wf) { dayEl.innerHTML = tradeEl.innerHTML = '<span class="muted">not enough history for a walk-forward slice</span>'; return; }
+  const d = wf.dayPooled;
+  dayEl.innerHTML = [
+    kpiCard('Sharpe', fmt2(d.sharpe), d.sharpe >= 2 ? 'green' : d.sharpe >= 1 ? 'blue' : 'amber', 'day-pooled, OOS slice only'),
+    kpiCard('Sortino', fmt2(d.sortino), '', ''),
+    kpiCard('Profit Factor', fmt2(d.profitFactor), d.profitFactor >= 1.5 ? 'green' : d.profitFactor >= 1 ? 'blue' : 'red', ''),
+    kpiCard('Win Rate (days)', fmt1(d.winRate) + '%', '', '% of positive trading days'),
+    kpiCard('Max Drawdown (fixed risk)', fmt1(d.maxDDNonCompounded) + '%', 'red', 'additive, never reinvested'),
+    kpiCard('Annualised Return (fixed risk)', fmt1(d.cagrNonCompounded) + '%', signClass(d.cagrNonCompounded), 'sum of daily %, ÷ years'),
+  ].join('');
+  const t = wf.perTrade;
+  if (!t) { tradeEl.innerHTML = '<span class="muted">no trades in this OOS slice</span>'; return; }
+  tradeEl.innerHTML = [
+    kpiCard('Sharpe (single trade)', fmt2(t.rawTradeSharpe), t.rawTradeSharpe >= 0.5 ? 'blue' : 'amber', `mean ÷ stdev of ONE trade, NOT annualized. Annualized: ${fmt2(t.annualizedSharpe)}±${fmt2(t.sharpeSE)} at ~${fmt1(t.tradesPerYr)} trades/yr`),
+    kpiCard('Win Rate (per-trade)', fmt1(t.winRate) + '%', '', ''),
+    kpiCard('Profit Factor (per-trade)', t.profitFactor >= 99 ? '∞' : fmt2(t.profitFactor), '', ''),
+    kpiCard('Trades in OOS slice', t.trades, '', `${fmt1(t.tradesPerYr)}/yr`),
+  ].join('');
+}
+
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
 function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
@@ -663,6 +709,7 @@ function render(j) {
   const perTradeStats = computePerTradeStats(lastTrades);
   renderPerTradeKpis(perTradeStats);
   renderTradeEquityChart(perTradeStats);
+  renderWalkForwardOOS(j.walkForwardOOS);
 
   const vt = s.volTarget;
   document.getElementById('targetVolLabel').textContent = vt.target;

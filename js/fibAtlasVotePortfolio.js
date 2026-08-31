@@ -34,7 +34,7 @@ import {
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
   applyCostEfficiencyFilter, applyStoredContinuationExit,
 } from './levelAtlasVoteReview.js';
-import { maxDrawdownFromPnls, neweyWestSharpe } from './metricsCore.js';
+import { maxDrawdownFromPnls, neweyWestSharpe, summarizeTrades } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 
 // portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
@@ -233,11 +233,47 @@ export async function buildFibAtlasVotePortfolio({
     list.map(t => ({ ...t, weight: perPair[sym].weight }))
   ).sort((a, b) => a.time - b.time);
 
+  // Walk-forward OOS view (2026-08-31) -- the 3 non-overlapping expanding-
+  // window folds validated this session (analysis/fib_atlas_*_pooled_oos.mjs;
+  // LEGO_MODULES.md's 2026-08-31 follow-ups) each test on the slice
+  // immediately AFTER their own fit window; those 3 test windows are
+  // contiguous and non-overlapping, so their union is simply "the most
+  // recent 60% of history by date" -- mathematically identical to pooling
+  // all 3 folds' own held-out test performance, without re-running the
+  // fold/fit machinery here (the shipped params are already fixed by the
+  // request; this only re-slices the SAME computed trades/daily series to
+  // the honest evaluation window, it doesn't re-derive anything). Reports
+  // BOTH bases -- day-pooled portfolio Sharpe AND per-trade Sharpe/PF/win
+  // rate via the same summarizeTrades brick as the dashboard's per-trade
+  // card -- since this session's own investigation found they can disagree
+  // for a trade-count-changing lever; showing only one would repeat that
+  // exact mistake on the very card meant to fix it.
+  let walkForwardOOS = null;
+  if (datesFinal.length >= 10) {
+    const cutoffIdx = Math.floor(datesFinal.length * 0.4);
+    const cutoffDate = datesFinal[cutoffIdx];
+    const oosReturns = dailyReturnsFinal.slice(cutoffIdx);
+    const oosDayStats = withNonCompoundedDD(portfolioStats(oosReturns, { mc: false, targetVol }), oosReturns);
+    const oosTrades = trades.filter(t => t.date >= cutoffDate);
+    let perTrade = null;
+    if (oosTrades.length) {
+      const sorted = oosTrades.slice().sort((a, b) => a.resolveTime - b.resolveTime);
+      const base = summarizeTrades(sorted.map(t => t.pnlPct), sorted.map(t => t.date));
+      const rawTradeSharpe = base.tradesPerYr > 0 ? base.sharpe / Math.sqrt(base.tradesPerYr) : base.sharpe;
+      perTrade = {
+        trades: oosTrades.length, winRate: base.winRate, profitFactor: base.profitFactor,
+        rawTradeSharpe: +rawTradeSharpe.toFixed(3), annualizedSharpe: base.sharpe, sharpeSE: base.sharpeSE,
+        tradesPerYr: base.tradesPerYr,
+      };
+    }
+    walkForwardOOS = { cutoffDate, days: oosReturns.length, dayPooled: oosDayStats, perTrade };
+  }
+
   return {
     pairs: Object.keys(perPairTradesForStats), missing, minMargin, maxConcurrent, perDirection, weighting,
     sizing, riskPct, heatCap, targetVol, throttle,
     stats, statsUncapped, statsNoThrottle, naiveAvgSharpe, days: datesFinal.length,
     equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
-    perPair, trades,
+    perPair, trades, walkForwardOOS,
   };
 }
