@@ -390,6 +390,11 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
       firstTouchBySide[s] = firstTouchTimes(bars, lvBySide[s], s === 'up');
     }
 
+    // side -> rung -> whether it's CURRENTLY armed as of the last bar walked
+    // today, at `pendingRearmFrac`. Populated below, alongside the main walk,
+    // instead of the re-arm-blind `firstTouchBySide` existence check the
+    // pending snapshot used to rely on (see that block's own comment).
+    const armedNow = {};
     for (const side of SIDES) {
       const isUp = side === 'up';
       const lv = lvBySide[side]; if (!lv) continue;
@@ -606,6 +611,14 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             touches.push(record);
             lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, dayIdx: i }].slice(-5);
           }
+          // Capture the CURRENT armed state as of the last bar walked (today,
+          // when this is the live/in-progress day) at the SAME re-arm
+          // definition the pending snapshot below will use -- `armed` already
+          // reflects every rearm that happened during the walk, not just
+          // whether the rung was EVER touched. Feeds the fix below: a rung
+          // touched once today, then genuinely re-armed, must be able to show
+          // up as pending again for the rest of the day.
+          if (rearmFrac === pendingRearmFrac) { (armedNow[side] ??= {})[rung] = armed; }
         }
       }
     }
@@ -628,11 +641,16 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
         const otherSide = isUp ? 'down' : 'up';
         for (let ri = 0; ri < RUNGS.length; ri++) {
           const rung = RUNGS[ri];
-          // Rearm-independent: a rung already touched at least once today
-          // (even if since resolved and re-armed) already has a real record
-          // — showing a synthetic "pending" alongside it would just be
-          // confusing, so pending is only for a rung untouched all day.
-          if (firstTouchBySide[side]?.[rung] != null) continue;
+          // Skip only if CURRENTLY disarmed (touched recently, hasn't moved
+          // away by rearmDist yet) -- `armedNow` defaults to true for a rung
+          // never touched at all today (matching the walk's own `armed`
+          // initial value), and flips back to true once a real re-arm
+          // happens, so a genuinely new opportunity on an already-touched
+          // rung shows up here again instead of being permanently excluded
+          // for the rest of the day (found 2026-08-31: this silently starved
+          // both the live dashboard panel AND the live bot's own plan
+          // producer of every re-arm past the first touch).
+          if (armedNow[side]?.[rung] === false) continue;
           const here = lv[ri + 1];
 
           const totalTravel = d1[i].high - d1[i].low;

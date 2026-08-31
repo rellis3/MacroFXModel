@@ -10306,6 +10306,63 @@ app.get('/api/nq-qmr/spread-check', async (req, res) => {
   }
 });
 
+// GET /api/level-atlas/spread-check?instruments=eurusd,chfjpy,gold&count=2500&granularity=H1
+// Real per-pair spread measurement — generalizes the NQ QMR route above's
+// proven pattern (OANDA's B/A candles, not mid-only) to volatility_bot_v2's
+// pair universe. Built 2026-08-31 after finding the live bot's max_spread cap
+// was one flat FX number applied to every pair alike (pylego/costs.py's
+// max_spread), rejecting CHFJPY's entirely normal ~3-pip spread against a cap
+// sized for EUR/USD. Feeds a REAL per-pair override in that same function
+// (which already supports a canonical-pair-key entry in the max_spread_pips
+// config dict) instead of another guessed constant.
+app.get('/api/level-atlas/spread-check', async (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
+  try {
+    const raw = String(req.query.instruments || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!raw.length) return res.status(400).json({ ok: false, error: 'instruments query param required (comma-separated)' });
+    const count = Math.min(Math.max(parseInt(req.query.count) || 2500, 200), 5000);
+    const gran = (req.query.granularity || 'H1').toUpperCase();
+    const base = _oandaBaseMe();
+    const spreads = {}, errors = {};
+    for (const alias of raw) {
+      const pair = resolveKey(alias) || String(alias).toLowerCase();
+      try {
+        const oSym = oandaSymbol(pair);
+        const url = `${base}/v3/instruments/${encodeURIComponent(oSym)}/candles?granularity=${gran}&count=${count}&price=BA`;
+        const r = await fetch(url, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(30_000) });
+        if (!r.ok) throw new Error(`OANDA BA HTTP ${r.status}`);
+        const d = await r.json();
+        const pip = _pipSize(pair) || 0.0001;
+        const spreadsPips = [];
+        for (const c of (d.candles ?? [])) {
+          if (!c.complete || !c.bid || !c.ask) continue;
+          const bidC = parseFloat(c.bid.c), askC = parseFloat(c.ask.c);
+          if (!(askC > bidC)) continue;   // a non-positive spread reading is a bad tick, not a real 0-spread market
+          spreadsPips.push((askC - bidC) / pip);
+        }
+        if (!spreadsPips.length) { errors[pair] = 'no usable bid/ask candles returned'; continue; }
+        spreadsPips.sort((a, b) => a - b);
+        const q = p => spreadsPips[Math.min(spreadsPips.length - 1, Math.floor(spreadsPips.length * p))];
+        spreads[pair] = {
+          n: spreadsPips.length,
+          meanPips: +(spreadsPips.reduce((s, v) => s + v, 0) / spreadsPips.length).toFixed(2),
+          medianPips: +q(0.5).toFixed(2), p75Pips: +q(0.75).toFixed(2), p90Pips: +q(0.90).toFixed(2), p95Pips: +q(0.95).toFixed(2),
+          maxPips: +spreadsPips[spreadsPips.length - 1].toFixed(2),
+          // A STARTING POINT to review, not a number to paste blindly: p90
+          // with a 15% margin so the gate doesn't reject the pair's own
+          // routine wide tick, while still catching a genuinely abnormal spread.
+          suggestedCapPips: +(q(0.90) * 1.15).toFixed(1),
+        };
+      } catch (e) { errors[pair] = e.message; }
+    }
+    res.json({ ok: true, granularity: gran, count, spreads, errors,
+      note: 'Close-of-bar bid/ask spread per candle, in the pair\'s own pips. Paste suggestedCapPips values into bot-config.html\'s Vote Atlas max_spread_pips override (keyed by canonical pair) once reviewed -- not applied automatically.' });
+  } catch (e) {
+    console.error('[level-atlas/spread-check]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── QMR M1 validation — does the H1 intrabar assumption hold? ───────────────
 // The whole both-sides result rests on one thing H1 bars CANNOT see: with a
 // ~0.45% stop against a 1.5% target, a single H1 bar routinely contains both

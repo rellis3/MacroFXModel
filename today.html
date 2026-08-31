@@ -5167,18 +5167,42 @@ function _voteChip(d) {
   const word = d.decision === 'follow' ? 'Continue' : 'Fade';
   return { cls: d.decision === 'follow' ? 'range' : 'bear', label: `${arrow} ${word} (margin ${d.margin}${strong ? ' — bot would trade this' : ''})` };
 }
+// Outcome label for an already-touched line's decision row — lets you see
+// WHY the bot skipped or would've traded a line that already moved today,
+// not just what's still ahead. 'neither' means still live/unresolved.
+function _atlasOutcomeWord(t) {
+  if (t.outcome === 'out') return 'continued through';
+  if (t.outcome === 'back') return 'faded back';
+  return 'still live/unresolved';
+}
 function renderDrVote(j) {
   const sec = $('drVoteSec'), box = $('drVote');
   if (!sec || !box) return;
   const pending = (j?.live?.pending ?? []).filter(p => p.decision !== undefined);
-  if (!j?.ok || !pending.length) { sec.style.display = 'none'; return; }
-  box.innerHTML = pending.map(p => {
-    const t = p.touch;
-    const sideArrow = t.side === 'up' ? '▲' : '▼';
-    const chip = _voteChip(p.decision);
-    return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))}) `
-      + `<span class="muted">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span> — <span class="chip ${chip.cls}">${chip.label}</span></div>`;
-  }).join('');
+  const touched = (j?.live?.touches ?? []).filter(p => p.decision !== undefined);
+  if (!j?.ok || (!pending.length && !touched.length)) { sec.style.display = 'none'; return; }
+  let html = '';
+  if (pending.length) {
+    html += pending.map(p => {
+      const t = p.touch;
+      const sideArrow = t.side === 'up' ? '▲' : '▼';
+      const chip = _voteChip(p.decision);
+      return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))}) `
+        + `<span class="muted">${esc0(_fmtDistance(t.distancePips, t.pip))} away</span> — <span class="chip ${chip.cls}">${chip.label}</span></div>`;
+    }).join('');
+  }
+  if (touched.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Already touched today — the bot's actual read at that moment</div>`
+      + touched.map(p => {
+        const t = p.touch;
+        const sideArrow = t.side === 'up' ? '▲' : '▼';
+        const chip = _voteChip(p.decision);
+        const timeStr = t.hourUtc != null ? `${String(t.hourUtc).padStart(2, '0')}:${String(t.minute ?? 0).padStart(2, '0')} UTC` : '';
+        return `<div class="th-top">${sideArrow} <b>${esc0(t.rung)}</b> (${esc0(_atlasSideWord(t.side))}) `
+          + `<span class="muted">${esc0(timeStr)} — ${esc0(_atlasOutcomeWord(t))}</span> — <span class="chip ${chip.cls}">${chip.label}</span></div>`;
+      }).join('');
+  }
+  box.innerHTML = html;
   sec.style.display = 'block';
 }
 async function loadDrawerAtlas(r) {

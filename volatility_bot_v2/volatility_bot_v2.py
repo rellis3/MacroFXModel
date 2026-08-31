@@ -559,9 +559,23 @@ def run(base_url: str, force_live: bool) -> None:
                             continue
                     budget_skips.pop(zid, None)
                     direction = "LONG" if spec["dir_up"] else "SHORT"
+                    # Short, MT5-comment-safe dedupe tag -- NOT the full zone_id.
+                    # Found 2026-08-31 from real logs: the full zid (up to ~29
+                    # chars, e.g. "audcad_2026-08-31_down_p90_12") blew past
+                    # MT5's 31-char comment limit once wrapped with ANY prefix,
+                    # and Mt5Broker._safe_comment's blind [:31] truncation was
+                    # silently chopping the tag's own closing bracket off --
+                    # breaking restart-safety dedup with no visible error, and
+                    # on the untruncated string, MT5 rejected the order outright
+                    # ("Invalid comment argument"). The pair doesn't need to be
+                    # IN the tag: Mt5Broker.enter() already scopes its dedup
+                    # scan to this symbol's own positions before the substring
+                    # check runs, so side+rung+instance is enough to stay
+                    # unique within a pair/day.
+                    short_tag = f"{spec['side']}{spec['rung']}_{zid.rsplit('_', 1)[-1]}"
                     tid = broker.enter(instr, direction, spec["sl"], spec["tp"], lots,
                                        max_spread(instr, cfg), paper,
-                                       comment=f"VoteAtlas [{zid}]", dedupe_tag=zid)
+                                       comment=f"VA[{short_tag}]", dedupe_tag=short_tag)
                     filled = tid is not None and tid != -1
                     if filled:
                         guard.record_trade(instr)

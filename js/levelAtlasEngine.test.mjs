@@ -464,16 +464,36 @@ t('pending is empty unless pendingRearmFrac is requested', () => {
   assert.deepEqual(pending, [], 'pending must stay empty when the caller never asked for it — zero cost, zero behavior change for the historical book path');
 });
 
-t('pending never overlaps a rung that already has a real touch today, at the requested rearm', () => {
+t('pending may re-include a rung already touched today, but ONLY once price has genuinely cleared the re-arm distance (2026-08-31 fix)', () => {
+  // Old behavior (pre-fix) excluded a touched rung from `pending` for the
+  // REST of the day regardless of re-arm — silently starving the live
+  // dashboard AND the live bot's own plan producer of every re-arm past the
+  // first touch. `pending` must now be re-arm-AWARE: it may legitimately
+  // overlap a touched rung once price has moved away by at least
+  // rearmFrac x rungSpan (a REAL new opportunity), but never while still
+  // inside that distance (that would be the same stale-touch bug in a new
+  // shape — showing "pending" right on top of an unresolved/just-touched line).
   const { touches, pending, coverage } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
   assert.ok(pending.length > 0, 'expected at least one untouched rung on the last day — widen/adjust the fixture if this is ever empty');
-  const touchedToday = new Set(touches.filter(r => r.date === coverage.to && r.rearmFrac === 0.3).map(r => `${r.side}|${r.rung}`));
+  const todaysTouches = touches.filter(r => r.date === coverage.to && r.rearmFrac === 0.3);
+  const lastTouchByKey = new Map();
+  for (const r of todaysTouches) lastTouchByKey.set(`${r.side}|${r.rung}`, r);   // touches are pushed in walk order, so the last write wins
+  let overlapChecked = 0;
   for (const p of pending) {
     assert.equal(p.date, coverage.to, 'pending must only ever be dated the live day');
     assert.equal(p.pending, true);
     assert.equal(p.rearmFrac, 0.3);
-    assert.ok(!touchedToday.has(`${p.side}|${p.rung}`), `pending emitted for ${p.side}/${p.rung} which already has a real touch today — the two must be mutually exclusive`);
+    const lastTouch = lastTouchByKey.get(`${p.side}|${p.rung}`);
+    if (!lastTouch) continue;   // never touched today at all — the ordinary, always-valid case
+    // Touched AND still showing as pending -> must be a genuine re-arm: the
+    // rearm distance (0.3 x this rung's own inner span, in pips) must have
+    // actually been cleared, in the direction AWAY from the touched level.
+    const rearmDistPips = 0.3 * lastTouch.innerDistPips;
+    assert.ok(p.distancePips >= rearmDistPips - 1e-6,
+      `pending emitted for ${p.side}/${p.rung} which was touched today, but price (${p.distancePips} away) hasn't cleared the ${rearmDistPips} re-arm distance yet — stale-touch bug reintroduced`);
+    overlapChecked++;
   }
+  assert.ok(overlapChecked > 0, 'fixture never exercises the re-arm-overlap path at all — widen it so this test actually proves something, not just that plain non-overlap still works');
 });
 
 t('pending shares EXACT day-level context with real touches on the same day — the core no-apples-to-oranges guarantee', () => {
