@@ -20,7 +20,7 @@ A running collection of education content, logged as condensed summary notes for
   2. Risk of Ruin
   3. Position Sizing and the Hidden Bet
   4. Correlation and the Diversification Illusion
-- **Series 03 — The Instruments** (5 lessons)
+- **Series 03 — The Instruments** (5 lessons) — logging in progress.
   1. The Equity Curve
   2. Return Figures
   3. Drawdown and Time Under Water
@@ -354,5 +354,31 @@ Pattern drawn out: competition tracks capacity, and capacity tracks size — the
 **What to carry forward (paraphrased):** counting positions isn't the same as measuring risk — the effective number of independent bets is what matters; at high correlation, adding more strategies mostly adds workload rather than genuine protection; correlation isn't constant and tends to rise specifically during stress, which is exactly when it was being relied on; most hidden correlation traces back to a shared driver that was never explicitly identified; and the practical habit is to measure correlation on one's own actual results, specifically during the periods that hurt.
 
 **Series close (end of "Risk Before Return"):** Four lessons on one theme — drawdown depth determines what's recoverable, position sizing determines whether a trader survives to actually collect an edge, and correlation determines whether positions are as genuinely separate as they appear. None of it is framed as being about being right more often; the closing question posed is what would have to be true about a trader's own numbers for any of this to actually be safe.
+
+---
+
+## Series: The Instruments
+
+### Lesson 1 — The Equity Curve
+
+**Core argument:** A rising equity curve reliably reports only one thing — the total result over the period shown — while its shape (how smooth or volatile the path looks, where the worst drawdown falls) is partly the strategy and partly just the order the trades happened to arrive in, and a curve alone doesn't distinguish between the two.
+
+**Chart 1 — the same trades, reordered:** Six equity curves (cumulative result %, ~140 trades) are shown, all built from the identical set of trades, differing only in the sequence they arrived in — "reorder the same trades" and "new set of trades" buttons let you regenerate. All six finish at the identical endpoint (7.8% in the example), but the worst drawdown across the six ranges from ~10% to ~22% purely from reordering. Point made: a curve's shape is partly the strategy and partly the order luck arrived in, and any judgement drawn purely from the shape necessarily includes both without the ability to separate them.
+
+**What a curve shows vs. hides (four points):** it clearly shows the endpoint (the one thing a curve genuinely reports is the total result over the stated period); it hides the ordering (the same trades in a different sequence produce a different shape and a different worst moment); it hides the sample size (a curve rarely states how many trades it contains, and that count determines how much confidence it deserves); and it hides what was removed (costs, slippage, excluded periods, and any accounts not shown). Framed as: a curve is a summary, and every summary involves a choice about what to leave out — not a flaw in the format itself, but the reason a curve should be the *start* of questions (what period, how many trades, gross or net, what happened just outside the shown window) rather than the end of them. Practical habit suggested: check the axes before reading the line — a curve with no scale, no dates, and no trade count is a shape rather than a record.
+
+**Chart 2 — the same curve, after costs:** A cumulative result chart (250 trades) compares a "before costs" line against an "after costs" line, with a slider for assumed cost per trade (0–0.40%). The gross result is 48.1%; in the example, the edge disappears entirely once cost per trade reaches ~0.192% — with nothing about the underlying rule changing along the way. Point made: whenever a curve is shown without a stated cost assumption, that omission is itself avoiding the question of how fragile the edge actually is to real trading costs.
+
+**How to read a curve properly (four checks):** read the axes first (scale, time period, and whether the vertical axis is linear or logarithmic); find the trade count (a hundred trades and ten thousand trades can produce equally smooth-looking pictures but very different statistical confidence); ask whether it's gross or net (if costs aren't stated, treat the figure as gross); and look specifically for the worst stretch (its depth and duration matter more than the endpoint for anyone who actually has to hold through it). Logarithmic vs. linear scaling is called out specifically — on a log scale, equal vertical distances represent equal percentage moves (the more honest way to represent compounding), while a linear scale makes early results look flat and recent results look dramatic, flattering whatever happened most recently.
+
+- Qualification: a curve is still described as the right *first* thing to look at, since it shows the path a person would actually have had to live through, which no single summary number fully captures. The point isn't to distrust curves generally, but to stop treating one as the only thing worth looking at — a curve accompanied by a stated period, trade count, and cost assumption is described as genuinely informative.
+
+**A curve built to persuade vs. one built to inform (contrast):** built to persuade — no axis labels or dates, trade count unstated, costs unmentioned, the period chosen after the fact, a linear axis used on what is actually a compounding series. Built to inform — scale and period labelled, number of trades stated, costs applied and explicitly named, the full available history shown, a logarithmic axis used where the series compounds. Framed as: labelling an axis and stating a trade count costs almost nothing to do, so when those things are missing from something built for public display, that absence is treated as a deliberate choice rather than an oversight — worth reading as informative in itself.
+
+**What to carry forward (paraphrased):** a curve reliably reports one specific thing — the endpoint over the period shown — and little else on its own; its shape reflects both the underlying strategy and the order results happened to arrive in; costs apply to every trade, and even a small per-trade cost can eliminate a marginal edge entirely; the practical habit is to read the axes, period, and trade count before reading the line itself; and what a curve chooses to omit is usually the most informative part of it.
+
+**Explicit connections drawn to earlier lessons:** to *Why None of It Worked* — an equity curve is often what gets offered in place of an actual answer to that lesson's four questions; to *The Sample You Were Shown* — any curve that reaches a viewer has typically already passed through a selection filter, and this lesson is framed as how to read one properly regardless; to *The Mathematics of Drawdown* — the worst stretch visible on a curve is specifically the part that determines what a trader can actually hold through.
+
+**Next in series:** Return Figures — a curve ends at one number, which then gets quoted as a percentage. Which percentage, over what period, and why can three different figures describe the same underlying result?
 
 ---
