@@ -96,6 +96,25 @@ class RiskGuard:
 
         return None
 
+    def snapshot(self, bal: float | None = None) -> dict:
+        """Side-effect-free read of the CURRENT lockout/DD state, for a status
+        display -- deliberately does NOT call block_reason (which can itself
+        EXTEND the lockout on a fresh breach; this never mutates state, safe
+        to call every status cycle regardless of how often that already
+        happens elsewhere in the same tick)."""
+        now = time.time()
+        locked_secs = max(0.0, self._locked_until - now)
+        day_dd = ((self._day_start - bal) / self._day_start * 100) if (self._day_start and bal) else None
+        month_dd = ((self._month_start - bal) / self._month_start * 100) if (self._month_start and bal) else None
+        return {
+            "locked": locked_secs > 0,
+            "locked_mins_remaining": round(locked_secs / 60, 1) if locked_secs > 0 else 0,
+            "day_dd_pct": round(day_dd, 2) if day_dd is not None else None,
+            "month_dd_pct": round(month_dd, 2) if month_dd is not None else None,
+            "dd_limit_pct": self.dd_limit_pct,
+            "monthly_dd_pct": self.monthly_dd_pct,
+        }
+
 
 def log_block_transition(log: logging.Logger, state: dict, key: str,
                          reason: str | None) -> None:

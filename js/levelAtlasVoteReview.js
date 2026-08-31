@@ -714,6 +714,17 @@ export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger
       date: t.date, fixedPnl: t.pnlPct,   // the already-validated atlasWalk result — kept, not replaced
       chandPnl: +(pick('exFadeChand', 'exFollowChand') - cost).toFixed(4),
       ridePnl: +(pick('exFadeRide', 'exFollowRide') - cost).toFixed(4),
+      // beride: behaves identically to the fixed rule up to the ORIGINAL TP
+      // (same win/loss, same timing) -- only once TP is reached does it stop
+      // moving to breakeven and trail for the excess, instead of closing.
+      // Distinct from `ride` (trails from bar zero, can stop out before ever
+      // reaching what would've been a fixed win) and `chand` (trails from
+      // bar zero but still caps at TP) -- see forecastAnalyser.js's walk()
+      // for the exact mechanics. This harness has no forward-day bars wired
+      // in (runExitVariantStudy doesn't fetch them), so a runner still open
+      // at session close marks to that close -- NOT yet "let it run into
+      // tomorrow"; that's a further step if this shows promise.
+      beRidePnl: +(pick('exFadeBeRide', 'exFollowBeRide') - cost).toFixed(4),
     });
   }
   const dates = rows.map(r => r.date);
@@ -723,6 +734,17 @@ export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger
     fixed: summarizeTrades(rows.map(r => r.fixedPnl), dates),
     chand: summarizeTrades(rows.map(r => r.chandPnl), dates),
     ride: summarizeTrades(rows.map(r => r.ridePnl), dates),
+    beRide: summarizeTrades(rows.map(r => r.beRidePnl), dates),
+    // Raw per-trade rows (date + each variant's pnl) -- `summarizeTrades`
+    // above treats every row as an independent per-TRADE observation
+    // (annualized by trade frequency), which is fine for one pair alone but
+    // silently inflates Sharpe when pooling several pairs' trades that share
+    // calendar days (the exact "unlimited margin" issue already flagged
+    // elsewhere this session). A multi-pair caller should combine these rows
+    // through the real portfolio pipeline (applyConcurrencyCap +
+    // buildPortfolioDailySeries + portfolioStats) instead of re-calling
+    // summarizeTrades on a pooled flat array.
+    rows,
   };
 }
 

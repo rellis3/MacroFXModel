@@ -3829,6 +3829,34 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- Risk systems -- previously computed bot-side but never surfaced, so
+         "is anything actually blocking new entries right now" had no single
+         place to check besides scrolling console output. Added 2026-08-31. -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#c084fc">Risk Systems</span>
+        <span class="bot-banner-sub" style="margin:0">every risk mechanism's CURRENT state, at a glance — not just its config value</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding:6px 16px 14px;font-size:11px;font-family:'DM Mono',monospace">
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Never-resetting running-peak drawdown throttle. Engaged = new position sizes are cut by the configured multiplier until balance recovers to the restore level (not merely off the trigger).">
+          <div style="color:var(--text3);margin-bottom:3px">Drawdown throttle</div>
+          <div id="vb2Throttle" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Daily/monthly drawdown lockout (pylego.risk_guard). Locked = ALL new entries blocked account-wide until the lockout window expires, regardless of pair.">
+          <div style="color:var(--text3);margin-bottom:3px">Risk guard</div>
+          <div id="vb2RiskGuard" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Sum of risk % across every currently-open position (from the bot's own risk ledger) vs the configured portfolio heat cap. A new entry that would push the total over the cap is deferred, not skipped forever.">
+          <div style="color:var(--text3);margin-bottom:3px">Portfolio heat</div>
+          <div id="vb2Heat" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Fail-closed safety: if the bot hasn't fetched a fresh plan within plan_max_age_hours, NEW entries are blocked (existing brackets keep running) rather than trading against a stale snapshot.">
+          <div style="color:var(--text3);margin-bottom:3px">Plan age gate</div>
+          <div id="vb2PlanGate" style="font-weight:600">—</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Open positions -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
@@ -3928,6 +3956,10 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
         <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
           Pair <input type="text" id="vb2DecFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadVb2DecisionLog()">
         </label>
+        <button onclick="vb2DecShiftDay(-1)" title="Previous day" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">← Prev</button>
+        <input type="date" id="vb2DecDate" onchange="loadVb2DecisionLog()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+        <button onclick="vb2DecShiftDay(1)" title="Next day" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">Next →</button>
+        <button onclick="vb2DecClearDate()" title="Clear date filter — show most recent events across all dates" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">All dates</button>
         <button onclick="loadVb2DecisionLog()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
       </div>
       <div style="overflow-x:auto;max-height:480px;overflow-y:auto">

@@ -14153,6 +14153,36 @@ async function _volatilityV2AccumulateTradeLog() {
 setInterval(_volatilityV2AccumulateTradeLog, 10 * 60_000);
 setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
 
+// GET /api/level-atlas/bot-enabled?instruments=EUR/USD,XAU/USD,NAS100_USD —
+// which of the given instruments are in volatility_bot_v2's CURRENT
+// enabled_pairs config. Lets a page (vol-forecast-v2.html's cards) badge
+// "is this pair actually being traded by the bot" without duplicating the
+// alias-resolution logic client-side — a card's display-form name
+// ("EUR/USD") and the bot's stored canonical key ("eurusd") are bridged by
+// resolveKey the same way every other Level Atlas route already does.
+// Echoes each input alias back as the object key (not the resolved pair) so
+// the caller can match straight off whatever name it already has.
+app.get('/api/level-atlas/bot-enabled', async (req, res) => {
+  try {
+    const raw = String(req.query.instruments || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!raw.length) return res.status(400).json({ ok: false, error: 'instruments query param required (comma-separated)' });
+    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const enabledPairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length
+      ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
+      : VOLATILITY_V2_DEFAULT_PAIRS;
+    const enabledSet = new Set(enabledPairs.map(p => resolveKey(p) || p));
+    const enabled = {};
+    for (const alias of raw) {
+      const key = resolveKey(alias) || String(alias).toLowerCase().replace(/[^a-z0-9]/g, '');
+      enabled[alias] = enabledSet.has(key);
+    }
+    res.json({ ok: true, enabled });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Level Atlas live-cache R2 snapshotting (js/levelAtlasRoutes.js's own doc on
 // `saveAllLiveSnapshots` has the full story) — periodically mirrors every
 // currently-warm pair's bounded M1 window to R2 so a Railway restart can

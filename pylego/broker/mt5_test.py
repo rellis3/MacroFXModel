@@ -41,7 +41,7 @@ class FakeMt5:
     TIMEFRAME_M30 = 30
 
     def __init__(self, positions=None, tick=None, deals=None, account=None,
-                 filling_mode=2, send_result="done", bars=None, trade_mode=None):
+                 filling_mode=2, send_result="done", bars=None, trade_mode=None, symbols=None):
         self._positions = positions or []
         self._tick = tick or SimpleNamespace(bid=1.10000, ask=1.10010)
         self._deals = deals or []
@@ -50,6 +50,7 @@ class FakeMt5:
         self._send_result = send_result
         self._bars = bars
         self._trade_mode = trade_mode          # None ⇒ omit (legacy symbol_info shape)
+        self._symbols = symbols                # verify_symbols' account symbol list
         self.sent_orders = []
 
     def last_error(self): return (0, "ok")
@@ -64,6 +65,7 @@ class FakeMt5:
         return SimpleNamespace(**attrs)
     def symbol_info_tick(self, sym): return self._tick
     def copy_rates_from_pos(self, sym, tf, start, count): return self._bars
+    def symbols_get(self): return [SimpleNamespace(name=s) for s in (self._symbols or [])]
 
     def positions_get(self, symbol=None):
         return list(self._positions)
@@ -249,6 +251,43 @@ def test_atr_ema():
     bars = [{'high': 1.1, 'low': 1.09, 'close': 1.095}] * 5
     val = _broker(FakeMt5(bars=bars)).atr('EUR/USD')
     assert val is not None and val > 0
+
+
+def test_verify_symbols_all_clean():
+    resolver = {'eurusd': 'EURUSD', 'gold': 'XAUUSD'}.get
+    fake = FakeMt5(symbols=['EURUSD', 'XAUUSD', 'GBPUSD'])
+    b = Mt5Broker(magic=MAGIC, symbol_resolver=resolver, pip_resolver=lambda p: 0.0001, mt5_module=fake)
+    problems = b.verify_symbols(['eurusd', 'gold'])
+    assert problems == []
+
+
+def test_verify_symbols_finds_a_mismatch_and_suggests_the_real_name():
+    # The exact real-world case that motivated this: a broker_symbols
+    # override with wrong case and no underscore, when the account's real
+    # symbol is upper-case with an underscore.
+    resolver = {'eurusd': 'EURUSD', 'uk100': 'Uk100gbp'}.get
+    fake = FakeMt5(symbols=['EURUSD', 'UK100_GBP', 'US30_USD'])
+    b = Mt5Broker(magic=MAGIC, symbol_resolver=resolver, pip_resolver=lambda p: 0.0001, mt5_module=fake)
+    problems = b.verify_symbols(['eurusd', 'uk100'])
+    assert len(problems) == 1, problems
+    p = problems[0]
+    assert p['pair'] == 'uk100' and p['configured'] == 'Uk100gbp'
+    assert 'UK100_GBP' in p['suggestions'], p['suggestions']
+
+
+def test_verify_symbols_no_suggestion_when_nothing_is_close():
+    resolver = {'nzdcad': 'NZDCAD_WRONG'}.get
+    fake = FakeMt5(symbols=['EURUSD', 'GBPUSD'])   # nothing resembling NZDCAD at all
+    b = Mt5Broker(magic=MAGIC, symbol_resolver=resolver, pip_resolver=lambda p: 0.0001, mt5_module=fake)
+    problems = b.verify_symbols(['nzdcad'])
+    assert len(problems) == 1 and problems[0]['suggestions'] == []
+
+
+def test_verify_symbols_empty_account_symbol_list_skips_check_not_crashes():
+    resolver = {'eurusd': 'EURUSD'}.get
+    fake = FakeMt5(symbols=[])   # symbols_get() returned nothing (e.g. not fully connected yet)
+    b = Mt5Broker(magic=MAGIC, symbol_resolver=resolver, pip_resolver=lambda p: 0.0001, mt5_module=fake)
+    assert b.verify_symbols(['eurusd']) == []
 
 
 def test_unavailable_broker_is_safe():

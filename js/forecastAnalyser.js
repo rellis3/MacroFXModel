@@ -80,12 +80,36 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
     const noTP = rule === 'ride' || rule === 'ridehold';
     const trailing = rule === 'chand' || rule === 'ride' || rule === 'ridehold';
     let stop = S0, stopMoved = false, exitPrice = null, why = null;
+    let tpArmed = false;   // 'beride' only: has price reached the ORIGINAL TP yet
     for (let k = touchIdx; k < wbars.length; k++) {
       const bar = wbars[k];
       const adverse = buy ? bar.low  : bar.high;   // stop is tested against this
       const favour  = buy ? bar.high : bar.low;    // TP + trail/BE update use this
       // 1) current stop first (conservative: a bar spanning both exits at the stop).
       if (buy ? adverse <= stop : adverse >= stop) { exitPrice = stop; why = stopMoved ? 'trail' : 'stop'; break; }
+      // 'beride': behaves EXACTLY like 'fixed' (stop stays at S0, no trailing)
+      // until price reaches the ORIGINAL TP -- at that moment, instead of
+      // exiting, the stop snaps to breakeven and a chandelier trail takes
+      // over for whatever comes after, uncapped. Distinct from 'ride' (which
+      // trails from bar zero and can stop out BEFORE ever reaching what would
+      // have been a fixed-rule win) and from 'chand' (which trails from the
+      // start but still caps profit at the original TP) -- this rule
+      // guarantees the same win/loss up to TP as 'fixed', only the excess
+      // past TP is put at risk.
+      if (rule === 'beride') {
+        if (!tpArmed) {
+          if (buy ? favour >= TP : favour <= TP) {
+            tpArmed = true;
+            const be = buy ? Math.max(stop, E) : Math.min(stop, E);
+            if (be !== stop) { stop = be; stopMoved = true; }
+          }
+        } else {
+          const newStop = buy ? favour - trailFrac * R : favour + trailFrac * R;
+          const upd = buy ? Math.max(stop, newStop) : Math.min(stop, newStop);
+          if (upd !== stop) { stop = upd; stopMoved = true; }
+        }
+        continue;
+      }
       // 2) then TP (skipped for the rides — the trail is the only profit exit).
       if (!noTP && (buy ? favour >= TP : favour <= TP)) { exitPrice = TP; why = 'tp'; break; }
       // 3) else update the stop for SUBSEQUENT bars from this bar's favourable extreme.
@@ -111,15 +135,20 @@ export function simulateExitVariants(bars, touchIdx, { touchLvl, inner, outer, i
   const fFix = walk(bars, fadeDir, E, outer, inner, 'fixed'),  fCh = walk(bars, fadeDir, E, outer, inner, 'chand');
   const fWk  = walk(bars, fadeDir, E, outer, inner, 'walk'),   fRd = walk(bars, fadeDir, E, outer, inner, 'ride');
   const fRdH = walk(held, fadeDir, E, outer, inner, 'ridehold');
+  // beride uses `held` (runs into next day(s)) like ridehold, not the
+  // session-bound `bars' — truncating at session close would artificially
+  // cap exactly the kind of move this rule exists to catch.
+  const fBeRd = walk(held, fadeDir, E, outer, inner, 'beride');
   const oFix = walk(bars, folDir,  E, inner, outer, 'fixed'),  oCh = walk(bars, folDir,  E, inner, outer, 'chand');
   const oWk  = walk(bars, folDir,  E, inner, outer, 'walk'),   oRd = walk(bars, folDir,  E, inner, outer, 'ride');
   const oRdH = walk(held, folDir,  E, inner, outer, 'ridehold');
+  const oBeRd = walk(held, folDir, E, inner, outer, 'beride');
   return {
-    exFadeFixed: fFix.pnl, exFadeChand: fCh.pnl, exFadeWalk: fWk.pnl, exFadeRide: fRd.pnl, exFadeRideHold: fRdH.pnl,
-    exFollowFixed: oFix.pnl, exFollowChand: oCh.pnl, exFollowWalk: oWk.pnl, exFollowRide: oRd.pnl, exFollowRideHold: oRdH.pnl,
+    exFadeFixed: fFix.pnl, exFadeChand: fCh.pnl, exFadeWalk: fWk.pnl, exFadeRide: fRd.pnl, exFadeRideHold: fRdH.pnl, exFadeBeRide: fBeRd.pnl,
+    exFollowFixed: oFix.pnl, exFollowChand: oCh.pnl, exFollowWalk: oWk.pnl, exFollowRide: oRd.pnl, exFollowRideHold: oRdH.pnl, exFollowBeRide: oBeRd.pnl,
     // Exit reasons for the no-TP rides → the exit-composition (% EOD-close) stat.
-    exFadeRideWhy: fRd.why, exFadeRideHoldWhy: fRdH.why,
-    exFollowRideWhy: oRd.why, exFollowRideHoldWhy: oRdH.why,
+    exFadeRideWhy: fRd.why, exFadeRideHoldWhy: fRdH.why, exFadeBeRideWhy: fBeRd.why,
+    exFollowRideWhy: oRd.why, exFollowRideHoldWhy: oRdH.why, exFollowBeRideWhy: oBeRd.why,
   };
 }
 

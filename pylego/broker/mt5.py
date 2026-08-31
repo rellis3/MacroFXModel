@@ -116,6 +116,47 @@ class Mt5Broker:
         self.clock.offset_sec(force=True)
         return True
 
+    def verify_symbols(self, pairs: list[str]) -> list[dict]:
+        """Check that every pair's RESOLVED symbol actually exists on this
+        connected account — call once after connect() in live mode, before
+        the first order attempt, so a bad `broker_symbols` override (a typo,
+        wrong case, wrong broker convention) is a clear startup log line
+        instead of a silent order failure discovered live. Returns one dict
+        per pair whose configured symbol is NOT found, each with
+        `suggestions` (near-matches from the account's REAL symbol list, by
+        loose alphanumeric substring). Never auto-corrects the config --
+        that decision belongs to a human, not a guess this brick makes for
+        itself. Empty list means every pair resolved cleanly."""
+        if not self.available or not self.mt5:
+            return []
+        try:
+            all_syms = [s.name for s in (self.mt5.symbols_get() or [])]
+        except Exception as e:
+            self.log.warning(f'verify_symbols: symbols_get() failed, skipping check: {e}')
+            return []
+        if not all_syms:
+            return []
+        all_set = set(all_syms)
+
+        def _core(s: str) -> str:
+            return ''.join(ch for ch in str(s).upper() if ch.isalnum())
+
+        problems = []
+        for pair in pairs:
+            try:
+                configured = self.resolve(pair)
+            except Exception:
+                continue
+            if configured in all_set:
+                continue
+            needle = _core(configured)
+            suggestions = sorted(s for s in all_syms if needle and needle in _core(s))
+            if not suggestions:
+                core_pair = _core(pair)
+                suggestions = sorted(s for s in all_syms if core_pair and core_pair in _core(s))
+            problems.append({'pair': pair, 'configured': configured, 'suggestions': suggestions[:5]})
+        return problems
+
     def server_offset_sec(self) -> int | None:
         """Seconds the broker's wall clock runs AHEAD of UTC — the amount every
         `time_open` / `time_close` this brick emits is shifted by. None when it

@@ -94,6 +94,42 @@ test('ride (no TP) rides past inner → beats fixed', () => {
   assert.equal(ex.exFadeRideWhy, 'trail', `ride exit reason: ${ex.exFadeRideWhy}`);
 });
 
+// 4b-i) beride ("protect at TP, then trail"): must behave IDENTICALLY to
+//       fixed when the ORIGINAL TP is never reached at all (stopped out first).
+test('beride matches fixed when stopped out before ever reaching TP', () => {
+  // fade sell @102, TP(inner)=101, SL(outer)=103. Price runs straight to the
+  // stop without ever tagging TP — beride's pre-arm phase is just 'fixed'.
+  const bars = [ bar(102, 103, 102, 103) ];
+  const ex = simulateExitVariants(bars, 0, UP);
+  assert.ok(near(ex.exFadeFixed, -1), `fadeFixed should lose full stop (-1): ${ex.exFadeFixed}`);
+  assert.ok(near(ex.exFadeBeRide, ex.exFadeFixed), `beride ${ex.exFadeBeRide} should equal fixed ${ex.exFadeFixed} when TP is never reached`);
+});
+
+// 4b-ii) beride captures MORE than fixed's capped TP when price keeps running
+//        favourably after tagging the original TP.
+test('beride beats fixed when price keeps running past the original TP', () => {
+  // Same shape as the ride test: bar0 blows past inner (101) down to 99.5,
+  // arming beride's breakeven stop at E=102; bar1 ticks up slightly but stays
+  // well clear of breakeven, so beride marks to that close, past fixed's cap.
+  const bars = [ bar(102, 102, 99.5, 100), bar(100, 100.2, 100, 100.2) ];
+  const ex = simulateExitVariants(bars, 0, UP);
+  assert.ok(near(ex.exFadeFixed, 1), `fadeFixed caps at TP (+1): ${ex.exFadeFixed}`);
+  assert.ok(ex.exFadeBeRide > ex.exFadeFixed, `beride ${ex.exFadeBeRide} !> fixed ${ex.exFadeFixed}`);
+});
+
+// 4b-iii) The honest downside: if price tags TP then reverses HARD, beride
+//         gives back to breakeven instead of banking the fixed rule's TP win
+//         — this is the real risk the "let it run" idea trades against.
+test('beride gives back to breakeven (worse than fixed) on a hard reversal past TP', () => {
+  // bar0 tags TP at 101 (dips to 99.5), arming breakeven at E=102. bar1 rallies
+  // straight back up through 102 before any trail has tightened below it.
+  const bars = [ bar(102, 102, 99.5, 100), bar(100, 102.5, 100, 102.3) ];
+  const ex = simulateExitVariants(bars, 0, UP);
+  assert.ok(near(ex.exFadeFixed, 1), `fadeFixed banks the TP (+1): ${ex.exFadeFixed}`);
+  assert.ok(near(ex.exFadeBeRide, 0), `beride should exit ~breakeven (0): ${ex.exFadeBeRide}`);
+  assert.ok(ex.exFadeBeRide < ex.exFadeFixed, `beride ${ex.exFadeBeRide} !< fixed ${ex.exFadeFixed} on the reversal case`);
+});
+
 // 4c) Ride vs Ride+ : a fade that doesn't resolve in-session exits flat at the close
 //     (ride, why='close'); Ride+ keeps trailing into forwardBars and captures the move.
 test('ride+ holds past close into next day → beats ride', () => {

@@ -3814,6 +3814,39 @@ async function loadVb2LiveStatus() {
       gateEl.textContent = blocked.length ? blocked.map(([c, v]) => `${c} ${v.toFixed(1)}%`).join(', ') : 'clear';
       gateEl.style.color = blocked.length ? 'var(--red)' : 'var(--text3)';
     }
+
+    // Risk Systems card -- every mechanism's CURRENT state, not just its
+    // config value. All four fields were already computed bot-side (or
+    // cheap to add) but never pushed to the dashboard before 2026-08-31.
+    const throttleEl = document.getElementById('vb2Throttle');
+    if (throttleEl) {
+      const th = st.throttle;
+      if (!th || th.peak == null) { throttleEl.textContent = 'no data yet'; throttleEl.style.color = 'var(--text3)'; }
+      else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED — sizing cut (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
+      else { throttleEl.textContent = `clear (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
+    }
+    const guardEl = document.getElementById('vb2RiskGuard');
+    if (guardEl) {
+      const rg = st.risk_guard;
+      if (!rg) { guardEl.textContent = 'no data yet'; guardEl.style.color = 'var(--text3)'; }
+      else if (rg.locked) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
+      else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--green)'; }
+    }
+    const heatEl = document.getElementById('vb2Heat');
+    if (heatEl) {
+      const used = st.portfolio_heat_pct ?? 0, cap = st.portfolio_heat_cap_pct ?? 0;
+      if (!cap) { heatEl.textContent = `${used.toFixed(2)}% used (cap off)`; heatEl.style.color = 'var(--text3)'; }
+      else {
+        const pctOfCap = used / cap * 100;
+        heatEl.textContent = `${used.toFixed(2)}% / ${cap.toFixed(2)}% cap (${pctOfCap.toFixed(0)}%)`;
+        heatEl.style.color = pctOfCap >= 90 ? 'var(--red)' : pctOfCap >= 60 ? 'var(--amber,#e0a93b)' : 'var(--green)';
+      }
+    }
+    const planGateEl = document.getElementById('vb2PlanGate');
+    if (planGateEl) {
+      if (st.plan_age_blocked) { planGateEl.textContent = '⚠ BLOCKED — plan stale, no new entries'; planGateEl.style.color = 'var(--red)'; }
+      else { planGateEl.textContent = 'fresh'; planGateEl.style.color = 'var(--green)'; }
+    }
     const pa = document.getElementById('vb2PlanAge');
     if (pa) pa.textContent = planWrap?.generatedAt ? new Date(planWrap.generatedAt).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';
 
@@ -3909,15 +3942,37 @@ async function loadVb2AllLines() {
 // Levels" table's convention (green=entered) plus new ones for the reject/
 // skip/block states this log adds. Added 2026-08-31.
 const VB2_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', pair_blocked: 'var(--text3)' };
+// Prev/Next walk the date input by one UTC day (matching the "Time (UTC)"
+// column the table itself renders) and reload; "All dates" clears back to
+// the default most-recent-first view. Added 2026-08-31.
+function vb2DecShiftDay(delta) {
+  const input = document.getElementById('vb2DecDate');
+  if (!input) return;
+  const base = input.value ? new Date(input.value + 'T00:00:00Z') : new Date();
+  base.setUTCDate(base.getUTCDate() + delta);
+  input.value = base.toISOString().slice(0, 10);
+  loadVb2DecisionLog();
+}
+function vb2DecClearDate() {
+  const input = document.getElementById('vb2DecDate');
+  if (input) input.value = '';
+  loadVb2DecisionLog();
+}
 async function loadVb2DecisionLog() {
   const body = document.getElementById('vb2DecisionBody');
   if (!body) return;
   const filter = (document.getElementById('vb2DecFilter')?.value || '').trim().toLowerCase();
+  const dateFilter = document.getElementById('vb2DecDate')?.value || '';
   try {
     const log = await kvGet('volatility_bot_v2_decision_log');
     let events = (log?.events || []).slice().reverse();   // most recent first
     if (filter) events = events.filter(e => (e.pair || '').toLowerCase().includes(filter));
-    if (!events.length) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No events for that pair yet' : 'No decision events logged yet'}</td></tr>`; return; }
+    if (dateFilter) events = events.filter(e => e.t && new Date(e.t * 1000).toISOString().slice(0, 10) === dateFilter);
+    if (!events.length) {
+      const why = dateFilter ? `No events for ${dateFilter}${filter ? ` (pair ${filter})` : ''}` : (filter ? 'No events for that pair yet' : 'No decision events logged yet');
+      body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      return;
+    }
     body.innerHTML = events.slice(0, 300).map(e => {
       const ts = e.t ? new Date(e.t * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
       const decColor = e.decision === 'follow' ? 'var(--blue,#60a5fa)' : e.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
@@ -3938,6 +3993,7 @@ async function loadVb2DecisionLog() {
 window.saveVb2Config = saveVb2Config; window.resetVb2Defaults = resetVb2Defaults;
 window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus;
 window.loadVb2AllLines = loadVb2AllLines; window.loadVb2DecisionLog = loadVb2DecisionLog;
+window.vb2DecShiftDay = vb2DecShiftDay; window.vb2DecClearDate = vb2DecClearDate;
 window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
 
 // ── Forecast drift vs reference ───────────────────────────────────────────────

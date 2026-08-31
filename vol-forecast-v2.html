@@ -1829,6 +1829,7 @@ function renderV2Grid(data, isHistorical = false) {
   grid.innerHTML = '';
   for (const [name, f] of entries) grid.appendChild(buildV2Card(name, f, data.meta, isHistorical));
   if (!isHistorical) loadAllM5Charts(data.instruments);
+  if (!isHistorical) loadVb2BotBadges(entries.map(([name]) => name));
 
   if (levelsViewActive) renderLevelsTable();
   const en = ['vfExportBtn','vfExtendedBtn','vfLevelsBtn','vfCZExportBtn'];
@@ -1897,7 +1898,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
 
   card.innerHTML = `
     <div class="v2-card-hdr">
-      <span class="v2-inst-name">${name}</span>
+      <span class="v2-inst-name">${name}</span><span id="v2bot-${name}"></span>
       <div class="v2-hdr-pills">${staleChip}${trendChip}${volVovChip}${pctBadge}<span class="v2-vol-pill ${volClass}">${f.vol_annual.toFixed(2)}% vol</span>${liveHtml}</div>
     </div>
     ${coneHtml}
@@ -3507,6 +3508,27 @@ async function loadVotePreview() {
         </tr>`;
       }).join('') + `</table>`;
   } catch (e) { box.innerHTML = `<span style="color:var(--text3)">${e.message}</span>`; }
+}
+
+// One badge per card next to the pair name: is THIS pair actually in
+// volatility_bot_v2's current enabled_pairs config, distinct from just being
+// shown on this forecast page. Resolution (display-form "EUR/USD" -> the
+// bot's canonical "eurusd") happens server-side via resolveKey, not
+// duplicated here. Added 2026-08-31.
+async function loadVb2BotBadges(names) {
+  if (!names?.length) return;
+  try {
+    const r = await fetch(`/api/level-atlas/bot-enabled?instruments=${encodeURIComponent(names.join(','))}`);
+    const d = await r.json();
+    if (!d.ok) return;
+    for (const name of names) {
+      const el = document.getElementById(`v2bot-${name}`);
+      if (!el) continue;
+      el.innerHTML = d.enabled?.[name]
+        ? `<span title="volatility_bot_v2 is currently enabled to trade this pair" style="margin-left:6px;font-size:11px">🤖</span>`
+        : '';
+    }
+  } catch (e) { /* badge is cosmetic — a failed check just leaves cards unbadged */ }
 }
 
 // ── Level proximity alerts ────────────────────────────────────────────────────

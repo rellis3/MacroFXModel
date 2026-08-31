@@ -238,8 +238,11 @@ def _instr_lines(plan, sessions):
     return out
 
 
-def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None):
+def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None,
+                  guard=None, risk_ledger=None, plan_age_blocked=False):
     bal = broker.account_balance()
+    open_risk_pct = round(sum((risk_ledger or {}).values()), 2)
+    heat_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
     return {
         "running": True,
         "mode": "paper" if paper else "live",
@@ -253,6 +256,14 @@ def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None):
         "lines": _instr_lines(plan, sessions or {}),
         "ccy_gate": ccy_gate.snapshot(),
         "throttle": throttle.snapshot() if throttle is not None else None,
+        # Risk-systems detail (2026-08-31) -- previously computed/available
+        # but never pushed to status, so the dashboard had no way to show
+        # "is anything actually blocking new entries right now" beyond the
+        # currency gate.
+        "risk_guard": guard.snapshot(bal) if guard is not None else None,
+        "portfolio_heat_pct": open_risk_pct,
+        "portfolio_heat_cap_pct": heat_cap,
+        "plan_age_blocked": bool(plan_age_blocked),
     }
 
 
@@ -284,6 +295,25 @@ def run(base_url: str, force_live: bool) -> None:
                               creds.get("mt5_server"), creds.get("mt5_path") or None):
             log.error("broker connect failed — exiting")
             return
+        # Verify every enabled pair's broker_symbols override (or default)
+        # actually exists on THIS account before the first order is ever
+        # attempted -- a wrong/typo'd symbol otherwise only shows up as a
+        # live order silently failing. Never auto-corrects the config.
+        verify_pairs = cfg.get("enabled_pairs") or DEFAULT_PAIRS
+        try:
+            problems = broker.verify_symbols(verify_pairs)
+        except Exception as e:
+            problems = []
+            log.warning(f"symbol verification failed to run: {e}")
+        if problems:
+            for p in problems:
+                sugg = f" — closest matches: {', '.join(p['suggestions'])}" if p["suggestions"] else " — no close match found on this account"
+                log.error(f"BROKER SYMBOL MISMATCH: {p['pair']} configured as {p['configured']!r} — "
+                          f"not found on this account{sugg}")
+            log.error(f"{len(problems)} pair(s) have a broker symbol that doesn't exist on this account — "
+                      f"those pairs will fail every live order until fixed in bot-config.html's Broker Symbols card.")
+        else:
+            log.info(f"symbol check OK — all {len(verify_pairs)} enabled pair(s) resolve to a real symbol on this account")
 
     guard = RiskGuard(log=log)
     guard.sync_cfg(cfg)
@@ -436,7 +466,8 @@ def run(base_url: str, force_live: bool) -> None:
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
-                status = build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle)
+                status = build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle,
+                                       guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked)
                 kv.put_status("volatility_bot_v2_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")

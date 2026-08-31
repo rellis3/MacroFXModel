@@ -92,6 +92,27 @@ def test_sync_cfg_reads_values():
     assert g.cooldown_secs == 120
 
 
+def test_snapshot_reflects_current_state_without_mutating_it():
+    g = _guard(ddlimit=3.0)
+    g.update_balance(10_000)
+    s0 = g.snapshot(10_000)
+    assert s0["locked"] is False and s0["day_dd_pct"] == 0.0
+    # A snapshot call must never itself trigger a lockout, unlike block_reason.
+    s1 = g.snapshot(9_600)  # 4% down -- would breach ddlimit=3.0 via block_reason
+    assert s1["locked"] is False, "snapshot must not mutate/lock state on its own"
+    assert s1["day_dd_pct"] == 4.0
+    assert g.block_reason(9_600, "") is not None, "the guard itself is still unlocked until block_reason is actually called"
+    # NOW it's really locked (block_reason just triggered it) -- snapshot should reflect that.
+    s2 = g.snapshot(9_600)
+    assert s2["locked"] is True and s2["locked_mins_remaining"] > 0
+
+
+def test_snapshot_handles_no_balance_yet():
+    g = RiskGuard()
+    s = g.snapshot(None)
+    assert s["day_dd_pct"] is None and s["month_dd_pct"] is None and s["locked"] is False
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for t in tests:
