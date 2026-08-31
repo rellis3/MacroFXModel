@@ -132,7 +132,7 @@ function cachedVote(book, t, voteCache) {
  * see `cachedVote` above.
  *
  *   buildBarrierTrades(touches, book, opts) -> [{ instrument, date, time, resolveTime,
- *     side, rung, entry, pip, decision, margin, targetPips, stopPips, win, pnlPct }]
+ *     realResolveTime, side, rung, entry, pip, decision, margin, targetPips, stopPips, win, pnlPct }]
  */
 export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, minMargin = 1, confluenceOnly = false, confluencePipMax = 2, voteCache = null } = {}) {
   if (!book) return null;
@@ -148,7 +148,18 @@ export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, m
     const { mfePips, maePips } = reorientExcursion(t, vd.decision);
     const denom = t.price > 0 ? t.price : null;
     trades.push({
-      instrument: t.instrument, date: t.date, time: t.time, resolveTime: t.resolveTime,
+      // `concurrencyResolveTime` (2026-08-31, see asiaFibAtlasEngine.js's
+      // asiaFibAtlasWalk doc) is the trade's own `resolveTime` here -- every
+      // downstream consumer (applyConcurrencyCap, dailySeriesFor, etc.) just
+      // reads `resolveTime` as-is, so this is where the concurrency-vs-real
+      // decoupling actually takes effect. Equal to `t.resolveTime` whenever
+      // extension is off or the touch resolved same-day (the vast
+      // majority) -- only differs for an extended-resolution touch that
+      // took longer than `nextSessionBuildHrs` to resolve. `realResolveTime`
+      // keeps the TRUE (possibly multi-day-later) resolution time visible
+      // for anyone who wants it, without changing what concurrency sees.
+      instrument: t.instrument, date: t.date, time: t.time,
+      resolveTime: t.concurrencyResolveTime ?? t.resolveTime, realResolveTime: t.resolveTime,
       side: t.side, rung: t.level, entry: t.price, pip: t.pip,
       decision: vd.decision, margin: vd.margin,
       targetPips: priced.targetPips, stopPips: priced.stopPips,

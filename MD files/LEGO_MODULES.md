@@ -4570,17 +4570,266 @@ modest (Sharpe moves by ~0.1-0.4 either direction), unlike the
 cost-ratio finding above which is the one that actually changes the
 "is this ready for capital" answer.
 
-🔴 **Net effect on the ~10-lever OOS-overlap risk**: narrowed further
-(6 of ~10 levers now walk-forward-checked: chandelierMult, concurrency
-mode, cost-efficiency ratio, stop-tighten fraction, plus the earlier
-chandelier-exit-exists-at-all result folded into the chandelierMult
-run), but NOT closed, and the cost-efficiency ratio result is a genuine
-red flag, not a null: the shipped value underperformed a fold-honest
-alternative by a non-trivial OOS Sharpe margin in 2 of 3 folds. Still
-outstanding: pair-selection exclusion set, and the risk/heat-cap-off /
-throttle-off decisions (both already independently re-tested and found
-not to help post-chandelier per the 2026-08-31 heat-cap platform review
-above, so lower priority than the cost-ratio finding).
+🔴 **Net effect on the ~10-lever OOS-overlap risk** (as first read, before
+the correction below): narrowed further but not closed, cost-efficiency
+ratio a genuine red flag.
+
+### CORRECTION: the cost-ratio "red flag" and the stop-frac "≠ shipped" finding were both a selection-metric bug, not real findings (2026-08-31)
+
+Both findings above were reached by picking each fold's "winner" via the
+DAY-POOLED portfolio Sharpe (`statsFor`'s `.sharpe`, from
+`portfolioStats(dailyReturns)`) — the exact metric this session's
+dashboard fixes (2026-08-31, the Sharpe-de-inflation PRs) exist to warn
+is a different, easily-inflated basis from per-trade edge. Re-ran both
+levers as a pooled-OOS head-to-head (`analysis/fib_atlas_cost_ratio_
+pooled_oos.mjs`, `fib_atlas_stopfrac_pooled_oos.mjs` — every candidate
+value run on ALL 3 folds' own test-only windows, pooled into one
+~60%-of-history OOS track record, checked on BOTH the day-pooled basis
+AND the per-trade basis via `summarizeTrades`, same brick as the
+dashboard's per-trade card) before trusting either conclusion.
+
+**Cost-efficiency ratio — the two bases give OPPOSITE answers, and
+per-trade is the one that matters:**
+
+| Ratio | Trades | Day-pooled Sharpe | Per-trade PF | Per-trade Sharpe (raw) |
+|---|---|---|---|---|
+| 1 (no filter) | 16,041 | **20.55** | 2.77 | 0.455 |
+| 1.5 | 14,492 | 20.09 | 2.84 | 0.468 |
+| 2 | 13,103 | 19.38 | 2.86 | 0.471 |
+| 2.5 | 11,787 | 18.59 | 2.91 | 0.478 |
+| **3 (shipped)** | 10,405 | 18.20 | **2.96** | **0.488** |
+
+Day-pooled Sharpe falls monotonically as the filter tightens; per-trade
+PF and raw Sharpe RISE monotonically, same direction as the original
+single-split study's premise (flat cost eats small-distance wins
+disproportionately) and the SAME direction all the way to ratio=3.
+Mechanism: cost-ratio changes trade COUNT (fewer, choosier trades at
+higher ratios) — dropping the filter adds ~5,600 more, genuinely
+thinner-edge trades, which smooths the daily return series and inflates
+the day-pooled number even though each individual trade got worse, not
+better. 🟢 **ratio=3 is the best of the values tested on the metric that
+actually reflects each trade's own quality — the "NOT stable" verdict
+above is retracted.** Not run past ratio=3 in this pooled form yet (the
+original per-fold walk-forward's fit tables showed day-pooled Sharpe
+falling sharply above ratio=4 from trade count alone; whether per-trade
+edge keeps climbing past 3 is untested and would be a legitimate
+follow-up, not a red flag).
+
+**Stop-tighten fraction — no reversal, both bases roughly agree, shipped
+value holds up:**
+
+| Fraction | Day-pooled Sharpe | Per-trade PF | Per-trade Sharpe (raw) | Win rate |
+|---|---|---|---|---|
+| 1.0 (off) | 17.89 | 2.76 | 0.461 | 73.1% |
+| **0.9 (shipped)** | 18.20 | **2.956** | **0.488** | 72.3% |
+| 0.75 | 18.27 | 2.960 | 0.484 | 70.7% |
+| 0.6 | **18.34** | 2.91 | 0.469 | 68.0% |
+| 0.5 | 18.21 | 2.90 | 0.461 | 66.0% |
+| 0.4 | 17.82 | 2.90 | 0.450 | 63.5% |
+| 0.25 | 16.98 | 2.89 | 0.429 | 58.2% |
+
+Unlike the cost ratio, tightening a fade stop only REPRICES existing
+losing trades (same trade, cut earlier) — trade count is IDENTICAL
+(10,405) at every fraction, so the count-driven smoothing mechanism
+above can't apply, and indeed it doesn't: both bases show the same
+shape, an interior optimum around 0.6-0.9, not a boundary effect. 0.9
+and 0.75 are a near-exact tie on both bases (day-pooled 18.20 vs 18.27;
+per-trade PF 2.956 vs 2.960; raw Sharpe 0.488 vs 0.484 — all well inside
+each other's noise band, nowhere close to the CI widths seen throughout
+this session's walk-forward work). 🟢 **0.9 is not beaten by a
+non-trivial margin on either basis — no change warranted** (Lego
+Principle 5: a change only wins if it clears the incumbent by a real
+OOS margin; 0.75 doesn't).
+
+**Corrected summary**: all 3 of these remaining levers now hold up once
+checked on the metric that actually matters — the earlier "problems"
+were both artifacts of one shared selection-metric bug (day-pooled
+Sharpe used to pick a per-fold "winner"), not real issues with the
+shipped config. Cost-efficiency ratio and stop-tighten fraction are both
+now genuinely re-validated, on top of chandelierMult and concurrency
+mode from the earlier follow-ups. Still outstanding: pair-selection
+exclusion set (not yet walk-forward-checked at all).
+
+### Follow-up 3: same corrected check extended to Monday and COMBINED — the mode the owner will actually trade (2026-08-31)
+
+The above was Asia-only. Direct owner ask: "asia, monday and then both,
+as I imagine both is what I will trade and both is where all the high
+numbers are coming from." Found first, by reading the shipped code
+rather than assuming: `costRatioFor(ladder)` sends **4x for Monday**,
+not 3x — a value never touched by the Asia-only corrections above — and
+combined mode sends **Asia's 3x uniformly to both ladders' legs**
+(confirmed in `asiaFibAtlasRoutes.js`'s `/vote-portfolio-combined`:
+`minCostRatio` is ONE global param, no per-ladder branch — the client's
+own comment already flags this as "NOT independently validated").
+`chandelierMult` is NOT affected — it's baked into each stored trade at
+generation time per ladder (3 Asia / 1.5 Monday), so combined mode
+already applies the right mult per leg regardless of the request-level
+params; only cost-ratio/stop-frac ride on one shared value.
+
+`analysis/fib_atlas_full_config_pooled_oos.mjs` (new — generalizes the
+day-pooled + per-trade pooled-OOS method to `LADDER=asia|monday|combined`;
+combined loads BOTH ladders' data per pair as separate constituents
+`PAIR_ASIA`/`PAIR_MONDAY`, matching the live route exactly), wider grid
+this time (ratio up to 5, not just 3):
+
+**Cost-efficiency ratio, per-trade PF / raw Sharpe:**
+
+| Ratio | Asia | Monday | Combined |
+|---|---|---|---|
+| 1 (no filter) | 2.77 / 0.455 | 2.80 / 0.490 | 2.76 / 0.456 |
+| 2 | 2.86 / 0.471 | 2.86 / 0.501 | 2.84 / 0.470 |
+| **3 (Asia/combined shipped)** | 2.96 / 0.488 | 2.93 / **0.512** | 2.92 / 0.485 |
+| **4 (Monday shipped)** | 3.04 / 0.507 | 2.90 / 0.510 | 2.99 / 0.501 |
+| 5 | 3.07 / **0.521** | 2.91 / 0.511 | 3.00 / **0.511** |
+
+Asia and Combined: per-trade edge keeps climbing all the way to ratio=5
+in this wider grid — shipped ratio=3 is solid and clearly beats loose
+filtering, but is NOT the ceiling of what was tested (trades drop from
+~10-12k to ~6-8k at ratio=5, a real capacity trade-off, not yet weighed).
+🟡 flagging as a legitimate, second-order "could tighten further"
+option — NOT a red flag like the retracted finding above, since 3 is
+already solidly ahead of the loose end; just possibly short of optimal.
+Monday: per-trade Sharpe peaks at ratio=3 (0.512), narrowly ahead of the
+shipped 4x (0.510) and 5x (0.511) — all three are within noise of each
+other (PF 2.90-2.93, Sharpe 0.510-0.512). 🟢 Monday's shipped 4x is fine,
+not urgent to change; 3x is a marginal, noise-level alternative.
+
+**Stop-tighten fraction, per-trade PF / raw Sharpe — clean interior peak
+at 0.9 on ALL THREE modes, no exceptions:**
+
+| Fraction | Asia | Monday | Combined |
+|---|---|---|---|
+| 1.0 (off) | 2.76 / 0.461 | 2.86 / 0.505 | 2.76 / 0.462 |
+| **0.9 (shipped)** | **2.96 / 0.488** | **2.90 / 0.510** | **2.92 / 0.485** |
+| 0.75 | 2.96 / 0.484 | 2.74 / 0.477 | 2.90 / 0.477 |
+| 0.6 | 2.91 / 0.469 | 2.63 / 0.447 | 2.84 / 0.459 |
+
+🟢 **0.9 is the per-trade peak (or a dead-even tie for it) on Asia,
+Monday, AND Combined independently.** This is the cleanest, most
+consistent confirmation of the whole exercise — no ladder disagrees, no
+change warranted anywhere.
+
+**On "combined is where the high numbers come from"**: confirmed
+structurally, not newly broken. Combined's day-pooled CAGR/Sharpe track
+Asia's almost exactly at every ratio (e.g. day-pooled Sharpe 18.2 Asia
+vs 18.51 combined at ratio=3) because combined is ~80% Asia-leg trade
+volume + ~20% Monday-leg by count (12,496 combined vs 10,405 Asia-only
+at ratio=3) — Asia is the dominant risk driver, same conclusion this
+doc already reached for pair-exclusion and cost-ratio precedent. The
+extreme non-compounded headline % figures are the SAME high-trade-
+frequency accounting artifact already explained to the owner directly
+(annual return ≈ trades/yr × avg edge/trade, thousands of trades summed
+off a fixed reference capital) — confirmed present in combined at the
+same magnitude as Asia alone, not a new or worse mechanism.
+
+🟢 **Net position after this pass**: chandelierMult, concurrency mode,
+cost-efficiency ratio, and stop-tighten fraction are now checked with
+the corrected (day-pooled + per-trade) method across Asia, Monday, AND
+Combined. Stop-tighten fraction is fully confirmed everywhere.
+Cost-efficiency ratio is confirmed-solid everywhere, with a legitimate
+(not urgent) "could go tighter" option flagged for Asia/Combined only.
+🟡 **Still not walk-forward-checked**: pair-selection exclusion set, and
+concurrency mode specifically IN combined mode (held fixed at hedgeOnly
+this pass rather than re-tested blocked-vs-hedgeOnly on the 32-stream
+combined universe — the single-split check that originally confirmed
+hedge-only covered Asia and Monday separately, not combined's own
+constituent mix).
+
+---
+
+### "Let-ride" extended resolution for unresolved ('neither') touches — built, tested, shipped as an opt-in toggle (2026-08-31)
+
+Direct owner question after the day-pooled-vs-per-trade corrections above:
+"what do you do with trades at the end of the day — are they closed and
+counted as wins/losses or ignored completely?" Answer, found by reading
+`asiaFibAtlasEngine.js`'s walk loop: a touch that hits neither the inner
+nor outer barrier by local midnight gets `outcome:'neither'` and is
+**dropped entirely** by `buildBarrierTrades` (`asiaFibAtlasVoteReview.js:139`)
+— never counted as a win, a loss, or anything. ~3.5-4% of touches.
+
+**Two hypotheses tested directly, not guessed:**
+1. *Mark-to-close* (force-price at the midnight close instead of
+   target/stop) — `analysis/fib_atlas_neither_markclose_test.mjs`: the
+   1,331 previously-dropped touches this recovers have only a **37.3% win
+   rate** — close to a coin flip. Rejected: there's no real trading rule
+   that flattens at midnight; this measures wherever price randomly was
+   at one arbitrary snapshot, not the trade's real outcome.
+2. *Extend the search* (owner's own proposal: let it keep looking for a
+   real resolution into following days, but cap concurrency occupancy at
+   the next session's build time — 6am, since Asia's new range isn't
+   built until then — so a still-open extended trade can never block a
+   fresh signal) — `analysis/fib_atlas_neither_extend_test.mjs`, bounded
+   to 14 days: **99.8-99.9% eventually resolve**, with a win rate close to
+   the already-counted trades' own. Chosen over mark-to-close for exactly
+   that reason — it measures what the touch actually did.
+
+**Built into the engine** (not just an analysis script):
+`asiaFibAtlasWalk` gains `extendResolutionDays`/`nextSessionBuildHrs`,
+both additive and off by default (0 = byte-identical to prior behavior,
+verified via the full existing test suite) — see the function's own doc
+for the mechanism (a SEPARATE bars array for the outcome race only; every
+feature/confluence computation still uses the unchanged same-day window).
+`concurrencyResolveTime` implements the cap. Generation (`runOne` in
+`asiaFibAtlasRoutes.js`) runs a SECOND full walk (same already-loaded M1,
+no extra fetch) with extension on, builds `extTrades`/`extSummaryByMargin`
+with full parity to the baseline (giveback + chandelier trailing both
+applied), and persists them ALONGSIDE `trades` in the same R2 blob — same
+dual-store precedent as chandelier's own trailed fields. Read routes
+(`vote-trades/:instrument`, `vote-portfolio`, `vote-portfolio-combined`)
+accept `letRide=true` to swap in `extTrades` via a shared `loadVoteTrades`
+helper, falling back to `trades` when absent (older data, or a ladder —
+Monday — that doesn't have one yet) — `buildFibAtlasVotePortfolio` itself
+needed zero changes. UI checkbox on `asia-fib-atlas-vote-portfolio.html`,
+off by default including in "Load Best Config" (new enough to stay
+opt-in rather than folded into the shipped default).
+
+**A real subtlety found while wiring this, not before**: extending
+resolution doesn't just add trades — it reshapes the underlying vote
+BOOK too, since the book's own per-cell win-rate statistics are built
+from `buildAsiaFibAtlasBook(touches, ...)`, and `touches` is now a
+materially fuller (and less selectively-clean) sample once previously-
+'neither' touches carry a real resolved outcome. The correct
+implementation rebuilds the book from the EXTENDED touches
+(`extBook = buildAsiaFibAtlasBook(extTouches, ...)`), not the baseline
+one — this is more principled (a vote decision should reflect the TRUE
+empirical hold-rate of a cell, not one computed on a sample that quietly
+excluded the ambiguous cases) but means an earlier draft of the analysis
+script (which reused the baseline book for both) understated the effect.
+**Live full-16-pair "Load Best Config" comparison** (the real production
+numbers, not the analysis script's):
+
+| | letRide off (shipped) | letRide on |
+|---|---|---|
+| Trades | 16,712 | **5,811** (-65%) |
+| Portfolio Sharpe (day-pooled) | 16.37 | 11.84 |
+| Max Drawdown (fixed risk) | -3.99% | -4.07% |
+| Profit Factor (day-pooled) | 42.41 | 12.86 |
+| **Per-trade win rate** | 72.4% | **72.6%** |
+| **Per-trade PF** | 2.555 | **2.599** |
+| **Per-trade Sharpe (raw)** | **0.411** | **0.409** |
+
+🟢 **The real finding: per-trade edge quality is unchanged** (0.411 vs
+0.409 raw Sharpe, 72.4% vs 72.6% win rate — a rounding-level difference,
+not a real one) — extending resolution does NOT make the trades taken
+any better or worse individually. What changes is trade COUNT: the
+book rebuilt from the fuller data is far more selective, and 65% fewer
+(side,level) cells clear the margin≥2 vote bar. Read plainly: the
+CURRENT shipped book may be systematically more confident than it should
+be, because it's built on a sample that silently excludes every touch
+that didn't cleanly resolve same-day — a form of selection bias in the
+book's own training data, separate from (and not yet fully reconciled
+with) the trade-count question the owner originally asked about. Max
+drawdown barely moves either way (-3.99% -> -4.07%), so this isn't a risk
+story — it's a "how much do you trust a leaner, more conservative book
+vs. a denser, possibly-overconfident one" story.
+🟡 **Not yet done**: this is Asia-only (Monday's own window already
+extends ~8 days, a different mechanism, not yet given the same
+treatment); the extended/rebuilt-book approach hasn't been walk-forward
+validated the way the other levers above were (a single before/after
+comparison, not a 3-fold check); and whether the shipped book's
+narrower-but-denser cells or the extended book's leaner-but-broader
+cells is the better long-run choice is an open question, not yet
+resolved — flagging for the owner's own call rather than picking one.
 
 ---
 
