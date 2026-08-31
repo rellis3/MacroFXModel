@@ -46,7 +46,7 @@ import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import {
   applyConcurrencyCap, riskAdjustTrades, buildPortfolioDailySeries,
   applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
-  applyTrailingContinuation,
+  applyTrailingContinuation, applyCostEfficiencyFilter,
 } from '../js/levelAtlasVoteReview.js';
 import { portfolioStats } from '../js/backtestStats.js';
 import { sharpeStdError } from '../js/metricsCore.js';
@@ -67,6 +67,7 @@ const LADDER = (process.env.LADDER || 'asia').toLowerCase(); // 'asia' | 'monday
 const MIN_MARGIN = Number(process.env.MIN_MARGIN || 2), RISK_PCT = 0.5;
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT || 1);
 const STOP_FRAC = 0.9; // already-validated fade-stop tightening, applied as a fixed baseline
+const MIN_COST_RATIO = 3; // already-validated cost-efficiency filter (2026-08-30), live in production -- see LEGO_MODULES.md
 const RESTORE_DD = -2;
 const TRIGGERS = [-3, -5, -8, -10, -12, -15];
 const MULTS = [0.25, 0.5, 0.75];
@@ -103,7 +104,16 @@ function excludeSetFor(ladder) {
 async function loadTrades(prefix, pair, ladder) {
   const stored = await getJSON(`${prefix}/${pair}-votetrades.json`);
   if (!stored) return null;
-  const filtered = stored.trades.filter(t => t.margin >= MIN_MARGIN); // BOTH decisions -- the real, full book
+  const marginFiltered = stored.trades.filter(t => t.margin >= MIN_MARGIN); // BOTH decisions -- the real, full book
+  // Cost-efficiency filter (2026-08-30, PRODUCTION IS LIVE ON IT) was
+  // MISSING from this script entirely -- found 2026-08-31 while cross-
+  // checking this script's trade counts against
+  // fib_atlas_chandelier_exit_backtest.mjs's (30,805 vs 17,399 on the same
+  // Asia set) rather than trusting a bigger number as a better one. This
+  // means the CURRENTLY-FROZEN BEST_BY_LADDER.asia heat cap/throttle was
+  // fit on a trade set production no longer runs -- fixed here, not
+  // separately, since re-fitting IS the point of this platform review.
+  const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, MIN_COST_RATIO);
 
   const mult = chandelierMultFor(ladder);
   let repriced = filtered;
