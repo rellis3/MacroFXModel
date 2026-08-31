@@ -80,7 +80,7 @@ async function loadIvByDate(pair) {
 // back to `trades` when extTrades is absent (older stored data, a failed
 // extended build, or a ladder -- e.g. Monday -- that doesn't produce one
 // yet), so a caller can request letRide=true safely regardless.
-async function loadVoteTrades(path, letRide) {
+export async function loadVoteTrades(path, letRide) {
   const stored = await getJSON(path);
   if (!stored) return null;
   if (!letRide) return stored;

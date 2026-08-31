@@ -103,6 +103,7 @@
       <option value="giveback">Giveback (2%)</option>
       <option value="chandelier">Chandelier (ATR)</option>
     </select></label>
+    <label title="A touch that hits neither the inner nor outer barrier within its own window (same-day for Asia, ~8 days for Monday) is currently DROPPED entirely — not counted as a win or a loss. This lets it keep searching further (14 more days Asia, 21 more Monday) for a real resolution, with concurrency occupancy capped so a still-open extended trade can never block a fresh touch on the next session's freshly-built range. ~99.8%+ eventually resolve given that time. Per-trade edge is essentially unchanged either way — what changes is trade count, since the vote book rebuilt from the fuller data becomes more selective (LEGO_MODULES.md, 2026-08-31).">Let ride (extended resolution) <input type="checkbox" id="letRideChk"></label>
     <label>Decision <select id="decSel"><option value="all">all</option><option value="fade">fade</option><option value="follow">follow</option></select></label>
     <label>Outcome <select id="outSel"><option value="all">all</option><option value="win">wins</option><option value="loss">losses</option></select></label>
   </div>
@@ -238,6 +239,7 @@ const pairSel = document.getElementById('pairSel');
 const marginSel = document.getElementById('marginSel');
 const stopTightenChk = document.getElementById('stopTightenChk');
 const continuationExitSel = document.getElementById('continuationExitSel');
+const letRideChk = document.getElementById('letRideChk');
 const decSel = document.getElementById('decSel');
 const outSel = document.getElementById('outSel');
 const headerSub = document.getElementById('headerSub');
@@ -281,9 +283,9 @@ function csvPrefix() { return ladder === 'combined' ? 'fib-atlas-combined-vote' 
 // Fetches ONE ladder's vote-trades and tags every trade with which ladder it
 // came from — used directly for single-ladder mode, and twice (in parallel)
 // for combined mode below.
-async function fetchLadderTrades(ladderTag, pair, minMargin, stopTightenQS, continuationExitQS) {
+async function fetchLadderTrades(ladderTag, pair, minMargin, stopTightenQS, continuationExitQS, letRideQS) {
   const prefix = ladderTag === 'asia' ? '/api/asia-fib-atlas' : '/api/monday-fib-atlas';
-  const res = await fetch(`${prefix}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}${continuationExitQS}`);
+  const res = await fetch(`${prefix}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}${continuationExitQS}${letRideQS}`);
   const j = await res.json();
   return { ladderTag, ...j, trades: j.ok ? j.trades.map(t => ({ ...t, ladder: ladderTag })) : [] };
 }
@@ -296,6 +298,7 @@ async function loadData() {
   try {
     const stopTightenQS = stopTightenChk.checked ? '&stopTightenFrac=0.9' : '';
     const continuationExitQS = continuationExitSel.value !== 'off' ? `&continuationExit=${continuationExitSel.value}` : '';
+    const letRideQS = letRideChk.checked ? '&letRide=true' : '';
 
     // Combined mode merges BOTH ladders' own trades for this pair into one
     // sorted list, tagged by ladder — the trade-level analogue of the
@@ -308,8 +311,8 @@ async function loadData() {
     // heads-up.
     if (ladder === 'combined') {
       const [asia, monday] = await Promise.all([
-        fetchLadderTrades('asia', pair, minMargin, stopTightenQS, continuationExitQS),
-        fetchLadderTrades('monday', pair, minMargin, stopTightenQS, continuationExitQS),
+        fetchLadderTrades('asia', pair, minMargin, stopTightenQS, continuationExitQS, letRideQS),
+        fetchLadderTrades('monday', pair, minMargin, stopTightenQS, continuationExitQS, letRideQS),
       ]);
       const loaded = [asia, monday].filter(l => l.ok);
       if (!loaded.length) {
@@ -330,12 +333,12 @@ async function loadData() {
       return;
     }
 
-    const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}${continuationExitQS}`);
+    const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}${continuationExitQS}${letRideQS}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `no data: ${j.error}`; document.getElementById('kpiPrimary').innerHTML = `<span class="muted">no data yet — run POST ${apiPrefix()}/run for this pair</span>`; return; }
     allTrades = j.trades.map(t => ({ ...t, ladder }));
     cost = j.cost;
-    headerSub.textContent = `${ladder === 'asia' ? 'Asia' : 'Monday'} · ${j.instrument} · split ${j.splitDate} (OOS only) · cost ${j.cost}%/trade · generated ${new Date(j.generatedAt).toLocaleDateString()}`;
+    headerSub.textContent = `${ladder === 'asia' ? 'Asia' : 'Monday'} · ${j.instrument} · split ${j.splitDate} (OOS only) · cost ${j.cost}%/trade${j.letRide ? ' · let-ride (extended resolution)' : ''} · generated ${new Date(j.generatedAt).toLocaleDateString()}`;
     if (j.summary && j.summary.sharpe < 1.0) {
       qw.style.display = '';
       qw.style.background = '#2a1414'; qw.style.borderColor = '#7c2d2d'; qw.style.color = '#f87171';
@@ -776,6 +779,7 @@ pairSel.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);
 stopTightenChk.addEventListener('change', loadData);
 continuationExitSel.addEventListener('change', loadData);
+letRideChk.addEventListener('change', loadData);
 decSel.addEventListener('change', applyFiltersAndRender);
 outSel.addEventListener('change', applyFiltersAndRender);
 ecHurdle.addEventListener('change', () => renderEdgeCost(filteredTrades()));
