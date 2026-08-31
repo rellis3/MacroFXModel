@@ -26,7 +26,7 @@ A running collection of education content, logged as condensed summary notes for
   3. Drawdown and Time Under Water
   4. Sharpe, Sortino and Related Metrics
   5. Monte Carlo and the Heatmap
-- **Series 04 — What Data Can and Cannot Tell You** (6 lessons)
+- **Series 04 — What Data Can and Cannot Tell You** (6 lessons) — logging in progress.
   1. The Overfitting Machine
   2. Why Searching Harder Makes It Worse
   3. Normal Is the Exception
@@ -428,5 +428,27 @@ Pattern drawn out: competition tracks capacity, and capacity tracks size — the
 **Explicit connections drawn to earlier lessons:** to *The Mathematics of Drawdown* — what a drawdown costs to recover, once its depth is known; to *Risk of Ruin* — the point at which a drawdown stops being merely uncomfortable and becomes terminal.
 
 **Next in series:** Sharpe, Sortino and Related Metrics — return alone means little and risk alone means little, so what happens when one gets divided by the other, and why do half a dozen different ways of doing that division exist?
+
+---
+
+## Series: What Data Can and Cannot Tell You
+
+### Lesson 1 — The Overfitting Machine
+
+**Core argument:** Searching enough parameter combinations against any dataset — even one deliberately constructed to contain no real signal at all — will reliably produce at least one combination that looks like a winning strategy purely by chance, and that resulting equity curve is evidence of the search process, not of anything real in the underlying data.
+
+**Chart 1 — a market containing nothing:** A price series (500 bars) is generated where each bar is an independent random step with no drift and no memory, with a "generate another market" button to regenerate fresh random series on demand. Explicitly stated: there is no trend, no meaningful level, no pattern, and no information in this series by construction — any structure a viewer perceives in it was supplied by the viewer, not the data. Framed as the experiment's control group: nothing a strategy could claim to find in this data can be real, since nothing was deliberately placed there to find.
+
+**Chart 2 — the search and its "champion":** A grid of 384 backtests (24 lookback periods × 16 thresholds) is run against the same random, signal-free market, colour-coded by result (green = good). A "show me the winner" button isolates the best-performing cell and plots its equity curve on its own — in the example, the top result showed a respectable Sharpe ratio and a rising equity curve despite being run against data that provably contains no real signal. A "search a new market" button reruns the whole exercise on a fresh random series, and a different corner of the grid wins each time, equally convincingly. Point made: this isn't a flaw in the search process — it's simply what searching does when given enough combinations to try.
+
+**What the search actually did (four points):** it sorted noise (with 384 combinations tried, some will align with the data's random fluctuations by chance alone); it reported the maximum (only the best result of the set is shown, not a typical member, and the best is always going to look flattering); it hid the other 383 (the failed combinations are never shown, so the sample a viewer judges from is effectively just one cherry-picked result); and it will do it again (rerunning the search on a new random market produces a new "winner," equally convincing and equally meaningless). Framed as: the equity curve is the output of the fitting process itself, not evidence of anything real in the market — this distinction is described as the whole point of the lesson. The suggested question to ask of any backtest isn't how good it looks, but how many variations were actually tried, how many parameters were free to move, and what happened to the ones that didn't make the final presentation.
+
+- Qualification: this is explicitly not framed as an argument that backtesting itself is useless — it's described as the only real way to test a rule at all, and a properly run backtest (a rule specified in advance, a genuine held-out period, an honestly reported count of attempts) constitutes real evidence. The specific problem identified is the *unreported* search — a single test of a hypothesis stated in advance is strong evidence, while a maximum result drawn from hundreds of unstated attempts is not, even though the two can produce visually identical-looking charts.
+
+**Two identical-looking charts, different meaning (contrast):** found by searching (not evidence) — parameters chosen after seeing the results, number of attempts left unreported, the rule effectively invented to fit the data after the fact, no genuine held-out test period, the best of many results presented as if it were the only one. Tested once (evidence) — the rule specified before running the test, the number of attempts counted and explicitly stated, a reason to expect the result existing in advance, a held-out period left untouched until the very end, the result reported regardless of what it turned out to be. Framed as: nothing about the chart itself reveals which of these two processes produced it, which is why the process behind a result has to be reported alongside the result itself. The practical question suggested — askable of anyone's testing, including one's own — is how many variations were tried before landing on this one, and where those other attempts are; if nobody counted them, the result is simply the maximum of an unknown sample, and a maximum of an unknown sample isn't a real measurement.
+
+**What to carry forward (paraphrased):** a search over enough variations will always eventually produce a good-looking result, even on data that contains no real signal whatsoever; an equity curve is the output of the fitting process, not evidence about the underlying market; what gets shown is always the maximum of the set, never a typical member of it; the practical habit is to ask how many attempts were made and where the failures went, since without that denominator there's no real measurement; and a single rule specified in advance and tested once is worth more evidentially than the best result cherry-picked from hundreds of attempts.
+
+**Next in series:** Why Searching Harder Makes It Worse — if searching 384 combinations can manufacture a convincing winner from nothing, what happens when the search space grows to ten thousand combinations? Framed as an effect that's worse than intuition suggests, and one that can be calculated exactly.
 
 ---
