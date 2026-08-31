@@ -4737,6 +4737,102 @@ constituent mix).
 
 ---
 
+### "Let-ride" extended resolution for unresolved ('neither') touches — built, tested, shipped as an opt-in toggle (2026-08-31)
+
+Direct owner question after the day-pooled-vs-per-trade corrections above:
+"what do you do with trades at the end of the day — are they closed and
+counted as wins/losses or ignored completely?" Answer, found by reading
+`asiaFibAtlasEngine.js`'s walk loop: a touch that hits neither the inner
+nor outer barrier by local midnight gets `outcome:'neither'` and is
+**dropped entirely** by `buildBarrierTrades` (`asiaFibAtlasVoteReview.js:139`)
+— never counted as a win, a loss, or anything. ~3.5-4% of touches.
+
+**Two hypotheses tested directly, not guessed:**
+1. *Mark-to-close* (force-price at the midnight close instead of
+   target/stop) — `analysis/fib_atlas_neither_markclose_test.mjs`: the
+   1,331 previously-dropped touches this recovers have only a **37.3% win
+   rate** — close to a coin flip. Rejected: there's no real trading rule
+   that flattens at midnight; this measures wherever price randomly was
+   at one arbitrary snapshot, not the trade's real outcome.
+2. *Extend the search* (owner's own proposal: let it keep looking for a
+   real resolution into following days, but cap concurrency occupancy at
+   the next session's build time — 6am, since Asia's new range isn't
+   built until then — so a still-open extended trade can never block a
+   fresh signal) — `analysis/fib_atlas_neither_extend_test.mjs`, bounded
+   to 14 days: **99.8-99.9% eventually resolve**, with a win rate close to
+   the already-counted trades' own. Chosen over mark-to-close for exactly
+   that reason — it measures what the touch actually did.
+
+**Built into the engine** (not just an analysis script):
+`asiaFibAtlasWalk` gains `extendResolutionDays`/`nextSessionBuildHrs`,
+both additive and off by default (0 = byte-identical to prior behavior,
+verified via the full existing test suite) — see the function's own doc
+for the mechanism (a SEPARATE bars array for the outcome race only; every
+feature/confluence computation still uses the unchanged same-day window).
+`concurrencyResolveTime` implements the cap. Generation (`runOne` in
+`asiaFibAtlasRoutes.js`) runs a SECOND full walk (same already-loaded M1,
+no extra fetch) with extension on, builds `extTrades`/`extSummaryByMargin`
+with full parity to the baseline (giveback + chandelier trailing both
+applied), and persists them ALONGSIDE `trades` in the same R2 blob — same
+dual-store precedent as chandelier's own trailed fields. Read routes
+(`vote-trades/:instrument`, `vote-portfolio`, `vote-portfolio-combined`)
+accept `letRide=true` to swap in `extTrades` via a shared `loadVoteTrades`
+helper, falling back to `trades` when absent (older data, or a ladder —
+Monday — that doesn't have one yet) — `buildFibAtlasVotePortfolio` itself
+needed zero changes. UI checkbox on `asia-fib-atlas-vote-portfolio.html`,
+off by default including in "Load Best Config" (new enough to stay
+opt-in rather than folded into the shipped default).
+
+**A real subtlety found while wiring this, not before**: extending
+resolution doesn't just add trades — it reshapes the underlying vote
+BOOK too, since the book's own per-cell win-rate statistics are built
+from `buildAsiaFibAtlasBook(touches, ...)`, and `touches` is now a
+materially fuller (and less selectively-clean) sample once previously-
+'neither' touches carry a real resolved outcome. The correct
+implementation rebuilds the book from the EXTENDED touches
+(`extBook = buildAsiaFibAtlasBook(extTouches, ...)`), not the baseline
+one — this is more principled (a vote decision should reflect the TRUE
+empirical hold-rate of a cell, not one computed on a sample that quietly
+excluded the ambiguous cases) but means an earlier draft of the analysis
+script (which reused the baseline book for both) understated the effect.
+**Live full-16-pair "Load Best Config" comparison** (the real production
+numbers, not the analysis script's):
+
+| | letRide off (shipped) | letRide on |
+|---|---|---|
+| Trades | 16,712 | **5,811** (-65%) |
+| Portfolio Sharpe (day-pooled) | 16.37 | 11.84 |
+| Max Drawdown (fixed risk) | -3.99% | -4.07% |
+| Profit Factor (day-pooled) | 42.41 | 12.86 |
+| **Per-trade win rate** | 72.4% | **72.6%** |
+| **Per-trade PF** | 2.555 | **2.599** |
+| **Per-trade Sharpe (raw)** | **0.411** | **0.409** |
+
+🟢 **The real finding: per-trade edge quality is unchanged** (0.411 vs
+0.409 raw Sharpe, 72.4% vs 72.6% win rate — a rounding-level difference,
+not a real one) — extending resolution does NOT make the trades taken
+any better or worse individually. What changes is trade COUNT: the
+book rebuilt from the fuller data is far more selective, and 65% fewer
+(side,level) cells clear the margin≥2 vote bar. Read plainly: the
+CURRENT shipped book may be systematically more confident than it should
+be, because it's built on a sample that silently excludes every touch
+that didn't cleanly resolve same-day — a form of selection bias in the
+book's own training data, separate from (and not yet fully reconciled
+with) the trade-count question the owner originally asked about. Max
+drawdown barely moves either way (-3.99% -> -4.07%), so this isn't a risk
+story — it's a "how much do you trust a leaner, more conservative book
+vs. a denser, possibly-overconfident one" story.
+🟡 **Not yet done**: this is Asia-only (Monday's own window already
+extends ~8 days, a different mechanism, not yet given the same
+treatment); the extended/rebuilt-book approach hasn't been walk-forward
+validated the way the other levers above were (a single before/after
+comparison, not a 3-fold check); and whether the shipped book's
+narrower-but-denser cells or the extended book's leaner-but-broader
+cells is the better long-run choice is an open question, not yet
+resolved — flagging for the owner's own call rather than picking one.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
