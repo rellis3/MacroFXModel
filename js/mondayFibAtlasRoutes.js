@@ -275,7 +275,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
       const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
       const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
-      const trades = applyFadeStopFraction(filtered, stopTightenFrac);
+      const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
                  splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {

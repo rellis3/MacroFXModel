@@ -116,7 +116,7 @@ export async function buildFibAtlasVotePortfolio({
     const marginFiltered = swapped.filter(t => t.margin >= minMargin);
     const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
-    const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac);
+    const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac, 0, { preserveSizing: true });
     const sym = stored.groupKey ?? stored.instrument;
     perPairTradesRaw[sym] = tightened.map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
     perPair[sym] = {

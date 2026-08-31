@@ -3250,6 +3250,67 @@ as legitimate, or test a version that resizes only the stop-out leg) before
 either this or the live fade lever's sizing story is presented as fully
 settled; that decision belongs to the owner, not a default to assume.
 
+**Isolating SL-tightening's risk-reduction from its position-size effect —
+tested, then wired into production (2026-08-30, later same day).** Direct
+follow-up to the leverage-in-disguise question just above: does the
+reported edge survive if tightening the stop no longer resizes the
+position? `applyFadeStopFraction` gained an opt-in `preserveSizing`
+option (default `false` — zero behavior change to every existing caller,
+confirmed by grepping every call site before touching anything) that
+stamps `sizingStopPips` with the trade's ORIGINAL, pre-tightening stop
+distance; `riskAdjustTrades` prefers that field when present, so the
+position is sized as if the stop were never tightened, while the tighter
+stop still decides win/loss. Verified on a synthetic trade first: a
+winning trade's payout comes back byte-identical to a fully untightened
+baseline, and a losing trade's loss shrinks in direct proportion to the
+tightening fraction instead of collapsing to exactly `-riskPct%` every
+time (`analysis/fib_atlas_sl_tightening_backtest.mjs` gained the matching
+`SIZE_HELD` env var to re-run the existing study both ways).
+
+**Finding — OOS, fraction=0.9, both decisions, resized vs. size-held:**
+
+| | Sharpe | maxDD | avg win | avg loss |
+|---|---|---|---|---|
+| Fade, resized | 6.31 | -39.21% | 0.468% | -1.00% (always) |
+| Fade, size held | **6.31 (identical)** | **-35.69%** | **0.421% (= untightened baseline)** | -0.90% (proportional) |
+| Follow, resized | 9.65 | -17.99% | 0.824% | -1.00% (always) |
+| Follow, size held | **9.65 (identical)** | **-16.27%** | **0.742% (= baseline)** | -0.90% |
+
+**Sharpe is mathematically identical between the two modes at EVERY
+fraction tested on the full grid, not just the chosen one** — worth
+understanding why, not just observing: Sharpe is mean÷spread, and a
+uniform per-trade multiplicative rescale (which is exactly what resizing
+off a fixed fraction does to every trade in that decision) cancels out of
+a ratio. So the "is the Sharpe partly fake from leverage" worry, raised
+correctly for the WIN/LOSS MAGNITUDES, does not actually apply to the
+Sharpe NUMBER itself for an isolated single-decision lever — confirmed
+empirically across the whole fraction grid, not just asserted from the
+algebra. What DOES differ: size-held gives a shallower, more STABLE maxDD
+across the whole grid (fade's IS maxDD at frac=0.6: -66.1% resized vs
+-45.44% held — resizing compounds losing-trade risk as the fraction
+tightens, size-held doesn't), and CAGR is far less distorted by the
+uncapped-compounding artifact already flagged elsewhere in this file.
+Net: same edge, strictly more honest numbers — not a trade-off.
+
+**Wired into production the same day** (owner's explicit go-ahead after
+seeing the comparison): `js/fibAtlasVotePortfolio.js`, both single-pair
+`/vote-trades` routes (`js/asiaFibAtlasRoutes.js`,
+`js/mondayFibAtlasRoutes.js`) now call `applyFadeStopFraction(..., 0,
+{ preserveSizing: true })`. Live-verified against a running server: fade's
+avg loss now reads a clean -0.9000% (exactly the fraction, matching the
+math above) instead of the old flat -1.0336%-ish blend; follow (untouched
+by this fade-only lever) unaffected. The page's "Tighten fade stop (0.9×)"
+tooltip updated to explain the sizing change plainly. Playwright: zero
+page errors on both ladders, full recommended pair set.
+
+🟢 a genuinely rare case: the honesty fix cost nothing (Sharpe identical,
+proven algebraically and confirmed on real data) and IMPROVED the
+reported drawdown/CAGR stability besides — shipped the same session it
+was found, not left as an open question. Follow's own stop-tightening
+lever (immediately above) still isn't wired — this fix answers the SIZING
+question for whenever that gets picked up, but wiring follow itself is a
+separate decision not yet made.
+
 **Bug fix (2026-08-30) — "error loading candles: Failed to fetch" when
 clicking a trade row on this page's chart.** Root-caused, not guessed:
 `/api/vol-backtest/candles/:pair` (`server.js`) does a synchronous cold R2
