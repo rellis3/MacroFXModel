@@ -3907,17 +3907,21 @@ async function loadVb2AllLines() {
   const body = document.getElementById('vb2AllLinesBody');
   if (!body) return;
   const pairs = _vb2Cfg.enabled_pairs?.length ? _vb2Cfg.enabled_pairs : [...VB2_DEFAULT_CHECKED];
+  const filter = (document.getElementById('vb2AllLinesFilter')?.value || '').trim().toLowerCase();
   try {
     const r = await fetch(`/api/level-atlas/vote-preview?instruments=${encodeURIComponent(pairs.join(','))}`);
     const j = await r.json();
     if (!j.ok) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
-    const rows = [];
+    let rows = [];
     for (const [pair, inst] of Object.entries(j.instruments || {})) {
       for (const p of (inst.pending || [])) rows.push({ pair, side: p.side, rung: p.rung, status: 'pending', decision: p.decision });
       for (const t of (inst.touches || [])) rows.push({ pair, side: t.side, rung: t.rung, status: `touched · ${t.outcome}`, decision: t.decision });
     }
-    if (!rows.length) { body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No live coverage yet</td></tr>'; return; }
-    rows.sort((a, b) => (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
+    if (filter) rows = rows.filter(r => r.pair.toLowerCase().includes(filter));
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No lines for that pair yet' : 'No live coverage yet'}</td></tr>`; return; }
+    const sortBy = document.getElementById('vb2AllLinesSort')?.value || 'margin';
+    if (sortBy === 'pair') rows.sort((a, b) => a.pair.localeCompare(b.pair) || (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
+    else rows.sort((a, b) => (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
     body.innerHTML = rows.map(r => {
       const d = r.decision;
       const strong = d && d.margin >= 3;
