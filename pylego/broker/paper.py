@@ -49,6 +49,7 @@ class PaperBroker:
         self._pipcache: dict[str, tuple] = {}   # pair -> (pip, pip_value)
         for pair, s in (spreads or {}).items():
             self.set_spread(pair, s)
+        self.last_reject_reason: str | None = None   # mirrors Mt5Broker's side-channel; see its own doc
 
     # ── connection (no-op for paper) ──────────────────────────────────────────
     def connect(self, account=None, password=None, server=None, path=None) -> bool:
@@ -134,12 +135,16 @@ class PaperBroker:
         ``dedupe_tag`` mirrors ``Mt5Broker.enter``: when given, blocks the fill if
         a position already open on ``pair`` has ``[{dedupe_tag}]`` in its comment
         (unset by default — paper stacks freely, same as before)."""
+        self.last_reject_reason = None
         mid = self._price.get(pair)
         if mid is None:
+            self.last_reject_reason = 'no_price_yet'
             return None
         if dedupe_tag is not None:
             tag = f'[{dedupe_tag}]'
-            if any(p['pair'] == pair and tag in (p.get('comment') or '') for p in self._pos.values()):
+            existing = [p for p in self._pos.values() if p['pair'] == pair and tag in (p.get('comment') or '')]
+            if existing:
+                self.last_reject_reason = f"duplicate (ticket {existing[0]['ticket']} already open)"
                 return None
         half = self.spread(pair) / 2.0
         px = mid + half if direction == "LONG" else mid - half

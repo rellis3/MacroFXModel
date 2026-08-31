@@ -473,14 +473,22 @@ export function mountLevelAtlasRoutes(app, express) {
 
   // GET /api/level-atlas/vote-preview?instruments=EUR/USD,XAU/USD,GBPUSD —
   // batched version of the `decision` field above for a page that shows MANY
-  // instruments at once (vol-forecast-v2.html's grid) rather than one drawer
-  // at a time — avoids one HTTP round-trip per card. Accepts any alias
-  // `resolveKey` understands (display form, OANDA form, MT5 form, or the
-  // bare canonical key already used by /fastlive) so the caller doesn't need
-  // its own second copy of the Level-Atlas-key mapping. Per pair, only the
-  // PENDING (not-yet-touched) rungs are returned — that's the only thing a
-  // "what would happen at this line" panel cares about; already-touched
-  // rungs are resolving/resolved, not a live decision anymore.
+  // instruments at once (vol-forecast-v2.html's grid, bot-config.html's
+  // "every line" table) rather than one drawer at a time — avoids one HTTP
+  // round-trip per card. Accepts any alias `resolveKey` understands (display
+  // form, OANDA form, MT5 form, or the bare canonical key already used by
+  // /fastlive) so the caller doesn't need its own second copy of the
+  // Level-Atlas-key mapping.
+  //
+  // Returns BOTH `pending` (not yet touched today — what WOULD happen) and
+  // `touches` (already touched today — what DID happen, decision at that
+  // moment, plus outcome). Added 2026-08-31: a caller wanting the FULL
+  // picture (e.g. "did we miss a real move because margin was too low, not
+  // because the line was never even watched") needs both, not just pending —
+  // the live bot's own trade plan already filters to margin>=3 server-side
+  // (VOLATILITY_V2_MIN_MARGIN, see server.js's _volatilityV2PriceZone), so
+  // this route is deliberately UNFILTERED to show what that plan quietly
+  // left out.
   app.get('/api/level-atlas/vote-preview', async (req, res) => {
     try {
       const raw = String(req.query.instruments || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -499,7 +507,11 @@ export function mountLevelAtlasRoutes(app, express) {
             .filter(t => t.rung !== 'p90')   // no outer rung to price against — excluded everywhere else too
             .map(t => ({ side: t.side, rung: t.rung, level: t.level, currentPrice: t.currentPrice,
                          decision: book ? voteDecision(book, t) : null }));
-          instruments[pair] = { instrument: pair, date: live.date, pending };
+          const touches = (live.touches ?? [])
+            .filter(t => t.rung !== 'p90')
+            .map(t => ({ side: t.side, rung: t.rung, level: t.level, ordinal: t.ordinal, time: t.time, outcome: t.outcome,
+                         decision: book ? voteDecision(book, t) : null }));
+          instruments[pair] = { instrument: pair, date: live.date, pending, touches };
         } catch (e) { skipped[alias] = `error: ${e.message}`; }
       }
       res.json({ ok: true, instruments, skipped });

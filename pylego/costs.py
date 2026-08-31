@@ -69,14 +69,27 @@ DEFAULT_FX_SPREAD_CAP = 2.0
 
 def max_spread(pair: str, cfg: dict) -> float:
     """Entry spread cap for `pair` in its OWN pip/point units, honouring the
-    bot config's `max_spread_pips` (dict per-class override, or scalar FX cap
-    scaled per class; absent → DEFAULT_FX_SPREAD_CAP scaled per class)."""
+    bot config's `max_spread_pips`:
+      • dict with the pair's own canonical key (e.g. "chfjpy": 2.8) — a REAL
+        per-PAIR override, already in that pair's own units, used as-is (no
+        class scaling). Found 2026-08-31: a single flat FX cap treats a JPY
+        cross the same as EUR/USD even though its typical spread is genuinely
+        wider — measure it with /api/level-atlas/spread-check (real OANDA
+        bid/ask history), not guessed.
+      • dict with an asset-class key ("fx"/"index"/"commodity") — the
+        pre-existing per-class override, scaled by MAX_SPREAD_MULT.
+      • scalar — treated as the FX cap, scaled up for wider-spread classes.
+      • absent → DEFAULT_FX_SPREAD_CAP, scaled per class.
+    Per-pair beats per-class beats scalar-default, in that order."""
     try:
         ac = asset_class(pair)
     except Exception:
         ac = "fx"
     mx = (cfg or {}).get("max_spread_pips")
-    if isinstance(mx, dict):                                  # explicit per-class override
+    if isinstance(mx, dict):
+        key = resolve_key(pair)
+        if key is not None and key in mx:                    # real per-pair override, already in this pair's own units
+            return float(mx[key])
         return float(mx.get(ac, mx.get("fx", DEFAULT_FX_SPREAD_CAP) * MAX_SPREAD_MULT.get(ac, 3.0)))
     fx_cap = float(mx) if isinstance(mx, (int, float)) else DEFAULT_FX_SPREAD_CAP
     return fx_cap * MAX_SPREAD_MULT.get(ac, 3.0)              # scale the FX cap for index/commodity

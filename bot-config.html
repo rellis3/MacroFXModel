@@ -3883,6 +3883,74 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- ALL lines, watched or not -- unfiltered, so a margin<3 or "no decision"
+         line is visible instead of silently absent. The table above is what
+         the bot's actual plan contains (already margin>=3 filtered
+         server-side); this one answers "did we miss a real move because the
+         vote was weak, or was the line never even watched at all" — added
+         2026-08-31. -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">All Lines — every rung, watched or not</span>
+        <span class="bot-banner-sub" style="margin:0">unfiltered — includes margin&lt;3 and "no decision" lines the bot's plan above leaves out. p50/p75 only (p90 excluded everywhere, no outer rung to price against).</span>
+        <button onclick="loadVb2AllLines()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer;margin-left:auto">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:center">Tradeable now</th>
+            </tr>
+          </thead>
+          <tbody id="vb2AllLinesBody">
+            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Decision audit log -- persistent, not just console scrollback. Answers
+         "why wasn't this taken": entered / rejected (spread, duplicate, MT5
+         error) / skipped (stack guard, risk budget) / pair_blocked (currency
+         gate, risk guard, plan age). Written by the bot itself
+         (volatility_bot_v2.py's _record_decision), flushed to KV every
+         status_secs (~30s) -- added 2026-08-31. -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Decision Timeline</span>
+        <span class="bot-banner-sub" style="margin:0">persistent audit — why was each touch entered, rejected, skipped, or pair-blocked. Written by the bot itself, most recent first.</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="vb2DecFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadVb2DecisionLog()">
+        </label>
+        <button onclick="loadVb2DecisionLog()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Time (UTC)</th>
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Reason</th>
+            </tr>
+          </thead>
+          <tbody id="vb2DecisionBody">
+            <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- How to run -->
     <div class="card">
       <div class="card-title">How to run</div>

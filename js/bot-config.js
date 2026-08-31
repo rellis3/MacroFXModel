@@ -3799,7 +3799,7 @@ async function loadVb2LiveStatus() {
   try {
     const [st, planWrap] = await Promise.all([kvGet('volatility_bot_v2_status'), kvGet('volatility_bot_v2_plan')]);
     _vb2LastStatus = st || null;
-    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; return; }
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; loadVb2AllLines(); loadVb2DecisionLog(); return; }
     if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
     if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
     if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
@@ -3861,10 +3861,83 @@ async function loadVb2LiveStatus() {
       }
     }
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+  loadVb2AllLines();
+  loadVb2DecisionLog();
+}
+
+// Unfiltered companion to the table above: EVERY currently-armed or
+// already-touched-today rung across the bot's enabled pairs, regardless of
+// vote margin — the bot's own plan (loaded into vb2LinesBody above) already
+// drops anything under margin 3 server-side, so a real move that got a weak
+// or tied vote would otherwise be invisible here. Added 2026-08-31.
+async function loadVb2AllLines() {
+  const body = document.getElementById('vb2AllLinesBody');
+  if (!body) return;
+  const pairs = _vb2Cfg.enabled_pairs?.length ? _vb2Cfg.enabled_pairs : [...VB2_DEFAULT_CHECKED];
+  try {
+    const r = await fetch(`/api/level-atlas/vote-preview?instruments=${encodeURIComponent(pairs.join(','))}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
+    const rows = [];
+    for (const [pair, inst] of Object.entries(j.instruments || {})) {
+      for (const p of (inst.pending || [])) rows.push({ pair, side: p.side, rung: p.rung, status: 'pending', decision: p.decision });
+      for (const t of (inst.touches || [])) rows.push({ pair, side: t.side, rung: t.rung, status: `touched · ${t.outcome}`, decision: t.decision });
+    }
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No live coverage yet</td></tr>'; return; }
+    rows.sort((a, b) => (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
+    body.innerHTML = rows.map(r => {
+      const d = r.decision;
+      const strong = d && d.margin >= 3;
+      const decLabel = !d ? '🪙 no decision' : (d.decision === 'follow' ? '↗ continue' : '↘ fade');
+      const decColor = !d ? 'var(--text3)' : (d.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.rung}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
+        <td style="padding:5px 10px;text-align:right">${d?.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${strong ? 'var(--green)' : 'var(--text3)'}">${strong ? '✓' : '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+// Persistent decision audit -- reads the same KV key the bot itself writes
+// (volatility_bot_v2_decision_log), so this survives a bot restart AND a
+// page reload, unlike console scrollback. Status colors mirror the "Today's
+// Levels" table's convention (green=entered) plus new ones for the reject/
+// skip/block states this log adds. Added 2026-08-31.
+const VB2_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', pair_blocked: 'var(--text3)' };
+async function loadVb2DecisionLog() {
+  const body = document.getElementById('vb2DecisionBody');
+  if (!body) return;
+  const filter = (document.getElementById('vb2DecFilter')?.value || '').trim().toLowerCase();
+  try {
+    const log = await kvGet('volatility_bot_v2_decision_log');
+    let events = (log?.events || []).slice().reverse();   // most recent first
+    if (filter) events = events.filter(e => (e.pair || '').toLowerCase().includes(filter));
+    if (!events.length) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No events for that pair yet' : 'No decision events logged yet'}</td></tr>`; return; }
+    body.innerHTML = events.slice(0, 300).map(e => {
+      const ts = e.t ? new Date(e.t * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = e.decision === 'follow' ? 'var(--blue,#60a5fa)' : e.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left">${e.side ? (e.side === 'up' ? '↑ up' : '↓ down') : '—'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.rung || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${e.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${e.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${VB2_DEC_STATUS_COLOR[e.status] || 'var(--text3)'}">${e.status || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.reason || '—'}</td>
+      </tr>`;
+    }).join('') + (events.length > 300 ? `<tr><td colspan="8" style="padding:8px;text-align:center;color:var(--text3)">…${events.length - 300} older event(s) not shown</td></tr>` : '');
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
 window.saveVb2Config = saveVb2Config; window.resetVb2Defaults = resetVb2Defaults;
 window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus;
+window.loadVb2AllLines = loadVb2AllLines; window.loadVb2DecisionLog = loadVb2DecisionLog;
 window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
 
 // ── Forecast drift vs reference ───────────────────────────────────────────────
