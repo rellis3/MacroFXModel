@@ -278,6 +278,7 @@
 </div>
 
 <script type="module">
+import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
 // The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
 // already established), MINUS 5 pairs removed for real, cost-driven (not a
 // bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
@@ -813,10 +814,36 @@ function fmtDateLong(dateStr) {
   const d = new Date(dateStr + 'T00:00:00Z');
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
+// Per-trade risk-adjusted stats (2026-08-31) -- same brick + same fix as
+// asia-fib-atlas-vote-portfolio.html's Performance Summary: `j.stats`'s
+// Sharpe/Sortino/Calmar are computed off the DAY-POOLED portfolio return
+// series (legit for capital sizing, since concurrent trades really do share
+// one account), which is a different statistical basis than the per-trade
+// win rate/profit factor already shown alongside them below. Reusing
+// summarizeTrades/sortinoRatio/calmar here keeps both figures honest and
+// each internally consistent instead of mixing bases on one row.
+function computeTradeRiskStats(trades) {
+  if (!trades.length) return null;
+  const sorted = [...trades].sort((a, b) => a.resolveTime - b.resolveTime);
+  const pnls = sorted.map(t => t.pnlPct), dates = sorted.map(t => t.date);
+  const base = summarizeTrades(pnls, dates);
+  let addEq = 0, addPeak = 0, addMaxDD = 0;
+  for (const t of sorted) { addEq += t.pnlPct; addPeak = Math.max(addPeak, addEq); addMaxDD = Math.min(addMaxDD, addEq - addPeak); }
+  const firstD = sorted[0].date, lastD = sorted[sorted.length - 1].date;
+  const years = Math.max((Date.parse(lastD) - Date.parse(firstD)) / (365.25 * 864e5), 1 / 52);
+  const cagrNonCompounded = addEq / years;
+  const sortino = sortinoRatio(pnls, base.tradesPerYr);
+  const calmarNonCompounded = calmarRatio(cagrNonCompounded, addMaxDD);
+  // Exact inverse of summarizeTrades' own annSharpe formula (× √tradesPerYr)
+  // -- the honest, un-annualized single-trade Sharpe, not a re-derivation.
+  const rawTradeSharpe = base.tradesPerYr > 0 ? base.sharpe / Math.sqrt(base.tradesPerYr) : base.sharpe;
+  return { ...base, rawTradeSharpe, sortino, calmarNonCompounded };
+}
 function buildPerformanceSummary(j) {
   const eq = j.equityCurve ?? [];
   const trades = j.trades ?? [];
   const s = j.stats;
+  const pt = computeTradeRiskStats(trades);
 
   const byMonth = new Map();
   for (const p of eq) byMonth.set(monthKey(p.date), (byMonth.get(monthKey(p.date)) ?? 0) + p.dailyReturn);
@@ -840,24 +867,23 @@ function buildPerformanceSummary(j) {
   const avgWin = wins.length ? wins.reduce((a, t) => a + t.pnlPct, 0) / wins.length : 0;
   const avgLoss = losses.length ? losses.reduce((a, t) => a + t.pnlPct, 0) / losses.length : 0;
   const avgTrade = trades.length ? trades.reduce((a, t) => a + t.pnlPct, 0) / trades.length : 0;
-  const grossWin = wins.reduce((a, t) => a + t.pnlPct, 0), grossLoss = -losses.reduce((a, t) => a + t.pnlPct, 0);
-  const tradeProfitFactor = grossLoss > 1e-9 ? grossWin / grossLoss : (grossWin > 0 ? 99 : 0);
-  const tradeWinRate = trades.length ? wins.length / trades.length * 100 : 0;
 
   return {
     dateFrom: eq[0]?.date, dateTo: eq[eq.length - 1]?.date,
     totalReturn, annualReturn: s.cagrNonCompounded, monthlyReturn: avgMonthly, avgTrade, bestMonth, worstMonth,
     annVol: s.annVol, maxDD: s.maxDDNonCompounded, maxDDDurationDays: maxDur,
     var95: s.var95, var99: s.var99, cvar95: s.cvar95,
-    sharpe: s.sharpe, sortino: s.sortino, calmar: s.calmarNonCompounded, profitFactor: tradeProfitFactor,
-    winRate: tradeWinRate, avgWin, avgLoss, positiveMonths, negativeMonths, totalRoundTrips: trades.length,
+    portfolioSharpe: s.sharpe, portfolioSortino: s.sortino, portfolioCalmar: s.calmarNonCompounded,
+    tradeSharpe: pt?.rawTradeSharpe ?? 0, tradeSortino: pt?.sortino ?? 0, tradeCalmar: pt?.calmarNonCompounded ?? 0,
+    profitFactor: pt?.profitFactor ?? 0, winRate: pt?.winRate ?? 0, avgWin, avgLoss,
+    positiveMonths, negativeMonths, totalRoundTrips: trades.length,
   };
 }
 function perfRow(label, value) {
   return `<tr><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;color:#374151">${label}</td><td style="padding:8px 4px;border-bottom:1px solid #e5e5e0;text-align:right;font-weight:600">${value}</td></tr>`;
 }
-function perfSection(title, rows) {
-  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}</div>
+function perfSection(title, rows, note) {
+  return `<div style="background:#0f2a4a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.03em;padding:8px 12px;margin-top:16px;border-radius:4px 4px 0 0">${title}${note ? `<div style="font-size:10px;font-weight:400;letter-spacing:normal;color:#9db4d4;margin-top:2px">${note}</div>` : ''}</div>
     <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${rows}</tbody></table>`;
 }
 function renderPerformanceSummary() {
@@ -874,29 +900,32 @@ function renderPerformanceSummary() {
       perfRow('Average Trade', fmtPct(r.avgTrade, 2)),
       perfRow('Best Month', fmtPct(r.bestMonth, 2)),
       perfRow('Worst Month', fmtPct(r.worstMonth, 2)),
+      perfRow('Positive Months', r.positiveMonths),
+      perfRow('Negative Months', r.negativeMonths),
     ].join('')) +
-    perfSection('RISK', [
+    perfSection('PORTFOLIO RISK', [
       perfRow('Annual Volatility', fmt2(r.annVol) + '%'),
       perfRow('Max Drawdown', fmt2(r.maxDD) + '%'),
       perfRow('Max DD Duration (bdays)', r.maxDDDurationDays),
       perfRow('VaR (95%)', fmt2(r.var95) + '%'),
       perfRow('VaR (99%)', fmt2(r.var99) + '%'),
       perfRow('CVaR (95%)', fmt2(r.cvar95) + '%'),
-    ].join('')) +
-    perfSection('RISK-ADJUSTED PERFORMANCE', [
-      perfRow('Sharpe Ratio', fmt2(r.sharpe)),
-      perfRow('Sortino Ratio', fmt2(r.sortino)),
-      perfRow('Calmar Ratio', fmt2(r.calmar)),
+    ].join(''), 'daily returns, all open positions pooled — the real correlation basis for sizing/DD') +
+    perfSection('PORTFOLIO RISK-ADJUSTED', [
+      perfRow('Sharpe Ratio', fmt2(r.portfolioSharpe)),
+      perfRow('Sortino Ratio', fmt2(r.portfolioSortino)),
+      perfRow('Calmar Ratio', fmt2(r.portfolioCalmar)),
+    ].join(''), 'same day-pooled basis as above — valid for capital sizing, NOT a per-trade hit rate') +
+    perfSection('PER-TRADE STATISTICS', [
+      perfRow('Sharpe (single trade)', fmt2(r.tradeSharpe)),
+      perfRow('Sortino (per-trade)', fmt2(r.tradeSortino)),
+      perfRow('Calmar (per-trade)', fmt2(r.tradeCalmar)),
       perfRow('Profit Factor', fmt2(r.profitFactor)),
-    ].join('')) +
-    perfSection('TRADE STATISTICS', [
       perfRow('Win Rate', fmt2(r.winRate) + '%'),
       perfRow('Average Win', fmtPct(r.avgWin, 2)),
       perfRow('Average Loss', fmtPct(r.avgLoss, 2)),
-      perfRow('Positive Months', r.positiveMonths),
-      perfRow('Negative Months', r.negativeMonths),
       perfRow('Total Round Trips', r.totalRoundTrips),
-    ].join(''));
+    ].join(''), 'individual wins/losses, chronological order — Sharpe here is raw (mean ÷ stdev of ONE trade), not annualized. Sortino/Calmar ride the same additive per-trade curve and can run large from trade overlap, not a real edge multiplier — Sharpe (single trade) above is the one honest headline number here.');
 }
 document.getElementById('perfSummaryBtn').addEventListener('click', () => {
   renderPerformanceSummary();
