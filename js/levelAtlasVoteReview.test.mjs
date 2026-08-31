@@ -591,6 +591,13 @@ function mkBook(dimSpecs) {
   ok('T21 fade on a down-touch also bets long (mirrors follow+up)', betDirection({ decision: 'fade', side: 'down' }) === 'long');
   ok('T21 follow on a down-touch bets short', betDirection({ decision: 'follow', side: 'down' }) === 'short');
   ok('T21 fade on an up-touch also bets short', betDirection({ decision: 'fade', side: 'up' }) === 'short');
+  // Fib Atlas's own side vocabulary (2026-08-31 fix) -- 'above'/'below', not
+  // 'up'/'down'; structurally the same "which way is outward" concept, must
+  // resolve to the SAME four directions as the up/down checks just above.
+  ok('T21 Fib Atlas: follow on an above-touch bets long (mirrors follow+up)', betDirection({ decision: 'follow', side: 'above' }) === 'long');
+  ok('T21 Fib Atlas: fade on a below-touch also bets long', betDirection({ decision: 'fade', side: 'below' }) === 'long');
+  ok('T21 Fib Atlas: follow on a below-touch bets short', betDirection({ decision: 'follow', side: 'below' }) === 'short');
+  ok('T21 Fib Atlas: fade on an above-touch also bets short', betDirection({ decision: 'fade', side: 'above' }) === 'short');
 
   const eurusdLong = { pair: 'EURUSD', decision: 'follow', side: 'up', riskPctUsed: 1 };
   ok('T21 tradeFactors splits a long FX pair into +base/-quote', JSON.stringify(tradeFactors(eurusdLong)) === JSON.stringify([{ factor: 'EUR', weight: 1 }, { factor: 'USD', weight: -1 }]));

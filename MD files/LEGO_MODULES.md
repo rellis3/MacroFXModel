@@ -4093,6 +4093,79 @@ per-decision breakdown, unlike Asia's, wasn't separately examined.
 
 ---
 
+### Net exposure cap for Fib Atlas — a real bug fix, then a clean null (2026-08-31)
+
+Direct follow-up to "any other ideas for reducing drawdown" — this book's
+own worst-drawdown finding (§ above, `applyDrawdownThrottle`'s own build
+history) was a **19-day CORRELATED losing stretch across pairs** (win
+rate 45.5% vs 58.9% overall), not concurrent-position pile-up. The
+existing `applyPortfolioHeatCap` sums GROSS risk regardless of direction
+— a long EURUSD + long USDCHF (partially hedged: +EUR-USD and +USD-CHF
+net close to zero USD exposure) costs the same budget as long USDJPY +
+long USDCHF (+USD twice, real doubled exposure); it can't tell a hedge
+from a stack. `applyExposureCap`/`tradeFactors` (`js/levelAtlasVoteReview.js`)
+already exist for exactly this — built earlier for Level Atlas, never
+tried on Fib Atlas before now.
+
+**Real bug found and fixed before trusting any result, not after.**
+`applyExposureCap`'s direction sign comes from `betDirection(t)`, which
+checked `t.side === 'up'` — but Fib Atlas trades carry `side:
+'above'|'below'`, never the literal string `'up'`. Every Fib Atlas
+trade's computed long/short direction was silently WRONG before this fix
+— it depended only on `decision` (fade always resolved 'long', follow
+always 'short'), completely ignoring which side of the range the touch
+was actually on. This wasn't caught by any earlier lever this session
+because none of them needed trade DIRECTION — cost-efficiency, stop-
+tightening, trailing-exit, entry-priority, heat cap and throttle are all
+direction-blind. `betDirection` now recognizes 'above' as Level Atlas's
+'up' and 'below' as 'down' (structurally the same "which way is outward"
+concept); Level Atlas's own 'up'/'down' behavior is completely
+unchanged since it never sends 'above'/'below'. New unit tests
+(`js/levelAtlasVoteReview.test.mjs` T21) assert all four
+`{decision, side}` combinations resolve to the correct direction for
+BOTH engines' vocabularies, not just Level Atlas's.
+
+**The test itself, once the bug was fixed, came back a clean null on
+both ladders.** `analysis/fib_atlas_exposure_cap_backtest.mjs` — full
+already-shipped pipeline (recommended pairs, cost-efficiency filter,
+fade-stop-tighten with `preserveSizing:true`, heat cap + throttle at
+frozen BEST_CONFIG where one exists), exposure cap applied BEFORE the
+heat cap (finer, direction-aware gate first), pre-stated rule (among cap
+values with lower IS maxDD than baseline, the highest IS Sharpe), 70/30
+split, swept `[0.5, 0.75, 1, 1.5, 2, 3, 5]%`:
+
+- **Asia**: every tested cap either makes maxDD WORSE (tighter than
+  ~1%: IS maxDD -4.59%→-5.43% at 0.5%, Sharpe also drops 14.81→14.1) or
+  is a near no-op (looser than ~1.5%: <50 of 12,675 trades ever skipped).
+  No cap cleared the pre-stated bar — nothing frozen for OOS.
+- **Monday**: identical shape — tighter caps cost both Sharpe and maxDD
+  (12.08→11.63 Sharpe, -3.71%→-4.1% maxDD at 0.5%), looser caps are a
+  near no-op. Same null.
+
+**Not a broken or vacuous test** — the mechanism genuinely engages (14-19%
+of trades skipped at the tighter cap levels on both ladders), it just
+doesn't help. Plausible read, not confirmed further: Asia's own frozen
+heat cap (1% simultaneous exposure, effectively ≤2 concurrent 0.5%-risk
+positions) is ALREADY tight enough that there's little room left for a
+direction-aware refinement to add value — the coarser gross-risk cap is
+already doing most of the useful work at that tightness. Monday has no
+heat cap at all yet shows the identical null shape, which cuts against
+that specific explanation and wasn't chased further (would need its own
+investigation, not assumed).
+
+🟢 the bug fix is real, independently valuable regardless of this test's
+outcome (any FUTURE Fib Atlas consumer of `betDirection`/`tradeFactors`/
+`applyExposureCap`, or of `applyConcurrencyCap`'s `perDirection` mode,
+would have silently gotten wrong signs before this), caught by reading
+the function against real data rather than trusting a generic-looking
+signature. 🔴 the drawdown-reduction hypothesis itself is a clean, honest
+null on both ladders — reported as such, not reframed as a partial win.
+Two other drawdown-reduction bricks flagged in the same conversation
+(`applyCurrencyLossGate`, `applyNewsProximityThrottle`) remain untested
+for Fib Atlas.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a

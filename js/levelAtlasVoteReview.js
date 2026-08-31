@@ -669,10 +669,28 @@ export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger
  * for `tradeFactors`/`applyExposureCap` below — a second consumer that needs
  * the SAME sign convention (a wrong direction here silently inverts which
  * trades a factor cap thinks are stacking vs offsetting).
+ *
+ * `isUp` recognizes BOTH engines' own `side` vocabulary (2026-08-31, found
+ * while testing `applyExposureCap` on Fib Atlas trades for the first time):
+ * Level Atlas's touches use `side: 'up'|'down'`; Fib Atlas's use
+ * `side: 'above'|'below'` (the touched rung sits above/below the day's
+ * range) — structurally the SAME "which way is outward" concept, just a
+ * different word. Before this fix, `t.side === 'up'` was always false for
+ * EVERY Fib Atlas trade (it never carries the literal string 'up'), so
+ * `betDirection` silently returned a direction that depended ONLY on
+ * `decision` (fade always 'long', follow always 'short'), ignoring `side`
+ * completely — every Fib Atlas trade's real long/short direction was wrong
+ * for both `perDirection` concurrency budgets and `tradeFactors`' currency
+ * sign, an existing correctness bug this exposure-cap test caught before
+ * trusting any result built on it, not after. Caught by reading the
+ * function against real trade data rather than assuming it was already
+ * engine-agnostic just because it accepted a generic `{decision, side}`
+ * shape. Level Atlas's own 'up'/'down' behavior is completely unchanged
+ * (it never sends 'above'/'below', so the added check is a no-op for it).
  */
 export function betDirection(t) {
   const withSide = t.decision === 'follow';
-  const isUp = t.side === 'up';
+  const isUp = t.side === 'up' || t.side === 'above';
   return (withSide === isUp) ? 'long' : 'short';
 }
 
