@@ -284,11 +284,38 @@ function asiaVolBucketAt(asiaSessions, idx, lookback = 20) {
  *
  *   asiaFibAtlasWalk(packed, { instrument, assetClass })
  *     -> { touches: [...], pending: [...], coverage: {from,to,sessions,estimator} }
+ *
+ * `extendResolutionDays` (2026-08-31, default 0 = off, fully backward
+ * compatible): the outcome race below is normally bounded to the SAME
+ * calendar day (Asia-close -> midnight local) -- a touch that hits neither
+ * the inner nor outer barrier by then is `outcome:'neither'` and gets
+ * DROPPED entirely by buildBarrierTrades (asiaFibAtlasVoteReview.js), not
+ * counted as a win or a loss. Empirically ~3.5-4% of touches (analysis/
+ * fib_atlas_neither_extend_test.mjs, LEGO_MODULES.md 2026-08-31): given
+ * more time, 99.8% of those eventually DO hit a real barrier, with a win
+ * rate close to (just under) the already-counted trades' own -- so the
+ * current same-day cutoff isn't hiding a landmine, but it is a real,
+ * measurable simplification. Setting this > 0 continues the SAME race
+ * logic into `extendResolutionDays` more days of bars (a SEPARATE bars
+ * array, fetched once per date -- the same-day `bars` used for every
+ * other feature/confluence computation in this function is UNCHANGED, so
+ * extension only ever affects outcome/resolveTime, never a touch's
+ * features or vote inputs). `nextSessionBuildHrs` (default 6, matching
+ * `asiaHrs`) sets `concurrencyResolveTime` -- capped at that many hours
+ * past midnight regardless of how long the real resolution search took,
+ * so a still-open extended trade can never block a fresh touch on the
+ * FOLLOWING day's freshly-built Asia range (that range isn't built until
+ * `asiaHrs` in anyway) from opening. Downstream callers that want the
+ * extended behavior should use `concurrencyResolveTime` (when present) as
+ * the trade's own `resolveTime` for `applyConcurrencyCap` purposes, while
+ * `resolveTime` itself always stays the REAL (possibly multi-day-later)
+ * resolution time for date/mfe/maepips bookkeeping.
  */
 export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = REARM_FRACS,
                                             minLookback = 60, htfMinBars, structural = true, confLookback = 5,
                                             asiaHrs = 6, pendingRearmFrac = null, liveWindowDays = null,
-                                            ivByDate = null, macroEvents = null } = {}) {
+                                            ivByDate = null, macroEvents = null,
+                                            extendResolutionDays = 0, nextSessionBuildHrs = 6 } = {}) {
   const sym = String(instrument).toUpperCase();
 
   // Calendar-day OHLC + trailing-σ index — SAME construction as levelAtlasEngine,
@@ -539,6 +566,14 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
     if (bars.length < 10) continue;
     const winOpen = bars[0].open;   // confluenceFeatures' VWAP/tolerance anchor — see dayOpen/winOpen note above
 
+    // Extended-resolution search bars (2026-08-31, see this function's own
+    // doc) -- ONLY the outcome race below reads this; every feature/
+    // confluence computation in this iteration still uses the unchanged
+    // same-day `bars`. Fetched once per date (shared by every side/rung/
+    // rearmFrac combination below), not per touch.
+    const extBars = extendResolutionDays > 0 ? extractBars(packed, winEnd, winEnd + extendResolutionDays * 86400) : null;
+    const concurrencyResolveCap = winEnd + nextSessionBuildHrs * 3600;
+
     let wt1 = wt1Cache.get(date);
     if (!wt1) { wt1 = tf.wtSeries(bars); wt1Cache.set(date, wt1); }
 
@@ -597,6 +632,23 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               if (outer != null && reach(fwd, outer)) { outcome = 'out'; resolveTime = b2.time; resolveIdx = j; break; }
               if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; resolveIdx = j; break; }
             }
+            // Extended search (2026-08-31): only reached when the same-day
+            // race above never resolved AND extension is enabled. Same race
+            // logic, continuing into subsequent days' bars -- deepest/extreme
+            // keep accumulating (a real MFE/MAE can happen on day 2, not just
+            // day 1). `resolveIdx` stays null here (it indexes into `bars`,
+            // meaningless for `extBars`) -- nothing downstream reads it for
+            // an extended resolution.
+            if (outcome === 'neither' && extBars) {
+              for (const b2 of extBars) {
+                const fwd = isAbove ? b2.high : b2.low, bwd = isAbove ? b2.low : b2.high;
+                if (isAbove ? bwd < deepest : bwd > deepest) deepest = bwd;
+                if (isAbove ? fwd > extreme : fwd < extreme) extreme = fwd;
+                if (outer != null && reach(fwd, outer)) { outcome = 'out'; resolveTime = b2.time; break; }
+                if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
+              }
+            }
+            const concurrencyResolveTime = resolveTime != null ? Math.min(resolveTime, concurrencyResolveCap) : null;
             const sgn = isAbove ? 1 : -1;
             const pullbackFrac = rungSpan > 0 ? Math.min(1, Math.abs(here - deepest) / rungSpan) : null;
             const fadePips = (here - deepest) / pip * sgn;
@@ -718,7 +770,7 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               otherSideTouchedBefore: null,   // filled in a post-pass below (needs both sides' first-touch times)
               price: +here.toFixed(6), pip,
               dayOpen, asiaHigh: asia.high, asiaLow: asia.low, asiaRange: asia.range,
-              time: bar.time, resolveTime, outcome, resolveIdx,
+              time: bar.time, resolveTime, concurrencyResolveTime, outcome, resolveIdx,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),

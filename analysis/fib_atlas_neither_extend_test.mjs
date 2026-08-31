@@ -38,8 +38,13 @@ import {
 import { portfolioStats } from '../js/backtestStats.js';
 import { sharpeStdError, summarizeTrades } from '../js/metricsCore.js';
 import { withNonCompoundedDD } from '../js/fibAtlasVotePortfolio.js';
+import { RANGE_FIB_INSTRUMENTS } from '../js/rangeFibEngine.js';
 
-const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf', 'gold'];
+// Full shipped Asia universe (26 minus ASIA_EXCLUDE) -- same set used
+// throughout this session's other full-sweep checks, not just the 8-pair
+// quick-check subset the earlier version of this script used.
+const ASIA_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy']);
+const PAIRS = RANGE_FIB_INSTRUMENTS.filter(p => !ASIA_EXCLUDE.has(p));
 const DEFAULT_REARM = 0.3, MIN_MARGIN = 2, ASIA_HRS = 6;
 const COST_RATIO = 3, STOP_FRAC = 0.9, RISK_PCT = 0.5;
 const MODE = { maxConcurrent: 1, perDirection: true };

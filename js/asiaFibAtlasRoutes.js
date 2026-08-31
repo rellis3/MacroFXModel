@@ -71,6 +71,22 @@ async function loadIvByDate(pair) {
   return CVOL_PRODUCTS.includes(product) ? await cvolSeries(product) : null;
 }
 
+// "Let-ride" extended-resolution toggle (2026-08-31) -- shared by
+// /vote-portfolio and /vote-portfolio-combined. Swaps in the extTrades
+// superset (baseline PLUS previously-'neither'-dropped touches that
+// resolved given more time, concurrency-capped at 6am the next day) in
+// place of `trades` before handing the blob to buildFibAtlasVotePortfolio,
+// which always just reads `.trades` -- zero changes needed there. Falls
+// back to `trades` when extTrades is absent (older stored data, a failed
+// extended build, or a ladder -- e.g. Monday -- that doesn't produce one
+// yet), so a caller can request letRide=true safely regardless.
+async function loadVoteTrades(path, letRide) {
+  const stored = await getJSON(path);
+  if (!stored) return null;
+  if (!letRide) return stored;
+  return { ...stored, trades: stored.extTrades ?? stored.trades };
+}
+
 const jobs = new Map();
 function purgeStale() {
   const cutoff = Date.now() - 2 * 60 * 60_000;
@@ -107,6 +123,28 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
 
   const book = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
   if (!book) throw new Error(`${sym}: too few touches to build a book`);
+
+  // "Let-ride" extended-resolution walk (2026-08-31) — direct owner request
+  // after asking what happens to touches unresolved by midnight (currently
+  // DROPPED entirely, never counted win or loss — js/asiaFibAtlasVoteReview.js's
+  // buildBarrierTrades). analysis/fib_atlas_neither_extend_test.mjs (16-pair
+  // sweep, LEGO_MODULES.md 2026-08-31) found: given 14 days, 99.8% of these
+  // eventually resolve, with a win rate close to the already-counted trades'
+  // own; drawdown moves only modestly (-9.00%->-9.48% on the test pipeline).
+  // A SECOND full walk (same already-loaded `packed`, no new M1 fetch) with
+  // EXTEND_RESOLUTION_DAYS set — stored ALONGSIDE the baseline trades
+  // (extTrades/extSummaryByMargin below), not a replacement, same dual-store
+  // precedent as chandelier's own trailed fields. NEXT_SESSION_BUILD_HRS
+  // caps concurrency occupancy at 6am the following day (matches asiaHrs)
+  // regardless of real resolution time, so an extended-but-still-open trade
+  // never blocks a fresh touch on the next day's freshly-built Asia range —
+  // see asiaFibAtlasWalk's own doc for the full mechanism.
+  const EXTEND_RESOLUTION_DAYS = 14, NEXT_SESSION_BUILD_HRS = 6;
+  const { touches: extTouches } = asiaFibAtlasWalk(packed, {
+    instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], ivByDate, macroEvents,
+    extendResolutionDays: EXTEND_RESOLUTION_DAYS, nextSessionBuildHrs: NEXT_SESSION_BUILD_HRS,
+  });
+  const extBook = buildAsiaFibAtlasBook(extTouches, { rearmFrac: DEFAULT_REARM });
 
   // Vote-margin trade list (2026-08-27) — the fade/follow-decided,
   // barrier-priced backtest for the trade-review page (asia-fib-atlas-vote-
@@ -149,10 +187,34 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
       chandTrailedPnlPips: chand[i].trailedPnlPips ?? null,
       chandTrailedResolveTime: chand[i].trailedResolveTime ?? null,
     }));
+
+    // Extended-resolution ("let-ride") trade list — SAME build/trail steps
+    // as the baseline above, just off extTouches/extBook. Kept as its own
+    // full pipeline (not a reprice of the baseline trades) since extension
+    // changes WHICH touches exist, not just how an existing one exits.
+    let extSummaryByMargin = null, extTradesOut = null;
+    try {
+      const extWf1 = runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
+      extSummaryByMargin = { 1: extWf1?.overall ?? null, 2: runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+      const extTrailed = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
+      const extChand = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'], trailMode: 'chandelier', chandelierMult: ASIA_CHANDELIER_MULT, chandelierPeriod: CHANDELIER_PERIOD });
+      extTradesOut = extTrailed.map((t, i) => ({
+        ...t,
+        chandTrailedPnlPct: extChand[i].trailedPnlPct ?? null,
+        chandTrailedPnlPips: extChand[i].trailedPnlPips ?? null,
+        chandTrailedResolveTime: extChand[i].trailedResolveTime ?? null,
+      }));
+    } catch (e) { onLog(`${sym}: extended (let-ride) vote-trades build failed (${e.message}) — non-fatal, baseline still saved`); }
+
     await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
       instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: book.splitDate,
       trades: trailedTrades,   // margin>=1 superset — the page filters down to margin=2 client-side
       summaryByMargin,
+      // "Let-ride" extended-resolution variant (2026-08-31, see the walk
+      // call above) — null when the extended build failed, so a read-time
+      // consumer must fall back to `trades` rather than assume presence.
+      extTrades: extTradesOut, extSummaryByMargin,
+      extendResolutionDays: EXTEND_RESOLUTION_DAYS, nextSessionBuildHrs: NEXT_SESSION_BUILD_HRS,
     });
   } catch (e) { onLog(`${sym}: vote-trades build/persist failed (${e.message}) — non-fatal, main book still saved`); }
 
@@ -361,16 +423,26 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit
       // does its own interpreting now (2026-08-31), so no boolean coercion here.
       const continuationExit = req.query.continuationExit;
+      // "Let-ride" extended-resolution toggle (2026-08-31, see runOne's own
+      // comment) -- swaps in the extTrades superset (baseline trades PLUS
+      // previously-'neither'-dropped touches that resolved given more time,
+      // concurrency-capped at 6am the next day) in place of the same-day-only
+      // baseline. Falls back to `trades` if the extended build is missing
+      // (older stored data, or the extended build failed generation-side).
+      const letRide = req.query.letRide === 'true';
+      const baseTrades = letRide ? (stored.extTrades ?? stored.trades) : stored.trades;
       // Continuation-exit swap first -- see applyStoredContinuationExit's own
       // doc for why it must precede any concurrency-cap-style step (this
       // route has none, but keeping the same order as buildFibAtlasVotePortfolio
       // for consistency).
-      const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
+      const swapped = applyStoredContinuationExit(baseTrades, continuationExit);
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
       const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
+      const summaryByMargin = letRide ? (stored.extSummaryByMargin ?? stored.summaryByMargin) : stored.summaryByMargin;
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, letRide,
+                 summary: summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -408,10 +480,10 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
-        loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
+        loadPairVoteTrades: async pair => loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`, req.query.letRide === 'true'),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
-      res.json({ ok: true, ...result });
+      res.json({ ok: true, letRide: req.query.letRide === 'true', ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -457,13 +529,13 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
         loadPairVoteTrades: async constituentKey => {
           const [pair, ladder] = constituentKey.split('|');
-          const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);
+          const stored = await loadVoteTrades(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`, req.query.letRide === 'true');
           if (!stored) return null;
           return { ...stored, groupKey: `${stored.instrument} (${LADDER_LABEL[ladder]})`, ladder };
         },
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
-      res.json({ ok: true, ladders, ...result });
+      res.json({ ok: true, ladders, letRide: req.query.letRide === 'true', ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
