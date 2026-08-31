@@ -4268,6 +4268,106 @@ against `maxConcurrent:2`'s different occupancy pattern rather than
 reusing the `maxConcurrent:1`-tuned `BEST_CONFIG` as-is; (3) run the
 same study on the Monday ladder before assuming it transfers.
 
+**Monday ladder: same shape, smaller magnitude (2026-08-31).**
+`fib_atlas_chandelier_exit_backtest.mjs`, identical pipeline/rule,
+Monday's OWN pair set (no exclusion — its own pair-selection study
+failed OOS, see § above), 26 constituents:
+
+- **IS**: baseline Sharpe 12.08 → mult=1.5 (chosen — Monday's own
+  optimum is a much TIGHTER trail than Asia's mult=3, its noise
+  character differs) Sharpe 13.11, maxDD -3.71%→-3.61%.
+- **OOS**: baseline Sharpe 11.39 → mult=1.5 Sharpe **12.85**, maxDD
+  **-3.11%→-2.57%** (real, ~17% relative reduction — smaller than
+  Asia's ~46%, but real). avgLoss OOS -0.4973%→-0.4973% — **identical
+  to four decimal places**, the cleanest leverage-in-disguise pass yet.
+- **Hold-time extension** (mult=1.5): n=1737, median=3min, p90=10min,
+  max=62min — much shorter than Asia's (median=13min, p90=43min),
+  consistent with the tighter chosen mult.
+- **Stacking** (maxConcurrent=2) on top: IS Sharpe 13.11→13.92, maxDD
+  -3.61%→-3.13%, trades 4483→5814; OOS Sharpe 12.85→**14.48**, maxDD
+  -2.57%→**-1.93%**, trades 1647→2141 (+494). Same direction as Asia
+  on every axis.
+
+Both ladders now have independent OOS footing for the chandelier exit
+and for stacking on top of it — the next step (below) is reviewing
+whether the EXISTING heat cap still earns its keep once both are running.
+
+### Heat-cap platform review for chandelier + stacking (2026-08-31) — a real pre-existing bug, and the heat cap goes from helping to redundant-or-harmful
+
+Direct follow-up to "do monday then we have a good footing for the
+chandelier then we can review as a platform the heat cap and wire into
+production" — Monday done (above), this is the heat-cap review, run on
+`analysis/fib_atlas_best_config_backtest.mjs` (the SAME script that
+originally froze the currently-shipped `BEST_BY_LADDER.asia`), extended
+with `CHANDELIER=1`/`MAX_CONCURRENT` knobs rather than a second copy.
+
+**Real, pre-existing bug found and fixed before trusting any refit.**
+`fib_atlas_best_config_backtest.mjs` never imported or applied
+`applyCostEfficiencyFilter` — the already-validated, PRODUCTION-LIVE
+filter from 2026-08-30 (§ above) — at all. Caught by comparing this
+script's Asia trade count against `fib_atlas_chandelier_exit_backtest.mjs`'s
+on the identical pair set (30,805 vs 17,399) rather than assuming the
+bigger number was fine. This means the CURRENTLY-SHIPPED
+`BEST_BY_LADDER.asia` (heatCap=1%, trigger=-3, mult=0.25) was fit on a
+trade universe production no longer runs. Fixed (import +
+`MIN_COST_RATIO=3`, matching every other Fib Atlas script this
+session) and re-run before anything else in this entry.
+
+**Step 1 — re-fit TODAY's exit (no chandelier) on the corrected
+pipeline, to check the currently-shipped config still holds on its own
+terms.** Asia: same config re-chosen (heatCap=1%, trigger=-3,
+mult=0.25) — the bug didn't change WHICH config wins. But **OOS maxDD
+is worse with the cap than without it**: baseline -4.07% → capped
+**-4.51%** (Sharpe improves 14.96→15.33, trades drop 4724→4012). Same
+shape as the exposure-cap null (§ above) — the drawdown-reduction case
+for TODAY's shipped Asia heat cap does not actually hold up OOS, on
+the corrected pipeline, independent of any chandelier work. Monday
+(which has never had a frozen heat cap) shows the opposite: baseline
+OOS maxDD -3.11% → capped **-2.73%**, a real improvement (Sharpe drops
+11.39→10.47, trades 1654→1389) — heat-cap OOS behavior is not uniform
+across ladders even under the unchanged exit.
+
+**Step 2 — re-fit the SAME grid on the chandelier + stacking pipeline
+(`CHANDELIER=1 MAX_CONCURRENT=2`, each ladder's own frozen mult),
+replicated on BOTH ladders:**
+
+| | IS maxDD, no cap | 1% cap | 2% cap | 3%/5% cap | Chosen | OOS: no cap | OOS: chosen |
+|---|---|---|---|---|---|---|---|
+| Asia | -2.88% | -3.04% (worse) | -3.38% (worse) | -2.88% (no-op) | cap=3% | -3.1% | -3.1% (identical) |
+| Monday | -3.13% | -3.25% (worse) | -3.13% (tie) | -3.13% (no-op) | cap=2% | -1.93% | -1.93% (identical) |
+
+**No tested heat cap improves drawdown on either ladder once
+chandelier+stacking is running.** Tight caps (1%, sometimes 2%) make
+IS maxDD WORSE; looser caps are exact no-ops; whichever the pre-stated
+rule picks, OOS maxDD comes back bit-for-bit IDENTICAL to no cap at
+all, on both ladders independently. The drawdown-throttle trigger
+(-3%) baked into every grid cell also never fires in either ladder's
+series post-chandelier+stacking — the book no longer dips deep enough
+to trip it.
+
+**Read:** the heat cap's original job — capping correlated/pile-up
+risk — now appears to already be happening at the exit/concurrency
+layer itself: the ATR-aware trail cuts real losers' hold time less
+than winners' (leverage-in-disguise check stayed clean throughout),
+and stacking admits genuinely diversifying second positions rather
+than blindly refusing by raw count. A mechanism built to solve a
+problem the new pipeline no longer has isn't a bug to fix — it's
+redundant, and at tight settings actively counter-productive. Replicated
+independently on both ladders, not one lucky slice.
+
+🟢 the cost-efficiency-filter bug fix is real and independently
+valuable (the frozen production heat cap was validated against a
+trade set production doesn't actually run). 🟢 chandelier+stacking's
+own drawdown improvement (§ above) is confirmed to NOT depend on the
+heat cap doing any of the work — it holds with the cap entirely absent.
+🟡 **recommendation, not yet wired**: when moving chandelier+stacking to
+production, do NOT carry `BEST_BY_LADDER.asia`'s heat cap forward
+unchanged — either drop it or loosen it well past the point where it
+binds (e.g. 5%+), since tightening it now costs drawdown it used to
+save. The drawdown throttle can stay as a dormant tail-risk backstop
+(it costs nothing when it never fires) but its own value under this
+pipeline is unconfirmed, not proven.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
