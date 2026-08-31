@@ -4570,17 +4570,85 @@ modest (Sharpe moves by ~0.1-0.4 either direction), unlike the
 cost-ratio finding above which is the one that actually changes the
 "is this ready for capital" answer.
 
-🔴 **Net effect on the ~10-lever OOS-overlap risk**: narrowed further
-(6 of ~10 levers now walk-forward-checked: chandelierMult, concurrency
-mode, cost-efficiency ratio, stop-tighten fraction, plus the earlier
-chandelier-exit-exists-at-all result folded into the chandelierMult
-run), but NOT closed, and the cost-efficiency ratio result is a genuine
-red flag, not a null: the shipped value underperformed a fold-honest
-alternative by a non-trivial OOS Sharpe margin in 2 of 3 folds. Still
-outstanding: pair-selection exclusion set, and the risk/heat-cap-off /
-throttle-off decisions (both already independently re-tested and found
-not to help post-chandelier per the 2026-08-31 heat-cap platform review
-above, so lower priority than the cost-ratio finding).
+🔴 **Net effect on the ~10-lever OOS-overlap risk** (as first read, before
+the correction below): narrowed further but not closed, cost-efficiency
+ratio a genuine red flag.
+
+### CORRECTION: the cost-ratio "red flag" and the stop-frac "≠ shipped" finding were both a selection-metric bug, not real findings (2026-08-31)
+
+Both findings above were reached by picking each fold's "winner" via the
+DAY-POOLED portfolio Sharpe (`statsFor`'s `.sharpe`, from
+`portfolioStats(dailyReturns)`) — the exact metric this session's
+dashboard fixes (2026-08-31, the Sharpe-de-inflation PRs) exist to warn
+is a different, easily-inflated basis from per-trade edge. Re-ran both
+levers as a pooled-OOS head-to-head (`analysis/fib_atlas_cost_ratio_
+pooled_oos.mjs`, `fib_atlas_stopfrac_pooled_oos.mjs` — every candidate
+value run on ALL 3 folds' own test-only windows, pooled into one
+~60%-of-history OOS track record, checked on BOTH the day-pooled basis
+AND the per-trade basis via `summarizeTrades`, same brick as the
+dashboard's per-trade card) before trusting either conclusion.
+
+**Cost-efficiency ratio — the two bases give OPPOSITE answers, and
+per-trade is the one that matters:**
+
+| Ratio | Trades | Day-pooled Sharpe | Per-trade PF | Per-trade Sharpe (raw) |
+|---|---|---|---|---|
+| 1 (no filter) | 16,041 | **20.55** | 2.77 | 0.455 |
+| 1.5 | 14,492 | 20.09 | 2.84 | 0.468 |
+| 2 | 13,103 | 19.38 | 2.86 | 0.471 |
+| 2.5 | 11,787 | 18.59 | 2.91 | 0.478 |
+| **3 (shipped)** | 10,405 | 18.20 | **2.96** | **0.488** |
+
+Day-pooled Sharpe falls monotonically as the filter tightens; per-trade
+PF and raw Sharpe RISE monotonically, same direction as the original
+single-split study's premise (flat cost eats small-distance wins
+disproportionately) and the SAME direction all the way to ratio=3.
+Mechanism: cost-ratio changes trade COUNT (fewer, choosier trades at
+higher ratios) — dropping the filter adds ~5,600 more, genuinely
+thinner-edge trades, which smooths the daily return series and inflates
+the day-pooled number even though each individual trade got worse, not
+better. 🟢 **ratio=3 is the best of the values tested on the metric that
+actually reflects each trade's own quality — the "NOT stable" verdict
+above is retracted.** Not run past ratio=3 in this pooled form yet (the
+original per-fold walk-forward's fit tables showed day-pooled Sharpe
+falling sharply above ratio=4 from trade count alone; whether per-trade
+edge keeps climbing past 3 is untested and would be a legitimate
+follow-up, not a red flag).
+
+**Stop-tighten fraction — no reversal, both bases roughly agree, shipped
+value holds up:**
+
+| Fraction | Day-pooled Sharpe | Per-trade PF | Per-trade Sharpe (raw) | Win rate |
+|---|---|---|---|---|
+| 1.0 (off) | 17.89 | 2.76 | 0.461 | 73.1% |
+| **0.9 (shipped)** | 18.20 | **2.956** | **0.488** | 72.3% |
+| 0.75 | 18.27 | 2.960 | 0.484 | 70.7% |
+| 0.6 | **18.34** | 2.91 | 0.469 | 68.0% |
+| 0.5 | 18.21 | 2.90 | 0.461 | 66.0% |
+| 0.4 | 17.82 | 2.90 | 0.450 | 63.5% |
+| 0.25 | 16.98 | 2.89 | 0.429 | 58.2% |
+
+Unlike the cost ratio, tightening a fade stop only REPRICES existing
+losing trades (same trade, cut earlier) — trade count is IDENTICAL
+(10,405) at every fraction, so the count-driven smoothing mechanism
+above can't apply, and indeed it doesn't: both bases show the same
+shape, an interior optimum around 0.6-0.9, not a boundary effect. 0.9
+and 0.75 are a near-exact tie on both bases (day-pooled 18.20 vs 18.27;
+per-trade PF 2.956 vs 2.960; raw Sharpe 0.488 vs 0.484 — all well inside
+each other's noise band, nowhere close to the CI widths seen throughout
+this session's walk-forward work). 🟢 **0.9 is not beaten by a
+non-trivial margin on either basis — no change warranted** (Lego
+Principle 5: a change only wins if it clears the incumbent by a real
+OOS margin; 0.75 doesn't).
+
+**Corrected summary**: all 3 of these remaining levers now hold up once
+checked on the metric that actually matters — the earlier "problems"
+were both artifacts of one shared selection-metric bug (day-pooled
+Sharpe used to pick a per-fold "winner"), not real issues with the
+shipped config. Cost-efficiency ratio and stop-tighten fraction are both
+now genuinely re-validated, on top of chandelierMult and concurrency
+mode from the earlier follow-ups. Still outstanding: pair-selection
+exclusion set (not yet walk-forward-checked at all).
 
 ---
 
