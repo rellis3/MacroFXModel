@@ -4822,14 +4822,79 @@ with) the trade-count question the owner originally asked about. Max
 drawdown barely moves either way (-3.99% -> -4.07%), so this isn't a risk
 story — it's a "how much do you trust a leaner, more conservative book
 vs. a denser, possibly-overconfident one" story.
-🟡 **Not yet done**: this is Asia-only (Monday's own window already
-extends ~8 days, a different mechanism, not yet given the same
-treatment); the extended/rebuilt-book approach hasn't been walk-forward
-validated the way the other levers above were (a single before/after
-comparison, not a 3-fold check); and whether the shipped book's
-narrower-but-denser cells or the extended book's leaner-but-broader
-cells is the better long-run choice is an open question, not yet
-resolved — flagging for the owner's own call rather than picking one.
+🟡 Left as of that pass: Asia-only, not walk-forward validated, and the
+denser-vs-leaner-book question unresolved.
+
+#### Follow-up: extended to Monday and Combined (2026-08-31)
+
+Direct owner ask — "need to do Monday and both[combined], both for this
+[let-ride] and also for the backtest pages and portfolio". Quantified
+first: even Monday's existing ~8-day window drops **~3.3-4.4% of
+touches** as unresolved (`analysis/fib_atlas_monday_neither_extend_test.mjs`,
+26-pair sweep) — the same order of magnitude as Asia's own rate, worth
+the same fix. Given +21 more days (mirroring Asia's own 14-day choice,
+scaled up since Monday's window already starts at 8 days), the residual
+unresolved rate drops to **0.00-0.03%** — essentially fully resolved,
+even cleaner than Asia's own 0.1-0.2% residual.
+
+`mondayFibAtlasWalk` gains the SAME `extendResolutionDays` capability
+(additive, off by default, full existing test suite passes — 15/15).
+Monday's concurrency cap needed no separate hours-based parameter the way
+Asia's did: the engine's EXISTING `winEnd` (Tuesday + 8 days) already
+sits almost exactly at next week's own fresh-range boundary, so
+`concurrencyResolveTime` always caps there regardless of extension
+length. `mondayFibAtlasRoutes.js`'s `runOne` mirrors Asia's `runOne`
+exactly (second full walk off the same already-loaded M1, full giveback
++ chandelier trailing parity, `extTrades`/`extSummaryByMargin` stored
+alongside the baseline). Read routes accept `letRide=true` via a shared
+`loadVoteTrades` helper (exported once from `asiaFibAtlasRoutes.js`,
+imported by Monday's routes — no duplicated logic, verified no circular
+import). `asia-fib-atlas-vote-portfolio.html`'s toggle now genuinely
+covers all three modes; `asia-fib-atlas-vote-backtest.html` (the
+single-pair tearsheet, which had NO cost-efficiency or let-ride toggle
+at all before this) got the same checkbox wired into its single-ladder
+AND combined-mode fetch paths.
+
+**Real, live, full-26-pair "Load Best Config" comparison for Monday — a
+genuinely different, more favorable shape than Asia's:**
+
+| | letRide off | letRide on |
+|---|---|---|
+| Trades | 5,457 | 5,251 (only -3.8%) |
+| Portfolio Sharpe (day-pooled) | 12.31 | **13.03** |
+| Max Drawdown (fixed risk) | -3.25% | **-2.65%** (shallower) |
+| Per-trade win rate | 74.8% | 74.7% |
+| Per-trade PF | 2.725 | **2.758** |
+| Per-trade Sharpe (raw) | 0.471 | **0.490** |
+
+🟢 Unlike Asia (where the rebuilt book was far more selective, -65%
+trades), Monday's book barely changes — only -3.8% fewer trades — and
+EVERY metric holds steady or improves slightly, day-pooled and per-trade
+alike. The likely reason: Monday's existing 8-day window already
+captured most of the resolution information before extension, so
+extending further doesn't reshape the book's statistics the way jumping
+from same-day-only to 14 days did for Asia — it just quietly recovers a
+small number of genuinely slow-to-resolve touches without disturbing
+what the book already knew. This is close to a clean, no-real-tradeoff
+win for Monday specifically.
+
+**Combined mode verified working correctly**: each pair's Asia leg and
+Monday leg pick up their OWN ladder's `extTrades` independently
+(confirmed via the live route: combined `letRide=true` shows Asia's leg
+dropping 16,712→5,811 trades and Monday's leg dropping only
+3,458→3,347 — exactly matching each ladder's own standalone numbers).
+Combined day-pooled Sharpe 16.76→14.27, maxDD -4.21%→-3.80% (a small
+improvement, since Monday's slight improvement partially offsets Asia's
+larger trade-count reduction, and Asia dominates combined's volume as
+already established elsewhere in this doc).
+
+🟡 **Still not done**: walk-forward validation of the let-ride mechanism
+itself (a single before/after comparison on both ladders now, not a
+3-fold check like the other levers); and the denser-vs-leaner-book
+question is now split by ladder — Asia's book genuinely trades a lot of
+breadth for selectivity, Monday's doesn't — worth the owner's own read
+on whether that's a reason to ship let-ride for Monday but hold off on
+Asia, rather than an all-or-nothing choice.
 
 ---
 

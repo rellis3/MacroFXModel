@@ -49,9 +49,24 @@ import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionOf, sessionHandoffPhase } from 
 /**
  * mondayFibAtlasWalk(packed, opts) -> { touches, coverage }
  *
- * `opts`: { instrument, assetClass='fx', rearmFracs=[0.3], minLookback=5 }
+ * `opts`: { instrument, assetClass='fx', rearmFracs=[0.3], minLookback=5,
+ *   extendResolutionDays=0 }
+ *
+ * `extendResolutionDays` (2026-08-31, default 0 = off, fully backward
+ * compatible — see asiaFibAtlasWalk's own doc for the full mechanism and
+ * reasoning, mirrored here): a touch unresolved even after the existing
+ * ~8-day window is currently `outcome:'neither'` and dropped entirely
+ * (~3.3-3.5% of touches, analysis/fib_atlas_monday_neither_extend_test.mjs).
+ * Setting this > 0 continues the SAME race logic that many more days
+ * beyond the existing window. Unlike Asia's `nextSessionBuildHrs`, Monday's
+ * concurrency cap doesn't need a separate parameter — the EXISTING `winEnd`
+ * (this Monday's own 8-day window) already sits almost exactly at the next
+ * Monday's own fresh-range boundary, so `concurrencyResolveTime` always
+ * caps there regardless of extension length, letting a still-open extended
+ * trade keep searching for a real resolution without ever blocking next
+ * week's fresh touches.
  */
-export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = [0.3], minLookback = 5 } = {}) {
+export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = [0.3], minLookback = 5, extendResolutionDays = 0 } = {}) {
   const sym = String(instrument).toUpperCase();
   let pip = 1; try { pip = pipSize(instrument) || 1; } catch { /* unknown symbol -> raw price units */ }
 
@@ -79,6 +94,10 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
     const winEnd = mon.epoch + 8 * 86400;
     const bars = extractBars(packed, winStart, winEnd);
     if (bars.length < 10) continue;
+    // Extended-resolution search bars (2026-08-31) -- ONLY the outcome race
+    // below reads this. Fetched once per Monday index (shared by every
+    // side/rung/rearmFrac combination), not per touch.
+    const extBars = extendResolutionDays > 0 ? extractBars(packed, winEnd, winEnd + extendResolutionDays * 86400) : null;
 
     for (const side of SIDES) {
       const isAbove = side === 'above';
@@ -119,6 +138,22 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               if (outer != null && reach(fwd, outer)) { outcome = 'out'; resolveTime = b2.time; break; }
               if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
             }
+            // Extended search (2026-08-31) -- only reached when the
+            // existing-window race above never resolved AND extension is
+            // enabled. Same race logic, continuing into bars beyond winEnd.
+            if (outcome === 'neither' && extBars) {
+              for (const b2 of extBars) {
+                const fwd = isAbove ? b2.high : b2.low, bwd = isAbove ? b2.low : b2.high;
+                if (isAbove ? bwd < deepest : bwd > deepest) deepest = bwd;
+                if (isAbove ? fwd > extreme : fwd < extreme) extreme = fwd;
+                if (outer != null && reach(fwd, outer)) { outcome = 'out'; resolveTime = b2.time; break; }
+                if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
+              }
+            }
+            // Concurrency occupancy caps at the EXISTING winEnd regardless
+            // of extension -- that boundary already sits almost exactly at
+            // next week's fresh-range start, so it's always the right cap.
+            const concurrencyResolveTime = resolveTime != null ? Math.min(resolveTime, winEnd) : null;
             const sgn = isAbove ? 1 : -1;
             const fadePips = (here - deepest) / pip * sgn;
             const runPips = (extreme - here) / pip * sgn;
@@ -144,7 +179,7 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               instrument: sym, assetClass, date: barDate, mondayDate: mon.date,
               side, level, rearmFrac,
               price: +here.toFixed(6), pip,
-              time: bar.time, resolveTime, outcome,
+              time: bar.time, resolveTime, concurrencyResolveTime, outcome,
               minsToResolve: minsToResolve != null ? +minsToResolve.toFixed(0) : null,
               pullbackFrac: pullbackFrac != null ? +pullbackFrac.toFixed(3) : null,
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),

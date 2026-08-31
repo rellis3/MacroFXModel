@@ -12,6 +12,7 @@ import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder } from './mondayFibAtlasEn
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
+import { loadVoteTrades } from './asiaFibAtlasRoutes.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { putJSON, getJSON } from './r2Store.js';
@@ -80,6 +81,21 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const book = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
   if (!book) throw new Error(`${sym}: too few touches to build a book`);
 
+  // "Let-ride" extended-resolution walk (2026-08-31) — Monday's own sibling
+  // of Asia's (js/asiaFibAtlasRoutes.js's runOne, see its own comment for
+  // the full mechanism/reasoning): even Monday's existing ~8-day window
+  // drops ~3.3-3.7% of touches as unresolved (analysis/
+  // fib_atlas_monday_neither_extend_test.mjs), comparable to Asia's own
+  // rate. A second full walk (same already-loaded `packed`, no new M1
+  // fetch) with extension enabled — Monday's `concurrencyResolveTime` caps
+  // at the EXISTING winEnd (not a hours-based param like Asia's, since that
+  // boundary already sits almost exactly at next week's fresh-range start
+  // — see mondayFibAtlasWalk's own doc). Stored ALONGSIDE the baseline
+  // trades (extTrades/extSummaryByMargin below), not a replacement.
+  const EXTEND_RESOLUTION_DAYS = 21;
+  const { touches: extTouches } = mondayFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], extendResolutionDays: EXTEND_RESOLUTION_DAYS });
+  const extBook = buildAsiaFibAtlasBook(extTouches, { rearmFrac: DEFAULT_REARM });
+
   const cost = costForPair(pair, assetClass);
   const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
   const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
@@ -106,11 +122,31 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     chandTrailedPnlPips: chand[i].trailedPnlPips ?? null,
     chandTrailedResolveTime: chand[i].trailedResolveTime ?? null,
   }));
+
+  // Extended-resolution ("let-ride") trade list — SAME build/trail steps
+  // as the baseline above, off extTouches/extBook. Kept as its own full
+  // pipeline (not a reprice of the baseline trades), same reasoning as
+  // Asia's own runOne.
+  let extSummaryByMargin = null, extTradesOut = null;
+  try {
+    const extWf1 = runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
+    extSummaryByMargin = { 1: extWf1?.overall ?? null, 2: runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+    const extTrailed = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
+    const extChand = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'], trailMode: 'chandelier', chandelierMult: MONDAY_CHANDELIER_MULT, chandelierPeriod: CHANDELIER_PERIOD });
+    extTradesOut = extTrailed.map((t, i) => ({
+      ...t,
+      chandTrailedPnlPct: extChand[i].trailedPnlPct ?? null,
+      chandTrailedPnlPips: extChand[i].trailedPnlPips ?? null,
+      chandTrailedResolveTime: extChand[i].trailedResolveTime ?? null,
+    }));
+  } catch (e) { onLog(`${sym}: extended (let-ride) vote-trades build failed (${e.message}) — non-fatal, baseline still saved`); }
+
   const voteResult = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
     cost, splitDate: book.splitDate,
     trades: trailedTrades,
     summaryByMargin,
+    extTrades: extTradesOut, extSummaryByMargin, extendResolutionDays: EXTEND_RESOLUTION_DAYS,
   };
   await putJSON(`${PREFIX}/${pair}-votetrades.json`, voteResult);
 
@@ -287,7 +323,8 @@ export function mountMondayFibAtlasRoutes(app, express) {
   app.get('/api/monday-fib-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
-      const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`);
+      const letRide = req.query.letRide === 'true';
+      const stored = await loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`, letRide);
       if (!stored) return res.status(404).json({ ok: false, error: `no Monday vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
@@ -299,8 +336,10 @@ export function mountMondayFibAtlasRoutes(app, express) {
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
       const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
       const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
+      const summaryByMargin = letRide ? (stored.extSummaryByMargin ?? stored.summaryByMargin) : stored.summaryByMargin;
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
-                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
+                 splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, letRide,
+                 summary: summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
@@ -330,10 +369,10 @@ export function mountMondayFibAtlasRoutes(app, express) {
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
-        loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
+        loadPairVoteTrades: async pair => loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`, req.query.letRide === 'true'),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
-      res.json({ ok: true, ...result });
+      res.json({ ok: true, letRide: req.query.letRide === 'true', ...result });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
