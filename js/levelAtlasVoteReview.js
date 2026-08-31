@@ -25,6 +25,7 @@ import { summarizeTrades } from './metricsCore.js';
 import { simulateExitVariants, bucketM1IntoSessions } from './forecastAnalyser.js';
 import { portfolioStats } from './backtestStats.js';
 import { bisect } from './barUtils.js';
+import { trueRange } from './indicatorCore.js';
 
 /**
  * The vote-margin decision for one touch: how many of ITS OWN held
@@ -429,12 +430,57 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
  * through here (not re-derived from the base `pnlPct`) so the trailed
  * figure is charged cost exactly once, the same as the base figure.
  *
- *   applyTrailingContinuation(trades, packed, { givebackFrac, cost, decisions }) ->
+ * `trailMode` (2026-08-31, default `'giveback'` — fully backward-compatible,
+ * every existing caller gets identical numbers): the ORIGINAL trail gives
+ * back a fixed FRACTION of the excursion already made beyond the target,
+ * which is why it was found to exit almost immediately on any pullback
+ * (median extension ~0, max ~2min on the busiest pair) — it can't tell a
+ * genuine runner's normal noise from a real reversal because it has no
+ * sense of this pair's typical bar-to-bar range. `trailMode:'chandelier'`
+ * instead trails `chandelierMult` × a rolling ATR (Wilder EMA smoothing,
+ * `chandelierPeriod` bars, seeded at bar 0's own H-L — the classic
+ * chandelier-exit construction) behind the running extreme, so the stop
+ * only fires on a pullback that's large relative to this pair's OWN recent
+ * volatility, not a fixed slice of the move so far. Built to answer the
+ * owner's own question: does a wider, volatility-aware trail actually let
+ * winners run long enough to catch real multi-hour continuations (worth
+ * testing against a genuine "catch runners" hold time), where the tight
+ * giveback trail structurally can't. Reuses `trueRange` (indicatorCore.js)
+ * for the true-range primitive; the Wilder-EMA smoothing loop itself is
+ * re-expressed here (see `rollingATR` below) against this file's packed
+ * PARALLEL-ARRAY format rather than `atrWilder`'s bar-OBJECT array, the
+ * same array-vs-object split `barUtils.js` already establishes as this
+ * codebase's convention for the M1 hot path — same math, different, already-
+ * standard input shape, not a second copy of the recurrence to drift from.
+ * The floor (never worse than the original fixed exit) and the day-boundary
+ * forced close are unchanged in both modes.
+ *
+ *   applyTrailingContinuation(trades, packed, { givebackFrac, cost, decisions, trailMode, chandelierMult, chandelierPeriod }) ->
  *     trades (same shape, eligible winning rows gain trailedPnlPct/trailedPnlPips/trailedResolveTime)
  */
-export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0, decisions = ['follow'] } = {}) {
+// Packed-array counterpart of indicatorCore.js's atrWilder — identical
+// Wilder-EMA recurrence (k = 1/n, seeded at bar 0's own H-L), reusing the
+// SAME `trueRange` primitive, just walking `packed`'s parallel highs/lows/
+// closes arrays instead of an array of {high,low,close} bar objects (this
+// file's M1 hot path already only ever sees the packed form).
+function rollingATR(packed, n) {
+  const { highs, lows, closes } = packed;
+  const L = highs.length;
+  const out = new Float64Array(L);
+  if (L < 1) return out;
+  out[0] = highs[0] - lows[0];
+  const k = 1 / n;
+  for (let i = 1; i < L; i++) {
+    const tr = trueRange(highs[i], lows[i], closes[i - 1]);
+    out[i] = (Number.isFinite(tr) && tr > 0) ? k * tr + (1 - k) * out[i - 1] : out[i - 1];
+  }
+  return out;
+}
+
+export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0, decisions = ['follow'], trailMode = 'giveback', chandelierMult = 3, chandelierPeriod = 60 } = {}) {
   if (!trades?.length || !packed?.times?.length) return trades ?? [];
   const { times, highs, lows, closes } = packed;
+  const atr = trailMode === 'chandelier' ? rollingATR(packed, chandelierPeriod) : null;
   return trades.map(t => {
     if (!decisions.includes(t.decision) || !t.win) return t;
     const awaySgn = t.side === 'above' ? 1 : -1; // "away from range" direction implied by which side the rung is on
@@ -448,7 +494,9 @@ export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02,
       const fwd = sgn > 0 ? highs[j] : lows[j];
       const bwd = sgn > 0 ? lows[j] : highs[j];
       if (sgn > 0 ? fwd > runExtreme : fwd < runExtreme) runExtreme = fwd;
-      const trailStop = runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
+      const trailStop = trailMode === 'chandelier'
+        ? runExtreme - sgn * chandelierMult * atr[j]
+        : runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
       if (sgn > 0 ? bwd <= trailStop : bwd >= trailStop) { exitTime = times[j]; exitPrice = trailStop; break; }
       exitTime = times[j]; exitPrice = closes[j]; // forced mark-to-close at day-end if never stopped out
     }
