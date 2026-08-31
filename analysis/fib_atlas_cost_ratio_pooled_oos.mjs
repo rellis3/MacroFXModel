@@ -21,7 +21,7 @@ import {
   applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation,
 } from '../js/levelAtlasVoteReview.js';
 import { portfolioStats } from '../js/backtestStats.js';
-import { sharpeStdError } from '../js/metricsCore.js';
+import { sharpeStdError, summarizeTrades } from '../js/metricsCore.js';
 import { RANGE_FIB_INSTRUMENTS } from '../js/rangeFibEngine.js';
 import { withNonCompoundedDD } from '../js/fibAtlasVotePortfolio.js';
 
@@ -96,6 +96,29 @@ function mergeFinal(...finals) {
   return merged;
 }
 
+// Per-trade check (2026-08-31) -- the day-pooled portfolio Sharpe above can
+// improve just from adding MORE trades that smooth the daily sum, even if
+// each individual trade's own edge is worse or unchanged (the exact
+// day-pooled-vs-per-trade gap this session's dashboard fixes exist to
+// separate out). Settle whether dropping the filter is a REAL per-trade
+// edge improvement or a portfolio-smoothing illusion before recommending
+// anything -- same summarizeTrades brick as the dashboard's per-trade card.
+function perTradeStatsFor(final) {
+  const all = Object.values(final).flat();
+  if (!all.length) return null;
+  const sorted = all.slice().sort((a, b) => a.resolveTime - b.resolveTime);
+  const base = summarizeTrades(sorted.map(t => t.pnlPct), sorted.map(t => t.date));
+  const rawTradeSharpe = base.tradesPerYr > 0 ? base.sharpe / Math.sqrt(base.tradesPerYr) : base.sharpe;
+  return { trades: all.length, winRate: base.winRate, profitFactor: base.profitFactor, rawTradeSharpe: +rawTradeSharpe.toFixed(3) };
+}
+function printPerTradeRow(label, s) {
+  if (!s) { console.log(`${label.padEnd(22)}  no trades`); return; }
+  console.log([label.padEnd(22), String(s.trades).padStart(6), (s.winRate + '%').padStart(8), String(s.profitFactor).padStart(6), String(s.rawTradeSharpe).padStart(10)].join('  '));
+}
+function perTradeHeader() {
+  console.log(['config'.padEnd(22), 'trades'.padStart(6), 'winRate'.padStart(8), 'PF'.padStart(6), 'rawSharpe'.padStart(10)].join('  '));
+}
+
 function ciStr(s) { return s.sharpeCI95 ? `[${s.sharpeCI95[0]}, ${s.sharpeCI95[1]}]` : '—'; }
 function printRow(label, s) {
   console.log([label.padEnd(22), String(s.trades).padStart(6), String(s.sharpe).padStart(7), ciStr(s).padStart(14),
@@ -122,7 +145,7 @@ async function main() {
   ];
 
   header();
-  const pooledPerRatio = {};
+  const pooledPerRatio = {}, pooledFinalPerRatio = {};
   for (const ratio of RATIOS) {
     const perFoldFinals = folds.map(fold => {
       const testFilter = d => d >= fold.testStart && d < fold.testEnd;
@@ -130,17 +153,28 @@ async function main() {
     });
     perFoldFinals.forEach((final, i) => printRow(`${folds[i].name}: ratio=${ratio}`, statsFromFinal(final)));
     const pooled = mergeFinal(...perFoldFinals);
+    pooledFinalPerRatio[ratio] = pooled;
     pooledPerRatio[ratio] = statsFromFinal(pooled);
     printRow(`POOLED: ratio=${ratio}`, pooledPerRatio[ratio]);
     console.log();
   }
 
-  console.log("════ Pooled-OOS summary (all 3 folds' test windows combined, ~60% of full history, never used to choose anything) ════");
+  console.log("════ Pooled-OOS summary, PORTFOLIO (day-pooled) basis (all 3 folds' test windows combined, ~60% of full history, never used to choose anything) ════");
   header();
   for (const ratio of RATIOS) printRow(`ratio=${ratio}`, pooledPerRatio[ratio]);
   const best = RATIOS.map(r => ({ r, ...pooledPerRatio[r] })).sort((a, b) => b.sharpe - a.sharpe)[0];
   console.log(`\nBest pooled-OOS Sharpe: ratio=${best.r} (${best.sharpe})`);
   console.log(`Shipped ratio=3 pooled-OOS Sharpe: ${pooledPerRatio[3].sharpe}  vs  ratio=1 (no filter): ${pooledPerRatio[1].sharpe}`);
+
+  // Settle whether the day-pooled win above is a REAL per-trade edge
+  // improvement or a portfolio-smoothing illusion (more, even lower-edge,
+  // trades can raise the day-pooled Sharpe just by smoothing the daily
+  // sum) -- exactly the day-pooled-vs-per-trade gap this session's
+  // dashboard fixes exist to separate out. Same pooled OOS trade sets,
+  // same summarizeTrades brick, PER-TRADE basis this time.
+  console.log("\n════ Same pooled-OOS trades, PER-TRADE basis (individual wins/losses, Sharpe NOT annualized) ════");
+  perTradeHeader();
+  for (const ratio of RATIOS) printPerTradeRow(`ratio=${ratio}`, perTradeStatsFor(pooledFinalPerRatio[ratio]));
 }
 
 main();
