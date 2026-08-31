@@ -17,13 +17,36 @@
 // baseline throughout, since that lever already cleared its own bar
 // independently -- this script isn't re-testing it, just building on it.
 //
+// CHANDELIER + MAX_CONCURRENT (2026-08-31) -- "review the heat cap as a
+// platform" follow-up to the chandelier-exit study
+// (analysis/fib_atlas_chandelier_exit_backtest.mjs, LEGO_MODULES.md): that
+// study found a real OOS drawdown improvement on BOTH ladders and, further,
+// that STACKING (maxConcurrent=2, a second same-pair trade may open while a
+// chandelier-held winner is still running) improves on that again -- but it
+// reused the EXISTING heat cap, which was fit against maxConcurrent=1's
+// occupancy pattern, not re-tuned for stacking's genuinely different one.
+// CHANDELIER=1 (auto-picks each ladder's own frozen chandelierMult) or an
+// explicit CHANDELIER_MULT, plus MAX_CONCURRENT, let this SAME heat-cap/
+// throttle grid search + pre-stated rule run again on the new pipeline,
+// rather than a second copy of this script drifting from it. Also switches
+// `applyFadeStopFraction` to `preserveSizing:true` (the SL-tightening
+// leverage-in-disguise fix wired into production after this script's
+// original baseline numbers were frozen) so a fresh baseline run now
+// matches current production exactly -- a deliberate, documented change,
+// not a silent one; re-running LADDER=asia/monday with CHANDELIER unset
+// reproduces the ORIGINAL frozen BEST_BY_LADDER shape modulo that one fix.
+//
 //   LADDER=asia     node analysis/fib_atlas_best_config_backtest.mjs
 //   LADDER=monday   node analysis/fib_atlas_best_config_backtest.mjs
 //   LADDER=combined node analysis/fib_atlas_best_config_backtest.mjs
+//   LADDER=asia   CHANDELIER=1 MAX_CONCURRENT=2 node analysis/fib_atlas_best_config_backtest.mjs
+//   LADDER=monday CHANDELIER=1 MAX_CONCURRENT=2 node analysis/fib_atlas_best_config_backtest.mjs
 import { getJSON } from '../js/r2Store.js';
+import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
 import {
   applyConcurrencyCap, riskAdjustTrades, buildPortfolioDailySeries,
   applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
+  applyTrailingContinuation,
 } from '../js/levelAtlasVoteReview.js';
 import { portfolioStats } from '../js/backtestStats.js';
 import { sharpeStdError } from '../js/metricsCore.js';
@@ -41,7 +64,8 @@ import { RANGE_FIB_INSTRUMENTS } from '../js/rangeFibEngine.js';
 import { withNonCompoundedDD } from '../js/fibAtlasVotePortfolio.js';
 
 const LADDER = (process.env.LADDER || 'asia').toLowerCase(); // 'asia' | 'monday' | 'combined'
-const MIN_MARGIN = Number(process.env.MIN_MARGIN || 2), MAX_CONCURRENT = 1, RISK_PCT = 0.5;
+const MIN_MARGIN = Number(process.env.MIN_MARGIN || 2), RISK_PCT = 0.5;
+const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT || 1);
 const STOP_FRAC = 0.9; // already-validated fade-stop tightening, applied as a fixed baseline
 const RESTORE_DD = -2;
 const TRIGGERS = [-3, -5, -8, -10, -12, -15];
@@ -49,6 +73,19 @@ const MULTS = [0.25, 0.5, 0.75];
 const HEAT_CAPS = [1, 2, 3, 5];
 const LADDER_PREFIX = { asia: 'asia-fib-atlas', monday: 'monday-fib-atlas' };
 const LADDER_LABEL = { asia: 'Asia', monday: 'Monday' };
+
+// Frozen chandelierMult per ladder (analysis/fib_atlas_chandelier_exit_backtest.mjs,
+// LEGO_MODULES.md's chandelier-exit entry). CHANDELIER=1 auto-selects it per
+// ladder; CHANDELIER_MULT overrides explicitly. null (default) = today's
+// production exit, unchanged.
+const CHANDELIER_MULT_BY_LADDER = { asia: 3, monday: 1.5 };
+const CHANDELIER_PERIOD = Number(process.env.CHANDELIER_PERIOD || 60);
+const CHANDELIER_ON = process.env.CHANDELIER === '1' || process.env.CHANDELIER === 'true';
+const CHANDELIER_MULT_OVERRIDE = process.env.CHANDELIER_MULT ? Number(process.env.CHANDELIER_MULT) : null;
+function chandelierMultFor(ladder) {
+  if (CHANDELIER_MULT_OVERRIDE != null) return CHANDELIER_MULT_OVERRIDE;
+  return CHANDELIER_ON ? CHANDELIER_MULT_BY_LADDER[ladder] : null;
+}
 
 // OOS-validated "recommended" exclusion sets from
 // fib_atlas_oos_validate_pair_selection.mjs (MIN_KEPT_FRAC=0.60). Monday's
@@ -63,16 +100,29 @@ function excludeSetFor(ladder) {
   return ladder === 'monday' ? MONDAY_EXCLUDE : ASIA_EXCLUDE; // combined mode reuses Asia's (the dominant risk driver)
 }
 
-async function loadTrades(prefix, pair) {
+async function loadTrades(prefix, pair, ladder) {
   const stored = await getJSON(`${prefix}/${pair}-votetrades.json`);
   if (!stored) return null;
   const filtered = stored.trades.filter(t => t.margin >= MIN_MARGIN); // BOTH decisions -- the real, full book
-  const capped = applyConcurrencyCap(filtered, { maxConcurrent: MAX_CONCURRENT });
+
+  const mult = chandelierMultFor(ladder);
+  let repriced = filtered;
+  if (mult != null && filtered.some(t => (t.decision === 'fade' || t.decision === 'follow') && t.win)) {
+    console.log(`  ... ${pair}: loading M1 for chandelier re-walk (mult=${mult})`);
+    const bars = await loadM1ForPair(pair);
+    repriced = applyTrailingContinuation(filtered, bars, { trailMode: 'chandelier', chandelierMult: mult, chandelierPeriod: CHANDELIER_PERIOD, decisions: ['fade', 'follow'] }).map(t =>
+      t.trailedPnlPct == null ? t : { ...t, resolveTime: t.trailedResolveTime, pnlPips: t.trailedPnlPips, pnlPct: t.trailedPnlPct });
+  }
+
+  const capped = applyConcurrencyCap(repriced, { maxConcurrent: MAX_CONCURRENT });
   if (!capped?.kept?.length) return null;
   // Order matches js/fibAtlasVotePortfolio.js's own established convention:
   // fade-stop-tightening AFTER concurrency cap, BEFORE risk-adjustment (the
   // repriced stop must be in place before sizing is computed off it).
-  const tightened = applyFadeStopFraction(capped.kept, STOP_FRAC);
+  // preserveSizing:true matches CURRENT production (wired in after this
+  // script's original baseline numbers were frozen) -- see this file's
+  // header note.
+  const tightened = applyFadeStopFraction(capped.kept, STOP_FRAC, 0, { preserveSizing: true });
   return riskAdjustTrades(tightened, RISK_PCT).map(t => ({ ...t }));
 }
 
@@ -83,7 +133,7 @@ async function buildByPair() {
       const exclude = excludeSetFor(ladder);
       for (const pair of RANGE_FIB_INSTRUMENTS) {
         if (exclude.has(pair)) continue;
-        const trades = await loadTrades(LADDER_PREFIX[ladder], pair);
+        const trades = await loadTrades(LADDER_PREFIX[ladder], pair, ladder);
         if (!trades) continue;
         const sym = `${pair.toUpperCase()} (${LADDER_LABEL[ladder]})`;
         byPair[sym] = trades.map(t => ({ ...t, pair: sym }));
@@ -95,7 +145,7 @@ async function buildByPair() {
     if (!prefix) throw new Error(`LADDER must be asia|monday|combined, got "${LADDER}"`);
     for (const pair of RANGE_FIB_INSTRUMENTS) {
       if (exclude.has(pair)) continue;
-      const trades = await loadTrades(prefix, pair);
+      const trades = await loadTrades(prefix, pair, LADDER);
       if (!trades) continue;
       const sym = pair.toUpperCase();
       byPair[sym] = trades.map(t => ({ ...t, pair: sym }));
@@ -142,7 +192,7 @@ function header() {
 }
 
 async function main() {
-  console.log(`Fib Atlas full-portfolio best-config validation — ladder=${LADDER}  minMargin=${MIN_MARGIN}  fadeStopFrac=${STOP_FRAC}\n`);
+  console.log(`Fib Atlas full-portfolio best-config validation — ladder=${LADDER}  minMargin=${MIN_MARGIN}  fadeStopFrac=${STOP_FRAC}  maxConcurrent=${MAX_CONCURRENT}  chandelier=${CHANDELIER_ON || CHANDELIER_MULT_OVERRIDE != null ? `on(period=${CHANDELIER_PERIOD})` : 'off'}\n`);
   const byPair = await buildByPair();
   const allSyms = Object.keys(byPair);
   const allTrades = Object.values(byPair).flat().sort((a, b) => a.time - b.time);
