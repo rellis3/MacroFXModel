@@ -43,7 +43,7 @@ async function runLadder(pair, ladder, packed, assetClass, cost) {
   const book = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
   if (!book) return { ok: false, reason: 'too few touches to build a book', coverage, touchCount: touches.length };
   const wf = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: MIN_MARGIN });
-  return { ok: true, coverage, touchCount: touches.length, splitDate: book.splitDate, summary: wf?.overall ?? null, oosTrades: wf?.tradesUsed ?? 0 };
+  return { ok: true, coverage, touchCount: touches.length, splitDate: book.splitDate, summary: wf?.overall ?? null, oosTrades: wf?.tradesUsed ?? 0, costStress: wf?.costStress ?? null };
 }
 
 async function main() {
@@ -69,9 +69,11 @@ async function main() {
 
     const asia = await runLadder(pair, 'asia', packed, assetClass, cost);
     console.log(`  ASIA:   ${asia.ok ? `${asia.touchCount} touches, split ${asia.splitDate}, OOS: ${fmtSummary(asia.summary)}` : asia.reason}`);
+    if (asia.ok && asia.costStress) console.log(`    cost-stress: 1x sharpe=${asia.costStress['1x']?.sharpe} | 2x sharpe=${asia.costStress['2x']?.sharpe} PF=${asia.costStress['2x']?.profitFactor} | 3x sharpe=${asia.costStress['3x']?.sharpe} PF=${asia.costStress['3x']?.profitFactor}`);
 
     const monday = await runLadder(pair, 'monday', packed, assetClass, cost);
     console.log(`  MONDAY: ${monday.ok ? `${monday.touchCount} touches, split ${monday.splitDate}, OOS: ${fmtSummary(monday.summary)}` : monday.reason}`);
+    if (monday.ok && monday.costStress) console.log(`    cost-stress: 1x sharpe=${monday.costStress['1x']?.sharpe} | 2x sharpe=${monday.costStress['2x']?.sharpe} PF=${monday.costStress['2x']?.profitFactor} | 3x sharpe=${monday.costStress['3x']?.sharpe} PF=${monday.costStress['3x']?.profitFactor}`);
 
     results[pair] = { asia, monday };
   }
