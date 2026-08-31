@@ -59,6 +59,8 @@ function isAllowedKVKey(key) {
     'oi_bot_state', 'oi_hold_calibration',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
     'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
+    'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_status',
+    'fib_atlas_bot_plan', 'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
@@ -985,6 +987,8 @@ export default {
             'oi_bot_state', 'oi_hold_calibration',
             'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_plan',
             'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
+            'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_plan',
+            'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
             // These were allowed through isAllowedKVKey and marked persistent in
@@ -1027,7 +1031,7 @@ export default {
           // which merges via its own /api/bot/status endpoint below). A bot left
           // out still shows live positions but loses every closed trade the
           // moment it exits — silently, since nothing errors.
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -2319,7 +2323,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const to   = url.searchParams.get('to')   || from;
         // Keep in step with STATUS_KEYS in /api/kv/set — a key written but not
         // read back here is history that exists in KV and never reaches the page.
-        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status'];
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status'];
         const dates = [];
         const startD = new Date(from + 'T00:00:00Z');
         const endD   = new Date(to   + 'T00:00:00Z');

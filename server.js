@@ -71,8 +71,8 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
-import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob } from './js/asiaFibAtlasRoutes.js';
-import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob } from './js/mondayFibAtlasRoutes.js';
+import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
@@ -1610,6 +1610,11 @@ const TG_SENDERS = {
   // access to `state.cfg`. Same master-switch semantics regardless: missing/
   // unset reads as ON, only an explicit `false` here turns it off.
   voteAtlas:         'Vote Atlas — entered/skipped/rejected + SL/TP close alerts',
+  // fib_atlas_bot (the Python bot) — same "separate process, checks
+  // ai_alert_cfg directly" situation as voteAtlas above, NOT enforced by
+  // this file's own tgOn(). Same master-switch semantics: missing/unset
+  // reads as ON, only an explicit `false` here turns it off.
+  fibAtlas:          'Fib Atlas bot — entered/skipped/rejected + SL/TP close alerts',
 };
 
 function tgOn(sender) {
@@ -14124,6 +14129,99 @@ if (process.env.VOLATILITY_V2_PLAN_REFRESH !== '0') {
   console.log('[volatility-v2] plan refresh disabled (VOLATILITY_V2_PLAN_REFRESH=0)');
 }
 
+// ── fib_atlas_bot (Asia + Monday range-extension vote) plan producer ────────
+// Same "server computes + freezes the plan to KV, bot only polls + executes"
+// contract as `_refreshVolatilityV2Plan` above — `asiaLivePlanZones`/
+// `mondayLivePlanZones` (js/asiaFibAtlasRoutes.js, js/mondayFibAtlasRoutes.js)
+// already run the EXACT validated voteDecision/barrier-pips math the
+// backtest/portfolio pages use, so this producer never re-derives a signal,
+// only assembles what those two functions already computed into one plan.
+//
+// One constituent key per (pair, ladder) — `${pair}|asia` / `${pair}|monday`
+// — same convention `/api/asia-fib-atlas/vote-portfolio-combined` already
+// uses for its own per-(pair,ladder) constituents, so a pair can carry an
+// Asia position AND a Monday position at once (the validated Combined-mode
+// behavior), and the bot's own per-symbol dedupe_tag (asiaLivePlanZones'
+// `a_`/mondayLivePlanZones' `m_` prefix) keeps the two ladders from
+// colliding on one instrument.
+//
+// The 16-pair "recommended" universe mirrors asia-fib-atlas-vote-
+// portfolio.html's own ASIA_RECOMMENDED_EXCLUDE — Combined mode's own OOS
+// study (that file's `recommendedExcludeFor` comment) reuses Asia's
+// exclusion set for BOTH ladders since Asia is the dominant risk driver;
+// this producer makes the same choice for the SAME reason. Hand-kept in
+// sync with that file (both are small, frozen, OOS-validated lists).
+const FIB_ATLAS_ALL_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
+  'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
+  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
+const FIB_ATLAS_RECOMMENDED_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy']);
+const FIB_ATLAS_DEFAULT_PAIRS = FIB_ATLAS_ALL_PAIRS.filter(p => !FIB_ATLAS_RECOMMENDED_EXCLUDE.has(p));
+
+const FIB_ATLAS_PLAN_CFG_DEFAULTS = { enabled_pairs: [] };   // [] -> FIB_ATLAS_DEFAULT_PAIRS
+
+async function _refreshFibAtlasPlan() {
+  try {
+    const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+    const cfg = { ...FIB_ATLAS_PLAN_CFG_DEFAULTS, ...(cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {}) };
+    const enabledPairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length
+      ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
+      : FIB_ATLAS_DEFAULT_PAIRS;
+
+    // Same cold-start throttle rationale as _refreshVolatilityV2Plan above —
+    // both ladders' own live caches (asiaFibAtlasRoutes.js's/
+    // mondayFibAtlasRoutes.js's `liveCache`/`liveWarming`) already cap
+    // concurrent cold M1 loads per-file; this producer additionally caps how
+    // many (pair, ladder) constituents it asks for on one tick so a fully-
+    // cold cache after a redeploy doesn't fan out 32 concurrent multi-year
+    // M1 loads (16 pairs × 2 ladders) on the very first tick.
+    const MAX_CONCURRENT_COLDSTART = 3;
+    let coldstarting = 0;
+
+    const instruments = {};
+    const skipped = {};
+    for (const pair of enabledPairs) {
+      for (const [ladder, planFn] of [['asia', asiaLivePlanZones], ['monday', mondayLivePlanZones]]) {
+        const key = `${pair}|${ladder}`;
+        try {
+          const plan = await planFn(pair);
+          if (plan.warming) {
+            coldstarting++;
+            skipped[key] = coldstarting > MAX_CONCURRENT_COLDSTART * 2
+              ? 'cold-start throttled — picked up on a later tick' : 'warming (cold cache)';
+            continue;
+          }
+          if (plan.skipped) { skipped[key] = plan.skipped; continue; }
+          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount };
+        } catch (e) {
+          skipped[key] = `error: ${e.message}`;
+          console.error(`[fib-atlas-bot] ${key} failed:`, e.message);
+        }
+      }
+    }
+
+    // Never publish an empty plan over a good one — same discipline
+    // _refreshVolatilityV2Plan uses.
+    if (!Object.keys(instruments).length) {
+      console.error(`[fib-atlas-bot] plan refresh produced 0 constituents (${Object.keys(skipped).length} skipped) — NOT publishing, keeping last good plan`);
+      return 0;
+    }
+
+    await kv.put('fib_atlas_bot_plan', JSON.stringify({
+      data: { strategy: 'fib-atlas-vote', generatedAt: new Date().toISOString(), instruments, skipped },
+      timestamp: Date.now(),
+    }));
+    const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
+    console.log(`[fib-atlas-bot] plan refreshed · ${Object.keys(instruments).length} constituents · ${total} zones`);
+    return Object.keys(instruments).length;
+  } catch (e) { console.error('[fib-atlas-bot] plan refresh failed:', e.message); return 0; }
+}
+if (process.env.FIB_ATLAS_PLAN_REFRESH !== '0') {
+  setInterval(_refreshFibAtlasPlan, 45_000);
+  setTimeout(_refreshFibAtlasPlan, 75_000);   // staggered a little after volatility-v2's own 60s warm-up so both producers' cold-starts don't collide on the same tick
+} else {
+  console.log('[fib-atlas-bot] plan refresh disabled (FIB_ATLAS_PLAN_REFRESH=0)');
+}
+
 // Trade-history rollup — structural copy of `_oiAccumulateTradeLog` above.
 async function _volatilityV2AccumulateTradeLog() {
   try {
@@ -14200,6 +14298,22 @@ app.post('/api/volatility-v2/telegram-test', async (_req, res) => {
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Fib Atlas bot's own copy of the telegram-test route above — reads
+// whatever tg_token/tg_chat_id are CURRENTLY saved in fib_atlas_bot_config
+// (not a separate form submit), same convention as every other bot's test
+// button on bot-config.html.
+app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

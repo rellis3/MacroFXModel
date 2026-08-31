@@ -488,6 +488,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
     <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
     <button class="tab-btn" data-tab="volatilityv2" onclick="switchTab('volatilityv2')" style="color:#38bdf8" id="vb2TabBtn">🗳 Vote Atlas</button>
+    <button class="tab-btn" data-tab="fibatlas" onclick="switchTab('fibatlas')" style="color:#a78bfa" id="faTabBtn">🌐 Fib Atlas</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
     <button class="tab-btn" data-tab="oibot" onclick="switchTab('oibot')" style="color:#4dd0e1" id="oiTabBtn">🧲 OI Gamma</button>
     <button class="tab-btn" data-tab="yieldspread" onclick="switchTab('yieldspread')" style="color:#f472b6" id="ysTabBtn">🧮 Yield-Spread</button>
@@ -4100,6 +4101,261 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
 
   </div><!-- /tab-volatilityv2 -->
 
+  <!-- ══════════════════════════════════════════════════════ FIB ATLAS TAB -->
+  <div class="tab-pane" id="tab-fibatlas">
+
+    <div class="bot-banner" style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.28)">
+      <div class="bot-banner-icon">🌐</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#a78bfa">Fib Atlas Bot — Asia + Monday range-extension vote</div>
+        <div class="bot-banner-sub">Two independent ladders (Asia session range, Monday full-week range), each pair can carry BOTH at once · fade/follow vote at each rung's touch, priced against the real fib-extension distances · chandelier ATR trailing stop manages the exit live · fib_atlas_bot/fib_atlas_bot.py</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="asia-fib-atlas-vote-portfolio.html" target="_blank" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #a78bfa;border-radius:7px;color:#a78bfa;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtest</button>
+        </a>
+        <button style="background:#a78bfa;border:none;border-radius:7px;color:#1a1033;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveFaConfig();saveFaCreds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- How it decides -->
+    <details class="card" style="padding:0;margin-bottom:14px">
+      <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#a78bfa;list-style:none">
+        ▸ How the bot decides &amp; what each status means <span style="color:var(--text3);font-weight:400">(read this if the table looks confusing)</span>
+      </summary>
+      <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--text2)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The day, start to finish</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li>The <b>server</b> refreshes a plan (<code>fib_atlas_bot_plan</code>) roughly every 45 seconds — one entry per (pair, ladder) currently-armed rung, each already voted (fade/follow) and priced (entry/SL/TP) against the real fib-extension distances. The bot never re-derives a vote or a level — the plan does.</li>
+          <li>The bot watches live price against each zone's entry. A rung's "armed" state (whether a touch right now counts as a fresh, re-armed entry vs. a rung still cooling down from an earlier touch today) is tracked bot-side — the plan tells the bot the CURRENT decision/margin for that rung, the bot tracks WHEN price actually crosses it.</li>
+          <li><b>One pair can hold an Asia position AND a Monday position at once</b> — they're independent bets on the same instrument, not duplicates. The bot's dedupe tag keeps the two ladders from colliding with each other or with themselves.</li>
+          <li>Before every entry the bot checks, in order: kill switch → plan freshness → daily/monthly drawdown lockout → drawdown throttle → duplicate/stack guard → spread cap → portfolio risk budget.</li>
+          <li>Once open, the position's stop trails via a chandelier ATR stop (Asia 3× ATR, Monday 1.5× ATR, both on a 60-bar M1 ATR) — only ever tightening in the favorable direction, never loosening.</li>
+        </ol>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Sizing vs. the actual bracket stop</div>
+        <p style="margin:0">A fade zone's actual broker stop (<code>sl</code>) may already be tightened by the server beyond the full stop distance (<code>sizingSl</code>). Position sizing ALWAYS uses the full, untightened distance — sizing off a tightened stop would size the position UP to compensate, which is leverage in disguise, not a real edge improvement.</p>
+      </div>
+    </details>
+
+    <!-- Live status -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">Live Status</span>
+        <span id="faLiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="faLiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="faLiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadFaLiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
+        <span>Open positions: <b id="faOpenN">—</b></span>
+        <span>Today's trades: <b id="faTradesN">—</b></span>
+        <span>Live universe: <b id="faUniN">—</b></span>
+        <span style="margin-left:auto">Plan: <b id="faPlanAge">—</b></span>
+      </div>
+    </div>
+
+    <!-- Risk systems -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#c084fc">Risk Systems</span>
+        <span class="bot-banner-sub" style="margin:0">every risk mechanism's CURRENT state, at a glance — not just its config value</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding:6px 16px 14px;font-size:11px;font-family:'DM Mono',monospace">
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Never-resetting running-peak drawdown throttle. Engaged = new position sizes are cut by the configured multiplier until balance recovers to the restore level (not merely off the trigger). Off by default even though validated — new levers ship opt-in.">
+          <div style="color:var(--text3);margin-bottom:3px">Drawdown throttle</div>
+          <div id="faThrottle" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Daily/monthly drawdown lockout (pylego.risk_guard). Locked = ALL new entries blocked account-wide until the lockout window expires, regardless of pair.">
+          <div style="color:var(--text3);margin-bottom:3px">Risk guard</div>
+          <div id="faRiskGuard" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Sum of risk % across every currently-open position (from the bot's own risk ledger) vs the configured portfolio heat cap. 0 cap = off (no heat cap improved OOS drawdown once the chandelier exit is running).">
+          <div style="color:var(--text3);margin-bottom:3px">Portfolio heat</div>
+          <div id="faHeat" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Fail-closed safety: if the bot hasn't fetched a fresh plan within plan_max_age_hours, NEW entries are blocked (existing brackets/chandelier trail keep running) rather than trading against a stale snapshot.">
+          <div style="color:var(--text3);margin-bottom:3px">Plan age gate</div>
+          <div id="faPlanGate" style="font-weight:600">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open positions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">Open Positions</span>
+        <span class="bot-banner-sub" style="margin:0">what the bot is holding right now</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Dir</th>
+              <th style="padding:6px 10px;text-align:right">Lots</th>
+              <th style="padding:6px 10px;text-align:right">Open</th>
+              <th style="padding:6px 10px;text-align:right">Live</th>
+              <th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="faOpenBody">
+            <tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Today's levels & live decisions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">Today's Levels &amp; Live Decisions</span>
+        <span class="bot-banner-sub" style="margin:0">every currently-armed (pair, ladder, rung) the server plan carries — fade/follow, margin, and the priced entry/SL/TP</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Ladder</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:right">Entry</th>
+              <th style="padding:6px 10px;text-align:right">SL</th>
+              <th style="padding:6px 10px;text-align:right">TP</th>
+              <th style="padding:6px 10px;text-align:left">Rationale</th>
+            </tr>
+          </thead>
+          <tbody id="faLinesBody">
+            <tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Waiting for the server plan</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Decision audit log -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Decision Timeline</span>
+        <span class="bot-banner-sub" style="margin:0">persistent audit — why was each touch entered, rejected, or skipped. Written by the bot itself, most recent first.</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="faDecFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadFaDecisionLog()">
+        </label>
+        <button onclick="faDecShiftDay(-1)" title="Previous day" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">← Prev</button>
+        <input type="date" id="faDecDate" onchange="loadFaDecisionLog()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+        <button onclick="faDecShiftDay(1)" title="Next day" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">Next →</button>
+        <button onclick="faDecClearDate()" title="Clear date filter — show most recent events across all dates" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">All dates</button>
+        <button onclick="loadFaDecisionLog()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Time (UTC)</th>
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Ladder</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Reason</th>
+            </tr>
+          </thead>
+          <tbody id="faDecisionBody">
+            <tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below — this strategy has NO live track record yet, backtest + OOS only.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Paper trade (default) — point --url at this dashboard:
+python fib_atlas_bot/fib_atlas_bot.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python fib_atlas_bot/fib_atlas_bot.py)
+
+# 2) Go live on MT5 (after saving credentials below + a clean paper run):
+python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
+      <div class="bot-banner-sub" style="margin-top:8px">The plan is server-computed and refreshes every ~45s — the pair list below controls which pairs the SERVER builds zones for, not just which ones this bot watches. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and network to the dashboard; MT5 has no Linux wheel, so live trading runs on a Windows box with an MT5 terminal, not on Railway.</div>
+    </div>
+
+    <!-- Pair universe -->
+    <div class="card">
+      <div class="card-title">Pairs</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Which pairs the SERVER builds live zones for — same universe as the <a href="asia-fib-atlas-vote-portfolio.html" style="color:#a78bfa">backtest page</a>'s picker. "Select recommended" excludes the 10 pairs the correlated-drawdown study found.</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" onclick="faSelectAllPairs()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:5px 12px;font-size:11px;cursor:pointer">Select all</button>
+        <button type="button" onclick="faSelectRecommendedPairs()" style="background:transparent;border:1px solid #a78bfa;border-radius:6px;color:#a78bfa;padding:5px 12px;font-size:11px;cursor:pointer">Select recommended</button>
+      </div>
+      <div id="faPairChecks" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px 10px;font-size:12px"></div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Controls ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="form-row"><span class="form-lbl" title="Paper trade (checked): fills are simulated, no real orders sent — safe default with zero live track record. Unchecked (LIVE): the bot sends real MT5 orders using the credentials below. Only go live after a clean paper run.">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="fa_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+        <div class="form-row"><span class="form-lbl" title="Emergency stop: blocks all NEW entries immediately (existing open positions are left alone, not force-closed). Use to freeze the bot without killing the process or losing its state.">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="fa_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl" title="Trade the Asia range-extension ladder.">Ladders</span>
+          <label style="display:flex;align-items:center;gap:6px;margin-right:14px"><input type="checkbox" id="fa_ladder_asia"> Asia</label>
+          <label style="display:flex;align-items:center;gap:6px" title="Trade the Monday full-week range-extension ladder."><input type="checkbox" id="fa_ladder_monday"> Monday</label></div>
+        <div class="form-row"><span class="form-lbl" title="% of account balance risked on EVERY trade, sized off that specific zone's own FULL (untightened) SL distance from the plan. Higher = bigger positions and proportionally bigger swings both ways — this is leverage, not free edge.">Risk % / trade</span><input type="number" id="fa_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Hard ceiling on any single position's lot size, regardless of what the risk-% sizing formula would otherwise compute.">Max lot</span><input type="number" id="fa_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open across ALL pairs and both ladders simultaneously.">Max open positions</span><input type="number" id="fa_max_open" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open on the SAME pair at once, across BOTH ladders combined (e.g. an Asia long + a Monday short on EURUSD counts as 2) — separate from the account-wide cap above.">Max concurrent / pair</span><input type="number" id="fa_max_concurrent_per_pair" min="1" max="10" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Skips an entry if the live bid/ask spread on that symbol is wider than this many pips at the moment of fill.">Max spread (pips)</span><input type="number" id="fa_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Risk overlays</div>
+        <div class="form-row"><span class="form-lbl" title="Hard daily/monthly drawdown lockout — once breached, ALL new entries are blocked for the configured lockout window.">Daily DD limit %</span><input type="number" id="fa_ddlimit" min="0.5" max="30" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Same lockout, monthly baseline instead of daily.">Monthly DD limit %</span><input type="number" id="fa_monthlydd" min="1" max="50" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How long (hours) the lockout above holds once triggered.">↳ Lockout (hours)</span><input type="number" id="fa_lockout" min="0.5" max="48" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Minimum seconds between two entries on the SAME (pair, ladder) — a light cooldown, separate from the dedupe/duplicate guard.">↳ Cooldown (sec)</span><input type="number" id="fa_cooldown" min="0" max="3600" step="10" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Tracks this bot's own running PEAK balance (never resets, unlike the daily/monthly lockout above) and once drawdown from that peak breaches the trigger below, scales every new position's size down by the throttle multiplier — a gradual de-risk, not a hard stop — until balance recovers to the restore level. Off by default even though validated — new levers ship opt-in.">Drawdown throttle</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="fa_throttle_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Drawdown from the running peak balance (%, negative) that engages the throttle.">↳ Trigger drawdown %</span><input type="number" id="fa_throttle_trigger_dd" min="-50" max="-0.5" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Drawdown from the same peak (%, negative, closer to zero than the trigger) that balance must recover to before the throttle releases back to full size.">↳ Restore drawdown %</span><input type="number" id="fa_throttle_restore_dd" min="-50" max="0" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Size multiplier applied to every new position while the throttle is engaged (e.g. 0.25 = quarter size).">↳ Throttle size multiplier</span><input type="number" id="fa_throttle_mult" min="0.05" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps the TOTAL risk % this bot has committed across all its own currently-open positions combined. 0 = off (no cap improved OOS drawdown once the chandelier exit is running).">Portfolio heat cap % <small>0 = off</small></span><input type="number" id="fa_max_open_risk_pct" min="0" max="50" step="0.5" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences</div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot polls live price against each zone's entry to decide whether to fire — this is a local watch loop, not a network call, so it can safely run fast.">Price tick (sec) <small>local watch</small></span><input type="number" id="fa_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot pushes its own status (open positions, today's trades, risk-gate state) to the dashboard for this page to display.">Status push (sec)</span><input type="number" id="fa_status_secs" min="10" max="300" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot re-fetches the server-computed plan. The plan itself only changes roughly every 45s server-side, so pulling much faster than that just wastes a request without seeing anything new.">Plan re-pull (sec) <small>plan itself refreshes ~45s server-side</small></span><input type="number" id="fa_plan_secs" min="15" max="3600" step="15" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Fail-closed safety: if the bot hasn't successfully fetched a fresh plan within this many hours, it stops taking NEW entries rather than trading against a stale plan. Existing positions/chandelier trail are unaffected.">Plan max age (hours) <small>fail-closed on new entries beyond this</small></span><input type="number" id="fa_plan_max_age_hours" min="0.1" max="24" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Telegram alert on every entered/skipped/rejected zone (entry price, stop-loss, take-profit, lot size, rationale) plus close outcomes (P&amp;L, trade duration), threaded as a reply to the entry alert.">Telegram alerts</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="fa_tg_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="This bot's own dedicated Telegram bot token.">↳ Bot token</span><input type="text" id="fa_tg_token" placeholder="123456789:ABC..." style="width:220px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">↳ Chat ID</span><input type="text" id="fa_tg_chat_id" placeholder="123456789" style="width:160px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#a78bfa;color:#1a1033" onclick="saveFaConfig()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetFaDefaults()">Reset Defaults</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="testFaTelegram()">Send test alert</button>
+          <span id="faSaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Account</div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="fa_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="fa_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="fa_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="fa_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#a78bfa;color:#1a1033" onclick="saveFaCreds()">Save Credentials</button>
+          <span id="faCredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">fib_atlas_bot_credentials</code>). The bot reads them on connect when paper trade is OFF. Flip to live only after a paper run looks right.</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-fibatlas -->
+
   <!-- ══════════════════════════════════════════════════════ RANGE-LINE TAB -->
   <div class="tab-pane" id="tab-rangeline">
 
@@ -5731,6 +5987,7 @@ const TAB_BOT_KEY_MAP = {
   macroequity: 'macro_equity_bot_status',
   volatility:  ['volatility_bot_status', 'volatility_ride_status'],
   volatilityv2: 'volatility_bot_v2_status',
+  fibatlas:    'fib_atlas_bot_status',
   rangeline:   'range_line_bot_status',
   oibot:       'oi_bot_status',
   yieldspread:    'yield_spread_status',

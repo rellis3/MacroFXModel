@@ -916,3 +916,36 @@ export function asiaFibAtlasLiveLadder(packed, opts = {}) {
     ladder,
   };
 }
+
+/**
+ * The SAME `here`/`inner`/`outer` neighbour-rung construction
+ * `asiaFibAtlasWalk`'s hot loop uses inline (this file, "Walk window" section
+ * above) — factored out here as a pure, exported function because a SECOND
+ * caller now needs it: a live-plan producer pricing a rung that hasn't been
+ * touched yet (no `touch` record to read `innerDistPips`/`outerDistPips`
+ * off), the same "not-yet-touched rungs are just as priceable" situation
+ * `_volatilityV2PriceZone`'s own doc describes for Level Atlas's
+ * `rungLevelsForLadder`. Pure function of the CURRENT session's Asia
+ * boundary (`{asiaHigh, asiaLow, asiaRange}`, e.g. `asiaFibAtlasLiveLadder`'s
+ * own `boundary` return field) + which rung — no touch/bar data needed, so
+ * it's identical whether the rung has been touched today or not.
+ *
+ *   asiaRungBarrierPips('above', 1.272, boundary, pip) -> { innerDistPips, outerDistPips }
+ *   outerDistPips is null at the outermost rung (no further neighbour to
+ *   measure a 'follow' target/stop against — same null Walk's own outer does).
+ */
+export function asiaRungBarrierPips(side, level, boundary, pip) {
+  const isAbove = side === 'above';
+  const rungLevels = isAbove ? RUNGS_ABOVE : RUNGS_BELOW;
+  const boundaryPrice = isAbove ? boundary.asiaHigh : boundary.asiaLow;
+  const rungPrice = lv => boundary.asiaLow + boundary.asiaRange * lv;
+  const lv = [boundaryPrice, ...rungLevels.map(rungPrice)];
+  const ri = rungLevels.indexOf(level);
+  if (ri < 0) return { innerDistPips: null, outerDistPips: null };
+  const here = lv[ri + 1], inner = lv[ri], outer = lv[ri + 2] ?? null;
+  const rungSpan = Math.abs(here - inner);
+  return {
+    innerDistPips: pip > 0 ? +(rungSpan / pip).toFixed(1) : null,
+    outerDistPips: outer != null && pip > 0 ? +(Math.abs(outer - here) / pip).toFixed(1) : null,
+  };
+}
