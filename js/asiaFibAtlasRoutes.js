@@ -57,6 +57,13 @@ function scoreLadder(book, ladder) {
 const CVOL_PRODUCT_OVERRIDE = { gold: 'XAUUSD' };
 const PREFIX = 'asia-fib-atlas';
 const DEFAULT_REARM = 0.3;
+// Chandelier (ATR-trailed) continuation exit's frozen choice for THIS
+// ladder (analysis/fib_atlas_chandelier_exit_backtest.mjs, pre-stated rule:
+// maximize IS Sharpe, must beat baseline; see LEGO_MODULES.md) — Monday's
+// own mult differs (1.5, see mondayFibAtlasRoutes.js), CHANDELIER_PERIOD
+// (M1 bars for the rolling ATR) is shared, not yet independently swept.
+const ASIA_CHANDELIER_MULT = 3;
+const CHANDELIER_PERIOD = 60;
 const LIVE_WINDOW_DAYS = 180;   // same margin Level Atlas uses — comfortably over this engine's own widest lookback (hurstBucket's 80 trailing daily closes)
 
 async function loadIvByDate(pair) {
@@ -124,7 +131,24 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     // `applyStoredContinuationExit` — see that function's own doc for why
     // this must be generation-time, not request-time (M1 access is too
     // slow to do live).
-    const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
+    const trailed = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
+    // Chandelier (ATR-trailed) exit (2026-08-31) — analysis/fib_atlas_chandelier_
+    // exit_backtest.mjs found a REAL OOS drawdown improvement over the
+    // giveback trail above (Asia OOS Sharpe 15.33->19.47, maxDD -4.51%->
+    // -2.43%; see LEGO_MODULES.md), so it's stored ALONGSIDE the giveback
+    // fields (chandTrailed*, not a replacement) — same reasoning as
+    // `applyStoredContinuationExit`'s own doc: a second stored variant, one
+    // extra `applyTrailingContinuation` call over the SAME `wf1.trades`
+    // (order-aligned, safe to zip by index) and the SAME already-loaded
+    // `packed` M1, no new M1 fetch. ASIA_CHANDELIER_MULT/PERIOD are this
+    // ladder's own frozen choice — Monday's differs, see mondayFibAtlasRoutes.js.
+    const chand = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'], trailMode: 'chandelier', chandelierMult: ASIA_CHANDELIER_MULT, chandelierPeriod: CHANDELIER_PERIOD });
+    const trailedTrades = trailed.map((t, i) => ({
+      ...t,
+      chandTrailedPnlPct: chand[i].trailedPnlPct ?? null,
+      chandTrailedPnlPips: chand[i].trailedPnlPips ?? null,
+      chandTrailedResolveTime: chand[i].trailedResolveTime ?? null,
+    }));
     await putJSON(`${PREFIX}/${pair}-votetrades.json`, {
       instrument: sym, generatedAt: new Date().toISOString(), cost, splitDate: book.splitDate,
       trades: trailedTrades,   // margin>=1 superset — the page filters down to margin=2 client-side
@@ -334,7 +358,9 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
       const minCostRatio = req.query.minCostRatio ? Number(req.query.minCostRatio) : null;
-      const continuationExit = req.query.continuationExit === 'true';
+      // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit
+      // does its own interpreting now (2026-08-31), so no boolean coercion here.
+      const continuationExit = req.query.continuationExit;
       // Continuation-exit swap first -- see applyStoredContinuationExit's own
       // doc for why it must precede any concurrency-cap-style step (this
       // route has none, but keeping the same order as buildFibAtlasVotePortfolio
@@ -381,7 +407,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
-        continuationExit: req.query.continuationExit === 'true',
+        continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
         loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
@@ -428,7 +454,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
-        continuationExit: req.query.continuationExit === 'true',
+        continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
         loadPairVoteTrades: async constituentKey => {
           const [pair, ladder] = constituentKey.split('|');
           const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);

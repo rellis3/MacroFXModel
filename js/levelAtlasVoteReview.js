@@ -507,23 +507,42 @@ export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02,
 }
 
 /**
- * READ-TIME counterpart to `applyTrailingContinuation` above — swaps the
- * pre-computed `trailedPnlPct`/`trailedPnlPips`/`trailedResolveTime`
- * fields (stored on the row by the generation-time brick) into the row's
- * live `pnlPct`/`pnlPips`/`resolveTime` when `on` is true. No M1 access,
+ * READ-TIME counterpart to `applyTrailingContinuation` above — swaps
+ * pre-computed trailed-exit fields (stored on the row by the generation-time
+ * brick) into the row's live `pnlPct`/`pnlPips`/`resolveTime`. No M1 access,
  * no computation — just a field swap, cheap enough for a request-time
  * toggle. Call this BEFORE `applyConcurrencyCap`: that function reads
  * `resolveTime` to decide which trades survive the per-pair cap, and the
  * (possibly longer) trailed occupancy window must be in place before that
  * decision, not applied after — the same correctness point
  * `analysis/fib_atlas_trailing_continuation_backtest.mjs` documents. A row
- * with no trailed fields (couldn't be trailed at generation time) passes
- * through unchanged either way.
+ * missing the selected mode's fields (couldn't be trailed at generation
+ * time) passes through unchanged either way.
  *
- *   applyStoredContinuationExit(trades, on) -> trades (same shape)
+ * `mode` (2026-08-31, generalized from a boolean once the chandelier exit —
+ * LEGO_MODULES.md's chandelier-exit entry — needed a SECOND stored variant
+ * alongside the original giveback trail, not a replacement for it):
+ *   - `true` / `'true'` / `'giveback'` → swap `trailedPnlPct`/`trailedPnlPips`/
+ *     `trailedResolveTime` (the original givebackFrac=0.02 trail, unchanged).
+ *   - `'chandelier'` → swap `chandTrailedPnlPct`/`chandTrailedPnlPips`/
+ *     `chandTrailedResolveTime` (the ATR-trailed variant, each ladder's own
+ *     frozen `chandelierMult`).
+ *   - anything else (`false`/`'false'`/omitted/`null`) → no-op passthrough.
+ * Callers may now pass `req.query.continuationExit` straight through
+ * (string or boolean) without their own `=== 'true'` coercion — this
+ * function does the interpreting, in one place, so the query-string
+ * contract can't drift between the 5 route call sites that use it.
+ *
+ *   applyStoredContinuationExit(trades, mode) -> trades (same shape)
  */
-export function applyStoredContinuationExit(trades, on) {
-  if (!trades?.length || !on) return trades ?? [];
+export function applyStoredContinuationExit(trades, mode) {
+  const isGiveback = mode === true || mode === 'true' || mode === 'giveback';
+  const isChandelier = mode === 'chandelier';
+  if (!trades?.length || !(isGiveback || isChandelier)) return trades ?? [];
+  if (isChandelier) {
+    return trades.map(t => t.chandTrailedPnlPct == null ? t
+      : { ...t, pnlPct: t.chandTrailedPnlPct, pnlPips: t.chandTrailedPnlPips, resolveTime: t.chandTrailedResolveTime });
+  }
   return trades.map(t => t.trailedPnlPct == null ? t
     : { ...t, pnlPct: t.trailedPnlPct, pnlPips: t.trailedPnlPips, resolveTime: t.trailedResolveTime });
 }

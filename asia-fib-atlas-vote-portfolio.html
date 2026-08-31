@@ -56,7 +56,7 @@
     <button id="selectAllBtn" type="button">Select all</button>
     <button id="selectDefaultBtn" type="button">Reset to default 5</button>
     <button id="selectRecommendedBtn" type="button" title="OOS-validated on THIS engine's own data (analysis/fib_atlas_oos_validate_pair_selection.mjs): exclusion set chosen on the first 70% of history, frozen, still improved the untouched last 30%. Asia: 10 pairs excluded, OOS maxDD -98.6%→-39.2%. Monday's OWN exclusion attempt FAILED OOS (maxDD got WORSE, -7.1%→-10.2%) so no exclusion is applied there — correctly not shipped, not silently reused from Asia.">Select recommended</button>
-    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Applies every lever validated on THIS engine's OWN full blended portfolio (fade+follow, not an isolated slice) via analysis/fib_atlas_best_config_backtest.mjs: recommended pairs, margin≥2, max concurrent 1, fixed 0.5% risk/trade, portfolio heat cap ON (1% Asia / 2% combined), drawdown throttle ON (trigger -3%/restore -2%/×0.25 — a real Sharpe/CAGR cost for a shallower drawdown, both IS and OOS, not a free win), fade-stop tightening ON at 0.9× (already held-out validated earlier). CAUTION: absolute Sharpe/CAGR figures behind this (Sharpe ~9-13) are almost certainly inflated versus real live expectancy — same caveat Level Atlas's own early-exit lever carries — trust the DIRECTION (throttle+cap trade Sharpe/CAGR for shallower drawdown) not the specific numbers. Monday ladder: pairs/margin/sizing/fade-stop applied, heat cap and throttle left OFF — not independently validated for Monday's own book yet.">⚡ Load best config (least drawdown)</button>
+    <button id="loadBestConfigBtn" type="button" style="border-color:#38bdf8;color:#38bdf8" title="Updated 2026-08-31 after the chandelier-exit + heat-cap platform review (see LEGO_MODULES.md). Applies every lever validated on THIS engine's OWN full blended portfolio (fade+follow, not an isolated slice): recommended pairs, margin≥2, fade-stop tightening ON at 0.9×, cost-efficiency filter ON, chandelier (ATR-trailed) continuation exit ON (Asia 3x ATR / Monday 1.5x ATR, analysis/fib_atlas_chandelier_exit_backtest.mjs — real OOS win, Asia Sharpe 15.33->19.47 maxDD -4.51%->-2.43%, Monday Sharpe 11.39->12.85 maxDD -3.11%->-2.57%), max concurrent 2 (stacking — a second same-pair trade may open while a chandelier-held winner is still running; further OOS win on top: Asia maxDD ->-1.93%, Monday maxDD ->-1.93%), fixed 0.5% risk/trade. Portfolio heat cap and drawdown throttle left OFF — re-tested under this new pipeline on both ladders and found to NOT improve OOS drawdown at any tested setting (tight caps made it WORSE), not just left off for lack of validation. CAUTION: absolute Sharpe/CAGR figures behind this are almost certainly inflated versus real live expectancy — trust the DIRECTION, not the specific numbers.">⚡ Load best config (least drawdown)</button>
   </div>
   <div class="controls" id="pairChecks"></div>
   <div class="controls">
@@ -87,7 +87,11 @@
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
     <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs). Position size is held at what the ORIGINAL (untightened) stop would size, not resized off the new tighter stop — same Sharpe either way (a uniform per-trade rescale can't change it), but this keeps avg win matching the untightened baseline exactly and avg loss shrinking in direct proportion to the fraction, instead of a bigger bet inflating both legs and distorting maxDD/CAGR.">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
     <label title="Skip trades whose gross target doesn't clear the pair's own round-trip cost by the chosen multiple — fixes the flat-cost-subtraction bias that shrinks small-target winners disproportionately. OOS-validated (analysis/fib_atlas_cost_efficiency_filter.mjs): Asia ratio>=3x took OOS Sharpe 6.66->13.64, maxDD -39.24%->-14.96%; Monday ratio>=4x took OOS maxDD -7.1%->-5.44% (Sharpe roughly flat, 10.54->10.51). Threshold auto-switches with the ladder toggle above.">Cost-efficiency filter <input type="checkbox" id="costEfficiencyChk"></label>
-    <label title="Instead of closing a WINNING trade (either side — fade or follow) at its fixed target the instant price touches it, trail a stop that only ratchets favorably (floored at the original target, so the worst case is identical to today's exit) — lets a genuine move run further. Losses on either side are completely untouched. OOS-validated on both sides (analysis/fib_atlas_trailing_continuation_backtest.mjs): follow alone Sharpe 16.15->16.73; fade alone Sharpe 15.38->16.33, maxDD -4.43%->-2.65%; both sides together Sharpe 15.38->16.05, maxDD -4.43%->-2.64%. Avg loss unaffected throughout (no leverage-in-disguise — unlike the SL-tightening levers, this one never touches stopPips).">Trailing/continuation exit (both sides) <input type="checkbox" id="continuationExitChk"></label>
+    <label title="Instead of closing a WINNING trade (either side — fade or follow) at its fixed target the instant price touches it, trail a stop that only ratchets favorably (floored at the original target, so the worst case is identical to today's exit) — lets a genuine move run further. Losses on either side are completely untouched.&#10;&#10;Giveback: gives back a fixed 2% of the excursion made past target — OOS-validated (analysis/fib_atlas_trailing_continuation_backtest.mjs): follow alone Sharpe 16.15->16.73; fade alone Sharpe 15.38->16.33, maxDD -4.43%->-2.65%; both sides together Sharpe 15.38->16.05, maxDD -4.43%->-2.64%. Exits almost immediately on any pullback (median hold-time extension ~0).&#10;&#10;Chandelier (2026-08-31): trails a multiple of this pair's own rolling ATR instead of a fixed fraction, so it survives normal noise and actually rides continuations — a materially BIGGER OOS win (analysis/fib_atlas_chandelier_exit_backtest.mjs): Asia (mult=3) Sharpe 15.33->19.47, maxDD -4.51%->-2.43%; Monday (mult=1.5) Sharpe 11.39->12.85, maxDD -3.11%->-2.57%. Avg loss unaffected in both modes (no leverage-in-disguise — unlike the SL-tightening levers, neither ever touches stopPips).">Trailing/continuation exit <select id="continuationExitSel">
+      <option value="off" selected>Off</option>
+      <option value="giveback">Giveback (2%)</option>
+      <option value="chandelier">Chandelier (ATR)</option>
+    </select></label>
   </div>
   <div class="sub" id="headerSub">loading…</div>
 </header>
@@ -246,14 +250,27 @@ function recommendedExcludeFor(currentLadder) {
   // OOS study's own exclusion list was itself predominantly Asia-side pairs.
   return currentLadder === 'monday' ? MONDAY_RECOMMENDED_EXCLUDE : ASIA_RECOMMENDED_EXCLUDE;
 }
-// analysis/fib_atlas_best_config_backtest.mjs's frozen, OOS-checked choice
-// (pre-stated rule: shallowest IS maxDD with Sharpe >= 90% of baseline) --
-// same trigger/mult for both ladder modes this run, heat cap differs.
-const BEST_CONFIG = {
-  asia:     { heatCapPct: 1, triggerDD: -3, restoreDD: -2, throttleMult: 0.25 },
-  combined: { heatCapPct: 2, triggerDD: -3, restoreDD: -2, throttleMult: 0.25 },
-  monday:   null, // not independently validated for Monday's own book yet -- leave heat cap/throttle OFF, don't guess
-};
+// Chandelier exit's own frozen mult per ladder (Asia=3x ATR, Monday=1.5x ATR
+// -- analysis/fib_atlas_chandelier_exit_backtest.mjs, LEGO_MODULES.md; see
+// the "Trailing/continuation exit" control's own tooltip for the numbers)
+// is applied SERVER-SIDE at generation time (asiaFibAtlasRoutes.js/
+// mondayFibAtlasRoutes.js), not chosen here -- this page just toggles which
+// stored variant to read.
+//
+// 2026-08-31 heat-cap platform review (analysis/fib_atlas_best_config_backtest.mjs
+// with CHANDELIER=1 MAX_CONCURRENT=2, LEGO_MODULES.md's heat-cap-platform-review
+// entry): re-fit on BOTH ladders once the chandelier exit + maxConcurrent=2
+// stacking are running, NO heat cap improved OOS drawdown at any tested
+// tightness -- tight caps (1-2%) made it WORSE, looser caps were exact
+// no-ops, and the pre-stated rule's own OOS pick came back bit-identical to
+// no cap at all on both ladders independently. So "best config" now leaves
+// the heat cap OFF (previously ON at 1%/2% under the OLD maxConcurrent=1,
+// no-chandelier pipeline that grid was fit against -- superseded, not
+// forgotten, see the entry above for the old numbers). Throttle is left OFF
+// too: its own value under this new pipeline was never independently
+// confirmed (the drawdown-throttle trigger never fires in either ladder's
+// post-chandelier+stacking series) -- an unconfirmed lever isn't switched on
+// just because it's harmless when dormant.
 
 let ladder = 'asia';
 function apiPrefix() { return ladder === 'monday' ? 'monday-fib-atlas' : 'asia-fib-atlas'; }
@@ -289,26 +306,20 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   const exclude = recommendedExcludeFor(ladder);
   pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = !exclude.has(el.dataset.pair); });
   marginSel.value = '2';
-  capSel.value = '1';
+  capSel.value = '2';   // stacking -- analysis/fib_atlas_chandelier_exit_backtest.mjs's "test all 2", real OOS win on top of the chandelier exit alone, both ladders
   perDirChk.checked = false;
   sizingSel.value = 'fixed-risk';
   riskPctInput.value = '0.5';
   stopTightenChk.checked = true;
   costEfficiencyChk.checked = true;
-  continuationExitChk.checked = true;
-  const cfg = BEST_CONFIG[ladder]; // no ?? fallback -- monday's explicit `null` must NOT silently reuse asia's config
-  if (cfg) {
-    heatCapChk.checked = true;
-    maxHeatPctInput.value = String(cfg.heatCapPct);
-    throttleChk.checked = true;
-    triggerDDInput.value = String(cfg.triggerDD);
-    restoreDDInput.value = String(cfg.restoreDD);
-    throttleMultInput.value = String(cfg.throttleMult);
-  } else {
-    // Monday: not independently validated -- leave OFF rather than guess.
-    heatCapChk.checked = false;
-    throttleChk.checked = false;
-  }
+  continuationExitSel.value = 'chandelier';
+  // Heat cap + throttle both left OFF -- see this file's own comment above
+  // this button (the 2026-08-31 heat-cap platform review): neither improved
+  // OOS drawdown once the chandelier exit + stacking are running, on
+  // EITHER ladder, independently re-checked. Not a guess, not "not
+  // validated yet" -- actively re-tested and found not to help.
+  heatCapChk.checked = false;
+  throttleChk.checked = false;
   syncSizingUI();
   loadData();
 });
@@ -333,7 +344,7 @@ const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
 const stopTightenChk = document.getElementById('stopTightenChk');
 const costEfficiencyChk = document.getElementById('costEfficiencyChk');
-const continuationExitChk = document.getElementById('continuationExitChk');
+const continuationExitSel = document.getElementById('continuationExitSel');
 const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
 
@@ -391,7 +402,7 @@ async function loadData() {
   }
   if (stopTightenChk.checked) params.set('stopTightenFrac', '0.9');
   if (costEfficiencyChk.checked) params.set('minCostRatio', String(costRatioFor(ladder)));
-  if (continuationExitChk.checked) params.set('continuationExit', 'true');
+  if (continuationExitSel.value !== 'off') params.set('continuationExit', continuationExitSel.value);
   // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
   // a Monday constituent, so the same pair can have both open at once —
   // js/asiaFibAtlasRoutes.js's /vote-portfolio-combined) instead of the
@@ -718,7 +729,7 @@ restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
 stopTightenChk.addEventListener('change', loadData);
 costEfficiencyChk.addEventListener('change', loadData);
-continuationExitChk.addEventListener('change', loadData);
+continuationExitSel.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
 loadData();

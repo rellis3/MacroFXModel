@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -738,6 +738,37 @@ function mkBook(dimSpecs) {
   ok('T23 decisions filtering is respected in chandelier mode -- a fade trade is untouched when only follow is requested', applyTrailingContinuation([fadeTrade], packed, { trailMode: 'chandelier', decisions: ['follow'] })[0].trailedPnlPct === undefined);
 
   ok('T23 empty/null input -> empty array, not a throw', applyTrailingContinuation([], packed, { trailMode: 'chandelier' }).length === 0 && applyTrailingContinuation(null, packed, { trailMode: 'chandelier' }).length === 0);
+}
+
+// ── applyStoredContinuationExit: mode-based (2026-08-31) ────────────────────
+// Generalized from a boolean once the chandelier exit needed a SECOND
+// stored variant alongside the original giveback trail — proves the two
+// modes read from genuinely different stored fields and every other input
+// shape (missing fields, false/off) still no-ops exactly as before.
+{
+  const withBoth = {
+    pnlPct: 0.2, pnlPips: 20, resolveTime: 100,
+    trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200,
+    chandTrailedPnlPct: 0.8, chandTrailedPnlPips: 80, chandTrailedResolveTime: 300,
+  };
+  const onlyGiveback = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100, trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200 };
+  const untrailed = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100 };
+
+  for (const mode of [true, 'true', 'giveback']) {
+    const out = applyStoredContinuationExit([withBoth], mode)[0];
+    ok(`T24 mode=${JSON.stringify(mode)} swaps in the GIVEBACK fields, not the chandelier ones`, out.pnlPct === 0.5 && out.pnlPips === 50 && out.resolveTime === 200, JSON.stringify(out));
+  }
+  const chandOut = applyStoredContinuationExit([withBoth], 'chandelier')[0];
+  ok('T24 mode=\'chandelier\' swaps in the CHANDELIER fields, not the giveback ones', chandOut.pnlPct === 0.8 && chandOut.pnlPips === 80 && chandOut.resolveTime === 300, JSON.stringify(chandOut));
+
+  for (const mode of [false, 'false', undefined, null]) {
+    const out = applyStoredContinuationExit([withBoth], mode)[0];
+    ok(`T24 mode=${JSON.stringify(mode)} is a no-op passthrough (both fields present, neither used)`, out.pnlPct === 0.2 && out.pnlPips === 20 && out.resolveTime === 100);
+  }
+
+  ok('T24 mode=\'chandelier\' with only giveback fields stored -- passes the row through untouched, not a throw', applyStoredContinuationExit([onlyGiveback], 'chandelier')[0].pnlPct === 0.2);
+  ok('T24 mode=\'giveback\' with no trailed fields at all -- passes the row through untouched', applyStoredContinuationExit([untrailed], 'giveback')[0].pnlPct === 0.2);
+  ok('T24 empty/null input -> empty array, not a throw', applyStoredContinuationExit([], 'chandelier').length === 0 && applyStoredContinuationExit(null, 'chandelier').length === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);
