@@ -60,6 +60,18 @@ const LADDER = (process.env.LADDER || 'asia').toLowerCase();
 const LADDER_PREFIX = { asia: 'asia-fib-atlas', monday: 'monday-fib-atlas' };
 const MIN_MARGIN = Number(process.env.MIN_MARGIN || 2), MAX_CONCURRENT = 1, RISK_PCT = 1, COST = 0;
 const DECISION = (process.env.DECISION || 'all').toLowerCase(); // 'all' | 'fade' | 'follow'
+// SIZE_HELD (2026-08-30, added after the leverage-in-disguise correction --
+// see LEGO_MODULES.md): default false reproduces every prior run in this
+// file's own history byte-for-byte (fixed-fractional sizing off the
+// TIGHTENED stop, same as the live fade toggle). true stamps
+// `sizingStopPips` at the ORIGINAL (pre-tightening) distance before
+// riskAdjustTrades sizes off it -- isolating "does the tighter exit
+// itself help" from "is this a bigger bet", per `applyFadeStopFraction`'s
+// own doc. Only meaningful for stopped-out trades the tighter fraction
+// actually catches; a win's payout should come back byte-identical to
+// the untightened baseline under this mode -- checked explicitly below,
+// not assumed.
+const SIZE_HELD = process.env.SIZE_HELD === 'true';
 const FRACTIONS = [1.0, 0.90, 0.75, 0.60, 0.50, 0.40, 0.25];
 const HEAT_CAPS = [1, 2, 3]; // % of NAV, simultaneous
 const PAIRS = RANGE_FIB_INSTRUMENTS;
@@ -75,7 +87,7 @@ async function loadTrades(pair) {
 }
 
 async function main() {
-  console.log(`Fib Atlas SL-tightening backtest — ladder=${LADDER}  minMargin=${MIN_MARGIN}  decision=${DECISION}\n`);
+  console.log(`Fib Atlas SL-tightening backtest — ladder=${LADDER}  minMargin=${MIN_MARGIN}  decision=${DECISION}  sizeHeld=${SIZE_HELD}\n`);
   const byPair = {};
   for (const p of PAIRS) byPair[p] = await loadTrades(p);
   const allTrades = Object.values(byPair).flat().sort((a, b) => a.time - b.time);
@@ -99,7 +111,9 @@ async function main() {
       out[p] = perPair[p].map(t => {
         if (t.maePips == null) return t; // priceAtTighterStop needs maePips (see levelAtlasVoteReview.js)
         const priced = priceAtTighterStop(t, t.stopPips * fraction, COST);
-        return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * fraction, t.stopPips) } : t;
+        if (!priced) return t;
+        const sizingStopPips = SIZE_HELD ? (t.sizingStopPips ?? t.stopPips) : null;
+        return { ...t, ...priced, stopPips: Math.min(t.stopPips * fraction, t.stopPips), ...(sizingStopPips != null ? { sizingStopPips } : {}) };
       });
     }
     return out;
@@ -138,8 +152,9 @@ async function main() {
     const ps = portfolioStats(dailyFinal, { mc: false });
 
     const allRisk = flatten(finalByPair);
-    const losers = allRisk.filter(t => !t.win);
+    const losers = allRisk.filter(t => !t.win), winners = allRisk.filter(t => t.win);
     const avgLossRiskAdjPct = losers.length ? losers.reduce((a, t) => a + t.pnlPct, 0) / losers.length : null;
+    const avgWinRiskAdjPct = winners.length ? winners.reduce((a, t) => a + t.pnlPct, 0) / winners.length : null;
     const rawLosers = flatten(perPair).filter(t => !t.win);
     const avgLossRawPct = rawLosers.length ? rawLosers.reduce((a, t) => a + Math.abs(t.pnlPct), 0) / rawLosers.length : null;
 
@@ -172,6 +187,7 @@ async function main() {
         return gl > 1e-9 ? +(gp / gl).toFixed(2) : null;
       })(),
       avgLossRiskAdjPct: avgLossRiskAdjPct != null ? +avgLossRiskAdjPct.toFixed(3) : null,
+      avgWinRiskAdjPct: avgWinRiskAdjPct != null ? +avgWinRiskAdjPct.toFixed(3) : null,
       avgLossRawPct: avgLossRawPct != null ? +avgLossRawPct.toFixed(4) : null,
       skew, cvar95, heatSkipped,
       mtmMaxDD: mtm.maxDD, closedMaxDD: ps.maxDD, mtmCoverage: mtm.coverage,
@@ -186,6 +202,7 @@ async function main() {
       (s.perTradeWinRate + '%').padStart(9), (s.perDayWinRate + '%').padStart(9),
       String(s.sharpe).padStart(7), (s.maxDD + '%').padStart(8), (s.cagr + '%').padStart(9),
       String(s.calmar).padStart(6), String(s.profitFactor).padStart(6),
+      (s.avgWinRiskAdjPct + '%').padStart(9), (s.avgLossRiskAdjPct + '%').padStart(9),
       (s.avgLossRawPct + '%').padStart(10), String(s.skew).padStart(7), String(s.cvar95).padStart(8),
     ].join('  '));
   }
@@ -193,6 +210,7 @@ async function main() {
     console.log([
       'variant'.padEnd(14), 'trades'.padStart(6), 'tradeWin%'.padStart(9), 'dayWin%'.padStart(9),
       'sharpe'.padStart(7), 'maxDD'.padStart(8), 'CAGR'.padStart(9), 'Calmar'.padStart(6), 'PF'.padStart(6),
+      'avgWin(R%)'.padStart(9), 'avgLoss(R%)'.padStart(9),
       'avgLoss(raw%)'.padStart(10), 'skew'.padStart(7), 'CVaR95'.padStart(8),
     ].join('  '));
   }

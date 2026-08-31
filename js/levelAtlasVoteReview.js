@@ -309,14 +309,32 @@ export function priceAtTighterStop(trade, candidateStopPips, cost) {
  * already baked into its original `pnlPct` (see asiaFibAtlasRoutes.js's
  * `/run` build step), so re-applying cost here would double-charge it.
  *
- *   applyFadeStopFraction(trades, frac, cost=0) -> trades (same shape, fade rows repriced)
+ * `preserveSizing` (2026-08-30, default false — OPT-IN, zero behavior
+ * change for every existing caller including the already-shipped live
+ * toggle): when true, stamps `sizingStopPips` with the trade's ORIGINAL
+ * (pre-tightening) stop distance before shrinking `stopPips` itself.
+ * `riskAdjustTrades` prefers `sizingStopPips` when present — see that
+ * function's own doc for why this exists: without it, a tighter stop
+ * shrinks the risk-sizing denominator too, which fixed-fractional sizing
+ * responds to by upsizing the position, inflating BOTH the win and the
+ * loss legs (found 2026-08-30, see LEGO_MODULES.md's correction entry).
+ * `preserveSizing:true` isolates "does the tighter exit itself help"
+ * from "is this actually a bigger bet" by holding position size at what
+ * the ORIGINAL, untightened stop would have sized — a win's payout comes
+ * back byte-identical to baseline; only trades the tighter stop actually
+ * catches change, and by less than the full risk unit (proportional to
+ * how much tighter the stop is), not to exactly `-riskPct%` every time.
+ *
+ *   applyFadeStopFraction(trades, frac, cost=0, {preserveSizing=false}) -> trades (same shape, fade rows repriced)
  */
-export function applyFadeStopFraction(trades, frac, cost = 0) {
+export function applyFadeStopFraction(trades, frac, cost = 0, { preserveSizing = false } = {}) {
   if (!trades?.length || frac == null || frac >= 1) return trades ?? [];
   return trades.map(t => {
     if (t.decision !== 'fade' || t.maePips == null) return t;
     const priced = priceAtTighterStop(t, t.stopPips * frac, cost);
-    return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * frac, t.stopPips) } : t;
+    if (!priced) return t;
+    const sizingStopPips = preserveSizing ? (t.sizingStopPips ?? t.stopPips) : null;
+    return { ...t, ...priced, stopPips: Math.min(t.stopPips * frac, t.stopPips), ...(sizingStopPips != null ? { sizingStopPips } : {}) };
   });
 }
 
@@ -832,11 +850,23 @@ export function inverseVolWeights(perPairTrades) {
  * trade with zero stop distance (shouldn't occur, but keeps this safe) is
  * left with pnlPct 0 and rMultiple 0 rather than dividing by zero.
  *
+ * Prefers `t.sizingStopPips` over `t.stopPips` when present (2026-08-30) —
+ * a stop-tightening lever that reprices `stopPips` to a NEW, smaller value
+ * (`applyFadeStopFraction`'s `preserveSizing:true` mode) can stamp
+ * `sizingStopPips` with the trade's ORIGINAL distance so this function
+ * keeps sizing the position off the pre-tightening risk unit instead of
+ * silently upsizing it — see that function's own doc for why this
+ * matters (found 2026-08-30: fixed-fractional sizing off a just-tightened
+ * stop inflates the win leg too, not just shrinking the loss leg).
+ * Falls back to `t.stopPips` when `sizingStopPips` is absent, so every
+ * existing caller (nothing sets that field by default) is byte-identical.
+ *
  *   riskAdjustTrades(trades, 1) -> same trades, pnlPct replaced by R × 1%, rMultiple added
  */
 export function riskAdjustTrades(trades, riskPct = 1) {
   return (trades ?? []).map(t => {
-    const stopRiskPct = t.stopPips * t.pip / t.entry * 100;
+    const sizingPips = t.sizingStopPips ?? t.stopPips;
+    const stopRiskPct = sizingPips * t.pip / t.entry * 100;
     const r = stopRiskPct > 1e-9 ? t.pnlPct / stopRiskPct : 0;
     return { ...t, pnlPct: +(r * riskPct).toFixed(4), rMultiple: +r.toFixed(3), riskPctUsed: riskPct };
   });
