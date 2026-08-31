@@ -4469,6 +4469,54 @@ a dedicated pass (e.g. a fresh walk-forward re-validation of the FULL
 stacked pipeline, not lever-by-lever) before trusting this book much
 further.
 
+### Follow-up: walk-forward validation of the chandelierMult choice (2026-08-31)
+
+Direct answer to "is the ~10-lever OOS-overlap risk actually still the
+reason for the false numbers, and does chasing it change the config?"
+No on the first (the false numbers were the duplicate-counting bug
+above, fully explained and fixed) — but the owner asked to chase the
+overlap risk anyway to see if it changes anything, specifically for the
+chandelier exit (the newest, highest-leverage, most-recently-chosen
+parameter, picked last after seeing many other levers' own OOS results
+on the same shared window).
+
+**Method** (`analysis/fib_atlas_chandelier_walkforward.mjs`, new): a
+single 70/30 split only shows whether ONE split likes a choice; it
+can't distinguish a real, stable edge from a choice that fits one
+specific stretch. A walk-forward with 3 independent, non-overlapping,
+EXPANDING-window folds can — each fold re-picks chandelierMult fresh
+from its OWN fit-only slice (never reusing an earlier fold's choice or
+peeking at its own test window), so a mult that wins across genuinely
+different chunks of history is real evidence, not a repeat of the same
+question.
+
+**Result: perfectly stable on both ladders.**
+
+| | Fold 1 | Fold 2 | Fold 3 | Shipped |
+|---|---|---|---|---|
+| Asia chosen mult | 3 | 3 | 3 | 3 |
+| Monday chosen mult | 1.5 | 1.5 | 1.5 | 1.5 |
+
+Every fold, on both ladders, independently re-derived the SAME mult
+already shipped — no fold ever disagreed. OOS improvement was also
+consistent across every fold (not just the specific split everyone
+happened to share), e.g. Asia: baseline Sharpe 13.15/15.86/14.74 across
+the 3 folds' own test windows → mult=3 Sharpe 19.95/20.06/19.96 every
+time, maxDD improving in all 3; Monday: baseline Sharpe
+11.52/12.06/11.33 → mult=1.5 Sharpe 12.91/13.45/12.83 every time.
+
+🟢 the chandelierMult choice itself is NOT an artifact of the one
+shared 70/30 split — it independently re-emerges from 3 genuinely
+different, non-overlapping historical stretches on both ladders. This
+is real evidence against the specific overfitting worry that prompted
+the check. 🟡 this only tests ONE parameter (chandelierMult) at the
+concurrency=blocked setting — it does not re-validate the other ~9
+levers (cost-efficiency ratio, stop-tighten fraction, pair-selection
+exclusion, etc.) the same way, so the broader "many levers, one shared
+window" methodology risk is narrowed, not fully closed. The pattern
+(`fib_atlas_chandelier_walkforward.mjs`) is reusable for any other
+single-parameter lever that's worth the same check.
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
