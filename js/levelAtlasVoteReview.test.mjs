@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -591,6 +591,13 @@ function mkBook(dimSpecs) {
   ok('T21 fade on a down-touch also bets long (mirrors follow+up)', betDirection({ decision: 'fade', side: 'down' }) === 'long');
   ok('T21 follow on a down-touch bets short', betDirection({ decision: 'follow', side: 'down' }) === 'short');
   ok('T21 fade on an up-touch also bets short', betDirection({ decision: 'fade', side: 'up' }) === 'short');
+  // Fib Atlas's own side vocabulary (2026-08-31 fix) -- 'above'/'below', not
+  // 'up'/'down'; structurally the same "which way is outward" concept, must
+  // resolve to the SAME four directions as the up/down checks just above.
+  ok('T21 Fib Atlas: follow on an above-touch bets long (mirrors follow+up)', betDirection({ decision: 'follow', side: 'above' }) === 'long');
+  ok('T21 Fib Atlas: fade on a below-touch also bets long', betDirection({ decision: 'fade', side: 'below' }) === 'long');
+  ok('T21 Fib Atlas: follow on a below-touch bets short', betDirection({ decision: 'follow', side: 'below' }) === 'short');
+  ok('T21 Fib Atlas: fade on an above-touch also bets short', betDirection({ decision: 'fade', side: 'above' }) === 'short');
 
   const eurusdLong = { pair: 'EURUSD', decision: 'follow', side: 'up', riskPctUsed: 1 };
   ok('T21 tradeFactors splits a long FX pair into +base/-quote', JSON.stringify(tradeFactors(eurusdLong)) === JSON.stringify([{ factor: 'EUR', weight: 1 }, { factor: 'USD', weight: -1 }]));
@@ -660,6 +667,108 @@ function mkBook(dimSpecs) {
   ok('T22 frac=null is a no-op passthrough (same array, unchanged)', applyFadeStopFraction([fadeOver], null)[0].win === true);
   ok('T22 frac=1 is a no-op passthrough', applyFadeStopFraction([fadeOver], 1)[0].win === true);
   ok('T22 empty/null input -> empty array, not a throw', applyFadeStopFraction([], 0.9).length === 0 && applyFadeStopFraction(null, 0.9).length === 0);
+}
+
+// ── applyTrailingContinuation: trailMode:'chandelier' (2026-08-31) ─────────
+// A hand-built M1 path: steady climb through the +20p target (bar10), on to
+// a local peak (bar30, +60p), a MODERATE dip (bar21, -28p off-peak) that a
+// tiny 2%-giveback trail cannot survive but a 1.5xATR chandelier trail
+// (ATR=20p flat by construction) can, then further climb to a NEW peak
+// before a genuine hard reversal (bar31) finally stops the chandelier trail
+// out too. Proves: (1) chandelier survives a pullback giveback can't, so it
+// stays open materially LONGER (the whole point — catching a real runner
+// giveback structurally exits before); (2) it still floors at the original
+// target and still respects decisions/win-only filtering exactly like
+// giveback mode; (3) the untouched giveback default path is bit-identical
+// to before this trailMode param was added (no regression for any existing
+// caller, which never passes trailMode at all).
+{
+  const day = Date.UTC(2022, 0, 10, 8, 0, 0) / 1000;
+  const n = 33;
+  const times = new Float64Array(n), highs = new Float64Array(n), lows = new Float64Array(n), closes = new Float64Array(n);
+  for (let i = 0; i <= 20; i++) { // steady climb, +2p/bar, h/l = close +/-10p -> true range = 20p flat
+    const px = +(1.1000 + i * 0.0002).toFixed(6);
+    times[i] = day + i * 60; closes[i] = px; highs[i] = +(px + 0.0010).toFixed(6); lows[i] = +(px - 0.0010).toFixed(6);
+  }
+  // bar21: moderate dip off the bar20 peak (high20=1.1050) -- low=1.1022 is
+  // -28p off peak: survives a 1.5x*ATR(20p)=30p chandelier buffer, but blows
+  // straight through a 2%-of-excursion giveback buffer (<1p). h/l kept at
+  // the same +/-10p-of-close spread as every other bar so true range (and
+  // therefore ATR) stays flat at 20p through this bar too.
+  times[21] = day + 21 * 60; closes[21] = 1.1032; highs[21] = 1.1042; lows[21] = 1.1022;
+  for (let i = 22; i <= 30; i++) { // resumes climbing to a NEW peak (high30=1.1060)
+    const px = +(1.1032 + (i - 21) * 0.0002).toFixed(6);
+    times[i] = day + i * 60; closes[i] = px; highs[i] = +(px + 0.0010).toFixed(6); lows[i] = +(px - 0.0010).toFixed(6);
+  }
+  times[31] = day + 31 * 60; closes[31] = 1.1000; highs[31] = 1.1010; lows[31] = 1.0950; // hard reversal: breaks even the chandelier buffer
+  times[32] = day + 32 * 60; closes[32] = 1.1000; highs[32] = 1.1000; lows[32] = 1.1000;
+  const packed = { times, highs, lows, closes };
+
+  // side:'above' (not 'up') -- applyTrailingContinuation's awaySgn only
+  // recognizes Fib Atlas's 'above'/'below' vocabulary (its only caller),
+  // unlike betDirection which also accepts Level Atlas's 'up'/'down'.
+  const entry = 1.1000, pip = 0.0001;
+  const trade = { date: '2022-01-10', time: times[0], entry, pip, side: 'above', decision: 'follow', targetPips: 20, stopPips: 10, resolveTime: times[10], win: true, pnlPct: 0.2 };
+
+  const gb = applyTrailingContinuation([trade], packed, { givebackFrac: 0.02, decisions: ['follow'] });
+  const gbDefault = applyTrailingContinuation([trade], packed, { decisions: ['follow'] }); // no trailMode at all -- must match the explicit 'giveback' call
+  ok('T23 omitting trailMode is bit-identical to the pre-existing giveback default (no regression for any existing caller)',
+    gb[0].trailedPnlPct === gbDefault[0].trailedPnlPct && gb[0].trailedResolveTime === gbDefault[0].trailedResolveTime);
+  // The giveback buffer is so tight it exits on bar10's own ordinary noise
+  // (the resolution bar itself), before ever reaching the bar21 dip this
+  // block was built around -- an even stronger real-world illustration of
+  // "structurally exits almost immediately" than a bar21 exit would have been.
+  ok('T23 giveback trail exits immediately, on the resolution bar\'s own noise -- confirms the production finding (median extension ~0)', gb[0].trailedResolveTime === times[10], JSON.stringify(gb[0]));
+
+  const chand = applyTrailingContinuation([trade], packed, { trailMode: 'chandelier', chandelierMult: 1.5, chandelierPeriod: 20, decisions: ['follow'] });
+  ok('T23 chandelier trail SURVIVES the same bar21 dip giveback could not, staying open materially longer', chand[0].trailedResolveTime > gb[0].trailedResolveTime, JSON.stringify(chand[0]));
+  ok('T23 chandelier trail is only stopped out by the genuine hard reversal at bar31', chand[0].trailedResolveTime === times[31], JSON.stringify(chand[0]));
+  // Bar31's own true range gaps wide (the reversal bar itself), which lifts
+  // ATR at the moment of exit above the flat 20p seen through bars 0-30 --
+  // exact exit price depends on that one-bar ATR bump, so this checks the
+  // bounded, robust property (comfortably above the floor, comfortably
+  // below the near-full-peak giveback already locked in) rather than an
+  // exact hand-derived pip figure.
+  ok('T23 chandelier exit is above the floor and a real distinct trail level (not just the floor, not the untouched peak)',
+    chand[0].trailedPnlPips > 20 && chand[0].trailedPnlPips < 40, JSON.stringify(chand[0]));
+
+  const losingTrade = { ...trade, win: false };
+  ok('T23 a losing trade is untouched by chandelier mode exactly like giveback mode', applyTrailingContinuation([losingTrade], packed, { trailMode: 'chandelier' })[0].trailedPnlPct === undefined);
+  const fadeTrade = { ...trade, decision: 'fade' };
+  ok('T23 decisions filtering is respected in chandelier mode -- a fade trade is untouched when only follow is requested', applyTrailingContinuation([fadeTrade], packed, { trailMode: 'chandelier', decisions: ['follow'] })[0].trailedPnlPct === undefined);
+
+  ok('T23 empty/null input -> empty array, not a throw', applyTrailingContinuation([], packed, { trailMode: 'chandelier' }).length === 0 && applyTrailingContinuation(null, packed, { trailMode: 'chandelier' }).length === 0);
+}
+
+// ── applyStoredContinuationExit: mode-based (2026-08-31) ────────────────────
+// Generalized from a boolean once the chandelier exit needed a SECOND
+// stored variant alongside the original giveback trail — proves the two
+// modes read from genuinely different stored fields and every other input
+// shape (missing fields, false/off) still no-ops exactly as before.
+{
+  const withBoth = {
+    pnlPct: 0.2, pnlPips: 20, resolveTime: 100,
+    trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200,
+    chandTrailedPnlPct: 0.8, chandTrailedPnlPips: 80, chandTrailedResolveTime: 300,
+  };
+  const onlyGiveback = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100, trailedPnlPct: 0.5, trailedPnlPips: 50, trailedResolveTime: 200 };
+  const untrailed = { pnlPct: 0.2, pnlPips: 20, resolveTime: 100 };
+
+  for (const mode of [true, 'true', 'giveback']) {
+    const out = applyStoredContinuationExit([withBoth], mode)[0];
+    ok(`T24 mode=${JSON.stringify(mode)} swaps in the GIVEBACK fields, not the chandelier ones`, out.pnlPct === 0.5 && out.pnlPips === 50 && out.resolveTime === 200, JSON.stringify(out));
+  }
+  const chandOut = applyStoredContinuationExit([withBoth], 'chandelier')[0];
+  ok('T24 mode=\'chandelier\' swaps in the CHANDELIER fields, not the giveback ones', chandOut.pnlPct === 0.8 && chandOut.pnlPips === 80 && chandOut.resolveTime === 300, JSON.stringify(chandOut));
+
+  for (const mode of [false, 'false', undefined, null]) {
+    const out = applyStoredContinuationExit([withBoth], mode)[0];
+    ok(`T24 mode=${JSON.stringify(mode)} is a no-op passthrough (both fields present, neither used)`, out.pnlPct === 0.2 && out.pnlPips === 20 && out.resolveTime === 100);
+  }
+
+  ok('T24 mode=\'chandelier\' with only giveback fields stored -- passes the row through untouched, not a throw', applyStoredContinuationExit([onlyGiveback], 'chandelier')[0].pnlPct === 0.2);
+  ok('T24 mode=\'giveback\' with no trailed fields at all -- passes the row through untouched', applyStoredContinuationExit([untrailed], 'giveback')[0].pnlPct === 0.2);
+  ok('T24 empty/null input -> empty array, not a throw', applyStoredContinuationExit([], 'chandelier').length === 0 && applyStoredContinuationExit(null, 'chandelier').length === 0);
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

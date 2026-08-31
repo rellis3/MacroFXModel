@@ -75,17 +75,23 @@ export function withNonCompoundedDD(statsObj, dailyReturns) {
  * concurrency slot either — matches the order the validating backtest
  * used). `null`/`<=1` is a no-op passthrough.
  *
- * `continuationExit` (2026-08-30): validated by analysis/
- * fib_atlas_trailing_continuation_backtest.mjs (see LEGO_MODULES.md) — when
- * true, swaps in the PRE-COMPUTED `trailedPnlPct`/`trailedResolveTime`
- * fields (baked into the stored trade JSON at generation time, since this
- * lever needs real M1 access — see `applyTrailingContinuation`'s own doc)
- * for `decision==='follow' && win===true` rows. Applied via
- * `applyStoredContinuationExit`, BEFORE the concurrency cap — the trailed
+ * `continuationExit` (2026-08-30, generalized 2026-08-31 for the chandelier
+ * exit): `'giveback'`/`true` swaps in the PRE-COMPUTED `trailedPnlPct`/
+ * `trailedResolveTime` fields (the original givebackFrac=0.02 trail,
+ * analysis/fib_atlas_trailing_continuation_backtest.mjs); `'chandelier'`
+ * swaps in `chandTrailedPnlPct`/`chandTrailedResolveTime` instead (the
+ * ATR-trailed variant, each ladder's own frozen `chandelierMult` —
+ * analysis/fib_atlas_chandelier_exit_backtest.mjs, a real OOS drawdown
+ * win on both ladders, see LEGO_MODULES.md). Both are baked into the
+ * stored trade JSON at generation time (this lever needs real M1 access —
+ * see `applyTrailingContinuation`'s own doc), for `win===true` rows on
+ * both fade and follow. Applied via `applyStoredContinuationExit` (which
+ * does the string/boolean interpreting — this function just passes the
+ * value straight through), BEFORE the concurrency cap — the trailed
  * (possibly longer) `resolveTime` must be in place before that function
  * decides which trades survive the per-pair cap, or a trade the corrected
  * occupancy window would block could slip through on its original, shorter
- * window. `false` (default) is a no-op passthrough.
+ * window. `false`/omitted (default) is a no-op passthrough.
  */
 export async function buildFibAtlasVotePortfolio({
   pairs, minMargin = 2, maxConcurrent = 1, perDirection = false,
@@ -116,7 +122,7 @@ export async function buildFibAtlasVotePortfolio({
     const marginFiltered = swapped.filter(t => t.margin >= minMargin);
     const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
-    const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac);
+    const tightened = applyFadeStopFraction(capped?.kept ?? [], stopTightenFrac, 0, { preserveSizing: true });
     const sym = stored.groupKey ?? stored.instrument;
     perPairTradesRaw[sym] = tightened.map(t => ({ ...t, instrument: stored.instrument, ladder: stored.ladder ?? null }));
     perPair[sym] = {

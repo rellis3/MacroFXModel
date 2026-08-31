@@ -23,6 +23,14 @@ import { costForPair } from './perLineStrategy.js';
 
 const PREFIX = 'monday-fib-atlas';
 const DEFAULT_REARM = 0.3;
+// Chandelier (ATR-trailed) continuation exit's frozen choice for THIS
+// ladder (analysis/fib_atlas_chandelier_exit_backtest.mjs, LADDER=monday;
+// see LEGO_MODULES.md) — Monday's own optimum is a much TIGHTER trail than
+// Asia's (mult=3, asiaFibAtlasRoutes.js): Monday's noise character differs.
+// CHANDELIER_PERIOD (M1 bars for the rolling ATR) is shared, not yet
+// independently swept per ladder.
+const MONDAY_CHANDELIER_MULT = 1.5;
+const CHANDELIER_PERIOD = 60;
 // Same window Asia's own live cache uses (LIVE_WINDOW_DAYS in
 // asiaFibAtlasRoutes.js) — generous margin over what mondayFibAtlasWalk's
 // default minLookback=5 weeks actually needs, kept equal for one shared
@@ -84,7 +92,20 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   // fib_atlas_trailing_continuation_backtest.mjs entry, LADDER=monday
   // DECISION=all run), same as Asia's own runOne, off the SAME gap-filled
   // `packed` M1 bars already loaded above.
-  const trailedTrades = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
+  const trailed = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
+  // Chandelier variant (2026-08-31) — stored ALONGSIDE the giveback trail
+  // above, not a replacement (see js/levelAtlasVoteReview.js's
+  // applyStoredContinuationExit doc); same reasoning/order as Asia's own
+  // runOne. Second `applyTrailingContinuation` call over the SAME
+  // `wf1.trades` (order-aligned, safe to zip by index) and the SAME
+  // already-loaded `packed` M1 -- no new M1 fetch.
+  const chand = applyTrailingContinuation(wf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'], trailMode: 'chandelier', chandelierMult: MONDAY_CHANDELIER_MULT, chandelierPeriod: CHANDELIER_PERIOD });
+  const trailedTrades = trailed.map((t, i) => ({
+    ...t,
+    chandTrailedPnlPct: chand[i].trailedPnlPct ?? null,
+    chandTrailedPnlPips: chand[i].trailedPnlPips ?? null,
+    chandTrailedResolveTime: chand[i].trailedResolveTime ?? null,
+  }));
   const voteResult = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(),
     cost, splitDate: book.splitDate,
@@ -271,11 +292,13 @@ export function mountMondayFibAtlasRoutes(app, express) {
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
       const minCostRatio = req.query.minCostRatio ? Number(req.query.minCostRatio) : null;
-      const continuationExit = req.query.continuationExit === 'true';
+      // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit
+      // does its own interpreting now (2026-08-31), so no boolean coercion here.
+      const continuationExit = req.query.continuationExit;
       const swapped = applyStoredContinuationExit(stored.trades, continuationExit);
       const marginFiltered = swapped.filter(t => t.margin >= minMargin);
       const filtered = applyCostEfficiencyFilter(marginFiltered, stored.cost, minCostRatio);
-      const trades = applyFadeStopFraction(filtered, stopTightenFrac);
+      const trades = applyFadeStopFraction(filtered, stopTightenFrac, 0, { preserveSizing: true });
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, cost: stored.cost,
                  splitDate: stored.splitDate, minMargin, stopTightenFrac, minCostRatio, continuationExit, summary: stored.summaryByMargin?.[minMargin] ?? null, trades });
     } catch (e) {
@@ -306,7 +329,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
         throttleMult: req.query.throttleMult ? Number(req.query.throttleMult) : 0.5,
         stopTightenFrac: req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null,
         minCostRatio: req.query.minCostRatio ? Number(req.query.minCostRatio) : null,
-        continuationExit: req.query.continuationExit === 'true',
+        continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
         loadPairVoteTrades: async pair => getJSON(`${PREFIX}/${pair}-votetrades.json`),
       });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });

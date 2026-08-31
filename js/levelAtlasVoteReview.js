@@ -25,6 +25,7 @@ import { summarizeTrades } from './metricsCore.js';
 import { simulateExitVariants, bucketM1IntoSessions } from './forecastAnalyser.js';
 import { portfolioStats } from './backtestStats.js';
 import { bisect } from './barUtils.js';
+import { trueRange } from './indicatorCore.js';
 
 /**
  * The vote-margin decision for one touch: how many of ITS OWN held
@@ -309,14 +310,32 @@ export function priceAtTighterStop(trade, candidateStopPips, cost) {
  * already baked into its original `pnlPct` (see asiaFibAtlasRoutes.js's
  * `/run` build step), so re-applying cost here would double-charge it.
  *
- *   applyFadeStopFraction(trades, frac, cost=0) -> trades (same shape, fade rows repriced)
+ * `preserveSizing` (2026-08-30, default false — OPT-IN, zero behavior
+ * change for every existing caller including the already-shipped live
+ * toggle): when true, stamps `sizingStopPips` with the trade's ORIGINAL
+ * (pre-tightening) stop distance before shrinking `stopPips` itself.
+ * `riskAdjustTrades` prefers `sizingStopPips` when present — see that
+ * function's own doc for why this exists: without it, a tighter stop
+ * shrinks the risk-sizing denominator too, which fixed-fractional sizing
+ * responds to by upsizing the position, inflating BOTH the win and the
+ * loss legs (found 2026-08-30, see LEGO_MODULES.md's correction entry).
+ * `preserveSizing:true` isolates "does the tighter exit itself help"
+ * from "is this actually a bigger bet" by holding position size at what
+ * the ORIGINAL, untightened stop would have sized — a win's payout comes
+ * back byte-identical to baseline; only trades the tighter stop actually
+ * catches change, and by less than the full risk unit (proportional to
+ * how much tighter the stop is), not to exactly `-riskPct%` every time.
+ *
+ *   applyFadeStopFraction(trades, frac, cost=0, {preserveSizing=false}) -> trades (same shape, fade rows repriced)
  */
-export function applyFadeStopFraction(trades, frac, cost = 0) {
+export function applyFadeStopFraction(trades, frac, cost = 0, { preserveSizing = false } = {}) {
   if (!trades?.length || frac == null || frac >= 1) return trades ?? [];
   return trades.map(t => {
     if (t.decision !== 'fade' || t.maePips == null) return t;
     const priced = priceAtTighterStop(t, t.stopPips * frac, cost);
-    return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * frac, t.stopPips) } : t;
+    if (!priced) return t;
+    const sizingStopPips = preserveSizing ? (t.sizingStopPips ?? t.stopPips) : null;
+    return { ...t, ...priced, stopPips: Math.min(t.stopPips * frac, t.stopPips), ...(sizingStopPips != null ? { sizingStopPips } : {}) };
   });
 }
 
@@ -411,12 +430,57 @@ export function applyCostEfficiencyFilter(trades, cost, minCostRatio) {
  * through here (not re-derived from the base `pnlPct`) so the trailed
  * figure is charged cost exactly once, the same as the base figure.
  *
- *   applyTrailingContinuation(trades, packed, { givebackFrac, cost, decisions }) ->
+ * `trailMode` (2026-08-31, default `'giveback'` — fully backward-compatible,
+ * every existing caller gets identical numbers): the ORIGINAL trail gives
+ * back a fixed FRACTION of the excursion already made beyond the target,
+ * which is why it was found to exit almost immediately on any pullback
+ * (median extension ~0, max ~2min on the busiest pair) — it can't tell a
+ * genuine runner's normal noise from a real reversal because it has no
+ * sense of this pair's typical bar-to-bar range. `trailMode:'chandelier'`
+ * instead trails `chandelierMult` × a rolling ATR (Wilder EMA smoothing,
+ * `chandelierPeriod` bars, seeded at bar 0's own H-L — the classic
+ * chandelier-exit construction) behind the running extreme, so the stop
+ * only fires on a pullback that's large relative to this pair's OWN recent
+ * volatility, not a fixed slice of the move so far. Built to answer the
+ * owner's own question: does a wider, volatility-aware trail actually let
+ * winners run long enough to catch real multi-hour continuations (worth
+ * testing against a genuine "catch runners" hold time), where the tight
+ * giveback trail structurally can't. Reuses `trueRange` (indicatorCore.js)
+ * for the true-range primitive; the Wilder-EMA smoothing loop itself is
+ * re-expressed here (see `rollingATR` below) against this file's packed
+ * PARALLEL-ARRAY format rather than `atrWilder`'s bar-OBJECT array, the
+ * same array-vs-object split `barUtils.js` already establishes as this
+ * codebase's convention for the M1 hot path — same math, different, already-
+ * standard input shape, not a second copy of the recurrence to drift from.
+ * The floor (never worse than the original fixed exit) and the day-boundary
+ * forced close are unchanged in both modes.
+ *
+ *   applyTrailingContinuation(trades, packed, { givebackFrac, cost, decisions, trailMode, chandelierMult, chandelierPeriod }) ->
  *     trades (same shape, eligible winning rows gain trailedPnlPct/trailedPnlPips/trailedResolveTime)
  */
-export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0, decisions = ['follow'] } = {}) {
+// Packed-array counterpart of indicatorCore.js's atrWilder — identical
+// Wilder-EMA recurrence (k = 1/n, seeded at bar 0's own H-L), reusing the
+// SAME `trueRange` primitive, just walking `packed`'s parallel highs/lows/
+// closes arrays instead of an array of {high,low,close} bar objects (this
+// file's M1 hot path already only ever sees the packed form).
+function rollingATR(packed, n) {
+  const { highs, lows, closes } = packed;
+  const L = highs.length;
+  const out = new Float64Array(L);
+  if (L < 1) return out;
+  out[0] = highs[0] - lows[0];
+  const k = 1 / n;
+  for (let i = 1; i < L; i++) {
+    const tr = trueRange(highs[i], lows[i], closes[i - 1]);
+    out[i] = (Number.isFinite(tr) && tr > 0) ? k * tr + (1 - k) * out[i - 1] : out[i - 1];
+  }
+  return out;
+}
+
+export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02, cost = 0, decisions = ['follow'], trailMode = 'giveback', chandelierMult = 3, chandelierPeriod = 60 } = {}) {
   if (!trades?.length || !packed?.times?.length) return trades ?? [];
   const { times, highs, lows, closes } = packed;
+  const atr = trailMode === 'chandelier' ? rollingATR(packed, chandelierPeriod) : null;
   return trades.map(t => {
     if (!decisions.includes(t.decision) || !t.win) return t;
     const awaySgn = t.side === 'above' ? 1 : -1; // "away from range" direction implied by which side the rung is on
@@ -430,7 +494,9 @@ export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02,
       const fwd = sgn > 0 ? highs[j] : lows[j];
       const bwd = sgn > 0 ? lows[j] : highs[j];
       if (sgn > 0 ? fwd > runExtreme : fwd < runExtreme) runExtreme = fwd;
-      const trailStop = runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
+      const trailStop = trailMode === 'chandelier'
+        ? runExtreme - sgn * chandelierMult * atr[j]
+        : runExtreme - sgn * givebackFrac * Math.abs(runExtreme - outer);
       if (sgn > 0 ? bwd <= trailStop : bwd >= trailStop) { exitTime = times[j]; exitPrice = trailStop; break; }
       exitTime = times[j]; exitPrice = closes[j]; // forced mark-to-close at day-end if never stopped out
     }
@@ -441,23 +507,42 @@ export function applyTrailingContinuation(trades, packed, { givebackFrac = 0.02,
 }
 
 /**
- * READ-TIME counterpart to `applyTrailingContinuation` above — swaps the
- * pre-computed `trailedPnlPct`/`trailedPnlPips`/`trailedResolveTime`
- * fields (stored on the row by the generation-time brick) into the row's
- * live `pnlPct`/`pnlPips`/`resolveTime` when `on` is true. No M1 access,
+ * READ-TIME counterpart to `applyTrailingContinuation` above — swaps
+ * pre-computed trailed-exit fields (stored on the row by the generation-time
+ * brick) into the row's live `pnlPct`/`pnlPips`/`resolveTime`. No M1 access,
  * no computation — just a field swap, cheap enough for a request-time
  * toggle. Call this BEFORE `applyConcurrencyCap`: that function reads
  * `resolveTime` to decide which trades survive the per-pair cap, and the
  * (possibly longer) trailed occupancy window must be in place before that
  * decision, not applied after — the same correctness point
  * `analysis/fib_atlas_trailing_continuation_backtest.mjs` documents. A row
- * with no trailed fields (couldn't be trailed at generation time) passes
- * through unchanged either way.
+ * missing the selected mode's fields (couldn't be trailed at generation
+ * time) passes through unchanged either way.
  *
- *   applyStoredContinuationExit(trades, on) -> trades (same shape)
+ * `mode` (2026-08-31, generalized from a boolean once the chandelier exit —
+ * LEGO_MODULES.md's chandelier-exit entry — needed a SECOND stored variant
+ * alongside the original giveback trail, not a replacement for it):
+ *   - `true` / `'true'` / `'giveback'` → swap `trailedPnlPct`/`trailedPnlPips`/
+ *     `trailedResolveTime` (the original givebackFrac=0.02 trail, unchanged).
+ *   - `'chandelier'` → swap `chandTrailedPnlPct`/`chandTrailedPnlPips`/
+ *     `chandTrailedResolveTime` (the ATR-trailed variant, each ladder's own
+ *     frozen `chandelierMult`).
+ *   - anything else (`false`/`'false'`/omitted/`null`) → no-op passthrough.
+ * Callers may now pass `req.query.continuationExit` straight through
+ * (string or boolean) without their own `=== 'true'` coercion — this
+ * function does the interpreting, in one place, so the query-string
+ * contract can't drift between the 5 route call sites that use it.
+ *
+ *   applyStoredContinuationExit(trades, mode) -> trades (same shape)
  */
-export function applyStoredContinuationExit(trades, on) {
-  if (!trades?.length || !on) return trades ?? [];
+export function applyStoredContinuationExit(trades, mode) {
+  const isGiveback = mode === true || mode === 'true' || mode === 'giveback';
+  const isChandelier = mode === 'chandelier';
+  if (!trades?.length || !(isGiveback || isChandelier)) return trades ?? [];
+  if (isChandelier) {
+    return trades.map(t => t.chandTrailedPnlPct == null ? t
+      : { ...t, pnlPct: t.chandTrailedPnlPct, pnlPips: t.chandTrailedPnlPips, resolveTime: t.chandTrailedResolveTime });
+  }
   return trades.map(t => t.trailedPnlPct == null ? t
     : { ...t, pnlPct: t.trailedPnlPct, pnlPips: t.trailedPnlPips, resolveTime: t.trailedResolveTime });
 }
@@ -651,10 +736,28 @@ export function runExitVariantStudy(trades, packed, { trailFrac = 0.5, beTrigger
  * for `tradeFactors`/`applyExposureCap` below — a second consumer that needs
  * the SAME sign convention (a wrong direction here silently inverts which
  * trades a factor cap thinks are stacking vs offsetting).
+ *
+ * `isUp` recognizes BOTH engines' own `side` vocabulary (2026-08-31, found
+ * while testing `applyExposureCap` on Fib Atlas trades for the first time):
+ * Level Atlas's touches use `side: 'up'|'down'`; Fib Atlas's use
+ * `side: 'above'|'below'` (the touched rung sits above/below the day's
+ * range) — structurally the SAME "which way is outward" concept, just a
+ * different word. Before this fix, `t.side === 'up'` was always false for
+ * EVERY Fib Atlas trade (it never carries the literal string 'up'), so
+ * `betDirection` silently returned a direction that depended ONLY on
+ * `decision` (fade always 'long', follow always 'short'), ignoring `side`
+ * completely — every Fib Atlas trade's real long/short direction was wrong
+ * for both `perDirection` concurrency budgets and `tradeFactors`' currency
+ * sign, an existing correctness bug this exposure-cap test caught before
+ * trusting any result built on it, not after. Caught by reading the
+ * function against real trade data rather than assuming it was already
+ * engine-agnostic just because it accepted a generic `{decision, side}`
+ * shape. Level Atlas's own 'up'/'down' behavior is completely unchanged
+ * (it never sends 'above'/'below', so the added check is a no-op for it).
  */
 export function betDirection(t) {
   const withSide = t.decision === 'follow';
-  const isUp = t.side === 'up';
+  const isUp = t.side === 'up' || t.side === 'above';
   return (withSide === isUp) ? 'long' : 'short';
 }
 
@@ -832,11 +935,23 @@ export function inverseVolWeights(perPairTrades) {
  * trade with zero stop distance (shouldn't occur, but keeps this safe) is
  * left with pnlPct 0 and rMultiple 0 rather than dividing by zero.
  *
+ * Prefers `t.sizingStopPips` over `t.stopPips` when present (2026-08-30) —
+ * a stop-tightening lever that reprices `stopPips` to a NEW, smaller value
+ * (`applyFadeStopFraction`'s `preserveSizing:true` mode) can stamp
+ * `sizingStopPips` with the trade's ORIGINAL distance so this function
+ * keeps sizing the position off the pre-tightening risk unit instead of
+ * silently upsizing it — see that function's own doc for why this
+ * matters (found 2026-08-30: fixed-fractional sizing off a just-tightened
+ * stop inflates the win leg too, not just shrinking the loss leg).
+ * Falls back to `t.stopPips` when `sizingStopPips` is absent, so every
+ * existing caller (nothing sets that field by default) is byte-identical.
+ *
  *   riskAdjustTrades(trades, 1) -> same trades, pnlPct replaced by R × 1%, rMultiple added
  */
 export function riskAdjustTrades(trades, riskPct = 1) {
   return (trades ?? []).map(t => {
-    const stopRiskPct = t.stopPips * t.pip / t.entry * 100;
+    const sizingPips = t.sizingStopPips ?? t.stopPips;
+    const stopRiskPct = sizingPips * t.pip / t.entry * 100;
     const r = stopRiskPct > 1e-9 ? t.pnlPct / stopRiskPct : 0;
     return { ...t, pnlPct: +(r * riskPct).toFixed(4), rMultiple: +r.toFixed(3), riskPctUsed: riskPct };
   });

@@ -3250,6 +3250,67 @@ as legitimate, or test a version that resizes only the stop-out leg) before
 either this or the live fade lever's sizing story is presented as fully
 settled; that decision belongs to the owner, not a default to assume.
 
+**Isolating SL-tightening's risk-reduction from its position-size effect —
+tested, then wired into production (2026-08-30, later same day).** Direct
+follow-up to the leverage-in-disguise question just above: does the
+reported edge survive if tightening the stop no longer resizes the
+position? `applyFadeStopFraction` gained an opt-in `preserveSizing`
+option (default `false` — zero behavior change to every existing caller,
+confirmed by grepping every call site before touching anything) that
+stamps `sizingStopPips` with the trade's ORIGINAL, pre-tightening stop
+distance; `riskAdjustTrades` prefers that field when present, so the
+position is sized as if the stop were never tightened, while the tighter
+stop still decides win/loss. Verified on a synthetic trade first: a
+winning trade's payout comes back byte-identical to a fully untightened
+baseline, and a losing trade's loss shrinks in direct proportion to the
+tightening fraction instead of collapsing to exactly `-riskPct%` every
+time (`analysis/fib_atlas_sl_tightening_backtest.mjs` gained the matching
+`SIZE_HELD` env var to re-run the existing study both ways).
+
+**Finding — OOS, fraction=0.9, both decisions, resized vs. size-held:**
+
+| | Sharpe | maxDD | avg win | avg loss |
+|---|---|---|---|---|
+| Fade, resized | 6.31 | -39.21% | 0.468% | -1.00% (always) |
+| Fade, size held | **6.31 (identical)** | **-35.69%** | **0.421% (= untightened baseline)** | -0.90% (proportional) |
+| Follow, resized | 9.65 | -17.99% | 0.824% | -1.00% (always) |
+| Follow, size held | **9.65 (identical)** | **-16.27%** | **0.742% (= baseline)** | -0.90% |
+
+**Sharpe is mathematically identical between the two modes at EVERY
+fraction tested on the full grid, not just the chosen one** — worth
+understanding why, not just observing: Sharpe is mean÷spread, and a
+uniform per-trade multiplicative rescale (which is exactly what resizing
+off a fixed fraction does to every trade in that decision) cancels out of
+a ratio. So the "is the Sharpe partly fake from leverage" worry, raised
+correctly for the WIN/LOSS MAGNITUDES, does not actually apply to the
+Sharpe NUMBER itself for an isolated single-decision lever — confirmed
+empirically across the whole fraction grid, not just asserted from the
+algebra. What DOES differ: size-held gives a shallower, more STABLE maxDD
+across the whole grid (fade's IS maxDD at frac=0.6: -66.1% resized vs
+-45.44% held — resizing compounds losing-trade risk as the fraction
+tightens, size-held doesn't), and CAGR is far less distorted by the
+uncapped-compounding artifact already flagged elsewhere in this file.
+Net: same edge, strictly more honest numbers — not a trade-off.
+
+**Wired into production the same day** (owner's explicit go-ahead after
+seeing the comparison): `js/fibAtlasVotePortfolio.js`, both single-pair
+`/vote-trades` routes (`js/asiaFibAtlasRoutes.js`,
+`js/mondayFibAtlasRoutes.js`) now call `applyFadeStopFraction(..., 0,
+{ preserveSizing: true })`. Live-verified against a running server: fade's
+avg loss now reads a clean -0.9000% (exactly the fraction, matching the
+math above) instead of the old flat -1.0336%-ish blend; follow (untouched
+by this fade-only lever) unaffected. The page's "Tighten fade stop (0.9×)"
+tooltip updated to explain the sizing change plainly. Playwright: zero
+page errors on both ladders, full recommended pair set.
+
+🟢 a genuinely rare case: the honesty fix cost nothing (Sharpe identical,
+proven algebraically and confirmed on real data) and IMPROVED the
+reported drawdown/CAGR stability besides — shipped the same session it
+was found, not left as an open question. Follow's own stop-tightening
+lever (immediately above) still isn't wired — this fix answers the SIZING
+question for whenever that gets picked up, but wiring follow itself is a
+separate decision not yet made.
+
 **Bug fix (2026-08-30) — "error loading candles: Failed to fetch" when
 clicking a trade row on this page's chart.** Root-caused, not guessed:
 `/api/vol-backtest/candles/:pair` (`server.js`) does a synchronous cold R2
@@ -4029,6 +4090,283 @@ specifically (verified); Monday was validated with `DECISION=all` only
 (not fade-alone or follow-alone in isolation there), which is what
 actually ships, so that's not a gap — flagging only that Monday's
 per-decision breakdown, unlike Asia's, wasn't separately examined.
+
+---
+
+### Net exposure cap for Fib Atlas — a real bug fix, then a clean null (2026-08-31)
+
+Direct follow-up to "any other ideas for reducing drawdown" — this book's
+own worst-drawdown finding (§ above, `applyDrawdownThrottle`'s own build
+history) was a **19-day CORRELATED losing stretch across pairs** (win
+rate 45.5% vs 58.9% overall), not concurrent-position pile-up. The
+existing `applyPortfolioHeatCap` sums GROSS risk regardless of direction
+— a long EURUSD + long USDCHF (partially hedged: +EUR-USD and +USD-CHF
+net close to zero USD exposure) costs the same budget as long USDJPY +
+long USDCHF (+USD twice, real doubled exposure); it can't tell a hedge
+from a stack. `applyExposureCap`/`tradeFactors` (`js/levelAtlasVoteReview.js`)
+already exist for exactly this — built earlier for Level Atlas, never
+tried on Fib Atlas before now.
+
+**Real bug found and fixed before trusting any result, not after.**
+`applyExposureCap`'s direction sign comes from `betDirection(t)`, which
+checked `t.side === 'up'` — but Fib Atlas trades carry `side:
+'above'|'below'`, never the literal string `'up'`. Every Fib Atlas
+trade's computed long/short direction was silently WRONG before this fix
+— it depended only on `decision` (fade always resolved 'long', follow
+always 'short'), completely ignoring which side of the range the touch
+was actually on. This wasn't caught by any earlier lever this session
+because none of them needed trade DIRECTION — cost-efficiency, stop-
+tightening, trailing-exit, entry-priority, heat cap and throttle are all
+direction-blind. `betDirection` now recognizes 'above' as Level Atlas's
+'up' and 'below' as 'down' (structurally the same "which way is outward"
+concept); Level Atlas's own 'up'/'down' behavior is completely
+unchanged since it never sends 'above'/'below'. New unit tests
+(`js/levelAtlasVoteReview.test.mjs` T21) assert all four
+`{decision, side}` combinations resolve to the correct direction for
+BOTH engines' vocabularies, not just Level Atlas's.
+
+**The test itself, once the bug was fixed, came back a clean null on
+both ladders.** `analysis/fib_atlas_exposure_cap_backtest.mjs` — full
+already-shipped pipeline (recommended pairs, cost-efficiency filter,
+fade-stop-tighten with `preserveSizing:true`, heat cap + throttle at
+frozen BEST_CONFIG where one exists), exposure cap applied BEFORE the
+heat cap (finer, direction-aware gate first), pre-stated rule (among cap
+values with lower IS maxDD than baseline, the highest IS Sharpe), 70/30
+split, swept `[0.5, 0.75, 1, 1.5, 2, 3, 5]%`:
+
+- **Asia**: every tested cap either makes maxDD WORSE (tighter than
+  ~1%: IS maxDD -4.59%→-5.43% at 0.5%, Sharpe also drops 14.81→14.1) or
+  is a near no-op (looser than ~1.5%: <50 of 12,675 trades ever skipped).
+  No cap cleared the pre-stated bar — nothing frozen for OOS.
+- **Monday**: identical shape — tighter caps cost both Sharpe and maxDD
+  (12.08→11.63 Sharpe, -3.71%→-4.1% maxDD at 0.5%), looser caps are a
+  near no-op. Same null.
+
+**Not a broken or vacuous test** — the mechanism genuinely engages (14-19%
+of trades skipped at the tighter cap levels on both ladders), it just
+doesn't help. Plausible read, not confirmed further: Asia's own frozen
+heat cap (1% simultaneous exposure, effectively ≤2 concurrent 0.5%-risk
+positions) is ALREADY tight enough that there's little room left for a
+direction-aware refinement to add value — the coarser gross-risk cap is
+already doing most of the useful work at that tightness. Monday has no
+heat cap at all yet shows the identical null shape, which cuts against
+that specific explanation and wasn't chased further (would need its own
+investigation, not assumed).
+
+🟢 the bug fix is real, independently valuable regardless of this test's
+outcome (any FUTURE Fib Atlas consumer of `betDirection`/`tradeFactors`/
+`applyExposureCap`, or of `applyConcurrencyCap`'s `perDirection` mode,
+would have silently gotten wrong signs before this), caught by reading
+the function against real data rather than trusting a generic-looking
+signature. 🔴 the drawdown-reduction hypothesis itself is a clean, honest
+null on both ladders — reported as such, not reframed as a partial win.
+Two other drawdown-reduction bricks flagged in the same conversation
+(`applyCurrencyLossGate`, `applyNewsProximityThrottle`) remain untested
+for Fib Atlas.
+
+---
+
+### Chandelier (ATR-trailed) continuation exit for Fib Atlas — a real drawdown win, analysis-only (2026-08-31)
+
+Direct follow-up to "did we have a reduction in drawdown from [the
+exposure cap]? if not let's test something else? did we ever test ...
+instead of closing a trade at tp we move to breakeven and then trade
+from chandelier effect to see if actually we can catch runners? this
+may mean we have multiple trades open at once on a pair so interested
+in analysis first?" — the exposure cap was a clean null (§ above), so
+this is "something else": a genuinely different trail SHAPE, plus the
+concurrency question asked explicitly, tested as **analysis before any
+implementation** per the owner's own request.
+
+**Why the already-shipped trailing exit couldn't answer this.**
+`applyTrailingContinuation`'s `trailMode:'giveback'` (live at
+givebackFrac=0.02) gives back a FIXED FRACTION of the excursion made so
+far — found this session to exit almost immediately on any pullback
+(median hold-time extension ~0 across 17,399 kept Asia trades, max
+~2min). It structurally never held a trade long enough to create a
+"second trade wants to open on this pair" scenario, so the concurrency
+question was moot for it — a genuinely wider, volatility-aware trail
+was needed to test it for real.
+
+**Built:** `applyTrailingContinuation` (`js/levelAtlasVoteReview.js`)
+gains `trailMode:'chandelier'` (default stays `'giveback'`, fully
+backward-compatible — zero behavior change for every existing caller,
+proven by a bit-identical-output unit test). Trails
+`chandelierMult` × a rolling ATR (Wilder EMA, `chandelierPeriod` M1
+bars — default 60, not yet independently swept) behind the running
+extreme, instead of a fixed fraction of the excursion. Reuses
+`trueRange` (`indicatorCore.js`) for the true-range primitive; the
+Wilder-EMA smoothing loop is re-expressed against this file's packed
+PARALLEL-ARRAY format (`rollingATR`) rather than `atrWilder`'s bar-
+OBJECT array — same math, the established array-vs-object split this
+file's M1 hot path already uses (`barUtils.js`'s own convention), not a
+second copy to drift from. Same floor (never worse than the original
+fixed exit) and day-boundary forced close as giveback mode. New unit
+tests (`js/levelAtlasVoteReview.test.mjs` T23, hand-built M1 path):
+chandelier survives a pullback giveback mode can't and stays open
+materially longer, still respects decisions/win-only filtering, and the
+untouched giveback default is bit-identical to before this param
+existed.
+
+**`analysis/fib_atlas_chandelier_exit_backtest.mjs`** — full
+already-shipped pipeline (cost-efficiency filter, fade-stop-tighten with
+`preserveSizing:true`, heat cap + throttle at frozen BEST_CONFIG),
+`decisions:['fade','follow']` (matches production's both-sides
+trailing exit), swept `chandelierMult ∈ [1.5, 2, 3, 4, 5]`, pre-stated
+rule (maximize IS Sharpe, must beat baseline), 70/30 IS/OOS freeze,
+Asia only so far:
+
+- **IS**: baseline Sharpe 14.81 → mult=3 (chosen) Sharpe 19.75, maxDD
+  -4.59%→-3.29%, avgWin 0.41%→0.62%, avgLoss -0.5454%→-0.5477%
+  (essentially flat).
+- **OOS (frozen from IS, unchanged)**: baseline Sharpe 15.33 → mult=3
+  Sharpe **19.47** (real improvement holds out of sample), maxDD
+  **-4.51%→-2.43%** (nearly HALVED), CAGR(add.) 427.72%→786.02%. avgLoss
+  -0.5354%→-0.5383% (still essentially flat) — **leverage-in-disguise
+  check passes cleanly**: this lever only ever touches WINNING trades'
+  exit, never `stopPips` or sizing, and the OOS numbers confirm it
+  didn't quietly become one.
+- **Hold-time extension** (mult=3, winners the chandelier actually
+  extended): n=9974, p10=3min, median=13min, p75=25min, p90=43min,
+  max=170min (2.8hr) — a real, materially longer hold than giveback
+  mode's near-zero extension, genuinely riding continuations rather
+  than exiting on the first tick of noise.
+
+**"Analysis first" — both concurrency models tested at the frozen exit,
+answering the owner's explicit question, nothing wired in yet.**
+`applyConcurrencyCap`'s own existing `maxConcurrent` parameter (no new
+mechanism) run at 1 ("blocked" — today's production default, a later
+same-pair signal is skipped while the chandelier-held trade is still
+open) vs 2 ("stacking" — a second trade may open while it's still
+open):
+
+| | IS Sharpe | IS maxDD | OOS Sharpe | OOS maxDD | OOS trades |
+|---|---|---|---|---|---|
+| blocked (concur=1) | 19.75 | -3.29% | 19.47 | -2.43% | 3711 |
+| stacking (concur=2) | 21.39 | -3.04% | 20.93 | **-1.93%** | 4038 |
+
+Stacking wins on every axis, IS **and** OOS, on top of the already-real
+chandelier improvement: higher Sharpe, shallower maxDD, +327 genuinely
+new OOS trades the blocked model was refusing outright — avgWin/avgLoss
+essentially unchanged between the two (0.5951%/-0.5383% vs
+0.5957%/-0.5387%), confirming this is purely "take more of the same
+trades", not a risk-shape change.
+
+🟢 **this is a real, OOS-validated result, not a null** — first genuine
+drawdown improvement found in this session's whole drawdown-reduction
+thread (net exposure cap and, earlier, the SL-tightening isolation study
+were both clean/near-nulls on maxDD specifically). 🟡 **deliberately NOT
+wired into production yet** — the owner asked for the concurrency
+analysis BEFORE any implementation decision, and moving to
+`maxConcurrent:2` is architecturally significant (interacts with the
+frozen heat cap's own budget semantics, which was tuned against
+`maxConcurrent:1`; the live page's per-pair occupancy assumptions;
+Monday ladder untested). Open before wiring: (1) re-validate
+`chandelierPeriod` itself (currently fixed at 60, not gridded — only
+`chandelierMult` was swept); (2) re-tune/re-validate the heat cap
+against `maxConcurrent:2`'s different occupancy pattern rather than
+reusing the `maxConcurrent:1`-tuned `BEST_CONFIG` as-is; (3) run the
+same study on the Monday ladder before assuming it transfers.
+
+**Monday ladder: same shape, smaller magnitude (2026-08-31).**
+`fib_atlas_chandelier_exit_backtest.mjs`, identical pipeline/rule,
+Monday's OWN pair set (no exclusion — its own pair-selection study
+failed OOS, see § above), 26 constituents:
+
+- **IS**: baseline Sharpe 12.08 → mult=1.5 (chosen — Monday's own
+  optimum is a much TIGHTER trail than Asia's mult=3, its noise
+  character differs) Sharpe 13.11, maxDD -3.71%→-3.61%.
+- **OOS**: baseline Sharpe 11.39 → mult=1.5 Sharpe **12.85**, maxDD
+  **-3.11%→-2.57%** (real, ~17% relative reduction — smaller than
+  Asia's ~46%, but real). avgLoss OOS -0.4973%→-0.4973% — **identical
+  to four decimal places**, the cleanest leverage-in-disguise pass yet.
+- **Hold-time extension** (mult=1.5): n=1737, median=3min, p90=10min,
+  max=62min — much shorter than Asia's (median=13min, p90=43min),
+  consistent with the tighter chosen mult.
+- **Stacking** (maxConcurrent=2) on top: IS Sharpe 13.11→13.92, maxDD
+  -3.61%→-3.13%, trades 4483→5814; OOS Sharpe 12.85→**14.48**, maxDD
+  -2.57%→**-1.93%**, trades 1647→2141 (+494). Same direction as Asia
+  on every axis.
+
+Both ladders now have independent OOS footing for the chandelier exit
+and for stacking on top of it — the next step (below) is reviewing
+whether the EXISTING heat cap still earns its keep once both are running.
+
+### Heat-cap platform review for chandelier + stacking (2026-08-31) — a real pre-existing bug, and the heat cap goes from helping to redundant-or-harmful
+
+Direct follow-up to "do monday then we have a good footing for the
+chandelier then we can review as a platform the heat cap and wire into
+production" — Monday done (above), this is the heat-cap review, run on
+`analysis/fib_atlas_best_config_backtest.mjs` (the SAME script that
+originally froze the currently-shipped `BEST_BY_LADDER.asia`), extended
+with `CHANDELIER=1`/`MAX_CONCURRENT` knobs rather than a second copy.
+
+**Real, pre-existing bug found and fixed before trusting any refit.**
+`fib_atlas_best_config_backtest.mjs` never imported or applied
+`applyCostEfficiencyFilter` — the already-validated, PRODUCTION-LIVE
+filter from 2026-08-30 (§ above) — at all. Caught by comparing this
+script's Asia trade count against `fib_atlas_chandelier_exit_backtest.mjs`'s
+on the identical pair set (30,805 vs 17,399) rather than assuming the
+bigger number was fine. This means the CURRENTLY-SHIPPED
+`BEST_BY_LADDER.asia` (heatCap=1%, trigger=-3, mult=0.25) was fit on a
+trade universe production no longer runs. Fixed (import +
+`MIN_COST_RATIO=3`, matching every other Fib Atlas script this
+session) and re-run before anything else in this entry.
+
+**Step 1 — re-fit TODAY's exit (no chandelier) on the corrected
+pipeline, to check the currently-shipped config still holds on its own
+terms.** Asia: same config re-chosen (heatCap=1%, trigger=-3,
+mult=0.25) — the bug didn't change WHICH config wins. But **OOS maxDD
+is worse with the cap than without it**: baseline -4.07% → capped
+**-4.51%** (Sharpe improves 14.96→15.33, trades drop 4724→4012). Same
+shape as the exposure-cap null (§ above) — the drawdown-reduction case
+for TODAY's shipped Asia heat cap does not actually hold up OOS, on
+the corrected pipeline, independent of any chandelier work. Monday
+(which has never had a frozen heat cap) shows the opposite: baseline
+OOS maxDD -3.11% → capped **-2.73%**, a real improvement (Sharpe drops
+11.39→10.47, trades 1654→1389) — heat-cap OOS behavior is not uniform
+across ladders even under the unchanged exit.
+
+**Step 2 — re-fit the SAME grid on the chandelier + stacking pipeline
+(`CHANDELIER=1 MAX_CONCURRENT=2`, each ladder's own frozen mult),
+replicated on BOTH ladders:**
+
+| | IS maxDD, no cap | 1% cap | 2% cap | 3%/5% cap | Chosen | OOS: no cap | OOS: chosen |
+|---|---|---|---|---|---|---|---|
+| Asia | -2.88% | -3.04% (worse) | -3.38% (worse) | -2.88% (no-op) | cap=3% | -3.1% | -3.1% (identical) |
+| Monday | -3.13% | -3.25% (worse) | -3.13% (tie) | -3.13% (no-op) | cap=2% | -1.93% | -1.93% (identical) |
+
+**No tested heat cap improves drawdown on either ladder once
+chandelier+stacking is running.** Tight caps (1%, sometimes 2%) make
+IS maxDD WORSE; looser caps are exact no-ops; whichever the pre-stated
+rule picks, OOS maxDD comes back bit-for-bit IDENTICAL to no cap at
+all, on both ladders independently. The drawdown-throttle trigger
+(-3%) baked into every grid cell also never fires in either ladder's
+series post-chandelier+stacking — the book no longer dips deep enough
+to trip it.
+
+**Read:** the heat cap's original job — capping correlated/pile-up
+risk — now appears to already be happening at the exit/concurrency
+layer itself: the ATR-aware trail cuts real losers' hold time less
+than winners' (leverage-in-disguise check stayed clean throughout),
+and stacking admits genuinely diversifying second positions rather
+than blindly refusing by raw count. A mechanism built to solve a
+problem the new pipeline no longer has isn't a bug to fix — it's
+redundant, and at tight settings actively counter-productive. Replicated
+independently on both ladders, not one lucky slice.
+
+🟢 the cost-efficiency-filter bug fix is real and independently
+valuable (the frozen production heat cap was validated against a
+trade set production doesn't actually run). 🟢 chandelier+stacking's
+own drawdown improvement (§ above) is confirmed to NOT depend on the
+heat cap doing any of the work — it holds with the cap entirely absent.
+🟡 **recommendation, not yet wired**: when moving chandelier+stacking to
+production, do NOT carry `BEST_BY_LADDER.asia`'s heat cap forward
+unchanged — either drop it or loosen it well past the point where it
+binds (e.g. 5%+), since tightening it now costs drawdown it used to
+save. The drawdown throttle can stay as a dormant tail-risk backstop
+(it costs nothing when it never fires) but its own value under this
+pipeline is unconfirmed, not proven.
 
 ---
 

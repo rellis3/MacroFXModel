@@ -98,6 +98,11 @@
       <option value="2" selected>=2 (both agree)</option>
     </select></label>
     <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs)">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
+    <label title="Instead of closing a WINNING trade (either side) at its fixed target the instant price touches it, trail a stop that only ratchets favorably (floored at the original target). Giveback: fixed 2% of the excursion past target — exits almost immediately on any pullback. Chandelier (2026-08-31): trails a multiple of this pair's own rolling ATR instead, so it survives normal noise and rides real continuations — a materially bigger OOS win (analysis/fib_atlas_chandelier_exit_backtest.mjs): Asia (3x ATR) Sharpe 15.33->19.47 maxDD -4.51%->-2.43%; Monday (1.5x ATR) Sharpe 11.39->12.85 maxDD -3.11%->-2.57%.">Trailing/continuation exit <select id="continuationExitSel">
+      <option value="off" selected>Off</option>
+      <option value="giveback">Giveback (2%)</option>
+      <option value="chandelier">Chandelier (ATR)</option>
+    </select></label>
     <label>Decision <select id="decSel"><option value="all">all</option><option value="fade">fade</option><option value="follow">follow</option></select></label>
     <label>Outcome <select id="outSel"><option value="all">all</option><option value="win">wins</option><option value="loss">losses</option></select></label>
   </div>
@@ -232,6 +237,7 @@ const ladderSeg = document.getElementById('ladderSeg');
 const pairSel = document.getElementById('pairSel');
 const marginSel = document.getElementById('marginSel');
 const stopTightenChk = document.getElementById('stopTightenChk');
+const continuationExitSel = document.getElementById('continuationExitSel');
 const decSel = document.getElementById('decSel');
 const outSel = document.getElementById('outSel');
 const headerSub = document.getElementById('headerSub');
@@ -275,9 +281,9 @@ function csvPrefix() { return ladder === 'combined' ? 'fib-atlas-combined-vote' 
 // Fetches ONE ladder's vote-trades and tags every trade with which ladder it
 // came from — used directly for single-ladder mode, and twice (in parallel)
 // for combined mode below.
-async function fetchLadderTrades(ladderTag, pair, minMargin, stopTightenQS) {
+async function fetchLadderTrades(ladderTag, pair, minMargin, stopTightenQS, continuationExitQS) {
   const prefix = ladderTag === 'asia' ? '/api/asia-fib-atlas' : '/api/monday-fib-atlas';
-  const res = await fetch(`${prefix}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}`);
+  const res = await fetch(`${prefix}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}${continuationExitQS}`);
   const j = await res.json();
   return { ladderTag, ...j, trades: j.ok ? j.trades.map(t => ({ ...t, ladder: ladderTag })) : [] };
 }
@@ -289,6 +295,7 @@ async function loadData() {
   const qw = document.getElementById('qualityWarning');
   try {
     const stopTightenQS = stopTightenChk.checked ? '&stopTightenFrac=0.9' : '';
+    const continuationExitQS = continuationExitSel.value !== 'off' ? `&continuationExit=${continuationExitSel.value}` : '';
 
     // Combined mode merges BOTH ladders' own trades for this pair into one
     // sorted list, tagged by ladder — the trade-level analogue of the
@@ -301,8 +308,8 @@ async function loadData() {
     // heads-up.
     if (ladder === 'combined') {
       const [asia, monday] = await Promise.all([
-        fetchLadderTrades('asia', pair, minMargin, stopTightenQS),
-        fetchLadderTrades('monday', pair, minMargin, stopTightenQS),
+        fetchLadderTrades('asia', pair, minMargin, stopTightenQS, continuationExitQS),
+        fetchLadderTrades('monday', pair, minMargin, stopTightenQS, continuationExitQS),
       ]);
       const loaded = [asia, monday].filter(l => l.ok);
       if (!loaded.length) {
@@ -323,7 +330,7 @@ async function loadData() {
       return;
     }
 
-    const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}`);
+    const res = await fetch(`${apiPrefix()}/vote-trades/${pair}?minMargin=${minMargin}${stopTightenQS}${continuationExitQS}`);
     const j = await res.json();
     if (!j.ok) { headerSub.textContent = `no data: ${j.error}`; document.getElementById('kpiPrimary').innerHTML = `<span class="muted">no data yet — run POST ${apiPrefix()}/run for this pair</span>`; return; }
     allTrades = j.trades.map(t => ({ ...t, ladder }));
@@ -768,6 +775,7 @@ ladderSeg.querySelectorAll('button').forEach(btn => {
 pairSel.addEventListener('change', loadData);
 marginSel.addEventListener('change', loadData);
 stopTightenChk.addEventListener('change', loadData);
+continuationExitSel.addEventListener('change', loadData);
 decSel.addEventListener('change', applyFiltersAndRender);
 outSel.addEventListener('change', applyFiltersAndRender);
 ecHurdle.addEventListener('change', () => renderEdgeCost(filteredTrades()));
