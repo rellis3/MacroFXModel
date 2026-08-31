@@ -17,7 +17,7 @@
  * system. These tests exist so that class of bug can't silently return.)
  */
 import assert from 'node:assert/strict';
-import { asiaFibAtlasWalk, asiaFibAtlasLiveToday, asiaFibAtlasLiveLadder, sessionHandoffPhase, RUNGS_ABOVE, RUNGS_BELOW, SIDES } from './asiaFibAtlasEngine.js';
+import { asiaFibAtlasWalk, asiaFibAtlasLiveToday, asiaFibAtlasLiveLadder, asiaRungBarrierPips, sessionHandoffPhase, RUNGS_ABOVE, RUNGS_BELOW, SIDES } from './asiaFibAtlasEngine.js';
 import { buildAsiaSessions, buildMondayRanges, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
 import { majorEventEpochs } from './calendarLoader.js';
 
@@ -671,6 +671,26 @@ t('asiaFibAtlasLiveLadder: no-lookahead — bars strictly AFTER the current last
       assert.equal(a.price, after.ladder[i].price, 'rung price must not depend on a later bar');
     }
   }
+});
+
+t('asiaRungBarrierPips matches asiaFibAtlasWalk\'s own per-touch innerDistPips/outerDistPips for the same session/side/level — the live-plan producer must price a not-yet-touched rung identically to how the validated backtest priced it once touched', () => {
+  const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const { boundary, ladder } = asiaFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  assert.ok(boundary, 'expected a live boundary to compare against');
+  const sameDayTouches = touches.filter(t2 => t2.date === ladder[0]?.date || true);
+  // Any touch whose session boundary matches the live ladder's CURRENT
+  // boundary exactly (i.e. it happened during the same Asia session the
+  // live ladder is pricing right now) must get byte-identical barrier pips
+  // from the pure helper as the walk itself computed inline.
+  let checked = 0;
+  for (const touch of sameDayTouches) {
+    if (touch.asiaHigh !== boundary.asiaHigh || touch.asiaLow !== boundary.asiaLow) continue;
+    const { innerDistPips, outerDistPips } = asiaRungBarrierPips(touch.side, touch.level, boundary, touch.pip);
+    assert.equal(innerDistPips, touch.innerDistPips, `innerDistPips mismatch for ${touch.side}|${touch.level}`);
+    assert.equal(outerDistPips, touch.outerDistPips, `outerDistPips mismatch for ${touch.side}|${touch.level}`);
+    checked++;
+  }
+  assert.ok(checked > 0, 'expected at least one same-session touch to cross-check against');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

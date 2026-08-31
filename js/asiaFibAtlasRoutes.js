@@ -22,10 +22,10 @@
  * scored too.
  */
 import { loadM1ForPair } from './volBacktestM1Engine.js';
-import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.js';
+import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder, asiaRungBarrierPips } from './asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
-import { runBarrierWalkForward } from './asiaFibAtlasVoteReview.js';
+import { runBarrierWalkForward, voteDecision } from './asiaFibAtlasVoteReview.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
@@ -311,6 +311,80 @@ async function getFastLive(pair) {
   return { warming: false, ...entry.result };
 }
 
+// ── Live-plan zones (2026-08-31) — the Fib Atlas live/paper bot's ONLY
+// signal source. Mirrors server.js's `_volatilityV2PriceZone`/
+// `_volatilityV2InstrumentPreview` pattern exactly (Level Atlas's own live
+// bot, `volatility_bot_v2`): price EVERY rung the live ladder already
+// tracks against the stored book, using the SAME `voteDecision` +
+// `asiaRungBarrierPips` the backtest itself validated with — the bot never
+// gets its own copy of the decision math, per the playbook's core
+// principle ("the strategy computes, the bot only executes").
+//
+// `sizingStopPips` ALWAYS carries the full, untightened stop distance —
+// position sizing must be computed off this, never off `stopPips` once
+// `stopTightenFrac` has shrunk it, or fixed-fractional sizing sizes UP to
+// compensate for the smaller stop (implicit leverage — see this repo's
+// live-bot playbook §2, and `_volatilityV2PriceZone`'s own identical doc).
+//
+// A zone's "armed" state (whether a touch RIGHT NOW would count as a new,
+// re-armed entry vs. a rung still cooling down from an earlier touch today)
+// is DELIBERATELY left to the bot, not computed here: `asiaFibAtlasLiveLadder`
+// (which this reads via `getFastLive`) reports every rung's price/decision/
+// margin regardless of rearm state — replicating the walk's own rearm state
+// machine server-side would mean exposing `asiaFibAtlasLiveToday`'s internal
+// per-touch bookkeeping through this route, a materially bigger change for
+// something the bot already has to track anyway (it's the SAME "has price
+// crossed this rung level" event the bot watches for its entry trigger in
+// the first place). `rearmFrac` is published on every zone so the bot's own
+// rearm tracking uses the EXACT value (`DEFAULT_REARM` = 0.3) the backtest
+// was validated with, never a guessed default.
+export const FIB_ATLAS_MIN_MARGIN = 2;                 // best-config frozen value (asia-fib-atlas-vote-portfolio.html's loadBestConfigBtn)
+export const FIB_ATLAS_MIN_COST_RATIO = 3;              // Asia's own frozen ratio (fib_atlas_cost_efficiency_filter.mjs)
+export const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;         // frozen fraction (fib_atlas_sl_tightening_backtest.mjs)
+
+export async function asiaLivePlanZones(pair, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC } = {}) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/asia-fib-atlas/run first' };
+  const cost = stored.cost ?? 0;
+
+  const zones = [];
+  for (const rung of live.ladder) {
+    const vd = voteDecision(book, rung);
+    if (!vd || vd.margin < minMargin) continue;
+    const { innerDistPips, outerDistPips } = asiaRungBarrierPips(rung.side, rung.level, live.boundary, rung.pip);
+    const targetPips = vd.decision === 'fade' ? innerDistPips : outerDistPips;
+    const sizingStopPips = vd.decision === 'fade' ? outerDistPips : innerDistPips;
+    if (targetPips == null || sizingStopPips == null) continue;   // 'follow' at the outermost rung -- no real stop, don't publish it
+    if (cost > 0 && minCostRatio > 1) {
+      const targetPnlPct = targetPips * rung.pip / rung.price * 100;
+      if (targetPnlPct / cost < minCostRatio) continue;
+    }
+    const stopPips = (vd.decision === 'fade' && stopTightenFrac != null && stopTightenFrac < 1)
+      ? +(sizingStopPips * stopTightenFrac).toFixed(1) : sizingStopPips;
+    const sgn = rung.side === 'above' ? 1 : -1;
+    const sl = rung.price - sgn * stopPips * rung.pip;
+    const sizingSl = rung.price - sgn * sizingStopPips * rung.pip;
+    const tp = rung.price + sgn * targetPips * rung.pip;
+    zones.push({
+      side: rung.side, rung: rung.level, decision: vd.decision, margin: vd.margin,
+      entry: rung.price, sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
+      targetPips, stopPips, sizingStopPips, pip: rung.pip, rearmFrac: DEFAULT_REARM,
+      touchedToday: rung.touchedToday,
+      // Short, stable per-(side,level) tag for Mt5Broker.enter's dedupe_tag —
+      // "a" prefix disambiguates from Monday's own zones on the SAME pair
+      // (asiaLivePlanZones/mondayLivePlanZones share nothing else that would
+      // collide, but a live bot trading BOTH ladders on one instrument needs
+      // this). Well under MT5's 31-char comment cap.
+      dedupeTag: `a_${rung.side[0]}${rung.level}`,
+      rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+    });
+  }
+  return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, warming: false };
+}
+
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `afa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -388,6 +462,28 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         ok: true, instrument: pair.toUpperCase(), warming: false, bookGeneratedAt: stored?.generatedAt ?? null,
         live: { date: live.date, currentPrice: live.currentPrice, sessionHandoff: live.sessionHandoff, boundary: live.boundary, ladder: scoredLadder },
       });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/asia-fib-atlas/plan/EURUSD[?minMargin=2&minCostRatio=3&stopTightenFrac=0.9]
+  // — the live-plan zones a caller (the Fib Atlas bot's own poll, or
+  // bot-config.html's "Today's Levels" table) reads directly for ONE pair.
+  // The server-wide plan producer (server.js's `_refreshFibAtlasPlan`) calls
+  // `asiaLivePlanZones` the same way for its whole configured universe and
+  // persists the result to KV — this route is the same computation, read-
+  // time, for ad-hoc inspection of a single pair without waiting on that
+  // producer's ~45s cadence.
+  app.get('/api/asia-fib-atlas/plan/:instrument', async (req, res) => {
+    try {
+      const pair = String(req.params.instrument).toLowerCase();
+      const opts = {};
+      if (req.query.minMargin) opts.minMargin = Number(req.query.minMargin);
+      if (req.query.minCostRatio) opts.minCostRatio = Number(req.query.minCostRatio);
+      if (req.query.stopTightenFrac) opts.stopTightenFrac = Number(req.query.stopTightenFrac);
+      const plan = await asiaLivePlanZones(pair, opts);
+      res.json({ ok: true, instrument: pair.toUpperCase(), ...plan });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -11,7 +11,7 @@
  * asiaFibAtlasEngine.test.mjs (deterministic, no Math.random()).
  */
 import assert from 'node:assert/strict';
-import { mondayFibAtlasWalk, mondayFibAtlasLiveToday, mondayFibAtlasLiveLadder } from './mondayFibAtlasEngine.js';
+import { mondayFibAtlasWalk, mondayFibAtlasLiveToday, mondayFibAtlasLiveLadder, mondayRungBarrierPips } from './mondayFibAtlasEngine.js';
 import { buildMondayRanges } from './sessionRanges.js';
 import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionHandoffPhase } from './asiaFibAtlasEngine.js';
 
@@ -205,6 +205,21 @@ t('mondayFibAtlasLiveLadder on too-thin history degrades to an empty ladder, not
   const live = mondayFibAtlasLiveLadder(tiny, { instrument: 'EURUSD', assetClass: 'fx' });
   assert.equal(live.date, null);
   assert.equal(live.ladder.length, 0);
+});
+
+t('mondayRungBarrierPips matches mondayFibAtlasWalk\'s own per-touch innerDistPips/outerDistPips for the same week/side/level — the live-plan producer must price a not-yet-touched rung identically to how the validated backtest priced it once touched', () => {
+  const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const { boundary } = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
+  assert.ok(boundary, 'expected a live boundary to compare against');
+  let checked = 0;
+  for (const touch of touches) {
+    if (touch.mondayHigh !== boundary.mondayHigh || touch.mondayLow !== boundary.mondayLow) continue;
+    const { innerDistPips, outerDistPips } = mondayRungBarrierPips(touch.side, touch.level, boundary, touch.pip);
+    assert.equal(innerDistPips, touch.innerDistPips, `innerDistPips mismatch for ${touch.side}|${touch.level}`);
+    assert.equal(outerDistPips, touch.outerDistPips, `outerDistPips mismatch for ${touch.side}|${touch.level}`);
+    checked++;
+  }
+  assert.ok(checked > 0, 'expected at least one same-week touch to cross-check against');
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ' — FAILURES ABOVE' : ''}`);

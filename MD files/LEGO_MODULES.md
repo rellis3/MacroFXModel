@@ -4896,6 +4896,156 @@ breadth for selectivity, Monday's doesn't — worth the owner's own read
 on whether that's a reason to ship let-ride for Monday but hold off on
 Asia, rather than an all-or-nothing choice.
 
+#### Live/paper trading bot — `fib_atlas_bot` (2026-08-31)
+
+Direct owner ask: turn the validated Fib Atlas system into a real
+live/paper trading bot, following the general "turn a validated backtest
+into a live bot" playbook this repo already uses (kill switch, paper/live
+default-paper, sizing off the undegraded stop, concurrency caps, hard
+drawdown lockout, gradual drawdown throttle, portfolio heat cap,
+stack/duplicate guard, spread cap, plan-staleness gate, decision audit
+log, Telegram entry/close alerts, config page wired the same way as every
+other bot). Built as a genuinely new bot (`fib_atlas_bot/`), mirroring
+the newest, most complete reference bot in the repo
+(`volatility_bot_v2/volatility_bot_v2.py`) rather than inventing a new
+pattern — see that bot's own file for the template this one follows gate-
+for-gate.
+
+**The core design decision**: the server computes and freezes a plan,
+the bot only executes it — same split `_refreshVolatilityV2Plan` already
+uses for Level Atlas's own live bot, applied here for the first time to a
+strategy with TWO independent ladders (Asia range-extension, Monday
+range-extension) that can both be open on the same pair at once.
+
+- **`js/asiaFibAtlasEngine.js`** — new exported pure helper
+  `asiaRungBarrierPips(side, level, boundary, pip)`: the SAME
+  `here`/`inner`/`outer` neighbour-rung construction `asiaFibAtlasWalk`'s
+  hot loop already used inline, factored out so a live-plan producer can
+  price a rung that HASN'T been touched yet (no `touch` record to read
+  `innerDistPips`/`outerDistPips` off) exactly the way Level Atlas's own
+  `_volatilityV2PriceZone` already prices its own pending rungs. Unit-
+  tested (`asiaFibAtlasEngine.test.mjs`) by cross-checking every same-
+  session real touch's OWN `innerDistPips`/`outerDistPips` against what
+  the new pure helper computes independently — byte-identical, not just
+  "looks right". `js/mondayFibAtlasEngine.js` carries the identical
+  `mondayRungBarrierPips`, same cross-check test.
+- **`js/asiaFibAtlasRoutes.js`** — new exported `asiaLivePlanZones(pair,
+  opts)`: for every rung in the pair's live ladder (`getFastLive`), calls
+  the SAME `voteDecision(book, rung)` the backtest itself validated with,
+  prices it via `asiaRungBarrierPips`, applies the frozen best-config
+  filters (minMargin=2, minCostRatio=3, stopTightenFrac=0.9), and emits
+  one zone per currently-favored rung: `{side, rung, decision, margin,
+  entry, sl, sizingSl, tp, targetPips, stopPips, sizingStopPips, pip,
+  rearmFrac, touchedToday, dedupeTag, rationale}`. `sizingSl`/
+  `sizingStopPips` carry the FULL, untightened stop distance — sizing
+  must always use these, never the (possibly server-tightened) `sl`/
+  `stopPips`, or fixed-fractional sizing sizes UP to compensate for a
+  smaller stop (this repo's live-bot playbook §2). New route `GET
+  /api/asia-fib-atlas/plan/:instrument` exposes it directly. Live-tested
+  end to end against real R2 data (both via the HTTP route and via a
+  direct in-process call) — real zones with correct entry/sl/tp math
+  confirmed. `js/mondayFibAtlasRoutes.js` carries the identical
+  `mondayLivePlanZones` (minCostRatio=4, Monday's own frozen ratio) +
+  `GET /api/monday-fib-atlas/plan/:instrument`.
+- **`server.js`** — new `_refreshFibAtlasPlan()`, mirroring
+  `_refreshVolatilityV2Plan` exactly (cold-start throttling, "never
+  publish an empty plan over a good one", 45s cadence): builds one
+  constituent per `"{pair}|asia"`/`"{pair}|monday"` key (same convention
+  `/vote-portfolio-combined` already uses) across the 16-pair recommended
+  universe (`FIB_ATLAS_ALL_PAIRS`/`FIB_ATLAS_RECOMMENDED_EXCLUDE`, hand-
+  kept in sync with `asia-fib-atlas-vote-portfolio.html`'s own set), and
+  persists to KV key `fib_atlas_bot_plan`. Verified end to end via an
+  isolated aggregation script against real R2 data — both pairs, both
+  ladders, correct zone math. New `POST /api/fib-atlas-bot/telegram-test`
+  route + `fibAtlas` entry in `TG_SENDERS` (not enforced by this file's
+  own `tgOn()` — the bot is a separate process, checks `ai_alert_cfg`
+  directly, same pattern as `voteAtlas`).
+- **KV registration** — `fib_atlas_bot_config`/`_credentials`/`_plan`/
+  `_state`/`_trade_log`/`_decision_log` in all three required gates
+  (`kv.js` `_CF_EXACT`, `_worker.js` `isAllowedKVKey` EXACT set,
+  `_worker.js` `PERMANENT_KEYS`); `fib_atlas_bot_status` in `_worker.js`'s
+  `STATUS_KEYS`/`BOT_KEYS` only (deliberately excluded from the permanent
+  list — rewritten every ~30s, a stale status should expire, not
+  masquerade as "still running").
+- **`pylego/drawdown_throttle.py`** (new brick) — the gradual size-
+  multiplier drawdown throttle, extracted from
+  `volatility_bot_v2/drawdown_throttle.py` once `fib_atlas_bot` became a
+  SECOND consumer of the identical logic (Lego Principle: "if two copies
+  already exist, that alone qualifies"). Byte-identical copy, own test
+  suite (`pylego/drawdown_throttle_test.py`, all passed).
+  🟡 **Known duplicate, not yet consolidated**: `volatility_bot_v2` still
+  imports its OWN local copy (left untouched — a live production bot's
+  import path is not something to change as a side effect of adding an
+  unrelated new bot). A future cleanup pass should point
+  `volatility_bot_v2` at `pylego/drawdown_throttle.py` too and delete its
+  local copy.
+- **`pylego/magics.py`** — `fib_atlas_bot/fib_atlas_bot.py: 20260831`
+  registered.
+- **`fib_atlas_bot/engine.py`** (new, pure, offline-tested) — the two
+  pieces deliberately left to the bot rather than the server plan (see
+  that file's own extensive doc): `RearmTracker` (the live tick-by-tick
+  touch/rearm state machine — the plan tells the bot the CURRENT
+  decision/margin for a rung, the bot tracks WHEN price actually crosses
+  it, with a `rearm_distance()` helper that reconstructs the EXACT
+  `rungSpan` the backtest's own rearm math uses from the plan's
+  `targetPips`/`sizingStopPips` fields, not a guessed proxy) and
+  `chandelier_stop()` (the live ATR trailing-stop math — confirmed,
+  not guessed, to be the byte-for-byte same Wilder-EMA recurrence as
+  `js/levelAtlasVoteReview.js`'s `rollingATR`, the exact function
+  `analysis/fib_atlas_chandelier_exit_backtest.mjs` used to pick this
+  bot's own frozen per-ladder multipliers, Asia 3.0 / Monday 1.5, period
+  60). Both real, disclosed (not hidden) differences from the backtest's
+  own math are documented in the code: a live tick stream has no
+  separate open/high/low/close to split the rearm-distance check from
+  the touch check the way the M1-bar walk does, and a freshly-opened
+  position's own bar history is shorter than the ATR's Wilder-EMA needs
+  to fully converge. `pylego/drawdown_throttle_test.py`-style tests, all
+  passed.
+- **`fib_atlas_bot/fib_atlas_bot.py`** (new) — the main loop, mirroring
+  `volatility_bot_v2.py` gate-for-gate: kill switch, paper/live
+  (defaults paper), sizing (`pylego.sizing.position_size` off the
+  undegraded `sizingSl` distance), global + per-pair concurrency caps
+  (per-pair counts BOTH ladders combined — an Asia long + a Monday short
+  on the same pair legitimately counts as 2), `pylego.risk_guard
+  .RiskGuard` hard lockout, `pylego.drawdown_throttle.DrawdownThrottle`
+  gradual throttle (off by default — new levers ship opt-in), portfolio
+  heat cap, the `dedupeTag`-based stack/duplicate guard
+  (`Mt5Broker`/`PaperBroker`'s existing `dedupe_tag` mechanism — no new
+  code needed), `pylego.costs.max_spread` spread cap, a fail-closed plan-
+  staleness gate, the chandelier trailing stop (new execution behavior,
+  see `engine.py` above), a capped/restore-on-restart decision audit log,
+  and Telegram entry (price + SL + TP) / close (P&amp;L + trade duration)
+  alerts, reply-threaded, dedup'd, gated on the central `ai_alert_cfg`
+  `tgMaster.fibAtlas` kill switch (fails open on fetch error).
+- **`bot-config.html` / `js/bot-config.js`** — new "🌐 Fib Atlas" tab,
+  cloning the Vote Atlas tab's structure (How-it-decides explainer, Live
+  Status, Risk Systems tiles, Open Positions, Today's Levels &amp; Live
+  Decisions — sourced straight from `fib_atlas_bot_plan` so an operator
+  can see what the bot WOULD trade even before starting it — Decision
+  Timeline with real date navigation, How-to-run, pair universe
+  checkboxes, Bot Control, MT5 Credentials) with a Trade-Asia/Trade-
+  Monday toggle pair added alongside the usual fields. Telegram
+  token/chat-id default to empty (same convention as every other bot's
+  `tg_token`/`tg_chat_id` default — a credential is never a literal in
+  source; the owner's real bot token/chat id, provided when this bot was
+  commissioned, goes straight into these fields on the page and Save,
+  landing in `fib_atlas_bot_config` KV, not in git). No unfiltered "All
+  Lines" table (no unfiltered-preview route exists for this engine yet;
+  the Levels table already shows everything actually tradeable). Verified
+  rendering end to end via Playwright against a local static server: tab
+  switches, 26 pair checkboxes populate, ladder toggles default on,
+  Telegram fields pre-fill correctly, zero JS console errors.
+- **Not yet done**: no live/paper track record at all yet (ships exactly
+  like every other new bot here — backtest + OOS only, paper-mode
+  default); `volatility_bot_v2`'s own currency-loss gate was deliberately
+  NOT ported (a real, validated lever, but a genuinely separate scope
+  decision, not silently dropped — flagged here for the owner's own
+  call); `start.sh` was deliberately left untouched (MT5 has no Linux
+  wheel, so live trading needs a separate Windows-hosted process exactly
+  like `volatility_bot_v2`/`range_line_bot` already do — paper mode CAN
+  run on Railway if desired, same one-line addition either of those two
+  bots would need).
+
 ---
 
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted

@@ -276,3 +276,31 @@ export function mondayFibAtlasLiveLadder(packed, opts = {}) {
     ladder,
   };
 }
+
+/**
+ * Monday's own copy of `asiaFibAtlasEngine.js`'s `asiaRungBarrierPips` —
+ * same `here`/`inner`/`outer` neighbour-rung construction the walk above
+ * uses inline (its own "Walk window" section, `const lv = [boundaryPrice,
+ * ...rungLevels.map(rungPrice)]`), just against Monday's own boundary shape
+ * (`{mondayHigh, mondayLow, mondayRange}`, `low + range*level`) instead of
+ * Asia's. Pure function of the CURRENT week's Monday boundary + which rung —
+ * no touch/bar data needed, so a live-plan producer can price a rung that
+ * hasn't been touched yet exactly the same as one that has.
+ *
+ *   mondayRungBarrierPips('above', 1.272, boundary, pip) -> { innerDistPips, outerDistPips }
+ */
+export function mondayRungBarrierPips(side, level, boundary, pip) {
+  const isAbove = side === 'above';
+  const rungLevels = isAbove ? RUNGS_ABOVE : RUNGS_BELOW;
+  const boundaryPrice = isAbove ? boundary.mondayHigh : boundary.mondayLow;
+  const rungPrice = lv => boundary.mondayLow + boundary.mondayRange * lv;
+  const lv = [boundaryPrice, ...rungLevels.map(rungPrice)];
+  const ri = rungLevels.indexOf(level);
+  if (ri < 0) return { innerDistPips: null, outerDistPips: null };
+  const here = lv[ri + 1], inner = lv[ri], outer = lv[ri + 2] ?? null;
+  const rungSpan = Math.abs(here - inner);
+  return {
+    innerDistPips: pip > 0 ? +(rungSpan / pip).toFixed(1) : null,
+    outerDistPips: outer != null && pip > 0 ? +(Math.abs(outer - here) / pip).toFixed(1) : null,
+  };
+}
