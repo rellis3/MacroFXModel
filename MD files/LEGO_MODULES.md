@@ -4166,6 +4166,110 @@ for Fib Atlas.
 
 ---
 
+### Chandelier (ATR-trailed) continuation exit for Fib Atlas — a real drawdown win, analysis-only (2026-08-31)
+
+Direct follow-up to "did we have a reduction in drawdown from [the
+exposure cap]? if not let's test something else? did we ever test ...
+instead of closing a trade at tp we move to breakeven and then trade
+from chandelier effect to see if actually we can catch runners? this
+may mean we have multiple trades open at once on a pair so interested
+in analysis first?" — the exposure cap was a clean null (§ above), so
+this is "something else": a genuinely different trail SHAPE, plus the
+concurrency question asked explicitly, tested as **analysis before any
+implementation** per the owner's own request.
+
+**Why the already-shipped trailing exit couldn't answer this.**
+`applyTrailingContinuation`'s `trailMode:'giveback'` (live at
+givebackFrac=0.02) gives back a FIXED FRACTION of the excursion made so
+far — found this session to exit almost immediately on any pullback
+(median hold-time extension ~0 across 17,399 kept Asia trades, max
+~2min). It structurally never held a trade long enough to create a
+"second trade wants to open on this pair" scenario, so the concurrency
+question was moot for it — a genuinely wider, volatility-aware trail
+was needed to test it for real.
+
+**Built:** `applyTrailingContinuation` (`js/levelAtlasVoteReview.js`)
+gains `trailMode:'chandelier'` (default stays `'giveback'`, fully
+backward-compatible — zero behavior change for every existing caller,
+proven by a bit-identical-output unit test). Trails
+`chandelierMult` × a rolling ATR (Wilder EMA, `chandelierPeriod` M1
+bars — default 60, not yet independently swept) behind the running
+extreme, instead of a fixed fraction of the excursion. Reuses
+`trueRange` (`indicatorCore.js`) for the true-range primitive; the
+Wilder-EMA smoothing loop is re-expressed against this file's packed
+PARALLEL-ARRAY format (`rollingATR`) rather than `atrWilder`'s bar-
+OBJECT array — same math, the established array-vs-object split this
+file's M1 hot path already uses (`barUtils.js`'s own convention), not a
+second copy to drift from. Same floor (never worse than the original
+fixed exit) and day-boundary forced close as giveback mode. New unit
+tests (`js/levelAtlasVoteReview.test.mjs` T23, hand-built M1 path):
+chandelier survives a pullback giveback mode can't and stays open
+materially longer, still respects decisions/win-only filtering, and the
+untouched giveback default is bit-identical to before this param
+existed.
+
+**`analysis/fib_atlas_chandelier_exit_backtest.mjs`** — full
+already-shipped pipeline (cost-efficiency filter, fade-stop-tighten with
+`preserveSizing:true`, heat cap + throttle at frozen BEST_CONFIG),
+`decisions:['fade','follow']` (matches production's both-sides
+trailing exit), swept `chandelierMult ∈ [1.5, 2, 3, 4, 5]`, pre-stated
+rule (maximize IS Sharpe, must beat baseline), 70/30 IS/OOS freeze,
+Asia only so far:
+
+- **IS**: baseline Sharpe 14.81 → mult=3 (chosen) Sharpe 19.75, maxDD
+  -4.59%→-3.29%, avgWin 0.41%→0.62%, avgLoss -0.5454%→-0.5477%
+  (essentially flat).
+- **OOS (frozen from IS, unchanged)**: baseline Sharpe 15.33 → mult=3
+  Sharpe **19.47** (real improvement holds out of sample), maxDD
+  **-4.51%→-2.43%** (nearly HALVED), CAGR(add.) 427.72%→786.02%. avgLoss
+  -0.5354%→-0.5383% (still essentially flat) — **leverage-in-disguise
+  check passes cleanly**: this lever only ever touches WINNING trades'
+  exit, never `stopPips` or sizing, and the OOS numbers confirm it
+  didn't quietly become one.
+- **Hold-time extension** (mult=3, winners the chandelier actually
+  extended): n=9974, p10=3min, median=13min, p75=25min, p90=43min,
+  max=170min (2.8hr) — a real, materially longer hold than giveback
+  mode's near-zero extension, genuinely riding continuations rather
+  than exiting on the first tick of noise.
+
+**"Analysis first" — both concurrency models tested at the frozen exit,
+answering the owner's explicit question, nothing wired in yet.**
+`applyConcurrencyCap`'s own existing `maxConcurrent` parameter (no new
+mechanism) run at 1 ("blocked" — today's production default, a later
+same-pair signal is skipped while the chandelier-held trade is still
+open) vs 2 ("stacking" — a second trade may open while it's still
+open):
+
+| | IS Sharpe | IS maxDD | OOS Sharpe | OOS maxDD | OOS trades |
+|---|---|---|---|---|---|
+| blocked (concur=1) | 19.75 | -3.29% | 19.47 | -2.43% | 3711 |
+| stacking (concur=2) | 21.39 | -3.04% | 20.93 | **-1.93%** | 4038 |
+
+Stacking wins on every axis, IS **and** OOS, on top of the already-real
+chandelier improvement: higher Sharpe, shallower maxDD, +327 genuinely
+new OOS trades the blocked model was refusing outright — avgWin/avgLoss
+essentially unchanged between the two (0.5951%/-0.5383% vs
+0.5957%/-0.5387%), confirming this is purely "take more of the same
+trades", not a risk-shape change.
+
+🟢 **this is a real, OOS-validated result, not a null** — first genuine
+drawdown improvement found in this session's whole drawdown-reduction
+thread (net exposure cap and, earlier, the SL-tightening isolation study
+were both clean/near-nulls on maxDD specifically). 🟡 **deliberately NOT
+wired into production yet** — the owner asked for the concurrency
+analysis BEFORE any implementation decision, and moving to
+`maxConcurrent:2` is architecturally significant (interacts with the
+frozen heat cap's own budget semantics, which was tuned against
+`maxConcurrent:1`; the live page's per-pair occupancy assumptions;
+Monday ladder untested). Open before wiring: (1) re-validate
+`chandelierPeriod` itself (currently fixed at 60, not gridded — only
+`chandelierMult` was swept); (2) re-tune/re-validate the heat cap
+against `maxConcurrent:2`'s different occupancy pattern rather than
+reusing the `maxConcurrent:1`-tuned `BEST_CONFIG` as-is; (3) run the
+same study on the Monday ladder before assuming it transfers.
+
+---
+
 ## 2. Candidate bricks — mapped, prioritized, not yet extracted
 
 Ranked by **drift risk × reuse**. "Live" = a copy runs in a production bot, so a
