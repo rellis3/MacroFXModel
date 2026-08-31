@@ -87,6 +87,7 @@
     <label>Throttle × <input type="number" id="throttleMultInput" value="0.5" step="0.1" min="0.1" max="0.9" style="width:55px" disabled></label>
     <label title="Tighten fade trades' stop to 0.9x their native distance — validated on held-out data, follow trades untouched (analysis/fib_atlas_sl_tightening_backtest.mjs). Position size is held at what the ORIGINAL (untightened) stop would size, not resized off the new tighter stop — same Sharpe either way (a uniform per-trade rescale can't change it), but this keeps avg win matching the untightened baseline exactly and avg loss shrinking in direct proportion to the fraction, instead of a bigger bet inflating both legs and distorting maxDD/CAGR.">Tighten fade stop (0.9×) <input type="checkbox" id="stopTightenChk"></label>
     <label title="Skip trades whose gross target doesn't clear the pair's own round-trip cost by the chosen multiple — fixes the flat-cost-subtraction bias that shrinks small-target winners disproportionately. OOS-validated (analysis/fib_atlas_cost_efficiency_filter.mjs): Asia ratio>=3x took OOS Sharpe 6.66->13.64, maxDD -39.24%->-14.96%; Monday ratio>=4x took OOS maxDD -7.1%->-5.44% (Sharpe roughly flat, 10.54->10.51). Threshold auto-switches with the ladder toggle above.">Cost-efficiency filter <input type="checkbox" id="costEfficiencyChk"></label>
+    <label title="A touch that hits neither the inner nor outer barrier by midnight is currently DROPPED entirely — not counted as a win or a loss. This lets it keep searching up to 14 more days of bars for a real resolution (analysis/fib_atlas_neither_extend_test.mjs, 2026-08-31): given that time, ~99.8% eventually resolve, with a win rate close to the already-counted trades' own (not the near-coin-flip you'd get marking to an arbitrary close price instead). Concurrency occupancy is capped at 6am the following day regardless of the real resolution time, so a still-open extended trade can never block a fresh touch on the next day's freshly-built Asia range. Asia only for now (Monday's own window already extends ~8 days). Priced with full parity to the baseline pipeline (giveback + chandelier trailing both apply).">Let ride (extended resolution) <input type="checkbox" id="letRideChk"></label>
     <label title="Instead of closing a WINNING trade (either side — fade or follow) at its fixed target the instant price touches it, trail a stop that only ratchets favorably (floored at the original target, so the worst case is identical to today's exit) — lets a genuine move run further. Losses on either side are completely untouched.&#10;&#10;Giveback: gives back a fixed 2% of the excursion made past target — OOS-validated (analysis/fib_atlas_trailing_continuation_backtest.mjs): follow alone Sharpe 16.15->16.73; fade alone Sharpe 15.38->16.33, maxDD -4.43%->-2.65%; both sides together Sharpe 15.38->16.05, maxDD -4.43%->-2.64%. Exits almost immediately on any pullback (median hold-time extension ~0).&#10;&#10;Chandelier (2026-08-31): trails a multiple of this pair's own rolling ATR instead of a fixed fraction, so it survives normal noise and actually rides continuations — a materially BIGGER OOS win (analysis/fib_atlas_chandelier_exit_backtest.mjs): Asia (mult=3) Sharpe 15.33->19.47, maxDD -4.51%->-2.43%; Monday (mult=1.5) Sharpe 11.39->12.85, maxDD -3.11%->-2.57%. Avg loss unaffected in both modes (no leverage-in-disguise — unlike the SL-tightening levers, neither ever touches stopPips).">Trailing/continuation exit <select id="continuationExitSel">
       <option value="off" selected>Off</option>
       <option value="giveback">Giveback (2%)</option>
@@ -376,6 +377,11 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   // actively re-tested and found not to help.
   heatCapChk.checked = false;
   throttleChk.checked = false;
+  // Let-ride (extended resolution) left OFF here too -- built and
+  // full-sweep-validated 2026-08-31 (analysis/fib_atlas_neither_extend_test.mjs),
+  // but new enough that it's opt-in rather than folded into "best config"
+  // by default. Toggle it on to compare directly.
+  letRideChk.checked = false;
   syncSizingUI();
   loadData();
 });
@@ -400,6 +406,7 @@ const restoreDDInput = document.getElementById('restoreDDInput');
 const throttleMultInput = document.getElementById('throttleMultInput');
 const stopTightenChk = document.getElementById('stopTightenChk');
 const costEfficiencyChk = document.getElementById('costEfficiencyChk');
+const letRideChk = document.getElementById('letRideChk');
 const continuationExitSel = document.getElementById('continuationExitSel');
 const logScaleChk = document.getElementById('logScaleChk');
 const headerSub = document.getElementById('headerSub');
@@ -598,6 +605,7 @@ async function loadData() {
   }
   if (stopTightenChk.checked) params.set('stopTightenFrac', '0.9');
   if (costEfficiencyChk.checked) params.set('minCostRatio', String(costRatioFor(ladder)));
+  if (letRideChk.checked) params.set('letRide', 'true');
   if (continuationExitSel.value !== 'off') params.set('continuationExit', continuationExitSel.value);
   // Combined mode hits a DIFFERENT route (each pair contributes an Asia AND
   // a Monday constituent, so the same pair can have both open at once —
@@ -613,7 +621,7 @@ async function loadData() {
     const sizingDesc = (j.sizing === 'fixed-risk' ? `${j.riskPct}% risk/trade (fixed)${j.heatCap ? `, ${j.heatCap.maxHeatPct}% portfolio heat cap` : ''}` : `${j.weighting} NAV weighting`)
       + (j.throttle ? `, throttled ${j.throttle.triggerDD}%→${j.throttle.throttleMult}× (restore ${j.throttle.restoreDD}%)` : '');
     const ladderDesc = combined ? 'Asia+Monday combined (same pair can have both open at once)' : (ladder === 'monday' ? 'Monday' : 'Asia') + ' ladder';
-    headerSub.textContent = `${ladderDesc} · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
+    headerSub.textContent = `${ladderDesc} · ${j.pairs.join(' + ')} · min margin ≥${j.minMargin} · max concurrent ${j.maxConcurrent === 99 ? 'unlimited' : j.maxConcurrent}${j.perDirection ? ' (per-direction)' : ''} · ${sizingDesc}${j.letRide ? ' · let-ride (extended resolution)' : ''} · ${j.days} portfolio trading days${j.missing.length ? ` · missing: ${j.missing.join(',')}` : ''}`;
     if (j.sizing === 'fixed-risk') document.getElementById('riskPct').value = j.riskPct;
     lastResponse = j;
     render(j);
@@ -939,6 +947,7 @@ restoreDDInput.addEventListener('change', loadData);
 throttleMultInput.addEventListener('change', loadData);
 stopTightenChk.addEventListener('change', loadData);
 costEfficiencyChk.addEventListener('change', loadData);
+letRideChk.addEventListener('change', loadData);
 continuationExitSel.addEventListener('change', loadData);
 logScaleChk.addEventListener('change', () => { if (lastResponse) render(lastResponse); });
 
