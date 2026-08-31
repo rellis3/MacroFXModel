@@ -80,6 +80,14 @@ def make_spec(instrument: str, z: dict) -> dict:
         "entry": float(z.get("entry", 0)),
         "sl": float(z["sl"]) if z.get("sl") is not None else None,
         "tp": float(z["tp"]) if z.get("tp") is not None else None,
+        # The plan's FULL, untightened stop distance — sizing must always use
+        # this, never `sl` (which early-exit may tighten for a fade). Found
+        # 2026-08-31: this field was silently dropped here, so
+        # `spec.get("sizingSl", spec["sl"])` in volatility_bot_v2.py always
+        # fell through to `sl` — dormant only because `early_exit` currently
+        # defaults off (sl == sizingSl in that case); would silently
+        # reactivate the implicit-leverage sizing bug the moment it's enabled.
+        "sizingSl": float(z["sizingSl"]) if z.get("sizingSl") is not None else (float(z["sl"]) if z.get("sl") is not None else None),
         "margin": z.get("margin"),
         "rationale": z.get("rationale", ""),
     }

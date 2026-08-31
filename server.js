@@ -1600,9 +1600,16 @@ const TG_SENDERS = {
   qmrIndices:        'SPX/DOW/DAX QMR gates',
   cogShadow:         'COG shadow gates',
   levelsV2:          'Telegram-v2 zone alerts',
-  volLevels:         'Vol-forecast level proximity',
+  volLevels:         'Vol-forecast level proximity (superseded, off by default)',
   surprise:          'Forecast-path surprise pings',
   hedgeSignals:      'Hedge pair signals',
+  // volatility_bot_v2 (the Python bot) checks this directly via ai_alert_cfg
+  // (see its own tg_master_on doc) — unlike every other sender above, this
+  // one is NOT enforced by server.js's tgOn(), since the bot that actually
+  // sends these alerts runs as a separate process and has no in-memory
+  // access to `state.cfg`. Same master-switch semantics regardless: missing/
+  // unset reads as ON, only an explicit `false` here turns it off.
+  voteAtlas:         'Vote Atlas — entered/skipped/rejected + SL/TP close alerts',
 };
 
 function tgOn(sender) {
@@ -14183,6 +14190,22 @@ app.get('/api/level-atlas/bot-enabled', async (req, res) => {
   }
 });
 
+// "Send test alert" for the bot-config.html Vote Atlas tab's Telegram fields
+// — reads whatever tg_token/tg_chat_id is CURRENTLY SAVED in
+// volatility_bot_v2_config (save the form first) and fires one test message,
+// same contract as /api/vol-forecast/level-alerts/test.
+app.post('/api/volatility-v2/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Level Atlas live-cache R2 snapshotting (js/levelAtlasRoutes.js's own doc on
 // `saveAllLiveSnapshots` has the full story) — periodically mirrors every
 // currently-warm pair's bounded M1 window to R2 so a Railway restart can
@@ -22822,6 +22845,44 @@ async function loadVolLevelCreds() {
   return null;
 }
 
+// One-time migration (2026-08-31): volatility_bot_v2's own Telegram alerts
+// (entered/skipped/rejected + SL/TP close outcomes, with the actual vote
+// decision + margin/confidence behind each one — see its DEFAULT_CFG tg_*
+// doc) replace this loop's job. Two one-off actions, both idempotent and
+// both run once at boot:
+//   1. Copy this loop's token/chatId into volatility_bot_v2_config's own
+//      tg_token/tg_chat_id, so the SAME physical bot/chat keeps being used —
+//      no new bot to create in BotFather, no token to re-paste. Never
+//      overwrites a tg_token the operator has since set on the bot's own
+//      config page.
+//   2. Force this loop's own `enabled` back to false in KV, in case it had
+//      been switched on — its alerts are informational-only (no enter/skip
+//      decision, no confidence, no close outcome) and are now superseded.
+//      NOT deleted: `/preview` and `/scan` still work for inspecting the
+//      alert copy, and the "Dedicated Telegram bot" panel on
+//      vol-forecast-v2.html still manages the token/chatId this now feeds
+//      into volatility_bot_v2 — just switched off as a live alert source.
+async function _migrateVolLevelAlertsToV2() {
+  try {
+    const v2Raw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    const v2 = v2Raw ? (JSON.parse(v2Raw).data ?? JSON.parse(v2Raw)) : {};
+    if (!(v2.tg_token && v2.tg_chat_id)) {
+      const creds = await loadVolLevelCreds();
+      if (creds) {
+        await kv.put('volatility_bot_v2_config', JSON.stringify({ ...v2, tg_token: creds.token, tg_chat_id: creds.chatId }));
+        console.log('[VOLATILITY-V2] Telegram credentials copied from the superseded vol-level alert bot');
+      }
+    }
+    const cfg = await loadVolLevelCfg();
+    if (cfg.enabled) {
+      await kv.put(VOL_LEVEL_CFG_KEY, JSON.stringify({ ...cfg, enabled: false }));
+      console.log('[VOL-LEVEL-ALERT] disabled — superseded by volatility_bot_v2\'s own Telegram alerts');
+    }
+  } catch (e) {
+    console.error('[VOLATILITY-V2] vol-level alert migration failed:', e.message);
+  }
+}
+
 // Fetch recent numeric M5 bars for the enrichment (speed / momentum / divergence).
 // Reuses the shared OANDA candle path; returns oldest→newest {open,high,low,close}.
 async function _fetchVolLevelCandles(sym, gran = 'M5', count = 150) {
@@ -27176,6 +27237,7 @@ async function runHMM5mTraining(pairs) {
 await kv.load();
 await reloadConfig();
 await reloadLevels();
+_migrateVolLevelAlertsToV2().catch(e => console.error('[VOLATILITY-V2] Telegram migration error:', e.message));
 
 // Load any previously trained V2 params from KV on startup
 try {

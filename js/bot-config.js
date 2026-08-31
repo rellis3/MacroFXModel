@@ -3690,6 +3690,10 @@ const VB2_DEFAULTS = {
   stack_guard: true, stack_guard_pips: 5,
   plan_max_age_hours: 1,
   broker_symbols: {},
+  // 2026-08-31: replaces the old vol-forecast level-proximity Telegram alerts
+  // (now off by default, see vol-forecast-v2.html) — entered/skipped/rejected
+  // decisions + SL/TP close outcomes, defaulting to that SAME bot/chat.
+  tg_enabled: true, tg_token: '', tg_chat_id: '',
 };
 let _vb2Cfg = { ...VB2_DEFAULTS };
 let _vb2LastStatus = null;
@@ -3737,6 +3741,9 @@ function renderVb2Form() {
   set('vb2_status_secs',         _vb2Cfg.status_secs        ?? VB2_DEFAULTS.status_secs);
   set('vb2_plan_secs',           _vb2Cfg.plan_secs          ?? VB2_DEFAULTS.plan_secs);
   set('vb2_plan_max_age_hours',  _vb2Cfg.plan_max_age_hours ?? VB2_DEFAULTS.plan_max_age_hours);
+  chk('vb2_tg_enabled',          _vb2Cfg.tg_enabled ?? VB2_DEFAULTS.tg_enabled);
+  set('vb2_tg_token',            _vb2Cfg.tg_token ?? '');
+  set('vb2_tg_chat_id',          _vb2Cfg.tg_chat_id ?? '');
   const syms = _vb2Cfg.broker_symbols || {};
   VB2_INDEX_KEYS.forEach(k => { const e = document.getElementById(`vb2_sym_${k}`); if (e) e.value = syms[k] ?? ''; });
   _vb2RenderPairChecks();
@@ -3767,6 +3774,9 @@ function readVb2Form() {
   _vb2Cfg.status_secs          = Math.round(num('vb2_status_secs', VB2_DEFAULTS.status_secs));
   _vb2Cfg.plan_secs            = Math.round(num('vb2_plan_secs', VB2_DEFAULTS.plan_secs));
   _vb2Cfg.plan_max_age_hours   = num('vb2_plan_max_age_hours', VB2_DEFAULTS.plan_max_age_hours);
+  _vb2Cfg.tg_enabled           = !!document.getElementById('vb2_tg_enabled')?.checked;
+  _vb2Cfg.tg_token             = (document.getElementById('vb2_tg_token')?.value || '').trim();
+  _vb2Cfg.tg_chat_id           = (document.getElementById('vb2_tg_chat_id')?.value || '').trim();
   _vb2Cfg.enabled_pairs        = _vb2ReadPairChecks();
   const syms = {};
   VB2_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb2_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
@@ -3783,6 +3793,15 @@ async function saveVb2Config() {
   try { await kvSet('volatility_bot_v2_config', _vb2Cfg);
     if (el) { el.textContent = 'Saved ✓'; el.style.color = '#38bdf8'; setTimeout(() => { el.textContent = ''; }, 3000); }
   } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+async function testVb2Telegram() {
+  const el = document.getElementById('vb2SaveStatus');
+  if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/volatility-v2/telegram-test', { method: 'POST' });
+    const d = await r.json();
+    if (el) { el.textContent = d.ok ? 'Test sent ✓' : `Test failed: ${d.error || ''}`; el.style.color = d.ok ? '#38bdf8' : 'var(--red)'; }
+  } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
 }
 function resetVb2Defaults() {
   _vb2Cfg = { ...VB2_DEFAULTS }; renderVb2Form();
@@ -3998,6 +4017,7 @@ window.saveVb2Config = saveVb2Config; window.resetVb2Defaults = resetVb2Defaults
 window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus;
 window.loadVb2AllLines = loadVb2AllLines; window.loadVb2DecisionLog = loadVb2DecisionLog;
 window.vb2DecShiftDay = vb2DecShiftDay; window.vb2DecClearDate = vb2DecClearDate;
+window.testVb2Telegram = testVb2Telegram;
 window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
 
 // ── Forecast drift vs reference ───────────────────────────────────────────────

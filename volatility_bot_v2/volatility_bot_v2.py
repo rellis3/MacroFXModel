@@ -45,6 +45,7 @@ from pylego.broker.paper import PaperBroker                   # noqa: E402
 from pylego.quotes import QuoteFeed                            # noqa: E402
 from pylego.costs import expected_fill, max_spread             # noqa: E402
 from pylego.risk_guard import RiskGuard, log_block_transition  # noqa: E402
+from pylego.telegram import send_telegram                     # noqa: E402
 from volatility_bot_v2.engine import VoteSession, stack_conflict  # noqa: E402
 from volatility_bot_v2.currency_gate import CurrencyLossGate    # noqa: E402
 from volatility_bot_v2.drawdown_throttle import DrawdownThrottle  # noqa: E402
@@ -125,6 +126,21 @@ DEFAULT_CFG = {
     "throttle_trigger_dd": -8.0,
     "throttle_restore_dd": -2.0,
     "throttle_mult": 0.25,
+
+    # Telegram — entered/skipped/rejected decisions + SL/TP close outcomes.
+    # Added 2026-08-31, REPLACING the old vol-forecast level-proximity alert
+    # (js/volLevelAlertCore.js's checkVolLevelAlertsNow — informational-only,
+    # no decision/confidence, no enter-or-skip reasoning, no close outcome;
+    # switched off server-side, see server.js's DEFAULT_VOL_LEVEL_CFG doc).
+    # Same own-dedicated-token convention as oi_bot's tg_token/tg_chat_id
+    # (plain per-bot KV config field, not the shared-fallback machinery in
+    # pylego/telegram.py — this bot's config KV key already carries MT5
+    # creds at the same trust level). Defaults to the SAME physical Telegram
+    # bot the superseded vol-level alerts used (paste its token/chatId here
+    # once on the config page) — no new bot needs creating in BotFather.
+    "tg_enabled": True,
+    "tg_token": "",
+    "tg_chat_id": "",
 }
 
 # Broker symbol routing (identity stays shared; routing is local). Config can
@@ -238,6 +254,72 @@ def _instr_lines(plan, sessions):
     return out
 
 
+# ── Telegram — entered/skipped/rejected decisions + SL/TP close outcomes ────
+# `send_telegram` (pylego brick) is fire-and-forget bool — fine for a skip/
+# reject alert nobody needs to reply to. The entry alert is different: a
+# close alert must thread as a REPLY to it (so "closed" always sits next to
+# "why we entered" in the chat), which needs the sent message's own id back —
+# something the shared brick doesn't return (and, as of this bot, still has
+# no other real caller — see its own docstring — so extending its contract
+# wasn't worth the risk to callers that don't exist; a tiny bot-local
+# variant is cheaper and keeps the shared brick's simple bool contract
+# intact for whoever the next actual caller turns out to be).
+def _tg_send(token: str, chat_id: str, text: str, *, reply_to: int | None = None) -> int | None:
+    if not token or not chat_id:
+        return None
+    try:
+        import requests
+        body = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+        if reply_to:
+            body["reply_to_message_id"] = reply_to
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=body, timeout=10)
+        j = r.json()
+        return j.get("result", {}).get("message_id") if j.get("ok") else None
+    except Exception as e:
+        log.warning(f"Telegram send failed: {e}")
+        return None
+
+
+def _fmt_px(px: float | None) -> str:
+    if px is None:
+        return "—"
+    ax = abs(px)
+    dp = 2 if ax >= 100 else 3 if ax >= 10 else 5
+    return f"{px:.{dp}f}"
+
+
+def _fmt_entry_alert(instr: str, spec: dict, lots: float, mode_tag: str) -> str:
+    direction = "LONG" if spec["dir_up"] else "SHORT"
+    icon = "🟢" if spec["dir_up"] else "🔴"
+    return (f"{icon} <b>{instr.upper()}</b> {direction} entered{mode_tag}\n"
+            f"{spec.get('side')}/{spec.get('rung')} · {spec.get('rationale') or ''}\n"
+            f"Entry <code>{_fmt_px(spec.get('entry'))}</code>  "
+            f"SL <code>{_fmt_px(spec.get('sl'))}</code>  TP <code>{_fmt_px(spec.get('tp'))}</code>\n"
+            f"Lots {lots}")
+
+
+def _fmt_skip_alert(instr: str, spec: dict, reason: str, mode_tag: str) -> str:
+    return (f"⏸️ <b>{instr.upper()}</b> {spec.get('side')}/{spec.get('rung')} touch skipped{mode_tag}\n"
+            f"{spec.get('rationale') or ''}\n"
+            f"Reason: {reason}")
+
+
+def _fmt_close_alert(instr: str, row: dict, mode_tag: str) -> str:
+    reason = (row.get("reason") or "").lower()
+    tag = "✅ <b>TP HIT</b>" if reason == "tp" else "🛑 <b>SL HIT</b>" if reason == "sl" else "⚪ closed"
+    profit = row.get("profit")
+    pnl_txt = f"{'+' if (profit or 0) >= 0 else ''}{profit:.2f}" if profit is not None else "—"
+    dur = ""
+    to, tc = row.get("time_open"), row.get("time_close")
+    if to and tc:
+        mins = max(0, int((tc - to) / 60))
+        h, m = divmod(mins, 60)
+        dur = f"{h}h{m:02d}m" if h else f"{m}m"
+    line2 = f"{_fmt_px(row.get('open_price'))} → {_fmt_px(row.get('close_price'))}"
+    line3 = f"P&L {pnl_txt}" + (f" · open {dur}" if dur else "")
+    return f"{tag} <b>{instr.upper()}</b>{mode_tag}\n{line2}\n{line3}"
+
+
 def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None,
                   guard=None, risk_ledger=None, plan_age_blocked=False):
     bal = broker.account_balance()
@@ -324,6 +406,19 @@ def run(base_url: str, force_live: bool) -> None:
     throttle.sync_cfg(cfg)
     throttle_was_on = False
 
+    # Central "Alerts" modal master switch (index.html / any dashboard page —
+    # js/alerts.js) — the SAME per-sender kill-switch every other Telegram
+    # alert in this codebase already respects (TG_SENDERS/tgOn() in
+    # server.js), under sender key 'voteAtlas'. That switch lives in
+    # server.js's in-memory state, which this bot (a separate process) has no
+    # access to — so it reads the SAME underlying KV key (`ai_alert_cfg`,
+    # already on the public-read allowlist via its 'ai_' prefix) directly.
+    # Mirrors tgOn()'s exact semantics: missing/unset reads as ON, only an
+    # explicit `false` turns it off. Fails OPEN on a fetch error (alerts are
+    # informational, not a risk control — losing this check on a transient
+    # KV outage should not also lose the entered/skipped/close alerts).
+    tg_master_on = True
+
     sessions: dict[str, VoteSession] = {}
     reject_until: dict[str, float] = {}
     stack_skips: dict[str, int] = {}
@@ -345,6 +440,8 @@ def run(base_url: str, force_live: bool) -> None:
     plan_age_blocked = False
     risk_ledger: dict[int, float] = {}
     sym_key: dict[str, str] = {}      # broker-symbol spelling -> canonical key (currency gate lookups)
+    tg_entry_msgid: dict[int, int] = {}   # ticket/position_id -> the entry alert's Telegram message_id (for reply-threading the close alert)
+    tg_closed_alerted: set[int] = set()   # position_ids already sent a close alert for (serialize_closed_trades() re-returns today's closes every tick)
 
     try:
         saved_state = kv.get_json("volatility_bot_v2_state") or {}
@@ -357,6 +454,16 @@ def run(base_url: str, force_live: bool) -> None:
         except (TypeError, ValueError):
             pass
     throttle.restore(saved_state.get("throttle"))  # running peak must survive a restart
+    for k, v in (saved_state.get("tg_entry_msgid") or {}).items():
+        try:
+            tg_entry_msgid[int(k)] = int(v)
+        except (TypeError, ValueError):
+            pass
+    for v in (saved_state.get("tg_closed_alerted") or []):
+        try:
+            tg_closed_alerted.add(int(v))
+        except (TypeError, ValueError):
+            pass
 
     def _save_state() -> None:
         try:
@@ -365,6 +472,10 @@ def run(base_url: str, force_live: bool) -> None:
                 "entered": {i: sorted(s.entered) for i, s in sessions.items()},
                 "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
                 "throttle": throttle.snapshot(),
+                "tg_entry_msgid": {str(k): v for k, v in tg_entry_msgid.items()},
+                # Capped — a restart-surviving record of "don't re-alert this
+                # close", not a durable trade log (that's *_trade_log already).
+                "tg_closed_alerted": list(tg_closed_alerted)[-500:],
             })
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
@@ -466,6 +577,11 @@ def run(base_url: str, force_live: bool) -> None:
             except Exception as e:
                 log.warning(f"config fetch failed: {e}")
             try:
+                master_cfg = kv.get_json("ai_alert_cfg") or {}
+                tg_master_on = master_cfg.get("tgMaster", {}).get("voteAtlas", None) is not False
+            except Exception as e:
+                log.warning(f"ai_alert_cfg fetch failed: {e} (Telegram master switch check skipped this cycle)")
+            try:
                 status = build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle,
                                        guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked)
                 kv.put_status("volatility_bot_v2_status", status)
@@ -499,6 +615,16 @@ def run(base_url: str, force_live: bool) -> None:
                 if pnl is not None and bal:
                     ccy_gate.record_close(key, float(pnl) / bal * 100.0, nowt,
                                           trade_id=c.get("position_id") or c.get("ticket"))
+                # SL/TP close alert — reply-threaded onto the entry alert when
+                # we have its message_id. `serialize_closed_trades()` re-returns
+                # today's closes every tick, so dedupe by position_id or this
+                # fires once per status_secs forever, not once per close.
+                pid = c.get("position_id") or c.get("ticket")
+                if cfg.get("tg_enabled", True) and tg_master_on and pid is not None and pid not in tg_closed_alerted:
+                    tg_closed_alerted.add(pid)
+                    reply_to = tg_entry_msgid.pop(pid, None)
+                    _tg_send(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
+                             _fmt_close_alert(key, c, " [PAPER]" if paper else ""), reply_to=reply_to)
 
             bal = broker.account_balance() or 0.0
             if bal:
@@ -597,14 +723,18 @@ def run(base_url: str, force_live: bool) -> None:
                             ctk = conflict.get("ticket")
                             if stack_skips.get(zid) != ctk:
                                 stack_skips[zid] = ctk
+                                skip_reason = (f"stack_guard: already {'LONG' if spec['dir_up'] else 'SHORT'} "
+                                               f"(ticket {ctk}) within {cfg.get('stack_guard_pips', 5)}p")
                                 log.info(f"STACK GUARD [{instr}] {zid} deferred — already "
                                          f"{'LONG' if spec['dir_up'] else 'SHORT'} @ "
                                          f"{conflict.get('open_price')} (ticket {ctk}) within "
                                          f"{cfg.get('stack_guard_pips', 5)}p; would be one bet")
                                 _record_decision(instr, "skipped", side=spec.get("side"), rung=spec.get("rung"),
                                                   zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
-                                                  reason=f"stack_guard: already {'LONG' if spec['dir_up'] else 'SHORT'} "
-                                                         f"(ticket {ctk}) within {cfg.get('stack_guard_pips', 5)}p")
+                                                  reason=skip_reason)
+                                if cfg.get("tg_enabled", True) and tg_master_on:
+                                    send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
+                                                  _fmt_skip_alert(instr, spec, skip_reason, " [PAPER]" if paper else ""))
                             continue
                     exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
                     # Size off `sizingSl` (the FULL, untightened stop distance
@@ -624,11 +754,15 @@ def run(base_url: str, force_live: bool) -> None:
                         if open_risk + cand_risk > risk_cap:
                             if not budget_skips.get(zid):
                                 budget_skips[zid] = True
+                                skip_reason = f"risk_budget: open {open_risk:.2f}% + candidate {cand_risk:.2f}% > cap {risk_cap}%"
                                 log.info(f"RISK BUDGET [{instr}] {zid} deferred — open risk "
                                          f"{open_risk:.2f}% + candidate {cand_risk:.2f}% > cap {risk_cap}%")
                                 _record_decision(instr, "skipped", side=spec.get("side"), rung=spec.get("rung"),
                                                   zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
-                                                  reason=f"risk_budget: open {open_risk:.2f}% + candidate {cand_risk:.2f}% > cap {risk_cap}%")
+                                                  reason=skip_reason)
+                                if cfg.get("tg_enabled", True) and tg_master_on:
+                                    send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
+                                                  _fmt_skip_alert(instr, spec, skip_reason, " [PAPER]" if paper else ""))
                             continue
                     budget_skips.pop(zid, None)
                     direction = "LONG" if spec["dir_up"] else "SHORT"
@@ -665,15 +799,25 @@ def run(base_url: str, force_live: bool) -> None:
                                  f"→ ticket {tid} lots {lots} (margin {spec['margin']})")
                         _record_decision(instr, "entered", side=spec.get("side"), rung=spec.get("rung"),
                                           zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"))
+                        if cfg.get("tg_enabled", True) and tg_master_on:
+                            mid = _tg_send(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
+                                           _fmt_entry_alert(instr, spec, lots, " [PAPER]" if paper else ""))
+                            if mid:
+                                tg_entry_msgid[tid] = mid
                     else:
                         first = reject_until.get(zid, 0) <= nowt
                         reject_until[zid] = nowt + REJECT_COOLDOWN_SECS
                         if first:
+                            reject_reason = getattr(broker, "last_reject_reason", None)
                             log.warning(f"{instr} {spec['decision']} {zid} entry REJECTED — "
                                         f"backing off {REJECT_COOLDOWN_SECS}s (zone kept open)")
                             _record_decision(instr, "rejected", side=spec.get("side"), rung=spec.get("rung"),
                                               zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
-                                              reason=getattr(broker, "last_reject_reason", None))
+                                              reason=reject_reason)
+                            if cfg.get("tg_enabled", True) and tg_master_on:
+                                send_telegram(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
+                                              _fmt_skip_alert(instr, spec, reject_reason or "order rejected",
+                                                              " [PAPER]" if paper else ""))
 
         time.sleep(max(cfg.get("tick_secs", 3), 1))
 

@@ -29,6 +29,23 @@ from typing import Callable
 
 from pylego.broker.clock import ServerClock, closes_on_utc_day, history_window
 
+# MT5's DEAL_REASON_* enum (stable per the MetaTrader5 API, not exposed on
+# every mocked/fake `mt5` module in tests, so hardcoded rather than read off
+# `self.mt5.DEAL_REASON_SL/TP`): 4 = closed by SL, 5 = closed by TP, anything
+# else (client/mobile/web/expert/stopout/rollover/...) reads as 'manual'.
+_DEAL_REASON_SL, _DEAL_REASON_TP = 4, 5
+
+
+def _deal_close_reason(deal) -> str | None:
+    code = getattr(deal, 'reason', None)
+    if code is None:
+        return None
+    if code == _DEAL_REASON_SL:
+        return 'sl'
+    if code == _DEAL_REASON_TP:
+        return 'tp'
+    return 'manual'
+
 
 class Mt5Broker:
     def __init__(
@@ -378,6 +395,11 @@ class Mt5Broker:
                     # inputs the dashboard/analysis read without re-walking M1.
                     'mfe_pips':    mfe_pips,
                     'mae_pips':    mae_pips,
+                    # 'sl'/'tp'/'manual' from MT5's own deal-reason code (4/5/other) —
+                    # same field name+values as PaperBroker's own reason (from its
+                    # check_barriers), so a caller (e.g. a close-alert formatter)
+                    # never needs a broker-specific branch to say which barrier hit.
+                    'reason':      _deal_close_reason(last_out),
                 })
             return sorted(result, key=lambda t: t['time_close'])
         except Exception:
