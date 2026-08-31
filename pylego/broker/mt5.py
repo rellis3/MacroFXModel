@@ -46,6 +46,13 @@ class Mt5Broker:
         self.log = log or logging.getLogger("pylego.broker.mt5")
         self.deviation = deviation
         self._exc_cache: dict[int, tuple] = {}  # position_id -> (mfe_pips, mae_pips)
+        # Short machine-readable reason for the LAST enter() call that returned
+        # None/-1 -- enter()'s return type (int|None) is a shared contract every
+        # other bot already depends on, so this is a side-channel attribute
+        # instead of changing the signature. Set at the top of every enter()
+        # call (cleared) and again at whichever failure branch fires; read it
+        # immediately after a failed enter() call, before the next one runs.
+        self.last_reject_reason: str | None = None
 
         if mt5_module is not None:
             self.mt5 = mt5_module
@@ -398,6 +405,7 @@ class Mt5Broker:
         caller hold several concurrent positions per pair as long as each comes
         from a distinct tag (e.g. range_line_bot's per source/side slot)."""
         pip = self.pip(pair)
+        self.last_reject_reason = None
         self.log.info(
             f'TRADE {pair} {direction}  SL={sl:.5f}  TP={tp:.5f}  lot={lots}'
             + ('  [PAPER]' if paper_mode else '')
@@ -407,6 +415,7 @@ class Mt5Broker:
             return -1
         if not self.available:
             self.log.error('MetaTrader5 not installed — cannot place live order')
+            self.last_reject_reason = 'mt5_not_installed'
             return None
 
         mt5 = self.mt5
@@ -430,16 +439,19 @@ class Mt5Broker:
                 f'TRADE DISABLED {pair}: trade_mode={mode} (market likely outside its '
                 f'session) — skipping {direction}'
             )
+            self.last_reject_reason = 'trade_disabled'
             return None
 
         tick = mt5.symbol_info_tick(mt5_sym)
         if not tick:
             self.log.error(f'No tick for {mt5_sym}')
+            self.last_reject_reason = 'no_tick'
             return None
 
         spread_pips = (tick.ask - tick.bid) / pip
         if spread_pips > max_spread_pips:
             self.log.warning(f'SPREAD BLOCK {pair}: {spread_pips:.1f}p > max {max_spread_pips}p')
+            self.last_reject_reason = f'spread {spread_pips:.1f}p > max {max_spread_pips}p'
             return None
 
         existing = [p for p in (mt5.positions_get(symbol=mt5_sym) or []) if p.magic == self.magic]
@@ -448,6 +460,7 @@ class Mt5Broker:
             existing = [p for p in existing if tag in (p.comment or '')]
         if existing:
             self.log.warning(f'DUPLICATE BLOCK {pair}: ticket {existing[0].ticket} already open')
+            self.last_reject_reason = f'duplicate (ticket {existing[0].ticket} already open)'
             return None
 
         order_type = mt5.ORDER_TYPE_BUY if direction == 'LONG' else mt5.ORDER_TYPE_SELL
@@ -460,6 +473,7 @@ class Mt5Broker:
         vol = self._norm_volume(info, lots)
         if not vol or vol <= 0:
             self.log.error(f'{pair}: volume {lots} normalises to {vol} for {mt5_sym} — skipping')
+            self.last_reject_reason = f'invalid_volume ({lots} -> {vol})'
             return None
         if abs(vol - lots) > 1e-9:
             self.log.info(f'{pair}: volume {lots} → {vol} (min {getattr(info, "volume_min", None)} '
@@ -498,6 +512,7 @@ class Mt5Broker:
                 res = mt5.order_send(order)
                 if res is None:
                     self.log.error(f'MT5 retry also returned None  last_error={mt5.last_error()}')
+                    self.last_reject_reason = f'transport_error {mt5.last_error()}'
                     return None
 
         if res and res.retcode == mt5.TRADE_RETCODE_DONE:
@@ -515,8 +530,10 @@ class Mt5Broker:
                f'comment={getattr(res, "comment", "")}  last_error={mt5.last_error()}')
         if rc in benign:
             self.log.warning(msg + ' — market not tradable now, skipping')
+            self.last_reject_reason = f'market_not_tradable (retcode={rc})'
         else:
             self.log.error(msg)
+            self.last_reject_reason = f'order_rejected (retcode={rc})'
         return None
 
     def stop(

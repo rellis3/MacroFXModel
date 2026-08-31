@@ -58,7 +58,7 @@ function isAllowedKVKey(key) {
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
     'oi_bot_state', 'oi_hold_calibration',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
-    'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log',
+    'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
     'pattern_bot_state', 'pattern_bot_status', 'pattern_bot_config',
     'level_engine_bot_state', 'level_engine_bot_status', 'level_engine_fwd_log']);
   const PREFIXES = ['ohlc_', 'ohlc5m_', 'ohlc30m_', 'quote_', 'ai_', 'compass_', 'fredhistory_', 'events_', 'event_windows_', 'arima_price_', 'gold_', 'beta_', 'rgv1_', 'rgv2_', 'rgv4_', 'rgv7_', 'trade_hist_', 'confluence_', 'vmlog_', 'oi_raw_'];
@@ -984,7 +984,7 @@ export default {
             // hold-score calibration — both must outlive the 48h market-data TTL.
             'oi_bot_state', 'oi_hold_calibration',
             'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_plan',
-            'volatility_bot_v2_state', 'volatility_bot_v2_trade_log',
+            'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
             'hmm5m_trained_params', 'hmm5m_macro_context',
             'zone_audit_history',
             // These were allowed through isAllowedKVKey and marked persistent in

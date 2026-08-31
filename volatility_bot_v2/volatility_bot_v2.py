@@ -339,6 +339,35 @@ def run(base_url: str, force_live: bool) -> None:
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
 
+    # ── Decision audit log — "why wasn't this taken" ────────────────────────
+    # The plan/status snapshots only ever show the CURRENT moment; this is the
+    # persistent record of every entered/rejected/skipped/blocked event
+    # through the day, so a real touch with a weak vote or a spread/duplicate/
+    # risk-budget rejection is visible after the fact, not just in scrollback
+    # console logs. Read once at startup (continues the same day's log across
+    # a restart, doesn't wipe history); flushed to KV on the same status_secs
+    # cadence _save_state already uses (unconditional write, same convention).
+    try:
+        decision_events: list[dict] = list((kv.get_json("volatility_bot_v2_decision_log") or {}).get("events") or [])
+    except Exception:
+        decision_events = []
+    DECISION_LOG_MAX_EVENTS = 5000
+
+    def _record_decision(pair: str, status: str, *, side: str | None = None, rung: str | None = None,
+                          zone_id: str | None = None, decision: str | None = None, margin: int | None = None,
+                          reason: str | None = None) -> None:
+        decision_events.append({"t": int(time.time()), "pair": pair, "side": side, "rung": rung,
+                                 "zone_id": zone_id, "decision": decision, "margin": margin,
+                                 "status": status, "reason": reason})
+        if len(decision_events) > DECISION_LOG_MAX_EVENTS:
+            del decision_events[:len(decision_events) - DECISION_LOG_MAX_EVENTS]
+
+    def _flush_decision_log() -> None:
+        try:
+            kv.put_json("volatility_bot_v2_decision_log", {"events": decision_events})
+        except Exception as e:
+            log.warning(f"decision log flush failed: {e}")
+
     def _sync_sessions(new_plan) -> None:
         """Adopt a plan: build a session per instrument (preserving one-shot
         state for instruments already present), drop instruments the plan no
@@ -416,6 +445,7 @@ def run(base_url: str, force_live: bool) -> None:
             # (and its throttled/not-throttled state) only survives a restart
             # if one happened to land right after a trade.
             _save_state()
+            _flush_decision_log()
             last_status = nowt
 
         # (c) Tight loop: feed quotes, run barriers, take entries.
@@ -460,6 +490,7 @@ def run(base_url: str, force_live: bool) -> None:
                 if age_block:
                     log.warning(f"PLAN-AGE GATE: plan is {age:.2f}h old (> {max_age}h) — NEW entries "
                                 f"blocked until a fresh plan lands (fail-closed). Brackets keep running.")
+                    _record_decision("*", "pair_blocked", reason=f"plan_age: {age:.2f}h old (> {max_age}h), all pairs")
                 else:
                     log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
@@ -501,7 +532,10 @@ def run(base_url: str, force_live: bool) -> None:
                 if open_for_pair >= cfg.get("max_concurrent_per_pair", 1):
                     continue
                 guard_why = guard.block_reason(guard_bal, instr)
+                was_blocked = guard_blocks.get(instr)
                 log_block_transition(log, guard_blocks, instr, guard_why)
+                if guard_why and guard_why != was_blocked:
+                    _record_decision(instr, "pair_blocked", reason=f"risk_guard: {guard_why}")
                 if guard_why:
                     continue
                 if cfg.get("ccy_loss_gate", True):
@@ -510,6 +544,7 @@ def run(base_url: str, force_live: bool) -> None:
                         ccy_blocks[instr] = ccy_why
                         if ccy_why:
                             log.warning(f"CURRENCY GATE [{instr}]: NEW entries deferred — {ccy_why}")
+                            _record_decision(instr, "pair_blocked", reason=f"currency_gate: {ccy_why}")
                         else:
                             log.info(f"CURRENCY GATE [{instr}]: clear — entries resumed")
                     if ccy_why:
@@ -535,6 +570,10 @@ def run(base_url: str, force_live: bool) -> None:
                                          f"{'LONG' if spec['dir_up'] else 'SHORT'} @ "
                                          f"{conflict.get('open_price')} (ticket {ctk}) within "
                                          f"{cfg.get('stack_guard_pips', 5)}p; would be one bet")
+                                _record_decision(instr, "skipped", side=spec.get("side"), rung=spec.get("rung"),
+                                                  zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
+                                                  reason=f"stack_guard: already {'LONG' if spec['dir_up'] else 'SHORT'} "
+                                                         f"(ticket {ctk}) within {cfg.get('stack_guard_pips', 5)}p")
                             continue
                     exp_px = expected_fill(spec["entry"], spec["dir_up"], instr, broker)
                     # Size off `sizingSl` (the FULL, untightened stop distance
@@ -556,6 +595,9 @@ def run(base_url: str, force_live: bool) -> None:
                                 budget_skips[zid] = True
                                 log.info(f"RISK BUDGET [{instr}] {zid} deferred — open risk "
                                          f"{open_risk:.2f}% + candidate {cand_risk:.2f}% > cap {risk_cap}%")
+                                _record_decision(instr, "skipped", side=spec.get("side"), rung=spec.get("rung"),
+                                                  zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
+                                                  reason=f"risk_budget: open {open_risk:.2f}% + candidate {cand_risk:.2f}% > cap {risk_cap}%")
                             continue
                     budget_skips.pop(zid, None)
                     direction = "LONG" if spec["dir_up"] else "SHORT"
@@ -590,12 +632,17 @@ def run(base_url: str, force_live: bool) -> None:
                         log.info(f"{'[PAPER] ' if paper else ''}{instr} {spec['decision'].upper()} "
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
                                  f"→ ticket {tid} lots {lots} (margin {spec['margin']})")
+                        _record_decision(instr, "entered", side=spec.get("side"), rung=spec.get("rung"),
+                                          zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"))
                     else:
                         first = reject_until.get(zid, 0) <= nowt
                         reject_until[zid] = nowt + REJECT_COOLDOWN_SECS
                         if first:
                             log.warning(f"{instr} {spec['decision']} {zid} entry REJECTED — "
                                         f"backing off {REJECT_COOLDOWN_SECS}s (zone kept open)")
+                            _record_decision(instr, "rejected", side=spec.get("side"), rung=spec.get("rung"),
+                                              zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
+                                              reason=getattr(broker, "last_reject_reason", None))
 
         time.sleep(max(cfg.get("tick_secs", 3), 1))
 
