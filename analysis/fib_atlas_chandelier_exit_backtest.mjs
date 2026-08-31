@@ -36,15 +36,28 @@
 // "ANALYSIS FIRST" (the owner's own explicit ask, honoured literally):
 // after freezing the exit shape, this script tests BOTH concurrency models
 // at that frozen config, per the owner's "test all 2" follow-up --
-//   (1) BLOCKED (maxConcurrent=1, today's production behaviour): a later
-//       signal on the same pair is skipped outright if the chandelier-held
-//       trade is still open.
-//   (2) STACKING (maxConcurrent=2): a second trade on the same pair may
-//       open WHILE the chandelier-held trade is still open, reusing
-//       `applyConcurrencyCap`'s own existing `maxConcurrent` budget exactly
-//       as built (js/levelAtlasVoteReview.js's own doc: "at most
-//       `maxConcurrent` positions may be open at once") -- no new mechanism,
-//       just a different value of an already-shipped parameter.
+//   (1) BLOCKED (maxConcurrent=1, perDirection=false, today's production
+//       behaviour): a later signal on the same pair is skipped outright if
+//       the chandelier-held trade is still open, regardless of direction.
+//   (2) HEDGE-ONLY (maxConcurrent=1, perDirection=true): a SECOND trade on
+//       the same pair may open only if it's the OPPOSITE direction (a real
+//       hedge) -- same-direction "stacking" is never allowed.
+//
+// REVISION (2026-08-31, caught by the owner spotting an absurd live result
+// -- PF 133, 94% win rate -- and asking hard questions, not by this script
+// catching it first): the ORIGINAL version of this test used
+// maxConcurrent=2/perDirection=false as "stacking", which allows TWO
+// SAME-DIRECTION positions on one pair at once. That let adjacent fib rungs
+// touched minutes apart during the SAME real continuation both survive the
+// cap, and since chandelier extends both to the SAME underlying move, they
+// resolved at the IDENTICAL timestamp with the IDENTICAL pnlPct -- one real
+// market event paid out twice. Quantified on the live "best config" pull:
+// 27.1% of total win PnL came from exact (pair, resolveTime) duplicates.
+// perDirection=true fixes this at the root (same-direction pyramiding is
+// structurally impossible, not just discouraged) while still allowing the
+// one economically distinct case -- a genuine hedge. `duplicateContamination`
+// below re-measures the SAME diagnostic on the corrected pipeline to prove
+// the fix, not just assert it.
 // This is deliberately ANALYSIS, not a wired-in change -- nothing here
 // touches the live page or BEST_CONFIG until the owner decides what to do
 // with the result.
@@ -88,26 +101,32 @@ function repriceForMult(costFiltered, bars, mult) {
         t.trailedPnlPct == null ? t : { ...t, resolveTime: t.trailedResolveTime, pnlPips: t.trailedPnlPips, pnlPct: t.trailedPnlPct });
 }
 
+// Concurrency modes tested (2026-08-31, replacing the earlier flawed
+// maxConcurrent=2/perDirection=false "stacking" test -- see this file's own
+// STEP 3 comment below for why that was wrong and what's tested instead).
+const CONCURRENCY_MODES = [
+  { key: 'blocked', maxConcurrent: 1, perDirection: false },   // today's production: at most 1 position per pair, either direction
+  { key: 'hedgeOnly', maxConcurrent: 1, perDirection: true },  // at most 1 LONG *and* 1 SHORT per pair -- a genuine hedge, never same-direction pyramiding
+];
+
 // Finishes the pipeline for one already-repriced trade list at ONE
-// maxConcurrent -- pure. Reuses `applyConcurrencyCap` exactly as shipped
-// (the SAME brick behind today's production maxConcurrent=1 default and
-// the "stacking" maxConcurrent=2 variant this script tests -- no new
-// concurrency mechanism, just a different value of an existing parameter).
-function finishConcurrency(repriced, maxConcurrent) {
-  const capped = applyConcurrencyCap(repriced, { maxConcurrent });
+// concurrency mode -- pure. Reuses `applyConcurrencyCap` exactly as shipped,
+// including its own `perDirection` option -- no new concurrency mechanism.
+function finishConcurrency(repriced, mode) {
+  const capped = applyConcurrencyCap(repriced, { maxConcurrent: mode.maxConcurrent, perDirection: mode.perDirection });
   if (!capped?.kept?.length) return null;
   const tightened = applyFadeStopFraction(capped.kept, STOP_FRAC, 0, { preserveSizing: true });
   return { trades: riskAdjustTrades(tightened, RISK_PCT).map(t => ({ ...t })), skippedCount: capped.skippedCount, totalCount: capped.totalCount };
 }
 
-// Loads each pair's M1 bars ONCE and computes every (mult x maxConcurrent)
+// Loads each pair's M1 bars ONCE and computes every (mult x concurrency mode)
 // combination before moving to the next pair -- the M1 re-walk itself only
-// runs once per (pair, mult), not once per (pair, mult, concurrency).
+// runs once per (pair, mult), not once per (pair, mult, mode).
 //
-//   -> { [mult|'null']: { 1: {SYM: {trades,skippedCount,totalCount}}, 2: {...} } }
-async function buildAllVariants(mults, concurrencies) {
+//   -> { [mult|'null']: { blocked: {SYM: {trades,skippedCount,totalCount}}, hedgeOnly: {...} } }
+async function buildAllVariants(mults, modes) {
   const keys = [null, ...mults];
-  const out = Object.fromEntries(keys.map(k => [k, Object.fromEntries(concurrencies.map(c => [c, {}]))]));
+  const out = Object.fromEntries(keys.map(k => [k, Object.fromEntries(modes.map(m => [m.key, {}]))]));
   for (const pair of RANGE_FIB_INSTRUMENTS) {
     if (EXCLUDE.has(pair)) continue;
     const stored = await getJSON(`${LADDER_PREFIX[LADDER]}/${pair}-votetrades.json`);
@@ -117,9 +136,9 @@ async function buildAllVariants(mults, concurrencies) {
     if (!costFiltered.length) continue;
     const sym = pair.toUpperCase();
 
-    for (const c of concurrencies) {
-      const r = finishConcurrency(costFiltered, c);
-      if (r) out[null][c][sym] = { ...r, trades: r.trades.map(t => ({ ...t, pair: sym })) };
+    for (const m of modes) {
+      const r = finishConcurrency(costFiltered, m);
+      if (r) out[null][m.key][sym] = { ...r, trades: r.trades.map(t => ({ ...t, pair: sym })) };
     }
 
     const needsTrail = costFiltered.some(t => DECISIONS.includes(t.decision) && t.win);
@@ -129,13 +148,35 @@ async function buildAllVariants(mults, concurrencies) {
     const bars = await loadM1ForPair(pair);
     for (const mult of mults) {
       const repriced = repriceForMult(costFiltered, bars, mult);
-      for (const c of concurrencies) {
-        const r = finishConcurrency(repriced, c);
-        if (r) out[mult][c][sym] = { ...r, trades: r.trades.map(t => ({ ...t, pair: sym })) };
+      for (const m of modes) {
+        const r = finishConcurrency(repriced, m);
+        if (r) out[mult][m.key][sym] = { ...r, trades: r.trades.map(t => ({ ...t, pair: sym })) };
       }
     }
   }
   return out;
+}
+
+// Duplicate-resolution diagnostic (2026-08-31) -- the mechanism that made
+// the ORIGINAL maxConcurrent=2/perDirection=false "stacking" test dishonest:
+// two SAME-DIRECTION touches on the same pair, entered minutes apart (e.g.
+// adjacent fib rungs during one real continuation), both surviving the cap
+// and both chandelier-extended to the SAME underlying move, resolving at
+// the identical timestamp with the identical pnlPct -- one real market
+// event paid out twice. Counts trades sharing an EXACT (pair, resolveTime)
+// with another kept trade, and the % of total win PnL they contribute.
+function duplicateContamination(byPairMode) {
+  const all = Object.values(byPairMode).flatMap(v => v.trades);
+  const groups = new Map();
+  for (const t of all) { const k = t.pair + '|' + t.resolveTime; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(t); }
+  const totalWinPnl = all.filter(t => t.win).reduce((a, t) => a + t.pnlPct, 0);
+  let dupTrades = 0, dupPnl = 0;
+  for (const [, g] of groups) {
+    if (g.length < 2) continue;
+    const sorted = [...g].sort((a, b) => a.time - b.time);
+    for (let i = 1; i < sorted.length; i++) { dupTrades++; if (sorted[i].win) dupPnl += sorted[i].pnlPct; }
+  }
+  return { dupTrades, totalTrades: all.length, pctOfWinPnl: totalWinPnl > 0 ? +(100 * dupPnl / totalWinPnl).toFixed(2) : 0 };
 }
 
 function statsFor(byPairVariant, syms) {
@@ -203,9 +244,9 @@ function extensionStats(byPairMult1, byPairBaseline1) {
 async function main() {
   console.log(`Fib Atlas chandelier (ATR-trailed) continuation exit — ladder=${LADDER}  decision=${DECISION}  period=${CHANDELIER_PERIOD}\n`);
   console.log('Loading all pairs (M1 fetched once per pair, reused across every mult/concurrency combination) ...');
-  const variants = await buildAllVariants(CHAND_MULTS, [1, 2]);
+  const variants = await buildAllVariants(CHAND_MULTS, CONCURRENCY_MODES);
 
-  const baselineByPair = variants[null][1];
+  const baselineByPair = variants[null].blocked;
   const allSyms = Object.keys(baselineByPair);
   const allTrades = Object.values(baselineByPair).flatMap(v => v.trades).sort((a, b) => a.time - b.time);
   const uniqueDates = [...new Set(allTrades.map(t => t.date))].sort();
@@ -218,11 +259,11 @@ async function main() {
   console.log('──── STEP 1: freeze the exit shape (maxConcurrent=1, matching today\'s production) ────\n');
   console.log('──── IN-SAMPLE (fit) ────');
   header();
-  const isBaseline = statsFor(isFilter(variants[null][1]), allSyms);
+  const isBaseline = statsFor(isFilter(variants[null].blocked), allSyms);
   printRow('baseline', isBaseline);
   const isRows = [];
   for (const mult of CHAND_MULTS) {
-    const s = statsFor(isFilter(variants[mult][1]), Object.keys(variants[mult][1]));
+    const s = statsFor(isFilter(variants[mult].blocked), Object.keys(variants[mult].blocked));
     isRows.push({ mult, ...s });
     printRow(`mult=${mult}`, s);
   }
@@ -233,10 +274,10 @@ async function main() {
 
   console.log('──── OUT-OF-SAMPLE (frozen from IS, applied unchanged) ────');
   header();
-  const oosBaseline = statsFor(oosFilter(variants[null][1]), allSyms);
+  const oosBaseline = statsFor(oosFilter(variants[null].blocked), allSyms);
   printRow('baseline', oosBaseline);
   if (chosen) {
-    const oosChosen = statsFor(oosFilter(variants[chosen.mult][1]), Object.keys(variants[chosen.mult][1]));
+    const oosChosen = statsFor(oosFilter(variants[chosen.mult].blocked), Object.keys(variants[chosen.mult].blocked));
     printRow(`mult=${chosen.mult}`, oosChosen);
     console.log(`\nLeverage-in-disguise check (avg loss must NOT move -- this lever only ever touches WINNING trades' exit):`);
     console.log(`  OOS avg loss: baseline ${oosBaseline.avgLoss}% vs mult=${chosen.mult} ${oosChosen.avgLoss}%`);
@@ -246,21 +287,28 @@ async function main() {
   if (!chosen) return;
 
   console.log(`\n──── STEP 2: "analysis first" -- does the frozen exit ever create a real 2nd-trade-on-one-pair scenario? ────\n`);
-  const ext = extensionStats(variants[chosen.mult][1], variants[null][1]);
+  const ext = extensionStats(variants[chosen.mult].blocked, variants[null].blocked);
   console.log(`Hold-time EXTENSION vs the original fixed exit, for winners the chandelier actually extended (mult=${chosen.mult}, all dates, all pairs):`);
   console.log(`  n=${ext.n}  p10=${ext.p10}min  median=${ext.median}min  p75=${ext.p75}min  p90=${ext.p90}min  max=${ext.max}min\n`);
 
-  console.log('──── STEP 3: "test all 2" -- BLOCKED (maxConcurrent=1) vs STACKING (maxConcurrent=2), at the frozen exit ────\n');
+  console.log('──── STEP 3: "test all 2" -- BLOCKED (maxConcurrent=1) vs HEDGE-ONLY (maxConcurrent=1, perDirection=true), at the frozen exit ────\n');
   header();
   console.log('-- IN-SAMPLE --');
-  printRow('blocked (concur=1)', statsFor(isFilter(variants[chosen.mult][1]), Object.keys(variants[chosen.mult][1])));
-  printRow('stacking (concur=2)', statsFor(isFilter(variants[chosen.mult][2]), Object.keys(variants[chosen.mult][2])));
+  printRow('blocked', statsFor(isFilter(variants[chosen.mult].blocked), Object.keys(variants[chosen.mult].blocked)));
+  printRow('hedgeOnly', statsFor(isFilter(variants[chosen.mult].hedgeOnly), Object.keys(variants[chosen.mult].hedgeOnly)));
   console.log('-- OUT-OF-SAMPLE --');
-  const oosBlocked = statsFor(oosFilter(variants[chosen.mult][1]), Object.keys(variants[chosen.mult][1]));
-  const oosStacking = statsFor(oosFilter(variants[chosen.mult][2]), Object.keys(variants[chosen.mult][2]));
-  printRow('blocked (concur=1)', oosBlocked);
-  printRow('stacking (concur=2)', oosStacking);
-  console.log(`\nOOS trades genuinely gained by allowing a 2nd concurrent position: ${oosStacking.trades - oosBlocked.trades} (${oosBlocked.trades} -> ${oosStacking.trades})`);
+  const oosBlocked = statsFor(oosFilter(variants[chosen.mult].blocked), Object.keys(variants[chosen.mult].blocked));
+  const oosHedgeOnly = statsFor(oosFilter(variants[chosen.mult].hedgeOnly), Object.keys(variants[chosen.mult].hedgeOnly));
+  printRow('blocked', oosBlocked);
+  printRow('hedgeOnly', oosHedgeOnly);
+  console.log(`\nOOS trades genuinely gained by allowing a hedge: ${oosHedgeOnly.trades - oosBlocked.trades} (${oosBlocked.trades} -> ${oosHedgeOnly.trades})`);
+
+  console.log('\n──── Duplicate-resolution contamination check (proves the fix, not just asserts it) ────');
+  const dupBlocked = duplicateContamination(oosFilter(variants[chosen.mult].blocked));
+  const dupHedgeOnly = duplicateContamination(oosFilter(variants[chosen.mult].hedgeOnly));
+  console.log(`  blocked:   ${dupBlocked.dupTrades} duplicate-resolveTime trades / ${dupBlocked.totalTrades} total = ${dupBlocked.pctOfWinPnl}% of win PnL`);
+  console.log(`  hedgeOnly: ${dupHedgeOnly.dupTrades} duplicate-resolveTime trades / ${dupHedgeOnly.totalTrades} total = ${dupHedgeOnly.pctOfWinPnl}% of win PnL`);
+  console.log(`  (the ORIGINAL maxConcurrent=2/perDirection=false "stacking" variant measured 27.1% here on the live Asia "best config" pull -- this is what perDirection=true fixes.)`);
 }
 
 main();
