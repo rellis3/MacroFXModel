@@ -14505,19 +14505,29 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
 // vote-preview`) exactly, just fanned out across both ladders per pair.
 // Reuses `asiaAllLines`/`mondayAllLines` (js/asiaFibAtlasRoutes.js, js/
 // mondayFibAtlasRoutes.js) — same `voteDecision` call the filtered plan
-// itself makes, never a second scoring path. Sequential per pair (same
-// discipline as _refreshFibAtlasPlan) — each call is a cache READ once a
-// pair's live cache is warm (getFastLive short-circuits on a cache hit), so
-// this doesn't compete with or duplicate the plan producer's own cold-starts.
+// itself makes, never a second scoring path. Parallel ACROSS pairs (fixed
+// 2026-09-01 — the original sequential-per-pair version took ~7-8s for the
+// full 16-pair universe, which read as "stuck loading" client-side with no
+// progress indicator): each call is a cache READ once a pair's live cache
+// is warm (getFastLive short-circuits on a cache hit, and is itself
+// idempotent against a pair that's still cold — it never double-fires a
+// cold-start), so fanning all pairs out concurrently doesn't compete with
+// or duplicate the plan producer's own cold-starts. Each pair's own
+// try/catch means one pair's R2/KV hiccup degrades to an error row for
+// that pair only, never a 500 for the whole response.
 app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
   try {
     const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : FIB_ATLAS_DEFAULT_PAIRS)
       .map(p => p.trim().toLowerCase()).filter(Boolean);
     const instruments = {};
-    for (const pair of pairs) {
-      const [asia, monday] = await Promise.all([asiaAllLines(pair), mondayAllLines(pair)]);
-      instruments[pair] = { asia, monday };
-    }
+    await Promise.all(pairs.map(async pair => {
+      try {
+        const [asia, monday] = await Promise.all([asiaAllLines(pair), mondayAllLines(pair)]);
+        instruments[pair] = { asia, monday };
+      } catch (e) {
+        instruments[pair] = { asia: { warming: false, lines: [], error: e.message }, monday: { warming: false, lines: [], error: e.message } };
+      }
+    }));
     res.json({ ok: true, instruments });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
