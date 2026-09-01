@@ -5372,12 +5372,32 @@ function renderDrVoteAnalysis(j) {
       + `<div style="font-size:19px;font-weight:700;color:${h.sameDayResolvedPct != null && h.sameDayResolvedPct < 68 ? 'var(--amber)' : 'var(--bull)'}">${h.sameDayResolvedPct != null ? esc0(h.sameDayResolvedPct) + '%' : '—'}</div></div>`
       + `</div>`
       + (h.sameDayResolvedPct != null ? `<div class="hint">The other ${esc0((100 - h.sameDayResolvedPct).toFixed(1))}% run past session close — those are what the EOD-close fix (shipped 2026-09-01) now flattens instead of letting ride for days.</div>` : '');
+
+    // Expectation if it DOESN'T resolve same-day — what "past close" actually
+    // means in real time, not just a % that's left dangling. Pooled across
+    // all 17 pairs (analysis/neither_population_live_gap_study.mjs's 9,855-
+    // touch full re-walk) — the same population EOD-close now flattens
+    // instead of letting run, so this describes what USED to happen to them.
+    if (h.sameDayResolvedPct != null) {
+      html += `<div class="th-h ctx" style="margin-top:10px">If it runs past close &mdash; what "unresolved" actually meant <span class="chip neu" style="font-size:9px">pooled, all 17 pairs</span></div>`
+        + `<div class="th-top">Before the EOD-close fix, those trades typically resolved within about a day anyway (<b>median 0.69 days</b>, mean 1.09) &mdash; but the tail was real: <b>up to 7.95 days</b> on record. Pooled across all 17 pairs, win rate on that unresolved population was <b>50.3%</b>, meaningfully below this pair's own ${esc0(h.winRatePct)}% same-day win rate above &mdash; that gap (pooled vs. this pair, not the same population) is exactly why letting it ride was worse than flattening it.</div>`;
+    }
+
+    // Timing: WHICH session actually drives the unresolved population — the
+    // reference-card-style "what flips it" specificity. Real, pooled finding
+    // from the same live-gap study: 52.7% of NY-session touches never
+    // resolve same-day vs 9.0% London / 6.1% Asia — a late-NY touch simply
+    // runs out of session before it can resolve, structurally, every pair.
+    const curSession = j.liveContext?.session;
+    html += `<div class="th-h ctx" style="margin-top:10px">Timing &mdash; which session actually matters <span class="chip neu" style="font-size:9px">pooled, all 17 pairs</span></div>`
+      + `<div class="th-top">A touch late in <b>NY</b> session has far less runway to resolve same-day than one in London or Asia: <b>52.7%</b> of NY touches run past close, vs <b>9.0%</b> London and <b>6.1%</b> Asia.${curSession ? ` We're currently in <b>${esc0(curSession)}</b>${curSession === 'NY' ? ' — exactly the session where same-day odds are lowest.' : curSession === 'London' ? ' — historically the best odds of same-day resolution.' : '.'}` : ''}</div>`
+      + `<div class="hint">Not that NY signals are worse in themselves — it's runway: a touch late in the day simply has less time left in its own session before the EOD-close rule steps in. Nothing to act on directly, but it's why "unresolved" clusters where it does.</div>`;
   }
 
-  if (j.liveContext?.dayVol || j.liveContext?.session) {
+  if (j.liveContext?.dayVol) {
     const volWord = (j.liveContext.dayVol || '').split('·')[1] || j.liveContext.dayVol;
-    html += `<div class="th-h ctx" style="margin-top:10px">Today's reading</div>`
-      + `<div class="th-top">Day-vol regime: <b>${esc0(volWord || '—')}</b>${j.liveContext.session ? ` &middot; Session: <b>${esc0(j.liveContext.session)}</b>` : ''}</div>`
+    html += `<div class="th-h ctx" style="margin-top:10px">Today's day-vol regime</div>`
+      + `<div class="th-top">${esc0(volWord || '—')}</div>`
       + `<div class="hint">Checked earlier: day-vol regime hasn't shown a strong win-rate split on its own historically (62&ndash;63% across quiet/normal/heavy, pooled) &mdash; context, not a strong standalone signal.</div>`;
   }
 
