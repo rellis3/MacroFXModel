@@ -5361,7 +5361,7 @@ function renderDrVoteAnalysis(j) {
   if (j.historical) {
     const h = j.historical;
     const yrs = h.tradesPerYr ? (h.trades / h.tradesPerYr).toFixed(1) : null;
-    html += `<div class="th-h ctx">What history shows &mdash; margin&ge;${h.marginTested} (the bot's own threshold)</div>`
+    html += `<div class="th-h ctx">What history shows &mdash; margin&ge;${h.marginTested} (the bot's own threshold) <span class="chip neu" style="font-size:9px" title="Read from this pair's own cached backtest file — a separate number per instrument, never shared or averaged across pairs.">this pair only</span></div>`
       + `<div class="th-top">${esc0(h.trades)} trades${yrs ? ` over ~${esc0(yrs)}yr` : ''} &mdash; Sharpe ${esc0(h.sharpe?.toFixed?.(2) ?? h.sharpe)}, profit factor ${esc0(h.profitFactor?.toFixed?.(2) ?? h.profitFactor)}, max drawdown ${esc0(h.maxDrawdownPct)}%.</div>`
       + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">`
       + `<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">`
