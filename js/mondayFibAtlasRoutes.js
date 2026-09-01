@@ -16,6 +16,7 @@ import { loadVoteTrades } from './asiaFibAtlasRoutes.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { putJSON, getJSON } from './r2Store.js';
+import { packToJSON, packFromJSON } from './levelAtlasRoutes.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { oandaSymbol } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
@@ -281,11 +282,49 @@ function boundPacked(packed, days) {
   };
 }
 
+// R2 live-cache snapshotting — Monday's own copy of asiaFibAtlasRoutes.js's
+// identical mechanism; see that file's own doc for the full reasoning
+// (every push to `main` restarts Railway, wiping this in-memory `liveCache`
+// and forcing a full multi-year cold-start marathon otherwise).
+const LIVE_SNAPSHOT_PREFIX = `${PREFIX}/live-snapshot`;
+const MAX_SNAPSHOT_AGE_HOURS = 72;
+
+async function _saveLiveSnapshot(pair) {
+  const entry = liveCache.get(pair);
+  if (!entry?.packed?.n) return false;
+  try {
+    await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    return true;
+  } catch (e) {
+    console.warn(`[monday-fib-atlas-live] ${pair}: snapshot save failed — ${e.message}`);
+    return false;
+  }
+}
+
+export async function saveAllLiveSnapshots() {
+  let saved = 0;
+  for (const pair of liveCache.keys()) {
+    if (await _saveLiveSnapshot(pair)) saved++;
+  }
+  if (saved) console.log(`[monday-fib-atlas-live] snapshotted ${saved} warm pair(s) to R2`);
+  return saved;
+}
+
 async function coldStartLiveCache(pair) {
   const sym = pair.toUpperCase();
   liveWarming.add(pair);
   try {
-    let packed = await loadM1ForPair(pair);
+    let packed = null, fromSnapshot = false;
+    try {
+      const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
+      const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
+      if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
+        const restored = packFromJSON(snap);
+        if (restored?.n) { packed = restored; fromSnapshot = true; }
+      }
+    } catch (e) { console.warn(`[monday-fib-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
+
+    if (!packed) packed = await loadM1ForPair(pair);
     if (!packed?.n) throw new Error(`no M1 data for ${sym}`);
     if (process.env.OANDA_KEY) {
       try { packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 }); }
@@ -293,7 +332,7 @@ async function coldStartLiveCache(pair) {
     }
     const bounded = boundPacked(packed, LIVE_WINDOW_DAYS);
     liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1] });
-    console.log(`[monday-fib-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window)`);
+    console.log(`[monday-fib-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
     console.error(`[monday-fib-atlas-live] ${sym}: cold start failed — ${e.message}`);
   } finally {

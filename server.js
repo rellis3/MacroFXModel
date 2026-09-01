@@ -71,8 +71,8 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
-import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming } from './js/asiaFibAtlasRoutes.js';
-import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming } from './js/mondayFibAtlasRoutes.js';
+import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
@@ -14464,6 +14464,17 @@ app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
 // per-write quota concern the way CF KV does here).
 setInterval(_laSaveAllLiveSnapshots, 15 * 60_000);
 setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
+
+// Fib Atlas's own copies of the snapshot job above (js/asiaFibAtlasRoutes.js
+// / js/mondayFibAtlasRoutes.js's own `saveAllLiveSnapshots`, added
+// 2026-09-01 after every push to `main` was found to restart Railway and
+// wipe this in-memory cache, forcing a full ~16-pair x 2-ladder cold-start
+// marathon repeatedly on a repo with several pushes/day). Two separate
+// module-level caches (Asia, Monday), so two separate interval calls.
+setInterval(_faAsiaSaveAllLiveSnapshots, 15 * 60_000);
+setTimeout(_faAsiaSaveAllLiveSnapshots, 5 * 60_000);
+setInterval(_faMondaySaveAllLiveSnapshots, 15 * 60_000);
+setTimeout(_faMondaySaveAllLiveSnapshots, 5 * 60_000);
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
