@@ -3686,6 +3686,7 @@ const VB2_DEFAULTS = {
   ccy_loss_gate: true, max_daily_loss_pct: 1.0,
   fade_stop_tighten: false, max_open_risk_pct: 1.0,
   early_exit: true, early_exit_threshold: 0.4,
+  p90_enabled: false,
   throttle_enabled: true, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
   stack_guard: true, stack_guard_pips: 5,
   plan_max_age_hours: 1,
@@ -3757,6 +3758,7 @@ function renderVb2Form() {
   set('vb2_max_open_risk_pct',   _vb2Cfg.max_open_risk_pct  ?? VB2_DEFAULTS.max_open_risk_pct);
   chk('vb2_early_exit',          _vb2Cfg.early_exit ?? VB2_DEFAULTS.early_exit);
   set('vb2_early_exit_threshold', _vb2Cfg.early_exit_threshold ?? VB2_DEFAULTS.early_exit_threshold);
+  chk('vb2_p90_enabled',         _vb2Cfg.p90_enabled ?? VB2_DEFAULTS.p90_enabled);
   chk('vb2_throttle_enabled',    _vb2Cfg.throttle_enabled ?? VB2_DEFAULTS.throttle_enabled);
   set('vb2_throttle_trigger_dd', _vb2Cfg.throttle_trigger_dd ?? VB2_DEFAULTS.throttle_trigger_dd);
   set('vb2_throttle_restore_dd', _vb2Cfg.throttle_restore_dd ?? VB2_DEFAULTS.throttle_restore_dd);
@@ -3805,6 +3807,7 @@ function readVb2Form() {
   _vb2Cfg.max_open_risk_pct    = num('vb2_max_open_risk_pct', VB2_DEFAULTS.max_open_risk_pct);
   _vb2Cfg.early_exit           = !!document.getElementById('vb2_early_exit')?.checked;
   _vb2Cfg.early_exit_threshold = num('vb2_early_exit_threshold', VB2_DEFAULTS.early_exit_threshold);
+  _vb2Cfg.p90_enabled          = !!document.getElementById('vb2_p90_enabled')?.checked;
   _vb2Cfg.throttle_enabled     = !!document.getElementById('vb2_throttle_enabled')?.checked;
   _vb2Cfg.throttle_trigger_dd  = num('vb2_throttle_trigger_dd', VB2_DEFAULTS.throttle_trigger_dd);
   _vb2Cfg.throttle_restore_dd  = num('vb2_throttle_restore_dd', VB2_DEFAULTS.throttle_restore_dd);

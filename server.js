@@ -76,7 +76,7 @@ import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, m
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
-  DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, pickFresher as _laPickFresher,
+  DEFAULT_REARM as _LA_DEFAULT_REARM, loadLocalVoteTrades as _laLoadLocalVoteTrades, loadLocalP90VoteTrades as _laLoadLocalP90VoteTrades, pickFresher as _laPickFresher,
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
 import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTrade, applyFadeStopTightening as _laApplyFadeStopTightening } from './js/levelAtlasVoteReview.js';
@@ -13918,6 +13918,16 @@ const VOLATILITY_V2_PLAN_CFG_DEFAULTS = {
   // "best config" preset.
   early_exit: true,
   early_exit_threshold: 0.4,
+  // p90 CANNOT use the standard voteDecision/margin mechanic — it's the
+  // ladder's outermost rung with no further rung to price a stop against,
+  // so voteDecision structurally never reaches margin>=3 for it (checked
+  // against real data, 2026-08-29). The only validated p90 approach
+  // (scripts/build_p90_votetrades.mjs) is a genuinely different mechanism:
+  // unconditional fade (no vote), target = distance back to p75, stop =
+  // a FIXED per-pair value fit once on in-sample data (90th pctile of that
+  // pair's own IS runPips). Defaulted OFF — no live track record yet, and
+  // "unconditional" means every armed p90 touch trades, unlike p50/p75.
+  p90_enabled: false,
 };
 
 // Daily fade-stop-tightening cache — `applyFadeStopTightening` only needs
@@ -13943,6 +13953,56 @@ async function _volatilityV2FadeStopInfo(pair, dateStr) {
   if (_volatilityV2FadeStopCache.size > 500) _volatilityV2FadeStopCache.clear();
   _volatilityV2FadeStopCache.set(cacheKey, info);
   return info;
+}
+
+// p90's fixed stop (scripts/build_p90_votetrades.mjs's `stopPipsByPair` —
+// the 90th percentile of that pair's own IS runPips, fit ONCE, never
+// recomputed live). Unlike fade-stop tightening this isn't keyed by date —
+// it's a single per-pair constant that only changes when that script is
+// rerun — but still worth caching so a live 45s tick doesn't hit R2 for it
+// on every pair, every tick. Map<pair, {stopPips, percentile}|null>.
+const _volatilityV2P90StopCache = new Map();
+async function _volatilityV2P90StopInfo(pair) {
+  if (_volatilityV2P90StopCache.has(pair)) return _volatilityV2P90StopCache.get(pair);
+  let info = null;
+  try {
+    const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${pair}-p90votetrades.json`), _laLoadLocalP90VoteTrades(pair));
+    if (stored?.stopPipsByPair != null) info = { stopPips: stored.stopPipsByPair, percentile: stored.percentile };
+  } catch (e) { console.error(`[volatility-v2] p90-stop cache failed for ${pair}:`, e.message); }
+  _volatilityV2P90StopCache.set(pair, info);
+  return info;
+}
+
+// Prices a P90 rung using the ONE validated unconditional-fade mechanism
+// (scripts/build_p90_votetrades.mjs) — NOT the standard voteDecision/margin
+// path `_volatilityV2PriceZone` uses for p50/p75. p90 sits at the ladder's
+// outermost rung (`outer = lv[ri+2]` is always undefined for it — see
+// `_volatilityV2PriceZone` below), so it has no further rung to price a stop
+// against and `voteDecision` structurally never fires for it. It can only
+// be priced unconditionally: always fade, target = distance back to p75
+// (the "inner" rung), stop = the fixed per-pair value from
+// `_volatilityV2P90StopInfo`. `rec` is a `pending`-shaped live record
+// (side/level/pip/rung only — no innerDistPips, same as `_volatilityV2PriceZone`'s
+// input), `ladderBySide` supplies the same `[open, p50px, p75px, p90px]`
+// array that function uses.
+function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
+  if (stopPips == null) return null;
+  const lv = ladderBySide[rec.side];
+  if (!lv) return null;
+  const ri = _LA_RUNGS.indexOf(rec.rung);   // 'p90' -> 2
+  if (ri < 0) return null;
+  const here = lv[ri + 1], inner = lv[ri];
+  const innerDistPips = +(Math.abs(here - inner) / rec.pip).toFixed(1);
+
+  const sgn = rec.side === 'up' ? 1 : -1;
+  const tp = rec.level - sgn * innerDistPips * rec.pip;
+  const sl = rec.level + sgn * stopPips * rec.pip;
+
+  return {
+    side: rec.side, rung: rec.rung, decision: 'fade', margin: null,
+    entry: +rec.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sl.toFixed(6), tp: +tp.toFixed(6),
+    rationale: `p90 unconditional fade · fixed stop ${stopPips}p (p90 of this pair's own in-sample run distribution, no vote)`,
+  };
 }
 
 // Prices ONE candidate rung (a `pending`-shaped live record, OR a resolved
@@ -14011,7 +14071,7 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
 // below, used by vol-forecast-v2.html and today.html's per-pair Vol section)
 // can ask about ANY instrument the Level Atlas engine covers, not just the
 // bot's own `enabled_pairs` universe. Pure read: never writes `volatility_bot_v2_plan`.
-async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, earlyExit = false, earlyExitThreshold = 0.4 } = {}) {
+async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, earlyExit = false, earlyExitThreshold = 0.4, p90Enabled = false } = {}) {
   const live = await _laGetFastLive(pair);
   if (live.warming) return { skipped: 'warming (cold cache) — try again shortly' };
   if (!live.date) return { skipped: 'no live coverage yet' };
@@ -14045,6 +14105,7 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   }
 
   const fadeStopInfo = fadeStopTighten ? await _volatilityV2FadeStopInfo(pair, live.date) : null;
+  const p90StopInfo = p90Enabled ? await _volatilityV2P90StopInfo(pair) : null;
 
   // Only PENDING (not-yet-touched, currently armed) rungs are tradeable —
   // `touches` (already touched today) are informational only (what happened
@@ -14053,8 +14114,17 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   // exactly what `pending` represents.
   const zones = [];
   for (const p of (live.pending ?? [])) {
-    if (p.rung === 'p90') continue;   // no outer rung to price against — excluded everywhere else too
-    const zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold);
+    let zone;
+    if (p.rung === 'p90') {
+      // p90 never goes through the standard vote/margin path (see
+      // `_volatilityV2PriceP90Zone`'s doc) — only priced when the operator
+      // has explicitly opted in, and skipped entirely (same as before)
+      // when off or when this pair has no fitted stop yet.
+      if (!p90Enabled) continue;
+      zone = _volatilityV2PriceP90Zone(p, ladderBySide, p90StopInfo?.stopPips);
+    } else {
+      zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold);
+    }
     if (!zone) continue;
     // instanceNum: how many times THIS (side,rung) has already resolved
     // today — makes the zone_id stable across polls for the CURRENT armed
@@ -14064,7 +14134,7 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
     const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
     zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
   }
-  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo };
+  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo, p90StopInfo };
 }
 
 async function _refreshVolatilityV2Plan() {
@@ -14099,9 +14169,10 @@ async function _refreshVolatilityV2Plan() {
         }
         const preview = await _volatilityV2InstrumentPreview(pair, {
           fadeStopTighten: cfg.fade_stop_tighten, earlyExit: cfg.early_exit, earlyExitThreshold: cfg.early_exit_threshold ?? 0.4,
+          p90Enabled: !!cfg.p90_enabled,
         });
         if (preview.skipped) { skipped[pair] = preview.skipped; continue; }
-        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo };
+        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo, p90StopInfo: preview.p90StopInfo };
       } catch (e) {
         skipped[pair] = `error: ${e.message}`;
         console.error(`[volatility-v2] ${pair} failed:`, e.message);
