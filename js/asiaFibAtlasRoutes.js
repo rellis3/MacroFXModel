@@ -385,6 +385,33 @@ export async function asiaLivePlanZones(pair, { minMargin = FIB_ATLAS_MIN_MARGIN
   return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, warming: false };
 }
 
+// Unfiltered per-rung view (2026-09-01) — EVERY rung the live ladder
+// currently carries, touched or not, regardless of vote margin. Direct
+// owner ask after `asiaLivePlanZones`' margin>=2 filter made it impossible
+// to see whether the engine was actually evaluating the full ~40-rung grid
+// per pair or silently skipping most of it — mirrors volatility_bot_v2's
+// own "All Lines" table (server.js's `/api/level-atlas/vote-preview`)
+// exactly, adapted to this engine's rung/ladder shape. Reuses the SAME
+// `voteDecision` call `asiaLivePlanZones` makes — never a second scoring
+// path, so this can never show a different verdict than the filtered plan
+// does for the same rung, only a fuller list of rows.
+export async function asiaAllLines(pair) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { date: live.date ?? null, warming: !!live.warming, lines: [] };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  const lines = live.ladder.map(rung => {
+    const vd = book ? voteDecision(book, rung) : null;
+    return {
+      pair, side: rung.side, rung: rung.level,
+      status: rung.touchedToday ? `touched · ${rung.prevOutcomeSameDay}` : 'pending',
+      decision: vd?.decision ?? null, margin: vd?.margin ?? 0,
+      tradeableNow: (vd?.margin ?? 0) >= FIB_ATLAS_MIN_MARGIN,
+    };
+  });
+  return { date: live.date, warming: false, lines };
+}
+
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `afa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

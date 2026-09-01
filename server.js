@@ -71,8 +71,8 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
-import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming } from './js/asiaFibAtlasRoutes.js';
-import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming } from './js/mondayFibAtlasRoutes.js';
+import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
@@ -14420,6 +14420,33 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// GET /api/fib-atlas-bot/all-lines?pairs=eurusd,gbpusd,... — the UNFILTERED
+// per-rung view for both ladders, direct owner ask (2026-09-01) after the
+// filtered plan's margin>=2 cutoff made it impossible to see whether the
+// engine was evaluating the FULL grid or silently skipping most of it.
+// Mirrors volatility_bot_v2's own "All Lines" table (`/api/level-atlas/
+// vote-preview`) exactly, just fanned out across both ladders per pair.
+// Reuses `asiaAllLines`/`mondayAllLines` (js/asiaFibAtlasRoutes.js, js/
+// mondayFibAtlasRoutes.js) — same `voteDecision` call the filtered plan
+// itself makes, never a second scoring path. Sequential per pair (same
+// discipline as _refreshFibAtlasPlan) — each call is a cache READ once a
+// pair's live cache is warm (getFastLive short-circuits on a cache hit), so
+// this doesn't compete with or duplicate the plan producer's own cold-starts.
+app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
+  try {
+    const pairs = (req.query.pairs ? String(req.query.pairs).split(',') : FIB_ATLAS_DEFAULT_PAIRS)
+      .map(p => p.trim().toLowerCase()).filter(Boolean);
+    const instruments = {};
+    for (const pair of pairs) {
+      const [asia, monday] = await Promise.all([asiaAllLines(pair), mondayAllLines(pair)]);
+      instruments[pair] = { asia, monday };
+    }
+    res.json({ ok: true, instruments });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

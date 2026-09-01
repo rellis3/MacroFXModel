@@ -215,6 +215,25 @@ export async function mondayLivePlanZones(pair, { minMargin = FIB_ATLAS_MONDAY_M
   return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, warming: false };
 }
 
+// Monday's own copy of asiaFibAtlasRoutes.js's `asiaAllLines` — see that
+// function's own doc.
+export async function mondayAllLines(pair) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { date: live.date ?? null, warming: !!live.warming, lines: [] };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  const lines = live.ladder.map(rung => {
+    const vd = book ? voteDecision(book, rung) : null;
+    return {
+      pair, side: rung.side, rung: rung.level,
+      status: rung.touchedToday ? `touched · ${rung.prevOutcomeSameDay}` : 'pending',
+      decision: vd?.decision ?? null, margin: vd?.margin ?? 0,
+      tradeableNow: (vd?.margin ?? 0) >= FIB_ATLAS_MONDAY_MIN_MARGIN,
+    };
+  });
+  return { date: live.date, warming: false, lines };
+}
+
 function startRunJob({ instruments }) {
   purgeStale();
   const jobId = `mfa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

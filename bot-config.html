@@ -4242,6 +4242,49 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
       </div>
     </div>
 
+    <!-- All lines -- unfiltered, every rung the engine currently carries for
+         both ladders, touched or not, regardless of vote margin. The table
+         above is what the bot's actual plan contains (already margin>=2
+         filtered server-side); this one answers "is the engine actually
+         evaluating the full ~40-rung grid per pair, or silently skipping
+         most of it" -- direct owner ask, 2026-09-01, mirrors Vote Atlas's
+         own All Lines table exactly. -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">All Lines — every rung, watched or not</span>
+        <span class="bot-banner-sub" style="margin:0">unfiltered — includes margin&lt;2 and "no decision" lines the plan above leaves out, across BOTH ladders</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="faAllLinesFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadFaAllLines()">
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)">
+          Sort <select id="faAllLinesSort" onchange="loadFaAllLines()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+            <option value="margin">Margin (high→low)</option>
+            <option value="pair">Pair (A→Z)</option>
+          </select>
+        </label>
+        <button onclick="loadFaAllLines()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Ladder</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:center">Tradeable now</th>
+            </tr>
+          </thead>
+          <tbody id="faAllLinesBody">
+            <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Decision audit log -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">

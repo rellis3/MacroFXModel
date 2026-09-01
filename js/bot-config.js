@@ -4540,7 +4540,60 @@ async function loadFaLiveStatus() {
         </tr>`).join('');
     }
   }
+  loadFaAllLines();
   loadFaDecisionLog();
+}
+
+// Unfiltered companion to the Today's Levels table above: EVERY rung the
+// engine currently carries across BOTH ladders for the configured pair
+// universe, regardless of vote margin — the plan already drops anything
+// under margin 2 server-side, so a real move that got a weak or tied vote,
+// or simply hasn't been evaluated yet, would otherwise be invisible here.
+// Mirrors loadVb2AllLines() exactly, fanned out over two ladders per pair.
+async function loadFaAllLines() {
+  const body = document.getElementById('faAllLinesBody');
+  if (!body) return;
+  const pairs = _faCfg.enabled_pairs?.length ? _faCfg.enabled_pairs : [...FA_DEFAULT_CHECKED];
+  const filter = (document.getElementById('faAllLinesFilter')?.value || '').trim().toLowerCase();
+  try {
+    const r = await fetch(`/api/fib-atlas-bot/all-lines?pairs=${encodeURIComponent(pairs.join(','))}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
+    let rows = [];
+    for (const [pair, inst] of Object.entries(j.instruments || {})) {
+      for (const [ladder, res] of [['asia', inst.asia], ['monday', inst.monday]]) {
+        if (res?.warming) { rows.push({ pair, ladder, warming: true }); continue; }
+        for (const l of (res?.lines || [])) rows.push({ pair, ladder, ...l });
+      }
+    }
+    if (filter) rows = rows.filter(r => r.pair.toLowerCase().includes(filter));
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No lines for that pair yet' : 'No live coverage yet'}</td></tr>`; return; }
+    const sortBy = document.getElementById('faAllLinesSort')?.value || 'margin';
+    if (sortBy === 'pair') rows.sort((a, b) => a.pair.localeCompare(b.pair) || a.ladder.localeCompare(b.ladder) || (b.margin ?? -1) - (a.margin ?? -1));
+    else rows.sort((a, b) => (b.margin ?? -1) - (a.margin ?? -1));
+    body.innerHTML = rows.map(r => {
+      if (r.warming) {
+        return `<tr>
+          <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+          <td colspan="6" style="padding:5px 10px;text-align:left;color:var(--text3)">warming (cold cache) — not evaluated yet</td>
+        </tr>`;
+      }
+      const strong = r.tradeableNow;
+      const decLabel = !r.decision ? '🪙 no decision' : (r.decision === 'follow' ? '↗ follow' : '↘ fade');
+      const decColor = !r.decision ? 'var(--text3)' : (r.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.side === 'above' ? '↑ above' : '↓ below'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.rung}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
+        <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${strong ? 'var(--green)' : 'var(--text3)'}">${strong ? '✓' : '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
 // Persistent decision audit -- reads the same KV key the bot itself writes
@@ -4595,7 +4648,7 @@ async function loadFaDecisionLog() {
 
 window.saveFaConfig = saveFaConfig; window.resetFaDefaults = resetFaDefaults;
 window.saveFaCreds = saveFaCreds; window.loadFaLiveStatus = loadFaLiveStatus;
-window.loadFaDecisionLog = loadFaDecisionLog;
+window.loadFaDecisionLog = loadFaDecisionLog; window.loadFaAllLines = loadFaAllLines;
 window.faDecShiftDay = faDecShiftDay; window.faDecClearDate = faDecClearDate;
 window.testFaTelegram = testFaTelegram;
 window.faSelectAllPairs = faSelectAllPairs; window.faSelectRecommendedPairs = faSelectRecommendedPairs;
