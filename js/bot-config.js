@@ -3735,7 +3735,22 @@ function renderVb2Form() {
   set('vb2_max_lot',             _vb2Cfg.max_lot             ?? VB2_DEFAULTS.max_lot);
   set('vb2_max_open',            _vb2Cfg.max_open            ?? VB2_DEFAULTS.max_open);
   set('vb2_max_concurrent_per_pair', _vb2Cfg.max_concurrent_per_pair ?? VB2_DEFAULTS.max_concurrent_per_pair);
-  set('vb2_max_spread_pips',     _vb2Cfg.max_spread_pips     ?? VB2_DEFAULTS.max_spread_pips);
+  // max_spread_pips can be a real per-pair dict (set outside this UI, e.g.
+  // via the API directly) — a <input type="number"> can't display or edit
+  // that, and silently coercing it to blank-then-saved-as-the-scalar-
+  // default was destroying the dict on EVERY save of this form, not just
+  // ones touching spread (found 2026-09-01, twice in one day). Leave the
+  // number field blank and say so instead of guessing at a number; see
+  // readVb2Form's matching preserve-the-dict logic below.
+  const msp = _vb2Cfg.max_spread_pips;
+  const mspNote = document.getElementById('vb2SpreadCapNote');
+  if (msp && typeof msp === 'object') {
+    const el = document.getElementById('vb2_max_spread_pips'); if (el) el.value = '';
+    if (mspNote) mspNote.textContent = `per-pair (${Object.keys(msp).length} pairs) — saving won't touch this unless you type a number here`;
+  } else {
+    set('vb2_max_spread_pips', msp ?? VB2_DEFAULTS.max_spread_pips);
+    if (mspNote) mspNote.textContent = '';
+  }
   chk('vb2_ccy_loss_gate',       _vb2Cfg.ccy_loss_gate ?? true);
   set('vb2_max_daily_loss_pct',  _vb2Cfg.max_daily_loss_pct  ?? VB2_DEFAULTS.max_daily_loss_pct);
   chk('vb2_fade_stop_tighten',   _vb2Cfg.fade_stop_tighten ?? VB2_DEFAULTS.fade_stop_tighten);
@@ -3770,7 +3785,20 @@ function readVb2Form() {
   _vb2Cfg.max_lot              = num('vb2_max_lot', VB2_DEFAULTS.max_lot);
   _vb2Cfg.max_open             = Math.round(num('vb2_max_open', VB2_DEFAULTS.max_open));
   _vb2Cfg.max_concurrent_per_pair = Math.round(num('vb2_max_concurrent_per_pair', VB2_DEFAULTS.max_concurrent_per_pair));
-  _vb2Cfg.max_spread_pips      = num('vb2_max_spread_pips', VB2_DEFAULTS.max_spread_pips);
+  // Preserve a per-pair dict on save UNLESS the operator actually typed a
+  // number into the field (a real, deliberate override) — the field reads
+  // blank when a dict is loaded (see renderVb2Form), and blindly reading
+  // that as "no value, use the default" is exactly what was silently
+  // destroying the dict on every save. See renderVb2Form's matching note.
+  {
+    const rawSpread = document.getElementById('vb2_max_spread_pips')?.value;
+    const loadedIsDict = _vb2Cfg.max_spread_pips && typeof _vb2Cfg.max_spread_pips === 'object';
+    if (loadedIsDict && (rawSpread === '' || rawSpread == null)) {
+      // untouched — keep the dict as-is, don't overwrite with the scalar default
+    } else {
+      _vb2Cfg.max_spread_pips = num('vb2_max_spread_pips', VB2_DEFAULTS.max_spread_pips);
+    }
+  }
   _vb2Cfg.ccy_loss_gate        = !!document.getElementById('vb2_ccy_loss_gate')?.checked;
   _vb2Cfg.max_daily_loss_pct   = num('vb2_max_daily_loss_pct', VB2_DEFAULTS.max_daily_loss_pct);
   _vb2Cfg.fade_stop_tighten    = !!document.getElementById('vb2_fade_stop_tighten')?.checked;
