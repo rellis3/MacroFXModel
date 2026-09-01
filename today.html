@@ -5357,6 +5357,32 @@ async function loadDrawerVoteState(r) {
   let html = `<div class="th-top">${enabledChip} ${runChip} `
     + `<span class="chip neu" title="Configured entry spread cap, source: ${esc0(j.spreadCap?.source || '')}">spread cap ${esc0(j.spreadCap?.pips ?? '—')}p</span></div>`;
 
+  // What history actually shows for THIS pair, at the bot's own trading
+  // threshold — the validated backtest's real numbers, not a live guess.
+  if (j.historical) {
+    const h = j.historical;
+    const yrs = h.tradesPerYr ? (h.trades / h.tradesPerYr).toFixed(1) : null;
+    html += `<div class="th-h ctx" style="margin-top:10px">What history shows &mdash; margin&ge;${h.marginTested} (the bot's own threshold)</div>`
+      + `<div class="th-top">${esc0(h.trades)} trades${yrs ? ` over ~${esc0(yrs)}yr` : ''} &mdash; Sharpe ${esc0(h.sharpe?.toFixed?.(2) ?? h.sharpe)}, profit factor ${esc0(h.profitFactor?.toFixed?.(2) ?? h.profitFactor)}, max drawdown ${esc0(h.maxDrawdownPct)}%.</div>`
+      + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">`
+      + `<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">`
+      + `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Win rate at margin&ge;${h.marginTested}</div>`
+      + `<div style="font-size:19px;font-weight:700;color:var(--bull)">${esc0(h.winRatePct)}%</div></div>`
+      + `<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">`
+      + `<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em" title="Measured 2026-09-01, all 17 pairs — a static reference, not recomputed live (needs a full historical walk).">Resolves same-day</div>`
+      + `<div style="font-size:19px;font-weight:700;color:${h.sameDayResolvedPct != null && h.sameDayResolvedPct < 68 ? 'var(--amber)' : 'var(--bull)'}">${h.sameDayResolvedPct != null ? esc0(h.sameDayResolvedPct) + '%' : '—'}</div></div>`
+      + `</div>`
+      + (h.sameDayResolvedPct != null ? `<div class="hint">The other ${esc0((100 - h.sameDayResolvedPct).toFixed(1))}% run past session close — those are what the EOD-close fix (shipped 2026-09-01) now flattens instead of letting ride for days.</div>` : '');
+  }
+  // Today's actual reading (live, not historical) — day-vol regime + which
+  // session is live right now, from the same engine the plan producer uses.
+  if (j.liveContext?.dayVol || j.liveContext?.session) {
+    const volWord = (j.liveContext.dayVol || '').split('·')[1] || j.liveContext.dayVol;
+    html += `<div class="th-h ctx" style="margin-top:10px">Today's reading</div>`
+      + `<div class="th-top">Day-vol regime: <b>${esc0(volWord || '—')}</b>${j.liveContext.session ? ` &middot; Session: <b>${esc0(j.liveContext.session)}</b>` : ''}</div>`
+      + `<div class="hint">Checked earlier: day-vol regime hasn't shown a strong win-rate split on its own historically (62&ndash;63% across quiet/normal/heavy, pooled) &mdash; context, not a strong standalone signal.</div>`;
+  }
+
   if (j.openPositions?.length) {
     html += `<div class="th-h ctx" style="margin-top:6px">Open now</div>`
       + j.openPositions.map(p => {
@@ -6083,6 +6109,8 @@ function assembleSnapshot(r) {
       openPositions: (vs.openPositions || []).map(p => ({ direction: p.direction, lots: p.lots, openPrice: p.open_price, profit: p.profit })),
       closedToday: (vs.closedToday || []).map(t => ({ profit: t.profit, reason: t.reason })),
       decisionsToday: (vs.decisions || []).slice(0, 8).map(d => ({ side: d.side, rung: d.rung, decision: d.decision, margin: d.margin, status: d.status, reason: d.reason })),
+      historical: vs.historical ? { marginTested: vs.historical.marginTested, trades: vs.historical.trades, winRatePct: vs.historical.winRatePct, sharpe: vs.historical.sharpe, sameDayResolvedPct: vs.historical.sameDayResolvedPct } : undefined,
+      todayRegime: vs.liveContext ? { dayVol: vs.liveContext.dayVol, session: vs.liveContext.session } : undefined,
     };
   }
   // Macro Scorecard (11-dim fundamentals, both legs) — previously never
