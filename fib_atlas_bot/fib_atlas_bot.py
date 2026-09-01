@@ -106,16 +106,24 @@ DEFAULT_CFG = {
     # NY interbank close (~21:00 UTC) through the daily broker rollover
     # (~00:00 UTC): Mt5Broker.modify()/enter() have zero spread awareness
     # for an ALREADY-OPEN position's resting stop order — max_spread_pips
-    # only ever gated brand-new entries. `spread_guard_start_utc` is
+    # only ever gated brand-new entries. `spread_guard_start_london` is
     # deliberately set well BEFORE the observed incidents (not just at the
     # first one) so a fresh entry never lands right at the edge of the
-    # window the way the 21:54 EURGBP one did. Wraps past midnight UTC;
-    # start/end are configurable since the exact worst minutes can vary by
-    # broker/day and this is early live observation, not a frozen backtest
-    # constant.
+    # window the way the 21:54 EURGBP one did. Wraps past midnight; start/end
+    # are configurable since the exact worst minutes can vary by broker/day
+    # and this is early live observation, not a frozen backtest constant.
+    #
+    # Europe/London, not UTC (2026-09-02 correction) — direct owner point:
+    # every OTHER time boundary in this strategy is already London-anchored
+    # (the Asia session itself, Monday's own day boundary), and NY's own 5pm
+    # ET close shifts by the same hour in roughly the same season as UK
+    # clocks change, so anchoring here too means the window auto-shifts for
+    # BST/GMT instead of drifting an hour wrong for the ~1-3 weeks a year US
+    # and UK DST transitions don't land on the same date. "21:30"/"00:30"
+    # UTC under BST (current) = "22:30"/"01:30" London, the values below.
     "spread_guard_enabled": True,
-    "spread_guard_start_utc": "21:30",   # no NEW entries from here...
-    "spread_guard_end_utc": "00:30",     # ...through here — flattens anything still open once the window starts
+    "spread_guard_start_london": "22:30",   # no NEW entries from here...
+    "spread_guard_end_london": "01:30",     # ...through here — flattens anything still open once the window starts
     "ddlimit": 3.0,
     "monthlydd": 5.0,
     "lockout": 3,
@@ -173,25 +181,29 @@ _LONDON_TZ = ZoneInfo("Europe/London")
 # Asia's own session window is 00:00-06:00 Europe/London (asiaFibAtlasEngine.
 # js's `buildAsiaSessions(packed, 'london', asiaHrs=6, ...)`, frozen — same
 # discipline as CHANDELIER_MULT above, not configurable). Direct owner ask
-# (2026-09-02): the plain spread-guard window above clears at a fixed 00:30
-# UTC, but that's still the MIDDLE of tonight's Asia session — Asia's own
+# (2026-09-02): the plain spread-guard window clears at spread_guard_end_
+# london, but that's still the MIDDLE of tonight's Asia session — Asia's own
 # rungs for today aren't fixed until Asia itself closes, so an Asia-ladder
-# entry re-allowed at 00:30 would be trading against a range that isn't set
+# entry re-allowed there would be trading against a range that isn't set
 # yet. Monday-ladder entries are unaffected (the Monday range has nothing to
 # do with Asia) and keep using the plain window above.
-ASIA_CLOSE_LONDON_HOUR = 6
+ASIA_CLOSE_LONDON = "06:00"
 
 
-def _london_hour_as_utc_hhmm(now_epoch: float, london_hour: int) -> str:
-    """Converts an Europe/London wall-clock HH:00 (e.g. Asia's own 06:00
-    close) to TODAY's UTC HH:MM string, DST-aware — feeds straight into
-    _in_spread_guard_window's own clock-time comparison so the Asia ladder's
-    wider window doesn't drift an hour wrong across a DST change the way a
-    hardcoded UTC constant would (same reasoning as volatility_bot_v2's own
-    _eod_kill_epoch, which uses the same Europe/London zoneinfo trick)."""
+def _london_time_as_utc_hhmm(now_epoch: float, london_hhmm: str) -> str:
+    """Converts an Europe/London wall-clock HH:MM (e.g. spread_guard_start_
+    london, or Asia's own 06:00 close) to TODAY's UTC HH:MM string, DST-
+    aware — feeds straight into _in_spread_guard_window's own clock-time
+    comparison. Every boundary in this strategy is already London-anchored
+    (the Asia session, Monday's own day boundary), so this keeps the
+    spread-guard window auto-shifting the same way instead of drifting an
+    hour wrong across a DST change the way a hardcoded UTC constant would
+    (same reasoning as volatility_bot_v2's own _eod_kill_epoch, which uses
+    the same Europe/London zoneinfo trick)."""
     now_ldn = datetime.fromtimestamp(now_epoch, _LONDON_TZ)
-    close_utc = now_ldn.replace(hour=london_hour, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
-    return f"{close_utc.hour:02d}:{close_utc.minute:02d}"
+    h, m = map(int, london_hhmm.split(":"))
+    target_utc = now_ldn.replace(hour=h, minute=m, second=0, microsecond=0).astimezone(timezone.utc)
+    return f"{target_utc.hour:02d}:{target_utc.minute:02d}"
 
 
 def _mt5_sym(pair: str) -> str:
@@ -483,7 +495,7 @@ def run(base_url: str, force_live: bool) -> None:
     plan_age_blocked = False
     spread_guard_blocked = False
     spread_guard_closed_tickets: set[int] = set()  # tickets already flattened this window — don't re-close every tick
-    asia_entry_blocked = False   # Asia ladder only — see ASIA_CLOSE_LONDON_HOUR's own doc
+    asia_entry_blocked = False   # Asia ladder only — see ASIA_CLOSE_LONDON's own doc
 
     try:
         saved_state = kv.get_json("fib_atlas_bot_state") or {}
@@ -644,13 +656,16 @@ def run(base_url: str, force_live: bool) -> None:
         # itself place a worse stop than doing nothing, and the position is
         # being flattened anyway. ────────────────────────────────────────
         sg_on = bool(cfg.get("spread_guard_enabled", True))
-        sg_block = sg_on and _in_spread_guard_window(
-            nowt, cfg.get("spread_guard_start_utc", "21:30"), cfg.get("spread_guard_end_utc", "00:30"))
+        sg_start_london = cfg.get("spread_guard_start_london", "22:30")
+        sg_end_london = cfg.get("spread_guard_end_london", "01:30")
+        sg_start_utc = _london_time_as_utc_hhmm(nowt, sg_start_london)
+        sg_end_utc = _london_time_as_utc_hhmm(nowt, sg_end_london)
+        sg_block = sg_on and _in_spread_guard_window(nowt, sg_start_utc, sg_end_utc)
         if sg_block != spread_guard_blocked:
             spread_guard_blocked = sg_block
             if sg_block:
-                log.warning(f"SPREAD GUARD: within the {cfg.get('spread_guard_start_utc', '21:30')}-"
-                            f"{cfg.get('spread_guard_end_utc', '00:30')} UTC low-liquidity window — "
+                log.warning(f"SPREAD GUARD: within the {sg_start_london}-{sg_end_london} Europe/London "
+                            f"({sg_start_utc}-{sg_end_utc} UTC today) low-liquidity window — "
                             f"flattening open positions, NEW entries blocked until it clears.")
                 _record_decision("*", "*", "pair_blocked", reason="spread_guard: low-liquidity window")
             else:
@@ -748,17 +763,17 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
-        # Asia ladder's own wider no-entry window — see ASIA_CLOSE_LONDON_HOUR's
+        # Asia ladder's own wider no-entry window — see ASIA_CLOSE_LONDON's own
         # doc. Only gates NEW Asia-ladder entries (not Monday, not the flatten/
         # chandelier-skip above, which are pure spread/liquidity risk and apply
         # to both ladders equally).
         asia_block = sg_on and _in_spread_guard_window(
-            nowt, cfg.get("spread_guard_start_utc", "21:30"), _london_hour_as_utc_hhmm(nowt, ASIA_CLOSE_LONDON_HOUR))
+            nowt, sg_start_utc, _london_time_as_utc_hhmm(nowt, ASIA_CLOSE_LONDON))
         if asia_block != asia_entry_blocked:
             asia_entry_blocked = asia_block
             if asia_block:
-                log.warning("SPREAD GUARD (Asia ladder): blocked until Asia's own close "
-                            f"({ASIA_CLOSE_LONDON_HOUR:02d}:00 Europe/London) — today's rungs aren't fixed yet.")
+                log.warning(f"SPREAD GUARD (Asia ladder): blocked until Asia's own close "
+                            f"({ASIA_CLOSE_LONDON} Europe/London) — today's rungs aren't fixed yet.")
                 _record_decision("*", "asia", "pair_blocked", reason="spread_guard: Asia ladder awaiting session close")
             else:
                 log.info("SPREAD GUARD (Asia ladder): Asia closed — entries resumed")
