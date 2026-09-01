@@ -2487,6 +2487,8 @@ ${s.spreadClassification === 'EXTREME' ? 'WARNING: spread is extreme - do not en
 ${s.voteAtlas ? `
 VOTE ATLAS — LIVE BOT STATE (volatility_bot_v2, an automated fade/follow system trading this exact pair, independent of this analysis — what it's ACTUALLY doing right now, not a recommendation to agree or disagree with)
 Enabled on the live bot: ${s.voteAtlas.enabled ? 'YES' : 'no'}  |  Bot: ${s.voteAtlas.botRunning ? `running (${s.voteAtlas.botMode})` : 'not reporting'}  |  Configured spread cap: ${s.voteAtlas.spreadCapPips ?? 'N/A'} pips
+${s.voteAtlas.historical ? `What the validated backtest shows at this bot's own trading threshold (margin>=${s.voteAtlas.historical.marginTested}): ${s.voteAtlas.historical.trades} trades, ${s.voteAtlas.historical.winRatePct}% win rate, Sharpe ${s.voteAtlas.historical.sharpe}${s.voteAtlas.historical.sameDayResolvedPct != null ? `. Resolves within its own entry session ${s.voteAtlas.historical.sameDayResolvedPct}% of the time (the rest run past close, now flattened by the bot's own EOD-close rule rather than left open for days)` : ''}.` : ''}
+${s.voteAtlas.todayRegime?.dayVol || s.voteAtlas.todayRegime?.session ? `Today's live reading: day-vol regime ${(s.voteAtlas.todayRegime.dayVol || '').split('·')[1] || s.voteAtlas.todayRegime.dayVol || 'N/A'}, session ${s.voteAtlas.todayRegime.session ?? 'N/A'} (regime has NOT shown a strong win-rate split on its own historically — treat as context, not a standalone signal).` : ''}
 ${s.voteAtlas.openPositions?.length ? `Open position: ${s.voteAtlas.openPositions.map(p => `${p.direction} ${p.lots} lots @ ${p.openPrice} (unrealized ${p.profit >= 0 ? '+' : ''}${p.profit})`).join('; ')}` : 'No open position from this bot.'}
 ${s.voteAtlas.closedToday?.length ? `Closed today: ${s.voteAtlas.closedToday.map(t => `${t.reason ?? 'closed'} ${t.profit >= 0 ? '+' : ''}${t.profit}`).join('; ')}` : ''}
 ${s.voteAtlas.decisionsToday?.length ? `Today's decisions (rung — decision/margin — outcome — reason):
@@ -14166,6 +14168,17 @@ const FIB_ATLAS_DEFAULT_PAIRS = FIB_ATLAS_ALL_PAIRS.filter(p => !FIB_ATLAS_RECOM
 
 const FIB_ATLAS_PLAN_CFG_DEFAULTS = { enabled_pairs: [] };   // [] -> FIB_ATLAS_DEFAULT_PAIRS
 
+// Reads the CURRENTLY PUBLISHED plan so a tick can MERGE onto it rather
+// than rebuilding from nothing. Never throws — a read failure degrades to
+// "no previous plan", the same as a genuinely first-ever run.
+async function _loadFibAtlasPlanRaw() {
+  try {
+    const raw = await kv.get('fib_atlas_bot_plan');
+    if (!raw) return null;
+    return (JSON.parse(raw).data ?? JSON.parse(raw)) || null;
+  } catch { return null; }
+}
+
 async function _refreshFibAtlasPlan() {
   try {
     const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
@@ -14174,48 +14187,63 @@ async function _refreshFibAtlasPlan() {
       ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
       : FIB_ATLAS_DEFAULT_PAIRS;
 
-    // Cold-start throttle (2026-09-01 fix — the original version here only
-    // COUNTED how many `planFn(pair)` calls came back `warming`, AFTER
-    // already calling them; it never actually gated the call itself, so
-    // every one of up to 32 (pair,ladder) constituents fired its own
-    // fire-and-forget `coldStartLiveCache` on the very first tick after a
-    // redeploy — the exact "thundering herd" `_refreshVolatilityV2Plan`'s
-    // own comment warns about, just not actually prevented here. Real fix:
-    // check each ladder's OWN `liveWarming` size (asiaFibAtlasRoutes.js's
-    // and mondayFibAtlasRoutes.js's live caches are separate modules, so
-    // each gets its own 3-slot budget) BEFORE calling `planFn` at all — a
-    // pair over budget is skipped WITHOUT ever touching getFastLive, so it
-    // genuinely never starts a new cold load this tick.
+    // Cold-start throttle — check each ladder's OWN `liveWarming` size
+    // (asiaFibAtlasRoutes.js's and mondayFibAtlasRoutes.js's live caches are
+    // separate modules, so each gets its own 3-slot budget) BEFORE calling
+    // `planFn` at all — a pair over budget is skipped WITHOUT ever touching
+    // getFastLive, so it genuinely never starts a new cold load this tick.
     const MAX_CONCURRENT_COLDSTART = 3;
     const LIVE_STATE = {
       asia:   { cache: _faAsiaLiveCache,   warming: _faAsiaLiveWarming },
       monday: { cache: _faMondayLiveCache, warming: _faMondayLiveWarming },
     };
 
-    const instruments = {};
-    const skipped = {};
+    // MERGE onto the previous plan (2026-09-01 fix) — the original version
+    // rebuilt `instruments`/`skipped` from an empty object every tick, so
+    // any pair still mid-rewarm (the normal state for MANY ticks after
+    // every restart) was silently DROPPED from the published plan entirely,
+    // even when a perfectly good entry for it — from an earlier live poll,
+    // or from the nightly rebuild's own `_seedFibAtlasPlanFromBook` below —
+    // already existed. A KV-persisted plan survives a restart; the old code
+    // just never let it. Now: start from whatever's already published, and
+    // only ever REPLACE a key once this tick has something fresher for it —
+    // a cold pair keeps showing its last-known-good entry (with the
+    // `updatedAt` it was actually computed at, so staleness is visible)
+    // instead of vanishing.
+    const previous = await _loadFibAtlasPlanRaw();
+    const instruments = { ...(previous?.instruments || {}) };
+    const skipped = { ...(previous?.skipped || {}) };
+
     for (const pair of enabledPairs) {
       for (const [ladder, planFn] of [['asia', asiaLivePlanZones], ['monday', mondayLivePlanZones]]) {
         const key = `${pair}|${ladder}`;
         const { cache, warming } = LIVE_STATE[ladder];
         if (!cache.has(pair) && !warming.has(pair) && warming.size >= MAX_CONCURRENT_COLDSTART) {
-          skipped[key] = `cold-start throttled (${warming.size} ${ladder} pairs already warming) — picked up on a later tick`;
+          if (!instruments[key]) skipped[key] = `cold-start throttled (${warming.size} ${ladder} pairs already warming) — picked up on a later tick`;
           continue;
         }
         try {
           const plan = await planFn(pair);
-          if (plan.warming) { skipped[key] = 'warming (cold cache)'; continue; }
-          if (plan.skipped) { skipped[key] = plan.skipped; continue; }
-          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount };
+          if (plan.warming) { if (!instruments[key]) skipped[key] = 'warming (cold cache)'; continue; }
+          if (plan.skipped) { if (!instruments[key]) skipped[key] = plan.skipped; continue; }
+          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount, updatedAt: new Date().toISOString(), source: 'live' };
+          delete skipped[key];
         } catch (e) {
-          skipped[key] = `error: ${e.message}`;
+          if (!instruments[key]) skipped[key] = `error: ${e.message}`;
           console.error(`[fib-atlas-bot] ${key} failed:`, e.message);
         }
       }
     }
 
+    // A pair the operator has since UNCHECKED shouldn't linger in the
+    // published plan forever — prune keys for pairs no longer enabled.
+    const enabledSet = new Set(enabledPairs);
+    for (const key of Object.keys(instruments)) if (!enabledSet.has(key.split('|')[0])) delete instruments[key];
+    for (const key of Object.keys(skipped)) if (!enabledSet.has(key.split('|')[0])) delete skipped[key];
+
     // Never publish an empty plan over a good one — same discipline
-    // _refreshVolatilityV2Plan uses.
+    // _refreshVolatilityV2Plan uses. With the merge above this now only
+    // fires on a genuinely first-ever run with nothing warm yet.
     if (!Object.keys(instruments).length) {
       console.error(`[fib-atlas-bot] plan refresh produced 0 constituents (${Object.keys(skipped).length} skipped) — NOT publishing, keeping last good plan`);
       return 0;
@@ -14226,7 +14254,8 @@ async function _refreshFibAtlasPlan() {
       timestamp: Date.now(),
     }));
     const total = Object.values(instruments).reduce((a, v) => a + v.zoneCount, 0);
-    console.log(`[fib-atlas-bot] plan refreshed · ${Object.keys(instruments).length} constituents · ${total} zones`);
+    const fresh = Object.values(instruments).filter(v => v.source === 'live' && Date.now() - Date.parse(v.updatedAt) < 60_000).length;
+    console.log(`[fib-atlas-bot] plan refreshed · ${Object.keys(instruments).length} constituents (${fresh} freshly updated this tick) · ${total} zones`);
     return Object.keys(instruments).length;
   } catch (e) { console.error('[fib-atlas-bot] plan refresh failed:', e.message); return 0; }
 }
@@ -14347,6 +14376,19 @@ function _vb2SpreadCap(pair, cfg) {
   return { pips: +(fxCap * (_VB2_SPREAD_CLASS_MULT[ac] ?? 3.0)).toFixed(2), source: 'flat scalar, class-scaled' };
 }
 
+// Same-day resolution rate per pair (margin>=3, p50/p75, OOS) — measured
+// 2026-09-01 (analysis/neither_population_live_gap_study.mjs, all 17 pairs,
+// full touch population walked, not sampled). A STATIC reference, not
+// recomputed per request: the real number needs a full multi-year M1 walk
+// per pair (js/levelAtlasEngine.js's atlasWalk), far too expensive to pay on
+// every drawer open. Refresh this table by hand if that script is re-run
+// against meaningfully more history.
+const _VB2_SAME_DAY_RATE_PCT = {
+  eurusd: 66.9, gbpusd: 66.5, usdjpy: 70.1, audusd: 64.5, usdchf: 69.7,
+  euraud: 72.8, eurchf: 66.9, audjpy: 71.4, cadjpy: 67.3, chfjpy: 67.7,
+  gold: 70.9, nq: 75.9, spx: 70.5, dow: 76.0, us2000: 67.4, de30: 64.6, uk100: 69.1,
+};
+
 // Combined per-pair Vote Atlas state for today.html's drawer "Systems" tab —
 // everything ELSE the live bot knows about this pair beyond the zones/margin
 // the Vol tab's drVoteSec already shows (deliberately not re-derived here,
@@ -14383,10 +14425,40 @@ app.get('/api/level-atlas/vote-state/:instrument', async (req, res) => {
     const openPositions = (status.mt5_positions || []).filter(p => String(p.symbol || '').toUpperCase() === brokerSym);
     const closedToday = (status.today_closed_trades || []).filter(t => String(t.symbol || '').toUpperCase() === brokerSym);
 
+    // What history actually shows for THIS pair at the bot's own trading
+    // threshold (margin>=3) — the validated backtest's own numbers, not a
+    // live recompute (the same cached file the portfolio page/tearsheet
+    // read from, R2-fresher-preferred over the local bootstrap copy, same
+    // pickFresher convention every other Level Atlas reader uses).
+    let historical = null;
+    try {
+      const stored = _laPickFresher(await _r2GetJSON(`${_LA_PREFIX}/${key}-votetrades.json`).catch(() => null), _laLoadLocalVoteTrades(key));
+      const m3 = stored?.summaryByMargin?.[3] ?? stored?.summaryByMargin?.['3'];
+      if (m3) {
+        historical = {
+          marginTested: 3, trades: m3.trades, tradesPerYr: m3.tradesPerYr,
+          winRatePct: m3.winRate, profitFactor: m3.profitFactor, sharpe: m3.sharpe,
+          maxDrawdownPct: m3.maxDD, sameDayResolvedPct: _VB2_SAME_DAY_RATE_PCT[key] ?? null,
+        };
+      }
+    } catch { /* historical is optional context, never block the live state on it */ }
+
+    // Today's actual live reading — day-vol regime + which session we're in
+    // right now, from the SAME live engine the plan producer trades off
+    // (getFastLive), not re-derived. Prefers the nearest still-pending rung
+    // (evaluated at THIS instant) over an already-touched one (frozen at
+    // whenever that touch happened).
+    let liveContext = null;
+    try {
+      const live = (await _laGetFastLive(key))?.live;
+      const ref = live?.pending?.[0]?.touch ?? live?.touches?.at(-1)?.touch ?? null;
+      if (ref) liveContext = { dayVol: ref.dayVol ?? null, session: ref.session ?? null, gapBucket: ref.gapBucket ?? null };
+    } catch { /* live context is optional too */ }
+
     res.json({
       ok: true, pair: key, brokerSym, enabled, spreadCap,
       botRunning: !!status.running, botMode: status.mode || null,
-      decisions, openPositions, closedToday,
+      decisions, openPositions, closedToday, historical, liveContext,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

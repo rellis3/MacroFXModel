@@ -12,7 +12,7 @@ import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder, mondayRungBarrierPips } f
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision } from './asiaFibAtlasVoteReview.js';
-import { loadVoteTrades } from './asiaFibAtlasRoutes.js';
+import { loadVoteTrades, mergeIntoFibAtlasPlan } from './asiaFibAtlasRoutes.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { buildFibAtlasVotePortfolio } from './fibAtlasVotePortfolio.js';
 import { putJSON, getJSON } from './r2Store.js';
@@ -164,6 +164,16 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   };
   await putJSON(`${PREFIX}/${pair}.json`, bookResult);
 
+  // Seed the bot's live plan straight from this freshly-built book+ladder —
+  // see asiaFibAtlasRoutes.js's mergeIntoFibAtlasPlan for the full reasoning.
+  try {
+    const zones = zonesFromLiveAndBook(bookResult.live, book, cost);
+    await mergeIntoFibAtlasPlan(`${pair}|monday`, {
+      pair, ladder: 'monday', spot: live.currentPrice, date: live.date, zones, zoneCount: zones.length,
+      updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
+    });
+  } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+
   return { ...voteResult, voteSummaryByMargin: summaryByMargin };
 }
 
@@ -178,14 +188,12 @@ export const FIB_ATLAS_MONDAY_MIN_MARGIN = 2;
 export const FIB_ATLAS_MONDAY_MIN_COST_RATIO = 4;
 export const FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC = 0.9;
 
-export async function mondayLivePlanZones(pair, { minMargin = FIB_ATLAS_MONDAY_MIN_MARGIN, minCostRatio = FIB_ATLAS_MONDAY_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC } = {}) {
-  const live = await getFastLive(pair);
-  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
-  const stored = await getJSON(`${PREFIX}/${pair}.json`);
-  const book = stored?.book ?? null;
-  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/monday-fib-atlas/run first' };
-  const cost = stored.cost ?? 0;
-
+// Pure core — Monday's own copy of asiaFibAtlasRoutes.js's
+// `zonesFromLiveAndBook`, extracted the same day for the same reason: the
+// nightly rebuild (runOne below) can seed the bot's plan straight from its
+// own freshly-built `live`+`book`, reusing this EXACT scoring/pricing path
+// instead of a second implementation.
+export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MONDAY_MIN_MARGIN, minCostRatio = FIB_ATLAS_MONDAY_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC } = {}) {
   const zones = [];
   for (const rung of live.ladder) {
     const vd = voteDecision(book, rung);
@@ -213,6 +221,16 @@ export async function mondayLivePlanZones(pair, { minMargin = FIB_ATLAS_MONDAY_M
       rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
     });
   }
+  return zones;
+}
+
+export async function mondayLivePlanZones(pair, opts = {}) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/monday-fib-atlas/run first' };
+  const zones = zonesFromLiveAndBook(live, book, stored.cost ?? 0, opts);
   return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, warming: false };
 }
 

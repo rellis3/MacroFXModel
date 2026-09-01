@@ -32,6 +32,7 @@ import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
 import { putJSON, getJSON } from './r2Store.js';
 import { packToJSON, packFromJSON } from './levelAtlasRoutes.js';
+import * as kv from '../kv.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { oandaSymbol } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
@@ -238,6 +239,21 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     // the aggregated book is the product, re-run to regenerate them.
   };
   await putJSON(`${PREFIX}/${pair}.json`, result);
+
+  // Seed the bot's live plan straight from this freshly-built book+ladder —
+  // no live-cache round-trip needed, see mergeIntoFibAtlasPlan's own doc.
+  // Best-effort: a failure here never fails the run itself (the book/live
+  // JSON just persisted above is the real product; this is a downstream
+  // convenience for the bot's own plan).
+  try {
+    const cost = costForPair(pair, assetClass);
+    const zones = zonesFromLiveAndBook(result.live, book, cost);
+    await mergeIntoFibAtlasPlan(`${pair}|asia`, {
+      pair, ladder: 'asia', spot: currentPrice, date: liveDate, zones, zoneCount: zones.length,
+      updatedAt: new Date().toISOString(), source: 'nightly-rebuild',
+    });
+  } catch (e) { onLog(`${sym}: plan seed failed (${e.message}) — non-fatal, book/live still saved`); }
+
   return result;
 }
 
@@ -393,14 +409,15 @@ export const FIB_ATLAS_MIN_MARGIN = 2;                 // best-config frozen val
 export const FIB_ATLAS_MIN_COST_RATIO = 3;              // Asia's own frozen ratio (fib_atlas_cost_efficiency_filter.mjs)
 export const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;         // frozen fraction (fib_atlas_sl_tightening_backtest.mjs)
 
-export async function asiaLivePlanZones(pair, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC } = {}) {
-  const live = await getFastLive(pair);
-  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
-  const stored = await getJSON(`${PREFIX}/${pair}.json`);
-  const book = stored?.book ?? null;
-  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/asia-fib-atlas/run first' };
-  const cost = stored.cost ?? 0;
-
+// Pure core: given an ALREADY-COMPUTED `live` (the shape asiaFibAtlasLiveLadder/
+// getFastLive returns: {date, currentPrice, boundary, ladder}) and `book`,
+// price every rung into zones. Extracted (2026-09-01) so a SECOND caller —
+// the nightly rebuild, which already builds a fresh `live`+`book` inside
+// `runOne` below and can seed the bot's plan straight from that, no live-
+// cache round-trip needed — can reuse the EXACT same scoring/pricing rules
+// `asiaLivePlanZones` (the live-cache-backed wrapper right after this) uses,
+// never a second implementation to drift out of sync.
+export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC } = {}) {
   const zones = [];
   for (const rung of live.ladder) {
     const vd = voteDecision(book, rung);
@@ -433,7 +450,47 @@ export async function asiaLivePlanZones(pair, { minMargin = FIB_ATLAS_MIN_MARGIN
       rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
     });
   }
+  return zones;
+}
+
+export async function asiaLivePlanZones(pair, opts = {}) {
+  const live = await getFastLive(pair);
+  if (live.warming || !live.date) return { spot: null, date: live.date ?? null, boundary: null, zones: [], zoneCount: 0, warming: !!live.warming };
+  const stored = await getJSON(`${PREFIX}/${pair}.json`);
+  const book = stored?.book ?? null;
+  if (!book) return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones: [], zoneCount: 0, warming: false, skipped: 'no stored book — POST /api/asia-fib-atlas/run first' };
+  const zones = zonesFromLiveAndBook(live, book, stored.cost ?? 0, opts);
   return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, warming: false };
+}
+
+// Seeds/refreshes ONE (pair,ladder) constituent of `fib_atlas_bot_plan`
+// directly from an ALREADY-COMPUTED live+book — no live-cache round-trip.
+// The direct owner fix (2026-09-01) for "a restart shows nothing for
+// hours": the nightly rebuild (`runOne` below, for both ladders) already
+// builds a fresh `book`+`live` for every pair once a day regardless of
+// whether the in-memory live cache is warm — this makes that freshly-built
+// data show up in the SAME KV plan `server.js`'s `_refreshFibAtlasPlan`
+// publishes, so a cold pair shows last night's real entry instead of
+// nothing, and the live producer only ever UPGRADES it as its own cache
+// warms through the day (that producer already merges onto the previous
+// plan rather than replacing it, see server.js's own doc). Read-modify-
+// write, not atomic — a rare interleave with the 45s live producer's own
+// write could drop one side's update for a DIFFERENT key; self-heals on
+// either's next tick, same "good enough, self-healing" discipline this
+// whole plan already runs on (its own "never publish empty over good"
+// rule is the same kind of best-effort, not a hard guarantee).
+export async function mergeIntoFibAtlasPlan(key, entry) {
+  try {
+    const raw = await kv.get('fib_atlas_bot_plan').catch(() => null);
+    const prev = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null;
+    const instruments = { ...(prev?.instruments || {}), [key]: entry };
+    const skipped = { ...(prev?.skipped || {}) };
+    delete skipped[key];
+    await kv.put('fib_atlas_bot_plan', JSON.stringify({
+      data: { strategy: 'fib-atlas-vote', generatedAt: new Date().toISOString(), instruments, skipped },
+      timestamp: Date.now(),
+    }));
+  } catch (e) { console.warn(`[fib-atlas-bot] plan seed for ${key} failed: ${e.message}`); }
 }
 
 // Unfiltered per-rung view (2026-09-01) — EVERY rung the live ladder
