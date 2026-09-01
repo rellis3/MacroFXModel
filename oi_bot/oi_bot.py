@@ -433,6 +433,7 @@ def run(base_url: str, force_live: bool) -> None:
     reject_until: dict[str, float] = {}          # zone_id → epoch to retry after (anti-spam)
     stack_skips: dict[str, int] = {}             # zone_id → conflicting ticket (once-per-change logging)
     budget_skips: dict[str, bool] = {}           # zone_id → deferred-by-risk-budget (once-per-change logging)
+    anchor_warned: set[str] = set()              # zone_id → already warned that its stop is plan-anchored
     group_skips: dict[str, bool] = {}            # zone_id → deferred-by-group-cap (once-per-change logging)
     warned_missing: dict[str, bool] = {}         # enabled_pairs entries absent from the plan (warn once)
     runners: dict[int, dict] = {}                # scale-out runner ticket → {pair, be, partner} (BE-at-TP1 watch)
@@ -770,6 +771,17 @@ def run(base_url: str, force_live: bool) -> None:
                     if spec["sl"] is None:
                         continue
                     zid = spec["zone_id"]
+                    # A max-pain stop is re-anchored to live price by the engine (its
+                    # planned one is derived from the OI capture's spot and goes stale
+                    # over the session). The fallback to the plan's absolute is silent by
+                    # construction — say it out loud, once per zone, so a planner that
+                    # stops shipping the ingredients shows up here instead of quietly
+                    # trading hours-old stops again.
+                    if spec["mode"] == "maxpain" and spec.get("sl_anchor") != "live" and zid not in anchor_warned:
+                        anchor_warned.add(zid)
+                        log.warning(f"{instr} {zid}: stop {spec['sl']} is PLAN-anchored (the plan shipped no "
+                                    f"slFrac/slGuardWall/slFloor) — it was computed from the OI capture's "
+                                    f"spot and may be stale against live {px}")
                     if reject_until.get(zid, 0) > nowt:
                         continue                       # in reject cooldown — don't hammer the broker
                     # Correlated-group cap: the four indices are one macro bet — cap

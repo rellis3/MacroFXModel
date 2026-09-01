@@ -706,10 +706,24 @@ export function buildOIZones(inst, price, cfg = {}) {
     // check above ran at plan-build; by the time the bot loads the plan (or restarts)
     // price may already be back at the pin — the edge is spent and the zone must not
     // fire. The engine requires |px − level| ≥ minDist on the planned side.
+    // Mode C is the ONLY mode whose entry and stop come from SPOT rather than from a
+    // strike -- and `price` here is the OI capture's spot (paired to the futures for the
+    // basis once a day), not a live quote. `wall ± buf` is the same number all day;
+    // `spot ± mpSlDist` is not, and by mid-session it can sit the WRONG SIDE of the
+    // market: a max-pain buy whose stop is above the bid is rejected by MT5 (10016) on
+    // every retry, forever, because a rejection deliberately keeps the zone open. So ship
+    // the stop's INGREDIENTS -- all of them day-static (a strike, a fraction, a floor) --
+    // and let the executor re-anchor them to live price at fire time, which is the same
+    // immunity every strike-anchored mode already gets for free. `sl` stays as the
+    // plan-time absolute: the zones page renders it, and an older executor still reads it.
     add({ mode: 'maxpain', side, level: maxPain, entry: price, minDist: +ext.toFixed(6),
       sl: side === 'sell' ? price + mpSlDist : price - mpSlDist,
+      slGuardWall: guardWall != null ? +guardWall.toFixed(6) : null,   // a STRIKE (day-static), not the distance to it
+      slFrac: maxpainSlFrac,                                           // re-cap against the LIVE distance to the pin
+      slFloor: +buf.toFixed(6),                                        // noise-band floor
+      slDist: +mpSlDist.toFixed(6),                                    // plan-time resolution (last-resort fallback)
       tp1: maxPain, tp2: null, sizeFactor: mcSize,
-      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it · stop ${mpSlSrc}${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
+      rationale: `max-pain reversion · ${dte}DTE · price extended from pin ${maxPain} → fade toward it · stop ${mpSlSrc}, re-anchored to live price at entry${charmActive ? ' · charm firing → pin amplified into expiry' : ''}` });
   }
 
   // ── Mode D — react at levels (opt-in reactAtLevels): trade BETWEEN structural nodes,

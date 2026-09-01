@@ -84,11 +84,13 @@ class FakeMt5:
         return SimpleNamespace(retcode=self.TRADE_RETCODE_DONE, order=555111, comment="done")
 
 
-def _broker(fake):
+def _broker(fake, pip=None):
+    """``pip`` overrides the FX-shaped default — an index fixture quotes in whole
+    points, so a 0.0001 pip would read its half-point spread as 5000 pips."""
     return Mt5Broker(
         magic=MAGIC,
         symbol_resolver=lambda p: p.replace('/', ''),
-        pip_resolver=lambda p: 0.01 if 'JPY' in p else 0.0001,
+        pip_resolver=(lambda p: pip) if pip else (lambda p: 0.01 if 'JPY' in p else 0.0001),
         mt5_module=fake,
     )
 
@@ -173,20 +175,23 @@ def test_enter_duplicate_block():
     assert fake.sent_orders == []
 
 
+UK100_TICK = SimpleNamespace(bid=10350.0, ask=10350.5)   # index-scale quote for the index fixtures
+
+
 def test_enter_trade_disabled_skips_before_send():
     # Index outside its cash session: quotes still tick but trade_mode=DISABLED.
     # The guard must skip cleanly WITHOUT sending a doomed order (the uk100 10017 bug).
-    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_DISABLED)
-    assert _broker(fake).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) is None
+    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_DISABLED, tick=UK100_TICK)
+    assert _broker(fake, pip=1.0).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) is None
     assert fake.sent_orders == []
 
 
 def test_enter_longonly_blocks_short_allows_long():
-    short = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_LONGONLY)
-    assert _broker(short).enter('UK100', 'SHORT', 10500, 10400, 2.0, 6.0, paper_mode=False) is None
+    short = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_LONGONLY, tick=UK100_TICK)
+    assert _broker(short, pip=1.0).enter('UK100', 'SHORT', 10500, 10200, 2.0, 6.0, paper_mode=False) is None
     assert short.sent_orders == []
-    long_ = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_LONGONLY)
-    assert _broker(long_).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) == 555111
+    long_ = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_LONGONLY, tick=UK100_TICK)
+    assert _broker(long_, pip=1.0).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) == 555111
     assert len(long_.sent_orders) == 1
 
 
@@ -198,9 +203,33 @@ def test_enter_full_trade_mode_allows():
 def test_enter_benign_rejection_returns_none():
     # trade_mode may stay FULL while the broker rejects at order time (10017/10018);
     # the failure path must still return None (and not raise) for these market-state codes.
-    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL, send_result="disabled")
-    assert _broker(fake).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) is None
+    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL, send_result="disabled", tick=UK100_TICK)
+    assert _broker(fake, pip=1.0).enter('UK100', 'LONG', 10300, 10400, 2.0, 6.0, paper_mode=False) is None
     assert len(fake.sent_orders) == 1
+
+
+def test_enter_wrong_side_stops_skip_before_send():
+    # A stop on the wrong side of the market is retcode 10016 "Invalid stops" — and a
+    # caller whose trigger stays armed re-sends it every cooldown, forever (the OI bot's
+    # max-pain buy against a stop stamped from a stale spot). Refuse it here instead.
+    for direction, sl, tp, why in [('LONG', 10400, 10500, 'SL above the ask'),
+                                   ('LONG', 10300, 10200, 'TP below the ask'),
+                                   ('SHORT', 10300, 10200, 'SL below the bid'),
+                                   ('SHORT', 10400, 10500, 'TP above the bid')]:
+        fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL, tick=UK100_TICK)
+        b = _broker(fake, pip=1.0)
+        assert b.enter('UK100', direction, sl, tp, 2.0, 6.0, paper_mode=False) is None, why
+        assert fake.sent_orders == [], why
+        assert b.last_reject_reason.startswith('invalid_stops_side'), why
+
+
+def test_enter_sl_only_and_correct_sides_still_send():
+    # The guard must not catch an SL-only order (tp=0) or a correctly-bracketed one.
+    fake = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL, tick=UK100_TICK)
+    assert _broker(fake, pip=1.0).enter('UK100', 'LONG', 10300, 0, 2.0, 6.0, paper_mode=False) == 555111
+    assert 'tp' not in fake.sent_orders[0]
+    short = FakeMt5(trade_mode=FakeMt5.SYMBOL_TRADE_MODE_FULL, tick=UK100_TICK)
+    assert _broker(short, pip=1.0).enter('UK100', 'SHORT', 10400, 10200, 2.0, 6.0, paper_mode=False) == 555111
 
 
 def test_enter_success_returns_ticket():

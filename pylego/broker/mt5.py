@@ -546,6 +546,25 @@ class Mt5Broker:
         # over-long string is rejected with "Invalid comment argument".
         safe_comment = self._safe_comment(comment, f'Bot {direction[0]}')
 
+        # Stop-side pre-flight. A protective stop on the WRONG SIDE of the market (a
+        # BUY whose SL sits above the ask, a TP below it) is rejected with retcode 10016
+        # "Invalid stops" — and a caller that keeps its trigger armed will re-send the
+        # same doomed order every cooldown for the rest of the session. Nothing about the
+        # market can fix it, so refuse it here like a spread or duplicate block: one
+        # legible warning naming the side, no broker round-trip, no ERROR in the stream.
+        bad = None
+        if direction == 'LONG':
+            if sl and sl >= exec_price:   bad = f'SL {sl} is at/above the ask {exec_price}'
+            elif tp and 0 < tp <= exec_price: bad = f'TP {tp} is at/below the ask {exec_price}'
+        else:
+            if sl and sl <= exec_price:   bad = f'SL {sl} is at/below the bid {exec_price}'
+            elif tp and tp >= exec_price: bad = f'TP {tp} is at/above the bid {exec_price}'
+        if bad:
+            self.log.warning(f'INVALID STOPS {pair}: {direction} — {bad}; skipping (the '
+                             f'broker would reject this with retcode 10016)')
+            self.last_reject_reason = f'invalid_stops_side ({bad})'
+            return None
+
         digits = getattr(info, 'digits', None) or 5
         order = {
             'action':       mt5.TRADE_ACTION_DEAL,

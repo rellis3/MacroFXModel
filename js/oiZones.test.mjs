@@ -139,6 +139,19 @@ console.log('[Max-pain reversion — stop bounded by the pin distance, not the f
   // maxpainSlFrac 0 → uncapped, i.e. the old pure-guard-wall behaviour.
   const mpOff = buildOIZones(far, 4260, { ...cfg, maxpainSlFrac: 0, minRR: 0 }).find(x => x.mode === 'maxpain');
   ok('maxpainSlFrac 0 → uncapped guard-wall stop (old behaviour available)', Math.abs(mpOff.sl - 4705) < 1e-9, `sl ${mpOff.sl}`);
+
+  // Mode C is the only mode whose stop is derived from SPOT — and spot is the daily OI
+  // capture, so `sl` is stale by mid-session (2026-09-01: a spx max-pain BUY whose stop
+  // sat 27 points ABOVE the market, rejected 10016 every 60s for hours). The executor
+  // re-anchors it to live price from these DAY-STATIC ingredients; if this build ever
+  // stops shipping them the bot silently falls back to the stale absolute, so assert
+  // them here rather than letting that go quiet.
+  ok('ships the stop ingredients for live re-anchoring',
+    mpN.slFrac === 1.0 && mpN.slGuardWall === 4290 && mpN.slFloor === 5 && Math.abs(mpN.slDist - 35) < 1e-9,
+    JSON.stringify({ slFrac: mpN.slFrac, slGuardWall: mpN.slGuardWall, slFloor: mpN.slFloor, slDist: mpN.slDist }));
+  ok('no guard wall → slGuardWall is null, never undefined',
+    buildOIZones({ ...far, callWalls: [] }, 4260, cfg).find(x => x.mode === 'maxpain').slGuardWall === null);
+  ok('rationale says the stop re-anchors at entry', /re-anchored to live price at entry/.test(mpN.rationale), mpN.rationale);
 }
 
 console.log('[Filters — liquidating veto + established requirement]');

@@ -93,20 +93,81 @@ def should_fire(z: dict, px: float, plan_spot: float, tol: float = 0.0) -> bool:
     return px <= entry + tol
 
 
-def make_spec(instrument: str, z: dict) -> dict:
+def maxpain_stop(z: dict, px: float) -> float | None:
+    """Max-pain protective stop RE-ANCHORED to live price — or None when the plan
+    didn't ship the ingredients (an older plan shape → caller keeps the stamped ``sl``).
+
+    Mode C is the only mode whose stop the planner derives from SPOT, and that spot is
+    the OI capture's (once a day, paired to the futures for the basis). A wall fade's
+    ``wall ± buf`` is the same number all session; ``spot ± dist`` is not, and by
+    mid-session it can sit the WRONG SIDE of the market — a max-pain buy whose stop is
+    above the bid, rejected by the broker on every retry because a rejection keeps the
+    zone open. So the plan ships day-static ingredients (``slGuardWall`` is a strike,
+    ``slFrac``/``slFloor`` are constants) and the distance is resolved HERE, at ``px``:
+
+        dist = max(slFloor, min(guard-wall distance, slFrac × live distance to the pin))
+
+    mirroring the planner's own resolution. The guard wall only counts while it is still
+    on the protective side of ``px`` (price that has already traded through it is past
+    its protection — fall back to the pin-fraction cap alone). ``slFrac`` caps the stop
+    at a fraction of the run to the target, so reward:risk ≥ 1/slFrac stays true against
+    the LIVE pin distance, which is the invariant the plan-time number silently lost."""
+    if px is None:
+        return None
+    try:
+        px = float(px)
+        level = float(z["level"])
+        floor = float(z.get("slFloor") or 0)
+        frac = float(z.get("slFrac") or 0)
+        wall = z.get("slGuardWall")
+        wall = float(wall) if wall is not None else None
+    except (KeyError, TypeError, ValueError):
+        return None
+    up = z.get("side") == "buy"
+    cands = []
+    if wall is not None and ((wall < px) if up else (wall > px)):
+        cands.append(abs(px - wall) + floor)
+    if frac > 0:
+        cands.append(frac * abs(level - px))
+    if not cands:                                  # no guard wall and the cap switched off
+        try:
+            cands.append(float(z["slDist"]))       # the planner's own resolution
+        except (KeyError, TypeError, ValueError):
+            return None                            # nothing to anchor with → keep the plan's sl
+    dist = max(floor, min(cands))
+    if dist <= 0:
+        return None
+    return round(px - dist if up else px + dist, 6)
+
+
+def make_spec(instrument: str, z: dict, px: float | None = None) -> dict:
     """A ready-to-execute order spec from a fired zone (direction, protective stop,
     take-profit, size multiplier + the rationale for the comment/audit). Carries the
     plan's hold-score/conviction stamps through so the executor can log them as the
-    trade's features (the hold-calibration inputs)."""
+    trade's features (the hold-calibration inputs).
+
+    With a live ``px``, a max-pain zone's entry and stop are re-anchored to it (see
+    ``maxpain_stop``); every other mode is strike-anchored and passes through unchanged.
+    ``sl_anchor`` says which happened ('live' / 'plan') — a max-pain spec that reports
+    'plan' is running on a stop that could be hours stale, and the executor says so
+    rather than letting the fallback go quiet."""
+    entry = float(z.get("entry", 0))
+    sl = float(z["sl"]) if z.get("sl") is not None else None
+    anchor = "plan"
+    if z.get("mode") == "maxpain" and px is not None:
+        live_sl = maxpain_stop(z, px)
+        if live_sl is not None:
+            entry, sl, anchor = float(px), live_sl, "live"
     return {
         "instrument": instrument,
         "zone_id": zone_id(z),
         "mode": z.get("mode"),
         "side": z.get("side"),
         "dir_up": z.get("side") == "buy",
-        "entry": float(z.get("entry", 0)),
+        "entry": entry,
         "level": z.get("level"),
-        "sl": float(z["sl"]) if z.get("sl") is not None else None,
+        "sl": sl,
+        "sl_anchor": anchor,
         "tp": _tp(z),
         "tp2": float(z["tp2"]) if z.get("tp2") is not None else None,   # runner target (scale-out)
         "size_factor": float(z.get("sizeFactor", 1.0) or 1.0),
@@ -223,7 +284,7 @@ class OISession:
             else:
                 if z.get("mode") == "break" and break_confirm > 0 and self.streak.get(zid, 0) < break_confirm:
                     continue                        # dwell not met yet — wick filter
-                out.append(make_spec(self.instrument, z))
+                out.append(make_spec(self.instrument, z, px))
         return out
 
     def mark_entered(self, zid: str) -> None:
