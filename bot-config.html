@@ -3896,17 +3896,17 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
           <thead>
-            <tr style="background:var(--s2);color:var(--text3)">
-              <th style="padding:6px 10px;text-align:left">Pair</th>
-              <th style="padding:6px 10px;text-align:left">Side</th>
-              <th style="padding:6px 10px;text-align:left">Rung</th>
-              <th style="padding:6px 10px;text-align:left">Decision</th>
-              <th style="padding:6px 10px;text-align:right">Margin</th>
-              <th style="padding:6px 10px;text-align:right">Entry</th>
-              <th style="padding:6px 10px;text-align:right">SL</th>
-              <th style="padding:6px 10px;text-align:right">TP</th>
-              <th style="padding:6px 10px;text-align:left">Status</th>
-              <th style="padding:6px 10px;text-align:left">Rationale</th>
+            <tr style="background:var(--s2);color:var(--text3)" id="vb2LinesHead">
+              <th data-col="pair" onclick="vb2SortLines('pair')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Pair<span class="sort-ind"></span></th>
+              <th data-col="side" onclick="vb2SortLines('side')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Side<span class="sort-ind"></span></th>
+              <th data-col="rung" onclick="vb2SortLines('rung')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Rung<span class="sort-ind"></span></th>
+              <th data-col="decision" onclick="vb2SortLines('decision')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Decision<span class="sort-ind"></span></th>
+              <th data-col="margin" onclick="vb2SortLines('margin')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">Margin<span class="sort-ind"></span></th>
+              <th data-col="entry" onclick="vb2SortLines('entry')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">Entry<span class="sort-ind"></span></th>
+              <th data-col="sl" onclick="vb2SortLines('sl')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">SL<span class="sort-ind"></span></th>
+              <th data-col="tp" onclick="vb2SortLines('tp')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">TP<span class="sort-ind"></span></th>
+              <th data-col="status" onclick="vb2SortLines('status')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Status<span class="sort-ind"></span></th>
+              <th data-col="rationale" onclick="vb2SortLines('rationale')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Rationale<span class="sort-ind"></span></th>
             </tr>
           </thead>
           <tbody id="vb2LinesBody">

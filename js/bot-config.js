@@ -3832,6 +3832,58 @@ function resetVb2Defaults() {
 async function loadVb2Creds() { try { _applyCredsToForm(await kvGet('volatility_bot_v2_credentials'), 'vb2_', 'vb2_mt5_password'); } catch (e) {} }
 async function saveVb2Creds() { await _saveCreds('volatility_bot_v2_credentials', 'vb2_', 'vb2_mt5_password', 'vb2CredsStatus'); }
 
+// "Today's Levels & Live Decisions" — click-to-sort. Cached separately from
+// the status poll so a sort click just re-renders instantly instead of
+// re-fetching (the data doesn't change between polls anyway).
+let _vb2Lines = [];
+let _vb2LinesSort = { col: null, dir: 1 };
+function vb2SortLines(col) {
+  if (_vb2LinesSort.col === col) _vb2LinesSort.dir *= -1;
+  else { _vb2LinesSort.col = col; _vb2LinesSort.dir = 1; }
+  _vb2RenderLinesTable();
+}
+function _vb2RenderLinesTable() {
+  const body = document.getElementById('vb2LinesBody');
+  if (!body) return;
+  const head = document.getElementById('vb2LinesHead');
+  if (head) {
+    head.querySelectorAll('th').forEach(th => {
+      const ind = th.querySelector('.sort-ind');
+      if (!ind) return;
+      ind.textContent = th.dataset.col === _vb2LinesSort.col ? (_vb2LinesSort.dir > 0 ? ' ▲' : ' ▼') : '';
+    });
+  }
+  let rows = _vb2Lines.slice();
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no zones yet — waiting for the live plan</td></tr>';
+    return;
+  }
+  const NUMERIC = new Set(['margin', 'entry', 'sl', 'tp']);
+  const { col, dir } = _vb2LinesSort;
+  if (col) {
+    rows.sort((a, b) => {
+      let av = a[col], bv = b[col];
+      if (NUMERIC.has(col)) { av = av == null ? -Infinity : +av; bv = bv == null ? -Infinity : +bv; return (av - bv) * dir; }
+      av = (av ?? '').toString().toLowerCase(); bv = (bv ?? '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
+    });
+  }
+  const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+  const STATUS_COLOR = { entered: 'var(--green)', armed: 'var(--text2)' };
+  body.innerHTML = rows.map(r => `<tr>
+      <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
+      <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
+      <td style="padding:5px 10px;text-align:left">${r.rung || '—'}</td>
+      <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
+      <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
+      <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
+      <td style="padding:5px 10px;text-align:left;color:${STATUS_COLOR[r.status] || 'var(--text3)'}">${r.status === 'entered' ? '▶ entered' : (r.status || '—')}</td>
+      <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
+    </tr>`).join('');
+}
+
 async function loadVb2LiveStatus() {
   const ageEl = document.getElementById('vb2LiveAge'), modeEl = document.getElementById('vb2LiveMode');
   const balEl = document.getElementById('vb2LiveBal'), openEl = document.getElementById('vb2OpenN');
@@ -3916,28 +3968,8 @@ async function loadVb2LiveStatus() {
       }
     }
 
-    const body = document.getElementById('vb2LinesBody');
-    if (body) {
-      const rows = st.lines || [];
-      if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no zones yet — waiting for the live plan</td></tr>';
-      } else {
-        const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
-        const STATUS_COLOR = { entered: 'var(--green)', armed: 'var(--text2)' };
-        body.innerHTML = rows.map(r => `<tr>
-            <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
-            <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
-            <td style="padding:5px 10px;text-align:left">${r.rung || '—'}</td>
-            <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
-            <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
-            <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
-            <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
-            <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
-            <td style="padding:5px 10px;text-align:left;color:${STATUS_COLOR[r.status] || 'var(--text3)'}">${r.status === 'entered' ? '▶ entered' : (r.status || '—')}</td>
-            <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
-          </tr>`).join('');
-      }
-    }
+    _vb2Lines = st.lines || [];
+    _vb2RenderLinesTable();
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
   loadVb2AllLines();
   loadVb2DecisionLog();
@@ -4044,6 +4076,7 @@ window.saveVb2Creds = saveVb2Creds; window.loadVb2LiveStatus = loadVb2LiveStatus
 window.loadVb2AllLines = loadVb2AllLines; window.loadVb2DecisionLog = loadVb2DecisionLog;
 window.vb2DecShiftDay = vb2DecShiftDay; window.vb2DecClearDate = vb2DecClearDate;
 window.testVb2Telegram = testVb2Telegram;
+window.vb2SortLines = vb2SortLines;
 window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
 
 // ── Forecast drift vs reference ───────────────────────────────────────────────
