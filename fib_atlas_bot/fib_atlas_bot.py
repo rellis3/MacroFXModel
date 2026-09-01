@@ -91,6 +91,30 @@ DEFAULT_CFG = {
     "max_open": 20,
     "max_concurrent_per_pair": 4,   # both ladders + both directions can legitimately be open on one pair at once.
     "max_spread_pips": 2.0,
+    # Spread-guard window — added 2026-09-02 after a real live incident the
+    # PREVIOUS day (2026-09-01): 3 positions (EURGBP x2, AUDJPY) stopped out
+    # within 16 minutes of each other around 00:00 UTC (the broker's daily
+    # rollover), plus a separate EURUSD stop at 22:05 UTC with ZERO recorded
+    # adverse excursion beforehand (mae_pips=0) — the signature of a quote
+    # gap, not a real price move. A FOURTH incident the same evening: EURGBP
+    # entered fresh at 21:54 UTC, ~11 minutes before the danger window even
+    # starts here, so a freshly-opened position had essentially no room to
+    # move favorably before getting caught. Unlike volatility_bot_v2's EOD
+    # close (which targets the STRATEGY's own day boundary for backtest
+    # fidelity), this targets the observed low-liquidity window around the
+    # NY interbank close (~21:00 UTC) through the daily broker rollover
+    # (~00:00 UTC): Mt5Broker.modify()/enter() have zero spread awareness
+    # for an ALREADY-OPEN position's resting stop order — max_spread_pips
+    # only ever gated brand-new entries. `spread_guard_start_utc` is
+    # deliberately set well BEFORE the observed incidents (not just at the
+    # first one) so a fresh entry never lands right at the edge of the
+    # window the way the 21:54 EURGBP one did. Wraps past midnight UTC;
+    # start/end are configurable since the exact worst minutes can vary by
+    # broker/day and this is early live observation, not a frozen backtest
+    # constant.
+    "spread_guard_enabled": True,
+    "spread_guard_start_utc": "21:30",   # no NEW entries from here...
+    "spread_guard_end_utc": "00:30",     # ...through here — flattens anything still open once the window starts
     "ddlimit": 3.0,
     "monthlydd": 5.0,
     "lockout": 3,
@@ -123,6 +147,25 @@ DEFAULT_CFG = {
 # needs a broker-specific spelling on SOME brokers, kept explicit rather than
 # silently relying on the registry default staying right forever.
 _BROKER_OVERRIDE = {"gold": "XAUUSD"}
+
+
+def _parse_hhmm_secs(s: str) -> int:
+    h, m = str(s).split(":")
+    return int(h) * 3600 + int(m) * 60
+
+
+def _in_spread_guard_window(now_epoch: float, start_utc: str, end_utc: str) -> bool:
+    """True if the current UTC time-of-day falls in [start_utc, end_utc) —
+    plain HH:MM clock times, not a strategy day-boundary (see DEFAULT_CFG's
+    own doc for why this is a different concept from volatility_bot_v2's
+    EOD close). Wraps past midnight when start > end (the normal case here:
+    21:30 -> 00:30)."""
+    now = datetime.fromtimestamp(now_epoch, timezone.utc)
+    now_secs = now.hour * 3600 + now.minute * 60 + now.second
+    start_secs, end_secs = _parse_hhmm_secs(start_utc), _parse_hhmm_secs(end_utc)
+    if start_secs <= end_secs:
+        return start_secs <= now_secs < end_secs
+    return now_secs >= start_secs or now_secs < end_secs
 
 
 def _mt5_sym(pair: str) -> str:
@@ -297,7 +340,7 @@ def _fmt_close_alert(pair: str, row: dict, mode_tag: str) -> str:
 
 
 def build_status(cfg, broker, plan, paper, rearm: RearmTracker, throttle=None, guard=None,
-                  risk_ledger=None, plan_age_blocked=False):
+                  risk_ledger=None, plan_age_blocked=False, spread_guard_blocked=False):
     bal = broker.account_balance()
     open_risk_pct = round(sum((risk_ledger or {}).values()), 2)
     heat_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
@@ -317,6 +360,7 @@ def build_status(cfg, broker, plan, paper, rearm: RearmTracker, throttle=None, g
         "portfolio_heat_pct": open_risk_pct,
         "portfolio_heat_cap_pct": heat_cap,
         "plan_age_blocked": bool(plan_age_blocked),
+        "spread_guard_blocked": bool(spread_guard_blocked),
     }
 
 
@@ -410,6 +454,8 @@ def run(base_url: str, force_live: bool) -> None:
     plan = plan                            # from the pre-verify_symbols fetch above (may be None)
     last_plan = last_status = 0.0
     plan_age_blocked = False
+    spread_guard_blocked = False
+    spread_guard_closed_tickets: set[int] = set()  # tickets already flattened this window — don't re-close every tick
 
     try:
         saved_state = kv.get_json("fib_atlas_bot_state") or {}
@@ -537,7 +583,8 @@ def run(base_url: str, force_live: bool) -> None:
                 log.warning(f"ai_alert_cfg fetch failed: {e} (Telegram master switch check skipped this cycle)")
             try:
                 status = build_status(cfg, broker, plan, paper, rearm, throttle,
-                                       guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked)
+                                       guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked,
+                                       spread_guard_blocked=spread_guard_blocked)
                 kv.put_status("fib_atlas_bot_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
@@ -559,15 +606,54 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 log.info("DRAWDOWN THROTTLE: recovered — full size resumed")
 
-        # ── Chandelier trailing stop — runs EVERY tick, UNCONDITIONALLY
-        # (regardless of kill_switch / plan staleness / anything else that
-        # gates NEW entries). This only ever TIGHTENS an existing position's
-        # stop, so it is a risk-reducing action, not new risk — the same
-        # discipline as a broker-native SL/TP always running regardless of
-        # plan age. ──────────────────────────────────────────────────────
+        # ── Spread-guard window — see DEFAULT_CFG's own doc for the incident
+        # this responds to. Blocks NEW entries starting well before the
+        # observed danger window and flattens every currently open position,
+        # once each (spread_guard_closed_tickets dedupes the same way EOD
+        # close's eod_closed_tickets does in volatility_bot_v2). Chandelier
+        # trailing below is also skipped while the window is active — a
+        # modify() call reading a spread-widened bid/ask mid-spike could
+        # itself place a worse stop than doing nothing, and the position is
+        # being flattened anyway. ────────────────────────────────────────
+        sg_on = bool(cfg.get("spread_guard_enabled", True))
+        sg_block = sg_on and _in_spread_guard_window(
+            nowt, cfg.get("spread_guard_start_utc", "21:30"), cfg.get("spread_guard_end_utc", "00:30"))
+        if sg_block != spread_guard_blocked:
+            spread_guard_blocked = sg_block
+            if sg_block:
+                log.warning(f"SPREAD GUARD: within the {cfg.get('spread_guard_start_utc', '21:30')}-"
+                            f"{cfg.get('spread_guard_end_utc', '00:30')} UTC low-liquidity window — "
+                            f"flattening open positions, NEW entries blocked until it clears.")
+                _record_decision("*", "*", "pair_blocked", reason="spread_guard: low-liquidity window")
+            else:
+                spread_guard_closed_tickets.clear()
+                log.info("SPREAD GUARD: window cleared — entries resumed")
+
         open_book = broker.serialize_open_positions()
         open_tickets = {p.get("ticket") for p in open_book}
+
+        if spread_guard_blocked:
+            for p in open_book:
+                tid = p.get("ticket")
+                if tid is None or tid in spread_guard_closed_tickets:
+                    continue
+                pair = ticket_pair.get(tid) or sym_key.get(p.get("symbol"))
+                if pair is None:
+                    continue
+                if broker.stop(tid, pair, paper, reason="spread_guard"):
+                    spread_guard_closed_tickets.add(tid)
+                    log.info(f"SPREAD GUARD: {pair} ticket {tid} flattened")
+                    _record_decision(pair, ticket_ladder.get(tid) or "*", "closed", reason="spread_guard: low-liquidity window")
+
+        # ── Chandelier trailing stop — runs EVERY tick, UNCONDITIONALLY
+        # (regardless of kill_switch / plan staleness / anything else that
+        # gates NEW entries) EXCEPT the spread guard above. This only ever
+        # TIGHTENS an existing position's stop, so it is a risk-reducing
+        # action, not new risk — the same discipline as a broker-native
+        # SL/TP always running regardless of plan age. ──────────────────
         for p in open_book:
+            if spread_guard_blocked:
+                break   # positions are being flattened above, not trailed
             tid = p.get("ticket")
             if tid is None:
                 continue
@@ -634,7 +720,7 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
-        if plan and not cfg.get("kill_switch") and not plan_age_blocked:
+        if plan and not cfg.get("kill_switch") and not plan_age_blocked and not spread_guard_blocked:
             for key in _enabled_keys(cfg, plan):
                 pair, ladder = _pair_ladder(key)
                 slice_ = _plan_instruments(plan).get(key) or {}
