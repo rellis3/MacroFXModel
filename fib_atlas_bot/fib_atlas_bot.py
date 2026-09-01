@@ -32,6 +32,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -166,6 +167,31 @@ def _in_spread_guard_window(now_epoch: float, start_utc: str, end_utc: str) -> b
     if start_secs <= end_secs:
         return start_secs <= now_secs < end_secs
     return now_secs >= start_secs or now_secs < end_secs
+
+
+_LONDON_TZ = ZoneInfo("Europe/London")
+# Asia's own session window is 00:00-06:00 Europe/London (asiaFibAtlasEngine.
+# js's `buildAsiaSessions(packed, 'london', asiaHrs=6, ...)`, frozen — same
+# discipline as CHANDELIER_MULT above, not configurable). Direct owner ask
+# (2026-09-02): the plain spread-guard window above clears at a fixed 00:30
+# UTC, but that's still the MIDDLE of tonight's Asia session — Asia's own
+# rungs for today aren't fixed until Asia itself closes, so an Asia-ladder
+# entry re-allowed at 00:30 would be trading against a range that isn't set
+# yet. Monday-ladder entries are unaffected (the Monday range has nothing to
+# do with Asia) and keep using the plain window above.
+ASIA_CLOSE_LONDON_HOUR = 6
+
+
+def _london_hour_as_utc_hhmm(now_epoch: float, london_hour: int) -> str:
+    """Converts an Europe/London wall-clock HH:00 (e.g. Asia's own 06:00
+    close) to TODAY's UTC HH:MM string, DST-aware — feeds straight into
+    _in_spread_guard_window's own clock-time comparison so the Asia ladder's
+    wider window doesn't drift an hour wrong across a DST change the way a
+    hardcoded UTC constant would (same reasoning as volatility_bot_v2's own
+    _eod_kill_epoch, which uses the same Europe/London zoneinfo trick)."""
+    now_ldn = datetime.fromtimestamp(now_epoch, _LONDON_TZ)
+    close_utc = now_ldn.replace(hour=london_hour, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    return f"{close_utc.hour:02d}:{close_utc.minute:02d}"
 
 
 def _mt5_sym(pair: str) -> str:
@@ -340,7 +366,7 @@ def _fmt_close_alert(pair: str, row: dict, mode_tag: str) -> str:
 
 
 def build_status(cfg, broker, plan, paper, rearm: RearmTracker, throttle=None, guard=None,
-                  risk_ledger=None, plan_age_blocked=False, spread_guard_blocked=False):
+                  risk_ledger=None, plan_age_blocked=False, spread_guard_blocked=False, asia_entry_blocked=False):
     bal = broker.account_balance()
     open_risk_pct = round(sum((risk_ledger or {}).values()), 2)
     heat_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
@@ -361,6 +387,7 @@ def build_status(cfg, broker, plan, paper, rearm: RearmTracker, throttle=None, g
         "portfolio_heat_cap_pct": heat_cap,
         "plan_age_blocked": bool(plan_age_blocked),
         "spread_guard_blocked": bool(spread_guard_blocked),
+        "asia_entry_blocked": bool(asia_entry_blocked),
     }
 
 
@@ -456,6 +483,7 @@ def run(base_url: str, force_live: bool) -> None:
     plan_age_blocked = False
     spread_guard_blocked = False
     spread_guard_closed_tickets: set[int] = set()  # tickets already flattened this window — don't re-close every tick
+    asia_entry_blocked = False   # Asia ladder only — see ASIA_CLOSE_LONDON_HOUR's own doc
 
     try:
         saved_state = kv.get_json("fib_atlas_bot_state") or {}
@@ -584,7 +612,7 @@ def run(base_url: str, force_live: bool) -> None:
             try:
                 status = build_status(cfg, broker, plan, paper, rearm, throttle,
                                        guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked,
-                                       spread_guard_blocked=spread_guard_blocked)
+                                       spread_guard_blocked=spread_guard_blocked, asia_entry_blocked=asia_entry_blocked)
                 kv.put_status("fib_atlas_bot_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
@@ -720,9 +748,26 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
+        # Asia ladder's own wider no-entry window — see ASIA_CLOSE_LONDON_HOUR's
+        # doc. Only gates NEW Asia-ladder entries (not Monday, not the flatten/
+        # chandelier-skip above, which are pure spread/liquidity risk and apply
+        # to both ladders equally).
+        asia_block = sg_on and _in_spread_guard_window(
+            nowt, cfg.get("spread_guard_start_utc", "21:30"), _london_hour_as_utc_hhmm(nowt, ASIA_CLOSE_LONDON_HOUR))
+        if asia_block != asia_entry_blocked:
+            asia_entry_blocked = asia_block
+            if asia_block:
+                log.warning("SPREAD GUARD (Asia ladder): blocked until Asia's own close "
+                            f"({ASIA_CLOSE_LONDON_HOUR:02d}:00 Europe/London) — today's rungs aren't fixed yet.")
+                _record_decision("*", "asia", "pair_blocked", reason="spread_guard: Asia ladder awaiting session close")
+            else:
+                log.info("SPREAD GUARD (Asia ladder): Asia closed — entries resumed")
+
         if plan and not cfg.get("kill_switch") and not plan_age_blocked and not spread_guard_blocked:
             for key in _enabled_keys(cfg, plan):
                 pair, ladder = _pair_ladder(key)
+                if ladder == "asia" and asia_entry_blocked:
+                    continue
                 slice_ = _plan_instruments(plan).get(key) or {}
                 zones = slice_.get("zones") or []
                 if not zones:
