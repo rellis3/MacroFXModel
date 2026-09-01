@@ -4127,6 +4127,14 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
       </div>
     </div>
 
+    <div class="bot-banner" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.30)">
+      <div class="bot-banner-icon">⚠️</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#ef4444">Spread-guard window active — added 2026-09-02, DEMO ACCOUNT ONLY so far</div>
+        <div class="bot-banner-sub">3 positions stopped out within 16min of each other on 2026-09-01 around a spread spike at the NY close / daily rollover — an already-open position's resting stop has zero spread protection (max_spread_pips only ever gated new entries). Fix: <b>no new entries from 21:30 London</b> (both ladders) · <b>existing positions flattened at 21:55 London</b> (both ladders) · <b>Monday entries resume 23:00 London</b> · <b>Asia entries resume 06:00 London</b> (today's rungs aren't fixed until Asia itself closes). All auto-shift with BST/GMT. This was built entirely off spread behavior observed on the DEMO account — untested against the real broker's live spreads, which may not widen the same way. Worth re-checking (and possibly disabling <code>spread_guard_enabled</code>) before/when going live, not carrying it over blind.</div>
+      </div>
+    </div>
+
     <!-- How it decides -->
     <details class="card" style="padding:0;margin-bottom:14px">
       <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#a78bfa;list-style:none">
