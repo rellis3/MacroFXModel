@@ -4583,6 +4583,11 @@ async function loadFaAllLines() {
   if (!body) return;
   const pairs = _faCfg.enabled_pairs?.length ? _faCfg.enabled_pairs : [...FA_DEFAULT_CHECKED];
   const filter = (document.getElementById('faAllLinesFilter')?.value || '').trim().toLowerCase();
+  // A real network round-trip across the whole pair universe, not instant —
+  // say so explicitly so a several-second wait reads as "working", not
+  // "stuck" (found 2026-09-01: a bare "loading…" with no elapsed-time cue
+  // looked identical to broken).
+  body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading ${pairs.length} pair(s) × 2 ladders…</td></tr>`;
   try {
     const r = await fetch(`/api/fib-atlas-bot/all-lines?pairs=${encodeURIComponent(pairs.join(','))}`);
     const j = await r.json();
