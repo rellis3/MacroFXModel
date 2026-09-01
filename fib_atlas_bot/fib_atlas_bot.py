@@ -64,6 +64,13 @@ REJECT_COOLDOWN_SECS = 60
 # also live server-side, not in this bot's own config).
 CHANDELIER_MULT = {"asia": 3.0, "monday": 1.5}
 CHANDELIER_ATR_PERIOD = 60
+# A modify the broker keeps rejecting (e.g. SL inside its minimum stop
+# distance) must NOT be retried every single tick forever — found 2026-09-01
+# spamming "Invalid stops" every ~3s for 15+ min on one ticket with zero
+# back-off. Mt5Broker.modify() itself now clamps to the broker's minimum
+# distance, but this cooldown is a second line of defence for whatever
+# clamping can't fix (e.g. tick/symbol_info unavailable).
+CHANDELIER_MODIFY_COOLDOWN_SECS = 60
 # How much M1 history to hand chandelier_stop() so its Wilder-EMA ATR has
 # room to converge before its value is trusted (see engine.chandelier_stop's
 # own doc on why a short "since entry" window alone carries real seed bias).
@@ -396,6 +403,7 @@ def run(base_url: str, force_live: bool) -> None:
     ticket_ladder: dict[int, str] = {}     # ticket -> 'asia'/'monday', for picking the right chandelier_mult
     ticket_pair: dict[int, str] = {}       # ticket -> canonical pair key, for session_bars()
     chand_sl: dict[int, float] = {}        # ticket -> the tightest SL this bot has itself set/seen (never loosened)
+    chand_reject_until: dict[int, float] = {}  # ticket -> epoch to stop retrying a broker-rejected modify until
     sym_key: dict[str, str] = {}           # broker-symbol spelling -> canonical pair key
     tg_entry_msgid: dict[int, int] = {}    # ticket -> entry alert's Telegram message_id (reply-threads the close alert)
     tg_closed_alerted: set[int] = set()    # position_ids already sent a close alert for
@@ -581,16 +589,25 @@ def run(base_url: str, force_live: bool) -> None:
             improves = cur_sl is None or (new_sl > cur_sl if is_long else new_sl < cur_sl)
             if not improves:
                 continue
+            if chand_reject_until.get(tid, 0) > nowt:
+                continue   # broker rejected this ticket recently — cooling down, not retrying every tick
             try:
                 if broker.modify(tid, pair, sl=new_sl, paper_mode=paper):
                     chand_sl[tid] = new_sl
+                    chand_reject_until.pop(tid, None)
+                else:
+                    chand_reject_until[tid] = nowt + CHANDELIER_MODIFY_COOLDOWN_SECS
             except Exception as e:
                 log.warning(f"chandelier modify failed for ticket {tid} ({pair}): {e}")
+                chand_reject_until[tid] = nowt + CHANDELIER_MODIFY_COOLDOWN_SECS
         for t in list(chand_sl):
             if t not in open_tickets:
                 chand_sl.pop(t, None)
                 ticket_ladder.pop(t, None)
                 ticket_pair.pop(t, None)
+        for t in list(chand_reject_until):
+            if t not in open_tickets:
+                chand_reject_until.pop(t, None)
 
         # Close alerts + risk_ledger pruning — every tick, independent of
         # kill_switch/plan (a fill can close at any time).
