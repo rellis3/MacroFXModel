@@ -98,32 +98,38 @@ DEFAULT_CFG = {
     # rollover), plus a separate EURUSD stop at 22:05 UTC with ZERO recorded
     # adverse excursion beforehand (mae_pips=0) — the signature of a quote
     # gap, not a real price move. A FOURTH incident the same evening: EURGBP
-    # entered fresh at 21:54 UTC, ~11 minutes before the danger window even
-    # starts here, so a freshly-opened position had essentially no room to
-    # move favorably before getting caught. Unlike volatility_bot_v2's EOD
-    # close (which targets the STRATEGY's own day boundary for backtest
-    # fidelity), this targets the observed low-liquidity window around the
-    # NY interbank close (~21:00 UTC) through the daily broker rollover
-    # (~00:00 UTC): Mt5Broker.modify()/enter() have zero spread awareness
-    # for an ALREADY-OPEN position's resting stop order — max_spread_pips
-    # only ever gated brand-new entries. `spread_guard_start_london` is
-    # deliberately set well BEFORE the observed incidents (not just at the
-    # first one) so a fresh entry never lands right at the edge of the
-    # window the way the 21:54 EURGBP one did. Wraps past midnight; start/end
-    # are configurable since the exact worst minutes can vary by broker/day
-    # and this is early live observation, not a frozen backtest constant.
+    # entered fresh at 21:54 UTC (21:54 London that day, BST), well inside
+    # the entry-block window below, so a freshly-opened position had
+    # essentially no room to move favorably before getting caught.
+    # Mt5Broker.modify()/enter() have zero spread awareness for an ALREADY-
+    # OPEN position's resting stop order — max_spread_pips only ever gated
+    # brand-new entries.
     #
-    # Europe/London, not UTC (2026-09-02 correction) — direct owner point:
+    # Europe/London throughout (direct owner instruction, 2026-09-02) —
     # every OTHER time boundary in this strategy is already London-anchored
     # (the Asia session itself, Monday's own day boundary), and NY's own 5pm
     # ET close shifts by the same hour in roughly the same season as UK
     # clocks change, so anchoring here too means the window auto-shifts for
     # BST/GMT instead of drifting an hour wrong for the ~1-3 weeks a year US
-    # and UK DST transitions don't land on the same date. "21:30"/"00:30"
-    # UTC under BST (current) = "22:30"/"01:30" London, the values below.
+    # and UK DST transitions don't land on the same date.
+    #
+    # Three separate boundaries, not one shared window (direct owner spec):
+    #   - entry_block (21:30): NEW entries stop, BOTH ladders — set ahead of
+    #     the observed incidents so a fresh entry never lands right at the
+    #     edge the way 21:54 EURGBP did.
+    #   - flatten (21:55): existing positions force-closed, BOTH ladders —
+    #     20min after entries stop, just ahead of the observed spread spikes.
+    #   - monday_resume (23:00): Monday-ladder entries resume "when sessions
+    #     reopen" — a narrower block than Asia's, since the Monday range has
+    #     nothing to do with Asia and doesn't need to wait for it.
+    #   Asia-ladder entries resume at ASIA_CLOSE_LONDON (06:00) below instead
+    #   — that boundary is the STRATEGY's own (today's Asia rungs literally
+    #   aren't fixed until then), not a spread-guard tuning knob, so it's a
+    #   frozen constant rather than configurable here.
     "spread_guard_enabled": True,
-    "spread_guard_start_london": "22:30",   # no NEW entries from here...
-    "spread_guard_end_london": "01:30",     # ...through here — flattens anything still open once the window starts
+    "spread_guard_entry_block_london": "21:30",
+    "spread_guard_flatten_london": "21:55",
+    "spread_guard_monday_resume_london": "23:00",
     "ddlimit": 3.0,
     "monthlydd": 5.0,
     "lockout": 3,
@@ -180,20 +186,18 @@ def _in_spread_guard_window(now_epoch: float, start_utc: str, end_utc: str) -> b
 _LONDON_TZ = ZoneInfo("Europe/London")
 # Asia's own session window is 00:00-06:00 Europe/London (asiaFibAtlasEngine.
 # js's `buildAsiaSessions(packed, 'london', asiaHrs=6, ...)`, frozen — same
-# discipline as CHANDELIER_MULT above, not configurable). Direct owner ask
-# (2026-09-02): the plain spread-guard window clears at spread_guard_end_
-# london, but that's still the MIDDLE of tonight's Asia session — Asia's own
-# rungs for today aren't fixed until Asia itself closes, so an Asia-ladder
-# entry re-allowed there would be trading against a range that isn't set
-# yet. Monday-ladder entries are unaffected (the Monday range has nothing to
-# do with Asia) and keep using the plain window above.
+# discipline as CHANDELIER_MULT above, not configurable). Asia-ladder entries
+# stay blocked through this close regardless of Monday's own earlier resume
+# (spread_guard_monday_resume_london) — Asia's own rungs for today literally
+# aren't fixed until Asia itself closes, so an entry allowed any earlier
+# would be trading against a range that isn't set yet.
 ASIA_CLOSE_LONDON = "06:00"
 
 
 def _london_time_as_utc_hhmm(now_epoch: float, london_hhmm: str) -> str:
-    """Converts an Europe/London wall-clock HH:MM (e.g. spread_guard_start_
-    london, or Asia's own 06:00 close) to TODAY's UTC HH:MM string, DST-
-    aware — feeds straight into _in_spread_guard_window's own clock-time
+    """Converts an Europe/London wall-clock HH:MM (e.g. spread_guard_entry_
+    block_london, or Asia's own 06:00 close) to TODAY's UTC HH:MM string,
+    DST-aware — feeds straight into _in_spread_guard_window's own clock-time
     comparison. Every boundary in this strategy is already London-anchored
     (the Asia session, Monday's own day boundary), so this keeps the
     spread-guard window auto-shifting the same way instead of drifting an
@@ -378,7 +382,8 @@ def _fmt_close_alert(pair: str, row: dict, mode_tag: str) -> str:
 
 
 def build_status(cfg, broker, plan, paper, rearm: RearmTracker, throttle=None, guard=None,
-                  risk_ledger=None, plan_age_blocked=False, spread_guard_blocked=False, asia_entry_blocked=False):
+                  risk_ledger=None, plan_age_blocked=False, spread_guard_blocked=False,
+                  asia_entry_blocked=False, monday_entry_blocked=False):
     bal = broker.account_balance()
     open_risk_pct = round(sum((risk_ledger or {}).values()), 2)
     heat_cap = float(cfg.get("max_open_risk_pct", 0) or 0)
@@ -400,6 +405,7 @@ def build_status(cfg, broker, plan, paper, rearm: RearmTracker, throttle=None, g
         "plan_age_blocked": bool(plan_age_blocked),
         "spread_guard_blocked": bool(spread_guard_blocked),
         "asia_entry_blocked": bool(asia_entry_blocked),
+        "monday_entry_blocked": bool(monday_entry_blocked),
     }
 
 
@@ -493,9 +499,10 @@ def run(base_url: str, force_live: bool) -> None:
     plan = plan                            # from the pre-verify_symbols fetch above (may be None)
     last_plan = last_status = 0.0
     plan_age_blocked = False
-    spread_guard_blocked = False
+    spread_guard_blocked = False   # the FLATTEN window (spread_guard_flatten_london onward) — both ladders
     spread_guard_closed_tickets: set[int] = set()  # tickets already flattened this window — don't re-close every tick
-    asia_entry_blocked = False   # Asia ladder only — see ASIA_CLOSE_LONDON's own doc
+    asia_entry_blocked = False     # Asia ladder's own wider entry gate — see ASIA_CLOSE_LONDON's own doc
+    monday_entry_blocked = False   # Monday ladder's own narrower entry gate — spread_guard_monday_resume_london
 
     try:
         saved_state = kv.get_json("fib_atlas_bot_state") or {}
@@ -624,7 +631,8 @@ def run(base_url: str, force_live: bool) -> None:
             try:
                 status = build_status(cfg, broker, plan, paper, rearm, throttle,
                                        guard=guard, risk_ledger=risk_ledger, plan_age_blocked=plan_age_blocked,
-                                       spread_guard_blocked=spread_guard_blocked, asia_entry_blocked=asia_entry_blocked)
+                                       spread_guard_blocked=spread_guard_blocked, asia_entry_blocked=asia_entry_blocked,
+                                       monday_entry_blocked=monday_entry_blocked)
                 kv.put_status("fib_atlas_bot_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
@@ -647,30 +655,41 @@ def run(base_url: str, force_live: bool) -> None:
                 log.info("DRAWDOWN THROTTLE: recovered — full size resumed")
 
         # ── Spread-guard window — see DEFAULT_CFG's own doc for the incident
-        # this responds to. Blocks NEW entries starting well before the
-        # observed danger window and flattens every currently open position,
-        # once each (spread_guard_closed_tickets dedupes the same way EOD
-        # close's eod_closed_tickets does in volatility_bot_v2). Chandelier
-        # trailing below is also skipped while the window is active — a
+        # this responds to and the three separate boundaries it uses. Blocks
+        # NEW entries starting well before the observed danger window and
+        # flattens every currently open position 20min later, once each
+        # (spread_guard_closed_tickets dedupes the same way EOD close's
+        # eod_closed_tickets does in volatility_bot_v2). Chandelier trailing
+        # below is also skipped while the flatten window is active — a
         # modify() call reading a spread-widened bid/ask mid-spike could
         # itself place a worse stop than doing nothing, and the position is
         # being flattened anyway. ────────────────────────────────────────
         sg_on = bool(cfg.get("spread_guard_enabled", True))
-        sg_start_london = cfg.get("spread_guard_start_london", "22:30")
-        sg_end_london = cfg.get("spread_guard_end_london", "01:30")
-        sg_start_utc = _london_time_as_utc_hhmm(nowt, sg_start_london)
-        sg_end_utc = _london_time_as_utc_hhmm(nowt, sg_end_london)
-        sg_block = sg_on and _in_spread_guard_window(nowt, sg_start_utc, sg_end_utc)
+        entry_block_london = cfg.get("spread_guard_entry_block_london", "21:30")
+        flatten_london = cfg.get("spread_guard_flatten_london", "21:55")
+        monday_resume_london = cfg.get("spread_guard_monday_resume_london", "23:00")
+        entry_block_utc = _london_time_as_utc_hhmm(nowt, entry_block_london)
+        flatten_utc = _london_time_as_utc_hhmm(nowt, flatten_london)
+        monday_resume_utc = _london_time_as_utc_hhmm(nowt, monday_resume_london)
+        asia_close_utc = _london_time_as_utc_hhmm(nowt, ASIA_CLOSE_LONDON)
+
+        # Flatten window runs flatten_london -> monday_resume_london (the
+        # SAME "sessions reopen" boundary Monday entries use) — that's the
+        # general spread-risk-has-passed point, not Asia-specific, so it
+        # governs the flatten + chandelier-pause below regardless of Asia
+        # staying blocked longer for its own, unrelated reason (range not
+        # ready yet). In practice nothing survives past the first pass since
+        # entries are already blocked from entry_block_london onward.
+        sg_block = sg_on and _in_spread_guard_window(nowt, flatten_utc, monday_resume_utc)
         if sg_block != spread_guard_blocked:
             spread_guard_blocked = sg_block
             if sg_block:
-                log.warning(f"SPREAD GUARD: within the {sg_start_london}-{sg_end_london} Europe/London "
-                            f"({sg_start_utc}-{sg_end_utc} UTC today) low-liquidity window — "
-                            f"flattening open positions, NEW entries blocked until it clears.")
+                log.warning(f"SPREAD GUARD: past {flatten_london} Europe/London ({flatten_utc} UTC today) — "
+                            f"flattening open positions, NEW entries blocked until each ladder's own resume.")
                 _record_decision("*", "*", "pair_blocked", reason="spread_guard: low-liquidity window")
             else:
                 spread_guard_closed_tickets.clear()
-                log.info("SPREAD GUARD: window cleared — entries resumed")
+                log.info("SPREAD GUARD: flatten window cleared")
 
         open_book = broker.serialize_open_positions()
         open_tickets = {p.get("ticket") for p in open_book}
@@ -763,12 +782,12 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 log.info("PLAN-AGE GATE: fresh plan — entries resumed")
 
-        # Asia ladder's own wider no-entry window — see ASIA_CLOSE_LONDON's own
-        # doc. Only gates NEW Asia-ladder entries (not Monday, not the flatten/
-        # chandelier-skip above, which are pure spread/liquidity risk and apply
-        # to both ladders equally).
-        asia_block = sg_on and _in_spread_guard_window(
-            nowt, sg_start_utc, _london_time_as_utc_hhmm(nowt, ASIA_CLOSE_LONDON))
+        # Per-ladder entry gates, both starting at entry_block_london but with
+        # DIFFERENT resume times (direct owner spec) — Asia waits for its own
+        # session close (today's rungs aren't fixed until then), Monday
+        # resumes as soon as the next session reopens since the Monday range
+        # has nothing to do with Asia.
+        asia_block = sg_on and _in_spread_guard_window(nowt, entry_block_utc, asia_close_utc)
         if asia_block != asia_entry_blocked:
             asia_entry_blocked = asia_block
             if asia_block:
@@ -778,10 +797,28 @@ def run(base_url: str, force_live: bool) -> None:
             else:
                 log.info("SPREAD GUARD (Asia ladder): Asia closed — entries resumed")
 
-        if plan and not cfg.get("kill_switch") and not plan_age_blocked and not spread_guard_blocked:
+        monday_block = sg_on and _in_spread_guard_window(nowt, entry_block_utc, monday_resume_utc)
+        if monday_block != monday_entry_blocked:
+            monday_entry_blocked = monday_block
+            if monday_block:
+                log.warning(f"SPREAD GUARD (Monday ladder): blocked until the next session reopens "
+                            f"({monday_resume_london} Europe/London).")
+                _record_decision("*", "monday", "pair_blocked", reason="spread_guard: Monday ladder awaiting session reopen")
+            else:
+                log.info("SPREAD GUARD (Monday ladder): session reopened — entries resumed")
+
+        # NOTE: entry blocking during the spread-guard period comes entirely
+        # from asia_entry_blocked/monday_entry_blocked below (each ladder's
+        # own resume time) — spread_guard_blocked itself is NOT checked here.
+        # It stays True until Asia's close (06:00), so gating on it directly
+        # would keep Monday entries blocked long after Monday's own, earlier
+        # resume (23:00) — exactly the bug this comment is here to prevent.
+        if plan and not cfg.get("kill_switch") and not plan_age_blocked:
             for key in _enabled_keys(cfg, plan):
                 pair, ladder = _pair_ladder(key)
                 if ladder == "asia" and asia_entry_blocked:
+                    continue
+                if ladder == "monday" and monday_entry_blocked:
                     continue
                 slice_ = _plan_instruments(plan).get(key) or {}
                 zones = slice_.get("zones") or []
