@@ -931,6 +931,13 @@
     <div class="hint" style="margin:2px 0 6px">Not a locked-in call — a live read. Recomputed from the current bar's own context every few seconds; "bot would trade this" means the margin already clears volatility_bot_v2's own live threshold (≥3).</div>
     <div class="dr-sec-body"><div id="drVote"><span class="muted">loading…</span></div></div>
   </div>
+  <div class="dr-sec" id="drVoteAnalysisSec" data-seckey="voteanalysis" style="display:none">
+    <h3 class="help" title="What history actually shows for this pair at the bot's own trading threshold (margin≥3), plus a real structural finding measured across all 17 live-traded pairs: once a rung gets touched during the Asia session, does the SAME move tend to keep going (reach the next rung out) or reverse (tag the other side)? Answered from a real re-walk of the touch data, not a live guess — see the card for sample sizes.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Vote Atlas — what history shows</span>
+      <span class="chip neu" style="font-size:9px">measured, not live</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drVoteAnalysis"><span class="muted">loading…</span></div></div>
+  </div>
   <div class="dr-sec" id="drPathSec" data-seckey="path" style="display:none">
     <h3 class="help" title="The Forecast Path engine's CALIBRATED intraday claims (event-aware, session-shaped σ — the claims are graded against history on that page, not asserted). Range and timing context, NOT direction: its own calibration shows the direction call is a coin flip."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>📐 Forecast Path — calibrated 4h claims</span></h3>
     <div class="dr-sec-body"><div id="drPath"></div></div>
@@ -5339,30 +5346,22 @@ function _voteDecisionWord(status) {
   if (status === 'pair_blocked') return { cls: 'warn', label: '⛔ blocked' };
   return { cls: 'neu', label: '⏸ skipped' };
 }
-async function loadDrawerVoteState(r) {
-  const sec = $('drVoteStateSec'), box = $('drVoteState');
+// Vol & Path tab companion to drVoteSec's live zone chips — the actual
+// history behind them, from the SAME vote-state fetch loadDrawerVoteState
+// already made (no second round-trip). Deliberately separate from the
+// Systems tab's card: Systems answers "is the bot alive and what did it
+// just do" (operational, glanceable); this answers "what does the DATA
+// show" (research, not tied to any one bot's live status).
+function renderDrVoteAnalysis(j) {
+  const sec = $('drVoteAnalysisSec'), box = $('drVoteAnalysis');
   if (!sec || !box) return;
-  let j;
-  try { j = await jget(`/api/level-atlas/vote-state/${encodeURIComponent(r.name)}`); }
-  catch { sec.style.display = 'none'; return; }
-  if (!j?.ok) { sec.style.display = 'none'; return; }
-  _drVoteState = j;
+  if (!j?.historical && !j?.liveContext) { sec.style.display = 'none'; return; }
+  let html = '';
 
-  const enabledChip = j.enabled
-    ? `<span class="chip range">✓ enabled on the live bot</span>`
-    : `<span class="chip neu">not enabled on the live bot</span>`;
-  const runChip = j.botRunning
-    ? `<span class="chip ${j.botMode === 'live' ? 'bear' : 'neu'}" title="${j.botMode === 'live' ? 'Trading real money' : 'Paper mode'}">${esc0(j.botMode || 'running')}</span>`
-    : `<span class="chip warn">bot not reporting</span>`;
-  let html = `<div class="th-top">${enabledChip} ${runChip} `
-    + `<span class="chip neu" title="Configured entry spread cap, source: ${esc0(j.spreadCap?.source || '')}">spread cap ${esc0(j.spreadCap?.pips ?? '—')}p</span></div>`;
-
-  // What history actually shows for THIS pair, at the bot's own trading
-  // threshold — the validated backtest's real numbers, not a live guess.
   if (j.historical) {
     const h = j.historical;
     const yrs = h.tradesPerYr ? (h.trades / h.tradesPerYr).toFixed(1) : null;
-    html += `<div class="th-h ctx" style="margin-top:10px">What history shows &mdash; margin&ge;${h.marginTested} (the bot's own threshold)</div>`
+    html += `<div class="th-h ctx">What history shows &mdash; margin&ge;${h.marginTested} (the bot's own threshold)</div>`
       + `<div class="th-top">${esc0(h.trades)} trades${yrs ? ` over ~${esc0(yrs)}yr` : ''} &mdash; Sharpe ${esc0(h.sharpe?.toFixed?.(2) ?? h.sharpe)}, profit factor ${esc0(h.profitFactor?.toFixed?.(2) ?? h.profitFactor)}, max drawdown ${esc0(h.maxDrawdownPct)}%.</div>`
       + `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0">`
       + `<div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">`
@@ -5374,14 +5373,52 @@ async function loadDrawerVoteState(r) {
       + `</div>`
       + (h.sameDayResolvedPct != null ? `<div class="hint">The other ${esc0((100 - h.sameDayResolvedPct).toFixed(1))}% run past session close — those are what the EOD-close fix (shipped 2026-09-01) now flattens instead of letting ride for days.</div>` : '');
   }
-  // Today's actual reading (live, not historical) — day-vol regime + which
-  // session is live right now, from the same engine the plan producer uses.
+
   if (j.liveContext?.dayVol || j.liveContext?.session) {
     const volWord = (j.liveContext.dayVol || '').split('·')[1] || j.liveContext.dayVol;
     html += `<div class="th-h ctx" style="margin-top:10px">Today's reading</div>`
       + `<div class="th-top">Day-vol regime: <b>${esc0(volWord || '—')}</b>${j.liveContext.session ? ` &middot; Session: <b>${esc0(j.liveContext.session)}</b>` : ''}</div>`
       + `<div class="hint">Checked earlier: day-vol regime hasn't shown a strong win-rate split on its own historically (62&ndash;63% across quiet/normal/heavy, pooled) &mdash; context, not a strong standalone signal.</div>`;
   }
+
+  // Structural continuation finding — measured 2026-09-01 across all 17
+  // pairs, 17,312 pair-days OOS (analysis/asia_touch_rest_of_day_study.mjs).
+  // POOLED across every pair, not specific to this one — said plainly.
+  // The Gold-reference-style "continuation, not exhaustion" read: once Asia
+  // touches a rung, the SAME side's next rung out gets touched later that
+  // day far more than the unconditional base rate, while a same-day
+  // reversal to the OTHER side of that same level is mildly LESS likely,
+  // not more. Two other hypotheses tested the same day (does an Asia touch
+  // raise the odds of a same-day signal at all; does it skew the day's
+  // eventual range/vol regime) came back weak/null — reported honestly as
+  // that, not forced into a story.
+  html += `<div class="th-h ctx" style="margin-top:10px">Asia-session touch &rarr; rest of day <span class="chip neu" style="font-size:9px">pooled, all 17 pairs</span></div>`
+    + `<div class="th-top">Once Asia touches a rung, the <b>next rung out on the same side</b> gets touched later that day at <b>2.8&ndash;4.2&times;</b> the unconditional base rate (p50&rarr;p75/p90: 2.76&times;, n=5,831 vs 28,793 &middot; p75&rarr;p90: 4.21&times;, n=1,668 vs 32,956).</div>`
+    + `<div class="th-top">A same-day reversal to the <b>other side of that same level</b> is mildly <i>less</i> likely once Asia's already tagged it (21.3% vs 27.1% baseline, n=8,016) &mdash; continuation, not exhaustion.</div>`
+    + `<div class="hint">Two related questions came back weak/null, reported honestly rather than forced: an Asia touch barely moves the odds of ANY same-day margin&ge;3 signal (72.5% vs 68.0%, n=17,312 days, consistent direction across all 17 pairs but a small effect) and does not skew the day's eventual range or vol regime at all (essentially identical distributions either way). Measured from a real re-walk of the touch data (analysis/asia_touch_rest_of_day_study.mjs), 17,312 OOS pair-days, min sample floor n&ge;30.</div>`;
+
+  box.innerHTML = html;
+  sec.style.display = 'block';
+}
+
+async function loadDrawerVoteState(r) {
+  const sec = $('drVoteStateSec'), box = $('drVoteState');
+  if (!sec || !box) return;
+  let j;
+  try { j = await jget(`/api/level-atlas/vote-state/${encodeURIComponent(r.name)}`); }
+  catch { sec.style.display = 'none'; const as = $('drVoteAnalysisSec'); if (as) as.style.display = 'none'; return; }
+  if (!j?.ok) { sec.style.display = 'none'; const as = $('drVoteAnalysisSec'); if (as) as.style.display = 'none'; return; }
+  _drVoteState = j;
+  renderDrVoteAnalysis(j);
+
+  const enabledChip = j.enabled
+    ? `<span class="chip range">✓ enabled on the live bot</span>`
+    : `<span class="chip neu">not enabled on the live bot</span>`;
+  const runChip = j.botRunning
+    ? `<span class="chip ${j.botMode === 'live' ? 'bear' : 'neu'}" title="${j.botMode === 'live' ? 'Trading real money' : 'Paper mode'}">${esc0(j.botMode || 'running')}</span>`
+    : `<span class="chip warn">bot not reporting</span>`;
+  let html = `<div class="th-top">${enabledChip} ${runChip} `
+    + `<span class="chip neu" title="Configured entry spread cap, source: ${esc0(j.spreadCap?.source || '')}">spread cap ${esc0(j.spreadCap?.pips ?? '—')}p</span></div>`;
 
   if (j.openPositions?.length) {
     html += `<div class="th-h ctx" style="margin-top:6px">Open now</div>`
