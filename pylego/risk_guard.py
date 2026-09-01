@@ -21,6 +21,7 @@ module logger) so the brick has no dependency on any bot's global `log`.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import datetime, timezone, date as date_type
 
@@ -116,15 +117,30 @@ class RiskGuard:
         }
 
 
+_COUNTDOWN_RE = re.compile(r'\d+(?:\.\d+)?m remaining')
+
+
+def block_category(reason: str | None) -> str | None:
+    """`reason` with any live countdown ("0.7m remaining") normalized away, so
+    a caller can dedupe on the KIND of block rather than re-firing every ~6s
+    as block_reason()'s own countdown text ticks over — found 2026-09-01:
+    a single 60s cooldown was producing ~9 near-identical decision-log lines
+    (one per countdown tick) because the naive `reason == prev` comparison
+    never saw two calls with the exact same string. Blocks that don't carry a
+    countdown (Daily/Monthly DD) pass through unchanged."""
+    return _COUNTDOWN_RE.sub('remaining', reason) if reason else reason
+
+
 def log_block_transition(log: logging.Logger, state: dict, key: str,
                          reason: str | None) -> None:
-    """Log a guard block/unblock once per STATE CHANGE, never per tick.
+    """Log a guard block/unblock once per STATE CHANGE, never per tick — and
+    never per countdown-tick either (see block_category's own doc).
 
     `state` is a caller-owned dict ({key: last reason}); call this every tick
-    with the current block_reason() result — it logs only when the reason
-    appears, changes, or clears."""
+    with the current block_reason() result — it logs only when the KIND of
+    block appears, changes, or clears."""
     prev = state.get(key)
-    if reason == prev:
+    if block_category(reason) == block_category(prev):
         return
     state[key] = reason
     if reason:
