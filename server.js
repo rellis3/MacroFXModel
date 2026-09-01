@@ -2484,6 +2484,13 @@ Foreign curves: ${s.foreignCurves ?? 'N/A'}
 EXECUTION QUALITY (OANDA live spread)
 Spread right now: ${s.spreadPips ?? 'N/A'} pips  |  Typical: ${s.typicalSpreadPips ?? 'N/A'} pips  |  Classification: ${s.spreadClassification ?? 'N/A'}
 ${s.spreadClassification === 'EXTREME' ? 'WARNING: spread is extreme - do not enter, market is illiquid or pre-event' : s.spreadClassification === 'WIDE' ? 'NOTE: spread is elevated - entry cost is high, wait for normalisation or widen stop to account for it' : ''}
+${s.voteAtlas ? `
+VOTE ATLAS — LIVE BOT STATE (volatility_bot_v2, an automated fade/follow system trading this exact pair, independent of this analysis — what it's ACTUALLY doing right now, not a recommendation to agree or disagree with)
+Enabled on the live bot: ${s.voteAtlas.enabled ? 'YES' : 'no'}  |  Bot: ${s.voteAtlas.botRunning ? `running (${s.voteAtlas.botMode})` : 'not reporting'}  |  Configured spread cap: ${s.voteAtlas.spreadCapPips ?? 'N/A'} pips
+${s.voteAtlas.openPositions?.length ? `Open position: ${s.voteAtlas.openPositions.map(p => `${p.direction} ${p.lots} lots @ ${p.openPrice} (unrealized ${p.profit >= 0 ? '+' : ''}${p.profit})`).join('; ')}` : 'No open position from this bot.'}
+${s.voteAtlas.closedToday?.length ? `Closed today: ${s.voteAtlas.closedToday.map(t => `${t.reason ?? 'closed'} ${t.profit >= 0 ? '+' : ''}${t.profit}`).join('; ')}` : ''}
+${s.voteAtlas.decisionsToday?.length ? `Today's decisions (rung — decision/margin — outcome — reason):
+${s.voteAtlas.decisionsToday.map(d => `  ${d.side ?? ''}${d.rung ?? ''} — ${d.decision ?? 'n/a'}${d.margin != null ? ` margin ${d.margin}` : ''} — ${d.status}${d.reason ? ` (${d.reason})` : ''}`).join('\n')}` : 'No decisions logged for this pair yet today.'}` : ''}
 
 RETAIL CROWD POSITIONING (Myfxbook community)
 Retail long: ${s.retailLongPct ?? 'N/A'}%  |  Short: ${s.retailShortPct ?? 'N/A'}%  |  Crowding: ${s.retailCrowding ?? 'N/A'}
@@ -14291,6 +14298,96 @@ app.get('/api/level-atlas/bot-enabled', async (req, res) => {
       enabled[alias] = enabledSet.has(key);
     }
     res.json({ ok: true, enabled });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Broker symbol resolution — mirrors volatility_bot_v2.py's own
+// _BROKER_OVERRIDE + config `broker_symbols` override precedence exactly
+// (Python is the source of truth; this is a read-only display mirror, never
+// used for anything that touches an actual order). Needed to match a
+// canonical pair (e.g. "de30") against the MT5 symbol the bot's own
+// mt5_positions/today_closed_trades rows are keyed by (e.g. "GER40").
+const _VB2_BROKER_DEFAULT = { de30: 'GER40', uk100: 'UK100', us2000: 'US2000',
+  spx: 'SP500', nq: 'USTECH100', dow: 'US30', gold: 'XAUUSD' };
+function _vb2BrokerSym(pair, cfg) {
+  const p = String(pair).toLowerCase();
+  const override = cfg?.broker_symbols?.[p];
+  if (override) return String(override).toUpperCase();
+  if (_VB2_BROKER_DEFAULT[p]) return _VB2_BROKER_DEFAULT[p];
+  return p.toUpperCase();
+}
+// Entry spread cap for `pair`, mirroring pylego/costs.py's `max_spread()`
+// precedence exactly (per-pair key in the pair's own units > per-asset-class
+// > scalar-as-FX-cap-scaled-by-class > default) — read-only display mirror
+// of the live sizing logic, same caveat as _vb2BrokerSym above.
+const _VB2_SPREAD_CLASS_MULT = { fx: 1.0, index: 6.0, commodity: 6.0 };
+const _VB2_DEFAULT_FX_SPREAD_CAP = 2.0;
+function _vb2AssetClass(pair) {
+  const p = String(pair).toLowerCase();
+  if (p === 'gold') return 'commodity';
+  if (['nq', 'spx', 'dow', 'us2000', 'de30', 'uk100'].includes(p)) return 'index';
+  return 'fx';
+}
+function _vb2SpreadCap(pair, cfg) {
+  const ac = _vb2AssetClass(pair);
+  const mx = cfg?.max_spread_pips;
+  if (mx && typeof mx === 'object') {
+    const key = resolveKey(pair) || String(pair).toLowerCase();
+    // Matches pylego/costs.py's max_spread() exactly: a per-pair entry is
+    // already in the pair's own units (used as-is, no class scaling); a
+    // per-class entry is ALSO already final pips (not a multiplier); only
+    // the fallback (neither present) scales the fx default by class.
+    if (key in mx) return { pips: +mx[key], source: 'per-pair' };
+    if (ac in mx) return { pips: +mx[ac], source: 'per-class' };
+    return { pips: +((mx.fx ?? _VB2_DEFAULT_FX_SPREAD_CAP) * (_VB2_SPREAD_CLASS_MULT[ac] ?? 3.0)).toFixed(2), source: 'fx-default, class-scaled' };
+  }
+  const fxCap = typeof mx === 'number' ? mx : _VB2_DEFAULT_FX_SPREAD_CAP;
+  return { pips: +(fxCap * (_VB2_SPREAD_CLASS_MULT[ac] ?? 3.0)).toFixed(2), source: 'flat scalar, class-scaled' };
+}
+
+// Combined per-pair Vote Atlas state for today.html's drawer "Systems" tab —
+// everything ELSE the live bot knows about this pair beyond the zones/margin
+// the Vol tab's drVoteSec already shows (deliberately not re-derived here,
+// to avoid a second implementation of voteDecision/getFastLive drifting from
+// the first): is it actually enabled on the bot, what's its spread cap,
+// what has the bot decided about it today (entered/skipped/rejected + why),
+// any open position or trade closed today. One call instead of the 3-4
+// separate KV reads this would otherwise take client-side.
+app.get('/api/level-atlas/vote-state/:instrument', async (req, res) => {
+  try {
+    const pair = String(req.params.instrument || '').toLowerCase();
+    if (!pair) return res.status(400).json({ ok: false, error: 'instrument required' });
+    const [cfgRaw, statusRaw, logRaw] = await Promise.all([
+      kv.get('volatility_bot_v2_config').catch(() => null),
+      kv.get('volatility_bot_v2_status').catch(() => null),
+      kv.get('volatility_bot_v2_decision_log').catch(() => null),
+    ]);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const status = statusRaw ? (JSON.parse(statusRaw).data ?? JSON.parse(statusRaw)) : {};
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : {};
+
+    const key = resolveKey(pair) || pair;
+    const enabledPairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length
+      ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
+      : VOLATILITY_V2_DEFAULT_PAIRS;
+    const enabled = new Set(enabledPairs.map(p => resolveKey(p) || p)).has(key);
+    const brokerSym = _vb2BrokerSym(key, cfg);
+    const spreadCap = _vb2SpreadCap(key, cfg);
+
+    const events = Array.isArray(log.events) ? log.events : [];
+    const decisions = events.filter(e => (resolveKey(e.pair) || e.pair) === key)
+      .sort((a, b) => b.t - a.t).slice(0, 30);
+
+    const openPositions = (status.mt5_positions || []).filter(p => String(p.symbol || '').toUpperCase() === brokerSym);
+    const closedToday = (status.today_closed_trades || []).filter(t => String(t.symbol || '').toUpperCase() === brokerSym);
+
+    res.json({
+      ok: true, pair: key, brokerSym, enabled, spreadCap,
+      botRunning: !!status.running, botMode: status.mode || null,
+      decisions, openPositions, closedToday,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }

@@ -960,7 +960,14 @@
   </div>
   </div>
   <div class="dr-pane" id="drPane-systems" role="tabpanel" aria-labelledby="drTab-systems" hidden>
-    <div class="dr-pending"><b>What the live bots say about this pair</b><p>One row per live system with its current stance, plus sizing and open exposure. Not built yet &mdash; this view does not exist anywhere on the site today.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
+    <div class="dr-sec" id="drVoteStateSec" data-seckey="votestate">
+      <h3 class="help" title="Everything the Vote Atlas bot (volatility_bot_v2) currently knows about this pair, beyond the armed zones already shown on the Vol &amp; Path tab: whether it's actually enabled to trade, its configured spread cap, today's entered/skipped/rejected decisions with reasons, and any live/closed position.">
+        <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Vote Atlas — bot state</span>
+        <span class="chip neu" style="font-size:9px">volatility_bot_v2</span>
+      </h3>
+      <div class="dr-sec-body"><div id="drVoteState"><span class="muted">loading…</span></div></div>
+    </div>
+    <div class="dr-pending"><b>Other live systems</b><p>Vote Atlas is the only bot wired into this tab so far. Full config for it, and every other bot, still lives on the config page.</p><p class="dr-pending-links"><a href="bot-config.html" target="_blank">Bot config &rarr;</a> &middot; <a href="forward-track.html" target="_blank">Forward track &rarr;</a></p></div>
   </div>
 </div>
 
@@ -4157,6 +4164,8 @@ function closeDrawer() {
   _stopAtlasPolling();
   _stopSessPathPolling();
   _stopHandoffPolling();
+  _stopVoteStatePolling();
+  _drVoteState = null;
 }
 
 let _drR = null;   // current drawer row — for the on-demand "Analyse" button
@@ -4223,6 +4232,7 @@ async function openDrawer(name) {
   loadDrawerArima(name, d.sym);
   loadDrawerAnalysis(r).catch(() => { $('drAnalysisSec').style.display = 'none'; });
   _startAtlasPolling(r);
+  _startVoteStatePolling(r);
   loadDrawerThesis(r).catch(() => { $('drThesisSec').style.display = 'none'; });
   loadDrawerHits(name, d).catch(() => { $('drHitsSec').style.display = 'none'; });
 }
@@ -5075,6 +5085,7 @@ function _atlasMatchBody(m, t, opts = {}) {
 let _atlasSym = null;      // instrument the currently-rendered pending rows belong to
 let _atlasPending = [];    // [{ side, rung, level, pip }] for live distance updates
 let _atlasTimer = null;    // 5s poll interval id, alive only while the drawer's open
+let _drVoteState = null;   // last-fetched /api/level-atlas/vote-state/:instrument result — read by assembleSnapshot() for the AI prompt (synchronous, so it reads this cache rather than fetching fresh)
 const ATLAS_POLL_MS = 5000;
 // Starts (or restarts, on switching pairs) the 5s poll. Called from
 // openDrawer; closeDrawer clears it — polling a closed drawer would just
@@ -5303,6 +5314,84 @@ function updateAtlasDistances(sym, price) {
       el.className = 'chip neu';
     }
   }
+}
+
+// ── Systems tab: Vote Atlas bot state ──────────────────────────────────────
+// One combined call (/api/level-atlas/vote-state/:instrument) instead of
+// the 3-4 separate KV reads this would otherwise take — enabled/spread cap/
+// today's decisions/open position, everything the Vol tab's zone view
+// (drVoteSec/loadDrawerAtlas) does NOT already show. Polled slower than the
+// zone view (this changes on the bot's own status_secs cadence, not tick by
+// tick) so the two loops don't compete for the same pair's attention.
+const VOTE_STATE_POLL_MS = 20_000;
+let _voteStateTimer = null;
+function _startVoteStatePolling(r) {
+  if (_voteStateTimer) clearInterval(_voteStateTimer);
+  loadDrawerVoteState(r).catch(() => { $('drVoteStateSec').style.display = 'none'; });
+  _voteStateTimer = setInterval(() => loadDrawerVoteState(r).catch(() => {}), VOTE_STATE_POLL_MS);
+}
+function _stopVoteStatePolling() {
+  if (_voteStateTimer) { clearInterval(_voteStateTimer); _voteStateTimer = null; }
+}
+function _voteDecisionWord(status) {
+  if (status === 'entered') return { cls: 'range', label: '▶ entered' };
+  if (status === 'rejected') return { cls: 'bear', label: '✕ rejected' };
+  if (status === 'pair_blocked') return { cls: 'warn', label: '⛔ blocked' };
+  return { cls: 'neu', label: '⏸ skipped' };
+}
+async function loadDrawerVoteState(r) {
+  const sec = $('drVoteStateSec'), box = $('drVoteState');
+  if (!sec || !box) return;
+  let j;
+  try { j = await jget(`/api/level-atlas/vote-state/${encodeURIComponent(r.name)}`); }
+  catch { sec.style.display = 'none'; return; }
+  if (!j?.ok) { sec.style.display = 'none'; return; }
+  _drVoteState = j;
+
+  const enabledChip = j.enabled
+    ? `<span class="chip range">✓ enabled on the live bot</span>`
+    : `<span class="chip neu">not enabled on the live bot</span>`;
+  const runChip = j.botRunning
+    ? `<span class="chip ${j.botMode === 'live' ? 'bear' : 'neu'}" title="${j.botMode === 'live' ? 'Trading real money' : 'Paper mode'}">${esc0(j.botMode || 'running')}</span>`
+    : `<span class="chip warn">bot not reporting</span>`;
+  let html = `<div class="th-top">${enabledChip} ${runChip} `
+    + `<span class="chip neu" title="Configured entry spread cap, source: ${esc0(j.spreadCap?.source || '')}">spread cap ${esc0(j.spreadCap?.pips ?? '—')}p</span></div>`;
+
+  if (j.openPositions?.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Open now</div>`
+      + j.openPositions.map(p => {
+        const buy = String(p.direction || '').toUpperCase() === 'BUY';
+        const pnl = +(p.profit || 0);
+        return `<div class="th-top">${buy ? '▲ BUY' : '▼ SELL'} ${esc0((+(p.lots || 0)).toFixed(2))} lots @ ${esc0(fmtN(p.open_price, r.d?.dp ?? 5))} `
+          + `<span class="chip ${pnl >= 0 ? 'range' : 'bear'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span></div>`;
+      }).join('');
+  }
+  if (j.closedToday?.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Closed today</div>`
+      + j.closedToday.map(t => {
+        const pnl = +(t.profit || 0);
+        const reason = t.reason === 'tp' ? 'TP hit' : t.reason === 'sl' ? 'SL hit' : 'closed';
+        return `<div class="th-top">${esc0(reason)} <span class="chip ${pnl >= 0 ? 'range' : 'bear'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</span></div>`;
+      }).join('');
+  }
+
+  if (j.decisions?.length) {
+    html += `<div class="th-h ctx" style="margin-top:6px">Today's decisions</div>`
+      + j.decisions.slice(0, 12).map(d => {
+        const dt = new Date(d.t * 1000);
+        const timeStr = `${String(dt.getUTCHours()).padStart(2, '0')}:${String(dt.getUTCMinutes()).padStart(2, '0')} UTC`;
+        const w = _voteDecisionWord(d.status);
+        const sideArrow = d.side === 'up' ? '▲' : d.side === 'down' ? '▼' : '';
+        const line = [d.rung, d.decision, d.margin != null ? `margin ${d.margin}` : null].filter(Boolean).join(' · ');
+        return `<div class="th-top">${esc0(timeStr)} ${sideArrow} ${esc0(line)} <span class="chip ${w.cls}">${w.label}</span>`
+          + (d.reason ? `<div class="hint">${esc0(d.reason)}</div>` : '') + `</div>`;
+      }).join('');
+  } else if (!j.openPositions?.length && !j.closedToday?.length) {
+    html += `<div class="hint" style="margin-top:6px">No decisions logged for this pair yet today.</div>`;
+  }
+
+  box.innerHTML = html;
+  sec.style.display = 'block';
 }
 
 async function loadDrawerThesis(r) {
@@ -5977,6 +6066,24 @@ function assembleSnapshot(r) {
         baseLeg: ct.baseRead, quoteLeg: ct.quoteRead };
     }
     s.cotBias = `specs net ${ct.dir}${ct.level ? ` (${ct.level})` : ''}${ct.derived ? ' — derived from both legs, no direct CFTC contract for this cross' : ''}`;
+  }
+  // Vote Atlas (volatility_bot_v2) — what the live bot currently thinks about
+  // THIS pair: is it enabled, its spread cap, today's entered/skipped/
+  // rejected decisions with reasons, any open/closed position. Previously
+  // never reached the AI prompt at all despite being fetched elsewhere in
+  // the same drawer (found 2026-09-01). Reads the Systems tab's own cache
+  // (set by loadDrawerVoteState, polled since the drawer opened) rather than
+  // fetching fresh — this function is synchronous. Silently omitted if the
+  // Systems tab hasn't loaded yet (e.g. Analyse clicked in the first second).
+  if (_drVoteState?.ok) {
+    const vs = _drVoteState;
+    s.voteAtlas = {
+      enabled: vs.enabled, botRunning: vs.botRunning, botMode: vs.botMode,
+      spreadCapPips: vs.spreadCap?.pips,
+      openPositions: (vs.openPositions || []).map(p => ({ direction: p.direction, lots: p.lots, openPrice: p.open_price, profit: p.profit })),
+      closedToday: (vs.closedToday || []).map(t => ({ profit: t.profit, reason: t.reason })),
+      decisionsToday: (vs.decisions || []).slice(0, 8).map(d => ({ side: d.side, rung: d.rung, decision: d.decision, margin: d.margin, status: d.status, reason: d.reason })),
+    };
   }
   // Macro Scorecard (11-dim fundamentals, both legs) — previously never
   // reached the AI prompt at all.
