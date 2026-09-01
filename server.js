@@ -71,8 +71,8 @@ import { mountAnalyserRoutes, startAutoRefresh as startAnalyserAutoRefresh } fro
 import { mountLevelAtlasRoutes, startRunJob as _startLevelAtlasRunJob } from './js/levelAtlasRoutes.js';
 import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from './js/sessionPathRoutes.js';
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
-import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones } from './js/asiaFibAtlasRoutes.js';
-import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones } from './js/mondayFibAtlasRoutes.js';
+import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming } from './js/asiaFibAtlasRoutes.js';
+import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
   getFastLive as _laGetFastLive, liveCache as _laLiveCache, liveWarming as _laLiveWarming, PREFIX as _LA_PREFIX,
@@ -14167,29 +14167,37 @@ async function _refreshFibAtlasPlan() {
       ? cfg.enabled_pairs.map(p => String(p).toLowerCase())
       : FIB_ATLAS_DEFAULT_PAIRS;
 
-    // Same cold-start throttle rationale as _refreshVolatilityV2Plan above —
-    // both ladders' own live caches (asiaFibAtlasRoutes.js's/
-    // mondayFibAtlasRoutes.js's `liveCache`/`liveWarming`) already cap
-    // concurrent cold M1 loads per-file; this producer additionally caps how
-    // many (pair, ladder) constituents it asks for on one tick so a fully-
-    // cold cache after a redeploy doesn't fan out 32 concurrent multi-year
-    // M1 loads (16 pairs × 2 ladders) on the very first tick.
+    // Cold-start throttle (2026-09-01 fix — the original version here only
+    // COUNTED how many `planFn(pair)` calls came back `warming`, AFTER
+    // already calling them; it never actually gated the call itself, so
+    // every one of up to 32 (pair,ladder) constituents fired its own
+    // fire-and-forget `coldStartLiveCache` on the very first tick after a
+    // redeploy — the exact "thundering herd" `_refreshVolatilityV2Plan`'s
+    // own comment warns about, just not actually prevented here. Real fix:
+    // check each ladder's OWN `liveWarming` size (asiaFibAtlasRoutes.js's
+    // and mondayFibAtlasRoutes.js's live caches are separate modules, so
+    // each gets its own 3-slot budget) BEFORE calling `planFn` at all — a
+    // pair over budget is skipped WITHOUT ever touching getFastLive, so it
+    // genuinely never starts a new cold load this tick.
     const MAX_CONCURRENT_COLDSTART = 3;
-    let coldstarting = 0;
+    const LIVE_STATE = {
+      asia:   { cache: _faAsiaLiveCache,   warming: _faAsiaLiveWarming },
+      monday: { cache: _faMondayLiveCache, warming: _faMondayLiveWarming },
+    };
 
     const instruments = {};
     const skipped = {};
     for (const pair of enabledPairs) {
       for (const [ladder, planFn] of [['asia', asiaLivePlanZones], ['monday', mondayLivePlanZones]]) {
         const key = `${pair}|${ladder}`;
+        const { cache, warming } = LIVE_STATE[ladder];
+        if (!cache.has(pair) && !warming.has(pair) && warming.size >= MAX_CONCURRENT_COLDSTART) {
+          skipped[key] = `cold-start throttled (${warming.size} ${ladder} pairs already warming) — picked up on a later tick`;
+          continue;
+        }
         try {
           const plan = await planFn(pair);
-          if (plan.warming) {
-            coldstarting++;
-            skipped[key] = coldstarting > MAX_CONCURRENT_COLDSTART * 2
-              ? 'cold-start throttled — picked up on a later tick' : 'warming (cold cache)';
-            continue;
-          }
+          if (plan.warming) { skipped[key] = 'warming (cold cache)'; continue; }
           if (plan.skipped) { skipped[key] = plan.skipped; continue; }
           instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount };
         } catch (e) {
