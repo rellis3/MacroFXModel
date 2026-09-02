@@ -17,7 +17,9 @@
 // FX pairs get the full set (composite w/ macro+carry, yieldSpread, cot,
 // dxyMomentum, riskMomentum, realYieldMomentum, priceTrend); Gold gets
 // everything except yieldSpread (no second currency to spread against) via
-// today.html's ASSET_USD_SIDE/ASSET_RISK_LEAN fallback tables; equity indices
+// today.html's ASSET_USD_SIDE/ASSET_RISK_LEAN fallback tables, plus a
+// GOLD-ONLY goldEtfFlow leg (GLD+IAU combined-AUM flow — no FX/equity
+// equivalent exists); equity indices
 // get composite (technical+cot only), cot (where a CFTC contract exists —
 // NQ/SPX500/US30/US2000, not DE30/UK100), riskMomentum and
 // realYieldMomentum (via ASSET_RISK_LEAN/ASSET_REALYIELD_LEAN) and
@@ -79,9 +81,12 @@ const clip = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 //  • realYieldMomentum — same rate-of-change reasoning as dxyMomentum, so the
 //    same weight curve (a bit more at 20d — multi-week rate moves are a more
 //    natural fit for the longer horizon than a single week).
+//  • goldEtfFlow — fund flows build/reverse over weeks, not single sessions,
+//    same "more natural fit for the longer horizon" logic as the other
+//    momentum legs above.
 export const HORIZON_WEIGHTS = {
-  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4, priceTrend: 0.8, realYieldMomentum: 0.4 },
-  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6, priceTrend: 0.5, realYieldMomentum: 0.6 },
+  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4, priceTrend: 0.8, realYieldMomentum: 0.4, goldEtfFlow: 0.4 },
+  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6, priceTrend: 0.5, realYieldMomentum: 0.6, goldEtfFlow: 0.6 },
 };
 
 // Currency risk-character lean — a small, standard FX-market convention
@@ -210,6 +215,24 @@ function realYieldMomentumDriver(input) {
   };
 }
 
+// `input` = { delta } — the ALREADY window-selected % change in combined
+// GLD+IAU AUM (today.html's goldEtfFlow, sourced from server.js's
+// self-collected daily snapshot history — see that file's header for why no
+// vendor-hosted flow history exists to fetch directly). GOLD-ONLY: no FX pair
+// has an "ETF" the same way, so this driver is never wired for anything else.
+// Inflows (rising combined AUM) read as bullish demand, outflows as bearish —
+// the plainest possible reading of a flow number, same UNTESTED-hypothesis
+// posture as every other momentum driver here. Divisor (8% over the window =
+// full-scale) is a small round, non-fitted constant, not swept.
+function goldEtfFlowDriver(input) {
+  if (!input || input.delta == null) return null;
+  return {
+    name: 'goldEtfFlow', label: 'Gold ETF flow (GLD+IAU AUM)', status: 'CONTEXT',
+    score: clip(input.delta / 8, -1, 1),
+    detail: `Combined GLD+IAU AUM ${input.delta > 0 ? '+' : ''}${round1(input.delta)}% over this window — inflow/outflow read as demand, not a tested signal.`,
+  };
+}
+
 // `input` = { vixDelta, hyDelta, netLean } — vixDelta (index points) and
 // hyDelta (bps) are ALREADY window-selected (js/macroChange.js deltas);
 // netLean is `pairRiskLean(base, quote)` above. Rising VIX/HY = risk-off;
@@ -299,9 +322,10 @@ function eventRiskFor(events, windowMs) {
 // dxyMomentum = { deltas: {1,5,20}, usdSide } | null (from js/macroChange.js's
 // dxy row); riskMomentum = { vixDeltas: {1,5,20}, hyDeltas: {1,5,20}, netLean }
 // | null; realYieldMomentum = { deltas: {1,5,20}, lean } | null (from that
-// file's `tips` row) — all three carry ALL windows, and computeOutlook picks
-// the one matching the requested horizon (5d for 'weekly', 20d for
-// 'monthly') below.
+// file's `tips` row); goldEtfFlow = { deltas: {1,5,20} } | null (GOLD only,
+// from today.html's self-collected GLD+IAU AUM history) — all four carry ALL
+// windows, and computeOutlook picks the one matching the requested horizon
+// (5d for 'weekly', 20d for 'monthly') below.
 export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
   const horizon = HORIZONS[horizonKey] ?? HORIZONS.weekly;
   const w = HORIZON_WEIGHTS[horizonKey] ?? HORIZON_WEIGHTS.weekly;
@@ -324,6 +348,10 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
     ? { delta: inputs.realYieldMomentum.deltas?.[wd] ?? null, lean: inputs.realYieldMomentum.lean }
     : null);
   if (ry) drivers.push(ry);
+  const gf = goldEtfFlowDriver(inputs.goldEtfFlow
+    ? { delta: inputs.goldEtfFlow.deltas?.[wd] ?? null }
+    : null);
+  if (gf) drivers.push(gf);
   const pt = priceTrendDriver(inputs.priceTrend); if (pt) drivers.push(pt);
 
   const directional = drivers.filter(d => d.name !== 'volRegime');

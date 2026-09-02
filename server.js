@@ -20,7 +20,7 @@ import { execFile, execFileSync, spawn } from 'child_process';
 import { promisify }       from 'util';
 import * as kv           from './kv.js';
 import worker, { COT_KV } from './_worker.js';
-import { rankIC, blockBootstrapIC } from './js/statsCore.js';
+import { rankIC, blockBootstrapIC, spearman } from './js/statsCore.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
@@ -127,7 +127,7 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
-import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC } from './js/macroChange.js';
+import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
@@ -11299,10 +11299,39 @@ app.get('/api/cvol', async (_req, res) => {
 // The "3+ flags → cut gross" daily risk dashboard from the quant-macro lessons
 // (education/QUANT_MACRO_LESSONS_1-6.md, Lesson 2). Each flag is a CONDITION
 // reading, not a signal: it describes the kind of day, it does not predict.
-// Stock-bond correlation (the fifth lesson flag) is deliberately absent — no
-// daily SPX series is wired server-side; add it when one is, don't proxy it.
 const _RISK_FLAGS_CACHE = { data: null, fetchedAt: 0 };
 const _RISK_FLAGS_TTL   = 30 * 60 * 1000;
+
+// Stock-bond correlation (the lesson's own "if 3+ warn, cut gross first" check
+// — previously flagged absent here because no daily SPX series was wired
+// server-side; SPY/TLT are now fetched live elsewhere in this file
+// (fetchYahooOHLC, /api/diversification/data), so this reuses that exact
+// function rather than adding a new fetch path). Rolling ~20-obs daily-return
+// correlation via js/statsCore.js's spearman() — imported, not re-implemented
+// (rank correlation is also more robust to the odd outlier day than Pearson).
+// Zero-crossing threshold (corr > 0 = "broken"): the traditional hedge is
+// negative stock-bond correlation, so a positive reading is the anomaly the
+// lesson calls out, no fitted constant needed — same discipline as vix_term's
+// own ratio ≥ 1.0 crossing point below.
+async function _stockBondCorr() {
+  const toUnix = Math.floor(Date.now() / 1000);
+  const fromUnix = toUnix - 50 * 86400;   // ~50 calendar days -> comfortably >20 trading days
+  const [spyMap, tltMap] = await Promise.all([
+    fetchYahooOHLC('SPY', fromUnix),
+    fetchYahooOHLC('TLT', fromUnix),
+  ]);
+  const dates = [...spyMap.keys()].filter(d => tltMap.has(d)).sort();
+  if (dates.length < 21) return null;
+  const win = dates.slice(-21);           // 21 closes -> 20 daily returns
+  const spyRet = [], tltRet = [];
+  for (let i = 1; i < win.length; i++) {
+    const ps = spyMap.get(win[i - 1]).close, cs = spyMap.get(win[i]).close;
+    const pt = tltMap.get(win[i - 1]).close, ct = tltMap.get(win[i]).close;
+    if (ps > 0 && pt > 0) { spyRet.push((cs - ps) / ps); tltRet.push((ct - pt) / pt); }
+  }
+  if (spyRet.length < 15) return null;
+  return { corr: spearman(spyRet, tltRet), n: spyRet.length, asOf: win[win.length - 1] };
+}
 
 async function computeRiskFlags() {
   const age = Date.now() - _RISK_FLAGS_CACHE.fetchedAt;
@@ -11324,6 +11353,8 @@ async function computeRiskFlags() {
   const [hyHist, jpyHist] = await Promise.all([hist('hy'), hist('usd_jpy')]);
   let cvol = null;
   try { cvol = await _getCvol(); } catch { /* flag reports unavailable */ }
+  let sbCorr = null;
+  try { sbCorr = await _stockBondCorr(); } catch (e) { console.warn('[risk-flags] stock-bond corr failed:', e.message); }
 
   const vix    = fred.vix?.value ?? null;
   const vix3m  = fred.vix3m?.value ?? null;
@@ -11352,6 +11383,12 @@ async function computeRiskFlags() {
     { key: 'evz_stress', label: 'FX implied vol stressed',
       on: evzPct != null ? evzPct >= 80 : null, value: evzPct,
       detail: evzPct != null ? `EVZ at ${evzPct}th percentile of 5y (flag ≥80th)` : 'EVZ unavailable' },
+    { key: 'stock_bond_corr', label: 'Stock-bond correlation broken',
+      on: sbCorr != null ? sbCorr.corr > 0 : null,
+      value: sbCorr != null ? +sbCorr.corr.toFixed(2) : null,
+      detail: sbCorr != null
+        ? `SPY/TLT 20d return correlation ${sbCorr.corr >= 0 ? '+' : ''}${sbCorr.corr.toFixed(2)} as of ${sbCorr.asOf} (flag > 0 — the usual negative hedge has flipped, an inflation-scare rather than growth-scare signature)`
+        : 'SPY/TLT history unavailable' },
   ];
 
   const known  = flags.filter(f => f.on != null);
@@ -11372,6 +11409,92 @@ async function computeRiskFlags() {
 
 app.get('/api/risk-flags', async (_req, res) => {
   try { res.json({ ok: true, ...(await computeRiskFlags()) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── Gold ETF flow (GLD + IAU combined AUM) ────────────────────────────────────
+// A genuine data gap flagged by the owner's own colleague's gold brief ("+$5.5bn
+// in August, third straight month of inflows") — this repo had no ETF-flow feed
+// at all, only GLD's PRICE (fetched elsewhere for correlation datasets, a
+// different series entirely). UNVERIFIED IN SANDBOX: query1/query2.finance.yahoo.com
+// is unreachable from this dev sandbox (same OANDA/Yahoo restriction CLAUDE.md
+// already documents for fetchYahooOHLC/fetchVixYahoo) — this reuses that exact
+// domain/header pattern rather than adding SPDR's/iShares' own site (neither
+// reachable to verify either, and each has its own undocumented CSV format), on
+// the theory that the lowest-incremental-risk path is a SECOND module on an
+// ALREADY-proven-live domain, not a brand-new one. Still needs a live Railway
+// check before trusting the field parse — same standing caveat as every other
+// OANDA/Yahoo-dependent feature here.
+//
+// No vendor-hosted flow HISTORY is fetched (funds publish current holdings, not
+// a clean daily time series) — instead this fetches TODAY's combined AUM once a
+// day and keeps its OWN running history in KV, then reuses js/macroChange.js's
+// seriesDeltas (imported, not re-implemented) for the 1d/5d/20d deltas — the
+// exact "own history + seriesDeltas" pattern already proven for the CB-history
+// engines' KV persistence, just for a number instead of a hawkish score.
+const GOLD_ETF_TICKERS = ['GLD', 'IAU'];
+const GOLD_ETF_FLOW_KV = 'gold_etf_flow_history';
+const GOLD_ETF_FLOW_TTL_MS = 6 * 3600 * 1000;   // AUM doesn't move intraday; limit external calls
+const _goldEtfFlowCache = { data: null, fetchedAt: 0 };
+
+// Yahoo's quoteSummary module carries a fund's total net assets under a few
+// possible module/field names depending on ticker/module-set quirks — try each,
+// first one present wins, so a minor Yahoo schema drift degrades gracefully
+// instead of silently returning zero.
+async function _fetchYahooFundAum(ticker) {
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}`
+            + `?modules=defaultKeyStatistics,summaryDetail,price`;
+  const r = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MacroFX/1.0)' },
+    signal:  AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) throw new Error(`Yahoo fund AUM ${ticker} HTTP ${r.status}`);
+  const json = await r.json();
+  const result = json?.quoteSummary?.result?.[0];
+  if (!result) throw new Error(`Yahoo fund AUM ${ticker}: unexpected response`);
+  const raw = result.defaultKeyStatistics?.totalAssets?.raw
+    ?? result.summaryDetail?.totalAssets?.raw
+    ?? result.price?.marketCap?.raw               // last-resort proxy: share market cap ≈ AUM for a physically-backed trust
+    ?? null;
+  if (raw == null || !Number.isFinite(raw)) throw new Error(`Yahoo fund AUM ${ticker}: no totalAssets/marketCap field found`);
+  return raw;
+}
+
+async function _goldEtfFlowSeries() {
+  const age = Date.now() - _goldEtfFlowCache.fetchedAt;
+  if (_goldEtfFlowCache.data && age < GOLD_ETF_FLOW_TTL_MS) return _goldEtfFlowCache.data;
+
+  const raw = await kv.get(GOLD_ETF_FLOW_KV).catch(() => null);
+  let series = raw ? JSON.parse(raw) : [];         // [{date, value}] ascending, value = combined AUM USD
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (series[series.length - 1]?.date !== today) {
+    try {
+      const sums = await Promise.all(GOLD_ETF_TICKERS.map(t => _fetchYahooFundAum(t)));
+      const combined = sums.reduce((a, b) => a + b, 0);
+      series = [...series, { date: today, value: combined }].slice(-120);   // ~120 obs, same trim as fredhistory
+      await kv.put(GOLD_ETF_FLOW_KV, JSON.stringify(series));
+    } catch (e) {
+      console.warn('[gold-etf-flow] fetch failed, serving prior history only:', e.message);
+      // fall through with whatever history already exists — never crash the caller
+    }
+  }
+
+  const s = _seriesDeltas(series, [1, 5, 20]);
+  // Percent basis, not raw $ — a fund's AUM grows with price + share count over
+  // years, so a fixed $ divisor would need re-tuning; % is the scale-invariant
+  // read (same reasoning macroChange.js applies via its own bps/pct convention).
+  const pctDeltas = s ? Object.fromEntries(Object.entries(s.d).map(([n, v]) =>
+    [n, (v == null || !s.last) ? null : +((v / s.last) * 100).toFixed(2)])) : null;
+  const data = { series, last: s?.last ?? null, asOf: s?.lastDate ?? null, deltas: pctDeltas };
+
+  _goldEtfFlowCache.data = data;
+  _goldEtfFlowCache.fetchedAt = Date.now();
+  return data;
+}
+
+app.get('/api/gold-etf-flow', async (_req, res) => {
+  try { res.json({ ok: true, ...(await _goldEtfFlowSeries()) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

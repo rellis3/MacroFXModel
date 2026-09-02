@@ -185,6 +185,39 @@ console.log('[computeOutlook — realYieldMomentum absent with a zero/neutral le
   ok('bias is null (nothing else supplied)', r.bias === null);
 }
 
+console.log('[computeOutlook — goldEtfFlow: inflow (rising AUM) -> bullish push]');
+{
+  const r = computeOutlook({ goldEtfFlow: { deltas: { 1: 0.2, 5: 4, 20: 9 } } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'goldEtfFlow');
+  ok('driver present', !!d);
+  ok('status is CONTEXT, never VALIDATED', d.status === 'CONTEXT');
+  ok('score positive (inflow = bullish)', d.score > 0, d.score);
+  ok('uses the 5d delta at weekly horizon (4/8=0.5), not 1d (0.2) or 20d (9)', Math.abs(d.score - 0.5) < 1e-9, d.score);
+  ok('bias reflects it', r.bias === 'BULLISH', r.biasScore);
+}
+
+console.log('[computeOutlook — goldEtfFlow: outflow (falling AUM) -> bearish push]');
+{
+  const r = computeOutlook({ goldEtfFlow: { deltas: { 1: -0.2, 5: -4, 20: -9 } } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'goldEtfFlow');
+  ok('score negative (outflow = bearish)', d.score < 0, d.score);
+}
+
+console.log('[computeOutlook — goldEtfFlow picks the 20d delta at monthly horizon]');
+{
+  const weekly = computeOutlook({ goldEtfFlow: { deltas: { 1: 0.1, 5: 3, 20: -12 } } }, 'weekly');
+  const monthly = computeOutlook({ goldEtfFlow: { deltas: { 1: 0.1, 5: 3, 20: -12 } } }, 'monthly');
+  ok('weekly uses 5d delta (+3) -> bullish', weekly.bias === 'BULLISH', weekly.biasScore);
+  ok('monthly uses 20d delta (-12) -> bearish (opposite sign)', monthly.bias === 'BEARISH', monthly.biasScore);
+}
+
+console.log('[computeOutlook — goldEtfFlow absent when the input itself is missing]');
+{
+  const r = computeOutlook({ goldEtfFlow: null }, 'weekly');
+  ok('no goldEtfFlow driver without the input', !r.drivers.find(x => x.name === 'goldEtfFlow'));
+  ok('bias is null (nothing else supplied)', r.bias === null);
+}
+
 console.log('[computeOutlook — riskMomentum: haven-leaning pair + rising VIX/HY -> bullish (haven bid)]');
 {
   const netLean = pairRiskLean('USD', 'AUD'); // USD haven, AUD risk -> positive net lean
