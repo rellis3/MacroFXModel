@@ -8301,8 +8301,9 @@ function _initHistoryView() {
 
   _renderHistBotPills();
 
-  // Set today's date as default for custom range
-  const today = new Date().toISOString().slice(0, 10);
+  // Set today's date (UK calendar day, matching the rest of this view) as
+  // default for custom range
+  const today = _ukToday();
   const fromEl = document.getElementById('histDateFrom');
   const toEl   = document.getElementById('histDateTo');
   if (fromEl) fromEl.value = today;
@@ -8402,17 +8403,21 @@ function setHistPreset(preset) {
 }
 window.setHistPreset = setHistPreset;
 
+// "Today"/"week"/"month" mean the UK calendar day the user is looking at, same
+// as every other date in this view (_ukDate, the calendar grid, dateStr in the
+// table). Anchoring on UTC's date instead used to lose the last BST hour of
+// each UK day off the front of "Today" — see loadHistoryTab's query padding.
 function _getHistDateRange() {
-  const now   = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today  = _ukToday();
+  const anchor = new Date(today + 'T00:00:00Z'); // date-only arithmetic anchor
   if (_histPreset === 'today') return { from: today, to: today };
   if (_histPreset === 'week') {
-    const dow   = now.getUTCDay(); // 0=Sun
-    const mon   = new Date(now); mon.setUTCDate(now.getUTCDate() - ((dow + 6) % 7));
+    const dow = anchor.getUTCDay(); // 0=Sun
+    const mon = new Date(anchor); mon.setUTCDate(anchor.getUTCDate() - ((dow + 6) % 7));
     return { from: mon.toISOString().slice(0, 10), to: today };
   }
   if (_histPreset === 'month') {
-    const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const first = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), 1));
     return { from: first.toISOString().slice(0, 10), to: today };
   }
   // custom
@@ -8501,6 +8506,12 @@ function _fmtTime(utcSec) {
 }
 function _ukHour(utcSec) { return parseInt(_ukParts(utcSec).hour, 10) % 24; }
 function _ukDate(utcSec) { const p = _ukParts(utcSec); return `${p.year}-${p.month}-${p.day}`; }
+function _ukToday() { return _ukDate(Math.floor(Date.now() / 1000)); }
+function _addDaysIso(iso, delta) {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
 
 // ── Analytics breakdown ───────────────────────────────────────────────────────
 
@@ -8865,18 +8876,33 @@ async function loadHistoryTab() {
 
   let trades = [];
   try {
-    const r = await fetch(`/api/trade-history?from=${from}&to=${to}`);
+    // The server buckets trade_hist_* under its OWN write-time UTC date, which
+    // can lag the UK calendar day by up to an hour (BST) — a trade that closed
+    // just after UK midnight can still be filed under UTC-yesterday. Pad the
+    // query a day on each side so that bucket is included, then narrow back
+    // down to the intended UK window below once we know each trade's true
+    // close date.
+    const queryFrom = _addDaysIso(from, -1);
+    const queryTo   = _addDaysIso(to, 1);
+    const r = await fetch(`/api/trade-history?from=${queryFrom}&to=${queryTo}`);
     const j = await r.json();
     trades = (j.trades || []).filter(t => _histActiveBots.has(t.bot_key));
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="15" class="pos-empty" style="color:var(--red)">Failed to load history. Check KV connection.</td></tr>`;
     return;
   }
-  _lastHistTrades = trades;
   // Learn each bot's time base from the rows that declare one, so rows written
   // before bots shipped `tz_offset_sec` can still be placed on the right clock.
   _tzAssumed = false;
   _learnTzOffsets(trades);
+  // Now that offsets are known, narrow the padded fetch back down to the UK
+  // calendar dates the user actually asked for.
+  trades = trades.filter(t => {
+    const u = _tradeUtc(t, 'time_close');
+    const d = u ? _ukDate(u) : t.date;
+    return d >= from && d <= to;
+  });
+  _lastHistTrades = trades;
 
   // Join the TDE shadow book (what the model said at entry, keyed by position_id).
   // Advisory only — v0 is an uncalibrated prior; this tracks call-vs-outcome so we
@@ -9009,7 +9035,7 @@ function renderCal() {
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if (titleEl) titleEl.textContent = `${monthNames[_calMonth]} ${_calYear}`;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = _ukToday();
   const firstDay = new Date(Date.UTC(_calYear, _calMonth, 1));
   const lastDay  = new Date(Date.UTC(_calYear, _calMonth + 1, 0));
   const startDow = (firstDay.getUTCDay() + 6) % 7; // Mon=0
