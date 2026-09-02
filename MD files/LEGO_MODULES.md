@@ -5441,6 +5441,52 @@ sandbox has no `ANT_KEY`, so the actual model output needs a live Railway
 check before trusting the prose quality, same as every prior AI-prompt change
 in this repo).
 
+**v4 addendum (2026-09-02)** — two gaps the owner found from the live Railway
+deploy (first real screenshots of this feature), both real, not cosmetic:
+
+1. **The Daily/5-Day/20-Day toggle changed nothing at the global/currency
+   level.** It only ever fed `outlookChip()` (the per-card chip) and the
+   sidebar's small bullish/neutral/bearish tally — the page's actual
+   "global" reads (Market Read headline, the Market Tone currency-strength
+   gauge, the macro-moved list) all stayed on `currencyStrength()`, which is
+   hard-wired to today's tape (`pairSignal`) and has no horizon concept at
+   all. Fixed with a genuinely new function, not a retrofit of the existing
+   one (`currencyStrength()`'s 6 existing call sites are all correctly
+   daily-only and were left untouched): `outlookCurrencyStrength(rs,
+   horizonKey)` (`today.html`) mirrors its exact aggregation shape
+   (base-favored-positive, quote-negative, averaged per currency) but sources
+   from each pair's `pairOutlook(r, horizonKey).biasScore` instead of
+   `pairSignal(r)` — same missing-leg discipline (a pair contributes only if
+   `PAIR_CCY` covers it and the horizon call returns a score). Rendered as a
+   new per-currency ranked strength row in the sidebar's "🔭 Market Outlook"
+   card for both horizons, alongside the existing tally — the first place on
+   the page where flipping the pill changes which currency reads strong/weak,
+   not just a per-pair chip. Deliberately scoped here, not into the Market
+   Tone gauge or Market Read headline (both daily-only reads on this page by
+   design; retrofitting them was judged a bigger, separate UX decision than
+   this fix, not requested).
+2. **Gold's per-pair Outlook was thin** — a live screenshot showed both
+   horizons reading NEUTRAL at 5% confidence off a single COT driver, because
+   `GOLD` isn't in `PAIR_CCY` (the FX base/quote table `dxyMomentumDriver`/
+   `riskMomentumDriver`'s sign inputs are built from), so it silently got
+   NEITHER of them — a real gap, not a deliberate omission (unlike the
+   yield-spread leg, which correctly has no gold entry because no such model
+   exists for gold). Fixed with a small explicit `ASSET_USD_SIDE`/
+   `ASSET_RISK_LEAN` table in `today.html` (`{GOLD: 'quote'}` / `{GOLD: 1}` —
+   USD-quoted, classic risk-off haven, same +1 convention as
+   `CCY_RISK_LEAN`'s own havens) consumed by `outlookInputsFor` as a fallback
+   when `PAIR_CCY` has no entry. Equity indices (NQ/SPX500/US30/US2000/DE30/
+   UK100) are deliberately NOT extended the same way — their dollar/risk
+   relationship is a materially different, contestable claim (growth-driven,
+   not haven-driven) nobody asked to reason through here; better left on
+   COT-only than guessed at.
+
+Verified live-shaped in headless Chromium: a synthetic Gold instrument now
+carries both `dxyMomentum`/`riskMomentum` drivers with correctly-signed
+detail text; a 6-pair synthetic FX book renders a real ranked currency-
+strength row (`USD +12`, `JPY -10`, …) with hoverable per-currency pair
+lists, matching `currencyStrength()`'s own tooltip convention.
+
 Same evidentiary status as §1am/§1aj: a *selector* composing already-built
 reads, shipped with an in-UI disclaimer rather than a performance claim. If
 ever promoted toward a real forecast, pre-register the benchmark (does the
