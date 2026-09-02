@@ -5756,3 +5756,56 @@ same standing caveat as every OANDA/Yahoo-dependent feature in this repo; if
 Yahoo's schema doesn't match, the fetch fails closed (try/catch, warn-and-
 continue) rather than silently returning a wrong number, but the leg will
 just stay absent for Gold until confirmed working, not stay wrong.
+
+**v7 addendum (2026-09-02)** — owner, a third time and angrily this time:
+toggling Daily/5-Day/20-Day still changed nothing they could see. Root cause
+this time was real and different from v4's: `outlookCurrencyStrength()` (v4)
+was built and wired into exactly ONE new sidebar card, but every PRE-EXISTING
+"global" surface — `renderMarketRead()` (the main narrative + currency-
+strength bars), `equitiesRisk()` (feeds the Market Tone mood/gauge via its
+`haven` calc), `renderSidebar()`'s own "Market Tone" gauge, `currencyDetail()`
+(the per-currency drill-down drawer) — all kept calling `currencyStrength()`
+directly, with no way to pick up the toggle at all. So the toggle only ever
+touched the per-pair chip (invisible on Daily, easy to miss even on 5-Day/
+20-Day) and a sidebar card most of the page's actual "global" surfaces don't
+route through — exactly the gap the owner kept hitting.
+
+Fixed with one new switch point, `currencyStrengthForHorizon(rs, horizonKey)`
+(`today.html`, right after `outlookCurrencyStrength`): returns
+`currencyStrength(rs)` unchanged on `'daily'`, or `outlookCurrencyStrength`'s
+result RESCALED onto the same -1..1 scale (÷100, `outlookCurrencyStrength`'s
+own scale is documented -100..100) so every existing bar-width/sentence-
+threshold calculation downstream — built for the -1..1 scale — keeps working
+completely unchanged; only the SOURCE of the number changes with the toggle,
+never its scale or the shape callers already expect. Swapped in at the sites
+that are genuinely "global/current-state" reads: `equitiesRisk` (now takes a
+`horizonKey` param, threaded through from both its callers),
+`renderMarketRead`, `renderSidebar`'s Market Tone card, `currencyDetail`'s
+headline number (its per-pair "legs" breakdown stays on today's technical
+pull deliberately — daily context under a horizon-scaled headline, same
+layering the Outlook drawer itself already uses). Left alone, deliberately:
+`renderSinceYesterday` (a literal day-over-day snapshot diff, a different
+concept from the outlook horizon) and `renderConcentration` (explicitly says
+"Today is mostly a story of…" — a same-day-tape read, not a multi-day one).
+
+Also fixed the "you can't tell it changed" problem directly, not just the
+underlying data: added a small horizon-label suffix to the "Market Tone"
+sidebar header and the "Who's being bought…" Market Read section header
+(`· 5-Day outlook` / `· 20-Day outlook`, hidden on Daily) so there's a visible
+label change to confirm the toggle did something, and reworded the
+"Today's/This week's/This month's strongest is…" narrative sentence and the
+sidebar's strongest/weakest takeaway line to match whichever horizon they now
+actually reflect, so the wording never claims "today" while showing a 5-day-
+or 20-day-derived number.
+
+New/changed: `today.html` only (`currencyStrengthForHorizon`, `equitiesRisk`'s
+new param, the 4 call-site swaps above, the horizon-label/wording additions).
+No `js/outlookEngine.js` or `server.js` changes — this was purely a wiring
+gap in `today.html`, not a scoring/engine bug.
+
+Validated: `node --check` on every extracted `today.html` inline script (all
+clean); `node js/outlookEngine.test.mjs` — 50/50 still passing (unchanged
+file, sanity re-run only). No live Railway path in this sandbox to click the
+toggle and watch the bars/gauge actually move — same standing caveat as every
+prior revision of this feature; this needs a live check to confirm the fix
+reads right, not just that it compiles.
