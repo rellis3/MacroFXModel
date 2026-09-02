@@ -34,7 +34,12 @@ import { runBarrierWalkForward } from '../js/asiaFibAtlasVoteReview.js';
 import { assetClassFor } from '../js/forecastAnalyserStore.js';
 import { costForPair } from '../js/perLineStrategy.js';
 
-const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'gold'];
+const PAIRS = [
+  'nzdusd', 'usdjpy', 'gbpjpy', 'euraud', 'eurgbp', 'gbpusd', 'audusd', 'eurjpy',
+  'usdchf', 'eurusd', 'usdcad', 'eurnzd', 'audnzd', 'audchf', 'audcad', 'gbpcad',
+  'gbpnzd', 'cadjpy', 'gbpaud', 'audjpy', 'gbpchf', 'nzdjpy', 'eurchf', 'eurcad',
+  'chfjpy', 'gold',
+];
 const DEFAULT_REARM = 0.3;
 const MIN_MARGIN = 2;
 
