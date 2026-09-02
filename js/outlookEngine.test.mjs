@@ -1,6 +1,6 @@
 // Synthetic tests for outlookEngine.js. No network.
 //   node js/outlookEngine.test.mjs
-import { computeOutlook, computeOutlookAllHorizons, HORIZONS } from './outlookEngine.js';
+import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean } from './outlookEngine.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -108,6 +108,88 @@ console.log('[computeOutlookAllHorizons — returns both horizons keyed correctl
   const r = computeOutlookAllHorizons({ composite: { score: 0.3, agree: 1, total: 1 } });
   ok('has weekly and monthly keys', !!r.weekly && !!r.monthly);
   ok('each carries its own horizonKey', r.weekly.horizonKey === 'weekly' && r.monthly.horizonKey === 'monthly');
+}
+
+console.log('[pairRiskLean — havens vs risk currencies]');
+{
+  ok('USD/JPY (both havens) nets to 0', pairRiskLean('USD', 'JPY') === 0);
+  ok('AUD/JPY (risk base, haven quote) nets negative', pairRiskLean('AUD', 'JPY') < 0, pairRiskLean('AUD', 'JPY'));
+  ok('EUR/USD (neutral base, haven quote) nets negative', pairRiskLean('EUR', 'USD') < 0, pairRiskLean('EUR', 'USD'));
+  ok('EUR/GBP (neutral/neutral) nets to exactly 0', pairRiskLean('EUR', 'GBP') === 0);
+  ok('unknown currency defaults to neutral (0), not a crash', pairRiskLean('XYZ', 'USD') < 0);
+}
+
+console.log('[computeOutlook — dxyMomentum: USD-base pair, rising DXY -> bullish push]');
+{
+  const r = computeOutlook({ dxyMomentum: { deltas: { 1: 0.1, 5: 1.2, 20: 2.0 }, usdSide: 'base' } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'dxyMomentum');
+  ok('driver present', !!d);
+  ok('status is CONTEXT, never VALIDATED', d.status === 'CONTEXT');
+  ok('score positive (USD base + DXY up = bullish for the pair)', d.score > 0, d.score);
+  ok('uses the 5d delta at weekly horizon (1.2/2=0.6), not 1d (0.1) or 20d (2.0)', Math.abs(d.score - 0.6) < 1e-9, d.score);
+  ok('bias reflects it', r.bias === 'BULLISH', r.biasScore);
+}
+
+console.log('[computeOutlook — dxyMomentum: USD-quote pair, rising DXY -> bearish push]');
+{
+  const r = computeOutlook({ dxyMomentum: { deltas: { 1: 0.1, 5: 1.2, 20: 2.0 }, usdSide: 'quote' } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'dxyMomentum');
+  ok('score negative (USD quote + DXY up = bearish for the pair, e.g. EURUSD down)', d.score < 0, d.score);
+}
+
+console.log('[computeOutlook — dxyMomentum picks the 20d delta at monthly horizon]');
+{
+  const weekly = computeOutlook({ dxyMomentum: { deltas: { 1: 0.1, 5: 1.0, 20: -3.0 }, usdSide: 'base' } }, 'weekly');
+  const monthly = computeOutlook({ dxyMomentum: { deltas: { 1: 0.1, 5: 1.0, 20: -3.0 }, usdSide: 'base' } }, 'monthly');
+  ok('weekly uses 5d delta (+1.0) -> bullish', weekly.bias === 'BULLISH', weekly.biasScore);
+  ok('monthly uses 20d delta (-3.0) -> bearish (opposite sign)', monthly.bias === 'BEARISH', monthly.biasScore);
+}
+
+console.log('[computeOutlook — dxyMomentum absent for a USD-free cross (no usdSide)]');
+{
+  const r = computeOutlook({ dxyMomentum: { deltas: { 5: 2.0 }, usdSide: null } }, 'weekly');
+  ok('no dxyMomentum driver without a USD leg', !r.drivers.find(x => x.name === 'dxyMomentum'));
+  ok('bias is null (nothing else supplied)', r.bias === null);
+}
+
+console.log('[computeOutlook — riskMomentum: haven-leaning pair + rising VIX/HY -> bullish (haven bid)]');
+{
+  const netLean = pairRiskLean('USD', 'AUD'); // USD haven, AUD risk -> positive net lean
+  const r = computeOutlook({ riskMomentum: { vixDeltas: { 5: 4 }, hyDeltas: { 5: 20 }, netLean } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'riskMomentum');
+  ok('driver present, CONTEXT', d?.status === 'CONTEXT');
+  ok('score positive (risk-off rising + net-haven pair = bullish)', d.score > 0, d.score);
+}
+
+console.log('[computeOutlook — riskMomentum: risk-leaning pair + rising VIX/HY -> bearish]');
+{
+  const netLean = pairRiskLean('AUD', 'JPY'); // AUD risk, JPY haven -> negative net lean
+  const r = computeOutlook({ riskMomentum: { vixDeltas: { 5: 4 }, hyDeltas: { 5: 20 }, netLean } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'riskMomentum');
+  ok('score negative (risk-off rising + net-risk pair = bearish, e.g. AUDJPY down)', d.score < 0, d.score);
+}
+
+console.log('[computeOutlook — riskMomentum absent for a neutral/neutral pair]');
+{
+  const netLean = pairRiskLean('EUR', 'GBP'); // both neutral -> 0
+  const r = computeOutlook({ riskMomentum: { vixDeltas: { 5: 4 }, hyDeltas: { 5: 20 }, netLean } }, 'weekly');
+  ok('no riskMomentum driver for a net-neutral pair', !r.drivers.find(x => x.name === 'riskMomentum'));
+}
+
+console.log('[computeOutlook — riskMomentum degrades gracefully with only one of VIX/HY present]');
+{
+  const netLean = pairRiskLean('USD', 'AUD');
+  const r = computeOutlook({ riskMomentum: { vixDeltas: { 5: 4 }, hyDeltas: {}, netLean } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'riskMomentum');
+  ok('driver still produced from VIX alone', d.score > 0, d.score);
+}
+
+console.log('[computeOutlook — CB sentiment is NOT a recognized input at all]');
+{
+  // Deliberate: this repo banked a null on CB hawkish-score momentum
+  // (CB_SENTIMENT_PRICE_TEST.md) — the engine must not accept or score it.
+  const r = computeOutlook({ cbSentiment: { z: 3 }, composite: { score: 0.1, agree: 1, total: 1 } }, 'weekly');
+  ok('no cbSentiment/hawkish driver exists anywhere', !r.drivers.find(x => /hawk|cbSentiment|fomc/i.test(x.name)));
 }
 
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }

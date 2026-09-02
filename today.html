@@ -3056,13 +3056,29 @@ function pairSignalComposite(r) {
 // every card; the yield-spread leg is the only piece that needed a new fetch
 // (/api/yield-spread/plan, see loadGate). CONTEXT composite, not a new
 // backtested signal — see that file's header for the full honesty posture.
+// Keyed lookup over macroMoved's rows (already fetched in loadGate(), display-
+// only until now — see js/macroChange.js MACRO_CHANGE_SPEC for what's tracked:
+// us2y/us10y/tips/bei/hy/vix/dxy/sofr/rrp, each with 1d/5d/20d deltas).
+function _macroMovedByKey() {
+  return Array.isArray(macroMoved) ? Object.fromEntries(macroMoved.map(x => [x.key, x])) : {};
+}
 function outlookInputsFor(r) {
+  const cc = PAIR_CCY[r.name];
+  const mm = _macroMovedByKey();
+  const usdSide = cc ? (cc[0] === 'USD' ? 'base' : cc[1] === 'USD' ? 'quote' : null) : null;
+  const netLean = (cc && window.outlookBrick) ? window.outlookBrick.pairRiskLean(cc[0], cc[1]) : 0;
   return {
     composite: pairSignalComposite(r),
     yieldSpread: yieldSpreadPlan?.[r.name.toLowerCase()] ?? null,
     volRegime: { volPct: r.d.vol_pct ?? null, cone5d: r.d.cone_5d ?? null },
     cot: r.ct ?? null,
     events: pairEvents(r.name),
+    // Rate-of-change of the macro backdrop (NOT its level) — the fix for the
+    // higher horizon this engine originally missed: a same-day macro
+    // snapshot says less about the next 20 days than which way the backdrop
+    // has been MOVING. Zero new fetches — macroMoved was already loaded.
+    dxyMomentum: (usdSide && mm.dxy) ? { deltas: mm.dxy.deltas, usdSide } : null,
+    riskMomentum: (mm.vix || mm.hy) ? { vixDeltas: mm.vix?.deltas ?? {}, hyDeltas: mm.hy?.deltas ?? {}, netLean } : null,
   };
 }
 function pairOutlook(r, horizonKey) {

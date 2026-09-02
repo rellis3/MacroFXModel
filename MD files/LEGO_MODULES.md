@@ -5333,7 +5333,7 @@ P0 cross-language unification
 (signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),
 and OOS proof on real feeds before any real capital. The live endpoint is surfacing-only.
 
-### 1ar. Market Outlook engine (2026-09-02) — 5-day/20-day per-pair context composite + horizon toggle
+### 1ar. Market Outlook engine (2026-09-02, v2 same day) — 5-day/20-day per-pair context composite + horizon toggle + macro-momentum legs
 
 Owner request: fold everything the dashboard already reads per pair — the
 composite technical/COT/macro/carry read, COT positioning, the vol-regime
@@ -5346,10 +5346,44 @@ bullish/neutral/bearish summary across the board. Deliberately built as a
 network call is one cached fetch of `/api/yield-spread/plan`, and the engine
 inherits `§1am`'s pair-composite output rather than recomputing legs.
 
+**v2 same-day revision**, prompted by the owner's own worry that the v1 macro
+leg was a *level* snapshot (today's macro-scorecard/carry state) when a
+multi-week horizon calls for *momentum* (which way the backdrop has been
+moving). An audit of the repo's Fed/macro data surface found the fix needed
+**zero new fetches**: `js/macroChange.js`'s `/api/macro-changes` (DXY/VIX/HY
+1d/5d/20d deltas) was already loaded into `today.html` as `macroMoved` and
+used only for a decorative "what moved" list. Two new drivers wire it into
+the bias score instead, matched to the horizon by picking the 5d delta for
+`'weekly'` and the 20d delta for `'monthly'` — the delta window itself does
+most of the horizon-adaptation, the leg-weight table just tilts a bit further
+the same direction. **Deliberately excluded: central-bank hawkish-score
+momentum.** The audit also surfaced `MD files/CB_SENTIMENT_PRICE_TEST.md` — a
+pre-registered, already-run test of exactly this hypothesis (does ΔhawkishScore
+predict next-day/week price beyond the initial 30-minute reaction) — banked a
+clean null on both registered cells (R1~Δscore t=-0.75 N=81; Stage-1 drift
+t=0.32 N=82). Adding it here would re-litigate a falsified test, so it isn't a
+recognized input at all (tested: `js/outlookEngine.test.mjs`'s "CB sentiment
+is NOT a recognized input" case).
+
 | Brick | File | Owns | Consumers | Status |
 |---|---|---|---|---|
-| **Outlook engine** | `js/outlookEngine.js` | `computeOutlook(inputs, horizonKey)` — takes `{composite, yieldSpread, volRegime, cot, events}` (each optional, missing legs left out never zeroed, same convention as `pairComposite`) and a horizon key from the re-exported `forecastCore.HORIZONS` (`'weekly'`=5-day, `'monthly'`=20-day), returns `{bias, biasScore, confidence, agree, total, drivers[], eventRisk, disclaimer}`. Each driver carries a `VALIDATED`/`CONTEXT` status — only the yield-spread leg is `VALIDATED` (with the USDJPY-sign caveat from `js/yieldSpreadEngine.js`'s own header note); the vol-regime driver never sets `biasScore`, only `confidence` (a market mid-transition says less about the next few sessions). Per-horizon leg weights are a small hand-set table (not fitted — CLAUDE.md "the brain is a selector, not more knobs"): yield-spread weighted up at 20d (mean-reversion plays out over weeks), vol-regime/composite weighted toward 5d. Confidence also falls when a high-impact event sits inside the horizon window. Pure, no DOM/network/globals. `computeOutlookAllHorizons(inputs)` convenience wrapper for both horizons at once. Unit-tested `js/outlookEngine.test.mjs` (17 cases: null-input safety, agreement/conflict, missing-leg discipline, vol-regime-never-moves-bias, event-risk penalty, horizon-window boundary, per-horizon weight shift). | `today.html` (module → `window.outlookBrick`, same pattern as `window.pairCompositeBrick`) | ✅ built + unit-tested — **context composite, not a validated predictive signal**, same posture as §1am; the yield-spread leg is the one exception, tagged accordingly |
-| **today.html: horizon toggle + outlook chip + drawer section + sidebar summary** | `today.html` (`outlookInputsFor`, `pairOutlook`, `pairOutlookBoth`, `outlookChip`, `renderDrawerOutlook`, `setOutlookHorizon`) | A Daily/5-Day/20-Day pill toggle (`#outlookHzBar`, sibling of `#commandHub` — not folded into `js/commandHub.js` since that file is shared with pages this feature doesn't apply to) persisted to `localStorage` (`outlookHorizon`, same pattern as `rateStatTab`). Daily = the page's existing reads, no overlay. 5-Day/20-Day add a `🔭 Weekly/20-Day bullish/bearish/neutral · confidence%` chip to `pairChipsHtml` (after the existing `⚖` composite chip) and drive a new "🔭 Market Outlook" drawer section (`drOutlookSec`, in the Read tab) showing BOTH horizons side by side with the full driver breakdown, regardless of the global toggle. The sidebar's "Market Outlook" card (after "Volatility Outlook") always shows bullish/neutral/bearish counts for both horizons across the whole board — the "global" view, not gated by the toggle. `loadGate()` gained one new cached fetch (`/api/yield-spread/plan` → `yieldSpreadPlan`, keyed by `js/zscoreSpreadEngine.js`'s lower-cased `ZSCORE_PAIRS` keys — 6 pairs only, everything else has no yield-spread leg). | `cardHtml`→`pairChipsHtml`, `openDrawer`→`renderDrawerOutlook`, `renderSidebar` | ✅ built; verified end-to-end (chip render, horizon switch, drawer breakdown, sidebar tally) with synthetic data via headless Chromium — no live OANDA/FRED path in the sandbox |
+| **Outlook engine** | `js/outlookEngine.js` | `computeOutlook(inputs, horizonKey)` — takes `{composite, yieldSpread, volRegime, cot, events, dxyMomentum, riskMomentum}` (each optional, missing legs left out never zeroed, same convention as `pairComposite`) and a horizon key from the re-exported `forecastCore.HORIZONS` (`'weekly'`=5-day, `'monthly'`=20-day), returns `{bias, biasScore, confidence, agree, total, drivers[], eventRisk, disclaimer}`. Each driver carries a `VALIDATED`/`CONTEXT` status — only the yield-spread leg is `VALIDATED` (with the USDJPY-sign caveat from `js/yieldSpreadEngine.js`'s own header note); the vol-regime driver never sets `biasScore`, only `confidence`. **New drivers (v2):** `dxyMomentumDriver` (DXY's window-selected delta, signed by whether USD is this pair's base or quote — absent for USD-free crosses) and `riskMomentumDriver` (VIX+HY-OAS window-selected deltas, signed by the new `pairRiskLean(base, quote)` helper against the new `CCY_RISK_LEAN` table — a small, standard, hand-set FX haven/risk-currency classification, USD/JPY/CHF haven +1, AUD/NZD/CAD risk -1, EUR/GBP neutral 0; absent for neutral-vs-neutral pairs like EURGBP). Both tagged `CONTEXT` — untested hypotheses, explicitly distinct from the banked-null CB-sentiment claim (see above). Per-horizon leg weights are a small hand-set table (not fitted — CLAUDE.md "the brain is a selector, not more knobs"): yield-spread/dxyMomentum/riskMomentum/cot weighted up at 20d, composite/vol-regime weighted toward 5d. Confidence also falls when a high-impact event sits inside the horizon window. Pure, no DOM/network/globals. `computeOutlookAllHorizons(inputs)` convenience wrapper for both horizons at once. Unit-tested `js/outlookEngine.test.mjs` (30 cases: the original 17 plus `pairRiskLean` sign checks, dxy/risk-momentum driver presence/absence/sign/window-selection, and the CB-sentiment exclusion guard). | `today.html` (module → `window.outlookBrick`, same pattern as `window.pairCompositeBrick`) | ✅ built + unit-tested — **context composite, not a validated predictive signal**, same posture as §1am; the yield-spread leg is the one exception, tagged accordingly |
+| **today.html: horizon toggle + outlook chip + drawer section + sidebar summary** | `today.html` (`outlookInputsFor`, `pairOutlook`, `pairOutlookBoth`, `outlookChip`, `renderDrawerOutlook`, `setOutlookHorizon`, `_macroMovedByKey`) | A Daily/5-Day/20-Day pill toggle (`#outlookHzBar`, sibling of `#commandHub` — not folded into `js/commandHub.js` since that file is shared with pages this feature doesn't apply to) persisted to `localStorage` (`outlookHorizon`, same pattern as `rateStatTab`). Daily = the page's existing reads, no overlay. 5-Day/20-Day add a `🔭 Weekly/20-Day bullish/bearish/neutral · confidence%` chip to `pairChipsHtml` (after the existing `⚖` composite chip) and drive a new "🔭 Market Outlook" drawer section (`drOutlookSec`, in the Read tab) showing BOTH horizons side by side with the full driver breakdown, regardless of the global toggle. The sidebar's "Market Outlook" card (after "Volatility Outlook") always shows bullish/neutral/bearish counts for both horizons across the whole board — the "global" view, not gated by the toggle. `loadGate()` gained one new cached fetch (`/api/yield-spread/plan` → `yieldSpreadPlan`, keyed by `js/zscoreSpreadEngine.js`'s lower-cased `ZSCORE_PAIRS` keys — 6 pairs only, everything else has no yield-spread leg). `outlookInputsFor` builds `dxyMomentum`/`riskMomentum` from the already-loaded `macroMoved` (no new fetch) + `PAIR_CCY`'s base/quote lookup. | `cardHtml`→`pairChipsHtml`, `openDrawer`→`renderDrawerOutlook`, `renderSidebar` | ✅ built; verified end-to-end (chip render, horizon switch, drawer breakdown incl. the new momentum drivers, sidebar tally) with synthetic data via headless Chromium — no live OANDA/FRED path in the sandbox |
+
+**Audit of what else is available but unused** (full findings kept in the PR
+discussion, not duplicated here): central-bank tone TREND (`/api/fomc/history`
+etc. — the multi-meeting hawkish trajectory, distinct from the single latest
+score `/api/macro-scorecard` already folds in) reaches nowhere beyond its own
+banked-null test above; the Global Liquidity Index (`js/globalLiquidityEngine.js`,
+`global-liquidity.html` — level/impulse/cycle regime + FX ranking) is used
+**only** on its own page, never reaching `today.html` at all — a real gap,
+untested either way, deferred as a larger follow-up (needs a currency-ranking
+mapping, not a drop-in driver); the 8-currency `/api/real-yield` engine only
+reaches `today.html` via its already-blended macro-scorecard dim, never as a
+raw per-leg BEER-lite carry input — also deferred. GPR, credit (`creditCore`/
+`creditHmm`), and the Fed/ECB/BoJ balance-sheet liquidity GATE (distinct,
+smaller thing from the GLI above) were checked and are already live/rendered
+in `today.html` — not a gap.
 
 Same evidentiary status as §1am/§1aj: a *selector* composing already-built
 reads, shipped with an in-UI disclaimer rather than a performance claim. If

@@ -3,9 +3,11 @@
 // Turns signals ALREADY computed elsewhere on this dashboard — the pair
 // composite (technical+COT+macro+carry, from `pairCompositeEngine.js`), COT
 // positioning, the realised-vol percentile gap already used for the card's
-// "σ building/cooling" chip, and the yield-spread z-score family (the one
+// "σ building/cooling" chip, the yield-spread z-score family (the one
 // component in this repo with a real OOS result — see
-// `MD files/YIELD_SPREAD_STRATEGY.md`) — into a labelled 5-day / 20-day
+// `MD files/YIELD_SPREAD_STRATEGY.md`), and the RATE OF CHANGE (not level) of
+// the macro backdrop already tracked by `js/macroChange.js` (DXY, VIX, HY
+// credit spread, 1d/5d/20d deltas) — into a labelled 5-day / 20-day
 // directional read per pair, plus how much of the horizon an upcoming
 // high-impact release eats into.
 //
@@ -22,6 +24,17 @@
 // carries the caveat that only USDJPY's sign has been confirmed live
 // (`js/yieldSpreadEngine.js`'s own header note); every other pair's z uses
 // the engine's automatic FRED-based orientation, unconfirmed live.
+//
+// DELIBERATELY NOT INCLUDED: central-bank tone/hawkish-score momentum. This
+// repo already pre-registered and ran exactly that test — does ΔhawkishScore
+// (FOMC/ECB/BoE/BoJ) predict the next day/week's price beyond the initial
+// 30-minute reaction — and banked a clean null on both registered cells
+// (`MD files/CB_SENTIMENT_PRICE_TEST.md`: R1~Δscore t=-0.75, N=81; Stage-1
+// drift t=0.32, N=82). Feeding it into a bias score here would re-litigate a
+// falsified test. The dxy/risk-momentum drivers below are a DIFFERENT claim
+// (priced-asset momentum, not text sentiment) and have not themselves been
+// tested — they carry the same CONTEXT label as every other untested driver
+// here, never VALIDATED.
 import { HORIZONS } from './forecastCore.js';
 
 export { HORIZONS };
@@ -39,12 +52,33 @@ const clip = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 //    Q-Final #1) — weight rises from 5d to 20d.
 //  • cot         — weekly-cadence positioning data; more a swing-horizon
 //    read than a next-few-days one, so it counts a bit more at 20d.
+//  • dxyMomentum / riskMomentum — the window itself already picks up most of
+//    the horizon-adaptation (the 5d delta feeds 'weekly', the 20d delta feeds
+//    'monthly' — see the callers below), so the extra tilt here is modest;
+//    kept in the same direction as the others (a bit more at 20d) since a
+//    multi-week momentum read is the more natural fit for the longer horizon.
 // volRegime is deliberately absent from this table — it never sets direction
 // (see volRegimeDriver below), only confidence.
 export const HORIZON_WEIGHTS = {
-  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5 },
-  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7 },
+  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4 },
+  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6 },
 };
+
+// Currency risk-character lean — a small, standard FX-market convention
+// (classic risk-off havens vs commodity/risk-on currencies), NOT a fitted
+// parameter and NOT itself a tested claim. It exists only to SIGN the
+// risk-momentum driver below (does a VIX/HY move help or hurt THIS pair's own
+// currencies); whether that read has any predictive value is untested. EUR
+// and GBP are left neutral — no consistently one-way lean is established for
+// either in this repo.
+export const CCY_RISK_LEAN = { USD: 1, JPY: 1, CHF: 1, AUD: -1, NZD: -1, CAD: -1, EUR: 0, GBP: 0 };
+
+// net lean for a pair, in [-1, 1]: positive = net haven-leaning (base more
+// haven-ish than quote), negative = net risk/commodity-leaning.
+export function pairRiskLean(base, quote) {
+  const b = CCY_RISK_LEAN[base] ?? 0, q = CCY_RISK_LEAN[quote] ?? 0;
+  return (b - q) / 2;
+}
 
 // |biasScore| below this reads NEUTRAL — matches pairCompositeEngine's 0.12
 // on its -1..1 scale, carried through on this engine's -100..100 scale.
@@ -115,6 +149,45 @@ function cotDriver(cotRead) {
   };
 }
 
+// `input` = { delta, usdSide } — `delta` is the ALREADY window-selected DXY
+// change in index points (js/macroChange.js's `deltas[windowDays]`, picked by
+// the caller below to match the horizon), `usdSide` is 'base'|'quote' when
+// this pair has a direct USD leg. Absent for USD-free crosses (EURGBP,
+// EURJPY, EURCHF, GBPCHF, AUDJPY, CADJPY) — no leg, never a neutral zero.
+// UNTESTED hypothesis (rate-of-change of a priced index, not text sentiment —
+// see the file header for why this is a different claim from the banked-null
+// CB-sentiment test); tagged CONTEXT, never VALIDATED.
+function dxyMomentumDriver(input) {
+  if (!input || input.delta == null || !input.usdSide) return null;
+  const sideSign = input.usdSide === 'base' ? 1 : -1;
+  return {
+    name: 'dxyMomentum', label: 'Dollar-index momentum (DXY)', status: 'CONTEXT',
+    score: clip((input.delta / 2) * sideSign, -1, 1),
+    detail: `DXY ${input.delta > 0 ? '+' : ''}${round1(input.delta)} over this window, read via USD's side of this pair — a rate-of-change reading, not a tested signal.`,
+  };
+}
+
+// `input` = { vixDelta, hyDelta, netLean } — vixDelta (index points) and
+// hyDelta (bps) are ALREADY window-selected (js/macroChange.js deltas);
+// netLean is `pairRiskLean(base, quote)` above. Rising VIX/HY = risk-off;
+// a net-haven-leaning pair (netLean>0) is read as benefiting, a net
+// risk/commodity-leaning pair (netLean<0) as hurt. Absent for neutral-vs-
+// neutral pairs (netLean===0, e.g. EURGBP) — no meaningful read either way.
+// UNTESTED hypothesis, same caveat as dxyMomentumDriver.
+function riskMomentumDriver(input) {
+  if (!input || !input.netLean) return null;
+  const vixN = input.vixDelta != null ? clip(input.vixDelta / 10, -1, 1) : null;
+  const hyN = input.hyDelta != null ? clip(input.hyDelta / 50, -1, 1) : null;
+  const terms = [vixN, hyN].filter(x => x != null);
+  if (!terms.length) return null;
+  const riskOffMomentum = terms.reduce((a, b) => a + b, 0) / terms.length;
+  return {
+    name: 'riskMomentum', label: 'Risk-regime momentum (VIX/HY)', status: 'CONTEXT',
+    score: clip(input.netLean * riskOffMomentum, -1, 1),
+    detail: `VIX ${input.vixDelta != null ? (input.vixDelta > 0 ? '+' : '') + round1(input.vixDelta) : 'n/a'} · HY OAS ${input.hyDelta != null ? (input.hyDelta > 0 ? '+' : '') + round1(input.hyDelta) + 'bps' : 'n/a'} over this window, read via this pair's own risk-currency lean — a rate-of-change reading, not a tested signal.`,
+  };
+}
+
 // `events` = pairEvents(name)-shaped array, each carrying `ms` (epoch) and
 // `impact`. Returns how many fall inside the horizon's forward window.
 function eventRiskFor(events, windowMs) {
@@ -124,19 +197,32 @@ function eventRiskFor(events, windowMs) {
   return { count: inWindow.length, highCount: high.length, next: inWindow[0] ?? null };
 }
 
-// inputs = { composite, yieldSpread, volRegime, cot, events }. Each field is
-// optional — a caller with only some of these signals loaded still gets a
-// read built from what it has (never padded with a neutral zero for what's
-// missing, same discipline as pairComposite).
+// inputs = { composite, yieldSpread, volRegime, cot, events, dxyMomentum,
+// riskMomentum }. Each field is optional — a caller with only some of these
+// signals loaded still gets a read built from what it has (never padded with
+// a neutral zero for what's missing, same discipline as pairComposite).
+// dxyMomentum = { deltas: {1,5,20}, usdSide } | null (from js/macroChange.js's
+// dxy row); riskMomentum = { vixDeltas: {1,5,20}, hyDeltas: {1,5,20}, netLean }
+// | null — both carry ALL windows, and computeOutlook picks the one matching
+// the requested horizon (5d for 'weekly', 20d for 'monthly') below.
 export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
   const horizon = HORIZONS[horizonKey] ?? HORIZONS.weekly;
   const w = HORIZON_WEIGHTS[horizonKey] ?? HORIZON_WEIGHTS.weekly;
+  const wd = horizon.windowDays;
 
   const drivers = [];
   const c = compositeDriver(inputs.composite);   if (c) drivers.push(c);
   const y = yieldSpreadDriver(inputs.yieldSpread); if (y) drivers.push(y);
   const v = volRegimeDriver(inputs.volRegime);   if (v) drivers.push(v);
   const o = cotDriver(inputs.cot);               if (o) drivers.push(o);
+  const dx = dxyMomentumDriver(inputs.dxyMomentum
+    ? { delta: inputs.dxyMomentum.deltas?.[wd] ?? null, usdSide: inputs.dxyMomentum.usdSide }
+    : null);
+  if (dx) drivers.push(dx);
+  const rm = riskMomentumDriver(inputs.riskMomentum
+    ? { vixDelta: inputs.riskMomentum.vixDeltas?.[wd] ?? null, hyDelta: inputs.riskMomentum.hyDeltas?.[wd] ?? null, netLean: inputs.riskMomentum.netLean }
+    : null);
+  if (rm) drivers.push(rm);
 
   const directional = drivers.filter(d => d.name !== 'volRegime');
   let biasScore = null, agree = 0;
