@@ -7,9 +7,23 @@
 // component in this repo with a real OOS result — see
 // `MD files/YIELD_SPREAD_STRATEGY.md`), and the RATE OF CHANGE (not level) of
 // the macro backdrop already tracked by `js/macroChange.js` (DXY, VIX, HY
-// credit spread, 1d/5d/20d deltas) — into a labelled 5-day / 20-day
-// directional read per pair, plus how much of the horizon an upcoming
-// high-impact release eats into.
+// credit spread, US real 10Y/TIPS yield, 1d/5d/20d deltas) — into a labelled
+// 5-day / 20-day directional read per pair, plus how much of the horizon an
+// upcoming high-impact release eats into.
+//
+// Covers all THREE tracked asset classes this dashboard trades, from
+// whichever legs each one actually has data for (missing legs are left out,
+// never padded to a neutral zero — see computeOutlook's own doc comment):
+// FX pairs get the full set (composite w/ macro+carry, yieldSpread, cot,
+// dxyMomentum, riskMomentum, realYieldMomentum, priceTrend); Gold gets
+// everything except yieldSpread (no second currency to spread against) via
+// today.html's ASSET_USD_SIDE/ASSET_RISK_LEAN fallback tables; equity indices
+// get composite (technical+cot only), cot (where a CFTC contract exists —
+// NQ/SPX500/US30/US2000, not DE30/UK100), riskMomentum and
+// realYieldMomentum (via ASSET_RISK_LEAN/ASSET_REALYIELD_LEAN) and
+// priceTrend — deliberately NOT dxyMomentum (see that driver's own header
+// for why the dollar/equity relationship is a different, more contestable
+// claim this repo hasn't reasoned through).
 //
 // Pure: plain objects in, plain object out — no DOM, no network, no globals
 // (Lego Principle 1: one shared core, imported — never copied). Horizon-
@@ -62,9 +76,12 @@ const clip = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 //    reasoning as `composite` — weighted down at 20d, not up.
 // volRegime is deliberately absent from this table — it never sets direction
 // (see volRegimeDriver below), only confidence.
+//  • realYieldMomentum — same rate-of-change reasoning as dxyMomentum, so the
+//    same weight curve (a bit more at 20d — multi-week rate moves are a more
+//    natural fit for the longer horizon than a single week).
 export const HORIZON_WEIGHTS = {
-  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4, priceTrend: 0.8 },
-  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6, priceTrend: 0.5 },
+  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4, priceTrend: 0.8, realYieldMomentum: 0.4 },
+  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6, priceTrend: 0.5, realYieldMomentum: 0.6 },
 };
 
 // Currency risk-character lean — a small, standard FX-market convention
@@ -170,6 +187,29 @@ function dxyMomentumDriver(input) {
   };
 }
 
+// `input` = { delta, lean } — `delta` is the ALREADY window-selected US real
+// 10Y (TIPS) yield change in bps (js/macroChange.js's `tips` row, which is
+// already bps-scaled — see that file's header). `lean` uses the EXACT SAME
+// sign convention as dxyMomentum's `sideSign` above (+1 = "USD-base"-like,
+// this asset benefits when US real yields/the dollar are firming; -1 =
+// "USD-quote"-like, this asset is hurt by it) — for FX pairs and Gold the
+// caller passes the identical resolved sideSign it already computed for
+// dxyMomentum (usdSide 'base'/'quote'). For an asset with no FX base/quote at
+// all (an equity index), the caller instead supplies a small fixed lean
+// (today.html's ASSET_REALYIELD_LEAN, -1 for every tracked index) reflecting
+// the well-known "higher discount rate hurts equity valuations" relationship
+// — a DIFFERENT, less contestable claim than dxyMomentum's dollar-flow-vs-
+// earnings ambiguity, which is why indices get this leg but not that one.
+// UNTESTED hypothesis, same CONTEXT caveat as dxyMomentum/riskMomentum.
+function realYieldMomentumDriver(input) {
+  if (!input || input.delta == null || !input.lean) return null;
+  return {
+    name: 'realYieldMomentum', label: 'Real-yield momentum (US 10Y TIPS)', status: 'CONTEXT',
+    score: clip((input.delta / 30) * input.lean, -1, 1),
+    detail: `US real 10Y ${input.delta > 0 ? '+' : ''}${round1(input.delta)}bps over this window — a rate-of-change reading (rising real yields = headwind for a non-yielding/long-duration asset, tailwind for a USD-base-like one), not a tested signal.`,
+  };
+}
+
 // `input` = { vixDelta, hyDelta, netLean } — vixDelta (index points) and
 // hyDelta (bps) are ALREADY window-selected (js/macroChange.js deltas);
 // netLean is `pairRiskLean(base, quote)` above. Rising VIX/HY = risk-off;
@@ -258,8 +298,10 @@ function eventRiskFor(events, windowMs) {
 // see describeCbTrend's own header for why it's structurally kept out.
 // dxyMomentum = { deltas: {1,5,20}, usdSide } | null (from js/macroChange.js's
 // dxy row); riskMomentum = { vixDeltas: {1,5,20}, hyDeltas: {1,5,20}, netLean }
-// | null — both carry ALL windows, and computeOutlook picks the one matching
-// the requested horizon (5d for 'weekly', 20d for 'monthly') below.
+// | null; realYieldMomentum = { deltas: {1,5,20}, lean } | null (from that
+// file's `tips` row) — all three carry ALL windows, and computeOutlook picks
+// the one matching the requested horizon (5d for 'weekly', 20d for
+// 'monthly') below.
 export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
   const horizon = HORIZONS[horizonKey] ?? HORIZONS.weekly;
   const w = HORIZON_WEIGHTS[horizonKey] ?? HORIZON_WEIGHTS.weekly;
@@ -278,6 +320,10 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
     ? { vixDelta: inputs.riskMomentum.vixDeltas?.[wd] ?? null, hyDelta: inputs.riskMomentum.hyDeltas?.[wd] ?? null, netLean: inputs.riskMomentum.netLean }
     : null);
   if (rm) drivers.push(rm);
+  const ry = realYieldMomentumDriver(inputs.realYieldMomentum
+    ? { delta: inputs.realYieldMomentum.deltas?.[wd] ?? null, lean: inputs.realYieldMomentum.lean }
+    : null);
+  if (ry) drivers.push(ry);
   const pt = priceTrendDriver(inputs.priceTrend); if (pt) drivers.push(pt);
 
   const directional = drivers.filter(d => d.name !== 'volRegime');

@@ -152,6 +152,39 @@ console.log('[computeOutlook — dxyMomentum absent for a USD-free cross (no usd
   ok('bias is null (nothing else supplied)', r.bias === null);
 }
 
+console.log('[computeOutlook — realYieldMomentum: USD-base-like lean, rising real yields -> bullish push]');
+{
+  const r = computeOutlook({ realYieldMomentum: { deltas: { 1: 1, 5: 12, 20: 30 }, lean: 1 } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'realYieldMomentum');
+  ok('driver present', !!d);
+  ok('status is CONTEXT, never VALIDATED', d.status === 'CONTEXT');
+  ok('score positive (base-like lean + rising real yields = bullish)', d.score > 0, d.score);
+  ok('uses the 5d delta at weekly horizon (12/30=0.4), not 1d (1) or 20d (30)', Math.abs(d.score - 0.4) < 1e-9, d.score);
+  ok('bias reflects it', r.bias === 'BULLISH', r.biasScore);
+}
+
+console.log('[computeOutlook — realYieldMomentum: quote-like lean (Gold/USD-quote pair), rising real yields -> bearish push]');
+{
+  const r = computeOutlook({ realYieldMomentum: { deltas: { 1: 1, 5: 12, 20: 30 }, lean: -1 } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'realYieldMomentum');
+  ok('score negative (quote-like lean + rising real yields = bearish, e.g. Gold down)', d.score < 0, d.score);
+}
+
+console.log('[computeOutlook — realYieldMomentum picks the 20d delta at monthly horizon]');
+{
+  const weekly = computeOutlook({ realYieldMomentum: { deltas: { 1: 1, 5: 10, 20: -25 }, lean: 1 } }, 'weekly');
+  const monthly = computeOutlook({ realYieldMomentum: { deltas: { 1: 1, 5: 10, 20: -25 }, lean: 1 } }, 'monthly');
+  ok('weekly uses 5d delta (+10) -> bullish', weekly.bias === 'BULLISH', weekly.biasScore);
+  ok('monthly uses 20d delta (-25) -> bearish (opposite sign)', monthly.bias === 'BEARISH', monthly.biasScore);
+}
+
+console.log('[computeOutlook — realYieldMomentum absent with a zero/neutral lean (no usdSide, no asset override)]');
+{
+  const r = computeOutlook({ realYieldMomentum: { deltas: { 5: 20 }, lean: 0 } }, 'weekly');
+  ok('no realYieldMomentum driver with a zero lean', !r.drivers.find(x => x.name === 'realYieldMomentum'));
+  ok('bias is null (nothing else supplied)', r.bias === null);
+}
+
 console.log('[computeOutlook — riskMomentum: haven-leaning pair + rising VIX/HY -> bullish (haven bid)]');
 {
   const netLean = pairRiskLean('USD', 'AUD'); // USD haven, AUD risk -> positive net lean
