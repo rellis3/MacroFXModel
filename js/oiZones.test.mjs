@@ -93,6 +93,36 @@ console.log('[Max-pain reversion — near expiry + extended]');
   ok('no reversion when price sits at the pin', !buildOIZones(inst, 4205, cfg).some(x => x.mode === 'maxpain'));
 }
 
+console.log('[Max-pain reversion — only pulls when the traded book is long gamma (PIN)]');
+{
+  // The pull toward the pin is the long-gamma mechanism itself (dealers hedge
+  // counter-cyclically) -- a BREAKOUT book is short gamma fighting the trade, not just a
+  // reason to size it down. 2026-09-01 real case: rut, BREAKOUT, GEX 4.29x the trailing
+  // median (the strongest short-gamma reading in that day's plan), price 99 points from
+  // the pin -- extended enough to fire under the old regime-agnostic gate.
+  const breakout = { ...base, exposures: { gex: -5000 }, dte: 1 };   // −GEX → BREAKOUT
+  const drops = [];
+  const blocked = buildOIZones(breakout, 4260, { ...cfg, collectDrops: drops }).find(x => x.mode === 'maxpain');
+  ok('default (maxpainRequirePin true) — BREAKOUT does NOT fire max-pain', !blocked);
+  const drop = drops.find(d => d.mode === 'maxpain');
+  ok('the skip is LEGIBLE — collectDrops names the regime and why',
+    drop && /BREAKOUT/.test(drop.reason) && /long gamma/.test(drop.reason), JSON.stringify(drop));
+
+  const pin = { ...base, exposures: { gex: 5000 }, dte: 1 };         // +GEX → PIN
+  const allowed = buildOIZones(pin, 4260, cfg).find(x => x.mode === 'maxpain');
+  ok('PIN still fires max-pain (the mechanism is intact)', allowed && allowed.side === 'sell');
+
+  // Escape hatch: maxpainRequirePin:false restores the old regime-agnostic behaviour —
+  // ships disabled by default now, but not removed.
+  const optOut = buildOIZones(breakout, 4260, { ...cfg, maxpainRequirePin: false }).find(x => x.mode === 'maxpain');
+  ok('maxpainRequirePin:false → BREAKOUT fires again (old behaviour available)', !!optOut);
+
+  // NEUTRAL (inside the conviction band) is not confirmed long gamma either — same gate.
+  const neutral = buildOIZones({ ...base, exposures: { gex: 100 }, dte: 1 }, 4260,
+    { ...cfg, gexMedianAbs: 100000, gexNeutralBand: 0.25 }).find(x => x.mode === 'maxpain');
+  ok('NEUTRAL regime is also blocked (not confirmed long gamma)', !neutral);
+}
+
 console.log('[Max-pain reversion — the DTE gate reads the shape the store ACTUALLY has]');
 {
   // REGRESSION: `_nearDTE` only ever read `inst.expiries`, a store shape the analyser

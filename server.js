@@ -13578,6 +13578,9 @@ const OI_BOT_CFG_DEFAULTS = {
   maxpainSlFrac: 1.0,                // Mode C stop capped at this × the distance to the pin, so a far
                                      // guard wall can't produce a sub-1R reversion (0 = uncapped)
   fadeInPin: true, followBreaks: true, maxPainReversion: true,
+  maxpainRequirePin: true,           // Mode C only enters when the TRADED book's own regime is PIN (long
+                                     // gamma) — the reversion pull is the long-gamma mechanism itself, not
+                                     // a size input; a BREAKOUT book is short gamma fighting the trade
   levelLadderTP: false,              // TP to the next structural level (walls/flips/max-pain/magnets), not always max pain
   reactAtLevels: false,              // Mode D: ENTER at structural nodes (flips/magnets/intermediate walls), regime-treated
   reactMinTier: 'moderate',          // which walls count as react nodes (flips/magnets always do)
