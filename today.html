@@ -1153,6 +1153,7 @@ let cvol = null;         // /api/cvol — EVZ/GVZ implied vol levels + 5y percen
 let macroScorecard = null; // /api/macro-scorecard — cross-engine fundamental composite per currency (CPI/GDP/labor/etc)
 let creditQuality = null; // /api/credit-quality — Baa10Y−Aaa10Y quality-spread z-score (credit-curve SHAPE, distinct from the HY-level credit gate)
 let yieldSpreadPlan = null; // /api/yield-spread/plan — today's spread-z per pair from the VALIDATED yield-spread engine (6 pairs only, see js/zscoreSpreadEngine.js ZSCORE_PAIRS); feeds the Market Outlook's one OOS-validated leg
+let cbHistory = null; // { fomc, ecb, boe, boj } — multi-meeting hawkish-score history per central bank. DESCRIPTIVE CONTEXT ONLY — never a Market Outlook driver (see js/outlookEngine.js describeCbTrend's header: this repo already banked a null on hawkish-score momentum predicting price, CB_SENTIMENT_PRICE_TEST.md)
 // MVE fair-value context (6 supported instruments only, /api/mve/:sym).
 // This project's OWN backtest found the underlying signal null-to-negative
 // for NQ and weak/null for the FX legs (js/mve/*, MARKET_VALUATION_ENGINE.md)
@@ -1392,7 +1393,7 @@ async function loadAll(manual) {
 const GATE_COUNTRIES = new Set(['US', 'EU', 'DE', 'GB', 'JP', 'CH', 'AU', 'CA', 'NZ', 'CN']);
 
 async function loadGate() {
-  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp] = await Promise.all([
+  const [ev, fr, ss, ct, oi, oiT, wk, ha, rf, cv, oh, mc, msc, cq, ysp, fomcH, ecbH, boeH, bojH] = await Promise.all([
     jget('/api/events').catch(() => null),
     jget('/api/fred').catch(() => null),
     jget('/api/session-stats').catch(() => null),
@@ -1408,6 +1409,14 @@ async function loadGate() {
     jget('/api/macro-scorecard').catch(() => null),
     jget('/api/credit-quality').catch(() => null),
     jget('/api/yield-spread/plan').catch(() => null),
+    // Multi-meeting hawkish-score history per central bank — small, cached
+    // server-side. DESCRIPTIVE CONTEXT ONLY (drawer + AI prompt), never fed
+    // into the Outlook Engine's bias score — see outlookEngine.js's
+    // describeCbTrend header for why (banked-null CB-sentiment test).
+    jget('/api/fomc/history?n=6').catch(() => null),
+    jget('/api/ecb/history?n=6').catch(() => null),
+    jget('/api/boe/history?n=6').catch(() => null),
+    jget('/api/boj/history?n=6').catch(() => null),
   ]);
   if (Array.isArray(ev)) events = ev;
   if (fr && Object.keys(fr).length) fred = fr;
@@ -1426,6 +1435,12 @@ async function loadGate() {
   if (msc?.ok) macroScorecard = msc;
   if (cq?.ok) creditQuality = cq;
   if (ysp?.ok) yieldSpreadPlan = ysp.plan;
+  if (fomcH?.ok || ecbH?.ok || boeH?.ok || bojH?.ok) {
+    cbHistory = {
+      fomc: fomcH?.ok ? fomcH.history : [], ecb: ecbH?.ok ? ecbH.history : [],
+      boe: boeH?.ok ? boeH.history : [], boj: bojH?.ok ? bojH.history : [],
+    };
+  }
   getFredHist().then(() => render()).catch(() => {});   // populate HY OAS history for the credit gate
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
@@ -3079,7 +3094,30 @@ function outlookInputsFor(r) {
     // has been MOVING. Zero new fetches — macroMoved was already loaded.
     dxyMomentum: (usdSide && mm.dxy) ? { deltas: mm.dxy.deltas, usdSide } : null,
     riskMomentum: (mm.vix || mm.hy) ? { vixDeltas: mm.vix?.deltas ?? {}, hyDeltas: mm.hy?.deltas ?? {}, netLean } : null,
+    // The card's own existing HMM daily regime — already loaded for every
+    // pair, zero new fetches. "Is price on a slope, and how cleanly" in the
+    // simplest form this dashboard already computes.
+    priceTrend: r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir, trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
   };
+}
+// Central-bank tone TREND (multi-meeting hawkish/dovish trajectory) for this
+// pair's own two currencies — DESCRIPTIVE CONTEXT ONLY, never fed into
+// outlookInputsFor/computeOutlook. Only USD/EUR/GBP/JPY have a tracked
+// central bank here (FOMC/ECB/BOE/BOJ); AUD/CAD/CHF/NZD legs are silently
+// skipped, same "missing is left out" discipline as every driver above.
+const CB_HISTORY_KEY = { USD: 'fomc', EUR: 'ecb', GBP: 'boe', JPY: 'boj' };
+function cbToneFor(r) {
+  if (!cbHistory || !window.outlookBrick) return [];
+  const cc = PAIR_CCY[r.name];
+  if (!cc) return [];
+  const out = [];
+  for (const ccy of cc) {
+    const key = CB_HISTORY_KEY[ccy];
+    const hist = key && cbHistory[key];
+    if (!hist) continue;
+    out.push({ ccy, bank: key.toUpperCase(), ...window.outlookBrick.describeCbTrend(hist) });
+  }
+  return out;
 }
 function pairOutlook(r, horizonKey) {
   if (!window.outlookBrick) return null;
@@ -3113,7 +3151,17 @@ function renderDrawerOutlook(r) {
       ${drivers || '<div class="muted">No drivers available.</div>'}
     </div>`;
   };
+  // Central-bank tone — deliberately rendered OUTSIDE the scored-driver
+  // columns above, in its own visually distinct block, so it can never be
+  // mistaken for a bias input. See cbToneFor()'s header.
+  const cbRows = cbToneFor(r);
+  const cbHtml = cbRows.length ? `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);margin-bottom:4px">🏦 Central-bank tone <span class="chip neu" style="font-size:9px">context only — not scored</span></div>
+      ${cbRows.map(c => `<div class="muted" style="font-size:11px;margin:3px 0"><b>${c.bank}</b> (${c.ccy}): ${c.detail}</div>`).join('')}
+    </div>` : '';
   el.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap">${col(both.weekly)}${col(both.monthly)}</div>
+    ${cbHtml}
     <div class="muted" style="margin-top:10px;font-size:11px">${both.weekly?.disclaimer ?? both.monthly?.disclaimer ?? ''}</div>`;
 }
 // Card-face chip — only shown once the 5-Day/20-Day horizon toggle is active
@@ -6162,7 +6210,8 @@ async function loadDrawerAnalysis(r) {
   let a = aiCache[symKey];
   if (a === undefined) {
     const kv = await jget(`/api/kv/get?key=ai_${symKey}`).catch(() => null);
-    a = (kv && !kv.miss) ? (kv.data?.analysis ? { ...kv.data.analysis, generatedAt: kv.data.generatedAt } : null) : null;
+    a = (kv && !kv.miss) ? (kv.data?.analysis ? { ...kv.data.analysis, generatedAt: kv.data.generatedAt,
+      weeklyOutlookGeneratedAt: kv.data.weeklyOutlookGeneratedAt, monthlyOutlookGeneratedAt: kv.data.monthlyOutlookGeneratedAt } : null) : null;
     aiCache[symKey] = a;
   }
   if (!a) {
@@ -6210,9 +6259,22 @@ async function loadDrawerAnalysis(r) {
   } else if (tod && tod.rationale) {
     tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
   }
+  // Weekly/monthly outlook — the AI's narration of js/outlookEngine.js's own
+  // computed bias, NOT a re-derived call (buildAnalysisPrompt rule 19). Each
+  // shows its OWN "as of" timestamp, separate from the daily read's — these
+  // refresh on a slower cadence (~1d / ~5d) since the underlying drivers move
+  // slower, per analysePair()'s splice logic. A visibly older stamp here than
+  // on the daily read above is expected, not stale data being hidden.
+  const hzCard = (o, genAt, label) => {
+    if (!o?.bias) return '';
+    const cls = /BULL/i.test(o.bias) ? 'bull' : /BEAR/i.test(o.bias) ? 'bear' : 'neu';
+    const stamp = genAt ? `<span class="muted" style="font-size:9.5px">as of ${new Date(genAt).toLocaleDateString()}</span>` : '';
+    return `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip ${cls}">${esc(o.bias)}</span><span class="muted" style="font-size:10.5px">${label}${o.confidence ? ` · ${esc(o.confidence)} confidence` : ''}</span>${stamp}</div>${o.rationale ? `<div class="ai-trade-rationale">${esc(o.rationale)}</div>` : ''}</div>`;
+  };
+  const outlookCards = hzCard(a.weeklyOutlook, a.weeklyOutlookGeneratedAt, '5-Day outlook') + hzCard(a.monthlyOutlook, a.monthlyOutlookGeneratedAt, '20-Day outlook');
   const macroBlock = macroReads ? `<div class="ai-macro">${macroReads}</div>` : '';
   const detail = `${reads}${framework}${dodont}${risks}${levels}`;
-  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${macroBlock}${tradeCard}` +
+  box.innerHTML = `<div class="ai-top">${bias}${conv}</div>${head}${brief}${macroBlock}${tradeCard}${outlookCards}` +
     (detail ? `<div class="ai-body" style="display:none;margin-top:10px">${detail}</div>` : '') + age;
   const body = box.querySelector('.ai-body');
   if (body) {
@@ -6398,9 +6460,41 @@ function assembleSnapshot(r) {
     const hasHigh = next4h.some(e => (e.impact ?? '').toLowerCase() === 'high');
     s.eventRisk = { level: hasHigh ? 'high' : next4h.length ? 'medium' : 'low', sizeMult: hasHigh ? 0.5 : 1, inNext4h: next4h.slice(0, 4) };
   }
+  // Market Outlook (js/outlookEngine.js) — the 5-day/20-day context composite
+  // this page already shows on the card/drawer, fed to the AI as GROUND TRUTH
+  // (the AI narrates these numbers, it does not invent its own). Trimmed to
+  // what the prompt needs: bias/confidence/agreement + each driver's label,
+  // status and one-line detail. Central-bank tone rides along as its own,
+  // clearly separate, non-scored field — see cbToneFor()'s header.
+  const both = pairOutlookBoth(r);
+  const trimOutlook = o => o && o.bias ? {
+    bias: o.bias, biasScore: o.biasScore, confidence: o.confidence,
+    agree: o.agree, total: o.total,
+    drivers: o.drivers.map(d => ({ label: d.label, status: d.status, detail: d.detail })),
+    eventRisk: o.eventRisk,
+  } : null;
+  if (both?.weekly) s.outlookWeekly = trimOutlook(both.weekly);
+  if (both?.monthly) s.outlookMonthly = trimOutlook(both.monthly);
+  const cbTone = cbToneFor(r);
+  if (cbTone.length) s.cbTone = cbTone.map(c => ({ bank: c.bank, ccy: c.ccy, trend: c.trend, detail: c.detail }));
   return s;
 }
 // On-demand per-pair analysis — generate + persist so it's cached next time.
+// Weekly/monthly outlook narrative refresh cadence — the underlying drivers
+// (yield-spread z, macro momentum, etc.) move far slower than the daily read,
+// so regenerating AI prose about them on every "Analyse" click is wasted cost
+// for no new information most of the time. v1 tradeoff (documented, not
+// hidden): the model IS still asked for fresh weekly/monthly prose every
+// call (one prompt, not two — see the design discussion this was built from),
+// but analysePair() below DISCARDS it and keeps the old cached narrative +
+// its own timestamp when that cache is still within TTL. A genuinely
+// decoupled second AI call (regenerate weekly/monthly independently of the
+// daily click) is the natural next step if this splice approach feels wrong
+// once live — not built here to avoid standing up an untestable-in-sandbox
+// second pipeline blind.
+const WEEKLY_OUTLOOK_TTL_MS = 24 * 3600e3;        // ~1 day
+const MONTHLY_OUTLOOK_TTL_MS = 5 * 24 * 3600e3;   // ~5 days
+
 async function analysePair() {
   const r = _drR; if (!r) return;
   const btn = $('drAnalyseBtn'), box = $('drAnalysis'), sec = $('drAnalysisSec');
@@ -6426,9 +6520,23 @@ async function analysePair() {
     if (resp.error || !resp.analysis) throw new Error(resp.error || 'no analysis returned');
     const symKey = lvlKey(r.name, r.d.sym).replace('/', '');
     const genAt = resp.generatedAt || new Date().toISOString();
-    aiCache[symKey] = { ...resp.analysis, generatedAt: genAt };
+    const analysis = { ...resp.analysis };
+    // loadDrawerAnalysis() already ran when the drawer opened (before the
+    // "Analyse" button could even be clicked), so aiCache[symKey] already
+    // holds whatever was previously cached — reliable "previous state" here
+    // without a second KV read.
+    const prevA = aiCache[symKey];
+    const now = Date.now();
+    let weeklyGenAt = genAt, monthlyGenAt = genAt;
+    if (prevA?.weeklyOutlook?.bias && prevA.weeklyOutlookGeneratedAt && (now - new Date(prevA.weeklyOutlookGeneratedAt).getTime()) < WEEKLY_OUTLOOK_TTL_MS) {
+      analysis.weeklyOutlook = prevA.weeklyOutlook; weeklyGenAt = prevA.weeklyOutlookGeneratedAt;
+    }
+    if (prevA?.monthlyOutlook?.bias && prevA.monthlyOutlookGeneratedAt && (now - new Date(prevA.monthlyOutlookGeneratedAt).getTime()) < MONTHLY_OUTLOOK_TTL_MS) {
+      analysis.monthlyOutlook = prevA.monthlyOutlook; monthlyGenAt = prevA.monthlyOutlookGeneratedAt;
+    }
+    aiCache[symKey] = { ...analysis, generatedAt: genAt, weeklyOutlookGeneratedAt: weeklyGenAt, monthlyOutlookGeneratedAt: monthlyGenAt };
     fetch('/api/kv/set', { method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ key: 'ai_' + symKey, data: { analysis: resp.analysis, generatedAt: genAt, pair: r.name }, timestamp: Date.now() }) }).catch(() => {});
+      body: JSON.stringify({ key: 'ai_' + symKey, data: { analysis, generatedAt: genAt, weeklyOutlookGeneratedAt: weeklyGenAt, monthlyOutlookGeneratedAt: monthlyGenAt, pair: r.name }, timestamp: Date.now() }) }).catch(() => {});
     await loadDrawerAnalysis(r);
     loadDrawerThesis(r).catch(() => {});
   } catch (e) {

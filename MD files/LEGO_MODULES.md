@@ -5333,7 +5333,7 @@ P0 cross-language unification
 (signal score / entry scanner / AI summary — the opt-in `signalAdapter` shows the blend),
 and OOS proof on real feeds before any real capital. The live endpoint is surfacing-only.
 
-### 1ar. Market Outlook engine (2026-09-02, v2 same day) — 5-day/20-day per-pair context composite + horizon toggle + macro-momentum legs
+### 1ar. Market Outlook engine (2026-09-02, v2+v3 same day) — 5-day/20-day per-pair context composite + horizon toggle + macro-momentum legs + AI-analysis integration
 
 Owner request: fold everything the dashboard already reads per pair — the
 composite technical/COT/macro/carry read, COT positioning, the vol-regime
@@ -5384,6 +5384,62 @@ raw per-leg BEER-lite carry input — also deferred. GPR, credit (`creditCore`/
 `creditHmm`), and the Fed/ECB/BoJ balance-sheet liquidity GATE (distinct,
 smaller thing from the GLI above) were checked and are already live/rendered
 in `today.html` — not a gap.
+
+**v3 same-day addendum** — three more owner asks, addressed in order:
+
+1. **"Does candle shape / slope belong in this?"** Yes, cheaply — the HMM
+   daily regime (`r.d.regime.trend_dir`/`trend_prob`/`reliable`) is already
+   loaded for every pair, zero new fetches, and is exactly "is price sloping,
+   how cleanly." Added as `priceTrendDriver` (CONTEXT, absent for a RANGE
+   regime). **Named risk, not hidden:** this same regime read already feeds
+   `pairSignal()`'s "technical" leg inside the `composite` driver, so this is
+   NOT fully independent evidence — the driver's own `detail` text says so
+   explicitly, rather than silently double-counting one read as two.
+   Weighted DOWN at 20d (same reasoning as `composite`: a same-day regime
+   read says more about the next few sessions than a month out).
+2. **Central-bank tone (Fed/ECB/BoE/BoJ), delivered end-to-end.** `loadGate()`
+   now fetches `/api/{fomc,ecb,boe,boj}/history?n=6` (small, cached). New
+   `describeCbTrend(history)` in `js/outlookEngine.js` summarizes the
+   multi-meeting hawkish/dovish trajectory in plain words — **structurally
+   NOT a driver**: no `score` field, never read by `computeOutlook`, unit-
+   tested to prove attaching a CB-trend object under any input key changes
+   nothing about the computed bias (banked-null discipline enforced in code,
+   not just by convention — see the null test in §1's own file header for
+   why). Rendered in the drawer's Outlook section in its own visually
+   separate block ("context only — not scored") via `cbToneFor(r)`, and fed
+   to the AI prompt as descriptive color the model is explicitly told never
+   to use as a reason for any call.
+3. **5-day/20-day output in the AI analysis** (`server.js buildAnalysisPrompt`,
+   `/api/analysis`). `assembleSnapshot` now feeds the AI the ALREADY-COMPUTED
+   `outlookWeekly`/`outlookMonthly` (bias/confidence/drivers) as ground truth
+   — new prompt rule 19 has the model narrate those numbers, not re-derive
+   its own, and a new rule states plainly that the daily/weekly/monthly reads
+   may diverge and the model must explain divergence rather than force false
+   consensus. New schema fields `weeklyOutlook`/`monthlyOutlook`
+   (`{bias, confidence, rationale}` — no entry/stop/target, a position read
+   not a trade setup). **Refresh-cadence design:** the underlying drivers
+   move far slower than daily technicals, so `today.html`'s `analysePair()`
+   now keeps the OLD cached weekly/monthly narrative (+ its own timestamp)
+   when it's still within a TTL (~1 day weekly, ~5 days monthly), discarding
+   the model's freshly-generated one for that call — documented v1 tradeoff:
+   the model still writes fresh weekly/monthly prose every call and it gets
+   thrown away when the cache is fresh, rather than standing up a second,
+   independently-triggered AI call (the cleaner design, deferred — building a
+   second live Anthropic pipeline blind, with no `ANT_KEY` in this sandbox to
+   verify it against, was judged the wrong place to add risk). Verified via
+   Playwright with a mocked `/api/analysis` response: three consecutive calls
+   showed the weekly text held constant across an immediate re-click, then
+   refreshed independently of monthly once its own TTL was artificially aged
+   past expiry — the splice logic behaves exactly as designed.
+
+New/changed since v2: `js/outlookEngine.js` (`priceTrendDriver`,
+`describeCbTrend`, +12 tests, 42 total), `today.html` (`cbHistory` fetch,
+`cbToneFor`, `analysePair`'s splice cache, `loadDrawerAnalysis`'s new
+weekly/monthly cards), `server.js` (`buildAnalysisPrompt`'s new sections/rule
+19, the JSON schema's two new fields — **not live-tested end-to-end**: this
+sandbox has no `ANT_KEY`, so the actual model output needs a live Railway
+check before trusting the prose quality, same as every prior AI-prompt change
+in this repo).
 
 Same evidentiary status as §1am/§1aj: a *selector* composing already-built
 reads, shipped with an in-UI disclaimer rather than a performance claim. If
