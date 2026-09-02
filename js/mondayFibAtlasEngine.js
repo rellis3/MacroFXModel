@@ -44,7 +44,9 @@
 import { pipSize } from './instrumentRegistry.js';
 import { extractBars } from './barUtils.js';
 import { buildMondayRanges } from './sessionRanges.js';
-import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionOf, sessionHandoffPhase } from './asiaFibAtlasEngine.js';
+import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionOf, sessionHandoffPhase, confluenceThresholdPips } from './asiaFibAtlasEngine.js';
+import { calcFibs } from './fibProjection.js';
+import { detectConfluencesCore } from './confluence-core.js';
 
 /**
  * mondayFibAtlasWalk(packed, opts) -> { touches, coverage }
@@ -69,6 +71,12 @@ import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionOf, sessionHandoffPhase } from 
 export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = [0.3], minLookback = 5, extendResolutionDays = 0 } = {}) {
   const sym = String(instrument).toUpperCase();
   let pip = 1; try { pip = pipSize(instrument) || 1; } catch { /* unknown symbol -> raw price units */ }
+  // Same fixed-pip-threshold confluence tolerance Asia already uses (shared
+  // constant table, `confluenceThresholdPips` — see that function's own
+  // export doc), never re-derived here.
+  const threshPips = confluenceThresholdPips(sym);
+  const normalDistPrice = threshPips * pip;
+  const tightDistPrice = normalDistPrice * 0.10;
 
   const mondayRanges = buildMondayRanges(packed, 'london');
   if (mondayRanges.length <= minLookback) return { touches: [], coverage: null };
@@ -80,6 +88,28 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
 
   for (let i = minLookback; i < mondayRanges.length; i++) {
     const mon = mondayRanges[i];
+
+    // ── Real per-rung Monday-vs-previous-Monday confluence (2026-09-01,
+    // owner correction — the original Pine indicator runs a fixed-pip-
+    // threshold, per-level confluence check between THIS Monday's fib grid
+    // and the IMMEDIATELY PREVIOUS Monday's, same mechanism as its Asia-vs-
+    // previous-Asia block, just against the weekly ladder. This engine
+    // never had that — only `asiaFibAtlasEngine.js`'s own
+    // `mondayWeekTightestPips` existed, a single week-wide MINIMUM distance
+    // across the whole grid, not threshold-gated and not per rung, which
+    // cannot answer "is THIS specific rung confluent". Built now, mirroring
+    // Asia's own `confAsia`/`asiaMatch`/`asiaTight` pattern exactly —
+    // `detectConfluencesCore` is the SAME Pine-matching matcher, reused, not
+    // re-derived. ──
+    const prevMon = mondayRanges[i - 1] ?? null;
+    const thisMondayFibsForConf = calcFibs(mon.low, mon.range).map(f => ({ price: f.price, fib: f.level }));
+    const prevMondayFibsForConf = prevMon ? calcFibs(prevMon.low, prevMon.range).map(f => ({ price: f.price, fib: f.level })) : null;
+    const confMonday = prevMondayFibsForConf ? detectConfluencesCore(thisMondayFibsForConf, prevMondayFibsForConf, {
+      pipSize: pip, normalDistance: normalDistPrice, tightDistance: tightDistPrice,
+      mergeDistance: normalDistPrice, priceMode: 'lowest', clusterMerge: false, sessionRange: mon.range,
+    }) : [];
+    const mondayMatch = new Set(confMonday.map(c => c.todayFib));
+    const mondayTight = new Set(confMonday.filter(c => c.isTight).map(c => c.todayFib));
 
     // ── Walk window: Tuesday 00:00 (Monday's own 24h box has just closed)
     // through the END of the FOLLOWING Monday — a full 7-day reference
@@ -166,6 +196,9 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
             const session = sessionOf(hourUtc);
             const sessionHandoff = sessionHandoffPhase(hourUtc);
             const barDate = new Date(bar.time * 1000).toISOString().slice(0, 10);
+            // Real per-rung confluence grade, same categorical shape as
+            // Asia's `confluenceGrade` — '0·none' | '1·match' | '2·tight'.
+            const mondayConfluenceGrade = !mondayMatch.has(level) ? '0·none' : mondayTight.has(level) ? '2·tight' : '1·match';
 
             const key = `${side}|${level}|${rearmFrac}`;
             const hist = lastVisit[key] ?? [];
@@ -185,7 +218,7 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               fadePips: +fadePips.toFixed(1), runPips: +runPips.toFixed(1),
               innerDistPips: +innerDistPips.toFixed(1), outerDistPips: outerDistPips != null ? +outerDistPips.toFixed(1) : null,
               session, sessionHandoff,
-              prevOutcomeSameDay,
+              prevOutcomeSameDay, mondayConfluenceGrade,
               mondayHigh: mon.high, mondayLow: mon.low, mondayRange: mon.range,
             });
             lastVisit[key] = [...hist, { outcome, weekIdx: i }].slice(-3);

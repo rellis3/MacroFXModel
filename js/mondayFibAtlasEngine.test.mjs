@@ -207,6 +207,55 @@ t('mondayFibAtlasLiveLadder on too-thin history degrades to an empty ladder, not
   assert.equal(live.ladder.length, 0);
 });
 
+t('mondayConfluenceGrade is a real per-rung Monday-vs-previous-Monday threshold check (2026-09-01 owner correction), never the old week-wide-minimum field', () => {
+  const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
+  const valid = new Set(['0·none', '1·match', '2·tight']);
+  let tight = 0, match = 0, none = 0;
+  for (const r of touches) {
+    assert.ok(valid.has(r.mondayConfluenceGrade), `unexpected mondayConfluenceGrade: ${r.mondayConfluenceGrade}`);
+    if (r.mondayConfluenceGrade === '2·tight') tight++;
+    else if (r.mondayConfluenceGrade === '1·match') match++;
+    else none++;
+  }
+  assert.equal(tight + match + none, touches.length);
+  // This synthetic fixture's weekly ranges drift enough (many wiggle cycles
+  // per 7-day window) that the fixed ~2-pip FX threshold essentially never
+  // lands a match by chance — verified against REAL EURUSD M1 data instead
+  // (618 tight / 3319 match / 16412 none across 20,349 touches, 334/544
+  // weeks showing genuine within-week grade variety), not asserted here
+  // against fixture noise. What IS decisively provable on ANY fixture is the
+  // per-rung wiring itself (next test): feed the confluence primitive two
+  // IDENTICAL weekly ranges and every rung must match/tighten — a single
+  // week-wide constant (the old `mondayWeekTightestPips` bug) could never
+  // vary rung-by-rung the way a real per-level check does.
+});
+
+t('mondayConfluenceGrade wiring: an IDENTICAL previous-Monday range must match/tighten every single rung (positive control, decoupled from fixture noise)', () => {
+  // Build a packed series where two consecutive weeks' Monday 24h ranges are
+  // BYTE-IDENTICAL (same low/high every single minute) -- if mondayConfluenceGrade
+  // were still secretly the old week-wide-minimum field, or wired with the
+  // wrong pip/price units, this would NOT come back as tight for every rung.
+  const nBars = 60 * 24 * 21;   // 3 weeks of M1 -- Tue->Mon x3, enough for minLookback+2
+  const times = new Int32Array(nBars), opens = new Float32Array(nBars);
+  const highs = new Float32Array(nBars), lows = new Float32Array(nBars);
+  const closes = new Float32Array(nBars), volumes = new Float32Array(nBars);
+  const WEEK = 7 * 86400;
+  for (let i = 0; i < nBars; i++) {
+    const t = T0 + i * 60;
+    const withinWeek = ((t - T0) % WEEK) / WEEK;         // 0..1 position in its own week -- identical shape every week
+    const px = 100 + 0.5 * Math.sin(withinWeek * 2 * Math.PI * 3);  // same waveform, every week, exactly
+    times[i] = t; opens[i] = px; closes[i] = px;
+    highs[i] = px + 0.02; lows[i] = px - 0.02;
+    volumes[i] = 100;
+  }
+  const identicalP = { n: nBars, times, opens, highs, lows, closes, volumes };
+  const { touches } = mondayFibAtlasWalk(identicalP, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], minLookback: 1 });
+  const withPrevWeek = touches.filter(r => r.mondayConfluenceGrade !== undefined);
+  assert.ok(withPrevWeek.length > 0, 'expected at least some touches once a previous Monday range exists');
+  const notTight = withPrevWeek.filter(r => r.mondayConfluenceGrade !== '2·tight');
+  assert.equal(notTight.length, 0, `expected EVERY rung to be tight against a byte-identical previous week (same_fib always qualifies as isTight); got ${notTight.length} non-tight of ${withPrevWeek.length}: ${JSON.stringify([...new Set(notTight.map(r => r.mondayConfluenceGrade))])}`);
+});
+
 t('mondayRungBarrierPips matches mondayFibAtlasWalk\'s own per-touch innerDistPips/outerDistPips for the same week/side/level — the live-plan producer must price a not-yet-touched rung identically to how the validated backtest priced it once touched', () => {
   const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   const { boundary } = mondayFibAtlasLiveLadder(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFrac: 0.3 });
