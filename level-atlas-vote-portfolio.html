@@ -39,6 +39,13 @@
   .callout .big { font-size:28px; font-weight:700; }
   .barwrap { display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:4px; }
   .bar { height:100%; }
+  #chart { height:420px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; }
+  .legend { display:flex; gap:14px; font-size:11px; color:var(--muted); padding:6px 2px 0; flex-wrap:wrap; }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  #tradeTableWrap { max-height:480px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  tbody tr.selected { background:#1f2b45; }
+  tbody tr[data-i] { cursor:pointer; }
+  tbody tr[data-i]:hover { background:#161d2e; }
 </style>
 </head>
 <body>
@@ -241,7 +248,18 @@
 </div>
 
 <div class="card">
-  <h2>Export constituent trades (<span id="tradeCount">0</span>)</h2>
+  <h2>Trade detail — real M1 candles</h2>
+  <div id="chart"></div>
+  <div class="legend">
+    <span><span class="dot" style="background:#94a3b8"></span>entry</span>
+    <span><span class="dot" style="background:#10b981"></span>target</span>
+    <span><span class="dot" style="background:#f87171"></span>stop</span>
+  </div>
+  <div class="sub" id="chartMeta" style="padding-top:6px">Click a trade in the table below to load its chart.</div>
+</div>
+
+<div class="card">
+  <h2>Trade log — every individual trade taken (<span id="tradeCount">0</span>)</h2>
   <div class="export-row">
     <span class="muted">Export:</span>
     <button id="expReturns">% Returns CSV</button>
@@ -258,6 +276,22 @@
     In <strong>NAV split</strong> mode, Return %/Currency P&amp;L are scaled by each trade's pair weight so summing
     either column reproduces the portfolio's combined result. R (both modes) = the trade's own outcome ÷ its own real
     stop distance — a per-trade ratio, always left unscaled by weight since scaling both sides of a ratio cancels out.
+  </div>
+  <div class="export-row" style="margin-top:10px">
+    <span class="muted">Filter:</span>
+    <select id="tlPairSel"><option value="all">All pairs</option></select>
+    <select id="tlDecSel"><option value="all">All decisions</option><option value="fade">Fade</option><option value="follow">Follow</option></select>
+    <select id="tlOutSel"><option value="all">All outcomes</option><option value="win">Wins</option><option value="loss">Losses</option></select>
+    <span class="muted" style="margin-left:auto">Click a row to load its chart above</span>
+  </div>
+  <div id="tradeTableWrap">
+    <table id="tradeTable">
+      <thead><tr>
+        <th data-k="date">Date</th><th data-k="pair">Pair</th><th data-k="side">Side</th><th data-k="rung">Rung</th><th data-k="session">Session</th>
+        <th data-k="decision">Dec</th><th data-k="margin">Marg</th><th data-k="win">Res</th><th data-k="pnlPct" class="num">PnL%</th>
+      </tr></thead>
+      <tbody id="tradeBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -279,6 +313,7 @@
 
 <script type="module">
 import { summarizeTrades, sortinoRatio, calmar as calmarRatio } from './js/metricsCore.js';
+import { createLevelChart } from './js/levelChart.js';
 // The "26 multitasking portfolio" universe (same list scripts/run_asia_fib_atlas.mjs
 // already established), MINUS 5 pairs removed for real, cost-driven (not a
 // bug — verified against each pair's own spread) near-zero Sharpe-after-cost:
@@ -370,6 +405,124 @@ let eqChart = null;
 let lastTrades = [];
 let lastResponse = null;
 
+// ── Trade log + chart-on-click — same facility as level-atlas-vote-backtest.html's
+// "Trade detail — real M1 candles" (js/levelChart.js's createLevelChart, plus
+// /api/vol-backtest/candles/:pair). The one real difference: trades here span
+// MULTIPLE instruments, so loadTradeChart keys the candle fetch off the trade's
+// OWN `t.pair` (already tagged server-side, js/levelAtlasRoutes.js's
+// `{ ...t, pair: sym }`) instead of a single page-level pair selector.
+const tradeBody = document.getElementById('tradeBody');
+const chartMeta = document.getElementById('chartMeta');
+const tlPairSel = document.getElementById('tlPairSel');
+const tlDecSel = document.getElementById('tlDecSel');
+const tlOutSel = document.getElementById('tlOutSel');
+const view = createLevelChart(document.getElementById('chart'), { height: 420 });
+let sortKey = 'date', sortDir = -1;
+let selectedTrade = null;
+let tlPairOptionsBuilt = new Set();
+
+function isoToEpoch(iso) { return Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000); }
+
+function filteredTrades() {
+  const pair = tlPairSel.value, dec = tlDecSel.value, out = tlOutSel.value;
+  return lastTrades.filter(t => (pair === 'all' || t.pair === pair)
+    && (dec === 'all' || t.decision === dec) && (out === 'all' || (out === 'win') === t.win));
+}
+
+function renderTradeTable(rows) {
+  const sorted = rows.slice().sort((a, b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : (av - bv);
+    return cmp * sortDir;
+  });
+  document.getElementById('tradeCount').textContent = sorted.length;
+  tradeBody.innerHTML = sorted.map((t, i) => `
+    <tr data-i="${i}" class="${t === selectedTrade ? 'selected' : ''}">
+      <td>${t.date}</td><td>${(t.pair || t.instrument || '').toUpperCase()}</td><td>${t.side}</td><td>${t.rung}</td><td>${t.session ?? '—'}</td>
+      <td>${t.decision}</td><td>${t.margin ?? '—'}</td>
+      <td class="${t.win ? 'green' : 'red'}">${t.win ? 'WIN' : 'LOSS'}</td>
+      <td class="num ${signClass(t.pnlPct)}">${fmtPct(t.pnlPct, 3)}</td>
+    </tr>`).join('');
+  [...tradeBody.querySelectorAll('tr')].forEach(tr => tr.addEventListener('click', () => loadTradeChart(sorted[+tr.dataset.i])));
+}
+
+function priceLinesFor(t) {
+  const isUp = t.side === 'up';
+  const contSign = isUp ? 1 : -1;
+  const targetSign = t.decision === 'fade' ? -contSign : contSign;
+  const stopSign = t.decision === 'fade' ? contSign : -contSign;
+  return [
+    { price: t.entry, kind: 'voteEntry', label: `entry ${t.entry.toFixed(5)}` },
+    { price: t.entry + targetSign * t.targetPips * t.pip, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
+    { price: t.entry + stopSign * t.stopPips * t.pip, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
+  ];
+}
+
+// Same retry-once-on-cold-cache pattern as level-atlas-vote-backtest.html's
+// own loadTradeChart — the candle cache behind this route is shared site-wide,
+// so a pair not recently viewed anywhere else is often a cold miss.
+async function fetchJsonWithRetry(url, { retries = 1, delayMs = 1500, onRetry } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url);
+      return await res.json();
+    } catch (e) {
+      if (attempt >= retries) throw e;
+      onRetry?.();
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+}
+
+async function loadTradeChart(t) {
+  selectedTrade = t;
+  renderTradeTable(filteredTrades());
+  const pair = t.pair || (t.instrument || '').toLowerCase();
+  const bufferSecs = 4 * 3600;
+  const fromDate = new Date((t.time - bufferSecs) * 1000).toISOString().slice(0, 10);
+  const toDate = new Date((t.resolveTime + bufferSecs) * 1000).toISOString().slice(0, 10);
+  chartMeta.textContent = `Loading ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate}…`;
+  try {
+    const j = await fetchJsonWithRetry(
+      `/api/vol-backtest/candles/${pair}?from=${fromDate}&to=${toDate}`,
+      { onRetry: () => { chartMeta.textContent = `retrying ${pair.toUpperCase()} M1 candles ${fromDate}…${toDate} (first load of this pair can be slow)…`; } }
+    );
+    if (!j.ok || !j.candles?.length) { chartMeta.textContent = `no candle data for ${fromDate}…${toDate}`; return; }
+    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    view.setCandles(bars);
+    view.setLevels(priceLinesFor(t), { showTitle: true });
+    view.series.setMarkers([
+      { time: t.time, position: 'inBar', color: '#94a3b8', shape: 'circle', text: `entry ${t.decision}/${t.side}` },
+      { time: t.resolveTime, position: t.win ? 'belowBar' : 'aboveBar', color: t.win ? '#10b981' : '#f87171', shape: t.win ? 'arrowUp' : 'arrowDown', text: `${t.win ? 'WIN' : 'LOSS'} ${t.pnlPct.toFixed(3)}%` },
+    ]);
+    view.fit();
+    chartMeta.textContent = `${pair.toUpperCase()} · ${t.date} · ${t.side} ${t.rung} · ${t.decision} (margin ${t.margin ?? '—'}) · ${t.win ? 'WIN' : 'LOSS'} ${fmtPct(t.pnlPct, 3)} · target ${t.targetPips}p / stop ${t.stopPips}p`;
+  } catch (e) {
+    chartMeta.textContent = `error loading candles: ${e.message}`;
+  }
+}
+
+function syncTlPairOptions() {
+  const pairs = [...new Set(lastTrades.map(t => t.pair).filter(Boolean))].sort();
+  const key = pairs.join(',');
+  if (tlPairOptionsBuilt.has(key)) return;
+  tlPairOptionsBuilt = new Set([key]);
+  const cur = tlPairSel.value;
+  tlPairSel.innerHTML = '<option value="all">All pairs</option>'
+    + pairs.map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
+  tlPairSel.value = pairs.includes(cur) ? cur : 'all';
+}
+
+document.querySelectorAll('#tradeTable thead th').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    sortDir = (sortKey === k) ? -sortDir : -1;
+    sortKey = k;
+    renderTradeTable(filteredTrades());
+  });
+});
+[tlPairSel, tlDecSel, tlOutSel].forEach(el => el.addEventListener('change', () => renderTradeTable(filteredTrades())));
+
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
 function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
@@ -440,6 +593,9 @@ async function loadData() {
 function render(j) {
   lastTrades = j.trades ?? [];
   document.getElementById('tradeCount').textContent = lastTrades.length;
+  syncTlPairOptions();
+  selectedTrade = null;
+  renderTradeTable(filteredTrades());
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
