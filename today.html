@@ -1991,6 +1991,24 @@ function outlookCurrencyStrength(rs, horizonKey) {
   return out;
 }
 
+// The single switch point that makes the Daily/5-Day/20-Day toggle actually
+// change the GLOBAL reads (Market Read's narrative + currency bars, the
+// Market Tone gauge, Key Takeaways, the currency-detail drawer) — not just
+// the per-pair chip and the sidebar's own Market Outlook ranking card added
+// earlier. Flagged twice by the owner as "no difference" before this existed:
+// outlookCurrencyStrength() was built and wired into ONE new sidebar card,
+// but every pre-existing "global" surface kept calling currencyStrength()
+// directly and had no way to pick up the toggle. This wrapper is that missing
+// wire — swap the CALL, not the callers' downstream logic: rescales
+// outlookCurrencyStrength's -100..100 biasScore onto the same -1..1 scale
+// currencyStrength() uses (divide by 100), so every existing bar-width/
+// sentence-threshold calculation downstream (built for the -1..1 scale) keeps
+// working completely unchanged.
+function currencyStrengthForHorizon(rs, horizonKey) {
+  if (!horizonKey || horizonKey === 'daily') return currencyStrength(rs);
+  return outlookCurrencyStrength(rs, horizonKey).map(c => ({ ...c, score: c.score / 100 }));
+}
+
 // Growth-surprise strength per currency, from js/ismEngine.js's `activity`
 // score (already loaded via /api/ism at boot — see loadAll()). Shown paired
 // with the FX-strength bars above so you can see whether price already
@@ -2010,7 +2028,7 @@ function growthSurpriseRows() {
 }
 
 // Equities breadth + risk-on/off verdict (spans the indices).
-function equitiesRisk(rs) {
+function equitiesRisk(rs, horizonKey = 'daily') {
   const idx = rs.filter(r => r.d.ac === 'index');
   const chips = idx.map(r => {
     const g = r.d.regime, s = r.s;
@@ -2048,7 +2066,7 @@ function equitiesRisk(rs) {
     gprRead = { ...gprRead, daysStale, stale: daysStale > 10 };
   }
   // Haven demand: JPY/CHF strong + gold bid; risk appetite: indices bid, vol low.
-  const cs = currencyStrength(rs);
+  const cs = currencyStrengthForHorizon(rs, horizonKey);
   const strOf = c => cs.find(x => x.ccy === c)?.score ?? 0;
   const haven = (strOf('JPY') + strOf('CHF')) / 2 + (goldSig ?? 0) * 0.5;
   const equity = idx.length ? (up - dn) / idx.length : 0;
@@ -2135,8 +2153,8 @@ function renderMarketRead() {
   if (!brief?.instruments) { el.style.display = 'none'; return; }
   const rs = allRows();   // global synthesis — ignores the FX/Indices/Gold filter
   if (rs.length < 4) { el.style.display = 'none'; return; }
-  const cs = currencyStrength(rs);
-  const risk = equitiesRisk(rs);
+  const cs = currencyStrengthForHorizon(rs, outlookHorizon);
+  const risk = equitiesRisk(rs, outlookHorizon);
   const trending = rs.filter(r => r.trending);
   const tUp = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'up').length;
   const tDn = trending.filter(r => _trendDir(r.d.regime?.trend_dir) === 'down').length;
@@ -2166,9 +2184,12 @@ function renderMarketRead() {
   } else if (usd) {
     sentences.push(`The US dollar is fairly flat.`);
   }
-  // 3) strongest / weakest + the trade with momentum
+  // 3) strongest / weakest + the trade with momentum — wording matches
+  // whichever horizon cs/risk above were actually computed from, so this
+  // never says "today's" while the number underneath is a 5-day/20-day read.
   if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
-    sentences.push(`Today's <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
+    const hzLead = outlookHorizon === 'weekly' ? "This week's" : outlookHorizon === 'monthly' ? "This month's" : "Today's";
+    sentences.push(`${hzLead} <b>strongest is the ${ccyFull(strongest.ccy)}</b>, weakest is the <b>${ccyFull(weakest.ccy)}</b> — so buying the ${ccyShort(strongest.ccy)} and selling the ${ccyShort(weakest.ccy)} is the trade with the wind behind it.`);
   }
   // 4) trending vs chopping
   const trendMaj = trending.length > rs.length / 2;
@@ -2238,7 +2259,7 @@ function renderMarketRead() {
     <div class="mread-precise">${breadthSentence}</div>
     <div class="mread-cols">
       <div>
-        <div class="mread-h">Who's being bought (top) vs sold (bottom)</div>
+        <div class="mread-h">Who's being bought (top) vs sold (bottom)${outlookHorizon !== 'daily' ? ` <span class="muted" style="font-weight:400">· ${outlookHorizon === 'weekly' ? '5-Day' : '20-Day'} outlook</span>` : ''}</div>
         ${barsHtml}
         ${gs.length ? `<div class="mread-h" style="margin-top:10px">Growth surprise by currency <span class="muted" style="font-weight:400">(not official PMI)</span></div>${gsBarsHtml}` : ''}
       </div>
@@ -2367,7 +2388,13 @@ function miniSparkline(points, { decimals = 2, suffix = '' } = {}) {
 
 function currencyDetail(ccy) {
   const rs = allRows();
-  const cs = currencyStrength(rs);
+  // Horizon-aware so this drawer's headline number matches whatever the
+  // Market Read bar the user just clicked was actually showing — see
+  // currencyStrengthForHorizon's header. The per-pair "legs" breakdown below
+  // stays on today's technical pull (pairSignal) deliberately — additional
+  // daily context under a horizon-scaled headline, same layering the main
+  // Outlook drawer already uses.
+  const cs = currencyStrengthForHorizon(rs, outlookHorizon);
   const row = cs.find(c => c.ccy === ccy);
 
   // 1) Technical — which pairs are actually pulling this currency, and how hard.
@@ -4221,8 +4248,8 @@ function renderSidebar() {
   if (!brief?.instruments) { el.innerHTML = ''; return; }
   const rs = allRows();
   if (rs.length < 4) { el.innerHTML = ''; return; }
-  const risk = equitiesRisk(rs);
-  const cs = currencyStrength(rs);
+  const risk = equitiesRisk(rs, outlookHorizon);
+  const cs = currencyStrengthForHorizon(rs, outlookHorizon);
   const strongest = cs[0], weakest = cs[cs.length - 1];
   const trending = rs.filter(r => r.trending);
   const hot = rs.slice().sort((a, b) => b.att - a.att).slice(0, 3);
@@ -4230,13 +4257,16 @@ function renderSidebar() {
   const rangeConsumed = rs.filter(r => (r.used ?? 0) >= 0.8).length;
   const hiVol = rs.filter(r => (r.d.vol_pct ?? 0) >= 80).length;
   const mood = riskLight();
+  // Wording only — the horizon word this card's own strongest/weakest takeaway
+  // uses, so it never says "today" while showing a 5-day/20-day-derived number.
+  const hzWord = outlookHorizon === 'weekly' ? 'over 5 days' : outlookHorizon === 'monthly' ? 'over 20 days' : 'today';
 
   // Key Takeaways — short, scannable version of the same reads Market Read
   // states in full sentences below. Each carries an icon+color matching the
   // kind of read it is (direction, attention, risk, data-health, timing).
   const takeaways = [];
   if (strongest && weakest && strongest.ccy !== weakest.ccy && (strongest.score - weakest.score) > 0.2) {
-    takeaways.push(['📈', 'bull', `<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest today.`]);
+    takeaways.push(['📈', 'bull', `<b>${ccyFull(strongest.ccy)}</b> strongest, <b>${ccyFull(weakest.ccy)}</b> weakest ${hzWord}.`]);
   }
   if (hot[0]) {
     const h = hot[0];
@@ -4248,7 +4278,7 @@ function renderSidebar() {
   if (nextEv) takeaways.push(['📅', 'blue', `Next high-impact release: ${nextEv}`]);
 
   el.innerHTML = `
-    <div class="side-card"><h3>Market Tone</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
+    <div class="side-card"><h3>Market Tone${outlookHorizon !== 'daily' ? ` <span class="muted" style="font-size:11px;font-weight:400">· ${outlookHorizon === 'weekly' ? '5-Day' : '20-Day'}</span>` : ''}</h3>${marketToneGaugeHtml(risk, cs, fred?.us10y, commodityDrivers?.wti, mood)}</div>
 
     ${driverBoardHtml()}
 
