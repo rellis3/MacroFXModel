@@ -62,7 +62,7 @@ Pages with a later date have genuinely been worked on since.
 | `range-zones.html` | Show today's Asia/Monday range zones the live bot is watching | 🟢 Live | ≤2026-08-09 | Levels the bot would trade live |
 | `sigma-fade-ab.html` | A/B pooled fade under platform σ vs HAR-RV σ | 🔬 Research | ≤2026-08-09 | No result recorded |
 | `telegram-v2.html` | Live graded zone alerts from a frozen per-cell confidence policy | 🟢 Live | ≤2026-08-09 | Active v3 corrections |
-| `today.html` | Daily trading brief aggregating macro, levels, vol and risk flags | 🟢 Live | 2026-09-02 | Gained a Daily/5-Day/20-Day Market Outlook toggle (`js/outlookEngine.js`, `LEGO_MODULES.md` §1ar) — a labelled context composite, not a new signal |
+| `today.html` | Daily trading brief aggregating macro, levels, vol and risk flags | 🟢 Live | 2026-09-02 | Gained a Daily/5-Day/20-Day Market Outlook toggle, a price-trend driver, central-bank tone context (Fed/ECB/BoE/BoJ), and 5-day/20-day fields in the AI analysis (`js/outlookEngine.js`, `LEGO_MODULES.md` §1ar) — labelled context, not a new validated signal |
 | `trade-cards.html` | Per-pair card board: nearest zone, TP/SL, confidence, live chart | 🟢 Live | 2026-08-14 | UNCALIBRATED PRIOR banner; alert board, not execution |
 | `trade-decision-engine.html` | Test harness scoring per-event go/skip decisions at zones | 🔬 Research | 2026-08-11 | OOS calibration collapses to one ~55% bucket |
 | `upcoming-trades.html` | Ranked watchlist of every live zone by distance to price | 🟢 Live | 2026-08-14 | UNCALIBRATED PRIOR banner |

@@ -57,11 +57,14 @@ const clip = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 //    'monthly' — see the callers below), so the extra tilt here is modest;
 //    kept in the same direction as the others (a bit more at 20d) since a
 //    multi-week momentum read is the more natural fit for the longer horizon.
+//  • priceTrend  — a same-day HTF regime read (is price sloping, and how
+//    cleanly) says more about the next few sessions than a month out, same
+//    reasoning as `composite` — weighted down at 20d, not up.
 // volRegime is deliberately absent from this table — it never sets direction
 // (see volRegimeDriver below), only confidence.
 export const HORIZON_WEIGHTS = {
-  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4 },
-  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6 },
+  weekly:  { composite: 1.0, yieldSpread: 0.5, cot: 0.5, dxyMomentum: 0.4, riskMomentum: 0.4, priceTrend: 0.8 },
+  monthly: { composite: 0.7, yieldSpread: 1.0, cot: 0.7, dxyMomentum: 0.6, riskMomentum: 0.6, priceTrend: 0.5 },
 };
 
 // Currency risk-character lean — a small, standard FX-market convention
@@ -188,6 +191,56 @@ function riskMomentumDriver(input) {
   };
 }
 
+// `input` = { label, trendDir, trendProb, reliable } — the card's own
+// existing HMM daily regime read (`r.d.regime`, already loaded for free, zero
+// new fetches). Absent when `label !== 'TREND'` (a RANGE regime has no
+// trend_dir to read) or the read is missing entirely. Same scoring shape as
+// `pairSignal()` already uses for the composite's own "technical" leg — see
+// the detail text below for why that overlap matters, not just that it
+// exists. Tagged CONTEXT: the HMM regime classifier itself is used elsewhere
+// in this repo as a "canonical classifier", but a standalone trend_dir-alone
+// forecast has no OOS result recorded here to point to.
+function priceTrendDriver(input) {
+  if (!input || input.label !== 'TREND' || !input.trendDir) return null;
+  const dirSign = input.trendDir === 'up' ? 1 : input.trendDir === 'down' ? -1 : 0;
+  if (!dirSign) return null;
+  const prob = (input.trendProb ?? 60) / 100;
+  const reliability = input.reliable ? 1 : 0.6;
+  return {
+    name: 'priceTrend', label: 'Price trend (HTF regime)', status: 'CONTEXT',
+    score: clip(dirSign * prob * reliability, -1, 1),
+    detail: `HMM daily regime reads TREND ${input.trendDir} at ${input.trendProb}%${input.reliable ? '' : ' (flagged less reliable)'}. NOTE: this is the SAME regime read already folded into the "Signal composite" driver's technical leg above — shown separately for visibility into the specific evidence, not as fully independent confirmation of it.`,
+  };
+}
+
+// ── Central-bank tone (DESCRIPTIVE ONLY — never a driver) ───────────────────
+// `history` = the /api/{fomc,ecb,boe,boj}/history-shaped array, oldest first:
+// [{ meetingDate, hawkishScore, regime }]. Summarizes whether the tone has
+// gotten more hawkish, more dovish, or held, over the last few meetings.
+//
+// DELIBERATE, STRUCTURAL EXCLUSION FROM computeOutlook: this repo already
+// pre-registered and ran the exact test of whether ΔhawkishScore predicts
+// forward price — a clean banked null on both registered cells
+// (MD files/CB_SENTIMENT_PRICE_TEST.md). This function exists ONLY to
+// describe the tone in plain words for display (the drawer, the AI prompt) —
+// it returns no `score`, is not shaped like the drivers above, and MUST NEVER
+// be passed to computeOutlook or added to HORIZON_WEIGHTS. If you're tempted
+// to score it, re-read that doc first — the test already ran.
+export function describeCbTrend(history) {
+  const rows = (history ?? []).filter(h => h?.hawkishScore != null);
+  if (rows.length < 2) {
+    return { trend: 'INSUFFICIENT_DATA', latestScore: rows[0]?.hawkishScore ?? null, deltaVsPrev: null, nMeetings: rows.length, detail: 'Not enough scored meetings to read a trend.' };
+  }
+  const last = rows[rows.length - 1], prev = rows[rows.length - 2];
+  const delta = round1(last.hawkishScore - prev.hawkishScore);
+  const trend = delta > 0.05 ? 'MORE_HAWKISH' : delta < -0.05 ? 'MORE_DOVISH' : 'UNCHANGED';
+  const label = trend === 'MORE_HAWKISH' ? 'turned more hawkish' : trend === 'MORE_DOVISH' ? 'turned more dovish' : 'held steady';
+  return {
+    trend, latestScore: round1(last.hawkishScore), deltaVsPrev: delta, nMeetings: rows.length,
+    detail: `Tone ${label} vs the prior meeting (${last.meetingDate}). Context only — this repo tested and banked a null on hawkish-score momentum predicting price (CB_SENTIMENT_PRICE_TEST.md); never treat this as a directional reason.`,
+  };
+}
+
 // `events` = pairEvents(name)-shaped array, each carrying `ms` (epoch) and
 // `impact`. Returns how many fall inside the horizon's forward window.
 function eventRiskFor(events, windowMs) {
@@ -198,9 +251,11 @@ function eventRiskFor(events, windowMs) {
 }
 
 // inputs = { composite, yieldSpread, volRegime, cot, events, dxyMomentum,
-// riskMomentum }. Each field is optional — a caller with only some of these
-// signals loaded still gets a read built from what it has (never padded with
-// a neutral zero for what's missing, same discipline as pairComposite).
+// riskMomentum, priceTrend }. Each field is optional — a caller with only
+// some of these signals loaded still gets a read built from what it has
+// (never padded with a neutral zero for what's missing, same discipline as
+// pairComposite). Central-bank tone is DELIBERATELY not one of these fields —
+// see describeCbTrend's own header for why it's structurally kept out.
 // dxyMomentum = { deltas: {1,5,20}, usdSide } | null (from js/macroChange.js's
 // dxy row); riskMomentum = { vixDeltas: {1,5,20}, hyDeltas: {1,5,20}, netLean }
 // | null — both carry ALL windows, and computeOutlook picks the one matching
@@ -223,6 +278,7 @@ export function computeOutlook(inputs = {}, horizonKey = 'weekly') {
     ? { vixDelta: inputs.riskMomentum.vixDeltas?.[wd] ?? null, hyDelta: inputs.riskMomentum.hyDeltas?.[wd] ?? null, netLean: inputs.riskMomentum.netLean }
     : null);
   if (rm) drivers.push(rm);
+  const pt = priceTrendDriver(inputs.priceTrend); if (pt) drivers.push(pt);
 
   const directional = drivers.filter(d => d.name !== 'volRegime');
   let biasScore = null, agree = 0;

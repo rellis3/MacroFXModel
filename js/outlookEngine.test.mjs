@@ -1,6 +1,6 @@
 // Synthetic tests for outlookEngine.js. No network.
 //   node js/outlookEngine.test.mjs
-import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean } from './outlookEngine.js';
+import { computeOutlook, computeOutlookAllHorizons, HORIZONS, CCY_RISK_LEAN, pairRiskLean, describeCbTrend } from './outlookEngine.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -182,6 +182,78 @@ console.log('[computeOutlook — riskMomentum degrades gracefully with only one 
   const r = computeOutlook({ riskMomentum: { vixDeltas: { 5: 4 }, hyDeltas: {}, netLean } }, 'weekly');
   const d = r.drivers.find(x => x.name === 'riskMomentum');
   ok('driver still produced from VIX alone', d.score > 0, d.score);
+}
+
+console.log('[computeOutlook — priceTrend: TREND regime with a direction contributes a driver]');
+{
+  const r = computeOutlook({ priceTrend: { label: 'TREND', trendDir: 'up', trendProb: 70, reliable: true } }, 'weekly');
+  const d = r.drivers.find(x => x.name === 'priceTrend');
+  ok('driver present', !!d);
+  ok('status CONTEXT', d.status === 'CONTEXT');
+  ok('score positive for an up trend', d.score > 0, d.score);
+  ok('bias reflects it', r.bias === 'BULLISH', r.biasScore);
+}
+
+console.log('[computeOutlook — priceTrend: RANGE regime contributes nothing]');
+{
+  const r = computeOutlook({ priceTrend: { label: 'RANGE', trendDir: null, trendProb: null, reliable: false } }, 'weekly');
+  ok('no priceTrend driver for a RANGE regime', !r.drivers.find(x => x.name === 'priceTrend'));
+  ok('bias is null (nothing else supplied)', r.bias === null);
+}
+
+console.log('[computeOutlook — priceTrend: unreliable read is discounted, not dropped]');
+{
+  const reliable = computeOutlook({ priceTrend: { label: 'TREND', trendDir: 'up', trendProb: 70, reliable: true } }, 'weekly');
+  const unreliable = computeOutlook({ priceTrend: { label: 'TREND', trendDir: 'up', trendProb: 70, reliable: false } }, 'weekly');
+  const dR = reliable.drivers.find(x => x.name === 'priceTrend'), dU = unreliable.drivers.find(x => x.name === 'priceTrend');
+  ok('both present', !!dR && !!dU);
+  ok('unreliable read scores lower but still positive', dU.score > 0 && dU.score < dR.score, `${dU.score} vs ${dR.score}`);
+}
+
+console.log('[computeOutlook — priceTrend weighted down at 20d vs 5d, against a competing driver]');
+{
+  // A lone driver's weight is invisible (normalized against itself) — need a
+  // second, opposing driver for the weight shift to show up in biasScore.
+  const inputs = {
+    priceTrend: { label: 'TREND', trendDir: 'up', trendProb: 70, reliable: true },
+    yieldSpread: { z: -3, inverted: false },
+  };
+  const weekly = computeOutlook(inputs, 'weekly');
+  const monthly = computeOutlook(inputs, 'monthly');
+  // weekly weights priceTrend(0.8) over yieldSpread(0.5) -> net positive;
+  // monthly weights yieldSpread(1.0) over priceTrend(0.5) -> net negative.
+  ok('weekly leans toward priceTrend (up)', weekly.biasScore > 0, weekly.biasScore);
+  ok('monthly leans toward yieldSpread (down) — opposite sign', monthly.biasScore < 0, monthly.biasScore);
+}
+
+console.log('[describeCbTrend — too few scored meetings -> INSUFFICIENT_DATA, no crash]');
+{
+  ok('empty history', describeCbTrend([]).trend === 'INSUFFICIENT_DATA');
+  ok('one meeting', describeCbTrend([{ meetingDate: '2026-01-01', hawkishScore: 0.2 }]).trend === 'INSUFFICIENT_DATA');
+  ok('all-null scores', describeCbTrend([{ meetingDate: '2026-01-01', hawkishScore: null }]).trend === 'INSUFFICIENT_DATA');
+}
+
+console.log('[describeCbTrend — rising score -> MORE_HAWKISH, falling -> MORE_DOVISH, flat -> UNCHANGED]');
+{
+  const hawkish = describeCbTrend([{ meetingDate: '2026-01-01', hawkishScore: 0.1 }, { meetingDate: '2026-03-01', hawkishScore: 0.5 }]);
+  const dovish = describeCbTrend([{ meetingDate: '2026-01-01', hawkishScore: 0.5 }, { meetingDate: '2026-03-01', hawkishScore: 0.1 }]);
+  const flat = describeCbTrend([{ meetingDate: '2026-01-01', hawkishScore: 0.3 }, { meetingDate: '2026-03-01', hawkishScore: 0.31 }]);
+  ok('rising score reads MORE_HAWKISH', hawkish.trend === 'MORE_HAWKISH', hawkish.trend);
+  ok('falling score reads MORE_DOVISH', dovish.trend === 'MORE_DOVISH', dovish.trend);
+  ok('near-flat score reads UNCHANGED', flat.trend === 'UNCHANGED', flat.trend);
+  ok('detail cites the banked-null caveat', /banked a null|CB_SENTIMENT_PRICE_TEST/.test(hawkish.detail));
+}
+
+console.log('[describeCbTrend output is NEVER accepted anywhere in computeOutlook — structural check]');
+{
+  // describeCbTrend's return shape has no `score` field, so even if someone
+  // mistakenly passed it in under some input key, no driver function reads
+  // an input key by this name — confirm the engine's driver set is unchanged
+  // whether or not a `cbTrend`-shaped object is present.
+  const cbLike = describeCbTrend([{ meetingDate: '2026-01-01', hawkishScore: 0.1 }, { meetingDate: '2026-03-01', hawkishScore: 0.9 }]);
+  const withIt = computeOutlook({ composite: { score: 0.3, agree: 1, total: 1 }, cbTrend: cbLike, cbSentiment: cbLike }, 'weekly');
+  const without = computeOutlook({ composite: { score: 0.3, agree: 1, total: 1 } }, 'weekly');
+  ok('identical driver count whether or not a CB-trend object is attached under any key', withIt.total === without.total && withIt.biasScore === without.biasScore);
 }
 
 console.log('[computeOutlook — CB sentiment is NOT a recognized input at all]');
